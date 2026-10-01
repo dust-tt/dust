@@ -1,7 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
+import { expect } from "storybook/test";
 
-import { ButtonsSwitch, ButtonsSwitchList } from "../index_with_tw_base";
+import {
+  Button,
+  ButtonsSwitch,
+  ButtonsSwitchList,
+} from "../index_with_tw_base";
 
 const meta = {
   title: "Actions/ButtonsSwitch",
@@ -68,29 +73,34 @@ export const Controlled: Story = {
 };
 
 /**
- * The three sizes side by side: `xs` for dense toolbars, `sm` as the
- * default, `md` where the switch is a primary control.
+ * The three sizes side by side, each next to a Button of the same size:
+ * the switch takes the Button's height and radius (24 / 32 / 40px), so the
+ * two line up in a toolbar. `xs` for dense toolbars, `sm` as the default,
+ * `md` where the switch is a primary control.
  *
- * @summary The xs / sm / md size scale.
+ * @summary The xs / sm / md size scale, aligned with Button.
  */
 export const Sizes: Story = {
   render: () => (
     <div className="flex flex-col gap-4 p-4">
-      <ButtonsSwitchList defaultValue="time" size="xs" className="w-fit">
-        <ButtonsSwitch value="time" label="Time range" />
-        <ButtonsSwitch value="version" label="Version" />
-        <ButtonsSwitch value="other" label="Other" />
-      </ButtonsSwitchList>
-      <ButtonsSwitchList defaultValue="time" size="sm" className="w-fit">
-        <ButtonsSwitch value="time" label="Time range" />
-        <ButtonsSwitch value="version" label="Version" />
-        <ButtonsSwitch value="other" label="Other" />
-      </ButtonsSwitchList>
-      <ButtonsSwitchList defaultValue="time" size="md" className="w-fit">
-        <ButtonsSwitch value="time" label="Time range" />
-        <ButtonsSwitch value="version" label="Version" />
-        <ButtonsSwitch value="other" label="Other" />
-      </ButtonsSwitchList>
+      {(["xs", "sm", "md"] as const).map((size) => (
+        <div key={size} className="flex items-center gap-3">
+          <ButtonsSwitchList defaultValue="time" size={size} className="w-fit">
+            <ButtonsSwitch value="time" label="Time range" />
+            <ButtonsSwitch value="version" label="Version" />
+            <ButtonsSwitch value="other" label="Other" />
+          </ButtonsSwitchList>
+          <Button size={size} variant="outline" label="Button" />
+        </div>
+      ))}
     </div>
   ),
+  play: async ({ canvas }) => {
+    const switches = canvas.getAllByRole("tablist");
+    const buttons = canvas.getAllByRole("button", { name: "Button" });
+    expect(switches.map((el) => el.offsetHeight)).toEqual([24, 32, 40]);
+    switches.forEach((el, i) => {
+      expect(el.offsetHeight).toBe(buttons[i].offsetHeight);
+    });
+  },
 };
