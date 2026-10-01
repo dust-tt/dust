@@ -8,6 +8,7 @@ import {
   recordAwuPurchaseAttemptSyncFailure,
   setAwuPurchaseAttemptPending,
 } from "@app/lib/credits/awu_purchase_status";
+import { formatNumber } from "@app/lib/i18n/format";
 import {
   addPaymentGatedCommitToContract,
   floorToHourISO,
@@ -271,7 +272,7 @@ export async function purchaseAwuCredits(
   if (amountCredits < MIN_AWU_PURCHASE_CREDITS) {
     return new Err({
       code: "invalid_amount",
-      message: `Minimum purchase is ${MIN_AWU_PURCHASE_CREDITS.toLocaleString()} credits.`,
+      message: `Minimum purchase is ${formatNumber(MIN_AWU_PURCHASE_CREDITS)} credits.`,
     });
   }
 
@@ -300,7 +301,7 @@ export async function purchaseAwuCredits(
   if (amountCredits > remaining) {
     return new Err({
       code: "invalid_amount",
-      message: `Purchase would exceed the cycle limit. You can purchase up to ${remaining.toLocaleString()} more credits this cycle.`,
+      message: `Purchase would exceed the cycle limit. You can purchase up to ${formatNumber(remaining)} more credits this cycle.`,
     });
   }
 
@@ -357,8 +358,8 @@ export async function purchaseAwuCredits(
     applicableProducTags: [USAGE_TAG],
     name:
       discountPercent > 0
-        ? `Credit top-up: ${amountCredits.toLocaleString()} credits (${discountPercent}% discount)`
-        : `Credit top-up: ${amountCredits.toLocaleString()} credits`,
+        ? `Credit top-up: ${formatNumber(amountCredits)} credits (${discountPercent}% discount)`
+        : `Credit top-up: ${formatNumber(amountCredits)} credits`,
     uniquenessKey,
     customFields: {
       [CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY]: floorToHourISO(accessEndingBefore),

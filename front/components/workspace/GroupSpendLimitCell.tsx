@@ -1,3 +1,4 @@
+import { formatNumber } from "@app/lib/i18n/format";
 import type { GroupSpendLimit } from "@app/types/api/groups/spend_limit";
 import { InputWithSave } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -47,12 +48,10 @@ export function GroupSpendLimitCell({
         inputMode="numeric"
         pattern="[0-9]*"
         placeholder="No limit"
-        value={current === null ? "" : current.toLocaleString()}
+        value={current === null ? "" : formatNumber(current)}
         unit={current === null && !isEditing ? undefined : "credits/month"}
         normalizeValue={(value) => value.replace(/[^\d]/g, "")}
-        formatValue={(value) =>
-          value ? Number(value).toLocaleString() : value
-        }
+        formatValue={(value) => (value ? formatNumber(Number(value)) : value)}
         onSave={handleSave}
         onFocus={() => setIsEditing(true)}
         onBlur={() => setIsEditing(false)}

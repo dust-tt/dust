@@ -3,6 +3,7 @@ import {
   SEAT_TYPE_ICONS,
   seatTypeAvatarColors,
 } from "@app/components/workspace/billing/seatTypeUtils";
+import { formatNumber } from "@app/lib/i18n/format";
 import { SEAT_PRODUCT_YEARLY_SUFFIX } from "@app/lib/metronome/constants";
 import type { MetronomeInvoiceLineItem } from "@app/lib/metronome/invoice";
 import { isAppliedCreditLineItem } from "@app/lib/metronome/invoice";
@@ -75,7 +76,7 @@ function formatLineItem(
     period: formatLineItemPeriod(item),
     quantity:
       item.quantity !== null
-        ? `${item.quantity.toLocaleString()}${isOverage ? " credits" : ""}`
+        ? `${formatNumber(item.quantity)}${isOverage ? " credits" : ""}`
         : "—",
     cost:
       item.unitPriceCents !== null

@@ -1,3 +1,4 @@
+import { formatNumber } from "@app/lib/i18n/format";
 import {
   useProgrammaticUsageLimit,
   useUpdateProgrammaticUsageLimit,
@@ -63,11 +64,11 @@ export function UsageProgrammaticLimitCard({
                 inputMode="numeric"
                 pattern="[0-9]*"
                 placeholder="No access"
-                value={currentLimit === 0 ? "" : currentLimit.toLocaleString()}
+                value={currentLimit === 0 ? "" : formatNumber(currentLimit)}
                 unit={currentLimit === 0 && !isEditing ? undefined : "credits"}
                 normalizeValue={(value) => value.replace(/[^\d]/g, "")}
                 formatValue={(value) =>
-                  value ? Number(value).toLocaleString() : value
+                  value ? formatNumber(Number(value)) : value
                 }
                 onSave={handleSaveLimit}
                 onFocus={() => setIsEditing(true)}

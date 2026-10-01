@@ -4,7 +4,7 @@ import {
   SelectField,
 } from "@app/components/poke/shadcn/ui/form/fields";
 import { clientFetch } from "@app/lib/egress/client";
-import { formatDateTime } from "@app/lib/i18n/format";
+import { formatDateTime, formatNumber } from "@app/lib/i18n/format";
 import { amountCents } from "@app/lib/metronome/amounts";
 import {
   commitmentAmount,
@@ -1950,15 +1950,15 @@ export default function SwitchContractDialog({
                               {initialCredits.perUser === true && (
                                 <span className="text-xs text-muted-foreground">
                                   {committedSeatCount > 0
-                                    ? `Grants ${(
+                                    ? `Grants ${formatNumber(
                                         (initialCredits.amountCredits ?? 0) *
                                           committedSeatCount
-                                      ).toLocaleString()} credits${
+                                      )} credits${
                                         (initialCredits.invoiceAmount ?? 0) > 0
-                                          ? `, invoiced ${(
+                                          ? `, invoiced ${formatNumber(
                                               (initialCredits.invoiceAmount ??
                                                 0) * committedSeatCount
-                                            ).toLocaleString()} ${resolvedCurrency.toUpperCase()}`
+                                            )} ${resolvedCurrency.toUpperCase()}`
                                           : ""
                                       } (× ${committedSeatCount} committed seat${committedSeatCount === 1 ? "" : "s"}).`
                                     : "No committed seats yet — set a seat commitment above, or this grant resolves to nothing."}

@@ -113,7 +113,10 @@
         "front/**/*.{js,jsx,ts,tsx}",
         "!**/*.{test,spec}.{js,jsx,ts,tsx}"
       ],
-      "plugins": ["./.grit/patterns/noLocaleLessDateTimeFormat.grit"]
+      "plugins": [
+        "./.grit/patterns/noLocaleLessDateTimeFormat.grit",
+        "./.grit/patterns/noLocaleLessToLocaleString.grit"
+      ]
     },
     {
       "includes": ["front-api/**/*.ts", "!front-api/routes/types.ts"],

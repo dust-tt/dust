@@ -1,6 +1,7 @@
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
+import { formatNumber } from "@app/lib/i18n/format";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
@@ -800,7 +801,7 @@ export function APIKeysTable({
           )}
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-foreground">
-              {filteredRows.length.toLocaleString()} API key
+              {formatNumber(filteredRows.length)} API key
               {pluralize(filteredRows.length)}
             </span>
             {filteredRows.length > 0 && (

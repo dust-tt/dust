@@ -10,6 +10,7 @@ import {
   MAX_AWU_PURCHASE_CREDITS_PER_CYCLE,
   MIN_AWU_PURCHASE_CREDITS,
 } from "@app/lib/credits/awu_purchase_constants";
+import { formatNumber } from "@app/lib/i18n/format";
 import {
   awuCreditsToCurrency,
   currencyToAwuCredits,
@@ -476,7 +477,7 @@ export function BuyAwuCreditsDialog({
     if (maxAmountInCurrency === null) {
       return null;
     }
-    return `${currencySymbol}${maxAmountInCurrency.toLocaleString()}`;
+    return `${currencySymbol}${formatNumber(maxAmountInCurrency)}`;
   }, [maxAmountInCurrency, currencySymbol]);
 
   const effectiveMaxAmount =

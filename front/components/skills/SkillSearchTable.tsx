@@ -5,6 +5,7 @@ import {
   SkillLastEditedCell,
 } from "@app/components/skills/SkillTableCells";
 import { EntityTooltipCard } from "@app/components/workspace/analytics/creditsTableCells";
+import { formatNumber } from "@app/lib/i18n/format";
 import { getSkillAvatarIcon, isDustProvidedSkill } from "@app/lib/skill";
 import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -220,7 +221,11 @@ export function SkillSearchTable({
           enableMultiSort: false,
           cell: ({ row: { original: skill } }) => (
             <DataTable.BasicCellContent
-              label={skill.activeUsersCount?.toLocaleString() ?? "-"}
+              label={
+                skill.activeUsersCount === null
+                  ? "-"
+                  : formatNumber(skill.activeUsersCount)
+              }
               tooltip={
                 skill.activeUsersCount === null
                   ? "Usage is not available for this skill."

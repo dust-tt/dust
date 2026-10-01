@@ -9,6 +9,7 @@ import {
 } from "@app/components/skills/SkillTableCells";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { EntityTooltipCard } from "@app/components/workspace/analytics/creditsTableCells";
+import { formatNumber } from "@app/lib/i18n/format";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { useTags } from "@app/lib/swr/tags";
 import { tagsSorter } from "@app/lib/utils";
@@ -328,7 +329,11 @@ export function AgentSearchTable({
           cell: ({ row: { original: agent } }) => (
             <DataTable.BasicCellContent
               className="font-mono"
-              label={agent.activeUsersCount?.toLocaleString() ?? "-"}
+              label={
+                agent.activeUsersCount === null
+                  ? "-"
+                  : formatNumber(agent.activeUsersCount)
+              }
               tooltip={
                 agent.activeUsersCount === null
                   ? "Usage is not available for this agent."

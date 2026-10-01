@@ -18,6 +18,7 @@ import type { PendingSkill } from "@app/components/assistant/conversation/input_
 import { serializeSkillNodeClipboardHTML } from "@app/components/editor/extensions/input_bar/SkillNode";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { formatNumber } from "@app/lib/i18n/format";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useCatalogSearch } from "@app/lib/swr/catalog_search";
@@ -649,7 +650,7 @@ export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
           {item.activeUsersCount !== null && (
             <span className="flex items-center gap-1 text-muted-foreground">
               <Icon visual={Users01} size="xs" />
-              {item.activeUsersCount.toLocaleString()}
+              {formatNumber(item.activeUsersCount)}
               <span className="sr-only">active users</span>
             </span>
           )}

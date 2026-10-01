@@ -3,6 +3,7 @@ import {
   CreditLimitNumberInput,
 } from "@app/components/workspace/CreditLimitInput";
 import type { GroupRow } from "@app/components/workspace/member_spend_limit_helpers";
+import { formatNumber } from "@app/lib/i18n/format";
 import { DataTable } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -73,7 +74,7 @@ const groupColumns: ColumnDef<GroupLimitRow, string>[] = [
     meta: { headerAlign: "right" },
     cell: ({ row }) => (
       <DataTable.BasicCellContent
-        label={row.original.memberCount.toLocaleString()}
+        label={formatNumber(row.original.memberCount)}
         className="justify-end"
       />
     ),

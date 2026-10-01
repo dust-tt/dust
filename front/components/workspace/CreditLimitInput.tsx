@@ -1,3 +1,4 @@
+import { formatNumber } from "@app/lib/i18n/format";
 import { Button, Input, Page, Tooltip } from "@dust-tt/sparkle";
 
 interface CreditLimitNumberInputProps {
@@ -23,7 +24,7 @@ export function CreditLimitNumberInput({
       pattern="[0-9]*"
       placeholder="--"
       disabled={readOnly}
-      value={value !== "" ? Number(value).toLocaleString() : ""}
+      value={value !== "" ? formatNumber(Number(value)) : ""}
       onChange={(e) => {
         onChange(e.target.value.replace(/[^\d]/g, ""));
       }}

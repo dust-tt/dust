@@ -1,5 +1,6 @@
 import { ToolCallsView } from "@app/components/poke/llm_traces/ToolCallsView";
 import type { LLMTraceOutput } from "@app/lib/api/llm/traces/types";
+import { formatNumber } from "@app/lib/i18n/format";
 import { isString } from "@app/types/shared/utils/general";
 import {
   Collapsible,
@@ -40,7 +41,7 @@ export function OutputTab({ output }: OutputTabProps) {
           <Collapsible defaultOpen={true}>
             <CollapsibleTrigger>
               <h3 className="text-lg font-medium">
-                Content ({output.content.length.toLocaleString()} chars)
+                Content ({formatNumber(output.content.length)} chars)
               </h3>
             </CollapsibleTrigger>
             <CollapsibleContent>
@@ -58,7 +59,7 @@ export function OutputTab({ output }: OutputTabProps) {
           <Collapsible defaultOpen={false}>
             <CollapsibleTrigger>
               <h3 className="text-lg font-medium">
-                Reasoning ({output.reasoning.length.toLocaleString()} chars)
+                Reasoning ({formatNumber(output.reasoning.length)} chars)
               </h3>
             </CollapsibleTrigger>
             <CollapsibleContent>
