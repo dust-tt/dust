@@ -18,18 +18,26 @@ use std::env;
 use tracing::error;
 use urlencoding;
 
+/// Allowlisted parent domains. Token requests carrying Dust's Freshworks OAuth credentials
+/// must only go to subdomains of these hosts.
+const FRESHWORKS_ALLOWED_DOMAIN_SUFFIXES: [&str; 2] = [".myfreshworks.com", ".freshworks.com"];
+
 lazy_static! {
     static ref OAUTH_FRESHWORKS_CLIENT_ID: String = env::var("OAUTH_FRESHWORKS_CLIENT_ID").unwrap();
     static ref OAUTH_FRESHWORKS_CLIENT_SECRET: String =
         env::var("OAUTH_FRESHWORKS_CLIENT_SECRET").unwrap();
-    // Hostname only (no scheme, path, port, or IP). Accepts standard Freshworks
-    // hosts (*.myfreshworks.com) and custom organization domains
+    // Hostname only (no scheme, path, port, or IP).
     static ref FRESHWORKS_ORG_DOMAIN_RE: Regex = Regex::new(
         r"^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$"
     )
     .unwrap();
 }
 
+/// @cc [owner:frankaloia,label:security] freshservice-domain-allowlist
+/// The parsed domain MUST be a subdomain of `myfreshworks.com` or `freshworks.com`.
+/// Dust's platform-wide Freshworks OAuth client credentials are sent in the Authorization
+/// header of the token request; allowing arbitrary caller-supplied domains would expose
+/// those credentials to any host the caller controls.
 /// Parses a Freshworks organization URL into a hostname suitable for token requests.
 fn parse_freshworks_org_url(raw: &str) -> Result<String> {
     let trimmed = raw.trim();
@@ -41,6 +49,15 @@ fn parse_freshworks_org_url(raw: &str) -> Result<String> {
 
     if domain.is_empty() || domain.len() > 253 || !FRESHWORKS_ORG_DOMAIN_RE.is_match(domain) {
         return Err(anyhow!("Freshservice domain format invalid"));
+    }
+
+    if !FRESHWORKS_ALLOWED_DOMAIN_SUFFIXES
+        .iter()
+        .any(|suffix| domain.ends_with(suffix))
+    {
+        return Err(anyhow!(
+            "Freshservice domain must be a subdomain of myfreshworks.com or freshworks.com"
+        ));
     }
 
     Ok(domain.to_string())
@@ -68,7 +85,7 @@ impl Provider for FreshserviceConnectionProvider {
     }
 
     fn reqwest_client(&self) -> reqwest::Client {
-        // Token requests go to a user-provided org URL (including custom domains).
+        // Token requests go to a validated *.myfreshworks.com / *.freshworks.com host.
         match create_untrusted_egress_client_builder().build() {
             Ok(client) => client,
             Err(e) => {
@@ -214,18 +231,18 @@ mod tests {
     }
 
     #[test]
-    fn accepts_custom_organization_domain() {
+    fn accepts_freshworks_subdomain() {
         assert_eq!(
-            parse_freshworks_org_url("it.test.com").unwrap(),
-            "it.test.com"
+            parse_freshworks_org_url("acme.freshworks.com").unwrap(),
+            "acme.freshworks.com"
         );
     }
 
     #[test]
     fn strips_scheme_and_trailing_slash() {
         assert_eq!(
-            parse_freshworks_org_url("https://it.test.com/").unwrap(),
-            "it.test.com"
+            parse_freshworks_org_url("https://acme.myfreshworks.com/").unwrap(),
+            "acme.myfreshworks.com"
         );
     }
 
@@ -236,5 +253,16 @@ mod tests {
         assert!(parse_freshworks_org_url("it.test.com:443").is_err());
         assert!(parse_freshworks_org_url("localhost").is_err());
         assert!(parse_freshworks_org_url("").is_err());
+    }
+
+    #[test]
+    fn rejects_non_freshworks_domains() {
+        // Arbitrary domains must not receive Dust's platform-wide Freshworks credentials.
+        assert!(parse_freshworks_org_url("attacker.com").is_err());
+        assert!(parse_freshworks_org_url("evil.myfreshworks.com.attacker.com").is_err());
+        assert!(parse_freshworks_org_url("it.test.com").is_err());
+        // Bare parent domains (no subdomain) are also rejected.
+        assert!(parse_freshworks_org_url("myfreshworks.com").is_err());
+        assert!(parse_freshworks_org_url("freshworks.com").is_err());
     }
 }
