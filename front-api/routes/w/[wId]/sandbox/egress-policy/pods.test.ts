@@ -1,6 +1,5 @@
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -10,19 +9,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 async function setupTest({
   role = "admin",
-  enableSandboxFunctions = true,
 }: {
   role?: MembershipRoleType;
-  enableSandboxFunctions?: boolean;
 } = {}) {
   const { workspace, auth, user, ...rest } = await createPrivateApiMockRequest({
     role,
   });
-
-  if (enableSandboxFunctions) {
-    await FeatureFlagFactory.basic(auth, "frames_v2");
-    await FeatureFlagFactory.basic(auth, "frames_v2_functions");
-  }
 
   const podA = await SpaceFactory.project(workspace, user.id);
   const podB = await SpaceFactory.project(workspace, user.id);
@@ -91,17 +83,6 @@ describe("GET /api/w/:wId/sandbox/egress-policy/pods", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ pods: [] });
-  });
-
-  it("returns 403 when Frame functions are disabled", async () => {
-    const { workspace } = await setupTest({ enableSandboxFunctions: false });
-
-    const response = await getPods(workspace.sId);
-
-    expect(response.status).toBe(403);
-    expect(await response.json()).toMatchObject({
-      error: { type: "feature_flag_not_found" },
-    });
   });
 
   it("returns a 500 when the Pod listing fails", async () => {

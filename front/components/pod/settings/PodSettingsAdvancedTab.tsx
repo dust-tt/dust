@@ -2,7 +2,7 @@ import { PodNetworkSection } from "@app/components/pod/settings/PodNetworkSectio
 import { SandboxEnvVarsSection } from "@app/components/sandbox/SandboxEnvVarsSection";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { RichSpaceType } from "@app/types/api/spaces";
-import { isFramesV2FunctionsEnabled } from "@app/types/shared/feature_flags";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { LightWorkspaceType } from "@app/types/user";
 
 interface PodSettingsAdvancedTabProps {
@@ -21,13 +21,13 @@ export function PodSettingsAdvancedTab({
   // the list is visible to anyone who can see the tab, like the network
   // section. Values are write-only, so the list carries names, kinds and
   // domains only.
-  const hasFramesV2Functions = isFramesV2FunctionsEnabled(featureFlags);
-  const isPodSandboxAdminEnabled = isAdmin && hasFramesV2Functions;
+  const hasComputer = isComputerFeatureEnabled(featureFlags);
+  const isPodSandboxAdminEnabled = isAdmin && hasComputer;
   // The pod network section is visible to anyone who can open this page once
-  // the feature is on (the API opens the egress GET to Pod readers); editing
-  // stays workspace-admin only. Mirrors the egress-policy route gates — change
-  // both together.
-  const canViewPodNetwork = hasFramesV2Functions;
+  // the Computer is enabled (the API opens the egress GET to Pod readers);
+  // editing is workspace-admin only. Mirrors the egress-policy route gates —
+  // change both together.
+  const canViewPodNetwork = hasComputer;
   const canEditPodNetwork = isPodSandboxAdminEnabled;
 
   return (

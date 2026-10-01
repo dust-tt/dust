@@ -1,5 +1,4 @@
 import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SandboxEnvVarFactory } from "@app/tests/utils/SandboxEnvVarFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -23,19 +22,12 @@ vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
 
 async function setupTest({
   role = "admin",
-  withoutSandboxFunctionsFeature = false,
 }: {
   role?: MembershipRoleType;
-  withoutSandboxFunctionsFeature?: boolean;
 } = {}) {
   const { workspace, auth, user, ...rest } = await createPrivateApiMockRequest({
     role,
   });
-
-  if (!withoutSandboxFunctionsFeature) {
-    await FeatureFlagFactory.basic(auth, "frames_v2");
-    await FeatureFlagFactory.basic(auth, "frames_v2_functions");
-  }
 
   const pod = await SpaceFactory.project(workspace, user.id);
 
@@ -98,19 +90,6 @@ describe("GET/POST /api/w/:wId/spaces/:spaceId/sandbox/env-vars", () => {
     expect(response.status).toBe(403);
     expect(await response.json()).toMatchObject({
       error: { type: "workspace_auth_error" },
-    });
-  });
-
-  it("returns 403 without Frame functions", async () => {
-    const { workspace, pod } = await setupTest({
-      withoutSandboxFunctionsFeature: true,
-    });
-
-    const response = await listEnvVars(workspace.sId, pod.sId);
-
-    expect(response.status).toBe(403);
-    expect(await response.json()).toMatchObject({
-      error: { type: "feature_flag_not_found" },
     });
   });
 
