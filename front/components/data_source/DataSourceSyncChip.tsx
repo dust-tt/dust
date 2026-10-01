@@ -1,7 +1,7 @@
+import { timeAgoFrom } from "@app/lib/client/relative_time";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { formatFileSize } from "@app/lib/i18n/format";
 import { DATASOURCE_QUOTA_PER_SEAT } from "@app/lib/plans/usage/types";
-import { timeAgoFrom } from "@app/lib/utils";
 import type { ConnectorType } from "@app/types/data_source";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Chip, Tooltip } from "@dust-tt/sparkle";
@@ -155,7 +155,7 @@ export default function ConnectorSyncingChip({
         </Chip>
       );
     } else if (connector.lastSyncSuccessfulTime) {
-      return <Chip>{timeAgoFrom(connector.lastSyncSuccessfulTime)} ago</Chip>;
+      return <Chip>{timeAgoFrom(connector.lastSyncSuccessfulTime)}</Chip>;
     } else {
       return <Chip color="info">Pending</Chip>;
     }

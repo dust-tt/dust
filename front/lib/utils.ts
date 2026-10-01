@@ -27,44 +27,6 @@ export const shallowBlockClone = (block: any) => {
   return b;
 };
 
-function maybePlural(unit: number, label: string) {
-  return `${label}${unit > 1 ? "s" : ""}`;
-}
-
-export const timeAgoFrom = (
-  millisSinceEpoch: number,
-  { useLongFormat = false }: { useLongFormat?: boolean } = {}
-) => {
-  // return the duration elapsed from the given time to now in human readable format (using seconds, minutes, days)
-  const now = new Date().getTime();
-  const diff = now - millisSinceEpoch;
-  const seconds = Math.floor(diff / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-  const months = Math.floor(days / 30);
-  const years = Math.floor(days / 365);
-  if (years > 0) {
-    return `${years}${useLongFormat ? maybePlural(years, " year") : "y"}`;
-  }
-  if (months > 0) {
-    return `${months}${useLongFormat ? maybePlural(months, " month") : "m"}`;
-  }
-  if (days > 0) {
-    return `${days}${useLongFormat ? maybePlural(days, " day") : "d"}`;
-  }
-  if (hours > 0) {
-    return `${hours}${useLongFormat ? maybePlural(hours, " hour") : "h"}`;
-  }
-  if (minutes > 0) {
-    return `${minutes}${
-      useLongFormat ? maybePlural(minutes, " minute") : "min"
-    }`;
-  }
-
-  return "<1m";
-};
-
 /**
  * Formats a timestamp to a human-readable date string.
  * @param timestamp

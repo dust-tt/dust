@@ -18,7 +18,7 @@ import {
   formatCurrencyAmount,
   formatCurrencyAmountCents,
 } from "@app/lib/metronome/amounts";
-import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import {
   formatDate as formatDatePattern,
   formatShortDate,
@@ -68,7 +68,6 @@ afterAll(() => {
 
 afterEach(() => {
   setFormatLocale(undefined);
-  vi.useRealTimers();
 });
 
 describe.each(SUPPORTED_LOCALES)("with %s as the format locale", (locale) => {
@@ -81,28 +80,6 @@ describe.each(SUPPORTED_LOCALES)("with %s as the format locale", (locale) => {
     ] as const)("formatTimestampToFriendlyDate %s", (version, expected) => {
       setFormatLocale(locale);
       expect(formatTimestampToFriendlyDate(TIMESTAMP, version)).toBe(expected);
-    });
-
-    it.each([
-      [30 * SECOND_MS, "<1m", "<1m"],
-      [MINUTE_MS, "1min", "1 minute"],
-      [5 * MINUTE_MS, "5min", "5 minutes"],
-      [HOUR_MS, "1h", "1 hour"],
-      [3 * HOUR_MS, "3h", "3 hours"],
-      [DAY_MS, "1d", "1 day"],
-      [3 * DAY_MS, "3d", "3 days"],
-      [31 * DAY_MS, "1m", "1 month"],
-      [62 * DAY_MS, "2m", "2 months"],
-      [366 * DAY_MS, "1y", "1 year"],
-      [800 * DAY_MS, "2y", "2 years"],
-    ])("timeAgoFrom %i ms ago", (elapsedMs, short, long) => {
-      setFormatLocale(locale);
-      vi.useFakeTimers();
-      vi.setSystemTime(TIMESTAMP);
-      expect(timeAgoFrom(TIMESTAMP - elapsedMs)).toBe(short);
-      expect(timeAgoFrom(TIMESTAMP - elapsedMs, { useLongFormat: true })).toBe(
-        long
-      );
     });
 
     it.each([

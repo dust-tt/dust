@@ -1,6 +1,6 @@
+import { formatRelativeTime } from "@app/lib/client/relative_time";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
-import { formatRelativeTime } from "@app/lib/utils/timestamps";
 import type { PodConversationListItemType } from "@app/types/api/assistant/conversation/spaces";
 import { stripMarkdown } from "@app/types/shared/utils/markdown";
 import type { WorkspaceType } from "@app/types/user";

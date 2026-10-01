@@ -6,8 +6,8 @@ import {
 } from "@app/components/file_explorer/utils";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
 import { useDebounce } from "@app/hooks/useDebounce";
+import { formatRelativeTime } from "@app/lib/client/relative_time";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
-import { formatRelativeTime } from "@app/lib/utils/timestamps";
 import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
 import type { LightWorkspaceType } from "@app/types/user";
 import {

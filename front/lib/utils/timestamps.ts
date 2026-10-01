@@ -5,7 +5,6 @@ import {
 import {
   differenceInCalendarDays,
   format,
-  formatDistance,
   isToday,
   isTomorrow,
   isValid,
@@ -19,7 +18,7 @@ import {
 } from "date-fns";
 
 // What moment renders for an invalid date; kept so migrated call sites never throw mid-render.
-const INVALID_DATE_LABEL = "Invalid date";
+export const INVALID_DATE_LABEL = "Invalid date";
 
 /**
  * Formats a date with a date-fns pattern, rendering invalid input as a sentinel string
@@ -143,18 +142,6 @@ export const formatCalendarDate = (date: Date | number): string => {
   }
 
   return format(dateObj, "dd/MM/yyyy");
-};
-
-export const formatRelativeTime = (
-  date: Date | number,
-  now: Date = new Date()
-): string => {
-  const dateObj = toDate(date);
-  if (!isValid(dateObj)) {
-    return INVALID_DATE_LABEL;
-  }
-
-  return formatDistance(dateObj, now, { addSuffix: true });
 };
 
 export const formatCalendarDateTime = (

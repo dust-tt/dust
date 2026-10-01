@@ -1,7 +1,7 @@
+import { timeAgoFrom } from "@app/lib/client/relative_time";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useUser } from "@app/lib/swr/user";
-import { timeAgoFrom } from "@app/lib/utils";
 import type { PodTaskActorType, PodTaskType } from "@app/types/project_task";
 import { POD_MANAGER_AGENT_SID } from "@app/types/project_task";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -57,7 +57,7 @@ function formatActorLabel(
 }
 
 function formatFriendlyDate(value: Date | string): string {
-  return `${timeAgoFrom(new Date(value).getTime(), { useLongFormat: true })} ago`;
+  return timeAgoFrom(new Date(value).getTime(), { useLongFormat: true });
 }
 
 interface TaskMetadataTooltipProps {
