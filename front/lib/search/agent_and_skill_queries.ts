@@ -23,11 +23,13 @@ export function buildNameAutocompleteQuery(
   searchTerm: string
 ): estypes.QueryDslQueryContainer {
   const terms = searchTerm.split(/\s+/).filter((term) => term.length > 0);
+  // Keep the unfiltered listing for empty input.
   if (terms.length === 0) {
     return { match_all: {} };
   }
   return {
     bool: {
+      // Require every term, allowing the last analyzed token of each term to be a prefix.
       must: terms.map((term) => ({
         multi_match: {
           query: term,
@@ -36,12 +38,15 @@ export function buildNameAutocompleteQuery(
           fields: NAME_AUTOCOMPLETE_FIELDS,
         },
       })),
+      // These optional clauses improve ranking without excluding matching names.
       should: [
+        // Boost an exact match of the entire name.
         {
           constant_score: {
             filter: { term: { "name.keyword": searchTerm } },
           },
         },
+        // Boost whole-query prefix matches, including matching word order in shingles.
         {
           multi_match: {
             query: searchTerm,
@@ -58,28 +63,30 @@ export function buildNameAutocompleteQuery(
 /**
  * @cc [owner:aubin-tchoi,label:product] name-token-matching
  * Empty or whitespace-only queries MUST match all names. Otherwise every whitespace-separated
- * term MUST match an analyzed name token, a literal name substring, a fuzzy name token, or an
- * analyzed description token (`write` MUST match "Typewriter").
+ * term MUST match an analyzed name token, a literal name substring, or a fuzzy name token
+ * (`write` MUST match "Typewriter"). Name mode MUST NOT match descriptions.
  * Names MUST use the existing autocomplete and ICU fields for word and fuzzy matching, and
- * the existing keyword field for substring matching. Description matching MUST NOT use fuzziness
- * or prefix matching.
+ * the existing keyword field for substring matching.
  * For each term, exact name tokens MUST score above name substrings, which MUST score above fuzzy
- * name matches, which MUST score above description matches. The substring branch MUST treat
- * wildcard operators in user input literally. Exact whole-name matches MUST receive an additional
+ * name matches. The substring branch MUST treat wildcard operators in user input literally. Exact whole-name matches MUST receive an additional
  * relevance boost.
  */
 export function buildNameSearchQuery(
   searchTerm: string
 ): estypes.QueryDslQueryContainer {
   const terms = searchTerm.split(/\s+/).filter((term) => term.length > 0);
+  // Keep the unfiltered listing for empty input.
   if (terms.length === 0) {
     return { match_all: {} };
   }
   return {
     bool: {
+      // Require every term to match the name, in any order.
       must: terms.map((term) => ({
+        // Use the strongest matching clause for each term instead of adding their scores.
         dis_max: {
           queries: [
+            // Rank exact analyzed word matches highest.
             {
               constant_score: {
                 filter: {
@@ -92,12 +99,12 @@ export function buildNameSearchQuery(
                 boost: 2,
               },
             },
+            // Match literal substrings within the name, escaping user wildcard syntax.
             {
               constant_score: {
                 filter: {
                   wildcard: {
                     "name.keyword": {
-                      // Escape wildcard syntax so the input remains a literal substring.
                       value: `*${term.replace(/[\\*?]/g, "\\$&")}*`,
                     },
                   },
@@ -105,6 +112,7 @@ export function buildNameSearchQuery(
                 boost: 1.5,
               },
             },
+            // Allow typos with Elasticsearch's automatic edit-distance thresholds.
             {
               constant_score: {
                 filter: {
@@ -117,23 +125,12 @@ export function buildNameSearchQuery(
                 },
               },
             },
-            {
-              constant_score: {
-                filter: {
-                  match: {
-                    description: {
-                      query: term,
-                      operator: "and",
-                    },
-                  },
-                },
-                boost: 0.5,
-              },
-            },
           ],
         },
       })),
+      // These optional clauses improve ranking without excluding matching names.
       should: [
+        // Boost an exact match of the entire name.
         {
           constant_score: {
             filter: { term: { "name.keyword": searchTerm.trim() } },
