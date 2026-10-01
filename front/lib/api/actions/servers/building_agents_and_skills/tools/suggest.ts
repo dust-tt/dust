@@ -47,6 +47,7 @@ import {
   validateSkillDeletionSuggestion,
   validateSkillEditorsSuggestion,
   validateSkillEditSuggestion,
+  validateSkillFilesSuggestion,
   validateSkillNameSuggestion,
   validateSkillUserFacingDescriptionSuggestion,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/skill_suggestion_changes";
@@ -467,6 +468,7 @@ async function planSkillEdit(
     availability,
     addEditorUserIds,
     removeEditorUserIds,
+    removeFileIds,
   }: EditSkillSuggestion
 ): Promise<Result<PlannedChange, MCPError>> {
   const skillRes = await fetchSkillForSuggestion(auth, skillId);
@@ -538,6 +540,14 @@ async function planSkillEdit(
       return validation;
     }
     rows.push({ kind: "editors", suggestion: validation.value });
+  }
+
+  if (removeFileIds !== undefined) {
+    const validation = validateSkillFilesSuggestion(skill, { removeFileIds });
+    if (validation.isErr()) {
+      return validation;
+    }
+    rows.push({ kind: "files", suggestion: validation.value });
   }
 
   if (rows.length === 0) {

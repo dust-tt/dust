@@ -2490,6 +2490,116 @@ describe("building_agents_and_skills tools", () => {
       });
     });
 
+    describe("file changes", () => {
+      const removeFiles = (skillId: string, removeFileIds: string[]) => ({
+        title: "Remove files",
+        analysis: "The skill no longer needs these files.",
+        suggestions: [{ kind: "edit_skill", skillId, removeFileIds }],
+      });
+
+      const seedSkillWithFiles = async (
+        authenticator: Authenticator,
+        user: Parameters<typeof FileFactory.create>[1],
+        fileNames: string[]
+      ) => {
+        const files = [];
+        for (const fileName of fileNames) {
+          files.push(
+            await FileFactory.create(authenticator, user, {
+              contentType: "text/plain",
+              fileName,
+              fileSize: 10,
+              status: "ready",
+              useCase: "skill_attachment",
+            })
+          );
+        }
+        const skill = await seedSkill(authenticator, {
+          fileAttachments: files,
+        });
+        return { skill, files };
+      };
+
+      it("records one pending files suggestion without applying it", async () => {
+        const { authenticator, user } = await createResourceTest({
+          role: "user",
+        });
+        const {
+          skill,
+          files: [first, second],
+        } = await seedSkillWithFiles(authenticator, user, ["a.txt", "b.txt"]);
+
+        const batchId = extractBatchId(
+          await runSuggest(
+            authenticator,
+            removeFiles(skill.sId, [first.sId, second.sId, first.sId])
+          )
+        );
+
+        const batch = await BatchSuggestionResource.fetchById(
+          authenticator,
+          batchId
+        );
+        expect(batch?.skillSuggestions.map((s) => s.toJSON())).toMatchObject([
+          {
+            kind: "files",
+            state: "pending",
+            suggestion: { removeFileIds: [first.sId, second.sId] },
+          },
+        ]);
+        const untouched = await SkillResource.fetchById(
+          authenticator,
+          skill.sId
+        );
+        expect(untouched?.getFileAttachments().map((f) => f.sId)).toEqual([
+          first.sId,
+          second.sId,
+        ]);
+      });
+
+      it("refuses to remove a file the skill does not have", async () => {
+        const { authenticator, user } = await createResourceTest({
+          role: "user",
+        });
+        const { skill } = await seedSkillWithFiles(authenticator, user, [
+          "a.txt",
+        ]);
+
+        expectMcpError(
+          await runSuggest(authenticator, removeFiles(skill.sId, ["fil_nope"])),
+          "not attached to the skill"
+        );
+      });
+
+      it("outdates an earlier batch removing the same file", async () => {
+        const { authenticator, user } = await createResourceTest({
+          role: "user",
+        });
+        const {
+          skill,
+          files: [file],
+        } = await seedSkillWithFiles(authenticator, user, ["a.txt"]);
+
+        const firstBatchId = extractBatchId(
+          await runSuggest(authenticator, removeFiles(skill.sId, [file.sId]))
+        );
+        const secondBatchId = extractBatchId(
+          await runSuggest(authenticator, removeFiles(skill.sId, [file.sId]))
+        );
+
+        const first = await BatchSuggestionResource.fetchById(
+          authenticator,
+          firstBatchId
+        );
+        expect(first?.state).toBe("outdated");
+        const second = await BatchSuggestionResource.fetchById(
+          authenticator,
+          secondBatchId
+        );
+        expect(second?.state).toBe("pending");
+      });
+    });
+
     describe("editor changes", () => {
       const editEditors = (
         agentId: string,

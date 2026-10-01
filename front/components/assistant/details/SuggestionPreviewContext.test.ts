@@ -104,7 +104,7 @@ describe("getEditedSkillSections", () => {
       {
         ...SKILL_SUGGESTION,
         kind: "files",
-        suggestion: { removeFileIds: ["fil_a"] },
+        suggestion: { addFilePaths: [], removeFileIds: ["fil_a"] },
       },
     ]);
     expect(sections).toEqual(new Set(["files"]));
