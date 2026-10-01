@@ -5,6 +5,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
+import { SNOWFLAKE_INTERNAL_SERVER_CREDENTIAL_POLICY } from "@app/lib/actions/mcp_server_connection_credential_policies/snowflake";
 import type { ToolContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { SnowflakeClient } from "@app/lib/api/actions/servers/snowflake/client";
@@ -15,6 +16,7 @@ import {
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
+import type { OauthAPIGetCredentialsResponse } from "@app/types/oauth/lib";
 import { SnowflakeKeyPairCredentialsSchema } from "@app/types/oauth/lib";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { Result } from "@app/types/shared/result";
@@ -36,6 +38,31 @@ function isSnowflakeRequestFailedError(
     "statusCode" in error.response &&
     typeof error.response.statusCode === "number"
   );
+}
+
+function assertSnowflakeCredentialForWorkspace(
+  credential: OauthAPIGetCredentialsResponse["credential"],
+  auth: Authenticator | undefined
+): Result<undefined, MCPError> {
+  const workspaceId = auth?.workspace()?.sId;
+  if (
+    !workspaceId ||
+    credential.metadata?.workspace_id !== workspaceId ||
+    credential.provider !== SNOWFLAKE_INTERNAL_SERVER_CREDENTIAL_POLICY.provider
+  ) {
+    logger.warn(
+      {
+        workspaceId: workspaceId ?? null,
+        credentialWorkspaceId: credential.metadata?.workspace_id ?? null,
+        provider: credential.provider,
+        credentialId: credential.credential_id,
+      },
+      "Rejected Snowflake MCP credential outside the caller workspace"
+    );
+    return new Err(CONNECTION_ERROR);
+  }
+
+  return new Ok(undefined);
 }
 
 function handleSnowflakeError(error: Error): ToolHandlerResult {
@@ -129,6 +156,17 @@ async function getClientFromAuthInfo(
 
   if (credentialRes.isErr()) {
     return new Err(CONNECTION_ERROR);
+  }
+
+  // authInfo.extra.credentialId is caller-influenced (it is copied from OAuth
+  // connection metadata). Core will return any credential by id, so refuse to
+  // log in unless it is a Snowflake credential for this workspace.
+  const ownershipRes = assertSnowflakeCredentialForWorkspace(
+    credentialRes.value.credential,
+    auth
+  );
+  if (ownershipRes.isErr()) {
+    return ownershipRes;
   }
 
   const contentValidation = SnowflakeKeyPairCredentialsSchema.safeParse(
