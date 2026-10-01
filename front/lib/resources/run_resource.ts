@@ -461,13 +461,25 @@ export class RunResource extends BaseResource<RunModel> {
 
   // Billing classification and credential owner are immutable event-time
   // metadata. Every new usage row must carry both when it is created.
+  /**
+   * @cc [owner:sfriquet,label:product] region-matches-cost-pricing
+   * Each recorded row's `region` MUST be the endpoint region whose pricing produced its
+   * `costMicroUsd`. `null` is only valid when that cost was priced at global rates.
+   */
   async recordRunUsage(
     auth: Authenticator,
     usages: RunUsageType[],
     {
+      inferenceProvider,
+      region,
       usageType,
       useWorkspaceCredentials,
-    }: { usageType: UsageType; useWorkspaceCredentials: boolean }
+    }: {
+      inferenceProvider: string | null;
+      region: Region | null;
+      usageType: UsageType;
+      useWorkspaceCredentials: boolean;
+    }
   ) {
     await RunUsageModel.bulkCreate(
       usages.map(
@@ -486,8 +498,8 @@ export class RunResource extends BaseResource<RunModel> {
           runId: this.id,
           workspaceId: this.workspaceId,
           providerId,
-          inferenceProvider: null,
-          region: null,
+          inferenceProvider,
+          region,
           modelId,
           promptTokens,
           completionTokens,
@@ -560,11 +572,13 @@ export class RunResource extends BaseResource<RunModel> {
     modelId: ModelIdType,
     {
       isBatch = false,
+      inferenceProvider = null,
       region,
       usageType,
       useWorkspaceCredentials,
     }: {
       isBatch?: boolean;
+      inferenceProvider?: string | null;
       region: Region | null;
       usageType: UsageType;
       useWorkspaceCredentials: boolean;
@@ -579,6 +593,8 @@ export class RunResource extends BaseResource<RunModel> {
     }
 
     await this.recordRunUsage(auth, [runUsage], {
+      inferenceProvider,
+      region,
       usageType,
       useWorkspaceCredentials,
     });
@@ -656,6 +672,8 @@ export class RunResource extends BaseResource<RunModel> {
       // The credential owner is event-time metadata: carry the finalized row's value instead of
       // recomputing it from a plan that may have changed since the run started.
       await this.recordRunUsage(auth, additionalUsages, {
+        inferenceProvider: finalizedUsage.inferenceProvider,
+        region: finalizedUsage.region,
         usageType: finalizedUsage.usageType,
         useWorkspaceCredentials: finalizedUsage.useWorkspaceCredentials,
       });

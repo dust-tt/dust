@@ -181,6 +181,8 @@ export async function consumeRunStream({
 
   // App runs are invoked through the public API, so their usage is programmatic.
   await run.recordRunUsage(auth, usages, {
+    inferenceProvider: null,
+    region: null,
     usageType: USAGE_TYPE_PROGRAMMATIC,
     // A BYOK workspace reaches the provider on its own keys even when the app run asked for
     // Dust-managed credentials, because that is all `getLlmCredentials` can hand it.

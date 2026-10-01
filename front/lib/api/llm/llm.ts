@@ -728,6 +728,7 @@ export abstract class LLM<
             this.modelId,
             {
               isBatch: true,
+              inferenceProvider: this.metadata.inferenceProvider,
               region: this.metadata.region ?? null,
               usageType,
               useWorkspaceCredentials,
