@@ -78,9 +78,8 @@ export async function listAgents(
 
   const { agentsGetView } = resolveAgentView(view);
 
-  // `limit` stays out of the fetch on purpose: it has no offset counterpart, and the view
-  // applies it in SQL before the requested-space filtering, so a page would silently come
-  // back short. Paginate the sorted set here instead, which also keeps `total` exact.
+  // `listAgentsForView` returns the whole view: paginate the sorted set here, which also keeps
+  // `total` exact.
   const agents = await toLightAgentConfigurations(
     auth,
     await listAgentsForView(auth, agentsGetView, {

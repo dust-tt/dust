@@ -186,18 +186,18 @@ function toConfigurationJSON(
   };
 }
 
-/**
- * Renders `LightAgentConfigurationType`s: the queried `instructions`, `userFavorite` and `tags` on
- * top of `AgentResource.toJSON`. Callers that never surface instructions, favorites or tags (e.g.
- * rendered messages) can skip their queries, and get `instructions: null`, `userFavorite: false`
- * and `tags: []`.
- */
 export type LightAgentConfigurationOptions = {
   withInstructions?: boolean;
   withFavorites?: boolean;
   withTags?: boolean;
 };
 
+/**
+ * Renders `LightAgentConfigurationType`s: the queried `instructions`, `userFavorite` and `tags` on
+ * top of `AgentResource.toJSON`. Callers that never surface instructions, favorites or tags (e.g.
+ * rendered messages) can skip their queries, and get `instructions: null`, `userFavorite: false`
+ * and `tags: []`.
+ */
 export async function toLightAgentConfigurations(
   auth: Authenticator,
   resources: AgentResource[],

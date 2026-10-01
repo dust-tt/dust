@@ -1,7 +1,9 @@
+import { listDefaultGlobalAgentIds } from "@app/lib/api/assistant/global_agents/global_agents";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { AgentsGetViewType } from "@app/types/assistant/agent";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
 import partition from "lodash/partition";
 
 /**
@@ -11,15 +13,17 @@ import partition from "lodash/partition";
  *   agents, `manage` every global agent.
  * - `all`: active visible custom agents the caller can `read`, plus the active global agents;
  *   `published`: the same custom agents, without global agents.
- * - `favorites`: the caller's active favorited agents, global or custom, they can `read`.
+ * - `favorites`: the caller's active favorited agents they can `read`: custom ones, and global ones
+ *   among the default global agents (`listDefaultGlobalAgentIds`), in their default order.
  * - `current_user`: active custom agents with a version the caller authored and can `read`.
  * - `archived`: archived custom agents, all of them for a workspace admin, else those the caller
  *   can `write`.
  * - `admin_internal`/`manage_unrestricted`/`analytics`: every active custom agent the caller can
  *   fetch; `manage_unrestricted` adds every global agent, the others the active ones.
  * - `global`: every global agent.
- * `admin_internal` MUST fail unless the caller is a superuser or an admin, `manage_unrestricted`
- * unless an admin, and `list`/`manage`/`favorites` without a user.
+ * Every view MUST fail for a caller without a workspace role (`isUser`); `admin_internal` also
+ * unless the caller is a superuser or an admin, `manage_unrestricted` unless an admin, and
+ * `list`/`manage`/`favorites` without a user.
  */
 /**
  * @cc [owner:philipperolet,label:backend] default-agent-query-order
@@ -68,6 +72,9 @@ export async function listAgentsForView(
 }
 
 function assertViewAllowed(auth: Authenticator, view: AgentsGetViewType): void {
+  if (!auth.isUser()) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
   if (view === "admin_internal" && !auth.isDustSuperUser() && !auth.isAdmin()) {
     throw new Error(
       "Superuser view is for dust superusers or internal admin auths only."
@@ -125,13 +132,28 @@ async function listViewAgents(
       return (await AgentResource.listByWorkspace(auth)).filter(isReadable);
     case "all":
     case "published":
-      return (await AgentResource.listByWorkspace(auth)).filter(
-        (agent) => agent.scope === "visible" && isReadable(agent)
+      return (
+        await AgentResource.listByWorkspace(auth, { scope: "visible" })
+      ).filter(isReadable);
+    case "favorites": {
+      const [globalFavorites, customFavorites] = partition(
+        (await AgentResource.listFavoritesForCurrentUser(auth)).filter(
+          isActiveAndReadable
+        ),
+        (agent) => agent.scope === "global"
       );
-    case "favorites":
-      return (await AgentResource.listFavoritesForCurrentUser(auth)).filter(
-        isActiveAndReadable
+      const globalFavoriteById = new Map(
+        globalFavorites.map((agent) => [agent.sId, agent])
       );
+      return [
+        ...removeNulls(
+          listDefaultGlobalAgentIds().map(
+            (sId) => globalFavoriteById.get(sId) ?? null
+          )
+        ),
+        ...customFavorites,
+      ];
+    }
     case "current_user":
       return (
         await AgentResource.listByAuthor(auth, {

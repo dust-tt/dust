@@ -7,6 +7,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -30,10 +31,7 @@ async function listAgentIdsForAnalytics(auth: Authenticator) {
 const REPORTING_ROLES = ["admin", "manager"] as const;
 
 describe("listAgentsForView, default ordering", () => {
-  it.each([
-    undefined,
-    2,
-  ])("defaults to alphabetical ordering with limit=%s", async (limit) => {
+  it("defaults to alphabetical ordering", async () => {
     const { authenticator } = await createResourceTest({});
     const agentC = await AgentConfigurationFactory.createTestAgent(
       authenticator,
@@ -48,15 +46,39 @@ describe("listAgentsForView, default ordering", () => {
       { name: "Ordering A" }
     );
 
-    const agents = (
-      await listAgentsForView(authenticator, "list", {
-        namePrefix: "Ordering",
-      })
-    ).slice(0, limit);
+    const agents = await listAgentsForView(authenticator, "list", {
+      namePrefix: "Ordering",
+    });
 
-    expect(agents.map((agent) => agent.sId)).toEqual(
-      [agentA.sId, agentB.sId, agentC.sId].slice(0, limit)
+    expect(agents.map((agent) => agent.sId)).toEqual([
+      agentA.sId,
+      agentB.sId,
+      agentC.sId,
+    ]);
+  });
+});
+
+describe("listAgentsForView, 'favorites' view", () => {
+  it("lists the favorited default global agents in their default order, and no other global agent", async () => {
+    const { authenticator } = await createResourceTest({ role: "user" });
+    const [first, second] = (
+      await AgentResource.listGlobalAgents(authenticator)
+    ).filter((agent) => agent.status === "active");
+    const sidekick = await AgentResource.fetchById(
+      authenticator,
+      GLOBAL_AGENTS_SID.SIDEKICK
     );
+    assert(first && second && sidekick);
+
+    for (const agent of [second, sidekick, first]) {
+      expect((await agent.setUserFavorite(authenticator, true)).isOk()).toBe(
+        true
+      );
+    }
+
+    const agents = await listAgentsForView(authenticator, "favorites");
+
+    expect(agents.map((agent) => agent.sId)).toEqual([first.sId, second.sId]);
   });
 });
 

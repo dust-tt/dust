@@ -29,7 +29,6 @@ app.get(
     const auth = ctx.get("auth");
     const { view } = ctx.req.valid("query");
 
-    // Poke lists every active agent, or the archived ones by most recent version.
     const agents =
       view === "archived"
         ? (
