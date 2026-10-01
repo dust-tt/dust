@@ -167,12 +167,11 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
   const delayMinutes = Math.floor(Math.random() * 5);
 
   try {
-    await terminateWorkflow(workflowId);
-
     await client.workflow.start(googleDriveIncrementalSyncV2, {
       args: [connectorId],
       taskQueue: GDRIVE_INCREMENTAL_SYNC_QUEUE_NAME,
       workflowId,
+      workflowIdConflictPolicy: "TERMINATE_EXISTING",
       searchAttributes: {
         connectorId: [connectorId],
       },
