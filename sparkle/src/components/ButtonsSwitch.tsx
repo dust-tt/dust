@@ -28,12 +28,20 @@ const useButtonsSwitch = () => {
   return ctx;
 };
 
-// Borderless translucent track: a light gray tint on light, a slightly
-// stronger tint on dark so the pill still reads against the darker page.
+// Translucent track: a light gray tint on light, a slightly stronger tint on
+// dark so the pill still reads against the darker page. Per size, the track
+// takes Button's height and radius (24/32/40px, 9/12/15px) so a switch lines
+// up with a Button of the same size next to it. The options are plain Buttons
+// of that size with no inner padding, and the track border (same tone as the
+// outline Button) is an overlay drawn over them rather than a box border
+// around them, so at the edges it coincides with the selected pill's own
+// border instead of doubling it.
 const listStyles = cva(
   cn(
     "relative inline-flex items-center gap-1",
-    "box-border bg-foreground/[0.04] dark:bg-foreground/[0.06]"
+    "bg-foreground/[0.04] dark:bg-foreground/[0.06]",
+    "after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit]",
+    "after:border after:border-border-dark dark:after:border-stone-775"
   ),
   {
     variants: {
@@ -42,9 +50,9 @@ const listStyles = cva(
         false: "",
       },
       size: {
-        xs: "rounded-xl p-[3px]",
-        sm: "rounded-2xl p-1",
-        md: "rounded-3xl p-1.5",
+        xs: "rounded-[9px]",
+        sm: "rounded-xl",
+        md: "rounded-[15px]",
       },
     },
     defaultVariants: {
@@ -62,8 +70,13 @@ const listStyles = cva(
 const indicatorStyles = cva(
   cn(
     "pointer-events-none absolute left-0 top-0",
-    "bg-background dark:bg-stone-750",
-    "shadow-[0_0_0.5px_0_var(--color-border-dark),0_1px_1.5px_0_rgba(0,0,0,0.06)]",
+    // Slight top-to-bottom gradient, lighter on top like the outline Button;
+    // dark gets the same one-step lift so the pill reads as raised there too.
+    "bg-linear-to-b from-white to-stone-50",
+    "dark:from-stone-725 dark:to-stone-750",
+    // A real border for contrast against the track; dark picks a tone one
+    // step lighter than the pill so the edge reads on the dark track too.
+    "box-border border border-border-dark dark:border-stone-700",
     "transition-[transform,width,height] duration-200 ease-in-out",
     "motion-reduce:transition-none"
   ),
