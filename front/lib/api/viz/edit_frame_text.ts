@@ -8,6 +8,7 @@ import {
 import { publishFrame } from "@app/lib/api/viz/publish_frame";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
+import { isSafeFrameRelativePath } from "@app/types/api/frame_manifest";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -45,6 +46,12 @@ export type FrameTextEdit = {
  * matched against the **current** source bytes (oldText primary, location as tiebreaker), so they
  * remain compatible with intervening agent edits that do not remove or rewrite the same span.
  * Same-file edits are applied in memory, written once, then a single {@link publishFrame} runs.
+ */
+/**
+ * @cc [owner:frankaloia,label:security] frame-live-edit-source-confinement
+ * Every live-edit source path MUST normalize to a file strictly below the published Frame's
+ * `frameBundleRootPath` before any filesystem access. Invalid paths MUST fail with
+ * `invalid_source` without reading or writing the mount.
  */
 export async function editFrameTextsAtSource(
   auth: Authenticator,
@@ -85,7 +92,7 @@ export async function editFrameTextsAtSource(
     >();
     for (const edit of edits) {
       const location = parseSourceLocation(edit.source);
-      if (!location) {
+      if (!location || !isSafeFrameRelativePath(location.relPath)) {
         return new Err(
           new EditFrameTextError(
             "invalid_source",
@@ -93,7 +100,17 @@ export async function editFrameTextsAtSource(
           )
         );
       }
-      const scopedPath = `${rootScopedPath}/${location.relPath}`;
+      const scopedPath = DustFileSystem.normalizeScopedPath(
+        `${rootScopedPath}/${location.relPath}`
+      );
+      if (!scopedPath || !scopedPath.startsWith(`${rootScopedPath}/`)) {
+        return new Err(
+          new EditFrameTextError(
+            "invalid_source",
+            `Invalid source location: ${edit.source}.`
+          )
+        );
+      }
       const list = editsByPath.get(scopedPath) ?? [];
       list.push({
         line: location.line,

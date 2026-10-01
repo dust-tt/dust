@@ -185,6 +185,50 @@ describe("editFrameTextAtSource", () => {
     TEST_TIMEOUT_MS
   );
 
+  it.each([
+    {
+      name: "parent traversal",
+      source: "../other-frame/Target.tsx:4:8",
+    },
+    {
+      name: "nested parent traversal",
+      source: "components/../../other-frame/Target.tsx:4:8",
+    },
+    {
+      name: "absolute path",
+      source: "/pod-pod_x/Target.tsx:4:8",
+    },
+    {
+      name: "control-character-obfuscated traversal",
+      source: "..\u0000/other-frame/Target.tsx:4:8",
+    },
+    {
+      name: "backslash traversal",
+      source: "..\\other-frame\\Target.tsx:4:8",
+    },
+  ])(
+    "rejects $name before accessing the filesystem",
+    async ({ source }) => {
+      const { authenticator: auth } = await createResourceTest({});
+      const file = await createPublishedFrame(auth);
+      mockMount(new Map([[`${ROOT}/Dashboard.tsx`, ENTRY_SOURCE]]));
+
+      const result = await editFrameTextAtSource(auth, {
+        file,
+        source,
+        oldText: "Sales",
+        newText: "Compromised",
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.code).toBe("invalid_source");
+      }
+      expect(DustFileSystem.fromScopedPath).not.toHaveBeenCalled();
+    },
+    TEST_TIMEOUT_MS
+  );
+
   it(
     "returns source_not_found when the addressed file is absent",
     async () => {
