@@ -1,4 +1,3 @@
-import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import logger from "@app/logger/logger";
 import { creditStopMessage } from "@app/temporal/agent_loop/activities/common";
@@ -9,28 +8,37 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 describe("creditStopMessage", () => {
-  const admin = { isAdmin: () => true } as unknown as Authenticator;
-  const member = { isAdmin: () => false } as unknown as Authenticator;
-
-  it("tells admins to purchase more credits when the pool is exhausted", () => {
+  it("tells admins to purchase more credits when the pool is exhausted", async () => {
+    const { authenticator: admin } = await createResourceTest({
+      role: "admin",
+    });
     expect(creditStopMessage(admin, "credits_exhausted")).toBe(
       "Your workspace has run out of credits. Please purchase more credits to continue using Dust."
     );
   });
 
-  it("tells members to contact their administrator when the pool is exhausted", () => {
+  it("tells members to contact their administrator when the pool is exhausted", async () => {
+    const { authenticator: member } = await createResourceTest({
+      role: "user",
+    });
     expect(creditStopMessage(member, "credits_exhausted")).toBe(
       "Your workspace has run out of credits. Please contact your administrator to purchase more credits."
     );
   });
 
-  it("names the personal cap, not the workspace pool, when the user cap is reached", () => {
+  it("names the personal cap, not the workspace pool, when the user cap is reached", async () => {
+    const { authenticator: member } = await createResourceTest({
+      role: "user",
+    });
     expect(creditStopMessage(member, "user_cap_reached")).toBe(
       "You have reached your personal usage cap. Please contact your administrator to increase it."
     );
   });
 
-  it("names the missing seat when the user has none", () => {
+  it("names the missing seat when the user has none", async () => {
+    const { authenticator: member } = await createResourceTest({
+      role: "user",
+    });
     expect(creditStopMessage(member, "no_seat")).toBe(
       "You don't have a seat assigned in this workspace. Please contact your administrator to assign you one."
     );
