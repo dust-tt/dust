@@ -348,6 +348,28 @@ describe("buildBreakageNotification", () => {
     assert.match(text ?? "", /main is green again/);
   });
 
+  it("stays silent on a rerun recovery when every listing is stale", async () => {
+    const text = await buildBreakageNotification({
+      github: fakeGithub({
+        otherRuns: [],
+        staleListings: 4,
+        jobs: [{ name: "test", conclusion: "success" }],
+        attempts: { 1: { conclusion: "failure" } },
+      }),
+      context: {
+        repo,
+        payload: {
+          workflow_run: { ...run, conclusion: "success", run_attempt: 2 },
+        },
+      },
+      core,
+      authors: "",
+      slackToken: "token",
+      retryDelayMs: 0,
+    });
+    assert.equal(text, null);
+  });
+
   it("ignores a skipped-success attempt and falls back to run history", async () => {
     const text = await buildBreakageNotification({
       github: fakeGithub({

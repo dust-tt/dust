@@ -234,7 +234,8 @@ async function listRecentRuns({
  * @cc [label:product] main-breakage-reruns
  * A rerun keeps its run number, so its comparison state MUST be its immediately previous attempt
  * when that attempt carries a signal (otherwise recovery-by-rerun would stay silent forever), and
- * the previous-run lookup when it does not.
+ * the previous-run lookup when it does not. A stale run listing still drops the transition, even
+ * with a signal-bearing previous attempt: a newer completed run cannot be ruled out without it.
  */
 async function getPreviousState({
   github,
