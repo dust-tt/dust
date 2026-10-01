@@ -103,5 +103,3 @@ export function InviteChoosePage() {
     </Page>
   );
 }
-
-export default InviteChoosePage;

@@ -66,5 +66,3 @@ export function SsoEnforcedPage() {
     </>
   );
 }
-
-export default SsoEnforcedPage;

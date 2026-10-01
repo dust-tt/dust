@@ -112,5 +112,3 @@ export function NoWorkspacePage() {
     </Page>
   );
 }
-
-export default NoWorkspacePage;

@@ -2,7 +2,33 @@ import type { KnipConfig } from "knip";
 
 // Entries and project globs ending in `!` are production code: `knip --production` only follows
 // those, so code reachable from tests alone is reported as unused.
+/**
+ * @cc [owner:aubin-tchoi,label:testing] lazy-route-export-usage
+ * Knip MUST count the named export selected by each withSuspense route as used,
+ * without ignoring other unused exports in the imported module.
+ */
 const config: KnipConfig = {
+  compilers: {
+    tsx: (source, filename) => {
+      if (!filename.includes("/front-spa/src/app/routes/")) {
+        return source;
+      }
+      // withSuspense selects module[exportName] at runtime. Expose that reference
+      // to Knip without changing the application source or its lazy loading.
+      const imports: string[] = [];
+      const compiled = source.replace(
+        /withSuspense\(\s*\(\)\s*=>\s*import\(\s*("[^"]+")\s*,?\s*\),\s*"([A-Za-z_$][\w$]*)"/g,
+        (_, modulePath: string, exportName: string) => {
+          const alias = `__knipLazyRoute${imports.length}`;
+          imports.push(
+            `import { ${exportName} as ${alias} } from ${modulePath};`
+          );
+          return `withSuspense(() => Promise.resolve({ ${exportName}: ${alias} }), "${exportName}"`;
+        }
+      );
+      return `${compiled}\n${imports.join("\n")}`;
+    },
+  },
   workspaces: {
     front: {
       // The wildcard `exports` of front/package.json make every file under lib/, components/
