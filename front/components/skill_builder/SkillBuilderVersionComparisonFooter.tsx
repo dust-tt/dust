@@ -1,4 +1,4 @@
-import { getDefaultMCPAction } from "@app/components/agent_builder/types";
+import { getDefaultMCPAction } from "@app/components/shared/tools_picker/formDefaults";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { Button, ReverseLeft, Separator } from "@dust-tt/sparkle";

@@ -1,8 +1,8 @@
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { SpaceSelectionSheet } from "@app/components/agent_builder/capabilities/capabilities_sheet/SpaceSelectionPage";
 import { useAgentRequestedSpaces } from "@app/components/agent_builder/hooks/useAgentRequestedSpaces";
 import { useRemoveSpaceConfirm } from "@app/components/shared/RemoveSpaceDialog";
 import { SpaceChips } from "@app/components/shared/SpaceChips";
+import { SpaceSelectionSheet } from "@app/components/shared/SpaceSelectionSheet";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { removeNulls } from "@app/types/shared/utils/general";

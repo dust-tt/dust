@@ -1,10 +1,17 @@
 import type {
   AdditionalConfigurationInBuilderType,
+  BuilderAction,
   MCPServerConfigurationType,
 } from "@app/components/shared/tools_picker/types";
-import { getDefaultAdditionalConfiguration } from "@app/lib/actions/default_mcp_action";
+import {
+  getDefaultAdditionalConfiguration,
+  getDefaultMCPActionDescription,
+  getDefaultMCPActionName,
+} from "@app/lib/actions/default_mcp_action";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import set from "lodash/set";
+import uniqueId from "lodash/uniqueId";
 
 /**
  * Creates default configuration values for MCP server based on requirements
@@ -55,5 +62,21 @@ export function getDefaultFormValues(mcpServerView: MCPServerViewType | null) {
     name: "",
     description: "",
     configuration: getDefaultConfiguration(mcpServerView),
+  };
+}
+
+export function getDefaultMCPAction(
+  mcpServerView?: MCPServerViewType
+): BuilderAction {
+  const { noRequirement } = getMCPServerRequirements(mcpServerView);
+
+  return {
+    id: uniqueId(),
+    configuration: getDefaultConfiguration(mcpServerView),
+    name: mcpServerView ? getDefaultMCPActionName(mcpServerView) : "",
+    description: mcpServerView
+      ? getDefaultMCPActionDescription(mcpServerView)
+      : "",
+    configurationRequired: !noRequirement,
   };
 }

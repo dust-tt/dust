@@ -3,7 +3,6 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBu
 import { generateUniqueActionName } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
 import { buildAgentInstructionsReadOnlyExtensions } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
-import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import type { AgentActionCardSuggestionType } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import {
@@ -11,6 +10,7 @@ import {
   mapSuggestionStateToCardState,
 } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
 import { getIcon } from "@app/components/resources/resources_icons";
+import { getDefaultMCPAction } from "@app/components/shared/tools_picker/formDefaults";
 import { getBlockOuterHtml } from "@app/components/shared/utils";
 import { nameToStorageFormat } from "@app/lib/actions/default_mcp_action";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";

@@ -1,4 +1,4 @@
-import { SpacesProvider } from "@app/components/agent_builder/SpacesContext";
+import { SpacesProvider } from "@app/components/shared/SpacesContext";
 import { MCPServerViewsProvider } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { CAPABILITIES_SWR_OPTIONS } from "@app/lib/swr/capabilities";
