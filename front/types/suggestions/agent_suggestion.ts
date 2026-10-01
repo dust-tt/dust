@@ -69,15 +69,6 @@ export const AGENT_SUGGESTION_SOURCES = ["sidekick", "conversational"] as const;
 
 export type AgentSuggestionSource = (typeof AGENT_SUGGESTION_SOURCES)[number];
 
-export function isAgentSuggestionSource(
-  value: unknown
-): value is AgentSuggestionSource {
-  return (
-    typeof value === "string" &&
-    AGENT_SUGGESTION_SOURCES.includes(value as AgentSuggestionSource)
-  );
-}
-
 export const INSTRUCTIONS_ROOT_TARGET_BLOCK_ID = "instructions-root";
 
 const ToolsSuggestionSchema = z.object({

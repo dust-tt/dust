@@ -32,20 +32,6 @@ export const setQueryParam = (
     });
 };
 
-export const parseQueryString = (url: string) => {
-  // Remove everything before the query string
-  const queryString = url.split("?")[1] || "";
-  const searchParams = new URLSearchParams(queryString);
-
-  // Convert to plain object
-  const params: Record<string, string> = {};
-  searchParams.forEach((value, key) => {
-    params[key] = value;
-  });
-
-  return params;
-};
-
 export const getAgentBuilderRoute = (
   workspaceId: string,
   route: string,

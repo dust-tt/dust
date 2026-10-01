@@ -1,4 +1,3 @@
-import type { SelectedTool } from "@app/components/agent_builder/capabilities/shared/types";
 import {
   InternalActionIcons,
   isCustomResourceIconType,
@@ -12,7 +11,7 @@ import {
   BookOpen01,
   Hoverable,
 } from "@dust-tt/sparkle";
-import React, { useMemo } from "react";
+import React from "react";
 
 interface MCPServerCardProps {
   view: MCPServerViewTypeWithLabel;
@@ -76,91 +75,6 @@ export function MCPServerCard({
           onClick: onToolInfoClick,
         }}
       />
-    </div>
-  );
-}
-
-interface MCPServerSelectionPageProps {
-  topMCPServerViews: MCPServerViewTypeWithLabel[];
-  nonTopMCPServerViews: MCPServerViewTypeWithLabel[];
-  onItemClick: (mcpServerView: MCPServerViewTypeWithLabel) => void;
-  selectedToolsInSheet?: SelectedTool[];
-  onToolDetailsClick?: (tool: SelectedTool) => void;
-}
-
-export function MCPServerSelectionPage({
-  topMCPServerViews,
-  nonTopMCPServerViews,
-  onItemClick,
-  selectedToolsInSheet = [],
-  onToolDetailsClick,
-}: MCPServerSelectionPageProps) {
-  // Optimize selection lookup with Set-based approach
-  const selectedMCPIds = useMemo(() => {
-    const mcpIds = new Set<string>();
-    selectedToolsInSheet.forEach((tool) => {
-      mcpIds.add(tool.view.sId);
-    });
-    return mcpIds;
-  }, [selectedToolsInSheet]);
-
-  const hasTopViews = topMCPServerViews.length > 0;
-  const hasNonTopViews = nonTopMCPServerViews.length > 0;
-  const hasAnyResults = hasTopViews || hasNonTopViews;
-
-  if (!hasAnyResults) {
-    return (
-      <div className="flex flex-1 items-center justify-center">
-        <div className="px-4 text-center">
-          <div className="mb-2 text-lg font-medium text-foreground">
-            No tool matches your search
-          </div>
-          <div className="max-w-sm text-muted-foreground">
-            No tools found. Try a different search term.
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-4 py-2">
-      {topMCPServerViews.length ? (
-        <span className="text-lg font-semibold">Top tools</span>
-      ) : null}
-      <div className="grid grid-cols-2 gap-3">
-        {topMCPServerViews.map((view) => (
-          <MCPServerCard
-            key={view.id}
-            view={view}
-            isSelected={selectedMCPIds.has(view.sId)}
-            onClick={() => onItemClick(view)}
-            onToolInfoClick={() => {
-              if (onToolDetailsClick) {
-                onToolDetailsClick({ view });
-              }
-            }}
-          />
-        ))}
-      </div>
-      {nonTopMCPServerViews.length ? (
-        <span className="text-lg font-semibold">Other tools</span>
-      ) : null}
-      <div className="grid grid-cols-2 gap-3">
-        {nonTopMCPServerViews.map((view) => (
-          <MCPServerCard
-            key={view.id}
-            view={view}
-            isSelected={selectedMCPIds.has(view.sId)}
-            onClick={() => onItemClick(view)}
-            onToolInfoClick={() => {
-              if (onToolDetailsClick) {
-                onToolDetailsClick({ view });
-              }
-            }}
-          />
-        ))}
-      </div>
     </div>
   );
 }

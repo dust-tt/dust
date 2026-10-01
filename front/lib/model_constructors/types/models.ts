@@ -130,27 +130,3 @@ export type Model = (typeof MODELS)[number];
 export function isModel(value: string): value is Model {
   return (MODELS as readonly string[]).includes(value);
 }
-
-export const ORDERED_LARGE_MODELS = [
-  CLAUDE_FABLE_5_1,
-  CLAUDE_FABLE_5,
-  CLAUDE_OPUS_5_5,
-  CLAUDE_OPUS_5,
-  CLAUDE_OPUS_4_8,
-  CLAUDE_OPUS_4_7,
-  CLAUDE_OPUS_4_6,
-  CLAUDE_SONNET_5_5,
-  CLAUDE_SONNET_5,
-  CLAUDE_SONNET_4_6,
-  GPT_6_ASTRA,
-  GPT_5_6_SOL,
-  GPT_5_5,
-  GPT_5_4,
-  GPT_5_2,
-  GPT_5,
-  GPT_5_1,
-  GEMINI_3_1_PRO,
-  GROK_4_7,
-  GROK_4_6,
-  GROK_4_5,
-];

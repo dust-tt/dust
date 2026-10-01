@@ -107,6 +107,13 @@ const config: KnipConfig = {
     "front/**/activities/**": ["exports"],
     // Temporal reads workflow files' exports by name (workflow types, `interceptors`).
     "front/**/workflows.ts": ["exports"],
+    // Live-LLM test harness. `STREAM_ENDPOINT_SETUPS` is only there for its `satisfies` check,
+    // which fails the typecheck when an endpoint has no test setup (see the dust-llm skill).
+    "front/lib/model_constructors/test/**": ["exports", "types"],
+    // Copied into Frame sandboxes and loaded there (e.g. the oxlint plugin), not imported.
+    "front/lib/resources/skill/code_defined/global/frames/assets/**": [
+      "exports",
+    ],
     // front-spa/vite.config.ts aliases `@app/lib/platform` to this file; knip resolves it to
     // front/lib/platform instead.
     "front-spa/src/lib/platform.tsx": ["exports", "types"],
