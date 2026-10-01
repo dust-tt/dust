@@ -1248,9 +1248,10 @@ export class AgentResource
 
   /**
    * @cc [owner:tdraier,label:security;product] list-readable-agents
-   * Returns the active agents, global and custom, the caller can `read` (the ones they can mention
-   * and run), and no other: global agents first in their default order, then custom agents in name
-   * order.
+   * Returns the active agents the caller can `read` (the ones they can mention and run), and no
+   * other: the default global agents (`listDefaultGlobalAgentIds`, which leaves out Sidekick,
+   * Reinforcement, model-only and retired agents) first in their default order, then custom agents
+   * in name order.
    */
   static async listReadable(auth: Authenticator): Promise<AgentResource[]> {
     const [globalAgents, customAgents] = await Promise.all([

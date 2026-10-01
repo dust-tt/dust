@@ -2,7 +2,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { RichAgentMention } from "@app/types/assistant/mentions";
-import { toRichAgentMentionType } from "@app/types/assistant/mentions";
 
 const MAX_MENTION_LABEL_LENGTH = 1000;
 
@@ -22,7 +21,9 @@ export async function parseMentionsInMarkdown({
   const agents = await AgentResource.listReadable(auth);
 
   // Build agent mentions map.
-  const agentMentions: RichAgentMention[] = agents.map(toRichAgentMentionType);
+  const agentMentions: RichAgentMention[] = agents.map((agent) =>
+    agent.toMentionSuggestionJSON({ userFavorite: false })
+  );
 
   // Disabling user mentions for now, as it may lead to customer pinging users unintentionally.
   //

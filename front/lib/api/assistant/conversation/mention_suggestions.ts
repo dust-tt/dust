@@ -22,10 +22,7 @@ import type {
   RichMention,
   RichUserMentionInConversation,
 } from "@app/types/assistant/mentions";
-import {
-  toRichAgentMentionType,
-  toRichUserMentionType,
-} from "@app/types/assistant/mentions";
+import { toRichUserMentionType } from "@app/types/assistant/mentions";
 
 export function interleaveMentionsPreservingAgentOrder(
   agents: RichAgentMentionInConversation[],
@@ -334,12 +331,8 @@ export const suggestionsOfMentions = async (
       const agents = await AgentResource.listReadable(auth);
       const favorites = await enrichWithFavorites(auth, agents);
       activeAgents = agents.map((agent) =>
-        toRichAgentMentionType({
-          sId: agent.sId,
-          name: agent.name,
-          pictureUrl: agent.pictureUrl,
-          description: agent.description,
-          userFavorite: favorites.get(agent.sId)?.userFavorite,
+        agent.toMentionSuggestionJSON({
+          userFavorite: favorites.get(agent.sId)?.userFavorite ?? false,
         })
       );
     }

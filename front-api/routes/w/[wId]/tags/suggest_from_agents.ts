@@ -1,6 +1,5 @@
 import { getWorkspaceTagSuggestions } from "@app/lib/api/assistant/tag_manager";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import type { GetSuggestionsResponseBody } from "@app/types/api/assistant/tag_manager";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { isAdmin } from "@app/types/user";
@@ -48,18 +47,16 @@ app.get("/", async (ctx): HandlerResult<GetSuggestionsResponseBody> => {
     });
   }
 
-  const agents = await toLightAgentConfigurations(
-    auth,
-    (await AgentResource.listReadable(auth)).filter(
-      (a) => a.scope !== "global"
-    ),
-    { withFavorites: false, withTags: false }
+  const agents = (await AgentResource.listReadable(auth)).filter(
+    (a) => a.scope !== "global"
   );
+  const instructionsByAgent =
+    await AgentResource.batchFetchInstructions(agents);
 
   const formattedAgents = agents
     .map(
       (a) =>
-        `Identifier: ${a.sId}\nName: ${a.name}\nDescription: ${a.description?.substring(0, 200).replaceAll("\n", " ")}\nInstructions: ${a.instructions?.substring(0, 200).replaceAll("\n", " ")}`
+        `Identifier: ${a.sId}\nName: ${a.name}\nDescription: ${a.description.substring(0, 200).replaceAll("\n", " ")}\nInstructions: ${instructionsByAgent.get(a)?.instructions?.substring(0, 200).replaceAll("\n", " ")}`
     )
     .join("\n\n");
 
@@ -89,7 +86,12 @@ app.get("/", async (ctx): HandlerResult<GetSuggestionsResponseBody> => {
   const agentsById = new Map(agents.map((a) => [a.sId, a]));
   const suggestions = suggestionsResponse.value.suggestions?.map((s) => ({
     name: s.name,
-    agents: removeNulls(s.agentIds.map((id) => agentsById.get(id) ?? null)),
+    agents: removeNulls(
+      s.agentIds.map((id) => {
+        const agent = agentsById.get(id);
+        return agent ? { sId: agent.sId, name: agent.name } : null;
+      })
+    ),
   }));
 
   return ctx.json({ suggestions });
