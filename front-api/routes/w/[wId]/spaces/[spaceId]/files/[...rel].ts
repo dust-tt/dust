@@ -17,12 +17,17 @@ import {
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
+import {
+  contentDispositionAttachment,
+  isContentTypeSafeToDisplay,
+} from "@front-api/lib/file_serving";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
 import type { Context, TypedResponse } from "hono";
+import path from "path";
 import { z } from "zod";
 
 const ParamsSchema = z.object({
@@ -135,9 +140,15 @@ app.get(
         "Error streaming project file (GCS)"
       )
     );
+    const headers: Record<string, string> = { "Content-Type": contentType };
+    if (!isContentTypeSafeToDisplay(contentType)) {
+      headers["Content-Disposition"] = contentDispositionAttachment(
+        path.posix.basename(normalizedGcsPath)
+      );
+    }
     return new Response(readableToReadableStream(readStream), {
       status: 200,
-      headers: { "Content-Type": contentType },
+      headers,
     });
   }
 );

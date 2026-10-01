@@ -1,9 +1,14 @@
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
+import {
+  contentDispositionAttachment,
+  isContentTypeSafeToDisplay,
+} from "@front-api/lib/file_serving";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import path from "path";
 import { z } from "zod";
 
 const ParamsSchema = z.object({
@@ -51,9 +56,15 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
 
   const readStream = file.getReadStream({ auth, version: "original" });
   const webStream = readableToReadableStream(readStream);
+  const headers: Record<string, string> = { "Content-Type": file.contentType };
+  if (!isContentTypeSafeToDisplay(file.contentType)) {
+    headers["Content-Disposition"] = contentDispositionAttachment(
+      path.posix.basename(file.fileName)
+    );
+  }
   return new Response(webStream, {
     status: 200,
-    headers: { "Content-Type": file.contentType },
+    headers,
   });
 });
 
