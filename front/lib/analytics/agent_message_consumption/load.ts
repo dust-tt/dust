@@ -177,6 +177,12 @@ async function loadAnalyticsUser({
   };
 }
 
+/**
+ * @cc [owner:sfriquet,label:product] tracked-non-terminal-messages
+ * A message in a tracked status MUST be loaded even when it can still resume (e.g. `created` while
+ * paused on a user question or a tool approval), since it is already billed. Its `completedAt` is
+ * the message `completedAt` when terminal, and its `updatedAt` otherwise.
+ */
 export async function loadAgentMessageConsumptionAnalyticsInput(
   auth: Authenticator,
   {
@@ -212,13 +218,16 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
   if (!messageConversation) {
     throw new Error("Agent message conversation not found");
   }
-  if (
-    !AGENT_MESSAGE_STATUSES_TO_TRACK.includes(agentMessage.status) ||
-    !isTerminalAgentMessageStatus(agentMessage.status)
-  ) {
+  if (!AGENT_MESSAGE_STATUSES_TO_TRACK.includes(agentMessage.status)) {
     return null;
   }
-  if (!agentMessage.completedAt) {
+  // A paused message cancelled through `finalizeAgentMessagesWithoutWorkflow` is not re-indexed,
+  // so its documents keep the `created` status and the pause time as `completed_at`. Credits stay
+  // correct since cancelling adds none.
+  const completedAt = isTerminalAgentMessageStatus(agentMessage.status)
+    ? agentMessage.completedAt
+    : agentMessage.updatedAt;
+  if (!completedAt) {
     throw new Error("Settled agent message is missing completedAt");
   }
 
@@ -282,7 +291,7 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
   const agentTagIds = await loadAgentTagIds(auth, agentMessage);
   const user = await loadAnalyticsUser({
     auth,
-    completedAt: agentMessage.completedAt,
+    completedAt,
     userId: triggeringUserMessage.userId,
   });
 
@@ -307,7 +316,7 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
     agentMessageId,
     apiKeyName,
     billedCredits: agentMessage.costCredits,
-    completedAt: agentMessage.completedAt,
+    completedAt,
     contextOrigin: triggeringUserMessage.origin,
     conversationId: conversation.conversationId,
     dustRunIds,
