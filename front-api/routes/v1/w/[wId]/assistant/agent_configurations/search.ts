@@ -1,13 +1,13 @@
-import { searchAgents } from "@app/lib/api/agents/search";
 import { toAgentConfigurationsWithSkills } from "@app/lib/api/assistant/configuration/helpers";
-import { addBackwardCompatibleAgentConfigurationFields } from "@app/lib/api/v1/backward_compatibility";
+import {
+  addBackwardCompatibleAgentConfigurationFields,
+  addLegacyLightAgentConfigurationFields,
+} from "@app/lib/api/v1/backward_compatibility";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
-import logger from "@app/logger/logger";
 import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
@@ -70,34 +70,13 @@ app.get(
     const auth = ctx.get("auth");
     const { q } = ctx.req.valid("query");
 
-    // Published agents only, like the former name search, matched by the agent search index.
-    const searchResult = await searchAgents(auth, {
-      searchTerm: q,
-      filters: { scope: ["visible"] },
-    });
-    if (searchResult.isErr()) {
-      logger.error(
-        {
-          error: searchResult.error,
-          workspaceId: auth.getNonNullableWorkspace().sId,
-        },
-        "Failed to search agents"
-      );
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Failed to search agents",
-        },
-      });
-    }
-
+    // Published agents whose name contains `q`, as the former name search matched them.
     const agentConfigurations = await toLightAgentConfigurations(
       auth,
-      await AgentResource.fetchByIds(
-        auth,
-        searchResult.value.agents.map((agent) => agent.sId)
-      )
+      await AgentResource.listByWorkspace(auth, {
+        scope: "visible",
+        nameContains: q,
+      })
     );
     const serialized = await toAgentConfigurationsWithSkills(
       auth,
@@ -106,7 +85,9 @@ app.get(
 
     return ctx.json({
       agentConfigurations: serialized.map((agentConfiguration) =>
-        addBackwardCompatibleAgentConfigurationFields(agentConfiguration)
+        addBackwardCompatibleAgentConfigurationFields(
+          addLegacyLightAgentConfigurationFields(agentConfiguration)
+        )
       ),
     });
   }

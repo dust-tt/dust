@@ -1293,13 +1293,21 @@ export class AgentResource
     {
       status = "active",
       scope,
+      nameContains,
     }: {
       status?: AgentStatus | AgentStatus[];
       scope?: Exclude<AgentConfigurationScope, "global">;
+      nameContains?: string;
     } = {}
   ): Promise<AgentResource[]> {
     const agentIds = await this.listCurrentVersionAgentIds(auth, {
-      agentWhere: { status, ...(scope ? { scope } : {}) },
+      agentWhere: {
+        status,
+        ...(scope ? { scope } : {}),
+        ...(nameContains !== undefined
+          ? { name: { [Op.iLike]: `%${nameContains}%` } }
+          : {}),
+      },
     });
     return this.fetchByIds(auth, agentIds);
   }
@@ -3413,8 +3421,8 @@ export class AgentResource
    */
   /**
    * @cc [owner:philipperolet,label:security] regular-key-agent-editability
-   * For regular keys on custom agents, `canEdit` requires workspace admin access, active status,
-   * and read access to every requested space.
+   * For regular keys on custom agents, `canEdit` requires the agent `write` verb (from an editor
+   * grant, or the admin role), active status, and read access to every requested space.
    */
   /**
    * @cc [owner:philipperolet,label:security] agent-editability

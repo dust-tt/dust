@@ -1,5 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { invalidateAgentResourceCaches } from "@app/lib/resources/agent_resource_cache";
 import {
   toAgentConfigurations,
   toLightAgentConfigurations,
@@ -23,11 +24,9 @@ async function dropCachedAgents(
   auth: Authenticator,
   agentIds: string[]
 ): Promise<void> {
-  const workspaceId = auth.getNonNullableWorkspace().id;
-  await Promise.all(
-    agentIds
-      .filter((agentId) => !isGlobalAgentId(agentId))
-      .map((agentId) => AgentResource.invalidateCache(workspaceId, agentId))
+  await invalidateAgentResourceCaches(
+    auth.getNonNullableWorkspace().id,
+    agentIds.filter((agentId) => !isGlobalAgentId(agentId))
   );
 }
 
