@@ -1,4 +1,3 @@
-/** @ignoreswagger */
 import {
   isValidInternalMCPServerId,
   matchesInternalMCPServerName,
@@ -10,9 +9,13 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import logger from "@app/logger/logger";
 import type { PickerTokenResponseType } from "@app/types/api/google_drive";
 import type { ModelId } from "@app/types/shared/model_id";
-import { workspaceApp } from "@front-api/middlewares/ctx";
+import {
+  type WorkspaceAwareCtx,
+  workspaceApp,
+} from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import type { Context } from "hono";
 import { z } from "zod";
 
 const RequestBodySchema = z.object({
@@ -32,7 +35,8 @@ function isWorkspaceGoogleDriveServer(
   );
 }
 
-// Mounted at /api/w/:wId/google_drive/picker_token.
+type PickerTokenBody = z.infer<typeof RequestBodySchema>;
+
 /**
  * @cc [owner:frankaloia,label:security] picker-token-google-drive-only
  * `mcpServerId` MUST be an internal `google_drive` server whose sId encodes
@@ -47,131 +51,133 @@ function isWorkspaceGoogleDriveServer(
  * when one of those views has `oAuthUseCase` `platform_actions`; otherwise it
  * MUST be `personal`.
  */
-const app = workspaceApp();
+async function postPickerToken(
+  ctx: Context<
+    WorkspaceAwareCtx,
+    "/",
+    { in: { json: PickerTokenBody }; out: { json: PickerTokenBody } }
+  >
+): HandlerResult<PickerTokenResponseType> {
+  const auth = ctx.get("auth");
+  const { mcpServerId } = ctx.req.valid("json");
 
-app.post(
-  "/",
-  validate("json", RequestBodySchema),
-  async (ctx): HandlerResult<PickerTokenResponseType> => {
-    const auth = ctx.get("auth");
-    const { mcpServerId } = ctx.req.valid("json");
-
-    if (
-      !isWorkspaceGoogleDriveServer(
-        auth.getNonNullableWorkspace().id,
-        mcpServerId
-      )
-    ) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            "mcpServerId must be a Google Drive server in this workspace.",
-        },
-      });
-    }
-
-    const views = await MCPServerViewResource.listByMCPServer(
-      auth,
+  if (
+    !isWorkspaceGoogleDriveServer(
+      auth.getNonNullableWorkspace().id,
       mcpServerId
-    );
-    // listByMCPServer is only workspace-scoped. Drop views in spaces the caller
-    // cannot read (including the system-space view) so an inaccessible
-    // platform_actions configuration cannot select the admin connection.
-    const accessibleViews = views.filter(
-      (view) => auth.can("read", view) || auth.can("admin", view)
-    );
-    if (accessibleViews.length === 0) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            "No Google Drive connection found. Please connect your Google Drive account first.",
-        },
-      });
-    }
-
-    // Use whichever connection type an accessible view is configured for.
-    const connectionType = accessibleViews.some(
-      (view) => view.oAuthUseCase === "platform_actions"
     )
-      ? "workspace"
-      : "personal";
-
-    const connectionResult = await MCPServerConnectionResource.findByMCPServer(
-      auth,
-      {
-        mcpServerId,
-        connectionType,
-      }
-    );
-
-    if (connectionResult.isErr()) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            "No Google Drive connection found. Please connect your Google Drive account first.",
-        },
-      });
-    }
-
-    const connectionId = connectionResult.value.connectionId;
-    if (!connectionId) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            "No Google Drive connection found. Please connect your Google Drive account first.",
-        },
-      });
-    }
-
-    // Get the access token for this connection
-    const tokenResult = await getOAuthConnectionAccessToken({
-      config: config.getOAuthAPIConfig(),
-      logger,
-      connectionId,
-    });
-
-    if (tokenResult.isErr()) {
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Failed to get access token",
-        },
-      });
-    }
-
-    const clientId = config.getOAuthGoogleDriveClientId();
-    const developerKey = config.getGoogleDrivePickerApiKey();
-
-    // Extract appId (project number) from clientId
-    // clientId format: "PROJECT_NUMBER.apps.googleusercontent.com" or "PROJECT_NUMBER-xxx.apps.googleusercontent.com"
-    const appIdMatch = clientId.match(/^(\d+)/);
-    if (!appIdMatch) {
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Failed to extract app ID from client ID",
-        },
-      });
-    }
-    const appId = appIdMatch[1];
-
-    return ctx.json({
-      accessToken: tokenResult.value.access_token,
-      clientId,
-      developerKey,
-      appId,
+  ) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "mcpServerId must be a Google Drive server in this workspace.",
+      },
     });
   }
-);
+
+  const views = await MCPServerViewResource.listByMCPServer(auth, mcpServerId);
+  // listByMCPServer is only workspace-scoped. Drop views in spaces the caller
+  // cannot read (including the system-space view) so an inaccessible
+  // platform_actions configuration cannot select the admin connection.
+  const accessibleViews = views.filter(
+    (view) => auth.can("read", view) || auth.can("admin", view)
+  );
+  if (accessibleViews.length === 0) {
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "No Google Drive connection found. Please connect your Google Drive account first.",
+      },
+    });
+  }
+
+  // Use whichever connection type an accessible view is configured for.
+  const connectionType = accessibleViews.some(
+    (view) => view.oAuthUseCase === "platform_actions"
+  )
+    ? "workspace"
+    : "personal";
+
+  const connectionResult = await MCPServerConnectionResource.findByMCPServer(
+    auth,
+    {
+      mcpServerId,
+      connectionType,
+    }
+  );
+
+  if (connectionResult.isErr()) {
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "No Google Drive connection found. Please connect your Google Drive account first.",
+      },
+    });
+  }
+
+  const connectionId = connectionResult.value.connectionId;
+  if (!connectionId) {
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "No Google Drive connection found. Please connect your Google Drive account first.",
+      },
+    });
+  }
+
+  // Get the access token for this connection
+  const tokenResult = await getOAuthConnectionAccessToken({
+    config: config.getOAuthAPIConfig(),
+    logger,
+    connectionId,
+  });
+
+  if (tokenResult.isErr()) {
+    return apiError(ctx, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to get access token",
+      },
+    });
+  }
+
+  const clientId = config.getOAuthGoogleDriveClientId();
+  const developerKey = config.getGoogleDrivePickerApiKey();
+
+  // Extract appId (project number) from clientId
+  // clientId format: "PROJECT_NUMBER.apps.googleusercontent.com" or "PROJECT_NUMBER-xxx.apps.googleusercontent.com"
+  const appIdMatch = clientId.match(/^(\d+)/);
+  if (!appIdMatch) {
+    return apiError(ctx, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Failed to extract app ID from client ID",
+      },
+    });
+  }
+  const appId = appIdMatch[1];
+
+  return ctx.json({
+    accessToken: tokenResult.value.access_token,
+    clientId,
+    developerKey,
+    appId,
+  });
+}
+
+// Mounted at /api/w/:wId/google_drive/picker_token.
+const app = workspaceApp();
+
+/** @ignoreswagger */
+app.post("/", validate("json", RequestBodySchema), postPickerToken);
 
 export default app;
