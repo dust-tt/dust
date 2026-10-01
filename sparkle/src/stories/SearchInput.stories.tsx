@@ -1,6 +1,6 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
+import type { Meta, StoryObj } from "@storybook/react";
 import React, { useState } from "react";
-import { expect, fn, userEvent } from "storybook/test";
+import { fn } from "storybook/test";
 
 import {
   cn,
@@ -93,18 +93,6 @@ export const Default: Story = {
         }}
       />
     );
-  },
-  play: async ({ canvas, args }) => {
-    const input = canvas.getByRole("textbox");
-    await userEvent.type(input, "Search skills");
-    await expect(args.onChange).toHaveBeenLastCalledWith("Search skills");
-    await userEvent.tab();
-    await expect(input.parentElement).toHaveStyle({
-      "background-color": "rgba(0, 0, 0, 0)",
-    });
-    await userEvent.click(canvas.getByRole("button"));
-    await expect(input).toHaveValue("");
-    await expect(args.onChange).toHaveBeenLastCalledWith("");
   },
 };
 

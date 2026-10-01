@@ -71,11 +71,6 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     return (
       <div className={cn("relative", className)}>
         <Input
-          className={cn(
-            "bg-transparent dark:bg-transparent",
-            "[&:has(input:not(:placeholder-shown)):not(:focus-within)]:bg-transparent",
-            "dark:[&:has(input:not(:placeholder-shown)):not(:focus-within)]:bg-transparent"
-          )}
           id={inputId}
           type="text"
           name={name}
