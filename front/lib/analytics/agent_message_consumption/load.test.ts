@@ -477,10 +477,10 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
     ).rejects.toThrow("Billed agent message is missing costCredits");
   });
 
-  it("returns null while the message can still resume", async () => {
+  it("loads a billed message that can still resume at its last update", async () => {
     const context = await setupSettledMessage();
     await AgentMessageModel.update(
-      { status: "created" },
+      { completedAt: null, status: "created" },
       {
         where: {
           id: context.agentMessage.agentMessageId!,
@@ -488,12 +488,22 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
         },
       }
     );
+    const agentMessageRow = await AgentMessageModel.findOne({
+      where: {
+        id: context.agentMessage.agentMessageId!,
+        workspaceId: context.workspace.id,
+      },
+    });
 
     const input = await loadAgentMessageConsumptionAnalyticsInput(
       context.auth,
       { agentMessageId: context.agentMessage.sId }
     );
 
-    expect(input).toBeNull();
+    expect(input).toMatchObject({
+      billedCredits: 5,
+      completedAt: agentMessageRow?.updatedAt,
+      messageStatus: "created",
+    });
   });
 });
