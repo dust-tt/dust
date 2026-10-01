@@ -61,7 +61,7 @@ no matches and exits with status 1. Both the tarball and the extracted `corpus/`
 
 ## Concurrent metadata API diagnostic
 
-From the dfs directory:
+From `x/spolu/dfs/v0`:
 
 ```sh
 RUSTC_WRAPPER= cargo test --release -p dfs-server concurrent_metadata_load -- --ignored --nocapture

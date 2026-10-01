@@ -86,15 +86,16 @@ SlateDB's own write amplification. Fsync does not wait for any of this backgroun
 
 ## Reproduce
 
-Build the server and Linux client as described in [the FUSE guide](../fuse/README.md), with working ADC:
+Build the server and Linux client as described in [the FUSE guide](../fuse/README.md), with working ADC.
+Run these commands from `x/spolu/dfs/v0`:
 
 ```sh
 RUSTC_WRAPPER= cargo build --locked -p dfs-server --bin dfs-server --example local_server
 python3 tests/fuse_e2e.py --bucket dust-dev-dfs-poc-spolu-20260930
 python3 tests/fuse_e2e.py --write-mode cached --bucket dust-dev-dfs-poc-spolu-20260930
 python3 bench/cache.py --write-mode cached
-python3 bench/generate.py --files 1000
-python3 bench/cache.py --archive bench/corpus-1000.tar.gz
+python3 ../bench/generate.py --files 1000
+python3 bench/cache.py --archive ../bench/corpus-1000.tar.gz
 ```
 
 `bench/cache.py` prints a report directory with JSON timings and server progress logs. It deletes only

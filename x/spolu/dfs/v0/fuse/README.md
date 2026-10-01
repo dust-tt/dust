@@ -4,6 +4,8 @@
 mount permissions. The shared `dfs-protocol` and blocking `dfs-client` build on macOS without a FUSE
 driver. macFUSE is excluded for now.
 
+Run the commands below from `x/spolu/dfs/v0`.
+
 ## Mount
 
 Provision a workspace and session through the [server API](../README.md#workspaces-and-sessions).

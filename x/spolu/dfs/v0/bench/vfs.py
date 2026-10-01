@@ -19,7 +19,7 @@ import urllib.request
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT.parent.parent / "jd/filesystem-benchmark"
+SOURCE = ROOT.parents[2] / "jd/filesystem-benchmark"
 MANIFEST_SHA256 = "67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1"
 sys.path.insert(0, str(ROOT / "tests"))
 from fuse_e2e import api, cleanup_gcs, mounted, secret_file, session

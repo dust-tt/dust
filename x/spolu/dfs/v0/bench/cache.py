@@ -107,9 +107,10 @@ def host(args):
                         "--mount", f"type=bind,src={ROOT},dst=/dfs,readonly",
                         "--mount", "type=volume,src=dfs-linux-target,dst=/dfs/target-linux,readonly",
                         "--mount", f"type=bind,src={work},dst=/run/dfs",
+                        "--mount", f"type=bind,src={args.archive.resolve()},dst=/corpus.tar.gz,readonly",
                         "dfs-fuse-dev", "python3", "/dfs/bench/cache.py", "--inside", "--work", "/run/dfs",
                         "--endpoint", f"http://host.docker.internal:{port}", "--binary", "/dfs/target-linux/debug/dfs-fuse",
-                        "--archive", "/dfs/"+str(args.archive.resolve().relative_to(ROOT))], check=True, timeout=args.timeout_seconds)
+                        "--archive", "/corpus.tar.gz"], check=True, timeout=args.timeout_seconds)
         results = json.loads((work / "results.json").read_text())
         start = time.monotonic()
         server.send_signal(signal.SIGTERM)
@@ -156,7 +157,7 @@ if __name__ == "__main__":
     parser.add_argument("--bucket", default="dust-dev-dfs-poc-spolu-20260930")
     parser.add_argument("--write-mode", choices=["sync", "cached"], default="cached")
     parser.add_argument("--profile", choices=["debug", "release"], default="debug")
-    parser.add_argument("--archive", type=Path, default=ROOT / "bench/corpus-100.tar.gz")
+    parser.add_argument("--archive", type=Path, default=ROOT.parent / "bench/corpus-100.tar.gz")
     parser.add_argument("--memory-bytes", type=int, default=256*1024**2)
     parser.add_argument("--disk-bytes", type=int, default=4*1024**3)
     parser.add_argument("--timeout-seconds", type=int, default=900)
