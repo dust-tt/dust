@@ -450,7 +450,7 @@ export const activationManagementPlugin = createPlugin({
     requiredRoles: ["support"],
   },
   populateAsyncArgs: async (auth) => {
-    const [skills, agents, groups] = await Promise.all([
+    const [skills, workspaceAgents, groups] = await Promise.all([
       SkillResource.listByWorkspace(auth, {
         status: "active",
         globalSpaceOnly: true,
@@ -458,15 +458,14 @@ export const activationManagementPlugin = createPlugin({
         withTools: false,
         withFileAttachments: false,
       }),
-      AgentResource.listByWorkspace(auth).then((agents) =>
-        agents.filter(
-          (agent) => agent.scope === "visible" && auth.can("read", agent)
-        )
-      ),
+      AgentResource.listByWorkspace(auth),
       GroupResource.listAllWorkspaceGroups(auth, {
         groupKinds: [...MANAGEABLE_GROUP_KINDS],
       }),
     ]);
+    const agents = workspaceAgents.filter(
+      (agent) => agent.scope === "visible" && auth.can("read", agent)
+    );
 
     const pushedResource = [
       ...skills.map((skill) => ({

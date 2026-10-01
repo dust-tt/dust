@@ -93,10 +93,7 @@ import {
   launchIndexSkillSearchWorkflow,
 } from "@app/temporal/es_indexation/client";
 import type { DiscoverySkillType } from "@app/types/api/discovery";
-import type {
-  AgentConfigurationWithoutModelType,
-  LightAgentConfigurationType,
-} from "@app/types/assistant/agent";
+import type { AgentConfigurationWithoutModelType } from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type {
@@ -1796,44 +1793,34 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * Batched version of listByAgentConfiguration. Performs 2 SQL queries.
-   * Does not support global agents as we rely on the ID for mapping: they all share the same
-   * model id and hold no `AgentSkillModel` row. Their skills are code-defined, so resolve them
-   * with `fetchByIds` on the ids their configuration declares.
+   * Batched version of listByAgentConfigurationModelId: the skills of each non-global agent
+   * configuration, keyed by its `agent_configurations` row model id. Performs 2 SQL queries.
+   * Global agents hold no `AgentSkillModel` row (their skills are code-defined, resolve them with
+   * `fetchByIds` on the ids their configuration declares), so they get no entry.
    */
-  static async listByAgentConfigurations<
-    T extends Pick<LightAgentConfigurationType, "id" | "sId">,
-  >(
+  static async listByAgents(
     auth: Authenticator,
-    agentConfigurations: T[],
+    agentConfigurationModelIds: ModelId[],
     fetchOptions?: SkillHydrationOptions & {
       permissionFiltering?: SkillPermissionFilteringMode;
     }
-  ): Promise<{ agentConfiguration: T; skill: SkillResource }[]> {
-    assert(
-      agentConfigurations.every((c) => !isGlobalAgentId(c.sId)),
-      "Global agents are not supported"
-    );
-
-    if (agentConfigurations.length === 0) {
-      return [];
+  ): Promise<Map<ModelId, SkillResource[]>> {
+    const skillsByAgent = new Map<ModelId, SkillResource[]>();
+    if (agentConfigurationModelIds.length === 0) {
+      return skillsByAgent;
     }
 
-    const workspace = auth.getNonNullableWorkspace();
-
-    // Fetch all agent-skill relationships for the given agents.
     const agentSkills = await AgentSkillModel.findAll({
       where: {
-        agentConfigurationId: agentConfigurations.map((c) => c.id),
-        workspaceId: workspace.id,
+        agentConfigurationId: agentConfigurationModelIds,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
 
     if (agentSkills.length === 0) {
-      return [];
+      return skillsByAgent;
     }
 
-    // Fetch all unique skills in one batch.
     const allSkills = await this.fetchBySkillReferences(
       auth,
       agentSkills.map((s) => ({
@@ -1853,27 +1840,21 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       }
     }
 
-    // Map skills back to each config.
-    const configById = new Map(agentConfigurations.map((c) => [c.id, c]));
-    return removeNulls(
-      Object.entries(
-        groupBy(agentSkills, (s) => s.agentConfigurationId)
-      ).flatMap(([configId, refs]) => {
-        const agentConfiguration = configById.get(parseInt(configId, 10));
-        if (!agentConfiguration) {
-          return [];
-        }
-        return refs.map((ref) => {
-          if (ref.globalSkillId) {
-            const skill = skillByGlobalId.get(ref.globalSkillId);
-            return skill ? { agentConfiguration, skill } : null;
-          } else if (ref.customSkillId) {
-            const skill = skillByCustomId.get(ref.customSkillId);
-            return skill ? { agentConfiguration, skill } : null;
-          }
-        });
-      })
-    );
+    for (const ref of agentSkills) {
+      let skill: SkillResource | undefined;
+      if (ref.globalSkillId) {
+        skill = skillByGlobalId.get(ref.globalSkillId);
+      } else if (ref.customSkillId) {
+        skill = skillByCustomId.get(ref.customSkillId);
+      }
+      if (skill) {
+        const skills = skillsByAgent.get(ref.agentConfigurationId) ?? [];
+        skills.push(skill);
+        skillsByAgent.set(ref.agentConfigurationId, skills);
+      }
+    }
+
+    return skillsByAgent;
   }
 
   /**

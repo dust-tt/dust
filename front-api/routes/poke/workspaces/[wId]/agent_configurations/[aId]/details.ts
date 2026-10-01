@@ -50,7 +50,7 @@ app.get(
     const spaces = await SpaceResource.fetchByIds(auth, allRequestedSpaceIds);
     const authors = await getAuthors(agentConfigurations);
 
-    // `SkillResource.listByAgentConfigurations` only works for custom agents, as global agents are not versioned.
+    // `SkillResource.listByAgents` only works for custom agents, as global agents are not versioned.
     const skillsByVersion: Record<number, SkillType[]> = {};
     if (isGlobalAgentId(aId)) {
       const allSkills = await SkillResource.listByAgentConfiguration(
@@ -61,15 +61,14 @@ app.get(
         s.toJSON(auth)
       );
     } else {
-      const skillsByAgent = await SkillResource.listByAgentConfigurations(
+      const skillsByAgent = await SkillResource.listByAgents(
         auth,
-        agentConfigurations
+        agentConfigurations.map((config) => config.id)
       );
       for (const config of agentConfigurations) {
-        skillsByVersion[config.version] = [];
-      }
-      for (const { agentConfiguration, skill } of skillsByAgent) {
-        skillsByVersion[agentConfiguration.version].push(skill.toJSON(auth));
+        skillsByVersion[config.version] = (
+          skillsByAgent.get(config.id) ?? []
+        ).map((skill) => skill.toJSON(auth));
       }
     }
 

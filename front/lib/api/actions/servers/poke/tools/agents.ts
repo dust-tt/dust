@@ -12,6 +12,7 @@ import {
 } from "@app/lib/api/actions/servers/poke/tools/utils";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getAuthors, getEditors } from "@app/lib/api/assistant/editors";
+import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { Err } from "@app/types/shared/result";
 
@@ -48,6 +49,15 @@ function decodeCursor(cursor: string): { sortKey: string; sId: string } | null {
   }
 }
 
+function listAgentsByStatus(
+  auth: Authenticator,
+  status: "active" | "archived" | undefined
+): Promise<AgentResource[]> {
+  return status === "archived"
+    ? AgentResource.listByWorkspace(auth, { status: "archived" })
+    : AgentResource.listActive(auth);
+}
+
 export const agentHandlers: AgentHandlers = {
   [LIST_WORKSPACE_AGENTS_TOOL_NAME]: async (
     { workspace_id, status, limit, next_page_cursor },
@@ -68,17 +78,7 @@ export const agentHandlers: AgentHandlers = {
     }
     const targetAuth = targetAuthResult.value;
 
-    const agents =
-      status === "archived"
-        ? await AgentResource.listByWorkspace(targetAuth, {
-            status: "archived",
-          })
-        : [
-            ...(await AgentResource.listGlobalAgents(targetAuth)).filter(
-              (agent) => agent.status === "active"
-            ),
-            ...(await AgentResource.listByWorkspace(targetAuth)),
-          ];
+    const agents = await listAgentsByStatus(targetAuth, status);
     const instructionsByAgent =
       await AgentResource.batchFetchInstructions(agents);
     const allAgents = agents.map((agent) => ({

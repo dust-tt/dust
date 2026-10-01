@@ -159,16 +159,7 @@ async function listConsumptionFacetCatalogWithoutTracing(
     "agents",
     "agent",
     requestedDimensions,
-    async () => {
-      const [globalAgents, customAgents] = await Promise.all([
-        AgentResource.listGlobalAgents(auth),
-        AgentResource.listByWorkspace(auth),
-      ]);
-      return [
-        ...globalAgents.filter((agent) => agent.status === "active"),
-        ...customAgents,
-      ];
-    }
+    () => AgentResource.listActive(auth)
   );
   const models = await traceFacetCatalogLoad(
     "models",

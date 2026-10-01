@@ -13,7 +13,6 @@ import { indexUserDocument } from "@app/lib/user_search";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import uniq from "lodash/uniq";
@@ -209,7 +208,7 @@ export async function recreateAgentSearchIndex({
     actionsByConfigurationId,
     feedbackCounts,
     lastEditors,
-    agentSkills,
+    skillsByConfigurationModelId,
     favoriteCountByAgent,
   ] = await Promise.all([
     AgentResource.batchListEditors(auth, agents),
@@ -225,23 +224,14 @@ export async function recreateAgentSearchIndex({
     UserResource.fetchByModelIds(
       uniq(removeNulls(agents.map((agent) => agent.versionAuthorId)))
     ),
-    SkillResource.listByAgentConfigurations(
-      auth,
-      agents.map((agent) => agent.toJSON()),
-      { permissionFiltering: "redact_unreadable" }
-    ),
+    SkillResource.listByAgents(auth, configurationModelIds, {
+      permissionFiltering: "redact_unreadable",
+    }),
     AgentResource.batchCountFavorites(auth, agents),
   ]);
   const lastEditorByModelId = new Map(
     lastEditors.map((user) => [user.id, user])
   );
-  const skillIdsByConfigurationModelId = new Map<ModelId, string[]>();
-  for (const { agentConfiguration, skill } of agentSkills) {
-    const skillIds =
-      skillIdsByConfigurationModelId.get(agentConfiguration.id) ?? [];
-    skillIds.push(skill.sId);
-    skillIdsByConfigurationModelId.set(agentConfiguration.id, skillIds);
-  }
   const feedbackByAgentId = new Map<
     string,
     { positive: number; negative: number }
@@ -290,9 +280,10 @@ export async function recreateAgentSearchIndex({
         )
           .filter(isServerSideMCPServerConfiguration)
           .map((action) => action.mcpServerViewId),
-        skillIds:
-          skillIdsByConfigurationModelId.get(agent.agentConfigurationModelId) ??
-          [],
+        skillIds: (
+          skillsByConfigurationModelId.get(agent.agentConfigurationModelId) ??
+          []
+        ).map((skill) => skill.sId),
         tagIds: (tagsByAgent.get(agent) ?? []).map((tag) => tag.sId),
       });
       const result = await indexAgentDocument(document);

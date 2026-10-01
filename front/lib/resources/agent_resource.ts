@@ -1246,14 +1246,10 @@ export class AgentResource
     return this.fetchByIds(auth, listDefaultGlobalAgentIds());
   }
 
-  /**
-   * @cc [owner:tdraier,label:security;product] list-readable-agents
-   * Returns the active agents the caller can `read` (the ones they can mention and run), and no
-   * other: the default global agents (`listDefaultGlobalAgentIds`, which leaves out Sidekick,
-   * Reinforcement, model-only and retired agents) first in their default order, then custom agents
-   * in name order.
-   */
-  static async listReadable(auth: Authenticator): Promise<AgentResource[]> {
+  // The active default global agents in their default order, then the active custom agents in
+  // name order, filtered to what the caller can fetch: unlike `listReadable`, it keeps the agents
+  // the caller cannot read.
+  static async listActive(auth: Authenticator): Promise<AgentResource[]> {
     const [globalAgents, customAgents] = await Promise.all([
       this.listGlobalAgents(auth),
       this.listByWorkspace(auth),
@@ -1262,7 +1258,20 @@ export class AgentResource
     return [
       ...globalAgents.filter((agent) => agent.status === "active"),
       ...customAgents.toSorted((a, b) => a.name.localeCompare(b.name)),
-    ].filter((agent) => auth.can("read", agent));
+    ];
+  }
+
+  /**
+   * @cc [owner:tdraier,label:security;product] list-readable-agents
+   * Returns the active agents the caller can `read` (the ones they can mention and run), and no
+   * other: the default global agents (`listDefaultGlobalAgentIds`, which leaves out Sidekick,
+   * Reinforcement, model-only and retired agents) first in their default order, then custom agents
+   * in name order.
+   */
+  static async listReadable(auth: Authenticator): Promise<AgentResource[]> {
+    return (await this.listActive(auth)).filter((agent) =>
+      auth.can("read", agent)
+    );
   }
 
   // Every agent of the authed workspace whose current status is in `status` (active by default),

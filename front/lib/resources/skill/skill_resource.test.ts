@@ -2181,7 +2181,7 @@ describe("SkillResource", () => {
     });
   });
 
-  describe("listByAgentConfigurations", () => {
+  describe("listByAgents", () => {
     it("maps each agent to its own skills", async () => {
       const [firstAgent, secondAgent, skillLessAgent] = await Promise.all([
         AgentConfigurationFactory.createTestAgent(testContext.authenticator, {
@@ -2212,26 +2212,21 @@ describe("SkillResource", () => {
         });
       }
 
-      const pairs = await SkillResource.listByAgentConfigurations(
+      const skillsByAgent = await SkillResource.listByAgents(
         testContext.authenticator,
-        [firstAgent, secondAgent, skillLessAgent]
+        [firstAgent.id, secondAgent.id, skillLessAgent.id]
       );
 
-      const skillModelIdsByAgentId = new Map<string, number[]>();
-      for (const { agentConfiguration, skill } of pairs) {
-        const skillModelIds =
-          skillModelIdsByAgentId.get(agentConfiguration.sId) ?? [];
-        skillModelIds.push(skill.id);
-        skillModelIdsByAgentId.set(agentConfiguration.sId, skillModelIds);
-      }
-
-      expect(skillModelIdsByAgentId.get(firstAgent.sId)?.sort()).toEqual(
-        [firstSkill.id, sharedSkill.id].sort()
-      );
-      expect(skillModelIdsByAgentId.get(secondAgent.sId)).toEqual([
-        sharedSkill.id,
-      ]);
-      expect(skillModelIdsByAgentId.has(skillLessAgent.sId)).toBe(false);
+      expect(
+        skillsByAgent
+          .get(firstAgent.id)
+          ?.map((skill) => skill.id)
+          .sort()
+      ).toEqual([firstSkill.id, sharedSkill.id].sort());
+      expect(
+        skillsByAgent.get(secondAgent.id)?.map((skill) => skill.id)
+      ).toEqual([sharedSkill.id]);
+      expect(skillsByAgent.has(skillLessAgent.id)).toBe(false);
     });
 
     it("resolves global skills attached to a workspace agent", async () => {
@@ -2244,21 +2239,20 @@ describe("SkillResource", () => {
         agentConfigurationId: agent.id,
       });
 
-      const pairs = await SkillResource.listByAgentConfigurations(
+      const skillsByAgent = await SkillResource.listByAgents(
         testContext.authenticator,
-        [agent]
+        [agent.id]
       );
 
-      expect(pairs.map(({ skill }) => skill.sId)).toEqual(["frames"]);
+      expect(skillsByAgent.get(agent.id)?.map((skill) => skill.sId)).toEqual([
+        "frames",
+      ]);
     });
 
     it("returns nothing for no agents", async () => {
       expect(
-        await SkillResource.listByAgentConfigurations(
-          testContext.authenticator,
-          []
-        )
-      ).toEqual([]);
+        (await SkillResource.listByAgents(testContext.authenticator, [])).size
+      ).toBe(0);
     });
 
     it("does not return skills the caller cannot read", async () => {
@@ -2286,8 +2280,8 @@ describe("SkillResource", () => {
       );
 
       expect(
-        await SkillResource.listByAgentConfigurations(otherAuth, [agent])
-      ).toEqual([]);
+        (await SkillResource.listByAgents(otherAuth, [agent.id])).size
+      ).toBe(0);
     });
   });
 
