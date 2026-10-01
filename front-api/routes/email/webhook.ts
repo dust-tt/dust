@@ -151,222 +151,220 @@ async function handleInboundEmailWebhook(
   }
 
   const { email, attachmentTempDir } = parsedRes.value;
-  let ownsTempFiles = true;
 
-  try {
-    if (
-      isRelayRequest &&
-      !(await recordEmailRelay(email.threadingHeaders.messageId))
-    ) {
-      logger.info(
-        { senderEmail: email.sender.email },
-        "[email] Ignoring duplicate inbound email relay"
-      );
-      return ctx.json({ success: true });
+  let isDuplicateRelay = false;
+  if (isRelayRequest) {
+    try {
+      isDuplicateRelay = !(await recordEmailRelay(
+        email.threadingHeaders.messageId
+      ));
+    } catch (error) {
+      await cleanupInboundEmailTempFiles(attachmentTempDir);
+      throw error;
     }
+  }
+  if (isDuplicateRelay) {
+    logger.info(
+      { senderEmail: email.sender.email },
+      "[email] Ignoring duplicate inbound email relay"
+    );
+    await cleanupInboundEmailTempFiles(attachmentTempDir);
+    return ctx.json({ success: true });
+  }
 
-    // Acknowledge the webhook now — from here on, all errors should be sent as
-    // a reply to the original sender, not surfaced to SendGrid. We finish the
-    // remaining processing in a detached IIFE so the response goes out
-    // immediately, matching the Next-side `res.status(200).json(...)` then
-    // keep-working pattern. Temp files stay until that work finishes.
-    ownsTempFiles = false;
-    void (async () => {
-      try {
-        const authDecision = evaluateInboundAuth(email);
-        if (!authDecision.authenticated) {
-          logger.warn(
-            {
-              reason: authDecision.reason,
-              headerFromDomain: authDecision.headerFromDomain,
-              spfResult: authDecision.spfResult,
-              spfEnvelopeDomain: authDecision.spfEnvelopeDomain,
-              dkimEntries: authDecision.dkimEntries,
-              senderEmail: email.sender.email,
-              targetEmails: [
-                ...(email.envelope.to ?? []),
-                ...(email.envelope.cc ?? []),
-                ...(email.envelope.bcc ?? []),
-              ].filter((e) => e.endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`)),
-            },
-            "[email] Dropping unauthenticated inbound mail (SPF/DKIM failure)"
-          );
-          return;
-        }
-
-        logger.info(
+  // Acknowledge the webhook now — from here on, all errors should be sent as
+  // a reply to the original sender, not surfaced to SendGrid. We finish the
+  // remaining processing in a detached IIFE so the response goes out
+  // immediately, matching the Next-side `res.status(200).json(...)` then
+  // keep-working pattern. Temp files stay until that work finishes.
+  void (async () => {
+    try {
+      const authDecision = evaluateInboundAuth(email);
+      if (!authDecision.authenticated) {
+        logger.warn(
           {
             reason: authDecision.reason,
             headerFromDomain: authDecision.headerFromDomain,
+            spfResult: authDecision.spfResult,
+            spfEnvelopeDomain: authDecision.spfEnvelopeDomain,
+            dkimEntries: authDecision.dkimEntries,
             senderEmail: email.sender.email,
+            targetEmails: [
+              ...(email.envelope.to ?? []),
+              ...(email.envelope.cc ?? []),
+              ...(email.envelope.bcc ?? []),
+            ].filter((e) => e.endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`)),
           },
-          "[email] Inbound sender authenticated"
+          "[email] Dropping unauthenticated inbound mail (SPF/DKIM failure)"
         );
-
-        const userRes = await userAndWorkspaceFromEmail({
-          email: email.sender.email,
-        });
-        if (userRes.isErr()) {
-          const error = resolveRelayedErrorReply({
-            headers,
-            localError: userRes.error,
-            senderEmail: email.sender.email,
-          });
-          if (shouldRelayToOtherCells(userRes.error)) {
-            const relayRes = await relayEmailToOtherCells(email, {
-              sourceError: error,
-            });
-            if (relayRes.isOk()) {
-              return;
-            }
-            logger.error(
-              {
-                senderEmail: email.sender.email,
-                error: relayRes.error,
-                sourceCell: cellsConfig.getCurrentCell().name,
-              },
-              "[email] Failed to relay inbound email to other cells"
-            );
-          }
-          await replyToError(email, error);
-          return;
-        }
-
-        const { user, workspace } = userRes.value;
-        const errorLogContext = {
-          userId: user.sId,
-          userEmail: user.email,
-          workspaceId: workspace.sId,
-          workspaceName: workspace.name,
-        };
-
-        const targetEmails = [
-          ...(email.envelope.to ?? []),
-          ...(email.envelope.cc ?? []),
-          ...(email.envelope.bcc ?? []),
-        ].filter((e) => e.endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`));
-
-        if (targetEmails.length === 0) {
-          await replyToError(
-            email,
-            {
-              type: "invalid_email_error",
-              message:
-                `Failed to match any valid agent email. ` +
-                `Expected agent email format: {ASSISTANT_NAME}@${ASSISTANT_EMAIL_SUBDOMAIN}.`,
-            },
-            errorLogContext
-          );
-          return;
-        }
-
-        const auth = await Authenticator.fromUserIdAndWorkspaceId(
-          user.sId,
-          workspace.sId
-        );
-
-        if (workspace.metadata?.allowEmailAgents !== true) {
-          await replyToError(
-            email,
-            {
-              type: "invalid_email_error",
-              message:
-                "Email interactions with agents are not enabled for your workspace.",
-            },
-            errorLogContext
-          );
-          return;
-        }
-
-        const emailBlacklistedAgentIdsRes =
-          getEmailBlacklistedAgentIds(workspace);
-        if (emailBlacklistedAgentIdsRes.isErr()) {
-          await replyToError(
-            email,
-            emailBlacklistedAgentIdsRes.error,
-            errorLogContext
-          );
-          return;
-        }
-
-        const allAgentConfigurations = await AgentResource.listReadable(auth);
-        const favorites = await enrichWithFavorites(
-          auth,
-          allAgentConfigurations
-        );
-
-        const agentConfigurations: AgentResource[] = [];
-        for (const targetEmail of targetEmails) {
-          const matchResult = emailAssistantMatcher({
-            allAgentConfigurations,
-            favorites,
-            emailBlacklistedAgentIds: emailBlacklistedAgentIdsRes.value,
-            targetEmail,
-          });
-          if (matchResult.isErr()) {
-            await replyToError(email, matchResult.error, errorLogContext);
-            continue;
-          }
-          agentConfigurations.push(matchResult.value.agentConfiguration);
-        }
-
-        if (agentConfigurations.length === 0) {
-          return;
-        }
-
-        const triggerRes = await triggerFromEmail(auth, {
-          agentConfigurations,
-          email,
-        });
-
-        if (triggerRes.isErr()) {
-          await replyToError(email, triggerRes.error, errorLogContext);
-          return;
-        }
-
-        void emitAuditLogEvent({
-          auth,
-          action: "trigger.email_received",
-          targets: [
-            buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-            buildAuditLogTarget("trigger", {
-              sId: triggerRes.value.conversation.sId,
-              name: triggerRes.value.conversation.sId,
-            }),
-          ],
-          context: getAuditLogContext(auth),
-          metadata: {
-            sender_email: email.sender.email,
-            agent_id: agentConfigurations.map((a) => a.sId).join(","),
-            initiating_user_id: auth.user()?.sId ?? "unknown",
-            initiating_user_email: auth.user()?.email ?? "unknown",
-          },
-        });
-
-        logger.info(
-          {
-            conversationId: triggerRes.value.conversation.sId,
-            workspaceId: workspace.sId,
-            agentCount: agentConfigurations.length,
-          },
-          "[email] Triggered async email processing"
-        );
-      } catch (err) {
-        logger.error(
-          { error: normalizeError(err) },
-          "[email] Unhandled error in async email processing"
-        );
-      } finally {
-        await cleanupInboundEmailTempFiles(attachmentTempDir);
+        return;
       }
-    })();
 
-    return ctx.json({ success: true });
-  } finally {
-    if (ownsTempFiles) {
+      logger.info(
+        {
+          reason: authDecision.reason,
+          headerFromDomain: authDecision.headerFromDomain,
+          senderEmail: email.sender.email,
+        },
+        "[email] Inbound sender authenticated"
+      );
+
+      const userRes = await userAndWorkspaceFromEmail({
+        email: email.sender.email,
+      });
+      if (userRes.isErr()) {
+        const error = resolveRelayedErrorReply({
+          headers,
+          localError: userRes.error,
+          senderEmail: email.sender.email,
+        });
+        if (shouldRelayToOtherCells(userRes.error)) {
+          const relayRes = await relayEmailToOtherCells(email, {
+            sourceError: error,
+          });
+          if (relayRes.isOk()) {
+            return;
+          }
+          logger.error(
+            {
+              senderEmail: email.sender.email,
+              error: relayRes.error,
+              sourceCell: cellsConfig.getCurrentCell().name,
+            },
+            "[email] Failed to relay inbound email to other cells"
+          );
+        }
+        await replyToError(email, error);
+        return;
+      }
+
+      const { user, workspace } = userRes.value;
+      const errorLogContext = {
+        userId: user.sId,
+        userEmail: user.email,
+        workspaceId: workspace.sId,
+        workspaceName: workspace.name,
+      };
+
+      const targetEmails = [
+        ...(email.envelope.to ?? []),
+        ...(email.envelope.cc ?? []),
+        ...(email.envelope.bcc ?? []),
+      ].filter((e) => e.endsWith(`@${ASSISTANT_EMAIL_SUBDOMAIN}`));
+
+      if (targetEmails.length === 0) {
+        await replyToError(
+          email,
+          {
+            type: "invalid_email_error",
+            message:
+              `Failed to match any valid agent email. ` +
+              `Expected agent email format: {ASSISTANT_NAME}@${ASSISTANT_EMAIL_SUBDOMAIN}.`,
+          },
+          errorLogContext
+        );
+        return;
+      }
+
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+
+      if (workspace.metadata?.allowEmailAgents !== true) {
+        await replyToError(
+          email,
+          {
+            type: "invalid_email_error",
+            message:
+              "Email interactions with agents are not enabled for your workspace.",
+          },
+          errorLogContext
+        );
+        return;
+      }
+
+      const emailBlacklistedAgentIdsRes =
+        getEmailBlacklistedAgentIds(workspace);
+      if (emailBlacklistedAgentIdsRes.isErr()) {
+        await replyToError(
+          email,
+          emailBlacklistedAgentIdsRes.error,
+          errorLogContext
+        );
+        return;
+      }
+
+      const allAgentConfigurations = await AgentResource.listReadable(auth);
+      const favorites = await enrichWithFavorites(auth, allAgentConfigurations);
+
+      const agentConfigurations: AgentResource[] = [];
+      for (const targetEmail of targetEmails) {
+        const matchResult = emailAssistantMatcher({
+          allAgentConfigurations,
+          favorites,
+          emailBlacklistedAgentIds: emailBlacklistedAgentIdsRes.value,
+          targetEmail,
+        });
+        if (matchResult.isErr()) {
+          await replyToError(email, matchResult.error, errorLogContext);
+          continue;
+        }
+        agentConfigurations.push(matchResult.value.agentConfiguration);
+      }
+
+      if (agentConfigurations.length === 0) {
+        return;
+      }
+
+      const triggerRes = await triggerFromEmail(auth, {
+        agentConfigurations,
+        email,
+      });
+
+      if (triggerRes.isErr()) {
+        await replyToError(email, triggerRes.error, errorLogContext);
+        return;
+      }
+
+      void emitAuditLogEvent({
+        auth,
+        action: "trigger.email_received",
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("trigger", {
+            sId: triggerRes.value.conversation.sId,
+            name: triggerRes.value.conversation.sId,
+          }),
+        ],
+        context: getAuditLogContext(auth),
+        metadata: {
+          sender_email: email.sender.email,
+          agent_id: agentConfigurations.map((a) => a.sId).join(","),
+          initiating_user_id: auth.user()?.sId ?? "unknown",
+          initiating_user_email: auth.user()?.email ?? "unknown",
+        },
+      });
+
+      logger.info(
+        {
+          conversationId: triggerRes.value.conversation.sId,
+          workspaceId: workspace.sId,
+          agentCount: agentConfigurations.length,
+        },
+        "[email] Triggered async email processing"
+      );
+    } catch (err) {
+      logger.error(
+        { error: normalizeError(err) },
+        "[email] Unhandled error in async email processing"
+      );
+    } finally {
       await cleanupInboundEmailTempFiles(attachmentTempDir);
     }
-  }
+  })();
+
+  return ctx.json({ success: true });
 }
 
 /** @ignoreswagger */
