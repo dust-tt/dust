@@ -1,4 +1,6 @@
 import {
+  indexAgentSearchWorkflow,
+  indexSkillSearchWorkflow,
   refreshSearchUsageWorkflow,
   refreshWorkspaceSearchUsageWorkflow,
   reindexCodeDefinedSearchWorkflow,
@@ -6,6 +8,10 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  indexAgentSearchActivity: vi.fn(),
+  indexSkillSearchActivity: vi.fn(),
+  setHandler: vi.fn(),
+  sleep: vi.fn(),
   listWorkspaceIdsActivity: vi.fn(),
   refreshWorkspaceSearchUsageActivity: vi.fn(),
   reindexCodeDefinedSkillsActivity: vi.fn(),
@@ -15,6 +21,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@temporalio/workflow", () => ({
   defineSignal: (name: string) => ({ name }),
   proxyActivities: () => mocks,
+  setHandler: mocks.setHandler,
+  sleep: mocks.sleep,
 }));
 
 describe("refreshSearchUsageWorkflow", () => {
@@ -101,4 +109,59 @@ describe("reindexCodeDefinedSearchWorkflow", () => {
 
     await expect(reindexCodeDefinedSearchWorkflow()).rejects.toBe(error);
   });
+});
+
+// The deletion signal must cause another activity after an older indexing activity completes.
+it.each([
+  {
+    workflow: () =>
+      indexSkillSearchWorkflow({
+        workspaceId: "workspace-1",
+        skillId: "skill-1",
+      }),
+    activity: mocks.indexSkillSearchActivity,
+    target: { workspaceId: "workspace-1", skillId: "skill-1" },
+  },
+  {
+    workflow: () =>
+      indexAgentSearchWorkflow({
+        workspaceId: "workspace-1",
+        agentId: "agent-1",
+      }),
+    activity: mocks.indexAgentSearchActivity,
+    target: { workspaceId: "workspace-1", agentId: "agent-1" },
+  },
+])("processes a signal received during an indexing activity", async ({
+  workflow,
+  activity,
+  target,
+}) => {
+  vi.resetAllMocks();
+  let signal = async () => {};
+  mocks.setHandler.mockImplementation((_definition, handler) => {
+    signal = handler;
+    // signalWithStart delivers the initial signal when the handler is installed.
+    void signal();
+  });
+  mocks.sleep.mockResolvedValue(undefined);
+  const events: string[] = [];
+  activity
+    .mockImplementationOnce(async () => {
+      events.push("older write started");
+      await signal();
+      events.push("older write finished");
+    })
+    .mockImplementationOnce(async () => {
+      events.push("missing-resource cleanup");
+    });
+
+  await workflow();
+
+  expect(events).toEqual([
+    "older write started",
+    "older write finished",
+    "missing-resource cleanup",
+  ]);
+  expect(activity).toHaveBeenCalledTimes(2);
+  expect(activity).toHaveBeenLastCalledWith(target);
 });

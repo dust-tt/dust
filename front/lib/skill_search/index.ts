@@ -44,18 +44,14 @@ export async function deleteSkillDocument({
   skillId: string;
 }): Promise<Result<void, ElasticsearchError>> {
   return withEs(async (client) => {
-    await client.deleteByQuery({
-      index: SKILL_SEARCH_ALIAS_NAME,
-      query: {
-        bool: {
-          filter: [
-            { term: { workspace_id: workspaceId } },
-            { term: { skill_id: skillId } },
-          ],
-        },
+    // Delete by ID so recently indexed documents do not need a search refresh first.
+    await client.delete(
+      {
+        index: SKILL_SEARCH_ALIAS_NAME,
+        id: makeSkillDocumentId({ workspaceId, skillId }),
       },
-      refresh: false,
-    });
+      { ignore: [404] }
+    );
   });
 }
 

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   deleteByQuery: vi.fn(),
+  delete: vi.fn(),
   update: vi.fn(),
   bulk: vi.fn(),
 }));
@@ -60,6 +61,7 @@ const document: SkillSearchDocument = {
 describe("skill search indexing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.delete.mockResolvedValue({ result: "deleted" });
     mocks.deleteByQuery.mockResolvedValue({
       failures: [],
       timed_out: false,
@@ -210,18 +212,10 @@ describe("skill search indexing", () => {
       skillId: "skill-1",
     });
 
-    expect(mocks.deleteByQuery).toHaveBeenCalledWith({
-      index: "front.skills",
-      query: {
-        bool: {
-          filter: [
-            { term: { workspace_id: "workspace-1" } },
-            { term: { skill_id: "skill-1" } },
-          ],
-        },
-      },
-      refresh: false,
-    });
+    expect(mocks.delete).toHaveBeenCalledWith(
+      { index: "front.skills", id: "workspace-1_skill-1" },
+      { ignore: [404] }
+    );
   });
 
   it("scopes workspace deletion by workspace", async () => {
@@ -235,6 +229,7 @@ describe("skill search indexing", () => {
   });
 
   it("propagates client errors for skill and workspace deletion", async () => {
+    mocks.delete.mockRejectedValue(new Error("Deletion failed"));
     mocks.deleteByQuery.mockRejectedValue(new Error("Deletion failed"));
 
     const skillResult = await deleteSkillDocument({

@@ -1,3 +1,4 @@
+import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -10,13 +11,16 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("skill search indexing activity", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.spyOn(skillIndex, "deleteSkillDocument").mockResolvedValue(
+      new Ok(undefined)
+    );
     vi.spyOn(skillIndex, "indexSkillDocument").mockResolvedValue(
       new Ok(undefined)
     );
@@ -163,7 +167,7 @@ describe("skill search indexing activity", () => {
     );
   });
 
-  it("upserts active and archived skills but skips suggested and missing skills", async () => {
+  it("upserts active and archived skills, removes missing skills, and skips suggestions", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({
       role: "admin",
     });
@@ -193,6 +197,9 @@ describe("skill search indexing activity", () => {
       skillId: suggestion.sId,
     });
     expect(skillIndex.indexSkillDocument).toHaveBeenCalledTimes(3);
+    expect(skillIndex.deleteSkillDocument).toHaveBeenCalledExactlyOnceWith(
+      target
+    );
   });
 
   it("does not index a pending skill", async () => {
@@ -208,5 +215,17 @@ describe("skill search indexing activity", () => {
     });
 
     expect(skillIndex.indexSkillDocument).not.toHaveBeenCalled();
+  });
+  it("propagates missing-resource cleanup failures so Temporal retries", async () => {
+    const { workspace } = await createResourceTest({ role: "admin" });
+    const error = new ElasticsearchError("query_error", "Deletion failed");
+    vi.mocked(skillIndex.deleteSkillDocument).mockResolvedValue(new Err(error));
+
+    await expect(
+      indexSkillSearchActivity({
+        workspaceId: workspace.sId,
+        skillId: "missing-skill",
+      })
+    ).rejects.toBe(error);
   });
 });

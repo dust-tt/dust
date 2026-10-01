@@ -26,6 +26,10 @@ import { reindexCodeDefinedSkills } from "@app/lib/skill_search/index_code_defin
 import { deleteUserDocument, indexUserDocument } from "@app/lib/user_search";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import {
+  launchIndexAgentSearchWorkflow,
+  launchIndexSkillSearchWorkflow,
+} from "@app/temporal/es_indexation/client";
 
 export async function indexUserSearchActivity({
   userId,
@@ -103,6 +107,7 @@ export async function indexUserSearchActivity({
 /**
  * @cc [owner:aubin-tchoi,label:backend;security] searchable-skill-index-projection
  * Index active or archived custom skills, including those the internal admin cannot read.
+ * Delete the workspace-scoped document when the skill no longer exists.
  */
 export async function indexSkillSearchActivity({
   workspaceId,
@@ -118,8 +123,15 @@ export async function indexSkillSearchActivity({
     withTools: true,
     withFileAttachments: false,
   });
+  if (!skill) {
+    const result = await deleteSkillDocument({ workspaceId, skillId });
+    if (result.isErr()) {
+      throw result.error;
+    }
+    return;
+  }
   // Suggested and pending skills are not indexed: they are not ready to be used yet.
-  if (!skill || skill.status === "suggested" || skill.status === "pending") {
+  if (skill.status === "suggested" || skill.status === "pending") {
     return;
   }
 
@@ -154,6 +166,15 @@ export async function deleteSkillSearchActivity({
   if (deleteResult.isErr()) {
     throw deleteResult.error;
   }
+
+  // Run cleanup after any in-flight indexing activity on the debounced workflow.
+  const indexResult = await launchIndexSkillSearchWorkflow({
+    workspaceId,
+    skillId,
+  });
+  if (indexResult.isErr()) {
+    throw indexResult.error;
+  }
 }
 
 export async function deleteWorkspaceSkillSearchActivity({
@@ -168,8 +189,9 @@ export async function deleteWorkspaceSkillSearchActivity({
 }
 
 /**
- * @cc [owner:sfriquet,label:backend;security] searchable-agent-index-projection
+ * @cc [owner:aubin-tchoi,label:backend;security] searchable-agent-index-projection
  * Index custom agents that are out of the builder, including those the internal admin cannot read.
+ * Delete the workspace-scoped document when the agent no longer exists.
  */
 export async function indexAgentSearchActivity({
   workspaceId,
@@ -180,10 +202,16 @@ export async function indexAgentSearchActivity({
 }): Promise<void> {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const agent = await AgentResource.fetchById(auth, agentId);
+  if (!agent) {
+    const result = await deleteAgentDocument({ workspaceId, agentId });
+    if (result.isErr()) {
+      throw result.error;
+    }
+    return;
+  }
   // Global agents are code-defined, and draft and pending agents are not indexed: they only exist
   // inside the builder, behind its "try" button or before the first save.
   if (
-    !agent ||
     agent.scope === "global" ||
     agent.status === "draft" ||
     agent.status === "pending"
@@ -246,6 +274,15 @@ export async function deleteAgentSearchActivity({
   const deleteResult = await deleteAgentDocument({ workspaceId, agentId });
   if (deleteResult.isErr()) {
     throw deleteResult.error;
+  }
+
+  // Run cleanup after any in-flight indexing activity on the debounced workflow.
+  const indexResult = await launchIndexAgentSearchWorkflow({
+    workspaceId,
+    agentId,
+  });
+  if (indexResult.isErr()) {
+    throw indexResult.error;
   }
 }
 

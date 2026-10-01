@@ -43,18 +43,14 @@ export async function deleteAgentDocument({
   agentId: string;
 }): Promise<Result<void, ElasticsearchError>> {
   return withEs(async (client) => {
-    await client.deleteByQuery({
-      index: AGENT_SEARCH_ALIAS_NAME,
-      query: {
-        bool: {
-          filter: [
-            { term: { workspace_id: workspaceId } },
-            { term: { agent_id: agentId } },
-          ],
-        },
+    // Delete by ID so recently indexed documents do not need a search refresh first.
+    await client.delete(
+      {
+        index: AGENT_SEARCH_ALIAS_NAME,
+        id: makeAgentDocumentId({ workspaceId, agentId }),
       },
-      refresh: false,
-    });
+      { ignore: [404] }
+    );
   });
 }
 

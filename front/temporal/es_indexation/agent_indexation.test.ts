@@ -1,16 +1,20 @@
 import * as agentIndex from "@app/lib/agent_search";
+import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { indexAgentSearchActivity } from "@app/temporal/es_indexation/activities";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("agent search indexing activity", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.spyOn(agentIndex, "deleteAgentDocument").mockResolvedValue(
+      new Ok(undefined)
+    );
     vi.spyOn(agentIndex, "indexAgentDocument").mockResolvedValue(
       new Ok(undefined)
     );
@@ -119,7 +123,7 @@ describe("agent search indexing activity", () => {
     expect(agentIndex.indexAgentDocument).not.toHaveBeenCalled();
   });
 
-  it("is a no-op for an agent that no longer resolves", async () => {
+  it("deletes the document for an agent that no longer resolves", async () => {
     const { workspace } = await createResourceTest({ role: "admin" });
 
     await indexAgentSearchActivity({
@@ -128,5 +132,21 @@ describe("agent search indexing activity", () => {
     });
 
     expect(agentIndex.indexAgentDocument).not.toHaveBeenCalled();
+    expect(agentIndex.deleteAgentDocument).toHaveBeenCalledExactlyOnceWith({
+      workspaceId: workspace.sId,
+      agentId: "agent-that-does-not-exist",
+    });
+  });
+  it("propagates missing-resource cleanup failures so Temporal retries", async () => {
+    const { workspace } = await createResourceTest({ role: "admin" });
+    const error = new ElasticsearchError("query_error", "Deletion failed");
+    vi.mocked(agentIndex.deleteAgentDocument).mockResolvedValue(new Err(error));
+
+    await expect(
+      indexAgentSearchActivity({
+        workspaceId: workspace.sId,
+        agentId: "missing-agent",
+      })
+    ).rejects.toBe(error);
   });
 });

@@ -5,11 +5,13 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import * as searchUsage from "@app/lib/search_usage/usage";
 import * as skillIndex from "@app/lib/skill_search";
 import {
+  deleteAgentSearchActivity,
   deleteSkillSearchActivity,
   deleteWorkspaceSkillSearchActivity,
   listWorkspaceIdsActivity,
   refreshWorkspaceSearchUsageActivity,
 } from "@app/temporal/es_indexation/activities";
+import * as indexationClient from "@app/temporal/es_indexation/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -187,5 +189,42 @@ describe("skill search indexation", () => {
       workspaceId: workspace.sId,
     });
     await expect(deletion).rejects.toBe(error);
+  });
+  it("signals debounced skill indexing after deletion", async () => {
+    const target = { workspaceId: "workspace-1", skillId: "skill-1" };
+    const deleted = vi
+      .spyOn(skillIndex, "deleteSkillDocument")
+      .mockResolvedValue(new Ok(undefined));
+    const signaled = vi
+      .spyOn(indexationClient, "launchIndexSkillSearchWorkflow")
+      .mockResolvedValue(new Ok(undefined));
+
+    await deleteSkillSearchActivity(target);
+
+    expect(deleted).toHaveBeenCalledExactlyOnceWith(target);
+    expect(signaled).toHaveBeenCalledExactlyOnceWith(target);
+    expect(deleted).toHaveBeenCalledBefore(signaled);
+    const error = new Error("Signal failed");
+    signaled.mockResolvedValue(new Err(error));
+    await expect(deleteSkillSearchActivity(target)).rejects.toBe(error);
+  });
+
+  it("signals debounced agent indexing after deletion", async () => {
+    const target = { workspaceId: "workspace-1", agentId: "agent-1" };
+    const deleted = vi
+      .spyOn(agentIndex, "deleteAgentDocument")
+      .mockResolvedValue(new Ok(undefined));
+    const signaled = vi
+      .spyOn(indexationClient, "launchIndexAgentSearchWorkflow")
+      .mockResolvedValue(new Ok(undefined));
+
+    await deleteAgentSearchActivity(target);
+
+    expect(deleted).toHaveBeenCalledExactlyOnceWith(target);
+    expect(signaled).toHaveBeenCalledExactlyOnceWith(target);
+    expect(deleted).toHaveBeenCalledBefore(signaled);
+    const error = new Error("Signal failed");
+    signaled.mockResolvedValue(new Err(error));
+    await expect(deleteAgentSearchActivity(target)).rejects.toBe(error);
   });
 });

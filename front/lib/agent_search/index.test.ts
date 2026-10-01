@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   deleteByQuery: vi.fn(),
+  delete: vi.fn(),
   update: vi.fn(),
   bulk: vi.fn(),
 }));
@@ -65,6 +66,7 @@ const document: AgentSearchDocument = {
 describe("agent search indexing", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.delete.mockResolvedValue({ result: "deleted" });
     mocks.deleteByQuery.mockResolvedValue({
       failures: [],
       timed_out: false,
@@ -177,18 +179,10 @@ describe("agent search indexing", () => {
       agentId: "agent-1",
     });
 
-    expect(mocks.deleteByQuery).toHaveBeenCalledWith({
-      index: "front.agents",
-      query: {
-        bool: {
-          filter: [
-            { term: { workspace_id: "workspace-1" } },
-            { term: { agent_id: "agent-1" } },
-          ],
-        },
-      },
-      refresh: false,
-    });
+    expect(mocks.delete).toHaveBeenCalledWith(
+      { index: "front.agents", id: "workspace-1_agent-1" },
+      { ignore: [404] }
+    );
   });
 
   it("scopes workspace deletion by workspace", async () => {
@@ -202,6 +196,7 @@ describe("agent search indexing", () => {
   });
 
   it("propagates client errors for agent and workspace deletion", async () => {
+    mocks.delete.mockRejectedValue(new Error("Deletion failed"));
     mocks.deleteByQuery.mockRejectedValue(new Error("Deletion failed"));
 
     const agentResult = await deleteAgentDocument({
