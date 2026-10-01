@@ -22,6 +22,7 @@ import {
 import { toolCallFootprintTexts } from "@app/lib/api/assistant/agent_message_consumption_attribution/tool_footprint";
 import { getAttachmentCapabilityContext } from "@app/lib/api/assistant/conversation/attachment_capabilities";
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
+import { inferenceRegionForEndpointRegion } from "@app/lib/api/llm/transitionLLM";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { Authenticator } from "@app/lib/auth";
 import { buildAgentMessageBillingPlan } from "@app/lib/credits/agent_message_billing";
@@ -74,7 +75,12 @@ type TokenCounts = {
 
 type AttributionPricedUsage = Pick<
   RunUsageWithRunKeyType,
-  "completionTokens" | "isBatch" | "modelId" | "promptTokens" | "serviceTier"
+  | "completionTokens"
+  | "isBatch"
+  | "modelId"
+  | "promptTokens"
+  | "region"
+  | "serviceTier"
 >;
 
 const ToolOutputOffloadDescriptorSchema = z.object({
@@ -501,6 +507,9 @@ function cacheNaiveAttributedCreditAmountMicro({
 }): number {
   const promptTokensForRate = Math.max(usage.promptTokens, 1);
   const completionTokensForRate = Math.max(usage.completionTokens, 1);
+  const inferenceRegion = usage.region
+    ? inferenceRegionForEndpointRegion(usage.region)
+    : "global";
   const inputCostMicroUsd = computeTokensCostForUsageInMicroUsd({
     modelId: usage.modelId,
     promptTokens: promptTokensForRate,
@@ -509,6 +518,7 @@ function cacheNaiveAttributedCreditAmountMicro({
     cacheCreationTokens: null,
     isBatch: usage.isBatch,
     serviceTier: usage.serviceTier,
+    inferenceRegion,
   });
   const totalCostMicroUsd = computeTokensCostForUsageInMicroUsd({
     modelId: usage.modelId,
@@ -518,6 +528,7 @@ function cacheNaiveAttributedCreditAmountMicro({
     cacheCreationTokens: null,
     isBatch: usage.isBatch,
     serviceTier: usage.serviceTier,
+    inferenceRegion,
   });
 
   return creditAmountMicroFromCostMicroUsd(
@@ -641,6 +652,9 @@ makeScript(
           cacheCreationTokens: null,
           isBatch: attempt.isBatch,
           serviceTier: attempt.serviceTier,
+          inferenceRegion: attempt.region
+            ? inferenceRegionForEndpointRegion(attempt.region)
+            : "global",
         });
         runUsageAttemptRows.push({
           runOrder: runUsageAttemptRows.length + 1,

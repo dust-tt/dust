@@ -3,7 +3,11 @@ import {
   buildRunUsageAttribution,
   buildToolAttribution,
 } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
-import { GPT_5_MINI_MODEL_ID } from "@app/types/assistant/models/openai";
+import { EUROPE, GLOBAL } from "@app/lib/model_constructors/types/regions";
+import {
+  GPT_5_MINI_MODEL_ID,
+  GPT_6_ASTRA_MODEL_ID,
+} from "@app/types/assistant/models/openai";
 import { describe, expect, it } from "vitest";
 
 const DEFAULT_PROMPT_TOKENS_COUNT = 100;
@@ -24,6 +28,7 @@ const usage = (
   completionTokens: DEFAULT_COMPLETION_TOKENS_COUNT,
   reasoningTokens: null,
   isBatch: false,
+  region: null,
   ...overrides,
 });
 
@@ -177,6 +182,48 @@ describe("agent message consumption attribution domain", () => {
     for (const [index, credits] of defaultCredits.entries()) {
       expect(credits).toBeGreaterThan(0);
       expect(Math.abs(flexCredits[index] - credits / 2)).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it("prices every attributed row at the regional rate for EU usage", () => {
+    const toolCalls = [
+      {
+        tool: "search",
+        measuredOutputTokensCount: TOOL_CALL_OUTPUT_TOKENS_COUNT,
+      },
+    ];
+    const attributeAtRegion = (region: RunUsageForAttribution["region"]) => {
+      const runUsage = usage({
+        modelId: GPT_6_ASTRA_MODEL_ID,
+        promptTokens: FLEX_PROMPT_TOKENS_COUNT,
+        completionTokens: COMPLETION_TOKENS_COUNT_WITH_REASONING,
+        reasoningTokens: REASONING_TOKENS_COUNT,
+        region,
+      });
+      const runAttribution = buildRunUsageAttribution({
+        usage: runUsage,
+        toolCalls,
+      });
+      const toolAttribution = buildToolAttribution({
+        usage: runUsage,
+        toolCall: runAttribution.toolCalls[0],
+        inputTokensCount: TOOL_RESULT_INPUT_TOKENS_COUNT,
+        directCreditAmountMicro: null,
+      });
+
+      return [...runAttribution.modelItems, toolAttribution].map(
+        (item) => item.grossAttributedCreditAmountMicro
+      );
+    };
+
+    const globalCredits = attributeAtRegion(GLOBAL);
+    const euCredits = attributeAtRegion(EUROPE);
+
+    expect(attributeAtRegion(null)).toEqual(globalCredits);
+    expect(euCredits).toHaveLength(globalCredits.length);
+    for (const [index, credits] of globalCredits.entries()) {
+      expect(credits).toBeGreaterThan(0);
+      expect(Math.abs(euCredits[index] - credits * 1.1)).toBeLessThanOrEqual(1);
     }
   });
 
