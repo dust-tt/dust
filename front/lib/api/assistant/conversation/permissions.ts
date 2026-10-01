@@ -303,10 +303,9 @@ export async function rebuildConversationRequirements(
 
   // The requirements must cover every agent of the conversation, including those the caller holds
   // no verb on anymore, so the `canFetch` drop is skipped (see `agent-dangerous-fetch`).
-  const agents = await AgentResource.dangerouslyFetchByIds(
-    auth,
-    agentConfigurationIds
-  );
+  const agents = await AgentResource.fetchByIds(auth, agentConfigurationIds, {
+    dangerouslySkipFetchCheck: true,
+  });
   const workspaceModelId = auth.getNonNullableWorkspace().id;
 
   await updateConversationRequirements(auth, {

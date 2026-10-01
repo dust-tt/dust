@@ -1080,7 +1080,9 @@ async function loadMentionedAgents(
     return [];
   }
 
-  return AgentResource.dangerouslyFetchByIds(auth, agentIds);
+  return AgentResource.fetchByIds(auth, agentIds, {
+    dangerouslySkipFetchCheck: true,
+  });
 }
 
 /**
