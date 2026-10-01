@@ -97,6 +97,19 @@ def expect_errno(codes, operation):
         raise AssertionError("operation unexpectedly succeeded")
 
 
+def eventually(operation):
+    """Other mounts may retain metadata for up to one second."""
+    deadline = time.monotonic() + 1.2
+    while True:
+        try:
+            assert operation() is not False
+            return
+        except (AssertionError, OSError):
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(0.01)
+
+
 def session(endpoint, state, grants):
     return api(endpoint, state["workspace_key"], "/sessions", {"workspace_id": state["workspace_id"], "grants": grants})
 
@@ -149,7 +162,12 @@ def exercise(args):
                 expect_errno({errno.ENOENT}, lambda: (b / "work").stat())
                 expect_errno({errno.EOPNOTSUPP}, lambda: (shared_a / "symlink").symlink_to("target"))
                 file_a, file_b = shared_a / "file", shared_b / "file"
+                # Negative dentries must allow local creates immediately and remote creates soon.
+                expect_errno({errno.ENOENT}, lambda: file_a.stat())
+                expect_errno({errno.ENOENT}, lambda: file_b.stat())
                 file_a.write_bytes(b"hello world")
+                assert file_a.read_bytes() == b"hello world"
+                eventually(lambda: file_b.read_bytes() == b"hello world")
                 with open(file_a, "r+b", buffering=0) as locked:
                     expect_errno({errno.EOPNOTSUPP}, lambda: fcntl.flock(locked, fcntl.LOCK_EX | fcntl.LOCK_NB))
                     expect_errno({errno.EOPNOTSUPP}, lambda: fcntl.lockf(locked, fcntl.LOCK_EX | fcntl.LOCK_NB))
@@ -158,18 +176,16 @@ def exercise(args):
                 expect_errno({errno.ENOSPC}, lambda: os.fsync(failed))
                 expect_errno({errno.ENOSPC}, lambda: os.write(failed, b"must not publish"))
                 expect_errno({errno.ENOSPC}, lambda: os.close(failed))
-                assert file_b.read_bytes() == b"hello world"
+                eventually(lambda: file_b.read_bytes() == b"hello world")
                 with open(file_b, "rb", buffering=0) as open_reader:
                     assert open_reader.read() == b"hello world"
                     with open(file_a, "r+b", buffering=0) as writer:
                         writer.seek(6)
                         writer.write(b"DFS")
                         os.fsync(writer.fileno())
-                    open_reader.seek(0)
-                    assert open_reader.read() == b"hello DFSld"
+                    eventually(lambda: (open_reader.seek(0), open_reader.read())[1] == b"hello DFSld")
                     file_a.write_bytes(b"new")
-                    open_reader.seek(0)
-                    assert open_reader.read() == b"new"
+                    eventually(lambda: (open_reader.seek(0), open_reader.read())[1] == b"new")
                 ino = file_b.stat().st_ino
                 file_b.rename(shared_b / "moved")
                 assert (shared_b / "moved").stat().st_ino == ino
@@ -177,7 +193,7 @@ def exercise(args):
                 with open(file_a, "r+b", buffering=0) as writer:
                     writer.truncate(8)
                     os.fsync(writer.fileno())
-                assert file_b.read_bytes() == b"new" + bytes(5)
+                eventually(lambda: file_b.read_bytes() == b"new" + bytes(5))
                 file_a.write_bytes(b"")
                 def append(path, byte):
                     with open(path, "ab", buffering=0) as writer:
@@ -187,17 +203,17 @@ def exercise(args):
                     futures = [pool.submit(append, file_a, b"A"), pool.submit(append, file_b, b"B")]
                     for future in futures:
                         future.result()
-                assert file_a.read_bytes() in (b"A"*16+b"B"*16, b"B"*16+b"A"*16)
+                eventually(lambda: file_a.read_bytes() in (b"A"*16+b"B"*16, b"B"*16+b"A"*16))
                 os.setxattr(file_b, "user.test", b"\x00binary\xff", flags=os.XATTR_CREATE)
-                assert os.getxattr(file_a, "user.test") == b"\x00binary\xff"
+                eventually(lambda: os.getxattr(file_a, "user.test") == b"\x00binary\xff")
                 assert "user.test" in os.listxattr(file_a)
                 expect_errno({errno.EEXIST}, lambda: os.setxattr(file_a, "user.test", b"x", flags=os.XATTR_CREATE))
                 os.removexattr(file_b, "user.test")
-                expect_errno({errno.ENODATA}, lambda: os.getxattr(file_a, "user.test"))
+                eventually(lambda: expect_errno({errno.ENODATA}, lambda: os.getxattr(file_a, "user.test")))
                 file_b.chmod(0o640)
-                assert file_a.stat().st_mode & 0o777 == 0o640
+                eventually(lambda: file_a.stat().st_mode & 0o777 == 0o640)
                 os.utime(file_b, ns=(1_234_000_000_012, 2_345_000_000_067))
-                assert file_a.stat().st_mtime_ns == 2_345_000_000_067
+                eventually(lambda: file_a.stat().st_mtime_ns == 2_345_000_000_067)
                 (shared_b / "sub").mkdir()
                 with open(file_a, "rb", buffering=0) as opened:
                     file_a.rename(shared_a / "sub" / "moved")
@@ -210,13 +226,13 @@ def exercise(args):
                 expect_errno({errno.ENOTEMPTY}, lambda: (shared_b / "sub").rmdir())
                 (shared_b / "sub" / "moved").unlink()
                 (shared_b / "sub").rmdir()
-                # Revocation must affect a warmed inode and an already-open handle immediately.
+                # Revocation must affect warmed inodes and open handles within the cache freshness bound.
                 secret = shared_a / "revoked"
                 secret.write_bytes(b"secret")
                 fd = os.open(shared_b / "revoked", os.O_RDONLY)
                 assert os.read(fd, 6) == b"secret"
                 grant(args.endpoint, state, state["shared_id"], False)
-                expect_errno({errno.ENOENT}, lambda: (shared_b / "revoked").stat())
+                eventually(lambda: expect_errno({errno.ENOENT}, lambda: (shared_b / "revoked").stat()))
                 os.lseek(fd, 0, os.SEEK_SET)
                 expect_errno({errno.ENOENT}, lambda: os.read(fd, 6))
                 expect_errno({errno.ENOENT}, lambda: os.fsync(fd))
@@ -226,15 +242,15 @@ def exercise(args):
                     pass
                 assert list((b / "shared").iterdir()) == []
                 grant(args.endpoint, state, state["shared_id"], True)
-                assert (shared_b / "revoked").read_bytes() == b"secret"
+                eventually(lambda: (shared_b / "revoked").read_bytes() == b"secret")
                 if args.pagination:
                     many = shared_a / "many"
                     many.mkdir()
                     names = [f"{i:03d}-" + "n" * 220 for i in range(80)]
                     for name in names:
                         (many / name).mkdir()
-                    assert sorted(os.listdir(shared_b / "many")) == names
-                    assert sorted(os.listdir(shared_b / "many")) == names
+                    eventually(lambda: sorted(os.listdir(shared_b / "many")) == names)
+                    eventually(lambda: sorted(os.listdir(shared_b / "many")) == names)
                     for name in names:
                         (many / name).rmdir()
                     many.rmdir()
@@ -260,7 +276,7 @@ def exercise(args):
                 # Closure invalidates existing handles, too; unmount still frees local bookkeeping.
                 fd = os.open(shared_b / "small" / "0000.txt", os.O_RDONLY)
                 api(args.endpoint, reader["session_key"], "/sessions/" + reader["session_id"], method="DELETE")
-                expect_errno({errno.EACCES}, lambda: os.read(fd, 1))
+                eventually(lambda: expect_errno({errno.EACCES}, lambda: os.pread(fd, 1, 0)))
                 try:
                     os.close(fd)
                 except OSError:

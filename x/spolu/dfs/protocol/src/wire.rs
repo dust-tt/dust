@@ -3,6 +3,30 @@ use base64::{Engine, engine::general_purpose::STANDARD};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
+/// @swaggerschema CacheCheckRequest in server/openapi.yaml.
+#[derive(Clone, Serialize, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+pub struct CacheCheckRequest {
+    pub revision: Option<u64>,
+}
+
+/// @swaggerschema CacheCheckResponse in server/openapi.yaml.
+#[derive(Clone, Serialize, Deserialize)]
+pub struct CacheCheckResponse {
+    pub revision: u64,
+    pub fresh_for_ms: u64,
+}
+
+/// @swaggerschema ReadObjectRequest in server/openapi.yaml.
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ReadObjectRequest {
+    pub object_id: String,
+    pub content_version: Option<String>,
+    pub offset: u64,
+    pub length: u64,
+}
+
 /// @swaggerschema StatRequest in server/openapi.yaml.
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

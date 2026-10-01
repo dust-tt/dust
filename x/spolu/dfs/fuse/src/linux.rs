@@ -7,11 +7,11 @@ use std::{
         Arc,
         atomic::{AtomicU64, Ordering},
     },
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 use base64::{Engine, engine::general_purpose::STANDARD};
-use dfs_client::{Client, Error};
+use dfs_client::{CachedClient, Client, Error};
 use dfs_protocol::{
     model::{RequestId, Timestamp},
     wire::*,
@@ -27,12 +27,38 @@ const CHUNK: u32 = 1024 * 1024;
 const PAGE: usize = 64;
 const MAX_HANDLES: usize = 256;
 
+fn cache_ttl(deadline: Option<Instant>) -> Duration {
+    deadline.map_or(Duration::ZERO, |deadline| {
+        deadline.saturating_duration_since(Instant::now())
+    })
+}
+
+// Inode zero is the FUSE protocol's cacheable negative lookup; its attributes are ignored.
+const NEGATIVE_ENTRY: FileAttr = FileAttr {
+    ino: INodeNo(0),
+    size: 0,
+    blocks: 0,
+    atime: UNIX_EPOCH,
+    mtime: UNIX_EPOCH,
+    ctime: UNIX_EPOCH,
+    crtime: UNIX_EPOCH,
+    kind: FileType::RegularFile,
+    perm: 0,
+    nlink: 0,
+    uid: 0,
+    gid: 0,
+    rdev: 0,
+    blksize: 4096,
+    flags: 0,
+};
+
 struct File {
     ino: u64,
     remote: String,
     sequence: u64,
     failed: Option<Errno>,
     closed: bool,
+    read: bool,
 }
 
 #[derive(Default)]
@@ -45,11 +71,13 @@ struct Directory {
 }
 
 /// @cc [owner:spolu,label:security] conservative-fuse-caching
-/// Return zero entry/attribute TTLs and direct-I/O file handles. Do not enable kernel writeback,
-/// directory caching, or client authorization/content caches. Every operation that exposes data
-/// MUST reach the server under the mount's original session; in-flight responses may finish.
+/// Kernel entry/attribute TTLs MUST expire by the client freshness deadline captured before reading
+/// metadata. Use direct I/O without kernel writeback. Cached reads MUST use the mount's fixed
+/// session; stale metadata requires fresh server checks.
+/// Read-only local handles MUST recheck authorized attributes for each read. In-flight responses
+/// may finish after invalidation; kernel metadata may remain visible until its captured deadline.
 pub struct Filesystem {
-    client: Client,
+    client: CachedClient,
     inodes: Mutex<Inodes>,
     files: Mutex<HashMap<u64, Arc<Mutex<File>>>>,
     directories: Mutex<HashMap<u64, Arc<Mutex<Directory>>>>,
@@ -61,7 +89,7 @@ pub struct Filesystem {
 
 impl Filesystem {
     pub fn new(client: Client, read_only: bool) -> dfs_client::Result<Self> {
-        client.session()?;
+        let client = CachedClient::new(client)?;
         client.stat("root")?;
         Ok(Self {
             client,
@@ -162,6 +190,7 @@ impl Filesystem {
             sequence: 0,
             failed: None,
             closed: false,
+            read,
         }));
         {
             let mut files = self.files.lock();
@@ -171,14 +200,27 @@ impl Filesystem {
             self.inodes.lock().pin(ino.0).ok_or(Errno::ESTALE)?;
             files.insert(number, file.clone());
         }
-        let opened = self.client.open(&OpenFileRequest {
-            object_id: self.object(ino)?,
-            read,
-            write,
-            append: flags & libc::O_APPEND != 0,
-            truncate,
-            request_id: truncate.then(|| RequestId::generate().to_string()),
-        });
+        let opened = if !write && !truncate {
+            self.client.stat(&self.object(ino)?).and_then(|attributes| {
+                if is_dir(&attributes) {
+                    return Err(Error::IsDirectory);
+                }
+                Ok(OpenFileResponse {
+                    handle_id: String::new(),
+                    sequence: 0,
+                    attributes,
+                })
+            })
+        } else {
+            self.client.open(&OpenFileRequest {
+                object_id: self.object(ino)?,
+                read,
+                write,
+                append: flags & libc::O_APPEND != 0,
+                truncate,
+                request_id: truncate.then(|| RequestId::generate().to_string()),
+            })
+        };
         match opened {
             Ok(response) => {
                 let mut file = file.lock();
@@ -202,9 +244,25 @@ impl Filesystem {
         if let Some(error) = file.failed {
             return Err(error);
         }
+        if file.remote.is_empty() {
+            return self.stat(ino).map(|_| ());
+        }
         self.client
             .fsync(&file.remote, file.sequence)
             .map_err(errno)
+    }
+
+    /// @cc [owner:spolu,label:backend] flush-acknowledged-writes
+    /// Flush MUST wait behind handle edits and report their sticky errors. Successful edits already
+    /// acknowledge server publication, so flush MUST NOT submit another fsync just to close a file.
+    /// Closing may release an inaccessible handle; explicit fsync still checks the server.
+    fn flush_file(&self, ino: INodeNo, fh: FileHandle) -> Result<()> {
+        let file = self.file(ino, fh)?;
+        let file = file.lock();
+        if file.closed {
+            return Err(Errno::EBADF);
+        }
+        file.failed.map_or(Ok(()), Err)
     }
 
     /// @cc [owner:spolu,label:backend] fuse-write-acknowledgement
@@ -333,12 +391,15 @@ impl fuser::Filesystem for Filesystem {
     fn destroy(&mut self) {
         for (_, file) in self.files.get_mut().drain() {
             let file = file.lock();
-            if let Err(error) = self.client.close(&file.remote) {
+            if !file.remote.is_empty()
+                && let Err(error) = self.client.close(&file.remote)
+            {
                 eprintln!("dfs-fuse: handle cleanup: {error}");
             }
         }
     }
     fn lookup(&self, _req: &Request, parent: INodeNo, name: &OsStr, reply: ReplyEntry) {
+        let deadline = self.client.cache_deadline().ok().flatten();
         let result = (|| {
             let name = name_str(name)?;
             if name == "." || name == ".." {
@@ -363,7 +424,10 @@ impl fuser::Filesystem for Filesystem {
             self.entry(parent, object)
         })();
         match result {
-            Ok(attr) => reply.entry(&TTL, &attr, Generation(0)),
+            Ok(attr) => reply.entry(&cache_ttl(deadline), &attr, Generation(0)),
+            Err(Errno::ENOENT) => {
+                reply.entry(&cache_ttl(deadline), &NEGATIVE_ENTRY, Generation(0));
+            }
             Err(e) => reply.error(e),
         }
     }
@@ -371,8 +435,9 @@ impl fuser::Filesystem for Filesystem {
         self.inodes.lock().forget(ino.0, nlookup);
     }
     fn getattr(&self, _req: &Request, ino: INodeNo, _fh: Option<FileHandle>, reply: ReplyAttr) {
+        let deadline = self.client.cache_deadline().ok().flatten();
         match self.stat(ino).and_then(|object| self.attr(ino, &object)) {
-            Ok(attr) => reply.attr(&TTL, &attr),
+            Ok(attr) => reply.attr(&cache_ttl(deadline), &attr),
             Err(e) => reply.error(e),
         }
     }
@@ -533,19 +598,12 @@ impl fuser::Filesystem for Filesystem {
             if file.closed {
                 return Err(Errno::EBADF);
             }
-            let mut bytes = Vec::with_capacity(size as usize);
+            if !file.read {
+                return Err(Errno::EBADF);
+            }
             self.client
-                .read(
-                    &ReadFileRequest {
-                        handle_id: file.remote.clone(),
-                        content_version: None,
-                        offset,
-                        length: u64::from(size),
-                    },
-                    &mut bytes,
-                )
-                .map_err(errno)?;
-            Ok(bytes)
+                .read_object(&self.object(ino)?, offset, u64::from(size))
+                .map_err(errno)
         })();
         match result {
             Ok(bytes) => reply.data(&bytes),
@@ -581,7 +639,7 @@ impl fuser::Filesystem for Filesystem {
         _owner: LockOwner,
         reply: ReplyEmpty,
     ) {
-        empty_reply(self.sync_file(ino, fh), reply);
+        empty_reply(self.flush_file(ino, fh), reply);
     }
     fn fsync(
         &self,
@@ -607,7 +665,11 @@ impl fuser::Filesystem for Filesystem {
         let result = if let Some(file) = removed {
             let mut file = file.lock();
             file.closed = true;
-            let result = self.client.close(&file.remote).map_err(errno);
+            let result = if file.remote.is_empty() {
+                Ok(())
+            } else {
+                self.client.close(&file.remote).map_err(errno)
+            };
             self.inodes.lock().unpin(file.ino);
             if file.ino != ino.0 {
                 Err(Errno::EBADF)

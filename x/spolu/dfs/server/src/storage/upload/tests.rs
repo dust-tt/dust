@@ -70,6 +70,7 @@ async fn streams_exceed_budget_without_collecting_and_fail_without_publication()
     storage.transfers = UploadConfig {
         upload_memory_mib: 12,
         upload_concurrency: 4,
+        ..Default::default()
     }
     .budget()?
     .into();
@@ -125,6 +126,7 @@ async fn shared_budget_bounds_active_and_waiting_transfers_before_polling_bodies
     storage.transfers = UploadConfig {
         upload_memory_mib: 12,
         upload_concurrency: 4,
+        ..Default::default()
     }
     .budget()?
     .into();
@@ -179,6 +181,38 @@ async fn idle_input_times_out_and_releases_budget() -> Result<()> {
     ensure!(matches!(result, Err(UploadError::Input)));
     ensure!(storage.transfers.active.available_permits() == 4);
     storage.close().await
+}
+
+#[tokio::test]
+async fn reads_use_smaller_reservations_without_exceeding_the_shared_memory_budget() -> Result<()> {
+    let budget = UploadConfig::default().budget()?;
+    let mut reads = Vec::new();
+    for _ in 0..16 {
+        reads.push(budget.acquire_read().await?);
+    }
+    assert_eq!(budget.memory_mib.available_permits(), 32);
+    let mut waiting = Box::pin(budget.acquire_read());
+    assert!(waiting.as_mut().now_or_never().is_none());
+    drop(reads.pop());
+    reads.push(waiting.await?);
+    drop(reads);
+    let mut writes = Vec::new();
+    for _ in 0..4 {
+        writes.push(budget.acquire().await?);
+    }
+    let mut reads = Vec::new();
+    for _ in 0..8 {
+        reads.push(budget.acquire_read().await?);
+    }
+    assert_eq!(budget.memory_mib.available_permits(), 0);
+    let mut waiting = Box::pin(budget.acquire_read());
+    assert!(waiting.as_mut().now_or_never().is_none());
+    drop(reads.pop());
+    drop(waiting.await?);
+    drop(reads);
+    drop(writes);
+    assert_eq!(budget.memory_mib.available_permits(), 64);
+    Ok(())
 }
 
 #[tokio::test]

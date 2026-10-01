@@ -61,8 +61,10 @@ remain retained for already-started reads. Backend failures after headers termin
 
 Random writes, append, and truncate reserve the resulting logical file size from a shared scratch
 quota before streaming the old version into anonymous disk. Patch bytes stream onto disk, followed
-by a fresh streamed blob upload. Defaults: 1 GiB scratch, system temporary directory, 16 admitted file
-jobs, 4096 handles globally/256 per session. Configure `DFS_SCRATCH_BYTES`, `DFS_SCRATCH_DIR`, and
+by a fresh streamed blob upload. Defaults: 1 GiB scratch, system temporary directory, 16 active file
+jobs plus 256 waiting jobs, 4096 handles globally/256 per session. Queued jobs do not poll streaming
+bodies or reserve scratch/transfer resources, and reauthorize on execution. Configure
+`DFS_SCRATCH_BYTES`, `DFS_SCRATCH_DIR`, and
 `DFS_FILE_MUTATIONS`. Quota/disk exhaustion returns capacity errors. Preparation times out after
 15 minutes; scratch disappears on close/process death and is never required for recovery.
 

@@ -149,9 +149,22 @@ impl Cache {
             }
             self.durable.store(last.id, Ordering::Release);
         }
+        let mut cached_bytes = 0;
         for blob in &uploads {
             if let Some(local) = &blob.local {
-                self.staging.retain_clean(local.clone())?;
+                let key = super::super::keys::Keyspace::new(blob.workspace().clone())?
+                    .blob(blob.object_id(), blob.content().version);
+                match self.staging.cache_uploaded(&key, local).await {
+                    Ok(bytes) => cached_bytes += bytes,
+                    Err(_) => tracing::warn!("could not prefill disposable content cache"),
+                }
+                if cached_bytes >= 1024 * 1024 {
+                    if let Some(disk) = &self.staging.clean_disk {
+                        disk.wait().await;
+                    }
+                    cached_bytes = 0;
+                }
+                self.staging.retain_clean(key, local.clone())?;
             }
         }
         let (memory_bytes, disk_bytes) = self.staging.usage();

@@ -213,8 +213,9 @@ Large-file transfers stay within the configured memory budget and recovery needs
 the gate before adding dfs server caching; slow synchronous performance is expected at this stage.
 
 Implemented `dfs-protocol`, the portable blocking `dfs-client`, and Linux-only `dfs-fuse` using
-`fuser` 0.18. Native macOS builds/tests need no FUSE driver; macFUSE is excluded. The mount takes a
-session-key file, keeps zero metadata/name TTLs, and uses direct I/O without kernel writeback.
+`fuser` 0.18. Native macOS builds/tests need no FUSE driver; macFUSE is excluded. The baseline mount
+takes a session-key file, uses zero metadata/name TTLs, and direct I/O without kernel writeback.
+Section 11 adds client caching and bounded kernel metadata TTLs.
 Inodes retain visible parents; directory paging uses bounded cursors. Writes/retries, sticky errors,
 and flush/fsync use the server protocol. Synthetic root/shared entries remain read-only.
 
@@ -304,11 +305,43 @@ Sections 8–9 remain deferred; no client cache or subscription changes are incl
 
 ## 11. Client caching, batching, and workload performance
 
+- [x] Fix clean-cache admission/eviction for corpora larger than 8,192 files; retain bounded LRU
+  entries, expose the entry budget, and verify hot reads and dirty pins under pressure.
+- [x] Memoize metadata/ancestor authorization by exact workspace sequence and grant set; verify
+  moves, revocation, snapshot isolation, and workspace separation with warm caches.
+- [x] Give reads separate concurrency and smaller reservations within the shared transfer budget;
+  add route timing/request counters and read-cache hit/miss metrics.
 - [ ] Compare the synchronous and cached paths on small-file untar, recursive stat/list,
   nearby-folder reads, and mostly uncontended writes from hundreds of clients.
-- [ ] Add client metadata/content caches and kernel cache settings with subscription invalidation,
+- [x] Measure 1/16/100 independent sessions through the real metadata API and SlateDB in-process;
+  reduce false conflicts from simultaneous workspace-sequence retries with bounded jittered backoff.
+  Keep mounted mixed-content workloads and network/persistence costs in the comparison above.
+- [x] Extend the local diagnostic to stat/lookup/list/content reads and 4 KiB writes/fsync in both
+  write modes. Admit bursts through a bounded 256-job queue while retaining 16 active jobs; verify
+  cancellation, overflow, and authorization changes while waiting. HTTP/FUSE/GCS remain unmeasured.
+- [x] Add client metadata/content caches and kernel cache settings with revision-check invalidation,
   bounded staleness, and session recreation rules.
-- [ ] Add directory attribute prefetch and folder-local read-ahead where measurements justify them.
+- [x] Cap each client's revision-check starts to ten per second during write bursts, preserving
+  the original freshness deadline and immediate local mutation invalidation.
+- [ ] Rerun the mounted corpus benchmark and two-mount checks after contention backoff and
+  revision-check pacing/file-job queuing; current sandbox restrictions prevent Docker and listening
+  sockets.
+- [x] Prefill child lookup/stat caches from directory listing attributes.
+- [x] Run jd's unchanged correctness-checked corpus benchmark; compare server/client caches and
+  kernel metadata reuse against the NFS reference, recording persistence drain and cache conditions.
+- [x] Start with empty SST and immutable-content disk caches on every server startup; recover only
+  from GCS and verify old local data is never reused, including after grant changes.
+- [ ] Rerun jd's benchmark with a cold server and fresh mount after the latest cache/concurrency
+  changes. Record one current results table; prior retained-disk measurements are not applicable.
+- [ ] Measure a cold-start server near GCS;
+  investigate metadata locality or folder prefetch if remote misses still dominate.
+- [x] Cache negative kernel lookups within the same freshness deadline; let flush acknowledge
+  completed server writes while preserving sticky errors. Explicit fsync still checks the server.
+- [ ] Further reduce close overhead if it matters in end-to-end workloads. Missing-path checks now
+  beat the reference; writable close still pays a FUSE round trip and server-handle cleanup.
+- [ ] Add folder-local content read-ahead where measurements justify it.
+- [ ] Replace whole-workspace metadata invalidation with targeted updates if measurements justify it;
+  measure concurrent writers before enabling kernel content caching.
 - [ ] Batch/pipeline small-file operations while keeping publication boundaries, retry behavior, and
   per-file serialization explicit.
 - [ ] Evaluate persistent chunking or deltas if repeated full-file snapshots across persistence

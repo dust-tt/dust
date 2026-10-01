@@ -51,10 +51,7 @@ pub(crate) async fn publish_content(
         std::slice::from_ref(blob),
         || session.check_active(),
         |view| async move {
-            let read = NamespaceRead {
-                view,
-                grants: &session.grants,
-            };
+            let read = NamespaceRead::from_view(view, &session.grants);
             if let Some(record) = read
                 .view
                 .operation(request_id)

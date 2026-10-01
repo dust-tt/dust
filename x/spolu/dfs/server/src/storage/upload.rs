@@ -19,6 +19,7 @@ pub const MAX_INPUT_CHUNK_BYTES: usize = 1024 * 1024;
 pub const MAX_FILE_BYTES: u64 = 10_000 * UPLOAD_PART_BYTES as u64;
 // One part, one incoming frame, and headroom for bounded multipart bookkeeping.
 const TRANSFER_MEMORY_MIB: usize = 12;
+const READ_MEMORY_MIB: usize = 2;
 const MAX_WAITING_TRANSFERS: usize = 16;
 const INPUT_IDLE_TIMEOUT: Duration = Duration::from_secs(30);
 
@@ -31,6 +32,9 @@ pub struct UploadConfig {
     /// Maximum simultaneous blob transfers, further limited by the memory budget.
     #[arg(long, env = "DFS_UPLOAD_CONCURRENCY", default_value_t = 4)]
     pub upload_concurrency: usize,
+    /// Maximum concurrent content reads, sharing the buffer budget at 2 MiB per active stream.
+    #[arg(long, env = "DFS_READ_CONCURRENCY", default_value_t = 16)]
+    pub read_concurrency: usize,
 }
 
 impl Default for UploadConfig {
@@ -38,6 +42,7 @@ impl Default for UploadConfig {
         Self {
             upload_memory_mib: 64,
             upload_concurrency: 4,
+            read_concurrency: 16,
         }
     }
 }
@@ -51,9 +56,23 @@ impl UploadConfig {
             slots > 0 && slots <= Semaphore::MAX_PERMITS - MAX_WAITING_TRANSFERS,
             "upload budget must allow at least one 12 MiB transfer"
         );
+        let read_slots = self
+            .read_concurrency
+            .min(self.upload_memory_mib / READ_MEMORY_MIB);
+        ensure!(
+            (1..=256).contains(&read_slots),
+            "read concurrency must be between 1 and 256"
+        );
+        ensure!(
+            self.upload_memory_mib <= u32::MAX as usize,
+            "transfer memory budget too large"
+        );
         Ok(TransferBudget {
             active: Arc::new(Semaphore::new(slots)),
             admitted: Arc::new(Semaphore::new(slots + MAX_WAITING_TRANSFERS)),
+            read_active: Arc::new(Semaphore::new(read_slots)),
+            read_admitted: Arc::new(Semaphore::new(read_slots + MAX_WAITING_TRANSFERS)),
+            memory_mib: Arc::new(Semaphore::new(self.upload_memory_mib)),
         })
     }
 }
@@ -61,29 +80,57 @@ impl UploadConfig {
 pub(super) struct TransferBudget {
     active: Arc<Semaphore>,
     admitted: Arc<Semaphore>,
+    read_active: Arc<Semaphore>,
+    read_admitted: Arc<Semaphore>,
+    memory_mib: Arc<Semaphore>,
 }
 
 pub(crate) struct TransferLease {
     _admitted: OwnedSemaphorePermit,
     _active: OwnedSemaphorePermit,
+    _memory: OwnedSemaphorePermit,
 }
 
 impl TransferBudget {
     pub(super) async fn acquire(&self) -> Result<TransferLease, UploadError> {
-        let admitted = self
-            .admitted
+        self.acquire_from(&self.admitted, &self.active, TRANSFER_MEMORY_MIB as u32)
+            .await
+    }
+
+    pub(super) async fn acquire_read(&self) -> Result<TransferLease, UploadError> {
+        self.acquire_from(
+            &self.read_admitted,
+            &self.read_active,
+            READ_MEMORY_MIB as u32,
+        )
+        .await
+    }
+
+    async fn acquire_from(
+        &self,
+        admitted: &Arc<Semaphore>,
+        active: &Arc<Semaphore>,
+        memory_mib: u32,
+    ) -> Result<TransferLease, UploadError> {
+        let admitted = admitted
             .clone()
             .try_acquire_owned()
             .map_err(|_| UploadError::Capacity)?;
-        let active = self
-            .active
+        let active = active
             .clone()
             .acquire_owned()
+            .await
+            .map_err(|_| UploadError::Capacity)?;
+        let memory = self
+            .memory_mib
+            .clone()
+            .acquire_many_owned(memory_mib)
             .await
             .map_err(|_| UploadError::Capacity)?;
         Ok(TransferLease {
             _admitted: admitted,
             _active: active,
+            _memory: memory,
         })
     }
 }
@@ -329,12 +376,8 @@ impl UploadedBlob {
             return Ok(());
         }
         let local = self.local.as_ref().context("missing staged bytes")?;
-        let final_path = Path::from(format!(
-            "v1/{}/{}/{}",
-            hex::encode(self.workspace.as_str().as_bytes()),
-            self.object_id,
-            self.content.version
-        ));
+        let final_path = super::keys::Keyspace::new(self.workspace.clone())?
+            .blob(self.object_id, self.content.version);
         let temporary = Path::from(format!(
             "staging/{}/{}",
             hex::encode(self.workspace.as_str().as_bytes()),

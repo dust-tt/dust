@@ -6,14 +6,16 @@ publish.workspace = true
 
 [dependencies]
 anyhow = "1"
-axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
+axum = { version = "0.8", default-features = false, features = ["http1", "json", "matched-path", "tokio"] }
 base64 = "0.23"
 clap = { version = "4", features = ["derive", "env"] }
 dfs-protocol = { path = "../protocol" }
 futures = "0.3"
+foyer = { version = "0.22.6", features = ["serde"] }
 getrandom = "0.4"
 hex = "0.4"
 im = { version = "15", default-features = false }
+lru = "0.18"
 postcard = { version = "1", default-features = false, features = ["use-std"] }
 serde = { version = "1", features = ["derive"] }
 sha2 = "0.10"

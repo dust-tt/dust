@@ -3,6 +3,217 @@ use crate::storage::{CacheConfig, WriteMode};
 use futures::TryStreamExt;
 
 #[tokio::test]
+async fn queued_edits_recheck_revoked_grants_and_closed_sessions_before_reading_input() -> Result<()>
+{
+    for close_session in [false, true] {
+        let directory = tempfile::tempdir()?;
+        let mut storage = Storage::open(Arc::new(InMemory::new()), &"queued".parse()?).await?;
+        storage.enable_cache(CacheConfig {
+            write_mode: WriteMode::Cached,
+            cache_dir: directory.path().to_owned(),
+            ..Default::default()
+        })?;
+        let f = Fixture::from_storage(
+            Arc::new(storage),
+            FileConfig {
+                file_mutations: 1,
+                ..Default::default()
+            },
+        )
+        .await?;
+        let handle = open_handle(&f, f.files[0].id, false).await?;
+        let (release, wait) = tokio::sync::oneshot::channel();
+        let (started, start) = tokio::sync::oneshot::channel();
+        let mut held = Box::pin(f.state.files.run(async move {
+            let _ = started.send(());
+            wait.await.map_err(|_| ApiError::Internal)?;
+            Ok(())
+        }));
+        ensure!(futures::poll!(held.as_mut()).is_pending());
+        start.await?;
+        let polled = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let observed = polled.clone();
+        let body = Body::from_stream(stream::once(async move {
+            observed.store(true, std::sync::atomic::Ordering::SeqCst);
+            Ok::<_, std::io::Error>(Bytes::from_static(b"changed"))
+        }));
+        let mut writing = Box::pin(write_body(
+            &f,
+            &handle,
+            RequestId::generate(),
+            1,
+            0,
+            7,
+            body,
+        ));
+        ensure!(futures::poll!(writing.as_mut()).is_pending());
+        if close_session {
+            let (_, session) = call(
+                &f.app,
+                "GET",
+                "/sessions/current",
+                Some(&f.key),
+                Value::Null,
+            )
+            .await?;
+            ensure!(
+                call(
+                    &f.app,
+                    "DELETE",
+                    &format!("/sessions/{}", text(&session, "session_id")?),
+                    Some(&f.key),
+                    Value::Null
+                )
+                .await?
+                .0 == StatusCode::NO_CONTENT
+            );
+        } else {
+            ensure!(
+                f.patch_grants(f.shared.id, 0, json!({"reader":false}))
+                    .await?
+                    .0
+                    == StatusCode::OK
+            );
+        }
+        let _ = release.send(());
+        held.await?;
+        ensure!(
+            writing.await?.0
+                == if close_session {
+                    StatusCode::UNAUTHORIZED
+                } else {
+                    StatusCode::NOT_FOUND
+                }
+        );
+        ensure!(!polled.load(std::sync::atomic::Ordering::SeqCst));
+        ensure!(
+            f.storage
+                .workspace(&f.workspace)?
+                .read_view()
+                .await?
+                .object(f.files[0].id)
+                .await?
+                == Some(f.files[0].clone())
+        );
+        f.close().await?;
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn warm_namespace_memo_is_scoped_and_reauthorizes_after_moves_and_revocation() -> Result<()> {
+    let mut storage = Storage::open(Arc::new(InMemory::new()), &"memo".parse()?).await?;
+    storage.enable_cache(CacheConfig {
+        write_mode: WriteMode::Cached,
+        ..Default::default()
+    })?;
+    storage.pause_persistence(true);
+    let f = Fixture::from_storage(Arc::new(storage), FileConfig::default()).await?;
+    let grants = ["reader".to_owned()].into();
+    let old = NamespaceRead::new(&f.storage, &f.workspace, &grants).await?;
+    for _ in 0..2 {
+        for file in &f.files {
+            assert_eq!(
+                NamespaceRead::new(&f.storage, &f.workspace, &grants)
+                    .await?
+                    .stat(file.id)
+                    .await?,
+                *file
+            );
+        }
+    }
+    let denied = ["unrelated".to_owned()].into();
+    assert!(matches!(
+        NamespaceRead::new(&f.storage, &f.workspace, &denied)
+            .await?
+            .stat(f.files[0].id)
+            .await,
+        Err(ApiError::NotFound)
+    ));
+
+    // Reuse an object ID and mutation sequence in another workspace to exercise cache scoping.
+    let other = WorkspaceId::new("other")?;
+    let root = f
+        .storage
+        .create_workspace(&other, [0; 32], &Default::default())
+        .await?
+        .context("root")?;
+    let mut directory = f.shared.clone();
+    directory.workspace_id = other.clone();
+    directory.parent = Some(ParentLink {
+        parent_id: root,
+        name: "private".parse()?,
+    });
+    f.storage
+        .workspace(&other)?
+        .commit(MetadataBatch {
+            mutations: vec![
+                MetadataMutation::PutChild(directory.directory_entry().context("entry")?),
+                MetadataMutation::PutObject(directory.into()),
+            ],
+            ..Default::default()
+        })
+        .await?;
+    assert!(matches!(
+        NamespaceRead::new(&f.storage, &other, &grants)
+            .await?
+            .stat(f.shared.id)
+            .await,
+        Err(ApiError::NotFound)
+    ));
+
+    let owner = f.session_key(&["owner"]).await?;
+    let (status, _) = call(
+        &f.app,
+        "POST",
+        "/objects/rename",
+        Some(&owner),
+        json!({
+            "object_id": f.files[0].id.to_string(), "expected_metadata_revision": 0,
+            "parent_id": f.elsewhere.id.to_string(), "name": "moved.txt"
+        }),
+    )
+    .await?;
+    assert_eq!(status, StatusCode::OK);
+    assert!(matches!(
+        NamespaceRead::new(&f.storage, &f.workspace, &grants)
+            .await?
+            .stat(f.files[0].id)
+            .await,
+        Err(ApiError::NotFound)
+    ));
+    assert_eq!(old.stat(f.files[0].id).await?, f.files[0]);
+
+    let shared = f
+        .storage
+        .workspace(&f.workspace)?
+        .read_view()
+        .await?
+        .object(f.shared.id)
+        .await?
+        .context("shared")?;
+    crate::namespace::update_grants(
+        &f.storage,
+        &f.workspace,
+        shared.id,
+        shared.metadata_revision.get(),
+        [("reader".to_owned(), false)].into(),
+    )
+    .await?;
+    assert!(matches!(
+        NamespaceRead::new(&f.storage, &f.workspace, &grants)
+            .await?
+            .stat(f.files[1].id)
+            .await,
+        Err(ApiError::NotFound)
+    ));
+    assert_eq!(old.stat(f.files[1].id).await?, f.files[1]);
+    drop(old);
+    f.storage.pause_persistence(false);
+    f.close().await
+}
+
+#[tokio::test]
 async fn cached_visibility_retries_grants_and_paging_do_not_wait_for_persistence() -> Result<()> {
     let store = Arc::new(InMemory::new());
     let mut storage = Storage::open(store.clone(), &"cached".parse()?).await?;

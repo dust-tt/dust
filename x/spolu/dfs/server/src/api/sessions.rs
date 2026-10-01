@@ -67,9 +67,10 @@ pub(super) async fn create_session(
     let body: CreateSessionRequest = json_body(request, &state).await?;
     let workspace = WorkspaceId::new(body.workspace_id).map_err(|_| ApiError::InvalidInput)?;
     access::authorize_workspace(state.storage()?, &workspace, key).await?;
+    let cache_scope = state.storage()?.cache_scope(&workspace)?;
     let (session, session_key) = state
         .access
-        .create_session(workspace, grants(body.grants)?)
+        .create_session(workspace, grants(body.grants)?, cache_scope)
         .await?;
     Ok(no_store((
         StatusCode::CREATED,

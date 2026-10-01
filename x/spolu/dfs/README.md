@@ -75,7 +75,13 @@ do not cause an endless startup retry loop. Run only one server against a given 
 
 SlateDB 0.17 stores WAL/SST/manifest objects under `<prefix>/metadata/`; immutable file blobs live
 under `<prefix>/blobs/`. The default synchronous mode has no dfs content staging or metadata overlay;
-enable them with `--write-mode cached`. Both modes use a bounded SlateDB block cache. See
+enable them with `--write-mode cached`. Both modes use a bounded SlateDB block cache. Cached GCS
+mode keeps disposable read caches under `--cache-dir`, scoped by bucket and prefix: a 256 MiB
+SlateDB SST-cache target (`--metadata-cache-disk-bytes`) and a 512 MiB immutable-content disk cache
+(`--read-cache-disk-bytes`). Zero disables either cache; enabled content caching requires at least
+64 MiB. These budgets are separate from staging. Every server start clears both disk caches and
+recovers only from GCS; no previous local data is reused. Small files prefill the content cache
+after durable publication, while large files populate it on reads. See
 [server/STORAGE.md](server/STORAGE.md) for the internal API, versioned format, and durability rules.
 
 ## Workspaces and sessions
@@ -229,6 +235,8 @@ separately. See [OpenAPI](server/openapi.yaml) for exact fields and headers.
 | `PUT /files/write` | Stream bytes with `Dfs-Handle-Id`, `Dfs-Request-Id`, `Dfs-Write-Sequence`, `Dfs-Write-Offset`, `Dfs-Write-Length`. |
 | `POST /files/truncate` | Set `{handle_id, request_id, sequence, size_bytes}`; growth supplies zeros. |
 | `POST /files/fsync` | Wait for `{handle_id, through_sequence}`; report unresolved failures. |
+| `POST /objects/read` | Read an authorized current range by object ID without a server handle. |
+| `POST /sessions/cache` | Long-poll workspace revision; cached authorization is fresh for at most one second. |
 | `POST /files/close` | Release `{handle_id}`. |
 | `POST /files/status` | Recover the published receipt for `{object_id, request_id}`; null may mean still in flight. |
 
@@ -247,10 +255,14 @@ request ID, and consumes sequence one. A failed handle must retry its last reque
 closed/reopened. Fsync cannot acknowledge writes the server has not received; close is not fsync.
 
 Random edits assemble a full version on anonymous disk, then upload it. Defaults: 1 GiB total scratch
-logical size (`DFS_SCRATCH_BYTES`), system temporary directory (`DFS_SCRATCH_DIR`), and 16 admitted
-file jobs (`DFS_FILE_MUTATIONS`). Handles cap at 4096/server and 256/session. Transfers share a 64 MiB
-buffer budget (`DFS_UPLOAD_MEMORY_MIB`), four active slots (`DFS_UPLOAD_CONCURRENCY`), and 16 waiters;
-each active transfer reserves 12 MiB. These bounds exclude SlateDB, transport, and allocator overhead.
+logical size (`DFS_SCRATCH_BYTES`), system temporary directory (`DFS_SCRATCH_DIR`), and 16 active
+file jobs (`DFS_FILE_MUTATIONS`) plus 256 waiting jobs. Waiting jobs do not poll streaming bodies or
+reserve scratch/transfer resources; they reauthorize on execution. Handles cap at 4096/server and
+256/session. Transfers share a 64 MiB
+buffer budget (`DFS_UPLOAD_MEMORY_MIB`). Uploads/write bodies reserve 12 MiB each with four active
+slots (`DFS_UPLOAD_CONCURRENCY`); reads reserve 2 MiB each with 16 active slots
+(`DFS_READ_CONCURRENCY`). Each pool admits at most 16 additional waiters. These bounds exclude
+SlateDB, transport, and allocator overhead.
 Resource exhaustion returns `capacity_exhausted`. Scratch files are not recovery state; acknowledged
 changes recover entirely from GCS. This synchronous baseline rewrites the whole blob on each edit.
 

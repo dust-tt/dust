@@ -2,9 +2,10 @@ use std::{str::FromStr, sync::Arc};
 
 use anyhow::{Context, Result, bail};
 use clap::Args;
+use sha2::{Digest, Sha256};
 use slatedb::{
     Db, Settings,
-    config::{CompactorOptions, GarbageCollectorOptions},
+    config::{CompactorOptions, GarbageCollectorOptions, ObjectStoreCacheOptions},
     object_store::{ObjectStore, gcp::GoogleCloudStorageBuilder, path::Path, prefix::PrefixStore},
 };
 use thiserror::Error;
@@ -51,13 +52,80 @@ impl StorageConfig {
             (Some(bucket), Some(prefix)) => {
                 let store = gcs_store(bucket)?;
                 let transfers = self.uploads.budget()?;
-                let mut storage = Storage::open(store, prefix).await?;
+                let mut storage = Storage::open_with_object_cache(
+                    store,
+                    prefix,
+                    self.metadata_cache_options(bucket, prefix)?,
+                )
+                .await?;
                 storage.transfers = Arc::new(transfers);
-                storage.enable_cache(self.cache.clone())?;
+                let clean_disk = if self.cache.write_mode == WriteMode::Cached
+                    && self.cache.read_cache_disk_bytes > 0
+                {
+                    let root = self.fresh_cache_directory("dfs-content", bucket, prefix)?;
+                    Some(Arc::new(
+                        cache::clean::CleanCache::open(&root, self.cache.read_cache_disk_bytes)
+                            .await?,
+                    ))
+                } else {
+                    None
+                };
+                storage.enable_cache_with_disk(self.cache.clone(), clean_disk)?;
                 Ok(Some(storage))
             }
             _ => bail!("GCS storage requires both --gcs-bucket and --gcs-prefix"),
         }
+    }
+
+    /// @cc [owner:spolu,label:security;backend] disposable-metadata-cache
+    /// Disk metadata caches MUST be scoped by bucket and database prefix and reset before opening
+    /// SlateDB. Cache only immutable SSTs through SlateDB's cache policy; recovery MUST read the
+    /// remote store without reusing any cache or pending publication from the previous process.
+    fn metadata_cache_options(
+        &self,
+        bucket: &str,
+        prefix: &StoragePrefix,
+    ) -> Result<ObjectStoreCacheOptions> {
+        if self.cache.write_mode != WriteMode::Cached || self.cache.metadata_cache_disk_bytes == 0 {
+            return Ok(ObjectStoreCacheOptions::default());
+        }
+        let root = self.fresh_cache_directory("dfs-metadata", bucket, prefix)?;
+        Ok(ObjectStoreCacheOptions {
+            root_folder: Some(root),
+            max_cache_size_bytes: Some(self.cache.metadata_cache_disk_bytes),
+            cache_on_flush: true,
+            cache_on_compaction: true,
+            max_open_file_handles: 256,
+            ..Default::default()
+        })
+    }
+
+    /// @cc [owner:spolu,label:backend] reset-owned-read-cache
+    /// Call only at startup, before opening the cache, under the single-owner assumption. Remove
+    /// only the named bucket/prefix-scoped read cache, leave other scopes untouched, and fail startup
+    /// on cleanup errors. The returned directory MUST be empty; prior cache bytes are never reused.
+    fn fresh_cache_directory(
+        &self,
+        name: &str,
+        bucket: &str,
+        prefix: &StoragePrefix,
+    ) -> Result<std::path::PathBuf> {
+        let identity = hex::encode(Sha256::digest(format!("{bucket}/{}", prefix.0).as_bytes()));
+        let root = self.cache.cache_dir.join(name).join(identity);
+        match std::fs::remove_dir_all(&root) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error).context("reset read cache"),
+        }
+        let mut directory = std::fs::DirBuilder::new();
+        directory.recursive(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::DirBuilderExt;
+            directory.mode(0o700);
+        }
+        directory.create(&root).context("create read cache")?;
+        Ok(root)
     }
 }
 
@@ -131,6 +199,7 @@ pub struct Storage {
     transfers: Arc<upload::TransferBudget>,
     content_locks: locks::ObjectLockTable,
     request_locks: locks::ObjectLockTable,
+    cache_scopes: crate::coherence::Scopes,
 }
 
 /// A trusted internal handle. Session authorization is required before constructing or using it.
@@ -151,6 +220,12 @@ impl WorkspaceStorage<'_> {
 
     async fn read_view_inner(&self) -> Result<ReadView> {
         Ok(ReadView {
+            memo: self
+                .storage
+                .cache
+                .as_ref()
+                .map(|cache| cache.read_memo.clone()),
+            sequence: tokio::sync::OnceCell::new(),
             _content_pins: self
                 .storage
                 .cache
@@ -172,6 +247,13 @@ impl WorkspaceStorage<'_> {
 }
 
 impl Storage {
+    pub(crate) fn cache_scope(
+        &self,
+        workspace: &WorkspaceId,
+    ) -> Result<Arc<crate::coherence::Scope>, crate::api::ApiError> {
+        self.cache_scopes.get(workspace)
+    }
+
     async fn get_visible(&self, key: Vec<u8>) -> Result<Option<slatedb::bytes::Bytes>> {
         if let Some(cache) = &self.cache
             && let Some((_, value)) = cache.snapshot()?.get(&key)
@@ -194,9 +276,17 @@ impl Storage {
 
     /// Enable volatile publication before exposing this storage to clients.
     pub fn enable_cache(&mut self, config: CacheConfig) -> Result<()> {
+        self.enable_cache_with_disk(config, None)
+    }
+
+    fn enable_cache_with_disk(
+        &mut self,
+        config: CacheConfig,
+        clean_disk: Option<Arc<cache::clean::CleanCache>>,
+    ) -> Result<()> {
         if config.write_mode == WriteMode::Cached {
             anyhow::ensure!(self.cache.is_none(), "cache already enabled");
-            let cache = cache::Cache::new(config)?;
+            let cache = cache::Cache::new(config, clean_disk)?;
             cache.start(
                 self.metadata.clone(),
                 self.blobs.clone(),
@@ -237,10 +327,19 @@ impl Storage {
      * cached publication until restart; it MUST NOT retry an ambiguously submitted metadata batch.
      */
     pub async fn open(store: Arc<dyn ObjectStore>, prefix: &StoragePrefix) -> Result<Self> {
+        Self::open_with_object_cache(store, prefix, ObjectStoreCacheOptions::default()).await
+    }
+
+    async fn open_with_object_cache(
+        store: Arc<dyn ObjectStore>,
+        prefix: &StoragePrefix,
+        object_store_cache_options: ObjectStoreCacheOptions,
+    ) -> Result<Self> {
         Self::open_with_settings(
             store,
             prefix,
             Settings {
+                object_store_cache_options,
                 object_store_max_retries: Some(0),
                 compactor_options: Some(CompactorOptions {
                     object_store_max_retries: Some(0),
@@ -282,6 +381,7 @@ impl Storage {
             blobs,
             publish: Arc::new(Mutex::new(())),
             cache: None,
+            cache_scopes: crate::coherence::Scopes::default(),
             object_locks: locks::ObjectLockTable::default(),
             transfers: Arc::new(UploadConfig::default().budget()?),
             content_locks: locks::ObjectLockTable::default(),

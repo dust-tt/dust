@@ -76,9 +76,17 @@ production server still requires explicit GCS configuration; it never falls back
 - Lookup/stat, directory paging, open/read, create/mkdir, random writes, append, truncate, rename,
   unlink/rmdir, chmod, timestamps, and `user.*` xattrs use the existing server API. `/shared` aliases
   retain visible parents and the mandatory `--<id>` suffix. Custom session mounts remain deferred.
-- Entry/attribute TTLs are zero; file handles use direct I/O. No kernel writeback, directory cache,
-  or client metadata/content cache is enabled. Each access reaches current server authorization;
-  already-started responses may finish. Change subscriptions/invalidation remain future work.
+- Kernel positive/negative entry and attribute TTLs share the client freshness deadline, captured
+  before reading metadata, so layering caches never extends the one-second bound. File handles use
+  direct I/O without writeback.
+  Session-scoped LRUs hold 32 MiB of metadata and 256 MiB of immutable 1 MiB content blocks.
+  Directory pages prefill lookup/stat entries; read-only opens need no server handle. Background
+  revision checks keep metadata fresh, starting at least 100 ms apart even during write bursts,
+  with at most one second of stale authorization. A revision
+  change, check failure, or freshness expiry clears metadata; immutable bytes remain until eviction
+  and are selected through authorized metadata. Writes never wait for invalidation and immediately
+  clear the writing mount's metadata. Session closure fails closed within the same one-second bound.
+  Already-started reads may finish. Targeted invalidation and Product integration remain pending.
 - Streams preserve backpressure. Kernel read/write buffers are capped at 1 MiB; JSON responses are
   capped at 8 MiB. File bytes are never accumulated into a complete client-side file. The synchronous
   server still rewrites the entire immutable blob per write; this baseline favors correctness over
@@ -90,8 +98,8 @@ production server still requires explicit GCS configuration; it never falls back
   from the beginning. Pages reauthorize; concurrent directory edits can cause skips/repeats. `..`
   follows the last observed visible parent, updated on lookup/local rename; remote directory moves
   have no push invalidation yet.
-- Every write completes server publication before returning. Flush/fsync use the server sequence
-  barrier. An ambiguous edit retries once with identical ID/sequence/bytes; an unresolved error
+- Every write completes server publication before returning. Flush waits behind handle edits and
+  reports their sticky errors locally; explicit fsync also uses the server sequence barrier. An ambiguous edit retries once with identical ID/sequence/bytes; an unresolved error
   remains sticky on that handle, including flush/fsync. Close it and inspect server state before
   resuming; an error is not proof that nothing committed. Namespace operations are not retried.
 - Release frees handles; Linux ignores its errors for `close()`, so flush reports write failures.

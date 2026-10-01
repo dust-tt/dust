@@ -15,6 +15,9 @@ use slatedb::{
 use super::{codec, keys::Keyspace};
 use crate::model::{DirectoryEntry, EntryName, ObjectId, ObjectMetadata};
 
+mod memo;
+pub(crate) use memo::ReadMemo;
+
 struct Row {
     key: slatedb::bytes::Bytes,
     value: slatedb::bytes::Bytes,
@@ -41,11 +44,26 @@ pub struct ReadView {
     pub(super) overlay: super::cache::Overlay,
     pub(super) _content_pins: super::cache::ContentPins,
     pub(super) snapshot: Arc<DbSnapshot>,
+    pub(super) memo: Option<Arc<ReadMemo>>,
+    pub(super) sequence: tokio::sync::OnceCell<u64>,
 }
 
 impl ReadView {
     pub(super) async fn get(&self, key: Vec<u8>) -> Result<Option<slatedb::bytes::Bytes>> {
-        if let Some((_, value)) = self.overlay.get(&key) {
+        if let Some(memo) = &self.memo {
+            let sequence = self.sequence().await?;
+            if let Some(value) = memo.row(sequence, &key)? {
+                return Ok(value);
+            }
+            let value = self.get_uncached(&key).await?;
+            memo.insert_row(sequence, key, value.clone())?;
+            return Ok(value);
+        }
+        self.get_uncached(&key).await
+    }
+
+    async fn get_uncached(&self, key: &[u8]) -> Result<Option<slatedb::bytes::Bytes>> {
+        if let Some((_, value)) = self.overlay.get(key) {
             return Ok(value.clone());
         }
         Ok(self.snapshot.get(key).await?)
@@ -63,11 +81,30 @@ impl ReadView {
 
     /// Memory-visible mutation sequence from the same snapshot as metadata and authorization.
     pub(crate) async fn sequence(&self) -> Result<u64> {
-        self.get(self.keys.change_sequence())
-            .await?
-            .map(|bytes| codec::decode(&bytes))
-            .transpose()
-            .map(|value| value.unwrap_or(0))
+        self.sequence
+            .get_or_try_init(|| async {
+                self.get_uncached(&self.keys.change_sequence())
+                    .await?
+                    .map(|bytes| codec::decode(&bytes))
+                    .transpose()
+                    .map(|value| value.unwrap_or(0))
+            })
+            .await
+            .copied()
+    }
+
+    pub(crate) async fn was_authorized(&self, id: ObjectId, grants: [u8; 32]) -> Result<bool> {
+        match &self.memo {
+            Some(memo) => memo.authorized(self.sequence().await?, self.keys.object(id), grants),
+            None => Ok(false),
+        }
+    }
+
+    pub(crate) async fn remember_authorized(&self, id: ObjectId, grants: [u8; 32]) -> Result<()> {
+        if let Some(memo) = &self.memo {
+            memo.authorize(self.sequence().await?, self.keys.object(id), grants)?;
+        }
+        Ok(())
     }
 
     /// SlateDB has point reads; keep page fetches bounded and preserve the requested order.

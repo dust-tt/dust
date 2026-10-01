@@ -2,17 +2,19 @@ use super::CacheConfig;
 use crate::storage::{MAX_FILE_BYTES, UploadError};
 use anyhow::{Result, ensure};
 use futures::{
-    Stream, StreamExt,
+    Stream, StreamExt, TryStreamExt,
     stream::{self, BoxStream},
 };
 use im::OrdMap;
+use lru::LruCache;
 use sha2::{Digest, Sha256};
 use slatedb::{
     bytes::{Bytes, BytesMut},
     object_store::path::Path,
 };
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::HashMap,
+    num::NonZeroUsize,
     sync::{
         Arc, Mutex, Weak,
         atomic::{AtomicU64, Ordering},
@@ -112,23 +114,31 @@ impl LocalVersion {
     }
 }
 
-#[derive(Default)]
 struct Index {
     versions: HashMap<Path, Weak<LocalVersion>>,
-    blocks: HashMap<(Path, u64), Weak<Chunk>>,
-    clean: VecDeque<Clean>,
+    clean: LruCache<CleanKey, Clean>,
+}
+
+#[derive(Clone, Eq, PartialEq, Hash)]
+enum CleanKey {
+    Version(Path),
+    Block(Path, u64),
 }
 
 enum Clean {
     Version { _version: Arc<LocalVersion> },
-    Block { _chunk: Arc<Chunk> },
+    Block { chunk: Arc<Chunk>, size: u64 },
 }
 
 pub(crate) struct Staging {
+    pub(super) clean_disk: Option<Arc<super::clean::CleanCache>>,
     memory: Budget,
     disk: Budget,
     directory: tempfile::TempDir,
     index: Mutex<Index>,
+    read_hits: AtomicU64,
+    read_misses: AtomicU64,
+    remote_bytes: AtomicU64,
 }
 
 impl Staging {
@@ -138,7 +148,10 @@ impl Staging {
             "empty staging budget"
         );
         std::fs::create_dir_all(&config.cache_dir)?;
+        let entries = NonZeroUsize::new(config.cache_entries)
+            .ok_or_else(|| anyhow::anyhow!("empty cache entry budget"))?;
         Ok(Self {
+            clean_disk: None,
             memory: Budget {
                 used: Arc::new(AtomicU64::new(0)),
                 limit: config.cache_memory_bytes,
@@ -150,18 +163,23 @@ impl Staging {
             directory: tempfile::Builder::new()
                 .prefix("dfs-cache-")
                 .tempdir_in(&config.cache_dir)?,
-            index: Mutex::new(Index::default()),
+            index: Mutex::new(Index {
+                versions: HashMap::new(),
+                clean: LruCache::new(entries),
+            }),
+            read_hits: AtomicU64::new(0),
+            read_misses: AtomicU64::new(0),
+            remote_bytes: AtomicU64::new(0),
         })
     }
 
     pub fn get(&self, key: &Path) -> Result<Option<Arc<LocalVersion>>> {
-        Ok(self
+        let mut index = self
             .index
             .lock()
-            .map_err(|_| anyhow::anyhow!("content cache unavailable"))?
-            .versions
-            .get(key)
-            .and_then(Weak::upgrade))
+            .map_err(|_| anyhow::anyhow!("content cache unavailable"))?;
+        index.clean.promote(&CleanKey::Version(key.clone()));
+        Ok(index.versions.get(key).and_then(Weak::upgrade))
     }
 
     pub fn register(&self, key: Path, version: Arc<LocalVersion>) -> Result<Arc<LocalVersion>> {
@@ -169,7 +187,7 @@ impl Staging {
             .index
             .lock()
             .map_err(|_| anyhow::anyhow!("content cache unavailable"))?;
-        if index.versions.len() >= 65_536 {
+        if index.versions.len() >= 131_072 {
             index.versions.retain(|_, value| value.strong_count() > 0);
         }
         ensure!(
@@ -180,18 +198,37 @@ impl Staging {
         Ok(version)
     }
 
-    pub fn retain_clean(&self, version: Arc<LocalVersion>) -> Result<()> {
+    pub fn retain_clean(&self, key: Path, version: Arc<LocalVersion>) -> Result<()> {
         let mut index = self
             .index
             .lock()
             .map_err(|_| anyhow::anyhow!("content cache unavailable"))?;
-        if index.clean.len() >= 8192 {
-            index.clean.pop_front();
-        }
-        index.clean.push_back(Clean::Version { _version: version });
+        index
+            .clean
+            .put(CleanKey::Version(key), Clean::Version { _version: version });
         Ok(())
     }
 
+    /// Prefill only small, durably published files; larger files populate the disk cache on reads.
+    pub async fn cache_uploaded(&self, key: &Path, version: &Arc<LocalVersion>) -> Result<u64> {
+        if let Some(disk) = &self.clean_disk
+            && version.size <= 1024 * 1024
+        {
+            let chunks = version
+                .stream(0, version.size)
+                .try_collect::<Vec<_>>()
+                .await?;
+            disk.insert(key, 0, &chunks.concat());
+            return Ok(version.size);
+        }
+        Ok(0)
+    }
+
+    /// @cc [owner:spolu,label:performance;security] bounded-read-cache-admission
+    /// Retained clean entries MUST obey both entry and payload budgets. At the entry limit, a new
+    /// block MUST replace the least recently used clean entry instead of refusing all new keys.
+    /// Keys MUST contain the complete workspace/object/version path and block offset. Eviction
+    /// MUST NOT remove pins held by pending publications or active reads.
     pub async fn read_block(
         &self,
         store: &Arc<dyn slatedb::object_store::ObjectStore>,
@@ -200,50 +237,62 @@ impl Staging {
         block: u64,
     ) -> Result<Bytes> {
         use slatedb::object_store::{GetOptions, GetRange};
-        let key = (path.clone(), block);
+        let key = CleanKey::Block(path.clone(), block);
         let cached = self
             .index
             .lock()
             .map_err(|_| anyhow::anyhow!("cache unavailable"))?
-            .blocks
+            .clean
             .get(&key)
-            .and_then(Weak::upgrade);
-        if let Some(chunk) = cached {
+            .and_then(|entry| match entry {
+                Clean::Block { chunk, size } => Some((chunk.clone(), *size)),
+                Clean::Version { .. } => None,
+            });
+        if let Some((chunk, cached_size)) = cached {
+            ensure!(cached_size == size, "cached size mismatch");
+            self.read_hits.fetch_add(1, Ordering::Relaxed);
             return chunk.read().await;
         }
         let start = block * 1024 * 1024;
         let end = size.min(start + 1024 * 1024);
-        let result = store
-            .get_opts(
-                path,
-                GetOptions {
-                    range: Some(GetRange::Bounded(start..end)),
-                    ..Default::default()
-                },
-            )
-            .await?;
-        ensure!(
-            result.meta.size == size && result.range == (start..end),
-            "invalid remote block"
-        );
-        let bytes = result.bytes().await?;
-        ensure!(bytes.len() as u64 == end - start, "truncated remote block");
-        match self.chunk(bytes.clone()).await {
+        let disk_bytes = match &self.clean_disk {
+            Some(disk) => disk.get(path, block, (end - start) as usize).await,
+            None => None,
+        };
+        let bytes = if let Some(bytes) = disk_bytes {
+            self.read_hits.fetch_add(1, Ordering::Relaxed);
+            bytes
+        } else {
+            self.read_misses.fetch_add(1, Ordering::Relaxed);
+            let result = store
+                .get_opts(
+                    path,
+                    GetOptions {
+                        range: Some(GetRange::Bounded(start..end)),
+                        ..Default::default()
+                    },
+                )
+                .await?;
+            ensure!(
+                result.meta.size == size && result.range == (start..end),
+                "invalid remote block"
+            );
+            let bytes = result.bytes().await?;
+            ensure!(bytes.len() as u64 == end - start, "truncated remote block");
+            self.remote_bytes
+                .fetch_add(bytes.len() as u64, Ordering::Relaxed);
+            if let Some(disk) = &self.clean_disk {
+                disk.insert(path, block, &bytes);
+            }
+            bytes
+        };
+        match self.chunk(Bytes::copy_from_slice(&bytes)).await {
             Ok(chunk) => {
                 let mut index = self
                     .index
                     .lock()
                     .map_err(|_| anyhow::anyhow!("cache unavailable"))?;
-                if index.blocks.len() >= 8192 {
-                    index.blocks.retain(|_, value| value.strong_count() > 0);
-                }
-                if index.blocks.len() < 8192 {
-                    index.blocks.insert(key, Arc::downgrade(&chunk));
-                    if index.clean.len() >= 8192 {
-                        index.clean.pop_front();
-                    }
-                    index.clean.push_back(Clean::Block { _chunk: chunk });
-                }
+                index.clean.put(key, Clean::Block { chunk, size });
             }
             Err(UploadError::Capacity) => {}
             Err(error) => return Err(error.into()),
@@ -253,8 +302,7 @@ impl Staging {
 
     /// @cc [owner:spolu,label:performance;backend] bounded-content-staging
     /// Account shared immutable pages once, reserving RAM or disk before retaining bytes. Only
-    /// clean
-    /// cache references may be evicted; upload descriptors, pending batches, and streams MUST pin
+    /// clean cache references may be evicted; upload descriptors, pending batches, and streams MUST pin
     /// their pages. Disk spill MUST NOT fsync and MUST never be replayed after restart. Exhausted
     /// staging MUST reject publication without modifying the previous version.
     async fn chunk(&self, bytes: Bytes) -> Result<Arc<Chunk>, UploadError> {
@@ -268,7 +316,7 @@ impl Staging {
                 .lock()
                 .map_err(|_| anyhow::anyhow!("cache unavailable"))?
                 .clean
-                .pop_front();
+                .pop_lru();
             if removed.is_none() {
                 break None;
             }
@@ -422,6 +470,15 @@ impl Staging {
             self.disk.used.load(Ordering::Acquire),
         )
     }
+
+    pub fn log_metrics(&self) {
+        tracing::info!(
+            read_cache_hits = self.read_hits.load(Ordering::Relaxed),
+            read_cache_misses = self.read_misses.load(Ordering::Relaxed),
+            remote_read_bytes = self.remote_bytes.load(Ordering::Relaxed),
+            "dfs content cache metrics"
+        );
+    }
 }
 
 impl std::fmt::Debug for LocalVersion {
@@ -433,3 +490,6 @@ impl std::fmt::Debug for LocalVersion {
             .finish()
     }
 }
+
+#[cfg(test)]
+mod tests;

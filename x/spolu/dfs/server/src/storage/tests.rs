@@ -14,6 +14,7 @@ use crate::model::{
 };
 
 mod files;
+mod metadata_cache;
 mod recovery;
 
 #[test]

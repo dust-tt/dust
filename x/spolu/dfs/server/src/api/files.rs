@@ -116,13 +116,50 @@ pub(super) async fn read(
     if handle.progress.lock().await.closed {
         return Err(ApiError::NotFound);
     }
+    read_content(
+        &state,
+        &session,
+        handle.object_id,
+        body.content_version,
+        body.offset,
+        body.length,
+    )
+    .await
+}
+
+/// @swagger See POST /objects/read in server/openapi.yaml.
+pub(super) async fn read_object(
+    State(state): State<ApiState>,
+    AuthenticatedSession(session): AuthenticatedSession,
+    request: Request,
+) -> Result<Response, ApiError> {
+    let body: dfs_protocol::wire::ReadObjectRequest = json_body(request, &state).await?;
+    read_content(
+        &state,
+        &session,
+        parse(&body.object_id)?,
+        body.content_version,
+        body.offset,
+        body.length,
+    )
+    .await
+}
+
+async fn read_content(
+    state: &ApiState,
+    session: &super::Session,
+    object_id: crate::model::ObjectId,
+    content_version: Option<String>,
+    offset: u64,
+    length: u64,
+) -> Result<Response, ApiError> {
     session.check_active()?;
     let view = NamespaceRead::new(state.storage()?, &session.workspace, &session.grants).await?;
-    let object = view.stat(handle.object_id).await?;
+    let object = view.stat(object_id).await?;
     let ObjectKind::File(content) = object.kind else {
         return Err(ApiError::IsDirectory);
     };
-    if let Some(version) = body.content_version
+    if let Some(version) = content_version
         && parse::<ContentVersionId>(&version)? != content.version
     {
         return Err(ApiError::Conflict);
@@ -131,7 +168,7 @@ pub(super) async fn read(
         .storage()?
         .workspace(&session.workspace)
         .map_err(|_| ApiError::Unavailable)?
-        .read_blob_stream(handle.object_id, &content, body.offset, body.length)
+        .read_blob_stream(object_id, &content, offset, length)
         .await
         .map_err(upload_error)?;
     drop(view);

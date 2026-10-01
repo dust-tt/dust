@@ -1,7 +1,9 @@
 mod access;
+mod cache;
 mod error;
 mod files;
 mod grants;
+mod metrics;
 mod objects;
 mod sessions;
 mod uploads;
@@ -32,6 +34,7 @@ pub struct ApiState {
     access: Arc<Access>,
     uploads: Arc<crate::uploads::Uploads>,
     files: Arc<crate::files::Files>,
+    metrics: Arc<metrics::Metrics>,
 }
 
 impl ApiState {
@@ -41,6 +44,7 @@ impl ApiState {
             access: Arc::new(access),
             uploads: Arc::new(crate::uploads::Uploads::default()),
             files: Arc::new(crate::files::Files::default()),
+            metrics: Arc::new(metrics::Metrics::default()),
         }
     }
 
@@ -51,6 +55,7 @@ impl ApiState {
 
     pub async fn drain_file_jobs(&self) {
         self.files.drain().await;
+        self.metrics.log();
     }
 
     fn storage(&self) -> Result<&Storage, ApiError> {
@@ -64,6 +69,7 @@ pub fn router(state: ApiState) -> Router {
         .route("/workspaces", post(sessions::create_workspace))
         .route("/sessions", post(sessions::create_session))
         .route("/sessions/current", get(sessions::current_session))
+        .route("/sessions/cache", post(cache::poll))
         .route("/sessions/{session_id}", delete(sessions::close_session))
         .route("/files/open", post(files::open))
         .route("/files/read", post(files::read))
@@ -79,6 +85,7 @@ pub fn router(state: ApiState) -> Router {
         .route("/objects/stat", post(objects::stat))
         .route("/objects/lookup", post(objects::lookup))
         .route("/objects/list", post(objects::list))
+        .route("/objects/read", post(files::read_object))
         .route("/objects/mkdir", post(objects::mkdir))
         .route("/objects/update", post(objects::update))
         .route("/objects/rename", post(objects::rename))
@@ -86,6 +93,14 @@ pub fn router(state: ApiState) -> Router {
         .route("/objects/rmdir", post(objects::rmdir))
         .route("/objects/grants/list", post(grants::list))
         .route("/objects/grants/update", post(grants::update))
+        .route_layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            cache::stamp,
+        ))
+        .route_layer(axum::middleware::from_fn_with_state(
+            state.metrics.clone(),
+            metrics::record,
+        ))
         .layer(DefaultBodyLimit::max(64 * 1024))
         .fallback(|| async { ApiError::NotFound })
         .method_not_allowed_fallback(|| async { ApiError::MethodNotAllowed })

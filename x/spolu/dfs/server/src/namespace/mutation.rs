@@ -26,10 +26,11 @@ where
  * in workspace/ID order before publication. Validate the snapshot sequence under publication for
  * successes, no-ops, and errors so queued requests cannot disclose stale conflicts after
  * revocation.
- * A stale attempt MUST release all locks, reread, reauthorize, and rediscover its lock set. Limit
- * retries to 16 attempts, then return Conflict without publication. Release object/publication
- * locks
- * before durability waits. Never retry an error after submission, whose outcome may be ambiguous.
+ * A stale attempt MUST release its object/publication locks before bounded jittered backoff, then
+ * reread, reauthorize, and rediscover its lock set. Limit retries to 16 attempts, then return Conflict
+ * without publication.
+ * Release object/publication locks before durability waits. Never retry an error after submission,
+ * whose outcome may be ambiguous.
  */
 pub(super) async fn mutate_content<T, F, Fut>(
     storage: &Storage,
@@ -46,8 +47,14 @@ where
     let scoped = storage
         .workspace(workspace)
         .map_err(|_| ApiError::Unavailable)?;
-    for _ in 0..MAX_ATTEMPTS {
+    for attempt in 0..MAX_ATTEMPTS {
         check_session()?;
+        if attempt > 0 {
+            let base_us = 250_u64 << attempt.min(7);
+            let jitter_us = getrandom::u64().map_err(|_| ApiError::Unavailable)? % base_us;
+            tokio::time::sleep(std::time::Duration::from_micros(base_us + jitter_us)).await;
+            check_session()?;
+        }
         let view = scoped
             .read_view()
             .await

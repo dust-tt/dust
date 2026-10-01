@@ -39,7 +39,7 @@ async fn write_body(
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn write_to(
+pub(super) async fn write_to(
     app: &Router,
     key: &str,
     handle: &str,

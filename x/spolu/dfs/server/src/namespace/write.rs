@@ -45,7 +45,7 @@ pub(crate) async fn mkdir(
     validate_xattrs(&request.xattrs)?;
     let request = &request;
     mutate(storage, workspace, |view| async move {
-        let read = NamespaceRead { view, grants };
+        let read = NamespaceRead::from_view(view, grants);
         let parent = read.directory(request.parent_id).await?;
         if read
             .view
@@ -142,7 +142,7 @@ pub(crate) async fn update(
     }
     let request = &request;
     mutate(storage, workspace, |view| async move {
-        let read = NamespaceRead { view, grants };
+        let read = NamespaceRead::from_view(view, grants);
         let mut object = read.stat(request.object_id).await?;
         if object.metadata_revision.get() != request.expected_metadata_revision {
             return Err(ApiError::Conflict);

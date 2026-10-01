@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::{Context, Result, ensure};
-use dfs_client::{Client, Error};
+use dfs_client::{CachedClient, Client, Error};
 use dfs_protocol::{model::RequestId, wire::*};
 use dfs_server::{
     api::{self, Access, ApiState},
@@ -40,6 +40,18 @@ impl Write for Checked {
     fn flush(&mut self) -> std::io::Result<()> {
         Ok(())
     }
+}
+
+fn eventually(mut predicate: impl FnMut() -> Result<bool>) -> Result<()> {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_millis(1200);
+    while !predicate()? {
+        ensure!(
+            std::time::Instant::now() < deadline,
+            "cache did not refresh within the staleness bound"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    Ok(())
 }
 
 #[test]
@@ -148,6 +160,50 @@ fn real_http_streams_ranges_receipts_and_session_closure() -> Result<()> {
             )
             .context("read range")?;
         ensure!(range.count == 123);
+        let cached = CachedClient::new(client.clone())?;
+        let second_cache = CachedClient::new(client.clone())?;
+        for cache in [&cached, &second_cache] {
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+            while !cache.cache_stats()?.metadata_fresh {
+                ensure!(
+                    std::time::Instant::now() < deadline,
+                    "cache check did not become ready"
+                );
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            cache.list(&workspace.root_id, None, 64)?;
+            let before = cache.cache_stats()?;
+            cache.lookup(&workspace.root_id, "large")?;
+            cache.stat(&receipt.object_id)?;
+            let after = cache.cache_stats()?;
+            ensure!(after.hits == before.hits + 2 && after.misses == before.misses);
+            ensure!(cache.read_object(&receipt.object_id, 0, 1024)? == [0x5a; 1024]);
+            let before = cache.cache_stats()?;
+            ensure!(cache.read_object(&receipt.object_id, 0, 1024)? == [0x5a; 1024]);
+            ensure!(cache.cache_stats()?.misses == before.misses);
+        }
+        // A metadata-only change must reauthorize without throwing away unchanged content blocks.
+        let attributes = cached.stat(&receipt.object_id)?;
+        cached.update(&UpdateMetadataRequest {
+            object_id: receipt.object_id.clone(),
+            expected_metadata_revision: attributes.metadata_revision,
+            mime_type: Some("text/plain".into()),
+            xattrs: BTreeMap::new(),
+            mode: None,
+            atime: None,
+            mtime: None,
+        })?;
+        ensure!(cached.stat(&receipt.object_id)?.mime_type == "text/plain");
+        for cache in [&cached, &second_cache] {
+            eventually(|| {
+                Ok(cache.cache_stats()?.metadata_fresh
+                    && cache.stat(&receipt.object_id)?.mime_type == "text/plain")
+            })?;
+            let before = cache.cache_stats()?;
+            ensure!(cache.read_object(&receipt.object_id, 0, 1024)? == [0x5a; 1024]);
+            let after = cache.cache_stats()?;
+            ensure!(after.misses == before.misses && after.hits == before.hits + 2);
+        }
         let id = RequestId::generate().to_string();
         let request = TruncateFileRequest {
             handle_id: opened.handle_id.clone(),
@@ -155,14 +211,18 @@ fn real_http_streams_ranges_receipts_and_session_closure() -> Result<()> {
             sequence: 1,
             size_bytes: 9,
         };
-        let first = client.truncate(&request)?;
+        let first = cached.truncate(&request)?;
+        ensure!(cached.read_object(&receipt.object_id, 0, 1024)? == [0x5a; 9]);
         let retried = client.truncate(&request)?;
         ensure!(first.content_version == retried.content_version);
         client.fsync(&opened.handle_id, 1)?;
+        for cache in [&cached, &second_cache] {
+            eventually(|| Ok(cache.read_object(&receipt.object_id, 0, 1024)? == [0x5a; 9]))?;
+        }
         ensure!(
             client
                 .status(&MutationStatusRequest {
-                    object_id: receipt.object_id,
+                    object_id: receipt.object_id.clone(),
                     request_id: id
                 })?
                 .is_some()
@@ -172,6 +232,27 @@ fn real_http_streams_ranges_receipts_and_session_closure() -> Result<()> {
             Err(Error::Conflict)
         ));
         ensure!(client.list(&workspace.root_id, None, 64)?.entries.len() == 1);
+        let root = client.stat(&workspace.root_id)?;
+        http.post(format!("{endpoint}/objects/grants/update"))
+            .bearer_auth(&workspace.workspace_key)
+            .json(
+                &serde_json::json!({"workspace_id":"client", "object_id":workspace.root_id,
+                "expected_metadata_revision":root.metadata_revision, "grants":{"owner":false}}),
+            )
+            .send()?
+            .error_for_status()?;
+        for cache in [&cached, &second_cache] {
+            eventually(|| {
+                Ok(matches!(
+                    cache.stat(&receipt.object_id),
+                    Err(Error::NotFound)
+                ))
+            })?;
+            ensure!(matches!(
+                cache.read_object(&receipt.object_id, 0, 9),
+                Err(Error::NotFound)
+            ));
+        }
         http.delete(format!(
             "{endpoint}/sessions/{}",
             session.session.session_id
@@ -179,6 +260,18 @@ fn real_http_streams_ranges_receipts_and_session_closure() -> Result<()> {
         .bearer_auth(session.session_key)
         .send()?
         .error_for_status()?;
+        eventually(|| {
+            Ok(matches!(
+                cached.stat(&receipt.object_id),
+                Err(Error::Unauthenticated)
+            ))
+        })?;
+        eventually(|| {
+            Ok(matches!(
+                second_cache.read_object(&receipt.object_id, 0, 9),
+                Err(Error::Unauthenticated)
+            ))
+        })?;
         ensure!(matches!(client.stat("root"), Err(Error::Unauthenticated)));
         ensure!(matches!(
             client.close(&opened.handle_id),

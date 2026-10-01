@@ -279,10 +279,7 @@ impl WorkspaceStorage<'_> {
     }
 
     pub(super) fn blob_path(&self, object: ObjectId, version: ContentVersionId) -> Path {
-        Path::from(format!(
-            "v1/{}/{object}/{version}",
-            hex::encode(self.keys.workspace.as_str().as_bytes())
-        ))
+        self.keys.blob(object, version)
     }
 }
 
@@ -456,6 +453,9 @@ impl MetadataWrite<'_> {
                     .context("publish metadata batch")?,
             )
         };
+        storage
+            .cache_scopes
+            .changed(&self.workspace.keys.workspace)?;
         Ok((sequence, publication))
     }
 }

@@ -538,106 +538,43 @@ so 3x the IOPS than 09/29 tests
 +--------------+------------------------------------------------+-------+-----------+--------+
 ```
 
-## Rust DFS cached mode (`spolu/dfs-poc`)
+## Rust DFS — latest measured cold-start run (2026-09-30)
 
-Measured 2026-09-30 using the unchanged `x/jd/filesystem-benchmark/benchmark.py` workloads
-from [PR #33732](https://github.com/dust-tt/dust/pull/33732), with `--warm-runs 1`.
-The generated corpus has 10,000 documents, 177,499,149 content bytes, and the same manifest SHA-256:
-`67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1`.
-Server/client source is commit `0c380c007f` (release builds).
+Unchanged jd corpus/workloads; fresh server and client with no reused local disk caches. This run
+includes client metadata/content caching but predates kernel metadata caching and the latest
+concurrency fixes. A cold-start rerun of the current code is pending Docker/socket access.
 
-- Native macOS server on Apple M4 Max, 64 GiB host RAM; GCS bucket
-  `dust-dev-dfs-poc-spolu-20260930` in `US-CENTRAL1`, using a fresh isolated test prefix.
-- Docker Desktop Linux client: 16 vCPUs, about 7.65 GiB VM RAM, Linux
-  `6.12.54-linuxkit` aarch64, CPython 3.13.5, ripgrep 14.1.1.
-- FUSE: eight workers, zero entry/attribute TTLs, direct I/O, no kernel writeback or client
-  metadata/content caching. Cached server mode: 256 MiB content RAM, 4 GiB spill disk,
-  128 MiB overlay accounting, 64 MiB SlateDB block cache, 100 ms persistence interval,
-  16 background uploads, and the existing four-transfer foreground limit.
-- After ingestion, the server drains persistence and restarts before a fresh mount measures DFS.
-  The server content cache therefore starts empty. Workloads then share that mount in the original
-  order; `first` is the first invocation of each workload, and `warm` is one repeat. The Linux-local
-  reference uses the same image/runtime with a corpus copied onto the container filesystem, whose
-  OS cache is already warm from that copy.
+Population took **61.348 s**, followed by **83.358 s** of remaining GCS persistence drain before
+restart. Cached fsync acknowledges server visibility. All 24 checks passed; times are milliseconds.
+`first` is the first invocation of each workload; later workloads can benefit from earlier reads.
 
-These are individual development-machine runs. jd's prototype/NFS numbers above use different
-client/server hardware, network placement, and cache behavior; they are not a controlled comparison.
-Cached DFS file fsync acknowledges server visibility, without promising GCS/SlateDB durability.
-
-All 24 measured rows passed validation, including exact search results, file sizes, SHA-256
-checks for every document, sampled tail bytes, and scratch-write contents. Times below are
-**milliseconds**. The runner adds progress reporting outside the original timed intervals.
-
-| Workload | Phase | Linux-local (ms) | DFS cached (ms) |
-| --- | --- | ---: | ---: |
-| scandir + stat (100 dirs, 10,000 files) | first | 129.63 | 145,676.11 |
-| scandir + stat (100 dirs, 10,000 files) | warm | 131.54 | 54,532.16 |
-| rg --files (10,000 files) | first | 5.37 | 216.85 |
-| rg --files (10,000 files) | warm | 4.35 | 206.69 |
-| open + fstat + close (10,000 files) | first | 45.37 | 67,406.19 |
-| open + fstat + close (10,000 files) | warm | 43.96 | 70,028.36 |
-| stat missing (256 paths) | first | 2.09 | 1,329.80 |
-| stat missing (256 paths) | warm | 1.65 | 1,319.57 |
-| rg no-match scan (10,000 files, 177.5 MB) | first | 18.72 | 554,761.38 |
-| rg no-match scan (10,000 files, 177.5 MB) | warm | 17.73 | 175,546.14 |
-| rg rare literal (10,000 files, 4 matches) | first | 18.60 | 156,887.02 |
-| rg rare literal (10,000 files, 4 matches) | warm | 18.60 | 185,510.80 |
-| rg branch glob (981 candidate files) | first | 11.96 | 6,611.29 |
-| rg branch glob (981 candidate files) | warm | 11.83 | 6,585.71 |
-| rg depth-10 subtree (136 files) | first | 6.03 | 1,929.73 |
-| rg depth-10 subtree (136 files) | warm | 5.98 | 1,937.59 |
-| open + read + SHA-256 (10,000 files, 177.5 MB) | first | 149.81 | 411,472.12 |
-| open + read + SHA-256 (10,000 files, 177.5 MB) | warm | 146.28 | 429,284.61 |
-| open + pread tail (256 files x 4 KiB) | first | 1.58 | 9,675.64 |
-| open + pread tail (256 files x 4 KiB) | warm | 1.21 | 10,628.00 |
-| create + write (32 x 32 KiB files) | once | 0.50 | 181.37 |
-| fsync (32 files) | once | 17.27 | 7.65 |
-| close (32 files) | once | 0.02 | 6.79 |
-| unlink (32 files) | once | 0.23 | 83.11 |
-
-### Ingestion and persistence drain
-
-| Stage | Wall-clock time (s) |
-| --- | ---: |
-| Populate the mount with the corpus and manifest (`tar --no-same-owner -xf`) | 67.300 |
-| Remaining drain after ingestion, before the server restart | 69.525 |
-| Remaining drain after the benchmark and its scratch writes/deletes | 5.019 |
-
-Both drains completed successfully. Drain time is measured from SIGTERM to server exit after
-unmounting, including SlateDB shutdown. It measures the **remaining backlog**, not total upload time:
-background persistence runs concurrently with ingestion and writes. The fixture permits up to
-600 seconds to drain, rather than the server default of 60 seconds.
-
-After the ingestion drain, `visible = applied = durable = 47,629`. It uploaded 10,009 content versions
-and coalesced away 27,315 intermediates: 180,613,756 uploaded bytes for 180,554,364 input bytes
-(including the manifest), or **1.0003× content upload amplification**. This excludes SlateDB
-WAL/SST/compaction writes, transport retries/overhead, and temporary-object copies. Sampled staging
-payload peaked at 268,425,149 bytes in RAM and zero on disk; these are accounting samples, not RSS
-or guaranteed exact peaks.
-
-### Interpretation and reproduction
-
-The current mount sends lookups/attributes and reads to the server on every access. Directory
-listing is much faster than per-file stat/open in this deep tree. The server read-cache index also
-caps at 8,192 blocks: about 1,800 of the 10,000 small files cannot fit that entry limit, although the
-corpus fits the configured RAM byte budget. A warm pass therefore still performs GCS reads. These
-are implementation limits present in this run; no cache limits, mount settings, or workloads were
-tuned between passes. The timings alone do not isolate each bottleneck's contribution.
-
-Build release server and Linux FUSE binaries using the [FUSE development guide](../fuse/README.md)
-with `--release`: the runner expects `target/release/dfs-server` and the Linux build volume's
-`target-linux/release/dfs-fuse`. Add ripgrep to the existing development image, then run from
-`x/spolu/dfs`:
-
-```sh
-docker build -t dfs-vfs-bench - <<'DOCKERFILE'
-FROM dfs-fuse-dev
-RUN apt-get update && apt-get install -y --no-install-recommends ripgrep \
-    && rm -rf /var/lib/apt/lists/*
-DOCKERFILE
-python3 bench/vfs.py
+```text
++--------------+------------------------------------------------+-------+------------+--------+
+| Feature      | Workload                                       | Phase | Time (ms)  | Result |
++--------------+------------------------------------------------+-------+------------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 111,135.02 | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  |   4,295.62 | OK     |
+| metadata     | rg --files (10,000 files)                      | first |      22.64 | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  |      22.80 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first |   4,754.69 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  |   4,822.44 | OK     |
+| metadata     | stat missing (256 paths)                       | first |     175.79 | OK     |
+| metadata     | stat missing (256 paths)                       | warm  |      97.75 | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 238,111.11 | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  |   1,335.48 | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first |   1,326.14 | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  |   1,354.57 | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first |     782.17 | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  |     763.71 | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first |     233.75 | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  |     197.82 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first |   5,847.15 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  |   5,859.33 | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first |     122.96 | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  |     125.86 | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  |     383.53 | OK     |
+| file sync    | fsync (32 files)                               | once  |      11.80 | OK     |
+| write        | close (32 files)                               | once  |       9.45 | OK     |
+| write        | unlink (32 files)                              | once  |      76.89 | OK     |
++--------------+------------------------------------------------+-------+------------+--------+
 ```
-
-The runner prints a report directory containing raw tables, per-workload JSON, timings, and server
-logs. It generates the reference corpus, verifies the manifest hash, uses a unique GCS prefix, and
-removes that prefix after a successful run. Existing mounts and development prefixes are untouched.

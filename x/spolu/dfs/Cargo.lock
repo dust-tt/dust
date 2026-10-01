@@ -531,6 +531,7 @@ name = "dfs-client"
 version = "0.1.0"
 dependencies = [
  "dfs-protocol",
+ "lru",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
@@ -576,10 +577,12 @@ dependencies = [
  "clap",
  "dfs-client",
  "dfs-protocol",
+ "foyer",
  "futures",
  "getrandom 0.4.3",
  "hex",
  "im",
+ "lru",
  "postcard",
  "reqwest 0.12.28",
  "serde",

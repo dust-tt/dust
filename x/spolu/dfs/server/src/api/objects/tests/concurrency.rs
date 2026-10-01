@@ -2,6 +2,8 @@ use std::time::Duration;
 
 use super::*;
 
+mod load;
+
 #[tokio::test]
 async fn a_blocked_file_does_not_block_neighbors_and_rechecks_ancestor_grants() -> Result<()> {
     for revoke in [false, true] {

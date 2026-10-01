@@ -58,3 +58,35 @@ rg --no-ignore -l 'benchmarkmissing' corpus
 
 `--no-ignore` includes the generated corpus despite its `.gitignore` entry. The final command has
 no matches and exits with status 1. Both the tarball and the extracted `corpus/` directory are ignored.
+
+## Concurrent metadata API diagnostic
+
+From the dfs directory:
+
+```sh
+RUSTC_WRAPPER= cargo test --release -p dfs-server concurrent_metadata_load -- --ignored --nocapture
+```
+
+Runs 1, 16, and 100 distinct sessions against the real API handlers and SlateDB, with an in-memory
+object store and cached publication. Each session owns a different 4 KiB file and issues 20 rounds
+of ten stats followed by one metadata edit. JSON output reports elapsed time, latency percentiles,
+and conflicts without client retries. Final revisions and unchanged content are validated outside
+timed intervals. This diagnostic excludes HTTP transport, FUSE, client caching, and GCS latency;
+it isolates server contention and is not a comparison with NFS. It is ignored in routine tests.
+
+`concurrent_cache_poll_load` runs the same 100-session workload with a revision-check loop for each
+session, comparing immediate rechecks with checks spaced by 100 ms. It reports check counts and
+foreground latency, using the real server route but modeling the client loop without HTTP or client
+caches. Run it with the same Cargo options, replacing the test name above.
+
+`concurrent_content_load` compares synchronous and cached writes at 1, 16, and 100 sessions. Each
+session owns a 4 KiB file in the same folder and performs 20 rounds of seven stats, one lookup, one
+32-entry directory page, one content read, one full-file write, and fsync. Reads and final contents
+are checked; failures stop that writer and are reported without retries. Setup is drained before
+timing, and remaining persistence drain is reported separately. This also excludes HTTP, FUSE,
+client caching, and GCS latency. The synchronous mode includes SlateDB's default WAL flush cadence;
+its latency with an in-memory object store does not predict production throughput.
+
+```sh
+RUSTC_WRAPPER= cargo test --release -p dfs-server concurrent_content_load -- --ignored --nocapture
+```

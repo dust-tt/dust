@@ -78,8 +78,9 @@ def inside(args):
 def host(args):
     """@cc [owner:spolu,label:testing;security] isolated-vfs-fixture
     Create a fresh GCS prefix and workspace for each run. Never reuse or delete another fixture.
-    Drain and restart the server before DFS measurements. Always stop owned processes and remove
-    credentials from retained reports; remote cleanup MUST be limited to a successful run's prefix.
+    Drain and cold-start the server before DFS measurements; never reuse local disk cache data.
+    Always stop owned processes and remove credentials from retained reports; remote cleanup MUST
+    be limited to a successful run's prefix.
     """
     work = args.work or Path(tempfile.mkdtemp(prefix="dfs-jd-vfs-"))
     work.mkdir(parents=True, exist_ok=True)
@@ -105,10 +106,15 @@ def host(args):
     container = "dfs-jd-vfs-" + uuid.uuid4().hex
     command = [str(ROOT / "target/release/dfs-server"), "--listen", f"0.0.0.0:{port}",
                "--gcs-bucket", args.bucket, "--gcs-prefix", prefix, "--write-mode", "cached",
-               "--cache-dir", str(work), "--persist-drain-timeout-seconds", "600"]
+               "--persist-drain-timeout-seconds", "600",
+               "--metadata-cache-disk-bytes", str(args.metadata_cache_disk_bytes),
+               "--read-cache-disk-bytes", str(args.read_cache_disk_bytes)]
     run = {"bucket": args.bucket, "prefix": prefix, "manifest_sha256": MANIFEST_SHA256,
            "write_mode": "cached", "profile": "release", "warm_runs": 1,
-           "server_restarted_before_measurement": True}
+           "server_restarted_before_measurement": True,
+           "metadata_cache_disk_bytes": args.metadata_cache_disk_bytes,
+           "read_cache_disk_bytes": args.read_cache_disk_bytes,
+           "read_cache_directory_retained_on_restart": False}
     (work / "run.json").write_text(json.dumps(run, indent=2) + "\n")
     print(f"Reports: {work}\nFixture: gs://{args.bucket}/{prefix}/", flush=True)
 
@@ -127,7 +133,9 @@ def host(args):
 
     def start_server(phase):
         with open(work / f"{phase}-server.log", "w") as log:
-            process = subprocess.Popen(command, env=env, stdout=log, stderr=log)
+            process = subprocess.Popen(
+                command + ["--cache-dir", str(work / f"{phase}-cache")],
+                env=env, stdout=log, stderr=log)
         return process
 
     def healthy(process):
@@ -190,6 +198,10 @@ if __name__ == "__main__":
     parser.add_argument("--bucket", default="dust-dev-dfs-poc-spolu-20260930")
     parser.add_argument("--image", default="dfs-vfs-bench")
     parser.add_argument("--timeout-seconds", type=int, default=3000)
+    parser.add_argument("--metadata-cache-disk-bytes", type=int, default=256 * 1024 * 1024,
+                        help="Server SST cache target; zero disables it.")
+    parser.add_argument("--read-cache-disk-bytes", type=int, default=512 * 1024 * 1024,
+                        help="Server immutable-content disk cache; zero disables it.")
     parser.add_argument("--phase", choices=["local", "populate", "benchmark"])
     parser.add_argument("--endpoint")
     arguments = parser.parse_args()

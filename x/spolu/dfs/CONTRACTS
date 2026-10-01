@@ -21,8 +21,9 @@ its objects, including roots with no grants.
 
 @cc [owner:spolu,label:security] live-grant-authorization
 An object's effective grants are the union of its explicit grants and its current ancestors' grants.
-Every session access MUST require an intersection with the session's grants, including access through
-a URI, virtual alias, cached content, or search result. Server caches MUST NOT bypass revocations.
+Every server session access MUST require an intersection with the session's grants, including access
+through a URI, virtual alias, cached content, or search result. Server caches MUST NOT bypass
+revocations. Client-side cached authorization may be stale for at most one second.
 
 @cc [owner:spolu,label:backend] atomic-grant-indexes
 Explicit grant attachments MUST be indexed both by object and by grant within the workspace.
@@ -81,9 +82,16 @@ Recovery MUST use the durable prefix and discard pending local state. Losing rec
 writes is allowed; dangling content references or partially applied mutations are not. Blob
 reclamation MUST preserve contents referenced by live or recoverable state.
 
+@cc [owner:spolu,label:backend;performance] cold-server-start
+Every server start MUST begin with empty local metadata and content caches. Discard prior disk cache
+data before opening those caches; fail startup if resetting them fails. Recover durable state only
+from GCS. Local caches may populate during the running process but MUST NOT survive as reusable
+state for the next start.
+
 @cc [owner:spolu,label:security] cache-scope
-Content cache keys MUST include workspace, object ID, and content version. Directory views MUST be
-scoped to the session, including grants and virtual mounts. Revalidate current metadata and grants
+Content cache identity MUST include workspace, object ID, and content version; a cache owned by one
+fixed session may supply workspace scope implicitly. Directory views MUST be scoped to the session,
+including grants and virtual mounts. Revalidate current metadata and grants
 before the server serves cached content. Recreating a session MUST discard its cached namespace
 views.
 
@@ -138,9 +146,13 @@ atomic durable batch preserves its final content references, all receipts/events
 
 @cc [owner:spolu,label:security] fuse-session-and-cache-boundary
 A FUSE mount MUST retain its original session scope. Session expiry, closure, or server restart MUST
-fail closed; a new session requires a fresh mount and namespace state. The initial client MUST use
-zero entry/attribute TTLs and direct I/O without writeback or authorization/content caching. Store
-credentials only in authorization headers; never log them or embed them in URLs.
+fail closed within the one-second cached-authorization bound; a new session requires a fresh mount
+and namespace state. Client metadata caches MUST require fresh revision checks and discard metadata
+on check failure, expiry, or revision change. Immutable content blocks may remain cached, but access
+MUST select their version through authorized metadata. Writes and closure MUST NOT wait for client
+invalidation. Kernel metadata TTLs MUST share the client freshness deadline, captured before reading
+metadata, rather than extend it. Use direct I/O without writeback. Store credentials
+only in authorization headers; never log them or embed them in URLs.
 
 @cc [owner:spolu,label:backend] fuse-publication-errors
 FUSE writes, flush, and fsync MUST NOT acknowledge client-only bytes. Serialize per-handle sequences

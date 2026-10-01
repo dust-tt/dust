@@ -171,12 +171,15 @@ Early development uses one metadata format; incompatible layout changes require 
 Mutations prepare against one snapshot outside publication, then lock touched objects/parents by
 workspace and ascending object ID. Under a short shared publication lock, compare the snapshot's
 workspace change sequence with current memory-visible state and submit atomically if unchanged.
-Otherwise release locks, reread, reauthorize, and recompute the entire lock set; after 16 stale attempts
-return `conflict` without publication. Validate errors and no-ops too. Namespace locks release before
+Otherwise release object/publication locks, wait with bounded randomized backoff, reread, reauthorize,
+and recompute the entire lock set. The first attempt has no delay; retry delays grow from 0.5–1 ms
+to at most 64 ms. After 16 stale attempts return `conflict` without publication. Validate errors and
+no-ops too. Namespace locks release before
 WAL durability waits; per-file content and request gates span the complete mutation. Idle lock entries
 are reclaimed. The workspace check also
 catches ancestor grants/moves but may retry after unrelated writes in that workspace. Narrower
-validation is a future optimization; no dfs metadata or authorization cache is introduced.
+validation is a future optimization. Cached mode memoizes reads and successful authorization for
+the exact workspace mutation sequence; synchronous mode retains uncached namespace reads.
 
 `POST /objects/rename` takes the source ID/revision and destination `parent_id`/`name`. Require access
 to the source and both containing directories; direct sharing never grants authority over a hidden
@@ -297,10 +300,10 @@ The upload ID is its commit request ID. Expiry leaves unreachable blobs for futu
 it never deletes immutable versions that might have been referenced.
 
 Stream one 8 MiB part at a time, with at most one 1 MiB input frame. Uploads, range reads, and incoming
-write bodies share a 64 MiB budget, reserving 12 MiB per active transfer. Allow at most four active
-transfers and 16 queued transfers; excess requests
+write bodies share a 64 MiB budget. Uploads/write bodies reserve 12 MiB each with four active slots;
+reads reserve 2 MiB each with 16 active slots. Each pool admits 16 additional waiters; excess requests
 fail with `capacity_exhausted` without polling their body. Limits are configurable via
-`DFS_UPLOAD_MEMORY_MIB` and `DFS_UPLOAD_CONCURRENCY`; this budgets transfer buffers, not total process RSS
+`DFS_UPLOAD_MEMORY_MIB`, `DFS_UPLOAD_CONCURRENCY`, and `DFS_READ_CONCURRENCY`; this budgets transfer buffers, not total process RSS
 (HTTP/TLS, SlateDB, and allocator overhead are separate). Input idle timeout is 30 seconds; the reservation
 expiry also bounds total transfer time. A version is capped at 10,000 parts (about 78 GiB).
 Small/empty files use a single create-only PUT. Multipart uploads use temporary blobs followed by a
@@ -329,7 +332,9 @@ after a lost response; null can mean the operation is still in flight. After res
 session/handle and retry with the original request ID. Admitted publication continues after HTTP
 disconnect; graceful shutdown drains those jobs before closing SlateDB. Receipt reclamation is deferred.
 
-Limits: 4096 handles/server, 256/session, 16 admitted file jobs, and 1 GiB shared scratch logical size.
+Limits: 4096 handles/server, 256/session, 16 active file jobs plus 256 waiting jobs, and 1 GiB shared
+scratch logical size. Queued jobs do not poll streaming bodies or reserve scratch/transfer resources;
+they recheck session/grant authorization when executing. Queue overflow returns `capacity_exhausted`.
 Configure `DFS_FILE_MUTATIONS`, `DFS_SCRATCH_BYTES`, and `DFS_SCRATCH_DIR`. Reserve the resulting file's
 size before assembly; exhaustion returns `capacity_exhausted`. Anonymous files and quota reservations
 release on completion/failure; process death leaves no named scratch files. Preparation has a 15-minute
@@ -348,14 +353,29 @@ parents; synthetic root/shared entries are read-only. Provision workspace-root c
 trusted API. Kernel references, open handles, and child links retain inodes; forget/release reclaim
 them. No inode numbers are reused within a mount.
 
-Start with zero entry/attribute TTLs, direct I/O, no kernel writeback, and no client content or
-authorization cache. Directory reads page with bounded state; seeking backwards replays pages.
+Use direct I/O without kernel writeback. Kernel positive/negative entry and attribute caching shares the client metadata
+freshness deadline captured before reading; it never extends the one-second bound. Each mount has bounded
+LRUs: 32 MiB for metadata and 256 MiB for immutable, version-keyed 1 MiB content blocks. Listing
+prefills child lookup/stat entries. Read-only opens use local handles and `POST /objects/read`;
+writable handles keep the server mutation/sequence protocol.
+
+`POST /sessions/cache` long-polls a workspace revision. Unchanged revisions keep metadata fresh;
+changes, polling failures, or a gap of one second discard metadata. Authorization can be stale for
+at most one second, measured from check request start and capped by session expiry. Immutable bytes
+have no TTL: retain them until memory pressure evicts them, selecting their version through currently
+authorized metadata. Writes and session closure never wait for clients. The writing client clears
+its metadata before/after mutations to read its own changes immediately. Response revision stamps
+prevent stale in-flight responses refilling the cache. Targeted metadata invalidation is future work.
+The client starts checks at least 100 ms apart, including when writes wake long polls immediately.
+This bounds check traffic during write bursts without extending freshness deadlines or delaying writes.
+
+Directory reads page with bounded state; seeking backwards replays pages.
 Concurrent edits can cause skips/repeats, as with the HTTP listing contract. Up to 32 blocking workers
 (default eight) bound concurrency; kernel read/write requests are capped at 1 MiB. Each mount caps inodes
 at 100,000 and file/directory handles at 256 each. Exceeding limits returns an error.
 
-Writes publish to the server before returning; flush/fsync wait for server acknowledgement and report sticky write
-failures. Retry an ambiguous edit once with the same request ID/sequence/bytes; unresolved failures
+Writes publish to the server before returning. Flush waits behind handle edits and reports sticky
+write failures without repeating publication; explicit fsync also checks the server sequence barrier. Retry an ambiguous edit once with the same request ID/sequence/bytes; unresolved failures
 require closing the handle and checking server state before further edits. Namespace mutations are
 not blindly retried. Release frees handles; Linux does not propagate release errors to `close`, so
 flush is the error-reporting boundary. Directory fsync relies on already-acknowledged namespace mutations in the configured write mode.
@@ -394,12 +414,27 @@ reclaim orphaned blobs later.
 - Content uses immutable 64 KiB pages shared across versions. Changed pages stay in RAM or spill to
   private temporary disk files without fsync; sparse extensions read as zeroes. Cold edits fetch their
   base once. Reads of persisted content use a bounded cache of 1 MiB ranges. Cache keys include the
-  workspace, object, and version; authorization always uses current metadata.
+  workspace, object, and version; authorization always uses current metadata. Clean entries use LRU
+  eviction with a separate configurable entry limit (65,536 by default, `--cache-entries`).
 - Defaults: 256 MiB content RAM, 4 GiB spill disk, 128 MiB pending metadata accounting, and a 64 MiB
-  SlateDB block cache. Content budgets count shared pages once. Process overhead and transfer buffers
-  are additional. Configure `--cache-memory-bytes`, `--cache-disk-bytes`, `--cache-dir`, and
+  SlateDB block cache. Content budgets count shared pages once; process overhead and transfer buffers
+  are additional. A separate 64 MiB namespace memo (`--namespace-cache-bytes`) reuses rows and
+  successful ancestor authorization only for the exact workspace mutation sequence and grant set;
+  every mutation changes that sequence atomically. Configure `--cache-memory-bytes`,
+  `--cache-disk-bytes`, `--cache-dir`, and
   `--overlay-bytes` (matching `DFS_*` environment variables). Clean entries may be evicted; dirty
   capacity exhaustion rejects new writes. The queue also caps at 65,536 pending mutations.
+- Every server start is cold: clear the private bucket/prefix-scoped disk read caches under
+  `--cache-dir` before opening them, and recover state only from GCS. During the process lifetime,
+  SlateDB caches immutable SSTs with a 256 MiB target
+  (`--metadata-cache-disk-bytes`); manifests and WAL recovery always use GCS. A 512 MiB Foyer disk
+  cache (`--read-cache-disk-bytes`) holds immutable 1 MiB content blocks under full version keys.
+  Files up to 1 MiB prefill it after durable publication; larger files populate it on reads. Cache
+  reads validate keys, lengths, and checksums; misses or read failures fall back to GCS. Neither cache
+  restores pending writes or authorizes access. Zero disables either cache; content requires at least
+  64 MiB when enabled. Foyer adds 4 MiB hot-entry memory, two rotating 16 MiB flush buffers, a 16 MiB
+  admission queue threshold, and index/runtime overhead. Background prefill drains admission every
+  1 MiB to avoid overflowing those buffers; read admission stays best effort. Neither delays fsync.
 - A persistent ordered map gives cheap, consistent overlay snapshots, including tombstones. All
   point reads and paginated directory/grant scans merge the overlay with a SlateDB snapshot. Views
   pin their current staged content until the caller obtains a pinned stream; overwrites and background
@@ -415,6 +450,8 @@ reclaim orphaned blobs later.
   with backoff and bounded staging; SlateDB submission/durability failure stops publication until
   restart. Graceful shutdown drains for `--persist-drain-timeout-seconds` (60 by default) and reports
   failure if incomplete.
+- Shutdown logs aggregate per-route request counts/handler times and metadata/content cache hits,
+  misses, remote bytes, and reused authorization decisions. Handler times exclude streamed bodies.
 - Receipts are visible alongside their mutation and become durable in the same persistence batch.
   Cached acknowledgements, including receipts, may disappear after a crash. A receipt records the
   original result and does not promise historical content access: coalesced versions need never reach

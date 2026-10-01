@@ -43,7 +43,7 @@ pub(crate) async fn rename(
 ) -> Result<ObjectMetadata, ApiError> {
     let request = &request;
     mutate(storage, workspace, |view| async move {
-        let read = NamespaceRead { view, grants };
+        let read = NamespaceRead::from_view(view, grants);
         let (object, source_parent, link) = source(&read, request.object_id).await?;
         let destination = read.directory(request.parent_id).await?;
         if object.metadata_revision.get() != request.expected_metadata_revision {
@@ -138,7 +138,7 @@ pub(crate) async fn remove(
     let request = &request;
     let kind = &kind;
     mutate(storage, workspace, |view| async move {
-        let read = NamespaceRead { view, grants };
+        let read = NamespaceRead::from_view(view, grants);
         let (object, parent, link) = source(&read, request.object_id).await?;
         if object.metadata_revision.get() != request.expected_metadata_revision {
             return Err(ApiError::Conflict);

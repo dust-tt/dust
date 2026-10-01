@@ -1,4 +1,5 @@
 //! Volatile publication overlay and bounded local content staging.
+pub(super) mod clean;
 mod staging;
 mod worker;
 
@@ -30,13 +31,25 @@ pub struct CacheConfig {
     /// Cached fsync acknowledges server visibility; sync waits for remote durability.
     #[arg(long, env = "DFS_WRITE_MODE", value_enum, default_value = "sync")]
     pub write_mode: WriteMode,
-    /// Local disposable staging directory; never used as recovery input.
+    /// Local staging and read caches; every server start discards prior cache data.
     #[arg(long, env = "DFS_CACHE_DIR", default_value_os_t = std::env::temp_dir())]
     pub cache_dir: PathBuf,
     #[arg(long, env = "DFS_CACHE_MEMORY_BYTES", default_value_t = 256 * 1024 * 1024)]
     pub cache_memory_bytes: u64,
     #[arg(long, env = "DFS_CACHE_DISK_BYTES", default_value_t = 4 * 1024 * 1024 * 1024)]
     pub cache_disk_bytes: u64,
+    /// Maximum retained clean versions/read blocks, independently of the payload byte budgets.
+    #[arg(long, env = "DFS_CACHE_ENTRIES", default_value_t = 65_536)]
+    pub cache_entries: usize,
+    /// Accounted keys/values for snapshot-scoped metadata and authorization memoization.
+    #[arg(long, env = "DFS_NAMESPACE_CACHE_BYTES", default_value_t = 64 * 1024 * 1024)]
+    pub namespace_cache_bytes: usize,
+    /// SlateDB's disposable SST disk cache target; zero disables it. Separate from content staging.
+    #[arg(long, env = "DFS_METADATA_CACHE_DISK_BYTES", default_value_t = 256 * 1024 * 1024)]
+    pub metadata_cache_disk_bytes: usize,
+    /// Disposable immutable content cache for this process; zero disables it, minimum 64 MiB.
+    #[arg(long, env = "DFS_READ_CACHE_DISK_BYTES", default_value_t = 512 * 1024 * 1024)]
+    pub read_cache_disk_bytes: usize,
     #[arg(long, env = "DFS_OVERLAY_BYTES", default_value_t = 128 * 1024 * 1024)]
     pub overlay_bytes: u64,
     #[arg(long, env = "DFS_PERSIST_INTERVAL_MS", default_value_t = 100)]
@@ -54,6 +67,10 @@ impl Default for CacheConfig {
             cache_dir: std::env::temp_dir(),
             cache_memory_bytes: 256 * 1024 * 1024,
             cache_disk_bytes: 4 * 1024 * 1024 * 1024,
+            cache_entries: 65_536,
+            namespace_cache_bytes: 64 * 1024 * 1024,
+            metadata_cache_disk_bytes: 256 * 1024 * 1024,
+            read_cache_disk_bytes: 512 * 1024 * 1024,
             overlay_bytes: 128 * 1024 * 1024,
             persist_interval_ms: 100,
             persist_concurrency: 16,
@@ -85,6 +102,7 @@ pub(super) struct Cache {
     config: CacheConfig,
     state: Mutex<State>,
     pub staging: Staging,
+    pub read_memo: Arc<super::read::ReadMemo>,
     wake: Notify,
     progress: Notify,
     pub visible: AtomicU64,
@@ -98,7 +116,10 @@ pub(super) struct Cache {
 }
 
 impl Cache {
-    pub fn new(config: CacheConfig) -> Result<Arc<Self>> {
+    pub fn new(
+        config: CacheConfig,
+        clean_disk: Option<Arc<clean::CleanCache>>,
+    ) -> Result<Arc<Self>> {
         ensure!(
             config.overlay_bytes > 0
                 && (1..=32).contains(&config.persist_concurrency)
@@ -106,10 +127,13 @@ impl Cache {
                 && (1..=3600).contains(&config.persist_drain_timeout_seconds),
             "invalid cache configuration"
         );
-        let staging = Staging::new(&config)?;
+        let mut staging = Staging::new(&config)?;
+        staging.clean_disk = clean_disk;
+        let read_memo = Arc::new(super::read::ReadMemo::new(config.namespace_cache_bytes)?);
         Ok(Arc::new(Self {
             config,
             staging,
+            read_memo,
             state: Mutex::new(State::default()),
             wake: Notify::new(),
             progress: Notify::new(),
@@ -244,6 +268,11 @@ impl Cache {
         if let Some(worker) = worker {
             worker.await?;
         }
+        self.staging.log_metrics();
+        self.read_memo.log_metrics();
+        if let Some(disk) = &self.staging.clean_disk {
+            disk.close().await?;
+        }
         result
     }
 }
@@ -266,10 +295,7 @@ pub(super) enum Publication {
 impl Publication {
     pub async fn acknowledge(self) -> Result<()> {
         match self {
-            Self::Remote(handle) => {
-                handle.await_durable().await?;
-                Ok(())
-            }
+            Self::Remote(handle) => handle.await_durable().await.map_err(Into::into),
             Self::Visible => Ok(()),
         }
     }

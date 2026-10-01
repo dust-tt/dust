@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-use crate::model::{EntryName, ObjectId, RequestId, WorkspaceId};
+use crate::model::{ContentVersionId, EntryName, ObjectId, RequestId, WorkspaceId};
 
 /**
  * @cc [owner:spolu,label:security] scoped-key-encoding
@@ -31,6 +31,17 @@ impl Keyspace {
         let mut key = self.family(1);
         key.extend_from_slice(id.as_bytes());
         key
+    }
+
+    pub fn blob(
+        &self,
+        object: ObjectId,
+        version: ContentVersionId,
+    ) -> slatedb::object_store::path::Path {
+        slatedb::object_store::path::Path::from(format!(
+            "v1/{}/{object}/{version}",
+            hex::encode(self.workspace.as_str().as_bytes())
+        ))
     }
 
     pub fn children(&self, parent: ObjectId) -> Vec<u8> {

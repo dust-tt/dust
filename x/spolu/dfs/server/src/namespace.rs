@@ -13,6 +13,7 @@ use mutation::mutate;
 mod session;
 pub(crate) use session::{NamespaceId, NamespaceNode, SyntheticDirectory};
 
+use sha2::{Digest, Sha256};
 use std::collections::{BTreeSet, HashSet};
 
 use crate::{
@@ -27,10 +28,13 @@ use crate::{
  * authorize against the same snapshot used for its metadata reads. Views MUST NOT be reused across
  * requests; subsequent requests MUST observe completed grant revocations and moves.
  * The synchronous path MUST NOT cache dfs metadata or authorization decisions across requests.
+ * Cached mode MAY reuse successful authorization only for the exact workspace snapshot sequence
+ * and complete grant set. Mutations MUST advance that sequence with their metadata and indexes.
  */
 pub(crate) struct NamespaceRead<'a> {
     view: ReadView,
     grants: &'a BTreeSet<String>,
+    grant_digest: [u8; 32],
 }
 
 pub(crate) struct DirectoryPage {
@@ -47,13 +51,24 @@ impl<'a> NamespaceRead<'a> {
         let scoped = storage
             .workspace(workspace)
             .map_err(|_| ApiError::Unavailable)?;
-        Ok(Self {
-            view: scoped
-                .read_view()
-                .await
-                .map_err(|_| ApiError::Unavailable)?,
+        let view = scoped
+            .read_view()
+            .await
+            .map_err(|_| ApiError::Unavailable)?;
+        Ok(Self::from_view(view, grants))
+    }
+
+    fn from_view(view: ReadView, grants: &'a BTreeSet<String>) -> Self {
+        let mut digest = Sha256::new();
+        for grant in grants {
+            digest.update((grant.len() as u64).to_be_bytes());
+            digest.update(grant.as_bytes());
+        }
+        Self {
+            view,
             grants,
-        })
+            grant_digest: digest.finalize().into(),
+        }
     }
 
     /**
@@ -82,10 +97,21 @@ impl<'a> NamespaceRead<'a> {
             }
             if self
                 .view
-                .has_any_grant(current.id, self.grants)
+                .was_authorized(current.id, self.grant_digest)
                 .await
                 .map_err(|_| ApiError::Unavailable)?
+                || self
+                    .view
+                    .has_any_grant(current.id, self.grants)
+                    .await
+                    .map_err(|_| ApiError::Unavailable)?
             {
+                for id in visited {
+                    self.view
+                        .remember_authorized(id, self.grant_digest)
+                        .await
+                        .map_err(|_| ApiError::Unavailable)?;
+                }
                 return Ok(object);
             }
             let Some(link) = current.parent else {

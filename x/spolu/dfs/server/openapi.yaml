@@ -26,7 +26,75 @@ info:
     With --write-mode cached, they acknowledge atomic server visibility from local RAM/disk and the
     metadata overlay. Fsync and receipts do not promise remote durability; a crash may discard a
     consistent suffix of acknowledged mutations. Workspace creation remains durable in both modes.
+    Opt-in client caches use POST /sessions/cache revision checks. Mutations and session closure
+    never wait for clients. Cached metadata/authorization may be stale for at most one second.
+    Filesystem reads may include Dfs-Cache-Revision when the workspace revision stayed unchanged
+    during preparation; admit metadata only under a fresh check at that revision. Ordinary HTTP
+    caching stays disabled. Clear metadata on revision changes, check expiry, or errors. Immutable
+    version-keyed bytes may remain cached, but access must select them through authorized metadata.
 paths:
+  /sessions/cache:
+    post:
+      operationId: checkCacheRevision
+      summary: Check the workspace revision for session-scoped caching.
+      description: |
+        Initially send an empty object, then send the last observed revision. A matching revision
+        may wait up to 250 ms for a change. Clear metadata when the revision changes. Freshness lasts
+        at most fresh_for_ms (maximum 1000 ms), measured from the start of this HTTP request with a
+        monotonic clock and capped by session lifetime. On errors or freshness expiry, discard
+        metadata and reauthorize at the server. No registration or acknowledgment is required;
+        writes never wait for clients. Responses carry no object names, paths, or grant details.
+        Restart invalidates sessions. Immutable version-keyed content can remain cached across
+        checks, but its version must be selected through freshly authorized metadata.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CacheCheckRequest'
+      responses:
+        "200":
+          description: Current revision and conservative metadata freshness duration.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CacheCheckResponse'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /objects/read:
+    post:
+      operationId: readObject
+      summary: Stream an authorized current content range without allocating a server handle.
+      description: |
+        Same current-version, range, streaming, and authorization semantics as /files/read, addressed
+        by stable object_id. Requires a file ID in the session workspace. No historical content or
+        deleted object can be selected. This operation has no mutations or retained server handles.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReadObjectRequest'
+      responses:
+        "200":
+          description: Binary range with Content-Length and Dfs-Content-Version.
+          headers:
+            Content-Length:
+              schema: {type: integer, format: uint64, minimum: 0}
+            Dfs-Content-Version:
+              schema: {type: string, pattern: '^[0-9a-f]{32}$'}
+            Dfs-Cache-Revision:
+              description: Present only if no mutation raced response preparation.
+              schema: {type: integer, format: uint64, minimum: 1}
+          content:
+            application/octet-stream:
+              schema: {type: string, format: binary}
+        default:
+          $ref: '#/components/responses/ApiError'
   /health:
     get:
       operationId: health
@@ -381,7 +449,9 @@ paths:
         Cached edits share unchanged local pages and stage changed pages in bounded RAM/disk.
         Both reauthorize and publish metadata/event/receipt atomically; cached acknowledgement requires
         visibility, synchronous acknowledgement requires durability. Other files proceed concurrently.
-        Default scratch limit is 1 GiB (also the cached edit file-size limit), with 16 admitted jobs.
+        Default scratch limit is 1 GiB (also the cached edit file-size limit), with 16 active jobs
+        and up to 256 waiting jobs. Waiting jobs do not poll streaming bodies or reserve scratch/transfer
+        resources, and recheck session/grant authorization when executing. Queue overflow returns 507.
         Input frames are at most 1 MiB; input idle timeout is 30 seconds and preparation is limited to
         15 minutes. Interrupted/short/long bodies return invalid_input; quota/disk/job exhaustion returns
         capacity_exhausted. Failed writes leave no partial publication and fsync reports their failure.
@@ -889,6 +959,47 @@ components:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
   schemas:
+    CacheCheckRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          format: uint64
+          minimum: 1
+          nullable: true
+    CacheCheckResponse:
+      type: object
+      required: [revision, fresh_for_ms]
+      properties:
+        revision:
+          type: integer
+          format: uint64
+          minimum: 1
+        fresh_for_ms:
+          type: integer
+          minimum: 0
+          maximum: 1000
+    ReadObjectRequest:
+      type: object
+      additionalProperties: false
+      required: [object_id, offset, length]
+      properties:
+        object_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+        content_version:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+          nullable: true
+        offset:
+          type: integer
+          format: uint64
+          minimum: 0
+        length:
+          type: integer
+          format: uint64
+          minimum: 0
     CommitUploadRequest:
       type: object
       additionalProperties: false

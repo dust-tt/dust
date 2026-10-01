@@ -37,8 +37,8 @@ impl WorkspaceStorage<'_> {
                     .read_blob_stream(object, base, 0, base.size_bytes)
                     .await?;
                 let local = cache.staging.stage(bytes.stream).await?;
-                cache.staging.register(key, local.clone())?;
-                cache.staging.retain_clean(local.clone())?;
+                cache.staging.register(key.clone(), local.clone())?;
+                cache.staging.retain_clean(key, local.clone())?;
                 local
             }
         };
@@ -76,7 +76,7 @@ impl WorkspaceStorage<'_> {
                 stream: stream::empty().boxed(),
             });
         }
-        let lease = self.storage.transfers.acquire().await?;
+        let lease = self.storage.transfers.acquire_read().await?;
         if let Some(cache) = &self.storage.cache
             && let Some(local) = cache
                 .staging
@@ -198,6 +198,7 @@ mod tests {
         storage.transfers = UploadConfig {
             upload_memory_mib: 12,
             upload_concurrency: 4,
+            ..Default::default()
         }
         .budget()?
         .into();

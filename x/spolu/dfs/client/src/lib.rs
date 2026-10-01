@@ -1,4 +1,6 @@
 //! Blocking HTTP transport, usable from bounded FUSE worker threads on Linux or natively on macOS.
+mod cache;
+pub use cache::{CacheStats, CachedClient};
 use std::{
     io::{Read, Write},
     time::Duration,

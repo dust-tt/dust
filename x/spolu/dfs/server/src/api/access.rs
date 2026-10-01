@@ -30,11 +30,16 @@ pub(crate) struct Session {
     pub workspace: WorkspaceId,
     pub grants: BTreeSet<String>,
     pub expires_at: u64,
+    pub cache_scope: Arc<crate::coherence::Scope>,
     deadline: Instant,
     closed: AtomicBool,
 }
 
 impl Session {
+    pub(crate) fn cache_lifetime(&self) -> Duration {
+        self.deadline.saturating_duration_since(Instant::now())
+    }
+
     pub(crate) fn check_active(&self) -> Result<(), ApiError> {
         if self.closed.load(Ordering::Acquire) || Instant::now() >= self.deadline {
             return Err(ApiError::Unauthenticated);
@@ -86,10 +91,11 @@ impl Access {
      * The verified key authorizes any opaque grant set in that workspace, up to 512 distinct values.
      * Session keys MUST NOT authorize workspace creation, grant administration, or further sessions.
      */
-    pub(super) async fn create_session(
+    pub(crate) async fn create_session(
         &self,
         workspace: WorkspaceId,
         grants: BTreeSet<String>,
+        cache_scope: Arc<crate::coherence::Scope>,
     ) -> Result<(Arc<Session>, String), ApiError> {
         if grants.len() > 512 {
             return Err(ApiError::InvalidInput);
@@ -115,6 +121,7 @@ impl Access {
             id: Uuid::new_v4().simple().to_string(),
             workspace,
             grants,
+            cache_scope,
             expires_at,
             deadline: now + Duration::from_secs(SESSION_TTL_SECONDS),
             closed: AtomicBool::new(false),
@@ -143,6 +150,7 @@ impl Access {
         let session = sessions
             .by_key
             .get(&hash)
+            .cloned()
             .ok_or(ApiError::Unauthenticated)?;
         if session.id != id {
             return Err(ApiError::NotFound);
@@ -151,6 +159,8 @@ impl Access {
         let expiry = (session.deadline, hash);
         sessions.by_expiry.remove(&expiry);
         sessions.by_key.remove(&hash);
+        drop(sessions);
+        session.cache_scope.wake();
         Ok(())
     }
 }
@@ -260,10 +270,13 @@ mod tests {
     async fn expiration_cleans_both_indexes_and_closure_is_scoped() -> Result<()> {
         let access = Access::new(None)?;
         let workspace = WorkspaceId::new("w")?;
+        let scope = crate::coherence::Scopes::default().get(&workspace)?;
         let (first, first_key) = access
-            .create_session(workspace.clone(), BTreeSet::new())
+            .create_session(workspace.clone(), BTreeSet::new(), scope.clone())
             .await?;
-        let (second, second_key) = access.create_session(workspace, BTreeSet::new()).await?;
+        let (second, second_key) = access
+            .create_session(workspace, BTreeSet::new(), scope)
+            .await?;
         assert!(matches!(
             access.close_session(&first_key, &second.id).await,
             Err(ApiError::NotFound)
