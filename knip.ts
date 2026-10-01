@@ -2,7 +2,55 @@ import type { KnipConfig } from "knip";
 
 // Entries and project globs ending in `!` are production code: `knip --production` only follows
 // those, so code reachable from tests alone is reported as unused.
+/**
+ * @cc [owner:aubin-tchoi,label:testing] lazy-route-export-usage
+ * Knip MUST count the named export selected by each withSuspense route as used,
+ * without ignoring unrelated unused exports in the imported module.
+ * Default aliases of named page components MUST be retained without source annotations.
+ */
 const config: KnipConfig = {
+  compilers: {
+    tsx: (source, filename) => {
+      if (filename.includes("/front/components/pages/")) {
+        // Retain default aliases of named page components during Knip analysis only.
+        const namedExports = new Set(
+          Array.from(
+            source.matchAll(
+              /^export (?:async )?(?:function|class|const|let) ([A-Za-z_$][\w$]*)/gm
+            ),
+            (match) => match[1]
+          )
+        );
+        return source.replace(
+          /^export default ([A-Za-z_$][\w$]*);/gm,
+          (declaration, name: string) =>
+            namedExports.has(name)
+              ? `/** @alias */\n${declaration}`
+              : declaration
+        );
+      }
+      if (
+        !filename.includes("/front-spa/src/app/routes/") &&
+        !filename.endsWith("/front-spa/src/app/routes.tsx")
+      ) {
+        return source;
+      }
+      // withSuspense selects module[exportName] at runtime. Expose that reference
+      // to Knip without changing the application source or its lazy loading.
+      const imports: string[] = [];
+      const compiled = source.replace(
+        /withSuspense\(\s*\(\)\s*=>\s*import\(\s*("[^"]+")\s*,?\s*\),\s*"([A-Za-z_$][\w$]*)"/g,
+        (_, modulePath: string, exportName: string) => {
+          const alias = `__knipLazyRoute${imports.length}`;
+          imports.push(
+            `import { ${exportName} as ${alias} } from ${modulePath};`
+          );
+          return `withSuspense(() => Promise.resolve({ ${exportName}: ${alias} }), "${exportName}"`;
+        }
+      );
+      return `${compiled}\n${imports.join("\n")}`;
+    },
+  },
   workspaces: {
     front: {
       // The wildcard `exports` of front/package.json make every file under lib/, components/
