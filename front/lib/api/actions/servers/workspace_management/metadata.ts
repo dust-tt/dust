@@ -82,6 +82,7 @@ const searchQuerySchema = z
   );
 
 const searchAgentsSchema = SearchAgentsQuerySchema.omit({
+  searchType: true,
   offset: true,
   facets: true,
   permissionFiltering: true,
@@ -90,6 +91,9 @@ const searchAgentsSchema = SearchAgentsQuerySchema.omit({
 }).extend({ query: searchQuerySchema, ...paginationSchemaShape });
 
 const searchSkillsSchema = SearchSkillsQuerySchema.omit({
+  searchType: true,
+  defaultToFavorites: true,
+  excludeSkillId: true,
   offset: true,
   facets: true,
   permissionFiltering: true,
