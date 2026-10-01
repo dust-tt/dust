@@ -113,10 +113,6 @@ const WorkspaceProvidersUpdateBodySchema = z.object({
   defaultEmbeddingProvider: EmbeddingProviderSchema.nullable(),
 });
 
-const WorkspaceWorkOSUpdateBodySchema = z.object({
-  workOSOrganizationId: z.string().nullable(),
-});
-
 // TODO(2026-03-20 FRAME SHARING): Remove once all clients have refreshed.
 const WorkspaceInteractiveContentSharingUpdateBodySchema = z.object({
   allowContentCreationFileSharing: z.boolean(),
@@ -230,12 +226,17 @@ const WorkspaceInactiveAgentArchivalUpdateBodySchema = z.object({
     .nullable(),
 });
 
+/**
+ * @cc [owner:frankaloia,label:security;backend] workos-organization-binding-server-owned
+ * Session-authenticated workspace settings requests MUST NOT treat `workOSOrganizationId` as a
+ * supported setting or modify the binding. The binding may only be persisted by trusted
+ * server-side provisioning after resolving the WorkOS organization from the workspace's `sId`.
+ */
 const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceInactiveAgentArchivalUpdateBodySchema,
   WorkspaceNameUpdateBodySchema,
   WorkspaceRegionalModelsOnlyUpdateBodySchema,
   WorkspaceProvidersUpdateBodySchema,
-  WorkspaceWorkOSUpdateBodySchema,
   WorkspaceInteractiveContentSharingUpdateBodySchema,
   WorkspaceSharingPolicyUpdateBodySchema,
   WorkspaceVoiceTranscriptionUpdateBodySchema,
@@ -451,30 +452,6 @@ app.post(
           default_embedding_provider: body.defaultEmbeddingProvider ?? "",
         },
       });
-    } else if ("workOSOrganizationId" in body) {
-      const previousWorkOSOrganizationId = owner.workOSOrganizationId;
-      await workspace.updateWorkspaceSettings({
-        workOSOrganizationId: body.workOSOrganizationId,
-      });
-
-      const auditWorkspace = {
-        ...owner,
-        workOSOrganizationId:
-          body.workOSOrganizationId ?? previousWorkOSOrganizationId,
-      };
-      void emitAuditLogEventDirect({
-        workspace: auditWorkspace,
-        action: "workspace.workos_organization_updated",
-        actor: buildAuditActor(auth),
-        targets: [buildAuditLogTarget("workspace", auditWorkspace)],
-        context: getAuditLogContext(auth),
-        metadata: {
-          configured: String(body.workOSOrganizationId !== null),
-          organization_id: body.workOSOrganizationId ?? "",
-        },
-      });
-
-      owner.workOSOrganizationId = body.workOSOrganizationId;
     } else if ("allowContentCreationFileSharing" in body) {
       const previousMetadata = owner.metadata ?? {};
       const newMetadata = {
