@@ -1,3 +1,12 @@
+import {
+  DustFileSystem,
+  sanitizeFileSystemName,
+} from "@app/lib/api/file_system";
+import {
+  uploadReadableToFileStorage,
+  validateFileUpload,
+} from "@app/lib/api/files/upload";
+import { buildEffectiveUseCaseMetadata } from "@app/lib/api/files/upload_metadata";
 import { validateSkillAvailabilityChange } from "@app/lib/api/skills/availability_change";
 import { validateSkillDeletion } from "@app/lib/api/skills/deletion";
 import type { SkillEditorsChange } from "@app/lib/api/skills/editors_change";
@@ -41,6 +50,7 @@ import {
 } from "@app/types/suggestions/skill_suggestion";
 import uniq from "lodash/uniq";
 import uniqBy from "lodash/uniqBy";
+import path from "path";
 
 function hasSkillFieldEdits({
   agentFacingDescription,
@@ -79,10 +89,28 @@ function resolveInstructions(
   );
 }
 
-export function validateSkillFilesChange(
+export function skillFileNameFromPath(filePath: string): string {
+  return sanitizeFileSystemName(path.posix.basename(filePath));
+}
+
+/**
+ * The skill's file attachments once `files` is applied: the files it removes are detached, and the
+ * files it adds are checked against the upload rules. With `upload`, the added files are uploaded
+ * and returned too, not yet linked to the skill. Without it, only the kept files are returned.
+ * Without `files`, the current attachments are returned unchanged.
+ */
+export async function resolveSkillFileAttachments(
+  auth: Authenticator,
   skill: SkillResource,
-  { removeFileIds }: { removeFileIds: string[] }
-): Result<FileResource[], DustError<"invalid_request_error">> {
+  files: SkillEdits["files"],
+  { upload }: { upload: boolean }
+): Promise<Result<FileResource[], DustError<"invalid_request_error">>> {
+  const currentAttachments = skill.getFileAttachments();
+  if (!files) {
+    return new Ok([...currentAttachments]);
+  }
+  const { addFilePaths, removeFileIds } = files;
+
   if (skill.status === "archived") {
     return new Err(
       new DustError(
@@ -92,8 +120,7 @@ export function validateSkillFilesChange(
     );
   }
 
-  const fileAttachments = skill.getFileAttachments();
-  const attachedFileIds = new Set(fileAttachments.map((file) => file.sId));
+  const attachedFileIds = new Set(currentAttachments.map((file) => file.sId));
   const notAttached = [
     ...new Set(removeFileIds.filter((id) => !attachedFileIds.has(id))),
   ];
@@ -107,20 +134,94 @@ export function validateSkillFilesChange(
   }
 
   const removedFileIds = new Set(removeFileIds);
-  return new Ok(
-    fileAttachments.filter((file) => !removedFileIds.has(file.sId))
+  const fileAttachments = currentAttachments.filter(
+    (file) => !removedFileIds.has(file.sId)
   );
-}
 
-function resolveFileAttachments(
-  skill: SkillResource,
-  files: SkillEdits["files"]
-): Result<FileResource[], DustError<"invalid_request_error">> {
-  if (!files) {
-    return new Ok([...skill.getFileAttachments()]);
+  const fileNames = new Set(fileAttachments.map((file) => file.fileName));
+  for (const filePath of uniq(addFilePaths)) {
+    const fileName = skillFileNameFromPath(filePath);
+    if (fileNames.has(fileName)) {
+      return new Err(
+        new DustError(
+          "invalid_request_error",
+          `The skill already has a file named "${fileName}".`
+        )
+      );
+    }
+    fileNames.add(fileName);
+
+    const fsRes = await DustFileSystem.fromScopedPath(auth, filePath);
+    if (fsRes.isErr()) {
+      return new Err(
+        new DustError("invalid_request_error", fsRes.error.message)
+      );
+    }
+    const statRes = await fsRes.value.stat(filePath);
+    if (statRes.isErr()) {
+      return new Err(
+        new DustError("invalid_request_error", statRes.error.message)
+      );
+    }
+    if (!statRes.value) {
+      return new Err(
+        new DustError("invalid_request_error", `File not found: ${filePath}.`)
+      );
+    }
+    const { sizeBytes } = statRes.value;
+
+    const validation = await validateFileUpload(auth, {
+      contentType: statRes.value.contentType,
+      fileName,
+      fileSize: sizeBytes,
+      useCase: "skill_attachment",
+    });
+    if (validation.isErr()) {
+      return new Err(
+        new DustError("invalid_request_error", validation.error.message)
+      );
+    }
+
+    if (!upload) {
+      continue;
+    }
+
+    const readRes = await fsRes.value.read(filePath);
+    if (readRes.isErr()) {
+      return new Err(
+        new DustError("invalid_request_error", readRes.error.message)
+      );
+    }
+    if (!readRes.value) {
+      return new Err(
+        new DustError("invalid_request_error", `File not found: ${filePath}.`)
+      );
+    }
+
+    const { contentType, hasSandboxTools } = validation.value;
+    const uploaded = await uploadReadableToFileStorage(auth, {
+      readable: readRes.value,
+      fileSize: sizeBytes,
+      contentType,
+      fileName,
+      useCase: "skill_attachment",
+      useCaseMetadata: buildEffectiveUseCaseMetadata({
+        contentType,
+        fileName,
+        flags: { hasSandboxTools },
+        providedMetadata: { skillId: skill.sId },
+        useCase: "skill_attachment",
+      }),
+    });
+    if (uploaded.isErr()) {
+      return new Err(
+        new DustError("invalid_request_error", uploaded.error.message)
+      );
+    }
+    fileAttachments.push(uploaded.value);
   }
 
-  return validateSkillFilesChange(skill, files);
+  return new Ok(fileAttachments);
 }
 
 async function resolveInstructionAttachments(
@@ -254,7 +355,12 @@ async function resolveSkillFieldEdits(
   }
   const attachments = attachmentsRes.value;
 
-  const fileAttachments = resolveFileAttachments(skill, files);
+  const fileAttachments = await resolveSkillFileAttachments(
+    auth,
+    skill,
+    files,
+    { upload: true }
+  );
   if (fileAttachments.isErr()) {
     return fileAttachments;
   }

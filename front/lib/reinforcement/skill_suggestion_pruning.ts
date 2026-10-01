@@ -1,3 +1,4 @@
+import { skillFileNameFromPath } from "@app/lib/api/skills/apply_skill_suggestions";
 import type { Authenticator } from "@app/lib/auth";
 import {
   buildDescendantMap,
@@ -222,20 +223,32 @@ export async function pruneConflictingSkillFilesSuggestions(
   const newRemoveFileIds = new Set(
     newSuggestions.flatMap((s) => s.suggestion.removeFileIds)
   );
+  const newAddedFileNames = new Set(
+    newSuggestions.flatMap((s) =>
+      s.suggestion.addFilePaths.map(skillFileNameFromPath)
+    )
+  );
 
-  const toMarkOutdated = (
+  const pendingFilesSuggestions = (
     await SkillSuggestionResource.listBySkillConfigurationId(auth, skill.sId, {
       states: ["pending"],
       kinds: ["files"],
       sources: PRUNED_SOURCES,
     })
-  )
-    .filter(isFilesSkillSuggestion)
-    .filter(
-      (s) =>
-        !excluded.has(s.sId) &&
-        s.suggestion.removeFileIds.some((id) => newRemoveFileIds.has(id))
+  ).filter(isFilesSkillSuggestion);
+
+  const toMarkOutdated = pendingFilesSuggestions.filter((row) => {
+    if (excluded.has(row.sId)) {
+      return false;
+    }
+    const { removeFileIds, addFilePaths } = row.suggestion;
+    if (removeFileIds.some((id) => newRemoveFileIds.has(id))) {
+      return true;
+    }
+    return addFilePaths.some((filePath) =>
+      newAddedFileNames.has(skillFileNameFromPath(filePath))
     );
+  });
 
   await outdateSkillSuggestions(auth, toMarkOutdated);
 }

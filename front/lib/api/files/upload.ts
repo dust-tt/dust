@@ -1,19 +1,93 @@
 import type { ProcessAndStoreFileError } from "@app/lib/api/files/processing";
-import { processAndStoreFile } from "@app/lib/api/files/processing";
+import {
+  isUploadSupportedForContentType,
+  processAndStoreFile,
+} from "@app/lib/api/files/processing";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { untrustedFetch } from "@app/lib/egress/server";
 import { FileResource } from "@app/lib/resources/file_resource";
+import {
+  AUDIO_TRANSCRIPTION_UNAVAILABLE_MESSAGE,
+  isAudioTranscriptionAvailable,
+} from "@app/lib/workspace_policies";
 import type {
   FileUseCase,
   FileUseCaseMetadata,
   SupportedFileContentType,
   SupportedImageContentType,
 } from "@app/types/files";
-import { isSupportedFileContentType } from "@app/types/files";
+import {
+  ensureFileSize,
+  isSupportedAudioContentType,
+  isSupportedFileContentType,
+} from "@app/types/files";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
 import { Readable } from "stream";
+
+export async function validateFileUpload(
+  auth: Authenticator,
+  {
+    contentType,
+    fileName,
+    fileSize,
+    useCase,
+  }: {
+    contentType: string;
+    fileName: string;
+    fileSize: number;
+    useCase: FileUseCase;
+  }
+): Promise<
+  Result<
+    { contentType: SupportedFileContentType; hasSandboxTools: boolean },
+    ProcessAndStoreFileError
+  >
+> {
+  if (!isSupportedFileContentType(contentType)) {
+    return new Err({
+      name: "dust_error",
+      code: "file_type_not_supported",
+      message: `Content type "${contentType}" is not supported.`,
+    });
+  }
+
+  if (
+    isSupportedAudioContentType(contentType) &&
+    !isAudioTranscriptionAvailable({
+      owner: auth.getNonNullableWorkspace(),
+      plan: auth.getNonNullablePlan(),
+    })
+  ) {
+    return new Err({
+      name: "dust_error",
+      code: "file_type_not_supported",
+      message: AUDIO_TRANSCRIPTION_UNAVAILABLE_MESSAGE,
+    });
+  }
+
+  if (!isUploadSupportedForContentType({ contentType, useCase })) {
+    return new Err({
+      name: "dust_error",
+      code: "file_type_not_supported",
+      message: `Content type "${contentType}" is not supported for use-case ${useCase}.`,
+    });
+  }
+
+  const hasSandboxTools = isComputerFeatureEnabled(await getFeatureFlags(auth));
+  if (!ensureFileSize(contentType, fileSize, { hasSandboxTools, useCase })) {
+    return new Err({
+      name: "dust_error",
+      code: "file_too_large",
+      message: `File "${fileName}" is too large.`,
+    });
+  }
+
+  return new Ok({ contentType, hasSandboxTools });
+}
 
 export async function processAndStoreFromUrl(
   auth: Authenticator,
@@ -146,24 +220,48 @@ export async function uploadBase64DataToFileStorage(
   }: UploadBase64DataToFileStorageArgs
 ): Promise<Result<FileResource, ProcessAndStoreFileError>> {
   const buffer = Buffer.from(base64, "base64");
-  const fileSizeInBytes = buffer.length;
 
+  return uploadReadableToFileStorage(auth, {
+    readable: Readable.from(buffer),
+    fileSize: buffer.length,
+    contentType,
+    fileName,
+    useCase,
+    useCaseMetadata,
+  });
+}
+
+export async function uploadReadableToFileStorage(
+  auth: Authenticator,
+  {
+    readable,
+    fileSize,
+    contentType,
+    fileName,
+    useCase,
+    useCaseMetadata,
+  }: {
+    readable: Readable;
+    fileSize: number;
+    contentType: SupportedFileContentType | SupportedImageContentType;
+    fileName: string;
+    useCase: FileUseCase;
+    useCaseMetadata?: FileUseCaseMetadata;
+  }
+): Promise<Result<FileResource, ProcessAndStoreFileError>> {
   const file = await FileResource.makeNew({
     workspaceId: auth.getNonNullableWorkspace().id,
     userId: auth.user()?.id ?? null,
     contentType,
     fileName,
-    fileSize: fileSizeInBytes,
+    fileSize,
     useCase,
     useCaseMetadata,
   });
 
   const res = await processAndStoreFile(auth, {
     file,
-    content: {
-      type: "readable",
-      value: Readable.from(buffer),
-    },
+    content: { type: "readable", value: readable },
   });
 
   if (res.isErr()) {
