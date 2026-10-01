@@ -1,4 +1,6 @@
 // @vitest-environment node: the server has no DOM globals, jsdom must not hide a reliance on them.
+
+import { getMarkdownPipeline } from "@app/lib/editor/server_markdown_pipeline";
 import {
   applyInstructionEditsToHtml,
   convertBlockHtmlToMarkdown,
@@ -11,6 +13,7 @@ import * as cheerio from "cheerio";
 import { describe, expect, it } from "vitest";
 
 setupSkillInstructionsMarkdownPipeline();
+const pipeline = getMarkdownPipeline("skill");
 
 const HEX_BLOCK_ID = /^[a-f0-9]{8}$/;
 
@@ -24,7 +27,7 @@ function blockIds(html: string): string[] {
 
 describe("convertMarkdownToBlockHtml", () => {
   it("wraps content in instructions root with stable root block id", () => {
-    const html = convertMarkdownToBlockHtml("Hello");
+    const html = convertMarkdownToBlockHtml("Hello", pipeline);
     const $ = load(html);
 
     const root = $(`div[data-type="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}"]`);
@@ -33,7 +36,7 @@ describe("convertMarkdownToBlockHtml", () => {
   });
 
   it("assigns 8-char hex block ids to block nodes (paragraph + heading)", () => {
-    const html = convertMarkdownToBlockHtml("# Title\n\nBody");
+    const html = convertMarkdownToBlockHtml("# Title\n\nBody", pipeline);
     const $ = load(html);
 
     const withId = $("[data-block-id]")
@@ -54,7 +57,7 @@ describe("convertMarkdownToBlockHtml", () => {
   });
 
   it("strips class, style, and id from rendered HTML", () => {
-    const html = convertMarkdownToBlockHtml("- Item\n\nParagraph");
+    const html = convertMarkdownToBlockHtml("- Item\n\nParagraph", pipeline);
     const $ = load(html);
 
     expect($("[class]").length).toBe(0);
@@ -64,7 +67,8 @@ describe("convertMarkdownToBlockHtml", () => {
 
   it("preserves semantic tags and data-block-id while stripping presentation attrs", () => {
     const html = convertMarkdownToBlockHtml(
-      "## Section\n\n[Link](https://example.com)"
+      "## Section\n\n[Link](https://example.com)",
+      pipeline
     );
     const $ = load(html);
 
@@ -75,12 +79,12 @@ describe("convertMarkdownToBlockHtml", () => {
   });
 
   it("puts block ids on list containers for bullet and ordered lists", () => {
-    const bullet = convertMarkdownToBlockHtml("- one\n- two");
+    const bullet = convertMarkdownToBlockHtml("- one\n- two", pipeline);
     const $b = load(bullet);
     expect($b("ul").length).toBe(1);
     expect($b("ul").attr("data-block-id")).toMatch(HEX_BLOCK_ID);
 
-    const ordered = convertMarkdownToBlockHtml("1. first\n2. second");
+    const ordered = convertMarkdownToBlockHtml("1. first\n2. second", pipeline);
     const $o = load(ordered);
     expect($o("ol").length).toBe(1);
     expect($o("ol").attr("data-block-id")).toMatch(HEX_BLOCK_ID);
@@ -88,7 +92,7 @@ describe("convertMarkdownToBlockHtml", () => {
 
   it("uses empty paragraph when markdown is empty or whitespace-only", () => {
     for (const input of ["", "   ", "\n\t\n"]) {
-      const html = convertMarkdownToBlockHtml(input);
+      const html = convertMarkdownToBlockHtml(input, pipeline);
       const $ = load(html);
 
       expect($("p").length).toBeGreaterThanOrEqual(1);
@@ -99,7 +103,7 @@ describe("convertMarkdownToBlockHtml", () => {
   });
 
   it("produces valid nested structure: root > blocks without extra wrappers", () => {
-    const html = convertMarkdownToBlockHtml("Line");
+    const html = convertMarkdownToBlockHtml("Line", pipeline);
     const $ = load(html);
 
     const root = $(
@@ -110,7 +114,7 @@ describe("convertMarkdownToBlockHtml", () => {
   });
 
   it("handles fenced code blocks and strips classes from pre only", () => {
-    const html = convertMarkdownToBlockHtml("```\nconst x = 1\n```");
+    const html = convertMarkdownToBlockHtml("```\nconst x = 1\n```", pipeline);
     const $ = load(html);
 
     expect($("pre").length).toBe(1);
@@ -119,7 +123,10 @@ describe("convertMarkdownToBlockHtml", () => {
   });
 
   it("renders inline emphasis and strong without presentation attributes on spans", () => {
-    const html = convertMarkdownToBlockHtml("Some *italic* and **bold** text.");
+    const html = convertMarkdownToBlockHtml(
+      "Some *italic* and **bold** text.",
+      pipeline
+    );
     const $ = load(html);
 
     expect($("em").length).toBe(1);
@@ -136,7 +143,7 @@ describe("convertMarkdownToBlockHtml", () => {
       "Outro",
     ].join("\n");
 
-    const html = convertMarkdownToBlockHtml(md);
+    const html = convertMarkdownToBlockHtml(md, pipeline);
 
     expect(html).not.toContain("&lt;knowledge");
     expect(html).toContain("<knowledge");
@@ -153,7 +160,7 @@ describe("convertMarkdownToBlockHtml", () => {
       "Outro",
     ].join("\n");
 
-    const html = convertMarkdownToBlockHtml(md);
+    const html = convertMarkdownToBlockHtml(md, pipeline);
 
     expect(html).not.toContain("&lt;tool");
     expect(html).toContain("<tool");
@@ -166,7 +173,7 @@ describe("convertMarkdownToBlockHtml", () => {
     const md =
       '<skill id="skl_abc" name="Talk Like a Pirate" icon="ActionSpeakIcon" /> when in doubt';
 
-    const html = convertMarkdownToBlockHtml(md);
+    const html = convertMarkdownToBlockHtml(md, pipeline);
     const $ = load(html);
 
     expect(html).not.toContain("&lt;skill");
@@ -203,7 +210,7 @@ describe("convertMarkdownToBlockHtml", () => {
       "Outro",
     ].join("\n");
 
-    const html = convertMarkdownToBlockHtml(md);
+    const html = convertMarkdownToBlockHtml(md, pipeline);
 
     expect(html).not.toContain("&lt;skill");
     expect(html).toContain("<skill");
@@ -215,7 +222,7 @@ describe("convertMarkdownToBlockHtml", () => {
   it("renders <unavailable_skill /> references preserving the id and keeping trailing text", () => {
     const md = '<unavailable_skill id="skl_gone" /> for legacy callers';
 
-    const html = convertMarkdownToBlockHtml(md);
+    const html = convertMarkdownToBlockHtml(md, pipeline);
     const $ = load(html);
 
     expect(html).not.toContain("&lt;unavailable_skill");
@@ -236,34 +243,39 @@ describe("convertMarkdownToBlockHtml", () => {
   it("escapes HTML special characters in text exactly once", () => {
     const md = 'Say "hi" & <role> > then stop.';
 
-    const html = convertMarkdownToBlockHtml(md);
+    const html = convertMarkdownToBlockHtml(md, pipeline);
 
     expect(load(html)("p").text()).toBe(md);
     expect(html).toContain("&lt;role&gt;");
     expect(html).not.toContain("&amp;lt;");
     expect(html).not.toContain("&amp;amp;");
     expect(html).not.toContain("&amp;quot;");
-    expect(convertBlockHtmlToMarkdown(html)).toBe(md);
+    expect(convertBlockHtmlToMarkdown(html, pipeline)).toBe(md);
   });
 
   it("round-trips raw markdown blocks holding HTML special characters", () => {
     const md = '| "quoted" | <tag> & co |\n|---|---|\n| 1 | 2 |';
 
-    const html = convertMarkdownToBlockHtml(md);
+    const html = convertMarkdownToBlockHtml(md, pipeline);
 
     expect(load(html)("div[data-raw-markdown]").attr("data-content")).toBe(md);
-    expect(convertBlockHtmlToMarkdown(html)).toBe(md);
+    expect(convertBlockHtmlToMarkdown(html, pipeline)).toBe(md);
   });
 });
 
 describe("applyInstructionEditsToHtml", () => {
   it("replaces one block and leaves its siblings untouched", () => {
-    const html = convertMarkdownToBlockHtml("First para\n\nSecond para");
+    const html = convertMarkdownToBlockHtml(
+      "First para\n\nSecond para",
+      pipeline
+    );
     const [, firstId, secondId] = blockIds(html);
 
-    const result = applyInstructionEditsToHtml(html, [
-      { targetBlockId: secondId, content: "<p>Rewritten para</p>" },
-    ]);
+    const result = applyInstructionEditsToHtml(
+      html,
+      [{ targetBlockId: secondId, content: "<p>Rewritten para</p>" }],
+      pipeline
+    );
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -277,13 +289,20 @@ describe("applyInstructionEditsToHtml", () => {
   });
 
   it("applies several edits targeting different blocks in one pass", () => {
-    const html = convertMarkdownToBlockHtml("Alpha\n\nBravo\n\nCharlie");
+    const html = convertMarkdownToBlockHtml(
+      "Alpha\n\nBravo\n\nCharlie",
+      pipeline
+    );
     const [, alphaId, , charlieId] = blockIds(html);
 
-    const result = applyInstructionEditsToHtml(html, [
-      { targetBlockId: alphaId, content: "<p>Alpha edited</p>" },
-      { targetBlockId: charlieId, content: "<p>Charlie edited</p>" },
-    ]);
+    const result = applyInstructionEditsToHtml(
+      html,
+      [
+        { targetBlockId: alphaId, content: "<p>Alpha edited</p>" },
+        { targetBlockId: charlieId, content: "<p>Charlie edited</p>" },
+      ],
+      pipeline
+    );
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -294,12 +313,14 @@ describe("applyInstructionEditsToHtml", () => {
   });
 
   it("replaces one block with several", () => {
-    const html = convertMarkdownToBlockHtml("Only para");
+    const html = convertMarkdownToBlockHtml("Only para", pipeline);
     const [, onlyId] = blockIds(html);
 
-    const result = applyInstructionEditsToHtml(html, [
-      { targetBlockId: onlyId, content: "<p>One</p><p>Two</p>" },
-    ]);
+    const result = applyInstructionEditsToHtml(
+      html,
+      [{ targetBlockId: onlyId, content: "<p>One</p><p>Two</p>" }],
+      pipeline
+    );
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -310,14 +331,18 @@ describe("applyInstructionEditsToHtml", () => {
   });
 
   it("rewrites everything when targeting the root", () => {
-    const html = convertMarkdownToBlockHtml("Old one\n\nOld two");
+    const html = convertMarkdownToBlockHtml("Old one\n\nOld two", pipeline);
 
-    const result = applyInstructionEditsToHtml(html, [
-      {
-        targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
-        content: `<div data-type="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}"><p>Brand new</p></div>`,
-      },
-    ]);
+    const result = applyInstructionEditsToHtml(
+      html,
+      [
+        {
+          targetBlockId: INSTRUCTIONS_ROOT_TARGET_BLOCK_ID,
+          content: `<div data-type="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}"><p>Brand new</p></div>`,
+        },
+      ],
+      pipeline
+    );
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -328,12 +353,14 @@ describe("applyInstructionEditsToHtml", () => {
   });
 
   it("changes the block type when the edit does", () => {
-    const html = convertMarkdownToBlockHtml("Plain para");
+    const html = convertMarkdownToBlockHtml("Plain para", pipeline);
     const [, paraId] = blockIds(html);
 
-    const result = applyInstructionEditsToHtml(html, [
-      { targetBlockId: paraId, content: "<h2>Now a heading</h2>" },
-    ]);
+    const result = applyInstructionEditsToHtml(
+      html,
+      [{ targetBlockId: paraId, content: "<h2>Now a heading</h2>" }],
+      pipeline
+    );
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -343,17 +370,21 @@ describe("applyInstructionEditsToHtml", () => {
   });
 
   it("mints fresh ids instead of keeping the ones in the edit's content", () => {
-    const html = convertMarkdownToBlockHtml("Alpha\n\nBravo");
+    const html = convertMarkdownToBlockHtml("Alpha\n\nBravo", pipeline);
     const [, alphaId, bravoId] = blockIds(html);
 
     // The tool asks the model for the block "including the wrapping tag", so edit content
     // routinely repeats a `data-block-id` — here one that another block already uses.
-    const result = applyInstructionEditsToHtml(html, [
-      {
-        targetBlockId: alphaId,
-        content: `<p data-block-id="${bravoId}">One</p><p data-block-id="${bravoId}">Two</p>`,
-      },
-    ]);
+    const result = applyInstructionEditsToHtml(
+      html,
+      [
+        {
+          targetBlockId: alphaId,
+          content: `<p data-block-id="${bravoId}">One</p><p data-block-id="${bravoId}">Two</p>`,
+        },
+      ],
+      pipeline
+    );
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -363,16 +394,20 @@ describe("applyInstructionEditsToHtml", () => {
   });
 
   it("correctly applies an edit holding a self-closing <knowledge/> tag", () => {
-    const html = convertMarkdownToBlockHtml("First para");
+    const html = convertMarkdownToBlockHtml("First para", pipeline);
     const [, firstId] = blockIds(html);
 
-    const result = applyInstructionEditsToHtml(html, [
-      {
-        targetBlockId: firstId,
-        content:
-          '<p>See <knowledge id="n1" title="My Doc" space="sp1" dsv="dsv1" hasChildren="false" /> then stop.</p>',
-      },
-    ]);
+    const result = applyInstructionEditsToHtml(
+      html,
+      [
+        {
+          targetBlockId: firstId,
+          content:
+            '<p>See <knowledge id="n1" title="My Doc" space="sp1" dsv="dsv1" hasChildren="false" /> then stop.</p>',
+        },
+      ],
+      pipeline
+    );
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -383,16 +418,20 @@ describe("applyInstructionEditsToHtml", () => {
   });
 
   it("correctly applies an edit holding a self-closing <skill/> tag", () => {
-    const html = convertMarkdownToBlockHtml("First para");
+    const html = convertMarkdownToBlockHtml("First para", pipeline);
     const [, firstId] = blockIds(html);
 
-    const result = applyInstructionEditsToHtml(html, [
-      {
-        targetBlockId: firstId,
-        content:
-          '<p>Use <skill id="skl_abc" name="Pirate" icon="ActionSpeakIcon" /> then stop.</p>',
-      },
-    ]);
+    const result = applyInstructionEditsToHtml(
+      html,
+      [
+        {
+          targetBlockId: firstId,
+          content:
+            '<p>Use <skill id="skl_abc" name="Pirate" icon="ActionSpeakIcon" /> then stop.</p>',
+        },
+      ],
+      pipeline
+    );
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -403,16 +442,20 @@ describe("applyInstructionEditsToHtml", () => {
   });
 
   it("correctly applies an edit holding a self-closing <tool/> tag", () => {
-    const html = convertMarkdownToBlockHtml("First para");
+    const html = convertMarkdownToBlockHtml("First para", pipeline);
     const [, firstId] = blockIds(html);
 
-    const result = applyInstructionEditsToHtml(html, [
-      {
-        targetBlockId: firstId,
-        content:
-          '<p>Use <tool id="msv_abc123" name="Web search" /> then stop.</p>',
-      },
-    ]);
+    const result = applyInstructionEditsToHtml(
+      html,
+      [
+        {
+          targetBlockId: firstId,
+          content:
+            '<p>Use <tool id="msv_abc123" name="Web search" /> then stop.</p>',
+        },
+      ],
+      pipeline
+    );
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -423,16 +466,20 @@ describe("applyInstructionEditsToHtml", () => {
   });
 
   it("keeps trailing text when a self-closing tag holds a literal '>' in an attribute", () => {
-    const html = convertMarkdownToBlockHtml("First para");
+    const html = convertMarkdownToBlockHtml("First para", pipeline);
     const [, firstId] = blockIds(html);
 
-    const result = applyInstructionEditsToHtml(html, [
-      {
-        targetBlockId: firstId,
-        content:
-          '<p>Use <skill id="skl_abc" name="A > B" icon="ActionSpeakIcon" /> then stop.</p>',
-      },
-    ]);
+    const result = applyInstructionEditsToHtml(
+      html,
+      [
+        {
+          targetBlockId: firstId,
+          content:
+            '<p>Use <skill id="skl_abc" name="A > B" icon="ActionSpeakIcon" /> then stop.</p>',
+        },
+      ],
+      pipeline
+    );
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -444,16 +491,21 @@ describe("applyInstructionEditsToHtml", () => {
 
   it("keeps HTML special characters escaped once in edited and untouched blocks", () => {
     const html = convertMarkdownToBlockHtml(
-      '<role>\n\nyou say hello\n\n</role>\n\n| "quoted" | <tag> |\n|---|---|\n| 1 | 2 |'
+      '<role>\n\nyou say hello\n\n</role>\n\n| "quoted" | <tag> |\n|---|---|\n| 1 | 2 |',
+      pipeline
     );
     const [, , helloId] = blockIds(html);
 
-    const result = applyInstructionEditsToHtml(html, [
-      {
-        targetBlockId: helloId,
-        content: '<p>You say "hello" &amp; &lt;wave&gt;.</p>',
-      },
-    ]);
+    const result = applyInstructionEditsToHtml(
+      html,
+      [
+        {
+          targetBlockId: helloId,
+          content: '<p>You say "hello" &amp; &lt;wave&gt;.</p>',
+        },
+      ],
+      pipeline
+    );
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -464,18 +516,24 @@ describe("applyInstructionEditsToHtml", () => {
       expect(instructionsHtml).not.toContain("&amp;lt;");
       expect(instructionsHtml).not.toContain("&amp;amp;");
       expect(instructionsHtml).not.toContain("&amp;quot;");
-      expect(convertBlockHtmlToMarkdown(instructionsHtml)).toBe(instructions);
+      expect(convertBlockHtmlToMarkdown(instructionsHtml, pipeline)).toBe(
+        instructions
+      );
     }
   });
 
   it("fails without applying anything when one target is gone", () => {
-    const html = convertMarkdownToBlockHtml("Alpha\n\nBravo");
+    const html = convertMarkdownToBlockHtml("Alpha\n\nBravo", pipeline);
     const [, alphaId] = blockIds(html);
 
-    const result = applyInstructionEditsToHtml(html, [
-      { targetBlockId: alphaId, content: "<p>Alpha edited</p>" },
-      { targetBlockId: "gone12345", content: "<p>Never applied</p>" },
-    ]);
+    const result = applyInstructionEditsToHtml(
+      html,
+      [
+        { targetBlockId: alphaId, content: "<p>Alpha edited</p>" },
+        { targetBlockId: "gone12345", content: "<p>Never applied</p>" },
+      ],
+      pipeline
+    );
 
     expect(result.isErr()).toBe(true);
   });

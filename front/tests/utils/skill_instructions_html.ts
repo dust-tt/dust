@@ -1,7 +1,7 @@
 import { buildAgentInstructionsExtensionsForServer } from "@app/lib/editor/build_agent_instructions_extensions_server";
 import { buildSkillInstructionsExtensionsForServer } from "@app/lib/editor/build_skill_instructions_extensions_server";
+import { setMarkdownPipelineForTesting } from "@app/lib/editor/server_markdown_pipeline";
 import type { InstructionsSchema } from "@app/lib/editor/skill_instructions_html";
-import { setMarkdownPipelineForTesting } from "@app/lib/editor/skill_instructions_html";
 import type { Extensions } from "@tiptap/core";
 import { getSchema } from "@tiptap/core";
 import { MarkdownManager } from "@tiptap/markdown";

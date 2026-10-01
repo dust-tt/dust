@@ -15,6 +15,7 @@ import { getSimilarSkills } from "@app/lib/api/skills/existing_skill_checker";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import type { Authenticator } from "@app/lib/auth";
 import { extractKnowledgeTagSignatures } from "@app/lib/editor/knowledge_node_constants";
+import { getMarkdownPipeline } from "@app/lib/editor/server_markdown_pipeline";
 import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -318,7 +319,10 @@ export async function createSkill(
       agentFacingDescription,
       userFacingDescription,
       instructions,
-      instructionsHtml: convertMarkdownToBlockHtml(instructions),
+      instructionsHtml: convertMarkdownToBlockHtml(
+        instructions,
+        getMarkdownPipeline("skill")
+      ),
       editedBy: user.value.id,
       requestedSpaceIds: [globalSpace.id],
       icon: resolvedIcon,
@@ -628,7 +632,10 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       instructions: resolvedInstructions ?? skill.instructions,
       instructionsHtml:
         resolvedInstructions !== undefined
-          ? convertMarkdownToBlockHtml(resolvedInstructions)
+          ? convertMarkdownToBlockHtml(
+              resolvedInstructions,
+              getMarkdownPipeline("skill")
+            )
           : skill.instructionsHtml,
       mcpServerViews: skill.mcpServerViews,
       name: trimmedName,

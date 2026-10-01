@@ -1,4 +1,5 @@
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
+import { getMarkdownPipeline } from "@app/lib/editor/server_markdown_pipeline";
 import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import {
@@ -65,7 +66,10 @@ app.post(
         userFacingDescription,
         agentFacingDescription,
         instructions,
-        instructionsHtml: convertMarkdownToBlockHtml(instructions),
+        instructionsHtml: convertMarkdownToBlockHtml(
+          instructions,
+          getMarkdownPipeline("skill")
+        ),
         icon: skillIcon,
         availability: DEFAULT_SKILL_AVAILABILITY,
       },

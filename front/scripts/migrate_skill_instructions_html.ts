@@ -11,6 +11,7 @@
  */
 
 import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_instructions_extensions";
+import { getMarkdownPipeline } from "@app/lib/editor/server_markdown_pipeline";
 import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
 import { postProcessMarkdown } from "@app/lib/editor/skill_instructions_preprocessing";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
@@ -153,7 +154,10 @@ async function processSkillsForWorkspace(
 
   for (const skill of skills) {
     const { instructions } = skill;
-    const html = convertMarkdownToBlockHtml(instructions);
+    const html = convertMarkdownToBlockHtml(
+      instructions,
+      getMarkdownPipeline("skill")
+    );
 
     if (!execute) {
       const roundTripMarkdown = convertBlockHtmlToMarkdown(html);
