@@ -1,0 +1,9 @@
+@cc [owner:sfriquet,label:architecture] lingui-macros-compiled
+Every platform webpack config MUST run `linguiMacroLoader` (`config/webpack_lingui.ts`) on `.ts` and
+`.tsx` sources, including the `front` ones, before `ts-loader`, and MUST load `.po` catalogs with
+`linguiCatalogRule`. The bundle MUST NOT contain a `@lingui/*/macro` module.
+
+@cc [owner:sfriquet,label:react] app-root-provides-i18n
+Each platform app root (`ChromeApp`, `FirefoxApp`, `FrontApp`) MUST render its whole tree inside an
+`I18nProvider` given the `i18n` instance of `@app/lib/i18n/i18n`, so shared `front` components
+using Lingui render in `DEFAULT_LOCALE`.
