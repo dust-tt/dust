@@ -24,7 +24,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   dust_lean_agent: {
     description:
       "Enable @dust-lean, a Dust agent that starts without tools, skills, or company knowledge",
-    stage: "dust_only",
+    stage: "ask_owner",
     owner: "aubin-tchoi",
   },
   stateful_conversation_window: {
