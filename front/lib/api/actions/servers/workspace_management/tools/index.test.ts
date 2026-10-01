@@ -114,42 +114,21 @@ async function createOtherMemberAuth(workspace: LightWorkspaceType) {
   return Authenticator.fromUserIdAndWorkspaceId(agentOwner.sId, workspace.sId);
 }
 
-// Creates, as another workspace member, one published agent, one unpublished agent the caller
-// does not edit, and one published agent requesting a space the caller cannot read.
-async function setupOtherMembersAgents(workspace: LightWorkspaceType) {
-  const agentOwnerAuth = await createOtherMemberAuth(workspace);
-
-  const restrictedSpace = await SpaceFactory.regular(
-    agentOwnerAuth.getNonNullableWorkspace()
-  );
-
-  await AgentConfigurationFactory.createTestAgent(agentOwnerAuth, {
-    name: "Published Agent",
-    scope: "visible",
-  });
-  await AgentConfigurationFactory.createTestAgent(agentOwnerAuth, {
-    name: "Unpublished Agent",
-    scope: "hidden",
-  });
-  await AgentConfigurationFactory.createTestAgent(agentOwnerAuth, {
-    name: "Restricted Space Agent",
-    scope: "visible",
-    requestedSpaceIds: [restrictedSpace.id],
-  });
-}
-
 describe("workspace_management tools", () => {
   beforeEach(() => {
     mockSearch.mockReset();
+    mockSearch.mockResolvedValue({
+      hits: { hits: [], total: { value: 0, relation: "eq" } },
+    });
     mockWithEs.mockReset();
     mockWithEs.mockImplementation(
       async (fn) => new Ok(await fn({ search: mockSearch }))
     );
   });
   it.each([
-    "list_agents",
+    "search_agents",
     "get_agent_details",
-    "list_skills",
+    "search_skills",
     "get_skill_details",
     "list_tags",
   ])("%s is available to regular members", async (toolName) => {
@@ -160,173 +139,30 @@ describe("workspace_management tools", () => {
       toolName,
       // The get_* tools need an id; an unknown one exercises the not-found path, which is
       // enough to show the tool is not refused outright.
-      { agentId: "unknown", skillId: "unknown" },
+      { agentId: "unknown", skillId: "unknown", query: "unknown" },
       authenticator
     );
 
     expect(result.isOk()).toBe(true);
   });
 
-  it("only lists the agents a regular member may read", async () => {
-    const { workspace, authenticator } = await createResourceTest({
-      role: "user",
-    });
-    await setupOtherMembersAgents(workspace);
-
-    const text = await callTool("list_agents", {}, authenticator);
-
-    expect(text).toContain("Published Agent");
-    expect(text).not.toContain("Unpublished Agent");
-    expect(text).not.toContain("Restricted Space Agent");
-  });
-
-  it("refuses all_unrestricted for regular members", async () => {
-    const { authenticator } = await createResourceTest({ role: "user" });
-
-    const result = await runTool(
-      "list_agents",
-      { view: "all_unrestricted" },
-      authenticator
-    );
-
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.message).toBe(
-        "This tool is restricted to workspace admins."
-      );
-    }
-  });
-
-  describe("list_agents", () => {
-    it("hides unpublished and restricted space agents with the default view", async () => {
-      const { workspace, authenticator } = await createResourceTest({
-        role: "admin",
-      });
-      await setupOtherMembersAgents(workspace);
-
-      const text = await callTool("list_agents", {}, authenticator);
-
-      expect(text).toContain("Published Agent");
-      expect(text).not.toContain("Unpublished Agent");
-      expect(text).not.toContain("Restricted Space Agent");
-    });
-
-    it("includes the caller's own unpublished agents with the default view", async () => {
+  describe("search tools", () => {
+    it("registers search tools without exhaustive agent or skill listings", async () => {
       const { authenticator } = await createResourceTest({ role: "user" });
-      await AgentConfigurationFactory.createTestAgent(authenticator, {
-        name: "My Unpublished Agent",
-        scope: "hidden",
-      });
+      const names = await toolNamesFor(authenticator);
 
-      const byDefault = await callTool("list_agents", {}, authenticator);
-      expect(byDefault).toContain("My Unpublished Agent");
+      expect(names).toContain("search_agents");
+      expect(names).toContain("search_skills");
+      expect(names).not.toContain("list_agents");
+      expect(names).not.toContain("list_skills");
 
-      const all = await callTool("list_agents", { view: "all" }, authenticator);
-      expect(all).not.toContain("My Unpublished Agent");
-    });
-
-    it("returns unpublished and restricted space agents with all_unrestricted", async () => {
-      const { workspace, authenticator } = await createResourceTest({
-        role: "admin",
-      });
-      await setupOtherMembersAgents(workspace);
-
-      const text = await callTool(
-        "list_agents",
-        { view: "all_unrestricted" },
-        authenticator
-      );
-
-      expect(text).toContain("Published Agent");
-      expect(text).toContain("Unpublished Agent");
-      expect(text).toContain("Restricted Space Agent");
-    });
-
-    it("refuses all_unrestricted for managers who are not admins", async () => {
-      const { authenticator } = await createResourceTest({ role: "manager" });
-      expect(authenticator.isManager()).toBe(true);
-      expect(authenticator.isAdmin()).toBe(false);
-
-      const result = await runTool(
-        "list_agents",
-        { view: "all_unrestricted" },
-        authenticator
-      );
-
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error.message).toBe(
-          "This tool is restricted to workspace admins."
-        );
+      for (const name of ["search_agents", "search_skills"]) {
+        const schema = z.object(getToolByName(name).schema);
+        expect(schema.safeParse({}).success).toBe(false);
+        expect(schema.safeParse({ query: " " }).success).toBe(false);
       }
     });
 
-    it("lists archived agents only with the archived view", async () => {
-      const { authenticator } = await createResourceTest({ role: "admin" });
-      const kept = await AgentConfigurationFactory.createTestAgent(
-        authenticator,
-        { name: "Kept Agent" }
-      );
-      const removed = await AgentConfigurationFactory.createTestAgent(
-        authenticator,
-        { name: "Removed Agent" }
-      );
-      await (await AgentResource.fetchById(
-        authenticator,
-        removed.sId
-      ))!.archive(authenticator);
-
-      // The default view also carries Dust's global agents, so assert on membership.
-      const active = await callTool("list_agents", {}, authenticator);
-      expect(active).toContain(kept.name);
-      expect(active).not.toContain("Removed Agent");
-
-      const archived = await callToolLines(
-        "list_agents",
-        { view: "archived" },
-        authenticator
-      );
-      expect(archived).toEqual([
-        expect.stringContaining(`Removed Agent [${removed.sId}]`),
-        "Showing 1 of 1.",
-      ]);
-      expect(archived[0]).toContain("status: archived");
-    });
-
-    it("returns the agent's scope, model and tags, and paginates", async () => {
-      const { authenticator } = await createResourceTest({ role: "admin" });
-      await AgentConfigurationFactory.createTestAgent(authenticator, {
-        name: "Aardvark Agent",
-      });
-      await AgentConfigurationFactory.createTestAgent(authenticator, {
-        name: "Zebra Agent",
-      });
-
-      const firstPage = await callToolLines(
-        "list_agents",
-        { namePrefix: "Aardvark", limit: 1 },
-        authenticator
-      );
-
-      expect(firstPage).toHaveLength(2);
-      expect(firstPage[0]).toContain("Aardvark Agent");
-      expect(firstPage[0]).toContain(
-        "scope: visible, status: active, model: gpt-5-mini"
-      );
-      expect(firstPage[0]).toContain("canEdit: true");
-      expect(firstPage[1]).toBe("Showing 1 of 1.");
-
-      // Both agents match, so the first page must hand back a cursor for the second.
-      const paged = await callToolLines(
-        "list_agents",
-        { namePrefix: "", limit: 1 },
-        authenticator
-      );
-      expect(paged.at(-1)).toContain("Pass cursor: 1 for the next page.");
-    });
-  });
-
-  describe("search tools", () => {
     it("supports skill search without an interactive user", async () => {
       const { workspace } = await createResourceTest({ role: "user" });
       const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
@@ -596,90 +432,6 @@ describe("workspace_management tools", () => {
 
       expect(text).toContain("No agent found");
       expect(text).not.toContain("Unpublished Agent");
-    });
-  });
-
-  describe("list_skills", () => {
-    it("returns custom skills with their availability", async () => {
-      const { authenticator } = await createResourceTest({ role: "admin" });
-      await SkillFactory.create(authenticator, {
-        name: "Editors Only Skill",
-        availability: "editors",
-      });
-      await SkillFactory.create(authenticator, {
-        name: "Discoverable Skill",
-        availability: "users_and_agents",
-      });
-
-      const lines = await callToolLines("list_skills", {}, authenticator);
-
-      expect(lines).toEqual([
-        expect.stringContaining("Discoverable Skill"),
-        expect.stringContaining("Editors Only Skill"),
-        "Showing 2 of 2.",
-      ]);
-      expect(lines[0]).toContain(
-        "kind: custom, availability: users_and_agents, status: active, canWrite: true"
-      );
-      expect(lines[1]).toContain("availability: editors");
-      // Usage is opt-in.
-      expect(lines[0]).not.toContain("agentsUsing");
-    });
-
-    it("filters by availability", async () => {
-      const { authenticator } = await createResourceTest({ role: "admin" });
-      await SkillFactory.create(authenticator, {
-        name: "Editors Only Skill",
-        availability: "editors",
-      });
-      await SkillFactory.create(authenticator, {
-        name: "Discoverable Skill",
-        availability: "users_and_agents",
-      });
-
-      const lines = await callToolLines(
-        "list_skills",
-        { availability: ["users_and_agents"] },
-        authenticator
-      );
-
-      expect(lines).toEqual([
-        expect.stringContaining("Discoverable Skill"),
-        "Showing 1 of 1.",
-      ]);
-    });
-
-    it("returns the agent count when includeUsage is set", async () => {
-      const { authenticator } = await createResourceTest({ role: "admin" });
-      await SkillFactory.create(authenticator, { name: "Unused Skill" });
-
-      const lines = await callToolLines(
-        "list_skills",
-        { includeUsage: true },
-        authenticator
-      );
-
-      expect(lines[0]).toContain("Unused Skill");
-      expect(lines[0]).toContain("agentsUsing: 0");
-    });
-
-    it("excludes archived skills unless asked for them", async () => {
-      const { authenticator } = await createResourceTest({ role: "admin" });
-      await SkillFactory.create(authenticator, {
-        name: "Archived Skill",
-        status: "archived",
-      });
-
-      const active = await callTool("list_skills", {}, authenticator);
-      expect(active).toBe("No custom skills found.");
-
-      const archived = await callToolLines(
-        "list_skills",
-        { status: "archived" },
-        authenticator
-      );
-      expect(archived[0]).toContain("Archived Skill");
-      expect(archived[0]).toContain("status: archived");
     });
   });
 
