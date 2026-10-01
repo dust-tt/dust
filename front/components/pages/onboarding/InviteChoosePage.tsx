@@ -104,5 +104,4 @@ export function InviteChoosePage() {
   );
 }
 
-/** @alias */
 export default InviteChoosePage;

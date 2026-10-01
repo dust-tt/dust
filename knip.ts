@@ -6,11 +6,29 @@ import type { KnipConfig } from "knip";
  * @cc [owner:aubin-tchoi,label:testing] lazy-route-export-usage
  * Knip MUST count the named export selected by each withSuspense route as used,
  * without ignoring unrelated unused exports in the imported module.
- * Default aliases of named page components MAY be retained using @alias.
+ * Default aliases of named page components MUST be retained without source annotations.
  */
 const config: KnipConfig = {
   compilers: {
     tsx: (source, filename) => {
+      if (filename.includes("/front/components/pages/")) {
+        // Retain default aliases of named page components during Knip analysis only.
+        const namedExports = new Set(
+          Array.from(
+            source.matchAll(
+              /^export (?:async )?(?:function|class|const|let) ([A-Za-z_$][\w$]*)/gm
+            ),
+            (match) => match[1]
+          )
+        );
+        return source.replace(
+          /^export default ([A-Za-z_$][\w$]*);/gm,
+          (declaration, name: string) =>
+            namedExports.has(name)
+              ? `/** @alias */\n${declaration}`
+              : declaration
+        );
+      }
       if (!filename.includes("/front-spa/src/app/routes/")) {
         return source;
       }

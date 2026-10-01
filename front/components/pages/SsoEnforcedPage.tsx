@@ -67,5 +67,4 @@ export function SsoEnforcedPage() {
   );
 }
 
-/** @alias */
 export default SsoEnforcedPage;
