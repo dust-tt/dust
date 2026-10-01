@@ -1219,10 +1219,7 @@ describe("search-backed Manage Skills", () => {
 
 describe("Poke Manage Skills", () => {
   it("uses Poke search without feature flags and opens Poke skill details", async () => {
-    const { mount, context, skill, fetcherWithBody } = await setup({
-      searchEnabled: false,
-      pageEnabled: false,
-    });
+    const { mount, context, skill, fetcherWithBody } = await setup();
     mount(<SkillsDataTable owner={context.workspace} />);
     await screen.findByText(skill.name);
     expect(fetcherWithBody).toHaveBeenCalledWith([
