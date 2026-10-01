@@ -10,18 +10,25 @@ import { Op } from "sequelize";
 // Leaf module (imports only agent models and the agent indexation leaf, never `AgentResource`) so
 // `SkillResource` — which `AgentResource` depends on — can import it without forming a cycle.
 
-async function listAgentIdsUsingCustomSkill(
+async function listAgentIdsUsingCustomSkills(
   auth: Authenticator,
   {
-    customSkillModelId,
+    customSkillModelIds,
     transaction,
-  }: { customSkillModelId: ModelId; transaction?: Transaction }
+  }: { customSkillModelIds: ModelId[]; transaction?: Transaction }
 ): Promise<string[]> {
+  if (customSkillModelIds.length === 0) {
+    return [];
+  }
+
   const workspaceModelId = auth.getNonNullableWorkspace().id;
 
   const agentSkills = await AgentSkillModel.findAll({
     attributes: ["agentConfigurationId"],
-    where: { workspaceId: workspaceModelId, customSkillId: customSkillModelId },
+    where: {
+      workspaceId: workspaceModelId,
+      customSkillId: { [Op.in]: customSkillModelIds },
+    },
     transaction,
   });
   if (agentSkills.length === 0) {
@@ -62,8 +69,8 @@ export async function onCustomSkillStatusChanged(
     transaction,
   }: { customSkillModelId: ModelId; transaction?: Transaction }
 ): Promise<void> {
-  const agentIds = await listAgentIdsUsingCustomSkill(auth, {
-    customSkillModelId,
+  const agentIds = await listAgentIdsUsingCustomSkills(auth, {
+    customSkillModelIds: [customSkillModelId],
     transaction,
   });
 
@@ -75,22 +82,25 @@ export async function onCustomSkillStatusChanged(
   );
 }
 
-export async function destroyAgentSkillLinksForCustomSkill(
+export async function destroyAgentSkillLinksForCustomSkills(
   auth: Authenticator,
   {
-    customSkillModelId,
+    customSkillModelIds,
     transaction,
-  }: { customSkillModelId: ModelId; transaction?: Transaction }
+  }: { customSkillModelIds: ModelId[]; transaction?: Transaction }
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
-  const agentIds = await listAgentIdsUsingCustomSkill(auth, {
-    customSkillModelId,
+  const agentIds = await listAgentIdsUsingCustomSkills(auth, {
+    customSkillModelIds,
     transaction,
   });
 
   await AgentSkillModel.destroy({
-    where: { workspaceId: owner.id, customSkillId: customSkillModelId },
+    where: {
+      workspaceId: owner.id,
+      customSkillId: { [Op.in]: customSkillModelIds },
+    },
     transaction,
   });
 
