@@ -7,9 +7,13 @@ import type {
 import { CommandPaletteActionPhase } from "@app/components/command_palette/CommandPaletteActionPhase";
 import { useCommandPalette } from "@app/components/command_palette/CommandPaletteContext";
 import type { CommandPaletteItem } from "@app/components/command_palette/CommandPaletteSearchPhase";
-import { CommandPaletteSearchPhase } from "@app/components/command_palette/CommandPaletteSearchPhase";
+import {
+  CommandPaletteSearchPhase,
+  getCommandPaletteItemKey,
+} from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { useCommandPaletteSearch } from "@app/components/command_palette/useCommandPaletteSearch";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
+import { useFrecencySorting } from "@app/hooks/useFrerencySorting";
 import { useAppRouter } from "@app/lib/platform";
 import {
   getAgentBuilderRoute,
@@ -19,7 +23,9 @@ import {
 } from "@app/lib/utils/router";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { Dialog, DialogContent } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+const MAX_FREQUENT_ITEMS = 15;
 
 interface CommandPaletteProps {
   owner: LightWorkspaceType;
@@ -60,6 +66,18 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     searchQuery,
     currentUserId: user.sId,
   });
+
+  const { visitedItems, visitItem } = useFrecencySorting<CommandPaletteItem>(
+    undefined,
+    {
+      key: getCommandPaletteItemKey,
+      namespace: `command-palette-${owner.sId}`,
+    }
+  );
+  const frequentItems = useMemo(
+    () => visitedItems.slice(0, MAX_FREQUENT_ITEMS),
+    [visitedItems]
+  );
 
   // Reset state when dialog opens/closes.
   useEffect(() => {
@@ -110,6 +128,8 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
 
   const handleItemSelect = useCallback(
     (item: CommandPaletteItem) => {
+      void visitItem(item);
+
       if (item.kind === "pod") {
         close();
         void router.push(getPodRoute(owner.sId, item.pod.sId));
@@ -130,7 +150,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
         setPhase("action");
       }
     },
-    [close, executeAction, owner.sId, router]
+    [close, executeAction, owner.sId, router, visitItem]
   );
 
   const handleBack = useCallback(() => {
@@ -169,6 +189,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
               members={members}
               pods={pods}
               skills={skills}
+              frequentItems={frequentItems}
               hasMoreAgents={hasMoreAgents}
               hasMoreConversations={hasMoreConversations}
               hasMoreMembers={hasMoreMembers}

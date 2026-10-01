@@ -443,6 +443,23 @@ export function useCommandPaletteSearch({
     currentUserId,
   });
 
+  // Empty query shows frecency suggestions in the UI instead of default lists.
+  if (!trimmedQuery) {
+    return {
+      agents: [],
+      conversations: [],
+      members: [],
+      pods: [],
+      skills: [],
+      hasMoreAgents: false,
+      hasMoreConversations: false,
+      hasMoreMembers: false,
+      hasMorePods: false,
+      hasMoreSkills: false,
+      isLoading: false,
+    };
+  }
+
   return {
     agents: agents.agents,
     conversations: conversations.conversations,
