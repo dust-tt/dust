@@ -1,9 +1,26 @@
+import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { WebhookSourceFactory } from "@app/tests/utils/WebhookSourceFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
+import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const oauthMocks = vi.hoisted(() => ({
+  getAccessToken: vi.fn(),
+}));
+
+vi.mock("@app/types/oauth/oauth_api", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/types/oauth/oauth_api")>();
+  return {
+    ...actual,
+    OAuthAPI: vi.fn().mockImplementation(function OAuthAPIMock() {
+      return { getAccessToken: oauthMocks.getAccessToken };
+    }),
+  };
+});
 
 async function setupTest(role: MembershipRoleType = "admin") {
   const { workspace, auth } = await createPrivateApiMockRequest({ role });
@@ -192,5 +209,45 @@ describe("POST /api/w/[wId]/webhook_sources/", () => {
     expect(response.status).toBe(403);
     const data = await response.json();
     expect(data.error.type).toBe("workspace_auth_error");
+  });
+
+  describe("connection ownership", () => {
+    beforeEach(() => {
+      oauthMocks.getAccessToken.mockReset();
+    });
+
+    it("returns 403 and does not create a webhook source when con_ connection belongs to another workspace", async () => {
+      const { workspace, auth } = await setupTest();
+
+      oauthMocks.getAccessToken.mockResolvedValue(
+        new Ok({
+          connection: {
+            metadata: { workspace_id: "ws_other", user_id: "user_other" },
+          },
+        })
+      );
+
+      const countBefore = (await WebhookSourceResource.listByWorkspace(auth))
+        .length;
+
+      const response = await createSource(workspace.sId, {
+        name: "Foreign Connection Webhook",
+        secret: "test-secret",
+        signatureHeader: "X-Signature",
+        signatureAlgorithm: "sha256",
+        includeGlobal: false,
+        provider: null,
+        subscribedEvents: [],
+        connectionId: "con_abc123",
+      });
+
+      expect(response.status).toBe(403);
+      const data = await response.json();
+      expect(data.error.type).toBe("invalid_request_error");
+
+      const countAfter = (await WebhookSourceResource.listByWorkspace(auth))
+        .length;
+      expect(countAfter).toBe(countBefore);
+    });
   });
 });

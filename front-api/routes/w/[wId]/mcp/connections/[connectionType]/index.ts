@@ -61,6 +61,16 @@ function makeInvalidRequestError(
   };
 }
 
+function makeOwnershipError(): APIErrorWithContentfulStatusCode {
+  return {
+    status_code: 403,
+    api_error: {
+      type: "data_source_auth_error",
+      message: "You do not have permission to use this connection.",
+    },
+  };
+}
+
 function makeCredentialNotFoundError(): APIErrorWithContentfulStatusCode {
   return {
     status_code: 404,
@@ -172,9 +182,7 @@ async function validateAuthReferenceForMCPConnection(
       authReference.connectionId
     );
     if (ownershipRes.isErr()) {
-      return makeInvalidRequestError(
-        "Failed to get the access token for the MCP server."
-      );
+      return makeOwnershipError();
     }
     return null;
   }

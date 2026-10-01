@@ -101,6 +101,22 @@ app.post(
       });
     }
 
+    if (connectionId) {
+      const connectionOwnershipRes = await checkConnectionOwnership(
+        auth,
+        connectionId
+      );
+      if (connectionOwnershipRes.isErr()) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "invalid_request_error",
+            message: "You do not have permission to use this connection.",
+          },
+        });
+      }
+    }
+
     const workspace = auth.getNonNullableWorkspace();
 
     const trimmedSignatureHeader = signatureHeader.trim();
@@ -162,22 +178,6 @@ app.post(
         systemView,
         space: globalSpace,
       });
-    }
-
-    if (connectionId) {
-      const connectionOwnershipRes = await checkConnectionOwnership(
-        auth,
-        connectionId
-      );
-      if (connectionOwnershipRes.isErr()) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "invalid_request_error",
-            message: "You do not have permission to use this connection.",
-          },
-        });
-      }
     }
 
     if (provider && connectionId && remoteMetadata) {
