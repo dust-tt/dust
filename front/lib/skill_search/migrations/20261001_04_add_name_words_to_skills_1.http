@@ -1,0 +1,16 @@
+PUT /front.skills_1/_mapping
+{
+  "properties": {
+    "name": {
+      "type": "text",
+      "fields": {
+        "words": {
+          "type": "text",
+          "analyzer": "name_words_analyzer",
+          "search_analyzer": "icu_analyzer"
+        }
+      },
+      "analyzer": "exact_analyzer"
+    }
+  }
+}
