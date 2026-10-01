@@ -18,6 +18,7 @@ const SEARCH_AGENTS_QUERY_MAX_LENGTH = 200;
 
 export function useSearchAgents({
   owner,
+  searchEndpoint,
   searchTerm,
   searchType = "autocomplete",
   offset,
@@ -30,6 +31,7 @@ export function useSearchAgents({
   disabled,
 }: {
   owner: LightWorkspaceType;
+  searchEndpoint?: string;
   searchTerm: string;
   searchType?: SearchType;
   offset?: number;
@@ -52,7 +54,9 @@ export function useSearchAgents({
     setSearchTerm(query);
   }, [query, setSearchTerm]);
 
-  const url = `/api/w/${owner.sId}/assistant/agent_configurations/search`;
+  const url =
+    searchEndpoint ??
+    `/api/w/${owner.sId}/assistant/agent_configurations/search`;
   const body = {
     ...filters,
     query: debouncedSearchTerm,

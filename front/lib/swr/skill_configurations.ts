@@ -192,6 +192,7 @@ export function useSkills({
 
 export function useSearchSkills({
   owner,
+  searchEndpoint,
   searchTerm,
   searchType = "autocomplete",
   offset,
@@ -206,6 +207,7 @@ export function useSearchSkills({
   disabled,
 }: {
   owner: LightWorkspaceType;
+  searchEndpoint?: string;
   searchTerm: string;
   searchType?: SearchType;
   offset?: number;
@@ -230,7 +232,7 @@ export function useSearchSkills({
     setSearchTerm(query);
   }, [query, setSearchTerm]);
 
-  const url = `/api/w/${owner.sId}/skills/search`;
+  const url = searchEndpoint ?? `/api/w/${owner.sId}/skills/search`;
   const body = {
     ...filters,
     query: debouncedSearchTerm,

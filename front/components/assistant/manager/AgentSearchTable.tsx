@@ -18,7 +18,7 @@ import { getTieredReasoningEffort } from "@app/types/assistant/models/model_tier
 import { getModelMaker } from "@app/types/assistant/models/providers";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { pluralize } from "@app/types/shared/utils/string_utils";
-import type { WorkspaceType } from "@app/types/user";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
   AvatarCellSkeleton,
@@ -39,12 +39,15 @@ import type {
   SortingState,
 } from "@tanstack/react-table";
 import capitalize from "lodash/capitalize";
+import type { ReactNode } from "react";
 import { useMemo } from "react";
 
 type AgentSearchItem = SearchAgentsResponseBody["agents"][number];
 
 interface AgentSearchTableProps {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
+  readOnly?: boolean;
+  renderActions?: (agent: AgentSearchItem, onRefresh: () => void) => ReactNode;
   agents: AgentSearchItem[];
   onSelect: (agentId: string) => void;
   onRefresh: () => void;
@@ -115,7 +118,7 @@ function AgentSearchModelCell({ model, isDark }: AgentSearchModelCellProps) {
 }
 
 interface AgentSearchTagSelectorProps {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   agent: AgentSearchItem;
   onRefresh: () => void;
 }
@@ -146,9 +149,10 @@ function AgentSearchTagSelector({
 // closes and an in-flight checkbox click is lost.
 /**
  * @cc [owner:tdraier,label:react;performance] stable-columns
- * `columns` MUST only be rebuilt when `canSelect`, `onSelect`, `onRefresh`, `owner` or the theme
- * change, never on data the table loads itself. Callers MUST keep `canSelect`, `onSelect` and
- * `onRefresh` referentially stable while the search inputs are unchanged.
+ * `columns` MUST only be rebuilt when `canSelect`, `onSelect`, `onRefresh`, `owner`, `readOnly`,
+ * `renderActions` or the theme change, never on data the table loads itself. Callers MUST keep
+ * `canSelect`, `onSelect`, `onRefresh` and `renderActions` referentially stable while the search
+ * inputs are unchanged.
  */
 /**
  * @cc [owner:aubin-tchoi,label:product] agent-name-tooltip
@@ -165,6 +169,8 @@ function AgentSearchTagSelector({
  */
 export function AgentSearchTable({
   owner,
+  readOnly = false,
+  renderActions,
   agents,
   onSelect,
   onRefresh,
@@ -423,7 +429,9 @@ export function AgentSearchTable({
           id: "actions" as const,
           header: "",
           cell: ({ row: { original: agent } }) =>
-            agent.status === "archived" ? null : (
+            renderActions ? (
+              renderActions(agent, onRefresh)
+            ) : readOnly || agent.status === "archived" ? null : (
               <AgentSearchActionsMenu
                 owner={owner}
                 agentId={agent.sId}
@@ -435,9 +443,10 @@ export function AgentSearchTable({
           meta: { className: "hidden @md:table-cell @md:w-14" },
         },
       ] satisfies ColumnDef<AgentSearchRow>[],
-    [canSelect, isDark, onRefresh, onSelect, owner]
+    [canSelect, isDark, onRefresh, onSelect, owner, readOnly, renderActions]
   );
-  const hasSelectableRows = agents.some(canSelect);
+
+  const hasSelectableRows = !readOnly && agents.some(canSelect);
   const visibleColumns = useMemo(
     () =>
       hasSelectableRows

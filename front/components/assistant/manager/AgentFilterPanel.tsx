@@ -21,6 +21,7 @@ import { useState } from "react";
 
 interface AgentFilterPanelProps {
   owner: LightWorkspaceType;
+  searchEndpoint?: string;
   categories: readonly AgentFilterCategory[];
   searchTerm: string;
   // The tab's own filters: options are the values held by the agents the tab lists.
@@ -37,6 +38,7 @@ interface AgentFilterPanelProps {
 
 export function AgentFilterPanel({
   owner,
+  searchEndpoint,
   categories,
   searchTerm,
   tabFilters,
@@ -59,6 +61,7 @@ export function AgentFilterPanel({
   // selectable together.
   const { facets, isAgentsLoading, isAgentsError } = useSearchAgents({
     owner,
+    searchEndpoint,
     searchTerm,
     searchType: "name",
     limit: 0,

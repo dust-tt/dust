@@ -43,6 +43,7 @@ import {
   SearchInput,
 } from "@dust-tt/sparkle";
 import type { PaginationState } from "@tanstack/react-table";
+import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
 
 const AGENT_SEARCH_PAGE_SIZE = 25;
@@ -50,6 +51,9 @@ const AGENT_SEARCH_PAGE_SIZE = 25;
 type SearchTabId = (typeof AGENT_SEARCH_TABS)[number]["id"];
 
 interface AgentsListProps {
+  readOnly?: boolean;
+  searchEndpoint?: string;
+  renderActions?: (agent: AgentSearchItem, onRefresh: () => void) => ReactNode;
   searchTerm: string;
   filters: AgentSearchFilters;
   permissionFiltering: AgentSearchPermissionFiltering;
@@ -59,6 +63,9 @@ interface AgentsListProps {
 type AgentSearchItem = SearchAgentsResponseBody["agents"][number];
 
 function AgentsList({
+  readOnly = false,
+  searchEndpoint,
+  renderActions,
   searchTerm,
   filters,
   permissionFiltering,
@@ -105,6 +112,7 @@ function AgentsList({
     mutate,
   } = useSearchAgents({
     owner,
+    searchEndpoint,
     searchTerm,
     searchType: "name",
     filters,
@@ -118,10 +126,11 @@ function AgentsList({
   // Batch edits are reserved to the agent's editors and to workspace admins, as on the legacy page.
   const canSelect = useCallback(
     (agent: AgentSearchItem) =>
+      !readOnly &&
       agent.scope !== "global" &&
       agent.status !== "archived" &&
       (isAdmin || agent.editorIds.includes(user.sId)),
-    [isAdmin, user.sId]
+    [isAdmin, user.sId, readOnly]
   );
 
   // Prefer the freshly loaded row so batch actions see the agent's current tags.
@@ -166,6 +175,8 @@ function AgentsList({
         tablePagination.pageIndex > 0) ? (
         <AgentSearchTable
           owner={owner}
+          readOnly={readOnly}
+          renderActions={renderActions}
           agents={agents}
           onSelect={onSelect}
           onRefresh={mutate}
@@ -215,21 +226,48 @@ function AgentsList({
           action={null}
         />
       ) : null}
-      <AgentEditBar
-        owner={owner}
-        selectedAgents={currentSelectedAgents}
-        tags={sortedTags}
-        mutateAgentConfigurations={mutate}
-        // Search results carry no total, so selection is extended one page at a time.
-        totalCount={selectedAgents.length}
-        onSelectAll={() => undefined}
-        onClear={clearSelectionAndRefresh}
-      />
+      {!readOnly && (
+        <AgentEditBar
+          owner={owner}
+          selectedAgents={currentSelectedAgents}
+          tags={sortedTags}
+          mutateAgentConfigurations={mutate}
+          // Search results carry no total, so selection is extended one page at a time.
+          totalCount={selectedAgents.length}
+          onSelectAll={() => undefined}
+          onClear={clearSelectionAndRefresh}
+        />
+      )}
     </div>
   );
 }
 
-export function SearchAgentsPage() {
+interface SearchAgentsPageProps {
+  readOnly?: boolean;
+  showHeader?: boolean;
+  searchEndpoint?: string;
+  filterHashParam?: string;
+  permissionFiltering?: AgentSearchPermissionFiltering;
+  searchActions?: ReactNode;
+  onSelect?: (agentId: string) => void;
+  renderActions?: (agent: AgentSearchItem, onRefresh: () => void) => ReactNode;
+}
+
+/**
+ * @cc [owner:aubin-tchoi,label:product;react] read-only-search-view
+ * In readOnly mode, built-in creation, batch-edit and detail controls MUST NOT render.
+ * Table and facet requests MUST use the same searchEndpoint when supplied.
+ */
+export function SearchAgentsPage({
+  readOnly = false,
+  showHeader = true,
+  searchEndpoint,
+  filterHashParam,
+  permissionFiltering: permissionFilteringOverride,
+  searchActions,
+  onSelect,
+  renderActions,
+}: SearchAgentsPageProps) {
   const owner = useWorkspace();
   const { user, isAdmin } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
@@ -251,6 +289,7 @@ export function SearchAgentsPage() {
     categories: AGENT_FILTER_CATEGORIES,
     tabIds: AGENT_SEARCH_TAB_IDS,
     defaultTabId: "all",
+    hashParam: filterHashParam,
   });
   // Default agents all share the global scope, so Access does not apply to them.
   // They have no usage either, so Usage does not apply to them.
@@ -262,7 +301,10 @@ export function SearchAgentsPage() {
   const activeTab =
     AGENT_SEARCH_TABS.find((tab) => tab.id === selectedTab) ??
     AGENT_SEARCH_TABS[0];
-  const canShowHiddenAgents = isAdmin && selectedTab === "all";
+  const canShowHiddenAgents =
+    permissionFilteringOverride === undefined &&
+    isAdmin &&
+    selectedTab === "all";
   useSetContentWidth("wide");
   useSetPageTitle("Dust - Manage Agents");
 
@@ -271,13 +313,15 @@ export function SearchAgentsPage() {
   const getPermissionFiltering = (
     tabId: SearchTabId
   ): AgentSearchPermissionFiltering =>
-    isAdmin && ((tabId === "all" && showHiddenAgents) || tabId === "archived")
+    permissionFilteringOverride ??
+    (isAdmin && ((tabId === "all" && showHiddenAgents) || tabId === "archived")
       ? "unrestricted"
-      : "strict";
+      : "strict");
   // Names of the selections restored from a link come from the agents they match.
   const { facets: selectionFacets, isAgentsLoading: isSelectionLoading } =
     useSearchAgents({
       owner,
+      searchEndpoint,
       searchTerm: "",
       searchType: "name",
       limit: 0,
@@ -290,37 +334,50 @@ export function SearchAgentsPage() {
     });
   const filter = resolveFilter(selectionFacets);
 
+  const searchInput = (
+    <div className="w-full md:w-1/2">
+      <label htmlFor="agent-search" className="sr-only">
+        Search agents
+      </label>
+      <SearchInput
+        id="agent-search"
+        name="agent-search"
+        placeholder="Search agents by name"
+        value={searchTerm}
+        onChange={setSearchTerm}
+        className="w-full"
+      />
+    </div>
+  );
+
   return (
     <>
       <div className="flex w-full flex-col gap-6 pb-4">
-        <Page.Header
-          title={
-            <div className="flex w-full flex-wrap items-center justify-between gap-4">
-              <Page.H>Manage Agents</Page.H>
-              {hasPermission("create", "agent") && (
-                <CreateAgentDropdown
-                  owner={owner}
-                  dataGtmLocation="assistantsWorkspace"
-                />
-              )}
-            </div>
-          }
-          description="Build and manage agents that work with your team's knowledge and tools."
-          noTopPadding
-        />
-        <div className="w-full md:w-1/2">
-          <label htmlFor="agent-search" className="sr-only">
-            Search agents
-          </label>
-          <SearchInput
-            id="agent-search"
-            name="agent-search"
-            placeholder="Search agents by name"
-            value={searchTerm}
-            onChange={setSearchTerm}
-            className="w-full"
+        {showHeader && (
+          <Page.Header
+            title={
+              <div className="flex w-full flex-wrap items-center justify-between gap-4">
+                <Page.H>Manage Agents</Page.H>
+                {!readOnly && hasPermission("create", "agent") && (
+                  <CreateAgentDropdown
+                    owner={owner}
+                    dataGtmLocation="assistantsWorkspace"
+                  />
+                )}
+              </div>
+            }
+            description="Build and manage agents that work with your team's knowledge and tools."
+            noTopPadding
           />
-        </div>
+        )}
+        {searchActions ? (
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            {searchInput}
+            {searchActions}
+          </div>
+        ) : (
+          searchInput
+        )}
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <ButtonsSwitchList
@@ -338,6 +395,7 @@ export function SearchAgentsPage() {
             </ButtonsSwitchList>
             <AgentFilterPanel
               owner={owner}
+              searchEndpoint={searchEndpoint}
               categories={filterCategories}
               searchTerm={searchTerm}
               tabFilters={activeTab.filters}
@@ -385,20 +443,25 @@ export function SearchAgentsPage() {
             }}
           />
           <AgentsList
+            readOnly={readOnly}
+            searchEndpoint={searchEndpoint}
+            renderActions={renderActions}
             key={`${owner.sId}-${activeTab.id}`}
             searchTerm={searchTerm}
             filters={toAgentSearchFilters(filter, activeTab.filters)}
             permissionFiltering={getPermissionFiltering(activeTab.id)}
-            onSelect={setDetailedAgentId}
+            onSelect={onSelect ?? setDetailedAgentId}
           />
         </div>
       </div>
-      <AgentDetailsSheet
-        owner={owner}
-        user={user}
-        agentId={detailedAgentId}
-        onClose={() => setDetailedAgentId(null)}
-      />
+      {!readOnly && (
+        <AgentDetailsSheet
+          owner={owner}
+          user={user}
+          agentId={detailedAgentId}
+          onClose={() => setDetailedAgentId(null)}
+        />
+      )}
     </>
   );
 }
