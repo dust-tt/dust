@@ -1,6 +1,6 @@
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
 import { getMessageDate } from "@app/components/assistant/conversation/types";
-import { formatCalendarDate } from "@app/lib/utils/timestamps";
+import { formatCalendarDate } from "@app/lib/client/calendar_date";
 
 export const MessageDateIndicator = ({
   message,

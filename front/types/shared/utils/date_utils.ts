@@ -1,4 +1,3 @@
-import { format } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 
 export const ONE_HOUR_MS = 60 * 60 * 1000;

@@ -12,7 +12,6 @@ export * from "./compute_statistics";
 export * from "./contact_admins";
 export * from "./conversations_retention";
 export * from "./create_space";
-export * from "./delete_labs_transcript_histories";
 export * from "./delete_workspace";
 export * from "./disable_sso_enforcement";
 export * from "./extension_blacklist_domains";

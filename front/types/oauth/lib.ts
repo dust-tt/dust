@@ -829,11 +829,6 @@ export function validateOAuthCredentials({
 
 // Credentials Providers
 
-export const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = ["gong"] as const;
-
-export type ProvidersWithWorkspaceConfigurations =
-  (typeof PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS)[number];
-
 export const CREDENTIALS_PROVIDERS = [
   "snowflake",
   "bigquery",
@@ -845,14 +840,6 @@ export type CredentialsProvider = (typeof CREDENTIALS_PROVIDERS)[number];
 
 export function isCredentialProvider(obj: unknown): obj is CredentialsProvider {
   return CREDENTIALS_PROVIDERS.includes(obj as CredentialsProvider);
-}
-
-export function isProviderWithDefaultWorkspaceConfiguration(
-  obj: unknown
-): obj is ProvidersWithWorkspaceConfigurations {
-  return PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS.includes(
-    obj as ProvidersWithWorkspaceConfigurations
-  );
 }
 
 // Credentials
