@@ -11,6 +11,7 @@ import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
+import type { UserBlockedReason } from "@app/lib/metronome/user_block";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
@@ -874,23 +875,45 @@ export async function finalizeGracefulStop(
   );
 }
 
-const CREDITS_EXHAUSTED_ERROR_TITLE = "Workspace out of credits";
+const CREDIT_STOP_ERROR_TITLES: Record<UserBlockedReason, string> = {
+  credits_exhausted: "Workspace out of credits",
+  user_cap_reached: "Personal usage cap reached",
+  no_seat: "No seat assigned",
+};
 
-export function creditsExhaustedMessage(auth: Authenticator): string {
-  return auth.isAdmin()
-    ? "Your workspace has run out of credits. Please purchase more credits to continue using Dust."
-    : "Your workspace has run out of credits. Please contact your administrator to purchase more credits.";
+export function creditStopMessage(
+  auth: Authenticator,
+  reason: UserBlockedReason
+): string {
+  const isAdmin = auth.isAdmin();
+  switch (reason) {
+    case "credits_exhausted":
+      return isAdmin
+        ? "Your workspace has run out of credits. Please purchase more credits to continue using Dust."
+        : "Your workspace has run out of credits. Please contact your administrator to purchase more credits.";
+    case "user_cap_reached":
+      return isAdmin
+        ? "You have reached your personal usage cap. You can adjust user caps on the usage page."
+        : "You have reached your personal usage cap. Please contact your administrator to increase it.";
+    case "no_seat":
+      return isAdmin
+        ? "You don't have a seat assigned in this workspace. Go to the usage page to assign yourself one."
+        : "You don't have a seat assigned in this workspace. Please contact your administrator to assign you one.";
+    default:
+      assertNever(reason);
+  }
 }
 
 /**
- * Credit stop: publishes the retryable `credits_exhausted` agent error
+ * Credit stop: publishes the retryable `credits_exhausted` agent error, titled after the block reason
  *
  * TODO (Issue #8715): We will iterate on this to allow for users to continue the step after a resumable pause.
  * Currently, this is categorized as an error which is not ideal.
  */
 export async function finalizeCreditStop(
   authType: AuthenticatorType,
-  agentLoopArgs: AgentLoopArgs
+  agentLoopArgs: AgentLoopArgs,
+  reason: UserBlockedReason
 ): Promise<void> {
   const runAgentDataRes = await getAgentLoopRuntimeData(
     authType,
@@ -925,10 +948,10 @@ export async function finalizeCreditStop(
       messageId: agentMessage.sId,
       error: {
         code: "credits_exhausted",
-        message: creditsExhaustedMessage(auth),
+        message: creditStopMessage(auth, reason),
         metadata: {
           category: "credits_exhausted",
-          errorTitle: CREDITS_EXHAUSTED_ERROR_TITLE,
+          errorTitle: CREDIT_STOP_ERROR_TITLES[reason],
         },
       },
       runIds: agentLoopArgs.dustRunIds ?? [],
@@ -942,7 +965,7 @@ export async function finalizeCreditStop(
       agentMessageId: agentMessage.sId,
       conversationId: conversation.sId,
     },
-    "[CreditCheck] agent loop stopped: workspace credit pool exhausted"
+    "[CreditCheck] agent loop stopped: user blocked"
   );
 }
 
