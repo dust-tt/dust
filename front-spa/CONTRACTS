@@ -1,0 +1,2 @@
+@cc [owner:aubin-tchoi,label:performance] spa-build-sourcemaps
+SPA builds MUST generate sourcemaps by default and omit them when BUILD_SOURCEMAPS is "false".

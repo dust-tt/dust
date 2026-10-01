@@ -371,7 +371,7 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       outDir: path.resolve(__dirname, `dist/${appName}`),
-      sourcemap: true,
+      sourcemap: env.BUILD_SOURCEMAPS !== "false",
       rollupOptions: {
         input: appDefinition.inputs,
       },

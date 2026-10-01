@@ -140,6 +140,8 @@ jobs:
       - name: Build SPA
         working-directory: front-spa
         env:
+          # Only main builds upload sourcemaps to Datadog.
+          BUILD_SOURCEMAPS: ${{ github.ref_name == 'main' }}
           # Vite chunk rendering with sourcemaps exceeds Node's default heap limit.
           NODE_OPTIONS: "--max-old-space-size=8192"
           NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY: ${{ secrets.VIRTUOSO_LICENSE_KEY }}
