@@ -295,18 +295,16 @@ export function toPokeAgentSummaryJSON(
   resource: AgentResource,
   { instructionsLength }: { instructionsLength: number }
 ): PokeAgentSummaryJSON {
+  const json = resource.toJSON();
   return {
-    agentId: resource.sId,
-    name: resource.name,
-    description: resource.description,
-    scope: resource.scope,
-    status: resource.status,
-    version: resource.version,
-    versionCreatedAt:
-      resource.scope === "global"
-        ? null
-        : resource.versionCreatedAt.toISOString(),
+    agentId: json.sId,
+    name: json.name,
+    description: json.description,
+    scope: json.scope,
+    status: json.status,
+    version: json.version,
+    versionCreatedAt: json.versionCreatedAt,
     instructionsLength,
-    requestedSpaceCount: resource.requestedSpaceModelIds().length,
+    requestedSpaceCount: json.requestedSpaceIds.length,
   };
 }

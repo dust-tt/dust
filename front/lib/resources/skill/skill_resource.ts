@@ -1803,15 +1803,20 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async listByAgentConfigurationModelIds(
     auth: Authenticator,
     agentConfigurationModelIds: ModelId[],
-    fetchOptions?: SkillHydrationOptions & {
-      permissionFiltering?: SkillPermissionFilteringMode;
-    }
+    fetchOptions?: SkillFetchContext & SkillHydrationOptions
   ): Promise<Map<ModelId, SkillResource[]>> {
+    // Global agents share the `id: -1` sentinel (see `skill-references-by-configuration-model-id`).
+    assert(
+      agentConfigurationModelIds.every((id) => id > 0),
+      "Global agents are not supported"
+    );
+
     const skillsByAgent = new Map<ModelId, SkillResource[]>();
     if (agentConfigurationModelIds.length === 0) {
       return skillsByAgent;
     }
 
+    // Fetch all agent-skill relationships for the given agents.
     const agentSkills = await AgentSkillModel.findAll({
       where: {
         agentConfigurationId: agentConfigurationModelIds,
@@ -1823,6 +1828,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return skillsByAgent;
     }
 
+    // Fetch all unique skills in one batch.
     const allSkills = await this.fetchBySkillReferences(
       auth,
       agentSkills.map((s) => ({
@@ -1865,9 +1871,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async listByAgents(
     auth: Authenticator,
     agents: AgentResource[],
-    fetchOptions?: SkillHydrationOptions & {
-      permissionFiltering?: SkillPermissionFilteringMode;
-    }
+    fetchOptions?: SkillFetchContext & SkillHydrationOptions
   ): Promise<Map<AgentResource, SkillResource[]>> {
     const [globalAgents, customAgents] = partition(
       agents,

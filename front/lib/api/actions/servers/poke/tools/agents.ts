@@ -80,18 +80,15 @@ export const agentHandlers: AgentHandlers = {
     const targetAuth = targetAuthResult.value;
 
     const agents = await listAgentsByStatus(targetAuth, status);
-    const instructionsByAgent =
-      await AgentResource.batchFetchInstructions(agents);
-    const summaries = agents.map((agent) =>
-      toPokeAgentSummaryJSON(agent, {
-        instructionsLength:
-          instructionsByAgent.get(agent)?.instructions?.length ?? 0,
-      })
-    );
+    const entries = agents.map((agent) => ({
+      agent,
+      sId: agent.sId,
+      versionCreatedAt: agent.toJSON().versionCreatedAt,
+    }));
 
     // Sort by versionCreatedAt DESC, sId ASC as tiebreaker.
     // Null versionCreatedAt is treated as oldest.
-    const sorted = summaries.toSorted((a, b) => {
+    const sorted = entries.toSorted((a, b) => {
       const timeA = a.versionCreatedAt
         ? new Date(a.versionCreatedAt).getTime()
         : 0;
@@ -101,7 +98,7 @@ export const agentHandlers: AgentHandlers = {
       if (timeB !== timeA) {
         return timeB - timeA;
       }
-      return a.agentId < b.agentId ? -1 : a.agentId > b.agentId ? 1 : 0;
+      return a.sId < b.sId ? -1 : a.sId > b.sId ? 1 : 0;
     });
 
     const pageLimit = Math.min(limit ?? 50, 200);
@@ -123,7 +120,7 @@ export const agentHandlers: AgentHandlers = {
         if (aTime < cursorTime) {
           return true;
         }
-        if (aTime === cursorTime && a.agentId > cursor.sId) {
+        if (aTime === cursorTime && a.sId > cursor.sId) {
           return true;
         }
         return false;
@@ -139,14 +136,23 @@ export const agentHandlers: AgentHandlers = {
       startIndex + pageLimit < sorted.length && lastItem
         ? encodeCursor(
             lastItem.versionCreatedAt ?? new Date(0).toISOString(),
-            lastItem.agentId
+            lastItem.sId
           )
         : null;
+
+    const instructionsByAgent = await AgentResource.batchFetchInstructions(
+      page.map(({ agent }) => agent)
+    );
 
     return jsonResponse({
       workspace_id,
       totalCount: sorted.length,
-      agents: page,
+      agents: page.map(({ agent }) =>
+        toPokeAgentSummaryJSON(agent, {
+          instructionsLength:
+            instructionsByAgent.get(agent)?.instructions?.length ?? 0,
+        })
+      ),
       nextPageCursor,
     });
   },

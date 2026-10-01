@@ -458,14 +458,12 @@ export const activationManagementPlugin = createPlugin({
         withTools: false,
         withFileAttachments: false,
       }),
-      AgentResource.listByWorkspace(auth),
+      AgentResource.listByWorkspace(auth, { scope: "visible" }),
       GroupResource.listAllWorkspaceGroups(auth, {
         groupKinds: [...MANAGEABLE_GROUP_KINDS],
       }),
     ]);
-    const agents = workspaceAgents.filter(
-      (agent) => agent.scope === "visible" && auth.can("read", agent)
-    );
+    const agents = workspaceAgents.filter((agent) => auth.can("read", agent));
 
     const pushedResource = [
       ...skills.map((skill) => ({
