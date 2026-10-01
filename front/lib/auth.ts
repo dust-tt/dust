@@ -41,7 +41,6 @@ import {
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
-import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import {
   getResourceIdFromSId,
@@ -837,8 +836,8 @@ export class Authenticator {
 
   // Given a user's full group IDs, restricts them to the groups associated with the conversation
   // and the agent's requested spaces. The agent can use tools backed by spaces that are not
-  // explicitly selected on the conversation. The agent's editor group is kept too, so a hidden agent
-  // stays readable to its editors.
+  // explicitly selected on the conversation. The groups holding a grant on the agent are kept too,
+  // so a hidden agent stays readable to its editors.
   //
   // Falls back to the full set if the conversation is not found or has no requested spaces,
   // preserving the existing behavior for legacy conversations.
@@ -846,13 +845,10 @@ export class Authenticator {
    * @cc [owner:tdraier,label:security] sandbox-exec-groups
    * When the conversation has requested spaces, the sandbox-token groups MUST be the user's groups
    * that hold a grant on one of those spaces or on one of the token agent version's requested
-   * spaces, plus the token agent's `regular_auto` editor group (the `editor` grant on the agent), and
-   * no other: the sandbox acts with the verbs the agent loop holds on that agent, restricted to the
-   * conversation's spaces. No other group kind is kept for an agent grant, so a grant on the agent
-   * never widens the sandbox to another group's spaces. This relies on agent `editor` grants being
-   * held by the agent's `regular_auto` editor group only (`AgentResource.grantEditors` →
-   * `GroupPermissionResource.grantToUsers`): a path granting `editor` on an agent to another group
-   * kind MUST update this narrowing, or the sandbox would not read an agent the loop runs.
+   * spaces, plus those holding any grant on the token's agent, whatever their kind or grant type,
+   * and no other: the sandbox holds the verbs the agent loop holds on that agent (see `agent-verbs`),
+   * restricted to the conversation's spaces. A group kept for its agent grant brings its other grants
+   * along: the narrowing is per group.
    */
   private static async restrictGroupsToSandboxExecSpaces(
     userGroupIds: ModelId[],
@@ -898,8 +894,8 @@ export class Authenticator {
       requestedSpaceIds.add(spaceId);
     }
 
-    // A hidden agent is readable through its editor grant only, held by the agent's shared
-    // `regular_auto` editor group: keep it so the sandbox reads the agent as the loop does.
+    // A hidden agent is readable through its grants only (its editors'): keep the groups holding one
+    // so the sandbox reads the agent as the loop does.
     const grants = await GroupPermissionModel.findAll({
       where: {
         workspaceId,
@@ -911,14 +907,11 @@ export class Authenticator {
                 {
                   resourceType: "agent",
                   resourceId: agentConfiguration.agentId,
-                  grantType: "editor",
-                  "$group.kind$": "regular_auto",
                 },
               ]
             : []),
         ],
       },
-      include: [{ model: GroupModel, attributes: [], required: true }],
       attributes: ["groupId"],
     });
 

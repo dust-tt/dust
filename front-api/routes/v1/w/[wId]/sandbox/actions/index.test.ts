@@ -77,44 +77,50 @@ describe("GET /api/v1/w/[wId]/sandbox/actions", () => {
     ).toContain(agentServerView?.sId);
   });
 
-  it("does not widen the sandbox to the spaces of a non-editor group granted on the agent", async () => {
+  it("keeps the groups granted on the agent, whatever their kind, and drops the others", async () => {
     const { agentConfig, auth, token, workspace } =
       await createSandboxTokenTestContext({
         agentScope: "hidden",
         usePodSpaceForConversation: true,
       });
-    const otherSpace = await SpaceFactory.regular(workspace);
-    const manualGroup = await GroupFactory.regularManual(
-      workspace,
-      "Agent watchers"
-    );
-    await GroupFactory.withMembers(auth, manualGroup, [
-      auth.getNonNullableUser(),
-    ]);
-    const [otherSpaceGrant] = await GroupPermissionModel.findAll({
-      where: {
+    assert(agentConfig.agentModelId !== null);
+    const agentModelId = agentConfig.agentModelId;
+    const user = auth.getNonNullableUser();
+
+    // A manual group holding a grant on the agent and on `agentGroupSpace`, and another holding a
+    // grant on `unrelatedSpace` only.
+    async function makeGroupWithSpaceGrant(name: string) {
+      const space = await SpaceFactory.regular(workspace);
+      const group = await GroupFactory.regularManual(workspace, name);
+      await GroupFactory.withMembers(auth, group, [user]);
+      const [spaceGrant] = await GroupPermissionModel.findAll({
+        where: {
+          workspaceId: workspace.id,
+          resourceType: "space",
+          resourceId: space.id,
+        },
+      });
+      assert(spaceGrant);
+      await GroupPermissionModel.create({
         workspaceId: workspace.id,
+        groupId: group.id,
+        grantType: spaceGrant.grantType,
         resourceType: "space",
-        resourceId: otherSpace.id,
-      },
+        resourceId: space.id,
+      });
+      return { group, space };
+    }
+    const { group: agentGroup, space: agentGroupSpace } =
+      await makeGroupWithSpaceGrant("Agent watchers");
+    const { space: unrelatedSpace } =
+      await makeGroupWithSpaceGrant("Unrelated team");
+    await GroupPermissionModel.create({
+      workspaceId: workspace.id,
+      groupId: agentGroup.id,
+      grantType: "editor",
+      resourceType: "agent",
+      resourceId: agentModelId,
     });
-    assert(otherSpaceGrant && agentConfig.agentModelId !== null);
-    await GroupPermissionModel.bulkCreate([
-      {
-        workspaceId: workspace.id,
-        groupId: manualGroup.id,
-        grantType: otherSpaceGrant.grantType,
-        resourceType: "space",
-        resourceId: otherSpace.id,
-      },
-      {
-        workspaceId: workspace.id,
-        groupId: manualGroup.id,
-        grantType: "editor",
-        resourceType: "agent",
-        resourceId: agentConfig.agentModelId,
-      },
-    ]);
 
     const payload = await verifySandboxExecToken(token);
     assert(payload && isSandboxExecTokenPayload(payload));
@@ -124,17 +130,22 @@ describe("GET /api/v1/w/[wId]/sandbox/actions", () => {
     );
     assert(sandboxAuthRes.isOk());
     const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      auth.getNonNullableUser().sId,
+      user.sId,
       workspace.sId
     );
-    const space = await SpaceResource.fetchById(
-      await Authenticator.internalAdminForWorkspace(workspace.sId),
-      otherSpace.sId
+    const internalAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
     );
-    assert(space);
+    const [keptSpace, droppedSpace] = await Promise.all([
+      SpaceResource.fetchById(internalAuth, agentGroupSpace.sId),
+      SpaceResource.fetchById(internalAuth, unrelatedSpace.sId),
+    ]);
+    assert(keptSpace && droppedSpace);
 
-    expect(userAuth.can("read", space)).toBe(true);
-    expect(sandboxAuthRes.value.can("read", space)).toBe(false);
+    expect(userAuth.can("read", keptSpace)).toBe(true);
+    expect(userAuth.can("read", droppedSpace)).toBe(true);
+    expect(sandboxAuthRes.value.can("read", keptSpace)).toBe(true);
+    expect(sandboxAuthRes.value.can("read", droppedSpace)).toBe(false);
   });
 
   it("does not expose tools added to a later agent version", async () => {
