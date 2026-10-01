@@ -1,7 +1,7 @@
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import { formatRelativeTime as formatRelativeTimeInLocale } from "@app/lib/i18n/format";
-import { getActiveLocale } from "@app/lib/i18n/i18n";
+import { INVALID_DATE_LABEL } from "@app/lib/utils/timestamps";
 import type { SupportedLocale } from "@app/types/locale";
-import { t } from "@lingui/core/macro";
 
 const MINUTE_MS = 60 * 1000;
 const HOUR_MS = 60 * MINUTE_MS;
@@ -41,8 +41,8 @@ const SHORT_FORM_STYLE_BY_LOCALE: Record<
  * The elapsed time MUST be counted in the largest unit among years (365 days), months (30 days),
  * days, hours and minutes in which it is at least 1, truncated toward zero, and rendered with
  * `numeric: "always"` ("1 day ago", "in 2 hours", never "yesterday"). Under one minute in either
- * direction it MUST render "just now", and an invalid date MUST render "Invalid date" instead of
- * throwing.
+ * direction it MUST render zero seconds with `numeric: "auto"` ("now"), and an invalid date MUST
+ * render "Invalid date" instead of throwing.
  */
 function formatElapsedTime(
   date: Date | number,
@@ -51,15 +51,14 @@ function formatElapsedTime(
 ): string {
   const elapsedMs = new Date(date).getTime() - now.getTime();
   if (Number.isNaN(elapsedMs)) {
-    return t`Invalid date`;
+    return INVALID_DATE_LABEL;
   }
 
+  const locale = getActiveLocale();
+  const style = form === "short" ? SHORT_FORM_STYLE_BY_LOCALE[locale] : "long";
   for (const [unit, unitMs] of RELATIVE_TIME_UNITS) {
     const value = Math.trunc(elapsedMs / unitMs);
     if (value !== 0) {
-      const locale = getActiveLocale();
-      const style =
-        form === "short" ? SHORT_FORM_STYLE_BY_LOCALE[locale] : "long";
       return formatRelativeTimeInLocale(
         value,
         unit,
@@ -69,7 +68,12 @@ function formatElapsedTime(
     }
   }
 
-  return t`just now`;
+  return formatRelativeTimeInLocale(
+    0,
+    "second",
+    { numeric: "auto", style },
+    locale
+  );
 }
 
 export function timeAgoFrom(

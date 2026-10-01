@@ -18,7 +18,7 @@ import {
 } from "date-fns";
 
 // What moment renders for an invalid date; kept so migrated call sites never throw mid-render.
-const INVALID_DATE_LABEL = "Invalid date";
+export const INVALID_DATE_LABEL = "Invalid date";
 
 /**
  * Formats a date with a date-fns pattern, rendering invalid input as a sentinel string

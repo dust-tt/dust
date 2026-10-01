@@ -29,9 +29,9 @@ afterEach(() => {
 
 describe("relative times", () => {
   it.each([
-    [0, "just now", "just now"],
-    [30 * SECOND_MS, "just now", "just now"],
-    [-30 * SECOND_MS, "just now", "just now"],
+    [0, "now", "now"],
+    [30 * SECOND_MS, "now", "now"],
+    [-30 * SECOND_MS, "now", "now"],
     [MINUTE_MS, "1m ago", "1 minute ago"],
     [5 * MINUTE_MS, "5m ago", "5 minutes ago"],
     [HOUR_MS, "1h ago", "1 hour ago"],
@@ -76,7 +76,7 @@ describe("relative times", () => {
     expect(formatRelativeTime(NOW.getTime() + 2 * HOUR_MS)).toBe(
       "dans 2 heures"
     );
-    expect(formatRelativeTime(NOW)).toBe("à l’instant");
+    expect(formatRelativeTime(NOW)).toBe("maintenant");
   });
 
   it("uses the en-GB short form", async () => {

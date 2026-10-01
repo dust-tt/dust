@@ -1,5 +1,5 @@
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import { formatDate, formatRelativeTime } from "@app/lib/i18n/format";
-import { getActiveLocale } from "@app/lib/i18n/i18n";
 import type {
   MaxAwuCreditsTimeframeType,
   MaxMessagesTimeframeType,
