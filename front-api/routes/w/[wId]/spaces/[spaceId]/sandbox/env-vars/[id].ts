@@ -3,6 +3,7 @@ import type { PatchSandboxEnvVarResponseBody } from "@app/lib/resources/sandbox_
 import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import { SANDBOX_ENV_VAR_KINDS } from "@app/types/sandbox/env_var";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
@@ -25,6 +26,10 @@ const ParamsSchema = z.object({
 
 // Mounted at /api/w/:wId/spaces/:spaceId/sandbox/env-vars/:id.
 const app = workspaceApp();
+
+// Mutations only on this sub-app; the parent opens its list to Pod readers, so
+// the admin gate lives here.
+app.use("*", ensureIsAdmin());
 
 /** @ignoreswagger */
 app.patch(

@@ -1,6 +1,7 @@
 import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { SandboxEnvVarFactory } from "@app/tests/utils/SandboxEnvVarFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
@@ -58,10 +59,41 @@ describe("GET/POST /api/w/:wId/spaces/:spaceId/sandbox/env-vars", () => {
     vi.clearAllMocks();
   });
 
-  it("returns 403 for non-admin users", async () => {
-    const { workspace, pod } = await setupTest({ role: "user" });
+  it("lists env vars read-only for a non-admin pod member", async () => {
+    const { workspace, auth, pod } = await setupTest({ role: "user" });
+    await SandboxEnvVarFactory.create(auth, { name: "API_TOKEN", space: pod });
 
     const response = await listEnvVars(workspace.sId, pod.sId);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    // toMatchObject on an array also pins its length.
+    expect(body).toMatchObject({
+      envVars: [{ name: "DST_API_TOKEN", spaceId: pod.sId }],
+    });
+    // Values are write-only. Pin the exact wire shape so a sensitive field
+    // cannot silently join the reader payload later.
+    expect(Object.keys(body.envVars[0]).sort()).toEqual([
+      "allowedDomains",
+      "createdAt",
+      "createdByName",
+      "kind",
+      "lastUpdatedByName",
+      "name",
+      "placeholderNonce",
+      "sId",
+      "spaceId",
+      "updatedAt",
+    ]);
+  });
+
+  it("returns 403 for a non-admin POST", async () => {
+    const { workspace, pod } = await setupTest({ role: "user" });
+
+    const response = await postEnvVar(workspace.sId, pod.sId, {
+      name: "DST_API_TOKEN",
+      value: "value",
+    });
 
     expect(response.status).toBe(403);
     expect(await response.json()).toMatchObject({
