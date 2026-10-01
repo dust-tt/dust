@@ -11,7 +11,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuSearchbar,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
   Icon,
   ShapesPlus,
@@ -98,15 +97,12 @@ export function PodDefaultSkillPicker({
         className="w-80"
         align="start"
         dropdownHeaders={
-          <>
-            <DropdownMenuSearchbar
-              name="search-default-skills"
-              placeholder="Search skills"
-              value={searchTerm}
-              onChange={changeSearch}
-            />
-            <DropdownMenuSeparator />
-          </>
+          <DropdownMenuSearchbar
+            name="search-default-skills"
+            placeholder="Search skills"
+            value={searchTerm}
+            onChange={changeSearch}
+          />
         }
       >
         {/* Keep the previous results visible while the next query loads. */}
