@@ -382,6 +382,8 @@ interface DropdownMenuContentProps
   onOpenAutoFocus?: (e: React.FocusEvent<HTMLDivElement>) => void;
   /** Ref to the search input that typed characters should be routed to. */
   searchInputRef?: React.RefObject<HTMLInputElement | null>;
+  /** Ref to the scroll viewport, for scroll observation or position control. */
+  viewportRef?: React.Ref<HTMLDivElement>;
   /** Scrolls the item matching highlightedItemId into view when it changes. */
   scrollHighlightedItemIntoView?: boolean;
 }
@@ -404,13 +406,13 @@ const DropdownMenuContent = React.forwardRef<
       onKeyDownCapture,
       onKeyDown,
       searchInputRef,
+      viewportRef,
       scrollHighlightedItemIntoView = false,
       children,
       ...props
     },
     ref
   ) => {
-    const viewportRef = useRef<HTMLDivElement>(null);
     const itemElementsRef = useRef(new Map<string, HTMLElement>());
 
     const handleKeyDownCapture = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -490,11 +492,6 @@ const DropdownMenuContent = React.forwardRef<
 
     React.useEffect(() => {
       if (!scrollHighlightedItemIntoView || !highlightedItemId) {
-        return;
-      }
-
-      const viewport = viewportRef.current;
-      if (!viewport) {
         return;
       }
 
