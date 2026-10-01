@@ -39,6 +39,27 @@ describe("POST /api/w/:wId/skills/search", () => {
     searchSkills.mockReset();
   });
 
+  it("forwards the suggestion defaults and excluded skill to search", async () => {
+    const { workspace } = await setup();
+    searchSkills.mockResolvedValue(
+      new Ok({ skills: [], total: 0, hasMore: false, facets: {} })
+    );
+
+    const response = await searchRequest(workspace.sId, {
+      defaultToFavorites: true,
+      excludeSkillId: "current-skill",
+    });
+
+    expect(response.status).toBe(200);
+    expect(searchSkills).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        defaultToFavorites: true,
+        excludeSkillId: "current-skill",
+      })
+    );
+  });
+
   it.each([
     "user",
     "admin",
@@ -94,6 +115,8 @@ describe("POST /api/w/:wId/skills/search", () => {
       facets: undefined,
       sortBy: undefined,
       sortOrder: undefined,
+      defaultToFavorites: undefined,
+      excludeSkillId: undefined,
       filters: {
         status: undefined,
         mcpServerViewIds: undefined,
@@ -155,6 +178,8 @@ describe("POST /api/w/:wId/skills/search", () => {
       facets: undefined,
       sortBy: undefined,
       sortOrder: undefined,
+      defaultToFavorites: undefined,
+      excludeSkillId: undefined,
       filters: {
         status: undefined,
         mcpServerViewIds: undefined,
@@ -356,6 +381,8 @@ describe("POST /api/w/:wId/skills/search", () => {
       facets: undefined,
       sortBy: undefined,
       sortOrder: undefined,
+      defaultToFavorites: undefined,
+      excludeSkillId: undefined,
       filters: {
         status: undefined,
         mcpServerViewIds: undefined,

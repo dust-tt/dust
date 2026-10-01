@@ -59,12 +59,6 @@ function getSkillBuilderSlashCommandTools({
     });
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:product] empty-query-favorite-capabilities
- * With skill search enabled, blank queries with selectable favorites MUST list only those
- * favorites alphabetically without searching. No favorites or a nonblank query MUST retain
- * the existing capability search behavior.
- */
 export function useInputBarSlashCommandCapabilities({
   excludeSkillId,
   owner,
@@ -85,20 +79,9 @@ export function useInputBarSlashCommandCapabilities({
     useSkills({
       owner,
       status: "active",
-      disabled: useSkillSearch && !!query.trim(),
+      disabled: useSkillSearch,
       swrOptions: CAPABILITIES_SWR_OPTIONS,
     });
-  const favoriteSkills = useMemo(
-    () =>
-      listedSkills.filter(
-        (skill) => skill.isFavorite && skill.sId !== excludeSkillId
-      ),
-    [listedSkills, excludeSkillId]
-  );
-  const showFavorites =
-    useSkillSearch && !query.trim() && favoriteSkills.length > 0;
-  const waitingForFavorites =
-    useSkillSearch && !query.trim() && isListedSkillsLoading;
   const {
     skills: searchSkills,
     resolvedSearchTerm,
@@ -106,22 +89,18 @@ export function useInputBarSlashCommandCapabilities({
   } = useSearchSkills({
     owner,
     searchTerm: query,
+    defaultToFavorites: true,
+    excludeSkillId,
     limit: MAX_RENDERED_CAPABILITY_ITEMS,
-    disabled:
-      !useSkillSearch ||
-      (!query.trim() && (isListedSkillsLoading || showFavorites)),
+    disabled: !useSkillSearch,
   });
-  const skills = showFavorites
-    ? favoriteSkills
-    : useSkillSearch
-      ? searchSkills
-      : listedSkills;
+  const skills = useSkillSearch ? searchSkills : listedSkills;
   // Use the displayed skills' query so tools and skills update together.
-  const capabilityQuery = showFavorites
-    ? ""
-    : useSkillSearch
-      ? (resolvedSearchTerm ?? "")
-      : query;
+  const capabilityQuery = useSkillSearch ? (resolvedSearchTerm ?? "") : query;
+  const showFavorites =
+    useSkillSearch &&
+    !capabilityQuery.trim() &&
+    searchSkills.some((skill) => skill.isFavorite);
   const isSkillsLoading = useSkillSearch
     ? isSearchSkillsLoading
     : isListedSkillsLoading;
@@ -154,24 +133,17 @@ export function useInputBarSlashCommandCapabilities({
   );
 
   return {
-    capabilityItems: waitingForFavorites ? [] : capabilityItems,
+    capabilityItems,
     resolvedQuery: capabilityQuery,
     // Every workspace has at least one global skill and one tool, so stop loading
     // as soon as either source returns a matching capability.
     isLoading:
-      waitingForFavorites ||
-      (!showFavorites &&
-        capabilityItems.length === 0 &&
-        (isSkillsLoading || isSpacesLoading || isServerViewsLoading)),
+      !showFavorites &&
+      capabilityItems.length === 0 &&
+      (isSkillsLoading || isSpacesLoading || isServerViewsLoading),
   };
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:product] empty-query-favorite-capabilities
- * With skill search enabled, blank queries with selectable favorites MUST list only those
- * favorites alphabetically without searching. No favorites or a nonblank query MUST retain
- * the existing capability search behavior.
- */
 export function useSkillBuilderSlashCommandCapabilities({
   excludeSkillId,
   owner,
@@ -191,19 +163,8 @@ export function useSkillBuilderSlashCommandCapabilities({
     useSkills({
       owner,
       status: "active",
-      disabled: useSkillSearch && !!query.trim(),
+      disabled: useSkillSearch,
     });
-  const favoriteSkills = useMemo(
-    () =>
-      listedSkills.filter(
-        (skill) => skill.isFavorite && skill.sId !== excludeSkillId
-      ),
-    [listedSkills, excludeSkillId]
-  );
-  const showFavorites =
-    useSkillSearch && !query.trim() && favoriteSkills.length > 0;
-  const waitingForFavorites =
-    useSkillSearch && !query.trim() && isListedSkillsLoading;
   const {
     skills: searchSkills,
     resolvedSearchTerm,
@@ -211,22 +172,18 @@ export function useSkillBuilderSlashCommandCapabilities({
   } = useSearchSkills({
     owner,
     searchTerm: query,
+    defaultToFavorites: true,
+    excludeSkillId,
     limit: MAX_RENDERED_CAPABILITY_ITEMS,
-    disabled:
-      !useSkillSearch ||
-      (!query.trim() && (isListedSkillsLoading || showFavorites)),
+    disabled: !useSkillSearch,
   });
-  const skills = showFavorites
-    ? favoriteSkills
-    : useSkillSearch
-      ? searchSkills
-      : listedSkills;
+  const skills = useSkillSearch ? searchSkills : listedSkills;
   // Use the displayed skills' query so tools and skills update together.
-  const capabilityQuery = showFavorites
-    ? ""
-    : useSkillSearch
-      ? (resolvedSearchTerm ?? "")
-      : query;
+  const capabilityQuery = useSkillSearch ? (resolvedSearchTerm ?? "") : query;
+  const showFavorites =
+    useSkillSearch &&
+    !capabilityQuery.trim() &&
+    searchSkills.some((skill) => skill.isFavorite);
   const isSkillsLoading = useSkillSearch
     ? isSearchSkillsLoading
     : isListedSkillsLoading;
@@ -262,12 +219,11 @@ export function useSkillBuilderSlashCommandCapabilities({
   );
 
   return {
-    capabilityItems: waitingForFavorites ? [] : capabilityItems,
+    capabilityItems,
     resolvedQuery: capabilityQuery,
     // Spaces are needed to label tools available in several spaces.
     isLoading:
-      waitingForFavorites ||
-      (!showFavorites &&
-        (isSkillsLoading || isSpacesLoading || isServerViewsLoading)),
+      !showFavorites &&
+      (isSkillsLoading || isSpacesLoading || isServerViewsLoading),
   };
 }

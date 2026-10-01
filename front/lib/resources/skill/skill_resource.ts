@@ -1640,7 +1640,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async listFavoritesForCurrentUser(
     auth: Authenticator,
-    context?: SkillFetchContext
+    context?: SkillFetchContext & SkillHydrationOptions
   ): Promise<SkillResource[]> {
     const user = auth.user();
     if (!user) {

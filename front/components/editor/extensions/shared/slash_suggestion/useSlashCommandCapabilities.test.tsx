@@ -48,6 +48,14 @@ async function setup(hasFavorites = true) {
     hasMore: false,
     facets: {},
   });
+  if (hasFavorites) {
+    fetcherWithBody.mockResolvedValueOnce({
+      skills: listedSkills.slice(0, 2),
+      total: 2,
+      hasMore: false,
+      facets: {},
+    });
+  }
   const swrConfig = { provider: () => new Map(), shouldRetryOnError: false };
   const wrapper = ({ children }: { children: ReactNode }) => (
     <AuthContext.Provider value={context}>
@@ -56,7 +64,7 @@ async function setup(hasFavorites = true) {
       </FetcherProvider>
     </AuthContext.Provider>
   );
-  return { owner, fetcherWithBody, wrapper };
+  return { owner, fetcher, fetcherWithBody, wrapper };
 }
 
 describe.each([
@@ -66,8 +74,8 @@ describe.each([
   it.each([
     "",
     "   ",
-  ])("lists only alphabetical favorites without searching for %j", async (query) => {
-    const { owner, fetcherWithBody, wrapper } = await setup();
+  ])("uses only the search endpoint for alphabetical favorites with query %j", async (query) => {
+    const { owner, fetcher, fetcherWithBody, wrapper } = await setup();
     const { result } = renderHook(() => useCapabilities({ owner, query }), {
       wrapper,
     });
@@ -77,7 +85,10 @@ describe.each([
       "beta",
       "zulu",
     ]);
-    expect(fetcherWithBody).not.toHaveBeenCalled();
+    expect(fetcherWithBody).toHaveBeenCalledOnce();
+    expect(fetcher.mock.calls.some(([url]) => url.includes("/skills"))).toBe(
+      false
+    );
   });
 
   it("uses the existing search when there are no favorites", async () => {
@@ -93,13 +104,13 @@ describe.each([
     );
     expect(fetcherWithBody).toHaveBeenCalledWith([
       `/api/w/${owner.sId}/skills/search`,
-      expect.objectContaining({ query: "" }),
+      expect.objectContaining({ query: "", defaultToFavorites: true }),
       "POST",
     ]);
   });
 
   it("uses the existing search once typing starts", async () => {
-    const { owner, fetcherWithBody, wrapper } = await setup();
+    const { owner, fetcher, fetcherWithBody, wrapper } = await setup();
     const { result, rerender } = renderHook(
       ({ query }) => useCapabilities({ owner, query }),
       {
@@ -108,7 +119,10 @@ describe.each([
       }
     );
     await waitFor(() => expect(result.current.capabilityItems).toHaveLength(2));
-    expect(fetcherWithBody).not.toHaveBeenCalled();
+    expect(fetcherWithBody).toHaveBeenCalledOnce();
+    expect(fetcher.mock.calls.some(([url]) => url.includes("/skills"))).toBe(
+      false
+    );
 
     rerender({ query: "al" });
 
@@ -119,7 +133,7 @@ describe.each([
     );
     expect(fetcherWithBody).toHaveBeenCalledWith([
       `/api/w/${owner.sId}/skills/search`,
-      expect.objectContaining({ query: "al" }),
+      expect.objectContaining({ query: "al", defaultToFavorites: true }),
       "POST",
     ]);
   });

@@ -39,4 +39,8 @@ export const SearchSkillsQuerySchema = z.object({
     .optional(),
   sortBy: z.enum(SKILL_SEARCH_SORTS).optional(),
   sortOrder: z.enum(SKILL_SEARCH_SORT_ORDERS).optional(),
+  // Suggestion menus list alphabetical favorites for blank queries, falling back to normal search.
+  defaultToFavorites: z.boolean().optional(),
+  // Only excluded from the default favorites list; ordinary search behavior is unchanged.
+  excludeSkillId: z.string().min(1).optional(),
 });

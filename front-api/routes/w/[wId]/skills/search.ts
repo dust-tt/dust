@@ -34,6 +34,8 @@ app.post(
       facets,
       sortBy,
       sortOrder,
+      defaultToFavorites,
+      excludeSkillId,
     } = ctx.req.valid("json");
     if (permissionFiltering === "redact_unreadable" && !auth.isAdmin()) {
       return apiError(ctx, {
@@ -50,6 +52,8 @@ app.post(
       offset,
       sortBy,
       sortOrder,
+      defaultToFavorites,
+      excludeSkillId,
       permissionFiltering,
       facets,
       filters: {
