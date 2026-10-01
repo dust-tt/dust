@@ -190,6 +190,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "ActionTableIcon",
   "ActionTimeIcon",
   "AdomikLogo",
+  "AirtableLogo",
   "AmplitudeLogo",
   "ApifyLogo",
   "AsanaLogo",
