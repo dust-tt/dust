@@ -12,9 +12,9 @@ const NAME_AUTOCOMPLETE_FIELDS = [
 /**
  * @cc [owner:tdraier;aubin-tchoi,label:product] indexed-name-matching
  * An empty (or whitespace-only) search term matches every document. Otherwise every
- * whitespace-separated term MUST match the name autocomplete fields as a `bool_prefix` query,
- * in any order (`sal mar` matches "Marketing Sales"). Terms are analyzed like the name (case-change
- * and punctuation splits), so only a term's last token is prefix-matched (`ReportB` matches
+ * whitespace-separated term MUST match either a name prefix or a fuzzy name word, in any order
+ * (`sal mar` matches "Marketing Sales", `writter` matches "Writer"). Prefix matches MUST score
+ * above fuzzy word matches. Terms are analyzed like the name (case-change and punctuation splits), so only a term's last token is prefix-matched (`ReportB` matches
  * "Report Builder"). The description is not matched. Whole-word, in-order and whole-name
  * (`name.keyword`) prefix matches only add relevance. Exact whole-name matches MUST receive an
  * additional relevance boost. Matching MUST NOT apply usage boosts.
@@ -29,13 +29,39 @@ export function buildNameAutocompleteQuery(
   }
   return {
     bool: {
-      // Require every term, allowing the last analyzed token of each term to be a prefix.
+      // Require every term to match a name prefix or a fuzzy word, in any order.
       must: terms.map((term) => ({
-        multi_match: {
-          query: term,
-          type: "bool_prefix",
-          operator: "and",
-          fields: NAME_AUTOCOMPLETE_FIELDS,
+        // Keep only the strongest match so typos cannot add to a prefix match's score.
+        dis_max: {
+          queries: [
+            // Keep prefix completion ranked above fuzzy word matches.
+            {
+              constant_score: {
+                filter: {
+                  multi_match: {
+                    query: term,
+                    type: "bool_prefix",
+                    operator: "and",
+                    fields: NAME_AUTOCOMPLETE_FIELDS,
+                  },
+                },
+                boost: 2,
+              },
+            },
+            // Allow word typos; bool_prefix does not apply fuzziness to its final token.
+            {
+              constant_score: {
+                filter: {
+                  multi_match: {
+                    query: term,
+                    fields: NAME_SEARCH_FIELDS,
+                    operator: "and",
+                    fuzziness: "AUTO",
+                  },
+                },
+              },
+            },
+          ],
         },
       })),
       // These optional clauses improve ranking without excluding matching names.

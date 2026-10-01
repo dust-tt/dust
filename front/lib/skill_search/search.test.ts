@@ -20,6 +20,7 @@ import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { buildNameAutocompleteQuery } from "@app/lib/search/agent_and_skill_queries";
 import { buildSkillSearchQuery } from "@app/lib/skill_search/query";
 import { toSkillListItem } from "@app/lib/skill_search/serialization";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
@@ -95,46 +96,7 @@ describe("custom skill search", () => {
     });
     expect(query).toEqual({
       bool: {
-        must: [
-          {
-            bool: {
-              must: ["report", "b"].map((term) => ({
-                multi_match: {
-                  query: term,
-                  type: "bool_prefix",
-                  operator: "and",
-                  fields: [
-                    "name.autocomplete",
-                    "name.autocomplete._2gram",
-                    "name.autocomplete_preserved",
-                    "name.autocomplete_preserved._2gram",
-                  ],
-                },
-              })),
-              should: [
-                {
-                  constant_score: {
-                    filter: { term: { "name.keyword": "  report   b  " } },
-                  },
-                },
-                {
-                  multi_match: {
-                    query: "  report   b  ",
-                    type: "bool_prefix",
-                    operator: "and",
-                    fields: [
-                      "name.keyword",
-                      "name.autocomplete",
-                      "name.autocomplete._2gram",
-                      "name.autocomplete_preserved",
-                      "name.autocomplete_preserved._2gram",
-                    ],
-                  },
-                },
-              ],
-            },
-          },
-        ],
+        must: [buildNameAutocompleteQuery("  report   b  ")],
         filter: [{ terms: { status: ["active"] } }],
         should: [
           {

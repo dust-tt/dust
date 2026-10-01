@@ -136,7 +136,7 @@ describe("searchAgents", () => {
     expect(mockSearch.mock.lastCall?.[0]).toMatchObject({ from: 2, size: 2 });
   });
 
-  it("requires every search term to prefix-match the name, in any order", async () => {
+  it("requires every search term to match a name prefix or fuzzy word, in any order", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
     mockSearch.mockResolvedValue({ hits: { hits: [] } });
 
@@ -144,13 +144,35 @@ describe("searchAgents", () => {
 
     const nameQuery = buildNameAutocompleteQuery("  sal   mar ");
     expect(mockSearch.mock.calls[0][0].query.bool.must).toEqual([nameQuery]);
-    expect(nameQuery.bool?.must).toEqual(
+    expect(nameQuery.bool?.must).toMatchObject(
       ["sal", "mar"].map((term) => ({
-        multi_match: expect.objectContaining({
-          query: term,
-          type: "bool_prefix",
-          operator: "and",
-        }),
+        dis_max: {
+          queries: [
+            {
+              constant_score: {
+                filter: {
+                  multi_match: {
+                    query: term,
+                    type: "bool_prefix",
+                    operator: "and",
+                  },
+                },
+                boost: 2,
+              },
+            },
+            {
+              constant_score: {
+                filter: {
+                  multi_match: {
+                    query: term,
+                    operator: "and",
+                    fuzziness: "AUTO",
+                  },
+                },
+              },
+            },
+          ],
+        },
       }))
     );
     expect(buildNameAutocompleteQuery("   ")).toEqual({ match_all: {} });
