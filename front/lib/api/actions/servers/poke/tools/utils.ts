@@ -78,17 +78,27 @@ export async function enforcePokeSecurityGates(
 }
 
 /**
- * Creates an admin authenticator for the target workspace, with consistent
- * error handling. Returns Err(MCPError) if the workspace does not exist.
+ * Creates the Poke superuser authenticator of the caller (checked by `enforcePokeSecurityGates`)
+ * for the target workspace, with consistent error handling. Returns Err(MCPError) if the workspace
+ * does not exist.
  */
 export async function getTargetAuth(
+  { auth }: ToolHandlerExtra,
   workspaceId: string
 ): Promise<Result<Authenticator, MCPError>> {
   try {
-    const targetAuth = await Authenticator.internalAdminForWorkspace(
-      workspaceId,
-      { dangerouslyRequestAllGroups: true }
-    );
+    const targetAuth = await Authenticator.fromDustSuperUser({
+      user: auth.user(),
+      wId: workspaceId,
+    });
+    if (!targetAuth.workspace()) {
+      return new Err(
+        new MCPError(
+          `Workspace not found: no workspace with sId "${workspaceId}" exists.`,
+          { tracked: false }
+        )
+      );
+    }
     return new Ok(targetAuth);
   } catch (err) {
     const normalizedErr = normalizeError(err);

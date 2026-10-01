@@ -9,15 +9,13 @@ export type PokeGetDatasourceRetrievalResponse = {
   total: number;
 };
 
-// Poke reads any agent's full content, whatever the support caller's verbs on it (see
-// `poke-agent-content-access`).
+// Poke reads any agent's full content: its superuser authenticator views every agent's content
+// (see `poke-agent-content-access`).
 export async function getAgentConfigurationForPoke(
   auth: Authenticator,
   agentId: string
 ): Promise<AgentConfigurationType | null> {
-  const agent = await AgentResource.fetchById(auth, agentId, {
-    dangerouslyViewContentForPoke: true,
-  });
+  const agent = await AgentResource.fetchById(auth, agentId);
   if (!agent) {
     return null;
   }
@@ -32,15 +30,10 @@ export async function listAgentConfigurationVersionsForPoke(
   auth: Authenticator,
   agentId: string
 ): Promise<AgentConfigurationType[]> {
-  const agent = await AgentResource.fetchById(auth, agentId, {
-    dangerouslyViewContentForPoke: true,
-  });
+  const agent = await AgentResource.fetchById(auth, agentId);
   if (!agent) {
     return [];
   }
 
-  return toAgentConfigurations(
-    auth,
-    await agent.listVersions(auth, { dangerouslyViewContentForPoke: true })
-  );
+  return toAgentConfigurations(auth, await agent.listVersions(auth));
 }

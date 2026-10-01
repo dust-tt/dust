@@ -58,7 +58,7 @@ makeScript(
     { workspaceId, conversationId, agentId, allowedTokenCount },
     logger
   ) => {
-    const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+    const auth = await Authenticator.fromDustSuperUser({ wId: workspaceId });
 
     const [conversationRes, agentConfiguration] = await Promise.all([
       // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load

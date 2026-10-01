@@ -233,15 +233,8 @@ export type AgentVersionReference = {
  * the content (see `actions-require-read`). Tools are never part of the cache snapshot.
  * Without it, global agents are built `light` and tools are looked up by `batchListActions`.
  */
-/**
- * @cc [owner:tdraier,label:security] poke-agent-content-access
- * `dangerouslyViewContentForPoke` MUST only be set by Poke (support tooling) code paths. Every
- * resource it resolves MUST be `canViewContent`, so its instructions and tools are exposed to the
- * caller whatever their verbs, and it MUST NOT grant or change any verb.
- */
 export type AgentFetchOptions = {
   dangerouslySkipFetchCheck?: boolean;
-  dangerouslyViewContentForPoke?: boolean;
   globalAgentContext?: GlobalAgentContext;
   withActions?: boolean;
 };
@@ -439,9 +432,8 @@ export interface AgentResource
  * A resource built for a caller who cannot view the agent's content (`canViewContent` false: no
  * `read`, outside the `admin_can_see_private_entities` admin override) MUST NOT expose the agent's
  * instructions (`instructions`, `instructionsHtml`) to that caller: `fetchInstructions`/
- * `batchFetchInstructions` never return them for it, whatever their role, key type, or superuser
- * status. The only exception is a resource resolved for Poke with `dangerouslyViewContentForPoke`
- * (see `poke-agent-content-access`). The instructions are the only private fields: the head fields (`name`, `status`, `scope`,
+ * `batchFetchInstructions` never return them for it, whatever their role or key type. The only
+ * exception is a Poke superuser authenticator (see `poke-agent-content-access`). The instructions are the only private fields: the head fields (`name`, `status`, `scope`,
  * `templateId`, `reinforcement`, `lastReinforcementAnalysisAt`) are core and carried by every
  * resource. This holds for every `fetch*` resolver, for `listVersions`, for `fromModels` and for
  * global agents, so a caller allowed to enumerate agents they cannot read (an admin or manager
@@ -534,7 +526,6 @@ export class AgentResource
   private _verbs: Set<GrantVerb> = new Set();
   private _isRegularApiKey = false;
   private _adminCanSeePrivateEntities = false;
-  private _pokeContentAccess = false;
 
   private constructor(
     agent: Attributes<AgentModel>,
@@ -744,16 +735,11 @@ export class AgentResource
     auth: Authenticator,
     {
       adminCanSeePrivateEntities = false,
-      pokeContentAccess = false,
-    }: {
-      adminCanSeePrivateEntities?: boolean;
-      pokeContentAccess?: boolean;
-    } = {}
+    }: { adminCanSeePrivateEntities?: boolean } = {}
   ): AgentResource {
     this._verbs = this.getAllowedVerbs(auth);
     this._isRegularApiKey = auth.isKey() && !auth.isSystemKey();
     this._adminCanSeePrivateEntities = adminCanSeePrivateEntities;
-    this._pokeContentAccess = pokeContentAccess;
 
     this._canViewContent = this.resolveCanViewContent(auth);
 
@@ -778,17 +764,23 @@ export class AgentResource
   /**
    * @cc [owner:tdraier,label:security] agent-content-visibility
    * The private content (instructions, tools) is visible to a caller who holds `read`, and to a
-   * workspace admin of a workspace with the `admin_can_see_private_entities` feature flag, and to
-   * Poke through `dangerouslyViewContentForPoke` (see `poke-agent-content-access`), whichever
-   * resolver or factory built the resource they are handed (`fetch*`,
-   * `dangerouslyFromConfigurationModels`). The flag MUST NOT grant any verb: what such an admin may
+   * workspace admin of a workspace with the `admin_can_see_private_entities` feature flag, and to a
+   * Poke superuser (see `poke-agent-content-access`), whichever resolver or factory built the
+   * resource they are handed (`fetch*`, `dangerouslyFromConfigurationModels`). The flag MUST NOT
+   * grant any verb: what such an admin may
    * do with the agent is decided by their verbs alone (see `agent-verbs`) — without `read` they
    * cannot mention or run it, and the definition edits their `admin` verb allows (model, tags) are
    * unchanged.
    */
+  /**
+   * @cc [owner:tdraier,label:security] poke-agent-content-access
+   * A Dust superuser authenticator (`auth.isDustSuperUser()`, only built by the Poke entrypoints)
+   * MUST be able to view every agent's content, instructions and tools included, whatever its
+   * verbs; it MUST NOT grant or change any verb.
+   */
   private resolveCanViewContent(auth: Authenticator): boolean {
     return (
-      this._pokeContentAccess ||
+      auth.isDustSuperUser() ||
       auth.can("read", this) ||
       (this._adminCanSeePrivateEntities && auth.isAdmin())
     );
@@ -919,10 +911,7 @@ export class AgentResource
 
     const fetchedCustomResources = customResources
       .map((resource) =>
-        resource.materialize(auth, {
-          adminCanSeePrivateEntities,
-          pokeContentAccess: options.dangerouslyViewContentForPoke,
-        })
+        resource.materialize(auth, { adminCanSeePrivateEntities })
       )
       .filter(
         (resource) => dangerouslySkipFetchCheck || resource.canFetch(auth)
@@ -948,7 +937,6 @@ export class AgentResource
     globalAgentIds: string[],
     {
       dangerouslySkipFetchCheck = false,
-      dangerouslyViewContentForPoke = false,
       globalAgentContext,
       withActions = false,
     }: AgentFetchOptions = {}
@@ -966,9 +954,6 @@ export class AgentResource
     return configurations
       .map((configuration) => {
         const resource = this.fromGlobalAgent(auth, configuration);
-        if (dangerouslyViewContentForPoke) {
-          resource.materialize(auth, { pokeContentAccess: true });
-        }
         if (withActions) {
           resource._actions = configuration.actions;
         }
@@ -1014,8 +999,6 @@ export class AgentResource
               })),
             },
             dangerouslySkipFetchCheck,
-            dangerouslyViewContentForPoke:
-              options.dangerouslyViewContentForPoke,
           })
         : [],
       this.fetchGlobalAgents(
@@ -1071,44 +1054,28 @@ export class AgentResource
    */
   async fetchVersion(
     auth: Authenticator,
-    version: number,
-    options: Pick<AgentFetchOptions, "dangerouslyViewContentForPoke"> = {}
+    version: number
   ): Promise<AgentResource | null> {
-    const [resource] = await this.loadVersions(auth, { version, ...options });
+    const [resource] = await this.loadVersions(auth, { version });
     return resource ?? null;
   }
 
   // Newest first, the `limit` newest ones when given.
   async listVersions(
     auth: Authenticator,
-    {
-      limit,
-      dangerouslyViewContentForPoke,
-    }: { limit?: number } & Pick<
-      AgentFetchOptions,
-      "dangerouslyViewContentForPoke"
-    > = {}
+    { limit }: { limit?: number } = {}
   ): Promise<AgentResource[]> {
-    return this.loadVersions(auth, { limit, dangerouslyViewContentForPoke });
+    return this.loadVersions(auth, { limit });
   }
 
   private async loadVersions(
     auth: Authenticator,
-    {
-      version,
-      limit,
-      dangerouslyViewContentForPoke,
-    }: { version?: number; limit?: number } & Pick<
-      AgentFetchOptions,
-      "dangerouslyViewContentForPoke"
-    >
+    { version, limit }: { version?: number; limit?: number }
   ): Promise<AgentResource[]> {
     assert(auth.getNonNullableWorkspace().id === this.workspaceId);
 
     if (this.scope === "global") {
-      return AgentResource.fetchGlobalAgents(auth, [this.sId], {
-        dangerouslyViewContentForPoke,
-      });
+      return AgentResource.fetchGlobalAgents(auth, [this.sId]);
     }
 
     return AgentResource.loadConfigurationVersions(auth, {
@@ -1118,7 +1085,6 @@ export class AgentResource
       },
       limit,
       dangerouslySkipFetchCheck: false,
-      dangerouslyViewContentForPoke,
     });
   }
 
@@ -1132,12 +1098,10 @@ export class AgentResource
       where,
       limit,
       dangerouslySkipFetchCheck,
-      dangerouslyViewContentForPoke = false,
     }: {
       where: WhereOptions<AgentConfigurationModel>;
       limit?: number;
       dangerouslySkipFetchCheck: boolean;
-      dangerouslyViewContentForPoke?: boolean;
     }
   ): Promise<AgentResource[]> {
     const configurations = await AgentConfigurationModel.findAll({
@@ -1163,10 +1127,7 @@ export class AgentResource
 
     return versions
       .map((resource) =>
-        resource.materialize(auth, {
-          adminCanSeePrivateEntities,
-          pokeContentAccess: dangerouslyViewContentForPoke,
-        })
+        resource.materialize(auth, { adminCanSeePrivateEntities })
       )
       .filter(
         (resource) => dangerouslySkipFetchCheck || resource.canFetch(auth)
