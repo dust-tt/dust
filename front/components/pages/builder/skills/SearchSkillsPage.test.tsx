@@ -727,11 +727,11 @@ describe("search-backed Manage Skills", () => {
     );
   });
 
-  it("loads All by usage and fetches full details only when selected", async () => {
+  it("loads Workspace by usage and fetches full details only when selected", async () => {
     const { skill, context, fetcherWithBody, fetcher, mount } = await setup();
     const { rerender } = mount();
     await screen.findByRole("button", { name: /Weekly report/ });
-    expect(screen.getByRole("tab", { name: "All" })).toHaveAttribute(
+    expect(screen.getByRole("tab", { name: "Workspace" })).toHaveAttribute(
       "aria-selected",
       "true"
     );
@@ -777,7 +777,7 @@ describe("search-backed Manage Skills", () => {
     expect(
       screen.queryByRole("tab", { name: "Editable" })
     ).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("tab", { name: "Default" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Dust" }));
     await screen.findByText("No skills to show.");
     expect(fetcherWithBody).toHaveBeenLastCalledWith([
       expect.any(String),
@@ -806,7 +806,7 @@ describe("search-backed Manage Skills", () => {
     );
   });
 
-  it("refreshes All after importing a skill", async () => {
+  it("refreshes Workspace after importing a skill", async () => {
     const { skill, context, search, mutation, mount } = await setup();
     search.mockResolvedValue({
       skills: [],
@@ -861,7 +861,7 @@ describe("search-backed Manage Skills", () => {
   it.each([
     {
       status: "active",
-      tab: "All",
+      tab: "Workspace",
       action: "Archive",
       confirm: "Archive for everyone",
     },
@@ -1187,7 +1187,9 @@ describe("search-backed Manage Skills", () => {
     const { fetcherWithBody, fetcher, mount } = await setup(flags);
     mount();
     await waitFor(() => expect(fetcher).toHaveBeenCalled());
-    expect(screen.queryByRole("tab", { name: "All" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("tab", { name: "Workspace" })
+    ).not.toBeInTheDocument();
     expect(fetcherWithBody).not.toHaveBeenCalled();
   });
 });

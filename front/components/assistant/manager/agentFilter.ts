@@ -37,7 +37,7 @@ export const AGENT_FILTER_CATEGORY_FACET: Partial<
 
 const AGENT_ACCESS_SCOPES: AgentConfigurationScope[] = ["visible", "hidden"];
 
-// Access narrows the tab's scope and is ignored where it cannot apply (the Default tab); the other
+// Access narrows the tab's scope and is ignored where it cannot apply (the Dust tab); the other
 // categories add their own filter.
 export function toAgentSearchFilters(
   filter: AgentFilter,
@@ -55,7 +55,7 @@ export function toAgentSearchFilters(
   const skillIds = getSearchFilterIds(filter, "skill");
   const tagIds = getSearchFilterIds(filter, "tag");
   const spaceIds = getSearchFilterIds(filter, "space");
-  // Default agents have no usage, so Usage is ignored on the Default tab too.
+  // Default agents have no usage, so Usage is ignored on the Dust tab too.
   const activeUsersCount = tabFilters.scope?.every(
     (tabScope) => tabScope === "global"
   )
@@ -77,12 +77,12 @@ export function toAgentSearchFilters(
 export const AGENT_SEARCH_TABS = [
   {
     id: "all",
-    label: "All",
+    label: "Workspace",
     filters: { status: ["active"], scope: ["visible", "hidden"] },
   },
   {
     id: "default",
-    label: "Default",
+    label: "Dust",
     filters: { status: ["active"], scope: ["global"] },
   },
   { id: "archived", label: "Archived", filters: { status: ["archived"] } },
