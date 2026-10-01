@@ -1,12 +1,16 @@
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import {
+  buildNameAutocompleteQuery,
+  buildNameSearchQuery,
+} from "@app/lib/search/agent_and_skill_queries";
 import { CODE_DEFINED_SKILLS_WORKSPACE_ID } from "@app/lib/skill_search/constants";
-import { buildSkillNameAutocompleteQuery } from "@app/lib/skill_search/ranking";
 import type { SearchType } from "@app/types/api/search";
 import type {
   SkillSearchFilters,
   SkillSearchPermissionFiltering,
 } from "@app/types/api/skills";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { estypes } from "@elastic/elasticsearch";
 
 export const MAX_SKILL_SEARCH_RESULTS = 100;
@@ -110,13 +114,15 @@ function buildSelectionFilters(
  */
 /**
  * @cc [owner:aubin-tchoi,label:product] search-mode-default
- * All accepted search types currently use autocomplete matching. Adding searchType
- * MUST NOT change workspace, permission, status or selection filters.
+ * Omitted searchType MUST preserve autocomplete matching. Name mode MUST use word, substring and fuzzy
+ * name matching and full-text description matching without changing workspace, permission,
+ * status or selection filters.
  */
 export function buildSkillSearchQuery(
   auth: Authenticator,
   {
     searchTerm,
+    searchType = "autocomplete",
     permissionFiltering = "strict",
     filters = {},
     codeDefinedSkillIds = [],
@@ -155,13 +161,24 @@ export function buildSkillSearchQuery(
     });
   }
 
+  let nameQuery: estypes.QueryDslQueryContainer;
+  switch (searchType) {
+    case "autocomplete":
+      nameQuery = buildNameAutocompleteQuery(searchTerm);
+      break;
+    case "name":
+      nameQuery = buildNameSearchQuery(searchTerm);
+      break;
+    default:
+      assertNever(searchType);
+  }
   return {
     bool: {
       filter: [
         { terms: { status: filters.status ?? ["active"] } },
         ...buildSelectionFilters(auth, filters),
       ],
-      must: [buildSkillNameAutocompleteQuery(searchTerm)],
+      must: [nameQuery],
       should,
       minimum_should_match: 1,
     },

@@ -252,7 +252,7 @@ describe("search-backed Manage Skills", () => {
       expect(facetSearch).toHaveBeenLastCalledWith(
         expect.objectContaining({
           permissionFiltering: "redact_unreadable",
-          searchType: "autocomplete",
+          searchType: "name",
         })
       )
     );
@@ -276,7 +276,7 @@ describe("search-backed Manage Skills", () => {
         expect.any(String),
         expect.objectContaining({
           permissionFiltering: "redact_unreadable",
-          searchType: "autocomplete",
+          searchType: "name",
         }),
         "POST",
       ])
@@ -422,7 +422,7 @@ describe("search-backed Manage Skills", () => {
         expect.any(String),
         expect.objectContaining({
           query: "report",
-          searchType: "autocomplete",
+          searchType: "name",
           sortBy: "name",
           sortOrder: "asc",
         }),
@@ -436,7 +436,7 @@ describe("search-backed Manage Skills", () => {
         expect.any(String),
         expect.objectContaining({
           query: "report",
-          searchType: "autocomplete",
+          searchType: "name",
           sortBy: "relevance",
           offset: 0,
         }),
@@ -512,7 +512,7 @@ describe("search-backed Manage Skills", () => {
         expect.any(String),
         {
           query: "",
-          searchType: "autocomplete",
+          searchType: "name",
           status: ["archived"],
           mcpServerViewIds,
           editorIds,
@@ -531,7 +531,7 @@ describe("search-backed Manage Skills", () => {
         expect.any(String),
         {
           query: "",
-          searchType: "autocomplete",
+          searchType: "name",
           status: ["archived"],
           sortBy: "usage",
           limit: 50,
@@ -587,7 +587,7 @@ describe("search-backed Manage Skills", () => {
     expect(facetSearch).toHaveBeenLastCalledWith(
       expect.objectContaining({
         query: "Week",
-        searchType: "autocomplete",
+        searchType: "name",
         status: ["active"],
         facets: ["availability"],
       })
@@ -599,7 +599,7 @@ describe("search-backed Manage Skills", () => {
       expect(facetSearch).toHaveBeenLastCalledWith(
         expect.objectContaining({
           query: "Week",
-          searchType: "autocomplete",
+          searchType: "name",
           availability: ["workspace_users"],
           facets: ["editors"],
         })
@@ -751,7 +751,7 @@ describe("search-backed Manage Skills", () => {
       `/api/w/${context.workspace.sId}/skills/search`,
       {
         query: "",
-        searchType: "autocomplete",
+        searchType: "name",
         sortBy: "usage",
         status: ["active"],
         codeDefinedOnly: false,
@@ -809,7 +809,7 @@ describe("search-backed Manage Skills", () => {
         expect.any(String),
         {
           query: "",
-          searchType: "autocomplete",
+          searchType: "name",
           status: ["archived"],
           sortBy: "usage",
           limit: 50,
@@ -1104,7 +1104,7 @@ describe("search-backed Manage Skills", () => {
         expect.any(String),
         expect.objectContaining({
           query: "report",
-          searchType: "autocomplete",
+          searchType: "name",
           sortBy: "relevance",
           offset: 0,
         }),

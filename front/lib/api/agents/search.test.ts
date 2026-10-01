@@ -21,11 +21,14 @@ import {
   MAX_AGENT_SEARCH_RESULTS,
   MAX_AGENT_SEARCH_WINDOW,
 } from "@app/lib/agent_search/query";
-import { buildAgentNameAutocompleteQuery } from "@app/lib/agent_search/ranking";
 import { resolveAgentIdByName, searchAgents } from "@app/lib/api/agents/search";
 import { upsertGlobalAgentSettings } from "@app/lib/api/assistant/global_agents/global_agents";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import {
+  buildNameAutocompleteQuery,
+  buildNameSearchQuery,
+} from "@app/lib/search/agent_and_skill_queries";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { matchesAgentSearchFilters } from "@app/tests/utils/agent_search";
@@ -139,7 +142,7 @@ describe("searchAgents", () => {
 
     await searchAgents(auth, { searchTerm: "  sal   mar " });
 
-    const nameQuery = buildAgentNameAutocompleteQuery("  sal   mar ");
+    const nameQuery = buildNameAutocompleteQuery("  sal   mar ");
     expect(mockSearch.mock.calls[0][0].query.bool.must).toEqual([nameQuery]);
     expect(nameQuery.bool?.must).toEqual(
       ["sal", "mar"].map((term) => ({
@@ -150,24 +153,23 @@ describe("searchAgents", () => {
         }),
       }))
     );
-    expect(buildAgentNameAutocompleteQuery("   ")).toEqual({ match_all: {} });
+    expect(buildNameAutocompleteQuery("   ")).toEqual({ match_all: {} });
   });
 
-  it("keeps autocomplete matching for both search types", async () => {
+  it("uses name matching with the same permissions as autocomplete", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
     mockSearch.mockResolvedValue({ hits: { hits: [] } });
     await searchAgents(auth, { searchTerm: "Write", searchType: "name" });
     const nameQuery = mockSearch.mock.lastCall![0].query;
-    expect(nameQuery.bool.must).toEqual([
-      buildAgentNameAutocompleteQuery("Write"),
-    ]);
+    expect(nameQuery.bool.must).toEqual([buildNameSearchQuery("Write")]);
 
     await searchAgents(auth, { searchTerm: "Write" });
     const autocompleteQuery = mockSearch.mock.lastCall![0].query;
     expect(autocompleteQuery.bool.must).toEqual([
-      buildAgentNameAutocompleteQuery("Write"),
+      buildNameAutocompleteQuery("Write"),
     ]);
-    expect(nameQuery).toEqual(autocompleteQuery);
+    expect(nameQuery.bool.filter).toEqual(autocompleteQuery.bool.filter);
+    expect(nameQuery.bool.should).toEqual(autocompleteQuery.bool.should);
   });
 
   it("filters on editors and models and returns facet values with counts", async () => {

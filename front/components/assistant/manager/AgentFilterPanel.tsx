@@ -60,6 +60,7 @@ export function AgentFilterPanel({
   const { facets, isAgentsLoading, isAgentsError } = useSearchAgents({
     owner,
     searchTerm,
+    searchType: "name",
     limit: 0,
     filters: toAgentSearchFilters(
       clearFilterCategory(draftFilter, activeCategory),

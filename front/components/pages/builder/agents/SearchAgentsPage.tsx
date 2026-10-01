@@ -106,6 +106,7 @@ function AgentsList({
   } = useSearchAgents({
     owner,
     searchTerm,
+    searchType: "name",
     filters,
     permissionFiltering,
     offset: tablePagination.pageIndex * AGENT_SEARCH_PAGE_SIZE,
@@ -278,6 +279,7 @@ export function SearchAgentsPage() {
     useSearchAgents({
       owner,
       searchTerm: "",
+      searchType: "name",
       limit: 0,
       filters: toAgentSearchFilters(pendingFilter, activeTab.filters),
       permissionFiltering: getPermissionFiltering(activeTab.id),

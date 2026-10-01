@@ -65,6 +65,7 @@ export function SkillFilterPanel({
   const { facets, isSkillsLoading, isSkillsError } = useSearchSkills({
     owner,
     searchTerm,
+    searchType: "name",
     limit: 0,
     filters: {
       ...tabFilters,
