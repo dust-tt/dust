@@ -158,6 +158,10 @@ function AgentSearchTagSelector({
  * The loaded table and its loading skeleton MUST use the same density.
  * Skeleton cells MUST match the loaded cells' alignment, visual sizes and spacing.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:product] batch-selection-availability
+ * The selection column MUST be hidden when none of the displayed agents satisfy `canSelect`.
+ */
 export function AgentSearchTable({
   owner,
   agents,
@@ -428,6 +432,14 @@ export function AgentSearchTable({
       ] satisfies ColumnDef<AgentSearchRow>[],
     [canSelect, isDark, onRefresh, onSelect, owner]
   );
+  const hasSelectableRows = agents.some(canSelect);
+  const visibleColumns = useMemo(
+    () =>
+      hasSelectableRows
+        ? columns
+        : columns.filter((column) => column.id !== "select"),
+    [columns, hasSelectableRows]
+  );
 
   // Show skeletons only when no rows are available; keep previous results during refreshes.
   // Mirror BasicCellContent's inner h-12 so the divider contributes equally to row height.
@@ -435,7 +447,7 @@ export function AgentSearchTable({
     return (
       <div role="status" aria-label="Loading agents">
         <DataTableSkeleton
-          columns={columns}
+          columns={visibleColumns}
           rowCount={12}
           density="default"
           SkeletonCell={({ columnId, rowIndex }) => {
@@ -503,7 +515,7 @@ export function AgentSearchTable({
         ...agent,
         onClick: () => onSelect(agent.sId),
       }))}
-      columns={columns}
+      columns={visibleColumns}
       density="default"
       getRowId={(agent) => agent.sId}
       enableRowSelection={(row) => canSelect(row.original)}

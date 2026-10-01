@@ -71,6 +71,10 @@ type SkillSearchRow = SkillListItemType & { onClick: () => void };
  * The loaded table and its loading skeleton MUST use the same density.
  * Skeleton cells MUST match the loaded cells' alignment, visual sizes and spacing.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:product] batch-selection-availability
+ * The selection column MUST be hidden when none of the displayed skills satisfy `canSelect`.
+ */
 export function SkillSearchTable({
   owner,
   skills,
@@ -264,6 +268,14 @@ export function SkillSearchTable({
       ] satisfies ColumnDef<SkillSearchRow>[],
     [onRefresh, onSelect, owner]
   );
+  const hasSelectableRows = skills.some(canSelect);
+  const visibleColumns = useMemo(
+    () =>
+      hasSelectableRows
+        ? columns
+        : columns.filter((column) => column.id !== "select"),
+    [columns, hasSelectableRows]
+  );
 
   // Show skeletons only when no rows are available; keep previous results during refreshes.
   // Mirror BasicCellContent's inner h-12 so the divider contributes equally to row height.
@@ -271,7 +283,7 @@ export function SkillSearchTable({
     return (
       <div role="status" aria-label="Loading skills">
         <DataTableSkeleton
-          columns={columns}
+          columns={visibleColumns}
           rowCount={12}
           density="default"
           SkeletonCell={({ columnId, rowIndex }) => {
@@ -324,7 +336,7 @@ export function SkillSearchTable({
         ...skill,
         onClick: () => onSelect(skill.sId),
       }))}
-      columns={columns}
+      columns={visibleColumns}
       density="default"
       getRowId={(skill) => skill.sId}
       enableRowSelection={(row) => canSelect(row.original)}
