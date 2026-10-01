@@ -10,11 +10,11 @@ const SvgFigma = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path fill="#0ACF83" d="M4 20a4 4 0 0 1 4-4h4v4a4 4 0 0 1-8 0" />
-    <path fill="#1ABCFE" d="M12 12a4 4 0 1 1 8 0 4 4 0 0 1-8 0" />
-    <path fill="#A259FF" d="M4 12a4 4 0 0 0 4 4h4V8H8a4 4 0 0 0-4 4" />
-    <path fill="#FF7262" d="M12 0v8h4a4 4 0 0 0 0-8z" />
-    <path fill="#F24E1E" d="M4 4a4 4 0 0 0 4 4h4V0H8a4 4 0 0 0-4 4" />
+    <path fill="#24CB71" d="M4 20a4 4 0 0 1 4-4h4v4a4 4 0 0 1-8 0" />
+    <path fill="#00B6FF" d="M12 12a4 4 0 1 1 8 0 4 4 0 0 1-8 0" />
+    <path fill="#874FFF" d="M4 12a4 4 0 0 0 4 4h4V8H8a4 4 0 0 0-4 4" />
+    <path fill="#FF7237" d="M12 0v8h4a4 4 0 0 0 0-8z" />
+    <path fill="#FF3737" d="M4 4a4 4 0 0 0 4 4h4V0H8a4 4 0 0 0-4 4" />
   </svg>
 );
 export default SvgFigma;

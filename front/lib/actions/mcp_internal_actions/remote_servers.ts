@@ -4361,6 +4361,205 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10040,
+    name: "Figma",
+    description:
+      "Figma tools for reading design context, variables, components and screenshots, searching design systems, and creating or editing Design and FigJam files.",
+    url: "https://mcp.figma.com/mcp",
+    icon: "FigmaLogo",
+    documentationUrl: "https://developers.figma.com/docs/figma-mcp-server/",
+    connectionInstructions:
+      "Enter the client ID and secret of Dust's approved Figma OAuth app. Authorization endpoint https://www.figma.com/oauth/mcp, token endpoint https://api.figma.com/v1/oauth/token, scope mcp:connect, resource https://mcp.figma.com/mcp, auth method client_secret_basic. The MCP can only access the files and libraries you can already see in Figma.",
+    featureFlag: "figma_mcp",
+    // TODO(2026-10-01 FIGMA_OAUTH): Figma rejects dynamic client registration and only
+    // accepts approved OAuth apps, so admins enter the credentials of Dust's app for now.
+    // Revisit once Dust's public Figma app is approved.
+    authMethod: "oauth-static",
+    supportedOAuthUseCases: ["platform_actions", "personal_actions"],
+    scope: "mcp:connect",
+    toolStakes: {
+      whoami: "never_ask",
+      get_design_context: "never_ask",
+      get_metadata: "never_ask",
+      get_screenshot: "never_ask",
+      get_variable_defs: "never_ask",
+      get_figjam: "never_ask",
+      get_motion_context: "never_ask",
+      get_libraries: "never_ask",
+      search_design_system: "never_ask",
+      download_assets: "never_ask",
+      get_code_connect_map: "never_ask",
+      get_code_connect_suggestions: "never_ask",
+      get_context_for_code_connect: "never_ask",
+      get_generative_plugin: "never_ask",
+      list_generative_plugins: "never_ask",
+      get_shader: "never_ask",
+      list_shaders: "never_ask",
+      list_file_shaders: "never_ask",
+      weave_list_tools: "never_ask",
+      weave_get_tool_inputs: "never_ask",
+      weave_get_tool_run_output: "never_ask",
+
+      create_new_file: "low",
+      generate_figma_design: "low",
+      generate_diagram: "low",
+      upload_assets: "low",
+      add_code_connect_map: "low",
+      send_code_connect_mappings: "low",
+      create_generative_plugin: "low",
+      create_shader: "low",
+      weave_upload_asset: "low",
+      weave_cancel_tool_run: "low",
+
+      use_figma: "high",
+      update_generative_plugin: "high",
+      update_shader: "high",
+      weave_run_tool: "high",
+    },
+    toolDisplayLabels: {
+      whoami: {
+        running: "Checking identity on Figma",
+        done: "Checked identity on Figma",
+      },
+      get_design_context: {
+        running: "Reading design context on Figma",
+        done: "Read design context on Figma",
+      },
+      get_metadata: {
+        running: "Reading layer metadata on Figma",
+        done: "Read layer metadata on Figma",
+      },
+      get_screenshot: {
+        running: "Capturing a screenshot on Figma",
+        done: "Captured a screenshot on Figma",
+      },
+      get_variable_defs: {
+        running: "Reading variables and styles on Figma",
+        done: "Read variables and styles on Figma",
+      },
+      get_figjam: {
+        running: "Reading a FigJam board on Figma",
+        done: "Read a FigJam board on Figma",
+      },
+      get_motion_context: {
+        running: "Reading motion context on Figma",
+        done: "Read motion context on Figma",
+      },
+      get_libraries: {
+        running: "Listing libraries on Figma",
+        done: "Listed libraries on Figma",
+      },
+      search_design_system: {
+        running: "Searching the design system on Figma",
+        done: "Searched the design system on Figma",
+      },
+      download_assets: {
+        running: "Downloading assets from Figma",
+        done: "Downloaded assets from Figma",
+      },
+      get_code_connect_map: {
+        running: "Reading Code Connect mappings on Figma",
+        done: "Read Code Connect mappings on Figma",
+      },
+      get_code_connect_suggestions: {
+        running: "Suggesting Code Connect mappings on Figma",
+        done: "Suggested Code Connect mappings on Figma",
+      },
+      get_context_for_code_connect: {
+        running: "Reading Code Connect context on Figma",
+        done: "Read Code Connect context on Figma",
+      },
+      get_generative_plugin: {
+        running: "Reading a generative plugin on Figma",
+        done: "Read a generative plugin on Figma",
+      },
+      list_generative_plugins: {
+        running: "Listing generative plugins on Figma",
+        done: "Listed generative plugins on Figma",
+      },
+      get_shader: {
+        running: "Reading a shader on Figma",
+        done: "Read a shader on Figma",
+      },
+      list_shaders: {
+        running: "Listing shaders on Figma",
+        done: "Listed shaders on Figma",
+      },
+      list_file_shaders: {
+        running: "Listing file shaders on Figma",
+        done: "Listed file shaders on Figma",
+      },
+      weave_list_tools: {
+        running: "Listing Weave tools on Figma",
+        done: "Listed Weave tools on Figma",
+      },
+      weave_get_tool_inputs: {
+        running: "Reading Weave tool inputs on Figma",
+        done: "Read Weave tool inputs on Figma",
+      },
+      weave_get_tool_run_output: {
+        running: "Reading a Weave run output on Figma",
+        done: "Read a Weave run output on Figma",
+      },
+      create_new_file: {
+        running: "Creating a file on Figma",
+        done: "Created a file on Figma",
+      },
+      generate_figma_design: {
+        running: "Generating a design on Figma",
+        done: "Generated a design on Figma",
+      },
+      generate_diagram: {
+        running: "Generating a FigJam diagram on Figma",
+        done: "Generated a FigJam diagram on Figma",
+      },
+      upload_assets: {
+        running: "Uploading assets to Figma",
+        done: "Uploaded assets to Figma",
+      },
+      add_code_connect_map: {
+        running: "Adding a Code Connect mapping on Figma",
+        done: "Added a Code Connect mapping on Figma",
+      },
+      send_code_connect_mappings: {
+        running: "Confirming Code Connect mappings on Figma",
+        done: "Confirmed Code Connect mappings on Figma",
+      },
+      create_generative_plugin: {
+        running: "Creating a generative plugin on Figma",
+        done: "Created a generative plugin on Figma",
+      },
+      create_shader: {
+        running: "Creating a shader on Figma",
+        done: "Created a shader on Figma",
+      },
+      weave_upload_asset: {
+        running: "Uploading a Weave asset to Figma",
+        done: "Uploaded a Weave asset to Figma",
+      },
+      weave_cancel_tool_run: {
+        running: "Cancelling a Weave run on Figma",
+        done: "Cancelled a Weave run on Figma",
+      },
+      use_figma: {
+        running: "Editing a file on Figma",
+        done: "Edited a file on Figma",
+      },
+      update_generative_plugin: {
+        running: "Updating a generative plugin on Figma",
+        done: "Updated a generative plugin on Figma",
+      },
+      update_shader: {
+        running: "Updating a shader on Figma",
+        done: "Updated a shader on Figma",
+      },
+      weave_run_tool: {
+        running: "Running a Weave tool on Figma",
+        done: "Ran a Weave tool on Figma",
+      },
+    },
+  },
 ];
 
 export const getDefaultRemoteMCPServerByURL = (

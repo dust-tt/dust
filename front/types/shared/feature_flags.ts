@@ -270,6 +270,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "LeandreLeBizec",
   },
+  figma_mcp: {
+    description:
+      "Figma MCP tool for reading design context and creating or editing Figma files",
+    stage: "dust_only",
+    owner: "smb2268",
+  },
   dust_internal_dangerous_in_cluster_mcp_servers: {
     description:
       "EXPERIMENTAL FEATURE. DUST INTERNAL ONLY. Allow remote MCP servers pointing at hosts on the MCP_IN_CLUSTER_HOSTS allowlist, reached in-cluster instead of through the untrusted egress proxy.",

@@ -8,6 +8,7 @@ import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_
 import { getConnectorMetadata } from "@app/lib/connector_metadata";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import type { ConnectorProvider } from "@app/types/data_source";
+import { WHITELISTABLE_FEATURES_CONFIG } from "@app/types/shared/feature_flags";
 
 export type IntegrationType = "mcp_server" | "connector" | "both";
 
@@ -338,6 +339,14 @@ export function buildPublicIntegrationRegistry(): IntegrationBase[] {
 
     // Skip if already added (e.g., from internal servers)
     if (integrationMap.has(slug)) {
+      continue;
+    }
+
+    // Skip servers still gated behind a dust-only flag
+    if (
+      remote.featureFlag &&
+      WHITELISTABLE_FEATURES_CONFIG[remote.featureFlag].stage === "dust_only"
+    ) {
       continue;
     }
 
