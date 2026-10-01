@@ -870,10 +870,11 @@ function findDuplicateTarget(suggestions: Suggestion[]): string | null {
 }
 
 /**
- * Creates the pending skill of each skill creation, before any row is written, so that a skill tag
- * using the ref of one can be rewritten with its id, whatever the order of the suggestions.
+ * Creates the pending skill or agent of each creation, before any row is written, so that a ref
+ * used by a skill tag, a skill addition or a sub-agent addition can be recorded with its id,
+ * whatever the order of the suggestions.
  */
-async function createPendingSkills(
+async function createPendingEntities(
   auth: Authenticator,
   changes: PlannedChange[]
 ): Promise<
@@ -881,6 +882,8 @@ async function createPendingSkills(
     {
       pendingSkillByChange: Map<PlannedChange, SkillResource>;
       skillReferenceByRef: Map<string, SkillReference>;
+      pendingAgentByChange: Map<PlannedChange, AgentResource>;
+      agentIdByRef: Map<string, string>;
     },
     MCPError
   >
@@ -911,25 +914,6 @@ async function createPendingSkills(
     }
   });
 
-  return new Ok({ pendingSkillByChange, skillReferenceByRef });
-}
-
-/**
- * Creates the pending agent of each agent creation, before any row is written, so that a sub-agent
- * added by the ref of one can be recorded with its id, whatever the order of the suggestions.
- */
-async function createPendingAgents(
-  auth: Authenticator,
-  changes: PlannedChange[]
-): Promise<
-  Result<
-    {
-      pendingAgentByChange: Map<PlannedChange, AgentResource>;
-      agentIdByRef: Map<string, string>;
-    },
-    MCPError
-  >
-> {
   const agentCreations = changes.filter(
     (change): change is Extract<PlannedChange, { type: "agent_creation" }> =>
       change.type === "agent_creation"
@@ -952,17 +936,19 @@ async function createPendingAgents(
     }
   });
 
-  return new Ok({ pendingAgentByChange, agentIdByRef });
+  return new Ok({
+    pendingSkillByChange,
+    skillReferenceByRef,
+    pendingAgentByChange,
+    agentIdByRef,
+  });
 }
 
-function resolvePendingAgentId(
-  ref: string,
-  agentIdByRef: Map<string, string>
-): string {
-  const agentId = agentIdByRef.get(ref);
-  assert(agentId, "Refs are validated before any row is recorded.");
+function resolveRef<T>(ref: string, byRef: Map<string, T>): T {
+  const resolved = byRef.get(ref);
+  assert(resolved, "Refs are validated before any row is recorded.");
 
-  return agentId;
+  return resolved;
 }
 
 function resolveRunAgentToolId(runAgentToolId: string | null): string {
@@ -972,16 +958,6 @@ function resolveRunAgentToolId(runAgentToolId: string | null): string {
   );
 
   return runAgentToolId;
-}
-
-function resolvePendingSkillId(
-  ref: string,
-  skillReferenceByRef: Map<string, SkillReference>
-): string {
-  const reference = skillReferenceByRef.get(ref);
-  assert(reference, "Refs are validated before any row is recorded.");
-
-  return reference.id;
 }
 
 function resolveSkillRow(
@@ -1042,15 +1018,13 @@ async function recordPlannedChange(
           ...change.create,
           skillIds: [
             ...(change.create.skillIds ?? []),
-            ...change.skillRefs.map((ref) =>
-              resolvePendingSkillId(ref, skillReferenceByRef)
+            ...change.skillRefs.map(
+              (ref) => resolveRef(ref, skillReferenceByRef).id
             ),
           ],
           subAgentIds: [
             ...(change.create.subAgentIds ?? []),
-            ...change.subAgentRefs.map((ref) =>
-              resolvePendingAgentId(ref, agentIdByRef)
-            ),
+            ...change.subAgentRefs.map((ref) => resolveRef(ref, agentIdByRef)),
           ],
         },
         analysis: null,
@@ -1088,7 +1062,7 @@ async function recordPlannedChange(
             kind: "skills" as const,
             suggestion: {
               action: "add" as const,
-              skillId: resolvePendingSkillId(ref, skillReferenceByRef),
+              skillId: resolveRef(ref, skillReferenceByRef).id,
             },
           })),
           ...change.subAgentRefs.map((ref) => ({
@@ -1096,7 +1070,7 @@ async function recordPlannedChange(
             suggestion: {
               action: "add" as const,
               toolId: resolveRunAgentToolId(runAgentToolId),
-              childAgentId: resolvePendingAgentId(ref, agentIdByRef),
+              childAgentId: resolveRef(ref, agentIdByRef),
             },
           })),
         ],
@@ -1228,24 +1202,17 @@ export async function suggest(
     sourceConversation: conversation,
   });
 
-  const pendingSkills = await createPendingSkills(auth, plannedChanges);
-  if (pendingSkills.isErr()) {
+  const pendingEntities = await createPendingEntities(auth, plannedChanges);
+  if (pendingEntities.isErr()) {
     await batch.updateState(auth, "outdated");
-    return pendingSkills;
-  }
-
-  const pendingAgents = await createPendingAgents(auth, plannedChanges);
-  if (pendingAgents.isErr()) {
-    await batch.updateState(auth, "outdated");
-    return pendingAgents;
+    return pendingEntities;
   }
 
   for (const change of plannedChanges) {
     const recorded = await recordPlannedChange(auth, change, {
       batch,
       conversation,
-      ...pendingSkills.value,
-      ...pendingAgents.value,
+      ...pendingEntities.value,
       runAgentToolId: runAgentTool?.sId ?? null,
     });
     if (recorded.isErr()) {
