@@ -4,9 +4,10 @@ import {
   isSandboxFunctionRunContext,
 } from "@app/lib/actions/types";
 import { isValidTimezone } from "@app/lib/api/timezone";
+import { TZDateMini } from "@date-fns/tz";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import { parseISO } from "date-fns";
 import { google } from "googleapis";
-import { DateTime, Interval } from "luxon";
 
 interface GoogleCalendarEventDateTime {
   date?: string;
@@ -453,27 +454,47 @@ interface AvailabilityParticipant {
   dailyTimeWindowEnd?: string;
 }
 
-function applyTimeToDateTime(base: DateTime, timeStr: string): DateTime {
-  const [hourStr, minuteStr = "0", secondStr = "0"] = timeStr.split(":");
-  return base.set({
-    hour: Number(hourStr),
-    minute: Number(minuteStr),
-    second: Number(secondStr),
-    millisecond: 0,
-  });
+/**
+ * @cc [owner:aubin-tchoi,label:product] availability-iso-utc
+ * ISO timestamps without an explicit offset MUST be interpreted in UTC, independently
+ * of the host timezone. Invalid timestamps MUST produce an invalid Date.
+ */
+export function parseAvailabilityDateTime(value: string): Date {
+  const hasTime = /[T ]/.test(value);
+  const hasOffset = hasTime && /(?:Z|[+-]\d{2}(?::?\d{2})?)$/i.test(value);
+  const utcValue = hasOffset
+    ? value
+    : hasTime
+      ? `${value}Z`
+      : `${value}T00:00:00Z`;
+  return parseISO(utcValue);
 }
 
+export interface CalendarInterval {
+  start: Date;
+  end: Date;
+}
+
+function applyTimeToDate(base: Date, timeStr: string, timezone: string): Date {
+  const [hourStr, minuteStr = "0", secondStr = "0"] = timeStr.split(":");
+  const date = new TZDateMini(base, timezone);
+  date.setHours(Number(hourStr), Number(minuteStr), Number(secondStr), 0);
+  return date;
+}
+
+/**
+ * @cc [owner:aubin-tchoi,label:product] participant-local-calendar
+ * Daily windows and excluded weekends MUST use each participant's timezone, including
+ * DST changes. Returned unavailable intervals MUST be clipped to the requested range.
+ */
 export function buildUnavailableIntervals(
-  range: Interval,
+  range: CalendarInterval,
   participant: AvailabilityParticipant,
   excludeWeekends: boolean
-): Interval[] {
-  const rangeStartDate = range.start;
-  const rangeEndDate = range.end;
-  if (!rangeStartDate || !rangeEndDate) {
+): CalendarInterval[] {
+  if (!isValidInterval(range)) {
     return [];
   }
-
   if (
     !participant.dailyTimeWindowStart &&
     !participant.dailyTimeWindowEnd &&
@@ -482,169 +503,133 @@ export function buildUnavailableIntervals(
     return [];
   }
 
-  const unavailable: Interval[] = [];
-  const startInZone = rangeStartDate.setZone(participant.timezone);
-  const endInZone = rangeEndDate.setZone(participant.timezone);
+  const unavailable: CalendarInterval[] = [];
+  const { timezone } = participant;
+  let cursor = new TZDateMini(range.start, timezone);
+  cursor.setHours(0, 0, 0, 0);
 
-  let cursor = startInZone.startOf("day");
+  function addUnavailable(start: Date, end: Date): void {
+    const clippedStart = new Date(
+      Math.max(start.getTime(), range.start.getTime())
+    );
+    const clippedEnd = new Date(Math.min(end.getTime(), range.end.getTime()));
+    if (clippedStart < clippedEnd) {
+      unavailable.push({ start: clippedStart, end: clippedEnd });
+    }
+  }
 
-  while (cursor < endInZone) {
+  while (cursor < range.end) {
     const dayStart = cursor;
-    const dayEnd = cursor.plus({ days: 1 });
+    const weekday = dayStart.getDay();
+    const dayEnd = new TZDateMini(dayStart, timezone);
+    dayEnd.setDate(dayEnd.getDate() + 1);
 
-    if (excludeWeekends && (dayStart.weekday === 6 || dayStart.weekday === 7)) {
-      const unavailableStart = DateTime.max(dayStart, startInZone);
-      const unavailableEnd = DateTime.min(dayEnd, endInZone);
-      if (unavailableStart < unavailableEnd) {
-        unavailable.push(
-          Interval.fromDateTimes(
-            unavailableStart.toUTC(),
-            unavailableEnd.toUTC()
-          )
+    if (excludeWeekends && (weekday === 0 || weekday === 6)) {
+      addUnavailable(dayStart, dayEnd);
+    } else {
+      if (participant.dailyTimeWindowStart) {
+        addUnavailable(
+          dayStart,
+          applyTimeToDate(dayStart, participant.dailyTimeWindowStart, timezone)
         );
       }
-      cursor = dayEnd;
-      continue;
-    }
-
-    if (!participant.dailyTimeWindowStart && !participant.dailyTimeWindowEnd) {
-      cursor = dayEnd;
-      continue;
-    }
-
-    const windowStart = participant.dailyTimeWindowStart
-      ? applyTimeToDateTime(dayStart, participant.dailyTimeWindowStart)
-      : dayStart;
-    const windowEnd = participant.dailyTimeWindowEnd
-      ? applyTimeToDateTime(dayStart, participant.dailyTimeWindowEnd)
-      : dayEnd;
-
-    if (participant.dailyTimeWindowStart) {
-      const beforeStart = DateTime.max(dayStart, startInZone);
-      const beforeEnd = DateTime.min(windowStart, endInZone);
-      if (beforeStart < beforeEnd) {
-        unavailable.push(
-          Interval.fromDateTimes(beforeStart.toUTC(), beforeEnd.toUTC())
+      if (participant.dailyTimeWindowEnd) {
+        addUnavailable(
+          applyTimeToDate(dayStart, participant.dailyTimeWindowEnd, timezone),
+          dayEnd
         );
       }
     }
-
-    if (participant.dailyTimeWindowEnd) {
-      const afterStart = DateTime.max(windowEnd, startInZone);
-      const afterEnd = DateTime.min(dayEnd, endInZone);
-      if (afterStart < afterEnd) {
-        unavailable.push(
-          Interval.fromDateTimes(afterStart.toUTC(), afterEnd.toUTC())
-        );
-      }
-    }
-
     cursor = dayEnd;
   }
 
   return unavailable;
 }
 
-function isValidInterval(interval: Interval | null): interval is Interval {
-  if (!interval) {
-    return false;
-  }
-  return (
-    interval.isValid &&
-    !interval.isEmpty() &&
-    interval.start !== null &&
-    interval.end !== null
-  );
+export function isValidInterval(interval: CalendarInterval): boolean {
+  return interval.start < interval.end;
 }
 
-export function mergeIntervals(intervals: Interval[]): Interval[] {
+export function mergeIntervals(
+  intervals: CalendarInterval[]
+): CalendarInterval[] {
   const sorted = intervals
     .filter(isValidInterval)
-    .sort((a, b) => a.start!.toMillis() - b.start!.toMillis());
+    .sort((a, b) => a.start.getTime() - b.start.getTime());
 
-  if (sorted.length === 0) {
-    return [];
-  }
-
-  const merged: Interval[] = [];
+  const merged: CalendarInterval[] = [];
   for (const interval of sorted) {
-    if (merged.length === 0) {
-      merged.push(interval);
-      continue;
-    }
-
     const prev = merged[merged.length - 1];
-    if (prev.end! >= interval.start!) {
-      merged[merged.length - 1] = Interval.fromDateTimes(
-        prev.start!,
-        DateTime.max(prev.end!, interval.end!)
-      );
+    if (prev && prev.end >= interval.start) {
+      merged[merged.length - 1] = {
+        start: prev.start,
+        end: new Date(Math.max(prev.end.getTime(), interval.end.getTime())),
+      };
     } else {
       merged.push(interval);
     }
   }
-
   return merged;
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] sorted-busy-intervals
+ * `busyIntervals` MUST be sorted by start with overlaps merged. Availability MUST
+ * contain only the gaps within `range`, excluding every supplied busy interval.
+ */
 export function computeAvailability(
-  range: Interval,
-  busyIntervals: Interval[]
-): Interval[] {
+  range: CalendarInterval,
+  busyIntervals: CalendarInterval[]
+): CalendarInterval[] {
   if (!isValidInterval(range)) {
     return [];
   }
-
-  if (busyIntervals.length === 0) {
-    return [range];
-  }
-
-  const availability: Interval[] = [];
-  const rangeStart = range.start;
-  const rangeEnd = range.end;
-  if (!rangeStart || !rangeEnd) {
-    return [];
-  }
-  let cursor: DateTime = rangeStart;
-
+  const availability: CalendarInterval[] = [];
+  let cursor = range.start;
   for (const busy of busyIntervals) {
-    const busyStart = busy.start;
-    const busyEnd = busy.end;
-    if (!busyStart || !busyEnd) {
-      continue;
-    }
-
-    const clampedStart = DateTime.max(busyStart, rangeStart);
-    const clampedEnd = DateTime.min(busyEnd, rangeEnd);
-
+    const clampedStart = new Date(
+      Math.max(busy.start.getTime(), range.start.getTime())
+    );
+    const clampedEnd = new Date(
+      Math.min(busy.end.getTime(), range.end.getTime())
+    );
     if (clampedStart >= clampedEnd) {
       continue;
     }
-
     if (cursor < clampedStart) {
-      availability.push(Interval.fromDateTimes(cursor, clampedStart));
+      availability.push({ start: cursor, end: clampedStart });
     }
-    cursor = DateTime.max(cursor, clampedEnd);
+    cursor = new Date(Math.max(cursor.getTime(), clampedEnd.getTime()));
   }
-
-  if (cursor < rangeEnd) {
-    availability.push(Interval.fromDateTimes(cursor, rangeEnd));
+  if (cursor < range.end) {
+    availability.push({ start: cursor, end: range.end });
   }
-
   return mergeIntervals(availability);
 }
 
-function formatDateTime(date: DateTime, timezone: string): string {
-  return date.setZone(timezone).toFormat("EEE, MMM d yyyy 'at' HH:mm ZZZZ");
+function formatDateTime(date: Date, timezone: string): string {
+  const parts = new Map(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+      timeZoneName: "short",
+    })
+      .formatToParts(date)
+      .map((part) => [part.type, part.value] as const)
+  );
+  return `${parts.get("weekday")}, ${parts.get("month")} ${parts.get("day")} ${parts.get("year")} at ${parts.get("hour")}:${parts.get("minute")} ${parts.get("timeZoneName")}`;
 }
 
 function formatIntervalForDisplay(
-  interval: Interval,
+  interval: CalendarInterval,
   timezone: string
 ): string {
-  if (!interval.start || !interval.end) {
-    return "Unknown interval";
-  }
   const start = formatDateTime(interval.start, timezone);
   const end = formatDateTime(interval.end, timezone);
   return `${start} → ${end}`;
@@ -657,8 +642,8 @@ export function formatAvailabilitySummary({
   excludeWeekends,
 }: {
   participants: AvailabilityParticipant[];
-  range: Interval;
-  availabilitySlots: Interval[];
+  range: CalendarInterval;
+  availabilitySlots: CalendarInterval[];
   excludeWeekends: boolean;
 }): string {
   const lines: string[] = [];
