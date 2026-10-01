@@ -2,7 +2,7 @@ import * as novuClientModule from "@app/lib/notifications/novu-client";
 import {
   buildProgrammaticCapReachedEmailCopy,
   triggerProgrammaticCapReachedNotifications,
-} from "@app/lib/notifications/workflows/programmatic-cap-reached";
+} from "@app/lib/notifications/triggers/programmatic-cap-reached";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { PROGRAMMATIC_CAP_REACHED_TRIGGER_ID } from "@app/types/notification_preferences";
 import { beforeEach, describe, expect, it, vi } from "vitest";
