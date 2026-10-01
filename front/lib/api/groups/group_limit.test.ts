@@ -7,11 +7,11 @@ import { areGroupLimitsEnabled } from "@app/lib/api/groups/group_limit_eligibili
 import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { GroupLimit } from "@app/types/api/groups/group_limit";
-import type { WorkspaceType } from "@app/types/user";
 import { UniqueConstraintError } from "sequelize";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -32,17 +32,6 @@ beforeEach(() => {
   vi.mocked(areGroupLimitsEnabled).mockResolvedValue(true);
   vi.mocked(workosAudit.emitAuditLogEvent).mockResolvedValue(undefined);
 });
-
-async function makeGroup(
-  workspace: WorkspaceType,
-  name: string
-): Promise<GroupResource> {
-  return GroupResource.makeNew({
-    name,
-    workspaceId: workspace.id,
-    kind: "regular_manual",
-  });
-}
 
 async function setLimit(
   auth: Authenticator,
@@ -77,8 +66,11 @@ describe("setGroupLimit", () => {
   describe("priority", () => {
     it("assigns priorities in the order limits are first set", async () => {
       const { workspace, auth } = await setup();
-      const engineering = await makeGroup(workspace, "Engineering");
-      const sales = await makeGroup(workspace, "Sales");
+      const engineering = await GroupFactory.regularManual(
+        workspace,
+        "Engineering"
+      );
+      const sales = await GroupFactory.regularManual(workspace, "Sales");
 
       expect(
         (
@@ -106,8 +98,11 @@ describe("setGroupLimit", () => {
 
     it("keeps the priority when the amount changes", async () => {
       const { workspace, auth } = await setup();
-      const engineering = await makeGroup(workspace, "Engineering");
-      const sales = await makeGroup(workspace, "Sales");
+      const engineering = await GroupFactory.regularManual(
+        workspace,
+        "Engineering"
+      );
+      const sales = await GroupFactory.regularManual(workspace, "Sales");
       await setLimit(auth, engineering, {
         kind: "limited",
         awuCredits: 10_000,
@@ -127,7 +122,10 @@ describe("setGroupLimit", () => {
 
     it("clears both columns when the limit is removed", async () => {
       const { workspace, auth } = await setup();
-      const engineering = await makeGroup(workspace, "Engineering");
+      const engineering = await GroupFactory.regularManual(
+        workspace,
+        "Engineering"
+      );
       await setLimit(auth, engineering, {
         kind: "limited",
         awuCredits: 10_000,
@@ -144,8 +142,11 @@ describe("setGroupLimit", () => {
 
     it("appends a group after the others when its limit is set again", async () => {
       const { workspace, auth } = await setup();
-      const engineering = await makeGroup(workspace, "Engineering");
-      const sales = await makeGroup(workspace, "Sales");
+      const engineering = await GroupFactory.regularManual(
+        workspace,
+        "Engineering"
+      );
+      const sales = await GroupFactory.regularManual(workspace, "Sales");
       await setLimit(auth, engineering, {
         kind: "limited",
         awuCredits: 10_000,
@@ -161,13 +162,16 @@ describe("setGroupLimit", () => {
 
     it("assigns a priority to a limited group that has none", async () => {
       const { workspace, auth } = await setup();
-      const engineering = await makeGroup(workspace, "Engineering");
-      const sales = await makeGroup(workspace, "Sales");
-      await setLimit(auth, sales, { kind: "limited", awuCredits: 6_000 });
-      await GroupModel.update(
-        { groupLimitAwuCredits: 10_000, groupLimitPriority: null },
-        { where: { id: engineering.id, workspaceId: workspace.id } }
+      const engineering = await GroupFactory.regularManual(
+        workspace,
+        "Engineering"
       );
+      const sales = await GroupFactory.regularManual(workspace, "Sales");
+      await setLimit(auth, sales, { kind: "limited", awuCredits: 6_000 });
+      await GroupFactory.withRawGroupLimit(engineering, {
+        groupLimitAwuCredits: 10_000,
+        groupLimitPriority: null,
+      });
 
       await setLimit(auth, engineering, {
         kind: "limited",
@@ -182,8 +186,11 @@ describe("setGroupLimit", () => {
 
     it("rejects a write that would reuse a taken priority", async () => {
       const { workspace, auth } = await setup();
-      const engineering = await makeGroup(workspace, "Engineering");
-      const sales = await makeGroup(workspace, "Sales");
+      const engineering = await GroupFactory.regularManual(
+        workspace,
+        "Engineering"
+      );
+      const sales = await GroupFactory.regularManual(workspace, "Sales");
       await setLimit(auth, sales, { kind: "limited", awuCredits: 6_000 });
       // Simulates a concurrent first set that read the max before Sales got priority 1.
       vi.spyOn(GroupModel, "max").mockResolvedValueOnce(null);
@@ -213,7 +220,10 @@ describe("setGroupLimit", () => {
 
     it("refuses non-admins, including members with usage-limit rights", async () => {
       const { workspace, auth } = await setup();
-      const engineering = await makeGroup(workspace, "Engineering");
+      const engineering = await GroupFactory.regularManual(
+        workspace,
+        "Engineering"
+      );
       const member = await UserFactory.basic();
       await MembershipFactory.associate(workspace, member, { role: "user" });
       const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -232,7 +242,10 @@ describe("setGroupLimit", () => {
 
     it("refuses when group limits are not enabled for the workspace", async () => {
       const { workspace, auth } = await setup();
-      const engineering = await makeGroup(workspace, "Engineering");
+      const engineering = await GroupFactory.regularManual(
+        workspace,
+        "Engineering"
+      );
       vi.mocked(areGroupLimitsEnabled).mockResolvedValue(false);
 
       const result = await setLimit(auth, engineering, {
@@ -248,7 +261,10 @@ describe("setGroupLimit", () => {
 
     it("refuses amounts outside the allowed range", async () => {
       const { workspace, auth } = await setup();
-      const engineering = await makeGroup(workspace, "Engineering");
+      const engineering = await GroupFactory.regularManual(
+        workspace,
+        "Engineering"
+      );
 
       for (const awuCredits of [-1, 1.5, MAX_GROUP_LIMIT_AWU_CREDITS + 1]) {
         const result = await setLimit(auth, engineering, {
@@ -263,7 +279,10 @@ describe("setGroupLimit", () => {
 
   it("emits a group.group_limit_updated audit event", async () => {
     const { workspace, auth } = await setup();
-    const engineering = await makeGroup(workspace, "Engineering");
+    const engineering = await GroupFactory.regularManual(
+      workspace,
+      "Engineering"
+    );
     await setLimit(auth, engineering, { kind: "limited", awuCredits: 10_000 });
 
     await setLimit(auth, engineering, { kind: "limited", awuCredits: 12_000 });

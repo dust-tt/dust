@@ -1251,6 +1251,74 @@ export class GroupResource extends BaseResource<GroupModel> {
     );
   }
 
+  /**
+   * Skips `canFetch`: the limit group decides which group a member's spend is recorded to and
+   * enforced against, which must not depend on the caller's verbs (API keys, internal and system
+   * auth resolve it too). Callers MUST go through `resolveLimitGroupsForUsers`, which gates on
+   * `areGroupLimitsEnabled`, and MUST NOT expose the returned groups beyond what the caller may read.
+   */
+  static async dangerouslyListLimitGroupByUserModelIdInWorkspace({
+    workspace,
+    userModelIds,
+  }: {
+    workspace: LightWorkspaceType;
+    userModelIds: ModelId[];
+  }): Promise<Map<ModelId, GroupResource>> {
+    if (userModelIds.length === 0) {
+      return new Map();
+    }
+
+    const limitedGroups = await GroupModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        kind: [...CAP_ELIGIBLE_GROUP_KINDS],
+        groupLimitAwuCredits: { [Op.ne]: null },
+        groupLimitPriority: { [Op.ne]: null },
+      },
+      order: [
+        ["groupLimitPriority", "ASC"],
+        ["id", "ASC"],
+      ],
+    });
+    if (limitedGroups.length === 0) {
+      return new Map();
+    }
+
+    const now = new Date();
+    const memberships = await GroupMembershipModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        groupId: limitedGroups.map((g) => g.id),
+        userId: userModelIds,
+        status: "active",
+        startAt: { [Op.lte]: now },
+        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+      },
+    });
+
+    const rankByGroupModelId = new Map(
+      limitedGroups.map((group, rank) => [group.id, rank])
+    );
+    const bestRankByUserModelId = new Map<ModelId, number>();
+    for (const m of memberships) {
+      const rank = rankByGroupModelId.get(m.groupId);
+      if (rank === undefined) {
+        continue;
+      }
+      const current = bestRankByUserModelId.get(m.userId);
+      if (current === undefined || rank < current) {
+        bestRankByUserModelId.set(m.userId, rank);
+      }
+    }
+
+    return new Map(
+      [...bestRankByUserModelId].map(([userModelId, rank]) => [
+        userModelId,
+        new GroupResource(GroupModel, limitedGroups[rank].get()),
+      ])
+    );
+  }
+
   static async getMemberCountsForGroups(
     auth: Authenticator,
     groups: GroupResource[]

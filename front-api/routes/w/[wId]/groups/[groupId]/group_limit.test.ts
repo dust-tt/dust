@@ -3,9 +3,9 @@ import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -16,14 +16,6 @@ vi.mock("@app/lib/api/groups/group_limit_eligibility", () => ({
 beforeEach(() => {
   vi.mocked(areGroupLimitsEnabled).mockResolvedValue(true);
 });
-
-async function makeGroup(workspace: WorkspaceType): Promise<GroupResource> {
-  return GroupResource.makeNew({
-    name: "Engineering",
-    workspaceId: workspace.id,
-    kind: "regular_manual",
-  });
-}
 
 function putGroupLimit(
   wId: string,
@@ -40,7 +32,7 @@ function putGroupLimit(
 describe("PUT /api/w/[wId]/groups/[groupId]/group_limit", () => {
   it("lets an admin set a group limit", async () => {
     const workspace = await WorkspaceFactory.creditPriced();
-    const group = await makeGroup(workspace);
+    const group = await GroupFactory.regularManual(workspace, "Engineering");
     const { auth } = await createPrivateApiMockRequest({
       method: "PUT",
       role: "admin",
@@ -66,7 +58,7 @@ describe("PUT /api/w/[wId]/groups/[groupId]/group_limit", () => {
 
   it("refuses a workspace manager", async () => {
     const workspace = await WorkspaceFactory.creditPriced();
-    const group = await makeGroup(workspace);
+    const group = await GroupFactory.regularManual(workspace, "Engineering");
     await createPrivateApiMockRequest({
       method: "PUT",
       role: "manager",
@@ -83,7 +75,7 @@ describe("PUT /api/w/[wId]/groups/[groupId]/group_limit", () => {
 
   it("refuses a group manager of that group", async () => {
     const workspace = await WorkspaceFactory.creditPriced();
-    const group = await makeGroup(workspace);
+    const group = await GroupFactory.regularManual(workspace, "Engineering");
     const { user: delegate } = await createPrivateApiMockRequest({
       method: "PUT",
       role: "user",
@@ -111,7 +103,7 @@ describe("PUT /api/w/[wId]/groups/[groupId]/group_limit", () => {
 
   it("returns 400 on an invalid amount", async () => {
     const workspace = await WorkspaceFactory.creditPriced();
-    const group = await makeGroup(workspace);
+    const group = await GroupFactory.regularManual(workspace, "Engineering");
     await createPrivateApiMockRequest({
       method: "PUT",
       role: "admin",
@@ -146,7 +138,7 @@ describe("PUT /api/w/[wId]/groups/[groupId]/group_limit", () => {
   it("returns 403 when group limits are not enabled", async () => {
     vi.mocked(areGroupLimitsEnabled).mockResolvedValue(false);
     const workspace = await WorkspaceFactory.creditPriced();
-    const group = await makeGroup(workspace);
+    const group = await GroupFactory.regularManual(workspace, "Engineering");
     await createPrivateApiMockRequest({
       method: "PUT",
       role: "admin",
