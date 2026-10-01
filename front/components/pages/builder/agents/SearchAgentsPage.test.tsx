@@ -371,6 +371,30 @@ describe("search-backed Manage Agents", () => {
     );
   });
 
+  it("starts text search at three characters", async () => {
+    const { fetcherWithBody, mount } = await setup();
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+
+    const input = screen.getByLabelText("Search agents");
+    await userEvent.type(input, "re");
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+    });
+    for (const [request] of fetcherWithBody.mock.calls) {
+      expect(request).toEqual([
+        expect.any(String),
+        expect.objectContaining({ query: "" }),
+        "POST",
+      ]);
+    }
+
+    await userEvent.type(input, "p");
+    await waitFor(() =>
+      expect(lastSearchBody(fetcherWithBody)).toMatchObject({ query: "rep" })
+    );
+  });
+
   it("searches by relevance and sorts on the server", async () => {
     const { fetcherWithBody, mount } = await setup();
     mount();

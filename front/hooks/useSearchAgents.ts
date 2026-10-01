@@ -9,6 +9,7 @@ import type {
   SearchAgentsResponseBody,
 } from "@app/types/agent_search/agent_search";
 import type { SearchType } from "@app/types/api/search";
+import { MIN_NAME_SEARCH_QUERY_LENGTH } from "@app/types/api/search";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useEffect } from "react";
 import { useSWRConfig } from "swr";
@@ -16,6 +17,11 @@ import { useSWRConfig } from "swr";
 const SEARCH_AGENTS_DEBOUNCE_MS = 250;
 const SEARCH_AGENTS_QUERY_MAX_LENGTH = 200;
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] management-search-minimum-length
+ * Name search sends an empty query below MIN_NAME_SEARCH_QUERY_LENGTH trimmed
+ * characters. Autocomplete keeps accepting shorter input.
+ */
 export function useSearchAgents({
   owner,
   searchTerm,
@@ -43,7 +49,15 @@ export function useSearchAgents({
 }) {
   const { fetcherWithBody } = useFetcher();
   const { mutate: globalMutate } = useSWRConfig();
-  const query = searchTerm.slice(0, SEARCH_AGENTS_QUERY_MAX_LENGTH);
+  const truncatedSearchTerm = searchTerm.slice(
+    0,
+    SEARCH_AGENTS_QUERY_MAX_LENGTH
+  );
+  const query =
+    searchType === "name" &&
+    truncatedSearchTerm.trim().length < MIN_NAME_SEARCH_QUERY_LENGTH
+      ? ""
+      : truncatedSearchTerm;
   const { debouncedValue: debouncedSearchTerm, setValue: setSearchTerm } =
     useDebounce(query, { delay: SEARCH_AGENTS_DEBOUNCE_MS });
   const isDebouncing = query !== debouncedSearchTerm;

@@ -4,6 +4,8 @@ import type { DataSourceType } from "@app/types/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import { z } from "zod";
 
+export const MIN_NAME_SEARCH_QUERY_LENGTH = 3;
+
 export const SEARCH_TYPES = ["autocomplete", "name"] as const;
 export type SearchType = (typeof SEARCH_TYPES)[number];
 

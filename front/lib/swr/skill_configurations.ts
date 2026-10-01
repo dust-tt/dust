@@ -11,6 +11,7 @@ import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { getManageSkillsRoute } from "@app/lib/utils/router";
 import type { GetSkillHistoryResponseBody } from "@app/types/api/assistant/skills/history";
 import type { SearchType } from "@app/types/api/search";
+import { MIN_NAME_SEARCH_QUERY_LENGTH } from "@app/types/api/search";
 import type {
   GetSkillResponseBody,
   GetSkillsResponseBody,
@@ -190,6 +191,11 @@ export function useSkills({
   };
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] management-search-minimum-length
+ * Name search sends an empty query below MIN_NAME_SEARCH_QUERY_LENGTH trimmed
+ * characters. Autocomplete keeps accepting shorter input.
+ */
 export function useSearchSkills({
   owner,
   searchTerm,
@@ -221,7 +227,15 @@ export function useSearchSkills({
 }) {
   const { fetcherWithBody } = useFetcher();
   const { mutate: globalMutate } = useSWRConfig();
-  const query = searchTerm.slice(0, SEARCH_SKILLS_QUERY_MAX_LENGTH);
+  const truncatedSearchTerm = searchTerm.slice(
+    0,
+    SEARCH_SKILLS_QUERY_MAX_LENGTH
+  );
+  const query =
+    searchType === "name" &&
+    truncatedSearchTerm.trim().length < MIN_NAME_SEARCH_QUERY_LENGTH
+      ? ""
+      : truncatedSearchTerm;
   const { debouncedValue: debouncedSearchTerm, setValue: setSearchTerm } =
     useDebounce(query, { delay: SEARCH_SKILLS_DEBOUNCE_MS });
   const isDebouncing = query !== debouncedSearchTerm;

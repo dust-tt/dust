@@ -445,6 +445,34 @@ describe("search-backed Manage Skills", () => {
     );
   });
 
+  it("starts text search at three characters", async () => {
+    const { fetcherWithBody, mount } = await setup();
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+
+    const input = screen.getByLabelText("Search skills");
+    await userEvent.type(input, "re");
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+    });
+    for (const [request] of fetcherWithBody.mock.calls) {
+      expect(request).toEqual([
+        expect.any(String),
+        expect.objectContaining({ query: "" }),
+        "POST",
+      ]);
+    }
+
+    await userEvent.type(input, "p");
+    await waitFor(() =>
+      expect(fetcherWithBody).toHaveBeenLastCalledWith([
+        expect.any(String),
+        expect.objectContaining({ query: "rep" }),
+        "POST",
+      ])
+    );
+  });
+
   it("applies filters together, keeps them across tabs, and clears the chips", async () => {
     const { context, fetcher, fetcherWithBody, mcpServerViewIds, mount } =
       await setup();
@@ -1130,7 +1158,7 @@ describe("search-backed Manage Skills", () => {
     const table = screen.getByRole("table");
 
     const pending = Promise.withResolvers<SearchSkillsResponseBody>();
-    search.mockReturnValueOnce(pending.promise);
+    search.mockReturnValue(pending.promise);
     await userEvent.type(screen.getByLabelText("Search skills"), "report");
     await waitFor(() =>
       expect(fetcherWithBody).toHaveBeenLastCalledWith([
