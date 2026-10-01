@@ -312,3 +312,178 @@ impl Dfs for Api {
         self.change(request, Change::Write).await
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::storage::{CacheConfig, Storage};
+    use anyhow::Context;
+    use slatedb::object_store::memory::InMemory;
+    use std::time::Duration;
+
+    fn request<T>(key: &str, body: T) -> anyhow::Result<Request<T>> {
+        let mut request = Request::new(body);
+        request
+            .metadata_mut()
+            .insert("authorization", format!("Bearer {key}").parse()?);
+        Ok(request)
+    }
+
+    #[tokio::test]
+    async fn cancelled_write_keeps_guards_until_publication_before_close_and_revocation()
+    -> anyhow::Result<()> {
+        let cache = tempfile::tempdir()?;
+        let storage = Storage::open(
+            Arc::new(InMemory::new()),
+            "cancel",
+            "test",
+            &CacheConfig {
+                cache_dir: cache.path().to_owned(),
+                cache_memory_mib: 16,
+                cache_disk_gib: 0,
+                max_unflushed_mib: 16,
+            },
+        )
+        .await?;
+        let key = "ab".repeat(32);
+        let api = Api(State::new(storage, &key)?);
+        let workspace = api
+            .create_workspace(request(
+                &key,
+                CreateWorkspaceRequest {
+                    workspace_id: "cancel".into(),
+                    root_grants: vec!["owner".into()],
+                },
+            )?)
+            .await?
+            .into_inner();
+        let owner = api
+            .create_session(request(
+                &workspace.workspace_key,
+                CreateSessionRequest {
+                    workspace_id: workspace.workspace_id.clone(),
+                    grants: vec!["owner".into()],
+                },
+            )?)
+            .await?
+            .into_inner();
+        let file = api
+            .create(request(
+                &owner.session_key,
+                CreateRequest {
+                    parent_id: workspace.root_id,
+                    name: "file".into(),
+                    expected_parent_version: 1,
+                    mode: 0o600,
+                    ..Default::default()
+                },
+            )?)
+            .await?
+            .into_inner()
+            .object
+            .context("created file")?;
+        let file = api
+            .update_grants(request(
+                &workspace.workspace_key,
+                UpdateGrantsRequest {
+                    workspace_id: workspace.workspace_id.clone(),
+                    object_id: file.id,
+                    expected_version: file.version,
+                    changes: vec![GrantChange {
+                        grant: "writer".into(),
+                        attached: true,
+                    }],
+                },
+            )?)
+            .await?
+            .into_inner();
+        let writer = api
+            .create_session(request(
+                &workspace.workspace_key,
+                CreateSessionRequest {
+                    workspace_id: workspace.workspace_id.clone(),
+                    grants: vec!["writer".into()],
+                },
+            )?)
+            .await?
+            .into_inner();
+        let locks = api.0.locks(&workspace.workspace_id).await;
+        let file_lock = locks.file(&file.id).await;
+        let blocked_file = file_lock.lock().await;
+        let session = api
+            .0
+            .sessions
+            .get(&request(&writer.session_key, Empty {})?)
+            .await?;
+        let write = request(
+            &writer.session_key,
+            WriteRequest {
+                object_id: file.id.clone(),
+                expected_version: file.version,
+                data: b"committed".to_vec(),
+                ..Default::default()
+            },
+        )?;
+        let caller_api = api.clone();
+        let caller = tokio::spawn(async move { caller_api.write(write).await });
+        tokio::time::timeout(Duration::from_secs(2), async {
+            while session.gate.try_write().is_ok() || locks.topology.try_write().is_ok() {
+                tokio::time::sleep(Duration::from_millis(1)).await;
+            }
+        })
+        .await?;
+        caller.abort();
+        assert!(caller.await.is_err());
+        let close_api = api.clone();
+        let close = request(&writer.session_key, Empty {})?;
+        let closing = tokio::spawn(async move { close_api.close_session(close).await });
+        let revoke_api = api.clone();
+        let revoke = request(
+            &workspace.workspace_key,
+            UpdateGrantsRequest {
+                workspace_id: workspace.workspace_id,
+                object_id: file.id.clone(),
+                expected_version: file.version + 1,
+                changes: vec![GrantChange {
+                    grant: "writer".into(),
+                    attached: false,
+                }],
+            },
+        )?;
+        let revoking = tokio::spawn(async move { revoke_api.update_grants(revoke).await });
+        tokio::time::sleep(Duration::from_millis(10)).await;
+        assert!(!closing.is_finished());
+        assert!(!revoking.is_finished());
+        drop(blocked_file);
+        tokio::time::timeout(Duration::from_secs(2), closing).await???;
+        tokio::time::timeout(Duration::from_secs(2), revoking).await???;
+        let data = Dfs::read(
+            &api,
+            request(
+                &owner.session_key,
+                ReadRequest {
+                    object_id: file.id.clone(),
+                    length: 9,
+                    ..Default::default()
+                },
+            )?,
+        )
+        .await?
+        .into_inner();
+        assert_eq!(data.data, b"committed");
+        assert_eq!(data.version, file.version + 2);
+        let closed = api
+            .stat(request(
+                &writer.session_key,
+                ObjectRequest { object_id: file.id },
+            )?)
+            .await
+            .err()
+            .context("closed session accepted")?;
+        assert_eq!(
+            dfs_protocol::error::code(&closed),
+            ErrorCode::Unauthenticated
+        );
+        api.0.storage.close().await
+    }
+}

@@ -89,6 +89,7 @@ Run the two-mount integration test from the host after building both platforms:
 
 ```sh
 python3 tests/fuse_e2e.py
+python3 tests/crash.py
 ```
 
 ## Guarantees and limits
