@@ -83,7 +83,6 @@ import { launchDeleteWorkspaceAgentSearchWorkflow } from "@app/temporal/es_index
 import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
 import { CoreAPI } from "@app/types/core/core_api";
 import assert from "assert";
-import { Op } from "sequelize";
 
 const hardDeleteLogger = logger.child({ activity: "hard-delete" });
 
