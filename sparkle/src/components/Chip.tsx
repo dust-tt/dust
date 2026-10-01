@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import { AnimatedText } from "@sparkle/components/AnimatedText";
 import {
   LinkWrapper,
@@ -155,6 +156,7 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
     }: ChipProps,
     ref
   ) => {
+    const { t } = useLingui();
     const chipContent = (
       <div
         className={cn(
@@ -198,7 +200,7 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
             icon={XClose}
             size={size === "sm" ? "sm" : "xs"}
             className={cn("-mr-1", closeIconVariants[color || "primary"])}
-            aria-label="Remove"
+            aria-label={t`Remove`}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();

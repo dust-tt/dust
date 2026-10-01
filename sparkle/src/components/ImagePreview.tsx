@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import { Button } from "@sparkle/components/Button";
 import { ImageGenerationPlaceholder } from "@sparkle/components/ImageGenerationPlaceholder";
 import { ImageWrapper } from "@sparkle/components/ImageWrapper";
@@ -129,6 +130,7 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
     },
     ref
   ) => {
+    const { t } = useLingui();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
     const handleDownload = useCallback(
@@ -217,7 +219,7 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
                     variant="ghost"
                     size="mini"
                     icon={XClose}
-                    tooltip="Remove"
+                    tooltip={t`Remove`}
                     onClick={handleClose}
                   />
                 )}
@@ -226,7 +228,7 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
                     variant="ghost"
                     size="mini"
                     icon={Download01}
-                    tooltip="Download"
+                    tooltip={t`Download`}
                     onClick={handleDownload}
                   />
                 )}

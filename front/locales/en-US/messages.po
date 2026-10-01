@@ -70,7 +70,9 @@ msgstr "Email and Slack notifications are turned off for this workspace by an ad
 msgid "Personal Information"
 msgstr "Personal Information"
 
+#: sparkle/src/components/DiffBlock.tsx
 #: sparkle/src/components/LoadMore.tsx
+#: sparkle/src/components/TruncatedContent.tsx
 msgid "Show less"
 msgstr "Show less"
 
@@ -106,6 +108,10 @@ msgstr "Agent waiting sound alert"
 #: front/components/me/NotificationPreferences.tsx
 msgid "All activity"
 msgstr "All activity"
+
+#: sparkle/src/components/Bar.tsx
+msgid "Delete"
+msgstr "Delete"
 
 #: front/components/UserSettingsPopover.tsx
 msgctxt "keyboard key"
@@ -148,6 +154,11 @@ msgstr "Theme"
 msgid "Notification sound"
 msgstr "Notification sound"
 
+#: sparkle/src/components/DiffBlock.tsx
+#: sparkle/src/components/TruncatedContent.tsx
+msgid "Show more"
+msgstr "Show more"
+
 #: front/components/UserSettingsPopover.tsx
 msgid "Used to sign in and receive notifications"
 msgstr "Used to sign in and receive notifications"
@@ -174,6 +185,10 @@ msgctxt "workspace role"
 msgid "manager"
 msgstr "manager"
 
+#: sparkle/src/components/markdown/ContentBlockWrapper.tsx
+msgid "Copy"
+msgstr "Copy"
+
 #: front/components/UserSettingsPopover.tsx
 msgid "Conversation font"
 msgstr "Conversation font"
@@ -185,6 +200,10 @@ msgstr "Could not save the language"
 #: front/components/UserSettingsPopover.tsx
 msgid "Notifications"
 msgstr "Notifications"
+
+#: sparkle/src/components/Bar.tsx
+msgid "Back"
+msgstr "Back"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Managed by your identity provider"
@@ -248,6 +267,11 @@ msgstr "Once a week"
 msgid "Cmd + Enter"
 msgstr "Cmd + Enter"
 
+#: sparkle/src/components/ImagePreview.tsx
+#: sparkle/src/components/markdown/ContentBlockWrapper.tsx
+msgid "Download"
+msgstr "Download"
+
 #: front/components/me/NotificationPreferences.tsx
 msgid "Mentions only"
 msgstr "Mentions only"
@@ -305,6 +329,11 @@ msgstr "Your language could not be saved to your account."
 #: front/components/UserSettingsPopover.tsx
 msgid "Access your favorite and most-used agents, or search for one from the home page."
 msgstr "Access your favorite and most-used agents, or search for one from the home page."
+
+#: sparkle/src/components/Chip.tsx
+#: sparkle/src/components/ImagePreview.tsx
+msgid "Remove"
+msgstr "Remove"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Save"
@@ -394,6 +423,14 @@ msgstr "Load more"
 #: sparkle/src/components/Spinner.tsx
 msgid "Loading"
 msgstr "Loading"
+
+#: sparkle/src/components/Bar.tsx
+msgid "Close"
+msgstr "Close"
+
+#: sparkle/src/components/Bar.tsx
+msgid "Share"
+msgstr "Share"
 
 #: front/components/me/NotificationPreferences.tsx
 msgid "Applies to in-app popups, email, and Slack"
