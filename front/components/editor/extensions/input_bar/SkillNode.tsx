@@ -1,4 +1,3 @@
-import type { SkillNodeAttributes } from "@app/components/editor/extensions/skill_builder/SkillNode";
 import {
   SKILL_NODE_TYPE,
   SkillNode as SkillNodeBase,
@@ -9,21 +8,6 @@ import { ReactNodeViewRenderer } from "@tiptap/react";
 
 export type { SkillNodeAttributes } from "@app/components/editor/extensions/skill_builder/SkillNode";
 export { SKILL_NODE_TYPE };
-
-export function serializeSkillNodeClipboardHTML({
-  skillId,
-  skillName,
-  skillIcon,
-}: SkillNodeAttributes): string {
-  const span = document.createElement("span");
-  span.dataset.skillId = skillId;
-  span.dataset.skillName = skillName;
-  if (skillIcon) {
-    span.dataset.skillIcon = skillIcon;
-  }
-  span.textContent = `/${skillName}`;
-  return span.outerHTML;
-}
 
 interface SkillNodeOptions {
   onSkillDetails?: (skillId: string) => void;
@@ -38,20 +22,6 @@ export const SkillNode = SkillNodeBase.extend<SkillNodeOptions>({
       ...this.parent?.(),
       onSkillDetails: undefined,
     };
-  },
-
-  parseHTML() {
-    return [
-      ...(this.parent?.() ?? []),
-      {
-        tag: "span[data-skill-id]",
-        getAttrs: (element) => ({
-          skillId: element.dataset.skillId,
-          skillName: element.dataset.skillName,
-          skillIcon: element.dataset.skillIcon ?? null,
-        }),
-      },
-    ];
   },
 
   addNodeView() {
