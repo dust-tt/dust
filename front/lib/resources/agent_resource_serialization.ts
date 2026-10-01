@@ -2,10 +2,12 @@ import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import type { SkillHydrationOptions } from "@app/lib/resources/skill/types";
 import { tagsSorter } from "@app/lib/utils";
 import type {
   AgentActionsEnrichment,
   AgentConfigurationType,
+  AgentConfigurationWithSkillsType,
   AgentFavoriteEnrichment,
   AgentInstructionsEnrichment,
   AgentRecentAuthors,
@@ -13,6 +15,7 @@ import type {
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import type { AgentParticipantType } from "@app/types/assistant/conversation";
+import type { AgentSkillType } from "@app/types/assistant/skill_configuration";
 
 // The `enrichWith*` steps below each run the one query a configuration field needs, batched over
 // statically-loaded `AgentResource`s. They have no dependency on one another, so
@@ -117,6 +120,42 @@ export async function enrichWithInstructions(
     [...instructionsByAgent].map(([resource, instructions]) => [
       resource,
       instructions ?? { instructions: null, instructionsHtml: null },
+    ])
+  );
+}
+
+// Only `sId` and `name` reach the wire, so skip the instructions, tools and file attachments: see
+// the `labels-only-skips-dynamic-instructions` contract.
+const SKILL_LABELS_ONLY_FETCH_OPTIONS: SkillHydrationOptions = {
+  withInstructions: false,
+  withTools: false,
+  withFileAttachments: false,
+};
+
+/**
+ * @cc [owner:fabiencelier,label:security] no-skills-for-redacted-agents
+ * `enrichWithSkills` keys its result by the input resource (one configuration version). A resource
+ * the caller cannot `read` MUST get an empty `skills` array: its skills are private, consistently
+ * with the redacted serialization (`agent-json-redaction`).
+ */
+export async function enrichWithSkills(
+  auth: Authenticator,
+  resources: AgentResource[]
+): Promise<Map<AgentResource, { skills: AgentSkillType[] }>> {
+  const skillsByAgent = await AgentResource.batchListSkills(
+    auth,
+    resources.filter((resource) => auth.can("read", resource)),
+    SKILL_LABELS_ONLY_FETCH_OPTIONS
+  );
+
+  return new Map(
+    resources.map((resource) => [
+      resource,
+      {
+        skills: (skillsByAgent.get(resource) ?? []).map((skill) =>
+          skill.toAgentSkillJSON()
+        ),
+      },
     ])
   );
 }
@@ -281,6 +320,30 @@ export async function toAgentConfigurations(
       ...(actions.get(resource) ?? { actions: [] }),
     })
   );
+}
+
+// The public API's agent shape: the light or full configuration plus the agent's `skills`, which
+// replace the raw `codeDefinedSkillIds` of global agents on the wire.
+export async function toAgentConfigurationsWithSkills(
+  auth: Authenticator,
+  resources: AgentResource[],
+  { variant = "light" }: { variant?: "light" | "full" } = {}
+): Promise<AgentConfigurationWithSkillsType[]> {
+  const [configurations, skills] = await Promise.all([
+    variant === "full"
+      ? toAgentConfigurations(auth, resources)
+      : toLightAgentConfigurations(auth, resources),
+    enrichWithSkills(auth, resources),
+  ]);
+
+  return resources.map((resource, index) => {
+    const {
+      codeDefinedSkillIds: _codeDefinedSkillIds,
+      ...configuration
+    }: LightAgentConfigurationType & { codeDefinedSkillIds?: string[] } =
+      configurations[index];
+    return { ...configuration, ...(skills.get(resource) ?? { skills: [] }) };
+  });
 }
 
 export function toParticipantJSON(

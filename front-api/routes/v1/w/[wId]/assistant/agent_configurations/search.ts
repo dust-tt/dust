@@ -1,10 +1,9 @@
-import { toAgentConfigurationsWithSkills } from "@app/lib/api/assistant/configuration/helpers";
 import {
   addBackwardCompatibleAgentConfigurationFields,
   addLegacyLightAgentConfigurationFields,
 } from "@app/lib/api/v1/backward_compatibility";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
+import { toAgentConfigurationsWithSkills } from "@app/lib/resources/agent_resource_serialization";
 import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -71,16 +70,12 @@ app.get(
     const { q } = ctx.req.valid("query");
 
     // Published agents whose name contains `q`, as the former name search matched them.
-    const agentConfigurations = await toLightAgentConfigurations(
+    const serialized = await toAgentConfigurationsWithSkills(
       auth,
       await AgentResource.listByWorkspace(auth, {
         scope: "visible",
         nameContains: q,
       })
-    );
-    const serialized = await toAgentConfigurationsWithSkills(
-      auth,
-      agentConfigurations
     );
 
     return ctx.json({
