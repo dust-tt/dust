@@ -16,6 +16,7 @@ import {
   WORKSPACE_MANAGEMENT_SERVER_NAME,
 } from "@app/lib/api/actions/servers/workspace_management/metadata";
 import {
+  ARCHITECTURE_GUIDANCE_SECTION,
   bestPracticesSection,
   blockAwareEditingSection,
   CONTRADICTORY_INFORMATION_SECTION,
@@ -23,7 +24,6 @@ import {
   generalizationOverExamplesSection,
   KNOWLEDGE_GUIDANCE_SECTION,
   llmCentricSuggestionsSection,
-  MODEL_GUIDANCE_LINE,
   responseStyleSection,
   SKILLS_TOOLS_GUIDANCE_SECTION,
   workflowVisualizationSection,
@@ -81,7 +81,7 @@ Determine what the user wants to achieve with this interaction. If it is not cle
 
 Step 4: Plan the change
 Build a plan from the retrieved configuration and the user's intent. Do not call \`${SUGGEST}\` yet.
-Apply <good_entity>, <preserve_entity_goals> and, depending on the entity, <agent_guidance> or <skill_guidance>.
+Apply <good_entity>, <architecture_guidance>, <preserve_entity_goals> and, depending on the entity, <agent_guidance> or <skill_guidance>.
 Determine which research is required (see <company_data_guidance>).
 It is acceptable to change the plan mid-execution based on findings.
 
@@ -101,7 +101,7 @@ Tools operate on entity ids, not names. Use these tools to get up-to-date inform
 - \`${managementToolName(LIST_SKILLS_TOOL_NAME)}\`: find all skills and resolve a name to an id.
 - \`${managementToolName(LIST_TOOLS_TOOL_NAME)}\`: find the tools that can be equipped on agents and skills and resolve a name to an id.
 - \`${managementToolName(GET_TOOL_DETAILS_TOOL_NAME)}\`: a tool's description and the functions it exposes with their parameters. Use it before referencing a tool in a suggestion.
-- \`${managementToolName(LIST_MODELS_TOOL_NAME)}\`: the models an agent can be set to, with their \`modelId\` and supported reasoning efforts. Use it before suggesting a model change.
+- \`${managementToolName(LIST_MODELS_TOOL_NAME)}\`: the models an agent can be set to, with their \`modelId\` and supported reasoning efforts. Use it before suggesting a model change, except for the tier models of <architecture_guidance> whose \`modelId\` is already known.
 - \`${managementToolName(SEARCH_KNOWLEDGE_TOOL_NAME)}\`: without a query, the knowledge sources (data source views) of the workspace; with a query, the sources and document nodes matching it. Use it before referencing knowledge in a suggestion (see <knowledge_guidance> and <knowledge_nodes>).
 - \`${managementToolName(LIST_WORKSPACE_MEMBERS_TOOL_NAME)}\`: information about members (pass \`userIds\` to look up specific people, e.g. to change an agent's or a skill's editors).
 - \`${buildingToolName(DESCRIBE_SKILL_TOOL_NAME)}\`: a custom skill's name, settings, and instructions as HTML whose blocks carry a \`data-block-id\`. Call it to get any info about a skill before acting on it; the block ids are required to target edits.
@@ -157,6 +157,8 @@ Improve HOW the entity achieves its goal; do not silently change WHAT the goal i
 If the user explicitly asks to change the purpose, do it, but say so.
 </preserve_entity_goals>`,
 
+  architectureGuidance: ARCHITECTURE_GUIDANCE_SECTION,
+
   goodEntity: `<good_entity>
 ${bestPracticesSection(NOUN)}
 
@@ -182,8 +184,6 @@ This section applies to agents only. An agent's capabilities are configured as s
 ${SKILLS_TOOLS_GUIDANCE_SECTION}
 
 ${KNOWLEDGE_GUIDANCE_SECTION}
-
-${MODEL_GUIDANCE_LINE}
 </agent_guidance>`,
 
   agentCapabilities: `<agent_capabilities>
@@ -279,6 +279,7 @@ const CONVERSATIONAL_BUILDING_INSTRUCTIONS = [
   SECTIONS.entityMentions,
   SECTIONS.preserveEntityGoals,
   SECTIONS.goodEntity,
+  SECTIONS.architectureGuidance,
   SECTIONS.blockAwareEditing,
   SECTIONS.companyDataGuidance,
   SECTIONS.agentGuidance,
@@ -303,6 +304,6 @@ export const conversationalBuildingSkill = {
     { name: BUILDING_AGENTS_AND_SKILLS_SERVER_NAME },
     { name: WORKSPACE_MANAGEMENT_SERVER_NAME },
   ],
-  version: 1,
+  version: 2,
   icon: "ActionListCheckIcon",
 } as const satisfies GlobalSkillDefinition;
