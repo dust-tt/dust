@@ -25,6 +25,10 @@ msgstr "Error updating notification preferences"
 msgid "Join"
 msgstr "Join"
 
+#: front/components/navigation/AdminSettingsSearchNav.tsx
+msgid "Search settings"
+msgstr "Search settings"
+
 #: front/components/UserSettingsPopover.tsx
 msgid "Enable Memory"
 msgstr "Enable Memory"

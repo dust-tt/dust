@@ -14,6 +14,7 @@ import {
 import { useCommandPaletteSearch } from "@app/components/command_palette/useCommandPaletteSearch";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import { useFrecencySorting } from "@app/hooks/useFrerencySorting";
+import { navigateToAdminSetting } from "@app/lib/admin/buildAdminSettingHref";
 import { useAppRouter } from "@app/lib/platform";
 import {
   getAgentBuilderRoute,
@@ -54,11 +55,14 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     members,
     pods,
     skills,
+    settings,
     hasMoreAgents,
     hasMoreConversations,
     hasMoreMembers,
     hasMorePods,
     hasMoreSkills,
+    hasMoreSettings,
+    canSearchSettings,
     isLoading,
   } = useCommandPaletteSearch({
     owner,
@@ -142,6 +146,17 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
         );
         return;
       }
+      if (item.kind === "setting") {
+        close();
+        navigateToAdminSetting(
+          (href) => {
+            void router.push(href);
+          },
+          item.setting.pageHref,
+          item.setting
+        );
+        return;
+      }
       // Skills without administration access have only one action (view details).
       if (item.kind === "skill" && !item.skill.canAdministrate) {
         executeAction(item, "view_details");
@@ -205,12 +220,15 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
               members={members}
               pods={pods}
               skills={skills}
+              settings={settings}
               frequentItems={frequentItems}
               hasMoreAgents={hasMoreAgents}
               hasMoreConversations={hasMoreConversations}
               hasMoreMembers={hasMoreMembers}
               hasMorePods={hasMorePods}
               hasMoreSkills={hasMoreSkills}
+              hasMoreSettings={hasMoreSettings}
+              canSearchSettings={canSearchSettings}
               isLoading={isLoading}
               selectedIndex={selectedIndex}
               onSelectedIndexChange={setSelectedIndex}

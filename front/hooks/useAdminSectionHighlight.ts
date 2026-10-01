@@ -11,7 +11,7 @@ const RETRY_BUDGET_MS = 3000;
  * skeletons) are still found.
  *
  * Same-page search jumps must set `window.location.hash` (see
- * AdminSettingsSearchNav) so this `hashchange` listener re-runs — React Router
+ * `navigateToAdminSetting`) so this `hashchange` listener re-runs — React Router
  * hash updates use pushState and do not fire `hashchange`.
  */
 export function useAdminSectionHighlight() {
