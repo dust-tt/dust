@@ -7,6 +7,7 @@ import { runOnRedis } from "@app/lib/api/redis";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import {
   enrichWithFavorites,
+  toAgentConfigurations,
   toLightAgentConfigurations,
 } from "@app/lib/resources/agent_resource_serialization";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
@@ -232,10 +233,11 @@ app.get("/", async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
           compareAgentsWithFavorites(await enrichWithFavorites(auth, agents))
         )
       : agents;
+  const listedAgents = limit ? sortedAgents.slice(0, limit) : sortedAgents;
   // Stripped to stay under Next.js' 4MB API response limit.
   let agentConfigurations = await toLightAgentConfigurations(
     auth,
-    limit ? sortedAgents.slice(0, limit) : sortedAgents,
+    listedAgents,
     { withInstructions: false }
   );
   if (withUsage === "true") {
@@ -265,7 +267,7 @@ app.get("/", async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
   if (withAuthors === "true") {
     const recentAuthors = await getAgentsRecentAuthors({
       auth,
-      agents: agentConfigurations,
+      agents: listedAgents,
     });
     agentConfigurations = agentConfigurations.map(
       (agentConfiguration, index) => ({
@@ -276,7 +278,7 @@ app.get("/", async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
   }
 
   if (withEditors === "true") {
-    const editors = await getAgentsEditors(auth, agentConfigurations);
+    const editors = await getAgentsEditors(auth, listedAgents);
     agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
       ...agentConfiguration,
       editors: editors[agentConfiguration.sId],
@@ -287,7 +289,7 @@ app.get("/", async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
     const feedbacks =
       await AgentMessageFeedbackResource.getFeedbackCountForAssistants(
         auth,
-        agentConfigurations
+        listedAgents
           .filter((agent) => agent.scope !== "global")
           .map((agent) => agent.sId),
         30
@@ -350,9 +352,10 @@ app.post(
       });
     }
 
-    return ctx.json({
-      agentConfiguration: agentConfigurationRes.value.agentConfiguration,
-    });
+    const [agentConfiguration] = await toAgentConfigurations(auth, [
+      agentConfigurationRes.value.agent,
+    ]);
+    return ctx.json({ agentConfiguration });
   }
 );
 

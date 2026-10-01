@@ -9,11 +9,11 @@ import {
 import { getAgentConfigurationContext } from "@app/lib/api/assistant/configuration/context";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/agent_configuration";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -26,7 +26,7 @@ interface SkippedAction {
 
 type ImportResult = Result<
   {
-    agentConfiguration: AgentConfigurationType;
+    agent: AgentResource;
     skippedActions: SkippedAction[];
   },
   APIErrorWithContentfulStatusCode
@@ -156,7 +156,7 @@ async function saveAgentConfigurationFromAssistant({
   }
 
   return new Ok({
-    agentConfiguration: agentConfigurationRes.value.agentConfiguration,
+    agent: agentConfigurationRes.value.agent,
     skippedActions,
   });
 }

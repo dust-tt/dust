@@ -2,7 +2,7 @@ import { getAgentEditors } from "@app/lib/api/assistant/editors";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { toAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
@@ -68,19 +68,27 @@ async function getFullAgentConfiguration(
   return new Ok(agentConfiguration ? { ...agentConfiguration, actions } : null);
 }
 
-export async function getActiveWorkspaceAgentConfiguration(
+type ActiveWorkspaceAgentFetchOptions = {
+  dangerouslySkipPermissionFiltering?: boolean;
+  // The configuration is only written back as a new version, never returned to the caller.
+  forResave?: boolean;
+};
+
+async function getActiveWorkspaceAgent(
   auth: Authenticator,
   agentId: string,
   {
     dangerouslySkipPermissionFiltering,
     forResave = false,
-  }: {
-    dangerouslySkipPermissionFiltering?: boolean;
-    // The configuration is only written back as a new version, never returned to the caller.
-    forResave?: boolean;
-  } = {}
+  }: ActiveWorkspaceAgentFetchOptions
 ): Promise<
-  Result<ActiveWorkspaceAgentConfiguration, APIErrorWithContentfulStatusCode>
+  Result<
+    {
+      agent: AgentResource;
+      agentConfiguration: ActiveWorkspaceAgentConfiguration;
+    },
+    APIErrorWithContentfulStatusCode
+  >
 > {
   const agent = await AgentResource.fetchById(auth, agentId, {
     dangerouslySkipFetchCheck: dangerouslySkipPermissionFiltering,
@@ -99,7 +107,7 @@ export async function getActiveWorkspaceAgentConfiguration(
   }
   const agentConfiguration = agentConfigurationRes.value;
 
-  if (!agentConfiguration) {
+  if (!agent || !agentConfiguration) {
     return new Err({
       status_code: 404,
       api_error: {
@@ -119,7 +127,20 @@ export async function getActiveWorkspaceAgentConfiguration(
     });
   }
 
-  return new Ok(agentConfiguration);
+  return new Ok({ agent, agentConfiguration });
+}
+
+export async function getActiveWorkspaceAgentConfiguration(
+  auth: Authenticator,
+  agentId: string,
+  options: ActiveWorkspaceAgentFetchOptions = {}
+): Promise<
+  Result<ActiveWorkspaceAgentConfiguration, APIErrorWithContentfulStatusCode>
+> {
+  const agentResult = await getActiveWorkspaceAgent(auth, agentId, options);
+  return agentResult.isOk()
+    ? new Ok(agentResult.value.agentConfiguration)
+    : agentResult;
 }
 
 export async function getAgentConfigurationContext(
@@ -140,30 +161,24 @@ export async function getAgentConfigurationContext(
 ): Promise<
   Result<AgentConfigurationContext, APIErrorWithContentfulStatusCode>
 > {
-  const agentResult = await getActiveWorkspaceAgentConfiguration(
-    auth,
-    agentId,
-    {
-      dangerouslySkipPermissionFiltering,
-      forResave,
-    }
-  );
+  const agentResult = await getActiveWorkspaceAgent(auth, agentId, {
+    dangerouslySkipPermissionFiltering,
+    forResave,
+  });
   if (agentResult.isErr()) {
     return agentResult;
   }
 
-  const agentConfiguration = agentResult.value;
+  const { agent, agentConfiguration } = agentResult.value;
 
-  const skills = await SkillResource.listByAgentConfiguration(
-    auth,
-    agentConfiguration,
-    {
+  const [skills, editorsResult] = await Promise.all([
+    agent.listSkills(auth, {
       permissionFiltering: dangerouslySkipPermissionFiltering
         ? "dangerously_skip"
         : "strict",
-    }
-  );
-  const editorsResult = await getAgentEditors(auth, agentConfiguration);
+    }),
+    getAgentEditors(auth, agent),
+  ]);
 
   if (editorsResult.isErr()) {
     if (requireEditorGroup) {

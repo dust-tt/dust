@@ -1,5 +1,4 @@
 import { importAgentConfigurationFromJSON } from "@app/lib/api/assistant/configuration/yaml_import";
-import { AgentResource } from "@app/lib/resources/agent_resource";
 import { toAgentConfigurationsWithSkills } from "@app/lib/resources/agent_resource_serialization";
 import type { ImportAgentConfigurationFromYAMLResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
@@ -145,26 +144,10 @@ app.post(
       return apiError(ctx, result.error);
     }
 
-    const { agentConfiguration, skippedActions } = result.value;
-    // Serialize the imported agent from a resource built for the caller, as the patch route does.
-    const imported = await AgentResource.fetchById(
-      auth,
-      agentConfiguration.sId
-    );
-    if (!imported) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "agent_configuration_not_found",
-          message: "The imported agent configuration was not found.",
-        },
-      });
-    }
-    const [serialized] = await toAgentConfigurationsWithSkills(
-      auth,
-      [imported],
-      { variant: "full" }
-    );
+    const { agent, skippedActions } = result.value;
+    const [serialized] = await toAgentConfigurationsWithSkills(auth, [agent], {
+      variant: "full",
+    });
 
     return ctx.json({
       agentConfiguration: serialized,

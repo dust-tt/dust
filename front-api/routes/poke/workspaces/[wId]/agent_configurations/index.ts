@@ -40,7 +40,7 @@ app.get(
         : await AgentResource.listActive(auth);
     const agentConfigurations = await toLightAgentConfigurations(auth, agents);
 
-    const authors = await getAuthors(agentConfigurations);
+    const authors = await getAuthors(agents);
     const authorMap = new Map(authors.map((a) => [a.id, a]));
 
     const agentsWithAuthors: PokeAgentConfigurationType[] =

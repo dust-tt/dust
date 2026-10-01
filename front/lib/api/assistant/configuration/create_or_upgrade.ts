@@ -8,7 +8,6 @@ import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { getModelTierAccessErrorForAgentConfiguration } from "@app/lib/model_tiers/access";
 import type { AgentAuditOptions } from "@app/lib/resources/agent_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import { toAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -17,7 +16,6 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationAssistantPayload } from "@app/types/api/agent_configuration";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { isStaticModelId } from "@app/types/assistant/models/models";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -67,10 +65,7 @@ export async function createOrUpgradeAgentConfiguration({
   dangerouslySkipPermissionFiltering?: boolean;
   skipSuggestionPruning?: boolean;
 } & AgentAuditOptions): Promise<
-  Result<
-    { agentConfiguration: AgentConfigurationType; changed: boolean },
-    Error
-  >
+  Result<{ agent: AgentResource; changed: boolean }, Error>
 > {
   const skillsOnlyViews = await MCPServerViewResource.fetchByIds(
     auth,
@@ -328,13 +323,9 @@ export async function createOrUpgradeAgentConfiguration({
   }
 
   // The save (configuration row + actions + skills) is atomic (see `agent-save-atomic`), so a
-  // returned Ok means everything committed. The response is built from the saved resource, redacted
-  // like any read when the caller holds `write` without `read` (e.g. an admin API key editing a
-  // hidden agent, see `unreadable-agent-content-hidden`).
-  const [savedConfig] = await toAgentConfigurations(auth, [savedResource]);
-  if (!savedConfig) {
-    return new Err(new Error("Failed to load the saved agent configuration."));
-  }
+  // returned Ok means everything committed. The saved resource is built for the caller: serializing
+  // it redacts the content like any read when the caller holds `write` without `read` (e.g. an admin
+  // API key editing a hidden agent, see `unreadable-agent-content-hidden`).
 
   // Prune outdated suggestions after saving an existing agent.
   // This must happen after skills/tools are added to the new version. Pruning compares suggestions
@@ -344,17 +335,17 @@ export async function createOrUpgradeAgentConfiguration({
     !skipSuggestionPruning &&
     savedResource.canViewContent
   ) {
-    await pruneSuggestionsForAgent(auth, savedConfig);
+    await pruneSuggestionsForAgent(auth, savedResource);
   }
 
   // We are not tracking draft agents
-  if (savedConfig.status === "active") {
+  if (savedResource.status === "active") {
     void ServerSideTracking.trackAssistantCreated({
       user: auth.user() ?? undefined,
       workspace: auth.workspace() ?? undefined,
-      assistant: savedConfig,
+      assistant: savedResource,
     });
   }
 
-  return new Ok({ agentConfiguration: savedConfig, changed });
+  return new Ok({ agent: savedResource, changed });
 }
