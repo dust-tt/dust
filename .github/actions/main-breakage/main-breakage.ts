@@ -240,18 +240,14 @@ async function listRecentRuns({
 async function getPreviousState({
   github,
   context,
-  core,
   retryDelayMs,
 }: Pick<
   BreakageOptions,
-  "github" | "context" | "core" | "retryDelayMs"
+  "github" | "context" | "retryDelayMs"
 >): Promise<PreviousState> {
   const run = context.payload.workflow_run;
   const runs = await listRecentRuns({ github, context, retryDelayMs });
   if (runs === null) {
-    core.info(
-      `No notification: GitHub kept serving a stale ${run.name} run listing.`
-    );
     return { superseded: false, previous: null };
   }
   const completed = runs.filter(
@@ -384,7 +380,6 @@ export async function buildBreakageNotification({
   const state = await getPreviousState({
     github,
     context,
-    core,
     retryDelayMs,
   });
   if (state.superseded) {
