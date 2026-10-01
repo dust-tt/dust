@@ -57,10 +57,10 @@ function formatElapsedTime(
   const locale = getActiveLocale();
   const style = form === "short" ? SHORT_FORM_STYLE_BY_LOCALE[locale] : "long";
   for (const [unit, unitMs] of RELATIVE_TIME_UNITS) {
-    const value = Math.trunc(elapsedMs / unitMs);
-    if (value !== 0) {
+    const unitCount = Math.trunc(elapsedMs / unitMs);
+    if (unitCount !== 0) {
       return formatRelativeTimeInLocale(
-        value,
+        unitCount,
         unit,
         { numeric: "always", style },
         locale
