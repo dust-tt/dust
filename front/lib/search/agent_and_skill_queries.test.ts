@@ -19,24 +19,95 @@ describe("buildDiscoverSearchQuery", () => {
     });
   });
 
-  it("requires most terms, with fuzzy clauses on the language sub-fields", () => {
-    const query = buildDiscoverSearchQuery("Meetings recap");
-    expect(query).toMatchObject({
+  it("requires every term of a short query, fuzzy on names only", () => {
+    expect(buildDiscoverSearchQuery("Meetings recap")).toMatchObject({
       function_score: {
         query: {
           bool: {
-            should: [expect.anything(), expect.anything()],
-            minimum_should_match: "75%",
+            should: [
+              {
+                dis_max: {
+                  queries: [
+                    {
+                      constant_score: {
+                        filter: {
+                          multi_match: {
+                            query: "Meetings",
+                            type: "bool_prefix",
+                          },
+                        },
+                        boost: 3,
+                      },
+                    },
+                    {
+                      constant_score: {
+                        filter: {
+                          multi_match: {
+                            query: "Meetings",
+                            fields: expect.arrayContaining([
+                              "name.english",
+                              "name.french",
+                            ]),
+                            fuzziness: "AUTO",
+                          },
+                        },
+                        boost: 2,
+                      },
+                    },
+                    {
+                      constant_score: {
+                        filter: {
+                          multi_match: {
+                            query: "Meetings",
+                            fields: [
+                              "description.english",
+                              "description.french",
+                            ],
+                          },
+                        },
+                        boost: 1,
+                      },
+                    },
+                  ],
+                },
+              },
+              expect.anything(),
+            ],
+            minimum_should_match: "2<75%",
           },
         },
       },
     });
+  });
 
-    const serialized = JSON.stringify(query);
-    expect(serialized).toContain('"fuzziness":"AUTO"');
-    expect(serialized).toContain('"name.english"');
-    expect(serialized).toContain('"description.english"');
-    expect(serialized).toContain('"name.french"');
-    expect(serialized).toContain('"description.french"');
+  it("does not use fuzziness on descriptions", () => {
+    const query = buildDiscoverSearchQuery("report");
+    expect(query).toMatchObject({
+      function_score: {
+        query: {
+          bool: {
+            should: [
+              {
+                dis_max: {
+                  queries: [
+                    expect.anything(),
+                    expect.anything(),
+                    {
+                      constant_score: {
+                        filter: {
+                          multi_match: expect.not.objectContaining({
+                            fuzziness: expect.anything(),
+                          }),
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
   });
 });

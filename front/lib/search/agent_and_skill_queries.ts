@@ -186,8 +186,7 @@ function buildDiscoverTermQuery(term: string): estypes.QueryDslQueryContainer {
       {
         multi_match: {
           query: term,
-          fields: ["description", "description.english", "description.french"],
-          fuzziness: "AUTO",
+          fields: ["description.english", "description.french"],
         },
       },
       1,
@@ -205,11 +204,13 @@ function buildDiscoverTermQuery(term: string): estypes.QueryDslQueryContainer {
 
 /**
  * @cc [owner:adrsimon,label:product] discover-matching
- * Empty or whitespace-only queries MUST match everything. Otherwise at least 75% of the
- * whitespace-separated terms MUST match, each through a name prefix, a fuzzy name token or a fuzzy
- * description token, where tokens also match through the built-in `english` and `french`
- * analyzers (stemming and stop words) on the matching sub-fields. Name matches MUST score above description matches. The active users count MUST add a logarithmic bump to the score, so
- * usage reorders close matches without making a non-matching item match.
+ * Empty or whitespace-only queries MUST match everything. Queries of up to two whitespace-separated
+ * terms MUST match every term, longer ones at least 75% of them, rounded down. A term matches
+ * through a name prefix, a fuzzy name token, or a description token analyzed by the built-in
+ * `english` or `french` analyzer (stemming and stop words), without fuzziness. For each term, name
+ * matches MUST score above description matches. The active users count MUST then add a
+ * logarithmic bump to the score, so usage reorders matches without making a non-matching item
+ * match.
  */
 export function buildDiscoverSearchQuery(
   searchTerm: string
@@ -224,7 +225,7 @@ export function buildDiscoverSearchQuery(
           : {
               bool: {
                 should: terms.map(buildDiscoverTermQuery),
-                minimum_should_match: "75%",
+                minimum_should_match: "2<75%",
               },
             },
       functions: [
