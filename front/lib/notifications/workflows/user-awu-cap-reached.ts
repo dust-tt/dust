@@ -1,5 +1,7 @@
 import config from "@app/lib/api/config";
 import { renderEmail } from "@app/lib/notifications/email-templates/default";
+import { getNotificationI18n } from "@app/lib/notifications/i18n";
+import { DEFAULT_LOCALE } from "@app/types/locale";
 import {
   USER_AWU_CAP_REACHED_TAG,
   USER_AWU_CAP_REACHED_TRIGGER_ID,
@@ -44,6 +46,7 @@ export const userAwuCapReachedWorkflow = workflow(
         ? `You have reached your ${payload.capAwuCredits} credits usage limit in the Dust workspace ${payload.workspaceName} and can no longer run agents.\nPlease contact your workspace admin to increase your limit.`
         : `You have used 80% of your ${payload.capAwuCredits} credits usage limit in the Dust workspace ${payload.workspaceName}.\nOnce you reach 100%, you won't be able to run agents until your limit is increased. Please contact your workspace admin.`;
       const body = await renderEmail({
+        i18n: await getNotificationI18n(DEFAULT_LOCALE),
         name: subscriber.firstName ?? "there",
         workspace: {
           id: payload.workspaceId,

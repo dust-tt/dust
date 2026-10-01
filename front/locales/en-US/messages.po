@@ -17,6 +17,10 @@ msgstr ""
 msgid "How you appear to other members of the workspace"
 msgstr "How you appear to other members of the workspace"
 
+#: front/lib/notifications/email-templates/_layout.tsx
+msgid "An email from Dust about {workspaceName}"
+msgstr "An email from Dust about {workspaceName}"
+
 #: front/components/me/NotificationPreferences.tsx
 msgid "Error updating notification preferences"
 msgstr "Error updating notification preferences"
@@ -62,6 +66,10 @@ msgstr "Show your agents on the home page"
 msgid "Role: {role}"
 msgstr "Role: {role}"
 
+#: front/lib/notifications/email-templates/_layout.tsx
+msgid "Dust logo"
+msgstr "Dust logo"
+
 #: front/components/me/NotificationPreferences.tsx
 msgid "Email and Slack notifications are turned off for this workspace by an admin."
 msgstr "Email and Slack notifications are turned off for this workspace by an admin."
@@ -90,6 +98,10 @@ msgstr "Other channels"
 #: front/components/UserSettingsPopover.tsx
 msgid "Cmd + Enter (⌘ + ↵)"
 msgstr "Cmd + Enter (⌘ + ↵)"
+
+#: front/lib/notifications/email-templates/_layout.tsx
+msgid "You can manage your notification preferences from <0>your workspace</0>."
+msgstr "You can manage your notification preferences from <0>your workspace</0>."
 
 #: front/components/me/SoundNotificationPreferences.tsx
 msgid "Agent waiting sound alert"
@@ -165,6 +177,10 @@ msgstr "manager"
 #: front/components/UserSettingsPopover.tsx
 msgid "Conversation font"
 msgstr "Conversation font"
+
+#: front/lib/notifications/email-templates/_layout.tsx
+msgid "This is an automated email. Please do not reply."
+msgstr "This is an automated email. Please do not reply."
 
 #: front/hooks/useUserLocale.ts
 msgid "Could not save the language"
@@ -257,6 +273,10 @@ msgstr "Email"
 msgctxt "theme"
 msgid "Light"
 msgstr "Light"
+
+#: front/lib/notifications/email-templates/default.tsx
+msgid "Hi {name},"
+msgstr "Hi {name},"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Keyboard shortcut to send a message"

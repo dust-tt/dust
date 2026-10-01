@@ -1,7 +1,9 @@
 import config from "@app/lib/api/config";
 import { renderEmail } from "@app/lib/notifications/email-templates/default";
+import { getNotificationI18n } from "@app/lib/notifications/i18n";
 import type { SeatAutoUpgradedPayloadType } from "@app/lib/notifications/triggers/seat-auto-upgraded";
 import { SeatAutoUpgradedPayloadSchema } from "@app/lib/notifications/triggers/seat-auto-upgraded";
+import { DEFAULT_LOCALE } from "@app/types/locale";
 import {
   SEAT_AUTO_UPGRADED_TAG,
   SEAT_AUTO_UPGRADED_TRIGGER_ID,
@@ -70,6 +72,7 @@ export const seatAutoUpgradedWorkflow = workflow(
         const content = [intro, list, outro].filter(Boolean).join("\n\n");
 
         const body = await renderEmail({
+          i18n: await getNotificationI18n(DEFAULT_LOCALE),
           name: subscriber.firstName ?? "there",
           workspace: {
             id: payload.workspaceId,

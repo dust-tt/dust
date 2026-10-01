@@ -1,7 +1,9 @@
 import config from "@app/lib/api/config";
 import { renderEmail } from "@app/lib/notifications/email-templates/default";
+import { getNotificationI18n } from "@app/lib/notifications/i18n";
 import type { ProgrammaticCapReachedPayloadType } from "@app/lib/notifications/triggers/programmatic-cap-reached";
 import { ProgrammaticCapReachedPayloadSchema } from "@app/lib/notifications/triggers/programmatic-cap-reached";
+import { DEFAULT_LOCALE } from "@app/types/locale";
 import {
   PROGRAMMATIC_CAP_REACHED_TAG,
   PROGRAMMATIC_CAP_REACHED_TRIGGER_ID,
@@ -57,6 +59,7 @@ export const programmaticCapReachedWorkflow = workflow(
         buildProgrammaticCapReachedEmailCopy(payload);
 
       const body = await renderEmail({
+        i18n: await getNotificationI18n(DEFAULT_LOCALE),
         name: subscriber.firstName ?? "there",
         workspace: {
           id: payload.workspaceId,
