@@ -1,5 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { GLOBAL_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/global";
 import type { GlobalSkillId } from "@app/lib/resources/skill/code_defined/global_registry";
@@ -38,6 +39,7 @@ type CreateSkillOverrides = Partial<{
   addCurrentUserAsEditor: boolean;
   attachedKnowledge: SkillAttachedKnowledge[];
   mcpServerViews: MCPServerViewResource[];
+  fileAttachments: FileResource[];
 }>;
 
 export class SkillFactory {
@@ -167,6 +169,7 @@ export class SkillFactory {
         mcpServerViews,
         addCurrentUserAsEditor: overrides.addCurrentUserAsEditor,
         attachedKnowledge,
+        fileAttachments: overrides.fileAttachments,
       }
     );
 

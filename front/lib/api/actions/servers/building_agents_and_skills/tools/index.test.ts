@@ -17,6 +17,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -192,6 +193,57 @@ describe("building_agents_and_skills tools", () => {
       expect(result.value[0].text).toContain(
         `<editors>${authenticator.getNonNullableUser().sId}</editors>`
       );
+    });
+
+    it("lists the skill's attached files", async () => {
+      const { authenticator, user } = await createResourceTest({
+        role: "user",
+      });
+      const file = await FileFactory.create(authenticator, user, {
+        contentType: "text/csv",
+        fileName: "q3 & q4.csv",
+        fileSize: 10,
+        status: "ready",
+        useCase: "skill_attachment",
+      });
+      const skill = await seedSkill(authenticator, {
+        fileAttachments: [file],
+      });
+
+      const result = await getTool(DESCRIBE_SKILL_TOOL_NAME).handler(
+        { skillId: skill.sId },
+        makeExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+      if (result.value[0]?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      expect(result.value[0].text).toContain(
+        `<files><file ID="${file.sId}" name="q3 &amp; q4.csv"/></files>`
+      );
+    });
+
+    it("omits the files block when the skill has no files", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, {});
+
+      const result = await getTool(DESCRIBE_SKILL_TOOL_NAME).handler(
+        { skillId: skill.sId },
+        makeExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+      if (result.value[0]?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      expect(result.value[0].text).not.toContain("<files>");
     });
 
     it("rejects non-custom skill ids", async () => {
