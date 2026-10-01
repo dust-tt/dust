@@ -6,8 +6,8 @@ import {
   clearSlashSubMenuStack,
   createSlashMenuNavigationStorage,
   getActiveSlashSubMenuFrame,
-  getSlashSubMenuQueryPlaceholder,
   handleSlashSubMenuCommand,
+  SLASH_MENU_QUERY_PLACEHOLDER,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import {
   getSlashTriggerText,
@@ -155,7 +155,6 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
   onDropdownExit: ({ storage }) => {
     clearSlashSubMenuStack(storage);
   },
-  getQueryPlaceholder: ({ storage }) =>
-    getSlashSubMenuQueryPlaceholder(storage),
+  queryPlaceholder: SLASH_MENU_QUERY_PLACEHOLDER,
   preventEscapeDefault: true,
 });

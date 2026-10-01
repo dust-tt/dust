@@ -18,8 +18,8 @@ import {
   clearSlashSubMenuStack,
   createSlashMenuNavigationStorage,
   enterSlashSubMenu,
-  getSlashSubMenuQueryPlaceholder,
   handleSlashSubMenuCommand,
+  SLASH_MENU_QUERY_PLACEHOLDER,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import { createAttachKnowledgeSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/slashStaticCommands";
 import { getSlashTriggerText } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
@@ -333,8 +333,7 @@ export const SlashCommandExtension = createSlashSuggestionExtension<
       },
   }),
   allow: ({ storage }) => storage.hasBeenFocused,
-  getQueryPlaceholder: ({ storage }) =>
-    getSlashSubMenuQueryPlaceholder(storage),
+  queryPlaceholder: SLASH_MENU_QUERY_PLACEHOLDER,
   items: ({ query }) => filterSlashCommandItems(SLASH_COMMANDS, query),
   command: ({ editor, range, props, options, storage }) => {
     if (
