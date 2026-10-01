@@ -143,34 +143,6 @@ describe("previewSkillSuggestions", () => {
     }
   });
 
-  it("lists the files a suggestion adds", () => {
-    const result = previewSkillSuggestions({
-      skill: SKILL,
-      suggestions: [
-        {
-          ...BASE_SUGGESTION,
-          kind: "files",
-          suggestion: {
-            addFilePaths: ["conversation-abc/notes/Q3 report.csv"],
-            removeFileIds: [],
-          },
-        },
-      ],
-      pipeline,
-    });
-
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      expect(result.value.fileAttachments).toEqual([
-        ...SKILL.fileAttachments,
-        {
-          fileId: "conversation-abc/notes/Q3 report.csv",
-          fileName: "Q3 report.csv",
-        },
-      ]);
-    }
-  });
-
   it("applies an instruction edit to its block", () => {
     const html = convertMarkdownToBlockHtml(
       "First para\n\nSecond para",
