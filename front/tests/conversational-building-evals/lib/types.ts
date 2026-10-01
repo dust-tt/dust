@@ -139,6 +139,12 @@ export type FinalToolCallAssertion =
       parentAgentKey: string;
     }
   | {
+      type: "suggestAgentSkillByRef";
+      // The seeded agent that must get the created skill. Without it, the run must create the
+      // agent too and give it the skill.
+      agentKey?: string;
+    }
+  | {
       type: "suggestAgentInstructionsChange";
       agentKey: string;
       // The edit must target one of these block ids (from the seeded HTML). Guards against a
