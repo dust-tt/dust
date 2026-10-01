@@ -1172,6 +1172,7 @@ msgstr "Voir le détail de l’utilisation"
 #: front/lib/notifications/workflows/balance-threshold-reached.ts
 #: front/lib/notifications/workflows/programmatic-cap-reached.ts
 #: front/lib/notifications/workflows/seat-auto-upgraded.ts
+#: front/lib/notifications/workflows/upgrade-request-created.ts
 msgid "there"
 msgstr "à vous"
 
@@ -1246,3 +1247,43 @@ msgstr "Cela peut augmenter le coût de votre abonnement. Vous pouvez désactive
 #: front/lib/notifications/workflows/seat-auto-upgraded.ts
 msgid "Go to workspace usage"
 msgstr "Voir l’utilisation de l’espace de travail"
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "• {requester} (reason: {reason})"
+msgstr "• {requester} (motif : {reason})"
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "[Dust] {count} members requested a spend-limit upgrade"
+msgstr "[Dust] {count} membres ont demandé une augmentation de leur limite de dépenses"
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "{count} members have reached their per-user spend limit and are requesting an upgrade:"
+msgstr "{count} membres ont atteint leur limite de dépenses par utilisateur et demandent une augmentation :"
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "Review the requests and adjust their limits from your workspace usage page."
+msgstr "Examinez les demandes et ajustez les limites depuis la page d’utilisation de votre espace de travail."
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "Review requests"
+msgstr "Examiner les demandes"
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "[Dust] {requester} requested a spend-limit upgrade"
+msgstr "[Dust] {requester} a demandé une augmentation de sa limite de dépenses"
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "{requester} has reached their per-user spend limit and is requesting an upgrade (reason: {reason})."
+msgstr "{requester} a atteint sa limite de dépenses par utilisateur et demande une augmentation (motif : {reason})."
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "{requester} has reached their per-user spend limit and is requesting an upgrade."
+msgstr "{requester} a atteint sa limite de dépenses par utilisateur et demande une augmentation."
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "Review the request and adjust their limit from your workspace usage page."
+msgstr "Examinez la demande et ajustez sa limite depuis la page d’utilisation de votre espace de travail."
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "Review request"
+msgstr "Examiner la demande"
