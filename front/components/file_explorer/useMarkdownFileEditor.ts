@@ -1,12 +1,15 @@
+import type { DocumentSaveResult } from "@app/components/editor/document";
+import { loadDfm } from "@app/components/editor/document";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { writeFileContentByPath } from "@app/lib/swr/files";
 import type { FilePreviewCategory } from "@app/types/file_preview";
 import { parseCanonicalScopedPath } from "@app/types/mount_path";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
 interface UseMarkdownFileEditorParams {
@@ -20,12 +23,20 @@ interface UseMarkdownFileEditorParams {
   processedContent: ProcessedContent | null;
 }
 
+/** The rich Document editor takes over the file; the host hides its own edit controls. */
+export interface MarkdownRichEditor {
+  initialContent: string;
+  onSave: (content: string) => Promise<DocumentSaveResult>;
+}
+
 export interface MarkdownFileEditor {
   canEdit: boolean;
   content: string | undefined;
   isDirty: boolean;
   isSaving: boolean;
   revert: () => void;
+  /** Set behind the co_edition flag when the file opens in the rich editor. */
+  richEditor: MarkdownRichEditor | null;
   save: () => Promise<void>;
   setDraft: (content: string) => void;
   setViewMode: (mode: MarkdownFilePreviewViewMode) => void;
@@ -53,6 +64,7 @@ export function useMarkdownFileEditor({
 
   const sendNotification = useSendNotification();
   const { mutate } = useSWRConfig();
+  const { hasFeature } = useFeatureFlags();
 
   const editablePath =
     entryPath && owner && parseCanonicalScopedPath(entryPath)
@@ -141,6 +153,47 @@ export function useMarkdownFileEditor({
     }
   };
 
+  // The rich editor opens the file only when the codec and the editor both accept it; anything
+  // else keeps the plain editor so no content is at risk.
+  const richSource = processedContent?.text;
+  const opensRich = useMemo(
+    () =>
+      hasFeature("co_edition") &&
+      canEdit &&
+      richSource !== undefined &&
+      loadDfm(richSource).isOk(),
+    [hasFeature, canEdit, richSource]
+  );
+
+  const saveRichSource = async (
+    content: string
+  ): Promise<DocumentSaveResult> => {
+    if (!owner || !editablePath) {
+      return { ok: false, error: "This file cannot be edited." };
+    }
+    try {
+      await writeFileContentByPath({
+        owner,
+        canonicalPath: editablePath,
+        content,
+        contentType: "text/markdown",
+      });
+      await mutate(
+        fileUrl,
+        { kind: "loaded", content },
+        {
+          revalidate: false,
+        }
+      );
+      setDraft(content);
+      setSavedContent(content);
+      initKeyRef.current = `${entryPath}:${content}`;
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: normalizeError(e).message };
+    }
+  };
+
   return {
     canEdit,
     content:
@@ -148,6 +201,10 @@ export function useMarkdownFileEditor({
     isDirty,
     isSaving,
     revert: () => setDraft(savedContent),
+    richEditor:
+      opensRich && richSource !== undefined
+        ? { initialContent: richSource, onSave: saveRichSource }
+        : null,
     save,
     setDraft,
     setViewMode,

@@ -135,7 +135,7 @@ export function FilePreviewDialog({
             )}
           </div>
         </DialogHeader>
-        {markdown.canEdit && (
+        {markdown.canEdit && !markdown.richEditor && (
           <div className="flex shrink-0 justify-end px-4">
             <MarkdownFilePreviewViewModeSwitch
               key={`${entry?.path ?? "none"}:${isOpen}`}
@@ -185,7 +185,7 @@ export function FilePreviewDialog({
                 tooltip="Next"
               />
             </div>
-            {markdown.canEdit ? (
+            {markdown.canEdit && !markdown.richEditor ? (
               <div className="flex items-center gap-2">
                 <Button
                   label="Save"

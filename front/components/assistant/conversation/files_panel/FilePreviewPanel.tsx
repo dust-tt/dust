@@ -165,7 +165,7 @@ export function FilePreviewPanel({
           <span className="line-clamp-1 text-sm font-medium">{fileName}</span>
         </div>
         <div className="ml-2 flex items-center gap-1">
-          {markdown.canEdit && (
+          {markdown.canEdit && !markdown.richEditor && (
             <>
               <MarkdownFilePreviewViewModeSwitch
                 viewMode={markdown.viewMode}

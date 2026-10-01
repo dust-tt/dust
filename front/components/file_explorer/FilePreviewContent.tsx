@@ -1,7 +1,9 @@
+import { Document } from "@app/components/editor/document";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import { MarkdownFilePreview } from "@app/components/file_explorer/MarkdownFilePreview";
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
 import type { FileEntry } from "@app/components/file_explorer/types";
+import type { MarkdownRichEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
 import { getFileProcessedUrl, useFileContentByUrl } from "@app/lib/swr/files";
@@ -275,6 +277,8 @@ interface FilePreviewContentProps {
   isFullWidth?: boolean;
   markdownCanEdit?: boolean;
   markdownContent?: string;
+  /** Behind the co_edition flag: the rich editor replaces the preview and the raw editor. */
+  markdownRichEditor?: MarkdownRichEditor | null;
   markdownViewMode?: MarkdownFilePreviewViewMode;
   onMarkdownContentChange?: (content: string) => void;
   onMarkdownViewModeChange?: (mode: MarkdownFilePreviewViewMode) => void;
@@ -291,6 +295,7 @@ export function FilePreviewContent({
   isFullWidth = false,
   markdownCanEdit,
   markdownContent,
+  markdownRichEditor,
   markdownViewMode,
   onMarkdownContentChange,
   onMarkdownViewModeChange,
@@ -358,6 +363,17 @@ export function FilePreviewContent({
       return null;
 
     case "markdown":
+      if (markdownRichEditor) {
+        return (
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <Document
+              key={entry.path}
+              initialContent={markdownRichEditor.initialContent}
+              onSave={markdownRichEditor.onSave}
+            />
+          </div>
+        );
+      }
       if (
         processedContent &&
         markdownContent !== undefined &&
