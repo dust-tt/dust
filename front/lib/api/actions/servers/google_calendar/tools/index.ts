@@ -1,6 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { CalendarInterval } from "@app/lib/api/actions/servers/google_calendar/helpers";
 import {
   buildUnavailableIntervals,
   computeAvailability,
@@ -11,7 +12,9 @@ import {
   getCalendarClient,
   getUserTimezone,
   isGoogleCalendarEvent,
+  isValidInterval,
   mergeIntervals,
+  parseAvailabilityDateTime,
 } from "@app/lib/api/actions/servers/google_calendar/helpers";
 import type { GoogleCalendarConference } from "@app/lib/api/actions/servers/google_calendar/metadata";
 import { GOOGLE_CALENDAR_TOOLS_METADATA } from "@app/lib/api/actions/servers/google_calendar/metadata";
@@ -22,7 +25,6 @@ import assert from "assert";
 import { randomUUID } from "crypto";
 import type { calendar_v3 } from "googleapis";
 import { google } from "googleapis";
-import { DateTime, Interval } from "luxon";
 
 function buildConferenceData(
   conference: GoogleCalendarConference
@@ -355,10 +357,13 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
     );
 
     try {
-      const rangeStart = DateTime.fromISO(startTimeRange, { zone: "utc" });
-      const rangeEnd = DateTime.fromISO(endTimeRange, { zone: "utc" });
+      const rangeStart = parseAvailabilityDateTime(startTimeRange);
+      const rangeEnd = parseAvailabilityDateTime(endTimeRange);
 
-      if (!rangeStart.isValid || !rangeEnd.isValid) {
+      if (
+        Number.isNaN(rangeStart.getTime()) ||
+        Number.isNaN(rangeEnd.getTime())
+      ) {
         return new Err(
           new MCPError(
             "Invalid startTimeRange or endTimeRange. Provide ISO 8601 timestamps."
@@ -366,29 +371,23 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
         );
       }
 
-      if (rangeEnd.toMillis() <= rangeStart.toMillis()) {
+      if (rangeEnd.getTime() <= rangeStart.getTime()) {
         return new Err(
           new MCPError("endTimeRange must be later than startTimeRange.")
         );
       }
 
-      const rangeInterval = Interval.fromDateTimes(rangeStart, rangeEnd);
-
-      const rangeStartDate = rangeInterval.start;
-      const rangeEndDate = rangeInterval.end;
-      if (!rangeStartDate || !rangeEndDate) {
-        return new Err(new MCPError("Invalid time range provided."));
-      }
+      const rangeInterval = { start: rangeStart, end: rangeEnd };
 
       const res = await calendar.freebusy.query({
         requestBody: {
-          timeMin: rangeStartDate.toISO(),
-          timeMax: rangeEndDate.toISO(),
+          timeMin: rangeStart.toISOString(),
+          timeMax: rangeEnd.toISOString(),
           items: participants.map((p) => ({ id: p.email })),
         },
       });
 
-      const allBusyIntervals: Interval[] = [];
+      const allBusyIntervals: CalendarInterval[] = [];
       for (const participant of participants) {
         const calendarData = res.data.calendars?.[participant.email];
         for (const error of calendarData?.errors ?? []) {
@@ -409,16 +408,17 @@ const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
         const busyIntervals =
           calendarData?.busy
             ?.map((slot) => {
-              const start = slot.start ?? rangeStartDate.toISO();
-              const end = slot.end ?? rangeEndDate.toISO();
-              const interval = Interval.fromDateTimes(
-                DateTime.fromISO(start, { zone: "utc" }),
-                DateTime.fromISO(end, { zone: "utc" })
-              );
-              return interval.isValid && !interval.isEmpty() ? interval : null;
+              const start = slot.start ?? rangeStart.toISOString();
+              const end = slot.end ?? rangeEnd.toISOString();
+              const interval = {
+                start: parseAvailabilityDateTime(start),
+                end: parseAvailabilityDateTime(end),
+              };
+              return isValidInterval(interval) ? interval : null;
             })
-            .filter((interval): interval is Interval => Boolean(interval)) ??
-          [];
+            .filter((interval): interval is CalendarInterval =>
+              Boolean(interval)
+            ) ?? [];
         allBusyIntervals.push(...busyIntervals);
       }
 
