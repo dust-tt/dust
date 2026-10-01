@@ -16,14 +16,7 @@ use rusqlite::{
     hooks::{AuthAction, AuthContext, Authorization},
     Batch, Connection, InterruptHandle,
 };
-use std::{
-    collections::HashMap,
-    io::Write,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-};
+use std::{collections::HashMap, io::Write, sync::Arc};
 use tempfile::NamedTempFile;
 use thiserror::Error;
 use tokio::{task, time::timeout};
@@ -94,14 +87,9 @@ impl SqliteDatabase {
     }
 
     /// @cc [owner:frankaloia,label:security;performance] timeout-interrupts-sqlite
-    /// When the configured timeout elapses, two actions MUST occur before the error is returned:
-    /// (1) a cancellation flag MUST be set so that tasks still queued in the blocking pool abort
-    ///     without acquiring the connection mutex (sqlite3_interrupt is a no-op when no statement
-    ///     is running, so the flag is the only guard for queued tasks);
-    /// (2) `InterruptHandle::interrupt` MUST be called so that any already-running statement is
-    ///     interrupted and releases the blocking thread and connection mutex.
-    /// Together these ensure neither a running statement nor a queued task pins a blocking thread
-    /// or the connection mutex beyond the timeout.
+    /// When the configured timeout elapses, `InterruptHandle::interrupt` MUST be called before
+    /// the error is returned, ensuring the blocking thread and connection mutex are freed rather
+    /// than pinned for the duration of the underlying SQLite statement.
     pub async fn query(
         &self,
         query: &str,
@@ -109,19 +97,8 @@ impl SqliteDatabase {
     ) -> Result<Vec<QueryResult>, SqliteDatabaseError> {
         let query = query.to_string();
         let conn = self.conn.clone();
-        let cancelled = Arc::new(AtomicBool::new(false));
-        let cancelled_clone = cancelled.clone();
 
         let query_future = task::spawn_blocking(move || {
-            // Guard: abort immediately if the timeout fired while this task was queued.
-            // interrupt() is a no-op until a statement is running, so without this check a
-            // queued task would still execute the full query after the caller has returned.
-            if cancelled_clone.load(Ordering::Acquire) {
-                return Err(SqliteDatabaseError::InternalError(anyhow!(
-                    "Query cancelled before execution"
-                )));
-            }
-
             let conn = conn.ok_or(SqliteDatabaseError::InternalError(anyhow!(
                 "Database not initialized"
             )))?;
@@ -224,10 +201,9 @@ impl SqliteDatabase {
 
         match timeout(std::time::Duration::from_millis(timeout_ms), query_future).await {
             Err(_elapsed) => {
-                // Set the cancellation flag first so any task still queued in the blocking pool
-                // aborts without touching the connection. Then interrupt any already-running
-                // statement so it releases the blocking thread and connection mutex.
-                cancelled.store(true, Ordering::Release);
+                // Timeout fired before the blocking task finished: interrupt the running SQLite
+                // statement so the connection mutex and blocking thread are released rather than
+                // pinned for the full duration of the statement.
                 if let Some(h) = self.interrupt_handle.as_ref() {
                     h.lock().await.interrupt();
                 }
