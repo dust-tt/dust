@@ -7,11 +7,6 @@ import { DEFAULT_LOCALE } from "@app/types/locale";
 import type { I18n } from "@lingui/core";
 import { setupI18n } from "@lingui/core";
 
-/**
- * Locale a Novu step renders in, resolved when the step runs so digests pick the recipient's
- * current preference. Falls back to `DEFAULT_LOCALE` when the subscriber, user or workspace is
- * missing.
- */
 export async function getNotificationLocale(
   subscriberId: string | undefined,
   workspaceId: string
