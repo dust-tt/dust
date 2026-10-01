@@ -10,7 +10,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import type { AgentResource } from "@app/lib/resources/agent_resource";
-import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
+import { toLightAgentConfiguration } from "@app/lib/resources/agent_resource_serialization";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
@@ -67,7 +67,7 @@ export async function createTriggerLimitExceededMessages(
     agent,
   });
   // The failed agent message carries its agent's configuration on the wire.
-  const [agentConfiguration] = await toLightAgentConfigurations(auth, [agent], {
+  const agentConfiguration = await toLightAgentConfiguration(auth, agent, {
     withFavorites: false,
     withTags: false,
   });
