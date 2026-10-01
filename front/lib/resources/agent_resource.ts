@@ -96,6 +96,7 @@ import type {
   AgentModelConfigurationType,
   AgentReinforcementMode,
   AgentStatus,
+  AgentsGetViewType,
   GlobalAgentContext,
 } from "@app/types/assistant/agent";
 import { isAgentStatus } from "@app/types/assistant/agent";
@@ -116,6 +117,7 @@ import { verbsFromRoleGrants } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
@@ -1272,6 +1274,161 @@ export class AgentResource
     return (await this.listActive(auth)).filter((agent) =>
       auth.can("read", agent)
     );
+  }
+
+  /**
+   * @cc [owner:tdraier,label:security;product] agent-view-sets
+   * Each view returns exactly these agents, filtered to the resources the caller can fetch:
+   * - `list`/`manage`: active custom agents the caller can `read`; `list` adds the active global
+   *   agents, `manage` every global agent.
+   * - `all`: active visible custom agents the caller can `read`, plus the active global agents;
+   *   `published`: the same custom agents, without global agents.
+   * - `favorites`: the caller's active favorited agents, global or custom, they can `read`.
+   * - `current_user`: active custom agents with a version the caller authored and can `read`.
+   * - `archived`: archived custom agents, all of them for a workspace admin, else those the caller
+   *   can `write`.
+   * - `admin_internal`/`manage_unrestricted`/`analytics`: every active custom agent the caller can
+   *   fetch; `manage_unrestricted` adds every global agent, the others the active ones.
+   * - `global`: every global agent.
+   * `admin_internal` MUST fail unless the caller is a superuser or an admin, `manage_unrestricted`
+   * unless an admin, and `list`/`manage`/`favorites` without a user.
+   */
+  /**
+   * @cc [owner:philipperolet,label:backend] default-agent-query-order
+   * Active-agent queries MUST default to name order when no sort is requested.
+   */
+  // Global agents first (in their default order), then custom agents by name, or by most recent
+  // version with `sort: "updatedAt"`; `sort: "alphabetical"` orders the whole list by name.
+  static async listForView(
+    auth: Authenticator,
+    view: AgentsGetViewType,
+    {
+      namePrefix,
+      sort,
+    }: { namePrefix?: string; sort?: "alphabetical" | "updatedAt" } = {}
+  ): Promise<AgentResource[]> {
+    this.assertViewAllowed(auth, view);
+
+    const [globalAgents, viewAgents] = await Promise.all([
+      this.listGlobalAgentsForView(auth, view),
+      view === "global" ? [] : this.listViewAgents(auth, view),
+    ]);
+    const [favoriteGlobalAgents, customAgents] = partition(
+      viewAgents,
+      (agent) => agent.scope === "global"
+    );
+    const sortedCustomAgents =
+      sort === "updatedAt"
+        ? customAgents.toSorted(
+            (a, b) =>
+              b.versionUpdatedAt.getTime() - a.versionUpdatedAt.getTime()
+          )
+        : customAgents.toSorted((a, b) => a.name.localeCompare(b.name));
+
+    const lowerCasePrefix = namePrefix?.toLowerCase();
+    const agents = [
+      ...globalAgents,
+      ...favoriteGlobalAgents,
+      ...sortedCustomAgents,
+    ].filter(
+      (agent) =>
+        !lowerCasePrefix || agent.name.toLowerCase().startsWith(lowerCasePrefix)
+    );
+
+    return sort === "alphabetical"
+      ? agents.toSorted((a, b) => a.name.localeCompare(b.name))
+      : agents;
+  }
+
+  private static assertViewAllowed(
+    auth: Authenticator,
+    view: AgentsGetViewType
+  ): void {
+    if (
+      view === "admin_internal" &&
+      !auth.isDustSuperUser() &&
+      !auth.isAdmin()
+    ) {
+      throw new Error(
+        "Superuser view is for dust superusers or internal admin auths only."
+      );
+    }
+    if (view === "manage_unrestricted" && !auth.isAdmin()) {
+      throw new Error("The unrestricted manage view is for admins only.");
+    }
+    if (
+      !auth.user() &&
+      (view === "list" || view === "manage" || view === "favorites")
+    ) {
+      throw new Error(`'${view}' view is specific to a user.`);
+    }
+  }
+
+  private static async listGlobalAgentsForView(
+    auth: Authenticator,
+    view: AgentsGetViewType
+  ): Promise<AgentResource[]> {
+    switch (view) {
+      case "archived":
+      case "published":
+      case "current_user":
+      case "favorites":
+        return [];
+      case "global":
+      case "manage":
+      case "manage_unrestricted":
+        return this.listGlobalAgents(auth);
+      case "list":
+      case "all":
+      case "analytics":
+      case "admin_internal":
+        return (await this.listGlobalAgents(auth)).filter(
+          (agent) => agent.status === "active"
+        );
+      default:
+        assertNever(view);
+    }
+  }
+
+  // The custom agents of a view, and for `favorites` the favorited global agents too.
+  private static async listViewAgents(
+    auth: Authenticator,
+    view: Exclude<AgentsGetViewType, "global">
+  ): Promise<AgentResource[]> {
+    const isReadable = (agent: AgentResource) => auth.can("read", agent);
+    const isActiveAndReadable = (agent: AgentResource) =>
+      agent.status === "active" && isReadable(agent);
+
+    switch (view) {
+      case "list":
+      case "manage":
+        return (await this.listByWorkspace(auth)).filter(isReadable);
+      case "all":
+      case "published":
+        return (await this.listByWorkspace(auth)).filter(
+          (agent) => agent.scope === "visible" && isReadable(agent)
+        );
+      case "favorites":
+        return (await this.listFavoritesForCurrentUser(auth)).filter(
+          isActiveAndReadable
+        );
+      case "current_user":
+        return (
+          await this.listByAuthor(auth, {
+            authorModelId: auth.getNonNullableUser().id,
+          })
+        ).filter(isActiveAndReadable);
+      case "archived":
+        return (
+          await this.listByWorkspace(auth, { status: "archived" })
+        ).filter((agent) => auth.isAdmin() || auth.can("write", agent));
+      case "admin_internal":
+      case "manage_unrestricted":
+      case "analytics":
+        return this.listByWorkspace(auth);
+      default:
+        assertNever(view);
+    }
   }
 
   // Every agent of the authed workspace whose current status is in `status` (active by default),
