@@ -80,6 +80,7 @@ type BreakageOptions = {
   };
   authors: string;
   slackToken: string;
+  retryDelayMs?: number;
 };
 
 // A run conclusion that carries information about main's state, as opposed to the raw
@@ -130,6 +131,9 @@ function isSignal(conclusion: string | null, jobs: Job[]): boolean {
 
 // How far back the run history search can see; the run-ordering contract depends on this value.
 const RUN_LOOKBACK = 100;
+// How many times, and how far apart, a stale run listing is refetched before giving up.
+const STALE_LISTING_RETRIES = 3;
+const STALE_LISTING_RETRY_DELAY_MS = 5000;
 // One page holds every job of a run for the workflows we watch.
 const JOBS_PER_PAGE = 100;
 
@@ -186,6 +190,40 @@ type PreviousState =
   | { superseded: false; previous: Conclusion | null };
 
 /**
+ * @cc [label:product] main-breakage-stale-listing
+ * GitHub sometimes serves a stale run listing, even weeks old, which hides the newest runs and
+ * passes an old conclusion off as the previous state. A listing is fresh only when it contains
+ * the current run; a stale one MUST be refetched, and if no fresh listing comes back after the
+ * retries the transition MUST be dropped silently, never computed from a stale listing.
+ */
+async function listRecentRuns({
+  github,
+  context,
+  retryDelayMs,
+}: Pick<BreakageOptions, "github" | "context" | "retryDelayMs">) {
+  const run = context.payload.workflow_run;
+  for (let attempt = 0; attempt <= STALE_LISTING_RETRIES; attempt++) {
+    if (attempt > 0) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, retryDelayMs ?? STALE_LISTING_RETRY_DELAY_MS)
+      );
+    }
+    const { data } = await github.rest.actions.listWorkflowRuns({
+      ...context.repo,
+      workflow_id: run.workflow_id,
+      branch: "main",
+      // No status filter: GitHub serves inconsistent, sometimes weeks-old pages with it, while
+      // in-progress runs are dropped below by their missing conclusion anyway.
+      per_page: RUN_LOOKBACK,
+    });
+    if (data.workflow_runs.some((candidate) => candidate.id === run.id)) {
+      return data.workflow_runs;
+    }
+  }
+  return null;
+}
+
+/**
  * @cc [label:product] main-breakage-run-ordering
  * Runs complete out of order: a completed signal run newer than the current one MUST silence it.
  * Otherwise, unless a previous attempt of the current run supplies the comparison state, it is
@@ -196,22 +234,23 @@ type PreviousState =
  * @cc [label:product] main-breakage-reruns
  * A rerun keeps its run number, so its comparison state MUST be its immediately previous attempt
  * when that attempt carries a signal (otherwise recovery-by-rerun would stay silent forever), and
- * the previous-run lookup when it does not.
+ * the previous-run lookup when it does not. A stale run listing still drops the transition, even
+ * with a signal-bearing previous attempt: a newer completed run cannot be ruled out without it.
  */
 async function getPreviousState({
   github,
   context,
-}: Pick<BreakageOptions, "github" | "context">): Promise<PreviousState> {
+  retryDelayMs,
+}: Pick<
+  BreakageOptions,
+  "github" | "context" | "retryDelayMs"
+>): Promise<PreviousState> {
   const run = context.payload.workflow_run;
-  const { data } = await github.rest.actions.listWorkflowRuns({
-    ...context.repo,
-    workflow_id: run.workflow_id,
-    branch: "main",
-    // No status filter: GitHub serves inconsistent, sometimes weeks-old pages with it, while
-    // in-progress runs are dropped below by their missing conclusion anyway.
-    per_page: RUN_LOOKBACK,
-  });
-  const completed = data.workflow_runs.filter(
+  const runs = await listRecentRuns({ github, context, retryDelayMs });
+  if (runs === null) {
+    return { superseded: false, previous: null };
+  }
+  const completed = runs.filter(
     (candidate) =>
       candidate.run_number !== run.run_number &&
       (candidate.conclusion === "success" || candidate.conclusion === "failure")
@@ -323,6 +362,7 @@ export async function buildBreakageNotification({
   core,
   authors,
   slackToken,
+  retryDelayMs,
 }: BreakageOptions): Promise<string | null> {
   const run = context.payload.workflow_run;
   const { data: jobsData } = await github.rest.actions.listJobsForWorkflowRun({
@@ -337,7 +377,11 @@ export async function buildBreakageNotification({
     return null;
   }
 
-  const state = await getPreviousState({ github, context });
+  const state = await getPreviousState({
+    github,
+    context,
+    retryDelayMs,
+  });
   if (state.superseded) {
     core.info(`No notification: a newer ${run.name} run already completed.`);
     return null;
