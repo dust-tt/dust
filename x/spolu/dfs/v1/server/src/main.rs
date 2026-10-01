@@ -38,6 +38,9 @@ struct Config {
     local_store: Option<PathBuf>,
     #[arg(long, env = "DFS_PREFIX")]
     prefix: String,
+    /// Optional ADC file; otherwise use local ADC or the attached service identity.
+    #[arg(long, env = "GOOGLE_APPLICATION_CREDENTIALS")]
+    application_credentials: Option<String>,
     #[arg(long, env = "DFS_SERVER_KEY_FILE")]
     server_key_file: PathBuf,
     #[arg(long, requires = "tls_key")]
@@ -68,14 +71,14 @@ async fn main() -> Result<()> {
     );
     let key = read_key(&config.server_key_file).context("read server key")?;
     let (store, identity): (Arc<dyn ObjectStore>, String) = match config.bucket {
-        Some(bucket) => (
-            Arc::new(
-                GoogleCloudStorageBuilder::from_env()
-                    .with_bucket_name(&bucket)
-                    .build()?,
-            ),
-            format!("gs://{bucket}"),
-        ),
+        Some(bucket) => {
+            // Ignore unrelated SERVICE_ACCOUNT settings inherited from other Dust services.
+            let mut builder = GoogleCloudStorageBuilder::new().with_bucket_name(&bucket);
+            if let Some(path) = config.application_credentials {
+                builder = builder.with_application_credentials(path);
+            }
+            (Arc::new(builder.build()?), format!("gs://{bucket}"))
+        }
         None => {
             let directory = config.local_store.context("missing object store")?;
             tokio::fs::create_dir_all(&directory).await?;

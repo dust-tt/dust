@@ -44,3 +44,7 @@ ambiguous writes MUST return an error and MUST NOT be automatically replayed.
 
 @cc [owner:spolu,label:rust] fallible-rust
 Rust code MUST propagate or explicitly handle fallible operations; unwrap() and expect() are forbidden.
+
+@cc [owner:spolu,label:security;backend] gcs-adc-identity
+GCS authentication MUST use GOOGLE_APPLICATION_CREDENTIALS, local application-default credentials,
+or the attached service identity. Unrelated SERVICE_ACCOUNT configuration MUST NOT override ADC.

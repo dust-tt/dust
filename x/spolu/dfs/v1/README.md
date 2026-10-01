@@ -17,7 +17,8 @@ gcloud auth application-default login --project=dust-dev
   --server-key-file server.key
 ```
 
-Use a fresh prefix for v1; v0 data is incompatible. For offline tests, replace `--bucket …` with
+GCS uses ADC (`GOOGLE_APPLICATION_CREDENTIALS`, local ADC, or an attached service identity); unrelated
+`SERVICE_ACCOUNT` settings are ignored. Use a fresh prefix for v1; v0 data is incompatible. For offline tests, replace `--bucket …` with
 `--local-store /tmp/dfs-v1-store`. The latter is a development object-store backend, not a cache.
 Every start clears its own local cache and recovers from the configured object store.
 
