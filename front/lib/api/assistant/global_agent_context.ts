@@ -1,4 +1,3 @@
-import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { getStaticReplyForUserMessage } from "@app/lib/api/assistant/static_reply";
 import type { Authenticator } from "@app/lib/auth";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -31,7 +30,9 @@ export function getGlobalAgentContextForTurn({
 }
 
 // Callers outside the agent loop (the sandbox) resolve a global agent for the same turn as the
-// loop did. Custom agents ignore the context, so the user message is only read for global ones.
+// loop did: the user message version the agent message answers (its `parentId` row). Custom agents
+// ignore the context, so the user message is only read for global ones. A missing message resolves
+// no context rather than failing: the caller reports it when it reads the agent message itself.
 export async function getGlobalAgentContextForAgentMessage(
   auth: Authenticator,
   {
@@ -48,21 +49,29 @@ export async function getGlobalAgentContextForAgentMessage(
     return undefined;
   }
 
-  const { userMessageId } = await getUserMessageIdFromMessageId(auth, {
-    messageId: agentMessageId,
-  });
-  const messageRes = await conversation.getMessageById(auth, userMessageId);
-  if (messageRes.isErr() || !messageRes.value.userMessage) {
+  const agentMessageRes = await conversation.getMessageById(
+    auth,
+    agentMessageId
+  );
+  const parentId = agentMessageRes.isOk()
+    ? agentMessageRes.value.parentId
+    : null;
+  if (!parentId) {
     return undefined;
   }
-  const { rank, userMessage } = messageRes.value;
+  const [message] = await conversation.fetchMessagesByModelIds(auth, [
+    parentId,
+  ]);
+  if (!message?.userMessage) {
+    return undefined;
+  }
 
   return getGlobalAgentContextForTurn({
     conversation: conversation.toJSON(),
     userMessage: {
-      rank,
-      content: userMessage.content,
-      context: { origin: userMessage.userContextOrigin },
+      rank: message.rank,
+      content: message.userMessage.content,
+      context: { origin: message.userMessage.userContextOrigin },
     },
   });
 }
