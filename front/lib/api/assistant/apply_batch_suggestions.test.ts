@@ -552,7 +552,7 @@ describe("applyBatchSuggestions", () => {
       await BatchSuggestionFactory.createEmpty(auth);
     await SkillSuggestionFactory.create(auth, skill, {
       kind: "files",
-      suggestion: { removeFileIds: [removed.sId] },
+      suggestion: { addFilePaths: [], removeFileIds: [removed.sId] },
       batchModelId,
     });
 
@@ -578,7 +578,10 @@ describe("applyBatchSuggestions", () => {
     });
     await SkillSuggestionFactory.create(auth, skill, {
       kind: "files",
-      suggestion: { removeFileIds: [attached.sId, detached.sId] },
+      suggestion: {
+        addFilePaths: [],
+        removeFileIds: [attached.sId, detached.sId],
+      },
       batchModelId,
     });
 
