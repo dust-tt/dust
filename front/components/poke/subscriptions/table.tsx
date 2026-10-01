@@ -21,7 +21,6 @@ import { FREE_NO_PLAN_CODE, isProPlanPrefix } from "@app/lib/plans/plan_codes";
 import type { PlanLimitOverride } from "@app/lib/plans/plan_limit_overrides";
 import { useAppRouter } from "@app/lib/platform";
 import { usePokeCancelPendingContract, usePokePlans } from "@app/lib/swr/poke";
-import { formatDate } from "@app/lib/utils/timestamps";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
 import { isSubscriptionMetronomeBilled } from "@app/types/plan";
 import type { ProgrammaticUsageConfigurationType } from "@app/types/programmatic_usage";
@@ -216,7 +215,7 @@ function SubscriptionDetailsTable({
           <PokeTableCell>Start Date</PokeTableCell>
           <PokeTableCell>
             {subscription.startDate
-              ? formatDate(subscription.startDate, "yyyy-MM-dd HH:mm")
+              ? `${formatDate(subscription.startDate)} ${formatTime(subscription.startDate)}`
               : "/"}
           </PokeTableCell>
         </PokeTableRow>
@@ -231,7 +230,7 @@ function SubscriptionDetailsTable({
                     "font-semibold text-red-500"
                 )}
               >
-                {formatDate(subscription.endDate, "yyyy-MM-dd HH:mm")}
+                {`${formatDate(subscription.endDate)} ${formatTime(subscription.endDate)}`}
               </span>
             ) : (
               "/"
