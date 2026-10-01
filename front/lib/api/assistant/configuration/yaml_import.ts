@@ -303,6 +303,7 @@ export async function patchAgentConfigurationFromJSON(
 
   const contextResult = await getAgentConfigurationContext(auth, agentId, {
     requireEditorGroup: true,
+    forResave: true,
   });
   if (contextResult.isErr()) {
     return contextResult;
