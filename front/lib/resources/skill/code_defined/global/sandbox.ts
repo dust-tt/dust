@@ -13,6 +13,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/types/mount_path";
@@ -417,6 +418,10 @@ above, NOTHING ELSE.
 `;
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] computer-not-auto-equipped-for-dust-lean
+ * Computer MUST NOT be automatically enabled or equipped for dust-lean.
+ */
 export const sandboxSkill = {
   sId: "sandbox",
   kind: "global",
@@ -460,10 +465,14 @@ export const sandboxSkill = {
   // Auto-enabled for dust-like agents, which are heavy users of it.
   // This allows adding the bash tool eagerly, as it's used for a wide variety of use cases and deferring it would
   // increase significantly the number of tool searches ran overall.
-  // Auto-equipped for every other agent unless the workspace has disabled the
+  // Auto-equipped for every other agent except dust-lean unless the workspace has disabled the
   // Computer, but not enabled until the agent decides to use it.
-  getAutoEnabledOrEquippedForAgentLoop: ({ agentConfiguration }) =>
-    isDustLikeAgent(agentConfiguration.sId) ? "enabled" : "equipped",
+  getAutoEnabledOrEquippedForAgentLoop: ({ agentConfiguration }) => {
+    if (agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST_LEAN) {
+      return undefined;
+    }
+    return isDustLikeAgent(agentConfiguration.sId) ? "enabled" : "equipped";
+  },
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
 
