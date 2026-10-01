@@ -1,4 +1,5 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
+import { formatDateTime } from "@app/lib/i18n/format";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { MembershipInvitationTypeWithLink } from "@app/types/membership_invitation";
 import {
@@ -17,7 +18,7 @@ function formatExpiresIn(expiresAtMs: number): {
 } {
   const nowMs = Date.now();
   const diffMs = expiresAtMs - nowMs;
-  const exactDate = new Date(expiresAtMs).toLocaleString();
+  const exactDate = formatDateTime(expiresAtMs);
 
   if (diffMs <= 0) {
     const agoMs = Math.abs(diffMs);

@@ -1,5 +1,6 @@
 import { FrameSharingRow } from "@app/components/assistant/conversation/interactive_content/frame/FrameSharingRow";
 import { Section } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSection";
+import { formatDateTime } from "@app/lib/i18n/format";
 import type { FileViewerType } from "@app/types/file_viewers";
 import {
   Button,
@@ -168,7 +169,7 @@ interface ViewerRowProps {
 
 function ViewerRow({ viewer }: ViewerRowProps) {
   const lastViewedAt = new Date(viewer.lastViewedAt);
-  const exactTime = lastViewedAt.toLocaleString(undefined, {
+  const exactTime = formatDateTime(lastViewedAt, {
     dateStyle: "medium",
     timeStyle: "short",
   });

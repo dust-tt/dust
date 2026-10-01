@@ -1,4 +1,5 @@
 import { clientFetch } from "@app/lib/egress/client";
+import { formatDateTime } from "@app/lib/i18n/format";
 import { useNotionLastSyncedUrls } from "@app/lib/swr/data_sources";
 import { GetPostNotionSyncResponseBodySchema } from "@app/types/api/spaces";
 import type { DataSourceType } from "@app/types/data_source";
@@ -371,7 +372,7 @@ export function AdvancedNotionManagement({
                       <span className="text-element-600">
                         {" "}
                         (last sync:{" "}
-                        {new Date(urlStatus.dust.lastSync).toLocaleString()})
+                        {formatDateTime(new Date(urlStatus.dust.lastSync))})
                       </span>
                     )}
                   </>
