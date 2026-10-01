@@ -26,11 +26,11 @@ const PostPodSandboxEnvVarBodySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/spaces/:spaceId/sandbox/env-vars. Pods are project
-// spaces: non-project spaces have no pod-scoped env vars and 404. Workspace-admin
-// only (read and write); the gate on this leaf also covers the mounted /:id.
+// spaces: non-project spaces have no pod-scoped env vars and 404. The list is
+// open to Pod readers (values are write-only, so it only carries names, kinds
+// and domains); writes are workspace-admin only, and the mounted /:id carries
+// its own admin gate. Same read/write split as the egress-policy routes.
 const app = workspaceApp();
-
-app.use("*", ensureIsAdmin());
 
 /** @ignoreswagger */
 app.get(
@@ -54,6 +54,7 @@ app.get(
 /** @ignoreswagger */
 app.post(
   "/",
+  ensureIsAdmin(),
   withSpace({ requireProject: true, requireCanReadOrAdministrate: true }),
   validate("json", PostPodSandboxEnvVarBodySchema),
   async (ctx): HandlerResult<PostSandboxEnvVarsResponseBody> => {

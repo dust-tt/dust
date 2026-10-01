@@ -17,8 +17,10 @@ export function PodSettingsAdvancedTab({
   const { featureFlags } = useFeatureFlags();
   const { isAdmin } = useAuth();
 
-  // The pod env vars section stays workspace-admin only (matching the API,
-  // which keeps env-vars admin-only). Mirrors that gate — change both together.
+  // Env var editing is workspace-admin only (matching the API write gates);
+  // the list is visible to anyone who can see the tab, like the network
+  // section. Values are write-only, so the list carries names, kinds and
+  // domains only.
   const hasFramesV2Functions = isFramesV2FunctionsEnabled(featureFlags);
   const isPodSandboxAdminEnabled = isAdmin && hasFramesV2Functions;
   // The pod network section is visible to anyone who can open this page once
@@ -38,11 +40,13 @@ export function PodSettingsAdvancedTab({
         />
       )}
 
-      {isPodSandboxAdminEnabled && (
-        <div className="flex w-full flex-col gap-2">
-          <SandboxEnvVarsSection owner={owner} spaceId={pod.sId} />
-        </div>
-      )}
+      <div className="flex w-full flex-col gap-2">
+        <SandboxEnvVarsSection
+          owner={owner}
+          spaceId={pod.sId}
+          canEdit={isPodSandboxAdminEnabled}
+        />
+      </div>
     </>
   );
 }
