@@ -1170,12 +1170,42 @@ msgid "See usage details"
 msgstr "See usage details"
 
 #: front/lib/notifications/workflows/balance-threshold-reached.ts
+#: front/lib/notifications/workflows/pod-added-as-member.ts
 #: front/lib/notifications/workflows/programmatic-cap-reached.ts
 #: front/lib/notifications/workflows/seat-auto-upgraded.ts
 #: front/lib/notifications/workflows/upgrade-request-created.ts
 #: front/lib/notifications/workflows/user-awu-cap-reached.ts
 msgid "there"
 msgstr "there"
+
+#: front/lib/notifications/workflows/pod-added-as-member.ts
+msgid "A Pod"
+msgstr "A Pod"
+
+#: front/lib/notifications/workflows/pod-added-as-member.ts
+msgid "Someone"
+msgstr "Someone"
+
+#: front/lib/notifications/workflows/pod-added-as-member.ts
+msgid "A workspace"
+msgstr "A workspace"
+
+#: front/lib/notifications/workflows/pod-added-as-member.ts
+msgid "[Dust] You were added to Pod \"{podName}\""
+msgstr "[Dust] You were added to Pod \"{podName}\""
+
+#: front/lib/notifications/workflows/pod-added-as-member.ts
+msgid "{userThatAddedYouFullname} added you to Pod \"{podName}\"."
+msgstr "{userThatAddedYouFullname} added you to Pod \"{podName}\"."
+
+#: front/lib/notifications/workflows/pod-added-as-member.ts
+msgctxt "action"
+msgid "View"
+msgstr "View"
+
+#: front/lib/notifications/workflows/pod-added-as-member.ts
+msgid "View Pod"
+msgstr "View Pod"
 
 #: front/lib/notifications/workflows/programmatic-cap-reached.ts
 msgid "[Dust] Your workspace has used 80% of its programmatic API credit cap in {workspaceName}"
