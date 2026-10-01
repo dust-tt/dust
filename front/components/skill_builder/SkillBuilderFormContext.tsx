@@ -9,8 +9,6 @@ import {
   SkillWithoutInstructionsAndToolsSchema,
 } from "@app/types/assistant/skill_configuration";
 import { editorUserSchema } from "@app/types/editors";
-import { createContext } from "react";
-import type { UseFormReturn } from "react-hook-form";
 import { z } from "zod";
 
 export const attachedKnowledgeSchema = z.object({
@@ -74,6 +72,3 @@ export const skillBuilderFormSchema = z.object({
 });
 
 export type SkillBuilderFormData = z.infer<typeof skillBuilderFormSchema>;
-
-export const SkillBuilderFormContext =
-  createContext<UseFormReturn<SkillBuilderFormData> | null>(null);

@@ -1,9 +1,6 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import {
-  AgentBuilderFormContext,
-  agentBuilderFormSchema,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
+import { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLayout";
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
@@ -589,50 +586,47 @@ function AgentBuilderForm({
     : (agentConfiguration?.sId ?? pendingAgentId ?? null);
 
   return (
-    <AgentBuilderFormContext.Provider value={form}>
-      <FormProvider form={form} asForm={false}>
-        <SidekickSuggestionsProvider
-          agentConfigurationId={suggestionsAgentId}
-          disabled={isEditorLocked}
-        >
-          <AgentBuilderContent
-            agentConfiguration={agentConfiguration}
-            pendingAgentId={pendingAgentId}
-            title={title}
-            handleCancel={handleCancel}
-            saveLabel={saveLabel}
-            handleSave={handleSave}
-            isSaveDisabled={isSaveDisabled}
-            isEditorLocked={isEditorLocked}
-            isEditorLoadErrorVisible={isAdminExistingAgent && isEditorsError}
-            isEditorGateVisible={isAdminNonEditor}
-            isAddingSelfAsEditor={isAddingSelfAsEditor}
-            onAddSelfAsEditor={() => {
-              void handleAddSelfAsEditor();
-            }}
-            onRetryEditors={() => {
-              void mutateEditors();
-            }}
-            isTriggersLoading={isTriggersLoading}
-            dialogProps={dialogProps}
-            isCreatedDialogOpen={isCreatedDialogOpen}
-            setIsCreatedDialogOpen={setIsCreatedDialogOpen}
-            isNewAgent={!!duplicateAgentId || !agentConfiguration}
-            isDuplicate={!!duplicateAgentId}
-            templateInfo={
-              assistantTemplate
-                ? {
-                    templateId: assistantTemplate.sId,
-                    sidekickInstructions:
-                      assistantTemplate.sidekickInstructions,
-                  }
-                : undefined
-            }
-            conversationId={conversationId}
-          />
-        </SidekickSuggestionsProvider>
-      </FormProvider>
-    </AgentBuilderFormContext.Provider>
+    <FormProvider form={form} asForm={false}>
+      <SidekickSuggestionsProvider
+        agentConfigurationId={suggestionsAgentId}
+        disabled={isEditorLocked}
+      >
+        <AgentBuilderContent
+          agentConfiguration={agentConfiguration}
+          pendingAgentId={pendingAgentId}
+          title={title}
+          handleCancel={handleCancel}
+          saveLabel={saveLabel}
+          handleSave={handleSave}
+          isSaveDisabled={isSaveDisabled}
+          isEditorLocked={isEditorLocked}
+          isEditorLoadErrorVisible={isAdminExistingAgent && isEditorsError}
+          isEditorGateVisible={isAdminNonEditor}
+          isAddingSelfAsEditor={isAddingSelfAsEditor}
+          onAddSelfAsEditor={() => {
+            void handleAddSelfAsEditor();
+          }}
+          onRetryEditors={() => {
+            void mutateEditors();
+          }}
+          isTriggersLoading={isTriggersLoading}
+          dialogProps={dialogProps}
+          isCreatedDialogOpen={isCreatedDialogOpen}
+          setIsCreatedDialogOpen={setIsCreatedDialogOpen}
+          isNewAgent={!!duplicateAgentId || !agentConfiguration}
+          isDuplicate={!!duplicateAgentId}
+          templateInfo={
+            assistantTemplate
+              ? {
+                  templateId: assistantTemplate.sId,
+                  sidekickInstructions: assistantTemplate.sidekickInstructions,
+                }
+              : undefined
+          }
+          conversationId={conversationId}
+        />
+      </SidekickSuggestionsProvider>
+    </FormProvider>
   );
 }
 
