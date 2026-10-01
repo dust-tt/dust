@@ -1,4 +1,3 @@
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { fetchPrecedingContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { cleanupDeniedBlockedActions } from "@app/lib/api/assistant/conversation/blocked_actions";
@@ -105,6 +104,7 @@ import { isEnterpriseOrDust } from "@app/lib/plans/plan_codes";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toLightAgentConfiguration } from "@app/lib/resources/agent_resource_serialization";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import type { RunningAgentMessageContext } from "@app/lib/resources/conversation_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -131,10 +131,7 @@ import type {
   ContentFragmentInputWithFileIdType,
 } from "@app/types/api/assistant";
 import { isContentFragmentInputWithContentNode } from "@app/types/api/assistant";
-import type {
-  AgentConfigurationStatus,
-  ToolErrorEvent,
-} from "@app/types/assistant/agent";
+import type { ToolErrorEvent } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
   AgenticMessageData,
@@ -697,15 +694,10 @@ export async function postUserMessage(
     });
   }
 
-  // `getAgentConfiguration` checks that we're only pulling a configuration from the
+  // `AgentResource` checks that we're only pulling a configuration from the
   // same workspace or a global one.
   const results = await Promise.all([
-    getAgentConfigurations(auth, {
-      agentIds: mentions
-        .filter(isAgentMention)
-        .map((mention) => mention.configurationId),
-      variant: "extra_light",
-    }),
+    loadMentionedAgents(auth, mentions),
     (() => {
       // If the origin of the user message is "run_agent", we do not want to update the
       // participation of the user so that the conversation does not appear in the user's history.
@@ -721,24 +713,24 @@ export async function postUserMessage(
     })(),
   ]);
 
-  let agentConfigurations = removeNulls(results[0]);
+  const mentionedAgents = results[0];
 
   // Retired global agents can't be invoked (new conversations or new messages).
   // The internal `run_agent` path is exempt: some hidden sub-agents are retired.
   const isInternalRunAgent = agenticMessageData?.type === "run_agent";
 
-  for (const agentConfig of agentConfigurations) {
-    if (!isInternalRunAgent && isRetiredGlobalAgent(agentConfig.sId)) {
+  for (const agent of mentionedAgents) {
+    if (!isInternalRunAgent && isRetiredGlobalAgent(agent.sId)) {
       return new Err({
         status_code: 400,
         api_error: {
           type: "agent_inaccessible",
-          message: `Assistant ${agentConfig.name} is retired and can no longer be used.`,
+          message: `Assistant ${agent.name} is retired and can no longer be used.`,
         },
       });
     }
 
-    if (!canAccessAgent(agentConfig)) {
+    if (!canAccessAgent(auth, agent)) {
       return new Err({
         status_code: 400,
         api_error: {
@@ -751,7 +743,7 @@ export async function postUserMessage(
 
     const isProviderEnabled = isProviderWhitelistedForAuth(
       auth,
-      agentConfig.model.providerId
+      agent.modelConfiguration.providerId
     );
     if (!isProviderEnabled) {
       // Stop processing if any agent uses a disabled provider.
@@ -760,14 +752,16 @@ export async function postUserMessage(
         api_error: {
           type: "model_disabled",
           message:
-            `Assistant ${agentConfig.name} is based on a model that was disabled ` +
+            `Assistant ${agent.name} is based on a model that was disabled ` +
             `by your workspace admin. Please edit the agent to use another model ` +
             `(advanced settings in the Instructions panel).`,
         },
       });
     }
 
-    const supportedModelConfig = getSupportedModelConfig(agentConfig.model);
+    const supportedModelConfig = getSupportedModelConfig(
+      agent.modelConfiguration
+    );
     if (
       !supportedModelConfig ||
       !(
@@ -785,7 +779,7 @@ export async function postUserMessage(
         api_error: {
           type: "invalid_request_error",
           message: "The model is not supported.",
-          model: agentConfig.model,
+          model: agent.modelConfiguration,
         },
       });
     }
@@ -804,7 +798,14 @@ export async function postUserMessage(
     message: { type: "user_message" },
   });
 
-  const mentionedAgentConfiguration = agentConfigurations[0] ?? null;
+  // The model resolution, the space-usage check and the agent message created for the mention still
+  // take a configuration: only the mentioned agent is serialized, without favorites or tags.
+  const mentionedAgentConfiguration = mentionedAgents[0]
+    ? await toLightAgentConfiguration(auth, mentionedAgents[0], {
+        withFavorites: false,
+        withTags: false,
+      })
+    : null;
   const mentionedAgentRestricted = await isAgentRestrictedBySpaceUsage(auth, {
     configuration: mentionedAgentConfiguration,
     conversation,
@@ -816,7 +817,7 @@ export async function postUserMessage(
       })
     : null;
 
-  if (user && modelResolution) {
+  if (user && modelResolution && mentionedAgentConfiguration) {
     const premiumLimitResult = await enforcePremiumModelLimit(auth, {
       agentConfigurationId: mentionedAgentConfiguration.sId,
       user,
@@ -1065,20 +1066,31 @@ export async function postUserMessage(
   });
 }
 
+// Mentioned agents the caller holds no verb on are kept, so `canAccessAgent` rejects the message
+// instead of silently dropping the mention: the `canFetch` drop is skipped (see
+// `agent-dangerous-fetch`) and access is decided on `canRead` below.
+async function loadMentionedAgents(
+  auth: Authenticator,
+  mentions: MentionType[]
+): Promise<AgentResource[]> {
+  const agentIds = mentions
+    .filter(isAgentMention)
+    .map((mention) => mention.configurationId);
+  if (agentIds.length === 0) {
+    return [];
+  }
+
+  return AgentResource.dangerouslyFetchByIds(auth, agentIds);
+}
+
 /**
  * Can a user mention a given configuration
  */
-function canAccessAgent({
-  status,
-  canRead,
-}: {
-  status: AgentConfigurationStatus;
-  canRead: boolean;
-}): boolean {
-  switch (status) {
+function canAccessAgent(auth: Authenticator, agent: AgentResource): boolean {
+  switch (agent.status) {
     case "active":
     case "draft":
-      return canRead;
+      return auth.can("read", agent);
     case "disabled_free_workspace":
     case "disabled_missing_datasource":
     case "disabled_by_admin":
@@ -1086,7 +1098,7 @@ function canAccessAgent({
     case "pending":
       return false;
     default:
-      assertNever(status);
+      assertNever(agent.status);
   }
 }
 
@@ -1177,12 +1189,7 @@ export async function editUserMessage(
   let agentMessages: AgentMessageType[] = [];
 
   const results = await Promise.all([
-    getAgentConfigurations(auth, {
-      agentIds: mentions
-        .filter(isAgentMention)
-        .map((mention) => mention.configurationId),
-      variant: "light",
-    }),
+    loadMentionedAgents(auth, mentions),
     ConversationResource.upsertParticipation(auth, {
       conversation,
       action: "posted",
@@ -1190,10 +1197,10 @@ export async function editUserMessage(
     }),
   ]);
 
-  const agentConfigurations = results[0];
+  const mentionedAgents = results[0];
 
-  for (const agentConfig of agentConfigurations) {
-    if (!canAccessAgent(agentConfig)) {
+  for (const agent of mentionedAgents) {
+    if (!canAccessAgent(auth, agent)) {
       return new Err({
         status_code: 400,
         api_error: {
@@ -1206,7 +1213,7 @@ export async function editUserMessage(
 
     const isProviderEnabled = isProviderWhitelistedForAuth(
       auth,
-      agentConfig.model.providerId
+      agent.modelConfiguration.providerId
     );
     if (!isProviderEnabled) {
       // Stop processing if any agent uses a disabled provider.
@@ -1215,7 +1222,7 @@ export async function editUserMessage(
         api_error: {
           type: "model_disabled",
           message:
-            `Assistant ${agentConfig.name} is based on a model that was disabled ` +
+            `Assistant ${agent.name} is based on a model that was disabled ` +
             `by your workspace admin. Please edit the agent to use another model ` +
             `(advanced settings in the Instructions panel).`,
         },
@@ -1229,7 +1236,12 @@ export async function editUserMessage(
     message: { type: "user_message" },
   });
 
-  const mentionedAgentConfiguration = agentConfigurations[0] ?? null;
+  const mentionedAgentConfiguration = mentionedAgents[0]
+    ? await toLightAgentConfiguration(auth, mentionedAgents[0], {
+        withFavorites: false,
+        withTags: false,
+      })
+    : null;
 
   const mentionedAgentRestricted = await isAgentRestrictedBySpaceUsage(auth, {
     configuration: mentionedAgentConfiguration,
@@ -1243,7 +1255,7 @@ export async function editUserMessage(
       })
     : null;
 
-  if (user && modelResolution) {
+  if (user && modelResolution && mentionedAgentConfiguration) {
     const premiumLimitResult = await enforcePremiumModelLimit(auth, {
       agentConfigurationId: mentionedAgentConfiguration.sId,
       user,
@@ -1634,13 +1646,7 @@ export async function retryAgentMessage(
     auth,
     message.configuration.sId
   );
-  if (
-    !retryAgent ||
-    !canAccessAgent({
-      status: retryAgent.status,
-      canRead: auth.can("read", retryAgent),
-    })
-  ) {
+  if (!retryAgent || !canAccessAgent(auth, retryAgent)) {
     return new Err({
       status_code: 400,
       api_error: {
