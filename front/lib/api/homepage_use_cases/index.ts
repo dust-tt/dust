@@ -241,30 +241,40 @@ function selectSatisfiedUseCases(
     const tools: ToolReference[] = [];
 
     for (const requirement of requires) {
-      if (requirement.type === "workspacePermission") {
-        if (
-          !auth.hasWorkspacePermission(
-            requirement.verb,
-            requirement.resourceType
-          )
-        ) {
-          return [];
+      switch (requirement.type) {
+        case "workspacePermission":
+          if (
+            !auth.hasWorkspacePermission(
+              requirement.verb,
+              requirement.resourceType
+            )
+          ) {
+            return [];
+          }
+          break;
+        case "skill": {
+          const skill = skillsById.get(requirement.id);
+          if (!skill) {
+            return [];
+          }
+          skills.push(skill);
+          break;
         }
-      } else if (requirement.type === "skill") {
-        const skill = skillsById.get(requirement.id);
-        if (!skill) {
-          return [];
+        case "internalServer":
+        case "remoteServer":
+        case "anyOf": {
+          const tool = resolveTool(getToolAlternatives(requirement), {
+            favoritePlatforms: profile.favoritePlatforms,
+            toolsByKey,
+          });
+          if (!tool) {
+            return [];
+          }
+          tools.push(tool);
+          break;
         }
-        skills.push(skill);
-      } else {
-        const tool = resolveTool(getToolAlternatives(requirement), {
-          favoritePlatforms: profile.favoritePlatforms,
-          toolsByKey,
-        });
-        if (!tool) {
-          return [];
-        }
-        tools.push(tool);
+        default:
+          assertNever(requirement);
       }
     }
 
