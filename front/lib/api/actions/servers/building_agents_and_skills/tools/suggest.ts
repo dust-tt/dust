@@ -869,6 +869,16 @@ function findDuplicateTarget(suggestions: Suggestion[]): string | null {
   return null;
 }
 
+type PendingSkills = {
+  pendingSkillByChange: Map<PlannedChange, SkillResource>;
+  skillReferenceByRef: Map<string, SkillReference>;
+};
+
+type PendingAgents = {
+  pendingAgentByChange: Map<PlannedChange, AgentResource>;
+  agentIdByRef: Map<string, string>;
+};
+
 /**
  * Creates the pending skill or agent of each creation, before any row is written, so that a ref
  * used by a skill tag, a skill addition or a sub-agent addition can be recorded with its id,
@@ -877,17 +887,7 @@ function findDuplicateTarget(suggestions: Suggestion[]): string | null {
 async function createPendingEntities(
   auth: Authenticator,
   changes: PlannedChange[]
-): Promise<
-  Result<
-    {
-      pendingSkillByChange: Map<PlannedChange, SkillResource>;
-      skillReferenceByRef: Map<string, SkillReference>;
-      pendingAgentByChange: Map<PlannedChange, AgentResource>;
-      agentIdByRef: Map<string, string>;
-    },
-    MCPError
-  >
-> {
+): Promise<Result<PendingSkills & PendingAgents, MCPError>> {
   const skillCreations = changes.filter(
     (change): change is Extract<PlannedChange, { type: "skill_creation" }> =>
       change.type === "skill_creation"
@@ -1196,14 +1196,13 @@ export async function suggest(
     );
   }
 
-  const [batch, pendingEntities] = await Promise.all([
-    BatchSuggestionResource.makeNew(auth, {
-      title,
-      analysis,
-      sourceConversation: conversation,
-    }),
-    createPendingEntities(auth, plannedChanges),
-  ]);
+  const batch = await BatchSuggestionResource.makeNew(auth, {
+    title,
+    analysis,
+    sourceConversation: conversation,
+  });
+
+  const pendingEntities = await createPendingEntities(auth, plannedChanges);
   if (pendingEntities.isErr()) {
     await batch.updateState(auth, "outdated");
     return pendingEntities;
