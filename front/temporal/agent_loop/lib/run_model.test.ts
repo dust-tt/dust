@@ -2,6 +2,7 @@ import { RETRY_ON_INTERRUPT_MAX_ATTEMPTS } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp_schemas";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { ANTHROPIC_WEB_SEARCH_TOOL } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/native_web_search";
 import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
 import {
   buildBaseSpecifications,
@@ -229,6 +230,30 @@ describe("buildToolDefinitionsForTokenCount", () => {
     expect(tools).toEqual([
       { type: "tool_search_tool_bm25_20251119", name: "tool_search_tool_bm25" },
     ]);
+  });
+
+  // Rough by design: the provider injects the real definition server-side. The
+  // estimate's exact term is the removal of Dust's own websearch spec, which the
+  // agent loop has already filtered out by the time this runs.
+  it("accounts for the native web search tool when it is enabled", () => {
+    const specs = [makeSpecification("eager_tool", { eager: true })];
+
+    const tools = JSON.parse(
+      buildToolDefinitionsForTokenCount(specs, false, true)
+    );
+
+    expect(tools).toEqual([
+      ANTHROPIC_WEB_SEARCH_TOOL,
+      expect.objectContaining({ name: "eager_tool" }),
+    ]);
+  });
+
+  it("omits the native web search tool by default", () => {
+    const specs = [makeSpecification("eager_tool", { eager: true })];
+
+    const tools = JSON.parse(buildToolDefinitionsForTokenCount(specs, false));
+
+    expect(tools).toEqual([expect.objectContaining({ name: "eager_tool" })]);
   });
 });
 

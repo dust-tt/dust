@@ -1,5 +1,8 @@
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
-import { INTERNAL_SERVERS_WITH_WEBSEARCH } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  INTERNAL_SERVERS_WITH_WEBSEARCH,
+  WEBSEARCH_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { StepContext } from "@app/lib/actions/types";
 import { isServerSideMCPToolConfigurationWithName } from "@app/lib/actions/types/guards";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
@@ -67,6 +70,23 @@ function getRetrievalTopK({
  * websearch actions in the same step we get the maximum number of results and divide it by The
  * number of websearch actions in the step.
  */
+/**
+ * Dust's own `websearch` tool, on either internal server that mounts it. Matches
+ * on `originalName` plus the internal server name rather than the prefixed tool
+ * name, which changes when server names are disambiguated by space.
+ *
+ * `webbrowser` is deliberately excluded: a provider's native search returns
+ * snippets only, so reading a full page still goes through Dust's browser.
+ */
+export function isDustWebsearchTool(tool: MCPToolConfigurationType): boolean {
+  return (
+    tool.originalName === WEBSEARCH_TOOL_NAME &&
+    INTERNAL_SERVERS_WITH_WEBSEARCH.some((n) =>
+      isServerSideMCPToolConfigurationWithName(tool, n)
+    )
+  );
+}
+
 function getWebsearchNumResults({
   stepActions,
 }: {

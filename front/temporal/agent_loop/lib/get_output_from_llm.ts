@@ -286,6 +286,7 @@ export async function getOutputFromLLMStream(
     modelConversationRes,
     conversation,
     toolSearchEnabled,
+    nativeWebSearchEnabled,
     disableToolUse,
     specifications,
     flushParserTokens,
@@ -336,6 +337,7 @@ export async function getOutputFromLLMStream(
     {
       conversation: modelConversationRes.value.modelConversation,
       toolSearchEnabled,
+      nativeWebSearchEnabled,
       disableToolUse,
       prompt,
       specifications,

@@ -29,6 +29,7 @@ describe("includesToolSearchTool", () => {
         toolSpecsToAnthropicAITools([hot], {
           forceTool: undefined,
           toolSearchEnabled: true,
+          nativeWebSearchEnabled: false,
         })
       )
     ).toBe(false);
@@ -40,6 +41,7 @@ describe("includesToolSearchTool", () => {
         toolSpecsToAnthropicAITools([hot, cold], {
           forceTool: undefined,
           toolSearchEnabled: false,
+          nativeWebSearchEnabled: false,
         })
       )
     ).toBe(false);
@@ -51,6 +53,7 @@ describe("includesToolSearchTool", () => {
         toolSpecsToAnthropicAITools([hot, cold], {
           forceTool: undefined,
           toolSearchEnabled: true,
+          nativeWebSearchEnabled: false,
         })
       )
     ).toBe(true);
@@ -62,6 +65,7 @@ describe("includesToolSearchTool", () => {
         toolSpecsToAnthropicAITools([cold], {
           forceTool: "cold",
           toolSearchEnabled: true,
+          nativeWebSearchEnabled: false,
         })
       )
     ).toBe(false);

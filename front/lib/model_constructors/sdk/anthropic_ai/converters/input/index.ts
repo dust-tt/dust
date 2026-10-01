@@ -7,10 +7,14 @@ import type {
 import type { Client } from "@app/lib/model_constructors/client";
 import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import {
+  ANTHROPIC_NATIVE_WEB_SEARCH_INSTRUCTION,
+  includesAnthropicWebSearchTool,
+} from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/native_web_search";
+import { stripUnreplayableServerToolBlocks } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/server_tool_passthrough";
+import {
   ANTHROPIC_TOOL_SEARCH_INSTRUCTION,
   includesToolSearchTool,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
-import { stripUnreplayableToolSearchBlocks } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search_passthrough";
 import type { MessageBlockConverters } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
 import {
   assistantProviderPassthroughMessageToBlocks,
@@ -81,6 +85,7 @@ export function WithAnthropicAIInputConverter<
         reasoning,
         forceTool,
         toolSearchEnabled,
+        nativeWebSearchEnabled,
         outputFormat,
       } = config;
 
@@ -98,25 +103,43 @@ export function WithAnthropicAIInputConverter<
       const anthropicTools = toolSpecsToAnthropicAITools(tools, {
         forceTool,
         toolSearchEnabled: toolSearchEnabled ?? false,
+        nativeWebSearchEnabled: nativeWebSearchEnabled ?? false,
       });
+      const toolSearchInRequest = includesToolSearchTool(anthropicTools);
+      const nativeWebSearchInRequest =
+        includesAnthropicWebSearchTool(anthropicTools);
 
       const system = this.systemMessagesToSystemParam(conversation.system);
 
       const renderedMessages = await this.conversationToMessages(conversation);
-      const messages = stripUnreplayableToolSearchBlocks(renderedMessages, {
-        toolSearchInRequest: includesToolSearchTool(anthropicTools),
+      const messages = stripUnreplayableServerToolBlocks(renderedMessages, {
+        toolSearchInRequest,
+        nativeWebSearchInRequest,
       });
 
       return {
         model: this.modelToHostModel(this.constructor.model),
         max_tokens: this.constructor.maxOutputTokens,
         messages,
-        system: includesToolSearchTool(anthropicTools)
-          ? [
-              ...system,
-              { type: "text", text: ANTHROPIC_TOOL_SEARCH_INSTRUCTION },
-            ]
-          : system,
+        system: [
+          ...system,
+          ...(toolSearchInRequest
+            ? [
+                {
+                  type: "text" as const,
+                  text: ANTHROPIC_TOOL_SEARCH_INSTRUCTION,
+                },
+              ]
+            : []),
+          ...(nativeWebSearchInRequest
+            ? [
+                {
+                  type: "text" as const,
+                  text: ANTHROPIC_NATIVE_WEB_SEARCH_INSTRUCTION,
+                },
+              ]
+            : []),
+        ],
         // Omit the key entirely when the config carries no thinking, so the
         // model applies its own default instead of being told "disabled".
         ...("thinking" in thinkingConfig
