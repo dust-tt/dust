@@ -1,11 +1,15 @@
-import { makeColumnsForAssistants } from "@app/components/poke/assistants/columns";
-import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
+import { SearchAgentsPage } from "@app/components/pages/builder/agents/SearchAgentsPage";
+import {
+  makeColumnsForAssistants,
+  PokeAgentActions,
+} from "@app/components/poke/assistants/columns";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { clientFetch } from "@app/lib/egress/client";
 import type { AppRouter } from "@app/lib/platform";
 import { useAppRouter } from "@app/lib/platform";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
+import type { SearchAgentsResponseBody } from "@app/types/agent_search/agent_search";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -15,12 +19,11 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 interface AssistantsDataTableProps {
   owner: LightWorkspaceType;
   agentsRetention: Record<string, number>;
-  loadOnInit?: boolean;
 }
 
 const importAssistant = async (
@@ -62,12 +65,31 @@ const importAssistant = async (
 export function AssistantsDataTable({
   owner,
   agentsRetention,
-  loadOnInit,
 }: AssistantsDataTableProps) {
   const router = useAppRouter();
   const [showRestoreAssistantModal, setShowRestoreAssistantModal] =
     useState(false);
   const [importing, setImporting] = useState(false);
+  const onSelect = useCallback(
+    (agentId: string) =>
+      void router.push(`/poke/${owner.sId}/assistants/${agentId}`),
+    [owner.sId, router]
+  );
+  const renderActions = useCallback(
+    (
+      agent: SearchAgentsResponseBody["agents"][number],
+      onRefresh: () => void
+    ) => (
+      <PokeAgentActions
+        owner={owner}
+        assistant={agent}
+        onRefresh={async () => {
+          await onRefresh();
+        }}
+      />
+    ),
+    [owner]
+  );
 
   const assistantButtons = (
     <div className="flex flex-row gap-2">
@@ -97,26 +119,16 @@ export function AssistantsDataTable({
         agentsRetention={agentsRetention}
         owner={owner}
       />
-      <PokeDataTableConditionalFetch
-        header="Agents"
-        globalActions={assistantButtons}
-        owner={owner}
-        loadOnInit={loadOnInit}
-        useSWRHook={usePokeAgentConfigurations}
-      >
-        {(data, mutate) => (
-          <PokeDataTable
-            columns={makeColumnsForAssistants(
-              owner,
-              agentsRetention,
-              async () => {
-                await mutate();
-              }
-            )}
-            data={data}
-          />
-        )}
-      </PokeDataTableConditionalFetch>
+      <SearchAgentsPage
+        showHeader={false}
+        readOnly
+        searchEndpoint={`/api/poke/workspaces/${owner.sId}/agent_configurations/search`}
+        filterHashParam="agentSearch"
+        permissionFiltering="unrestricted"
+        searchActions={assistantButtons}
+        onSelect={onSelect}
+        renderActions={renderActions}
+      />
     </>
   );
 }

@@ -1,18 +1,21 @@
-import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
-import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
+import { SearchSkillsPage } from "@app/components/pages/builder/skills/SearchSkillsPage";
 import { CreateSkillSuggestionSheet } from "@app/components/poke/skills/CreateSkillSuggestionSheet";
-import { makeColumnsForSkills } from "@app/components/poke/skills/columns";
-import { usePokeSkills } from "@app/poke/swr/skills";
+import { useAppRouter } from "@app/lib/platform";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 interface SkillsDataTableProps {
   owner: LightWorkspaceType;
-  loadOnInit?: boolean;
 }
 
-export function SkillsDataTable({ owner, loadOnInit }: SkillsDataTableProps) {
+export function SkillsDataTable({ owner }: SkillsDataTableProps) {
+  const router = useAppRouter();
+  const onSelect = useCallback(
+    (skillId: string) =>
+      void router.push(`/poke/${owner.sId}/skills/${skillId}`),
+    [owner.sId, router]
+  );
   const [showCreateSuggestionSheet, setShowCreateSuggestionSheet] =
     useState(false);
 
@@ -35,17 +38,15 @@ export function SkillsDataTable({ owner, loadOnInit }: SkillsDataTableProps) {
         onClose={() => setShowCreateSuggestionSheet(false)}
         owner={owner}
       />
-      <PokeDataTableConditionalFetch
-        header="Skills"
-        globalActions={skillButtons}
-        owner={owner}
-        loadOnInit={loadOnInit}
-        useSWRHook={usePokeSkills}
-      >
-        {(data) => (
-          <PokeDataTable columns={makeColumnsForSkills(owner)} data={data} />
-        )}
-      </PokeDataTableConditionalFetch>
+      <SearchSkillsPage
+        showHeader={false}
+        readOnly
+        searchEndpoint={`/api/poke/workspaces/${owner.sId}/skills/search`}
+        filterHashParam="skillSearch"
+        permissionFiltering="redact_unreadable"
+        searchActions={skillButtons}
+        onSelect={onSelect}
+      />
     </>
   );
 }

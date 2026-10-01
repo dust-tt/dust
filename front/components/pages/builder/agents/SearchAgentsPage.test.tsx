@@ -1,4 +1,5 @@
 import { ManageAgentsPage } from "@app/components/pages/builder/agents/ManageAgentsPage";
+import { AssistantsDataTable } from "@app/components/poke/assistants/table";
 import { getModelFilterDisplayName } from "@app/components/shared/filter_panel/searchFilter";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { AuthContext } from "@app/lib/auth/AuthContext";
@@ -41,13 +42,15 @@ beforeEach(() => {
   }
 });
 
+const push = vi.hoisted(() => vi.fn());
+
 vi.mock("@app/lib/platform", () => ({
   useAppRouter: () => ({
     isReady: true,
     pathname: "/w/workspace/builder/agents",
     asPath: "/w/workspace/builder/agents",
     query: {},
-    push: vi.fn(),
+    push,
     replace: vi.fn(),
     events: { on: vi.fn(), off: vi.fn() },
   }),
@@ -179,8 +182,8 @@ async function setup({
     }
     return {};
   });
-  const mount = () =>
-    render(<ManageAgentsPage />, {
+  const mount = (ui = <ManageAgentsPage />) =>
+    render(ui, {
       wrapper: ({ children }) => (
         <SWRConfig
           value={{ provider: () => new Map(), shouldRetryOnError: false }}
@@ -196,6 +199,7 @@ async function setup({
   return {
     agent,
     agentConfiguration,
+    context,
     editor: { sId, fullName },
     search,
     fetcher,
@@ -635,5 +639,60 @@ describe("search-backed Manage Agents", () => {
       screen.queryByRole("tab", { name: "Access" })
     ).not.toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "Editors" })).toBeInTheDocument();
+  });
+});
+
+describe("Poke Manage Agents", () => {
+  it("uses Poke table and facet requests and navigates to Poke details", async () => {
+    const { mount, context, agent, fetcherWithBody } = await setup();
+    mount(
+      <AssistantsDataTable owner={context.workspace} agentsRetention={{}} />
+    );
+    await screen.findByText(agent.name);
+    expect(fetcherWithBody).toHaveBeenCalledWith([
+      `/api/poke/workspaces/${context.workspace.sId}/agent_configurations/search`,
+      expect.objectContaining({
+        sortBy: "usage",
+        permissionFiltering: "unrestricted",
+        limit: 25,
+      }),
+      "POST",
+    ]);
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Restore an agent/ })
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByText(agent.name));
+    expect(push).toHaveBeenCalledWith(
+      `/poke/${context.workspace.sId}/assistants/${agent.sId}`
+    );
+    expect(
+      screen.queryByText(`Details of ${agent.sId}`)
+    ).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Editors" }));
+    await waitFor(() =>
+      expect(fetcherWithBody).toHaveBeenCalledWith([
+        `/api/poke/workspaces/${context.workspace.sId}/agent_configurations/search`,
+        expect.objectContaining({ limit: 0, facets: ["editors"] }),
+        "POST",
+      ])
+    );
+  });
+
+  it("keeps agent tabs separate from skill filters in the hash", async () => {
+    const { mount, context, fetcherWithBody } = await setup();
+    mount(
+      <AssistantsDataTable owner={context.workspace} agentsRetention={{}} />
+    );
+    await screen.findByText("Weekly report");
+    await userEvent.click(screen.getByRole("tab", { name: "Archived" }));
+    await waitFor(() =>
+      expect(lastSearchBody(fetcherWithBody)).toMatchObject({
+        status: ["archived"],
+      })
+    );
+    expect(window.location.hash).toContain("agentSearch=");
+    expect(window.location.hash).not.toContain("skillSearch=");
   });
 });

@@ -1,4 +1,5 @@
 import { ManageSkillsPage } from "@app/components/pages/builder/skills/ManageSkillsPage";
+import { SkillsDataTable } from "@app/components/poke/skills/table";
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { RestoreSkillDialog } from "@app/components/skills/RestoreSkillDialog";
@@ -33,13 +34,15 @@ beforeEach(() => {
   }
 });
 
+const push = vi.hoisted(() => vi.fn());
+
 vi.mock("@app/lib/platform", () => ({
   useAppRouter: () => ({
     isReady: true,
     pathname: "/w/workspace/builder/skills",
     asPath: "/w/workspace/builder/skills",
     query: {},
-    push: vi.fn(),
+    push,
     replace: vi.fn(),
     events: { on: vi.fn(), off: vi.fn() },
   }),
@@ -1235,5 +1238,44 @@ describe("search-backed Manage Skills", () => {
       screen.queryByRole("tab", { name: "Workspace" })
     ).not.toBeInTheDocument();
     expect(fetcherWithBody).not.toHaveBeenCalled();
+  });
+});
+
+describe("Poke Manage Skills", () => {
+  it("uses Poke search without feature flags and opens Poke skill details", async () => {
+    const { mount, context, skill, fetcherWithBody } = await setup({
+      searchEnabled: false,
+      pageEnabled: false,
+    });
+    mount(<SkillsDataTable owner={context.workspace} />);
+    await screen.findByText(skill.name);
+    expect(fetcherWithBody).toHaveBeenCalledWith([
+      `/api/poke/workspaces/${context.workspace.sId}/skills/search`,
+      expect.objectContaining({
+        sortBy: "usage",
+        permissionFiltering: "redact_unreadable",
+        limit: 50,
+      }),
+      "POST",
+    ]);
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Create skill suggestion" })
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByText(skill.name));
+    expect(push).toHaveBeenCalledWith(
+      `/poke/${context.workspace.sId}/skills/${skill.sId}`
+    );
+    expect(screen.queryByText("Full skill details")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("tab", { name: "Archived" }));
+    await waitFor(() =>
+      expect(fetcherWithBody).toHaveBeenCalledWith([
+        `/api/poke/workspaces/${context.workspace.sId}/skills/search`,
+        expect.objectContaining({ status: ["archived"] }),
+        "POST",
+      ])
+    );
+    expect(window.location.hash).toContain("skillSearch=");
+    expect(window.location.hash).not.toContain("agentSearch=");
   });
 });
