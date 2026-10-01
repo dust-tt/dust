@@ -1,12 +1,12 @@
 ---
-name: dust-analytics
-description: Track user interactions in PostHog while implementing features in `front`, so their usage can be analysed later. Use when adding or changing a user-facing feature, flow, or surface, or when the user mentions tracking, PostHog, events, or "how do we measure X".
+name: dust-posthog-tracking
+description: Track user interactions as PostHog events while implementing features in `front`, so their usage can be analysed later. Use when adding or changing a user-facing feature, flow, or surface, or when the user mentions PostHog, event tracking, or `trackEvent`.
 ---
 
-# Product analytics (PostHog)
+# PostHog event tracking
 
-A user-facing feature ships with the events needed to analyse how it is used. Add them in the same
-change as the feature, not as a follow-up.
+A user-facing feature ships with the PostHog events needed to analyse how it is used. Add them in
+the same change as the feature, not as a follow-up.
 
 ## What to track
 
