@@ -12,7 +12,7 @@ import {
   getProductSeatTypes,
   getSeatSubscriptionsFromContract,
 } from "@app/lib/metronome/seat_types";
-import { notifyAdminsSeatAutoUpgraded } from "@app/lib/notifications/workflows/seat-auto-upgraded";
+import { notifyAdminsSeatAutoUpgraded } from "@app/lib/notifications/triggers/seat-auto-upgraded";
 import {
   isCreditPricedFreePlan,
   isCreditPricedPlanPrefix,

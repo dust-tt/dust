@@ -24,7 +24,7 @@ const { mockNotifyManualActionRequired } = vi.hoisted(() => ({
   mockNotifyManualActionRequired: vi.fn(),
 }));
 
-vi.mock("@app/lib/notifications/workflows/manual-action-required", () => ({
+vi.mock("@app/lib/notifications/triggers/manual-action-required", () => ({
   notifyManualActionRequired: mockNotifyManualActionRequired,
 }));
 

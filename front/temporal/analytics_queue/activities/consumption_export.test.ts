@@ -5,7 +5,7 @@ import {
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
 import { getTmpWorkloadsBucket } from "@app/lib/file_storage";
-import { notifyConsumptionExportReady } from "@app/lib/notifications/workflows/consumption-export-ready";
+import { notifyConsumptionExportReady } from "@app/lib/notifications/triggers/consumption-export-ready";
 import {
   buildConsumptionExportBucketPartsGcsPrefix,
   buildConsumptionExportGcsPrefix,
@@ -38,7 +38,7 @@ vi.mock(import("@app/lib/api/analytics/consumption/labels"), async (orig) => {
   return { ...mod, resolveDimensionLabels: vi.fn() };
 });
 vi.mock(
-  import("@app/lib/notifications/workflows/consumption-export-ready"),
+  import("@app/lib/notifications/triggers/consumption-export-ready"),
   async (orig) => {
     const mod = await orig();
     return { ...mod, notifyConsumptionExportReady: vi.fn() };

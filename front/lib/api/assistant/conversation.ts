@@ -98,8 +98,8 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { triggerConversationUnreadNotifications } from "@app/lib/notifications/triggers/conversation-unread";
 import { notifyNewProjectConversation } from "@app/lib/notifications/triggers/project-new-conversation";
-import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
 import { isEnterpriseOrDust } from "@app/lib/plans/plan_codes";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";

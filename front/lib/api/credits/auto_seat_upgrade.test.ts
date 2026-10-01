@@ -12,7 +12,7 @@ import { Authenticator } from "@app/lib/auth";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import * as planType from "@app/lib/metronome/plan_type";
 import * as seatTypes from "@app/lib/metronome/seat_types";
-import * as seatUpgradeNotif from "@app/lib/notifications/workflows/seat-auto-upgraded";
+import * as seatUpgradeNotif from "@app/lib/notifications/triggers/seat-auto-upgraded";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -86,9 +86,9 @@ vi.mock("@app/lib/api/audit/workos_audit", async () => {
   };
 });
 
-vi.mock("@app/lib/notifications/workflows/seat-auto-upgraded", async () => {
+vi.mock("@app/lib/notifications/triggers/seat-auto-upgraded", async () => {
   const actual = await vi.importActual<typeof seatUpgradeNotif>(
-    "@app/lib/notifications/workflows/seat-auto-upgraded"
+    "@app/lib/notifications/triggers/seat-auto-upgraded"
   );
   return { ...actual, notifyAdminsSeatAutoUpgraded: vi.fn() };
 });

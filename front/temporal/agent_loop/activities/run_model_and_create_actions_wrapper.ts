@@ -11,7 +11,7 @@ import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { DurationRecorder } from "@app/lib/duration_recorder";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
-import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
+import { notifyManualActionRequired } from "@app/lib/notifications/triggers/manual-action-required";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";

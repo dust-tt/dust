@@ -1,4 +1,4 @@
-import { notifyPodMembersAdded } from "@app/lib/notifications/workflows/pod-added-as-member";
+import { notifyPodMembersAdded } from "@app/lib/notifications/triggers/pod-added-as-member";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { assertNever } from "@app/types/shared/utils/assert_never";
