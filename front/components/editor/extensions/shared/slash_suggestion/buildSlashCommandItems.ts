@@ -35,11 +35,6 @@ export function filterSlashCommandItems(
   );
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:product] empty-query-favorite-capabilities
- * With search ranking and a blank query, favorite skills MUST precede other skills and tools
- * before the display limit. Nonblank queries MUST retain autocomplete ordering.
- */
 export function buildCapabilitySlashCommandItems<
   V extends MCPServerViewLightType,
 >({
@@ -89,21 +84,9 @@ export function buildCapabilitySlashCommandItems<
           items: items.filter((item) => item.kind === "tool"),
         }),
       ]
-        .toSorted((a, b) => {
-          if (!query.trim()) {
-            const favoriteOrder =
-              Number(b.kind === "skill" && b.isFavorite) -
-              Number(a.kind === "skill" && a.isFavorite);
-            if (favoriteOrder !== 0) {
-              return favoriteOrder;
-            }
-          }
-          return compareForAutocompleteSort(
-            query.trim(),
-            a.sortName,
-            b.sortName
-          );
-        })
+        .toSorted((a, b) =>
+          compareForAutocompleteSort(query.trim(), a.sortName, b.sortName)
+        )
         .slice(0, MAX_RENDERED_CAPABILITY_ITEMS)
     : searchCapabilityIndex({ query, items });
 

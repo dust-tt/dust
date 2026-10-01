@@ -59,6 +59,12 @@ function getSkillBuilderSlashCommandTools({
     });
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] empty-query-favorite-capabilities
+ * With skill search enabled, blank queries with selectable favorites MUST list only those
+ * favorites alphabetically without searching. No favorites or a nonblank query MUST retain
+ * the existing capability search behavior.
+ */
 export function useInputBarSlashCommandCapabilities({
   excludeSkillId,
   owner,
@@ -79,9 +85,20 @@ export function useInputBarSlashCommandCapabilities({
     useSkills({
       owner,
       status: "active",
-      disabled: useSkillSearch,
+      disabled: useSkillSearch && !!query.trim(),
       swrOptions: CAPABILITIES_SWR_OPTIONS,
     });
+  const favoriteSkills = useMemo(
+    () =>
+      listedSkills.filter(
+        (skill) => skill.isFavorite && skill.sId !== excludeSkillId
+      ),
+    [listedSkills, excludeSkillId]
+  );
+  const showFavorites =
+    useSkillSearch && !query.trim() && favoriteSkills.length > 0;
+  const waitingForFavorites =
+    useSkillSearch && !query.trim() && isListedSkillsLoading;
   const {
     skills: searchSkills,
     resolvedSearchTerm,
@@ -89,13 +106,22 @@ export function useInputBarSlashCommandCapabilities({
   } = useSearchSkills({
     owner,
     searchTerm: query,
-    prioritizeFavorites: true,
     limit: MAX_RENDERED_CAPABILITY_ITEMS,
-    disabled: !useSkillSearch,
+    disabled:
+      !useSkillSearch ||
+      (!query.trim() && (isListedSkillsLoading || showFavorites)),
   });
-  const skills = useSkillSearch ? searchSkills : listedSkills;
+  const skills = showFavorites
+    ? favoriteSkills
+    : useSkillSearch
+      ? searchSkills
+      : listedSkills;
   // Use the displayed skills' query so tools and skills update together.
-  const capabilityQuery = useSkillSearch ? (resolvedSearchTerm ?? "") : query;
+  const capabilityQuery = showFavorites
+    ? ""
+    : useSkillSearch
+      ? (resolvedSearchTerm ?? "")
+      : query;
   const isSkillsLoading = useSkillSearch
     ? isSearchSkillsLoading
     : isListedSkillsLoading;
@@ -115,22 +141,37 @@ export function useInputBarSlashCommandCapabilities({
         query: capabilityQuery,
         useSearchRanking: useSkillSearch,
         skills,
-        tools: serverViews,
+        tools: showFavorites ? [] : serverViews,
       }),
-    [capabilityQuery, excludeSkillId, serverViews, skills, useSkillSearch]
+    [
+      capabilityQuery,
+      excludeSkillId,
+      serverViews,
+      skills,
+      useSkillSearch,
+      showFavorites,
+    ]
   );
 
   return {
-    capabilityItems,
+    capabilityItems: waitingForFavorites ? [] : capabilityItems,
     resolvedQuery: capabilityQuery,
     // Every workspace has at least one global skill and one tool, so stop loading
     // as soon as either source returns a matching capability.
     isLoading:
-      capabilityItems.length === 0 &&
-      (isSkillsLoading || isSpacesLoading || isServerViewsLoading),
+      waitingForFavorites ||
+      (!showFavorites &&
+        capabilityItems.length === 0 &&
+        (isSkillsLoading || isSpacesLoading || isServerViewsLoading)),
   };
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] empty-query-favorite-capabilities
+ * With skill search enabled, blank queries with selectable favorites MUST list only those
+ * favorites alphabetically without searching. No favorites or a nonblank query MUST retain
+ * the existing capability search behavior.
+ */
 export function useSkillBuilderSlashCommandCapabilities({
   excludeSkillId,
   owner,
@@ -150,8 +191,19 @@ export function useSkillBuilderSlashCommandCapabilities({
     useSkills({
       owner,
       status: "active",
-      disabled: useSkillSearch,
+      disabled: useSkillSearch && !!query.trim(),
     });
+  const favoriteSkills = useMemo(
+    () =>
+      listedSkills.filter(
+        (skill) => skill.isFavorite && skill.sId !== excludeSkillId
+      ),
+    [listedSkills, excludeSkillId]
+  );
+  const showFavorites =
+    useSkillSearch && !query.trim() && favoriteSkills.length > 0;
+  const waitingForFavorites =
+    useSkillSearch && !query.trim() && isListedSkillsLoading;
   const {
     skills: searchSkills,
     resolvedSearchTerm,
@@ -159,13 +211,22 @@ export function useSkillBuilderSlashCommandCapabilities({
   } = useSearchSkills({
     owner,
     searchTerm: query,
-    prioritizeFavorites: true,
     limit: MAX_RENDERED_CAPABILITY_ITEMS,
-    disabled: !useSkillSearch,
+    disabled:
+      !useSkillSearch ||
+      (!query.trim() && (isListedSkillsLoading || showFavorites)),
   });
-  const skills = useSkillSearch ? searchSkills : listedSkills;
+  const skills = showFavorites
+    ? favoriteSkills
+    : useSkillSearch
+      ? searchSkills
+      : listedSkills;
   // Use the displayed skills' query so tools and skills update together.
-  const capabilityQuery = useSkillSearch ? (resolvedSearchTerm ?? "") : query;
+  const capabilityQuery = showFavorites
+    ? ""
+    : useSkillSearch
+      ? (resolvedSearchTerm ?? "")
+      : query;
   const isSkillsLoading = useSkillSearch
     ? isSearchSkillsLoading
     : isListedSkillsLoading;
@@ -185,18 +246,28 @@ export function useSkillBuilderSlashCommandCapabilities({
         excludeSkillId,
         query: capabilityQuery,
         skills,
-        tools,
+        tools: showFavorites ? [] : tools,
         useSearchRanking: useSkillSearch,
         toolFilter: (serverView) =>
           getMCPServerRequirements(serverView).noRequirement,
       }),
-    [capabilityQuery, excludeSkillId, skills, tools, useSkillSearch]
+    [
+      capabilityQuery,
+      excludeSkillId,
+      skills,
+      tools,
+      useSkillSearch,
+      showFavorites,
+    ]
   );
 
   return {
-    capabilityItems,
+    capabilityItems: waitingForFavorites ? [] : capabilityItems,
     resolvedQuery: capabilityQuery,
     // Spaces are needed to label tools available in several spaces.
-    isLoading: isSkillsLoading || isSpacesLoading || isServerViewsLoading,
+    isLoading:
+      waitingForFavorites ||
+      (!showFavorites &&
+        (isSkillsLoading || isSpacesLoading || isServerViewsLoading)),
   };
 }
