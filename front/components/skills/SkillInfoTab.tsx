@@ -139,7 +139,8 @@ export function SkillInfoTab({
         </div>
       )}
       {skill.fileAttachments.length > 0 && (
-        <div className="flex flex-col gap-4">
+        <div className="relative flex flex-col gap-4">
+          {editedSections.has("files") && <EditedSectionBar />}
           <div className="heading-lg text-foreground">Files</div>
           <div className="flex flex-wrap gap-2">
             {skill.fileAttachments.map((file) => (

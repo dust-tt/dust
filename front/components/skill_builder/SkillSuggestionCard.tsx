@@ -5,6 +5,7 @@ import { SuggestionFieldEditSection } from "@app/components/shared/SuggestionFie
 import { SuggestionInstructionsDiffBlock } from "@app/components/shared/SuggestionInstructionsDiffBlock";
 import { SuggestionNewInstructionsBlock } from "@app/components/shared/SuggestionNewInstructionsBlock";
 import { SuggestedSkillAvailability } from "@app/components/skill_builder/SuggestedSkillAvailability";
+import { SuggestedSkillFiles } from "@app/components/skill_builder/SuggestedSkillFiles";
 import { SuggestedSkillName } from "@app/components/skill_builder/SuggestedSkillName";
 import { SuggestedSkillUserFacingDescription } from "@app/components/skill_builder/SuggestedSkillUserFacingDescription";
 import { useAuth } from "@app/lib/auth/AuthContext";
@@ -290,9 +291,14 @@ function SuggestionDetails({
         />
       );
 
-    // TODO(skill-files): render the edited files.
     case "files":
-      return null;
+      return (
+        <SuggestedSkillFiles
+          suggestion={suggestion.suggestion}
+          skillId={suggestion.skillConfigurationId}
+          workspaceId={workspaceId}
+        />
+      );
 
     case "user_facing_description":
       return (
