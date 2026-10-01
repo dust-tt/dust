@@ -216,10 +216,9 @@ impl SqliteDatabase {
                 if let Some(h) = self.interrupt_handle.as_ref() {
                     h.lock().await.interrupt();
                 }
-                Err(SqliteDatabaseError::InternalError(anyhow!(format!(
-                    "Query execution timed out after {} ms",
-                    timeout_ms
-                ))))
+                Err(SqliteDatabaseError::InternalError(anyhow!(
+                    "Query blocking task failed (panic or cancellation)"
+                )))
             }
         }
     }
