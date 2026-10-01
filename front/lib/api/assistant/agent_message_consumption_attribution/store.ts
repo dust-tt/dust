@@ -446,7 +446,7 @@ async function persistMessageConsumptionAttribution(
       actions,
       billedCredits,
       dustRunIds,
-      isBillFrozen: false,
+      hasUnbilledExecution: false,
       items,
       runs,
       usages,
