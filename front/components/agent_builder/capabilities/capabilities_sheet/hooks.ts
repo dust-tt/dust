@@ -15,12 +15,14 @@ import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_pi
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useSearchSkillsInfinite } from "@app/hooks/useSearchSkillsInfinite";
 import { nameToStorageFormat } from "@app/lib/actions/default_mcp_action";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
+import {
+  useSearchSkillsInfinite,
+  useSkillWithRelations,
+} from "@app/lib/swr/skill_configurations";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useMemo, useState } from "react";
