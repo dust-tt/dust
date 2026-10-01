@@ -293,7 +293,10 @@ describe("agentLoopWorkflow activity cancellation", () => {
     runToolActivityWithExplicitCancellation.mockResolvedValue({
       deferredEvents: [],
     });
-    checkCreditsActivity.mockResolvedValue({ shouldStop: true });
+    checkCreditsActivity.mockResolvedValue({
+      shouldStop: true,
+      reason: "credits_exhausted",
+    });
     finalizeSuccessfulAgentLoopActivity.mockResolvedValue(undefined);
   });
 
