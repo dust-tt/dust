@@ -1,7 +1,7 @@
 import { InvocationMCPActions } from "@app/components/poke/frames/functions/mcp_actions";
 import { PokeJsonBlock } from "@app/components/poke/sandbox_functions/json_block";
 import type { PokeSandboxFunctionInvocation } from "@app/lib/api/poke/sandbox_functions";
-import { formatCalendarDateTime } from "@app/lib/utils/timestamps";
+import { formatCalendarDateTime } from "@app/lib/client/calendar_date";
 import {
   usePokeSandboxFunctionInvocation,
   usePokeSandboxFunctionInvocations,
