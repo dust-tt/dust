@@ -604,7 +604,7 @@ describe("search-backed Manage Skills", () => {
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
     await userEvent.type(
-      screen.getByPlaceholderText("Search skills by name"),
+      screen.getByPlaceholderText("Search for skills"),
       "Week"
     );
 

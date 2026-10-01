@@ -342,7 +342,7 @@ export function SearchAgentsPage({
       <SearchInput
         id="agent-search"
         name="agent-search"
-        placeholder="Search agents by name"
+        placeholder="Search for agents"
         value={searchTerm}
         onChange={setSearchTerm}
         className="w-full"
