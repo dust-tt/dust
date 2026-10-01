@@ -1,6 +1,6 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { validateInstructionEditTargets } from "@app/lib/api/actions/servers/building_agents_and_skills/instruction_edits";
-import { validateSkillFilesChange } from "@app/lib/api/skills/apply_skill_suggestions";
+import { resolveSkillFileAttachments } from "@app/lib/api/skills/apply_skill_suggestions";
 import { validateSkillAvailabilityChange } from "@app/lib/api/skills/availability_change";
 import { validateSkillDeletion } from "@app/lib/api/skills/deletion";
 import { validateSkillEditorsChange } from "@app/lib/api/skills/editors_change";
@@ -187,17 +187,23 @@ export async function validateSkillEditorsSuggestion(
   return new Ok({ addUserIds, removeUserIds });
 }
 
-export function validateSkillFilesSuggestion(
+export async function validateSkillFilesSuggestion(
+  auth: Authenticator,
   skill: SkillResource,
   { removeFileIds }: { removeFileIds: string[] }
-): Result<SkillFilesSuggestionType, MCPError> {
+): Promise<Result<SkillFilesSuggestionType, MCPError>> {
   if (removeFileIds.length === 0) {
     return new Err(
       new MCPError("Provide at least one file in `removeFileIds`.")
     );
   }
 
-  const validation = validateSkillFilesChange(skill, { removeFileIds });
+  const validation = await resolveSkillFileAttachments(
+    auth,
+    skill,
+    { addFilePaths: [], removeFileIds },
+    { upload: false }
+  );
   if (validation.isErr()) {
     return new Err(new MCPError(validation.error.message));
   }
