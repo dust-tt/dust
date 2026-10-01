@@ -24,8 +24,8 @@ type EditableSheetStateBase<TState extends SheetStateType> =
     index: number | null;
   };
 
-export type ClosedState = SheetStateBase<"closed">;
-export type SelectionState = SheetStateBase<"selection">;
+type ClosedState = SheetStateBase<"closed">;
+type SelectionState = SheetStateBase<"selection">;
 
 export type InfoState<
   TKind extends "skill" | "tool",

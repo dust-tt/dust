@@ -345,7 +345,7 @@ async function processTriggers({
 // not part of the configuration itself: `_warning` for a partial success (Slack linking still
 // running) and `_updated` (false when the save was a no-op — nothing changed; true also for an
 // in-place scope/editor change that creates no new version).
-export type SubmittedAgentConfiguration = (
+type SubmittedAgentConfiguration = (
   | LightAgentConfigurationType
   | AgentConfigurationType
 ) & {

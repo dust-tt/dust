@@ -29,7 +29,7 @@ export const CONFIGURATION_SHEET_PAGE_IDS = {
   CONFIGURATION: "configuration",
 } as const;
 
-export const TOOLS_SHEET_PAGE_IDS = {
+const TOOLS_SHEET_PAGE_IDS = {
   TOOL_SELECTION: "tool-selection",
   CONFIGURATION: "configuration",
   INFO: "info",
@@ -124,7 +124,7 @@ export interface ActionSpecification {
 }
 
 // MCP configuration types used by the agent builder.
-export type AgentBuilderMCPServerConfiguration = {
+type AgentBuilderMCPServerConfiguration = {
   mcpServerViewId: string;
   dataSourceConfigurations: DataSourceViewSelectionConfigurations | null;
   tablesConfigurations: DataSourceViewSelectionConfigurations | null;

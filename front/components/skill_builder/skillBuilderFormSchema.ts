@@ -11,7 +11,7 @@ import {
 import { editorUserSchema } from "@app/types/editors";
 import { z } from "zod";
 
-export const attachedKnowledgeSchema = z.object({
+const attachedKnowledgeSchema = z.object({
   dataSourceViewId: z.string(),
   nodeId: z.string(),
   spaceId: z.string(),
@@ -26,7 +26,7 @@ const {
   requestedSpaceIds: skillRequestedSpaceIdsSchema,
 } = SkillWithoutInstructionsAndToolsSchema.shape;
 
-export const referencedSkillSchema = z.object({
+const referencedSkillSchema = z.object({
   id: skillIdSchema,
   name: skillNameSchema,
   icon: skillIconSchema,
