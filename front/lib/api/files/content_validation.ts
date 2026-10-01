@@ -19,10 +19,46 @@ const MAX_DISPLAYED_ERRORS = 5;
 // We check both double and single quotes separately to handle mixed usage.
 const classNameRegex = /className\s*=\s*["']([^"']*)["']/g;
 
-// Regular expression to capture Tailwind arbitrary values:
-// Matches a word boundary, then one or more lowercase letters or hyphens,
-// followed by a dash, an opening bracket, one or more non-']' characters, and a closing bracket.
-const arbitraryRegex = /\b[a-z-]+-\[[^\]]+\]/g;
+/**
+ * @cc [owner:PopDaph,label:performance;security] linear-arbitrary-value-scan
+ * Scanning a className value MUST take O(n) time in its length, including when utility
+ * prefixes are long or opening brackets have no matching closing bracket.
+ */
+function findTailwindArbitraryValues(content: string): string[] {
+  const prefixRegex = /\b[a-z-]+/g;
+  const values: string[] = [];
+
+  for (
+    let match = prefixRegex.exec(content);
+    match !== null;
+    match = prefixRegex.exec(content)
+  ) {
+    const prefix = match[0];
+    const openingBracket = prefixRegex.lastIndex;
+    if (
+      prefix.length < 2 ||
+      !prefix.endsWith("-") ||
+      content[openingBracket] !== "["
+    ) {
+      continue;
+    }
+
+    const closingBracket = content.indexOf("]", openingBracket + 1);
+    if (closingBracket === -1) {
+      // No later candidate can close either.
+      break;
+    }
+    if (closingBracket === openingBracket + 1) {
+      continue;
+    }
+
+    values.push(content.slice(match.index, closingBracket + 1));
+    // Resume after the value so its contents are never scanned again.
+    prefixRegex.lastIndex = closingBracket + 1;
+  }
+
+  return values;
+}
 
 /**
  * Validates that the generated code doesn't contain Tailwind arbitrary values.
@@ -53,7 +89,7 @@ export function validateTailwindCode(
     }
 
     // Check if this className contains arbitrary values.
-    const arbitraryMatches = [...classContent.matchAll(arbitraryRegex)];
+    const arbitraryMatches = findTailwindArbitraryValues(classContent);
     if (arbitraryMatches.length === 0) {
       continue;
     }
@@ -64,9 +100,7 @@ export function validateTailwindCode(
 
     // For each arbitrary value in this className, create a warning.
     // We use the full className attribute as the oldString to avoid overlaps.
-    for (const arbMatch of arbitraryMatches) {
-      const arbitraryValue = arbMatch[0];
-
+    for (const arbitraryValue of arbitraryMatches) {
       warnings.push({
         type: "tailwind",
         message: `Forbidden Tailwind arbitrary value '${arbitraryValue}'. Use predefined classes or inline styles instead.`,
