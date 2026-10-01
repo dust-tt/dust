@@ -5,6 +5,7 @@ import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
@@ -37,6 +38,48 @@ function searchRequest(
 describe("POST /api/w/:wId/skills/search", () => {
   beforeEach(() => {
     searchSkills.mockReset();
+  });
+
+  it.each([
+    "user",
+    "admin",
+  ] as const)("only names visible skills in facets for a %s", async (role) => {
+    const { workspace, auth } = await setup(role);
+    const published = await SkillFactory.create(auth, {
+      name: "Published",
+      availability: "workspace_users",
+      addCurrentUserAsEditor: false,
+    });
+    const edited = await SkillFactory.create(auth, { name: "Edited" });
+    const unpublished = await SkillFactory.create(auth, {
+      name: "Unpublished",
+      addCurrentUserAsEditor: false,
+    });
+    searchSkills.mockResolvedValue(
+      new Ok({
+        skills: [],
+        total: 0,
+        hasMore: false,
+        facets: {
+          childSkills: [
+            { value: unpublished.sId, count: 3 },
+            { value: published.sId, count: 2 },
+            { value: edited.sId, count: 1 },
+            { value: "missing-skill", count: 4 },
+          ],
+        },
+      })
+    );
+
+    const response = await searchRequest(workspace.sId, {
+      facets: ["childSkills"],
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).facets.childSkills).toEqual([
+      edited.toSearchFacetJSON(1),
+      published.toSearchFacetJSON(2),
+    ]);
   });
 
   it("forwards the suggestion defaults and excluded skill to search", async () => {
