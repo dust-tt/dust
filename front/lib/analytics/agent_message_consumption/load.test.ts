@@ -550,7 +550,7 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
 
     expect(input).toMatchObject({
       billedCredits: 5,
-      isBillFrozen: true,
+      hasUnbilledExecution: true,
       messageStatus: "failed",
       usages: [{ runUsageModelId: billedUsage.runUsageModelId }],
     });

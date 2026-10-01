@@ -71,7 +71,7 @@ export type AgentMessageConsumptionAnalyticsInput =
     billedCredits: number;
     dustRunIds: string[];
     enabledSkillIdsByActionId: ReadonlyMap<string, string[]>;
-    isBillFrozen: boolean;
+    hasUnbilledExecution: boolean;
     items: AgentMessageConsumptionItemResource[];
     runs: RunResource[];
     skills: SkillResource[];
@@ -191,11 +191,11 @@ async function loadAnalyticsUser({
 }
 
 /**
- * @cc [owner:sfriquet,label:product;backend] frozen-bill-snapshot
+ * @cc [owner:sfriquet,label:product;backend] unbilled-execution-snapshot
  * A terminal message whose status is not tracked for billing (`failed`) MUST return null when its
- * `costCredits` is null. Otherwise it MUST be loaded with `isBillFrozen` set and `usages` restricted
- * to the billed run usages referenced by its stored attribution items, so that the indexed snapshot
- * covers only the executions billed before the message failed.
+ * `costCredits` is null. Otherwise it MUST be loaded with `hasUnbilledExecution` set and `usages`
+ * restricted to the billed run usages referenced by its stored attribution items, so that the
+ * indexed snapshot covers only the executions billed before the message failed.
  */
 export async function loadAgentMessageConsumptionAnalyticsInput(
   auth: Authenticator,
@@ -232,10 +232,10 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
   if (!messageConversation) {
     throw new Error("Agent message conversation not found");
   }
-  const isBillFrozen = !AGENT_MESSAGE_STATUSES_TO_TRACK.includes(
+  const hasUnbilledExecution = !AGENT_MESSAGE_STATUSES_TO_TRACK.includes(
     agentMessage.status
   );
-  if (isBillFrozen && agentMessage.costCredits === null) {
+  if (hasUnbilledExecution && agentMessage.costCredits === null) {
     return null;
   }
   // A paused message cancelled through `finalizeAgentMessagesWithoutWorkflow` is not re-indexed,
@@ -268,7 +268,7 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
       agentMessageModelIds: [agentMessage.agentMessageModelId],
       maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
     });
-  const indexedUsages = isBillFrozen
+  const indexedUsages = hasUnbilledExecution
     ? filterUsagesAttributedByItems(billedUsages, items)
     : billedUsages;
   const actions =
@@ -341,7 +341,7 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
     conversationId: conversation.conversationId,
     dustRunIds,
     enabledSkillIdsByActionId,
-    isBillFrozen,
+    hasUnbilledExecution,
     items,
     messageStatus: agentMessage.status,
     messageVersion: agentMessage.version,

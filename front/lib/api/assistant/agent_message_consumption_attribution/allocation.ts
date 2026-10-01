@@ -159,12 +159,12 @@ function hasCompleteToolAttribution({
   actions,
   items,
   dustRunIdsWithUsage,
-  isBillFrozen,
+  hasUnbilledExecution,
 }: {
   actions: AgentMCPActionResource[];
   items: AgentMessageConsumptionItemResource[];
   dustRunIdsWithUsage: Set<string>;
-  isBillFrozen: boolean;
+  hasUnbilledExecution: boolean;
 }): boolean {
   const toolItemByActionModelId = new Map<
     ModelId,
@@ -194,7 +194,7 @@ function hasCompleteToolAttribution({
       return false;
     }
     if (
-      !isBillFrozen &&
+      !hasUnbilledExecution &&
       isToolExecutionStatusFinal(action.status) &&
       item.completedAt === null
     ) {
@@ -212,7 +212,7 @@ function buildMessageConsumptionAllocationForVersion<
   attributionVersion,
   billedCredits,
   dustRunIds,
-  isBillFrozen,
+  hasUnbilledExecution,
   items,
   runs,
   usages,
@@ -221,7 +221,7 @@ function buildMessageConsumptionAllocationForVersion<
   attributionVersion: number;
   billedCredits: number;
   dustRunIds: string[];
-  isBillFrozen: boolean;
+  hasUnbilledExecution: boolean;
   items: AgentMessageConsumptionItemResource[];
   runs: RunResource[];
   usages: TUsage[];
@@ -274,7 +274,7 @@ function buildMessageConsumptionAllocationForVersion<
       actions,
       items,
       dustRunIdsWithUsage,
-      isBillFrozen,
+      hasUnbilledExecution,
     });
 
   if (!completeModel || !completeTool) {
@@ -326,10 +326,10 @@ function buildMessageConsumptionAllocationForVersion<
 
 /** Selects and allocates the newest self-consistent attribution stored for a message. */
 /**
- * @cc [owner:sfriquet,label:product;backend] frozen-bill-tool-completion
- * When `isBillFrozen` is set, a pending tool item whose action has since reached a final status
- * MUST NOT make the attribution incomplete: that completion happened in an execution that was
- * never billed. Without `isBillFrozen`, it MUST make the attribution incomplete.
+ * @cc [owner:sfriquet,label:product;backend] unbilled-execution-tool-completion
+ * When `hasUnbilledExecution` is set, a pending tool item whose action has since reached a final
+ * status MUST NOT make the attribution incomplete: that completion happened in an execution that
+ * was never billed. Without `hasUnbilledExecution`, it MUST make the attribution incomplete.
  */
 export function buildLatestMessageConsumptionAllocation<
   TUsage extends RunUsageWithRunKeyType,
@@ -337,7 +337,7 @@ export function buildLatestMessageConsumptionAllocation<
   actions,
   billedCredits,
   dustRunIds,
-  isBillFrozen,
+  hasUnbilledExecution,
   items,
   runs,
   usages,
@@ -345,7 +345,7 @@ export function buildLatestMessageConsumptionAllocation<
   actions: AgentMCPActionResource[];
   billedCredits: number | null;
   dustRunIds: string[];
-  isBillFrozen: boolean;
+  hasUnbilledExecution: boolean;
   items: AgentMessageConsumptionItemResource[];
   runs: RunResource[];
   usages: TUsage[];
@@ -375,7 +375,7 @@ export function buildLatestMessageConsumptionAllocation<
       attributionVersion,
       billedCredits,
       dustRunIds,
-      isBillFrozen,
+      hasUnbilledExecution,
       items: itemsByAttributionVersion.get(attributionVersion) ?? [],
       runs,
       usages,
