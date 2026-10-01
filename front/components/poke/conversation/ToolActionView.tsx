@@ -1,5 +1,6 @@
 import type { ChipColor } from "@app/components/poke/conversation/MessageMetadata";
 import { formatDurationMs } from "@app/components/poke/conversation/MessageMetadata";
+import { formatTime } from "@app/lib/i18n/format";
 import type { PokeAgentMessageType } from "@app/types/poke";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
@@ -100,7 +101,7 @@ function ToolActionContent({ action, isExpanded }: ToolActionContentProps) {
       </span>
       <span className="flex min-w-0 flex-1 items-center gap-4">
         <span className="w-24 shrink-0 text-sm tabular-nums text-muted-foreground">
-          {action.created ? new Date(action.created).toLocaleTimeString() : "—"}
+          {action.created ? formatTime(action.created) : "—"}
         </span>
         <Chip label={`Step ${action.step}`} />
         <span className="flex min-w-0 flex-col">

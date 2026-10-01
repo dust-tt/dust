@@ -1,4 +1,6 @@
 import { formatAmount } from "@app/components/workspace/billing/seatTypeUtils";
+import { formatPostSummary } from "@app/lib/api/actions/servers/slab/helpers";
+import type { SlabPost } from "@app/lib/api/actions/servers/slab/types";
 import {
   formatCurrency,
   formatDate,
@@ -16,7 +18,13 @@ import {
   formatCurrencyAmountCents,
 } from "@app/lib/metronome/amounts";
 import { formatTimestampToFriendlyDate, timeAgoFrom } from "@app/lib/utils";
-import { formatDate as formatDatePattern } from "@app/lib/utils/timestamps";
+import {
+  formatDate as formatDatePattern,
+  formatShortDate,
+  formatTimestring,
+} from "@app/lib/utils/timestamps";
+import { describeWakeUpSchedule } from "@app/lib/utils/wakeup_description";
+import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { SupportedLocale } from "@app/types/locale";
 import { SUPPORTED_LOCALES } from "@app/types/locale";
 import { formatDateFromMillis } from "@app/types/shared/utils/date_utils";
@@ -223,6 +231,70 @@ describe.each(SUPPORTED_LOCALES)("with %s as the format locale", (locale) => {
   });
 });
 
+describe.each([
+  undefined,
+  ...SUPPORTED_LOCALES,
+])("helpers formatting in the format locale, set to %s", (locale) => {
+  const date = new Date(TIMESTAMP);
+  const hourAndMinute: Intl.DateTimeFormatOptions = {
+    hour: "2-digit",
+    minute: "2-digit",
+  };
+
+  it("formatTimestring", () => {
+    setFormatLocale(locale);
+    expect(formatTimestring(TIMESTAMP)).toBe(
+      date.toLocaleTimeString(locale, hourAndMinute)
+    );
+  });
+
+  it("formatShortDate", () => {
+    setFormatLocale(locale);
+    expect(formatShortDate(TIMESTAMP)).toBe(
+      date.toLocaleDateString(locale, { month: "short", day: "numeric" })
+    );
+  });
+
+  it("describeWakeUpSchedule", () => {
+    setFormatLocale(locale);
+    expect(
+      describeWakeUpSchedule({
+        scheduleConfig: { type: "one_shot", fireAt: TIMESTAMP },
+      })
+    ).toBe(`at ${date.toLocaleTimeString(locale, hourAndMinute)}`);
+  });
+
+  it("getConversationDisplayTitle", () => {
+    setFormatLocale(locale);
+    expect(
+      getConversationDisplayTitle(
+        { title: null, created: TIMESTAMP },
+        new Date(TIMESTAMP + 2 * DAY_MS)
+      )
+    ).toBe(`Conversation from ${date.toLocaleDateString(locale)}`);
+  });
+
+  it("formatPostSummary", () => {
+    setFormatLocale(locale);
+    const post: SlabPost = {
+      id: "post_1",
+      title: "Post",
+      content: "Content",
+      insertedAt: date.toISOString(),
+      updatedAt: date.toISOString(),
+      publishedAt: null,
+      archivedAt: null,
+      linkAccess: "internal",
+      version: 1,
+      owner: { id: "user_1", name: "User", email: "user@example.com" },
+      topics: [],
+    };
+    const summary = formatPostSummary(post);
+    expect(summary).toContain(`Created: ${date.toLocaleDateString(locale)}`);
+    expect(summary).toContain(`Updated: ${date.toLocaleDateString(locale)}`);
+  });
+});
+
 describe("format locale resolution", () => {
   const cases: [SupportedLocale, string, string, string][] = [
     ["en-US", "September 23, 2025", "1,234.5", "3 days ago"],
@@ -254,6 +326,22 @@ describe("format locale resolution", () => {
   });
 
   it("uses the runtime locale when none is set", () => {
+    const date = new Date(TIMESTAMP);
+    const options: Intl.DateTimeFormatOptions = {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    };
+    expect(formatDate(date)).toBe(date.toLocaleDateString());
+    expect(formatDate(date, options)).toBe(
+      date.toLocaleDateString(undefined, options)
+    );
+    expect(formatTime(date)).toBe(date.toLocaleTimeString());
+    expect(formatTime(date, options)).toBe(
+      date.toLocaleTimeString(undefined, options)
+    );
     expect(formatNumber(1234.5)).toBe((1234.5).toLocaleString());
   });
 });

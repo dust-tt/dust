@@ -14,6 +14,7 @@ import {
   MCP_TOOL_STAKE_SHORT_LABELS,
 } from "@app/lib/actions/tool_stakes_descriptions";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { formatDate } from "@app/lib/i18n/format";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -47,7 +48,7 @@ export function MCPServerDetailsGeneral({
   const editedAt = useMemo(() => {
     const d = new Date(0);
     d.setUTCMilliseconds(mcpServerView?.editedByUser?.editedAt ?? 0);
-    return d.toLocaleDateString();
+    return formatDate(d);
   }, [mcpServerView?.editedByUser]);
 
   if (!mcpServerView) {

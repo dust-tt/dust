@@ -1,3 +1,4 @@
+import { formatDate } from "@app/lib/i18n/format";
 import type { SlabPost, SlabTopic } from "./types";
 
 export function formatPostSummary(post: SlabPost): string {
@@ -9,10 +10,10 @@ export function formatPostSummary(post: SlabPost): string {
 
   const updatedDate =
     post.updatedAt || post.insertedAt
-      ? new Date(post.updatedAt || post.insertedAt).toLocaleDateString()
+      ? formatDate(new Date(post.updatedAt || post.insertedAt))
       : "Unknown";
   const createdDate = post.insertedAt
-    ? new Date(post.insertedAt).toLocaleDateString()
+    ? formatDate(new Date(post.insertedAt))
     : "Unknown";
 
   const topics =
@@ -59,7 +60,7 @@ export function formatPostListAsText(
 
     const updatedDate =
       post.updatedAt || post.insertedAt
-        ? new Date(post.updatedAt || post.insertedAt).toLocaleDateString()
+        ? formatDate(new Date(post.updatedAt || post.insertedAt))
         : "Unknown";
 
     const author = `${post.owner.name} (${post.owner.email})`;
@@ -92,10 +93,10 @@ export function formatPostAsText(post: SlabPost): string {
       : "draft";
 
   const createdDate = post.insertedAt
-    ? new Date(post.insertedAt).toLocaleDateString()
+    ? formatDate(new Date(post.insertedAt))
     : "Unknown";
   const updatedDate = post.updatedAt
-    ? new Date(post.updatedAt).toLocaleDateString()
+    ? formatDate(new Date(post.updatedAt))
     : "Unknown";
 
   const topics =
