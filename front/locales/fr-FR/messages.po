@@ -1173,6 +1173,7 @@ msgstr "Voir le détail de l’utilisation"
 #: front/lib/notifications/workflows/programmatic-cap-reached.ts
 #: front/lib/notifications/workflows/seat-auto-upgraded.ts
 #: front/lib/notifications/workflows/upgrade-request-created.ts
+#: front/lib/notifications/workflows/user-awu-cap-reached.ts
 msgid "there"
 msgstr "à vous"
 
@@ -1287,3 +1288,47 @@ msgstr "Examinez la demande et ajustez sa limite depuis la page d’utilisation 
 #: front/lib/notifications/workflows/upgrade-request-created.ts
 msgid "Review request"
 msgstr "Examiner la demande"
+
+#: front/lib/notifications/workflows/user-awu-cap-reached.ts
+msgid "You've reached your usage limit"
+msgstr "Vous avez atteint votre limite d’utilisation"
+
+#: front/lib/notifications/workflows/user-awu-cap-reached.ts
+msgid "You have reached your {cap} credits limit in workspace \"{workspaceName}\" and can no longer run agents. Contact your admin to increase your limit."
+msgstr "Vous avez atteint votre limite de {cap} crédits dans l’espace de travail « {workspaceName} » et ne pouvez plus exécuter d’agents. Contactez votre administrateur pour augmenter votre limite."
+
+#: front/lib/notifications/workflows/user-awu-cap-reached.ts
+msgid "You've used 80% of your usage limit"
+msgstr "Vous avez utilisé 80 % de votre limite d’utilisation"
+
+#: front/lib/notifications/workflows/user-awu-cap-reached.ts
+msgid "You have used 80% of your {cap} credits limit in workspace \"{workspaceName}\". Contact your admin to increase your limit before you are blocked."
+msgstr "Vous avez utilisé 80 % de votre limite de {cap} crédits dans l’espace de travail « {workspaceName} ». Contactez votre administrateur pour augmenter votre limite avant d’être bloqué."
+
+#: front/lib/notifications/workflows/user-awu-cap-reached.ts
+msgid "[Dust] You've reached your usage limit in {workspaceName}"
+msgstr "[Dust] Vous avez atteint votre limite d’utilisation dans {workspaceName}"
+
+#: front/lib/notifications/workflows/user-awu-cap-reached.ts
+msgid "You have reached your {cap} credits usage limit in the Dust workspace {workspaceName} and can no longer run agents."
+msgstr "Vous avez atteint votre limite d’utilisation de {cap} crédits dans l’espace de travail Dust {workspaceName} et ne pouvez plus exécuter d’agents."
+
+#: front/lib/notifications/workflows/user-awu-cap-reached.ts
+msgid "Please contact your workspace admin to increase your limit."
+msgstr "Contactez l’administrateur de votre espace de travail pour augmenter votre limite."
+
+#: front/lib/notifications/workflows/user-awu-cap-reached.ts
+msgid "[Dust] You've used 80% of your usage limit in {workspaceName}"
+msgstr "[Dust] Vous avez utilisé 80 % de votre limite d’utilisation dans {workspaceName}"
+
+#: front/lib/notifications/workflows/user-awu-cap-reached.ts
+msgid "You have used 80% of your {cap} credits usage limit in the Dust workspace {workspaceName}."
+msgstr "Vous avez utilisé 80 % de votre limite d’utilisation de {cap} crédits dans l’espace de travail Dust {workspaceName}."
+
+#: front/lib/notifications/workflows/user-awu-cap-reached.ts
+msgid "Once you reach 100%, you won't be able to run agents until your limit is increased. Please contact your workspace admin."
+msgstr "Une fois 100 % atteints, vous ne pourrez plus exécuter d’agents tant que votre limite n’aura pas été augmentée. Contactez l’administrateur de votre espace de travail."
+
+#: front/lib/notifications/workflows/user-awu-cap-reached.ts
+msgid "Go to workspace"
+msgstr "Accéder à l’espace de travail"
