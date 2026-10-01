@@ -1,7 +1,6 @@
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
@@ -16,6 +15,8 @@ import { legacyModelIdToModel } from "@app/lib/api/llm";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { Authenticator } from "@app/lib/auth";
 import { getStreamEndpoints } from "@app/lib/llms/stream";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { constructProjectContext } from "@app/lib/resources/skill/code_defined/global/projects";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -60,10 +61,10 @@ makeScript(
   ) => {
     const auth = await Authenticator.fromDustSuperUser({ wId: workspaceId });
 
-    const [conversationRes, agentConfiguration] = await Promise.all([
+    const [conversationRes, agent] = await Promise.all([
       // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
       getConversation(auth, conversationId, true),
-      getAgentConfiguration(auth, { agentId, variant: "full" }),
+      AgentResource.fetchById(auth, agentId),
     ]);
 
     if (conversationRes.isErr()) {
@@ -75,10 +76,12 @@ makeScript(
     }
     const conversation = conversationRes.value;
 
-    if (!agentConfiguration) {
+    if (!agent) {
       logger.error({ agentId }, "Agent configuration not found");
       return;
     }
+    // The conversation rendering takes the configuration JSON.
+    const [agentConfiguration] = await toAgentConfigurations(auth, [agent]);
 
     // Script-only: no workspace routing needed, so pass permissive filters and
     // just select any endpoint for the agent's model.
