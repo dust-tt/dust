@@ -1,6 +1,0 @@
-POST /front.skills_1/_update_by_query?wait_for_completion=false&conflicts=proceed&requests_per_second=100
-{
-  "query": {
-    "match_all": {}
-  }
-}

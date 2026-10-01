@@ -13,11 +13,6 @@
       "nfc": {
         "type": "icu_normalizer",
         "name": "nfc"
-      },
-      "name_word_boundaries": {
-        "type": "pattern_replace",
-        "pattern": "(?<=\\p{Ll})(?=\\p{Lu})|(?<=\\p{Lu})(?=\\p{Lu}\\p{Ll})",
-        "replacement": " "
       }
     },
     "filter": {
@@ -42,12 +37,6 @@
           "preserve_words",
           "icu_folding"
         ]
-      },
-      "name_words_analyzer": {
-        "type": "custom",
-        "char_filter": ["name_word_boundaries"],
-        "tokenizer": "icu_tokenizer",
-        "filter": ["icu_folding"]
       }
     }
   }
