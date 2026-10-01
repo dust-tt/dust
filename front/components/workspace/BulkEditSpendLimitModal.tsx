@@ -9,6 +9,7 @@ import {
   WorkspaceDefaultLimitInput,
 } from "@app/components/workspace/WorkspaceDefaultLimitInput";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
+import { formatNumber } from "@app/lib/i18n/format";
 import { useUpdateDefaultUserSpendLimit } from "@app/lib/swr/usage_settings";
 import type { UserSpendLimit } from "@app/types/api/users/spend_limit";
 import { pluralize } from "@app/types/shared/utils/string_utils";
@@ -176,7 +177,7 @@ function BulkEditSpendLimitForm({
           )}
           <div className="flex flex-col gap-1">
             <DialogTitle>
-              {`Set personal limit for ${memberCount.toLocaleString("en-US")} member${pluralize(memberCount)}`}
+              {`Set personal limit for ${formatNumber(memberCount)} member${pluralize(memberCount)}`}
             </DialogTitle>
             <DialogDescription>
               {`These limits cap what each member can spend${
@@ -219,7 +220,7 @@ function BulkEditSpendLimitForm({
             />
             {removeRequested && (
               <p className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                {`Personal limit${pluralize(memberCount)} will be removed for ${memberCount.toLocaleString("en-US")} member${pluralize(memberCount)}. They will fall back to the workspace default.`}
+                {`Personal limit${pluralize(memberCount)} will be removed for ${formatNumber(memberCount)} member${pluralize(memberCount)}. They will fall back to the workspace default.`}
               </p>
             )}
           </div>

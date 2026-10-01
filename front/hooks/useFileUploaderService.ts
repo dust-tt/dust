@@ -434,7 +434,7 @@ export function useFileUploaderService({
         sendNotification({
           type: "error",
           title: "File too large.",
-          description: `File "${file.name}" (${formatFileSize(file.size, { decimals: 0 }, "en-US")}) exceeds the ${category} limit of ${formatFileSize(maxFileSizes[category], { decimals: 0 }, "en-US")}. Please upload a smaller file.`,
+          description: `File "${file.name}" (${formatFileSize(file.size, { decimals: 0 })}) exceeds the ${category} limit of ${formatFileSize(maxFileSizes[category], { decimals: 0 })}. Please upload a smaller file.`,
         });
       }
 

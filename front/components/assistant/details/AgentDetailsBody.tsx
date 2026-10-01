@@ -20,6 +20,7 @@ import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/constants";
+import { formatDate } from "@app/lib/i18n/format";
 import { useAgentSuggestionsPreview } from "@app/lib/swr/agent_suggestions";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -245,14 +246,11 @@ export function AgentDetailsBody({
     const lastAuthor = agentConfiguration?.lastAuthors?.[0];
     const editedDate =
       agentConfiguration?.versionCreatedAt &&
-      new Date(agentConfiguration.versionCreatedAt).toLocaleDateString(
-        "en-US",
-        {
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-        }
-      );
+      formatDate(new Date(agentConfiguration.versionCreatedAt), {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      });
 
     return (
       <div className="flex flex-col items-center gap-4 pt-4">

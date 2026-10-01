@@ -26,6 +26,7 @@ import {
   formatCreditsCompact,
   formatCreditValue,
 } from "@app/lib/client/credits";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 import { ButtonsSwitch, ButtonsSwitchList, cn } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
@@ -221,7 +222,7 @@ function ConsumptionDailyTooltip({
 
   return (
     <ChartTooltipCard
-      title={formatConsumptionDate(datum.timestamp)}
+      title={formatConsumptionDate(datum.timestamp, getActiveLocale())}
       rows={[
         ...(showActiveUsers
           ? [
@@ -422,7 +423,7 @@ export function ConsumptionDailyChart({
           tickMargin={8}
           minTickGap={24}
           tickFormatter={(timestamp: number) =>
-            formatConsumptionDate(timestamp)
+            formatConsumptionDate(timestamp, getActiveLocale())
           }
         />
         <YAxis

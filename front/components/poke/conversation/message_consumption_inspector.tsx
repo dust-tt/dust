@@ -2,6 +2,7 @@ import { getActionStepIcon } from "@app/components/assistant/conversation/action
 import { getModelLogoByModelId } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { formatCreditValue, toolUsageLabel } from "@app/lib/client/credits";
+import { formatNumber } from "@app/lib/i18n/format";
 import { usePokeMessageConsumption } from "@app/poke/swr/message_consumption";
 import type {
   AgentMessageConsumptionDetailsWithModels,
@@ -80,7 +81,7 @@ function formatShare(credits: number, totalCredits: number): string {
     return "<0.1%";
   }
 
-  return `${percentage.toLocaleString("en-US", {
+  return `${formatNumber(percentage, {
     maximumFractionDigits: 1,
   })}%`;
 }

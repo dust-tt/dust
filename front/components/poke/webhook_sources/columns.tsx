@@ -1,6 +1,6 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import type { PokeListWebhookSources } from "@app/lib/api/poke/webhook_sources";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import type { LightWorkspaceType } from "@app/types/user";
 import { LinkWrapper } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";

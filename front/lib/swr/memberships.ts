@@ -2,6 +2,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import type { GetMembersUsageResponseBody } from "@app/lib/api/credits/members_usage";
 import type { GetMembersResponseBody } from "@app/lib/api/workspace";
 import { clientFetch } from "@app/lib/egress/client";
+import { formatNumber } from "@app/lib/i18n/format";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { debounce } from "@app/lib/utils/debounce";
 import type { GetWorkspaceInvitationsResponseBody } from "@app/types/api/invitation";
@@ -293,8 +294,8 @@ export function useBulkSetUserSpendLimit({
         title: "Spend limit updated",
         description:
           limit.kind === "limited"
-            ? `Applied a ${limit.awuCredits.toLocaleString("en-US")} credit limit to ${body.memberCount.toLocaleString("en-US")} member${pluralize(body.memberCount)}.`
-            : `Removed the personal limit for ${body.memberCount.toLocaleString("en-US")} member${pluralize(body.memberCount)}.`,
+            ? `Applied a ${formatNumber(limit.awuCredits)} credit limit to ${formatNumber(body.memberCount)} member${pluralize(body.memberCount)}.`
+            : `Removed the personal limit for ${formatNumber(body.memberCount)} member${pluralize(body.memberCount)}.`,
       });
 
       await invalidateMembersUsage(workspaceId);
@@ -429,8 +430,8 @@ export function useBulkChangeSeatType({
         type: "success",
         title: "Seats updated",
         description: hasDeferredChanges
-          ? `Changed ${body.memberCount.toLocaleString("en-US")} members to ${seatName}. Downgrades take effect at the next credit refresh.`
-          : `Changed ${body.memberCount.toLocaleString("en-US")} members to ${seatName}.`,
+          ? `Changed ${formatNumber(body.memberCount)} members to ${seatName}. Downgrades take effect at the next credit refresh.`
+          : `Changed ${formatNumber(body.memberCount)} members to ${seatName}.`,
       });
 
       await invalidateMembersUsage(workspaceId);
@@ -678,8 +679,8 @@ export function useUpdateUserSpendLimit({
           break;
         case "limited":
           description = resetAtNextBillingCycle
-            ? `${memberName}'s spend limit has been set to ${limit.awuCredits.toLocaleString("en-US")} credits until the next billing cycle.`
-            : `${memberName}'s spend limit has been set to ${limit.awuCredits.toLocaleString("en-US")} credits.`;
+            ? `${memberName}'s spend limit has been set to ${formatNumber(limit.awuCredits)} credits until the next billing cycle.`
+            : `${memberName}'s spend limit has been set to ${formatNumber(limit.awuCredits)} credits.`;
           break;
         default:
           assertNeverAndIgnore(limit);

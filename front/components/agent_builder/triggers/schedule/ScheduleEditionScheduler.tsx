@@ -1,5 +1,7 @@
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { formatDate } from "@app/lib/i18n/format";
 import { useTextAsCronRule } from "@app/lib/swr/agent_triggers";
 import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
 import { getNextOccurrences } from "@app/lib/utils/schedule_next_occurrences";
@@ -237,13 +239,17 @@ export function ScheduleEditionScheduler({
                             </span>
                             {nextOccurrences.map((date, index) => (
                               <span key={index}>
-                                {date.toLocaleDateString("en-US", {
-                                  weekday: "long",
-                                  month: "long",
-                                  day: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
+                                {formatDate(
+                                  date,
+                                  {
+                                    weekday: "long",
+                                    month: "long",
+                                    day: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  },
+                                  getActiveLocale()
+                                )}
                               </span>
                             ))}
                           </div>

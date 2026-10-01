@@ -4,6 +4,7 @@ import { RestoreSkillDialog } from "@app/components/skills/RestoreSkillDialog";
 import { SkillDetailsButtonBar } from "@app/components/skills/SkillDetailsButtonBar";
 import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
 import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
+import { formatDate } from "@app/lib/i18n/format";
 import {
   getSkillAvatarIcon,
   hasRelations,
@@ -172,7 +173,7 @@ export function SkillDetailsHeader({
   const { editedByUser } = skill.relations;
   const editedDate =
     skill.updatedAt &&
-    new Date(skill.updatedAt).toLocaleDateString("en-US", {
+    formatDate(new Date(skill.updatedAt), {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",

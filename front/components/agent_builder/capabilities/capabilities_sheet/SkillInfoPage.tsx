@@ -2,8 +2,8 @@ import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { SkillDetailsButtonBar } from "@app/components/skills/SkillDetailsButtonBar";
 import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
 import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { hasRelations } from "@app/lib/skill";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {

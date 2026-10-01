@@ -9,7 +9,7 @@ import {
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import type { PokeMCPServerViewType } from "@app/types/poke";
 import type { LightWorkspaceType } from "@app/types/user";
 

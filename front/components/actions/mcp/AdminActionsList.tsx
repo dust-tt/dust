@@ -18,6 +18,7 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerType, MCPServerViewLightType } from "@app/lib/api/mcp";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { compareStrings } from "@app/lib/i18n/format";
 import { filterMCPServer } from "@app/lib/mcp";
 import {
@@ -27,7 +28,6 @@ import {
   useMCPServersUsage,
 } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type {
   AgentsAndSkillsUsageType,
   AgentsUsageType,

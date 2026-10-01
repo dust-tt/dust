@@ -1,6 +1,6 @@
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { SKILL_AVAILABILITY_DISPLAY } from "@app/lib/skills/labels";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type {
   SkillAvailability,

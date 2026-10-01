@@ -46,6 +46,7 @@ import {
   buildModelTierDefinitionByName,
   expandMaxTierName,
 } from "@app/lib/client/model_tiers";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import { DEFAULT_MAX_MODEL_TIER } from "@app/lib/model_tiers/tier_order";
 import { isCreditPricedFreePlan, isFreePlan } from "@app/lib/plans/plan_codes";
 import { useSearchParam } from "@app/lib/platform";
@@ -1072,7 +1073,10 @@ export function UsagePage() {
                     <div className="flex items-center justify-between gap-4 text-sm text-muted-foreground">
                       <span>{usedPercentage}% used</span>
                       {resetAt && (
-                        <span>Resets {formatConsumptionDate(resetAt)}</span>
+                        <span>
+                          Resets{" "}
+                          {formatConsumptionDate(resetAt, getActiveLocale())}
+                        </span>
                       )}
                     </div>
                   </>
@@ -1095,7 +1099,10 @@ export function UsagePage() {
                             At this rate, you&apos;re expected to consume your
                             full credits by{" "}
                             <span className="font-semibold">
-                              {formatConsumptionDate(resetAt)}
+                              {formatConsumptionDate(
+                                resetAt,
+                                getActiveLocale()
+                              )}
                             </span>
                             .
                           </span>

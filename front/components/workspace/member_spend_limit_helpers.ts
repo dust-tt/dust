@@ -1,4 +1,5 @@
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
+import { formatNumber } from "@app/lib/i18n/format";
 import type { UserSpendLimit } from "@app/types/api/users/spend_limit";
 import {
   MAX_USER_SPEND_LIMIT_AWU_CREDITS,
@@ -30,7 +31,7 @@ type ParsedCredits<T> =
   | { ok: false; message: string };
 
 function outOfRangeMessage(min: number, max: number): string {
-  return `Enter a whole number of credits between ${min.toLocaleString("en-US")} and ${max.toLocaleString("en-US")}.`;
+  return `Enter a whole number of credits between ${formatNumber(min)} and ${formatNumber(max)}.`;
 }
 
 // An empty input parses to null so callers decide what "no value" means.

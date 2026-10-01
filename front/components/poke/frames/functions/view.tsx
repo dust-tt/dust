@@ -8,7 +8,7 @@ import {
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
 import type { PokeFrameFunctionDetails } from "@app/lib/api/poke/frames";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 
 interface ViewFrameFunctionTableProps {
   frameFunction: PokeFrameFunctionDetails;

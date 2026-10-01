@@ -1,8 +1,8 @@
 import { MCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { SkillSuggestionCard } from "@app/components/skill_builder/SkillSuggestionCard";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { useRequiredPathParam } from "@app/lib/platform";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeMCPServerViews } from "@app/poke/swr/mcp_server_views";
 import { usePokeSkillSuggestionDetails } from "@app/poke/swr/skill_suggestion_details";

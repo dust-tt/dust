@@ -24,6 +24,8 @@ import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownlo
 import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import type { AwuUsageAnalyticsResponse } from "@app/lib/api/analytics/awu_usage_analytics";
 import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { formatDate } from "@app/lib/i18n/format";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import {
@@ -86,11 +88,15 @@ function getColorClassName(
 }
 
 function formatUtcMonthDay(date: Date): string {
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
+  return formatDate(
+    date,
+    {
+      month: "short",
+      day: "numeric",
+      timeZone: "UTC",
+    },
+    getActiveLocale()
+  );
 }
 
 // Weekly and monthly buckets slide with the trailing window, so the first and

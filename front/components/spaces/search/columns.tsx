@@ -1,4 +1,4 @@
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { MenuItem } from "@dust-tt/sparkle";
 import { DataTable, Tooltip } from "@dust-tt/sparkle";

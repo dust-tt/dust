@@ -1,8 +1,8 @@
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { PokeListConversationItem } from "@app/lib/api/poke/conversations";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import type { AgentConversationsOrderColumn } from "@app/lib/resources/conversation_resource";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { usePokeAgentConversations } from "@app/poke/swr/conversation";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { LightWorkspaceType } from "@app/types/user";

@@ -7,8 +7,8 @@ import {
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { useRequiredPathParam } from "@app/lib/platform";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeWebhookSourceDetails } from "@app/poke/swr/webhook_source_details";
 import { LinkWrapper, Spinner } from "@dust-tt/sparkle";

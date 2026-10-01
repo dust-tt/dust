@@ -41,6 +41,7 @@ import { usePodsSectionCollapsed } from "@app/hooks/usePodsSectionCollapsed";
 import { useSearchPods } from "@app/hooks/useSearchPods";
 import { useStarredPodsSectionCollapsed } from "@app/hooks/useStarredPodsSectionCollapsed";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
 import { SKILL_ICON } from "@app/lib/skill";
@@ -1452,7 +1453,7 @@ function WakeUpSuffix({ nextWakeupAt }: WakeUpSuffixProps) {
   return (
     <span className="copy-xs flex items-center gap-1 text-muted-foreground">
       <Icon visual={Clock} size="xs" />
-      {formatWakeUpSidebarLabel(nextWakeupAt)}
+      {formatWakeUpSidebarLabel(nextWakeupAt, getActiveLocale())}
     </span>
   );
 }

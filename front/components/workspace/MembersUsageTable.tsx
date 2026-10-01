@@ -35,6 +35,8 @@ import {
   formatUserModelTierInheritLabel,
   resolveModelTiersForUser,
 } from "@app/lib/client/model_tiers";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { formatDate } from "@app/lib/i18n/format";
 import type { ModelsTierDefinition } from "@app/lib/model_tiers/allowed_tiers";
 import { getMaxTierName } from "@app/lib/model_tiers/tier_order";
 import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective";
@@ -198,11 +200,15 @@ function getScheduledSeatChangeLabel(
   scheduledSeatChangeAt: string | null
 ): string {
   const dateSuffix = scheduledSeatChangeAt
-    ? ` (${new Date(scheduledSeatChangeAt).toLocaleDateString("en-US", {
-        month: "long",
-        day: "numeric",
-        timeZone: "UTC",
-      })})`
+    ? ` (${formatDate(
+        new Date(scheduledSeatChangeAt),
+        {
+          month: "long",
+          day: "numeric",
+          timeZone: "UTC",
+        },
+        getActiveLocale()
+      )})`
     : "";
 
   // A same-tier monthly→yearly commitment (e.g. pro -> pro_yearly) isn't a
@@ -318,8 +324,8 @@ function PoolCreditUsageBar({
   const temporaryResetLabel =
     poolCapOverrideExpiresAt !== null
       ? poolCapOverridePreviousAwuCredits === null
-        ? `Resets to no personal limit on ${formatConsumptionDate(poolCapOverrideExpiresAt)}`
-        : `Resets to ${formatCredits(poolCapOverridePreviousAwuCredits)} credits on ${formatConsumptionDate(poolCapOverrideExpiresAt)}`
+        ? `Resets to no personal limit on ${formatConsumptionDate(poolCapOverrideExpiresAt, getActiveLocale())}`
+        : `Resets to ${formatCredits(poolCapOverridePreviousAwuCredits)} credits on ${formatConsumptionDate(poolCapOverrideExpiresAt, getActiveLocale())}`
       : null;
   return (
     <div className="flex w-full flex-col gap-1">
@@ -822,11 +828,15 @@ function buildPremiumMessageUsageColumn(
                   <span className="font-medium">Reset schedule:</span>
                   {refillSchedule.map(({ date, messages }) => (
                     <span key={date}>
-                      {new Date(date).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        timeZone: "UTC",
-                      })}
+                      {formatDate(
+                        new Date(date),
+                        {
+                          month: "short",
+                          day: "numeric",
+                          timeZone: "UTC",
+                        },
+                        getActiveLocale()
+                      )}
                       : +{messages}
                     </span>
                   ))}
@@ -914,11 +924,15 @@ function buildFairUseCreditsColumn(
                   <span className="font-medium">Reset schedule:</span>
                   {refillSchedule.map(({ date, credits }) => (
                     <span key={date}>
-                      {new Date(date).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        timeZone: "UTC",
-                      })}
+                      {formatDate(
+                        new Date(date),
+                        {
+                          month: "short",
+                          day: "numeric",
+                          timeZone: "UTC",
+                        },
+                        getActiveLocale()
+                      )}
                       : +{formatCredits(credits)}
                     </span>
                   ))}

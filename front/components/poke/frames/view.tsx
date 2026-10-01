@@ -7,8 +7,8 @@ import {
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
 import type { PokeFrameDetails } from "@app/lib/api/poke/frames";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { makeSandboxConnectCommand } from "@app/lib/poke/sandbox";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { LinkWrapper } from "@dust-tt/sparkle";
 

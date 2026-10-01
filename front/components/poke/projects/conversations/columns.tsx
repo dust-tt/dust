@@ -1,5 +1,5 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import type { PodConversationListItemType } from "@app/types/api/assistant/conversation/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
 import { LinkWrapper } from "@dust-tt/sparkle";
