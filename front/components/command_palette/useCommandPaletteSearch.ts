@@ -1,4 +1,5 @@
 import {
+  useConversations,
   usePodConversationsSummary,
   useSearchPodConversations,
   useSearchPrivateConversations,
@@ -12,7 +13,7 @@ import { filterAndSortAgents, subFilter } from "@app/lib/utils";
 import type { AgentSearchListItemType } from "@app/types/agent_search/agent_search";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { ConversationListItemType } from "@app/types/assistant/conversation";
 import type {
   SkillListItemType,
   SkillWithoutInstructionsAndToolsType,
@@ -36,7 +37,7 @@ type CommandPaletteAgent =
 
 type CommandPalettePod = PodType & { isMember: boolean };
 
-type CommandPaletteConversation = ConversationWithoutContentType & {
+type CommandPaletteConversation = ConversationListItemType & {
   spaceName: string | null;
 };
 
@@ -258,6 +259,17 @@ function useCommandPaletteConversations({
   isOpen: boolean;
   trimmedQuery: string;
 }) {
+  // Recent private conversations (same list as the sidebar). Shares the
+  // sidebar SWR cache when open, so the empty-query default is free.
+  const {
+    conversations: recentConversations,
+    isConversationsLoading,
+    hasMore: hasMoreRecentConversations,
+  } = useConversations({
+    workspaceId: owner.sId,
+    options: { disabled: !isOpen },
+  });
+
   // Same conversation search as the sidebar (private title + pod semantic).
   const isConversationSearchEnabled = isOpen && trimmedQuery.length > 0;
   const {
@@ -280,7 +292,24 @@ function useCommandPaletteConversations({
     limit: MAX_DISPLAYED_CONVERSATIONS,
   });
 
-  const allConversations = useMemo(() => {
+  // Empty query: most recently updated private conversations (sidebar order).
+  // With a query: private title search + pod semantic search, same as sidebar.
+  const { conversations, hasMoreConversations } = useMemo(() => {
+    if (!trimmedQuery) {
+      const defaults: CommandPaletteConversation[] = recentConversations.map(
+        (conversation) => ({
+          ...conversation,
+          spaceName: null,
+        })
+      );
+      return {
+        conversations: defaults.slice(0, MAX_DISPLAYED_CONVERSATIONS),
+        hasMoreConversations:
+          defaults.length > MAX_DISPLAYED_CONVERSATIONS ||
+          hasMoreRecentConversations,
+      };
+    }
+
     const seen = new Set<string>();
     const merged: CommandPaletteConversation[] = [];
 
@@ -298,15 +327,28 @@ function useCommandPaletteConversations({
       }
     }
 
-    return merged;
-  }, [privateConversationResults, podConversationResults]);
+    return {
+      conversations: merged.slice(0, MAX_DISPLAYED_CONVERSATIONS),
+      hasMoreConversations:
+        hasMorePrivateConversations ||
+        merged.length > MAX_DISPLAYED_CONVERSATIONS,
+    };
+  }, [
+    trimmedQuery,
+    recentConversations,
+    hasMoreRecentConversations,
+    privateConversationResults,
+    podConversationResults,
+    hasMorePrivateConversations,
+  ]);
 
   return {
-    conversations: allConversations.slice(0, MAX_DISPLAYED_CONVERSATIONS),
-    hasMoreConversations:
-      hasMorePrivateConversations ||
-      allConversations.length > MAX_DISPLAYED_CONVERSATIONS,
-    isLoading: isSearchingPrivateConversations || isSearchingPodConversations,
+    conversations,
+    hasMoreConversations,
+    isLoading:
+      isConversationsLoading ||
+      isSearchingPrivateConversations ||
+      isSearchingPodConversations,
   };
 }
 

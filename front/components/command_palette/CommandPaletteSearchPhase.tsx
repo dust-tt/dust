@@ -8,7 +8,7 @@ import { getSkillAvatarIcon } from "@app/lib/skill";
 import { getSpaceIcon } from "@app/lib/spaces";
 import type { AgentSearchListItemType } from "@app/types/agent_search/agent_search";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { ConversationListItemType } from "@app/types/assistant/conversation";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type {
   SkillListItemType,
@@ -35,7 +35,7 @@ type CommandPaletteAgent =
 
 type CommandPalettePod = PodType & { isMember: boolean };
 
-type CommandPaletteConversation = ConversationWithoutContentType & {
+type CommandPaletteConversation = ConversationListItemType & {
   spaceName: string | null;
 };
 
@@ -64,19 +64,19 @@ interface CommandPaletteSearchPhaseProps {
 }
 
 function getFlatItems(
-  agents: CommandPaletteAgent[],
   conversations: CommandPaletteConversation[],
+  agents: CommandPaletteAgent[],
   pods: CommandPalettePod[],
   skills: CommandPaletteSkill[]
 ): CommandPaletteItem[] {
   return [
-    ...agents.map((agent): CommandPaletteItem => ({ kind: "agent", agent })),
     ...conversations.map(
       (conversation): CommandPaletteItem => ({
         kind: "conversation",
         conversation,
       })
     ),
+    ...agents.map((agent): CommandPaletteItem => ({ kind: "agent", agent })),
     ...pods.map((pod): CommandPaletteItem => ({ kind: "pod", pod })),
     ...skills.map((skill): CommandPaletteItem => ({ kind: "skill", skill })),
   ];
@@ -100,8 +100,8 @@ export function CommandPaletteSearchPhase({
   onClose,
 }: CommandPaletteSearchPhaseProps) {
   const flatItems = useMemo(
-    () => getFlatItems(agents, conversations, pods, skills),
-    [agents, conversations, pods, skills]
+    () => getFlatItems(conversations, agents, pods, skills),
+    [conversations, agents, pods, skills]
   );
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -202,54 +202,22 @@ export function CommandPaletteSearchPhase({
           </ItemEmptyState>
         )}
 
-        {agents.length > 0 && (
-          <div>
-            <ItemTitle>Agents</ItemTitle>
-            {agents.map((agent, i) => (
-              <ItemRow
-                key={agent.sId}
-                ref={(el) => {
-                  itemRefs.current[i] = el;
-                }}
-                isSelected={selectedIndex === i}
-                onClick={() => onItemSelect({ kind: "agent", agent })}
-                onMouseMove={() => onSelectedIndexChange(i)}
-              >
-                <Avatar visual={agent.pictureUrl} size="xs" />
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <span className="shrink-0 font-medium">{agent.name}</span>
-                  <span className="shrink-0 text-muted-foreground">-</span>
-                  <span className="min-w-0 truncate text-muted-foreground">
-                    {agent.description}
-                  </span>
-                </div>
-              </ItemRow>
-            ))}
-            {hasMoreAgents && (
-              <div className="px-3 py-2 text-xs text-muted-foreground">
-                More agents available. Type to filter.
-              </div>
-            )}
-          </div>
-        )}
-
         {conversations.length > 0 && (
           <div>
             <ItemTitle>Conversations</ItemTitle>
             {conversations.map((conversation, i) => {
-              const globalIndex = agents.length + i;
               const title = getConversationDisplayTitle(conversation);
               return (
                 <ItemRow
                   key={conversation.sId}
                   ref={(el) => {
-                    itemRefs.current[globalIndex] = el;
+                    itemRefs.current[i] = el;
                   }}
-                  isSelected={selectedIndex === globalIndex}
+                  isSelected={selectedIndex === i}
                   onClick={() =>
                     onItemSelect({ kind: "conversation", conversation })
                   }
-                  onMouseMove={() => onSelectedIndexChange(globalIndex)}
+                  onMouseMove={() => onSelectedIndexChange(i)}
                 >
                   <Icon visual={MessageCircle01} size="xs" />
                   <div className="flex min-w-0 items-center gap-1.5">
@@ -278,11 +246,45 @@ export function CommandPaletteSearchPhase({
           </div>
         )}
 
+        {agents.length > 0 && (
+          <div>
+            <ItemTitle>Agents</ItemTitle>
+            {agents.map((agent, i) => {
+              const globalIndex = conversations.length + i;
+              return (
+                <ItemRow
+                  key={agent.sId}
+                  ref={(el) => {
+                    itemRefs.current[globalIndex] = el;
+                  }}
+                  isSelected={selectedIndex === globalIndex}
+                  onClick={() => onItemSelect({ kind: "agent", agent })}
+                  onMouseMove={() => onSelectedIndexChange(globalIndex)}
+                >
+                  <Avatar visual={agent.pictureUrl} size="xs" />
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="shrink-0 font-medium">{agent.name}</span>
+                    <span className="shrink-0 text-muted-foreground">-</span>
+                    <span className="min-w-0 truncate text-muted-foreground">
+                      {agent.description}
+                    </span>
+                  </div>
+                </ItemRow>
+              );
+            })}
+            {hasMoreAgents && (
+              <div className="px-3 py-2 text-xs text-muted-foreground">
+                More agents available. Type to filter.
+              </div>
+            )}
+          </div>
+        )}
+
         {pods.length > 0 && (
           <div>
             <ItemTitle>Pods</ItemTitle>
             {pods.map((pod, i) => {
-              const globalIndex = agents.length + conversations.length + i;
+              const globalIndex = conversations.length + agents.length + i;
               return (
                 <ItemRow
                   key={pod.sId}
@@ -330,7 +332,7 @@ export function CommandPaletteSearchPhase({
             <ItemTitle>Skills</ItemTitle>
             {skills.map((skill, i) => {
               const globalIndex =
-                agents.length + conversations.length + pods.length + i;
+                conversations.length + agents.length + pods.length + i;
               const SkillAvatar = getSkillAvatarIcon(skill);
               return (
                 <ItemRow
