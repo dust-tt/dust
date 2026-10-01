@@ -321,13 +321,10 @@ export function validateFinalToolCall(
       if (!created.success) {
         return created;
       }
-      const { ref } = created.item;
-      if (!isString(ref)) {
-        return {
-          success: false,
-          error: `The create_agent suggestion declares no ref: ${JSON.stringify(created.item)}`,
-        };
-      }
+      const createdRefs = getSuggestions(finalToolCall)
+        .filter((s) => s.kind === "create_agent")
+        .map((s) => s.ref)
+        .filter(isString);
 
       const parent = findSuggestion(finalToolCall, "edit_agent", {
         field: "agentId",
@@ -342,10 +339,15 @@ export function validateFinalToolCall(
         isSuggestionItem(subAgents) && Array.isArray(subAgents.addAgentRefs)
           ? subAgents.addAgentRefs
           : [];
-      if (!addAgentRefs.includes(ref)) {
+      const addedCreatedRefs = createdRefs.filter((ref) =>
+        addAgentRefs.includes(ref)
+      );
+
+      const expectedCount = assertion.subAgentCount ?? 1;
+      if (addedCreatedRefs.length < expectedCount) {
         return {
           success: false,
-          error: `The edit_agent suggestion does not add the created agent (ref "${ref}") as a sub-agent: ${JSON.stringify(parent.item)}`,
+          error: `The edit_agent suggestion adds ${addedCreatedRefs.length} created agent(s) as sub-agents by ref, expected ${expectedCount} (created refs ${JSON.stringify(createdRefs)}): ${JSON.stringify(parent.item)}`,
         };
       }
       return { success: true };

@@ -141,6 +141,8 @@ export type FinalToolCallAssertion =
       type: "suggestSubAgentByRef";
       // The seeded agent that must get the created agent as a sub-agent, through its ref.
       parentAgentKey: string;
+      // How many created agents it must get. Defaults to 1.
+      subAgentCount?: number;
     }
   | {
       type: "suggestAgentSkillByRef";

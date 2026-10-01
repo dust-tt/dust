@@ -61,6 +61,29 @@ const WORKSPACE_WITH_TRIAGE: WorkspaceSeed = {
   ],
 };
 
+const ACCOUNT_MANAGER_AGENT_KEY = "account-manager";
+
+const WORKSPACE_WITH_ACCOUNT_MANAGER: WorkspaceSeed = {
+  skills: [],
+  agents: [
+    {
+      key: ACCOUNT_MANAGER_AGENT_KEY,
+      name: "AccountManager",
+      description:
+        "Helps Acme account managers prepare their customer reviews.",
+      instructionsHtml:
+        `<div data-type="instructions-root" data-block-id="${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}">` +
+        section(
+          "Role",
+          "acco0001",
+          "acco0002",
+          "You help Acme account managers prepare the quarterly review of a customer account."
+        ) +
+        "</div>",
+    },
+  ],
+};
+
 export const subAgentRefsSuite: TestSuite = {
   name: "sub-agent-refs",
   description:
@@ -91,6 +114,41 @@ export const subAgentRefsSuite: TestSuite = {
 - Score 0-1 if the agent tells the user to add the sub-agent from the agent builder instead of
   suggesting it, creates RefundChecker without wiring it to SupportTriage, or asks a clarifying
   question after the user explicitly said to go ahead.
+- The closing message must surface the recorded suggestion directive to the user.
+`.trim(),
+    },
+    {
+      scenarioId: "account-review-fan-out",
+      workspaceSeed: WORKSPACE_WITH_ACCOUNT_MANAGER,
+      userMessage:
+        "Set up AccountManager to delegate its quarterly reviews. Create a ChurnRiskScorer " +
+        "agent that rates the churn risk of an account as low, medium or high from its usage " +
+        "data, with the reason, and a RenewalDrafter agent that drafts the renewal email for " +
+        "an account. AccountManager must be able to call both. Also create an Account Health " +
+        "Summary skill that formats a review as ARR, seats used out of seats bought, open " +
+        "support tickets and churn risk, and give it to AccountManager. Finally, create a " +
+        "Renewal Email Style skill for RenewalDrafter: a warm but concise tone, at most 150 " +
+        "words, and always mention the renewal date and the account owner's name. Go ahead " +
+        "and set it all up.",
+      expectedFinalToolCall: {
+        type: "suggestSubAgentByRef",
+        parentAgentKey: ACCOUNT_MANAGER_AGENT_KEY,
+        subAgentCount: 2,
+      },
+      judgeCriteria: `
+- The run must create the ChurnRiskScorer and RenewalDrafter agents and the Account Health
+  Summary and Renewal Email Style skills, all in the same suggestion call. Both agents must be
+  sub-agents of AccountManager, Account Health Summary must go to AccountManager, and Renewal
+  Email Style must go to RenewalDrafter at its creation.
+- ChurnRiskScorer must answer low, medium or high with the reason, and RenewalDrafter must draft
+  a renewal email.
+- The Account Health Summary instructions must list the four parts of the summary: ARR, seats
+  used out of seats bought, open support tickets and churn risk.
+- The Renewal Email Style instructions must ask for a warm but concise tone, at most 150 words,
+  and the renewal date and the account owner's name in every email.
+- Score 0-1 if any of the four creations or of the four wirings is missing, if a skill goes to
+  the wrong agent, or if the run asks a clarifying question after the user explicitly said to go
+  ahead.
 - The closing message must surface the recorded suggestion directive to the user.
 `.trim(),
     },
