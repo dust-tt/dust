@@ -133,6 +133,25 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations", () => {
     );
   });
 
+  it("keeps the legacy empty actions and instructionsHtml fields", async () => {
+    const { workspace, key } = await createPublicApiMockRequest({
+      role: "admin",
+    });
+    await setupTestAgents(workspace);
+
+    const response = await listAgents(workspace, key, { view: "all" });
+
+    expect(response.status).toBe(200);
+    const { agentConfigurations } = await response.json();
+    expect(agentConfigurations.length).toBeGreaterThan(0);
+    for (const agentConfiguration of agentConfigurations) {
+      expect(agentConfiguration).toMatchObject({
+        actions: [],
+        instructionsHtml: null,
+      });
+    }
+  });
+
   it("hides unpublished and restricted space agents with the all view", async () => {
     const { workspace, key } = await createPublicApiMockRequest({
       role: "admin",

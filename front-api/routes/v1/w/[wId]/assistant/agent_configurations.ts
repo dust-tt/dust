@@ -1,7 +1,10 @@
 import { listAgentsForView } from "@app/lib/api/assistant/agent_views";
 import { toAgentConfigurationsWithSkills } from "@app/lib/api/assistant/configuration/helpers";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
-import { normalizeAgentView } from "@app/lib/api/v1/backward_compatibility";
+import {
+  addLegacyLightAgentConfigurationFields,
+  normalizeAgentView,
+} from "@app/lib/api/v1/backward_compatibility";
 import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
@@ -163,15 +166,17 @@ app.get(
 
     return ctx.json({
       // Global agents' skills are code-defined: the light shape does not carry them.
-      agentConfigurations: await toAgentConfigurationsWithSkills(
-        auth,
-        agentConfigurations.map((agentConfiguration) => ({
-          ...agentConfiguration,
-          codeDefinedSkillIds: codeDefinedSkillIdsByAgentId.get(
-            agentConfiguration.sId
-          ),
-        }))
-      ),
+      agentConfigurations: (
+        await toAgentConfigurationsWithSkills(
+          auth,
+          agentConfigurations.map((agentConfiguration) => ({
+            ...agentConfiguration,
+            codeDefinedSkillIds: codeDefinedSkillIdsByAgentId.get(
+              agentConfiguration.sId
+            ),
+          }))
+        )
+      ).map(addLegacyLightAgentConfigurationFields),
     });
   }
 );

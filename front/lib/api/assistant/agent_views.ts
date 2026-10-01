@@ -6,6 +6,8 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import partition from "lodash/partition";
 
+// Global agents first (in their default order), then custom agents by name, or by most recent
+// version with `sort: "updatedAt"`; `sort: "alphabetical"` orders the whole list by name.
 /**
  * @cc [owner:tdraier,label:security;product] agent-view-sets
  * Each view returns exactly these agents, filtered to the resources the caller can fetch:
@@ -29,8 +31,6 @@ import partition from "lodash/partition";
  * @cc [owner:philipperolet,label:backend] default-agent-query-order
  * Active-agent queries MUST default to name order when no sort is requested.
  */
-// Global agents first (in their default order), then custom agents by name, or by most recent
-// version with `sort: "updatedAt"`; `sort: "alphabetical"` orders the whole list by name.
 export async function listAgentsForView(
   auth: Authenticator,
   view: AgentsGetViewType,
