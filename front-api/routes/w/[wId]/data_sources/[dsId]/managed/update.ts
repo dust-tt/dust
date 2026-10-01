@@ -5,6 +5,7 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import { registerSlackWebhookRouterEntry } from "@app/lib/api/data_sources";
+import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import { deleteNovuSlackChannelSetup } from "@app/lib/notifications";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
@@ -79,6 +80,22 @@ app.post(
     }
 
     const body = ctx.req.valid("json");
+
+    if (body.connectionId) {
+      const connectionOwnershipRes = await checkConnectionOwnership(
+        auth,
+        body.connectionId
+      );
+      if (connectionOwnershipRes.isErr()) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message: "You do not have permission to use this connection.",
+          },
+        });
+      }
+    }
 
     const connectorsAPI = new ConnectorsAPI(
       config.getConnectorsAPIConfig(),
