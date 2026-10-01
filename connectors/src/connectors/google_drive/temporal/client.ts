@@ -150,6 +150,11 @@ export async function launchGoogleDriveFullSyncWorkflow(
   }
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:concurrency] atomic-incremental-sync-replacement
+ * Replacing a running incremental sync MUST terminate it and start its replacement in a single
+ * Temporal request, without a separate termination call.
+ */
 export async function launchGoogleDriveIncrementalSyncWorkflow(
   connectorId: ModelId
 ): Promise<Result<string, Error>> {
@@ -167,12 +172,11 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
   const delayMinutes = Math.floor(Math.random() * 5);
 
   try {
-    await terminateWorkflow(workflowId);
-
     await client.workflow.start(googleDriveIncrementalSyncV2, {
       args: [connectorId],
       taskQueue: GDRIVE_INCREMENTAL_SYNC_QUEUE_NAME,
       workflowId,
+      workflowIdConflictPolicy: "TERMINATE_EXISTING",
       searchAttributes: {
         connectorId: [connectorId],
       },
