@@ -579,6 +579,12 @@ export async function addContentNodeToProject(
  * - If some fragments are referenced by messages, we keep them but detach them from the space
  *   and mark them expired so conversation rendering can display an appropriate placeholder.
  */
+/**
+ * @cc [owner:frankaloia,label:security] project-file-must-belong-to-pod
+ * The file MUST have useCase project_context and useCaseMetadata.spaceId equal to space.sId.
+ * Any other file MUST be left unchanged. The call MUST fail with the same not-found error as a
+ * missing file, before fragment cleanup and before file.delete.
+ */
 export async function removeFileFromProject(
   auth: Authenticator,
   {
@@ -591,6 +597,16 @@ export async function removeFileFromProject(
 ): Promise<Result<void, Error>> {
   const file = await FileResource.fetchById(auth, fileId);
   if (!file) {
+    return new Err(new Error("File not found."));
+  }
+
+  // The route authorized the Pod, not this file. Reject anything that is not this Pod's
+  // project-context file before fragment cleanup or FileResource.delete, including Frames v2.
+  // The same not-found error as a missing id avoids confirming that the file exists elsewhere.
+  if (
+    file.useCase !== "project_context" ||
+    file.useCaseMetadata?.spaceId !== space.sId
+  ) {
     return new Err(new Error("File not found."));
   }
 
