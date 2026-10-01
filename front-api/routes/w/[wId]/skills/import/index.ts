@@ -1,8 +1,5 @@
 import { importSkillsFromGitHub } from "@app/lib/api/skills/detection/github/import_skills";
-import type {
-  ImportSkillsRequestBody,
-  ImportSkillsResponseBody,
-} from "@app/types/api/skills/detection/github/import_skills";
+import type { ImportSkillsResponseBody } from "@app/types/api/skills/detection/github/import_skills";
 import { ImportSkillsRequestBodySchema } from "@app/types/api/skills/detection/github/import_skills";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -14,8 +11,6 @@ import { validate } from "@front-api/middlewares/validator";
 
 import githubConnection from "./github-connection";
 import upload from "./upload";
-
-export type { ImportSkillsRequestBody, ImportSkillsResponseBody };
 
 // Mounted at /api/w/:wId/skills/import.
 const app = workspaceApp();

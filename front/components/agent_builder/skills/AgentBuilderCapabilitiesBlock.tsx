@@ -253,8 +253,7 @@ export function AgentBuilderCapabilitiesBlock({
         const confirmed = await confirm({
           title: `Remove ${skill.name}?`,
           message:
-            "You will not be able to add this skill back because it is only " +
-            "accessible to the skill editors and you are not an editor.",
+            "You will not be able to add this skill back because it is only accessible to the skill editors and you are not an editor.",
           validateLabel: "Remove",
           validateVariant: "warning",
           cancelLabel: "Cancel",

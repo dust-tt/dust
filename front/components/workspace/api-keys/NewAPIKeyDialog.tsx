@@ -8,6 +8,7 @@ import {
   monthlyCapDollarsSchema,
   parseCreditsString,
 } from "@app/components/workspace/api-keys/utils";
+import { compareStrings } from "@app/lib/i18n/format";
 import type { SpaceType } from "@app/types/space";
 import {
   Button,
@@ -114,7 +115,7 @@ export const NewAPIKeyDialog = ({
   const sortedSpaces = useMemo(
     () =>
       [...spaces].sort((a, b) =>
-        a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+        compareStrings(a.name.toLowerCase(), b.name.toLowerCase())
       ),
     [spaces]
   );

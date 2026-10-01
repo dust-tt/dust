@@ -20,7 +20,6 @@ import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { fireAndForgetNotification } from "@app/lib/notifications/fire_and_forget";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -201,13 +200,9 @@ async function createConversationForAgentConfiguration({
       const content =
         serializeMention(agent) +
         (trigger.customPrompt ? `\n\n${trigger.customPrompt}` : "");
-      const [agentConfiguration] = await toLightAgentConfigurations(auth, [
-        agent,
-      ]);
-
       await createTriggerLimitExceededMessages(auth, {
         conversation: newConversation.toJSON(),
-        agentConfiguration,
+        agent,
         content,
         context: triggeredContext,
         error: { type: errorType, message: errorMessage },

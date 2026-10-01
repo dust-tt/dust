@@ -1,4 +1,5 @@
 import type { UserWakeUpWithConversation } from "@app/lib/api/assistant/wakeups";
+import { formatDateTime } from "@app/lib/i18n/format";
 import { useAppRouter } from "@app/lib/platform";
 import { useUserWakeUps } from "@app/lib/swr/wakeups";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -96,7 +97,7 @@ const COLUMNS: ColumnDef<WakeUpRowData>[] = [
         <DataTable.CellContent className="w-full justify-start text-left">
           <span className="truncate text-sm tabular-nums text-muted-foreground">
             {nextFireAt !== null
-              ? new Date(nextFireAt).toLocaleString(undefined, {
+              ? formatDateTime(nextFireAt, {
                   dateStyle: "short",
                   timeStyle: "short",
                 })

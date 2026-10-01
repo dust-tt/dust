@@ -55,11 +55,13 @@ export async function fetchSuggestableSubAgents(
   );
 }
 
-/** The agent a suggestion adds as a sub-agent of `agentId`, among the `suggestable` ones. */
+/**
+ * Finds the agent to add as a sub-agent among the `suggestable` ones.
+ */
 export function checkSubAgentAddition(
   subAgentId: string,
   suggestable: Map<string, AgentResource>,
-  { agentId }: { agentId: string }
+  { agentId }: { agentId?: string } = {}
 ): Result<AgentResource, string> {
   if (subAgentId === agentId) {
     return new Err("An agent cannot be its own sub-agent.");

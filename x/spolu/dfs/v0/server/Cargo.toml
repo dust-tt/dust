@@ -1,0 +1,40 @@
+[package]
+name = "dfs-server"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow = "1"
+axum = { version = "0.8", default-features = false, features = ["http1", "json", "matched-path", "tokio"] }
+base64 = "0.23"
+clap = { version = "4", features = ["derive", "env"] }
+dfs-protocol = { path = "../protocol" }
+futures = "0.3"
+foyer = { version = "0.22.6", features = ["serde"] }
+getrandom = "0.4"
+hex = "0.4"
+im = { version = "15", default-features = false }
+lru = "0.18"
+postcard = { version = "1", default-features = false, features = ["use-std"] }
+serde = { version = "1", features = ["derive"] }
+sha2 = "0.10"
+slatedb = { version = "0.17", default-features = false, features = ["gcp", "foyer"] }
+subtle = "2"
+tempfile = "3"
+thiserror = "2"
+tokio = { version = "1", features = ["fs", "io-util", "macros", "net", "process", "rt-multi-thread", "signal", "sync", "time"] }
+tokio-util = { version = "0.7", features = ["io", "rt"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+uuid = { version = "1", features = ["v4"] }
+
+[dev-dependencies]
+dfs-client = { path = "../client" }
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+serde_json = "1"
+tokio = { version = "1", features = ["test-util"] }
+tower = { version = "0.5", features = ["util"] }
+
+[lints]
+workspace = true

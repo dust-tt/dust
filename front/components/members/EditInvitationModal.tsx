@@ -5,6 +5,7 @@ import {
 } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { formatDate } from "@app/lib/i18n/format";
 import { sendInvitations, updateInvitation } from "@app/lib/invitations";
 import { useWorkspaceGrantedRoles } from "@app/lib/swr/groups";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
@@ -116,8 +117,7 @@ export function EditInvitationModal({
               <div className="flex flex-col gap-2">
                 <Page.H variant="h6">{invitation.inviteEmail}</Page.H>
                 <div className="text-muted-foreground">
-                  Invitation sent on{" "}
-                  {new Date(invitation.createdAt).toLocaleDateString()}
+                  Invitation sent on {formatDate(invitation.createdAt)}
                   {invitation.isExpired && (
                     <span className="ml-2 text-red-500">(expired)</span>
                   )}

@@ -18,6 +18,7 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerType, MCPServerViewLightType } from "@app/lib/api/mcp";
+import { compareStrings } from "@app/lib/i18n/format";
 import { filterMCPServer } from "@app/lib/mcp";
 import {
   useCreateInternalMCPServer,
@@ -362,7 +363,8 @@ export const AdminActionsList = ({
           );
         },
         sortingFn: (rowA, rowB) => {
-          return rowA.original.mcpServer.name.localeCompare(
+          return compareStrings(
+            rowA.original.mcpServer.name,
             rowB.original.mcpServer.name
           );
         },
@@ -386,7 +388,7 @@ export const AdminActionsList = ({
         sortingFn: (rowA, rowB) => {
           const accountA = rowA.original.account;
           const accountB = rowB.original.account;
-          return accountA.localeCompare(accountB);
+          return compareStrings(accountA, accountB);
         },
         meta: {
           className: "hidden @sm:w-5 @sm:table-cell",

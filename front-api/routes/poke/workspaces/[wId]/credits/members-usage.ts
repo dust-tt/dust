@@ -7,8 +7,6 @@ import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
-export type { GetMembersUsageResponseBody };
-
 // Mounted at /api/poke/workspaces/:wId/credits/members-usage.
 const app = pokeApp();
 

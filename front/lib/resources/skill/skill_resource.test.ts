@@ -6,6 +6,7 @@ import {
   SkillDataSourceConfigurationModel,
 } from "@app/lib/models/skill";
 import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorite";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DiscoveryItemResource } from "@app/lib/resources/discovery_item_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
@@ -37,6 +38,7 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -2181,7 +2183,7 @@ describe("SkillResource", () => {
     });
   });
 
-  describe("listByAgentConfigurations", () => {
+  describe("listByAgentConfigurationModelIds", () => {
     it("maps each agent to its own skills", async () => {
       const [firstAgent, secondAgent, skillLessAgent] = await Promise.all([
         AgentConfigurationFactory.createTestAgent(testContext.authenticator, {
@@ -2212,26 +2214,22 @@ describe("SkillResource", () => {
         });
       }
 
-      const pairs = await SkillResource.listByAgentConfigurations(
-        testContext.authenticator,
-        [firstAgent, secondAgent, skillLessAgent]
-      );
+      const skillsByAgent =
+        await SkillResource.listByAgentConfigurationModelIds(
+          testContext.authenticator,
+          [firstAgent.id, secondAgent.id, skillLessAgent.id]
+        );
 
-      const skillModelIdsByAgentId = new Map<string, number[]>();
-      for (const { agentConfiguration, skill } of pairs) {
-        const skillModelIds =
-          skillModelIdsByAgentId.get(agentConfiguration.sId) ?? [];
-        skillModelIds.push(skill.id);
-        skillModelIdsByAgentId.set(agentConfiguration.sId, skillModelIds);
-      }
-
-      expect(skillModelIdsByAgentId.get(firstAgent.sId)?.sort()).toEqual(
-        [firstSkill.id, sharedSkill.id].sort()
-      );
-      expect(skillModelIdsByAgentId.get(secondAgent.sId)).toEqual([
-        sharedSkill.id,
-      ]);
-      expect(skillModelIdsByAgentId.has(skillLessAgent.sId)).toBe(false);
+      expect(
+        skillsByAgent
+          .get(firstAgent.id)
+          ?.map((skill) => skill.id)
+          .sort()
+      ).toEqual([firstSkill.id, sharedSkill.id].sort());
+      expect(
+        skillsByAgent.get(secondAgent.id)?.map((skill) => skill.id)
+      ).toEqual([sharedSkill.id]);
+      expect(skillsByAgent.has(skillLessAgent.id)).toBe(false);
     });
 
     it("resolves global skills attached to a workspace agent", async () => {
@@ -2244,21 +2242,26 @@ describe("SkillResource", () => {
         agentConfigurationId: agent.id,
       });
 
-      const pairs = await SkillResource.listByAgentConfigurations(
-        testContext.authenticator,
-        [agent]
-      );
+      const skillsByAgent =
+        await SkillResource.listByAgentConfigurationModelIds(
+          testContext.authenticator,
+          [agent.id]
+        );
 
-      expect(pairs.map(({ skill }) => skill.sId)).toEqual(["frames"]);
+      expect(skillsByAgent.get(agent.id)?.map((skill) => skill.sId)).toEqual([
+        "frames",
+      ]);
     });
 
     it("returns nothing for no agents", async () => {
       expect(
-        await SkillResource.listByAgentConfigurations(
-          testContext.authenticator,
-          []
-        )
-      ).toEqual([]);
+        (
+          await SkillResource.listByAgentConfigurationModelIds(
+            testContext.authenticator,
+            []
+          )
+        ).size
+      ).toBe(0);
     });
 
     it("does not return skills the caller cannot read", async () => {
@@ -2286,8 +2289,57 @@ describe("SkillResource", () => {
       );
 
       expect(
-        await SkillResource.listByAgentConfigurations(otherAuth, [agent])
-      ).toEqual([]);
+        (
+          await SkillResource.listByAgentConfigurationModelIds(otherAuth, [
+            agent.id,
+          ])
+        ).size
+      ).toBe(0);
+    });
+  });
+
+  describe("listByAgents", () => {
+    it("lists each agent's skills by its scope, with no skill for skill-less agents", async () => {
+      const { authenticator } = testContext;
+      const [withSkill, skillLess] = await Promise.all([
+        AgentConfigurationFactory.createTestAgent(authenticator, {
+          name: "With Skill",
+        }),
+        AgentConfigurationFactory.createTestAgent(authenticator, {
+          name: "Skill-less",
+        }),
+      ]);
+      const skill = await SkillFactory.create(authenticator, {
+        name: "Linked Skill",
+      });
+      await SkillFactory.linkToAgent(authenticator, {
+        skillId: skill.id,
+        agentConfigurationId: withSkill.id,
+      });
+
+      const agents = await AgentResource.fetchByIds(authenticator, [
+        withSkill.sId,
+        skillLess.sId,
+        GLOBAL_AGENTS_SID.HELPER,
+      ]);
+      expect(agents).toHaveLength(3);
+      const [withSkillAgent, skillLessAgent, globalAgent] = agents;
+
+      const skillsByAgent = await SkillResource.listByAgents(
+        authenticator,
+        agents
+      );
+
+      expect(
+        [...skillsByAgent].map(([agent, skills]) => [
+          agent,
+          skills.map((s) => s.sId),
+        ])
+      ).toEqual([
+        [withSkillAgent, [skill.sId]],
+        [skillLessAgent, []],
+        [globalAgent, ["frames"]],
+      ]);
     });
   });
 

@@ -1,4 +1,5 @@
 import { MAX_SKILL_SEARCH_RESULTS } from "@app/lib/skill_search/query";
+import { SEARCH_TYPES } from "@app/types/api/search";
 import {
   SKILL_SEARCH_FACETS,
   SKILL_SEARCH_SORT_ORDERS,
@@ -9,6 +10,7 @@ import { z } from "zod";
 
 export const SearchSkillsQuerySchema = z.object({
   query: z.string().max(200).optional().default(""),
+  searchType: z.enum(SEARCH_TYPES).optional().default("autocomplete"),
   limit: z.number().int().min(0).max(MAX_SKILL_SEARCH_RESULTS).optional(),
   offset: z.number().int().min(0).optional(),
   permissionFiltering: z.enum(["strict", "redact_unreadable"]).optional(),
@@ -23,7 +25,7 @@ export const SearchSkillsQuerySchema = z.object({
     .max(SKILL_AVAILABILITIES.length)
     .optional(),
   editedByMe: z.literal(true).optional(),
-  codeDefinedOnly: z.literal(true).optional(),
+  codeDefinedOnly: z.boolean().optional(),
   editorIds: z.array(z.string().min(1)).max(100).optional(),
   childSkillIds: z.array(z.string().min(1)).max(100).optional(),
   spaceIds: z.array(z.string().min(1)).max(100).optional(),
@@ -39,4 +41,8 @@ export const SearchSkillsQuerySchema = z.object({
     .optional(),
   sortBy: z.enum(SKILL_SEARCH_SORTS).optional(),
   sortOrder: z.enum(SKILL_SEARCH_SORT_ORDERS).optional(),
+  // Suggestion menus list alphabetical favorites for blank queries, falling back to normal search.
+  defaultToFavorites: z.boolean().optional(),
+  // Only excluded from the default favorites list; ordinary search behavior is unchanged.
+  excludeSkillId: z.string().min(1).optional(),
 });

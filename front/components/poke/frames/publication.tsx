@@ -6,6 +6,7 @@ import {
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
 import type { PokeFrameDetails } from "@app/lib/api/poke/frames";
+import { compareStrings } from "@app/lib/i18n/format";
 import { CodeBlock, File02, Folder, Tree } from "@dust-tt/sparkle";
 
 interface FramePublicationSectionProps {
@@ -111,14 +112,14 @@ function renderSourceFileTree(paths: string[]): React.ReactNode {
 
   return [
     ...[...directories]
-      .sort(([a], [b]) => a.localeCompare(b))
+      .sort(([a], [b]) => compareStrings(a, b))
       .map(([name, children]) => (
         <Tree.Item key={name} label={name} visual={Folder} type="node">
           {renderSourceFileTree(children)}
         </Tree.Item>
       )),
     ...files
-      .sort((a, b) => a.localeCompare(b))
+      .sort((a, b) => compareStrings(a, b))
       .map((name) => (
         <Tree.Item key={name} label={name} visual={File02} type="leaf" />
       )),

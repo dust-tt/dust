@@ -4,11 +4,12 @@ import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { useSlackWorkflowsOverview } from "@app/hooks/useSlackWorkflowsOverview";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
+import { timeAgoFrom } from "@app/lib/client/relative_time";
+import { formatNumber } from "@app/lib/i18n/format";
 import {
   useRevokeSlackWorkflow,
   useSlackWorkflows,
 } from "@app/lib/swr/slack_workflows";
-import { timeAgoFrom } from "@app/lib/utils";
 import type { SlackWorkflowType } from "@app/types/api/slack/workflows";
 import { GLOBAL_SPACE_NAME } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -104,7 +105,7 @@ function SlackWorkflowsOverview({
       />
       <SummaryCard
         label="Workflows allowed"
-        value={workflowCount.toLocaleString()}
+        value={formatNumber(workflowCount)}
         hint={null}
       />
     </div>
@@ -187,9 +188,9 @@ function SlackWorkflowsCard({
         cell: (info) => (
           <DataTable.BasicCellContent
             className="whitespace-nowrap"
-            label={`${timeAgoFrom(info.row.original.createdAt, {
+            label={timeAgoFrom(info.row.original.createdAt, {
               useLongFormat: true,
-            })} ago`}
+            })}
           />
         ),
       },

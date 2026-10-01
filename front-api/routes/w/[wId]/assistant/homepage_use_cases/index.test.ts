@@ -4,6 +4,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { MAX_FEATURED_USE_CASES } from "@app/types/api/homepage_use_cases";
 import type { MembershipRoleType } from "@app/types/memberships";
@@ -14,6 +15,7 @@ import { z } from "zod";
 const EMAIL_USE_CASE_ID = "unanswered-messages";
 const SALES_USE_CASE_ID = "account-research";
 const POD_USE_CASE_ID = "create-pod";
+const BUILD_AGENT_USE_CASE_ID = "build-agent";
 
 const ReferenceSchema = z.object({ id: z.string(), name: z.string() });
 
@@ -186,6 +188,25 @@ describe("GET /api/w/[wId]/assistant/homepage_use_cases", () => {
     const afterPod = await getUseCases(workspace.sId);
     expect(afterPod.useCases.map((useCase) => useCase.id)).not.toContain(
       POD_USE_CASE_ID
+    );
+  });
+
+  it("offers the agent building use case only to users who can create agents", async () => {
+    const { user, workspace } = await setupWorkspace();
+
+    const withoutGrant = await getUseCases(workspace.sId);
+    expect(withoutGrant.useCases.map((useCase) => useCase.id)).not.toContain(
+      BUILD_AGENT_USE_CASE_ID
+    );
+
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "create",
+      resourceType: "agent",
+    });
+
+    const withGrant = await getUseCases(workspace.sId);
+    expect(withGrant.useCases.map((useCase) => useCase.id)).toContain(
+      BUILD_AGENT_USE_CASE_ID
     );
   });
 

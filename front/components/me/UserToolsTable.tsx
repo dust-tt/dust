@@ -5,6 +5,7 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { compareStrings } from "@app/lib/i18n/format";
 import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import {
   useCreatePersonalConnection,
@@ -267,7 +268,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
         accessorKey: "name",
         header: "Name",
         sortingFn: (rowA, rowB) => {
-          return rowA.original.name.localeCompare(rowB.original.name);
+          return compareStrings(rowA.original.name, rowB.original.name);
         },
         cell: ({ row }) => (
           <DataTable.CellContent grow>

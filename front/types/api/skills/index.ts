@@ -31,7 +31,8 @@ export interface SkillSearchFilters {
   // Supports "edited by me", but not "not edited by me".
   editedByMe?: true;
   availability?: SkillAvailability[];
-  codeDefinedOnly?: true;
+  // True selects code-defined skills, false selects workspace skills, omitted selects both.
+  codeDefinedOnly?: boolean;
   editorIds?: string[];
   childSkillIds?: string[];
   spaceIds?: string[];

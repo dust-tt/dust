@@ -1,16 +1,14 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type {
-  GetWorkspaceGrantedRolesResponseBody,
-  GetWorkspaceGrantedSeatTypesResponseBody,
-} from "@app/lib/api/workspace";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import type { GetWorkspaceGrantedRolesResponseBody } from "@app/lib/api/workspace";
 import { clientFetch } from "@app/lib/egress/client";
+import { compareStrings } from "@app/lib/i18n/format";
 import type { BulkSeatChangePreviewBody } from "@app/lib/swr/memberships";
 import {
   BulkSeatChangePreviewResponseSchema,
   invalidateMembersUsage,
 } from "@app/lib/swr/memberships";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { workspaceAuthContextUrl } from "@app/lib/swr/workspaces";
 import type { GetGroupsResponseBody } from "@app/types/api/groups";
 import type {
   GetGroupResponseBody,
@@ -29,7 +27,8 @@ import type {
 } from "@app/types/groups";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import type { LightWorkspaceType, UserType } from "@app/types/user";
+import { isString } from "@app/types/shared/utils/general";
+import type { LightUserType, LightWorkspaceType } from "@app/types/user";
 import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import { mutate } from "swr";
@@ -40,6 +39,7 @@ export function useGroups({
   kinds,
   withMembers,
   withManagers,
+  managedOnly,
   disabled,
 }: {
   owner: LightWorkspaceType;
@@ -48,6 +48,7 @@ export function useGroups({
   // server-side) instead of just its memberCount.
   withMembers?: boolean;
   withManagers?: boolean;
+  managedOnly?: boolean;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
@@ -62,9 +63,12 @@ export function useGroups({
     if (withManagers) {
       params.append("withManagers", "true");
     }
+    if (managedOnly) {
+      params.append("managedOnly", "true");
+    }
     const queryString = params.toString();
     return `/api/w/${owner.sId}/groups${queryString ? `?${queryString}` : ""}`;
-  }, [owner.sId, kinds, withMembers, withManagers]);
+  }, [owner.sId, kinds, withMembers, withManagers, managedOnly]);
 
   const groupsFetcher: Fetcher<GetGroupsResponseBody> = fetcher;
 
@@ -74,7 +78,9 @@ export function useGroups({
 
   const groups = useMemo(
     () =>
-      data ? [...data.groups].sort((a, b) => a.name.localeCompare(b.name)) : [],
+      data
+        ? [...data.groups].sort((a, b) => compareStrings(a.name, b.name))
+        : [],
     [data]
   );
 
@@ -124,37 +130,6 @@ function grantedSeatTypesUrl(workspaceId: string): string {
   return `/api/w/${workspaceId}/granted-seat-types`;
 }
 
-export function useWorkspaceGrantedSeatTypes({
-  workspaceId,
-  disabled,
-}: {
-  workspaceId: string;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const { hasFeature } = useFeatureFlags();
-  const grantedSeatTypesFetcher: Fetcher<GetWorkspaceGrantedSeatTypesResponseBody> =
-    fetcher;
-
-  // Skip the request entirely when the feature is off: the endpoint returns an
-  // empty list in that case, so there is nothing to fetch and no reason to lock
-  // seat editing in the members UI.
-  const isDisabled = disabled || !hasFeature("group_seat_provisioning");
-
-  const { data, error } = useSWRWithDefaults(
-    grantedSeatTypesUrl(workspaceId),
-    grantedSeatTypesFetcher,
-    { disabled: isDisabled }
-  );
-
-  return {
-    grantedSeatTypes:
-      data?.grantedSeatTypes ?? emptyArray<GroupGrantableSeatType>(),
-    isGrantedSeatTypesLoading: !error && !data && !isDisabled,
-    isGrantedSeatTypesError: error,
-  };
-}
-
 export function useGroup({
   owner,
   groupId,
@@ -177,8 +152,8 @@ export function useGroup({
 
   return {
     group: data?.group ?? null,
-    members: data ? data.members : emptyArray<UserType>(),
-    managers: data ? data.managers : emptyArray<UserType>(),
+    members: data ? data.members : emptyArray<LightUserType>(),
+    managers: data ? data.managers : emptyArray<LightUserType>(),
     isGroupLoading: !error && !data && !disabled && !!groupId,
     isGroupError: !!error,
     mutateGroup: mutate,
@@ -214,7 +189,9 @@ export function useMemberGroups({
 
   const groups = useMemo(
     () =>
-      data ? [...data.groups].sort((a, b) => a.name.localeCompare(b.name)) : [],
+      data
+        ? [...data.groups].sort((a, b) => compareStrings(a.name, b.name))
+        : [],
     [data]
   );
 
@@ -288,6 +265,7 @@ export function useAddMemberToGroup({
         );
         // Member counts changed in the workspace groups list.
         await invalidateWorkspaceGroups(owner.sId);
+        await invalidatePeople(owner.sId);
 
         return true;
       } finally {
@@ -362,6 +340,7 @@ export function useRemoveMemberFromGroup({
         );
         // Member counts changed in the workspace groups list.
         await invalidateWorkspaceGroups(owner.sId);
+        await invalidatePeople(owner.sId);
 
         return true;
       } finally {
@@ -391,6 +370,15 @@ async function invalidateWorkspaceGroups(workspaceId: string): Promise<void> {
   await mutate(
     (key) =>
       typeof key === "string" && key.startsWith(`/api/w/${workspaceId}/groups`)
+  );
+}
+
+async function invalidatePeople(workspaceId: string): Promise<void> {
+  await mutate(
+    (key) =>
+      isString(key) &&
+      (key.startsWith(`/api/w/${workspaceId}/members/search`) ||
+        key === workspaceAuthContextUrl(workspaceId))
   );
 }
 
@@ -530,6 +518,9 @@ export function useUpdateGroup({
         );
 
         await invalidateWorkspaceGroups(owner.sId);
+        if (memberIds !== undefined || managerIds !== undefined) {
+          await invalidatePeople(owner.sId);
+        }
 
         return body;
       } finally {

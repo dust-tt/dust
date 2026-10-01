@@ -7,6 +7,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
+import { isContentTypeSafeToDisplay } from "@front-api/lib/file_serving";
 import { unauthedApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -142,6 +143,16 @@ app.get("/:fileId", validate("param", ParamsSchema), async (ctx) => {
     return apiError(ctx, {
       status_code: 404,
       api_error: { type: "file_not_found", message: "File not found." },
+    });
+  }
+
+  if (!isContentTypeSafeToDisplay(targetFile.contentType)) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "File is not safe for public display.",
+      },
     });
   }
 

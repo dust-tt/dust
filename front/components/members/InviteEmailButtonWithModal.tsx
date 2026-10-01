@@ -63,7 +63,7 @@ const useGetEmailsListAndError = (
     if (invalidEmails.length > 0) {
       return {
         inviteEmailsList: null,
-        emailError: "Invalid email addresses: " + invalidEmails.join(", "),
+        emailError: `Invalid email addresses: ${invalidEmails.join(", ")}`,
       };
     }
 

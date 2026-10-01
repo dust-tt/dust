@@ -9,11 +9,12 @@ import {
 } from "@app/components/poke/shadcn/ui/alert";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { timeAgoFrom } from "@app/lib/client/relative_time";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
-import { decodeSqids, timeAgoFrom } from "@app/lib/utils";
+import { decodeSqids } from "@app/lib/utils";
 import { usePokeDocuments, usePokeTables } from "@app/poke/swr";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
@@ -161,7 +162,7 @@ function FolderDisplay({
                   <ContextItem.Visual
                     visual={({ className }) =>
                       File04({
-                        className: className + " text-muted-foreground",
+                        className: `${className} text-muted-foreground`,
                       })
                     }
                   />
@@ -182,7 +183,7 @@ function FolderDisplay({
                 <ContextItem.Description>
                   <div className="pt-2 text-sm text-muted-foreground">
                     {Math.floor(d.text_size / 1024)} kb,{" "}
-                    {timeAgoFrom(d.timestamp)} ago
+                    {timeAgoFrom(d.timestamp)}
                   </div>
                 </ContextItem.Description>
               </ContextItem>
@@ -248,7 +249,7 @@ function FolderDisplay({
                   <ContextItem.Visual
                     visual={({ className }) =>
                       Table({
-                        className: className + " text-muted-foreground",
+                        className: `${className} text-muted-foreground`,
                       })
                     }
                   />
@@ -256,7 +257,7 @@ function FolderDisplay({
               >
                 <ContextItem.Description>
                   <div className="pt-2 text-sm text-muted-foreground">
-                    {timeAgoFrom(t.timestamp)} ago
+                    {timeAgoFrom(t.timestamp)}
                   </div>
                 </ContextItem.Description>
               </ContextItem>

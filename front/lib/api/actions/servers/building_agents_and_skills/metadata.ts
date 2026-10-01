@@ -1,5 +1,5 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { SKILL_REF_REGEX } from "@app/lib/skills/format";
+import { SUGGESTION_REF_REGEX } from "@app/lib/skills/format";
 import {
   AGENT_FACING_DESCRIPTION_MAX_LENGTH,
   USER_FACING_DESCRIPTION_MAX_LENGTH,
@@ -28,6 +28,14 @@ const MAX_INSTRUCTION_EDITS = 50;
 
 export const CreateAgentSuggestionSchema = z.object({
   kind: z.literal("create_agent"),
+  ref: z
+    .string()
+    .regex(SUGGESTION_REF_REGEX)
+    .optional()
+    .describe(
+      "A temporary name for the new agent, unique among the agents created in this call. Use it " +
+        "anywhere in the same call, in place of the id of this agent, which does not exist yet."
+    ),
   name: z
     .string()
     .trim()
@@ -59,10 +67,23 @@ export const CreateAgentSuggestionSchema = z.object({
     .optional()
     .describe("Ids of the active skills to give the agent."),
   skillRefs: z
-    .array(z.string().regex(SKILL_REF_REGEX))
+    .array(z.string().regex(SUGGESTION_REF_REGEX))
     .optional()
     .describe(
       "Temporary names of skills created in this call, to give the agent."
+    ),
+  subAgentIds: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Ids of the active agents to give the agent as sub-agents, which it can run to delegate a " +
+        "task."
+    ),
+  subAgentRefs: z
+    .array(z.string().regex(SUGGESTION_REF_REGEX))
+    .optional()
+    .describe(
+      "Temporary names of agents created in this call, to give the agent as sub-agents."
     ),
 });
 
@@ -72,11 +93,11 @@ export const CreateSkillSuggestionSchema = z.object({
   kind: z.literal("create_skill"),
   ref: z
     .string()
-    .regex(SKILL_REF_REGEX)
+    .regex(SUGGESTION_REF_REGEX)
     .optional()
     .describe(
-      "A temporary name for the new skill, unique in this call. Use it anywhere in the same " +
-        "call, in place of the id of this skill, which does not exist yet."
+      "A temporary name for the new skill, unique among the skills created in this call. Use it " +
+        "anywhere in the same call, in place of the id of this skill, which does not exist yet."
     ),
   name: z
     .string()
@@ -165,7 +186,7 @@ export const EditAgentSuggestionSchema = z.object({
         .optional()
         .describe("Ids of the active skills to add to the agent."),
       addSkillRefs: z
-        .array(z.string().regex(SKILL_REF_REGEX))
+        .array(z.string().regex(SUGGESTION_REF_REGEX))
         .optional()
         .describe(
           "Temporary names of skills created in this call, to add to the agent."
@@ -201,6 +222,12 @@ export const EditAgentSuggestionSchema = z.object({
         .describe(
           "Ids of the active agents to add as sub-agents, which the agent can run to delegate " +
             "a task."
+        ),
+      addAgentRefs: z
+        .array(z.string().regex(SUGGESTION_REF_REGEX))
+        .optional()
+        .describe(
+          "Temporary names of agents created in this call, to add as sub-agents."
         ),
       removeAgentIds: z
         .array(z.string())

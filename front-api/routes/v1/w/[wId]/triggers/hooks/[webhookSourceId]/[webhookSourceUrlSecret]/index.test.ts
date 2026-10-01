@@ -7,9 +7,12 @@ import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WebhookSourceFactory } from "@app/tests/utils/WebhookSourceFactory";
 import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";
+import type { RequestInitWithDuplex } from "@app/types/shared/utils/streams";
 import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { WEBHOOK_REQUEST_MAX_SIZE_BYTES } from "./index";
 
 const launchTriggersWorkflowsMock = vi.hoisted(() =>
   vi.fn(async () => ({
@@ -186,6 +189,73 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
     // GET falls through to the authenticated /v1/w/:wId app, whose publicApiAuth
     // rejects the missing credentials with 401 (vs. 405 in the Next handler).
     expect(response.status).toBe(401);
+  });
+
+  it("returns 200 for a JSON body at the size limit", async () => {
+    const { workspace } = await createPublicApiMockRequest();
+
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await SpaceFactory.defaults(auth);
+
+    const webhookSource = await new WebhookSourceFactory(workspace).create({
+      name: "Test Webhook Source",
+    });
+
+    const prefix = '{"pad":"';
+    const suffix = '"}';
+    const padLength =
+      WEBHOOK_REQUEST_MAX_SIZE_BYTES - prefix.length - suffix.length;
+    const body = prefix + "a".repeat(padLength) + suffix;
+    expect(Buffer.byteLength(body)).toBe(WEBHOOK_REQUEST_MAX_SIZE_BYTES);
+
+    const response = await honoApp.request(
+      `/api/v1/w/${workspace.sId}/triggers/hooks/${webhookSource.sId}/${webhookSource.urlSecret}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ success: true });
+  });
+
+  it("returns 400 for an oversized chunked body without reading the remainder", async () => {
+    const chunk = new Uint8Array(512 * 1024);
+    let pulledBytes = 0;
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        // Keep offering data well past the cap. Early cancel must stop pulls.
+        if (pulledBytes >= 8 * 1024 * 1024) {
+          controller.close();
+          return;
+        }
+        pulledBytes += chunk.byteLength;
+        controller.enqueue(chunk);
+      },
+    });
+
+    const response = await honoApp.request(
+      "/api/v1/w/ws_unused/triggers/hooks/whs_unused/secret",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: stream,
+        duplex: "half",
+      } as RequestInitWithDuplex
+    );
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error.type).toBe("invalid_request_error");
+    expect(data.error.message).toBe("Request body too large.");
+    // The cap check runs after each read. The stream may already have pulled
+    // one extra chunk into its queue before cancel() takes effect.
+    expect(pulledBytes).toBeLessThanOrEqual(
+      WEBHOOK_REQUEST_MAX_SIZE_BYTES + 2 * chunk.byteLength
+    );
+    expect(pulledBytes).toBeLessThan(8 * 1024 * 1024);
   });
 
   it("returns 400 when content-type is not application/json", async () => {

@@ -119,10 +119,7 @@ function MCPExtractActionQuery({
   // Fallback: Format timeframe description from params.
   const timeFrameAsString =
     timeFrameParam && isTimeFrame(timeFrameParam)
-      ? "the last " +
-        (timeFrameParam.duration > 1
-          ? `${timeFrameParam.duration} ${timeFrameParam.unit}s`
-          : `${timeFrameParam.unit}`)
+      ? `the last ${timeFrameParam.duration > 1 ? `${timeFrameParam.duration} ${timeFrameParam.unit}s` : timeFrameParam.unit}`
       : "all time";
 
   return (

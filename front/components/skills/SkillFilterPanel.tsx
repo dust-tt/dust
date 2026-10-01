@@ -26,6 +26,7 @@ const MAX_MCP_SERVER_VIEW_IDS = 100;
 
 interface SkillFilterPanelProps {
   owner: LightWorkspaceType;
+  searchEndpoint?: string;
   searchTerm: string;
   tabFilters: SkillSearchFilters;
   permissionFiltering?: SkillSearchPermissionFiltering;
@@ -44,6 +45,7 @@ interface SkillFilterPanelProps {
  */
 export function SkillFilterPanel({
   owner,
+  searchEndpoint,
   searchTerm,
   tabFilters,
   permissionFiltering,
@@ -64,7 +66,9 @@ export function SkillFilterPanel({
   // options stay selectable together.
   const { facets, isSkillsLoading, isSkillsError } = useSearchSkills({
     owner,
+    searchEndpoint,
     searchTerm,
+    searchType: "name",
     limit: 0,
     filters: {
       ...tabFilters,

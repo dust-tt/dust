@@ -101,13 +101,6 @@ export function renderSearchResults(
   };
 }
 
-export function renderMimeType(mimeType: string) {
-  return mimeType
-    .replace("application/vnd.dust.", "")
-    .replace("-", " ")
-    .replace(".", " ");
-}
-
 export function renderRelativeTimeFrameForToolOutput(
   relativeTimeFrame: TimeFrame | null
 ): string {

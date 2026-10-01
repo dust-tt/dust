@@ -9,6 +9,7 @@ import {
 } from "@app/components/skills/SkillTableCells";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { EntityTooltipCard } from "@app/components/workspace/analytics/creditsTableCells";
+import { formatNumber } from "@app/lib/i18n/format";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { useTags } from "@app/lib/swr/tags";
 import { tagsSorter } from "@app/lib/utils";
@@ -17,7 +18,7 @@ import { getTieredReasoningEffort } from "@app/types/assistant/models/model_tier
 import { getModelMaker } from "@app/types/assistant/models/providers";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { pluralize } from "@app/types/shared/utils/string_utils";
-import type { WorkspaceType } from "@app/types/user";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
   AvatarCellSkeleton,
@@ -38,12 +39,15 @@ import type {
   SortingState,
 } from "@tanstack/react-table";
 import capitalize from "lodash/capitalize";
+import type { ReactNode } from "react";
 import { useMemo } from "react";
 
 type AgentSearchItem = SearchAgentsResponseBody["agents"][number];
 
 interface AgentSearchTableProps {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
+  readOnly?: boolean;
+  renderActions?: (agent: AgentSearchItem, onRefresh: () => void) => ReactNode;
   agents: AgentSearchItem[];
   onSelect: (agentId: string) => void;
   onRefresh: () => void;
@@ -114,7 +118,7 @@ function AgentSearchModelCell({ model, isDark }: AgentSearchModelCellProps) {
 }
 
 interface AgentSearchTagSelectorProps {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   agent: AgentSearchItem;
   onRefresh: () => void;
 }
@@ -145,9 +149,10 @@ function AgentSearchTagSelector({
 // closes and an in-flight checkbox click is lost.
 /**
  * @cc [owner:tdraier,label:react;performance] stable-columns
- * `columns` MUST only be rebuilt when `canSelect`, `onSelect`, `onRefresh`, `owner` or the theme
- * change, never on data the table loads itself. Callers MUST keep `canSelect`, `onSelect` and
- * `onRefresh` referentially stable while the search inputs are unchanged.
+ * `columns` MUST only be rebuilt when `canSelect`, `onSelect`, `onRefresh`, `owner`, `readOnly`,
+ * `renderActions` or the theme change, never on data the table loads itself. Callers MUST keep
+ * `canSelect`, `onSelect`, `onRefresh` and `renderActions` referentially stable while the search
+ * inputs are unchanged.
  */
 /**
  * @cc [owner:aubin-tchoi,label:product] agent-name-tooltip
@@ -158,8 +163,14 @@ function AgentSearchTagSelector({
  * The loaded table and its loading skeleton MUST use the same density.
  * Skeleton cells MUST match the loaded cells' alignment, visual sizes and spacing.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:product] batch-selection-availability
+ * The selection column MUST be hidden when none of the displayed agents satisfy `canSelect`.
+ */
 export function AgentSearchTable({
   owner,
+  readOnly = false,
+  renderActions,
   agents,
   onSelect,
   onRefresh,
@@ -324,7 +335,11 @@ export function AgentSearchTable({
           cell: ({ row: { original: agent } }) => (
             <DataTable.BasicCellContent
               className="font-mono"
-              label={agent.activeUsersCount?.toLocaleString() ?? "-"}
+              label={
+                agent.activeUsersCount === null
+                  ? "-"
+                  : formatNumber(agent.activeUsersCount)
+              }
               tooltip={
                 agent.activeUsersCount === null
                   ? "Usage is not available for this agent."
@@ -414,7 +429,9 @@ export function AgentSearchTable({
           id: "actions" as const,
           header: "",
           cell: ({ row: { original: agent } }) =>
-            agent.status === "archived" ? null : (
+            renderActions ? (
+              renderActions(agent, onRefresh)
+            ) : readOnly || agent.status === "archived" ? null : (
               <AgentSearchActionsMenu
                 owner={owner}
                 agentId={agent.sId}
@@ -426,7 +443,16 @@ export function AgentSearchTable({
           meta: { className: "hidden @md:table-cell @md:w-14" },
         },
       ] satisfies ColumnDef<AgentSearchRow>[],
-    [canSelect, isDark, onRefresh, onSelect, owner]
+    [canSelect, isDark, onRefresh, onSelect, owner, readOnly, renderActions]
+  );
+
+  const hasSelectableRows = !readOnly && agents.some(canSelect);
+  const visibleColumns = useMemo(
+    () =>
+      hasSelectableRows
+        ? columns
+        : columns.filter((column) => column.id !== "select"),
+    [columns, hasSelectableRows]
   );
 
   // Show skeletons only when no rows are available; keep previous results during refreshes.
@@ -435,7 +461,7 @@ export function AgentSearchTable({
     return (
       <div role="status" aria-label="Loading agents">
         <DataTableSkeleton
-          columns={columns}
+          columns={visibleColumns}
           rowCount={12}
           density="default"
           SkeletonCell={({ columnId, rowIndex }) => {
@@ -503,7 +529,7 @@ export function AgentSearchTable({
         ...agent,
         onClick: () => onSelect(agent.sId),
       }))}
-      columns={columns}
+      columns={visibleColumns}
       density="default"
       getRowId={(agent) => agent.sId}
       enableRowSelection={(row) => canSelect(row.original)}

@@ -6,10 +6,6 @@ export const ImportSkillsRequestBodySchema = z.object({
   names: z.array(z.string()),
 });
 
-export type ImportSkillsRequestBody = z.infer<
-  typeof ImportSkillsRequestBodySchema
->;
-
 export type ImportSkillsResponseBody = {
   imported: SkillType[];
   updated: SkillType[];

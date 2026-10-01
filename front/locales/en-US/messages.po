@@ -216,6 +216,10 @@ msgstr "Shown next to your messages"
 msgid "Enter (↵)"
 msgstr "Enter (↵)"
 
+#: front/components/assistant/conversation/InAppBanner.tsx
+msgid "A message asking Dust to improve an agent, next to the modified agent"
+msgstr "A message asking Dust to improve an agent, next to the modified agent"
+
 #: front/components/me/SoundNotificationPreferences.tsx
 msgid "Error updating sound notification preferences"
 msgstr "Error updating sound notification preferences"
@@ -235,6 +239,10 @@ msgstr "Once a week"
 #: front/components/UserSettingsPopover.tsx
 msgid "Cmd + Enter"
 msgstr "Cmd + Enter"
+
+#: front/components/assistant/conversation/InAppBanner.tsx
+msgid "You can now build and edit skills and agents directly in conversations."
+msgstr "You can now build and edit skills and agents directly in conversations."
 
 #: front/components/me/NotificationPreferences.tsx
 msgid "Mentions only"
@@ -285,6 +293,10 @@ msgstr "Your language could not be saved to your account."
 #: front/components/UserSettingsPopover.tsx
 msgid "Access your favorite and most-used agents, or search for one from the home page."
 msgstr "Access your favorite and most-used agents, or search for one from the home page."
+
+#: front/components/assistant/conversation/InAppBanner.tsx
+msgid "Try it"
+msgstr "Try it"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Save"

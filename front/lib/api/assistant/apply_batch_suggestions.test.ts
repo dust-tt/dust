@@ -1668,4 +1668,50 @@ describe("applyBatchSuggestions", () => {
     }
     expect(await fetchAgentSkillIds(agent.sId)).toEqual([pending.sId]);
   });
+
+  it("creates an agent with a sub-agent created in the same batch", async () => {
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "create",
+      resourceType: "agent",
+    });
+    await auth.refresh();
+    const [parent, child] = await Promise.all([
+      AgentResource.createPending(auth, "SalesLead"),
+      AgentResource.createPending(auth, "PricingHelper"),
+    ]);
+    if (parent.isErr()) {
+      throw parent.error;
+    }
+    if (child.isErr()) {
+      throw child.error;
+    }
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await AgentSuggestionFactory.createCreate(auth, parent.value, {
+      suggestion: {
+        name: "SalesLead",
+        description: "Handles sales questions.",
+        instructions: "<p>Handle sales questions.</p>",
+        subAgentIds: [child.value.sId],
+      },
+      batchModelId,
+    });
+    await AgentSuggestionFactory.createCreate(auth, child.value, {
+      suggestion: {
+        name: "PricingHelper",
+        description: "Answers pricing questions.",
+        instructions: "<p>Answer pricing questions.</p>",
+      },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    if (res.isErr()) {
+      throw res.error;
+    }
+    expect(await fetchAgentSubAgentActions(parent.value.sId)).toMatchObject([
+      { childAgentId: child.value.sId, name: "run_pricinghelper" },
+    ]);
+  });
 });

@@ -1,11 +1,16 @@
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import {
+  buildNameAutocompleteQuery,
+  buildNameSearchQuery,
+} from "@app/lib/search/agent_and_skill_queries";
 import { CODE_DEFINED_SKILLS_WORKSPACE_ID } from "@app/lib/skill_search/constants";
-import { buildSkillNameAutocompleteQuery } from "@app/lib/skill_search/ranking";
+import type { SearchType } from "@app/types/api/search";
 import type {
   SkillSearchFilters,
   SkillSearchPermissionFiltering,
 } from "@app/types/api/skills";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { estypes } from "@elastic/elasticsearch";
 
 export const MAX_SKILL_SEARCH_RESULTS = 100;
@@ -49,12 +54,14 @@ function buildSpaceAccessFilter(
 
 /**
  * @cc [owner:aubin-tchoi,label:security] resource-editor-filter
- * Editor-only skills require the current user's sId in the indexed editor IDs.
+ * Editor-only skills require the current user's sId in the indexed editor IDs. Callers without a
+ * user match no editor-only skill.
  */
 function buildEditorFilter(
   auth: Authenticator
 ): estypes.QueryDslQueryContainer {
-  return { term: { editor_ids: auth.getNonNullableUser().sId } };
+  const user = auth.user();
+  return user ? { term: { editor_ids: user.sId } } : { match_none: {} };
 }
 
 function buildAvailabilityFilter(
@@ -90,9 +97,6 @@ function buildSelectionFilters(
   if (filters.editedByMe) {
     selected.push(buildEditorFilter(auth));
   }
-  if (filters.codeDefinedOnly) {
-    selected.push({ term: { workspace_id: CODE_DEFINED_SKILLS_WORKSPACE_ID } });
-  }
   const { min, max } = filters.activeUsersCount ?? {};
   if (min !== undefined || max !== undefined) {
     selected.push({ range: { active_users_count: { gte: min, lte: max } } });
@@ -105,53 +109,77 @@ function buildSelectionFilters(
  * Every query is scoped to the caller's workspace and explicitly eligible code-defined IDs
  * in the reserved global workspace. It defaults to active skills. Strict mode requires every
  * requested space and editor visibility. Callers must authorize admin-only metadata redaction upstream.
+ * codeDefinedOnly true MUST restrict results to eligible code-defined skills, false to the
+ * caller's workspace skills, and omission MUST preserve both sources.
+ */
+/**
+ * @cc [owner:aubin-tchoi,label:product] search-mode-default
+ * Omitted searchType MUST preserve autocomplete matching. Name mode MUST use word, substring and fuzzy
+ * name matching and full-text description matching without changing workspace, permission,
+ * status or selection filters.
  */
 export function buildSkillSearchQuery(
   auth: Authenticator,
   {
     searchTerm,
+    searchType = "autocomplete",
     permissionFiltering = "strict",
     filters = {},
     codeDefinedSkillIds = [],
   }: {
     searchTerm: string;
+    searchType?: SearchType;
     filters?: SkillSearchFilters;
     permissionFiltering?: SkillSearchPermissionFiltering;
     codeDefinedSkillIds?: string[];
   }
 ): estypes.QueryDslQueryContainer {
+  const should: estypes.QueryDslQueryContainer[] = [];
+  if (filters.codeDefinedOnly !== true) {
+    should.push({
+      bool: {
+        filter: [
+          { term: { workspace_id: auth.getNonNullableWorkspace().sId } },
+          ...(permissionFiltering === "strict"
+            ? [
+                buildAvailabilityFilter(auth),
+                buildSpaceAccessFilter(getSkillSearchReadableSpaceIds(auth)),
+              ]
+            : []),
+        ],
+      },
+    });
+  }
+  if (filters.codeDefinedOnly !== false) {
+    should.push({
+      bool: {
+        filter: [
+          { term: { workspace_id: CODE_DEFINED_SKILLS_WORKSPACE_ID } },
+          { terms: { skill_id: codeDefinedSkillIds } },
+        ],
+      },
+    });
+  }
+
+  let nameQuery: estypes.QueryDslQueryContainer;
+  switch (searchType) {
+    case "autocomplete":
+      nameQuery = buildNameAutocompleteQuery(searchTerm);
+      break;
+    case "name":
+      nameQuery = buildNameSearchQuery(searchTerm);
+      break;
+    default:
+      assertNever(searchType);
+  }
   return {
     bool: {
       filter: [
         { terms: { status: filters.status ?? ["active"] } },
         ...buildSelectionFilters(auth, filters),
       ],
-      must: [buildSkillNameAutocompleteQuery(searchTerm)],
-      should: [
-        {
-          bool: {
-            filter: [
-              { term: { workspace_id: auth.getNonNullableWorkspace().sId } },
-              ...(permissionFiltering === "strict"
-                ? [
-                    buildAvailabilityFilter(auth),
-                    buildSpaceAccessFilter(
-                      getSkillSearchReadableSpaceIds(auth)
-                    ),
-                  ]
-                : []),
-            ],
-          },
-        },
-        {
-          bool: {
-            filter: [
-              { term: { workspace_id: CODE_DEFINED_SKILLS_WORKSPACE_ID } },
-              { terms: { skill_id: codeDefinedSkillIds } },
-            ],
-          },
-        },
-      ],
+      must: [nameQuery],
+      should,
       minimum_should_match: 1,
     },
   };

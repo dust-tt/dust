@@ -14,6 +14,7 @@ import {
   isWebsearchInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
+import { formatNumber } from "@app/lib/i18n/format";
 import { stripFileExtension } from "@app/types/files";
 import {
   parseCanonicalScopedPath,
@@ -206,10 +207,10 @@ function getDynamicToolDisplayLabels({
           };
         }
         const offset = isNumber(inputs.offset)
-          ? inputs.offset.toLocaleString()
+          ? formatNumber(inputs.offset)
           : null;
         const limit = isNumber(inputs.limit)
-          ? inputs.limit.toLocaleString()
+          ? formatNumber(inputs.limit)
           : null;
 
         if (offset && limit) {
@@ -422,10 +423,10 @@ function getDynamicToolDisplayLabels({
           };
         }
         const offset = isNumber(inputs.offset)
-          ? inputs.offset.toLocaleString()
+          ? formatNumber(inputs.offset)
           : null;
         const limit = isNumber(inputs.limit)
-          ? inputs.limit.toLocaleString()
+          ? formatNumber(inputs.limit)
           : null;
 
         if (offset && limit) {

@@ -10,8 +10,6 @@ import { validate } from "@front-api/middlewares/validator";
 import type { SuccessResponseBody } from "@front-api/routes/types";
 import { z } from "zod";
 
-export type { PokeSeatLimitScheduleResponseBody };
-
 // End dates are derived server-side (phases are contiguous), so the client
 // only submits each phase's start.
 const PhaseSchema = z.object({

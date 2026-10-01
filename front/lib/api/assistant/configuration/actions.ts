@@ -7,6 +7,7 @@ import type {
   ProjectConfiguration,
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
@@ -22,6 +23,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
+import { CoreAPI } from "@app/types/core/core_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -30,6 +32,14 @@ import type { Transaction } from "sequelize";
 
 /**
  * Called by Agent Builder to create an action configuration.
+ *
+ * @cc [owner:frankaloia,label:security;backend] query-tables-within-dsv-scope
+ * When `action.tables` is non-empty, each `tableId` MUST be verified to lie within
+ * the data source view's `parentsIn` scope before any DB write. The check uses
+ * `CoreAPI.getTable` with `dsv.toViewFilter()` and MUST run outside any DB transaction.
+ * If `parentsIn` is null the view covers the full data source and no core check is needed.
+ * Without this guard an agent editor can configure tables excluded by the space admin's
+ * parentsIn filter, reading arbitrary SQL rows from the underlying data source.
  */
 export async function createAgentActionConfiguration(
   auth: Authenticator,
@@ -50,6 +60,43 @@ export async function createAgentActionConfiguration(
   }
   const { name: serverName, description: serverDescription } =
     mcpServerView.getServerDisplayMetadata();
+
+  // Validate that each tableId is within the DSV's parentsIn scope before
+  // opening the transaction — CoreAPI calls must not run inside DB transactions.
+  if (action.tables && action.tables.length > 0) {
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+    const dsvIds = [...new Set(action.tables.map((tc) => tc.dataSourceViewId))];
+    const dsvs = await DataSourceViewResource.fetchByIds(auth, dsvIds);
+    const dsvMap = new Map(dsvs.map((dsv) => [dsv.sId, dsv]));
+
+    for (const tc of action.tables) {
+      const dsv = dsvMap.get(tc.dataSourceViewId);
+      if (!dsv) {
+        return new Err(
+          new Error(
+            `Data source view ${tc.dataSourceViewId} not found or not accessible.`
+          )
+        );
+      }
+      // If parentsIn is null the view covers the entire data source; all tables
+      // are in scope and no core check is needed.
+      if (dsv.parentsIn !== null) {
+        const tableRes = await coreAPI.getTable({
+          projectId: dsv.dataSource.dustAPIProjectId,
+          dataSourceId: dsv.dataSource.dustAPIDataSourceId,
+          tableId: tc.tableId,
+          viewFilter: dsv.toViewFilter(),
+        });
+        if (tableRes.isErr()) {
+          return new Err(
+            new Error(
+              `Table ${tc.tableId} is not within the data source view's scope.`
+            )
+          );
+        }
+      }
+    }
+  }
 
   return withTransaction(async (t) => {
     const mcpConfig = await AgentMCPServerConfigurationModel.create(

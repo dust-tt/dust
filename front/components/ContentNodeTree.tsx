@@ -6,6 +6,7 @@ import {
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
+import { compareStrings } from "@app/lib/i18n/format";
 import { classNames } from "@app/lib/utils";
 import type { ContentNode } from "@app/types/connectors/connectors_api";
 import type { APIError } from "@app/types/error";
@@ -225,7 +226,7 @@ function ContentNodeTreeChildren({
   const filteredNodes = isFiltering
     ? resources
         .filter((n) => n.title.includes(filter))
-        .sort((a, b) => a.title.localeCompare(b.title))
+        .sort((a, b) => compareStrings(a.title, b.title))
     : resources;
 
   const getCheckedState = useCallback(

@@ -13,6 +13,3 @@ export const MISTRAL_HOST_REASONING_EFFORTS = [
   "xhigh",
   "maximal",
 ] as const;
-
-export type MistralSupportedReasoningEffort =
-  (typeof MISTRAL_SUPPORTED_REASONING_EFFORTS)[number];

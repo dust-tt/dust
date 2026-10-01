@@ -2,9 +2,7 @@ import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   AgentMessageStatus,
   AgentMessageType,
-  LegacyLightMessageType,
   LightMessageType,
-  MessageType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
@@ -16,22 +14,11 @@ export type PostMessagesResponseBody = {
   agentMessages: AgentMessageType[];
 };
 
-// TODO remove after monday 2025-12-01 (once everyone has likely reloaded their browser)
-export interface LegacyFetchConversationMessagesResponse {
-  hasMore: boolean;
-  lastValue: number | null;
-  messages: LegacyLightMessageType[];
-}
-
 export interface FetchConversationMessagesResponse {
   hasMore: boolean;
   lastValue: number | null;
   messages: LightMessageType[];
 }
-
-export type FetchConversationMessageResponse = {
-  message: MessageType;
-};
 
 export type FetchConversationMessageResponseLight = {
   message: LightMessageType;

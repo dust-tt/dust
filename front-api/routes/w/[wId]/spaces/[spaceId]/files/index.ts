@@ -3,7 +3,6 @@ import { enrichListWithFileResourceIds } from "@app/lib/api/files/file_system_op
 import { createProjectFolder } from "@app/lib/api/projects/context";
 import { PostPodFolderRequestBodySchema } from "@app/lib/api/projects/pod_mount_schemas";
 import type {
-  FileSystemEntry,
   GetSpaceFilesResponseBody,
   PostSpaceFolderResponseBody,
 } from "@app/types/api/file_system/types";
@@ -18,8 +17,6 @@ import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
 
 import rel from "./[...rel]";
-
-export type { FileSystemEntry };
 
 // Mounted under /api/w/:wId/spaces/:spaceId/files.
 const app = workspaceApp();

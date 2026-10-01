@@ -56,7 +56,6 @@ import {
   Announcement01,
   Avatar,
   BarChart01,
-  Beaker02,
   BookOpen01,
   ChevronDown,
   ChromeLogo,
@@ -256,7 +255,7 @@ export function UserMenu({
       if (result.isOk()) {
         sendNotification({
           title: "Success !",
-          description: result.value + " (reloading...)",
+          description: `${result.value} (reloading...)`,
           type: "success",
         });
         setTimeout(() => {
@@ -517,18 +516,6 @@ export function UserMenu({
             target="_blank"
             onClick={() => trackUserMenuEvent("changelog")}
           />
-
-          {subscription?.plan.limits.canUseProduct && (
-            <>
-              <DropdownMenuItem
-                label="Exploratory features"
-                icon={Beaker02}
-                href={`/w/${owner.sId}/labs`}
-                onClick={() => trackUserMenuEvent("exploratory_features")}
-              />
-              <Separator className="my-1" />
-            </>
-          )}
 
           <DropdownMenuLabel label="Account" />
           {subscription?.plan.limits.canUseProduct && (

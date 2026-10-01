@@ -1,8 +1,8 @@
+import { formatDateTime } from "@app/lib/i18n/format";
 import type {
   GitHubIssueNode,
   GitHubPullRequestNode,
 } from "@app/lib/providers/github/types";
-import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
 
 const GITHUB_MAX_SEARCH_QUERY_LENGTH = 256;
 const GITHUB_MAX_BOOLEAN_OPERATORS = 5;
@@ -69,6 +69,15 @@ export function truncateGitHubQuery(query: string): string {
   return truncated.trim();
 }
 
+// Pinned to en-US until the user locale reaches server code: this content is returned to the model.
+function formatCommentDate(date: Date): string {
+  return formatDateTime(
+    date,
+    { dateStyle: "medium", timeStyle: "short" },
+    "en-US"
+  );
+}
+
 export function buildContentSummaryForIssue(node: GitHubIssueNode): string {
   const owner = node.repository.owner.login;
   const repo = node.repository.name;
@@ -88,7 +97,7 @@ export function buildContentSummaryForIssue(node: GitHubIssueNode): string {
   if (node.comments.nodes.length > 0) {
     content += `## Comments (${node.comments.nodes.length})\n\n`;
     for (const comment of node.comments.nodes) {
-      const commentDate = dateToHumanReadable(new Date(comment.createdAt));
+      const commentDate = formatCommentDate(new Date(comment.createdAt));
       content += `**@${comment.author.login}** — ${commentDate}\n\n`;
       content += `> ${comment.body.split("\n").join("\n> ")}\n\n`;
     }
@@ -120,7 +129,7 @@ export function buildContentSummaryForPullRequest(
   if (node.comments.nodes.length > 0) {
     content += `## General Comments\n\n`;
     for (const comment of node.comments.nodes) {
-      const commentDate = dateToHumanReadable(new Date(comment.createdAt));
+      const commentDate = formatCommentDate(new Date(comment.createdAt));
       content += `**@${comment.author.login}** — ${commentDate}\n\n`;
       content += `> ${comment.body.split("\n").join("\n> ")}\n\n`;
     }
@@ -136,7 +145,7 @@ export function buildContentSummaryForPullRequest(
     content += `## Reviews\n\n`;
 
     for (const review of meaningfulReviews) {
-      const reviewDate = dateToHumanReadable(new Date(review.createdAt));
+      const reviewDate = formatCommentDate(new Date(review.createdAt));
       content += `### Review Summary\n`;
       content += `- Review decision: ${review.state}\n`;
       content += `- Reviewer: @${review.author.login}\n`;
@@ -164,9 +173,7 @@ export function buildContentSummaryForPullRequest(
       const firstComment = thread.comments.nodes[0];
       const lastComment =
         thread.comments.nodes[thread.comments.nodes.length - 1];
-      const lastUpdateDate = dateToHumanReadable(
-        new Date(lastComment.createdAt)
-      );
+      const lastUpdateDate = formatCommentDate(new Date(lastComment.createdAt));
 
       // Collect all participants
       const participants = new Set(
@@ -192,7 +199,7 @@ export function buildContentSummaryForPullRequest(
       // Thread messages
       let messageNumber = 1;
       for (const comment of thread.comments.nodes) {
-        const commentDate = dateToHumanReadable(new Date(comment.createdAt));
+        const commentDate = formatCommentDate(new Date(comment.createdAt));
         content += `${messageNumber}) **@${comment.author.login}** — ${commentDate}\n`;
         content += `   > ${comment.body.split("\n").join("\n   > ")}\n\n`;
         messageNumber++;

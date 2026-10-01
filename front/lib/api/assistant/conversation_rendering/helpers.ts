@@ -15,6 +15,7 @@ import { DustFileSystem } from "@app/lib/api/file_system";
 import { getConversationFileMountSignedUrl } from "@app/lib/api/files/gcs_mount/files";
 import type { Authenticator } from "@app/lib/auth";
 import { MODEL_INPUT_SIGNED_URL_EXPIRATION_DELAY_MS } from "@app/lib/file_storage/signed_url_cache";
+import { formatDateTime } from "@app/lib/i18n/format";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import {
   replaceMentionsWithAt,
@@ -501,7 +502,7 @@ export function renderUserMessage(
   const timeZone =
     m.context.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
   const formatWithTimeZone = (date: Date) =>
-    date.toLocaleString(undefined, {
+    formatDateTime(date, {
       timeZone,
       year: "numeric",
       month: "short",

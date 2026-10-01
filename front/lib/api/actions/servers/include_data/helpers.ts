@@ -7,6 +7,7 @@ import {
   getDataSourceNameFromView,
   getDisplayNameForDocument,
 } from "@app/lib/data_sources";
+import { formatDateTime } from "@app/lib/i18n/format";
 import type { CoreAPIDocument } from "@app/types/core/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import { stripNullBytes } from "@app/types/shared/utils/string_utils";
@@ -29,7 +30,7 @@ export function makeIncludeWarningResource(
   const retrievalTsLimit = documents?.[documents.length - 1]?.timestamp;
   const date = retrievalTsLimit ? new Date(retrievalTsLimit) : null;
   const retrievalDateLimitAsString = date
-    ? `${date.toLocaleString("default", { month: "short" })} ${date.getDate()}`
+    ? `${formatDateTime(date, { month: "short" })} ${date.getDate()}`
     : null;
 
   return tooManyChunks

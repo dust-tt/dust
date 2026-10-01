@@ -1,3 +1,4 @@
+import { compareStrings } from "@app/lib/i18n/format";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import type { UsedBySkillType } from "@app/types/assistant/skill_configuration";
 import type {
@@ -160,9 +161,9 @@ export function UsedByButton({
         getUsedByDropdownItemName(item).toLowerCase().includes(query)
     )
     .sort((a, b) => {
-      const nameComparison = getUsedByDropdownItemName(a).localeCompare(
+      const nameComparison = compareStrings(
+        getUsedByDropdownItemName(a),
         getUsedByDropdownItemName(b),
-        undefined,
         { sensitivity: "base" }
       );
 
@@ -170,7 +171,8 @@ export function UsedByButton({
         return nameComparison;
       }
 
-      return getUsedByDropdownItemId(a).localeCompare(
+      return compareStrings(
+        getUsedByDropdownItemId(a),
         getUsedByDropdownItemId(b)
       );
     });

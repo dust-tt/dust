@@ -171,15 +171,16 @@ const columnsWithoutManagers = columns.filter(
 
 export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
   const { hasFeature } = useFeatureFlags();
+  const { subscription, isManager } = useAuth();
   const isGroupManagementEnabled = hasFeature("group_management");
   const { groups, isGroupsLoading } = useGroups({
     owner,
     kinds: MANAGEABLE_GROUP_KINDS,
     withManagers: isGroupManagementEnabled,
+    managedOnly: !isManager,
   });
 
   const router = useAppRouter();
-  const { subscription } = useAuth();
   const isScimAllowed = isSCIMEnabled(subscription.plan);
   const [searchTerm, setSearchTerm] = useState("");
   const [pagination, setPagination] = useState<PaginationState>({
@@ -242,9 +243,10 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
               });
               setIsProvisionedDialogOpen(true);
             },
-        onDelete: isManual
-          ? () => handleDeleteGroup(group.sId, group.name)
-          : undefined,
+        onDelete:
+          isManual && group.allowedActions?.canEditDetails
+            ? () => handleDeleteGroup(group.sId, group.name)
+            : undefined,
       };
     });
   }, [groups, handleDeleteGroup]);
@@ -276,11 +278,13 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
                 onChange={setSearchTerm}
                 className="w-full"
               />
-              <Button
-                icon={Plus}
-                label="Create group"
-                onClick={openCreateDialog}
-              />
+              {isManager && (
+                <Button
+                  icon={Plus}
+                  label="Create group"
+                  onClick={openCreateDialog}
+                />
+              )}
             </div>
             <DataTable
               data={rows}
@@ -296,11 +300,13 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
         ) : (
           <EmptyCTA
             action={
-              <Button
-                icon={Plus}
-                label="Create group"
-                onClick={openCreateDialog}
-              />
+              isManager ? (
+                <Button
+                  icon={Plus}
+                  label="Create group"
+                  onClick={openCreateDialog}
+                />
+              ) : undefined
             }
             message="You don’t have any groups yet."
           />

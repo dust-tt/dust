@@ -1,3 +1,4 @@
+import { getMarkdownPipeline } from "@app/lib/editor/server_markdown_pipeline";
 import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { GetSkillHistoryResponseBody } from "@app/types/api/assistant/skills/history";
@@ -68,7 +69,10 @@ app.get(
         instructionsHtml:
           serializedSkill.instructionsHtml ??
           (serializedSkill.instructions
-            ? convertMarkdownToBlockHtml(serializedSkill.instructions)
+            ? convertMarkdownToBlockHtml(
+                serializedSkill.instructions,
+                getMarkdownPipeline("skill")
+              )
             : null),
         version: resource.version,
       };

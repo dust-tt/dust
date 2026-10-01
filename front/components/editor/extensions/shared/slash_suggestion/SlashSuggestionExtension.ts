@@ -101,7 +101,7 @@ interface CreateSlashSuggestionExtensionConfig<
   onDropdownExit?: (ctx: { storage: Storage }) => void;
   pluginKey: PluginKey<SuggestionPluginState>;
   // Ghost text rendered after the trigger while the suggestion is active with an empty query.
-  getQueryPlaceholder?: (ctx: { storage: Storage }) => string | null;
+  queryPlaceholder?: string;
   preventEscapeDefault?: boolean;
   shouldMountDropdown?: (
     ctx: SlashSuggestionDropdownContext<Options, Storage, Item>
@@ -144,7 +144,7 @@ export function createSlashSuggestionExtension<
   notifyActiveChange,
   onDropdownClose,
   onDropdownExit,
-  getQueryPlaceholder,
+  queryPlaceholder,
   preventEscapeDefault = false,
 }: CreateSlashSuggestionExtensionConfig<Options, Storage, Item>) {
   return Extension.create<Options, Storage>({
@@ -333,7 +333,7 @@ export function createSlashSuggestionExtension<
             };
           },
         }),
-        ...(getQueryPlaceholder
+        ...(queryPlaceholder
           ? [
               new Plugin({
                 key: new PluginKey(`${name}QueryPlaceholder`),
@@ -341,12 +341,6 @@ export function createSlashSuggestionExtension<
                   decorations: (state) => {
                     const suggestion = pluginKey.getState(state);
                     if (!suggestion?.active || suggestion.query) {
-                      return null;
-                    }
-                    const placeholder = getQueryPlaceholder({
-                      storage: extensionStorage,
-                    });
-                    if (!placeholder) {
                       return null;
                     }
                     return DecorationSet.create(state.doc, [
@@ -357,7 +351,7 @@ export function createSlashSuggestionExtension<
                           span.className =
                             "pointer-events-none select-none text-faint dark:text-stone-400";
                           span.contentEditable = "false";
-                          span.textContent = placeholder;
+                          span.textContent = queryPlaceholder;
                           return span;
                         },
                         { side: 1 }

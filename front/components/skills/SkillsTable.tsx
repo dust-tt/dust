@@ -11,6 +11,7 @@ import {
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useSkillMenuItems } from "@app/hooks/useSkillMenuItems";
+import { formatNumber } from "@app/lib/i18n/format";
 import { isDustProvidedSkill } from "@app/lib/skill";
 import { classNames } from "@app/lib/utils";
 import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
@@ -251,7 +252,7 @@ const usageColumn: ColumnDef<RowData, number | null> = {
     return (
       <DataTable.BasicCellContent
         className="font-mono"
-        label={usageCount === null ? "-" : usageCount.toLocaleString()}
+        label={usageCount === null ? "-" : formatNumber(usageCount)}
         tooltip={
           usageCount === null
             ? "System skills are always active, so message usage does not apply"

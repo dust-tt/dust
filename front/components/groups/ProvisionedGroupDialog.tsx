@@ -7,7 +7,7 @@ import type {
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useGroup, useUpdateGroup } from "@app/lib/swr/groups";
 import type { GroupWithAllowedActions } from "@app/types/api/groups";
-import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type { LightUserType, LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
   DataTable,
@@ -116,8 +116,8 @@ function ProvisionedGroupDetails({
 }: {
   owner: LightWorkspaceType;
   group: GroupWithAllowedActions;
-  members: UserType[];
-  managers: UserType[];
+  members: LightUserType[];
+  managers: LightUserType[];
   onClose: () => void;
 }) {
   const { hasFeature } = useFeatureFlags();

@@ -10,7 +10,7 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 # Set the working directory to /dust
 WORKDIR /dust
 
-RUN npm install -g npm@11.11.0
+RUN npm install -g npm@11.19.0
 
 COPY . .
 

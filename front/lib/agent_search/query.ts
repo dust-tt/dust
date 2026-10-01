@@ -1,11 +1,16 @@
 import { GLOBAL_AGENTS_WORKSPACE_ID } from "@app/lib/agent_search/constants";
-import { buildAgentNameAutocompleteQuery } from "@app/lib/agent_search/ranking";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import {
+  buildNameAutocompleteQuery,
+  buildNameSearchQuery,
+} from "@app/lib/search/agent_and_skill_queries";
 import type {
   AgentSearchFilters,
   AgentSearchPermissionFiltering,
 } from "@app/types/agent_search/agent_search";
+import type { SearchType } from "@app/types/api/search";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { estypes } from "@elastic/elasticsearch";
 
 export const MAX_AGENT_SEARCH_RESULTS = 100;
@@ -126,27 +131,46 @@ function buildSelectionFilters(
  * custom agents additionally require visibility (see `agent-search-visibility`) and every
  * requested space; unrestricted mode lifts both. Callers must authorize unrestricted mode upstream.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:product] search-mode-default
+ * Omitted searchType MUST preserve autocomplete matching. Name mode MUST use word, substring and fuzzy
+ * name matching and full-text description matching without changing workspace, permission,
+ * status or selection filters.
+ */
 export function buildAgentSearchQuery(
   auth: Authenticator,
   {
     searchTerm,
+    searchType = "autocomplete",
     permissionFiltering = "strict",
     filters = {},
     globalAgentIds = [],
   }: {
     searchTerm: string;
+    searchType?: SearchType;
     permissionFiltering?: AgentSearchPermissionFiltering;
     filters?: AgentSearchFilters;
     globalAgentIds?: string[];
   }
 ): estypes.QueryDslQueryContainer {
+  let nameQuery: estypes.QueryDslQueryContainer;
+  switch (searchType) {
+    case "autocomplete":
+      nameQuery = buildNameAutocompleteQuery(searchTerm);
+      break;
+    case "name":
+      nameQuery = buildNameSearchQuery(searchTerm);
+      break;
+    default:
+      assertNever(searchType);
+  }
   return {
     bool: {
       filter: [
         { terms: { status: filters.status ?? ["active"] } },
         ...buildSelectionFilters(auth, filters),
       ],
-      must: [buildAgentNameAutocompleteQuery(searchTerm)],
+      must: [nameQuery],
       should: [
         {
           bool: {

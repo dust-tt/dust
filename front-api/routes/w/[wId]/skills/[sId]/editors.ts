@@ -3,10 +3,6 @@ import {
   resolveSkillEditorUsers,
 } from "@app/lib/api/skills/editors_change";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import type {
-  PatchSkillEditorsRequestBody,
-  SkillEditorsResponseBody,
-} from "@app/types/api/skills/editors";
 import { PatchSkillEditorsRequestBodySchema } from "@app/types/api/skills/editors";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { toLightUser } from "@app/types/user";
@@ -16,8 +12,6 @@ import { validate } from "@front-api/middlewares/validator";
 import { rejectArchivedSkill } from "@front-api/routes/w/[wId]/skills/guards";
 import type { Context } from "hono";
 import { z } from "zod";
-
-export type { PatchSkillEditorsRequestBody, SkillEditorsResponseBody };
 
 const ParamsSchema = z.object({
   sId: z.string(),

@@ -4,6 +4,8 @@ import { z } from "zod";
 export const COMMON_UTILITIES_SERVER_NAME = "common_utilities" as const;
 export const SET_CONVERSATION_TITLE_TOOL_NAME =
   "set_conversation_title" as const;
+export const MARK_CONVERSATION_READ_TOOL_NAME =
+  "mark_conversation_read" as const;
 
 const RANDOM_INTEGER_DEFAULT_MAX = 1_000_000;
 const MAX_WAIT_DURATION_MS = 3 * 60 * 1_000;
@@ -119,6 +121,31 @@ export const COMMON_UTILITIES_TOOLS_METADATA = [
     displayLabels: {
       running: "Setting conversation title",
       done: "Set conversation title",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: MARK_CONVERSATION_READ_TOOL_NAME,
+    description:
+      "Mark any conversation as read or unread for the current user. " +
+      "Acts on the authenticated user's read state only. " +
+      "If conversationId is omitted, the current agent conversation is used when available.",
+    schema: {
+      read: z
+        .boolean()
+        .describe("true = mark as read (clear unread); false = mark as unread"),
+      conversationId: z
+        .string()
+        .optional()
+        .describe(
+          "Conversation id to update; defaults to the conversation this agent run is in when omitted"
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Updating conversation read state",
+      done: "Update conversation read state",
     },
     toolCostCategory: "basic",
     freeUsage: true,

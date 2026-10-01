@@ -5,6 +5,7 @@ import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
@@ -37,6 +38,69 @@ function searchRequest(
 describe("POST /api/w/:wId/skills/search", () => {
   beforeEach(() => {
     searchSkills.mockReset();
+  });
+
+  it.each([
+    "user",
+    "admin",
+  ] as const)("only names visible skills in facets for a %s", async (role) => {
+    const { workspace, auth } = await setup(role);
+    const published = await SkillFactory.create(auth, {
+      name: "Published",
+      availability: "workspace_users",
+      addCurrentUserAsEditor: false,
+    });
+    const edited = await SkillFactory.create(auth, { name: "Edited" });
+    const unpublished = await SkillFactory.create(auth, {
+      name: "Unpublished",
+      addCurrentUserAsEditor: false,
+    });
+    searchSkills.mockResolvedValue(
+      new Ok({
+        skills: [],
+        total: 0,
+        hasMore: false,
+        facets: {
+          childSkills: [
+            { value: unpublished.sId, count: 3 },
+            { value: published.sId, count: 2 },
+            { value: edited.sId, count: 1 },
+            { value: "missing-skill", count: 4 },
+          ],
+        },
+      })
+    );
+
+    const response = await searchRequest(workspace.sId, {
+      facets: ["childSkills"],
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).facets.childSkills).toEqual([
+      edited.toSearchFacetJSON(1),
+      published.toSearchFacetJSON(2),
+    ]);
+  });
+
+  it("forwards the suggestion defaults and excluded skill to search", async () => {
+    const { workspace } = await setup();
+    searchSkills.mockResolvedValue(
+      new Ok({ skills: [], total: 0, hasMore: false, facets: {} })
+    );
+
+    const response = await searchRequest(workspace.sId, {
+      defaultToFavorites: true,
+      excludeSkillId: "current-skill",
+    });
+
+    expect(response.status).toBe(200);
+    expect(searchSkills).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        defaultToFavorites: true,
+        excludeSkillId: "current-skill",
+      })
+    );
   });
 
   it.each([
@@ -88,12 +152,15 @@ describe("POST /api/w/:wId/skills/search", () => {
     expect(response.status).toBe(200);
     expect(searchSkills).toHaveBeenCalledWith(expect.anything(), {
       searchTerm: "research",
+      searchType: "autocomplete",
       limit: undefined,
       offset: undefined,
       permissionFiltering: undefined,
       facets: undefined,
       sortBy: undefined,
       sortOrder: undefined,
+      defaultToFavorites: undefined,
+      excludeSkillId: undefined,
       filters: {
         status: undefined,
         mcpServerViewIds: undefined,
@@ -149,12 +216,15 @@ describe("POST /api/w/:wId/skills/search", () => {
     expect(response.status).toBe(200);
     expect(searchSkills).toHaveBeenCalledWith(expect.anything(), {
       searchTerm: "research",
+      searchType: "autocomplete",
       limit: 100,
       offset: 25,
       permissionFiltering: undefined,
       facets: undefined,
       sortBy: undefined,
       sortOrder: undefined,
+      defaultToFavorites: undefined,
+      excludeSkillId: undefined,
       filters: {
         status: undefined,
         mcpServerViewIds: undefined,
@@ -177,6 +247,25 @@ describe("POST /api/w/:wId/skills/search", () => {
   });
 
   it.each([
+    "autocomplete",
+    "name",
+  ] as const)("passes %s search through", async (searchType) => {
+    const { workspace } = await setup();
+    searchSkills.mockResolvedValue(
+      new Ok({ skills: [], total: 0, hasMore: false, facets: {} })
+    );
+    const response = await searchRequest(workspace.sId, {
+      query: "Write",
+      searchType,
+    });
+    expect(response.status).toBe(200);
+    expect(searchSkills).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ searchTerm: "Write", searchType })
+    );
+  });
+
+  it.each([
     { limit: 101 },
     { limit: 1.5 },
     { offset: -1 },
@@ -185,7 +274,9 @@ describe("POST /api/w/:wId/skills/search", () => {
     { permissionFiltering: "dangerously_skip" },
     { editedByMe: false },
     { editedByMe: 1 },
-    { codeDefinedOnly: false },
+    { codeDefinedOnly: "false" },
+    { searchType: "unknown" },
+    { searchType: null },
     { sortBy: "unknown" },
     { sortOrder: "unknown" },
     { availability: ["unknown"] },
@@ -350,12 +441,15 @@ describe("POST /api/w/:wId/skills/search", () => {
     expect(response.status).toBe(200);
     expect(searchSkills).toHaveBeenCalledWith(expect.anything(), {
       searchTerm: "",
+      searchType: "autocomplete",
       limit: undefined,
       offset: undefined,
       permissionFiltering: "redact_unreadable",
       facets: undefined,
       sortBy: undefined,
       sortOrder: undefined,
+      defaultToFavorites: undefined,
+      excludeSkillId: undefined,
       filters: {
         status: undefined,
         mcpServerViewIds: undefined,
@@ -370,7 +464,10 @@ describe("POST /api/w/:wId/skills/search", () => {
     });
   });
 
-  it("accepts structured filters and opt-in editor selection", async () => {
+  it.each([
+    true,
+    false,
+  ])("accepts structured filters with codeDefinedOnly=%s", async (codeDefinedOnly) => {
     const { workspace } = await setup();
     searchSkills.mockResolvedValue(
       new Ok({ skills: [], total: 0, hasMore: false, facets: {} })
@@ -380,7 +477,7 @@ describe("POST /api/w/:wId/skills/search", () => {
       mcpServerViewIds: ["tool"],
       availability: ["editors", "workspace_users"],
       editedByMe: true,
-      codeDefinedOnly: true,
+      codeDefinedOnly,
       sortBy: "usage",
     });
     expect(response.status).toBe(200);
@@ -393,7 +490,7 @@ describe("POST /api/w/:wId/skills/search", () => {
           mcpServerViewIds: ["tool"],
           availability: ["editors", "workspace_users"],
           editedByMe: true,
-          codeDefinedOnly: true,
+          codeDefinedOnly,
         },
       })
     );

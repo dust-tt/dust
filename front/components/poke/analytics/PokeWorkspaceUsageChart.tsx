@@ -8,6 +8,7 @@ import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { CHART_HEIGHT, CHART_MARGIN } from "@app/components/charts/constants";
+import { formatNumber } from "@app/lib/i18n/format";
 import { formatShortDate } from "@app/lib/utils/timestamps";
 import {
   usePokeWorkspaceActiveUsersMetrics,
@@ -230,12 +231,12 @@ function UsageMetricsTooltip({
   const rows = [
     {
       label: "Messages",
-      value: row.count.toLocaleString(),
+      value: formatNumber(row.count),
       colorClassName: USAGE_METRICS_PALETTE.messages,
     },
     {
       label: "Conversations",
-      value: row.conversations.toLocaleString(),
+      value: formatNumber(row.conversations),
       colorClassName: USAGE_METRICS_PALETTE.conversations,
     },
   ];

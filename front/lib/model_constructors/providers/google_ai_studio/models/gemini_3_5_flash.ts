@@ -8,9 +8,6 @@ import { GEMINI_3_5_FLASH } from "@app/lib/model_constructors/types/models";
 
 import { z } from "zod";
 
-export const CONTEXT_SIZE = 1_000_000;
-export const MAX_OUTPUT_TOKENS = 65_536;
-
 const DEFAULT_REASONING_EFFORT = "high";
 
 // Exposes `none`: gemini-3.5-flash accepts `thinkingBudget: 0` and returns 0

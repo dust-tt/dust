@@ -3,6 +3,7 @@ import type { WebhookSourceFormValues } from "@app/components/triggers/forms/web
 import { WebhookEndpointUsageInfo } from "@app/components/triggers/WebhookEndpointUsageInfo";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
+import { formatDate } from "@app/lib/i18n/format";
 import { buildWebhookUrl, normalizeWebhookIcon } from "@app/lib/webhook_source";
 import type { WebhookSourceViewForAdminType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
@@ -47,9 +48,9 @@ const getEditedLabel = (webhookSourceView: WebhookSourceViewForAdminType) => {
   if (webhookSourceView.editedByUser.editedAt === null) {
     return `Edited by ${webhookSourceView.editedByUser.fullName}`;
   }
-  const editedAtDateString = new Date(
+  const editedAtDateString = formatDate(
     webhookSourceView.editedByUser.editedAt
-  ).toLocaleDateString();
+  );
   if (webhookSourceView.editedByUser.fullName === null) {
     return `Edited on ${editedAtDateString}`;
   }

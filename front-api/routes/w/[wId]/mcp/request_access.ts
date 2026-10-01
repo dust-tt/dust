@@ -9,8 +9,6 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { escape } from "html-escaper";
 
-export type { PostRequestActionsAccessBody } from "@app/lib/api/mcp";
-
 const MAX_ACCESS_REQUESTS_PER_DAY = 30;
 
 // Mounted at /api/w/:wId/mcp/request_access.

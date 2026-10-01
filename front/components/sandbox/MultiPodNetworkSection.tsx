@@ -1,6 +1,7 @@
 import { DomainBadge } from "@app/components/sandbox/DomainBadge";
 import { DomainInputForm } from "@app/components/sandbox/DomainInputForm";
 import { podIcon } from "@app/components/sandbox/pod_icon";
+import { compareStrings } from "@app/lib/i18n/format";
 import type { SandboxPodSelection } from "@app/lib/swr/sandbox";
 import {
   useBulkPodEgressPolicies,
@@ -108,7 +109,7 @@ export function buildDomainRows({
           (includeWorkspace && inWorkspace ? 1 : 0) + ownedByPods.length,
       };
     })
-    .sort((a, b) => a.domain.localeCompare(b.domain));
+    .sort((a, b) => compareStrings(a.domain, b.domain));
 }
 
 // Agent-requested domains awaiting review, one row per originating scope (the
@@ -167,7 +168,8 @@ export function buildPendingRequests({
   }
   return rows.sort(
     (a, b) =>
-      a.domain.localeCompare(b.domain) || a.scopeName.localeCompare(b.scopeName)
+      compareStrings(a.domain, b.domain) ||
+      compareStrings(a.scopeName, b.scopeName)
   );
 }
 

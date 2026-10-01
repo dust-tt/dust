@@ -291,9 +291,3 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
     resolverKeyPattern: "metronome-alerts-*",
   },
 ];
-
-export function getCacheResourceById(
-  id: string
-): CacheResourceDefinition | undefined {
-  return CACHE_RESOURCE_REGISTRY.find((r) => r.id === id);
-}

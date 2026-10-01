@@ -95,6 +95,8 @@ type CachedUserData = {
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface UserResource extends ReadonlyAttributesType<UserModel> {}
 
+export const ANONYMIZED_USER_EMAIL_DOMAIN = "anonymized.invalid";
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class UserResource extends BaseResource<UserModel> {
   static model: ModelStatic<UserModel> = UserModel;
@@ -698,6 +700,43 @@ export class UserResource extends BaseResource<UserModel> {
     } catch (err) {
       return new Err(normalizeError(err));
     }
+  }
+
+  /**
+   * @cc [owner:pmilliotte,label:security;backend] anonymize-scrubs-personal-data
+   * MUST overwrite every personal field of the user row and delete its metadata in one transaction.
+   * The row is kept, so rows in other tables referencing the user stay valid.
+   */
+  async anonymize(): Promise<Result<undefined, Error>> {
+    const oldWorkOSUserId = this.workOSUserId;
+
+    await withTransaction(async (transaction) => {
+      await UserMetadataModel.destroy({
+        where: { userId: this.id },
+        transaction,
+      });
+      await this.update(
+        {
+          username: this.sId,
+          email: `${this.sId}@${ANONYMIZED_USER_EMAIL_DOMAIN}`,
+          name: "Anonymized user",
+          firstName: "Anonymized",
+          lastName: null,
+          imageUrl: null,
+          workOSUserId: null,
+          provider: null,
+          providerId: null,
+        },
+        transaction
+      );
+      if (oldWorkOSUserId) {
+        invalidateCacheAfterCommit(transaction, () =>
+          UserResource.invalidateUserByWorkOSIdCache(oldWorkOSUserId)
+        );
+      }
+    });
+
+    return launchIndexUserSearchWorkflow({ userId: this.sId });
   }
 
   async getMetadata(key: string, workspaceModelId?: number | null) {

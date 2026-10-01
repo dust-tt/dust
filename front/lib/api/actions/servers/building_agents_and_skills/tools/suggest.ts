@@ -52,6 +52,7 @@ import {
 } from "@app/lib/api/actions/servers/building_agents_and_skills/skill_suggestion_changes";
 import type { InstructionSuggestionEditInput } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { createAgentInstructionSuggestions } from "@app/lib/api/assistant/agent_instructions_suggestions";
+import { fetchRunAgentTool } from "@app/lib/api/assistant/suggestable_sub_agents";
 import { fetchCustomSkillById } from "@app/lib/api/skills/write_access";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
@@ -82,8 +83,10 @@ import assert from "assert";
 type PlannedChange =
   | {
       type: "agent_creation";
+      ref: string | null;
       create: CreateSuggestionType;
       skillRefs: string[];
+      subAgentRefs: string[];
     }
   | {
       type: "agent";
@@ -95,6 +98,7 @@ type PlannedChange =
       } | null;
       keyed: KeyedAgentSuggestionData[];
       skillRefs: string[];
+      subAgentRefs: string[];
     }
   | {
       type: "skill_creation";
@@ -127,12 +131,15 @@ async function fetchAgentForSuggestion(
 async function planAgentCreation(
   auth: Authenticator,
   {
+    ref,
     name,
     description,
     instructions,
     toolIds = [],
     skillIds = [],
     skillRefs = [],
+    subAgentIds = [],
+    subAgentRefs = [],
   }: CreateAgentSuggestion
 ): Promise<Result<PlannedChange, MCPError>> {
   const validation = await validateAgentCreation(auth, { name });
@@ -143,6 +150,7 @@ async function planAgentCreation(
   const capabilities = await validateAgentCreationCapabilities(auth, {
     toolIds,
     skillIds,
+    subAgentIds,
   });
   if (capabilities.isErr()) {
     return capabilities;
@@ -150,14 +158,17 @@ async function planAgentCreation(
 
   return new Ok({
     type: "agent_creation",
+    ref: ref ?? null,
     create: {
       name: validation.value.name,
       description,
       instructions,
       toolIds,
       skillIds,
+      subAgentIds,
     },
     skillRefs,
+    subAgentRefs,
   });
 }
 
@@ -356,8 +367,13 @@ async function planAgentEdit(
   }
 
   const addAgentIds = subAgentChanges?.addAgentIds ?? [];
+  const addAgentRefs = subAgentChanges?.addAgentRefs ?? [];
   const removeAgentIds = subAgentChanges?.removeAgentIds ?? [];
-  if (addAgentIds.length > 0 || removeAgentIds.length > 0) {
+  if (
+    addAgentIds.length > 0 ||
+    removeAgentIds.length > 0 ||
+    addAgentRefs.length > 0
+  ) {
     const validation = await validateAgentSubAgentChanges(auth, agent, {
       addAgentIds,
       removeAgentIds,
@@ -377,7 +393,8 @@ async function planAgentEdit(
     singletons.length === 0 &&
     instructions === null &&
     keyed.length === 0 &&
-    addSkillRefs.length === 0
+    addSkillRefs.length === 0 &&
+    addAgentRefs.length === 0
   ) {
     return new Err(
       new MCPError(
@@ -393,6 +410,7 @@ async function planAgentEdit(
     instructions,
     keyed,
     skillRefs: addSkillRefs,
+    subAgentRefs: addAgentRefs,
   });
 }
 
@@ -418,6 +436,7 @@ async function planAgentDeletion(
     instructions: null,
     keyed: [],
     skillRefs: [],
+    subAgentRefs: [],
   });
 }
 
@@ -641,9 +660,11 @@ function agentSkillRefsOf(suggestions: Suggestion[]): string[] {
 }
 
 /**
- * Checks that each ref is declared only once, by a skill creation. Every skill tag citing a ref in
- * the call's instructions, and every skill ref given to an agent, must point at one of those
- * declared refs.
+ * Checks that each skill ref is declared once among the skill creations, and each agent ref once
+ * among the agent creations. Every skill tag citing a ref in the call's instructions, and every
+ * skill ref given to an agent, must point at a declared skill ref. A skill creation cannot cite its
+ * own ref. Every sub-agent ref, given to a new or an existing agent, must point at a declared agent
+ * ref other than the agent's own. An agent lists each skill ref and each sub-agent ref at most once.
  */
 function validateRefs(suggestions: Suggestion[]): Result<undefined, MCPError> {
   const pendingSkillRefs = new Set<string>();
@@ -652,6 +673,65 @@ function validateRefs(suggestions: Suggestion[]): Result<undefined, MCPError> {
       return new Err(new MCPError(`The ref "${ref}" is declared twice.`));
     }
     pendingSkillRefs.add(ref);
+  }
+
+  const declaredAgentRefs = suggestions.flatMap((suggestion) =>
+    suggestion.kind === "create_agent" && suggestion.ref ? [suggestion.ref] : []
+  );
+  const pendingAgentRefs = new Set<string>();
+  for (const ref of declaredAgentRefs) {
+    if (pendingAgentRefs.has(ref)) {
+      return new Err(new MCPError(`The ref "${ref}" is declared twice.`));
+    }
+    pendingAgentRefs.add(ref);
+  }
+
+  const agentCitingItself = suggestions.find(
+    (suggestion) =>
+      suggestion.kind === "create_agent" &&
+      suggestion.ref &&
+      subAgentRefsOf(suggestion).includes(suggestion.ref)
+  );
+  if (agentCitingItself) {
+    return new Err(new MCPError("An agent cannot be its own sub-agent."));
+  }
+
+  const skillCitingItself = suggestions.find(
+    (suggestion) =>
+      suggestion.kind === "create_skill" &&
+      suggestion.ref &&
+      extractSkillRefs(suggestion.instructions).includes(suggestion.ref)
+  );
+  if (skillCitingItself) {
+    return new Err(new MCPError("A skill cannot cite itself."));
+  }
+
+  const hasDuplicateRef = (refs: string[]) =>
+    new Set(refs).size !== refs.length;
+  if (
+    suggestions.some((suggestion) =>
+      hasDuplicateRef(subAgentRefsOf(suggestion))
+    )
+  ) {
+    return new Err(new MCPError("Each sub-agent can only be added once."));
+  }
+  if (
+    suggestions.some((suggestion) =>
+      hasDuplicateRef(agentSkillRefsOf([suggestion]))
+    )
+  ) {
+    return new Err(new MCPError("Each skill can only be added once."));
+  }
+
+  const unknownSubAgentRef = suggestions
+    .flatMap(subAgentRefsOf)
+    .find((ref) => !pendingAgentRefs.has(ref));
+  if (unknownSubAgentRef) {
+    return new Err(
+      new MCPError(
+        `The ref "${unknownSubAgentRef}" is not declared by any agent creation of this call.`
+      )
+    );
   }
 
   const unknownAgentSkillRef = agentSkillRefsOf(suggestions).find(
@@ -725,6 +805,17 @@ function findSkillAddedAndDeleted(suggestions: Suggestion[]): string | null {
   return null;
 }
 
+/** The refs of agents created in the call that a suggestion gives to an agent as sub-agents. */
+function subAgentRefsOf(suggestion: Suggestion): string[] {
+  if (suggestion.kind === "create_agent") {
+    return suggestion.subAgentRefs ?? [];
+  }
+  if (suggestion.kind === "edit_agent") {
+    return suggestion.subAgents?.addAgentRefs ?? [];
+  }
+  return [];
+}
+
 /** An agent the batch deletes cannot also be added as a sub-agent by the same batch. */
 function findSubAgentAddedAndDeleted(suggestions: Suggestion[]): string | null {
   const deletedAgentIds = new Set(
@@ -732,17 +823,17 @@ function findSubAgentAddedAndDeleted(suggestions: Suggestion[]): string | null {
       suggestion.kind === "delete_agent" ? [suggestion.agentId] : []
     )
   );
-  for (const suggestion of suggestions) {
-    if (suggestion.kind === "edit_agent") {
-      const addedAgentId = (suggestion.subAgents?.addAgentIds ?? []).find(
-        (id) => deletedAgentIds.has(id)
-      );
-      if (addedAgentId) {
-        return addedAgentId;
-      }
+  const addedAgentIds = suggestions.flatMap((suggestion) => {
+    if (suggestion.kind === "create_agent") {
+      return suggestion.subAgentIds ?? [];
     }
-  }
-  return null;
+    if (suggestion.kind === "edit_agent") {
+      return suggestion.subAgents?.addAgentIds ?? [];
+    }
+    return [];
+  });
+
+  return addedAgentIds.find((id) => deletedAgentIds.has(id)) ?? null;
 }
 
 /** Each existing agent or skill may be targeted by at most one suggestion of the batch. */
@@ -823,6 +914,66 @@ async function createPendingSkills(
   return new Ok({ pendingSkillByChange, skillReferenceByRef });
 }
 
+/**
+ * Creates the pending agent of each agent creation, before any row is written, so that a sub-agent
+ * added by the ref of one can be recorded with its id, whatever the order of the suggestions.
+ */
+async function createPendingAgents(
+  auth: Authenticator,
+  changes: PlannedChange[]
+): Promise<
+  Result<
+    {
+      pendingAgentByChange: Map<PlannedChange, AgentResource>;
+      agentIdByRef: Map<string, string>;
+    },
+    MCPError
+  >
+> {
+  const agentCreations = changes.filter(
+    (change): change is Extract<PlannedChange, { type: "agent_creation" }> =>
+      change.type === "agent_creation"
+  );
+  const pendingAgents = await AgentResource.createPendings(
+    auth,
+    agentCreations.map((change) => change.create.name)
+  );
+  if (pendingAgents.isErr()) {
+    return new Err(new MCPError(pendingAgents.error.message));
+  }
+
+  const pendingAgentByChange = new Map<PlannedChange, AgentResource>();
+  const agentIdByRef = new Map<string, string>();
+  agentCreations.forEach((change, i) => {
+    const pendingAgent = pendingAgents.value[i];
+    pendingAgentByChange.set(change, pendingAgent);
+    if (change.ref) {
+      agentIdByRef.set(change.ref, pendingAgent.sId);
+    }
+  });
+
+  return new Ok({ pendingAgentByChange, agentIdByRef });
+}
+
+function resolvePendingAgentId(
+  ref: string,
+  agentIdByRef: Map<string, string>
+): string {
+  const agentId = agentIdByRef.get(ref);
+  assert(agentId, "Refs are validated before any row is recorded.");
+
+  return agentId;
+}
+
+function resolveRunAgentToolId(runAgentToolId: string | null): string {
+  assert(
+    runAgentToolId,
+    "suggest checks the run_agent tool before any row is recorded."
+  );
+
+  return runAgentToolId;
+}
+
 function resolvePendingSkillId(
   ref: string,
   skillReferenceByRef: Map<string, SkillReference>
@@ -869,16 +1020,24 @@ async function recordPlannedChange(
     conversation,
     pendingSkillByChange,
     skillReferenceByRef,
+    pendingAgentByChange,
+    agentIdByRef,
+    runAgentToolId,
   }: {
     batch: BatchSuggestionResource;
     conversation: ConversationType;
     pendingSkillByChange: Map<PlannedChange, SkillResource>;
     skillReferenceByRef: Map<string, SkillReference>;
+    pendingAgentByChange: Map<PlannedChange, AgentResource>;
+    agentIdByRef: Map<string, string>;
+    runAgentToolId: string | null;
   }
 ): Promise<Result<undefined, MCPError>> {
   switch (change.type) {
     case "agent_creation": {
-      const res = await recordAgentCreationSuggestion(auth, {
+      const pendingAgent = pendingAgentByChange.get(change);
+      assert(pendingAgent, "Missing pending agent.");
+      await recordAgentCreationSuggestion(auth, pendingAgent, {
         create: {
           ...change.create,
           skillIds: [
@@ -887,12 +1046,18 @@ async function recordPlannedChange(
               resolvePendingSkillId(ref, skillReferenceByRef)
             ),
           ],
+          subAgentIds: [
+            ...(change.create.subAgentIds ?? []),
+            ...change.subAgentRefs.map((ref) =>
+              resolvePendingAgentId(ref, agentIdByRef)
+            ),
+          ],
         },
         analysis: null,
         conversation,
         batch,
       });
-      return res.isErr() ? res : new Ok(undefined);
+      return new Ok(undefined);
     }
 
     case "agent": {
@@ -924,6 +1089,14 @@ async function recordPlannedChange(
             suggestion: {
               action: "add" as const,
               skillId: resolvePendingSkillId(ref, skillReferenceByRef),
+            },
+          })),
+          ...change.subAgentRefs.map((ref) => ({
+            kind: "sub_agent" as const,
+            suggestion: {
+              action: "add" as const,
+              toolId: resolveRunAgentToolId(runAgentToolId),
+              childAgentId: resolvePendingAgentId(ref, agentIdByRef),
             },
           })),
         ],
@@ -974,14 +1147,16 @@ async function recordPlannedChange(
  * `suggest` MUST validate every suggestion of the call against live state before recording any of
  * them: when one suggestion is invalid or unsupported, or two suggestions target the same agent or
  * skill, or a skill is both deleted and added to an agent, or an agent is both deleted and added
- * as a sub-agent, or a ref is declared twice or used without being declared, the call fails and no batch,
- * placeholder agent or skill, or suggestion row is created.
+ * as a sub-agent, or a skill ref or agent ref is declared twice among the creations of its kind,
+ * used without being declared, cited by the creation that declares it, or given twice to one agent,
+ * the call fails and no batch, placeholder agent or skill, or suggestion row is created. A skill
+ * and an agent may share a ref, as each is only resolved among the refs of its own kind.
  */
 /**
  * @cc [owner:achilleburah,label:product;mcp] refs-resolved-before-storage
- * Every ref used by a `suggest` call MUST be rewritten to the id of the pending skill of the skill
- * creation that declares it before any suggestion row is stored: all pending skills are created
- * first, then rows are written with real ids only. No stored row holds a ref.
+ * Every ref used by a `suggest` call MUST be rewritten to the id of the pending skill or agent of
+ * the creation that declares it before any suggestion row is stored: all pending skills and agents
+ * are created first, then rows are written with real ids only. No stored row holds a ref.
  */
 export async function suggest(
   auth: Authenticator,
@@ -1035,6 +1210,18 @@ export async function suggest(
     plannedChanges.push(planned.value);
   }
 
+  const hasSubAgentRefs = plannedChanges.some(
+    (change) =>
+      (change.type === "agent" || change.type === "agent_creation") &&
+      change.subAgentRefs.length > 0
+  );
+  const runAgentTool = hasSubAgentRefs ? await fetchRunAgentTool(auth) : null;
+  if (hasSubAgentRefs && !runAgentTool) {
+    return new Err(
+      new MCPError("The tool to run sub-agents is not available.")
+    );
+  }
+
   const batch = await BatchSuggestionResource.makeNew(auth, {
     title,
     analysis,
@@ -1047,11 +1234,19 @@ export async function suggest(
     return pendingSkills;
   }
 
+  const pendingAgents = await createPendingAgents(auth, plannedChanges);
+  if (pendingAgents.isErr()) {
+    await batch.updateState(auth, "outdated");
+    return pendingAgents;
+  }
+
   for (const change of plannedChanges) {
     const recorded = await recordPlannedChange(auth, change, {
       batch,
       conversation,
       ...pendingSkills.value,
+      ...pendingAgents.value,
+      runAgentToolId: runAgentTool?.sId ?? null,
     });
     if (recorded.isErr()) {
       const partialBatch = await BatchSuggestionResource.fetchById(

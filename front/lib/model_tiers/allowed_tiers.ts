@@ -32,13 +32,8 @@ import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 export type {
-  ModelTierResolutionSource,
-  ResolvedAllowedModelTiers,
-} from "@app/lib/model_tiers/resolve_allowed";
-export type {
   ModelsTierDefinition,
   ModelsTierName,
-  ModelTierSelection,
 } from "@app/types/assistant/models/model_tiers";
 
 const MODELS_TIER_GRANT_TYPE = "use" as const;

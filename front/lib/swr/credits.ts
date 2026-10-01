@@ -13,7 +13,6 @@ import type {
   AwuPoolSummaryResponseBody,
 } from "@app/types/api/credits/awu_pool_summary";
 import type { GetMembersSeatsResponseBody } from "@app/types/api/credits/members_seats";
-import type { GetMyTopConversationsResponseBody } from "@app/types/api/credits/my_top_conversations";
 import type { GetAwuTopUpsHistoryResponseBody } from "@app/types/api/credits/top_ups_history";
 import type {
   GetCreditsResponseBody,
@@ -473,30 +472,6 @@ export function useMyUsage({
     nextCreditResetAt: data?.member?.nextCreditResetAt ?? null,
     isMyUsageLoading: !error && !data && !disabled,
     isMyUsageError: error,
-  };
-}
-
-export function useMyTopConversations({
-  workspaceId,
-  disabled,
-}: {
-  workspaceId: string;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const myTopConversationsFetcher: Fetcher<GetMyTopConversationsResponseBody> =
-    fetcher;
-
-  const { data, error } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/credits/my-top-conversations`,
-    myTopConversationsFetcher,
-    { disabled }
-  );
-
-  return {
-    topConversations: data?.conversations ?? emptyArray(),
-    isTopConversationsLoading: !error && !data && !disabled,
-    isTopConversationsError: error,
   };
 }
 

@@ -1,0 +1,13 @@
+engine biome(1.0)
+language js
+
+// Disallows `localeCompare` calls, which compare in the browser's locale
+// instead of the user's. Use `compareStrings` from `@app/lib/i18n/format`
+// instead. See CONTRACTS [no-bare-locale-compare].
+`$_.localeCompare($...)` as $call where {
+    register_diagnostic(
+        span = $call,
+        message = "`localeCompare` compares in the browser's locale. Use `compareStrings` from `@app/lib/i18n/format` instead.",
+        severity = "error"
+    )
+}

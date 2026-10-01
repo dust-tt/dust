@@ -3,7 +3,7 @@ import {
   MemberNameSkeleton,
 } from "@app/components/workspace/member_name_column";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
-import { timeAgoFrom } from "@app/lib/utils";
+import { timeAgoFrom } from "@app/lib/client/relative_time";
 import type {
   MembershipSeatType,
   MembershipUpgradeRequestType,
@@ -113,7 +113,7 @@ const requestedColumn: ColumnDef<RowData, string> = {
   cell: (info: Info) => (
     <DataTable.CellContent>
       <span className="text-sm text-muted-foreground">
-        {timeAgoFrom(info.row.original.createdAt, { useLongFormat: true })} ago
+        {timeAgoFrom(info.row.original.createdAt, { useLongFormat: true })}
       </span>
     </DataTable.CellContent>
   ),

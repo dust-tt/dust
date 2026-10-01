@@ -62,7 +62,7 @@ export function EnumSelect({
             variant="outline"
             role="combobox"
             className={cn(
-              "w-auto justify-between border-border-dark bg-background " + "",
+              "w-auto justify-between border-border-dark bg-background ",
               !values?.length && "text-muted-foreground"
             )}
           >

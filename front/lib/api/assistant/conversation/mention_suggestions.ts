@@ -1,5 +1,4 @@
 import { searchAgents } from "@app/lib/api/agents/search";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getLastUserMessageMentions } from "@app/lib/api/assistant/conversation";
 import { fetchConversationParticipants } from "@app/lib/api/assistant/participants";
 import type { Authenticator } from "@app/lib/auth";
@@ -10,6 +9,7 @@ import {
   sortEditorSuggestionUsers,
 } from "@app/lib/mentions/editor/suggestion";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { enrichWithFavorites } from "@app/lib/resources/agent_resource_serialization";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -22,10 +22,7 @@ import type {
   RichMention,
   RichUserMentionInConversation,
 } from "@app/types/assistant/mentions";
-import {
-  toRichAgentMentionType,
-  toRichUserMentionType,
-} from "@app/types/assistant/mentions";
+import { toRichUserMentionType } from "@app/types/assistant/mentions";
 
 export function interleaveMentionsPreservingAgentOrder(
   agents: RichAgentMentionInConversation[],
@@ -171,6 +168,12 @@ export function parseMentionSelectParam(
   };
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:product;security] empty-query-favorite-mentions
+ * With agents selected and agent search enabled, a blank query MUST return only active,
+ * readable favorites in alphabetical order when any exist, without searching. No favorites
+ * or a nonblank query MUST retain the existing suggestions behavior.
+ */
 export const suggestionsOfMentions = async (
   auth: Authenticator,
   {
@@ -196,6 +199,22 @@ export const suggestionsOfMentions = async (
   const normalizedQuery = query.toLowerCase();
   // can be called from the public API, so user may be null
   const currentUser = auth.user();
+
+  let useAgentSearch = false;
+  if (select.agents) {
+    useAgentSearch = await auth.hasFeatureFlag("new_manage_agents_page");
+  }
+  if (useAgentSearch && !query.trim()) {
+    const favorites = await AgentResource.listFavoritesForCurrentUser(auth);
+    const favoriteSuggestions = favorites
+      .filter((agent) => agent.status === "active" && auth.can("read", agent))
+      .toSorted((a, b) => a.name.localeCompare(b.name))
+      .slice(0, SUGGESTION_DISPLAY_LIMIT)
+      .map((agent) => agent.toMentionSuggestionJSON({ userFavorite: true }));
+    if (favoriteSuggestions.length > 0) {
+      return favoriteSuggestions;
+    }
+  }
 
   // Id of the last user or agent mentioned by the current user in the conversation
   let lastMentionedId: string | null = null;
@@ -280,7 +299,6 @@ export const suggestionsOfMentions = async (
   }
 
   if (select.agents) {
-    const useAgentSearch = await auth.hasFeatureFlag("new_manage_agents_page");
     let activeAgents: RichAgentMentionInConversation[] | null = null;
     if (useAgentSearch) {
       const result = await searchAgents(auth, {
@@ -310,14 +328,13 @@ export const suggestionsOfMentions = async (
 
     const isSearchResult = activeAgents !== null;
     if (activeAgents === null) {
-      const agentConfigurations = await getAgentConfigurationsForView({
-        auth,
-        agentsGetView: "list",
-        variant: "light",
-      });
-      activeAgents = agentConfigurations
-        .filter((agent) => agent.status === "active")
-        .map(toRichAgentMentionType);
+      const agents = await AgentResource.listReadable(auth);
+      const favorites = await enrichWithFavorites(auth, agents);
+      activeAgents = agents.map((agent) =>
+        agent.toMentionSuggestionJSON({
+          userFavorite: favorites.get(agent.sId)?.userFavorite ?? false,
+        })
+      );
     }
 
     const participantsById = new Map(

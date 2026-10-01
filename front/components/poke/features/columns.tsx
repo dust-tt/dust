@@ -1,10 +1,10 @@
 import { FeatureFlagStageChip } from "@app/components/poke/features/stage_chip";
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
+import { formatDateTime } from "@app/lib/i18n/format";
 import type {
   FeatureFlagStage,
   WhitelistableFeature,
 } from "@app/types/shared/feature_flags";
-import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
 import type { ColumnDef } from "@tanstack/react-table";
 
 type FeatureFlagsDisplayType = {
@@ -85,12 +85,15 @@ export function makeColumnsForFeatureFlags(): ColumnDef<FeatureFlagsDisplayType>
           return <span className="text-gray-400">—</span>;
         }
 
-        try {
-          const date = new Date(enabledAt);
-          return <span className="text-sm">{dateToHumanReadable(date)}</span>;
-        } catch {
+        const date = new Date(enabledAt);
+        if (isNaN(date.getTime())) {
           return <span className="text-gray-400">Invalid date</span>;
         }
+        return (
+          <span className="text-sm">
+            {formatDateTime(date, { dateStyle: "medium", timeStyle: "short" })}
+          </span>
+        );
       },
     },
   ];

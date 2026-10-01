@@ -96,13 +96,3 @@ export interface AuthContextNoWorkspaceValue {
 
 export const AuthContextNoWorkspace =
   createContext<AuthContextNoWorkspaceValue | null>(null);
-
-export function useAuthNoWorkspace(): AuthContextNoWorkspaceValue {
-  const ctx = useContext(AuthContextNoWorkspace);
-  if (!ctx) {
-    throw new Error(
-      "useAuthNoWorkspace must be used within AuthContextNoWorkspace.Provider"
-    );
-  }
-  return ctx;
-}

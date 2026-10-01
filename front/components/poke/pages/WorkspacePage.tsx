@@ -285,124 +285,124 @@ export function WorkspacePage() {
               />
             </div>
           </div>
-          <Tabs
-            value={currentTab}
-            onValueChange={handleTabChange}
-            className="min-h-[1024px] w-full"
-          >
-            <TabsList>
-              <TabsTrigger value="metadata" label="Metadata" />
-              <TabsTrigger value="agents" label="Agents" />
-              <TabsTrigger value="apps" label="Apps" />
-              <TabsTrigger value="datasources" label="Data Sources" />
-              <TabsTrigger value="datasourceviews" label="Data Source Views" />
-              <TabsTrigger value="featureflags" label="Feature Flags" />
-              <TabsTrigger value="frames" label="Frames" />
-              <TabsTrigger value="governance" label="Governance" />
-              <TabsTrigger value="groups" label="Groups" />
-              <TabsTrigger value="mcpviews" label="MCP" />
-              <TabsTrigger value="pods" label="Pods" />
-              <TabsTrigger value="skills" label="Skills" />
-              <TabsTrigger value="spaces" label="Spaces" />
-              <TabsTrigger value="triggers" label="Triggers" />
-              <TabsTrigger value="webhooksources" label="Webhook Sources" />
-              <TabsTrigger value="credits" label="API Usage" />
-              <TabsTrigger value="usage" label="Usage" />
-            </TabsList>
+          <Tabs value={currentTab} onValueChange={handleTabChange} asChild>
+            <div className="flex min-h-[1024px] w-full flex-col gap-4">
+              <TabsList>
+                <TabsTrigger value="metadata" label="Metadata" />
+                <TabsTrigger value="agents" label="Agents" />
+                <TabsTrigger value="apps" label="Apps" />
+                <TabsTrigger value="datasources" label="Data Sources" />
+                <TabsTrigger
+                  value="datasourceviews"
+                  label="Data Source Views"
+                />
+                <TabsTrigger value="featureflags" label="Feature Flags" />
+                <TabsTrigger value="frames" label="Frames" />
+                <TabsTrigger value="governance" label="Governance" />
+                <TabsTrigger value="groups" label="Groups" />
+                <TabsTrigger value="mcpviews" label="MCP" />
+                <TabsTrigger value="pods" label="Pods" />
+                <TabsTrigger value="skills" label="Skills" />
+                <TabsTrigger value="spaces" label="Spaces" />
+                <TabsTrigger value="triggers" label="Triggers" />
+                <TabsTrigger value="webhooksources" label="Webhook Sources" />
+                <TabsTrigger value="credits" label="API Usage" />
+                <TabsTrigger value="usage" label="Usage" />
+              </TabsList>
 
-            <TabsContent value="metadata">
-              <WorkspaceMetadataTab owner={owner} />
-            </TabsContent>
-            <TabsContent value="datasources">
-              <DataSourceDataTable owner={owner} loadOnInit />
-            </TabsContent>
-            <TabsContent value="datasourceviews">
-              <DataSourceViewsDataTable owner={owner} loadOnInit />
-            </TabsContent>
-            <TabsContent value="mcpviews">
-              <MCPServerViewsDataTable
-                owner={owner}
-                loadOnInit
-                systemSpaceOnly
-              />
-            </TabsContent>
-            <TabsContent value="pods">
-              <ProjectsDataTable owner={owner} loadOnInit />
-            </TabsContent>
-            <TabsContent value="frames">
-              <FramesDataTable owner={owner} loadOnInit />
-            </TabsContent>
-            <TabsContent value="spaces">
-              <SpaceDataTable owner={owner} loadOnInit />
-            </TabsContent>
-            <TabsContent value="groups">
-              <GroupDataTable owner={owner} loadOnInit />
-            </TabsContent>
-            <TabsContent value="agents">
-              <AssistantsDataTable
-                owner={owner}
-                agentsRetention={agentsRetention}
-                loadOnInit
-              />
-            </TabsContent>
-            <TabsContent value="skills">
-              <SkillsDataTable owner={owner} loadOnInit />
-            </TabsContent>
-            <TabsContent value="apps">
-              <AppDataTable owner={owner} loadOnInit />
-            </TabsContent>
-            <TabsContent value="featureflags">
-              <FeatureFlagsDataTable
-                owner={owner}
-                whitelistableFeatures={whitelistableFeatures}
-                loadOnInit
-              />
-            </TabsContent>
+              <TabsContent value="metadata">
+                <WorkspaceMetadataTab owner={owner} />
+              </TabsContent>
+              <TabsContent value="datasources">
+                <DataSourceDataTable owner={owner} loadOnInit />
+              </TabsContent>
+              <TabsContent value="datasourceviews">
+                <DataSourceViewsDataTable owner={owner} loadOnInit />
+              </TabsContent>
+              <TabsContent value="mcpviews">
+                <MCPServerViewsDataTable
+                  owner={owner}
+                  loadOnInit
+                  systemSpaceOnly
+                />
+              </TabsContent>
+              <TabsContent value="pods">
+                <ProjectsDataTable owner={owner} loadOnInit />
+              </TabsContent>
+              <TabsContent value="frames">
+                <FramesDataTable owner={owner} loadOnInit />
+              </TabsContent>
+              <TabsContent value="spaces">
+                <SpaceDataTable owner={owner} loadOnInit />
+              </TabsContent>
+              <TabsContent value="groups">
+                <GroupDataTable owner={owner} loadOnInit />
+              </TabsContent>
+              <TabsContent value="agents">
+                <AssistantsDataTable
+                  owner={owner}
+                  agentsRetention={agentsRetention}
+                />
+              </TabsContent>
+              <TabsContent value="skills">
+                <SkillsDataTable owner={owner} />
+              </TabsContent>
+              <TabsContent value="apps">
+                <AppDataTable owner={owner} loadOnInit />
+              </TabsContent>
+              <TabsContent value="featureflags">
+                <FeatureFlagsDataTable
+                  owner={owner}
+                  whitelistableFeatures={whitelistableFeatures}
+                  loadOnInit
+                />
+              </TabsContent>
 
-            <TabsContent value="governance">
-              <GovernanceTab
-                owner={owner}
-                workosEnvironmentId={workosEnvironmentId}
-              />
-            </TabsContent>
-            <TabsContent value="triggers">
-              <TriggerDataTable owner={owner} />
-            </TabsContent>
-            <TabsContent value="webhooksources">
-              <WebhookSourceDataTable owner={owner} loadOnInit />
-            </TabsContent>
-            <TabsContent value="credits">
-              <CreditsDataTable
-                owner={owner}
-                subscription={activeSubscription}
-                stripeSubscription={stripeSubscription}
-                loadOnInit
-              />
-            </TabsContent>
-            <TabsContent value="usage">
-              <PokeUsageTab
-                owner={owner}
-                hasMetronomeBillingUsage={hasMetronomeBillingUsage}
-                subscription={activeSubscription}
-                stripeSubscription={stripeSubscription}
-                poolCreditState={poolCreditState}
-                programmaticRateLimiterState={programmaticRateLimiterState}
-                programmaticSpendLimitRateCapCount={
-                  programmaticSpendLimitRateCapCount
-                }
-                programmaticEsConsumedAwuCredits={
-                  programmaticEsConsumedAwuCredits
-                }
-                programmaticMetronomeConsumedAwuCredits={
-                  programmaticMetronomeConsumedAwuCredits
-                }
-                creditUsageConfig={creditUsageConfig}
-                poolAlert={poolAlert}
-                programmaticAlerts={programmaticAlerts}
-                usageCapAlert={usageCapAlert}
-                defaultAlerts={defaultAlerts}
-              />
-            </TabsContent>
+              <TabsContent value="governance">
+                <GovernanceTab
+                  owner={owner}
+                  workosEnvironmentId={workosEnvironmentId}
+                />
+              </TabsContent>
+              <TabsContent value="triggers">
+                <TriggerDataTable owner={owner} />
+              </TabsContent>
+              <TabsContent value="webhooksources">
+                <WebhookSourceDataTable owner={owner} loadOnInit />
+              </TabsContent>
+              <TabsContent value="credits">
+                <CreditsDataTable
+                  owner={owner}
+                  subscription={activeSubscription}
+                  stripeSubscription={stripeSubscription}
+                  loadOnInit
+                />
+              </TabsContent>
+              <TabsContent value="usage">
+                <PokeUsageTab
+                  owner={owner}
+                  hasMetronomeBillingUsage={hasMetronomeBillingUsage}
+                  subscription={activeSubscription}
+                  stripeSubscription={stripeSubscription}
+                  poolCreditState={poolCreditState}
+                  programmaticRateLimiterState={programmaticRateLimiterState}
+                  programmaticSpendLimitRateCapCount={
+                    programmaticSpendLimitRateCapCount
+                  }
+                  programmaticEsConsumedAwuCredits={
+                    programmaticEsConsumedAwuCredits
+                  }
+                  programmaticMetronomeConsumedAwuCredits={
+                    programmaticMetronomeConsumedAwuCredits
+                  }
+                  creditUsageConfig={creditUsageConfig}
+                  poolAlert={poolAlert}
+                  programmaticAlerts={programmaticAlerts}
+                  usageCapAlert={usageCapAlert}
+                  defaultAlerts={defaultAlerts}
+                />
+              </TabsContent>
+            </div>
           </Tabs>
         </div>
       </div>

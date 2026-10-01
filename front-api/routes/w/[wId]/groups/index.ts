@@ -1,6 +1,10 @@
 import { emitGroupMemberAuditLogs } from "@app/lib/api/groups/audit";
 import { getGroupAllowedActions } from "@app/lib/api/groups/management_actions";
 import { getGroupManagersForGroups } from "@app/lib/api/groups/manager_assignments";
+import {
+  hasAnyGroupPermission,
+  listGroupsWithVerb,
+} from "@app/lib/resources/group_management_access";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { GetGroupsResponseBody } from "@app/types/api/groups";
 import {
@@ -33,6 +37,7 @@ const GetGroupsQuerySchema = z.object({
   // query) instead of just memberCount.
   withMembers: z.enum(["true", "false"]).optional(),
   withManagers: z.enum(["true", "false"]).optional(),
+  managedOnly: z.enum(["true", "false"]).optional(),
 });
 
 // Mounted at /api/w/:wId/groups.
@@ -44,7 +49,8 @@ app.get(
   validate("query", GetGroupsQuerySchema),
   async (ctx): HandlerResult<GetGroupsResponseBody> => {
     const auth = ctx.get("auth");
-    const { kind, withMembers, withManagers } = ctx.req.valid("query");
+    const { kind, withMembers, withManagers, managedOnly } =
+      ctx.req.valid("query");
 
     const requestedKinds: GroupKind[] = kind
       ? Array.isArray(kind)
@@ -57,9 +63,24 @@ app.get(
     // whatever was requested to the visible set.
     const groupKinds = requestedKinds.filter(isUserVisibleGroupKind);
 
-    const groups = await GroupResource.listAllWorkspaceGroups(auth, {
-      groupKinds,
-    });
+    if (
+      managedOnly === "true" &&
+      !(await hasAnyGroupPermission(auth, "read_usage"))
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Group management access required.",
+        },
+      });
+    }
+    const groups =
+      managedOnly === "true"
+        ? (await listGroupsWithVerb(auth, "read_usage")).filter((group) =>
+            groupKinds.some((kind) => kind === group.kind)
+          )
+        : await GroupResource.listAllWorkspaceGroups(auth, { groupKinds });
 
     const serializedGroups =
       withMembers === "true"

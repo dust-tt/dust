@@ -315,6 +315,91 @@ export function validateFinalToolCall(
     case "suggestAgentCreation":
       return findSuggestion(finalToolCall, "create_agent");
 
+    case "suggestSubAgentByRef": {
+      const created = findSuggestion(finalToolCall, "create_agent");
+      if (!created.success) {
+        return created;
+      }
+      const { ref } = created.item;
+      if (!isString(ref)) {
+        return {
+          success: false,
+          error: `The create_agent suggestion declares no ref: ${JSON.stringify(created.item)}`,
+        };
+      }
+
+      const parent = findSuggestion(finalToolCall, "edit_agent", {
+        field: "agentId",
+        id: resolveAgentId(scenario, assertion.parentAgentKey),
+        label: `agent "${assertion.parentAgentKey}"`,
+      });
+      if (!parent.success) {
+        return parent;
+      }
+      const { subAgents } = parent.item;
+      const addAgentRefs =
+        isSuggestionItem(subAgents) && Array.isArray(subAgents.addAgentRefs)
+          ? subAgents.addAgentRefs
+          : [];
+      if (!addAgentRefs.includes(ref)) {
+        return {
+          success: false,
+          error: `The edit_agent suggestion does not add the created agent (ref "${ref}") as a sub-agent: ${JSON.stringify(parent.item)}`,
+        };
+      }
+      return { success: true };
+    }
+
+    case "suggestAgentSkillByRef": {
+      const created = findSuggestion(finalToolCall, "create_skill");
+      if (!created.success) {
+        return created;
+      }
+      const { ref } = created.item;
+      if (!isString(ref)) {
+        return {
+          success: false,
+          error: `The create_skill suggestion declares no ref: ${JSON.stringify(created.item)}`,
+        };
+      }
+
+      if (!assertion.agentKey) {
+        const agent = findSuggestion(finalToolCall, "create_agent");
+        if (!agent.success) {
+          return agent;
+        }
+        const { skillRefs } = agent.item;
+        if (!Array.isArray(skillRefs) || !skillRefs.includes(ref)) {
+          return {
+            success: false,
+            error: `The create_agent suggestion does not give the created skill (ref "${ref}") to the agent: ${JSON.stringify(agent.item)}`,
+          };
+        }
+        return { success: true };
+      }
+
+      const agent = findSuggestion(finalToolCall, "edit_agent", {
+        field: "agentId",
+        id: resolveAgentId(scenario, assertion.agentKey),
+        label: `agent "${assertion.agentKey}"`,
+      });
+      if (!agent.success) {
+        return agent;
+      }
+      const { skills } = agent.item;
+      const addSkillRefs =
+        isSuggestionItem(skills) && Array.isArray(skills.addSkillRefs)
+          ? skills.addSkillRefs
+          : [];
+      if (!addSkillRefs.includes(ref)) {
+        return {
+          success: false,
+          error: `The edit_agent suggestion does not add the created skill (ref "${ref}") to the agent: ${JSON.stringify(agent.item)}`,
+        };
+      }
+      return { success: true };
+    }
+
     case "suggestSkillUpdate": {
       const found = findSkillEdit(finalToolCall, scenario, assertion.skillKey);
       if (!found.success) {
@@ -538,6 +623,12 @@ function getEntitiesToMention(
     // A created agent has no id the model could know: it is named in plain text.
     case "suggestAgentCreation":
       return [];
+    case "suggestSubAgentByRef":
+      return [{ kind: "agent", key: assertion.parentAgentKey }];
+    case "suggestAgentSkillByRef":
+      return assertion.agentKey
+        ? [{ kind: "agent", key: assertion.agentKey }]
+        : [];
     case "suggestAgentInstructionsChange":
     case "suggestAgentModelChange":
     case "suggestAgentStructuredOutput":

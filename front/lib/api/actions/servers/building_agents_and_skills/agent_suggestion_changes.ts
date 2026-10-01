@@ -1,13 +1,13 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import { validateInstructionEditTargets } from "@app/lib/api/actions/servers/building_agents_and_skills/instruction_edits";
 import {
   LIST_MODELS_TOOL_NAME,
   WORKSPACE_MANAGEMENT_SERVER_NAME,
 } from "@app/lib/api/actions/servers/workspace_management/metadata";
 import { validateAgentEditorsChange } from "@app/lib/api/assistant/agent_editors_change";
 import type { InstructionSuggestionEditInput } from "@app/lib/api/assistant/agent_instructions_suggestions";
-import { validateInstructionEdits } from "@app/lib/api/assistant/agent_instructions_suggestions";
 import { isAuthorizedForAgentSuggestionKind } from "@app/lib/api/assistant/agent_suggestion_authorization";
 import { canAddPendingSuggestions } from "@app/lib/api/assistant/agent_suggestion_limits";
 import {
@@ -36,10 +36,8 @@ import {
   fetchSuggestableTools,
 } from "@app/lib/api/assistant/suggestable_tools";
 import type { Authenticator } from "@app/lib/auth";
-import { findUnknownTargetBlockIds } from "@app/lib/editor/instructions_block_conflict";
 import { DustError } from "@app/lib/error";
-import { hasSuggestionSelfConflict } from "@app/lib/reinforcement/skill_suggestion_pruning";
-import { AgentResource } from "@app/lib/resources/agent_resource";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import type { ConversationType } from "@app/types/assistant/conversation";
@@ -445,18 +443,6 @@ export async function validateAgentInstructionsChange(
     );
   }
 
-  const unknownBlockIds = findUnknownTargetBlockIds(
-    instructionsHtml,
-    edits.map((edit) => edit.targetBlockId)
-  );
-  if (unknownBlockIds.length > 0) {
-    return new Err(
-      new MCPError(
-        `These blocks do not exist in the agent's instructions: ${unknownBlockIds.join(", ")}.`
-      )
-    );
-  }
-
   const pending = await AgentSuggestionResource.listByAgentConfigurationId(
     auth,
     agent.sId,
@@ -473,20 +459,13 @@ export async function validateAgentInstructionsChange(
     return new Err(new MCPError(limitCheck.errorMessage));
   }
 
-  const editsValidation = validateInstructionEdits(edits);
-  if (editsValidation.isErr()) {
-    return new Err(new MCPError(editsValidation.error));
-  }
-
-  if (
-    hasSuggestionSelfConflict({ instructionEdits: edits }, instructionsHtml)
-  ) {
-    return new Err(
-      new MCPError(
-        "The suggested instruction edits overlap (a block and one of its descendants are " +
-          "both targeted). Target each region of the instructions only once."
-      )
-    );
+  const targetsValidation = validateInstructionEditTargets(
+    instructionsHtml,
+    edits,
+    "agent"
+  );
+  if (targetsValidation.isErr()) {
+    return targetsValidation;
   }
 
   return new Ok(edits);
@@ -513,12 +492,17 @@ export async function validateAgentCreation(
 }
 
 /**
- * Checks each tool and skill a new agent is created with could be added to an existing agent (see
- * `checkToolAddition` and `checkSkillAddition`), so the creation can be applied later.
+ * Checks each tool, skill and sub-agent a new agent is created with could be added to an existing
+ * agent (see `checkToolAddition`, `checkSkillAddition` and `checkSubAgentAddition`), so the creation
+ * can be applied later.
  */
 export async function validateAgentCreationCapabilities(
   auth: Authenticator,
-  { toolIds, skillIds }: { toolIds: string[]; skillIds: string[] }
+  {
+    toolIds,
+    skillIds,
+    subAgentIds,
+  }: { toolIds: string[]; skillIds: string[]; subAgentIds: string[] }
 ): Promise<Result<undefined, MCPError>> {
   if (new Set(toolIds).size !== toolIds.length) {
     return new Err(new MCPError("Each tool can only be added once."));
@@ -526,10 +510,20 @@ export async function validateAgentCreationCapabilities(
   if (new Set(skillIds).size !== skillIds.length) {
     return new Err(new MCPError("Each skill can only be added once."));
   }
+  if (new Set(subAgentIds).size !== subAgentIds.length) {
+    return new Err(new MCPError("Each sub-agent can only be added once."));
+  }
 
-  const [suggestableTools, suggestableSkills] = await Promise.all([
+  const [
+    suggestableTools,
+    suggestableSkills,
+    suggestableSubAgents,
+    runAgentTool,
+  ] = await Promise.all([
     fetchSuggestableTools(auth, toolIds),
     fetchSuggestableSkills(auth, skillIds),
+    fetchSuggestableSubAgents(auth, subAgentIds),
+    subAgentIds.length > 0 ? fetchRunAgentTool(auth) : null,
   ]);
 
   for (const toolId of toolIds) {
@@ -540,6 +534,17 @@ export async function validateAgentCreationCapabilities(
   }
   for (const skillId of skillIds) {
     const addition = checkSkillAddition(skillId, suggestableSkills);
+    if (addition.isErr()) {
+      return new Err(new MCPError(addition.error));
+    }
+  }
+  if (subAgentIds.length > 0 && !runAgentTool) {
+    return new Err(
+      new MCPError("The tool to run sub-agents is not available.")
+    );
+  }
+  for (const subAgentId of subAgentIds) {
+    const addition = checkSubAgentAddition(subAgentId, suggestableSubAgents);
     if (addition.isErr()) {
       return new Err(new MCPError(addition.error));
     }
@@ -829,14 +834,15 @@ export async function recordSingletonAgentSuggestions(
 
 /**
  * @cc [owner:avervaet,label:product] no-direct-mutation
- * Recording an agent creation MUST NOT make the proposed agent usable: the only agent it creates
- * is a `pending`, `hidden` placeholder editable solely by the caller, and the proposal is recorded
- * as a `pending` `create` suggestion targeting it. No other suggestion can target that
- * placeholder, so there are no conflicting suggestions to mark `outdated`. Turning the suggestion
- * into a usable agent is a separate, human-reviewed step.
+ * Recording an agent creation MUST NOT make the proposed agent usable: the proposal is recorded
+ * as a `pending` `create` suggestion on a `pending`, `hidden` placeholder editable solely by the
+ * caller (see `AgentResource.createPending`). No other suggestion can target that placeholder, so
+ * there are no conflicting suggestions to mark `outdated`. Turning the suggestion into a usable
+ * agent is a separate, human-reviewed step.
  */
 export async function recordAgentCreationSuggestion(
   auth: Authenticator,
+  pendingAgent: AgentResource,
   {
     create,
     analysis,
@@ -848,26 +854,16 @@ export async function recordAgentCreationSuggestion(
     conversation: ConversationType;
     batch: BatchSuggestionResource | null;
   }
-): Promise<Result<AgentSuggestionResource, MCPError>> {
-  const pendingResult = await AgentResource.createPending(auth, create.name);
-  if (pendingResult.isErr()) {
-    return new Err(new MCPError(pendingResult.error.message));
-  }
-
-  const suggestion = await AgentSuggestionResource.createSuggestionForAgent(
-    auth,
-    pendingResult.value,
-    {
-      kind: "create",
-      suggestion: create,
-      analysis,
-      state: "pending",
-      conversationId: conversation.id,
-      source: "conversational",
-      batchId: batch?.id ?? null,
-    }
-  );
-  return new Ok(suggestion);
+): Promise<AgentSuggestionResource> {
+  return AgentSuggestionResource.createSuggestionForAgent(auth, pendingAgent, {
+    kind: "create",
+    suggestion: create,
+    analysis,
+    state: "pending",
+    conversationId: conversation.id,
+    source: "conversational",
+    batchId: batch?.id ?? null,
+  });
 }
 
 /** Kinds of which a single suggestion may be pending per agent and per item at a time. */

@@ -257,6 +257,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
+    "mark_conversation_read": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
     "math_operation": {
       "freeUsage": true,
       "toolCostCategory": "basic",
@@ -2803,6 +2807,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "generate_random_float": "never_ask",
     "generate_random_number": "never_ask",
     "get_current_time": "never_ask",
+    "mark_conversation_read": "never_ask",
     "math_operation": "never_ask",
     "set_conversation_title": "never_ask",
     "wait": "never_ask",

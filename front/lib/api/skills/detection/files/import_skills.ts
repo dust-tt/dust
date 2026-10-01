@@ -9,6 +9,7 @@ import type { ZipDetectedSkill } from "@app/lib/api/skills/detection/zip/types";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import { SkillNameSchema } from "@app/lib/api/skills/schemas";
 import type { Authenticator } from "@app/lib/auth";
+import { getMarkdownPipeline } from "@app/lib/editor/server_markdown_pipeline";
 import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -292,7 +293,10 @@ export async function importSkillsFromFiles(
         agentFacingDescription: skill.description,
         userFacingDescription: skill.description,
         instructions: skill.instructions,
-        instructionsHtml: convertMarkdownToBlockHtml(skill.instructions),
+        instructionsHtml: convertMarkdownToBlockHtml(
+          skill.instructions,
+          getMarkdownPipeline("skill")
+        ),
         icon: existing.icon,
         mcpServerViews: existing.mcpServerViews,
         attachedKnowledge,
@@ -342,7 +346,10 @@ export async function importSkillsFromFiles(
           agentFacingDescription: skill.description,
           userFacingDescription: skill.description,
           instructions: skill.instructions,
-          instructionsHtml: convertMarkdownToBlockHtml(skill.instructions),
+          instructionsHtml: convertMarkdownToBlockHtml(
+            skill.instructions,
+            getMarkdownPipeline("skill")
+          ),
           editedBy: user?.id ?? null,
           requestedSpaceIds: [globalSpace.id],
           icon,

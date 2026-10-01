@@ -21,7 +21,6 @@ export {
 } from "@app/lib/plans/billing_cycle";
 export {
   BUSINESS_PLAN_COST_MONTHLY,
-  CP_ENTERPRISE_BASIS,
   CP_MAX_SEAT_COST_MONTHLY,
   CP_MAX_SEAT_COST_YEARLY,
   CP_PRO_SEAT_COST_MONTHLY,

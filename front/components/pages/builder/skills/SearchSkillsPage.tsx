@@ -53,7 +53,8 @@ import {
   SearchInput,
 } from "@dust-tt/sparkle";
 import type { PaginationState } from "@tanstack/react-table";
-import { useState } from "react";
+import type { ReactNode } from "react";
+import { useCallback, useState } from "react";
 
 const SKILL_SEARCH_PAGE_SIZE = 50;
 
@@ -64,6 +65,8 @@ function canBatchEditSkill(skill: SkillListItemType) {
 }
 
 interface SkillsListProps {
+  readOnly?: boolean;
+  searchEndpoint?: string;
   searchTerm: string;
   filters: SkillSearchFilters;
   permissionFiltering?: SkillSearchPermissionFiltering;
@@ -71,6 +74,8 @@ interface SkillsListProps {
 }
 
 function SkillsList({
+  readOnly = false,
+  searchEndpoint,
   searchTerm,
   filters,
   permissionFiltering,
@@ -118,7 +123,9 @@ function SkillsList({
   const { skills, total, isSkillsLoading, isSkillsError, mutate } =
     useSearchSkills({
       owner,
+      searchEndpoint,
       searchTerm,
+      searchType: "name",
       filters,
       permissionFiltering,
       offset: tablePagination.pageIndex * SKILL_SEARCH_PAGE_SIZE,
@@ -141,6 +148,11 @@ function SkillsList({
       skillIds.flatMap((skillId) => knownSkills.get(skillId) ?? [])
     );
   };
+
+  const canSelect = useCallback(
+    (skill: SkillListItemType) => !readOnly && canBatchEditSkill(skill),
+    [readOnly]
+  );
 
   const clearSelectionAndRefresh = () => {
     setSelectedSkills([]);
@@ -198,6 +210,7 @@ function SkillsList({
         tablePagination.pageIndex > 0) ? (
         <SkillSearchTable
           owner={owner}
+          readOnly={readOnly}
           skills={skills}
           onSelect={onSelect}
           onRefresh={mutate}
@@ -233,7 +246,7 @@ function SkillsList({
           isLoading={isSkillsLoading}
           selectedSkillIds={selectedSkills.map((skill) => skill.sId)}
           setSelectedSkillIds={setSelectedSkillIds}
-          canSelect={canBatchEditSkill}
+          canSelect={canSelect}
         />
       ) : !isSkillsError ? (
         <EmptyCTA
@@ -245,23 +258,48 @@ function SkillsList({
           action={null}
         />
       ) : null}
-      <SkillsBatchEditBar
-        selectedSkills={currentSelectedSkills}
-        // Search results carry no selectable total, so selection is extended one page at a time.
-        totalCount={currentSelectedSkills.length}
-        isUpdating={isBatchUpdating}
-        canSetAvailability={canSetAvailability}
-        canMakeSkillAutoDiscoverable={canMakeSkillAutoDiscoverable}
-        owner={owner}
-        onClear={clearSelectionAndRefresh}
-        onSelectAll={() => undefined}
-        onSelectAction={setPendingBatchAction}
-      />
+      {!readOnly && (
+        <SkillsBatchEditBar
+          selectedSkills={currentSelectedSkills}
+          // Search results carry no selectable total, so selection is extended one page at a time.
+          totalCount={currentSelectedSkills.length}
+          isUpdating={isBatchUpdating}
+          canSetAvailability={canSetAvailability}
+          canMakeSkillAutoDiscoverable={canMakeSkillAutoDiscoverable}
+          owner={owner}
+          onClear={clearSelectionAndRefresh}
+          onSelectAll={() => undefined}
+          onSelectAction={setPendingBatchAction}
+        />
+      )}
     </div>
   );
 }
 
-export function SearchSkillsPage() {
+interface SearchSkillsPageProps {
+  readOnly?: boolean;
+  showHeader?: boolean;
+  searchEndpoint?: string;
+  filterHashParam?: string;
+  permissionFiltering?: SkillSearchPermissionFiltering;
+  searchActions?: ReactNode;
+  onSelect?: (skillId: string) => void;
+}
+
+/**
+ * @cc [owner:aubin-tchoi,label:product;react] read-only-search-view
+ * In readOnly mode, built-in creation, batch-edit and detail controls MUST NOT render.
+ * Table and facet requests MUST use the same searchEndpoint when supplied.
+ */
+export function SearchSkillsPage({
+  readOnly = false,
+  showHeader = true,
+  searchEndpoint,
+  filterHashParam,
+  permissionFiltering: permissionFilteringOverride,
+  searchActions,
+  onSelect,
+}: SearchSkillsPageProps) {
   const owner = useWorkspace();
   const { user, isAdmin } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
@@ -283,18 +321,22 @@ export function SearchSkillsPage() {
     categories: SKILL_FILTER_CATEGORIES,
     tabIds: SKILL_SEARCH_TAB_IDS,
     defaultTabId: "all",
+    hashParam: filterHashParam,
   });
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const activeTab =
     SKILL_SEARCH_TABS.find((tab) => tab.id === selectedTab) ??
     SKILL_SEARCH_TABS[0];
   const permissionFiltering =
-    isAdmin && showHiddenSkills ? "redact_unreadable" : undefined;
+    permissionFilteringOverride ??
+    (isAdmin && showHiddenSkills ? "redact_unreadable" : undefined);
   // Names of the selections restored from a link come from the skills they match.
   const { facets: selectionFacets, isSkillsLoading: isSelectionLoading } =
     useSearchSkills({
       owner,
+      searchEndpoint,
       searchTerm: "",
+      searchType: "name",
       limit: 0,
       filters: { ...activeTab.filters, ...toSkillSearchFilters(pendingFilter) },
       permissionFiltering,
@@ -308,37 +350,50 @@ export function SearchSkillsPage() {
   useSetContentWidth("wide");
   useSetPageTitle("Dust - Manage Skills");
 
+  const searchInput = (
+    <div className="w-full md:w-1/2">
+      <label htmlFor="skill-search" className="sr-only">
+        Search skills
+      </label>
+      <SearchInput
+        id="skill-search"
+        name="skill-search"
+        placeholder="Search skills by name"
+        value={searchTerm}
+        onChange={setSearchTerm}
+        className="w-full"
+      />
+    </div>
+  );
+
   return (
     <>
       <div className="flex w-full flex-col gap-6 pb-4">
-        <Page.Header
-          title={
-            <div className="flex w-full flex-wrap items-center justify-between gap-4">
-              <Page.H>Manage Skills</Page.H>
-              {hasPermission("create", "skill") && (
-                <CreateSkillButton
-                  owner={owner}
-                  onImport={() => setIsImportDialogOpen(true)}
-                />
-              )}
-            </div>
-          }
-          description="Reusable packages of instructions and tools that agents can share."
-          noTopPadding
-        />
-        <div className="w-full md:w-1/2">
-          <label htmlFor="skill-search" className="sr-only">
-            Search skills
-          </label>
-          <SearchInput
-            id="skill-search"
-            name="skill-search"
-            placeholder="Search skills by name"
-            value={searchTerm}
-            onChange={setSearchTerm}
-            className="w-full"
+        {showHeader && (
+          <Page.Header
+            title={
+              <div className="flex w-full flex-wrap items-center justify-between gap-4">
+                <Page.H>Manage Skills</Page.H>
+                {!readOnly && hasPermission("create", "skill") && (
+                  <CreateSkillButton
+                    owner={owner}
+                    onImport={() => setIsImportDialogOpen(true)}
+                  />
+                )}
+              </div>
+            }
+            description="Reusable packages of instructions and tools that agents can share."
+            noTopPadding
           />
-        </div>
+        )}
+        {searchActions ? (
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            {searchInput}
+            {searchActions}
+          </div>
+        ) : (
+          searchInput
+        )}
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <ButtonsSwitchList
@@ -356,13 +411,14 @@ export function SearchSkillsPage() {
             </ButtonsSwitchList>
             <SkillFilterPanel
               owner={owner}
+              searchEndpoint={searchEndpoint}
               searchTerm={searchTerm}
               tabFilters={activeTab.filters}
               permissionFiltering={permissionFiltering}
               filter={filter}
               onFilterChange={setFilter}
               hiddenSkills={
-                isAdmin
+                permissionFilteringOverride === undefined && isAdmin
                   ? {
                       isShown: showHiddenSkills,
                       onChange: setShowHiddenSkills,
@@ -382,7 +438,9 @@ export function SearchSkillsPage() {
               setFilter(clearFilterCategory(filter, category))
             }
             extraChips={
-              isAdmin && showHiddenSkills
+              permissionFilteringOverride === undefined &&
+              isAdmin &&
+              showHiddenSkills
                 ? [
                     {
                       key: "hidden-skills",
@@ -402,11 +460,13 @@ export function SearchSkillsPage() {
             }}
           />
           <SkillsList
+            readOnly={readOnly}
+            searchEndpoint={searchEndpoint}
             key={`${owner.sId}-${activeTab.id}`}
             searchTerm={searchTerm}
             filters={{ ...activeTab.filters, ...searchFilters }}
             permissionFiltering={permissionFiltering}
-            onSelect={setSkillId}
+            onSelect={onSelect ?? setSkillId}
           />
         </div>
       </div>
@@ -416,13 +476,15 @@ export function SearchSkillsPage() {
           onClose={() => setIsImportDialogOpen(false)}
         />
       )}
-      <SkillDetailsSheet
-        owner={owner}
-        user={user}
-        skillId={skillId ?? null}
-        onClose={() => setSkillId(undefined)}
-        showFavoriteButton
-      />
+      {!readOnly && (
+        <SkillDetailsSheet
+          owner={owner}
+          user={user}
+          skillId={skillId ?? null}
+          onClose={() => setSkillId(undefined)}
+          showFavoriteButton
+        />
+      )}
     </>
   );
 }

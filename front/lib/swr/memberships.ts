@@ -10,7 +10,6 @@ import type {
   MembersLookupResponseBody,
 } from "@app/types/api/members";
 import type {
-  GetUserSpendLimitResponseBody,
   PutUserSpendLimitResponseBody,
   UserSpendLimit,
 } from "@app/types/api/users/spend_limit";
@@ -130,6 +129,7 @@ export function useSearchMembers<
   pageIndex,
   pageSize,
   groupKind,
+  managedOnly,
   role,
   disabled,
 }: {
@@ -138,6 +138,7 @@ export function useSearchMembers<
   pageIndex: number;
   pageSize: number;
   groupKind?: UserVisibleGroupKind;
+  managedOnly?: boolean;
   role?: ActiveRoleType;
   disabled?: boolean;
 }) {
@@ -162,6 +163,10 @@ export function useSearchMembers<
     offset: (pageIndex * pageSize).toString(),
     limit: pageSize.toString(),
   });
+
+  if (managedOnly) {
+    searchParams.set("managedOnly", "true");
+  }
 
   if (groupKind) {
     searchParams.set("groupKind", groupKind);
@@ -619,31 +624,6 @@ function getSeatUpdateNotification({
 
 function spendLimitUrl(workspaceId: string, memberId: string): string {
   return `/api/w/${workspaceId}/members/${memberId}/spend_limit`;
-}
-
-export function useUserSpendLimit({
-  workspaceId,
-  memberId,
-  disabled,
-}: {
-  workspaceId: string;
-  memberId: string;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const spendLimitFetcher: Fetcher<GetUserSpendLimitResponseBody> = fetcher;
-  const { data, error, mutate } = useSWRWithDefaults(
-    spendLimitUrl(workspaceId, memberId),
-    spendLimitFetcher,
-    { disabled }
-  );
-
-  return {
-    spendLimit: data,
-    isSpendLimitLoading: !error && !data && !disabled,
-    isSpendLimitError: !!error,
-    mutateSpendLimit: mutate,
-  };
 }
 
 export function useUpdateUserSpendLimit({

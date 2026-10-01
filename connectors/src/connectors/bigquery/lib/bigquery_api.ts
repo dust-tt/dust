@@ -311,6 +311,11 @@ export const fetchTables = async ({
   }
 };
 
+/**
+ * @cc [owner:aubin-tchoi,label:performance] skip-oversized-datasets-before-enumeration
+ * When tables.list reports more than MAX_TABLES_PER_SCHEMA tables, skip the dataset without
+ * fetching subsequent table pages or table descriptions.
+ */
 export const fetchTree = async ({
   credentials,
   fetchTablesDescription,
@@ -340,21 +345,34 @@ export const fetchTree = async ({
           schemas: await concurrentExecutor(
             schemas,
             async (schema) => {
-              const tablesRes = await fetchTables({
-                credentials,
-                dataset: schema,
-                fetchTablesDescription,
-                logger,
-              });
-              if (tablesRes.isErr()) {
-                throw tablesRes.error;
+              const connection = connectToBigQuery(credentials, db.name);
+              const [, , tableList] = await connection
+                .dataset(schema.name)
+                .getTables({ autoPaginate: false, maxResults: 1 });
+
+              let tables: RemoteDBTable[] = [];
+              if ((tableList?.totalItems ?? 0) <= MAX_TABLES_PER_SCHEMA) {
+                const tablesRes = await fetchTables({
+                  credentials,
+                  dataset: schema,
+                  fetchTablesDescription,
+                  connection,
+                  logger,
+                });
+                if (tablesRes.isErr()) {
+                  throw tablesRes.error;
+                }
+                tables = tablesRes.value;
               }
-              const tables = tablesRes.value;
+              const tablesCount = Math.max(
+                tableList?.totalItems ?? 0,
+                tables.length
+              );
 
               // Do not store if too many tables, the sync will be too long and it's quite likely that these are useless tables.
-              if (tables.length > MAX_TABLES_PER_SCHEMA) {
+              if (tablesCount > MAX_TABLES_PER_SCHEMA) {
                 logger.warn(
-                  `[BigQuery] Skipping schema ${schema.name} with ${tables.length} tables because it has more than ${MAX_TABLES_PER_SCHEMA} tables.`
+                  `[BigQuery] Skipping schema ${schema.name} with ${tablesCount} tables because it has more than ${MAX_TABLES_PER_SCHEMA} tables.`
                 );
                 return {
                   name:

@@ -2,6 +2,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
+import { getMarkdownPipeline } from "@app/lib/editor/server_markdown_pipeline";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { parseSkillTag } from "@app/lib/skills/format";
 import type { Logger } from "@app/logger/logger";
@@ -94,7 +95,10 @@ async function rewriteWorkspaceOfficeSkillDirectives(
       attachedKnowledge: await skill.getAttachedKnowledge(auth),
       icon: skill.icon,
       instructions,
-      instructionsHtml: convertMarkdownToBlockHtml(instructions),
+      instructionsHtml: convertMarkdownToBlockHtml(
+        instructions,
+        getMarkdownPipeline("skill")
+      ),
       mcpServerViews: skill.mcpServerViews,
       name: skill.name,
       manuallyRequestedSpaceIds: skill.manuallyRequestedSpaceIds,

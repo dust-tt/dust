@@ -3,7 +3,6 @@ import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { InvitationsList } from "@app/components/members/InvitationsList";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
 import type { SearchMemberWithWorkspaceType } from "@app/components/members/MemberSelectionTable";
-import { isFullUserType } from "@app/components/members/MemberSelectionTable";
 import { MembersList } from "@app/components/members/MembersList";
 import type { RoleFilter } from "@app/components/members/Roles";
 import {
@@ -11,17 +10,14 @@ import {
   ROLE_FILTER_OPTIONS,
 } from "@app/components/members/Roles";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { isFreePlan, isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSearchMembers } from "@app/lib/swr/memberships";
 import type {
   SubscriptionPerSeatPricing,
   SubscriptionType,
 } from "@app/types/plan";
-import type {
-  UserType,
-  UserTypeWithWorkspace,
-  WorkspaceType,
-} from "@app/types/user";
+import type { UserType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import {
   Button,
@@ -57,6 +53,8 @@ export function WorkspaceMembersSection({
   perSeatPricing,
   hasAvailableSeats,
 }: WorkspaceMembersSectionProps) {
+  const { isManager } = useAuth();
+  const canInvite = isManager && isManualInvitationsEnabled;
   const [view, setView] = useState("members");
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
@@ -114,7 +112,7 @@ export function WorkspaceMembersSection({
             </DropdownMenuContent>
           </DropdownMenu>
         )}
-        {isManualInvitationsEnabled && (
+        {canInvite && (
           <InviteEmailButtonWithModal
             owner={owner}
             prefillText=""
@@ -125,7 +123,7 @@ export function WorkspaceMembersSection({
         )}
       </div>
 
-      {isManualInvitationsEnabled && (
+      {canInvite && (
         <ButtonsSwitchList defaultValue="members" size="xs" className="w-fit">
           <ButtonsSwitch
             value="members"
@@ -149,7 +147,7 @@ export function WorkspaceMembersSection({
           isProvisioningEnabled={isProvisioningEnabled}
         />
       )}
-      {view === "invitations" && isManualInvitationsEnabled && (
+      {view === "invitations" && canInvite && (
         <InvitationsList owner={owner} searchText={searchTerm} />
       )}
 
@@ -182,6 +180,7 @@ function WorkspaceMembersList({
   roleFilter,
   isProvisioningEnabled,
 }: WorkspaceMembersListProps) {
+  const { isManager } = useAuth();
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
@@ -190,10 +189,11 @@ function WorkspaceMembersList({
   const [prevRoleFilter, setPrevRoleFilter] = useState(roleFilter);
 
   const [selectedMember, setSelectedMember] =
-    useState<UserTypeWithWorkspace | null>(null);
+    useState<SearchMemberWithWorkspaceType | null>(null);
 
-  const membersData = useSearchMembers<UserTypeWithWorkspace>({
+  const membersData = useSearchMembers<SearchMemberWithWorkspaceType>({
     workspaceId: owner.sId,
+    managedOnly: !isManager,
     searchTerm,
     pageIndex: pagination.pageIndex,
     pageSize: DEFAULT_PAGE_SIZE,
@@ -213,10 +213,7 @@ function WorkspaceMembersList({
   }, [setSelectedMember]);
 
   const handleRowClick = useCallback((user: SearchMemberWithWorkspaceType) => {
-    // This page is admin-only so members are always full UserTypeWithWorkspace.
-    if (isFullUserType(user)) {
-      setSelectedMember(user);
-    }
+    setSelectedMember(user);
   }, []);
 
   return (

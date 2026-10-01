@@ -19,5 +19,3 @@ healthzApp.get("/", (ctx) => {
 
 healthzApp.route("/ready", ready);
 healthzApp.route("/startup", startup);
-
-export default healthzApp;

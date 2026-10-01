@@ -1,5 +1,4 @@
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
-import type { ApiKeyCredentialsType } from "@app/types/provider_credential";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
 import { z } from "zod";
@@ -830,11 +829,6 @@ export function validateOAuthCredentials({
 
 // Credentials Providers
 
-export const PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS = ["gong"] as const;
-
-export type ProvidersWithWorkspaceConfigurations =
-  (typeof PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS)[number];
-
 export const CREDENTIALS_PROVIDERS = [
   "snowflake",
   "bigquery",
@@ -846,14 +840,6 @@ export type CredentialsProvider = (typeof CREDENTIALS_PROVIDERS)[number];
 
 export function isCredentialProvider(obj: unknown): obj is CredentialsProvider {
   return CREDENTIALS_PROVIDERS.includes(obj as CredentialsProvider);
-}
-
-export function isProviderWithDefaultWorkspaceConfiguration(
-  obj: unknown
-): obj is ProvidersWithWorkspaceConfigurations {
-  return PROVIDERS_WITH_WORKSPACE_CONFIGURATIONS.includes(
-    obj as ProvidersWithWorkspaceConfigurations
-  );
 }
 
 // Credentials
@@ -963,11 +949,6 @@ export type ConnectionCredentials =
   | HubspotCredentials
   | LinearCredentials
   | NotionCredentials;
-
-export type ModelProviderPostCredentialsBody = {
-  provider: ByokModelProviderIdType;
-  credentials: ApiKeyCredentialsType;
-};
 
 export type OauthAPIPostConnectionCredentialsResponse = {
   credential: {

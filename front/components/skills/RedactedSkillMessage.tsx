@@ -71,9 +71,7 @@ export function RedactedSkillMessage({
     }
     const confirmed = await confirm({
       title: "Security notice",
-      message:
-        `You are about to join ${missingSpaceIds.length === 1 ? "this space" : "these spaces"}. ` +
-        "This action will be logged for security purposes. Do you want to proceed?",
+      message: `You are about to join ${missingSpaceIds.length === 1 ? "this space" : "these spaces"}. This action will be logged for security purposes. Do you want to proceed?`,
       validateLabel: "Proceed",
       validateVariant: "warning",
     });

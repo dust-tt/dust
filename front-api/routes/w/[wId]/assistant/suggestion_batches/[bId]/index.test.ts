@@ -1,5 +1,6 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
+import { getMarkdownPipeline } from "@app/lib/editor/server_markdown_pipeline";
 import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
@@ -155,7 +156,10 @@ function blockIdsOf(instructionsHtml: string): string[] {
 async function setupSkillWithBlockInstructions(
   markdown: string = "Original instructions"
 ) {
-  const instructionsHtml = convertMarkdownToBlockHtml(markdown);
+  const instructionsHtml = convertMarkdownToBlockHtml(
+    markdown,
+    getMarkdownPipeline("skill")
+  );
   const context = await setupSkill({
     skill: { instructions: markdown, instructionsHtml },
   });
@@ -582,7 +586,10 @@ describe("approving skill suggestions", () => {
       auth
     );
     const markdown = `Use <tool id="${view.sId}" name="GitHub" /> then summarize.`;
-    const instructionsHtml = convertMarkdownToBlockHtml(markdown);
+    const instructionsHtml = convertMarkdownToBlockHtml(
+      markdown,
+      getMarkdownPipeline("skill")
+    );
     const skill = await SkillFactory.create(auth, {
       instructions: markdown,
       instructionsHtml,
@@ -1252,7 +1259,10 @@ describe("approving agent suggestions", () => {
 
   it("updates the agent's instructions for an instructions suggestion", async () => {
     const { workspace, auth, agent, batch } = await setupAgent();
-    const instructionsHtml = convertMarkdownToBlockHtml("Be helpful.");
+    const instructionsHtml = convertMarkdownToBlockHtml(
+      "Be helpful.",
+      getMarkdownPipeline("skill")
+    );
     const [, targetBlockId] =
       /data-block-id="((?!instructions-root)[^"]+)"/.exec(instructionsHtml) ??
       [];

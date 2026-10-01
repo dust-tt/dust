@@ -137,7 +137,7 @@ export function ServerSideSearchEnumSelect({
             variant="outline"
             role="combobox"
             className={cn(
-              "w-auto justify-between border-border-dark bg-background " + "",
+              "w-auto justify-between border-border-dark bg-background ",
               selectedValues.length === 0 && "text-muted-foreground"
             )}
           >

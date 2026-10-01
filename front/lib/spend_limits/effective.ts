@@ -1,12 +1,8 @@
-import type { CustomerAlert } from "@metronome/sdk/resources/v1/customers";
-
 export type EffectiveSpendLimitSource =
   | "override"
   | "group"
   | "default"
   | "none";
-
-type SpendLimitAlertState = CustomerAlert["customer_status"];
 
 // Priority: per-user `override` > the highest of the user's `group` caps >
 // seat-type `default`. `groupCapAwuCredits` is the max cap across the groups the
@@ -62,25 +58,4 @@ export function resolveEffectiveSpendLimitSource({
     return "default";
   }
   return "none";
-}
-
-export function resolveEffectiveSpendLimitState({
-  overrideState,
-  defaultState,
-}: {
-  overrideState: SpendLimitAlertState | undefined;
-  defaultState: SpendLimitAlertState | undefined;
-}): {
-  state: SpendLimitAlertState;
-  source: EffectiveSpendLimitSource;
-} {
-  if (overrideState !== undefined) {
-    return { state: overrideState, source: "override" };
-  }
-
-  if (defaultState !== undefined) {
-    return { state: defaultState, source: "default" };
-  }
-
-  return { state: "ok", source: "none" };
 }

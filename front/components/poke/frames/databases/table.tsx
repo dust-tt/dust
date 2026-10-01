@@ -16,7 +16,8 @@ const columns: ColumnDef<PokeFrameDatabase>[] = [
   {
     accessorKey: "sizeBytes",
     header: "Size",
-    cell: ({ row }) => formatFileSize(row.original.sizeBytes, "en-US"),
+    cell: ({ row }) =>
+      formatFileSize(row.original.sizeBytes, undefined, "en-US"),
   },
 ];
 

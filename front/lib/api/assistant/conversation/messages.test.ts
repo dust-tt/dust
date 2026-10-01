@@ -1,3 +1,5 @@
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock signalAgentUsage before importing the module that uses it
@@ -45,6 +47,19 @@ import type {
 import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
 import { isRichAgentMention } from "@app/types/assistant/mentions";
 import type { WorkspaceType } from "@app/types/user";
+
+async function toAgentResource(
+  auth: Authenticator,
+  configuration: { sId: string; version: number }
+): Promise<AgentResource> {
+  const [agent] = await AgentResource.fetchByIdsAndVersions(
+    auth,
+    [{ agentId: configuration.sId, agentVersion: configuration.version }],
+    { dangerouslySkipFetchCheck: true }
+  );
+  assert(agent, `Unexpected: agent ${configuration.sId} not found`);
+  return agent;
+}
 
 describe("createAgentMessages", () => {
   let workspace: WorkspaceType;
@@ -97,7 +112,7 @@ describe("createAgentMessages", () => {
     ];
 
     const modelResolution = await resolveModelForMentionedAgent(auth, {
-      configuration: agentConfig1,
+      agent: await toAgentResource(auth, agentConfig1),
     });
 
     const { agentMessages, richMentions } = await createAgentMessages(auth, {
@@ -208,7 +223,7 @@ describe("createAgentMessages", () => {
     ];
 
     const modelResolution = await resolveModelForMentionedAgent(auth, {
-      configuration: agentConfig1,
+      agent: await toAgentResource(auth, agentConfig1),
     });
 
     const { agentMessages, richMentions } = await createAgentMessages(auth, {
@@ -262,7 +277,7 @@ describe("createAgentMessages", () => {
     ];
 
     const modelResolution = await resolveModelForMentionedAgent(auth, {
-      configuration: agentConfig1,
+      agent: await toAgentResource(auth, agentConfig1),
     });
 
     const { agentMessages, richMentions } = await createAgentMessages(auth, {
@@ -312,7 +327,7 @@ describe("createAgentMessages", () => {
     ];
 
     const modelResolution = await resolveModelForMentionedAgent(auth, {
-      configuration: agentConfig1,
+      agent: await toAgentResource(auth, agentConfig1),
     });
 
     const { agentMessages, richMentions } = await createAgentMessages(auth, {
@@ -443,7 +458,7 @@ describe("createAgentMessages", () => {
     expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space2.sId);
 
     const modelResolution = await resolveModelForMentionedAgent(auth, {
-      configuration: agentConfigWithSpaces!,
+      agent: await toAgentResource(auth, agentConfigWithSpaces!),
     });
 
     // Call createAgentMessages
@@ -575,7 +590,7 @@ describe("createAgentMessages", () => {
     expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space2.sId);
 
     const modelResolution = await resolveModelForMentionedAgent(auth, {
-      configuration: agentConfigWithSpaces!,
+      agent: await toAgentResource(auth, agentConfigWithSpaces!),
     });
 
     // Call createAgentMessages
@@ -707,7 +722,7 @@ describe("createAgentMessages", () => {
     expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space2.sId);
 
     const modelResolution = await resolveModelForMentionedAgent(auth, {
-      configuration: agentConfigWithSpaces!,
+      agent: await toAgentResource(auth, agentConfigWithSpaces!),
     });
 
     // Call createAgentMessages
@@ -828,12 +843,12 @@ describe("createAgentMessages", () => {
       ];
 
       const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
-        configuration: updatedAgentConfig!,
+        agent: await toAgentResource(auth, updatedAgentConfig!),
         conversation: spaceConversation.toJSON(),
       });
 
       const modelResolution = await resolveModelForMentionedAgent(auth, {
-        configuration: updatedAgentConfig!,
+        agent: await toAgentResource(auth, updatedAgentConfig!),
       });
 
       const { agentMessages, richMentions } = await createAgentMessages(auth, {
@@ -986,13 +1001,13 @@ describe("createAgentMessages", () => {
       const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
         userAuth,
         {
-          configuration: updatedAgentConfig,
+          agent: await toAgentResource(userAuth, updatedAgentConfig),
           conversation: spaceConversation.toJSON(),
         }
       );
 
       const modelResolution = await resolveModelForMentionedAgent(userAuth, {
-        configuration: updatedAgentConfig,
+        agent: await toAgentResource(userAuth, updatedAgentConfig),
       });
 
       const { agentMessages, richMentions } = await createAgentMessages(
@@ -1133,13 +1148,13 @@ describe("createAgentMessages", () => {
       const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
         userAuth,
         {
-          configuration: updatedAgentConfig,
+          agent: await toAgentResource(userAuth, updatedAgentConfig),
           conversation: spaceConversation.toJSON(),
         }
       );
 
       const modelResolution = await resolveModelForMentionedAgent(userAuth, {
-        configuration: updatedAgentConfig,
+        agent: await toAgentResource(userAuth, updatedAgentConfig),
       });
 
       const { agentMessages, richMentions } = await createAgentMessages(
@@ -1269,13 +1284,13 @@ describe("createAgentMessages", () => {
       const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
         userAuth,
         {
-          configuration: updatedAgentConfig,
+          agent: await toAgentResource(userAuth, updatedAgentConfig),
           conversation: spaceConversation.toJSON(),
         }
       );
 
       const modelResolution = await resolveModelForMentionedAgent(userAuth, {
-        configuration: updatedAgentConfig,
+        agent: await toAgentResource(userAuth, updatedAgentConfig),
       });
 
       const { agentMessages, richMentions } = await createAgentMessages(
@@ -1433,13 +1448,13 @@ describe("createAgentMessages", () => {
       const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
         userAuth,
         {
-          configuration: updatedAgentConfig,
+          agent: await toAgentResource(userAuth, updatedAgentConfig),
           conversation: spaceConversation.toJSON(),
         }
       );
 
       const modelResolution = await resolveModelForMentionedAgent(userAuth, {
-        configuration: updatedAgentConfig,
+        agent: await toAgentResource(userAuth, updatedAgentConfig),
       });
 
       const { agentMessages, richMentions } = await createAgentMessages(

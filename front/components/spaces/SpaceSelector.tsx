@@ -1,3 +1,4 @@
+import { compareStrings } from "@app/lib/i18n/format";
 import {
   getSpaceIcon,
   getSpaceName,
@@ -52,7 +53,7 @@ export function SpaceSelector({
     .filter((i) => i.section !== "system")
     .map((i) =>
       i.spaces.sort((a, b) => {
-        return a.name.localeCompare(b.name);
+        return compareStrings(a.name, b.name);
       })
     )
     .flat();

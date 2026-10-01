@@ -28,12 +28,21 @@ const SANDBOX_POLICY_MAX_DOMAINS = 100;
 //
 // Owner files are keyed by the sandbox's stable owner, not the ephemeral
 // provider id, so they survive sandbox destroy/recreate cycles.
+//
+// Relocation copies this whole prefix verbatim to the destination cell's
+// bucket: workspace, conversation and space sIds are stable across cells.
+export function getWorkspaceEgressPolicyPrefix(workspaceId: string): string {
+  return `w/${workspaceId}/`;
+}
+
 function getWorkspacePolicyPath(auth: Authenticator): string {
-  return `w/${auth.getNonNullableWorkspace().sId}/sandbox-egress-policy.json`;
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  return `${getWorkspaceEgressPolicyPrefix(workspaceId)}sandbox-egress-policy.json`;
 }
 
 function getOwnerPolicyPath(auth: Authenticator, ownerId: string): string {
-  return `w/${auth.getNonNullableWorkspace().sId}/sandboxes/${ownerId}.json`;
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  return `${getWorkspaceEgressPolicyPrefix(workspaceId)}sandboxes/${ownerId}.json`;
 }
 
 function getPolicyBucket() {
@@ -49,7 +58,8 @@ function getPolicyBucket() {
 export async function listPodIdsWithEgressPolicy(
   auth: Authenticator
 ): Promise<Result<string[], Error>> {
-  const prefix = `w/${auth.getNonNullableWorkspace().sId}/sandboxes/vlt_`;
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  const prefix = `${getWorkspaceEgressPolicyPrefix(workspaceId)}sandboxes/vlt_`;
   try {
     const { files } = await getPolicyBucket().getAllFilesByPrefix({ prefix });
     return new Ok(

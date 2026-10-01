@@ -41,10 +41,6 @@ import { randomBytes } from "crypto";
 import type { Attributes, Includeable, Transaction } from "sequelize";
 import { UniqueConstraintError } from "sequelize";
 
-export type DeleteSandboxEnvVarResponseBody = {
-  success: true;
-};
-
 export type PatchSandboxEnvVarResponseBody = {
   envVar: SandboxEnvVarType;
 };

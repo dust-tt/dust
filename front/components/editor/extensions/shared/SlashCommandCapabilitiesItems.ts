@@ -5,6 +5,7 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
+import { compareStrings } from "@app/lib/i18n/format";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { compareForAutocompleteSort, subFilter } from "@app/lib/utils";
 import type {
@@ -107,7 +108,7 @@ export function searchCapabilityIndex<T extends CapabilitySearchIndexItem>({
 
     if (normalizedQuery.length === 0) {
       return (
-        favoriteComparison || a.item.sortName.localeCompare(b.item.sortName)
+        favoriteComparison || compareStrings(a.item.sortName, b.item.sortName)
       );
     }
 
@@ -127,11 +128,13 @@ export function searchCapabilityIndex<T extends CapabilitySearchIndexItem>({
           a.matchedName.name,
           b.matchedName.name
         ) ||
-        a.item.sortName.localeCompare(b.item.sortName)
+        compareStrings(a.item.sortName, b.item.sortName)
       );
     }
 
-    return favoriteComparison || a.item.sortName.localeCompare(b.item.sortName);
+    return (
+      favoriteComparison || compareStrings(a.item.sortName, b.item.sortName)
+    );
   });
 
   return sortedMatches.slice(0, limit).map(({ item }) => item);

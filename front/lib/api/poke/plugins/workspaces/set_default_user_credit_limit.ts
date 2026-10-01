@@ -3,6 +3,7 @@ import {
   getNonCreditPricedDefaultUserSpendLimit,
   setNonCreditPricedDefaultUserSpendLimit,
 } from "@app/lib/api/workspace/default_user_spend_limit";
+import { formatNumber } from "@app/lib/i18n/format";
 import {
   MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
   MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
@@ -98,7 +99,7 @@ export const setDefaultUserCreditLimitPlugin = createPlugin({
       display: "text",
       value:
         `Every member of ${workspace.name} can now spend up to ` +
-        `${awuCredits.toLocaleString()} AWU credits per calendar month.`,
+        `${formatNumber(awuCredits)} AWU credits per calendar month.`,
     });
   },
 });

@@ -237,19 +237,6 @@ export async function buildUserContext(
   return `<user_context>\n${formatted}\n</user_context>`;
 }
 
-export async function buildToolsAndSkillsContext(
-  auth: Authenticator
-): Promise<string> {
-  const [skills, tools] = await Promise.all([
-    listAvailableSkills(auth),
-    listAvailableTools(auth),
-  ]);
-  return [
-    formatAvailableSkills(skills, tools),
-    formatAvailableTools(tools),
-  ].join("\n\n");
-}
-
 export async function buildWorkspaceContext(
   auth: Authenticator
 ): Promise<string> {

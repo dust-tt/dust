@@ -1,0 +1,1643 @@
+openapi: 3.0.3
+info:
+  title: dfs server
+  version: 0.1.0
+  description: |
+    Shared Rust request/response types are defined in protocol/src/wire.rs.
+    Unknown routes return 404 with ErrorResponse (not_found). Unsupported methods on known routes
+    return 405 with ErrorResponse (method_not_allowed) and an Allow header.
+    Errors carry Cache-Control: no-store. HEAD responses omit the body.
+    JSON requests accept at most 64 KiB. Malformed JSON, unknown fields, and
+    oversized bodies return invalid_input (400). All authenticated responses disable caching.
+    Missing and inaccessible objects
+    produce the same not_found response; messages never contain resource or storage details.
+    Session object reads use current ancestor grants in one snapshot per request, with no
+    stale authorization cache. Cached mode merges the metadata overlay with SlateDB. An in-flight read may finish against its original snapshot.
+    Mutations prepare from a snapshot and acquire workspace/object locks for all touched objects
+    and parents in ID order. Publication validates the workspace change sequence before atomically
+    submitting. On change, release locks and retry with fresh metadata, authorization, and lock targets;
+    after 16 stale attempts return conflict (409) without publication. Errors and no-ops validate too.
+    Queued mutations observe intervening revocations and moves. Authorization failures publish nothing
+    and return not_found before name collisions or revision conflicts. Namespace locks release before
+    WAL durability waits; file content/request gates span the whole mutation. Unrelated writes in the
+    same workspace may trigger retries. File mutation request receipts persist atomically with their
+    metadata; only the durable prefix survives restart. Status/replay checks current authorization.
+    With --write-mode sync (default), filesystem mutations wait for GCS and SlateDB durability.
+    With --write-mode cached, they acknowledge atomic server visibility from local RAM/disk and the
+    metadata overlay. Fsync and receipts do not promise remote durability; a crash may discard a
+    consistent suffix of acknowledged mutations. Workspace creation remains durable in both modes.
+    Opt-in client caches use POST /sessions/cache revision checks. Mutations and session closure
+    never wait for clients. Cached metadata/authorization may be stale for at most one second.
+    Filesystem reads may include Dfs-Cache-Revision when the workspace revision stayed unchanged
+    during preparation; admit metadata only under a fresh check at that revision. Ordinary HTTP
+    caching stays disabled. Clear metadata on revision changes, check expiry, or errors. Immutable
+    version-keyed bytes may remain cached, but access must select them through authorized metadata.
+paths:
+  /sessions/cache:
+    post:
+      operationId: checkCacheRevision
+      summary: Check the workspace revision for session-scoped caching.
+      description: |
+        Initially send an empty object, then send the last observed revision. A matching revision
+        may wait up to 250 ms for a change. Clear metadata when the revision changes. Freshness lasts
+        at most fresh_for_ms (maximum 1000 ms), measured from the start of this HTTP request with a
+        monotonic clock and capped by session lifetime. On errors or freshness expiry, discard
+        metadata and reauthorize at the server. No registration or acknowledgment is required;
+        writes never wait for clients. Responses carry no object names, paths, or grant details.
+        Restart invalidates sessions. Immutable version-keyed content can remain cached across
+        checks, but its version must be selected through freshly authorized metadata.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CacheCheckRequest'
+      responses:
+        "200":
+          description: Current revision and conservative metadata freshness duration.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CacheCheckResponse'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /objects/read:
+    post:
+      operationId: readObject
+      summary: Stream an authorized current content range without allocating a server handle.
+      description: |
+        Same current-version, range, streaming, and authorization semantics as /files/read, addressed
+        by stable object_id. Requires a file ID in the session workspace. No historical content or
+        deleted object can be selected. This operation has no mutations or retained server handles.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReadObjectRequest'
+      responses:
+        "200":
+          description: Binary range with Content-Length and Dfs-Content-Version.
+          headers:
+            Content-Length:
+              schema: {type: integer, format: uint64, minimum: 0}
+            Dfs-Content-Version:
+              schema: {type: string, pattern: '^[0-9a-f]{32}$'}
+            Dfs-Cache-Revision:
+              description: Present only if no mutation raced response preparation.
+              schema: {type: integer, format: uint64, minimum: 1}
+          content:
+            application/octet-stream:
+              schema: {type: string, format: binary}
+        default:
+          $ref: '#/components/responses/ApiError'
+  /health:
+    get:
+      operationId: health
+      summary: Check that the HTTP server is running.
+      description: Liveness only; does not check storage or filesystem readiness.
+      security: []
+      responses:
+        "200":
+          description: The HTTP server is running.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+    head:
+      operationId: healthHead
+      summary: Check liveness without a response body.
+      security: []
+      responses:
+        "200":
+          description: The HTTP server is running; no response body.
+  /workspaces:
+    post:
+      operationId: createWorkspace
+      summary: Create a workspace and return its key once.
+      description: |
+        Requires DFS_SERVER_KEY in Authorization. If workspace creation is disabled (no configured
+        server key) or storage is unavailable, returns unavailable (503). The workspace record,
+        root, explicit root grants, and initial event are persisted atomically before returning.
+        An existing workspace returns conflict (409) without replacing its root or key.
+        Initial root grants default to empty and apply to descendants through inheritance.
+        The workspace key can mint any grant set within this workspace; keep it with trusted callers.
+        Only its hash is stored. A lost response may leave a created workspace whose key cannot be
+        recovered; key rotation is future work. Do not assume a failed request was uncommitted.
+      security:
+        - ServerKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWorkspaceRequest'
+      responses:
+        "201":
+          description: Workspace persisted; save its key from this response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateWorkspaceResponse'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /sessions:
+    post:
+      operationId: createSession
+      summary: Exchange a workspace key for a session with fixed grants.
+      description: |
+        The workspace key must match workspace_id. Wrong keys, missing workspaces, and keys from
+        another workspace all return unauthenticated (401). Server and session keys are not accepted.
+        Grants are opaque; deduplicate before enforcing the limit of 512 distinct grants. Empty
+        sets and empty grant strings are allowed. Creating a session never attaches grants to objects.
+        Only workspace_id and grants are accepted; unknown fields, including mounts, return invalid_input.
+        Sessions expire after one hour, on explicit closure, or on server restart. A process supports
+        at most 10000 live sessions (capacity_exhausted, 507). Expired entries are cleaned on access.
+      security:
+        - WorkspaceKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSessionRequest'
+      responses:
+        "201":
+          description: Session created; its key is returned only here.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateSessionResponse'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /sessions/current:
+    get:
+      operationId: currentSession
+      summary: Read the authenticated session's workspace, grants, and expiry.
+      security:
+        - SessionKey: []
+      responses:
+        "200":
+          description: The session is valid; credentials are never echoed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        default:
+          $ref: '#/components/responses/ApiError'
+    head:
+      operationId: currentSessionHead
+      summary: Check session validity without a response body.
+      security:
+        - SessionKey: []
+      responses:
+        "200":
+          description: The session is valid; no response body.
+        default:
+          $ref: '#/components/responses/ApiError'
+  /sessions/{session_id}:
+    delete:
+      operationId: closeSession
+      summary: Close the session authenticated by its own key.
+      description: |
+        A key cannot close another session (not_found, 404). Closed, expired, and unknown keys return
+        unauthenticated (401). The session ID is not a credential.
+      security:
+        - SessionKey: []
+      parameters:
+        - in: path
+          name: session_id
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Session closed; no response body.
+        default:
+          $ref: '#/components/responses/ApiError'
+  /uploads/start:
+    post:
+      operationId: startUpload
+      summary: Reserve a session-scoped upload for a new file or a replacement version.
+      description: |
+        Requires access to the canonical parent for creation, or the existing file for replacement.
+        Creation rejects an existing name; replacement checks expected_content_version after
+        authorization. Returns fresh server-generated content/upload IDs and, for creation, an object
+        ID. Does not reserve the name, lock the file, publish metadata, or acknowledge fsync.
+        Unpublished reservations share a server-wide cap of 1024 and expire after 15 minutes;
+        expiry is not extended by status or transfer. Session closure/expiry/restart invalidates access.
+        Successful publication immediately releases the reservation slot.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartUploadRequest'
+      responses:
+        "201":
+          description: Reserved upload; complete/published are false and size_bytes is null.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadReceipt'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /uploads/content:
+    put:
+      operationId: uploadContent
+      summary: Stream one complete immutable blob into a reserved upload.
+      description: |
+        Raw binary body, including empty files; Content-Length is optional. Only the session that
+        reserved the upload may send it. Content-Encoding is rejected. Rechecks target access and
+        replacement version at start and completion, plus session validity at completion.
+        One-shot: a retained active or completed upload returns conflict (409); use status after a lost
+        response. Failure discards its reservation. Partial or completed bytes never publish a file,
+        update its size, emit events, or acknowledge a filesystem write/fsync. POST /uploads/commit
+        publishes separately after reauthorizing and checking preconditions.
+        Streams bounded 8 MiB parts with no full-body collection; server input frames must be at most
+        1 MiB (HTTP wire chunks may be split by the transport). Defaults allow four active transfers
+        within a shared 64 MiB transfer-buffer budget (also used by reads and write bodies), plus 16
+        waiters; excess returns capacity_exhausted
+        (507). No waiting body is polled. One version is limited to 10,000 parts (about 78 GiB).
+        Interrupted/invalid bodies and 30-second input idle timeouts return invalid_input (400).
+        Reservation expiry also bounds total transfer time; expiry/backend failure returns unavailable
+        (503). Failed cleanup can leave unreferenced temporary or immutable blobs for later reclamation.
+      security:
+        - SessionKey: []
+      parameters:
+        - in: header
+          name: Dfs-Upload-Id
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9a-f]{32}$'
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: Completed blob receipt with measured size; namespace remains unchanged.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadReceipt'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /uploads/status:
+    post:
+      operationId: uploadStatus
+      summary: Recover upload completion or publication state.
+      description: |
+        For an unpublished reservation, checks the original session, target, and preconditions. Missing,
+        expired, failed, restarted, or other-session reservations return not_found (404). Pending uploads
+        have complete false and null size; completed unpublished uploads have published false.
+        Published receipts return complete/published true with expires_in_seconds zero. Only durable
+        receipts survive restart. Any currently authorized session in the workspace may recover them. Deletion/revocation hides the receipt. Status does not renew reservations; a missing
+        receipt does not prove no orphan was uploaded or that a concurrent commit cannot still finish.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadStatusRequest'
+      responses:
+        "200":
+          description: Upload receipt, authorized against current grants and target state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadReceipt'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /uploads/commit:
+    post:
+      operationId: commitUpload
+      summary: Publish a completed upload atomically.
+      description: |
+        Reauthorizes the live session and target, then checks name vacancy for creation or the expected
+        content version for replacement. Creation accepts initial MIME/xattrs/mode. Replacement rejects
+        supplied MIME/mode or nonempty xattrs and preserves current metadata. Metadata, indexes, event,
+        and request receipt commit atomically after blob completion; success follows the configured write mode.
+        The upload ID is the request ID. Identical commit arguments replay the original result, including
+        after session recreation; only durable receipts survive restart. Changed arguments conflict (409).
+        Replay reauthorizes
+        the current object and does not require the old upload reservation. Unpublished uploads still
+        require their original live session and reservation. Request disconnect does not cancel an
+        admitted publication. Global file-job exhaustion returns capacity_exhausted (507).
+        Successful publication/replay immediately releases the reservation slot; status/retries use the
+        published receipt. Failed commits retain the completed upload until reservation expiry.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommitUploadRequest'
+      responses:
+        "200":
+          description: Durable mutation receipt, including on an identical replay.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationReceipt'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /files/open:
+    post:
+      operationId: openFile
+      summary: Open a session-local file handle.
+      description: |
+        Rechecks current grants and requires a regular file. At least one of read/write must be true;
+        append requires write. Opening does not reserve a writer or scratch file. Truncate requires
+        write and a fresh client request_id, publishes an empty version, and starts sequence at one. Otherwise request_id must be omitted/null and sequence starts at zero. Truncating-open
+        retries reuse the original request ID but return a new handle and current attributes.
+        Handles cap at 4096/server and 256/session, returning capacity_exhausted (507). Close, session
+        expiry/closure, or restart invalidates them. Rename preserves the handle; unlink/replacement
+        invalidates handles to the deleted object. Access modes never bypass current grants.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpenFileRequest'
+      responses:
+        "200":
+          description: Handle, current attributes, and initial write sequence; Cache-Control is no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OpenFileResponse'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /files/read:
+    post:
+      operationId: readFile
+      summary: Stream an authorized immutable content range through a readable handle.
+      description: |
+        Selects current content after checking the session, handle mode, and live grants. If supplied,
+        content_version must equal the current version or conflict (409); arbitrary historical or
+        unpublished versions cannot be read. The response pins that version for the entire stream,
+        even during concurrent writes. Range length is clamped to EOF; zero length or offset at/beyond
+        EOF returns an empty 200 response. Reads do not update atime. Backend failure after headers
+        terminates the stream. Shared transfer admission/backpressure bounds server buffers; dropping
+        or draining the response releases its slot. An already-authorized read may finish after revocation.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReadFileRequest'
+      responses:
+        "200":
+          description: Binary range, including an empty range at EOF.
+          headers:
+            Content-Length:
+              description: Actual range length after clamping to EOF.
+              schema:
+                type: integer
+                format: uint64
+                minimum: 0
+            Dfs-Content-Version:
+              schema:
+                type: string
+                pattern: '^[0-9a-f]{32}$'
+            Cache-Control:
+              schema:
+                type: string
+                enum: [no-store]
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        default:
+          $ref: '#/components/responses/ApiError'
+  /files/write:
+    put:
+      operationId: writeFile
+      summary: Publish an offset write or atomic append through a writable handle.
+      description: |
+        Raw binary body with exactly Dfs-Write-Length bytes; Content-Length is optional and
+        Content-Encoding is rejected. Required headers must each occur once. Serialize writes on each
+        handle with sequences starting at one. Retry the same last request/sequence after a lost
+        response; only successful completion allows advancing. Append chooses current EOF under the
+        per-file writer gate and ignores the supplied offset. Other writes preserve existing bytes
+        outside the range; growth fills gaps with zero bytes. A zero-byte write never extends the file.
+        Synchronous edits assemble and upload a full immutable version using quota-reserved scratch.
+        Cached edits share unchanged local pages and stage changed pages in bounded RAM/disk.
+        Both reauthorize and publish metadata/event/receipt atomically; cached acknowledgement requires
+        visibility, synchronous acknowledgement requires durability. Other files proceed concurrently.
+        Default scratch limit is 1 GiB (also the cached edit file-size limit), with 16 active jobs
+        and up to 256 waiting jobs. Waiting jobs do not poll streaming bodies or reserve scratch/transfer
+        resources, and recheck session/grant authorization when executing. Queue overflow returns 507.
+        Input frames are at most 1 MiB; input idle timeout is 30 seconds and preparation is limited to
+        15 minutes. Interrupted/short/long bodies return invalid_input; quota/disk/job exhaustion returns
+        capacity_exhausted. Failed writes leave no partial publication and fsync reports their failure.
+        Use a fresh client UUID per operation. Identical request IDs/arguments/bytes replay the original
+        published result; mismatches conflict. After restart, recreate a session/handle and retry the same
+        request ID with the new handle's next sequence. A disconnect or unavailable response can have
+        committed: use status or retry, never assume it failed. Publication outlives HTTP cancellation.
+      security:
+        - SessionKey: []
+      parameters:
+        - in: header
+          name: Dfs-Handle-Id
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9a-f]{32}$'
+        - in: header
+          name: Dfs-Request-Id
+          required: true
+          schema:
+            type: string
+            pattern: '^[0-9a-f]{32}$'
+        - in: header
+          name: Dfs-Write-Sequence
+          required: true
+          schema:
+            type: integer
+            format: uint64
+            minimum: 1
+        - in: header
+          name: Dfs-Write-Offset
+          required: true
+          schema:
+            type: integer
+            format: uint64
+            minimum: 0
+        - in: header
+          name: Dfs-Write-Length
+          required: true
+          schema:
+            type: integer
+            format: uint64
+            minimum: 0
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: Durable mutation receipt; Cache-Control is no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationReceipt'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /files/truncate:
+    post:
+      operationId: truncateFile
+      summary: Change file length through a writable handle.
+      description: |
+        Uses the same per-file serialization, handle sequence, resource limits, atomic receipt, and
+        retry rules as write. Shrink removes trailing bytes; extension supplies zeros. Always publishes
+        a fresh content version, including for zero or unchanged length. Append mode does not affect
+        truncate. Publication preserves unrelated metadata and rechecks current access/base version.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TruncateFileRequest'
+      responses:
+        "200":
+          description: Durable mutation receipt; Cache-Control is no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MutationReceipt'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /files/fsync:
+    post:
+      operationId: fsyncFile
+      summary: Wait for preceding handle writes and confirm server visibility/durability.
+      description: |
+        Waits behind admitted handle writes, checks current session/grants, rejects through_sequence
+        beyond the last accepted sequence (conflict), and reports an unresolved write failure. A failed
+        handle must retry its last request/sequence or close/reopen; new sequences cannot hide failures.
+        Cached mode confirms server visibility without waiting for GCS, SlateDB, or local disk fsync.
+        Synchronous mode also waits for the current SlateDB WAL prefix. Unpublished uploads and
+        client-only buffers cannot satisfy fsync. A cached acknowledgement may be lost after a crash.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FsyncFileRequest'
+      responses:
+        "204":
+          description: Barrier completed; no body; Cache-Control is no-store.
+        default:
+          $ref: '#/components/responses/ApiError'
+  /files/close:
+    post:
+      operationId: closeFile
+      summary: Release a session's file handle.
+      description: |
+        Waits behind admitted handle mutations and releases the handle. Does not substitute for fsync
+        or report prior write failures. May release a handle after its object was deleted or access was
+        revoked. Missing, already-closed, and other-session handles return not_found.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloseFileRequest'
+      responses:
+        "204":
+          description: Handle released; no body; Cache-Control is no-store.
+        default:
+          $ref: '#/components/responses/ApiError'
+  /files/status:
+    post:
+      operationId: fileMutationStatus
+      summary: Recover a file mutation receipt after an ambiguous response or restart.
+      description: |
+        Requires current access to the object in the session's workspace, including after session
+        recreation. Returns the original published result, which may differ from current attributes.
+        Null means no receipt was visible in the snapshot, not proof of failure; a mutation may still
+        be in flight. Safely retry with the same request ID. Missing/inaccessible objects or a receipt
+        belonging to another object return not_found. Receipt retention is currently indefinite.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MutationStatusRequest'
+      responses:
+        "200":
+          description: Durable original receipt, or JSON null; Cache-Control is no-store.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/MutationReceipt'
+                  - type: object
+                    nullable: true
+                    enum: [null]
+        default:
+          $ref: '#/components/responses/ApiError'
+  /objects/stat:
+    post:
+      operationId: statObject
+      summary: Read an authorized object's attributes by stable ID.
+      description: |
+        Authorization uses explicit grants on the object or its current ancestors within the
+        session's workspace. Missing, cross-workspace, and inaccessible objects return not_found
+        (404). A directly shared object is accessible without granting access to its ancestors.
+        Metadata and authorization use one fresh snapshot. Responses omit parent links, names,
+        paths, and grants. In-flight reads may finish against their original snapshot.
+        Well-known root/shared IDs return fixed synthetic directory attributes for any valid session.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatRequest'
+      responses:
+        "200":
+          description: Current authorized attributes; Cache-Control is no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectAttributes'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /objects/lookup:
+    post:
+      operationId: lookupObject
+      summary: Look up one named child of an authorized directory.
+      description: |
+        Requires access to the parent directory. Sharing the child alone does not permit lookup
+        through an inaccessible parent; use stat by ID instead. Names are exact case-sensitive
+        UTF-8 components, never paths. An authorized file used as parent returns not_directory
+        (400); missing/inaccessible parents or missing names return not_found (404).
+        Entry, attributes, and authorization use one snapshot. Names stay in JSON bodies.
+        Well-known root exposes authorized workspace-root children plus synthetic shared. Well-known
+        shared exposes authorized targets whose ancestors are hidden, omitting ordinary root entries.
+        Every direct shared entry uses basename--uuid, with the full 32-character object ID. Truncate
+        only the basename at a UTF-8 boundary to fit 255 bytes. Canonical names inside targets remain
+        unchanged. Lookup extracts the ID, checks access and shared eligibility, and validates the
+        current rendered name. Bare, stale, or inaccessible aliases return not_found.
+        A persisted workspace-root child called shared is exposed inside synthetic shared instead.
+        Returned targets have their real object IDs; responses never expose canonical ancestors.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LookupRequest'
+      responses:
+        "200":
+          description: Child attributes; Cache-Control is no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectAttributes'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /objects/list:
+    post:
+      operationId: listObjects
+      summary: List an authorized directory with attributes for each entry.
+      description: |
+        Requires access to the directory; children inherit that access. An authorized file returns
+        not_directory (400); missing/inaccessible objects return not_found (404). Each page reads
+        entries, attributes, and continuation from one snapshot. Canonical directories and well-known
+        root use exact UTF-8 name-byte order; root filters unauthorized entries and reserves shared.
+        Well-known shared merges the session grant indexes in object-ID order with deduplication,
+        omitting targets reachable through an authorized ancestor or ordinary root entry. A persisted
+        root child named shared is the exception and remains discoverable here through inherited access.
+        Every direct shared name carries its object-ID suffix. Each page scans at most max(limit, 64) grant
+        candidates; filtering may yield an empty page with non-null next_after. Continue until null.
+        Root filtering may read multiple bounded batches.
+        Pass next_after verbatim as after in the next request. Null next_after means this page
+        reached the end of its snapshot. Each page reauthorizes against a fresh snapshot; cursors
+        neither preserve access rights nor retain a listing snapshot. Concurrent edits can cause
+        skips/repeats across pages; restart traversal when necessary. Cursors stay in JSON bodies.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListRequest'
+      responses:
+        "200":
+          description: Authorized directory page; Cache-Control is no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListResponse'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /objects/mkdir:
+    post:
+      operationId: createDirectory
+      summary: Create a directory under an authorized parent.
+      description: |
+        Requires the session's current grants to authorize the parent. The directory, child entry,
+        parent revision/mtime/ctime, and indexing event persist atomically before returning.
+        Access is inherited; session grants are never attached to the new directory. Existing names
+        return already_exists (409); an authorized file parent returns not_directory (400).
+        Creation generates a fresh ID, revision zero, and equal server atime/mtime/ctime.
+        Failure after submission can have an ambiguous outcome; look up the name before retrying.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MkdirRequest'
+      responses:
+        "201":
+          description: Directory persisted; attributes use Cache-Control no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectAttributes'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /objects/update:
+    post:
+      operationId: updateMetadata
+      summary: Update an authorized file or directory's metadata.
+      description: |
+        Requires current grants and expected_metadata_revision. Authorization, revision comparison,
+        and publication use the snapshot validation protocol; stale revisions return conflict (409).
+        Only supplied fields change. Omitted/null scalar fields are unchanged; xattr null values
+        remove keys and empty base64 strings store empty bytes. Require at least one supplied scalar
+        or xattr entry. Every accepted update increments the revision and sets server ctime,
+        preserving identity, parent, content reference, and grants. Reads never change atime.
+        Metadata and the indexing event publish atomically, with acknowledgement per configured mode. A failed/disconnected
+        request may already have committed; re-read attributes to resolve an ambiguous outcome.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMetadataRequest'
+      responses:
+        "200":
+          description: Updated attributes persisted; Cache-Control is no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectAttributes'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /objects/rename:
+    post:
+      operationId: renameObject
+      summary: Rename or move a file or directory, preserving its ID.
+      description: |
+        Requires session access to the object, its current parent, and the destination directory.
+        A direct object grant does not authorize changing a hidden parent's entries. Check grants
+        before the required source revision, in one snapshot validated at publication.
+        parent_id/name identify the destination. By default, an occupied name returns already_exists
+        (409). With replace true, replace the current destination only file-for-file or
+        directory-for-empty-directory. File over directory returns is_directory (400); directory
+        over file returns not_directory (400); nonempty directory replacement returns not_empty (409).
+        Roots cannot move (forbidden, 403). Moving a directory into itself or a descendant returns
+        invalid_input (400). Same parent/name succeeds without changes or an event after checking
+        the expected revision; stale revisions always return conflict (409).
+        Preserve source ID, content, explicit grants, and descendant records. Update source
+        parent/name/revision/ctime and both parents' revision/mtime/ctime atomically with child
+        entries, replaced-object deletion, both grant-index removals, and the event. One parent is
+        updated once for same-directory renames. Inherited access changes through current ancestry.
+        Blobs are retained. Acknowledge according to the configured write mode; failed/disconnected
+        requests may have committed. Re-read state before retrying; replacement has no destination
+        revision precondition and applies to the entry current at publication.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RenameRequest'
+      responses:
+        "200":
+          description: Source attributes after rename or a validated no-op; Cache-Control is no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectAttributes'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /objects/unlink:
+    post:
+      operationId: unlinkFile
+      summary: Remove a file and its explicit grants.
+      description: |
+        Requires current session access to the object and its containing directory; a direct file
+        grant alone cannot change a hidden parent's entries. Check grants before the required revision,
+        in one snapshot validated at publication. Stale revisions return conflict (409);
+        directories return is_directory (400), while roots return forbidden (403).
+        Delete metadata, the child entry, and both directions of every explicit grant attachment
+        atomically with the parent revision/mtime/ctime and event. Retain blobs for snapshots/recovery.
+        Acknowledge according to the configured write mode. Repeating after deletion returns not_found (404).
+        Further operations on open handles for the removed object are rejected.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoveRequest'
+      responses:
+        "204":
+          description: File removal persisted; no body, Cache-Control is no-store.
+        default:
+          $ref: '#/components/responses/ApiError'
+  /objects/rmdir:
+    post:
+      operationId: removeDirectory
+      summary: Remove an empty directory and its explicit grants.
+      description: |
+        Requires current session access to the object and its containing directory. Check grants before
+        revision, type, and emptiness in one snapshot validated at publication. Stale revisions
+        return conflict (409); files return not_directory (400), nonempty directories return
+        not_empty (409), and roots return forbidden (403). Never remove recursively.
+        Delete metadata, the child entry, and both explicit grant indexes atomically with parent
+        revision/mtime/ctime and the event. Acknowledge according to the configured write mode; repeating returns not_found.
+        A failed/disconnected mutation may have committed; inspect state before retrying.
+      security:
+        - SessionKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoveRequest'
+      responses:
+        "204":
+          description: Directory removal persisted; no body, Cache-Control is no-store.
+        default:
+          $ref: '#/components/responses/ApiError'
+  /objects/grants/list:
+    post:
+      operationId: listObjectGrants
+      summary: List explicit grant attachments with workspace authority.
+      description: |
+        Requires the matching workspace key, including for roots with no grants. Session and server
+        keys are rejected. The response contains explicit attachments only, sorted by exact UTF-8
+        bytes, with the object's metadata revision from the same snapshot. Inherited grants are
+        not copied or listed. An authenticated workspace cannot address objects in another workspace.
+        Pass next_after as after; null means the end, while an empty string is a valid grant/cursor.
+        Each page uses a fresh snapshot; concurrent edits can require restarting traversal.
+      security:
+        - WorkspaceKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListGrantsRequest'
+      responses:
+        "200":
+          description: Explicit grant page; Cache-Control is no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListGrantsResponse'
+        default:
+          $ref: '#/components/responses/ApiError'
+  /objects/grants/update:
+    post:
+      operationId: updateObjectGrants
+      summary: Attach or revoke explicit grants with workspace authority.
+      description: |
+        Requires the matching workspace key, an existing object, and its expected_metadata_revision.
+        Wrong key/workspace combinations return unauthenticated (401); a missing object in the
+        authenticated workspace returns not_found (404); stale revisions return conflict (409).
+        Each patch contains 1–512 grant-to-boolean entries: true attaches, false removes the explicit
+        attachment. Omitted grants stay unchanged. Empty strings, NUL, slashes, and Unicode are opaque
+        grant values. The bound is per request; an object may have more than 512 attachments.
+        Every accepted patch advances the object's revision and server ctime, even if the requested
+        states already hold. Both index directions, metadata, and an event commit atomically,
+        with acknowledgement per configured write mode. Parent, content, xattrs, modes, atime, and mtime stay unchanged.
+        Revocation is not a deny: an ancestor or another matching grant can still authorize access.
+        Subsequent session requests see the new grants; in-flight reads may use their prior snapshot.
+        An error/disconnect may have committed. Re-read the grant list/revision before retrying,
+        including after reconnecting to a restarted server; this endpoint has no idempotency token.
+      security:
+        - WorkspaceKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateGrantsRequest'
+      responses:
+        "200":
+          description: Grant patch persisted; Cache-Control is no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UpdateGrantsResponse'
+        default:
+          $ref: '#/components/responses/ApiError'
+components:
+  securitySchemes:
+    ServerKey:
+      type: http
+      scheme: bearer
+      description: Operator-configured DFS_SERVER_KEY; used only for workspace creation.
+    WorkspaceKey:
+      type: http
+      scheme: bearer
+      description: Workspace key returned by POST /workspaces; authorizes sessions and grant administration.
+    SessionKey:
+      type: http
+      scheme: bearer
+      description: Session key returned by POST /sessions; fixes the workspace and grants.
+  responses:
+    ApiError:
+      description: |
+        Shared error envelope. Requests may fail with invalid_input/name_too_long/not_directory/is_directory (400),
+        unauthenticated (401), forbidden (403), not_found (404), conflict/already_exists/not_empty (409),
+        internal (500), unsupported (501), unavailable (503), or
+        capacity_exhausted (507). Credentials and resource/storage details are never included.
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+            enum: [no-store]
+        WWW-Authenticate:
+          description: Present on unauthenticated responses.
+          schema:
+            type: string
+            enum: [Bearer]
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    CacheCheckRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          format: uint64
+          minimum: 1
+          nullable: true
+    CacheCheckResponse:
+      type: object
+      required: [revision, fresh_for_ms]
+      properties:
+        revision:
+          type: integer
+          format: uint64
+          minimum: 1
+        fresh_for_ms:
+          type: integer
+          minimum: 0
+          maximum: 1000
+    ReadObjectRequest:
+      type: object
+      additionalProperties: false
+      required: [object_id, offset, length]
+      properties:
+        object_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+        content_version:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+          nullable: true
+        offset:
+          type: integer
+          format: uint64
+          minimum: 0
+        length:
+          type: integer
+          format: uint64
+          minimum: 0
+    CommitUploadRequest:
+      type: object
+      additionalProperties: false
+      required: [upload_id]
+      properties:
+        upload_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+        mime_type:
+          type: string
+          nullable: true
+          default: application/octet-stream
+          description: Creation only; omitted/null uses the default.
+        mode:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 511
+          default: 420
+          description: Creation only, low nine bits (0644 default); caller applies umask.
+        xattrs:
+          type: object
+          default: {}
+          additionalProperties:
+            type: string
+            format: byte
+          description: Creation only, nonempty UTF-8 keys without NUL and padded base64 values; 32 KiB total decoded keys/values.
+    MutationReceipt:
+      type: object
+      additionalProperties: false
+      required: [request_id, object_id, content_version, size_bytes, metadata_revision]
+      description: Original published mutation result; later edits may have changed current attributes. The version is not a historical read capability; coalesced intermediate content need not exist in GCS.
+      properties:
+        request_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+          description: Workspace-scoped edit UUID, or the upload ID for upload publication.
+        object_id:
+          $ref: '#/components/schemas/ObjectId'
+        content_version:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+        size_bytes:
+          type: integer
+          format: uint64
+          minimum: 0
+        metadata_revision:
+          type: integer
+          format: uint64
+          minimum: 0
+    OpenFileRequest:
+      type: object
+      additionalProperties: false
+      required: [object_id]
+      properties:
+        object_id:
+          $ref: '#/components/schemas/ObjectId'
+        read:
+          type: boolean
+          default: true
+        write:
+          type: boolean
+          default: false
+        append:
+          type: boolean
+          default: false
+          description: Requires write; writes choose EOF atomically and ignore their offsets.
+        truncate:
+          type: boolean
+          default: false
+          description: Requires write and request_id; publishes an empty version during open.
+        request_id:
+          type: string
+          nullable: true
+          pattern: '^[0-9a-f]{32}$'
+          description: Required exactly when truncate is true; preserve across ambiguous retries.
+    OpenFileResponse:
+      type: object
+      additionalProperties: false
+      required: [handle_id, sequence, attributes]
+      properties:
+        handle_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+        sequence:
+          type: integer
+          format: uint64
+          minimum: 0
+          maximum: 1
+          description: Zero for ordinary open, one after truncating open; next edit increments this.
+        attributes:
+          $ref: '#/components/schemas/ObjectAttributes'
+    ReadFileRequest:
+      type: object
+      additionalProperties: false
+      required: [handle_id, offset, length]
+      properties:
+        handle_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+        content_version:
+          type: string
+          nullable: true
+          pattern: '^[0-9a-f]{32}$'
+          description: Omit/null to select the current version; mismatches return conflict.
+        offset:
+          type: integer
+          format: uint64
+          minimum: 0
+        length:
+          type: integer
+          format: uint64
+          minimum: 0
+    TruncateFileRequest:
+      type: object
+      additionalProperties: false
+      required: [handle_id, request_id, sequence, size_bytes]
+      properties:
+        handle_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+        request_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+        sequence:
+          type: integer
+          format: uint64
+          minimum: 1
+        size_bytes:
+          type: integer
+          format: uint64
+          minimum: 0
+    FsyncFileRequest:
+      type: object
+      additionalProperties: false
+      required: [handle_id, through_sequence]
+      properties:
+        handle_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+        through_sequence:
+          type: integer
+          format: uint64
+          minimum: 0
+          description: Last handle mutation the barrier must cover; unseen numbers conflict.
+    CloseFileRequest:
+      type: object
+      additionalProperties: false
+      required: [handle_id]
+      properties:
+        handle_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+    MutationStatusRequest:
+      type: object
+      additionalProperties: false
+      required: [object_id, request_id]
+      properties:
+        object_id:
+          $ref: '#/components/schemas/ObjectId'
+        request_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+    StartUploadRequest:
+      oneOf:
+        - type: object
+          additionalProperties: false
+          required: [operation, parent_id, name]
+          properties:
+            operation:
+              type: string
+              enum: [create]
+            parent_id:
+              $ref: '#/components/schemas/ObjectId'
+            name:
+              $ref: '#/components/schemas/EntryName'
+        - type: object
+          additionalProperties: false
+          required: [operation, object_id, expected_content_version]
+          properties:
+            operation:
+              type: string
+              enum: [replace]
+            object_id:
+              $ref: '#/components/schemas/ObjectId'
+            expected_content_version:
+              type: string
+              pattern: '^[0-9a-f]{32}$'
+    UploadStatusRequest:
+      type: object
+      additionalProperties: false
+      required: [upload_id]
+      properties:
+        upload_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+    UploadReceipt:
+      type: object
+      additionalProperties: false
+      required: [upload_id, object_id, content_version, complete, published, size_bytes, expires_in_seconds]
+      properties:
+        upload_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+          description: Reservation and commit request ID; currently equal to content_version.
+        object_id:
+          $ref: '#/components/schemas/ObjectId'
+        content_version:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+          description: Fresh server-generated immutable content version.
+        complete:
+          type: boolean
+        published:
+          type: boolean
+          description: True only when status confirms an acknowledged namespace publication.
+        size_bytes:
+          type: integer
+          format: uint64
+          minimum: 0
+          nullable: true
+          description: Measured size once the entire upload has completed, otherwise null.
+        expires_in_seconds:
+          type: integer
+          format: uint64
+          minimum: 0
+          description: Remaining reservation lifetime rounded down; zero for published receipts.
+    ObjectId:
+      type: string
+      pattern: '^[0-9a-f]{32}$'
+      description: Stable object UUID, encoded as 32 lowercase hexadecimal characters.
+    NamespaceId:
+      type: string
+      pattern: '^(root|shared|[0-9a-f]{32})$'
+      description: |
+        A persistent object UUID or the session-scoped well-known root/shared directory.
+        Synthetic IDs are read-only and are not valid dfs URI targets. Mutations return forbidden.
+    EntryName:
+      type: string
+      minLength: 1
+      maxLength: 255
+      description: |
+        One exact UTF-8 component, 1–255 bytes; no slash or NUL, and not '.' or '..'. Preserve
+        case and Unicode without normalization. Oversized names return name_too_long (400).
+    StatRequest:
+      type: object
+      additionalProperties: false
+      required: [object_id]
+      properties:
+        object_id:
+          $ref: '#/components/schemas/NamespaceId'
+    LookupRequest:
+      type: object
+      additionalProperties: false
+      required: [parent_id, name]
+      properties:
+        parent_id:
+          $ref: '#/components/schemas/NamespaceId'
+        name:
+          $ref: '#/components/schemas/EntryName'
+    ListRequest:
+      type: object
+      additionalProperties: false
+      required: [directory_id]
+      properties:
+        directory_id:
+          $ref: '#/components/schemas/NamespaceId'
+        after:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 255
+          description: Exclusive name cursor for root/canonical directories, object ID for shared; omit/null to start.
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          default: 100
+    ListGrantsRequest:
+      type: object
+      additionalProperties: false
+      required: [workspace_id, object_id]
+      properties:
+        workspace_id:
+          type: string
+          minLength: 1
+        object_id:
+          $ref: '#/components/schemas/ObjectId'
+        after:
+          type: string
+          nullable: true
+          description: Exclusive opaque grant cursor; omitted/null starts at the beginning.
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          default: 100
+    UpdateGrantsRequest:
+      type: object
+      additionalProperties: false
+      required: [workspace_id, object_id, expected_metadata_revision, grants]
+      properties:
+        workspace_id:
+          type: string
+          minLength: 1
+        object_id:
+          $ref: '#/components/schemas/ObjectId'
+        expected_metadata_revision:
+          type: integer
+          minimum: 0
+          description: Required unsigned 64-bit revision from a fresh grant listing for this object.
+        grants:
+          type: object
+          minProperties: 1
+          maxProperties: 512
+          additionalProperties:
+            type: boolean
+          description: Opaque grant strings mapped to true (attach) or false (revoke explicit attachment).
+    ListGrantsResponse:
+      type: object
+      additionalProperties: false
+      required: [object_id, metadata_revision, grants, next_after]
+      properties:
+        object_id:
+          $ref: '#/components/schemas/ObjectId'
+        metadata_revision:
+          type: integer
+          minimum: 0
+          description: Unsigned 64-bit object revision in this page's snapshot.
+        grants:
+          type: array
+          maxItems: 1000
+          items:
+            type: string
+        next_after:
+          type: string
+          nullable: true
+          description: Last returned grant if more exist; null when exhausted. Empty is a valid cursor.
+    UpdateGrantsResponse:
+      type: object
+      additionalProperties: false
+      required: [object_id, metadata_revision]
+      properties:
+        object_id:
+          $ref: '#/components/schemas/ObjectId'
+        metadata_revision:
+          type: integer
+          minimum: 0
+          description: New unsigned 64-bit object revision; preserve full precision.
+    Timestamp:
+      type: object
+      additionalProperties: false
+      required: [seconds, nanoseconds]
+      properties:
+        seconds:
+          type: integer
+          format: int64
+          description: Signed Unix seconds; negative values are allowed.
+        nanoseconds:
+          type: integer
+          minimum: 0
+          maximum: 999999999
+    MkdirRequest:
+      type: object
+      additionalProperties: false
+      required: [parent_id, name]
+      properties:
+        parent_id:
+          $ref: '#/components/schemas/ObjectId'
+        name:
+          $ref: '#/components/schemas/EntryName'
+        mime_type:
+          type: string
+          nullable: true
+          default: inode/directory
+          description: Valid MIME type; omitted/null uses inode/directory.
+        mode:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 511
+          default: 493
+          description: Low nine bits (0755 default); caller applies umask. Extra bits return unsupported.
+        xattrs:
+          type: object
+          default: {}
+          additionalProperties:
+            type: string
+            format: byte
+          description: |
+            Nonempty UTF-8 keys without NUL and standard padded base64 values. Sum of UTF-8 key
+            bytes and decoded value bytes must fit 32 KiB per object (capacity_exhausted, 507).
+    UpdateMetadataRequest:
+      type: object
+      additionalProperties: false
+      required: [object_id, expected_metadata_revision]
+      properties:
+        object_id:
+          $ref: '#/components/schemas/ObjectId'
+        expected_metadata_revision:
+          type: integer
+          minimum: 0
+          description: Required unsigned 64-bit revision from this object's attributes in this session.
+        mime_type:
+          type: string
+          nullable: true
+          description: Valid MIME type; omitted/null leaves unchanged.
+        mode:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 511
+          description: Low nine permission bits; extra bits return unsupported (501). Grants authorize access.
+        atime:
+          allOf:
+            - $ref: '#/components/schemas/Timestamp'
+          nullable: true
+        mtime:
+          allOf:
+            - $ref: '#/components/schemas/Timestamp'
+          nullable: true
+        xattrs:
+          type: object
+          default: {}
+          additionalProperties:
+            type: string
+            format: byte
+            nullable: true
+          description: |
+            Patch with nonempty UTF-8 keys without NUL. Standard padded base64 replaces a value,
+            null removes a key (absent keys are harmless), and omitted keys are unchanged.
+            Resulting total of key bytes plus decoded value bytes must fit 32 KiB (507 otherwise).
+    RenameRequest:
+      type: object
+      additionalProperties: false
+      required: [object_id, expected_metadata_revision, parent_id, name]
+      properties:
+        object_id:
+          $ref: '#/components/schemas/ObjectId'
+        expected_metadata_revision:
+          type: integer
+          minimum: 0
+          description: Required unsigned 64-bit source object revision, including for a no-op.
+        parent_id:
+          $ref: '#/components/schemas/ObjectId'
+        name:
+          $ref: '#/components/schemas/EntryName'
+        replace:
+          type: boolean
+          default: false
+          description: Replace the current destination only for matching kinds and an empty target directory.
+    RemoveRequest:
+      type: object
+      additionalProperties: false
+      required: [object_id, expected_metadata_revision]
+      properties:
+        object_id:
+          $ref: '#/components/schemas/ObjectId'
+        expected_metadata_revision:
+          type: integer
+          minimum: 0
+          description: Required unsigned 64-bit object revision; the current containing directory must be authorized.
+    ObjectAttributes:
+      type: object
+      additionalProperties: false
+      required: [object_id, kind, mime_type, xattrs, metadata_revision, mode, atime, mtime, ctime]
+      description: |
+        content_version and size_bytes are present for files and absent
+        for directories. Modes contain the low nine permission bits and do not grant server access.
+        Parent links, names, paths, and grants are omitted. Revisions are meaningful only within the current
+        session, workspace, and object; session recreation discards cached state. Synthetic root/shared
+        have fixed directory attributes: mode 0555, inode/directory MIME, empty xattrs, revision zero,
+        and epoch timestamps. These synthetic attributes are not change tokens.
+      properties:
+        object_id:
+          $ref: '#/components/schemas/NamespaceId'
+        kind:
+          type: string
+          enum: [file, directory]
+        mime_type:
+          type: string
+        xattrs:
+          type: object
+          additionalProperties:
+            type: string
+            format: byte
+          description: Opaque xattr values encoded as standard padded base64.
+        metadata_revision:
+          type: integer
+          minimum: 0
+          description: Unsigned 64-bit metadata counter; clients must preserve its full precision.
+        mode:
+          type: integer
+          minimum: 0
+          maximum: 511
+        atime:
+          $ref: '#/components/schemas/Timestamp'
+        mtime:
+          $ref: '#/components/schemas/Timestamp'
+        ctime:
+          $ref: '#/components/schemas/Timestamp'
+        content_version:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+        size_bytes:
+          type: integer
+          minimum: 0
+          description: Unsigned 64-bit file length; clients must preserve its full precision.
+    ListResponse:
+      type: object
+      additionalProperties: false
+      required: [entries, next_after]
+      properties:
+        entries:
+          type: array
+          maxItems: 1000
+          items:
+            type: object
+            additionalProperties: false
+            required: [name, attributes]
+            properties:
+              name:
+                $ref: '#/components/schemas/EntryName'
+              attributes:
+                $ref: '#/components/schemas/ObjectAttributes'
+        next_after:
+          type: string
+          nullable: true
+          description: Continuation to pass verbatim; null when exhausted. Shared pages may be empty with a continuation.
+    CreateWorkspaceRequest:
+      type: object
+      additionalProperties: false
+      required: [workspace_id]
+      properties:
+        workspace_id:
+          type: string
+          minLength: 1
+          description: Caller-provided, opaque, case-sensitive workspace identifier.
+        root_grants:
+          type: array
+          default: []
+          description: At most 512 distinct opaque strings; duplicates are deduplicated.
+          items:
+            type: string
+    CreateWorkspaceResponse:
+      type: object
+      additionalProperties: false
+      required: [workspace_id, root_id, workspace_key]
+      properties:
+        workspace_id:
+          type: string
+        root_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+        workspace_key:
+          type: string
+          pattern: '^dfsw_[0-9a-f]{64}$'
+          description: Secret returned once; 256 random bits. Never send in a URL.
+    CreateSessionRequest:
+      type: object
+      additionalProperties: false
+      required: [workspace_id, grants]
+      properties:
+        workspace_id:
+          type: string
+          minLength: 1
+        grants:
+          type: array
+          description: At most 512 distinct opaque strings; duplicates are deduplicated.
+          items:
+            type: string
+    SessionResponse:
+      type: object
+      required: [session_id, workspace_id, grants, expires_at]
+      properties:
+        session_id:
+          type: string
+          pattern: '^[0-9a-f]{32}$'
+        workspace_id:
+          type: string
+        grants:
+          type: array
+          uniqueItems: true
+          maxItems: 512
+          items:
+            type: string
+        expires_at:
+          type: integer
+          format: int64
+          description: Expiration time in Unix seconds; not extended by requests.
+    CreateSessionResponse:
+      allOf:
+        - $ref: '#/components/schemas/SessionResponse'
+        - type: object
+          required: [session_key]
+          properties:
+            session_key:
+              type: string
+              pattern: '^dfss_[0-9a-f]{64}$'
+              description: Secret returned once; 256 random bits. Never send in a URL.
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: |
+                invalid_input, name_too_long, not_directory, is_directory (400), unauthenticated (401), forbidden (403),
+                not_found (404), method_not_allowed (405), conflict/already_exists/not_empty (409), internal (500),
+                unsupported (501), unavailable (503), capacity_exhausted (507).
+                Unauthenticated responses include WWW-Authenticate: Bearer.
+                Clients branch on codes, not messages, and must handle unknown codes.
+              enum:
+                - invalid_input
+                - name_too_long
+                - unauthenticated
+                - forbidden
+                - not_found
+                - not_directory
+                - is_directory
+                - not_empty
+                - method_not_allowed
+                - conflict
+                - already_exists
+                - internal
+                - unsupported
+                - unavailable
+                - capacity_exhausted
+            message:
+              type: string
+              description: Fixed public text; contains no request or storage details.
+      example:
+        error:
+          code: not_found
+          message: Not found.

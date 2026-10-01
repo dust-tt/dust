@@ -1,0 +1,161 @@
+@cc [owner:spolu,label:security] workspace-isolation
+Session filesystem operations, search, subscriptions, and caches MUST be scoped to the authenticated
+session's workspace. Matching grant strings or possession of an object ID MUST NOT allow access
+across workspaces.
+
+@cc [owner:spolu,label:security] session-authority
+Workspace creation MUST require the configured server API key. Session creation MUST verify the
+workspace key against durable workspace state; that key may delegate any grant set in its workspace.
+Session keys MUST NOT authorize workspace creation, grant administration, or further sessions.
+Grants are opaque strings; dfs MUST NOT infer identities or membership from their prefixes.
+Session creation MUST reject more than 512 distinct grants. Workspace and grants are fixed for a
+session; subsequent requests MUST NOT override them. Expired or closed sessions
+MUST be rejected.
+
+@cc [owner:spolu,label:security] workspace-grant-administration
+Workspace creation MUST atomically persist its root and caller-supplied explicit root grants.
+Session creation MUST NOT attach grants to any object. Grant listing and attachment/revocation MUST
+require the workspace key verified against durable state for that workspace; sharing a grant with
+an object MUST NOT confer grant administration. Workspace authority may manage grants on any of
+its objects, including roots with no grants.
+
+@cc [owner:spolu,label:security] live-grant-authorization
+An object's effective grants are the union of its explicit grants and its current ancestors' grants.
+Every server session access MUST require an intersection with the session's grants, including access
+through a URI, virtual alias, cached content, or search result. Server caches MUST NOT bypass
+revocations. Client-side cached authorization may be stale for at most one second.
+
+@cc [owner:spolu,label:backend] atomic-grant-indexes
+Explicit grant attachments MUST be indexed both by object and by grant within the workspace.
+Update both directions atomically with the mutation: directly in SlateDB for the initial synchronous
+path, and first in the server overlay then in SlateDB for the later cached path. Do not materialize
+inherited grants in these indexes.
+
+@cc [owner:spolu,label:product] stable-object-identity
+Files and directories MUST have server-generated UUIDv4 IDs, MIME types, and xattrs. Moves and
+renames MUST preserve object IDs; new content versions MUST receive separate, fresh UUIDv4 IDs.
+Store UUIDs as 16 bytes internally. Never deliberately reuse object or version IDs after recovery.
+
+@cc [owner:spolu,label:product] path-independent-uris
+Accept dfs://<uuid> and dfs://<name>--<uuid>, with UUIDs encoded as 32 lowercase hexadecimal
+characters. Only the UUID identifies the object; the optional name MUST be ignored during
+resolution. URI resolution MUST enforce the same workspace and grant checks as path access.
+
+@cc [owner:spolu,label:security] virtual-alias-boundaries
+Virtual mounts and /shared entries MUST reference existing objects without granting additional
+access. Synthetic parents and mount entries cannot be mutated by filesystem operations. Traversing
+.. MUST follow virtual parents without exposing the target's otherwise inaccessible ancestors.
+
+@cc [owner:spolu,label:product] shared-root-discovery
+Discover shared roots through the session's grant-to-object index prefixes, reading SlateDB and
+merging overlay state when caching is implemented. Deduplicate and paginate results; 512 limits
+grant fan-out, not object count. Omit objects already reachable through an authorized ancestor or
+workspace-root entry. Every direct /shared entry MUST use <basename>--<object ID>, preserving the full
+ID and truncating only the basename at a UTF-8 boundary to fit 255 bytes. Canonical entries inside
+shared directories retain their ordinary names. Reserve /shared in the session namespace; a persisted
+workspace-root child named shared MUST remain discoverable inside the synthetic folder.
+
+@cc [owner:spolu,label:concurrency] single-shard-owner
+The PoC assumes exactly one server process serving one shard; overlapping server instances are
+outside its supported scope. Concurrent writes to the same file MUST serialize; writes to unrelated
+files MUST NOT wait for that file's writer. Multi-server ownership and fencing are future work.
+
+@cc [owner:spolu,label:performance] fsync-means-visibility
+Before acknowledging fsync, the server MUST publish metadata and related indexes atomically and
+make the referenced content readable by other clients through the server, modulo client caches.
+The initial synchronous path MUST finish required GCS uploads and durable SlateDB batches before
+acknowledging mutations. Once local staging is implemented, its foreground path MUST stage content
+in server RAM/local disk and MUST NOT wait for GCS uploads, SlateDB durability, or local-disk fsync.
+
+@cc [owner:spolu,label:architecture] content-outside-slatedb
+All file contents, including small files, MUST be stored outside SlateDB as immutable versions in
+GCS. Upload synchronously in the initial path; stage in server RAM/local disk and upload
+asynchronously in the later cached path. SlateDB stores metadata and indexes, never file bytes.
+Never evict unuploaded staged content needed by current or pending references; apply backpressure
+when staging is full. Coalescing may discard superseded versions after atomic persistence of the
+selected prefix, while read snapshots and streams keep their own version pins.
+
+@cc [owner:spolu,label:backend] consistent-durable-prefix
+Pending references MUST remain outside SlateDB until their blobs exist in GCS. Persist ordered,
+atomic metadata batches forming a consistent prefix of mutations, including namespace and grants.
+Recovery MUST use the durable prefix and discard pending local state. Losing recent acknowledged
+writes is allowed; dangling content references or partially applied mutations are not. Blob
+reclamation MUST preserve contents referenced by live or recoverable state.
+
+@cc [owner:spolu,label:backend;performance] cold-server-start
+Every server start MUST begin with empty local metadata and content caches. Discard prior disk cache
+data before opening those caches; fail startup if resetting them fails. Recover durable state only
+from GCS. Local caches may populate during the running process but MUST NOT survive as reusable
+state for the next start.
+
+@cc [owner:spolu,label:security] cache-scope
+Content cache identity MUST include workspace, object ID, and content version; a cache owned by one
+fixed session may supply workspace scope implicitly. Directory views MUST be scoped to the session,
+including grants and virtual mounts. Revalidate current metadata and grants
+before the server serves cached content. Recreating a session MUST discard its cached namespace
+views.
+
+@cc [owner:spolu,label:product] bidirectional-change-notifications
+Product and filesystem clients MUST use the same mutation API and receive change notifications for
+cache invalidation/refetch. After a disconnect, missed events, or owner restart, clients MUST
+resynchronize rather than assume their cached state is current.
+
+@cc [owner:spolu,label:security] search-authorization
+Search MUST prefilter by the session's grants and recheck each hit's existence, content version,
+and effective grants against live owner state before exposing results or snippets. Indexed grants
+MUST include inheritance; grant changes and moves MUST trigger descendant index updates.
+
+@cc [owner:spolu,label:backend] replayable-search-indexing
+Indexing events MUST be recorded atomically with persisted metadata. Consume only durable events,
+apply ordered idempotent updates, and checkpoint only after the search index commits. Indexing
+MUST NOT block filesystem writes or fsync; search MUST be rebuildable from persisted state.
+
+@cc [owner:spolu,label:rust] propagate-rust-errors
+Rust code MUST propagate or explicitly handle fallible operations instead of calling unwrap() or
+expect().
+
+@cc [owner:spolu,label:product] file-handle-semantics
+Bind file handles to one session, stable object ID, and access mode. Opening
+MUST NOT hold a writer lock. Serialize content mutations per file; append MUST choose EOF within
+that serialization, and truncate/extension MUST publish a fresh version with zero-filled growth.
+O_TRUNC MUST execute as a write during open; read-only handles MUST NOT mutate content.
+Every content operation MUST recheck current access; release may discard an inaccessible handle.
+Rename preserves handles; the initial PoC rejects
+further operations after unlink/replacement deletes their object. Release, session closure/expiry,
+and restart invalidate handles. Fsync MUST wait for preceding handle writes and report failures,
+rejecting sequence numbers the server has not accepted.
+
+@cc [owner:spolu,label:backend] upload-is-not-publication
+Content transfer completion MUST contain no namespace side effects and MUST NOT acknowledge
+write/fsync. Explicit upload publication is a separate mutation.
+Metadata commits MUST accept internal completed-upload descriptors instead of file bytes, validate
+workspace/object/version/size and storage origin, then publish atomically. Synchronous mode MUST
+await durability; cached mode MUST acknowledge server visibility and persist asynchronously.
+Clients MUST NOT be able to construct trusted descriptors. Publication MUST reauthorize and check
+current namespace/content preconditions even when the upload previously passed authorization.
+
+@cc [owner:spolu,label:backend] recoverable-file-mutations
+File mutations MUST atomically publish a workspace-scoped request fingerprint and result with their
+metadata/index/event batch, first in the overlay in cached mode. Persistence MUST include the receipt
+in the same durable batch. Identical retries MUST return the original visible result without
+repeating the mutation; changed arguments or bytes MUST conflict. Recovery/status MUST authorize
+the current object. A missing receipt or disconnected caller MUST NOT be treated as proof of failure.
+Never reclaim receipts until a retry-expiry protocol makes reuse safe. Receipts record original
+results, not historical content availability. Coalescing MAY omit intermediate blobs only when the
+atomic durable batch preserves its final content references, all receipts/events, and active reads.
+
+@cc [owner:spolu,label:security] fuse-session-and-cache-boundary
+A FUSE mount MUST retain its original session scope. Session expiry, closure, or server restart MUST
+fail closed within the one-second cached-authorization bound; a new session requires a fresh mount
+and namespace state. Client metadata caches MUST require fresh revision checks and discard metadata
+on check failure, expiry, or revision change. Immutable content blocks may remain cached, but access
+MUST select their version through authorized metadata. Writes and closure MUST NOT wait for client
+invalidation. Kernel metadata TTLs MUST share the client freshness deadline, captured before reading
+metadata, rather than extend it. Use direct I/O without writeback. Store credentials
+only in authorization headers; never log them or embed them in URLs.
+
+@cc [owner:spolu,label:backend] fuse-publication-errors
+FUSE writes, flush, and fsync MUST NOT acknowledge client-only bytes. Serialize per-handle sequences
+and keep unresolved write errors sticky through flush/fsync. Retry ambiguous edits only with identical
+request IDs, arguments, and bytes; do not blindly retry namespace mutations. Unsupported operations,
+including cross-mount advisory locks, MUST return errors rather than promise unsupported semantics.

@@ -7,13 +7,13 @@ import {
   SANDBOX_ENV_VAR_PREFIX,
 } from "@app/lib/api/sandbox/env_vars";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { timeAgoFrom } from "@app/lib/client/relative_time";
 import {
   useDeleteSandboxEnvVar,
   usePatchSandboxEnvVar,
   useSandboxEnvVars,
   useUpsertSandboxEnvVar,
 } from "@app/lib/swr/sandbox";
-import { timeAgoFrom } from "@app/lib/utils";
 import type {
   SandboxEnvVarKind,
   SandboxEnvVarType,
@@ -534,7 +534,7 @@ export function SandboxEnvVarsSection({
                     <div className="text-xs text-muted-foreground">
                       Updated{" "}
                       {timeAgoFrom(envVar.updatedAt, { useLongFormat: true })}{" "}
-                      ago by {updatedBy}
+                      by {updatedBy}
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5">
                       <Chip

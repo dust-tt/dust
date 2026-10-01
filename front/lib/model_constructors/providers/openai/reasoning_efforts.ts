@@ -12,14 +12,3 @@ export const OPENAI_SUPPORTED_REASONING_EFFORTS = [
   "xhigh",
   "maximal",
 ] as const satisfies readonly ReasoningEffort[];
-
-export type OpenAISupportedReasoningEffort =
-  (typeof OPENAI_SUPPORTED_REASONING_EFFORTS)[number];
-
-export function isOpenAISupportedReasoningEffort(
-  effort: string
-): effort is OpenAISupportedReasoningEffort {
-  return OPENAI_SUPPORTED_REASONING_EFFORTS.some(
-    (supported) => supported === effort
-  );
-}

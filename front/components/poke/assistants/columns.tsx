@@ -5,14 +5,15 @@ import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { PokeAgentConfigurationType } from "@app/types/api/poke/agent_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
+  Button,
   Download01,
   FaceSmile,
-  IconButton,
   LinkWrapper,
   Trash01,
   XClose,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
+import { useState } from "react";
 
 export function makeColumnsForAssistants(
   owner: LightWorkspaceType,
@@ -107,49 +108,86 @@ export function makeColumnsForAssistants(
       cell: ({ row }) => {
         const assistant = row.original;
 
-        if (assistant.scope === "global") {
-          return null;
-        }
-
         return (
-          <>
-            <IconButton
-              icon={assistant.status !== "archived" ? Trash01 : FaceSmile}
-              size="xs"
-              variant="outline"
-              onClick={async () => {
-                await (assistant.status !== "archived"
-                  ? archiveAssistant(
-                      owner,
-                      onAgentArchivedOrRestored,
-                      assistant
-                    )
-                  : restoreAssistant(
-                      owner,
-                      onAgentArchivedOrRestored,
-                      assistant
-                    ));
-              }}
-            />
-            <a
-              href={`${config.getApiBaseUrl()}/api/poke/workspaces/${owner.sId}/agent_configurations/${assistant.sId}/export`}
-              download={`${assistant.name}.json`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <IconButton icon={Download01} size="xs" variant="outline" />
-            </a>
-          </>
+          <PokeAgentActions
+            owner={owner}
+            assistant={assistant}
+            onRefresh={onAgentArchivedOrRestored}
+          />
         );
       },
     },
   ];
 }
 
+interface PokeAgentActionsProps {
+  owner: LightWorkspaceType;
+  assistant: Pick<
+    PokeAgentConfigurationType,
+    "sId" | "name" | "scope" | "status"
+  >;
+  onRefresh: () => Promise<void>;
+}
+
+/**
+ * @cc [owner:aubin-tchoi,label:product;react] poke-actions-preserve-navigation
+ * Archive, restore and export clicks MUST NOT trigger the table row's detail navigation.
+ */
+export function PokeAgentActions({
+  owner,
+  assistant,
+  onRefresh,
+}: PokeAgentActionsProps) {
+  const [isUpdating, setIsUpdating] = useState(false);
+  if (assistant.scope === "global") {
+    return null;
+  }
+
+  return (
+    <div
+      className="flex items-center gap-1"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <Button
+        icon={assistant.status !== "archived" ? Trash01 : FaceSmile}
+        size="xs"
+        variant="outline"
+        tooltip={
+          assistant.status !== "archived" ? "Archive agent" : "Restore agent"
+        }
+        isLoading={isUpdating}
+        onClick={async () => {
+          setIsUpdating(true);
+          try {
+            await (assistant.status !== "archived"
+              ? archiveAssistant(owner, onRefresh, assistant)
+              : restoreAssistant(owner, onRefresh, assistant));
+          } finally {
+            setIsUpdating(false);
+          }
+        }}
+      />
+      <a
+        href={`${config.getApiBaseUrl()}/api/poke/workspaces/${owner.sId}/agent_configurations/${assistant.sId}/export`}
+        download={`${assistant.name}.json`}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <Button
+          icon={Download01}
+          size="xs"
+          variant="outline"
+          tooltip="Export agent"
+        />
+      </a>
+    </div>
+  );
+}
+
 async function archiveAssistant(
   owner: LightWorkspaceType,
   onAgentArchived: () => Promise<void>,
-  agentConfiguration: PokeAgentConfigurationType
+  agentConfiguration: Pick<PokeAgentConfigurationType, "sId" | "name">
 ) {
   if (
     !window.confirm(
@@ -183,7 +221,7 @@ async function archiveAssistant(
 async function restoreAssistant(
   owner: LightWorkspaceType,
   onAgentRestored: () => Promise<void>,
-  agentConfiguration: PokeAgentConfigurationType
+  agentConfiguration: Pick<PokeAgentConfigurationType, "sId" | "name">
 ) {
   if (
     !window.confirm(

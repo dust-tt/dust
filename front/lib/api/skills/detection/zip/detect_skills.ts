@@ -19,9 +19,23 @@ export const MAX_ZIP_SIZE_BYTES = 5 * 1024 * 1024;
 // Total uncompressed size limit (prevents issues with small zip but
 // super large uncompressed data).
 const MAX_DECOMPRESSED_SIZE_BYTES = 10 * 1024 * 1024;
+// Entry count cap. The SKILL.md scanner is O(entries × skill-dirs); without
+// this a 5 MB zip with ~80 k tiny entries would cause quadratic CPU work that
+// blocks the shared front-api event loop for all tenants. With the cap, the
+// scan is at most O(MAX_ZIP_ENTRIES²). Skill-directory count is not rejected
+// on its own: a small archive with more than 50 skills was a valid public
+// API import.
+export const MAX_ZIP_ENTRIES = 1_000;
 
 /**
  * Extracts a flat list of ZipEntry from a ZIP buffer using adm-zip.
+ */
+/**
+ * @cc [owner:frankaloia,label:security;performance] zip-entry-count-cap
+ * MUST return Err when the central-directory entry count exceeds
+ * `MAX_ZIP_ENTRIES` (1000), and MUST do so before mapping records into
+ * `ZipEntry` objects. An over-cap archive MUST NOT be returned for
+ * decompressed-size summation or skill-directory scanning.
  */
 function extractZipEntries(
   zipBuffer: Buffer
@@ -36,6 +50,17 @@ function extractZipEntries(
   }
 
   const admEntries = zip.getEntries();
+  // Reject before mapping each entry into a ZipEntry. getEntries() is the
+  // already-parsed central directory; the map below is the per-entry work.
+  if (admEntries.length > MAX_ZIP_ENTRIES) {
+    return new Err(
+      new Error(
+        `ZIP contains too many entries (${admEntries.length}). ` +
+          `Maximum allowed is ${MAX_ZIP_ENTRIES}.`
+      )
+    );
+  }
+
   const entries: ZipEntry[] = admEntries.map((e) => ({
     path: e.entryName.replace(/\/$/, ""),
     originalEntryName: e.entryName,
@@ -106,6 +131,13 @@ function openAndValidateZip(
  * by scanning for SKILL.md files. Returns ZipDetectedSkill[] where each
  * attachment carries an `originalEntryName` (the raw zip path before prefix
  * stripping), analogous to the `sha` in GitHubDetectedSkillAttachment.
+ */
+/**
+ * @cc [owner:frankaloia,label:security;api] zip-skill-directory-count-accepted
+ * Skill-directory count alone MUST NOT reject an archive and MUST NOT truncate
+ * the detected skills. A small archive with more than 50 skill directories MUST
+ * still be detected, including when a later `names` filter selects a single
+ * skill (`api-backward-compatibility`).
  */
 export function detectSkillsFromZip({
   zipBuffer,

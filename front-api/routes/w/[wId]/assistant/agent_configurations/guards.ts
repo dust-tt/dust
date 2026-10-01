@@ -1,7 +1,4 @@
-import type {
-  AgentConfigurationStatus,
-  LightAgentConfigurationType,
-} from "@app/types/assistant/agent";
+import type { AgentConfigurationStatus } from "@app/types/assistant/agent";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 
 export const ARCHIVED_AGENT_API_ERROR: APIErrorWithContentfulStatusCode = {
@@ -16,10 +13,4 @@ export function isArchivedAgent(agent: {
   status: AgentConfigurationStatus;
 }): boolean {
   return agent.status === "archived";
-}
-
-export function isArchivedAgents(
-  agents: LightAgentConfigurationType[]
-): boolean {
-  return agents.some(isArchivedAgent);
 }

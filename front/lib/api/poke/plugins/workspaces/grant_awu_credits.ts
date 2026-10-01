@@ -5,6 +5,7 @@ import {
   resolveAwuPurchaseDiscountPercent,
 } from "@app/lib/credits/awu_pricing";
 import { MAX_AWU_DISCOUNT_PERCENT } from "@app/lib/credits/awu_purchase_constants";
+import { formatNumber } from "@app/lib/i18n/format";
 import { metronomeAmount } from "@app/lib/metronome/amounts";
 import {
   createMetronomeCommit,
@@ -224,7 +225,7 @@ export const grantAwuCreditsPlugin = createPlugin({
         amount: amountCredits,
         startingAt: startDate.toISOString(),
         endingBefore: expirationDate.toISOString(),
-        name: `Credits granted by Dust representative: ${amountCredits.toLocaleString()} credits`,
+        name: `Credits granted by Dust representative: ${formatNumber(amountCredits)} credits`,
         idempotencyKey,
         priority: AWU_PRIORITY_PURCHASED_COMMIT,
         applicableProductTags: ["usage"],
@@ -248,7 +249,7 @@ export const grantAwuCreditsPlugin = createPlugin({
 
       return new Ok({
         display: "text",
-        value: `Successfully granted ${amountCredits.toLocaleString()} FREE AWU credits (${formattedStart} to ${formattedEnd}). No invoice was generated.`,
+        value: `Successfully granted ${formatNumber(amountCredits)} FREE AWU credits (${formattedStart} to ${formattedEnd}). No invoice was generated.`,
       });
     }
 
@@ -297,10 +298,10 @@ export const grantAwuCreditsPlugin = createPlugin({
     }
 
     const commitName = validatedArgs.setPrice
-      ? `Commits added by Dust representative: ${amountCredits.toLocaleString()} credits (manual price)`
+      ? `Commits added by Dust representative: ${formatNumber(amountCredits)} credits (manual price)`
       : discountPercent > 0
-        ? `Commits added by Dust representative: ${amountCredits.toLocaleString()} credits (${discountPercent}% discount)`
-        : `Commits added by Dust representative: ${amountCredits.toLocaleString()} credits`;
+        ? `Commits added by Dust representative: ${formatNumber(amountCredits)} credits (${discountPercent}% discount)`
+        : `Commits added by Dust representative: ${formatNumber(amountCredits)} credits`;
 
     const result = await createMetronomeCommit({
       metronomeCustomerId,
@@ -353,14 +354,14 @@ export const grantAwuCreditsPlugin = createPlugin({
     }
 
     const pricingSuffix = validatedArgs.setPrice
-      ? ` at a manual price of ${validatedArgs.price!.toLocaleString()} ${currency.toUpperCase()}`
+      ? ` at a manual price of ${formatNumber(validatedArgs.price!)} ${currency.toUpperCase()}`
       : discountPercent > 0
         ? ` with ${discountPercent}% discount (${currency.toUpperCase()})`
         : ` (${currency.toUpperCase()})`;
 
     return new Ok({
       display: "text",
-      value: `Successfully granted ${amountCredits.toLocaleString()} AWU credits as a prepaid commit${pricingSuffix} (${formattedStart} to ${formattedEnd}). Metronome will invoice the customer.`,
+      value: `Successfully granted ${formatNumber(amountCredits)} AWU credits as a prepaid commit${pricingSuffix} (${formattedStart} to ${formattedEnd}). Metronome will invoice the customer.`,
     });
   },
 });

@@ -5,17 +5,6 @@ export type UserSpendLimit =
   | { kind: "unlimited" }
   | { kind: "limited"; awuCredits: number };
 
-export type SetUserSpendLimitRequest =
-  | { kind: "unlimited" }
-  | {
-      kind: "limited";
-      awuCredits: number;
-      // When true, schedule the override to revert at the end of the current
-      // Metronome billing cycle to the member's previous personal override
-      // (or no override).
-      resetAtNextBillingCycle?: boolean;
-    };
-
 export type GetUserSpendLimitResponse = UserSpendLimit;
 
 export type GetUserSpendLimitResponseBody = GetUserSpendLimitResponse;

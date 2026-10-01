@@ -133,9 +133,9 @@ export async function createSandboxChildAction(
     return new Err(new Error("Agent message not found."));
   }
 
-  // Using the fetchConversationWithParticipantState method as we need the read and action required states
+  // Need per-user actionRequired (and related read state) on the resource.
   const conversationRes =
-    // biome-ignore lint/plugin/noExpensiveConversationFetch: need actionRequired/lastReadAt
+    // biome-ignore lint/plugin/noExpensiveConversationFetch: need actionRequired
     await ConversationResource.fetchConversationWithParticipantState(
       auth,
       conversationId
@@ -146,6 +146,8 @@ export async function createSandboxChildAction(
   }
 
   const conversation = conversationRes.value;
+  // Wire shape for helpers that still take ConversationWithoutContentType.
+  const conversationJson = conversation.toJSON();
 
   // JIT servers cover tools added via the conversation input bar, skill
   // servers cover tools attached through skills. Resolve the server config
@@ -155,14 +157,14 @@ export async function createSandboxChildAction(
   // are derived from it.
   const jitServers = await getJITServers(auth, {
     agentConfiguration,
-    conversation,
+    conversation: conversationJson,
     attachments: [],
   });
   const { skillServers, systemSkillServers } = await resolveSkillMCPServers(
     auth,
     {
       agentConfiguration,
-      conversation,
+      conversation: conversationJson,
     }
   );
 
@@ -271,7 +273,7 @@ export async function createSandboxChildAction(
     actionConfiguration: fullToolConfiguration,
     agentMessage,
     augmentedInputs: rawInputs,
-    conversation,
+    conversation: conversationJson,
     status: persistedStatus,
     stepContent: parentAction.stepContent,
     stepContext: {
@@ -297,7 +299,7 @@ export async function createSandboxChildAction(
     await updateResourceAndPublishEvent(auth, {
       event: approvalRequirementEvent,
       agentMessage,
-      conversation,
+      conversation: conversationJson,
       step: parentAction.stepContent.step,
     });
 
@@ -321,7 +323,7 @@ export async function createSandboxChildAction(
     return new Ok({
       actionId: action.sId,
       pauseSandbox: () =>
-        pauseSandboxBashForBlockedChild(auth, action, conversation),
+        pauseSandboxBashForBlockedChild(auth, action, conversationJson),
     });
   }
 

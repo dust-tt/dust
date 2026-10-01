@@ -11,8 +11,8 @@ import { ModelSelectionSchema } from "@app/types/assistant/models/types";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
-import type { MutableRefObject, ReactNode } from "react";
-import { createContext, useCallback, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
+import { createContext, useCallback, useMemo, useState } from "react";
 
 const STICKY_MODEL_OVERRIDE_STORAGE_KEY = "inputBarModelOverride_v1";
 
@@ -91,6 +91,9 @@ export const InputBarContext = createContext<{
   setSelectedAgent: (agentMention: RichAgentMention | null) => void;
   selectedSingleAgent: RichAgentMention | null;
   setSelectedSingleAgent: (agentMention: RichAgentMention | null) => void;
+  // When true, new-conversation default agent resolution is skipped (e.g. ?user=).
+  suppressDefaultAgent: boolean;
+  setSuppressDefaultAgent: (suppress: boolean) => void;
   getAndClearPendingInputText: () => PendingInputText | null;
   setPendingInputText: (
     text: string | null,
@@ -110,9 +113,6 @@ export const InputBarContext = createContext<{
   setIsLoadingGoTemplate: (loading: boolean) => void;
   stickyModelOverride: ModelSelectionType | undefined;
   setStickyModelOverride: (selection: ModelSelectionType | undefined) => void;
-  // Imperative handle published by the input bar's model picker so components
-  // outside the input bar (e.g. the sidebar banner) can open its menu.
-  openModelPickerRef: MutableRefObject<(() => void) | null>;
   fileUploaderService: FileUploaderService;
   captureActions?: CaptureActions;
   // Fired right before submit; the extension uses it to snapshot browser tab state.
@@ -124,6 +124,8 @@ export const InputBarContext = createContext<{
   setSelectedAgent: () => {},
   selectedSingleAgent: null,
   setSelectedSingleAgent: () => {},
+  suppressDefaultAgent: false,
+  setSuppressDefaultAgent: () => {},
   getAndClearPendingInputText: () => null,
   setPendingInputText: () => {},
   pendingSkill: null,
@@ -135,7 +137,6 @@ export const InputBarContext = createContext<{
   setIsLoadingGoTemplate: () => {},
   stickyModelOverride: undefined,
   setStickyModelOverride: () => {},
-  openModelPickerRef: { current: null },
   fileUploaderService: {
     acceptedFileExtensions: [],
     fileBlobs: [],
@@ -165,17 +166,28 @@ export function InputBarContextProvider({
 }: InputBarContextProviderProps) {
   const [shouldFocusInput, setShouldFocusInput] = useState<boolean>(false);
 
-  // Set by the input bar's model picker while it is mounted; null otherwise.
-  const openModelPickerRef = useRef<(() => void) | null>(null);
-
   // Useful when a component needs to set the selected agent for the input bar but do not have direct access to the input bar.
   const [selectedAgent, setSelectedAgent] = useState<RichAgentMention | null>(
     null
   );
 
+  // Skip new-conversation default agent (@dust / personal default), e.g. after ?user=.
+  const [suppressDefaultAgent, setSuppressDefaultAgent] = useState(false);
+
   // Persistent agent selection for single-agent input mode (displayed in the agent picker button).
-  const [selectedSingleAgent, setSelectedSingleAgent] =
+  const [selectedSingleAgent, setSelectedSingleAgentState] =
     useState<RichAgentMention | null>(null);
+
+  const setSelectedSingleAgent = useCallback(
+    (agentMention: RichAgentMention | null) => {
+      if (agentMention) {
+        // Explicit picker / URL agent selection re-enables default-agent resolution.
+        setSuppressDefaultAgent(false);
+      }
+      setSelectedSingleAgentState(agentMention);
+    },
+    []
+  );
 
   // Useful when a component needs to pre-fill the input bar with text.
   const [pendingInputText, setPendingInputTextState] =
@@ -279,6 +291,8 @@ export function InputBarContextProvider({
       setSelectedAgent: setSelectedAgentOuter,
       selectedSingleAgent,
       setSelectedSingleAgent,
+      suppressDefaultAgent,
+      setSuppressDefaultAgent,
       getAndClearPendingInputText,
       setPendingInputText,
       pendingSkill,
@@ -290,7 +304,6 @@ export function InputBarContextProvider({
       setIsLoadingGoTemplate,
       stickyModelOverride,
       setStickyModelOverride,
-      openModelPickerRef,
       captureActions,
       fileUploaderService,
       onBeforeSubmit,
@@ -300,6 +313,8 @@ export function InputBarContextProvider({
       getAndClearSelectedAgent,
       setSelectedAgentOuter,
       selectedSingleAgent,
+      setSelectedSingleAgent,
+      suppressDefaultAgent,
       getAndClearPendingInputText,
       setPendingInputText,
       pendingSkill,

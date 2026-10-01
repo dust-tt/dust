@@ -9,7 +9,7 @@ const SYSTEM_SKILLS_BY_ID: Map<string, SystemSkillDefinition> = new Map(
   SYSTEM_SKILLS_ARRAY.map((skill) => [skill.sId, skill])
 );
 
-// Type derived from the actual array.
+/** @internal Type derived from the actual array; used by test factories. */
 export type SystemSkillId = (typeof SYSTEM_SKILLS_ARRAY)[number]["sId"];
 
 export class SystemSkillsRegistry {

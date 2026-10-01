@@ -4,6 +4,7 @@ import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_
 import type { AutomationTriggerCreditDestination } from "@app/lib/api/analytics/automations/breakdown";
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
 import { formatCredits } from "@app/lib/client/credits";
+import { formatNumber } from "@app/lib/i18n/format";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { LoadingBlock, Tooltip } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
@@ -168,7 +169,7 @@ export function AutomationsTriggerBreakdown({
         primaryText={
           <>
             <span className="font-semibold text-foreground">
-              {trigger.runCount.toLocaleString()}
+              {formatNumber(trigger.runCount)}
             </span>{" "}
             <span className="text-muted-foreground">times</span>
           </>

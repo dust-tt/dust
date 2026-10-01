@@ -7,23 +7,6 @@ const PostMCPHeartbeatRequestBodySchema = z.object({
   serverId: z.string(),
 });
 
-export type PostMCPHeartbeatRequestBody = z.infer<
-  typeof PostMCPHeartbeatRequestBodySchema
->;
-
-interface MCPServerHeartbeatSuccess {
-  expiresAt: string;
-  success: true;
-}
-
-interface MCPServerHeartbeatFailure {
-  success: false;
-}
-
-export type HeartbeatMCPResponseType =
-  | MCPServerHeartbeatSuccess
-  | MCPServerHeartbeatFailure;
-
 // Mounted at /api/w/:wId/mcp/heartbeat.
 const app = workspaceApp();
 

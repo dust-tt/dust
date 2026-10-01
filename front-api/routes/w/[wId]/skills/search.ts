@@ -19,6 +19,7 @@ app.post(
     const auth = ctx.get("auth");
     const {
       query,
+      searchType,
       limit,
       offset,
       permissionFiltering,
@@ -34,6 +35,8 @@ app.post(
       facets,
       sortBy,
       sortOrder,
+      defaultToFavorites,
+      excludeSkillId,
     } = ctx.req.valid("json");
     if (permissionFiltering === "redact_unreadable" && !auth.isAdmin()) {
       return apiError(ctx, {
@@ -46,10 +49,13 @@ app.post(
     }
     const result = await searchSkillListings(auth, {
       searchTerm: query,
+      searchType,
       limit,
       offset,
       sortBy,
       sortOrder,
+      defaultToFavorites,
+      excludeSkillId,
       permissionFiltering,
       facets,
       filters: {

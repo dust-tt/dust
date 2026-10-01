@@ -324,6 +324,12 @@ export function toFunctionTool(
   };
 }
 
+/**
+ * @cc [owner:pmilliotte,label:backend] deferred-tools-are-flat-functions
+ * Deferred tools MUST be emitted as top-level `type: "function"` tools, never nested in a
+ * `type: "namespace"` group: `namespaceDeferredFunctionCalls` assumes each deferred function's
+ * namespace is its own name. Emitting groups requires mapping member names to the group name there.
+ */
 export function toolSpecsToOpenAITools(
   tools: ToolSpecification[],
   {
@@ -340,6 +346,27 @@ export function toolSpecsToOpenAITools(
   return converted.some((tool) => tool.defer_loading)
     ? [OPENAI_TOOL_SEARCH_TOOL, ...converted]
     : converted;
+}
+
+// OpenAI namespaces a deferred flat function under its own name and rejects a
+// replayed call without it. Calls made by another provider carry no namespace.
+export function namespaceDeferredFunctionCalls(
+  input: ResponseInputItem[],
+  tools: Tool[]
+): ResponseInputItem[] {
+  const deferredNames = new Set(
+    tools.flatMap((tool) =>
+      tool.type === "function" && tool.defer_loading ? [tool.name] : []
+    )
+  );
+
+  return input.map((item) =>
+    item.type === "function_call" &&
+    !item.namespace &&
+    deferredNames.has(item.name)
+      ? { ...item, namespace: item.name }
+      : item
+  );
 }
 
 export function forceToolToToolChoice(

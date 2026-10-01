@@ -1,3 +1,5 @@
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock event publishing functions before importing the module
@@ -75,6 +77,19 @@ import type { AgentMention, MentionType } from "@app/types/assistant/mentions";
 import { isRichUserMention } from "@app/types/assistant/mentions";
 import { Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
+
+async function toAgentResource(
+  auth: Authenticator,
+  configuration: { sId: string; version: number }
+): Promise<AgentResource> {
+  const [agent] = await AgentResource.fetchByIdsAndVersions(
+    auth,
+    [{ agentId: configuration.sId, agentVersion: configuration.version }],
+    { dangerouslySkipFetchCheck: true }
+  );
+  assert(agent, `Unexpected: agent ${configuration.sId} not found`);
+  return agent;
+}
 
 describe("dismissMention", () => {
   let workspace: WorkspaceType;
@@ -673,7 +688,7 @@ describe("dismissMention", () => {
       const modelResolution = await resolveModelForMentionedAgent(
         refreshedAuth,
         {
-          configuration: agentConfig,
+          agent: await toAgentResource(refreshedAuth, agentConfig),
         }
       );
 

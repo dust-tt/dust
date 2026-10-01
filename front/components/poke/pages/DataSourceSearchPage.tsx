@@ -1,8 +1,9 @@
 import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { timeAgoFrom } from "@app/lib/client/relative_time";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
-import { classNames, timeAgoFrom } from "@app/lib/utils";
+import { classNames } from "@app/lib/utils";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
 import type { DocumentType } from "@app/types/document";
@@ -226,7 +227,7 @@ export function DataSourceSearchPage() {
                       </div>
                       <div className="col-span-1 text-right">
                         <p className="text-align-right text-sm text-gray-500">
-                          {timeAgoFrom(d.timestamp)} ago
+                          {timeAgoFrom(d.timestamp)}
                         </p>
                       </div>
                     </div>

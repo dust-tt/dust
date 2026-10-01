@@ -105,17 +105,27 @@
   },
   {
     "sId": "ConvBuildingConv03",
-    "title": "Skill references in agent changes",
+    "title": "Skill and agent references in agent changes",
     "agentName": "Dust",
     "exchanges": [
       {
         "user": {
           "sId": "ConvBuildingUMsg10",
-          "content": ":mention[Dust]{sId=dust} Decisions from our meetings get lost. Can you create a DecisionLog skill, add it to :mention[TeamAssistant]{sId=__TEAM_ASSISTANT_AGENT_SID__}, and set up a MeetingPrep agent that uses it too?"
+          "content": ":mention[Dust]{sId=dust} Decisions from our meetings get lost. Can you create a DecisionLog skill, add it to :mention[TeamAssistant]{sId=__TEAM_ASSISTANT_AGENT_SID__}, and set up a MeetingPrep agent that uses it too and that TeamAssistant can call?"
         },
         "agent": {
           "sId": "ConvBuildingAMsg10",
-          "content": "Here is a new :build_skill[DecisionLog]{sId=__DECISION_LOG_SKILL_SID__} skill, added to TeamAssistant, and a new MeetingPrep agent created with it. Both agents use the skill this batch creates, so they are reviewed as one change:\n\n:batch_edit[]{sId=__SKILL_REFERENCES_BATCH_SID__}"
+          "content": "Here is a new :build_skill[DecisionLog]{sId=__DECISION_LOG_SKILL_SID__} skill, added to TeamAssistant, and a new MeetingPrep agent created with it and added as a sub-agent of TeamAssistant. The agent changes use the skill and the agent this batch creates, so they are reviewed as one change:\n\n:batch_edit[]{sId=__REFERENCES_BATCH_SID__}"
+        }
+      },
+      {
+        "user": {
+          "sId": "ConvBuildingUMsg11",
+          "content": ":mention[Dust]{sId=dust} Sales questions mix pricing and everything else. Can you create a SalesLead agent that hands pricing to a new PricingHelper agent and the rest to :mention[TeamAssistant]{sId=__TEAM_ASSISTANT_AGENT_SID__}?"
+        },
+        "agent": {
+          "sId": "ConvBuildingAMsg11",
+          "content": "Here is a new SalesLead agent created with two sub-agents: a new PricingHelper agent from this batch, and TeamAssistant:\n\n:batch_edit[]{sId=__CREATED_SUB_AGENTS_BATCH_SID__}"
         }
       }
     ]

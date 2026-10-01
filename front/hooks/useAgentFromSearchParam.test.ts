@@ -12,6 +12,8 @@ const {
   searchParamHolder,
   selectedSingleAgentHolder,
   setSelectedAgent,
+  suppressDefaultAgentHolder,
+  userSearchParamHolder,
 } = vi.hoisted(() => ({
   activeConversationIdHolder: { current: null as string | null },
   agentConfigurationErrorHolder: {
@@ -24,10 +26,13 @@ const {
   searchParamHolder: { current: null as string | null },
   selectedSingleAgentHolder: { current: null as RichAgentMention | null },
   setSelectedAgent: vi.fn(),
+  suppressDefaultAgentHolder: { current: false },
+  userSearchParamHolder: { current: null as string | null },
 }));
 
 vi.mock("@app/lib/platform", () => ({
-  useSearchParam: () => searchParamHolder.current,
+  useSearchParam: (name: string) =>
+    name === "user" ? userSearchParamHolder.current : searchParamHolder.current,
   useAppRouter: () => ({ replace: replaceMock }),
 }));
 
@@ -50,6 +55,9 @@ vi.mock(
       InputBarContext: createContext({
         get selectedSingleAgent() {
           return selectedSingleAgentHolder.current;
+        },
+        get suppressDefaultAgent() {
+          return suppressDefaultAgentHolder.current;
         },
         setSelectedAgent,
       }),
@@ -107,6 +115,8 @@ describe("useAgentFromSearchParam", () => {
     replaceMock.mockClear();
     activeConversationIdHolder.current = null;
     searchParamHolder.current = null;
+    userSearchParamHolder.current = null;
+    suppressDefaultAgentHolder.current = false;
     agentConfigurationErrorHolder.current = undefined;
     agentConfigurationHolder.current = null;
     selectedSingleAgentHolder.current = null;
@@ -224,6 +234,55 @@ describe("useAgentFromSearchParam", () => {
 
     renderHook(() => useAgentFromSearchParam("w_1"));
 
+    expect(replaceMock).not.toHaveBeenCalled();
+  });
+
+  it("does not mirror a selected agent into the URL while ?user= is present", () => {
+    setUrl("?user=user_1");
+    userSearchParamHolder.current = "user_1";
+    selectedSingleAgentHolder.current = makeMention("dust");
+
+    renderHook(() => useAgentFromSearchParam("w_1"));
+
+    expect(replaceMock).not.toHaveBeenCalled();
+    expect(setSelectedAgent).not.toHaveBeenCalled();
+  });
+
+  it("does not mirror a selected agent while suppressDefaultAgent is set", () => {
+    suppressDefaultAgentHolder.current = true;
+    selectedSingleAgentHolder.current = makeMention("dust");
+
+    renderHook(() => useAgentFromSearchParam("w_1"));
+
+    expect(replaceMock).not.toHaveBeenCalled();
+    expect(setSelectedAgent).not.toHaveBeenCalled();
+  });
+
+  it("does not apply ?agent= from the URL while ?user= is present", () => {
+    setUrl("?user=user_1&agent=dust");
+    userSearchParamHolder.current = "user_1";
+    searchParamHolder.current = "dust";
+    agentConfigurationHolder.current = makeAgentConfiguration("dust");
+
+    renderHook(() => useAgentFromSearchParam("w_1"));
+
+    expect(setSelectedAgent).not.toHaveBeenCalled();
+    expect(replaceMock).not.toHaveBeenCalled();
+  });
+
+  it("applies ?agent= even when suppressDefaultAgent is set after a user deep-link", async () => {
+    suppressDefaultAgentHolder.current = true;
+    setUrl("?agent=agent_1");
+    searchParamHolder.current = "agent_1";
+    agentConfigurationHolder.current = makeAgentConfiguration("agent_1");
+
+    renderHook(() => useAgentFromSearchParam("w_1"));
+
+    await waitFor(() => expect(setSelectedAgent).toHaveBeenCalledTimes(1));
+    expect(setSelectedAgent).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "agent_1", type: "agent" })
+    );
+    // Mirroring stays off until suppress is cleared by applying the selection.
     expect(replaceMock).not.toHaveBeenCalled();
   });
 

@@ -1,5 +1,6 @@
 import Custom404 from "@app/components/pages/Custom404";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { timeAgoFrom } from "@app/lib/client/relative_time";
 import {
   LinkWrapper,
   useRequiredPathParam,
@@ -7,7 +8,7 @@ import {
 } from "@app/lib/platform";
 import { useApp, useRuns } from "@app/lib/swr/apps";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
-import { classNames, timeAgoFrom } from "@app/lib/utils";
+import { classNames } from "@app/lib/utils";
 import type { RunRunType, RunStatus } from "@app/types/run";
 import { Button, Spinner } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
@@ -199,7 +200,7 @@ export function RunsPage() {
                     </span>
                   </div>
                   <div className="mt-2 flex items-center pr-1 text-sm text-muted-foreground sm:mt-0">
-                    <p>{timeAgoFrom(run.created)} ago</p>
+                    <p>{timeAgoFrom(run.created)}</p>
                   </div>
                 </div>
               </div>

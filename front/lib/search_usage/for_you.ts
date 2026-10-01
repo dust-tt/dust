@@ -14,9 +14,9 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { distributedLock, distributedUnlock } from "@app/lib/lock";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { RESOURCES_PREFIX } from "@app/lib/resources/string_ids";
 import type { SearchUsageDimension } from "@app/lib/search_usage/usage";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { cacheWithRedisResult } from "@app/lib/utils/cache";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { Result } from "@app/types/shared/result";
@@ -25,48 +25,27 @@ import { isNumber, isString } from "@app/types/shared/utils/general";
 import type { estypes } from "@elastic/elasticsearch";
 
 /**
- * Discovery "For You" reads consumption analytics through two independent
- * data paths, split by what can be shared between viewers.
- *
- * 1. Group pools (shared). A bounded shortlist query selects candidate IDs per
- *    eligible group, then keyed filters recompute their distinct-user counts
- *    and the group's active-user count across all shards. Nothing in these
- *    queries is viewer-specific, so each recomputed group pool is cached on its
- *    own key and reused by every member. One workspace lock serializes refreshes
- *    when any requested pool is missing.
- * 2. Viewer profile (per viewer). One query counts the viewer's distinct
- *    conversations per agent and skill over the same window. Cached per
- *    viewer.
+ * Discovery "For You" reads consumption analytics through group pools shared
+ * between viewers. A bounded shortlist query selects candidate IDs per
+ * eligible group, then keyed filters recompute their distinct-user counts and
+ * the group's active-user count across all shards. Nothing in these queries is
+ * viewer-specific, so each recomputed group pool is cached on its own key and
+ * reused by every member. One workspace lock serializes refreshes when any
+ * requested pool is missing.
  */
 const FOR_YOU_ADOPTION_WINDOW_DAYS = 30;
 const FOR_YOU_SHORTLIST_PER_GROUP_AND_TYPE = 25;
 // Safety ceiling only; normal viewers use all their eligible groups.
 const FOR_YOU_MAX_ELIGIBLE_GROUPS = 50;
-const FOR_YOU_VIEWER_RESOURCES_PER_TYPE = 1_000;
 const FOR_YOU_CARDINALITY_PRECISION_THRESHOLD = 1_000;
 const GROUP_POOL_CACHE_TTL_MS = 60 * 60 * 1000;
 const GROUP_POOL_REFRESH_LOCK_TTL_MS = 30 * 1000;
-const VIEWER_USAGE_CACHE_TTL_MS = 60 * 60 * 1000;
-const DISCOVERY_FOR_YOU_ALGORITHM_VERSION = "v1";
-
-// Group size carries two opposing signals: larger cohorts make adoption more
-// trustworthy, while smaller cohorts are likely more personally relevant.
-// We are intentionally bounding these effects. Each of these parameters below
-// are based on empirical observations. We SHOULD tune these as we see fit.
-
-// How quickly we trust a group's adoption rate: activeUsers / (activeUsers + 5).
-const SMALL_GROUP_CONFIDENCE_USERS = 5;
-// Floor on that confidence term. Adoption is multiplied by
-// (0.5 + 0.5 × confidence), so a tiny group keeps at least half its signal.
-const MINIMUM_CONFIDENCE_WEIGHT = 0.5;
-// Bounded preference for closer groups: 1 + 0.25 / sqrt(activeUsers + 1).
-// About +18% at one active user, fading toward zero as the group grows.
-const SMALL_GROUP_BOOST_WEIGHT = 0.25;
+const DISCOVERY_FOR_YOU_ALGORITHM_VERSION = "v2";
+// A group 25x smaller weighs about 10x more at equal adoption: 25^0.7 ≈ 10.
+const GROUP_SIZE_PENALTY_EXPONENT = 0.7;
 
 const ACTIVE_USERS_AGG = "active_users";
 const USERS_AGG = "users";
-const CONVERSATIONS_AGG = "conversations";
-const CONVERSATION_ID_FIELD = "conversation_id";
 
 type CardinalityAggregationResult = {
   value?: number | null;
@@ -109,20 +88,6 @@ type GroupPoolAggregations = {
   group_pools?: Record<string, GroupPoolBucket | undefined>;
 };
 
-type ViewerUsageBucket = {
-  key?: string;
-  conversations?: CardinalityAggregationResult;
-};
-
-type ViewerResourceAggregation = {
-  buckets?: Array<ViewerUsageBucket | null>;
-};
-
-type ViewerUsageAggregations = {
-  agents?: ViewerResourceAggregation;
-  skills?: ViewerResourceAggregation;
-};
-
 type GroupPoolCandidate = {
   resourceType: SearchUsageDimension;
   resourceId: string;
@@ -140,11 +105,6 @@ type CachedGroupPool = {
   candidates: GroupPoolCandidate[];
 };
 
-type ViewerUsageProfile = {
-  agents: Record<string, number>;
-  skills: Record<string, number>;
-};
-
 export type DiscoveryForYouCandidate = {
   resourceType: SearchUsageDimension;
   resourceId: string;
@@ -152,7 +112,6 @@ export type DiscoveryForYouCandidate = {
   reasonGroupId: string;
   users: number;
   groupActiveUsers: number;
-  viewerConversations: number;
 };
 
 function isNonNegativeFiniteNumber(value: unknown): value is number {
@@ -180,11 +139,13 @@ function cardinalityAggregation(
 }
 
 function resourcePoolAggregation(
-  field: string
+  field: string,
+  include?: string
 ): estypes.AggregationsAggregationContainer {
   return {
     terms: {
       field,
+      include,
       size: FOR_YOU_SHORTLIST_PER_GROUP_AND_TYPE,
       order: [{ [USERS_AGG]: "desc" }, { _key: "asc" }],
     },
@@ -209,21 +170,6 @@ function recomputedResourceAggregation(
     },
     aggs: {
       [USERS_AGG]: cardinalityAggregation(CONSUMPTION_DIMENSION_FIELDS.user),
-    },
-  };
-}
-
-function viewerResourceAggregation(
-  field: string
-): estypes.AggregationsAggregationContainer {
-  return {
-    terms: {
-      field,
-      size: FOR_YOU_VIEWER_RESOURCES_PER_TYPE,
-      order: [{ _count: "desc" }, { _key: "asc" }],
-    },
-    aggs: {
-      [CONVERSATIONS_AGG]: cardinalityAggregation(CONVERSATION_ID_FIELD),
     },
   };
 }
@@ -356,28 +302,6 @@ function parseGroupPools(
   return new Ok(pools);
 }
 
-function parseViewerUsageBuckets(
-  aggregation: ViewerResourceAggregation | undefined
-): Result<Record<string, number>, ElasticsearchError> {
-  const buckets = aggregation?.buckets;
-  if (!Array.isArray(buckets)) {
-    return incompleteForYouSnapshot();
-  }
-
-  const usage: Record<string, number> = {};
-  for (const bucket of buckets) {
-    if (!isString(bucket?.key)) {
-      return incompleteForYouSnapshot();
-    }
-    const conversations = parseCardinality(bucket.conversations);
-    if (conversations.isErr()) {
-      return conversations;
-    }
-    usage[bucket.key] = conversations.value;
-  }
-  return new Ok(usage);
-}
-
 function groupPoolCacheKey(workspaceId: string, groupId: string): string {
   return [
     "discovery-for-you-group-pool",
@@ -489,7 +413,10 @@ async function fetchAndCacheDiscoveryGroupPools(
         },
         aggs: {
           agents: resourcePoolAggregation(CONSUMPTION_DIMENSION_FIELDS.agent),
-          skills: resourcePoolAggregation(CONSUMPTION_DIMENSION_FIELDS.skill),
+          skills: resourcePoolAggregation(
+            CONSUMPTION_DIMENSION_FIELDS.skill,
+            `${RESOURCES_PREFIX.skill}_.*`
+          ),
         },
       },
     },
@@ -595,73 +522,6 @@ async function fetchAndCacheDiscoveryGroupPools(
   return new Ok(null);
 }
 
-async function fetchDiscoveryViewerUsageUncached(
-  auth: Authenticator,
-  viewerId: string
-): Promise<Result<ViewerUsageProfile, ElasticsearchError>> {
-  const end = new Date();
-  const start = new Date(end);
-  start.setUTCDate(start.getUTCDate() - FOR_YOU_ADOPTION_WINDOW_DAYS);
-
-  const query = buildConsumptionScopeQuery({
-    auth,
-    startDate: start.toISOString(),
-    endDate: end.toISOString(),
-    extraFilters: [
-      { terms: { context_origin: USER_USAGE_ORIGINS } },
-      { term: { [CONSUMPTION_DIMENSION_FIELDS.user]: viewerId } },
-    ],
-  });
-  const result = await searchConsumptionAnalytics<
-    never,
-    ViewerUsageAggregations
-  >(query, {
-    size: 0,
-    allow_partial_search_results: false,
-    aggregations: {
-      agents: viewerResourceAggregation(CONSUMPTION_DIMENSION_FIELDS.agent),
-      skills: viewerResourceAggregation(CONSUMPTION_DIMENSION_FIELDS.skill),
-    },
-  });
-  if (result.isErr()) {
-    return result;
-  }
-  const agents = result.value.aggregations?.agents;
-  const skills = result.value.aggregations?.skills;
-  if (result.value.timed_out || (result.value._shards?.failed ?? 0) > 0) {
-    return incompleteForYouSnapshot();
-  }
-
-  const agentUsage = parseViewerUsageBuckets(agents);
-  if (agentUsage.isErr()) {
-    return agentUsage;
-  }
-  const skillUsage = parseViewerUsageBuckets(skills);
-  if (skillUsage.isErr()) {
-    return skillUsage;
-  }
-  return new Ok({
-    agents: agentUsage.value,
-    skills: skillUsage.value,
-  });
-}
-
-const fetchCachedDiscoveryViewerUsage = cacheWithRedisResult(
-  fetchDiscoveryViewerUsageUncached,
-  (auth, viewerId) =>
-    [
-      DISCOVERY_FOR_YOU_ALGORITHM_VERSION,
-      auth.getNonNullableWorkspace().sId,
-      viewerId,
-    ].join(":"),
-  {
-    cacheId: "discovery-for-you-viewer-usage",
-    ttlMs: VIEWER_USAGE_CACHE_TTL_MS,
-    useDistributedLock: true,
-    skipIfLocked: true,
-  }
-);
-
 async function fetchCachedDiscoveryGroupPools(
   auth: Authenticator,
   groupIds: string[]
@@ -714,85 +574,41 @@ async function fetchCachedDiscoveryGroupPools(
   );
 }
 
-function viewerConversationsForCandidate(
-  candidate: GroupPoolCandidate,
-  usage: ViewerUsageProfile
-): number {
-  return candidate.resourceType === "agent"
-    ? (usage.agents[candidate.resourceId] ?? 0)
-    : (usage.skills[candidate.resourceId] ?? 0);
+function groupContribution(users: number, activeUsers: number): number {
+  return users / activeUsers / activeUsers ** GROUP_SIZE_PENALTY_EXPONENT;
 }
 
-function localOpportunity({
-  users,
-  groupActiveUsers,
-}: {
-  users: number;
-  groupActiveUsers: number;
-}): number {
-  if (groupActiveUsers <= 0 || users <= 0) {
-    return 0;
-  }
-
-  const smoothedAdoption = (users + 1) / (groupActiveUsers + 2);
-  const confidence =
-    groupActiveUsers / (groupActiveUsers + SMALL_GROUP_CONFIDENCE_USERS);
-  const reliableAdoption =
-    smoothedAdoption *
-    (MINIMUM_CONFIDENCE_WEIGHT + (1 - MINIMUM_CONFIDENCE_WEIGHT) * confidence);
-  const smallGroupModifier =
-    1 + SMALL_GROUP_BOOST_WEIGHT / Math.sqrt(groupActiveUsers + 1);
-
-  return reliableAdoption * smallGroupModifier;
-}
-
-function rankCandidates(
-  pools: CachedGroupPool[],
-  usage: ViewerUsageProfile
-): DiscoveryForYouCandidate[] {
+function rankCandidates(pools: CachedGroupPool[]): DiscoveryForYouCandidate[] {
   const candidates = new Map<string, DiscoveryForYouCandidate>();
 
   for (const pool of pools) {
+    if (pool.activeUsers <= 0) {
+      continue;
+    }
     for (const candidate of pool.candidates) {
       if (
-        candidate.resourceType === "agent" &&
-        candidate.resourceId === GLOBAL_AGENTS_SID.DUST
+        candidate.users <= 0 ||
+        (candidate.resourceType === "agent" &&
+          candidate.resourceId === GLOBAL_AGENTS_SID.DUST)
       ) {
         continue;
       }
 
-      const viewerConversations = viewerConversationsForCandidate(
-        candidate,
-        usage
-      );
-      const opportunity = localOpportunity({
+      const contribution = groupContribution(candidate.users, pool.activeUsers);
+      const key = `${candidate.resourceType}:${candidate.resourceId}`;
+      const current = candidates.get(key);
+      if (current && current.score >= contribution) {
+        continue;
+      }
+
+      candidates.set(key, {
+        resourceType: candidate.resourceType,
+        resourceId: candidate.resourceId,
+        score: contribution,
+        reasonGroupId: pool.groupId,
         users: candidate.users,
         groupActiveUsers: pool.activeUsers,
       });
-      if (opportunity <= 0) {
-        continue;
-      }
-      const novelty = 1 / Math.sqrt(viewerConversations + 1);
-      const score = opportunity * novelty;
-      const key = `${candidate.resourceType}:${candidate.resourceId}`;
-      const current = candidates.get(key);
-
-      if (
-        !current ||
-        score > current.score ||
-        (score === current.score &&
-          pool.groupId.localeCompare(current.reasonGroupId) < 0)
-      ) {
-        candidates.set(key, {
-          resourceType: candidate.resourceType,
-          resourceId: candidate.resourceId,
-          score,
-          reasonGroupId: pool.groupId,
-          users: candidate.users,
-          groupActiveUsers: pool.activeUsers,
-          viewerConversations,
-        });
-      }
     }
   }
 
@@ -810,14 +626,12 @@ function rankCandidates(
  * window, cached independently per group, and protected by a workspace refresh lock. Cache misses
  * MUST be rechecked after acquiring the lock, then use bounded per-group shortlists followed by
  * keyed-filter recomputation of candidate and active-user metrics across all shards.
- * Viewer usage MUST be measured as distinct conversations and remain a continuous novelty penalty;
- * omitted viewer terms MAY be treated as zero, and no candidate may be excluded because of a
- * behavioral usage threshold. Eligible groups MUST come from current workspace membership and be
- * capped at 50 in stable ID order. Ranking MUST use the candidate's strongest group opportunity,
- * combining smoothed group adoption, bounded confidence shrinkage, a bounded smaller-group boost,
- * and continuous viewer novelty. A candidate with no active group users or no resource users MUST
- * be omitted. A timed-out, shard-failed, or malformed response MUST return an error. Callers MUST
- * recheck permissions and availability before display.
+ * Eligible groups MUST come from current workspace membership and be capped at 50 in stable ID
+ * order. A candidate's score MUST be the maximum over the viewer's groups of its adoption rate in
+ * the group (users over active users) divided by active users raised to a fixed exponent, so
+ * smaller groups weigh more at equal adoption and overlapping groups do not stack. Dust-provided skills MUST NOT be candidates. A candidate
+ * with no active group users or no resource users MUST be omitted. A timed-out, shard-failed, or
+ * malformed response MUST return an error. Callers MUST recheck permissions and availability before display.
  * A concurrent cache miss MAY return `Ok(null)`.
  */
 export async function fetchDiscoveryForYouCandidates(
@@ -836,19 +650,13 @@ export async function fetchDiscoveryForYouCandidates(
     return new Ok([]);
   }
 
-  const [pools, usage] = await Promise.all([
-    fetchCachedDiscoveryGroupPools(auth, eligibleGroupIds),
-    fetchCachedDiscoveryViewerUsage(auth, viewer.sId),
-  ]);
+  const pools = await fetchCachedDiscoveryGroupPools(auth, eligibleGroupIds);
   if (pools.isErr()) {
     return pools;
   }
-  if (usage.isErr()) {
-    return usage;
-  }
-  if (pools.value === null || usage.value === null) {
+  if (pools.value === null) {
     return new Ok(null);
   }
 
-  return new Ok(rankCandidates(pools.value, usage.value));
+  return new Ok(rankCandidates(pools.value));
 }

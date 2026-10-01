@@ -5,6 +5,7 @@ import {
   SkillLastEditedCell,
 } from "@app/components/skills/SkillTableCells";
 import { EntityTooltipCard } from "@app/components/workspace/analytics/creditsTableCells";
+import { formatNumber } from "@app/lib/i18n/format";
 import { getSkillAvatarIcon, isDustProvidedSkill } from "@app/lib/skill";
 import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -38,6 +39,7 @@ const SKILL_SEARCH_NAME_COLUMN_WIDTH =
 
 interface SkillSearchTableProps {
   owner: LightWorkspaceType;
+  readOnly?: boolean;
   skills: SkillListItemType[];
   onSelect: (skillId: string) => void;
   onRefresh: () => void;
@@ -58,8 +60,8 @@ type SkillSearchRow = SkillListItemType & { onClick: () => void };
 // closes and an in-flight checkbox click is lost.
 /**
  * @cc [owner:tdraier,label:react;performance] stable-columns
- * `columns` MUST only be rebuilt when `onSelect`, `onRefresh` or `owner` change, never on data the
- * table loads itself. Callers MUST keep `onSelect` and `onRefresh` referentially stable while the
+ * `columns` MUST only be rebuilt when `onSelect`, `onRefresh`, `owner` or `readOnly` change, never
+ * on data the table loads itself. Callers MUST keep `onSelect` and `onRefresh` referentially stable while the
  * search inputs are unchanged.
  */
 /**
@@ -71,8 +73,13 @@ type SkillSearchRow = SkillListItemType & { onClick: () => void };
  * The loaded table and its loading skeleton MUST use the same density.
  * Skeleton cells MUST match the loaded cells' alignment, visual sizes and spacing.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:product] batch-selection-availability
+ * The selection column MUST be hidden when none of the displayed skills satisfy `canSelect`.
+ */
 export function SkillSearchTable({
   owner,
+  readOnly = false,
   skills,
   onSelect,
   onRefresh,
@@ -216,7 +223,11 @@ export function SkillSearchTable({
           enableMultiSort: false,
           cell: ({ row: { original: skill } }) => (
             <DataTable.BasicCellContent
-              label={skill.activeUsersCount?.toLocaleString() ?? "-"}
+              label={
+                skill.activeUsersCount === null
+                  ? "-"
+                  : formatNumber(skill.activeUsersCount)
+              }
               tooltip={
                 skill.activeUsersCount === null
                   ? "Usage is not available for this skill."
@@ -251,7 +262,7 @@ export function SkillSearchTable({
           id: "actions" as const,
           header: "",
           cell: ({ row: { original: skill } }) =>
-            skill.status === "archived" ? null : (
+            readOnly || skill.status === "archived" ? null : (
               <SkillSearchActionsMenu
                 owner={owner}
                 skillId={skill.sId}
@@ -262,7 +273,16 @@ export function SkillSearchTable({
           meta: { className: "w-14" },
         },
       ] satisfies ColumnDef<SkillSearchRow>[],
-    [onRefresh, onSelect, owner]
+    [onRefresh, onSelect, owner, readOnly]
+  );
+
+  const hasSelectableRows = !readOnly && skills.some(canSelect);
+  const visibleColumns = useMemo(
+    () =>
+      hasSelectableRows
+        ? columns
+        : columns.filter((column) => column.id !== "select"),
+    [columns, hasSelectableRows]
   );
 
   // Show skeletons only when no rows are available; keep previous results during refreshes.
@@ -271,7 +291,7 @@ export function SkillSearchTable({
     return (
       <div role="status" aria-label="Loading skills">
         <DataTableSkeleton
-          columns={columns}
+          columns={visibleColumns}
           rowCount={12}
           density="default"
           SkeletonCell={({ columnId, rowIndex }) => {
@@ -324,7 +344,7 @@ export function SkillSearchTable({
         ...skill,
         onClick: () => onSelect(skill.sId),
       }))}
-      columns={columns}
+      columns={visibleColumns}
       density="default"
       getRowId={(skill) => skill.sId}
       enableRowSelection={(row) => canSelect(row.original)}

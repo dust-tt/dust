@@ -11,6 +11,7 @@ import {
   getPriceAsString,
   useUserBillingCurrency,
 } from "@app/lib/client/subscription";
+import { formatNumber } from "@app/lib/i18n/format";
 import {
   FREE_SEAT_LIFETIME_AWU_CREDITS,
   MAX_SEAT_MONTHLY_AWU_CREDITS,
@@ -169,7 +170,7 @@ export function FreePlanCard({ onStartFree }: FreePlanCardProps) {
       icon={LayerSingle}
       seatType="free"
       name="Free"
-      credits={FREE_SEAT_LIFETIME_AWU_CREDITS.toLocaleString()}
+      credits={formatNumber(FREE_SEAT_LIFETIME_AWU_CREDITS)}
       creditsLabel="credits"
       priceLabel="One-time · never expires"
       features={["Credits never reset", "Full access to every Dust feature"]}
@@ -216,7 +217,7 @@ export function PaidPlanCards({
         icon={LayersTwo01}
         seatType="pro"
         name={seatTypeDisplayName("pro")}
-        credits={PRO_SEAT_MONTHLY_AWU_CREDITS.toLocaleString()}
+        credits={formatNumber(PRO_SEAT_MONTHLY_AWU_CREDITS)}
         creditsLabel="credits/mo"
         priceLabel={`${getPriceAsString({ currency, priceInCents: proSeatCost * 100 })}/seat/mo · billed ${period}`}
         features={["Refills every month", "Full access to every Dust feature"]}
@@ -240,7 +241,7 @@ export function PaidPlanCards({
         icon={LayersThree01}
         seatType="max"
         name={seatTypeDisplayName("max")}
-        credits={MAX_SEAT_MONTHLY_AWU_CREDITS.toLocaleString()}
+        credits={formatNumber(MAX_SEAT_MONTHLY_AWU_CREDITS)}
         creditsLabel="credits/mo"
         priceLabel={`${getPriceAsString({ currency, priceInCents: maxSeatCost * 100 })}/seat/mo · billed ${period}`}
         features={["Refills every month", "Full access to every Dust feature"]}

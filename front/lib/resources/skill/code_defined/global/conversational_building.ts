@@ -16,6 +16,7 @@ import {
   WORKSPACE_MANAGEMENT_SERVER_NAME,
 } from "@app/lib/api/actions/servers/workspace_management/metadata";
 import {
+  ARCHITECTURE_GUIDANCE_SECTION,
   bestPracticesSection,
   blockAwareEditingSection,
   CONTRADICTORY_INFORMATION_SECTION,
@@ -23,7 +24,6 @@ import {
   generalizationOverExamplesSection,
   KNOWLEDGE_GUIDANCE_SECTION,
   llmCentricSuggestionsSection,
-  MODEL_GUIDANCE_LINE,
   responseStyleSection,
   SKILLS_TOOLS_GUIDANCE_SECTION,
   workflowVisualizationSection,
@@ -81,7 +81,7 @@ Determine what the user wants to achieve with this interaction. If it is not cle
 
 Step 4: Plan the change
 Build a plan from the retrieved configuration and the user's intent. Do not call \`${SUGGEST}\` yet.
-Apply <good_entity>, <preserve_entity_goals> and, depending on the entity, <agent_guidance> or <skill_guidance>.
+Apply <good_entity>, <architecture_guidance>, <preserve_entity_goals> and, depending on the entity, <agent_guidance> or <skill_guidance>.
 Determine which research is required (see <company_data_guidance>).
 It is acceptable to change the plan mid-execution based on findings.
 
@@ -101,7 +101,7 @@ Tools operate on entity ids, not names. Use these tools to get up-to-date inform
 - \`${managementToolName(LIST_SKILLS_TOOL_NAME)}\`: find all skills and resolve a name to an id.
 - \`${managementToolName(LIST_TOOLS_TOOL_NAME)}\`: find the tools that can be equipped on agents and skills and resolve a name to an id.
 - \`${managementToolName(GET_TOOL_DETAILS_TOOL_NAME)}\`: a tool's description and the functions it exposes with their parameters. Use it before referencing a tool in a suggestion.
-- \`${managementToolName(LIST_MODELS_TOOL_NAME)}\`: the models an agent can be set to, with their \`modelId\` and supported reasoning efforts. Use it before suggesting a model change.
+- \`${managementToolName(LIST_MODELS_TOOL_NAME)}\`: the models an agent can be set to, with their \`modelId\` and supported reasoning efforts. Use it before suggesting a model change, except for the tier models of <architecture_guidance> whose \`modelId\` is already known.
 - \`${managementToolName(SEARCH_KNOWLEDGE_TOOL_NAME)}\`: without a query, the knowledge sources (data source views) of the workspace; with a query, the sources and document nodes matching it. Use it before referencing knowledge in a suggestion (see <knowledge_guidance> and <knowledge_nodes>).
 - \`${managementToolName(LIST_WORKSPACE_MEMBERS_TOOL_NAME)}\`: information about members (pass \`userIds\` to look up specific people, e.g. to change an agent's or a skill's editors).
 - \`${buildingToolName(DESCRIBE_SKILL_TOOL_NAME)}\`: a custom skill's name, settings, and instructions as HTML whose blocks carry a \`data-block-id\`. Call it to get any info about a skill before acting on it; the block ids are required to target edits.
@@ -133,7 +133,8 @@ Decide how to split the changes into calls following <batching>.
 All the suggestions sent in one \`${SUGGEST}\` call are reviewed together: the user accepts or rejects them as a whole.
 - Group suggestions in ONE call only when they must be accepted together because they do not make sense alone: accepting some without the others would leave an agent or a skill broken or inconsistent. For example:
   - adding a tool or a skill to an agent, together with the instruction edits telling the agent when to use it;
-  - extracting part of an agent's or a skill's instructions into a new skill: creating the skill, and editing the existing entity to remove the extracted instructions.
+  - extracting part of an agent's or a skill's instructions into a new skill: creating the skill, and editing the existing entity to remove the extracted instructions;
+  - creating an agent together with a new agent it delegates to, linked as its sub-agent by ref.
 - When changes are independent, call the tool once per change, in parallel, so the user can accept or reject each one on its own. For example, renaming several agents to follow a naming convention is one call per agent.
 </batching>`,
 
@@ -155,6 +156,8 @@ Before suggesting a change, understand the entity's purpose from its description
 Improve HOW the entity achieves its goal; do not silently change WHAT the goal is, and do not turn a focused entity into a general-purpose one.
 If the user explicitly asks to change the purpose, do it, but say so.
 </preserve_entity_goals>`,
+
+  architectureGuidance: ARCHITECTURE_GUIDANCE_SECTION,
 
   goodEntity: `<good_entity>
 ${bestPracticesSection(NOUN)}
@@ -181,14 +184,13 @@ This section applies to agents only. An agent's capabilities are configured as s
 ${SKILLS_TOOLS_GUIDANCE_SECTION}
 
 ${KNOWLEDGE_GUIDANCE_SECTION}
-
-${MODEL_GUIDANCE_LINE}
 </agent_guidance>`,
 
   agentCapabilities: `<agent_capabilities>
-Skills and tools are added to or removed from an agent with the \`skills\` and \`tools\` fields of \`edit_agent\`, never by writing about them in its instructions.
+Skills, tools and sub-agents are added to or removed from an agent with the \`skills\`, \`tools\` and \`subAgents\` fields of \`edit_agent\`, or given to a new agent by \`create_agent\`, never by writing about them in its instructions.
 - Skills: take the ids of the skills to add from \`${managementToolName(LIST_SKILLS_TOOL_NAME)}\`; only active skills can be added, and an unpublished skill only by one of its editors. Take the ids of the skills to remove from the agent's skills in \`${buildingToolName(DESCRIBE_AGENT_TOOL_NAME)}\`.
-- Tools: take the ids of the tools to add from \`${managementToolName(LIST_TOOLS_TOOL_NAME)}\`, and the ids of the tools to remove from the agent's tools in \`${buildingToolName(DESCRIBE_AGENT_TOOL_NAME)}\`. Only tools that need no configuration can be added or removed: for a knowledge tool, a sub-agent (Run Agent) or a tool with settings to pick, tell the user to change it from the agent builder.
+- Tools: take the ids of the tools to add from \`${managementToolName(LIST_TOOLS_TOOL_NAME)}\`, and the ids of the tools to remove from the agent's tools in \`${buildingToolName(DESCRIBE_AGENT_TOOL_NAME)}\`. Only tools that need no configuration can be added or removed: for a knowledge tool or a tool with settings to pick, tell the user to change it from the agent builder.
+- Sub-agents: agents the agent can run to delegate a task. Before creating one, apply <architecture_guidance>: NEVER create a sub-agent that only carries instructions, even when the user asks for one, suggest a skill instead. Take the ids of the active agents to add from \`${managementToolName(LIST_AGENTS_TOOL_NAME)}\`, and the ids of the sub-agents to remove from the agent's tools in \`${buildingToolName(DESCRIBE_AGENT_TOOL_NAME)}\`. An agent created in the same call has no id yet but can still be a sub-agent: give its \`create_agent\` a \`ref\` and pass that ref in \`subAgentRefs\` or \`addAgentRefs\`, so both are created and linked in one call. An agent cannot be its own sub-agent.
 - Model: take the \`modelId\` from \`${managementToolName(LIST_MODELS_TOOL_NAME)}\`, resolving the model the user names to its exact \`modelId\`, without the provider prefix \`${buildingToolName(DESCRIBE_AGENT_TOOL_NAME)}\` shows. Only pass a \`reasoningEffort\` the model lists as supported, and only when the user asks for one or the model change calls for it.
 - Structured output: Only set structured output when explicitly requested, see <structured_output>.
 - Prefer adding a skill that wraps a tool over adding the tool alone (see <skills_tools_guidance>).
@@ -246,8 +248,8 @@ Suggestions: \`${SUGGEST}\`, with:
 - \`title\`: a short, action-oriented title for the whole call (max 25 characters).
 - \`analysis\`: why these changes are needed (max 255 characters).
 - \`suggestions\`: the changes, one item per entity, discriminated by \`kind\`:
-  - \`create_agent\`: a new agent from a \`name\`, a \`description\` and \`instructions\` (HTML).
-  - \`edit_agent\`: changes to an existing agent, by \`agentId\`: \`name\`, \`description\`, \`instructionEdits\` (block-targeted, see <block_aware_editing>), \`modelId\` with an optional \`reasoningEffort\`, \`scope\` (\`visible\` to publish, \`hidden\` to unpublish), \`structuredOutput\` (see <structured_output>), \`skills\` (\`addSkillIds\` / \`removeSkillIds\`), \`tools\` (\`addToolIds\` / \`removeToolIds\`), see <agent_capabilities>, and \`editors\`.
+  - \`create_agent\`: a new agent from a \`name\`, a \`description\` and \`instructions\` (HTML), with optional \`toolIds\`, \`skillIds\` / \`skillRefs\` and \`subAgentIds\` / \`subAgentRefs\`, see <agent_capabilities>. Give it a \`ref\` when another suggestion of the call uses it as a sub-agent.
+  - \`edit_agent\`: changes to an existing agent, by \`agentId\`: \`name\`, \`description\`, \`instructionEdits\` (block-targeted, see <block_aware_editing>), \`modelId\` with an optional \`reasoningEffort\`, \`scope\` (\`visible\` to publish, \`hidden\` to unpublish), \`structuredOutput\` (see <structured_output>), \`skills\` (\`addSkillIds\` / \`removeSkillIds\`), \`tools\` (\`addToolIds\` / \`removeToolIds\`), \`subAgents\` (\`addAgentIds\` / \`addAgentRefs\` / \`removeAgentIds\`), see <agent_capabilities>, and \`editors\`.
   - \`delete_agent\`: deletes an existing agent, by \`agentId\`.
   - \`create_skill\`: a new skill from a \`name\`, a \`userFacingDescription\`, an \`agentFacingDescription\` and \`instructions\` (HTML).
   - \`edit_skill\`: changes to an existing custom skill, by \`skillId\`: \`name\` (unique among the workspace's active skills), \`userFacingDescription\`, \`agentFacingDescription\`, \`instructionEdits\` (block-targeted, see <block_aware_editing>), \`availability\` (\`editors\`, \`workspace_users\` or \`users_and_agents\`, requires the workspace permission to publish skills), \`addEditorUserIds\` / \`removeEditorUserIds\` (a change leaving the skill without any editor is refused).
@@ -277,6 +279,7 @@ const CONVERSATIONAL_BUILDING_INSTRUCTIONS = [
   SECTIONS.entityMentions,
   SECTIONS.preserveEntityGoals,
   SECTIONS.goodEntity,
+  SECTIONS.architectureGuidance,
   SECTIONS.blockAwareEditing,
   SECTIONS.companyDataGuidance,
   SECTIONS.agentGuidance,
@@ -301,6 +304,6 @@ export const conversationalBuildingSkill = {
     { name: BUILDING_AGENTS_AND_SKILLS_SERVER_NAME },
     { name: WORKSPACE_MANAGEMENT_SERVER_NAME },
   ],
-  version: 1,
+  version: 2,
   icon: "ActionListCheckIcon",
 } as const satisfies GlobalSkillDefinition;

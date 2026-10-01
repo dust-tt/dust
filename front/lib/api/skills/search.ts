@@ -13,6 +13,7 @@ import {
 } from "@app/lib/skill_search/query";
 import { buildSkillDefaultSort } from "@app/lib/skill_search/ranking";
 import { toSkillListItem } from "@app/lib/skill_search/serialization";
+import type { SearchType } from "@app/types/api/search";
 import type {
   SkillSearchFacet,
   SkillSearchFacetValues,
@@ -85,6 +86,13 @@ function buildFacetAggregation(
  * requirements. Pagination reads the live index; concurrent index changes may cause skips or
  * duplicates.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:product] empty-query-favorite-skills
+ * With defaultToFavorites and a blank query, return only the current user's active, readable
+ * favorites matching the search filters, alphabetically, excluding excludeSkillId. Archived
+ * favorites MUST NOT participate in this default list. If none match, or the query is nonblank,
+ * preserve ordinary search. Favorite selection MUST retain authorization, filters and pagination.
+ */
 export async function searchSkills(
   auth: Authenticator,
   {
@@ -93,9 +101,12 @@ export async function searchSkills(
     sortBy,
     sortOrder,
     facets = [],
+    defaultToFavorites = false,
+    excludeSkillId,
     ...options
   }: {
     searchTerm: string;
+    searchType?: SearchType;
     facets?: SkillSearchFacet[];
     filters?: SkillSearchFilters;
     permissionFiltering?: SkillSearchPermissionFiltering;
@@ -103,10 +114,26 @@ export async function searchSkills(
     offset?: number;
     sortBy?: SkillSearchSort;
     sortOrder?: SkillSearchSortOrder;
+    defaultToFavorites?: boolean;
+    excludeSkillId?: string;
   }
 ) {
   if (offset + limit > MAX_SKILL_SEARCH_WINDOW) {
     return new Err("offset_out_of_range" as const);
+  }
+
+  let favoriteIds: string[] = [];
+  if (defaultToFavorites && !options.searchTerm.trim()) {
+    const favorites = await SkillResource.listFavoritesForCurrentUser(auth, {
+      withInstructions: false,
+      withTools: false,
+      withFileAttachments: false,
+    });
+    favoriteIds = favorites
+      .filter(
+        (skill) => skill.sId !== excludeSkillId && auth.can("read", skill)
+      )
+      .map((skill) => skill.sId);
   }
 
   const codeDefinedSkillIds =
@@ -116,26 +143,48 @@ export async function searchSkills(
     codeDefinedSkillIds,
   });
 
-  const result = await withEs((client) =>
-    client.search<SkillSearchDocument, SkillSearchAggregations>({
-      index: SKILL_SEARCH_ALIAS_NAME,
-      _source: true,
-      query,
-      from: offset,
-      size: limit,
-      track_total_hits: true,
-      sort: buildSkillDefaultSort({ sortBy, sortOrder }),
-      ...(facets.length > 0
-        ? {
-            aggs: Object.fromEntries(
-              facets.map((facet) => [facet, buildFacetAggregation(facet)])
-            ),
-          }
-        : {}),
-    })
-  );
+  const fetchResults = (favoritesOnly: boolean) =>
+    withEs((client) =>
+      client.search<SkillSearchDocument, SkillSearchAggregations>({
+        index: SKILL_SEARCH_ALIAS_NAME,
+        _source: true,
+        query: favoritesOnly
+          ? { bool: { filter: [query, { terms: { skill_id: favoriteIds } }] } }
+          : query,
+        from: offset,
+        size: limit,
+        track_total_hits: true,
+        sort: buildSkillDefaultSort(
+          favoritesOnly
+            ? { sortBy: "name", sortOrder: "asc" }
+            : { sortBy, sortOrder }
+        ),
+        ...(facets.length > 0
+          ? {
+              aggs: Object.fromEntries(
+                facets.map((facet) => [facet, buildFacetAggregation(facet)])
+              ),
+            }
+          : {}),
+      })
+    );
+  let favoritesOnly = favoriteIds.length > 0;
+  let result = await fetchResults(favoritesOnly);
   if (result.isErr()) {
     return result;
+  }
+  const matchingFavorites = result.value.hits.total;
+  if (
+    favoritesOnly &&
+    (isNumber(matchingFavorites)
+      ? matchingFavorites
+      : (matchingFavorites?.value ?? 0)) === 0
+  ) {
+    favoritesOnly = false;
+    result = await fetchResults(false);
+    if (result.isErr()) {
+      return result;
+    }
   }
   const { hits, total } = result.value.hits;
   const totalCount = isNumber(total) ? total : (total?.value ?? 0);

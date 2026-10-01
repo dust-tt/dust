@@ -1,6 +1,6 @@
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
+import { timeAgoFrom } from "@app/lib/client/relative_time";
 import { usePokeConnectorPermissions } from "@app/lib/swr/poke";
-import { timeAgoFrom } from "@app/lib/utils";
 import type { ConnectorPermission } from "@app/types/connectors/connectors_api";
 import type { DataSourceType } from "@app/types/data_source";
 import type { WorkspaceType } from "@app/types/user";

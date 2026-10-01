@@ -8,6 +8,7 @@ import {
 } from "@app/lib/api/actions/servers/microsoft/utils";
 import { makeExcelRequest } from "@app/lib/api/actions/servers/microsoft_excel/helpers";
 import { MICROSOFT_EXCEL_TOOLS_METADATA } from "@app/lib/api/actions/servers/microsoft_excel/metadata";
+import { formatNumber } from "@app/lib/i18n/format";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
@@ -106,7 +107,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_EXCEL_TOOLS_METADATA> = {
         if (cellCount > MAX_CELLS) {
           return new Err(
             new MCPError(
-              `Range exceeds the ${MAX_CELLS.toLocaleString()} cell limit (requested ${cellCount.toLocaleString()}). Use a smaller range.`
+              `Range exceeds the ${formatNumber(MAX_CELLS)} cell limit (requested ${formatNumber(cellCount)}). Use a smaller range.`
             )
           );
         }
@@ -128,7 +129,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_EXCEL_TOOLS_METADATA> = {
         if (cellCount > MAX_CELLS) {
           return new Err(
             new MCPError(
-              `The used range (${usedRangeInfo.address}) contains ${cellCount.toLocaleString()} cells, exceeding the ${MAX_CELLS.toLocaleString()} cell limit. Specify a range parameter to read a subset.`
+              `The used range (${usedRangeInfo.address}) contains ${formatNumber(cellCount)} cells, exceeding the ${formatNumber(MAX_CELLS)} cell limit. Specify a range parameter to read a subset.`
             )
           );
         }

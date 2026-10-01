@@ -2,7 +2,7 @@ import { GroupManagersField } from "@app/components/groups/GroupManagersField";
 import { useGroupManagerAppointmentReview } from "@app/components/groups/useGroupManagerAppointmentReview";
 import type { SearchMemberType } from "@app/components/members/MemberSelectionTable";
 import { MemberSelectionTable } from "@app/components/members/MemberSelectionTable";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useCreateGroup, useGroup, useUpdateGroup } from "@app/lib/swr/groups";
 import type { GroupWithAllowedActions } from "@app/types/api/groups";
 import type { GroupType } from "@app/types/groups";
@@ -40,7 +40,6 @@ export function GroupDialog({
 }: GroupDialogProps) {
   const isEdit = groupId !== null;
 
-  const { isAdmin } = useAuth();
   const { group, members, managers, isGroupLoading } = useGroup({
     owner,
     groupId,
@@ -50,7 +49,8 @@ export function GroupDialog({
   // Managing the membership of a group that grants the admin role is restricted
   // to admins: adding a member escalates them to admin. Managers can view but
   // not edit such a group.
-  const isReadOnlyForManager = !isAdmin && group?.grantedRole === "admin";
+  const isReadOnlyForManager =
+    isEdit && group?.allowedActions?.canEditMembers !== true;
 
   // In edit mode we wait for the group and its members before mounting the
   // form so the member table can seed its selection from the fetched members.
@@ -123,6 +123,8 @@ function GroupForm({
   const { doCreateGroup, isCreating } = useCreateGroup({ owner });
   const { doUpdateGroup, isUpdating } = useUpdateGroup({ owner, groupId });
   const isSubmitting = isCreating || isUpdating;
+  const canEditDetails =
+    !groupId || group?.allowedActions?.canEditDetails === true;
   const canAssignManagers = group?.allowedActions?.canAssignManagers === true;
   const { confirmAppointment } = useGroupManagerAppointmentReview({
     group,
@@ -161,7 +163,7 @@ function GroupForm({
     }
     if (hasGroupChanges) {
       const result = await doUpdateGroup({
-        name: name.trim(),
+        name: name.trim() !== initialName ? name.trim() : undefined,
         memberIds: Array.from(selectedMemberIds),
       });
       if (!result) {
@@ -204,7 +206,7 @@ function GroupForm({
     <>
       <DialogContainer>
         <div className="flex flex-col gap-5">
-          {readOnly && (
+          {readOnly && group?.grantedRole === "admin" && (
             <ContentMessage
               variant="warning"
               icon={InfoCircle}
@@ -221,7 +223,7 @@ function GroupForm({
             placeholder="e.g. Sales"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            disabled={readOnly}
+            disabled={readOnly || !canEditDetails}
             autoFocus
           />
           {group && canAssignManagers && (

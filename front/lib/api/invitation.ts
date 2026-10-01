@@ -38,31 +38,6 @@ import { MembershipInvitationResource } from "../resources/membership_invitation
 
 const EMAIL_CONCURRENCY = 8;
 
-export async function getInvitation(
-  auth: Authenticator,
-  {
-    invitationId,
-  }: {
-    invitationId: string;
-  }
-): Promise<MembershipInvitationType | null> {
-  const owner = auth.workspace();
-  if (!owner || !auth.isManager()) {
-    return null;
-  }
-
-  const invitation = await MembershipInvitationResource.fetchById(
-    auth,
-    invitationId
-  );
-
-  if (!invitation) {
-    return null;
-  }
-
-  return invitation.toJSON();
-}
-
 async function sendWorkspaceInvitationEmail(
   owner: WorkspaceType,
   user: UserType,

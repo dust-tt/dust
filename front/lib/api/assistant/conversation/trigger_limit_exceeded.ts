@@ -9,9 +9,10 @@ import {
 } from "@app/lib/api/assistant/conversation/messages";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
+import { toLightAgentConfiguration } from "@app/lib/resources/agent_resource_serialization";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ConversationWithoutContentType,
   UserMessageContext,
@@ -41,13 +42,13 @@ export async function createTriggerLimitExceededMessages(
   auth: Authenticator,
   {
     conversation,
-    agentConfiguration,
+    agent,
     content,
     context,
     error,
   }: {
     conversation: ConversationWithoutContentType;
-    agentConfiguration: LightAgentConfigurationType;
+    agent: AgentResource;
     content: string;
     context: UserMessageContext;
     error: { type: APIErrorType; message: string };
@@ -63,7 +64,12 @@ export async function createTriggerLimitExceededMessages(
   });
 
   const modelResolution = await resolveModelForMentionedAgent(auth, {
-    configuration: agentConfiguration,
+    agent,
+  });
+  // The failed agent message carries its agent's configuration on the wire.
+  const agentConfiguration = await toLightAgentConfiguration(auth, agent, {
+    withFavorites: false,
+    withTags: false,
   });
 
   const enrichedContext: UserMessageContext = {
@@ -145,10 +151,6 @@ export async function createTriggerLimitExceededMessages(
   });
 
   if (!conversation.title) {
-    await ConversationResource.updateTitle(
-      auth,
-      conversation.sId,
-      agentConfiguration.name
-    );
+    await ConversationResource.updateTitle(auth, conversation.sId, agent.name);
   }
 }

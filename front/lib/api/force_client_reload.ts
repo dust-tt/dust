@@ -3,28 +3,6 @@ import logger from "@app/logger/logger";
 import { Octokit } from "@octokit/core";
 
 const REDIS_KEY = "force_reload_commits";
-const CACHE_REFRESH_INTERVAL_MS = 60_000; // 60 seconds.
-
-let cachedCommits: Set<string> = new Set();
-let lastRefreshMs = 0;
-
-async function refreshCache(): Promise<void> {
-  const now = Date.now();
-  if (now - lastRefreshMs < CACHE_REFRESH_INTERVAL_MS) {
-    return;
-  }
-
-  cachedCommits = new Set(await getFlaggedCommits());
-  lastRefreshMs = now;
-}
-
-export async function shouldForceClientReload(
-  commitHash: string
-): Promise<boolean> {
-  await refreshCache();
-
-  return cachedCommits.has(commitHash);
-}
 
 export async function getFlaggedCommits(): Promise<string[]> {
   return runOnRedis({ origin: "force_reload_commits" }, (client) =>

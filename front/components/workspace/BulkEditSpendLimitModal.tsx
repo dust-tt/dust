@@ -219,9 +219,7 @@ function BulkEditSpendLimitForm({
             />
             {removeRequested && (
               <p className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                {`Personal limit${pluralize(memberCount)} will be removed for ` +
-                  `${memberCount.toLocaleString("en-US")} member${pluralize(memberCount)}. ` +
-                  "They will fall back to the workspace default."}
+                {`Personal limit${pluralize(memberCount)} will be removed for ${memberCount.toLocaleString("en-US")} member${pluralize(memberCount)}. They will fall back to the workspace default.`}
               </p>
             )}
           </div>

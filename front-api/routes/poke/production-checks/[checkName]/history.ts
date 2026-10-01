@@ -8,8 +8,6 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
-export type { GetCheckHistoryResponseBody };
-
 const ParamsSchema = z.object({
   checkName: z.string(),
 });

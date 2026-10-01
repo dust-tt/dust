@@ -10,7 +10,6 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
 import type {
   GetSpacesResponseBody,
-  PostSpaceRequestBodyType,
   PostSpacesResponseBody,
 } from "@app/types/api/spaces";
 import { PostSpaceRequestBodySchema } from "@app/types/api/spaces";
@@ -31,12 +30,6 @@ import accessCheck from "./access-check";
 import checkName from "./check-name";
 import projectsLookup from "./projects-lookup";
 import searchProjects from "./search_projects";
-
-export type {
-  GetSpacesResponseBody,
-  PostSpaceRequestBodyType,
-  PostSpacesResponseBody,
-};
 
 // Mounted under /api/w/:wId/spaces. workspaceAuth is applied by the parent
 // workspace sub-app, so ctx.get("auth") is always available here.

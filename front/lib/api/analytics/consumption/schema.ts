@@ -67,10 +67,6 @@ export const ConsumptionTimeseriesBodySchema = ConsumptionBodySchema.extend({
     .default(DEFAULT_CONSUMPTION_BREAKDOWN_COUNT),
 });
 
-export type ConsumptionTimeseriesBody = z.infer<
-  typeof ConsumptionTimeseriesBodySchema
->;
-
 // Every `top-*` endpoint takes the same body as any other consumption
 // endpoint, plus how many rows to rank.
 export const ConsumptionTopBodySchema = ConsumptionBodySchema.extend({

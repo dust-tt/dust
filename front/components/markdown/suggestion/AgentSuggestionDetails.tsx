@@ -316,6 +316,7 @@ export function AgentSuggestionDetails({
         instructions,
         toolIds = [],
         skillIds = [],
+        subAgentIds = [],
       } = suggestion.suggestion;
       return (
         <div className="flex flex-col gap-3">
@@ -357,6 +358,18 @@ export function AgentSuggestionDetails({
                   owner={owner}
                   action="add"
                   toolId={toolId}
+                />
+              ))}
+            </SuggestedChangesSection>
+          )}
+          {subAgentIds.length > 0 && (
+            <SuggestedChangesSection label="Sub-agents">
+              {subAgentIds.map((subAgentId) => (
+                <SuggestedSubAgentRow
+                  key={subAgentId}
+                  owner={owner}
+                  action="add"
+                  childAgentId={subAgentId}
                 />
               ))}
             </SuggestedChangesSection>

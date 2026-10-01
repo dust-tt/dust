@@ -68,8 +68,6 @@ function getWorkerDirectory(workerName: WorkerName): string | null {
       return path.join(baseDir, "temporal/hard_delete");
     case "invitations":
       return path.join(baseDir, "temporal/invitations");
-    case "labs":
-      return path.join(baseDir, "temporal/labs/transcripts");
     case "mentions_count":
       return path.join(baseDir, "temporal/mentions_count_queue");
     case "mentions_queue":

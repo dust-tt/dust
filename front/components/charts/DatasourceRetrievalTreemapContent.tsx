@@ -2,6 +2,7 @@ import {
   buildColorClass,
   INDEXED_COLORS,
 } from "@app/components/agent_builder/observability/constants";
+import { formatNumber } from "@app/lib/i18n/format";
 import type { ConnectorProvider } from "@app/types/data_source";
 import { cn } from "@dust-tt/sparkle";
 
@@ -119,7 +120,7 @@ export function DatasourceRetrievalTreemapContent({
   const groupValue = typeof root?.value === "number" ? root.value : null;
   const groupLabel =
     groupValue !== null
-      ? `${groupName} — ${groupValue.toLocaleString()}`
+      ? `${groupName} — ${formatNumber(groupValue)}`
       : groupName;
   const shouldShowGroupLabel =
     shouldShowGroupOutline &&
@@ -189,7 +190,7 @@ export function DatasourceRetrievalTreemapContent({
                 buildColorClass(baseColor, VALUE_COLOR_VARIANT)
               )}
             >
-              {value.toLocaleString()}
+              {formatNumber(value)}
             </div>
           </div>
         </foreignObject>

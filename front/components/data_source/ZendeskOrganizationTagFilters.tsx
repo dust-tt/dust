@@ -27,9 +27,7 @@ export function ZendeskOrganizationTagFilters({
       isAdmin={isAdmin}
       title="Organization Tag Filters"
       description={
-        "Include or exclude tickets from the sync based on their associated organization. " +
-        "These filters only apply to future syncing and will not retroactively remove " +
-        "already-synced tickets."
+        "Include or exclude tickets from the sync based on their associated organization. These filters only apply to future syncing and will not retroactively remove already-synced tickets."
       }
       tagFilters={organizationTagFilters}
       addTag={addOrganizationTag}

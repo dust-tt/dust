@@ -1,4 +1,5 @@
-import dayjs from "dayjs";
+import { formatDateTime } from "@app/lib/i18n/format";
+import { formatDate } from "@app/lib/utils/timestamps";
 
 export { isPastedFile } from "@app/lib/files";
 
@@ -21,7 +22,7 @@ export const getDisplayDateFromPastedFileId = (
       .replace("_", " ")
       // convert the "-" in time part into ":" to make it a valid date
       .replace(/-(\d{2})-(\d{2})$/, ":$1:$2");
-    return new Date(datePart).toLocaleString(undefined, {
+    return formatDateTime(new Date(datePart), {
       dateStyle: "short",
       timeStyle: "short",
     });
@@ -30,5 +31,5 @@ export const getDisplayDateFromPastedFileId = (
 };
 
 export const getPastedFileName = (count: number): string => {
-  return `pasted-text-${count}_${dayjs().format("YYYY-MM-DD_HH-mm-ss")}.txt`;
+  return `pasted-text-${count}_${formatDate(new Date(), "yyyy-MM-dd_HH-mm-ss")}.txt`;
 };

@@ -1,19 +1,11 @@
 import { redeemPoolTopupCoupon } from "@app/lib/metronome/coupons";
 import { CouponResource } from "@app/lib/resources/coupon_resource";
-import type { CouponType } from "@app/types/coupon";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-// `coupon` JSON-serializes to the wire (Date -> ISO string); the response type
-// mirrors `CouponType` but is what the handler actually returns via ctx.json.
-export type PostCouponRedeemResponseBody = {
-  coupon: CouponType;
-  redemptionId: string;
-};
 
 const PostCouponRedeemBodySchema = z.object({
   code: z.string().min(1),

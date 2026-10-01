@@ -1,3 +1,4 @@
+import { compareStrings } from "@app/lib/i18n/format";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 
 export const rankAgentsByPopularity = (
@@ -162,7 +163,7 @@ const compareSuffixes = (suffixA: string, suffixB: string) => {
   }
 
   // Fallback to alphabetical
-  return suffixA.localeCompare(suffixB);
+  return compareStrings(suffixA, suffixB);
 };
 
 const isInternal = (agent: LightAgentConfigurationType) => {

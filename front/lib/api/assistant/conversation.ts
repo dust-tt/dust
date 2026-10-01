@@ -1,6 +1,3 @@
-import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
-import type { StepContext } from "@app/lib/actions/types";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { fetchPrecedingContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { cleanupDeniedBlockedActions } from "@app/lib/api/assistant/conversation/blocked_actions";
@@ -94,12 +91,6 @@ import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString } from "@app/lib/mentions/format";
 import { isFreeOrigin } from "@app/lib/metronome/events";
 import { getWorkspaceCreditPoolStatus } from "@app/lib/metronome/user_block";
-import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
-import {
-  AgentMCPActionModel,
-  AgentMCPActionOutputItemModel,
-} from "@app/lib/models/agent/actions/mcp";
-import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
   AgentMessageModel,
   ConversationModel,
@@ -113,6 +104,7 @@ import { isEnterpriseOrDust } from "@app/lib/plans/plan_codes";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toLightAgentConfiguration } from "@app/lib/resources/agent_resource_serialization";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import type { RunningAgentMessageContext } from "@app/lib/resources/conversation_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -139,17 +131,13 @@ import type {
   ContentFragmentInputWithFileIdType,
 } from "@app/types/api/assistant";
 import { isContentFragmentInputWithContentNode } from "@app/types/api/assistant";
-import type {
-  AgentConfigurationStatus,
-  ToolErrorEvent,
-} from "@app/types/assistant/agent";
+import type { ToolErrorEvent } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
   AgenticMessageData,
   AgentMessageStatus,
   AgentMessageType,
   AgentMessageTypeWithoutMentions,
-  CitationType,
   ConversationMetadata,
   ConversationVisibility,
   ConversationWithoutContentType,
@@ -186,7 +174,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import assert from "assert";
 import type { IncomingHttpHeaders } from "http";
 import { col } from "sequelize";
 
@@ -212,15 +200,6 @@ const PROGRAMMATIC_CREDIT_CONCURRENCY_LIMITS: Record<string, number> = {
   active: 1000,
   active_low_balance: 5,
   active_critical_balance: 1,
-};
-
-/** Citations and generated files aggregated from source MCP output items (e.g. branch merge). */
-export type CitationsAndFilesFromOutputItemsType = {
-  citationsAllocated: number;
-  outputItems: Array<{
-    fileId: ModelId | null;
-    citations: Record<string, CitationType> | null;
-  }>;
 };
 
 /**
@@ -716,15 +695,10 @@ export async function postUserMessage(
     });
   }
 
-  // `getAgentConfiguration` checks that we're only pulling a configuration from the
+  // `AgentResource` checks that we're only pulling a configuration from the
   // same workspace or a global one.
   const results = await Promise.all([
-    getAgentConfigurations(auth, {
-      agentIds: mentions
-        .filter(isAgentMention)
-        .map((mention) => mention.configurationId),
-      variant: "extra_light",
-    }),
+    loadMentionedAgents(auth, mentions),
     (() => {
       // If the origin of the user message is "run_agent", we do not want to update the
       // participation of the user so that the conversation does not appear in the user's history.
@@ -740,24 +714,24 @@ export async function postUserMessage(
     })(),
   ]);
 
-  let agentConfigurations = removeNulls(results[0]);
+  const mentionedAgents = results[0];
 
   // Retired global agents can't be invoked (new conversations or new messages).
   // The internal `run_agent` path is exempt: some hidden sub-agents are retired.
   const isInternalRunAgent = agenticMessageData?.type === "run_agent";
 
-  for (const agentConfig of agentConfigurations) {
-    if (!isInternalRunAgent && isRetiredGlobalAgent(agentConfig.sId)) {
+  for (const agent of mentionedAgents) {
+    if (!isInternalRunAgent && isRetiredGlobalAgent(agent.sId)) {
       return new Err({
         status_code: 400,
         api_error: {
           type: "agent_inaccessible",
-          message: `Assistant ${agentConfig.name} is retired and can no longer be used.`,
+          message: `Assistant ${agent.name} is retired and can no longer be used.`,
         },
       });
     }
 
-    if (!canAccessAgent(agentConfig)) {
+    if (!canAccessAgent(auth, agent)) {
       return new Err({
         status_code: 400,
         api_error: {
@@ -770,7 +744,7 @@ export async function postUserMessage(
 
     const isProviderEnabled = isProviderWhitelistedForAuth(
       auth,
-      agentConfig.model.providerId
+      agent.modelConfiguration.providerId
     );
     if (!isProviderEnabled) {
       // Stop processing if any agent uses a disabled provider.
@@ -779,14 +753,16 @@ export async function postUserMessage(
         api_error: {
           type: "model_disabled",
           message:
-            `Assistant ${agentConfig.name} is based on a model that was disabled ` +
+            `Assistant ${agent.name} is based on a model that was disabled ` +
             `by your workspace admin. Please edit the agent to use another model ` +
             `(advanced settings in the Instructions panel).`,
         },
       });
     }
 
-    const supportedModelConfig = getSupportedModelConfig(agentConfig.model);
+    const supportedModelConfig = getSupportedModelConfig(
+      agent.modelConfiguration
+    );
     if (
       !supportedModelConfig ||
       !(
@@ -804,7 +780,7 @@ export async function postUserMessage(
         api_error: {
           type: "invalid_request_error",
           message: "The model is not supported.",
-          model: agentConfig.model,
+          model: agent.modelConfiguration,
         },
       });
     }
@@ -823,21 +799,21 @@ export async function postUserMessage(
     message: { type: "user_message" },
   });
 
-  const mentionedAgentConfiguration = agentConfigurations[0] ?? null;
+  const mentionedAgent = mentionedAgents[0] ?? null;
   const mentionedAgentRestricted = await isAgentRestrictedBySpaceUsage(auth, {
-    configuration: mentionedAgentConfiguration,
+    agent: mentionedAgent,
     conversation,
   });
-  let modelResolution = mentionedAgentConfiguration
+  let modelResolution = mentionedAgent
     ? await resolveModelForMentionedAgent(auth, {
-        configuration: mentionedAgentConfiguration,
+        agent: mentionedAgent,
         selection: modelSelection,
       })
     : null;
 
-  if (user && modelResolution) {
+  if (user && modelResolution && mentionedAgent) {
     const premiumLimitResult = await enforcePremiumModelLimit(auth, {
-      agentConfigurationId: mentionedAgentConfiguration.sId,
+      agentConfigurationId: mentionedAgent.sId,
       user,
       resolution: modelResolution,
       context,
@@ -847,6 +823,15 @@ export async function postUserMessage(
     }
     modelResolution = premiumLimitResult.value;
   }
+
+  // The agent message created for the mention carries its agent's configuration on the wire: only
+  // the mentioned agent is serialized, without favorites or tags, before the transaction below.
+  const mentionedAgentConfiguration = mentionedAgent
+    ? await toLightAgentConfiguration(auth, mentionedAgent, {
+        withFavorites: false,
+        withTags: false,
+      })
+    : null;
 
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages } = await withTransaction(async (t) => {
@@ -1084,20 +1069,33 @@ export async function postUserMessage(
   });
 }
 
+// Mentioned agents the caller holds no verb on are kept, so `canAccessAgent` rejects the message
+// instead of silently dropping the mention: the `canFetch` drop is skipped (see
+// `agent-dangerous-fetch`) and access is decided on `canRead` below.
+async function loadMentionedAgents(
+  auth: Authenticator,
+  mentions: MentionType[]
+): Promise<AgentResource[]> {
+  const agentIds = mentions
+    .filter(isAgentMention)
+    .map((mention) => mention.configurationId);
+  if (agentIds.length === 0) {
+    return [];
+  }
+
+  return AgentResource.fetchByIds(auth, agentIds, {
+    dangerouslySkipFetchCheck: true,
+  });
+}
+
 /**
  * Can a user mention a given configuration
  */
-function canAccessAgent({
-  status,
-  canRead,
-}: {
-  status: AgentConfigurationStatus;
-  canRead: boolean;
-}): boolean {
-  switch (status) {
+function canAccessAgent(auth: Authenticator, agent: AgentResource): boolean {
+  switch (agent.status) {
     case "active":
     case "draft":
-      return canRead;
+      return auth.can("read", agent);
     case "disabled_free_workspace":
     case "disabled_missing_datasource":
     case "disabled_by_admin":
@@ -1105,7 +1103,7 @@ function canAccessAgent({
     case "pending":
       return false;
     default:
-      assertNever(status);
+      assertNever(agent.status);
   }
 }
 
@@ -1196,12 +1194,7 @@ export async function editUserMessage(
   let agentMessages: AgentMessageType[] = [];
 
   const results = await Promise.all([
-    getAgentConfigurations(auth, {
-      agentIds: mentions
-        .filter(isAgentMention)
-        .map((mention) => mention.configurationId),
-      variant: "light",
-    }),
+    loadMentionedAgents(auth, mentions),
     ConversationResource.upsertParticipation(auth, {
       conversation,
       action: "posted",
@@ -1209,10 +1202,10 @@ export async function editUserMessage(
     }),
   ]);
 
-  const agentConfigurations = results[0];
+  const mentionedAgents = results[0];
 
-  for (const agentConfig of agentConfigurations) {
-    if (!canAccessAgent(agentConfig)) {
+  for (const agent of mentionedAgents) {
+    if (!canAccessAgent(auth, agent)) {
       return new Err({
         status_code: 400,
         api_error: {
@@ -1225,7 +1218,7 @@ export async function editUserMessage(
 
     const isProviderEnabled = isProviderWhitelistedForAuth(
       auth,
-      agentConfig.model.providerId
+      agent.modelConfiguration.providerId
     );
     if (!isProviderEnabled) {
       // Stop processing if any agent uses a disabled provider.
@@ -1234,7 +1227,7 @@ export async function editUserMessage(
         api_error: {
           type: "model_disabled",
           message:
-            `Assistant ${agentConfig.name} is based on a model that was disabled ` +
+            `Assistant ${agent.name} is based on a model that was disabled ` +
             `by your workspace admin. Please edit the agent to use another model ` +
             `(advanced settings in the Instructions panel).`,
         },
@@ -1248,23 +1241,23 @@ export async function editUserMessage(
     message: { type: "user_message" },
   });
 
-  const mentionedAgentConfiguration = agentConfigurations[0] ?? null;
+  const mentionedAgent = mentionedAgents[0] ?? null;
 
   const mentionedAgentRestricted = await isAgentRestrictedBySpaceUsage(auth, {
-    configuration: mentionedAgentConfiguration,
+    agent: mentionedAgent,
     conversation,
   });
 
-  let modelResolution = mentionedAgentConfiguration
+  let modelResolution = mentionedAgent
     ? await resolveModelForMentionedAgent(auth, {
-        configuration: mentionedAgentConfiguration,
+        agent: mentionedAgent,
         selection: message.requestedModel ?? undefined,
       })
     : null;
 
-  if (user && modelResolution) {
+  if (user && modelResolution && mentionedAgent) {
     const premiumLimitResult = await enforcePremiumModelLimit(auth, {
-      agentConfigurationId: mentionedAgentConfiguration.sId,
+      agentConfigurationId: mentionedAgent.sId,
       user,
       resolution: modelResolution,
       context: message.context,
@@ -1274,6 +1267,13 @@ export async function editUserMessage(
     }
     modelResolution = premiumLimitResult.value;
   }
+
+  const mentionedAgentConfiguration = mentionedAgent
+    ? await toLightAgentConfiguration(auth, mentionedAgent, {
+        withFavorites: false,
+        withTags: false,
+      })
+    : null;
 
   try {
     // In one big transaction create all Message, UserMessage, AgentMessage, and Mention rows.
@@ -1510,234 +1510,6 @@ export async function handleAgentMessage(
   }
 }
 
-export async function createAgentMessageFromText(
-  auth: Authenticator,
-  {
-    conversation,
-    parentId,
-    rank,
-    content,
-    agentConfiguration,
-    skipToolsValidation = true,
-    citationsAndFilesFromOutputItems,
-  }: {
-    conversation: ConversationWithoutContentType;
-    parentId: ModelId;
-    rank: number;
-    content: string;
-    agentConfiguration: { sId: string; version: number };
-    skipToolsValidation?: boolean;
-    citationsAndFilesFromOutputItems?: CitationsAndFilesFromOutputItemsType;
-  }
-): Promise<{
-  messageModelId: ModelId;
-  messageId: string;
-  agentMessageModelId: ModelId;
-}> {
-  const owner = auth.getNonNullableWorkspace();
-
-  const created = await withTransaction(async (t) => {
-    const agentMessageRow = await AgentMessageModel.create(
-      {
-        status: "succeeded",
-        agentConfigurationId: agentConfiguration.sId,
-        agentConfigurationVersion: agentConfiguration.version,
-        conversationId: conversation.id,
-        workspaceId: owner.id,
-        skipToolsValidation,
-        runIds: null,
-        completedAt: new Date(),
-        modelInteractionDurationMs: 0,
-        prunedContext: false,
-        errorCode: null,
-        errorMessage: null,
-        errorMetadata: null,
-      },
-      { transaction: t }
-    );
-
-    const messageRow = await MessageModel.create(
-      {
-        sId: generateRandomModelSId(),
-        rank,
-        conversationId: conversation.id,
-        parentId,
-        agentMessageId: agentMessageRow.id,
-        workspaceId: owner.id,
-      },
-      { transaction: t }
-    );
-
-    await AgentStepContentModel.create(
-      {
-        workspaceId: owner.id,
-        agentMessageId: agentMessageRow.id,
-        step: 0,
-        index: 0,
-        version: 0,
-        type: "text_content",
-        value: { type: "text_content", value: content },
-      },
-      { transaction: t }
-    );
-
-    if (citationsAndFilesFromOutputItems) {
-      const { citationsAllocated, outputItems } =
-        citationsAndFilesFromOutputItems;
-
-      const functionCallStepContent = await AgentStepContentModel.create(
-        {
-          workspaceId: owner.id,
-          agentMessageId: agentMessageRow.id,
-          step: 0,
-          index: 1,
-          version: 0,
-          type: "function_call",
-          value: {
-            type: "function_call",
-            value: {
-              id: `merged_output_${messageRow.id}`,
-              name: "merged_output",
-              arguments: "{}",
-            },
-          },
-        },
-        { transaction: t }
-      );
-
-      const createdAction = await AgentMCPActionModel.create(
-        {
-          workspaceId: owner.id,
-          mcpServerConfigurationId: "",
-          agentMessageId: agentMessageRow.id,
-          status: "succeeded",
-          citationsAllocated,
-          augmentedInputs: {},
-          toolConfiguration: {} as LightMCPToolConfigurationType,
-          stepContext: {} as StepContext,
-          executionDurationMs: null,
-        },
-        { transaction: t }
-      );
-
-      await AgentStepContentToolExecutionModel.create(
-        {
-          workspaceId: owner.id,
-          conversationId: conversation.id,
-          agentMessageId: agentMessageRow.id,
-          agentMCPActionId: createdAction.id,
-          stepContentId: functionCallStepContent.id,
-        },
-        { transaction: t }
-      );
-
-      if (outputItems.length > 0) {
-        const syntheticMcpOutputContent: CallToolResult["content"][number] = {
-          type: "text",
-          text: "",
-        };
-        await AgentMCPActionOutputItemModel.bulkCreate(
-          outputItems.map((oi) => ({
-            workspaceId: owner.id,
-            agentMCPActionId: createdAction.id,
-            content: syntheticMcpOutputContent,
-            contentGcsPath: null,
-            fileId: oi.fileId,
-            citations: oi.citations,
-          })),
-          { transaction: t }
-        );
-      }
-    }
-
-    return {
-      messageModelId: messageRow.id,
-      messageId: messageRow.sId,
-      agentMessageModelId: agentMessageRow.id,
-    };
-  });
-
-  const conversationResource = await ConversationResource.fetchById(
-    auth,
-    conversation.sId
-  );
-  if (!conversationResource) {
-    logger.error(
-      {
-        workspaceId: owner.sId,
-        conversationId: conversation.sId,
-        messageId: created.messageId,
-      },
-      "createAgentMessageFromText: conversation not found for event publish."
-    );
-    return created;
-  }
-
-  const messageRow = await MessageModel.findOne({
-    where: { id: created.messageModelId, workspaceId: owner.id },
-    include: [
-      {
-        model: AgentMessageModel,
-        as: "agentMessage",
-        required: true,
-      },
-    ],
-  });
-
-  if (!messageRow?.agentMessage) {
-    logger.error(
-      {
-        workspaceId: owner.sId,
-        conversationId: conversation.sId,
-        messageId: created.messageId,
-      },
-      "createAgentMessageFromText: message row missing for batch render."
-    );
-    return created;
-  }
-
-  const renderedRes = await batchRenderMessages(
-    auth,
-    conversationResource,
-    [messageRow],
-    "full"
-  );
-
-  if (renderedRes.isErr()) {
-    logger.error(
-      {
-        workspaceId: owner.sId,
-        conversationId: conversation.sId,
-        messageId: created.messageId,
-        error: renderedRes.error,
-      },
-      "createAgentMessageFromText: batchRenderMessages failed."
-    );
-    return created;
-  }
-
-  const agentMessage = renderedRes.value.find(
-    (m): m is AgentMessageType =>
-      isAgentMessageType(m) && m.sId === created.messageId
-  );
-
-  if (!agentMessage) {
-    logger.error(
-      {
-        workspaceId: owner.sId,
-        conversationId: conversation.sId,
-        messageId: created.messageId,
-      },
-      "createAgentMessageFromText: rendered agent message not found."
-    );
-    return created;
-  }
-
-  await publishAgentMessagesEvents(conversation, [agentMessage]);
-
-  return created;
-}
-
 /**
  * @cc [owner:frankaloia,label:product;api] retry-model-selection
  * A retry with `modelSelection` MUST resolve it through the agent's existing model policy for the
@@ -1847,11 +1619,34 @@ export async function retryAgentMessage(
     await refreshDegradedModelIds();
   }
 
+  // The retry keeps the message's agent version, so the model is resolved against that version,
+  // whatever the caller's current access (checked on the current version below).
+  const [messageAgent] = await AgentResource.fetchByIdsAndVersions(
+    auth,
+    [
+      {
+        agentId: message.configuration.sId,
+        agentVersion: message.configuration.version,
+      },
+    ],
+    { dangerouslySkipFetchCheck: true }
+  );
+  if (!messageAgent) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "Invalid agent message retry request, the agent is no longer available to you.",
+      },
+    });
+  }
+
   // A stream selection (pinned-model tier retry) is re-resolved against the
   // refreshed degraded set. No override preserves the failed concrete model.
   let retryModelResolution: AgentMessageModelResolution = modelSelection
     ? await resolveModelForMentionedAgent(auth, {
-        configuration: message.configuration,
+        agent: messageAgent,
         selection: modelSelection,
       })
     : message.resolvedModel
@@ -1860,7 +1655,7 @@ export async function retryAgentMessage(
           modelResolutionMethod: message.modelResolutionMethod ?? "agent",
         }
       : await resolveModelForMentionedAgent(auth, {
-          configuration: message.configuration,
+          agent: messageAgent,
         });
 
   const user = auth.user();
@@ -1881,13 +1676,7 @@ export async function retryAgentMessage(
     auth,
     message.configuration.sId
   );
-  if (
-    !retryAgent ||
-    !canAccessAgent({
-      status: retryAgent.status,
-      canRead: auth.can("read", retryAgent),
-    })
-  ) {
+  if (!retryAgent || !canAccessAgent(auth, retryAgent)) {
     return new Err({
       status_code: 400,
       api_error: {
@@ -3307,17 +3096,32 @@ export async function updateAgentMessageWithFinalStatus(
   const completedAt = new Date();
   const owner = auth.getNonNullableWorkspace();
 
+  // The message's pinned agent version, whatever the caller's current access: the message was
+  // already authorized when it was created.
+  const [messageAgent] = agentMessage.configuration
+    ? await AgentResource.fetchByIdsAndVersions(
+        auth,
+        [
+          {
+            agentId: agentMessage.configuration.sId,
+            agentVersion: agentMessage.configuration.version,
+          },
+        ],
+        { dangerouslySkipFetchCheck: true }
+      )
+    : [];
+
   const agentRestrictedBySpaceUsage = await isAgentRestrictedBySpaceUsage(
     auth,
     {
-      configuration: agentMessage.configuration,
+      agent: messageAgent ?? null,
       conversation,
     }
   );
 
-  const defaultModelResolution = agentMessage.configuration
+  const defaultModelResolution = messageAgent
     ? await resolveModelForMentionedAgent(auth, {
-        configuration: agentMessage.configuration,
+        agent: messageAgent,
       })
     : null;
 
@@ -3494,12 +3298,16 @@ export async function updateAgentMessageWithFinalStatus(
       transaction: t,
     });
 
+    assert(
+      messageAgent,
+      "Unexpected: the agent message's agent version is missing"
+    );
     // The no-selection default was resolved before the transaction.
     let modelResolution =
       defaultModelResolution && !promotedUserMessage.requestedModel
         ? defaultModelResolution
         : await resolveModelForMentionedAgent(promotedAuth, {
-            configuration: agentMessage.configuration,
+            agent: messageAgent,
             selection: promotedUserMessage.requestedModel ?? undefined,
           });
 

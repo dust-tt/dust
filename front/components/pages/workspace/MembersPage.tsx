@@ -18,14 +18,63 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 
+/**
+ * @cc [owner:philipperolet,label:security;react] scoped-people-page
+ * Delegated callers MUST use managed-only lists and MUST NOT mount workspace invitation, pricing,
+ * seat availability, or verified-domain data hooks. Their editable groups may be fewer than their
+ * visible groups; provisioned and admin-granting groups remain visible.
+ */
 export function MembersPage() {
   const owner = useWorkspace();
-  const { subscription, user } = useAuth();
-  const plan = subscription.plan;
-
+  const { subscription, user, isManager } = useAuth();
   const { tab } = useQueryParams(["tab"]);
   const activeTab = tab.value === "groups" ? "groups" : "members";
 
+  return (
+    <AdminPageContainer>
+      <div className="mb-4">
+        <div className="flex flex-col gap-6">
+          <Page.Header
+            title="People"
+            description="Manage team members and their roles."
+          />
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => tab.setParam(value)}
+          >
+            <TabsList className="mb-6">
+              <TabsTrigger value="members" label="Members" />
+              <TabsTrigger value="groups" label="Groups" />
+            </TabsList>
+            <TabsContent value="members" className="flex flex-col gap-4">
+              {isManager ? (
+                <WorkspacePeopleMembers />
+              ) : (
+                <WorkspaceMembersSection
+                  currentUser={user}
+                  owner={owner}
+                  subscription={subscription}
+                  isProvisioningEnabled={false}
+                  isManualInvitationsEnabled={false}
+                  perSeatPricing={null}
+                  hasAvailableSeats={false}
+                />
+              )}
+            </TabsContent>
+            <TabsContent value="groups" className="flex flex-col gap-4">
+              <WorkspaceGroupsList owner={owner} />
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
+    </AdminPageContainer>
+  );
+}
+
+function WorkspacePeopleMembers() {
+  const owner = useWorkspace();
+  const { subscription, user } = useAuth();
+  const plan = subscription.plan;
   const { verifiedDomains, isVerifiedDomainsLoading } =
     useWorkspaceVerifiedDomains({ workspaceId: owner.sId });
   const { hasAvailableSeats, isSeatAvailabilityLoading } =
@@ -46,15 +95,13 @@ export function MembersPage() {
 
   if (isLoading) {
     return (
-      <AdminPageContainer>
-        <div className="flex h-full items-center justify-center">
-          <Spinner size="lg" />
-        </div>
-      </AdminPageContainer>
+      <div className="flex h-full items-center justify-center">
+        <Spinner size="lg" />
+      </div>
     );
   }
 
-  const membersContent = (
+  return (
     <WorkspaceMembersSection
       currentUser={user}
       owner={owner}
@@ -64,33 +111,5 @@ export function MembersPage() {
       perSeatPricing={perSeatPricing}
       hasAvailableSeats={hasAvailableSeats}
     />
-  );
-
-  return (
-    <AdminPageContainer>
-      <div className="mb-4">
-        <div className="flex flex-col gap-6">
-          <Page.Header
-            title="People"
-            description="Manage team members and their roles."
-          />
-          <Tabs
-            value={activeTab}
-            onValueChange={(value) => tab.setParam(value)}
-          >
-            <TabsList className="mb-6">
-              <TabsTrigger value="members" label="Members" />
-              <TabsTrigger value="groups" label="Groups" />
-            </TabsList>
-            <TabsContent value="members" className="flex flex-col gap-4">
-              {membersContent}
-            </TabsContent>
-            <TabsContent value="groups" className="flex flex-col gap-4">
-              <WorkspaceGroupsList owner={owner} />
-            </TabsContent>
-          </Tabs>
-        </div>
-      </div>
-    </AdminPageContainer>
   );
 }

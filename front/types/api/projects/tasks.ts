@@ -6,35 +6,9 @@ import { POD_TASK_STATUSES } from "@app/types/project_task";
 import type { PodType } from "@app/types/space";
 import { z } from "zod";
 
-export const PatchProjectTaskBodySchema = z
-  .object({
-    text: z
-      .string()
-      .min(1, "Text cannot be empty.")
-      .max(256, "Text must be at most 256 characters.")
-      .optional(),
-    status: z.enum(POD_TASK_STATUSES).optional(),
-    assigneeUserId: z.union([z.string().min(1), z.null()]).optional(),
-  })
-  .refine(
-    (data) =>
-      data.text !== undefined ||
-      data.status !== undefined ||
-      data.assigneeUserId !== undefined,
-    {
-      message:
-        "At least one of text, status, or assigneeUserId must be provided.",
-    }
-  );
-
 export interface PatchPodTaskResponseBody {
   task: PodTaskType;
 }
-
-export const PostStartPodTaskBodySchema = z.object({
-  customMessage: z.string().optional(),
-  agentConfigurationId: z.string().optional(),
-});
 
 export interface PostStartPodTaskResponseBody {
   task: PodTaskType;

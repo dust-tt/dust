@@ -3,6 +3,7 @@ import {
   normalizeCapInput,
 } from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
 import { formatCredits } from "@app/lib/client/credits";
+import { compareStrings } from "@app/lib/i18n/format";
 import type { ReinforcementBillingUnit } from "@app/lib/reinforcement/enforcement";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import {
@@ -389,7 +390,7 @@ export function SelfImprovingSkillsListSection({
         if (spentB !== spentA) {
           return spentB - spentA;
         }
-        return a.name.localeCompare(b.name);
+        return compareStrings(a.name, b.name);
       }),
     [skillsWithRelations, spentBySkillId]
   );

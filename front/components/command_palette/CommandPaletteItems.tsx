@@ -34,7 +34,7 @@ interface ItemTitleProps {
 
 export function ItemTitle({ children }: ItemTitleProps) {
   return (
-    <div className="px-3 pb-1.5 pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+    <div className="px-3 pb-1.5 pt-1 text-xs font-semibold text-muted-foreground">
       {children}
     </div>
   );

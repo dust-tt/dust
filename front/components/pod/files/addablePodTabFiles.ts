@@ -5,6 +5,7 @@ import type {
   FramePackageEntry,
 } from "@app/components/file_explorer/types";
 import type { AddablePodTabFile } from "@app/components/pod/settings/AddPodFileMenu";
+import { compareStrings } from "@app/lib/i18n/format";
 import type { FileSystemEntry } from "@app/types/api/file_system/types";
 import { isFilePreviewableContentType } from "@app/types/file_preview";
 import { frameV2ContentType } from "@app/types/files";
@@ -64,6 +65,6 @@ export function listAddablePodTabFiles({
       contentType: entry.contentType,
     }))
     .sort((a, b) =>
-      a.fileName.localeCompare(b.fileName, undefined, { sensitivity: "base" })
+      compareStrings(a.fileName, b.fileName, { sensitivity: "base" })
     );
 }

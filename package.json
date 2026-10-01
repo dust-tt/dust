@@ -14,7 +14,7 @@
     "viz",
     "sdks/js"
   ],
-  "packageManager": "npm@11.11.0",
+  "packageManager": "npm@11.19.0",
   "scripts": {
     "clean": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +",
     "install:all": "npm install",
@@ -26,7 +26,7 @@
     "test:grit": "command -v grit >/dev/null 2>&1 || { echo 'Error: grit CLI not found. Install it with: brew install getgrit/tap/grit (or: curl -fsSL https://docs.grit.io/install | bash)'; exit 1; } && grit patterns test",
     "doctor": "npx react-doctor@latest --diff",
     "doctor:full": "npx react-doctor@latest --diff false",
-    "knip:dead-code": "knip --production --workspace front --workspace front-api --workspace front-spa --include files,exports,types"
+    "knip:dead-code": "knip --production --workspace front --workspace front-api --workspace front-spa --workspace extension --include files,exports,types"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.1",
@@ -49,6 +49,18 @@
     "@types/node": "^24.12.2",
     "dd-trace": "^5.87.0",
     "esbuild": "^0.27.3",
-    "undici": "^7.24.0"
+    "undici": "^7.24.0",
+    "@novu/framework": {
+      "next": "^14.2.35"
+    },
+    "@google-cloud/storage-transfer": {
+      "google-gax": "^4.6.1"
+    },
+    "@lingui/vite-plugin": {
+      "@babel/core": "^7.29.0"
+    },
+    "@elastic/transport": {
+      "undici": "^6.29.0"
+    }
   }
 }

@@ -1,6 +1,7 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { clientFetch, clientUpload } from "@app/lib/egress/client";
+import { formatFileSize } from "@app/lib/i18n/format";
 import type { FileUploadedRequestResponseBody } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
@@ -19,7 +20,6 @@ import {
   contentTypeFromFileName,
   DEFAULT_FILE_CONTENT_TYPE,
   ensureFileSizeByFormatCategory,
-  fileSizeToHumanReadable,
   getFileFormatCategory,
   getSupportedFileExtensions,
   isSupportedAudioContentType,
@@ -434,7 +434,7 @@ export function useFileUploaderService({
         sendNotification({
           type: "error",
           title: "File too large.",
-          description: `File "${file.name}" (${fileSizeToHumanReadable(file.size)}) exceeds the ${category} limit of ${fileSizeToHumanReadable(maxFileSizes[category])}. Please upload a smaller file.`,
+          description: `File "${file.name}" (${formatFileSize(file.size, { decimals: 0 }, "en-US")}) exceeds the ${category} limit of ${formatFileSize(maxFileSizes[category], { decimals: 0 }, "en-US")}. Please upload a smaller file.`,
         });
       }
 

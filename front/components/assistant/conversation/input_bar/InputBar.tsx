@@ -3,11 +3,10 @@ import { useFileDrop } from "@app/components/assistant/conversation/FileUploader
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
-import InputBarContainer, {
-  INPUT_BAR_ACTIONS,
-} from "@app/components/assistant/conversation/input_bar/InputBarContainer";
+import InputBarContainer from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { InputBarUsageBanner } from "@app/components/assistant/conversation/input_bar/InputBarUsageBanner";
+import { INPUT_BAR_ACTIONS } from "@app/components/assistant/conversation/input_bar/inputBarActions";
 import {
   INPUT_BAR_COMPACT_ENTER_ANIMATION_CLASSES,
   INPUT_BAR_COMPACT_MORPH_TRANSITION_CLASSES,
@@ -17,6 +16,7 @@ import { useConversationDrafts } from "@app/components/assistant/conversation/in
 import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
+import { compareStrings } from "@app/lib/i18n/format";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useAddConversationSelectedSpaces,
@@ -330,7 +330,7 @@ export const InputBar = React.memo(function InputBar({
       conversation?.sId
         ? conversationSelectableSpaces
         : workspaceRegularSpaces
-            .sort((a, b) => a.name.localeCompare(b.name))
+            .sort((a, b) => compareStrings(a.name, b.name))
             .map((regularSpace) => ({
               ...regularSpace,
               selected: rawSelectedSpaceIdSet.has(regularSpace.sId),

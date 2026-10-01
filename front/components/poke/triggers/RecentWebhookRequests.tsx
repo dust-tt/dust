@@ -1,5 +1,5 @@
 import { WebhookRequestStatusBadge } from "@app/components/agent_builder/triggers/WebhookRequestStatusBadge";
-import { formatCalendarDateTime } from "@app/lib/utils/timestamps";
+import { formatCalendarDateTime } from "@app/lib/client/calendar_date";
 import { usePokeWebhookRequests } from "@app/poke/swr/triggers";
 import type { WebhookRequestTriggerStatus } from "@app/types/assistant/triggers";
 import { WEBHOOK_REQUEST_TRIGGER_STATUSES } from "@app/types/assistant/triggers";

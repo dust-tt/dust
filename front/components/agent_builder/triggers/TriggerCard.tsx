@@ -34,15 +34,7 @@ function getWebhookCardDescription({
   webhookTrigger: AgentBuilderTriggerType & { kind: "webhook" };
   webhookSourceView: WebhookSourceViewType | undefined;
 }) {
-  return (
-    "Triggered " +
-    (webhookTrigger.configuration.event
-      ? "by " + webhookTrigger.configuration.event + " events"
-      : "") +
-    " on " +
-    (webhookSourceView?.customName ?? webhookSourceView?.webhookSource.name) +
-    "'s source."
-  );
+  return `Triggered ${webhookTrigger.configuration.event ? `by ${webhookTrigger.configuration.event} events` : ""} on ${webhookSourceView?.customName ?? webhookSourceView?.webhookSource.name}'s source.`;
 }
 
 interface TriggerCardProps {

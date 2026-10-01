@@ -109,6 +109,25 @@
       "plugins": ["./.grit/patterns/noExpensiveConversationFetch.grit"]
     },
     {
+      "includes": [
+        "front/**/*.{js,jsx,ts,tsx}",
+        "!**/*.{test,spec}.{js,jsx,ts,tsx}"
+      ],
+      "plugins": [
+        "./.grit/patterns/noLocaleLessDateTimeFormat.grit",
+        "./.grit/patterns/noLocaleLessToLocaleString.grit"
+      ]
+    },
+    {
+      "includes": [
+        "front/components/**/*.{js,jsx,ts,tsx}",
+        "front/hooks/**/*.{js,jsx,ts,tsx}",
+        "front/lib/swr/**/*.{js,jsx,ts,tsx}",
+        "!**/*.{test,spec}.{js,jsx,ts,tsx}"
+      ],
+      "plugins": ["./.grit/patterns/noBareLocaleCompare.grit"]
+    },
+    {
       "includes": ["front-api/**/*.ts", "!front-api/routes/types.ts"],
       "plugins": ["./.grit/patterns/noInlineSuccessResponseBody.grit"]
     },
@@ -162,6 +181,10 @@
     {
       "includes": ["front/**/*.tsx", "front-spa/**/*.tsx"],
       "plugins": ["./.grit/patterns/noSparkleClassInFront.grit"]
+    },
+    {
+      "includes": ["front/**/*.tsx"],
+      "plugins": ["./.grit/patterns/noStringConcatInJsx.grit"]
     },
     {
       "includes": ["marketing/pages/**/*.{js,jsx,ts,tsx}"],
@@ -233,6 +256,31 @@
                 "deniedGlobals": {
                   "Intl": "Format with the functions of @app/lib/i18n/format instead of Intl."
                 }
+              }
+            },
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["date-fns", "date-fns-tz"],
+                    "importNamePattern": "(format|intlFormat|lightFormat).*",
+                    "message": "Format dates with the functions of @app/lib/i18n/format instead of date-fns."
+                  },
+                  {
+                    "group": [
+                      "date-fns/format*",
+                      "date-fns/intlFormat*",
+                      "date-fns/lightFormat",
+                      "date-fns-tz/format*"
+                    ],
+                    "message": "Format dates with the functions of @app/lib/i18n/format instead of date-fns."
+                  },
+                  {
+                    "group": ["dayjs", "dayjs/**", "luxon", "luxon/**"],
+                    "message": "Format dates with the functions of @app/lib/i18n/format instead of dayjs or luxon."
+                  }
+                ]
               }
             }
           }

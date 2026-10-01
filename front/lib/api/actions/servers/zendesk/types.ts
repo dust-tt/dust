@@ -86,21 +86,6 @@ export const ZendeskTicketResponseSchema = z.object({
   ticket: ZendeskTicketSchema,
 });
 
-export type ZendeskTicketResponse = z.infer<typeof ZendeskTicketResponseSchema>;
-
-export const ZendeskTicketsResponseSchema = z.object({
-  tickets: z.array(ZendeskTicketSchema),
-  next_page: z.string().nullable().optional(),
-  previous_page: z.string().nullable().optional(),
-  count: z.number().optional(),
-  end_of_stream: z.boolean().optional(),
-  after_url: z.string().nullable().optional(),
-});
-
-export type ZendeskTicketsResponse = z.infer<
-  typeof ZendeskTicketsResponseSchema
->;
-
 export const ZendeskSearchResponseSchema = z.object({
   results: z.array(ZendeskTicketSchema),
   count: z.number(),
@@ -172,110 +157,6 @@ export const ZendeskTicketMetricsResponseSchema = z.object({
   ticket_metric: ZendeskTicketMetricsSchema,
 });
 
-export type ZendeskTicketMetricsResponse = z.infer<
-  typeof ZendeskTicketMetricsResponseSchema
->;
-
-// Brand schemas
-export const ZendeskBrandSchema = z
-  .object({
-    id: z.number(),
-    url: z.string(),
-    name: z.string(),
-    subdomain: z.string(),
-    brand_url: z.string(),
-    has_help_center: z.boolean(),
-  })
-  .passthrough();
-
-export type ZendeskBrand = z.infer<typeof ZendeskBrandSchema>;
-
-export const ZendeskBrandResponseSchema = z.object({
-  brand: ZendeskBrandSchema,
-});
-
-export const ZendeskBrandsResponseSchema = z.object({
-  brands: z.array(ZendeskBrandSchema),
-});
-
-// Article schemas
-export const ZendeskArticleSchema = z
-  .object({
-    id: z.number(),
-    url: z.string(),
-    title: z.string(),
-    body: z.string().nullable(),
-    section_id: z.number(),
-    created_at: z.string(),
-    updated_at: z.string(),
-    html_url: z.string(),
-    author_id: z.number(),
-    vote_sum: z.number(),
-    name: z.string(),
-    label_names: z.array(z.string()).optional(),
-    draft: z.boolean().optional(),
-  })
-  .passthrough();
-
-export type ZendeskArticle = z.infer<typeof ZendeskArticleSchema>;
-
-export const ZendeskArticleResponseSchema = z.object({
-  article: ZendeskArticleSchema,
-});
-
-export const ZendeskArticlesResponseSchema =
-  ZendeskPaginatedResponseSchema.extend({
-    articles: z.array(ZendeskArticleSchema),
-    end_time: z.number().optional(),
-  });
-
-// Category schemas
-export const ZendeskCategorySchema = z
-  .object({
-    id: z.number(),
-    url: z.string(),
-    name: z.string(),
-    locale: z.string(),
-    created_at: z.string(),
-    updated_at: z.string(),
-    html_url: z.string(),
-    description: z.string().nullable(),
-  })
-  .passthrough();
-
-export type ZendeskCategory = z.infer<typeof ZendeskCategorySchema>;
-
-export const ZendeskCategoryResponseSchema = z.object({
-  category: ZendeskCategorySchema,
-});
-
-export const ZendeskCategoriesResponseSchema =
-  ZendeskPaginatedResponseSchema.extend({
-    categories: z.array(ZendeskCategorySchema),
-  });
-
-// Section schemas
-export const ZendeskSectionSchema = z
-  .object({
-    id: z.number().optional(),
-    url: z.string().optional(),
-    name: z.string(),
-    locale: z.string(),
-    category_id: z.number().optional(),
-    description: z.string().optional().nullable(),
-  })
-  .passthrough();
-
-export type ZendeskSection = z.infer<typeof ZendeskSectionSchema>;
-
-export const ZendeskSectionResponseSchema = z.object({
-  section: ZendeskSectionSchema,
-});
-
-export const ZendeskSectionsResponseSchema = z.object({
-  sections: z.array(ZendeskSectionSchema),
-});
-
 // User schemas
 export const ZendeskUserSchema = z
   .object({
@@ -292,34 +173,8 @@ export const ZendeskUserSchema = z
 
 export type ZendeskUser = z.infer<typeof ZendeskUserSchema>;
 
-export const ZendeskUserResponseSchema = z.object({
-  user: ZendeskUserSchema,
-});
-
 export const ZendeskUsersResponseSchema = z.object({
   users: z.array(ZendeskUserSchema),
-  next_page: z.string().nullable().optional(),
-});
-
-// Organization schemas
-export const ZendeskOrganizationSchema = z
-  .object({
-    id: z.number(),
-    url: z.string(),
-    name: z.string(),
-    tags: z.array(z.string()),
-    created_at: z.string(),
-  })
-  .passthrough();
-
-export type ZendeskOrganization = z.infer<typeof ZendeskOrganizationSchema>;
-
-export const ZendeskOrganizationResponseSchema = z.object({
-  organization: ZendeskOrganizationSchema,
-});
-
-export const ZendeskOrganizationsResponseSchema = z.object({
-  organizations: z.array(ZendeskOrganizationSchema),
   next_page: z.string().nullable().optional(),
 });
 
@@ -336,21 +191,9 @@ export const ZendeskTicketFieldSchema = z
 
 export type ZendeskTicketField = z.infer<typeof ZendeskTicketFieldSchema>;
 
-export const ZendeskTicketFieldResponseSchema = z.object({
-  ticket_field: ZendeskTicketFieldSchema,
-});
-
-export type ZendeskTicketFieldResponse = z.infer<
-  typeof ZendeskTicketFieldResponseSchema
->;
-
 export const ZendeskTicketFieldsResponseSchema = z.object({
   ticket_fields: z.array(ZendeskTicketFieldSchema),
 });
-
-export type ZendeskTicketFieldsResponse = z.infer<
-  typeof ZendeskTicketFieldsResponseSchema
->;
 
 // Attachment schemas
 export const ZendeskAttachmentSchema = z
@@ -364,8 +207,6 @@ export const ZendeskAttachmentSchema = z
     deleted: z.boolean().optional(),
   })
   .passthrough();
-
-export type ZendeskAttachment = z.infer<typeof ZendeskAttachmentSchema>;
 
 // Ticket comment schemas
 export const ZendeskTicketCommentSchema = z
@@ -386,14 +227,7 @@ export const ZendeskTicketCommentsResponseSchema =
     comments: z.array(ZendeskTicketCommentSchema),
   });
 
-// Search count schema
-export const ZendeskSearchCountResponseSchema = z.object({
-  count: z.string(),
-});
-
 // Tags schemas
 export const ZendeskTagsResponseSchema = z.object({
   tags: z.array(z.string()),
 });
-
-export type ZendeskTagsResponse = z.infer<typeof ZendeskTagsResponseSchema>;

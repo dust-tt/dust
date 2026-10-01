@@ -3,10 +3,17 @@
  * Shared authoring instructions MUST leave Slideshow and Slide in control of their dimensions.
  * Scrolling-page layout guidance MUST be scoped to pages and dashboards.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:product] frame-publish-hint-requires-frames-v2
+ * Shared authoring prose MUST NOT mention `dsbx frame publish` or `validate` when hasFramesV2
+ * is false.
+ */
 export const buildInteractiveContentAuthoringProseV2 = ({
+  hasFramesV2,
   hasDocuments,
   hasFunctions,
 }: {
+  hasFramesV2: boolean;
   hasDocuments: boolean;
   hasFunctions: boolean;
 }) => `\
@@ -164,7 +171,7 @@ The same decision rule applies regardless of where the data came from:
 
 - Import \`useFile\` from \`@dust/react-hooks\`.
 - \`useFile()\` accepts a file ID (\`fil_abc123\` from an attachment tag), a scoped file path for files **outside** this Frame package, or a package-relative path for files **inside** this Frame package.
-- Files that live in this Frame's own folder (CSV, JSON, images next to \`index.tsx\`) must use a package-relative path starting with \`./\`, such as \`useFile("./data.csv")\` or \`useFile("./assets/logo.png")\`. Do **not** pass an absolute \`conversation-{conversationId}/MyFrame/data.csv\` or \`pod-{podId}/MyFrame/data.csv\` path for those files: \`dsbx frame publish\` and \`validate\` reject them so the Frame stays portable when shared or moved.
+- Files that live in this Frame's own folder (CSV, JSON, images next to \`index.tsx\`) must use a package-relative path starting with \`./\`, such as \`useFile("./data.csv")\` or \`useFile("./assets/logo.png")\`. Do **not** pass an absolute \`conversation-{conversationId}/MyFrame/data.csv\` or \`pod-{podId}/MyFrame/data.csv\` path for those files${hasFramesV2 ? ": \`dsbx frame publish\` and \`validate\` reject them so the Frame stays portable when shared or moved." : ": use relative paths so the Frame stays portable when shared or moved."}
 - For files outside the Frame package, use a file ID or an explicit scoped path: \`conversation-{conversationId}/report.csv\` for a conversation file, and \`pod-{podId}/filename.md\` for a pod file.
 - Never use bare \`conversation/filename\` or \`pod/filename\` paths. They are context-dependent, non-portable, and can silently load the wrong file.
 - Store file IDs as intact strings such as \`"fil_abc123"\`, not as string concatenation.

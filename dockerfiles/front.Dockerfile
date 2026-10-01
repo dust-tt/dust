@@ -4,7 +4,7 @@ FROM node:24.16.0-slim AS base-deps
 RUN apt-get update && \
   apt-get install -y libjemalloc2 libjemalloc-dev
 
-RUN npm install -g npm@11.11.0
+RUN npm install -g npm@11.19.0
 
 WORKDIR /app
 

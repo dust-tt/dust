@@ -23,6 +23,7 @@ import { usePeriodicRefresh } from "@app/hooks/usePeriodicRefresh";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
+import { compareStrings } from "@app/lib/i18n/format";
 import { useAppRouter } from "@app/lib/platform";
 import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
 import {
@@ -103,7 +104,7 @@ const getTableColumns = ({
     sortingFn: (a, b, columnId) => {
       const aValue = a.getValue(columnId) as string;
       const bValue = b.getValue(columnId) as string;
-      return aValue.localeCompare(bValue) > 0 ? -1 : 1;
+      return compareStrings(aValue, bValue) > 0 ? -1 : 1;
     },
     cell: (info: CellContext<RowData, string>) => (
       <DataTable.CellContent icon={info.row.original.icon}>

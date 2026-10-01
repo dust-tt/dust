@@ -3,6 +3,7 @@ import {
   seatTypeAvatarColors,
 } from "@app/components/workspace/billing/seatTypeUtils";
 import type { SeatTypeInfo } from "@app/lib/api/credits/seat_plan";
+import { compareStrings, formatNumber } from "@app/lib/i18n/format";
 import { useMembersSeats, useSeatPlan } from "@app/lib/swr/credits";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { isMembershipSeatType, SEAT_TYPE_ORDER } from "@app/types/memberships";
@@ -79,7 +80,7 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
     (a, b) =>
       (SEAT_TYPE_ORDER[a.seatType] ?? Number.MAX_SAFE_INTEGER) -
         (SEAT_TYPE_ORDER[b.seatType] ?? Number.MAX_SAFE_INTEGER) ||
-      a.seatType.localeCompare(b.seatType)
+      compareStrings(a.seatType, b.seatType)
   );
 
   return (
@@ -110,7 +111,7 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
                 </div>
                 {unassignedCount !== null && unassignedCount > 0 && (
                   <Chip
-                    label={`${unassignedCount.toLocaleString()} available`}
+                    label={`${formatNumber(unassignedCount)} available`}
                     size="mini"
                     color="highlight"
                   />
@@ -121,14 +122,14 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
                 <div className="flex items-center gap-2">
                   <Icon visual={User01} size="xs" />
                   <span>
-                    {membersCount.toLocaleString()}{" "}
+                    {formatNumber(membersCount)}{" "}
                     {membersCount === 1 ? "seat assigned" : "seats assigned"}
                   </span>
                 </div>
                 {plan.awuCredits > 0 && (
                   <div className="flex items-center gap-2">
                     <span>
-                      {plan.awuCredits.toLocaleString()} credits{" "}
+                      {formatNumber(plan.awuCredits)} credits{" "}
                       {formatAwuCreditsPeriod(plan.awuCreditsPeriod)}
                     </span>
                   </div>

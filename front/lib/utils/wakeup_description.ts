@@ -1,4 +1,4 @@
-import { prefersTwentyFourHourTime } from "@app/lib/i18n/format";
+import { formatTime, prefersTwentyFourHourTime } from "@app/lib/i18n/format";
 import type {
   WakeUpScheduleConfig,
   WakeUpType,
@@ -13,7 +13,7 @@ import cronstrue from "cronstrue";
 // regions see "14:30" and users in 12h regions see "2:30 PM".
 function formatWakeUpTimeOfDay(timestamp: number): string {
   const date = new Date(timestamp);
-  return date.toLocaleTimeString(undefined, {
+  return formatTime(date, {
     hour: "2-digit",
     minute: "2-digit",
   });

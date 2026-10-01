@@ -1,5 +1,6 @@
 import { FrameSharingRow } from "@app/components/assistant/conversation/interactive_content/frame/FrameSharingRow";
 import { Section } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSection";
+import { formatDateTime, formatTimeDistance } from "@app/lib/i18n/format";
 import type { FileViewerType } from "@app/types/file_viewers";
 import {
   Button,
@@ -15,7 +16,6 @@ import {
   SearchMd,
   Spinner,
 } from "@dust-tt/sparkle";
-import { intlFormatDistance } from "date-fns";
 import { useId, useState } from "react";
 
 const INITIAL_VIEWERS_COUNT = 5;
@@ -168,7 +168,7 @@ interface ViewerRowProps {
 
 function ViewerRow({ viewer }: ViewerRowProps) {
   const lastViewedAt = new Date(viewer.lastViewedAt);
-  const exactTime = lastViewedAt.toLocaleString(undefined, {
+  const exactTime = formatDateTime(lastViewedAt, {
     dateStyle: "medium",
     timeStyle: "short",
   });
@@ -177,7 +177,7 @@ function ViewerRow({ viewer }: ViewerRowProps) {
     <FrameSharingRow label={viewer.email}>
       <time dateTime={lastViewedAt.toISOString()} title={exactTime}>
         <span aria-hidden="true">
-          Last viewed {intlFormatDistance(lastViewedAt, new Date())}
+          Last viewed {formatTimeDistance(lastViewedAt, new Date())}
         </span>
         <span className="sr-only">Last viewed {exactTime}</span>
       </time>

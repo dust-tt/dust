@@ -4,7 +4,8 @@ import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
-import { timeAgoFrom } from "@app/lib/utils";
+import { timeAgoFrom } from "@app/lib/client/relative_time";
+import { formatDateTime, formatNumber } from "@app/lib/i18n/format";
 import { LoadingBlock, Page, Tooltip } from "@dust-tt/sparkle";
 
 export interface ConsumptionOverviewProps {
@@ -76,14 +77,14 @@ export function ConsumptionOverviewView({
     `${formatConsumptionDate(period.startDate)} to ${formatConsumptionDate(period.endDate)}`,
     ...(analyticsScope.kind === "workspace"
       ? [
-          `${members.active.toLocaleString()} of ${members.total.toLocaleString()} members active`,
+          `${formatNumber(members.active)} of ${formatNumber(members.total)} members active`,
         ]
       : []),
     ...(lastRecordAt
       ? [
           showIndexingDetails
-            ? `Latest indexed record ${timeAgoFrom(new Date(lastRecordAt).getTime())} ago`
-            : `Updated ${timeAgoFrom(new Date(lastRecordAt).getTime())} ago`,
+            ? `Latest indexed record ${timeAgoFrom(new Date(lastRecordAt).getTime())}`
+            : `Updated ${timeAgoFrom(new Date(lastRecordAt).getTime())}`,
         ]
       : []),
   ];
@@ -101,7 +102,7 @@ export function ConsumptionOverviewView({
           lastRecordAt &&
           index === header.length - 1 ? (
             <Tooltip
-              label={new Date(lastRecordAt).toLocaleString()}
+              label={formatDateTime(new Date(lastRecordAt))}
               tooltipTriggerAsChild
               trigger={<span>{item}</span>}
             />

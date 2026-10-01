@@ -57,9 +57,6 @@ const PASS_THROUGH_AGENT_VIEWS = [
   "archived",
 ] as const satisfies readonly AgentsGetViewType[];
 
-export type PassThroughAgentViewType =
-  (typeof PASS_THROUGH_AGENT_VIEWS)[number];
-
 // Mirrors the `view` parameter of the public
 // GET /api/v1/w/{wId}/assistant/agent_configurations endpoint so both surfaces share one
 // vocabulary, plus `archived`. `all_unrestricted` is ours: it is the admin-only view that lifts

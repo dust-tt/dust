@@ -24,8 +24,6 @@ const GetFileParamsSchema = z.object({
   fileId: z.string(),
 });
 
-type GetFileParams = z.infer<typeof GetFileParamsSchema>;
-
 const WriteFileParamsSchema = z.object({
   path: z.string(),
   content: z.string(),
@@ -49,8 +47,6 @@ const CallFunctionParamsSchema = z.object({
   functionIdOrSlug: z.string(),
   input: z.unknown().optional(),
 });
-
-type CallFunctionParams = z.infer<typeof CallFunctionParamsSchema>;
 
 export interface WorkspaceUserIdentity {
   sId: string;
@@ -97,24 +93,16 @@ const SetContentHeightParamsSchema = z.object({
   height: z.number(),
 });
 
-type SetContentHeightParams = z.infer<typeof SetContentHeightParamsSchema>;
-
 const DownloadFileRequestParamsSchema = z.object({
   blob: z.instanceof(Blob),
   filename: z.string().optional(),
 });
-
-type DownloadFileRequestParams = z.infer<
-  typeof DownloadFileRequestParamsSchema
->;
 
 const SetErrorMessageParamsSchema = z.object({
   errorMessage: z.string(),
   fileId: z.string(),
   isInteractiveContent: z.boolean(),
 });
-
-type SetErrorMessageParams = z.infer<typeof SetErrorMessageParamsSchema>;
 
 // Define Zod schemas for each RPC request type.
 const GetFileRequestSchema = VisualizationRPCRequestBaseSchema.extend({
@@ -206,20 +194,6 @@ export type VisualizationRPCRequest = z.infer<
 >;
 export type CallFunctionRequest = z.infer<typeof CallFunctionRequestSchema>;
 export type VisualizationRPCCommand = VisualizationRPCRequest["command"];
-
-// Define a mapped type for backward compatibility.
-export type VisualizationRPCRequestMap = {
-  callFunction: CallFunctionParams;
-  getUserIdentity: null;
-  getFile: GetFileParams;
-  writeFile: WriteFileParams;
-  getCodeToExecute: null;
-  setContentHeight: SetContentHeightParams;
-  setErrorMessage: SetErrorMessageParams;
-  downloadFileRequest: DownloadFileRequestParams;
-  displayCode: null;
-  editText: EditTextParams;
-};
 
 // Command results.
 export interface CommandResultMap {

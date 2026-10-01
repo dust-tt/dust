@@ -5033,4 +5033,1092 @@ export const tailoredEnrichments: Record<
       },
     ],
   },
+  // Siit: 96 real tools.
+  siit: {
+    seoTitle: "Run your Siit service desk from Dust",
+    seoSubtitle:
+      "Triage IT and HR requests, answer from your knowledge base, and handle app access approvals without leaving the chat.",
+    tagline:
+      "Work the Siit request queue, look up people and equipment, and approve app access.",
+    chatStoryline: {
+      userPrompt:
+        "What's open in the IT inbox since Monday? Add a note on anything about laptops with the person's current equipment.",
+      toolCalls: [
+        "list_requests",
+        "get_person",
+        "list_equipments",
+        "add_request_note",
+      ],
+      completedInSeconds: 16,
+      responseIntro:
+        "I found 5 open requests in the IT inbox since Monday. Two are about laptops, so I added an internal note on each with the equipment assigned to the requester.",
+      responseSections: [
+        {
+          heading: "Laptop requests, note added (2)",
+          bullets: [
+            {
+              title: "Laptop won't charge (Nora Petit)",
+              body: "Assigned: MacBook Pro 14, serial C02XK0EXAMPLE, 3 years old. Note added suggesting a replacement over a repair.",
+            },
+            {
+              title: "New laptop for incoming hire (Sam Olsen)",
+              body: "No equipment assigned yet. Note added: start date is next Monday, ship by Thursday.",
+            },
+          ],
+        },
+        {
+          heading: "Other open requests (3)",
+          bullets: [
+            {
+              title: "VPN access for contractor",
+              body: "Open 2 days. Unassigned. Priority high.",
+            },
+            {
+              title: "Figma license request",
+              body: "Waiting on manager approval since Tuesday.",
+            },
+            {
+              title: "Printer on floor 3 offline",
+              body: "Assigned to Leo. Last message 1 day ago.",
+            },
+          ],
+        },
+      ],
+      followUpPrompt:
+        "Want me to assign the VPN request and reply to the requester?",
+    },
+    benefits: [
+      {
+        icon: "ActionInboxIcon",
+        color: "blue",
+        title: "Triage the queue in one prompt",
+        description:
+          "Ask what's open, what's stuck, and who owns it. Dust reads requests and their message history, then updates status, assignee or notes when you ask.",
+        toolMatches: [
+          "list_requests",
+          "get_request_messages",
+          "update_request",
+        ],
+      },
+      {
+        icon: "ActionDocumentTextIcon",
+        color: "green",
+        title: "Answer from your knowledge base",
+        description:
+          "Dust searches your Siit articles for the right procedure and drafts the reply to the employee. You can also ask it to write or update an article.",
+        toolMatches: ["list_articles", "get_article", "send_request_message"],
+      },
+      {
+        icon: "ActionCheckCircleIcon",
+        color: "golden",
+        title: "Review app access requests",
+        description:
+          "See pending access requests with the role and approval policy behind each one. Approve or reject them from the chat.",
+        toolMatches: [
+          "list_app_access_requests",
+          "approve_app_access_request",
+          "reject_app_access_request",
+        ],
+      },
+    ],
+    faq: [
+      {
+        question: "What can Dust agents do in Siit?",
+        answer:
+          "Read and update requests, people, applications, equipment, services and knowledge base articles. Agents can also reply to requests, add notes, group requests, review workflows and approve or reject app access requests.",
+      },
+      {
+        question: "How does authentication work?",
+        answer:
+          'Siit uses OAuth with dynamic client registration. You sign in with your Siit account. Dust can only read and change what your Siit role already allows, and the "Public API" permission must be enabled for that role.',
+      },
+    ],
+    relatedIntegrations: ["slack", "microsoft_teams", "notion"],
+  },
+  // ServiceNow: 4 real tools.
+  servicenow: {
+    seoTitle: "Work ServiceNow records from Dust",
+    seoSubtitle:
+      "Look up incidents, requests and changes, then open, update or resolve records from the chat.",
+    tagline:
+      "Query any ServiceNow table and update records without opening the console.",
+    chatStoryline: {
+      userPrompt:
+        "List the P1 incidents opened this week, then add a work note on INC0010452 that the fix is deployed and resolve it.",
+      toolCalls: ["list_records", "get_record", "update_record"],
+      completedInSeconds: 11,
+      responseIntro:
+        "I found 3 priority 1 incidents opened since Monday. I added your work note on INC0010452 and moved it to Resolved.",
+      responseSections: [
+        {
+          heading: "P1 incidents this week (3)",
+          bullets: [
+            {
+              title: "INC0010452: Payroll portal returns 500",
+              body: 'Resolved just now. Work note added, close code "Solved (Permanently)".',
+            },
+            {
+              title: "INC0010461: Email delays for EU users",
+              body: "In Progress. Assigned to Messaging Ops. Updated 3 hours ago.",
+            },
+            {
+              title: "INC0010470: VPN gateway down in Lyon office",
+              body: "New. No assignment group yet. Opened 40 minutes ago.",
+            },
+          ],
+        },
+      ],
+      followUpPrompt: "Want me to assign INC0010470 to Network Ops?",
+    },
+    benefits: [
+      {
+        icon: "ActionMagnifyingGlassIcon",
+        color: "blue",
+        title: "Find the right records fast",
+        description:
+          "Ask for incidents, problems, change requests or knowledge articles in plain language. Dust builds the filter and reads any table your account can access, custom tables included.",
+        toolMatches: ["list_records", "get_record"],
+      },
+      {
+        icon: "ActionPencilSquareIcon",
+        color: "green",
+        title: "Open and update tickets from the chat",
+        description:
+          "Describe the issue and Dust creates the record. Add work notes, change priority or assignment group, or resolve with a close code.",
+        toolMatches: ["create_record", "update_record"],
+      },
+      {
+        icon: "ActionPieChartIcon",
+        color: "golden",
+        title: "Weekly queue review",
+        description:
+          "Ask what was opened, what is still unassigned, and what has not moved in days. Dust pulls it from your tables with date filters.",
+        toolMatches: ["list_records", "get_record"],
+      },
+    ],
+    faq: [
+      {
+        question: "What can Dust agents do in ServiceNow?",
+        answer:
+          "List and read records from any table the connected account can access, including custom tables. Agents can also create records and update them, which covers adding work notes, reassigning, resolving and closing.",
+      },
+      {
+        question: "How does authentication work?",
+        answer:
+          "ServiceNow uses OAuth. An admin registers an OAuth application in your ServiceNow instance and enters the instance URL, client ID and client secret in Dust. Connections can be shared at the workspace level or made per user.",
+      },
+    ],
+    relatedIntegrations: ["slack", "jira", "confluence"],
+  },
+  // Qobra: 45 real tools. Read-only; the tools you see depend on your Qobra role.
+  qobra: {
+    seoTitle: "Read Qobra commissions and quotas from Dust",
+    seoSubtitle:
+      "Ask about statements, quota attainment, commission plans, and reports without opening Qobra.",
+    tagline:
+      "Answer commission questions from your Qobra data, in plain language.",
+    chatStoryline: {
+      userPrompt:
+        "Where am I against quota this quarter, and why is my September statement lower than August?",
+      toolCalls: [
+        "get_identity",
+        "list_quota_values",
+        "list_statements",
+        "get_statement_compensation",
+      ],
+      completedInSeconds: 12,
+      responseIntro:
+        "I checked your Qobra quota values for Q3 and compared your August and September statements. Here is what I found.",
+      responseSections: [
+        {
+          heading: "Q3 quota attainment",
+          bullets: [
+            {
+              title: "New business ARR",
+              body: "€184k booked against a €240k quota. That is 77%, with one month left.",
+            },
+            {
+              title: "Accelerator threshold",
+              body: "Your plan's accelerator starts at 100%. You need €56k more to reach it.",
+            },
+          ],
+        },
+        {
+          heading: "September vs. August statement",
+          bullets: [
+            {
+              title: "Fewer closed deals",
+              body: "Two deals closed in September versus five in August. Commission went from €6,420 to €2,910.",
+            },
+            {
+              title: "Clawback applied",
+              body: "A €480 clawback on the Northwind deal, which churned in its first 90 days.",
+            },
+            {
+              title: "Statement status",
+              body: "September is still in draft. Your manager has not validated it yet.",
+            },
+          ],
+        },
+      ],
+      followUpPrompt:
+        "Want me to list the deal records behind your September statement?",
+    },
+    benefits: [
+      {
+        icon: "ActionPieChartIcon",
+        color: "blue",
+        title: "Check quota attainment",
+        description:
+          "Ask where you or your team stand against quota. Dust reads your quotas and their values for the period.",
+        toolMatches: ["list_quotas", "list_quota_values"],
+      },
+      {
+        icon: "ActionDocumentTextIcon",
+        color: "green",
+        title: "Explain a statement line by line",
+        description:
+          "Ask why a payout changed. Dust opens the statement, its compensation breakdown, and the records behind it.",
+        toolMatches: [
+          "get_statement",
+          "get_statement_compensation",
+          "list_statement_records",
+        ],
+      },
+      {
+        icon: "ActionTableIcon",
+        color: "golden",
+        title: "Pull numbers from your reports",
+        description:
+          "Name a Qobra report or dashboard. Dust fetches its data so you can ask follow-up questions in the chat.",
+        toolMatches: ["list_reports", "get_report_data", "get_dashboard"],
+      },
+    ],
+    faq: [
+      {
+        question: "What can Dust agents do in Qobra?",
+        answer:
+          "Read your commission plans, quotas, statements, reports, dashboards, and users. Access is read-only: agents cannot change plans, statements, or payouts. The tools available depend on your Qobra role, so a sales rep sees less than an admin.",
+      },
+      {
+        question: "How does authentication work?",
+        answer:
+          "Qobra uses OAuth with dynamic client registration. You sign in with your Qobra account from the Dust chat. A Qobra admin at your company must first turn on MCP access in Qobra, under Settings > AI > MCP.",
+      },
+      {
+        question: "Does Dust support Qobra's US region?",
+        answer:
+          "Yes. Dust offers separate Qobra servers for the EU and US regions. Pick the one that matches your Qobra account.",
+      },
+    ],
+    relatedIntegrations: ["salesforce", "hubspot", "slack"],
+  },
+  // Attio: 21 real tools. Reads records, notes, calls, and emails; writes records, notes, and tasks.
+  attio: {
+    seoTitle: "Work with your Attio CRM from Dust",
+    seoSubtitle:
+      "Search records, notes, calls, and emails, then log notes, create tasks, and update records.",
+    tagline: "Prepare for calls and keep your Attio records up to date.",
+    chatStoryline: {
+      userPrompt:
+        "I have a call with Northwind at 3pm. What happened on the account lately, and add a task to send the pricing deck after.",
+      toolCalls: [
+        "search-records",
+        "semantic-search-notes",
+        "semantic-search-call-recordings",
+        "create-task",
+      ],
+      completedInSeconds: 11,
+      responseIntro:
+        "I found Northwind in Attio and read its recent notes and call recordings. The follow-up task is created.",
+      responseSections: [
+        {
+          heading: "Northwind, recent activity",
+          bullets: [
+            {
+              title: "Deal",
+              body: "Northwind expansion, €38k, stage Proposal. Owner: Léa Martin. Last updated 6 days ago.",
+            },
+            {
+              title: "Last call (Sept 18)",
+              body: "Their Head of Ops asked about SSO and a 12-month price lock. No answer sent yet.",
+            },
+            {
+              title: "Latest note",
+              body: "Procurement needs a security questionnaire before signing. Due end of October.",
+            },
+          ],
+        },
+        {
+          heading: "Task created",
+          bullets: [
+            {
+              title: "Send pricing deck to Northwind",
+              body: "Linked to the Northwind company record. Assigned to you, due tomorrow.",
+            },
+          ],
+        },
+      ],
+      followUpPrompt:
+        "Want me to log a note on the deal once you share your call notes?",
+    },
+    benefits: [
+      {
+        icon: "ActionMagnifyingGlassIcon",
+        color: "blue",
+        title: "Brief yourself before a call",
+        description:
+          "Name an account. Dust pulls its record, recent notes, call recordings, and emails, and sums them up.",
+        toolMatches: [
+          "search-records",
+          "semantic-search-notes",
+          "semantic-search-emails",
+        ],
+      },
+      {
+        icon: "ActionPencilSquareIcon",
+        color: "green",
+        title: "Log notes and tasks from the chat",
+        description:
+          "Paste your raw call notes. Dust writes them to the right record and creates the follow-up tasks. You confirm before a record changes.",
+        toolMatches: ["create-note", "create-task", "upsert-record"],
+      },
+      {
+        icon: "ActionPieChartIcon",
+        color: "golden",
+        title: "Weekly pipeline recap",
+        description:
+          "Ask what moved, what stalled, and which deals had no activity. Dust reads your records and recent meetings.",
+        toolMatches: ["search-records", "search-meetings"],
+      },
+    ],
+    faq: [
+      {
+        question: "What can Dust agents do in Attio?",
+        answer:
+          "Search and read records, notes, meetings, call recordings, and emails. Create and update records, add notes, and create or update tasks. Creating or updating a record asks for your confirmation first.",
+      },
+      {
+        question: "How does authentication work?",
+        answer:
+          "Attio uses OAuth with dynamic client registration. You sign in with your Attio account and approve access from the Dust chat.",
+      },
+    ],
+    relatedIntegrations: ["gmail", "slack", "gong"],
+  },
+  // Modjo: 12 real tools. Read-only.
+  modjo: {
+    seoTitle: "Search and analyze Modjo sales calls from Dust",
+    seoSubtitle:
+      "Find calls, read transcripts, and ask questions about a call, a deal, or an account.",
+    tagline:
+      "Get answers from your recorded sales calls without replaying them.",
+    chatStoryline: {
+      userPrompt:
+        "What did Northwind push back on in our last calls, and where does the deal stand?",
+      toolCalls: [
+        "get_accounts",
+        "get_calls",
+        "get_transcript",
+        "ask_anything_on_deal",
+      ],
+      completedInSeconds: 14,
+      responseIntro:
+        "I found three Northwind calls in Modjo from the last month, read the transcripts, and checked the deal.",
+      responseSections: [
+        {
+          heading: "Objections raised",
+          bullets: [
+            {
+              title: "Price",
+              body: "Their CFO said the quote is about 15% above budget. Raised on the Sept 12 and Sept 24 calls.",
+            },
+            {
+              title: "Onboarding time",
+              body: "They worry about a six-week rollout during their year-end freeze.",
+            },
+          ],
+        },
+        {
+          heading: "Deal status",
+          bullets: [
+            {
+              title: "Northwind renewal",
+              body: "Stage Negotiation. Next step agreed on the last call: a revised quote by Friday.",
+            },
+            {
+              title: "Who's involved",
+              body: "Three contacts on their side. The CFO joined only the last call.",
+            },
+          ],
+        },
+      ],
+      followUpPrompt:
+        "Want me to check how we handled price objections on other deals this quarter?",
+    },
+    benefits: [
+      {
+        icon: "ActionMagnifyingGlassIcon",
+        color: "blue",
+        title: "Find the right call",
+        description:
+          "Search calls by account, rep, or date, or describe a moment. Dust searches your calls and activities.",
+        toolMatches: ["get_calls", "semantic_search_activities"],
+      },
+      {
+        icon: "ActionDocumentTextIcon",
+        color: "violet",
+        title: "Ask questions about one call",
+        description:
+          "Ask what the customer said about pricing or next steps. Dust reads the transcript and quotes the answer.",
+        toolMatches: ["get_transcript", "ask_anything_on_call"],
+      },
+      {
+        icon: "ActionLightbulbIcon",
+        color: "golden",
+        title: "Review a deal or an account",
+        description:
+          "Ask where a deal stands or what an account cares about. Dust reads across its calls and emails.",
+        toolMatches: [
+          "ask_anything_on_deal",
+          "ask_anything_on_account",
+          "get_emails",
+        ],
+      },
+    ],
+    faq: [
+      {
+        question: "What can Dust agents do in Modjo?",
+        answer:
+          "Search accounts, deals, calls, contacts, users, and emails, read call transcripts, and ask questions about a call, a deal, or an account. Access is read-only.",
+      },
+      {
+        question: "How does authentication work?",
+        answer:
+          "Modjo uses OAuth with dynamic client registration. You sign in with your Modjo account from the Dust chat. Access follows the call, deal, and account permissions set in Modjo.",
+      },
+    ],
+    relatedIntegrations: ["salesforce", "hubspot", "slack"],
+  },
+  // Lokalise: 31 real tools.
+  lokalise: {
+    seoTitle: "Manage Lokalise localization projects from Dust",
+    seoSubtitle:
+      "Check translation progress, assign tasks to translators, and keep your glossary up to date without leaving the chat.",
+    tagline:
+      "See where each language stands and hand out the work that's left.",
+    chatStoryline: {
+      userPrompt:
+        "Where does the Mobile App project stand for the German and Japanese release? Set up a review task for whatever is left.",
+      toolCalls: [
+        "list_lokalise_projects",
+        "get_project_statistics",
+        "list_lokalise_tasks",
+        "create_lokalise_task",
+      ],
+      completedInSeconds: 14,
+      responseIntro:
+        "I found the Mobile App project in Lokalise, pulled its progress by language, and checked the open tasks. The review task is ready for your approval.",
+      responseSections: [
+        {
+          heading: "Progress by language",
+          bullets: [
+            {
+              title: "German (de)",
+              body: "96% translated, 88% reviewed. 41 keys still need review.",
+            },
+            {
+              title: "Japanese (ja)",
+              body: "79% translated. 212 keys untranslated, mostly in the new onboarding flow.",
+            },
+            {
+              title: "Open tasks",
+              body: "One translation task for Japanese, assigned to Kenji Sato, due Friday. Nothing open for German.",
+            },
+          ],
+        },
+        {
+          heading: "Review task drafted",
+          bullets: [
+            {
+              title: "German review, 41 keys",
+              body: "Assigned to Lena Weber. Due next Wednesday, two days before the release freeze.",
+            },
+          ],
+        },
+      ],
+      followUpPrompt:
+        "Want me to check the Japanese glossary terms before Kenji starts on onboarding?",
+    },
+    benefits: [
+      {
+        icon: "ActionPieChartIcon",
+        color: "blue",
+        title: "Know where each language stands",
+        description:
+          "Ask how far along a project is. Dust reads its statistics, languages, and open tasks, and tells you what's blocking the release.",
+        toolMatches: [
+          "get_project_statistics",
+          "list_project_languages",
+          "list_lokalise_tasks",
+        ],
+      },
+      {
+        icon: "ActionListCheckIcon",
+        color: "green",
+        title: "Hand out translation work",
+        description:
+          "Create translation or review tasks, change their assignees or due dates, and add contributors to a project. Dust asks before anything structural.",
+        toolMatches: [
+          "create_lokalise_task",
+          "update_lokalise_task",
+          "create_project_contributor",
+        ],
+      },
+      {
+        icon: "ActionDocumentTextIcon",
+        color: "golden",
+        title: "Keep the glossary current",
+        description:
+          "Look up how a product term is translated, add new terms, or fix existing ones. Translators see the same glossary in Lokalise.",
+        toolMatches: [
+          "list_lokalise_glossary_terms",
+          "create_lokalise_glossary_terms",
+          "update_lokalise_glossary_terms",
+        ],
+      },
+    ],
+    faq: [
+      {
+        question: "What can Dust agents do in Lokalise?",
+        answer:
+          "Read projects, languages, statistics, contributors, teams, tasks, keys, glossary terms, and translation orders. They can also create and update tasks, keys, and glossary terms, add languages and contributors, upload files, and place translation orders. Actions that cost money or change a project's structure ask for your approval first.",
+      },
+      {
+        question: "Why are there two Lokalise listings?",
+        answer:
+          "Lokalise ships two MCP servers. This one is for localization managers: projects, contributors, teams, glossary, and translation orders. Lokalise Software Development is for engineers: keys, screenshots, and file downloads for the codebase.",
+      },
+      {
+        question: "How does authentication work?",
+        answer:
+          "Lokalise uses OAuth with dynamic client registration. You sign in with your Lokalise account and grant the scopes the tools need. Agents can only see and change what your Lokalise role already allows.",
+      },
+    ],
+    relatedIntegrations: ["slack", "notion", "jira"],
+  },
+  // Lokalise Software Development: 18 real tools.
+  lokalise_software_development: {
+    seoTitle: "Manage Lokalise keys and files from Dust",
+    seoSubtitle:
+      "Add translation keys, attach screenshots for context, and pull the latest translation files for your app.",
+    tagline: "Push new strings to Lokalise and get the translated files back.",
+    chatStoryline: {
+      userPrompt:
+        "Add the three new checkout strings to the Web App project, then give me the latest French and Spanish JSON files.",
+      toolCalls: [
+        "list_lokalise_projects",
+        "list_lokalise_keys",
+        "create_lokalise_keys",
+        "download_files",
+      ],
+      completedInSeconds: 11,
+      responseIntro:
+        "I checked the Web App project for existing keys, added the three that were missing, and generated a download for French and Spanish.",
+      responseSections: [
+        {
+          heading: "Keys added (3)",
+          bullets: [
+            {
+              title: "checkout.promo_code.label",
+              body: 'Base text: "Promo code". Platform: web. Tagged checkout-v3.',
+            },
+            {
+              title: "checkout.promo_code.invalid",
+              body: 'Base text: "This code has expired." Platform: web. Tagged checkout-v3.',
+            },
+            {
+              title: "checkout.pay_button",
+              body: 'Base text: "Pay {amount}". Platform: web. Tagged checkout-v3.',
+            },
+          ],
+        },
+        {
+          heading: "Files ready",
+          bullets: [
+            {
+              title: "fr.json and es.json",
+              body: "JSON bundle generated. The three new keys fall back to English until translators pick them up.",
+            },
+          ],
+        },
+      ],
+      followUpPrompt:
+        "Want me to create a translation task for the three new keys?",
+    },
+    benefits: [
+      {
+        icon: "ActionPencilSquareIcon",
+        color: "green",
+        title: "Add strings as you ship them",
+        description:
+          "Create keys with their base text, platforms, and tags, or fix a key that already exists. Bulk edits ask for your approval first.",
+        toolMatches: [
+          "create_lokalise_keys",
+          "update_lokalise_key",
+          "bulk_update_lokalise_keys",
+        ],
+      },
+      {
+        icon: "ActionCloudArrowLeftRightIcon",
+        color: "blue",
+        title: "Pull translation files",
+        description:
+          "Ask for the files you need by language and format. Large projects run as a background export, and Dust tracks it until it's done.",
+        toolMatches: [
+          "download_files",
+          "download_files_async",
+          "get_process_status",
+        ],
+      },
+      {
+        icon: "ActionScanIcon",
+        color: "violet",
+        title: "Give translators context",
+        description:
+          "Upload screenshots of a screen and keep them up to date, so translators can see where each string appears.",
+        toolMatches: [
+          "create_lokalise_screenshots",
+          "list_lokalise_screenshots",
+          "update_lokalise_screenshot",
+        ],
+      },
+    ],
+    faq: [
+      {
+        question: "What can Dust agents do with Lokalise Software Development?",
+        answer:
+          "Read projects, keys, screenshots, and tasks. Create and update keys and screenshots, create tasks, and download translation files. Bulk key updates, screenshot deletion, and new tasks ask for your approval first.",
+      },
+      {
+        question: "Why are there two Lokalise listings?",
+        answer:
+          "Lokalise ships two MCP servers. This one is for developers: keys, screenshots, and file downloads. The Lokalise listing is for localization managers: contributors, teams, glossary, project statistics, and translation orders.",
+      },
+      {
+        question: "How does authentication work?",
+        answer:
+          "Lokalise uses OAuth with dynamic client registration. You sign in with your Lokalise account and grant the scopes the tools need. Agents can only see and change what your Lokalise role already allows.",
+      },
+    ],
+    relatedIntegrations: ["github", "gitlab", "jira"],
+  },
+  // Databricks SQL: 3 real tools.
+  databricks_sql: {
+    seoTitle: "Query Databricks SQL from Dust",
+    seoSubtitle:
+      "Run SQL against your Databricks tables from a chat, and get the results back as a plain answer.",
+    tagline: "Ask a data question. Dust writes the SQL and runs it.",
+    chatStoryline: {
+      userPrompt:
+        "How many orders did we ship per region last week in main.sales.orders? Compare with the week before.",
+      toolCalls: ["execute_sql_read_only", "poll_sql_result"],
+      completedInSeconds: 9,
+      responseIntro:
+        "I ran a read-only query on main.sales.orders for the last two full weeks. Here are the shipped orders by region.",
+      responseSections: [
+        {
+          heading: "Shipped orders, week of Sep 21 vs Sep 14",
+          bullets: [
+            {
+              title: "EMEA",
+              body: "4,812 orders, up from 4,390 (+9.6%).",
+            },
+            {
+              title: "North America",
+              body: "6,105 orders, down from 6,420 (-4.9%).",
+            },
+            {
+              title: "APAC",
+              body: "2,237 orders, up from 2,011 (+11.2%).",
+            },
+          ],
+        },
+        {
+          heading: "Worth a look",
+          bullets: [
+            {
+              title: "North America dip",
+              body: "Most of the drop is on Sep 23 and 24. 318 orders on those days still have status 'pending_carrier'.",
+            },
+          ],
+        },
+      ],
+      followUpPrompt:
+        "Want me to break down the pending North America orders by carrier?",
+    },
+    benefits: [
+      {
+        icon: "ActionTableIcon",
+        color: "blue",
+        title: "Answers straight from your tables",
+        description:
+          "Ask in plain words. Dust writes the SQL, runs it on your Databricks workspace, and sums up the rows it gets back.",
+        toolMatches: ["execute_sql_read_only", "poll_sql_result"],
+      },
+      {
+        icon: "ActionLockIcon",
+        color: "green",
+        title: "Read-only by default",
+        description:
+          "Lookups go through a read-only tool that runs without a prompt. Any statement that can change data asks for your approval first.",
+        toolMatches: ["execute_sql_read_only", "execute_sql"],
+      },
+      {
+        icon: "ActionTimeIcon",
+        color: "golden",
+        title: "Long queries still come back",
+        description:
+          "Some queries take a while on a large table. Dust checks on the statement until it finishes, then reads the result.",
+        toolMatches: ["poll_sql_result"],
+      },
+    ],
+    faq: [
+      {
+        question: "What can Dust agents do with Databricks SQL?",
+        answer:
+          "Run SQL on your Databricks workspace and read the results. Agents can run read-only queries, check on long-running statements, and run other SQL statements after you approve them.",
+      },
+      {
+        question: "Can an agent change or delete data?",
+        answer:
+          "Only with your approval. Read-only queries run without a prompt. The general SQL tool, which can write, always asks you to confirm before it runs. What it can touch is also limited by the permissions of the Databricks account used.",
+      },
+      {
+        question: "How does authentication work?",
+        answer:
+          "An admin enters your Databricks workspace URL and the client ID and secret of a Databricks OAuth app. Dust then connects to the Databricks-managed SQL MCP server with OAuth. The connection can be shared by the workspace or set up per user.",
+      },
+    ],
+    relatedIntegrations: ["databricks_genie", "snowflake", "hex"],
+  },
+  // Databricks Genie: 3 real tools.
+  databricks_genie: {
+    seoTitle: "Ask Databricks Genie from Dust",
+    seoSubtitle:
+      "Put questions to your Genie spaces in plain language, without writing SQL, and get answers in the chat.",
+    tagline:
+      "Ask your Genie spaces questions from Dust and get the answers in the chat.",
+    chatStoryline: {
+      userPrompt:
+        "Ask the Finance Genie space what our top 5 customers by revenue were in Q3, and how that compares with Q2.",
+      toolCalls: ["genie_ask", "genie_poll_response", "genie_get_query_result"],
+      completedInSeconds: 14,
+      responseIntro:
+        "I asked your Finance Genie space. Genie built the query on its curated tables, and here is what came back.",
+      responseSections: [
+        {
+          heading: "Top 5 customers by Q3 revenue",
+          bullets: [
+            {
+              title: "Northwind Logistics",
+              body: "$1.42M in Q3, up from $1.18M in Q2.",
+            },
+            {
+              title: "Contoso Retail",
+              body: "$1.09M in Q3, flat versus $1.07M in Q2.",
+            },
+            {
+              title: "Fabrikam Health",
+              body: "$0.87M in Q3, down from $0.95M in Q2.",
+            },
+            {
+              title: "Tailspin Air and Litware",
+              body: "$0.71M and $0.64M. Litware is new to the top 5 this quarter.",
+            },
+          ],
+        },
+        {
+          heading: "How Genie got there",
+          bullets: [
+            {
+              title: "Source",
+              body: "Genie used the finance.revenue_by_customer table, with revenue counted at invoice date.",
+            },
+          ],
+        },
+      ],
+      followUpPrompt:
+        "Want me to ask Genie why Fabrikam Health went down in Q3?",
+    },
+    benefits: [
+      {
+        icon: "ActionChatBubbleBottomCenterTextIcon",
+        color: "violet",
+        title: "Ask in plain language",
+        description:
+          "Send a question to a Genie space from Dust. Genie picks the tables and writes the SQL, using the setup your data team already made.",
+        toolMatches: ["genie_ask"],
+      },
+      {
+        icon: "ActionTableIcon",
+        color: "blue",
+        title: "Check the rows behind the answer",
+        description:
+          "Dust reads Genie's reply and the rows behind it, so you can check the figures or use them in the next step.",
+        toolMatches: ["genie_poll_response", "genie_get_query_result"],
+      },
+      {
+        icon: "ActionPieChartIcon",
+        color: "golden",
+        title: "Follow-up questions in the same chat",
+        description:
+          "Ask a second question when the first answer raises one. Dust sends it to Genie and puts both answers side by side.",
+        toolMatches: ["genie_ask", "genie_poll_response"],
+      },
+    ],
+    faq: [
+      {
+        question: "What can Dust agents do with Databricks Genie?",
+        answer:
+          "Ask questions to your Genie spaces, wait for Genie's answer, and read the query results it returns. The tools are read-only: agents do not change your data or your Genie spaces.",
+      },
+      {
+        question: "How is this different from Databricks SQL?",
+        answer:
+          "With Databricks SQL, the agent writes and runs SQL itself. With Genie, the agent asks a question and Genie writes the query using the tables and instructions your data team set up in the space.",
+      },
+      {
+        question: "How does authentication work?",
+        answer:
+          "An admin enters your Databricks workspace URL and the client ID and secret of a Databricks OAuth app. Dust then connects to the Databricks-managed Genie MCP server with OAuth. The connection can be shared by the workspace or set up per user.",
+      },
+    ],
+    relatedIntegrations: ["databricks_sql", "snowflake", "power_bi"],
+  },
+  // Supabase: tool list not declared in Dust (toolStakes is empty), so no
+  // chatStoryline or benefits.
+  supabase: {
+    seoTitle: "Connect Supabase to Dust",
+    seoSubtitle:
+      "Use the official Supabase MCP server to work with your Supabase projects and databases from a Dust chat.",
+    tagline: "Let your agents work with your Supabase projects and databases.",
+    faq: [
+      {
+        question: "What can Dust agents do with Supabase?",
+        answer:
+          "Dust connects to the official Supabase MCP server. Agents get the tools that server exposes to your account, for things like querying your database and managing your projects.",
+      },
+      {
+        question: "How does authentication work?",
+        answer:
+          "Supabase uses OAuth with dynamic client registration. You sign in with your Supabase account in a browser window and approve access.",
+      },
+    ],
+    relatedIntegrations: ["github", "val_town", "datadog"],
+  },
+  // Cursor Cloud Agents: 16 real tools.
+  cursor_cloud_agents: {
+    seoTitle: "Launch Cursor Cloud Agents from Dust",
+    seoSubtitle:
+      "Start Cursor coding agents on your GitHub repositories, follow their runs, and get the pull requests they open.",
+    tagline: "Hand a coding task to Cursor and track it from chat.",
+    chatStoryline: {
+      userPrompt:
+        "Have Cursor fix the date parsing bug in the billing repo and open a PR. Also, how are the agents from yesterday doing?",
+      toolCalls: [
+        "list_repositories",
+        "launch_agent",
+        "list_agents",
+        "get_run",
+      ],
+      completedInSeconds: 12,
+      responseIntro:
+        "I launched a Cursor agent on the billing repo with auto PR on. Here is where yesterday's agents stand.",
+      responseSections: [
+        {
+          heading: "New agent launched",
+          bullets: [
+            {
+              title: "Fix date parsing in invoices",
+              body: "Running on acme/billing from main. It will open a pull request when the run finishes.",
+            },
+          ],
+        },
+        {
+          heading: "Yesterday's agents (2)",
+          bullets: [
+            {
+              title: "Add retry to webhook handler",
+              body: "Finished. Opened PR #812 on acme/api from branch cursor/webhook-retry.",
+            },
+            {
+              title: "Migrate settings page to new form",
+              body: "Still running. Last update 20 minutes ago.",
+            },
+          ],
+        },
+      ],
+      followUpPrompt:
+        "Want me to send a follow-up run to the settings page agent, or cancel it?",
+    },
+    benefits: [
+      {
+        icon: "ActionRocketIcon",
+        color: "blue",
+        title: "Start coding tasks from chat",
+        description:
+          "Describe the task and name the repo or pull request. Dust launches a Cursor agent and can ask it to open a PR when done.",
+        toolMatches: ["list_repositories", "launch_agent", "create_run"],
+      },
+      {
+        icon: "ActionListCheckIcon",
+        color: "green",
+        title: "Follow runs and their results",
+        description:
+          "Ask which agents are running, finished, or stuck. Dust reads each run's status, final response, branches, and pull requests.",
+        toolMatches: ["list_agents", "list_runs", "get_run"],
+      },
+      {
+        icon: "ActionPieChartIcon",
+        color: "golden",
+        title: "Check usage and clean up",
+        description:
+          "See token usage per agent or run, cancel runs you no longer need, and archive old agents.",
+        toolMatches: ["get_agent_usage", "cancel_run", "archive_agent"],
+      },
+    ],
+    faq: [
+      {
+        question: "What can Dust agents do with Cursor Cloud Agents?",
+        answer:
+          "Launch agents on GitHub repositories, send follow-up runs, read run status and results, list artifacts like logs and screenshots, check token usage, and cancel, archive, or delete agents.",
+      },
+      {
+        question: "How does authentication work?",
+        answer:
+          "You paste a Cursor API key when you add the tool in Dust. Agents act with that key and see the repositories it has access to.",
+      },
+      {
+        question: "Do risky actions need approval?",
+        answer:
+          "Yes. Launching an agent, creating a run, and deleting an agent ask for your approval before they run.",
+      },
+    ],
+    relatedIntegrations: ["github", "linear", "slack"],
+  },
+  // Qonto: 81 real tools.
+  qonto: {
+    seoTitle: "Work with your Qonto business account from Dust",
+    seoSubtitle:
+      "Read transactions and statements, track client and supplier invoices, and prepare invoices and transfer requests for approval.",
+    tagline:
+      "Ask about your transactions, invoices, and missing receipts in Qonto.",
+    chatStoryline: {
+      userPrompt:
+        "Which card payments from last month still have no receipt, and which client invoices are overdue?",
+      toolCalls: [
+        "list_transactions",
+        "list_transaction_attachments",
+        "list_client_invoices",
+      ],
+      completedInSeconds: 11,
+      responseIntro:
+        "I read last month's transactions in Qonto and checked which ones have no attachment. Then I listed unpaid client invoices past their due date.",
+      responseSections: [
+        {
+          heading: "Card payments missing a receipt (3)",
+          bullets: [
+            {
+              title: "Aircall: €240.00",
+              body: "Paid on Aug 4 with Marc's card. No attachment.",
+            },
+            {
+              title: "SNCF: €86.50",
+              body: "Paid on Aug 12 with Léa's card. No attachment.",
+            },
+            {
+              title: "Le Petit Bistrot: €54.20",
+              body: "Paid on Aug 27 with Marc's card. No attachment.",
+            },
+          ],
+        },
+        {
+          heading: "Overdue client invoices (2)",
+          bullets: [
+            {
+              title: "INV-2026-0418, Maison Duval",
+              body: "€3,600.00. Due Aug 31. Unpaid.",
+            },
+            {
+              title: "INV-2026-0421, Studio Nord",
+              body: "€1,250.00. Due Sep 15. Unpaid.",
+            },
+          ],
+        },
+      ],
+      followUpPrompt:
+        "Want me to set up a payment reminder on the two overdue invoices?",
+    },
+    benefits: [
+      {
+        icon: "ActionMagnifyingGlassIcon",
+        color: "blue",
+        title: "Find missing receipts",
+        description:
+          "Ask which transactions have no receipt. Dust reads transactions and their attachments, so you know who to chase before month-end.",
+        toolMatches: ["list_transactions", "list_transaction_attachments"],
+      },
+      {
+        icon: "ActionDocumentTextIcon",
+        color: "green",
+        title: "Keep client invoices moving",
+        description:
+          "See which invoices are unpaid or overdue. Dust can draft and send an invoice, add a reminder, or mark one as paid, with your approval.",
+        toolMatches: [
+          "list_client_invoices",
+          "create_client_invoice",
+          "create_reminder",
+        ],
+      },
+      {
+        icon: "ActionBankIcon",
+        color: "golden",
+        title: "Prepare transfers for approval",
+        description:
+          "Dust can create a transfer request and list pending ones. The transfer runs only once the request is approved, and every step asks for your confirmation.",
+        toolMatches: ["create_multi_transfer_request", "list_requests"],
+      },
+    ],
+    faq: [
+      {
+        question: "What can Dust agents do in Qonto?",
+        answer:
+          "Read transactions, statements, cards, and attachments. Manage clients, invoices, quotes, credit notes, and reminders. Create cards, transfer requests, and payment links. Approve or decline pending requests. Every write action asks for your approval first.",
+      },
+      {
+        question: "Can Dust send money from my account?",
+        answer:
+          "Dust can create a transfer request. The money is sent once that request is approved, and Dust asks you to confirm before it approves one.",
+      },
+      {
+        question: "How does authentication work?",
+        answer:
+          "Qonto uses OAuth with dynamic client registration. You sign in with your Qonto account and approve access from Dust.",
+      },
+    ],
+    relatedIntegrations: ["spendesk", "netsuite", "stripe"],
+  },
 };
+
+// Regional variants run the same MCP server in another region, with the same
+// tools, so they reuse their main listing's copy.
+const REGIONAL_VARIANTS: Record<string, string> = {
+  amplitude_europe: "amplitude",
+  datadog_europe: "datadog",
+  qobra_us: "qobra",
+};
+
+for (const [variant, main] of Object.entries(REGIONAL_VARIANTS)) {
+  tailoredEnrichments[variant] = tailoredEnrichments[main];
+}

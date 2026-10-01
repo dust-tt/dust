@@ -1,5 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { formatNumber } from "@app/lib/i18n/format";
 import { invalidateMembersUsage } from "@app/lib/swr/memberships";
 import {
   getErrorFromResponse,
@@ -433,7 +434,7 @@ export function useUpdateProgrammaticUsageLimit({
         sendNotification({
           type: "success",
           title: "Programmatic usage limit updated",
-          description: `Monthly limit set to ${monthlyCapCredits.toLocaleString()} credits.`,
+          description: `Monthly limit set to ${formatNumber(monthlyCapCredits)} credits.`,
         });
       }
 

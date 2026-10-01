@@ -15,10 +15,10 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 
 export type CommandPaletteAction = "view_details" | "edit" | "chat_with";
 
-// Pods navigate directly and never enter the action phase.
+// Pods and conversations navigate directly and never enter the action phase.
 export type ActionPhaseItem = Extract<
   CommandPaletteItem,
-  { kind: "agent" | "skill" }
+  { kind: "agent" | "skill" | "member" }
 >;
 
 interface CommandPaletteActionPhaseProps {
@@ -42,6 +42,8 @@ function canEdit(item: ActionPhaseItem, canEditAgent: boolean): boolean {
       return "canEdit" in item.agent ? item.agent.canEdit : canEditAgent;
     case "skill":
       return item.skill.canAdministrate;
+    case "member":
+      return false;
   }
 }
 
@@ -67,18 +69,24 @@ export function CommandPaletteActionPhase({
 
   const actions = useMemo(() => {
     const result: ActionDefinition[] = [];
-    if (item.kind === "agent") {
+    if (item.kind === "agent" || item.kind === "member") {
       result.push({
         action: "chat_with",
         label: "New conversation",
-        description: "Open a new conversation",
+        description:
+          item.kind === "member"
+            ? "Open a new conversation mentioning this member"
+            : "Open a new conversation",
         icon: MessageCircle01,
       });
     }
     result.push({
       action: "view_details",
       label: "Details",
-      description: "View description and settings",
+      description:
+        item.kind === "member"
+          ? "View profile"
+          : "View description and settings",
       icon: Eye,
     });
     if (canEdit(item, canEditAgent)) {
@@ -132,11 +140,23 @@ export function CommandPaletteActionPhase({
     }
   }
 
-  const itemName = item.kind === "agent" ? item.agent.name : item.skill.name;
+  const itemName =
+    item.kind === "agent"
+      ? item.agent.name
+      : item.kind === "member"
+        ? item.member.fullName
+        : item.skill.name;
 
   const itemAvatar =
     item.kind === "agent" ? (
       <Avatar visual={item.agent.pictureUrl} size="xs" />
+    ) : item.kind === "member" ? (
+      <Avatar
+        name={item.member.fullName}
+        visual={item.member.image ?? undefined}
+        size="xs"
+        isRounded
+      />
     ) : (
       React.createElement(getSkillAvatarIcon(item.skill), {
         size: "xs",

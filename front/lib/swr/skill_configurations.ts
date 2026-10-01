@@ -10,6 +10,8 @@ import { parseGitHubRepoUrl } from "@app/lib/skill_detection";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { getManageSkillsRoute } from "@app/lib/utils/router";
 import type { GetSkillHistoryResponseBody } from "@app/types/api/assistant/skills/history";
+import type { SearchType } from "@app/types/api/search";
+import { MIN_NAME_SEARCH_QUERY_LENGTH } from "@app/types/api/search";
 import type {
   GetSkillResponseBody,
   GetSkillsResponseBody,
@@ -189,24 +191,37 @@ export function useSkills({
   };
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] management-search-minimum-length
+ * Name search sends an empty query below MIN_NAME_SEARCH_QUERY_LENGTH trimmed
+ * characters. Autocomplete keeps accepting shorter input.
+ */
 export function useSearchSkills({
   owner,
+  searchEndpoint,
   searchTerm,
+  searchType = "autocomplete",
   offset,
   limit,
   sortBy,
   sortOrder,
+  defaultToFavorites,
+  excludeSkillId,
   permissionFiltering,
   filters,
   facets,
   disabled,
 }: {
   owner: LightWorkspaceType;
+  searchEndpoint?: string;
   searchTerm: string;
+  searchType?: SearchType;
   offset?: number;
   limit?: number;
   sortBy?: SkillSearchSort;
   sortOrder?: SkillSearchSortOrder;
+  defaultToFavorites?: boolean;
+  excludeSkillId?: string | null;
   permissionFiltering?: SkillSearchPermissionFiltering;
   filters?: SkillSearchFilters;
   facets?: SkillSearchFacet[];
@@ -214,7 +229,15 @@ export function useSearchSkills({
 }) {
   const { fetcherWithBody } = useFetcher();
   const { mutate: globalMutate } = useSWRConfig();
-  const query = searchTerm.slice(0, SEARCH_SKILLS_QUERY_MAX_LENGTH);
+  const truncatedSearchTerm = searchTerm.slice(
+    0,
+    SEARCH_SKILLS_QUERY_MAX_LENGTH
+  );
+  const query =
+    searchType === "name" &&
+    truncatedSearchTerm.trim().length < MIN_NAME_SEARCH_QUERY_LENGTH
+      ? ""
+      : truncatedSearchTerm;
   const { debouncedValue: debouncedSearchTerm, setValue: setSearchTerm } =
     useDebounce(query, { delay: SEARCH_SKILLS_DEBOUNCE_MS });
   const isDebouncing = query !== debouncedSearchTerm;
@@ -223,14 +246,17 @@ export function useSearchSkills({
     setSearchTerm(query);
   }, [query, setSearchTerm]);
 
-  const url = `/api/w/${owner.sId}/skills/search`;
+  const url = searchEndpoint ?? `/api/w/${owner.sId}/skills/search`;
   const body = {
     ...filters,
     query: debouncedSearchTerm,
+    searchType,
     offset,
     limit,
     sortBy,
     sortOrder,
+    defaultToFavorites,
+    excludeSkillId: excludeSkillId ?? undefined,
     permissionFiltering,
     facets,
   };

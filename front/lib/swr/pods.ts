@@ -11,6 +11,7 @@ import type {
   PostProjectContextContentNodeResponseBody as PostPodContextContentNodeResponseBody,
 } from "@app/lib/api/projects/context";
 import { clientFetch } from "@app/lib/egress/client";
+import { compareStrings } from "@app/lib/i18n/format";
 import { flattenPodTasksWithStableAssigneeOrder } from "@app/lib/project_task/display_order";
 import type { PostSeedInitialPodTasksResponseBody } from "@app/lib/project_task/seed_initial_pod_tasks";
 import { useSkills } from "@app/lib/swr/skill_configurations";
@@ -145,9 +146,6 @@ export function usePodFiles({
     refreshPodFiles,
   };
 }
-
-export type PodContextContentNodeFragment =
-  PostPodContextContentNodeResponseBody["contentFragments"][number];
 
 export function useAddPodContextContentNodes({
   owner,
@@ -541,7 +539,7 @@ export function usePodTasks({
       if (aIsViewer !== bIsViewer) {
         return aIsViewer ? -1 : 1;
       }
-      return a.fullName.localeCompare(b.fullName, undefined, {
+      return compareStrings(a.fullName, b.fullName, {
         sensitivity: "base",
       });
     });

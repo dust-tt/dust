@@ -28,9 +28,7 @@ export type {
   UserUploadableBrandingAssetName,
 } from "./paths";
 export {
-  BRANDING_ASSET_NAMES,
   BRANDING_DEFAULT_ASSET_PATHS,
-  buildBrandingAssetPublicUrl,
   buildBrandingAssetStoragePath,
   isBrandingAssetName,
   USER_UPLOADABLE_BRANDING_ASSET_NAMES,

@@ -186,18 +186,37 @@ function toConfigurationJSON(
   };
 }
 
+export type LightAgentConfigurationOptions = {
+  withInstructions?: boolean;
+  withFavorites?: boolean;
+  withTags?: boolean;
+};
+
 /**
  * Renders `LightAgentConfigurationType`s: the queried `instructions`, `userFavorite` and `tags` on
- * top of `AgentResource.toJSON`.
+ * top of `AgentResource.toJSON`. Callers that never surface instructions, favorites or tags (e.g.
+ * rendered messages) can skip their queries, and get `instructions: null`, `userFavorite: false`
+ * and `tags: []`.
  */
 export async function toLightAgentConfigurations(
   auth: Authenticator,
-  resources: AgentResource[]
+  resources: AgentResource[],
+  {
+    withInstructions = true,
+    withFavorites = true,
+    withTags = true,
+  }: LightAgentConfigurationOptions = {}
 ): Promise<LightAgentConfigurationType[]> {
   const [instructions, favorites, tags] = await Promise.all([
-    enrichWithInstructions(resources),
-    enrichWithFavorites(auth, resources),
-    enrichWithTags(auth, resources),
+    withInstructions
+      ? enrichWithInstructions(resources)
+      : new Map<AgentResource, AgentInstructionsEnrichment>(),
+    withFavorites
+      ? enrichWithFavorites(auth, resources)
+      : new Map<string, AgentFavoriteEnrichment>(),
+    withTags
+      ? enrichWithTags(auth, resources)
+      : new Map<AgentResource, AgentTagsEnrichment>(),
   ]);
 
   return resources.map((resource) =>
@@ -209,18 +228,41 @@ export async function toLightAgentConfigurations(
   );
 }
 
+// The light configuration of a single resource, as `toLightAgentConfigurations` renders it.
+export async function toLightAgentConfiguration(
+  auth: Authenticator,
+  resource: AgentResource,
+  options: LightAgentConfigurationOptions = {}
+): Promise<LightAgentConfigurationType> {
+  const [configuration] = await toLightAgentConfigurations(
+    auth,
+    [resource],
+    options
+  );
+  return configuration;
+}
+
 /**
  * Renders full `AgentConfigurationType`s: the light enrichments plus the batched `instructionsHtml`
- * and `actions` (redacted when the caller cannot view the content).
+ * and `actions` (redacted when the caller cannot view the content). Favorites and tags can be
+ * skipped as in `toLightAgentConfigurations`.
  */
 export async function toAgentConfigurations(
   auth: Authenticator,
-  resources: AgentResource[]
+  resources: AgentResource[],
+  {
+    withFavorites = true,
+    withTags = true,
+  }: { withFavorites?: boolean; withTags?: boolean } = {}
 ): Promise<AgentConfigurationType[]> {
   const [instructions, favorites, tags, actions] = await Promise.all([
     enrichWithInstructions(resources),
-    enrichWithFavorites(auth, resources),
-    enrichWithTags(auth, resources),
+    withFavorites
+      ? enrichWithFavorites(auth, resources)
+      : new Map<string, AgentFavoriteEnrichment>(),
+    withTags
+      ? enrichWithTags(auth, resources)
+      : new Map<AgentResource, AgentTagsEnrichment>(),
     enrichWithActions(auth, resources),
   ]);
 
@@ -244,5 +286,35 @@ export function toParticipantJSON(
     configurationId: resource.sId,
     name: resource.name,
     pictureUrl: resource.pictureUrl,
+  };
+}
+
+export type PokeAgentSummaryJSON = {
+  agentId: string;
+  name: string;
+  description: string;
+  scope: AgentConfigurationType["scope"];
+  status: AgentConfigurationType["status"];
+  version: number;
+  versionCreatedAt: string | null;
+  instructionsLength: number;
+  requestedSpaceCount: number;
+};
+
+export function toPokeAgentSummaryJSON(
+  resource: AgentResource,
+  { instructionsLength }: { instructionsLength: number }
+): PokeAgentSummaryJSON {
+  const json = resource.toJSON();
+  return {
+    agentId: json.sId,
+    name: json.name,
+    description: json.description,
+    scope: json.scope,
+    status: json.status,
+    version: json.version,
+    versionCreatedAt: json.versionCreatedAt,
+    instructionsLength,
+    requestedSpaceCount: json.requestedSpaceIds.length,
   };
 }

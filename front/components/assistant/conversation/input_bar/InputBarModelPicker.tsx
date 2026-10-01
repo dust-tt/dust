@@ -27,7 +27,7 @@ export function InputBarModelPicker({
   onSelectionChange,
   commitApiRef,
 }: InputBarModelPickerProps) {
-  const { stickyModelOverride, setStickyModelOverride, openModelPickerRef } =
+  const { stickyModelOverride, setStickyModelOverride } =
     useContext(InputBarContext);
 
   // On mobile (and in the narrow extension) the input bar has no room for the
@@ -52,7 +52,6 @@ export function InputBarModelPicker({
         stickyModelOverride={stickyModelOverride}
         setStickyModelOverride={setStickyModelOverride}
         commitApiRef={commitApiRef}
-        openApiRef={openModelPickerRef}
         trackingSurface="conversation_input_bar"
       />
     </ModelPickerHighlight>

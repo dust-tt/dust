@@ -13,6 +13,10 @@ import fs from "fs";
 
 const NOTION_REMOTE_MCP_URL = "https://mcp.notion.com/mcp";
 
+function escapeSqlLiteral(value: string): string {
+  return value.replace(/'/g, "''");
+}
+
 makeScript(
   {
     workspaceId: {
@@ -201,9 +205,12 @@ makeScript(
         if (execute) {
           const internalMCPServerId =
             config.internalMCPServerId !== null
-              ? `'${config.internalMCPServerId}'`
+              ? `'${escapeSqlLiteral(config.internalMCPServerId)}'`
               : "NULL";
-          const name = config.name !== null ? `'${config.name}'` : "NULL";
+          const name =
+            config.name !== null
+              ? `'${escapeSqlLiteral(config.name)}'`
+              : "NULL";
           revertSql += `UPDATE agent_mcp_server_configurations SET "mcpServerViewId" = ${config.mcpServerViewId}, "internalMCPServerId" = ${internalMCPServerId}, "name" = ${name} WHERE id = ${config.id};\n`;
 
           await config.update({

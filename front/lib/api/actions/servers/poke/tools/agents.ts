@@ -10,8 +10,11 @@ import {
   getTargetAuth,
   jsonResponse,
 } from "@app/lib/api/actions/servers/poke/tools/utils";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAuthors, getEditors } from "@app/lib/api/assistant/editors";
+import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toPokeAgentSummaryJSON } from "@app/lib/resources/agent_resource_serialization";
 import { Err } from "@app/types/shared/result";
 
 type AgentHandlers = Pick<
@@ -47,6 +50,15 @@ function decodeCursor(cursor: string): { sortKey: string; sId: string } | null {
   }
 }
 
+function listAgentsByStatus(
+  auth: Authenticator,
+  status: "active" | "archived" | undefined
+): Promise<AgentResource[]> {
+  return status === "archived"
+    ? AgentResource.listByWorkspace(auth, { status: "archived" })
+    : AgentResource.listActive(auth);
+}
+
 export const agentHandlers: AgentHandlers = {
   [LIST_WORKSPACE_AGENTS_TOOL_NAME]: async (
     { workspace_id, status, limit, next_page_cursor },
@@ -67,15 +79,16 @@ export const agentHandlers: AgentHandlers = {
     }
     const targetAuth = targetAuthResult.value;
 
-    const allAgents = await getAgentConfigurationsForView({
-      auth: targetAuth,
-      agentsGetView: status === "archived" ? "archived" : "admin_internal",
-      variant: "light",
-    });
+    const agents = await listAgentsByStatus(targetAuth, status);
+    const entries = agents.map((agent) => ({
+      agent,
+      sId: agent.sId,
+      versionCreatedAt: agent.toJSON().versionCreatedAt,
+    }));
 
     // Sort by versionCreatedAt DESC, sId ASC as tiebreaker.
     // Null versionCreatedAt is treated as oldest.
-    const sorted = [...allAgents].sort((a, b) => {
+    const sorted = entries.toSorted((a, b) => {
       const timeA = a.versionCreatedAt
         ? new Date(a.versionCreatedAt).getTime()
         : 0;
@@ -127,20 +140,19 @@ export const agentHandlers: AgentHandlers = {
           )
         : null;
 
+    const instructionsByAgent = await AgentResource.batchFetchInstructions(
+      page.map(({ agent }) => agent)
+    );
+
     return jsonResponse({
       workspace_id,
       totalCount: sorted.length,
-      agents: page.map((a) => ({
-        agentId: a.sId,
-        name: a.name,
-        description: a.description,
-        scope: a.scope,
-        status: a.status,
-        version: a.version,
-        versionCreatedAt: a.versionCreatedAt,
-        instructionsLength: a.instructions?.length ?? 0,
-        requestedSpaceCount: a.requestedSpaceIds.length,
-      })),
+      agents: page.map(({ agent }) =>
+        toPokeAgentSummaryJSON(agent, {
+          instructionsLength:
+            instructionsByAgent.get(agent)?.instructions?.length ?? 0,
+        })
+      ),
       nextPageCursor,
     });
   },
@@ -164,22 +176,15 @@ export const agentHandlers: AgentHandlers = {
     }
     const targetAuth = targetAuthResult.value;
 
-    // Try active agents first (admin_internal), then archived.
-    let agents = await getAgentConfigurationsForView({
-      auth: targetAuth,
-      agentsGetView: "admin_internal",
+    const configuration = await getAgentConfiguration(targetAuth, {
+      agentId: agent_id,
       variant: "full",
     });
-    let agent = agents.find((a) => a.sId === agent_id) ?? null;
-
-    if (!agent) {
-      agents = await getAgentConfigurationsForView({
-        auth: targetAuth,
-        agentsGetView: "archived",
-        variant: "full",
-      });
-      agent = agents.find((a) => a.sId === agent_id) ?? null;
-    }
+    const agent =
+      configuration &&
+      (configuration.status === "active" || configuration.status === "archived")
+        ? configuration
+        : null;
 
     if (!agent) {
       return new Err(

@@ -1,5 +1,6 @@
 import { parseDefaultLimitInput } from "@app/components/workspace/member_spend_limit_helpers";
 import { LockedSection } from "@app/components/workspace/usage/LockedSection";
+import { formatNumber } from "@app/lib/i18n/format";
 import {
   useDefaultUserSpendLimit,
   useUpdateDefaultUserSpendLimit,
@@ -105,11 +106,15 @@ export function UsageSettingsCard({
                   inputMode="numeric"
                   pattern="[0-9]*"
                   placeholder="--"
-                  value={currentDefaultLimit?.toLocaleString() ?? ""}
+                  value={
+                    currentDefaultLimit === null
+                      ? ""
+                      : formatNumber(currentDefaultLimit)
+                  }
                   unit="credits/month"
                   normalizeValue={(value) => value.replace(/[^\d]/g, "")}
                   formatValue={(value) =>
-                    value ? Number(value).toLocaleString() : value
+                    value ? formatNumber(Number(value)) : value
                   }
                   validate={validateDefaultLimit}
                   onSave={handleSaveDefaultLimit}
