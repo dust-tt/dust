@@ -433,8 +433,8 @@ export async function buildAgentLoopDataFromConversation(
   });
 }
 
-// The full configuration of the version the agent message pinned, for a caller who can view its
-// content (the loop runs on its instructions and tools); null otherwise.
+// The full configuration of the version the agent message pinned, for a caller who can `read` it
+// (the loop runs it, on its instructions and tools); null otherwise.
 async function getAgentConfigurationForLoop(
   auth: Authenticator,
   {
@@ -452,7 +452,8 @@ async function getAgentConfigurationForLoop(
     [{ agentId, agentVersion }],
     { globalAgentContext, withActions: true }
   );
-  if (!agent?.canViewContent) {
+
+  if (!agent || !auth.can("read", agent)) {
     return null;
   }
 
