@@ -1,10 +1,7 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { deleteWorkOSUser } from "@app/lib/api/workos/user";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import {
-  formatForeignKeyReferences,
-  UserResource,
-} from "@app/lib/resources/user_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -13,11 +10,11 @@ export const wipeUserPlugin = createPlugin({
     id: "wipe-user",
     name: "Wipe User",
     description:
-      "Permanently delete a user with no membership and no data left in the front database: " +
-      "removes them from Customer.io, WorkOS and the front database.",
+      "Permanently wipe a user with no membership: removes them from Customer.io and WorkOS, " +
+      "and anonymizes their row in the front database.",
     warning:
-      "Irreversible. Only front database foreign keys are checked: data in core, connectors, " +
-      "Elasticsearch or storage is not.",
+      "Irreversible. Only the user row and its metadata are anonymized: data the user created " +
+      "(messages, files...) is kept and still points to the anonymized user.",
     resourceTypes: ["global"],
     args: {
       userId: {
@@ -28,7 +25,7 @@ export const wipeUserPlugin = createPlugin({
       confirmWipe: {
         type: "boolean",
         label: "Confirm wipe",
-        description: "Confirm you want to permanently delete this user.",
+        description: "Confirm you want to permanently wipe this user.",
       },
     },
     requiredRoles: ["engineering"],
@@ -62,15 +59,6 @@ export const wipeUserPlugin = createPlugin({
       );
     }
 
-    const references = await user.listForeignKeyReferences();
-    if (references.length > 0) {
-      return new Err(
-        new Error(
-          `User ${userId} is still referenced by: ${formatForeignKeyReferences(references)}`
-        )
-      );
-    }
-
     const customerioResult = await CustomerioServerSideTracking.deleteUser({
       email: user.email,
     });
@@ -85,14 +73,14 @@ export const wipeUserPlugin = createPlugin({
       }
     }
 
-    const deleteResult = await user.hardDeleteIfUnreferenced();
-    if (deleteResult.isErr()) {
-      return deleteResult;
+    const anonymizeResult = await user.anonymize();
+    if (anonymizeResult.isErr()) {
+      return anonymizeResult;
     }
 
     return new Ok({
       display: "text",
-      value: `User ${userId} deleted from Customer.io, WorkOS and the front database.`,
+      value: `User ${userId} deleted from Customer.io and WorkOS, and anonymized in the front database.`,
     });
   },
 });
