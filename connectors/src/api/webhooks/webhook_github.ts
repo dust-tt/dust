@@ -250,10 +250,7 @@ const _webhookGithubAPIHandler = async (
 
     case "pull_request":
       if (isPullRequestPayload(jsonBody)) {
-        const login =
-          "organization" in jsonBody
-            ? jsonBody.organization.login
-            : jsonBody.sender.login;
+        const login = jsonBody.repository.owner.login;
         if (jsonBody.action === "opened" || jsonBody.action === "edited") {
           return syncIssue(
             enabledConnectors,

@@ -15,9 +15,14 @@ const InstallationSchema = t.type({
   }),
 });
 
+const UserSchema = t.type({
+  login: t.string,
+});
+
 const RepositorySchema = t.type({
   id: t.number,
   name: t.string,
+  owner: UserSchema,
 });
 
 const RepositoriesAddedPayloadSchema = t.type({
@@ -54,10 +59,6 @@ const IssueSchema = t.type({
 });
 
 const OrganizationSchema = t.type({
-  login: t.string,
-});
-
-const UserSchema = t.type({
   login: t.string,
 });
 
@@ -117,27 +118,23 @@ const PullRequestSchema = t.type({
   merged: t.boolean,
 });
 
-const PullRequestPayloadSchema = t.intersection([
-  t.type({
-    action: t.union([
-      t.literal("opened"),
-      t.literal("edited"),
-      t.literal("closed"),
-    ]),
-    pull_request: PullRequestSchema,
-    repository: RepositorySchema,
-  }),
-  t.union([
-    t.type({
-      organization: OrganizationSchema,
-    }),
-    t.type({
-      sender: UserSchema,
-    }),
+const PullRequestPayloadSchema = t.type({
+  action: t.union([
+    t.literal("opened"),
+    t.literal("edited"),
+    t.literal("closed"),
   ]),
-]);
+  pull_request: PullRequestSchema,
+  repository: RepositorySchema,
+});
 
 type PullRequestPayload = t.TypeOf<typeof PullRequestPayloadSchema>;
+/**
+ * @cc [owner:frankaloia,label:security] pr-owner-from-repository
+ * `repository.owner.login` MUST be used as the repository owner for all connector operations
+ * triggered by this payload. `sender.login` identifies the event trigger (the PR opener or merger),
+ * not the repository owner, and MUST NOT be used for ownership resolution.
+ */
 export function isPullRequestPayload(
   payload: unknown
 ): payload is PullRequestPayload {
