@@ -1,53 +1,24 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { getNovuClient } from "@app/lib/notifications";
-import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { SKILL_SUGGESTIONS_READY_TRIGGER_ID } from "@app/types/notification_preferences";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { UserType } from "@app/types/user";
-import { workflow } from "@novu/framework";
 import z from "zod";
 
-const SkillSuggestionsReadyPayloadSchema = z.object({
+export const SkillSuggestionsReadyPayloadSchema = z.object({
   workspaceId: z.string(),
   skillId: z.string(),
   skillName: z.string(),
   suggestionCount: z.number(),
 });
 
-type SkillSuggestionsReadyPayloadType = z.infer<
+export type SkillSuggestionsReadyPayloadType = z.infer<
   typeof SkillSuggestionsReadyPayloadSchema
 >;
-
-export const skillSuggestionsReadyWorkflow = workflow(
-  SKILL_SUGGESTIONS_READY_TRIGGER_ID,
-  async ({ step, payload }) => {
-    await step.inApp("send-in-app", async () => {
-      return {
-        subject: payload.skillName,
-        body: `${payload.suggestionCount} new improvement suggestion${pluralize(payload.suggestionCount)} ready for review.`,
-        primaryAction: {
-          label: "Review",
-          redirect: {
-            url: getSkillBuilderRoute(payload.workspaceId, payload.skillId),
-          },
-        },
-        data: {
-          skillId: payload.skillId,
-          skillName: payload.skillName,
-        },
-      };
-    });
-  },
-  {
-    payloadSchema: SkillSuggestionsReadyPayloadSchema,
-    tags: ["admin"],
-  }
-);
 
 const triggerSkillSuggestionsReadyNotifications = async (
   auth: Authenticator,

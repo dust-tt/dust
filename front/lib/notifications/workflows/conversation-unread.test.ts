@@ -9,14 +9,16 @@ import { getEmailSummary } from "@app/lib/notifications/helpers";
 import type { ConversationUnreadPayloadType } from "@app/lib/notifications/triggers/conversation-unread";
 import {
   filterParticipantsByNotifyCondition,
-  getMessagePreviewSlack,
-  getMessagePreviewText,
   shouldSendNotificationForAgentAnswer,
   shouldSkipConversation,
   shouldSkipConversationExternalNotification,
   shouldSkipNewProjectConversation,
   triggerConversationUnreadNotifications,
 } from "@app/lib/notifications/triggers/conversation-unread";
+import {
+  getMessagePreviewSlack,
+  getMessagePreviewText,
+} from "@app/lib/notifications/workflows/conversation-unread";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
