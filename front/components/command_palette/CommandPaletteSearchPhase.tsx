@@ -19,12 +19,29 @@ import type { LightUserTypeWithWorkspace } from "@app/types/user";
 import {
   Avatar,
   cn,
+  FilterChips,
   Icon,
   LoadingBlock,
   MessageCircle01,
   SearchInput,
 } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+
+type CommandPaletteCategory =
+  | "Conversations"
+  | "Pods"
+  | "Agents"
+  | "Members"
+  | "Skills";
+type CommandPaletteFilter = "All" | CommandPaletteCategory;
+
+const CATEGORY_ORDER: CommandPaletteCategory[] = [
+  "Conversations",
+  "Pods",
+  "Agents",
+  "Members",
+  "Skills",
+];
 
 type CommandPaletteSkill =
   | SkillListItemType
@@ -92,6 +109,38 @@ function getFlatItems(
   ];
 }
 
+function getAvailableCategories({
+  conversations,
+  pods,
+  agents,
+  members,
+  skills,
+}: {
+  conversations: CommandPaletteConversation[];
+  pods: CommandPalettePod[];
+  agents: CommandPaletteAgent[];
+  members: CommandPaletteMember[];
+  skills: CommandPaletteSkill[];
+}): CommandPaletteCategory[] {
+  const categories: CommandPaletteCategory[] = [];
+  if (conversations.length > 0) {
+    categories.push("Conversations");
+  }
+  if (pods.length > 0) {
+    categories.push("Pods");
+  }
+  if (agents.length > 0) {
+    categories.push("Agents");
+  }
+  if (members.length > 0) {
+    categories.push("Members");
+  }
+  if (skills.length > 0) {
+    categories.push("Skills");
+  }
+  return categories;
+}
+
 export function CommandPaletteSearchPhase({
   searchQuery,
   onSearchQueryChange,
@@ -111,10 +160,73 @@ export function CommandPaletteSearchPhase({
   onItemSelect,
   onClose,
 }: CommandPaletteSearchPhaseProps) {
-  const flatItems = useMemo(
-    () => getFlatItems(conversations, pods, agents, members, skills),
+  const availableCategories = useMemo(
+    () =>
+      getAvailableCategories({
+        conversations,
+        pods,
+        agents,
+        members,
+        skills,
+      }),
     [conversations, pods, agents, members, skills]
   );
+
+  const [selectedCategory, setSelectedCategory] =
+    useState<CommandPaletteFilter>("All");
+
+  // Keep the active category in the chip row even if it currently has no hits,
+  // so selecting a filter is sticky across typing / result changes.
+  const filters = useMemo((): CommandPaletteFilter[] => {
+    const categories = new Set(availableCategories);
+    if (selectedCategory !== "All") {
+      categories.add(selectedCategory);
+    }
+    return [
+      "All",
+      ...CATEGORY_ORDER.filter((category) => categories.has(category)),
+    ];
+  }, [availableCategories, selectedCategory]);
+
+  const filteredConversations =
+    selectedCategory === "All" || selectedCategory === "Conversations"
+      ? conversations
+      : [];
+  const filteredPods =
+    selectedCategory === "All" || selectedCategory === "Pods" ? pods : [];
+  const filteredAgents =
+    selectedCategory === "All" || selectedCategory === "Agents" ? agents : [];
+  const filteredMembers =
+    selectedCategory === "All" || selectedCategory === "Members" ? members : [];
+  const filteredSkills =
+    selectedCategory === "All" || selectedCategory === "Skills" ? skills : [];
+
+  const flatItems = useMemo(
+    () =>
+      getFlatItems(
+        filteredConversations,
+        filteredPods,
+        filteredAgents,
+        filteredMembers,
+        filteredSkills
+      ),
+    [
+      filteredConversations,
+      filteredPods,
+      filteredAgents,
+      filteredMembers,
+      filteredSkills,
+    ]
+  );
+  const hasResults =
+    conversations.length > 0 ||
+    pods.length > 0 ||
+    agents.length > 0 ||
+    members.length > 0 ||
+    skills.length > 0;
+  const showCategoryFilters =
+    selectedCategory !== "All" || availableCategories.length > 1;
+
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -169,10 +281,10 @@ export function CommandPaletteSearchPhase({
     }
   }
 
-  const podsOffset = conversations.length;
-  const agentsOffset = podsOffset + pods.length;
-  const membersOffset = agentsOffset + agents.length;
-  const skillsOffset = membersOffset + members.length;
+  const podsOffset = filteredConversations.length;
+  const agentsOffset = podsOffset + filteredPods.length;
+  const membersOffset = agentsOffset + filteredAgents.length;
+  const skillsOffset = membersOffset + filteredMembers.length;
 
   return (
     <div className="flex flex-col">
@@ -185,9 +297,22 @@ export function CommandPaletteSearchPhase({
           onChange={onSearchQueryChange}
           onKeyDown={handleKeyDown}
         />
+        {showCategoryFilters && (
+          <div className="pt-2">
+            <FilterChips
+              filters={filters}
+              defaultFilter="All"
+              variant="secondary"
+              onFilterClick={(filter) => {
+                setSelectedCategory(filter);
+                onSelectedIndexChange(0);
+              }}
+            />
+          </div>
+        )}
       </div>
       <div className="flex max-h-125 flex-col gap-2 overflow-y-auto p-1.5">
-        {isLoading && flatItems.length === 0 && (
+        {isLoading && !hasResults && (
           <div className="flex flex-col gap-1 p-1">
             {Array.from({ length: 9 }, (_, i) => (
               <div key={i} className="flex items-center gap-2.5 px-3 py-2.5">
@@ -200,19 +325,19 @@ export function CommandPaletteSearchPhase({
             ))}
           </div>
         )}
-        {!isLoading && flatItems.length === 0 && searchQuery.length > 0 && (
+        {!isLoading && !hasResults && searchQuery.length > 0 && (
           <ItemEmptyState>No results found.</ItemEmptyState>
         )}
-        {!isLoading && flatItems.length === 0 && searchQuery.length === 0 && (
+        {!isLoading && !hasResults && searchQuery.length === 0 && (
           <ItemEmptyState>
             Type to search conversations, pods, agents, members and skills.
           </ItemEmptyState>
         )}
 
-        {conversations.length > 0 && (
+        {filteredConversations.length > 0 && (
           <div>
             <ItemTitle>Conversations</ItemTitle>
-            {conversations.map((conversation, i) => {
+            {filteredConversations.map((conversation, i) => {
               const title = getConversationDisplayTitle(conversation);
               return (
                 <ItemRow
@@ -253,10 +378,10 @@ export function CommandPaletteSearchPhase({
           </div>
         )}
 
-        {pods.length > 0 && (
+        {filteredPods.length > 0 && (
           <div>
             <ItemTitle>Pods</ItemTitle>
-            {pods.map((pod, i) => {
+            {filteredPods.map((pod, i) => {
               const globalIndex = podsOffset + i;
               return (
                 <ItemRow
@@ -300,10 +425,10 @@ export function CommandPaletteSearchPhase({
           </div>
         )}
 
-        {agents.length > 0 && (
+        {filteredAgents.length > 0 && (
           <div>
             <ItemTitle>Agents</ItemTitle>
-            {agents.map((agent, i) => {
+            {filteredAgents.map((agent, i) => {
               const globalIndex = agentsOffset + i;
               return (
                 <ItemRow
@@ -334,10 +459,10 @@ export function CommandPaletteSearchPhase({
           </div>
         )}
 
-        {members.length > 0 && (
+        {filteredMembers.length > 0 && (
           <div>
             <ItemTitle>Members</ItemTitle>
-            {members.map((member, i) => {
+            {filteredMembers.map((member, i) => {
               const globalIndex = membersOffset + i;
               return (
                 <ItemRow
@@ -381,10 +506,10 @@ export function CommandPaletteSearchPhase({
           </div>
         )}
 
-        {skills.length > 0 && (
+        {filteredSkills.length > 0 && (
           <div>
             <ItemTitle>Skills</ItemTitle>
-            {skills.map((skill, i) => {
+            {filteredSkills.map((skill, i) => {
               const globalIndex = skillsOffset + i;
               const SkillAvatar = getSkillAvatarIcon(skill);
               return (
