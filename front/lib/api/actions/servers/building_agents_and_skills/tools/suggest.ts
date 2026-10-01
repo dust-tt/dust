@@ -69,6 +69,7 @@ import type { ConversationType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { CreateSuggestionType } from "@app/types/suggestions/agent_suggestion";
 import type {
   SkillCreateSuggestionType,
@@ -602,61 +603,63 @@ async function planSuggestion(
   }
 }
 
-/** The refs the suggestions give to the skills they create. */
-function skillRefsOf(suggestions: Suggestion[]): string[] {
-  return suggestions.flatMap((suggestion) => {
-    switch (suggestion.kind) {
-      case "create_skill":
-        return suggestion.ref ? [suggestion.ref] : [];
-      case "edit_skill":
-      case "create_agent":
-      case "edit_agent":
-      case "delete_agent":
-      case "delete_skill":
-        return [];
-      default:
-        assertNever(suggestion);
-    }
-  });
-}
+/** The refs a suggestion declares for the entity it creates, and the refs it uses. */
+type SuggestionRefs = {
+  declaredSkillRef: string | null;
+  declaredAgentRef: string | null;
+  skillRefs: string[];
+  subAgentRefs: string[];
+  skillInstructions: string[];
+};
 
-/** The skill instructions the suggestions write, where skill tags may use a ref. */
-function skillInstructionsOf(suggestions: Suggestion[]): string[] {
-  return suggestions.flatMap((suggestion) => {
-    switch (suggestion.kind) {
-      case "create_skill":
-        return [suggestion.instructions];
-      case "edit_skill":
-        return (suggestion.instructionEdits ?? []).map((edit) => edit.content);
-      case "create_agent":
-      case "edit_agent":
-        return [];
-      case "delete_agent":
-      case "delete_skill":
-        return [];
-      default:
-        assertNever(suggestion);
-    }
-  });
-}
-
-/** The refs of skills created in the call that the suggestions give to agents. */
-function agentSkillRefsOf(suggestions: Suggestion[]): string[] {
-  return suggestions.flatMap((suggestion) => {
-    switch (suggestion.kind) {
-      case "create_agent":
-        return suggestion.skillRefs ?? [];
-      case "edit_agent":
-        return suggestion.skills?.addSkillRefs ?? [];
-      case "delete_agent":
-      case "create_skill":
-      case "edit_skill":
-      case "delete_skill":
-        return [];
-      default:
-        assertNever(suggestion);
-    }
-  });
+function refsOf(suggestion: Suggestion): SuggestionRefs {
+  switch (suggestion.kind) {
+    case "create_agent":
+      return {
+        declaredSkillRef: null,
+        declaredAgentRef: suggestion.ref ?? null,
+        skillRefs: suggestion.skillRefs ?? [],
+        subAgentRefs: suggestion.subAgentRefs ?? [],
+        skillInstructions: [],
+      };
+    case "edit_agent":
+      return {
+        declaredSkillRef: null,
+        declaredAgentRef: null,
+        skillRefs: suggestion.skills?.addSkillRefs ?? [],
+        subAgentRefs: suggestion.subAgents?.addAgentRefs ?? [],
+        skillInstructions: [],
+      };
+    case "create_skill":
+      return {
+        declaredSkillRef: suggestion.ref ?? null,
+        declaredAgentRef: null,
+        skillRefs: [],
+        subAgentRefs: [],
+        skillInstructions: [suggestion.instructions],
+      };
+    case "edit_skill":
+      return {
+        declaredSkillRef: null,
+        declaredAgentRef: null,
+        skillRefs: [],
+        subAgentRefs: [],
+        skillInstructions: (suggestion.instructionEdits ?? []).map(
+          (edit) => edit.content
+        ),
+      };
+    case "delete_agent":
+    case "delete_skill":
+      return {
+        declaredSkillRef: null,
+        declaredAgentRef: null,
+        skillRefs: [],
+        subAgentRefs: [],
+        skillInstructions: [],
+      };
+    default:
+      assertNever(suggestion);
+  }
 }
 
 /**
@@ -667,16 +670,20 @@ function agentSkillRefsOf(suggestions: Suggestion[]): string[] {
  * ref other than the agent's own. An agent lists each skill ref and each sub-agent ref at most once.
  */
 function validateRefs(suggestions: Suggestion[]): Result<undefined, MCPError> {
+  const refs = suggestions.map(refsOf);
+
   const pendingSkillRefs = new Set<string>();
-  for (const ref of skillRefsOf(suggestions)) {
+  for (const ref of removeNulls(
+    refs.map(({ declaredSkillRef }) => declaredSkillRef)
+  )) {
     if (pendingSkillRefs.has(ref)) {
       return new Err(new MCPError(`The ref "${ref}" is declared twice.`));
     }
     pendingSkillRefs.add(ref);
   }
 
-  const declaredAgentRefs = suggestions.flatMap((suggestion) =>
-    suggestion.kind === "create_agent" && suggestion.ref ? [suggestion.ref] : []
+  const declaredAgentRefs = removeNulls(
+    refs.map(({ declaredAgentRef }) => declaredAgentRef)
   );
   const pendingAgentRefs = new Set<string>();
   for (const ref of declaredAgentRefs) {
@@ -686,21 +693,20 @@ function validateRefs(suggestions: Suggestion[]): Result<undefined, MCPError> {
     pendingAgentRefs.add(ref);
   }
 
-  const agentCitingItself = suggestions.find(
-    (suggestion) =>
-      suggestion.kind === "create_agent" &&
-      suggestion.ref &&
-      subAgentRefsOf(suggestion).includes(suggestion.ref)
+  const agentCitingItself = refs.find(
+    ({ declaredAgentRef, subAgentRefs }) =>
+      declaredAgentRef && subAgentRefs.includes(declaredAgentRef)
   );
   if (agentCitingItself) {
     return new Err(new MCPError("An agent cannot be its own sub-agent."));
   }
 
-  const skillCitingItself = suggestions.find(
-    (suggestion) =>
-      suggestion.kind === "create_skill" &&
-      suggestion.ref &&
-      extractSkillRefs(suggestion.instructions).includes(suggestion.ref)
+  const skillCitingItself = refs.find(
+    ({ declaredSkillRef, skillInstructions }) =>
+      declaredSkillRef &&
+      skillInstructions.some((content) =>
+        extractSkillRefs(content).includes(declaredSkillRef)
+      )
   );
   if (skillCitingItself) {
     return new Err(new MCPError("A skill cannot cite itself."));
@@ -708,23 +714,15 @@ function validateRefs(suggestions: Suggestion[]): Result<undefined, MCPError> {
 
   const hasDuplicateRef = (refs: string[]) =>
     new Set(refs).size !== refs.length;
-  if (
-    suggestions.some((suggestion) =>
-      hasDuplicateRef(subAgentRefsOf(suggestion))
-    )
-  ) {
+  if (refs.some(({ subAgentRefs }) => hasDuplicateRef(subAgentRefs))) {
     return new Err(new MCPError("Each sub-agent can only be added once."));
   }
-  if (
-    suggestions.some((suggestion) =>
-      hasDuplicateRef(agentSkillRefsOf([suggestion]))
-    )
-  ) {
+  if (refs.some(({ skillRefs }) => hasDuplicateRef(skillRefs))) {
     return new Err(new MCPError("Each skill can only be added once."));
   }
 
-  const unknownSubAgentRef = suggestions
-    .flatMap(subAgentRefsOf)
+  const unknownSubAgentRef = refs
+    .flatMap(({ subAgentRefs }) => subAgentRefs)
     .find((ref) => !pendingAgentRefs.has(ref));
   if (unknownSubAgentRef) {
     return new Err(
@@ -734,9 +732,9 @@ function validateRefs(suggestions: Suggestion[]): Result<undefined, MCPError> {
     );
   }
 
-  const unknownAgentSkillRef = agentSkillRefsOf(suggestions).find(
-    (ref) => !pendingSkillRefs.has(ref)
-  );
+  const unknownAgentSkillRef = refs
+    .flatMap(({ skillRefs }) => skillRefs)
+    .find((ref) => !pendingSkillRefs.has(ref));
   if (unknownAgentSkillRef) {
     return new Err(
       new MCPError(
@@ -745,7 +743,9 @@ function validateRefs(suggestions: Suggestion[]): Result<undefined, MCPError> {
     );
   }
 
-  for (const content of skillInstructionsOf(suggestions)) {
+  for (const content of refs.flatMap(
+    ({ skillInstructions }) => skillInstructions
+  )) {
     if (hasUnparsableSkillRefTag(content)) {
       return new Err(
         new MCPError(
@@ -803,17 +803,6 @@ function findSkillAddedAndDeleted(suggestions: Suggestion[]): string | null {
     }
   }
   return null;
-}
-
-/** The refs of agents created in the call that a suggestion gives to an agent as sub-agents. */
-function subAgentRefsOf(suggestion: Suggestion): string[] {
-  if (suggestion.kind === "create_agent") {
-    return suggestion.subAgentRefs ?? [];
-  }
-  if (suggestion.kind === "edit_agent") {
-    return suggestion.subAgents?.addAgentRefs ?? [];
-  }
-  return [];
 }
 
 /** An agent the batch deletes cannot also be added as a sub-agent by the same batch. */
