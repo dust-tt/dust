@@ -239,12 +239,19 @@ export type SkillAvailabilitySuggestionType = z.infer<
   typeof SkillAvailabilitySuggestionSchema
 >;
 
-export const SkillFilesSuggestionSchema = z.object({
-  removeFileIds: z
-    .array(z.string())
-    .min(1)
-    .describe("The ids of the attached files to remove from the skill."),
-});
+export const SkillFilesSuggestionSchema = z
+  .object({
+    addFilePaths: z
+      .array(z.string())
+      .describe("The scoped paths of the files to attach to the skill."),
+    removeFileIds: z
+      .array(z.string())
+      .describe("The ids of the attached files to remove from the skill."),
+  })
+  .refine(
+    (d) => d.addFilePaths.length > 0 || d.removeFileIds.length > 0,
+    "At least one of addFilePaths or removeFileIds must be non-empty."
+  );
 
 export type SkillFilesSuggestionType = z.infer<
   typeof SkillFilesSuggestionSchema

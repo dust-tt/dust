@@ -129,7 +129,7 @@ describe("previewSkillSuggestions", () => {
         {
           ...BASE_SUGGESTION,
           kind: "files",
-          suggestion: { removeFileIds: ["fil_removed"] },
+          suggestion: { addFilePaths: [], removeFileIds: ["fil_removed"] },
         },
       ],
       pipeline,
