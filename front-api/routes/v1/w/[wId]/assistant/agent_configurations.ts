@@ -1,7 +1,11 @@
+import { listAgentsForView } from "@app/lib/api/assistant/agent_views";
 import { toAgentConfigurationsWithSkills } from "@app/lib/api/assistant/configuration/helpers";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
-import { normalizeAgentView } from "@app/lib/api/v1/backward_compatibility";
+import {
+  addLegacyLightAgentConfigurationFields,
+  normalizeAgentView,
+} from "@app/lib/api/v1/backward_compatibility";
+import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -132,18 +136,18 @@ app.get(
     const agentsGetView = view ?? defaultAgentGetView;
     const withAuthors = withAuthorsParam === "true";
 
-    // `admin_internal` lifts the scope restrictions (unpublished agents the caller does not
-    // edit), and skipping the permission filtering lifts the space ones.
+    // `admin_internal` lists every agent the admin can fetch (all of them), unpublished ones and
+    // ones built on spaces they cannot read included.
     const isUnrestricted = agentsGetView === "all_unrestricted";
 
-    let agentConfigurations = await getAgentConfigurationsForView({
+    const agents = await listAgentsForView(
       auth,
-      agentsGetView: isUnrestricted
-        ? "admin_internal"
-        : normalizeAgentView(agentsGetView),
-      variant: "light",
-      dangerouslySkipPermissionFiltering: isUnrestricted,
-    });
+      isUnrestricted ? "admin_internal" : normalizeAgentView(agentsGetView)
+    );
+    let agentConfigurations = await toLightAgentConfigurations(auth, agents);
+    const codeDefinedSkillIdsByAgentId = new Map(
+      agents.map((agent) => [agent.sId, agent.codeDefinedSkillIds])
+    );
 
     if (withAuthors) {
       const recentAuthors = await getAgentsRecentAuthors({
@@ -161,10 +165,18 @@ app.get(
     }
 
     return ctx.json({
-      agentConfigurations: await toAgentConfigurationsWithSkills(
-        auth,
-        agentConfigurations
-      ),
+      // Global agents' skills are code-defined: the light shape does not carry them.
+      agentConfigurations: (
+        await toAgentConfigurationsWithSkills(
+          auth,
+          agentConfigurations.map((agentConfiguration) => ({
+            ...agentConfiguration,
+            codeDefinedSkillIds: codeDefinedSkillIdsByAgentId.get(
+              agentConfiguration.sId
+            ),
+          }))
+        )
+      ).map(addLegacyLightAgentConfigurationFields),
     });
   }
 );

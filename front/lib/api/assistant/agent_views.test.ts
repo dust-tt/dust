@@ -1,4 +1,4 @@
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
+import { listAgentsForView } from "@app/lib/api/assistant/agent_views";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
@@ -7,6 +7,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -23,21 +24,14 @@ async function authenticatorForNewMember(
 }
 
 async function listAgentIdsForAnalytics(auth: Authenticator) {
-  const agents = await getAgentConfigurationsForView({
-    auth,
-    agentsGetView: "analytics",
-    variant: "light",
-  });
+  const agents = await listAgentsForView(auth, "analytics");
   return agents.map((agent) => agent.sId);
 }
 
 const REPORTING_ROLES = ["admin", "manager"] as const;
 
-describe("getAgentConfigurationsForView, default ordering", () => {
-  it.each([
-    undefined,
-    2,
-  ])("defaults to alphabetical ordering with limit=%s", async (limit) => {
+describe("listAgentsForView, default ordering", () => {
+  it("defaults to alphabetical ordering", async () => {
     const { authenticator } = await createResourceTest({});
     const agentC = await AgentConfigurationFactory.createTestAgent(
       authenticator,
@@ -52,21 +46,43 @@ describe("getAgentConfigurationsForView, default ordering", () => {
       { name: "Ordering A" }
     );
 
-    const agents = await getAgentConfigurationsForView({
-      auth: authenticator,
-      agentsGetView: "list",
-      variant: "light",
-      agentPrefix: "Ordering",
-      limit,
+    const agents = await listAgentsForView(authenticator, "list", {
+      namePrefix: "Ordering",
     });
 
-    expect(agents.map((agent) => agent.sId)).toEqual(
-      [agentA.sId, agentB.sId, agentC.sId].slice(0, limit)
-    );
+    expect(agents.map((agent) => agent.sId)).toEqual([
+      agentA.sId,
+      agentB.sId,
+      agentC.sId,
+    ]);
   });
 });
 
-describe("getAgentConfigurationsForView, 'current_user' view", () => {
+describe("listAgentsForView, 'favorites' view", () => {
+  it("lists the favorited default global agents in their default order, and no other global agent", async () => {
+    const { authenticator } = await createResourceTest({ role: "user" });
+    const [first, second] = (
+      await AgentResource.listGlobalAgents(authenticator)
+    ).filter((agent) => agent.status === "active");
+    const sidekick = await AgentResource.fetchById(
+      authenticator,
+      GLOBAL_AGENTS_SID.SIDEKICK
+    );
+    assert(first && second && sidekick);
+
+    for (const agent of [second, sidekick, first]) {
+      expect((await agent.setUserFavorite(authenticator, true)).isOk()).toBe(
+        true
+      );
+    }
+
+    const agents = await listAgentsForView(authenticator, "favorites");
+
+    expect(agents.map((agent) => agent.sId)).toEqual([first.sId, second.sId]);
+  });
+});
+
+describe("listAgentsForView, 'current_user' view", () => {
   it("hides an authored hidden agent after its editor grant is removed", async () => {
     const { authenticator, user } = await createResourceTest({ role: "user" });
     const retainedAgent = await AgentConfigurationFactory.createTestAgent(
@@ -96,17 +112,13 @@ describe("getAgentConfigurationsForView, 'current_user' view", () => {
     ).toBe(true);
     await authenticator.refresh();
 
-    const agents = await getAgentConfigurationsForView({
-      auth: authenticator,
-      agentsGetView: "current_user",
-      variant: "light",
-    });
+    const agents = await listAgentsForView(authenticator, "current_user");
 
     expect(agents.map((agent) => agent.sId)).toEqual([retainedAgent.sId]);
   });
 });
 
-describe("getAgentConfigurationsForView, 'analytics' view", () => {
+describe("listAgentsForView, 'analytics' view", () => {
   it.each(
     REPORTING_ROLES
   )("lists private agents of other users for %ss", async (role) => {
@@ -160,11 +172,7 @@ describe("getAgentConfigurationsForView, 'analytics' view", () => {
     expect(await listAgentIdsForAnalytics(auth)).toContain(agent.sId);
     // The caller is not a member of the space, so every other view still
     // hides the agent: only the analytics view opens it up.
-    const listedForAll = await getAgentConfigurationsForView({
-      auth,
-      agentsGetView: "all",
-      variant: "light",
-    });
+    const listedForAll = await listAgentsForView(auth, "all");
     expect(listedForAll.map((a) => a.sId)).not.toContain(agent.sId);
   });
 
@@ -199,24 +207,16 @@ describe("getAgentConfigurationsForView, 'analytics' view", () => {
     });
     const memberAuth = await authenticatorForNewMember(workspace, "user");
 
-    const listedForMember = await getAgentConfigurationsForView({
-      auth: memberAuth,
-      agentsGetView: "all",
-      variant: "light",
-    });
+    const listedForMember = await listAgentsForView(memberAuth, "all");
     expect(await listAgentIdsForAnalytics(memberAuth)).toEqual(
       listedForMember.map((agent) => agent.sId)
     );
   });
 });
 
-describe("getAgentConfigurationsForView, 'archived' view", () => {
+describe("listAgentsForView, 'archived' view", () => {
   async function listAgentIdsForArchived(auth: Authenticator) {
-    const agents = await getAgentConfigurationsForView({
-      auth,
-      agentsGetView: "archived",
-      variant: "light",
-    });
+    const agents = await listAgentsForView(auth, "archived");
     return agents.map((agent) => agent.sId);
   }
 

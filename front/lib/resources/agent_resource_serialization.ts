@@ -186,21 +186,31 @@ function toConfigurationJSON(
   };
 }
 
+export type LightAgentConfigurationOptions = {
+  withInstructions?: boolean;
+  withFavorites?: boolean;
+  withTags?: boolean;
+};
+
 /**
  * Renders `LightAgentConfigurationType`s: the queried `instructions`, `userFavorite` and `tags` on
- * top of `AgentResource.toJSON`. Callers that never surface favorites or tags (e.g. rendered
- * messages) can skip their queries, and get `userFavorite: false` and `tags: []`.
+ * top of `AgentResource.toJSON`. Callers that never surface instructions, favorites or tags (e.g.
+ * rendered messages) can skip their queries, and get `instructions: null`, `userFavorite: false`
+ * and `tags: []`.
  */
 export async function toLightAgentConfigurations(
   auth: Authenticator,
   resources: AgentResource[],
   {
+    withInstructions = true,
     withFavorites = true,
     withTags = true,
-  }: { withFavorites?: boolean; withTags?: boolean } = {}
+  }: LightAgentConfigurationOptions = {}
 ): Promise<LightAgentConfigurationType[]> {
   const [instructions, favorites, tags] = await Promise.all([
-    enrichWithInstructions(resources),
+    withInstructions
+      ? enrichWithInstructions(resources)
+      : new Map<AgentResource, AgentInstructionsEnrichment>(),
     withFavorites
       ? enrichWithFavorites(auth, resources)
       : new Map<string, AgentFavoriteEnrichment>(),
@@ -222,7 +232,7 @@ export async function toLightAgentConfigurations(
 export async function toLightAgentConfiguration(
   auth: Authenticator,
   resource: AgentResource,
-  options: { withFavorites?: boolean; withTags?: boolean } = {}
+  options: LightAgentConfigurationOptions = {}
 ): Promise<LightAgentConfigurationType> {
   const [configuration] = await toLightAgentConfigurations(
     auth,

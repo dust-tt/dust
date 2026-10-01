@@ -312,24 +312,37 @@ export function filterAndSortAgents<
     subFilter(lowerCaseSearchText, a.name.toLowerCase())
   );
 
-  const withFavorite = (agent: T) => ({
-    sId: agent.sId,
-    name: agent.name,
-    scope: agent.scope,
-    userFavorite: favorites?.get(agent.sId)?.userFavorite,
-  });
+  const compareAgents = favorites
+    ? compareAgentsWithFavorites(favorites)
+    : compareAgentsForSort<T>;
 
   if (searchText.length > 0) {
     filtered.sort(
       (a, b) =>
         compareForFuzzySort(lowerCaseSearchText, a.name, b.name) ||
-        (favorites
-          ? compareAgentsForSort(withFavorite(a), withFavorite(b))
-          : compareAgentsForSort(a, b))
+        compareAgents(a, b)
     );
   }
 
   return filtered;
+}
+
+// `compareAgentsForSort` for agents that carry no favorite state (`AgentResource`).
+export function compareAgentsWithFavorites(
+  favorites: Map<string, AgentFavoriteEnrichment>
+) {
+  const withFavorite = (
+    agent: Pick<AgentResource, "sId" | "name" | "scope">
+  ) => ({
+    sId: agent.sId,
+    name: agent.name,
+    scope: agent.scope,
+    userFavorite: favorites.get(agent.sId)?.userFavorite,
+  });
+  return (
+    a: Pick<AgentResource, "sId" | "name" | "scope">,
+    b: Pick<AgentResource, "sId" | "name" | "scope">
+  ) => compareAgentsForSort(withFavorite(a), withFavorite(b));
 }
 
 export function sanitizeJSONOutput(obj: unknown): unknown {

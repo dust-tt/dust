@@ -217,6 +217,56 @@ describe("GET /api/w/:wId/assistant/agent_configurations", () => {
     ).toEqual(["hidden", "visible"]);
   });
 
+  it("applies the limit after dropping the agents the caller cannot read", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      method: "GET",
+    });
+    const { agentOwner, agentOwnerAuth } = await setupAgentOwner(
+      workspace,
+      "user"
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const addMembersResult = await restrictedSpace.addMembers(
+      await Authenticator.internalAdminForWorkspace(workspace.sId),
+      { userIds: [agentOwner.sId] }
+    );
+    expect(addMembersResult.isOk()).toBe(true);
+    await agentOwnerAuth.refresh();
+
+    // Sorts first by name, but the caller cannot read it.
+    await AgentConfigurationFactory.createTestAgent(agentOwnerAuth, {
+      name: "Limit A / Restricted",
+      scope: "visible",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const readableAgents = await Promise.all(
+      ["Limit B", "Limit C", "Limit D"].map((name) =>
+        AgentConfigurationFactory.createTestAgent(userAuth, {
+          name,
+          scope: "visible",
+        })
+      )
+    );
+
+    const response = await listAgents(workspace, {
+      view: "published",
+      sort: "alphabetical",
+      limit: "2",
+    });
+
+    expect(response.status).toBe(200);
+    const data: { agentConfigurations: LightAgentConfigurationType[] } =
+      await response.json();
+    expect(data.agentConfigurations.map((a) => a.sId)).toEqual([
+      readableAgents[0].sId,
+      readableAgents[1].sId,
+    ]);
+  });
+
   it("returns agents from spaces the admin cannot read with the analytics view", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "GET",

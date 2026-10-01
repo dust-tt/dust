@@ -1,5 +1,6 @@
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getAuthors } from "@app/lib/api/assistant/editors";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import type {
   PokeAgentConfigurationType,
   PokeGetAgentConfigurationsResponseBody,
@@ -28,13 +29,16 @@ app.get(
     const auth = ctx.get("auth");
     const { view } = ctx.req.valid("query");
 
-    const agentConfigurations = await getAgentConfigurationsForView({
-      auth,
-      agentsGetView: view,
-      variant: "light",
-      sort: view === "archived" ? "updatedAt" : undefined,
-      dangerouslySkipPermissionFiltering: true,
-    });
+    const agents =
+      view === "archived"
+        ? (
+            await AgentResource.listByWorkspace(auth, { status: "archived" })
+          ).toSorted(
+            (a, b) =>
+              b.versionUpdatedAt.getTime() - a.versionUpdatedAt.getTime()
+          )
+        : await AgentResource.listActive(auth);
+    const agentConfigurations = await toLightAgentConfigurations(auth, agents);
 
     const authors = await getAuthors(agentConfigurations);
     const authorMap = new Map(authors.map((a) => [a.id, a]));

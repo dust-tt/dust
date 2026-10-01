@@ -259,6 +259,14 @@ export function toPublicAgentMessageEvent(
   };
 }
 
+// The legacy light loader carried the full-only fields empty, and the public agent list documents
+// `actions`: keep serving them.
+export function addLegacyLightAgentConfigurationFields<
+  T extends Record<string, unknown>,
+>(agentConfiguration: T): T & { actions: never[]; instructionsHtml: null } {
+  return { ...agentConfiguration, actions: [], instructionsHtml: null };
+}
+
 /**
  * Adds backward-compatible fields to agent configuration responses.
  * These fields are maintained for API backward compatibility with older SDK versions.
