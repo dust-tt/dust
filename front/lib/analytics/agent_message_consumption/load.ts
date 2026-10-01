@@ -71,6 +71,7 @@ export type AgentMessageConsumptionAnalyticsInput =
     billedCredits: number;
     dustRunIds: string[];
     enabledSkillIdsByActionId: ReadonlyMap<string, string[]>;
+    isBillFrozen: boolean;
     items: AgentMessageConsumptionItemResource[];
     runs: RunResource[];
     skills: SkillResource[];
@@ -96,6 +97,18 @@ function isBilledRunUsage(
     default:
       return assertNever(usage.usageType);
   }
+}
+
+function filterUsagesAttributedByItems(
+  usages: BilledRunUsage[],
+  items: AgentMessageConsumptionItemResource[]
+): BilledRunUsage[] {
+  const attributedRunUsageModelIds = new Set(
+    items.map((item) => item.runUsageId)
+  );
+  return usages.filter((usage) =>
+    attributedRunUsageModelIds.has(usage.runUsageModelId)
+  );
 }
 
 async function loadApiKeyName(
@@ -177,6 +190,13 @@ async function loadAnalyticsUser({
   };
 }
 
+/**
+ * @cc [owner:sfriquet,label:product;backend] frozen-bill-snapshot
+ * A terminal message whose status is not tracked for billing (`failed`) MUST return null when its
+ * `costCredits` is null. Otherwise it MUST be loaded with `isBillFrozen` set and `usages` restricted
+ * to the billed run usages referenced by its stored attribution items, so that the indexed snapshot
+ * covers only the executions billed before the message failed.
+ */
 export async function loadAgentMessageConsumptionAnalyticsInput(
   auth: Authenticator,
   {
@@ -212,7 +232,10 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
   if (!messageConversation) {
     throw new Error("Agent message conversation not found");
   }
-  if (!AGENT_MESSAGE_STATUSES_TO_TRACK.includes(agentMessage.status)) {
+  const isBillFrozen = !AGENT_MESSAGE_STATUSES_TO_TRACK.includes(
+    agentMessage.status
+  );
+  if (isBillFrozen && agentMessage.costCredits === null) {
     return null;
   }
   // A paused message cancelled through `finalizeAgentMessagesWithoutWorkflow` is not re-indexed,
@@ -245,6 +268,9 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
       agentMessageModelIds: [agentMessage.agentMessageModelId],
       maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
     });
+  const indexedUsages = isBillFrozen
+    ? filterUsagesAttributedByItems(billedUsages, items)
+    : billedUsages;
   const actions =
     preloadedActions ??
     (await AgentMCPActionResource.listByAgentMessageIds(auth, [
@@ -315,6 +341,7 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
     conversationId: conversation.conversationId,
     dustRunIds,
     enabledSkillIdsByActionId,
+    isBillFrozen,
     items,
     messageStatus: agentMessage.status,
     messageVersion: agentMessage.version,
@@ -341,7 +368,7 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
       conversation.triggerModelId,
       workspace.id
     ),
-    usages: billedUsages,
+    usages: indexedUsages,
     // userId is a nullable FK with ON DELETE SET NULL. Never substitute the worker identity.
     user,
     workspaceId: workspace.sId,

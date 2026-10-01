@@ -589,6 +589,94 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
     ).toBe(5_000_000);
   });
 
+  it("indexes only the executions billed before a message failed", async () => {
+    const context = await setupSettledMessage();
+    const { action } = await AgentMCPActionFactory.create(context.auth, {
+      workspace: context.workspace,
+      conversationModelId: context.conversation.id,
+      agentMessageModelId: context.agentMessageModelId,
+      dustRunId: context.run.dustRunId,
+    });
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(
+      context.auth,
+      {
+        conversation: context.conversation,
+        agentMessageModelId: context.agentMessageModelId,
+        attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        records: [
+          {
+            itemType: "input",
+            runUsageModelId: context.runUsageModelId,
+            inputTokensCount: 100,
+            grossAttributedCreditAmountMicro: 2_000_000,
+          },
+          {
+            itemType: "output",
+            runUsageModelId: context.runUsageModelId,
+            outputTokensCount: 15,
+            grossAttributedCreditAmountMicro: 400_000,
+          },
+        ],
+        pendingToolItems: [
+          {
+            action,
+            attributedSkillIds: [],
+            runUsageModelId: context.runUsageModelId,
+            outputTokensCount: 5,
+            grossAttributedCreditAmountMicro: 100_000,
+          },
+        ],
+      }
+    );
+
+    const { run: unbilledRun } = await RunFactory.createWithUsage(
+      context.auth,
+      {
+        inputTokens: 1_000,
+        outputTokens: 200,
+        modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
+      }
+    );
+    await AgentMCPActionFactory.setStatus(context.auth, {
+      action,
+      status: "succeeded",
+    });
+    await AgentMessageModel.update(
+      {
+        runIds: [context.run.dustRunId, unbilledRun.dustRunId],
+        status: "failed",
+      },
+      {
+        where: {
+          id: context.agentMessageModelId,
+          workspaceId: context.workspace.id,
+        },
+      }
+    );
+
+    const documents = await buildDocuments(context);
+    if (!documents) {
+      throw new Error("Consumption documents were not built");
+    }
+
+    expect(documents).toHaveLength(2);
+    expect(
+      documents.every(
+        (document) =>
+          document.run_usage_id === context.runUsageModelId.toString()
+      )
+    ).toBe(true);
+    expect(
+      documents.find((document) => document.tool?.action_id === action.sId)
+    ).toMatchObject({
+      credit_micro: 100_000,
+      gross_credit_micro: { direct: 0 },
+    });
+    expect(
+      documents.reduce((total, document) => total + document.credit_micro, 0)
+    ).toBe(5_000_000);
+  });
+
   it("associates a tool with every skill that exposes its server", async () => {
     const context = await setupSettledMessage();
     const server = await RemoteMCPServerFactory.create(context.workspace, {
