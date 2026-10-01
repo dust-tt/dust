@@ -7,44 +7,29 @@ import { CommandPaletteActionPhase } from "@app/components/command_palette/Comma
 import { useCommandPalette } from "@app/components/command_palette/CommandPaletteContext";
 import type { CommandPaletteItem } from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { CommandPaletteSearchPhase } from "@app/components/command_palette/CommandPaletteSearchPhase";
+import { useCommandPaletteSearch } from "@app/components/command_palette/useCommandPaletteSearch";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
-import { useSearchAgents } from "@app/hooks/useSearchAgents";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { useSearchSkills, useSkills } from "@app/lib/swr/skill_configurations";
-import { useSpaces } from "@app/lib/swr/spaces";
-import { filterAndSortAgents, subFilter } from "@app/lib/utils";
 import {
   getAgentBuilderRoute,
   getConversationRoute,
   getPodRoute,
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
-import { compareAgentsForSort } from "@app/types/assistant/assistant";
-import { isProjectType } from "@app/types/space";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { Dialog, DialogContent } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 interface CommandPaletteProps {
   owner: LightWorkspaceType;
   user: UserType;
 }
 
-const MAX_DISPLAYED_AGENTS = 5;
-const MAX_DISPLAYED_SKILLS = 5;
-
 export function CommandPalette({ owner, user }: CommandPaletteProps) {
   const { isOpen, close } = useCommandPalette();
-  const { hasFeature } = useFeatureFlags();
-  const isAgentsSearchEnabled = hasFeature("new_manage_agents_page");
-  const isSkillsSearchEnabled = hasFeature("skills_search");
   const router = useAppRouter();
 
-  // Dialog state.
   const [searchQuery, setSearchQuery] = useState("");
-  const trimmedQuery = searchQuery.trim();
   const [phase, setPhase] = useState<"search" | "action">("search");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [selectedItem, setSelectedItem] = useState<ActionPhaseItem | null>(
@@ -55,155 +40,26 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
   const [agentDetailsId, setAgentDetailsId] = useState<string | null>(null);
   const [skillDetailsId, setSkillDetailsId] = useState<string | null>(null);
 
-  // Fetch agents and skills only when the palette is open.
   const {
-    agentConfigurations,
-    isAgentConfigurationsLoading: isListedAgentsLoading,
-  } = useAgentConfigurations({
-    workspaceId: owner.sId,
-    agentsGetView: "list",
-    disabled: !isOpen || isAgentsSearchEnabled,
-  });
-  const {
-    agents: searchAgents,
-    hasMore: hasMoreSearchAgents,
-    isAgentsLoading: isSearchAgentsLoading,
-  } = useSearchAgents({
-    owner,
-    searchTerm: trimmedQuery,
-    limit: MAX_DISPLAYED_AGENTS,
-    sortBy: trimmedQuery ? "relevance" : "name",
-    disabled: !isOpen || !isAgentsSearchEnabled,
-  });
-  const isAgentsLoading = isAgentsSearchEnabled
-    ? isSearchAgentsLoading
-    : isListedAgentsLoading;
-
-  const { skills, isSkillsLoading: isListedSkillsLoading } = useSkills({
-    owner,
-    disabled: !isOpen || isSkillsSearchEnabled,
-    status: "active",
-  });
-  const {
-    skills: searchSkills,
-    hasMore: hasMoreSearchSkills,
-    isSkillsLoading: isSearchSkillsLoading,
-  } = useSearchSkills({
-    owner,
-    searchTerm: trimmedQuery,
-    limit: MAX_DISPLAYED_SKILLS,
-    disabled: !isOpen || !isSkillsSearchEnabled,
-  });
-  const isSkillsLoading = isSkillsSearchEnabled
-    ? isSearchSkillsLoading
-    : isListedSkillsLoading;
-
-  const { spaces, isSpacesLoading } = useSpaces({
-    workspaceId: owner.sId,
-    kinds: ["project"],
-    disabled: !isOpen,
-  });
-  const memberPods = useMemo(
-    () => spaces.filter(isProjectType).filter((p) => p.archivedAt === null),
-    [spaces]
-  );
-
-  // Debounce the search query to avoid expensive fuzzy filtering on every keystroke.
-  const [debouncedQuery, setDebouncedQuery] = useState("");
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-    debounceTimerRef.current = setTimeout(() => {
-      setDebouncedQuery(trimmedQuery);
-    }, 150);
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-    };
-  }, [trimmedQuery]);
-
-  const isDebouncing = trimmedQuery !== debouncedQuery;
-
-  // Cap the number of rendered items to avoid slow DOM rendering on large workspaces.
-  // This is a temporary measure until the command palette moves to Sparkle with
-  // proper list virtualization (@tanstack/react-virtual).
-  const MAX_DISPLAYED_PODS = 5;
-
-  const allFilteredAgents = useMemo(
-    () =>
-      debouncedQuery
-        ? filterAndSortAgents(agentConfigurations, debouncedQuery)
-        : [...agentConfigurations].sort(compareAgentsForSort),
-    [agentConfigurations, debouncedQuery]
-  );
-
-  const allFilteredPods = useMemo(() => {
-    if (!debouncedQuery) {
-      return memberPods;
-    }
-    const lowerQuery = debouncedQuery.toLowerCase();
-    return memberPods.filter((p) =>
-      subFilter(lowerQuery, p.name.toLowerCase())
-    );
-  }, [memberPods, debouncedQuery]);
-
-  const allFilteredSkills = useMemo(() => {
-    if (!debouncedQuery) {
-      return skills;
-    }
-    const lowerQuery = debouncedQuery.toLowerCase();
-    return skills.filter((s) => subFilter(lowerQuery, s.name.toLowerCase()));
-  }, [skills, debouncedQuery]);
-
-  const {
-    filteredAgents,
-    filteredPods,
-    filteredSkills,
+    agents,
+    conversations,
+    pods,
+    skills,
     hasMoreAgents,
+    hasMoreConversations,
     hasMorePods,
     hasMoreSkills,
-  } = useMemo(
-    () => ({
-      filteredAgents: isAgentsSearchEnabled
-        ? searchAgents
-        : allFilteredAgents.slice(0, MAX_DISPLAYED_AGENTS),
-      filteredPods: allFilteredPods.slice(0, MAX_DISPLAYED_PODS),
-      filteredSkills: isSkillsSearchEnabled
-        ? searchSkills
-        : allFilteredSkills.slice(0, MAX_DISPLAYED_SKILLS),
-      hasMoreAgents: isAgentsSearchEnabled
-        ? hasMoreSearchAgents
-        : allFilteredAgents.length > MAX_DISPLAYED_AGENTS,
-      hasMorePods: allFilteredPods.length > MAX_DISPLAYED_PODS,
-      hasMoreSkills: isSkillsSearchEnabled
-        ? hasMoreSearchSkills
-        : allFilteredSkills.length > MAX_DISPLAYED_SKILLS,
-    }),
-    [
-      allFilteredAgents,
-      allFilteredPods,
-      allFilteredSkills,
-      isAgentsSearchEnabled,
-      searchAgents,
-      hasMoreSearchAgents,
-      isSkillsSearchEnabled,
-      searchSkills,
-      hasMoreSearchSkills,
-    ]
-  );
-
-  const isLoading =
-    isAgentsLoading || isSkillsLoading || isSpacesLoading || isDebouncing;
+    isLoading,
+  } = useCommandPaletteSearch({
+    owner,
+    isOpen,
+    searchQuery,
+  });
 
   // Reset state when dialog opens/closes.
   useEffect(() => {
     if (isOpen) {
       setSearchQuery("");
-      setDebouncedQuery("");
       setPhase("search");
       setSelectedIndex(0);
       setSelectedItem(null);
@@ -248,6 +104,13 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
         void router.push(getPodRoute(owner.sId, item.pod.sId));
         return;
       }
+      if (item.kind === "conversation") {
+        close();
+        void router.push(
+          getConversationRoute(owner.sId, item.conversation.sId)
+        );
+        return;
+      }
       // Skills without administration access have only one action (view details).
       if (item.kind === "skill" && !item.skill.canAdministrate) {
         executeAction(item, "view_details");
@@ -290,10 +153,12 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
             <CommandPaletteSearchPhase
               searchQuery={searchQuery}
               onSearchQueryChange={setSearchQuery}
-              agents={filteredAgents}
-              pods={filteredPods}
-              skills={filteredSkills}
+              agents={agents}
+              conversations={conversations}
+              pods={pods}
+              skills={skills}
               hasMoreAgents={hasMoreAgents}
+              hasMoreConversations={hasMoreConversations}
               hasMorePods={hasMorePods}
               hasMoreSkills={hasMoreSkills}
               isLoading={isLoading}
