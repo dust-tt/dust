@@ -134,6 +134,11 @@ export type FinalToolCallAssertion =
   | { type: "suggestSkillUserFacingDescription"; skillKey: string }
   | { type: "suggestAgentCreation" }
   | {
+      type: "suggestSubAgentByRef";
+      // The seeded agent that must get the created agent as a sub-agent, through its ref.
+      parentAgentKey: string;
+    }
+  | {
       type: "suggestAgentInstructionsChange";
       agentKey: string;
       // The edit must target one of these block ids (from the seeded HTML). Guards against a
