@@ -1,3 +1,4 @@
+import { ConnectorManagerError } from "@connectors/connectors/interface";
 import { apiConfig } from "@connectors/lib/api/config";
 import {
   RemoteDatabaseModel,
@@ -8,11 +9,60 @@ import {
 import { getContentNodeTypeFromInternalId } from "@connectors/lib/remote_databases/content_nodes";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ConnectionCredentials, ModelId } from "@connectors/types";
+import type {
+  ConnectionCredentials,
+  CredentialsProvider,
+  ModelId,
+  OauthAPIGetCredentialsResponse,
+} from "@connectors/types";
 import { getConnectionCredentials } from "@connectors/types";
 import type { Result } from "@dust-tt/client";
 import { assertNever, Err, Ok } from "@dust-tt/client";
 import * as t from "io-ts";
+
+export class RemoteDatabaseCredentialBindingError extends Error {
+  constructor() {
+    super(
+      "The credential does not belong to this workspace or is not valid for this connector."
+    );
+    this.name = "RemoteDatabaseCredentialBindingError";
+  }
+}
+
+// A binding refusal is a caller mistake (4xx), not an internal failure: surface it as an
+// INVALID_CONFIGURATION manager error instead of letting create/update throw.
+export function credentialBindingFailure(
+  error: Error
+): Err<ConnectorManagerError<"INVALID_CONFIGURATION">> | null {
+  if (!(error instanceof RemoteDatabaseCredentialBindingError)) {
+    return null;
+  }
+  return new Err(
+    new ConnectorManagerError("INVALID_CONFIGURATION", error.message)
+  );
+}
+
+/**
+ * @cc [owner:frankaloia,label:security] remote-database-credential-workspace-binding
+ * A stored credential MUST be refused unless `metadata.workspace_id` equals the
+ * connector workspace and `provider` equals the connector provider. Callers MUST
+ * run this before testing the connection or saving `connectionId`.
+ */
+function matchesRemoteDatabaseBinding(
+  credential: OauthAPIGetCredentialsResponse["credential"],
+  {
+    workspaceId,
+    provider,
+  }: {
+    workspaceId: string;
+    provider: string;
+  }
+): boolean {
+  return (
+    credential.metadata.workspace_id === workspaceId &&
+    credential.provider === provider
+  );
+}
 
 export const remoteDBDatabaseCodec = t.type({
   name: t.string,
@@ -71,10 +121,14 @@ export const getCredentials = async <T extends ConnectionCredentials>({
   credentialsId,
   isTypeGuard,
   logger,
+  workspaceId,
+  provider,
 }: {
   credentialsId: string;
   isTypeGuard: (credentials: ConnectionCredentials) => credentials is T;
   logger: Logger;
+  workspaceId: string;
+  provider: CredentialsProvider;
 }): Promise<
   Result<
     {
@@ -92,12 +146,27 @@ export const getCredentials = async <T extends ConnectionCredentials>({
     logger.error({ credentialsId }, "Failed to retrieve credentials");
     return new Err(Error("Failed to retrieve credentials"));
   }
-  // Narrow the type of credentials to just the username/password variant
-  const credentials = credentialsRes.value.credential.content;
-  if (!isTypeGuard(credentials)) {
-    throw new Error(
-      `Invalid credentials types, type guard: ${isTypeGuard.name}`
+  const credential = credentialsRes.value.credential;
+  if (
+    !matchesRemoteDatabaseBinding(credential, {
+      workspaceId,
+      provider,
+    })
+  ) {
+    logger.error(
+      {
+        workspaceId,
+        provider,
+        credentialWorkspaceId: credential.metadata.workspace_id,
+        credentialProvider: credential.provider,
+      },
+      "Refusing remote database credential that is not bound to this workspace"
     );
+    return new Err(new RemoteDatabaseCredentialBindingError());
+  }
+  const credentials = credential.content;
+  if (!isTypeGuard(credentials)) {
+    return new Err(new RemoteDatabaseCredentialBindingError());
   }
   return new Ok({
     credentials,
@@ -144,12 +213,34 @@ export const getConnectorAndCredentials = async <
       error: Error("Failed to retrieve credentials"),
     });
   }
-  // Narrow the type of credentials to just the username/password variant
-  const credentials = credentialsRes.value.credential.content;
-  if (!isTypeGuard(credentials)) {
-    throw new Error(
-      `Invalid credentials types, type guard: ${isTypeGuard.name}`
+  const credential = credentialsRes.value.credential;
+  if (
+    !matchesRemoteDatabaseBinding(credential, {
+      workspaceId: connector.workspaceId,
+      provider: connector.type,
+    })
+  ) {
+    logger.error(
+      {
+        connectorId,
+        workspaceId: connector.workspaceId,
+        provider: connector.type,
+        credentialWorkspaceId: credential.metadata.workspace_id,
+        credentialProvider: credential.provider,
+      },
+      "Refusing remote database credential that is not bound to this workspace"
     );
+    return new Err({
+      code: "invalid_credentials",
+      error: new RemoteDatabaseCredentialBindingError(),
+    });
+  }
+  const credentials = credential.content;
+  if (!isTypeGuard(credentials)) {
+    return new Err({
+      code: "invalid_credentials",
+      error: new RemoteDatabaseCredentialBindingError(),
+    });
   }
   return new Ok({
     connector,

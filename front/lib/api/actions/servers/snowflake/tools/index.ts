@@ -12,14 +12,11 @@ import {
   MAX_QUERY_ROWS,
   SNOWFLAKE_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/snowflake/metadata";
-import apiConfig from "@app/lib/api/config";
+import { loadAllowedRemoteDatabaseCredential } from "@app/lib/api/oauth/remote_database_credential";
 import type { Authenticator } from "@app/lib/auth";
-import logger from "@app/logger/logger";
 import { SnowflakeKeyPairCredentialsSchema } from "@app/types/oauth/lib";
-import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { fromError } from "zod-validation-error";
 
 const CONNECTION_ERROR = new MCPError(
   "Snowflake connection not configured. Please connect your Snowflake account."
@@ -122,24 +119,25 @@ async function getClientFromAuthInfo(
     return new Err(CONNECTION_ERROR);
   }
 
-  const oauthApi = new OAuthAPI(apiConfig.getOAuthAPIConfig(), logger);
-  const credentialRes = await oauthApi.getCredentials({
-    credentialsId: credentialId,
-  });
+  const workspaceId = auth?.workspace()?.sId;
+  if (!workspaceId) {
+    return new Err(CONNECTION_ERROR);
+  }
 
+  const credentialRes = await loadAllowedRemoteDatabaseCredential({
+    credentialsId: credentialId,
+    workspaceId,
+    allowedUses: ["snowflake_keypair"],
+  });
   if (credentialRes.isErr()) {
     return new Err(CONNECTION_ERROR);
   }
 
   const contentValidation = SnowflakeKeyPairCredentialsSchema.safeParse(
-    credentialRes.value.credential.content
+    credentialRes.value.content
   );
   if (!contentValidation.success) {
-    return new Err(
-      new MCPError(
-        `Invalid Snowflake credentials: ${fromError(contentValidation.error).toString()}`
-      )
-    );
+    return new Err(CONNECTION_ERROR);
   }
 
   const credentials = contentValidation.data;

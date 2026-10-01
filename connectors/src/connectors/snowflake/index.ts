@@ -22,6 +22,7 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { RemoteTableModel } from "@connectors/lib/models/remote_databases";
 import { SnowflakeConfigurationModel } from "@connectors/lib/models/snowflake";
 import {
+  credentialBindingFailure,
   getConnectorAndCredentials,
   getCredentials,
   saveNodesFromPermissions,
@@ -71,8 +72,14 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
       credentialsId: connectionId,
       isTypeGuard: isSnowflakeCredentials,
       logger,
+      workspaceId: dataSourceConfig.workspaceId,
+      provider: "snowflake",
     });
     if (credentialsRes.isErr()) {
+      const failure = credentialBindingFailure(credentialsRes.error);
+      if (failure) {
+        return failure;
+      }
       throw credentialsRes.error;
     }
     const credentials = credentialsRes.value.credentials;
@@ -154,8 +161,14 @@ export class SnowflakeConnectorManager extends BaseConnectorManager<null> {
       credentialsId: connectionId,
       isTypeGuard: isSnowflakeCredentials,
       logger,
+      workspaceId: c.workspaceId,
+      provider: "snowflake",
     });
     if (newCredentialsRes.isErr()) {
+      const failure = credentialBindingFailure(newCredentialsRes.error);
+      if (failure) {
+        return failure;
+      }
       throw newCredentialsRes.error;
     }
 

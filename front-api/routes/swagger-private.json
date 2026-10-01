@@ -6079,6 +6079,14 @@
                   "mime_type": {
                     "type": "string",
                     "description": "Reserved for internal use, should not be set. Mime type of the table"
+                  },
+                  "remote_database_table_id": {
+                    "type": "string",
+                    "description": "Reserved for internal use, should not be set. Warehouse table id."
+                  },
+                  "remote_database_secret_id": {
+                    "type": "string",
+                    "description": "Reserved for internal use, should not be set. Remote database credential id."
                   }
                 }
               }

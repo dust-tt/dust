@@ -22,6 +22,7 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import { BigQueryConfigurationModel } from "@connectors/lib/models/bigquery";
 import { RemoteTableModel } from "@connectors/lib/models/remote_databases";
 import {
+  credentialBindingFailure,
   getConnectorAndCredentials,
   getCredentials,
   saveNodesFromPermissions,
@@ -68,8 +69,14 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
       credentialsId: connectionId,
       isTypeGuard: isBigQueryWithLocationCredentials,
       logger,
+      workspaceId: dataSourceConfig.workspaceId,
+      provider: "bigquery",
     });
     if (credentialsRes.isErr()) {
+      const failure = credentialBindingFailure(credentialsRes.error);
+      if (failure) {
+        return failure;
+      }
       throw credentialsRes.error;
     }
     const credentials = credentialsRes.value.credentials;
@@ -128,8 +135,14 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
       credentialsId: connectionId,
       isTypeGuard: isBigQueryWithLocationCredentials,
       logger,
+      workspaceId: c.workspaceId,
+      provider: "bigquery",
     });
     if (newCredentialsRes.isErr()) {
+      const failure = credentialBindingFailure(newCredentialsRes.error);
+      if (failure) {
+        return failure;
+      }
       throw newCredentialsRes.error;
     }
 

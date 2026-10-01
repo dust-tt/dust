@@ -3,15 +3,27 @@ import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_a
 import { TOOLS } from "@app/lib/api/actions/servers/snowflake/tools";
 import type { Authenticator } from "@app/lib/auth";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { Err } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { listDatabasesMock } = vi.hoisted(() => ({
-  listDatabasesMock: vi.fn(),
+const { getCredentialsMock, listDatabasesMock, snowflakeClientMock } =
+  vi.hoisted(() => ({
+    getCredentialsMock: vi.fn(),
+    listDatabasesMock: vi.fn(),
+    snowflakeClientMock: vi.fn(),
+  }));
+
+vi.mock("@app/types/oauth/oauth_api", () => ({
+  OAuthAPI: class {
+    getCredentials = getCredentialsMock;
+  },
 }));
 
 vi.mock("@app/lib/api/actions/servers/snowflake/client", () => ({
   SnowflakeClient: class {
+    constructor(...args: unknown[]) {
+      snowflakeClientMock(...args);
+    }
     listDatabases = listDatabasesMock;
   },
 }));
@@ -54,9 +66,35 @@ function createTestExtra(auth: Authenticator): ToolHandlerExtra {
   };
 }
 
+const snowflakeKeyPair = {
+  username: "loader",
+  account: "ab12345",
+  role: "READER",
+  warehouse: "WH",
+  auth_type: "keypair" as const,
+  private_key: "private-key",
+};
+
+function createCredentialExtra(
+  auth: Authenticator,
+  credentialId: string
+): ToolHandlerExtra {
+  return {
+    ...createTestExtra(auth),
+    authInfo: {
+      token: "",
+      clientId: "snowflake-client",
+      scopes: [],
+      extra: { credentialId },
+    },
+  };
+}
+
 describe("Snowflake tools", () => {
   beforeEach(() => {
     listDatabasesMock.mockReset();
+    snowflakeClientMock.mockReset();
+    getCredentialsMock.mockReset();
   });
 
   it.each([
@@ -93,5 +131,68 @@ describe("Snowflake tools", () => {
     if (result.isErr()) {
       expect(result.error.message).toBe("Snowflake API returned 500");
     }
+  });
+
+  it("does not log in with a credential from another workspace", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    getCredentialsMock.mockResolvedValue(
+      new Ok({
+        credential: {
+          credential_id: "cred_other",
+          created: 1,
+          provider: "snowflake",
+          metadata: {
+            workspace_id: `${workspace.sId}-other`,
+            user_id: "user",
+          },
+          content: snowflakeKeyPair,
+        },
+      })
+    );
+
+    const result = await getListDatabasesTool().handler(
+      {},
+      createCredentialExtra(authenticator, "cred_other")
+    );
+
+    expect(result.isErr()).toBe(true);
+    expect(snowflakeClientMock).not.toHaveBeenCalled();
+    expect(listDatabasesMock).not.toHaveBeenCalled();
+  });
+
+  it("logs in with a key-pair credential bound to the caller workspace", async () => {
+    listDatabasesMock.mockResolvedValue(new Ok([]));
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    getCredentialsMock.mockResolvedValue(
+      new Ok({
+        credential: {
+          credential_id: "cred_own",
+          created: 1,
+          provider: "snowflake",
+          metadata: { workspace_id: workspace.sId, user_id: "user" },
+          content: snowflakeKeyPair,
+        },
+      })
+    );
+
+    const result = await getListDatabasesTool().handler(
+      {},
+      createCredentialExtra(authenticator, "cred_own")
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(snowflakeClientMock).toHaveBeenCalledWith(
+      "ab12345",
+      expect.objectContaining({
+        type: "keypair",
+        privateKey: "private-key",
+      }),
+      "WH",
+      undefined
+    );
   });
 });

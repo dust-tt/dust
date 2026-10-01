@@ -1,6 +1,7 @@
 import config from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import { resolveLegacyDataSourceSpaceId } from "@app/lib/api/data_sources";
+import { loadAllowedRemoteDatabaseCredential } from "@app/lib/api/oauth/remote_database_credential";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { cleanTimestamp } from "@app/lib/utils/timestamps";
@@ -127,6 +128,12 @@ const ParamsSchema = z.object({
  *               mime_type:
  *                 type: string
  *                 description: 'Reserved for internal use, should not be set. Mime type of the table'
+ *               remote_database_table_id:
+ *                 type: string
+ *                 description: 'Reserved for internal use, should not be set. Warehouse table id.'
+ *               remote_database_secret_id:
+ *                 type: string
+ *                 description: 'Reserved for internal use, should not be set. Remote database credential id.'
  *     responses:
  *       200:
  *         description: The table
@@ -384,6 +391,52 @@ app.post(
             "Setting a custom hierarchy is not supported yet. Please omit the parent_id field.",
         },
       });
+    }
+    if (
+      !auth.isSystemKey() &&
+      (remoteDatabaseTableId || remoteDatabaseSecretId)
+    ) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Setting remote database fields is not supported. Please omit the remote_database_table_id and remote_database_secret_id fields.",
+        },
+      });
+    }
+    if (remoteDatabaseSecretId) {
+      const credentialRes = await loadAllowedRemoteDatabaseCredential({
+        credentialsId: remoteDatabaseSecretId,
+        workspaceId: owner.sId,
+        allowedUses: ["snowflake", "bigquery"],
+      });
+      if (credentialRes.isErr()) {
+        if (credentialRes.error === "unavailable") {
+          logger.error(
+            {
+              workspaceId: owner.sId,
+              dataSourceId: dataSource.sId,
+            },
+            "Failed to validate remote database credential."
+          );
+          return apiError(ctx, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "Failed to validate the remote database credential.",
+            },
+          });
+        }
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "The remote database credential is not valid for this workspace.",
+          },
+        });
+      }
     }
 
     // Enforce parents consistency: we expect users to either not pass them (recommended) or pass them correctly.
