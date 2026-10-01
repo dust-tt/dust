@@ -55,6 +55,13 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "fontanierh",
   },
+  disable_frames_v2: {
+    description:
+      "Make the workspace behave as if frames_v2 were off, overriding its global rollout. " +
+      "Existing Frames v2 Frames stop rendering while it is on.",
+    stage: "ask_owner",
+    owner: "davidebbo",
+  },
   frames_v2_functions: {
     description:
       "Let Frames v2 declare server functions, databases and persistent files (requires frames_v2)",
@@ -544,6 +551,24 @@ export function isComputerFeatureEnabled(
 const FRAMES_V2_FEATURE = "frames_v2" as const satisfies WhitelistableFeature;
 const FRAMES_V2_FUNCTIONS_FEATURE =
   "frames_v2_functions" as const satisfies WhitelistableFeature;
+const DISABLE_FRAMES_V2_FEATURE =
+  "disable_frames_v2" as const satisfies WhitelistableFeature;
+
+/**
+ * @cc [owner:davidebbo,label:product] disable-frames-v2-overrides-frames-v2
+ * When `featureFlags` include `disable_frames_v2`, the returned flags MUST NOT include
+ * `frames_v2`, whether it came from a workspace flag or a global rollout. Other flags MUST be
+ * returned unchanged.
+ */
+export function applyFeatureFlagOverrides(
+  featureFlags: WhitelistableFeature[]
+): WhitelistableFeature[] {
+  if (!featureFlags.includes(DISABLE_FRAMES_V2_FEATURE)) {
+    return featureFlags;
+  }
+
+  return featureFlags.filter((flag) => flag !== FRAMES_V2_FEATURE);
+}
 
 /**
  * @cc [owner:davidebbo,label:product] frames-v2-functions-requires-frames-v2
