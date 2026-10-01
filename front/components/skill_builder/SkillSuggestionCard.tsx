@@ -312,6 +312,10 @@ function SuggestionDetails({
         />
       );
 
+    // TODO(skill-files): render the edited files.
+    case "files":
+      return null;
+
     case "user_facing_description":
       return (
         <SuggestedSkillUserFacingDescription

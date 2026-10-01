@@ -60,6 +60,7 @@ export const SKILL_SUGGESTION_KINDS = [
   "name",
   "delete",
   "availability",
+  "files",
 ] as const;
 
 export type SkillSuggestionKind = (typeof SKILL_SUGGESTION_KINDS)[number];
@@ -75,6 +76,7 @@ export function getSkillSuggestionAction(
     case "availability":
     case "edit":
     case "editors":
+    case "files":
     case "name":
     case "user_facing_description":
       return "edit";
@@ -237,6 +239,17 @@ export type SkillAvailabilitySuggestionType = z.infer<
   typeof SkillAvailabilitySuggestionSchema
 >;
 
+export const SkillFilesSuggestionSchema = z.object({
+  removeFileIds: z
+    .array(z.string())
+    .min(1)
+    .describe("The ids of the attached files to remove from the skill."),
+});
+
+export type SkillFilesSuggestionType = z.infer<
+  typeof SkillFilesSuggestionSchema
+>;
+
 export type SkillSuggestionPayload =
   | SkillEditSuggestionType
   | SkillEditorsSuggestionType
@@ -244,7 +257,8 @@ export type SkillSuggestionPayload =
   | SkillCreateSuggestionType
   | SkillNameSuggestionType
   | SkillDeleteSuggestionType
-  | SkillAvailabilitySuggestionType;
+  | SkillAvailabilitySuggestionType
+  | SkillFilesSuggestionType;
 
 const SkillEditSuggestionDataSchema = z.object({
   kind: z.literal("edit"),
@@ -281,6 +295,11 @@ const SkillAvailabilitySuggestionDataSchema = z.object({
   suggestion: SkillAvailabilitySuggestionSchema,
 });
 
+const SkillFilesSuggestionDataSchema = z.object({
+  kind: z.literal("files"),
+  suggestion: SkillFilesSuggestionSchema,
+});
+
 export const SkillSuggestionDataSchema = z.discriminatedUnion("kind", [
   SkillEditSuggestionDataSchema,
   SkillEditorsSuggestionDataSchema,
@@ -289,6 +308,7 @@ export const SkillSuggestionDataSchema = z.discriminatedUnion("kind", [
   SkillNameSuggestionDataSchema,
   SkillDeleteSuggestionDataSchema,
   SkillAvailabilitySuggestionDataSchema,
+  SkillFilesSuggestionDataSchema,
 ]);
 
 export type SkillSuggestionData = z.infer<typeof SkillSuggestionDataSchema>;
@@ -330,6 +350,11 @@ export type SkillDeleteSuggestionData = Extract<
 export type SkillAvailabilitySuggestionData = Extract<
   SkillSuggestionData,
   { kind: "availability" }
+>;
+
+export type SkillFilesSuggestionData = Extract<
+  SkillSuggestionData,
+  { kind: "files" }
 >;
 
 // `kind` and `suggestion` are separate columns, so narrowing one without the other would lie about
@@ -392,6 +417,12 @@ export function isAvailabilitySkillSuggestion<
   T extends { kind: SkillSuggestionKind; suggestion: unknown },
 >(carrier: T): carrier is T & SkillAvailabilitySuggestionData {
   return isSkillSuggestionOfKind(carrier, "availability");
+}
+
+export function isFilesSkillSuggestion<
+  T extends { kind: SkillSuggestionKind; suggestion: unknown },
+>(carrier: T): carrier is T & SkillFilesSuggestionData {
+  return isSkillSuggestionOfKind(carrier, "files");
 }
 
 const SkillSuggestionUpdatedBySchema = z.object({

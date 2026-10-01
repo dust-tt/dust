@@ -14,6 +14,7 @@ import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPSer
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -522,6 +523,89 @@ describe("applyBatchSuggestions", () => {
     expect(res.isErr()).toBe(true);
     expect(await fetchAgentName(agent.sId)).toBe(agent.name);
     expect(await fetchSkillName(skill.sId)).toBe(skill.name);
+  });
+
+  async function createSkillFile(fileName: string) {
+    return FileFactory.create(auth, user, {
+      contentType: "text/plain",
+      fileName,
+      fileSize: 10,
+      status: "ready",
+      useCase: "skill_attachment",
+    });
+  }
+
+  async function fetchSkillFileIds(skillId: string) {
+    const skill = await SkillResource.fetchById(auth, skillId);
+    assert(skill);
+    return skill.getFileAttachments().map((file) => file.sId);
+  }
+
+  it("removes the suggested file and keeps the others", async () => {
+    const removed = await createSkillFile("removed.txt");
+    const kept = await createSkillFile("kept.txt");
+    const skill = await SkillFactory.create(auth, {
+      fileAttachments: [removed, kept],
+    });
+    await auth.refresh();
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await SkillSuggestionFactory.create(auth, skill, {
+      kind: "files",
+      suggestion: { removeFileIds: [removed.sId] },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    expect(await fetchSkillFileIds(skill.sId)).toEqual([kept.sId]);
+  });
+
+  it("writes nothing when a removed file is no longer attached", async () => {
+    const attached = await createSkillFile("attached.txt");
+    const detached = await createSkillFile("detached.txt");
+    const skill = await SkillFactory.create(auth, {
+      fileAttachments: [attached],
+    });
+    await auth.refresh();
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await SkillSuggestionFactory.create(auth, skill, {
+      kind: "name",
+      suggestion: { name: "RenamedSkill" },
+      batchModelId,
+    });
+    await SkillSuggestionFactory.create(auth, skill, {
+      kind: "files",
+      suggestion: { removeFileIds: [attached.sId, detached.sId] },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isErr()).toBe(true);
+    expect(await fetchSkillName(skill.sId)).toBe(skill.name);
+    expect(await fetchSkillFileIds(skill.sId)).toEqual([attached.sId]);
+  });
+
+  it("keeps the skill's files when applying another change", async () => {
+    const file = await createSkillFile("kept.txt");
+    const skill = await SkillFactory.create(auth, { fileAttachments: [file] });
+    await auth.refresh();
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await SkillSuggestionFactory.create(auth, skill, {
+      kind: "name",
+      suggestion: { name: "RenamedSkill" },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    expect(await fetchSkillName(skill.sId)).toBe("RenamedSkill");
+    expect(await fetchSkillFileIds(skill.sId)).toEqual([file.sId]);
   });
 
   const SKILL_CREATION = {

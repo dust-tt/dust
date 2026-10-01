@@ -16,6 +16,7 @@ import {
 import { DustError } from "@app/lib/error";
 import { extractKnowledgeTagReferences } from "@app/lib/knowledge/format";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
   SkillAttachedKnowledge,
@@ -46,12 +47,14 @@ function hasSkillFieldEdits({
   userFacingDescription,
   name,
   instructionEdits,
+  files,
 }: SkillEdits): boolean {
   return (
     agentFacingDescription !== undefined ||
     userFacingDescription !== undefined ||
     name !== undefined ||
-    (instructionEdits?.length ?? 0) > 0
+    (instructionEdits?.length ?? 0) > 0 ||
+    files !== undefined
   );
 }
 
@@ -73,6 +76,33 @@ function resolveInstructions(
     instructionsHtml,
     instructionEdits,
     getMarkdownPipeline("skill")
+  );
+}
+
+function resolveFileAttachments(
+  skill: SkillResource,
+  files: SkillEdits["files"]
+): Result<FileResource[], DustError<"invalid_request_error">> {
+  const fileAttachments = skill.getFileAttachments();
+  if (!files) {
+    return new Ok([...fileAttachments]);
+  }
+
+  const { removeFileIds } = files;
+  const attachedFileIds = new Set(fileAttachments.map((file) => file.sId));
+  const notAttached = removeFileIds.filter((id) => !attachedFileIds.has(id));
+  if (notAttached.length > 0) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        `These files are no longer attached to the skill: ${notAttached.join(", ")}.`
+      )
+    );
+  }
+
+  const removedFileIds = new Set(removeFileIds);
+  return new Ok(
+    fileAttachments.filter((file) => !removedFileIds.has(file.sId))
   );
 }
 
@@ -175,6 +205,7 @@ async function resolveSkillFieldEdits(
     userFacingDescription,
     name,
     instructionEdits,
+    files,
   }: SkillEdits
 ): Promise<Result<SkillUpdate, DustError<"invalid_request_error">>> {
   let resolvedName = skill.name;
@@ -206,12 +237,18 @@ async function resolveSkillFieldEdits(
   }
   const attachments = attachmentsRes.value;
 
+  const fileAttachments = resolveFileAttachments(skill, files);
+  if (fileAttachments.isErr()) {
+    return fileAttachments;
+  }
+
   // `updateSkill` replaces the whole skill, so every field no suggestion touched is carried over
   // from the current values.
   return new Ok({
     agentFacingDescription:
       agentFacingDescription ?? skill.agentFacingDescription,
     attachedKnowledge: attachments.attachedKnowledge,
+    fileAttachments: fileAttachments.value,
     icon: skill.icon,
     instructions: instructions.value?.instructions ?? skill.instructions,
     instructionsHtml:
