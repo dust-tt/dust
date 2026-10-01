@@ -86,7 +86,11 @@ impl Api {
         })
         .await
     }
-    async fn read<T, U, F, Fut>(&self, request: Request<T>, operation: F) -> Result<Response<U>>
+    async fn read_call<T, U, F, Fut>(
+        &self,
+        request: Request<T>,
+        operation: F,
+    ) -> Result<Response<U>>
     where
         T: Send + Sync + 'static,
         U: Send + 'static,
@@ -257,19 +261,19 @@ impl Dfs for Api {
         .await
     }
     async fn stat(&self, request: Request<ObjectRequest>) -> Result<Response<Object>> {
-        self.read(request, |view, request| async move {
+        self.read_call(request, |view, request| async move {
             view.session_stat(&request.object_id).await
         })
         .await
     }
     async fn lookup(&self, request: Request<LookupRequest>) -> Result<Response<Object>> {
-        self.read(request, |view, request| async move {
+        self.read_call(request, |view, request| async move {
             view.lookup(&request.parent_id, &request.name).await
         })
         .await
     }
     async fn list(&self, request: Request<ListRequest>) -> Result<Response<Page>> {
-        self.read(request, |view, request| async move {
+        self.read_call(request, |view, request| async move {
             view.list(
                 &request.directory_id,
                 request.after.as_deref(),
@@ -280,14 +284,14 @@ impl Dfs for Api {
         .await
     }
     async fn read(&self, request: Request<ReadRequest>) -> Result<Response<ReadResponse>> {
-        self.read(
+        self.read_call(
             request,
             |view, request| async move { view.read(request).await },
         )
         .await
     }
     async fn fsync(&self, request: Request<ObjectRequest>) -> Result<Response<Object>> {
-        self.read(request, |view, request| async move {
+        self.read_call(request, |view, request| async move {
             view.session_stat(&request.object_id).await
         })
         .await

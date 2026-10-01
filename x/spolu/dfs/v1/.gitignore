@@ -1,3 +1,6 @@
 /target/
 /target-linux/
 __pycache__/
+/*.key
+/workspace.json
+/session.json

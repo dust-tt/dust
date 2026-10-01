@@ -14,3 +14,7 @@ tonic = { version = "0.14", features = ["tls-ring", "tls-native-roots"] }
 
 [lints]
 workspace = true
+
+[[bin]]
+name = "dfs"
+path = "src/main.rs"

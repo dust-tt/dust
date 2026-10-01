@@ -8,5 +8,6 @@ pub const MAX_MESSAGE: usize = 2 * MAX_IO;
 pub const MAX_GRANTS: usize = 512;
 pub const MAX_XATTRS: usize = 32 * 1024;
 
+pub mod credentials;
 pub mod error;
 pub mod validate;
