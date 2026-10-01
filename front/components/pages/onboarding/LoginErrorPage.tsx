@@ -173,4 +173,5 @@ export function LoginErrorPage() {
   );
 }
 
+/** @alias */
 export default LoginErrorPage;

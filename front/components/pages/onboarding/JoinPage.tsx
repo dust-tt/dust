@@ -154,4 +154,5 @@ export function JoinPage() {
   );
 }
 
+/** @alias */
 export default JoinPage;

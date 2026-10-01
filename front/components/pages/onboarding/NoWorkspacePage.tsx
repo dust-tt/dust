@@ -113,4 +113,5 @@ export function NoWorkspacePage() {
   );
 }
 
+/** @alias */
 export default NoWorkspacePage;

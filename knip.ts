@@ -5,7 +5,8 @@ import type { KnipConfig } from "knip";
 /**
  * @cc [owner:aubin-tchoi,label:testing] lazy-route-export-usage
  * Knip MUST count the named export selected by each withSuspense route as used,
- * without ignoring other unused exports in the imported module.
+ * without ignoring unrelated unused exports in the imported module.
+ * Default aliases of named page components MAY be retained using @alias.
  */
 const config: KnipConfig = {
   compilers: {
