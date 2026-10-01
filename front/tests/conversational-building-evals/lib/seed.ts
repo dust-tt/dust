@@ -137,6 +137,7 @@ export async function seedScenario(
           getMarkdownPipeline("agent")
         ),
         instructionsHtml: agent.instructionsHtml,
+        model: agent.model,
       });
       agentIdsByKey.set(agent.key, created.sId);
     }

@@ -7,6 +7,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type {
   ModelIdType,
+  ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
@@ -61,6 +62,8 @@ export interface SeedAgent {
   // Block-structured HTML with hand-picked `data-block-id`s, so scenarios can assert on which
   // blocks an edit targets. Wrap in the `instructions-root` div, as the editor stores it.
   instructionsHtml: string;
+  // Defaults to the factory's model when omitted.
+  model?: { providerId: ModelProviderIdType; modelId: ModelIdType };
 }
 
 /** Everything the scenario's workspace is seeded with. Tools then run for real against it. */
@@ -133,6 +136,7 @@ export type FinalToolCallAssertion =
     }
   | { type: "suggestSkillUserFacingDescription"; skillKey: string }
   | { type: "suggestAgentCreation" }
+  | { type: "suggestSkillCreation" }
   | {
       type: "suggestSubAgentByRef";
       // The seeded agent that must get the created agent as a sub-agent, through its ref.
