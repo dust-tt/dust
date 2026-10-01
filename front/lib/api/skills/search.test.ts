@@ -21,11 +21,14 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import {
+  buildNameAutocompleteQuery,
+  buildNameSearchQuery,
+} from "@app/lib/search/agent_and_skill_queries";
+import {
   buildSkillSearchQuery,
   MAX_SKILL_SEARCH_RESULTS,
   MAX_SKILL_SEARCH_WINDOW,
 } from "@app/lib/skill_search/query";
-import { buildSkillNameAutocompleteQuery } from "@app/lib/skill_search/ranking";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -607,7 +610,9 @@ describe("code-defined skill search", () => {
     expect(page.value.hasMore).toBe(true);
     expect(page.value.skills[1]).not.toHaveProperty("score");
     expect(mockSearch.mock.calls[0][0].query.bool.must).toEqual([
-      buildSkillNameAutocompleteQuery("deep"),
+      searchType === "name"
+        ? buildNameSearchQuery("deep")
+        : buildNameAutocompleteQuery("deep"),
     ]);
 
     const next = await searchSkills(auth, {
