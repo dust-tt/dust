@@ -153,6 +153,23 @@ describe("searchAgents", () => {
     expect(buildAgentNameAutocompleteQuery("   ")).toEqual({ match_all: {} });
   });
 
+  it("keeps autocomplete matching for both search types", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    mockSearch.mockResolvedValue({ hits: { hits: [] } });
+    await searchAgents(auth, { searchTerm: "Write", searchType: "name" });
+    const nameQuery = mockSearch.mock.lastCall![0].query;
+    expect(nameQuery.bool.must).toEqual([
+      buildAgentNameAutocompleteQuery("Write"),
+    ]);
+
+    await searchAgents(auth, { searchTerm: "Write" });
+    const autocompleteQuery = mockSearch.mock.lastCall![0].query;
+    expect(autocompleteQuery.bool.must).toEqual([
+      buildAgentNameAutocompleteQuery("Write"),
+    ]);
+    expect(nameQuery).toEqual(autocompleteQuery);
+  });
+
   it("filters on editors and models and returns facet values with counts", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({
       role: "user",

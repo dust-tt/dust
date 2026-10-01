@@ -8,6 +8,7 @@ import type {
   AgentSearchSortOrder,
   SearchAgentsResponseBody,
 } from "@app/types/agent_search/agent_search";
+import type { SearchType } from "@app/types/api/search";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useEffect } from "react";
 import { useSWRConfig } from "swr";
@@ -18,6 +19,7 @@ const SEARCH_AGENTS_QUERY_MAX_LENGTH = 200;
 export function useSearchAgents({
   owner,
   searchTerm,
+  searchType = "autocomplete",
   offset,
   limit,
   sortBy,
@@ -29,6 +31,7 @@ export function useSearchAgents({
 }: {
   owner: LightWorkspaceType;
   searchTerm: string;
+  searchType?: SearchType;
   offset?: number;
   limit?: number;
   sortBy?: AgentSearchSort;
@@ -53,6 +56,7 @@ export function useSearchAgents({
   const body = {
     ...filters,
     query: debouncedSearchTerm,
+    searchType,
     offset,
     limit,
     sortBy,

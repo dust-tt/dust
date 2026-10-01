@@ -109,6 +109,7 @@ describe("POST /api/w/:wId/skills/search", () => {
     expect(response.status).toBe(200);
     expect(searchSkills).toHaveBeenCalledWith(expect.anything(), {
       searchTerm: "research",
+      searchType: "autocomplete",
       limit: undefined,
       offset: undefined,
       permissionFiltering: undefined,
@@ -172,6 +173,7 @@ describe("POST /api/w/:wId/skills/search", () => {
     expect(response.status).toBe(200);
     expect(searchSkills).toHaveBeenCalledWith(expect.anything(), {
       searchTerm: "research",
+      searchType: "autocomplete",
       limit: 100,
       offset: 25,
       permissionFiltering: undefined,
@@ -202,6 +204,25 @@ describe("POST /api/w/:wId/skills/search", () => {
   });
 
   it.each([
+    "autocomplete",
+    "name",
+  ] as const)("passes %s search through", async (searchType) => {
+    const { workspace } = await setup();
+    searchSkills.mockResolvedValue(
+      new Ok({ skills: [], total: 0, hasMore: false, facets: {} })
+    );
+    const response = await searchRequest(workspace.sId, {
+      query: "Write",
+      searchType,
+    });
+    expect(response.status).toBe(200);
+    expect(searchSkills).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ searchTerm: "Write", searchType })
+    );
+  });
+
+  it.each([
     { limit: 101 },
     { limit: 1.5 },
     { offset: -1 },
@@ -211,6 +232,8 @@ describe("POST /api/w/:wId/skills/search", () => {
     { editedByMe: false },
     { editedByMe: 1 },
     { codeDefinedOnly: false },
+    { searchType: "unknown" },
+    { searchType: null },
     { sortBy: "unknown" },
     { sortOrder: "unknown" },
     { availability: ["unknown"] },
@@ -375,6 +398,7 @@ describe("POST /api/w/:wId/skills/search", () => {
     expect(response.status).toBe(200);
     expect(searchSkills).toHaveBeenCalledWith(expect.anything(), {
       searchTerm: "",
+      searchType: "autocomplete",
       limit: undefined,
       offset: undefined,
       permissionFiltering: "redact_unreadable",
