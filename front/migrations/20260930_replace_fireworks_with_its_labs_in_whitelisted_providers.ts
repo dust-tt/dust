@@ -11,7 +11,7 @@ import { z } from "zod";
 
 const HOST_TO_REPLACE = "fireworks";
 const DEEPSEEK_LAB = "deepseek";
-const UPDATE_CONCURRENCY = 8;
+const CACHE_INVALIDATION_CONCURRENCY = 8;
 
 // Every lab Fireworks serves a model for, legacy ones included: the "fireworks" entry granted all
 // of them, so replacing it with this list keeps each workspace's access unchanged. Listed by hand:
@@ -55,28 +55,32 @@ type WhitelistWrite = {
 // Raw SQL rather than `updateWorkspaceSettings`: the column validator only accepts provider ids
 // until whitelisting switches to labs. It also leaves `updatedAt` alone, since this is not a
 // workspace edit. The `from` match skips a row an admin re-saved in the meantime.
-async function writeWhitelist({
-  workspaceId,
-  from,
-  to,
-}: WhitelistWrite): Promise<boolean> {
-  const [, affectedRows] = await frontSequelize.query(
-    `UPDATE workspaces SET "whiteListedProviders" = ARRAY[:to]::varchar(255)[]
-     WHERE "sId" = :workspaceId AND "whiteListedProviders" = ARRAY[:from]::varchar(255)[]`,
-    { replacements: { workspaceId, from, to }, type: QueryTypes.UPDATE }
-  );
-  await WorkspaceResource.invalidateCache(workspaceId);
-  return affectedRows === 1;
-}
-
 async function writeWhitelists(
   writes: WhitelistWrite[],
   logger: Logger
 ): Promise<number> {
-  const written = await concurrentExecutor(writes, writeWhitelist, {
-    concurrency: UPDATE_CONCURRENCY,
-  });
-  const skipped = writes.filter((_, i) => !written[i]);
+  if (writes.length === 0) {
+    return 0;
+  }
+  const writtenRows = await frontSequelize.query<{ sId: string }>(
+    `UPDATE workspaces w SET "whiteListedProviders" = v."to"
+     FROM jsonb_to_recordset(CAST(:writes AS jsonb))
+       AS v("workspaceId" text, "from" varchar(255)[], "to" varchar(255)[])
+     WHERE w."sId" = v."workspaceId" AND w."whiteListedProviders" = v."from"
+     RETURNING w."sId"`,
+    {
+      replacements: { writes: JSON.stringify(writes) },
+      type: QueryTypes.SELECT,
+    }
+  );
+  const written = new Set(writtenRows.map(({ sId }) => sId));
+  await concurrentExecutor(
+    [...written],
+    (workspaceId) => WorkspaceResource.invalidateCache(workspaceId),
+    { concurrency: CACHE_INVALIDATION_CONCURRENCY }
+  );
+
+  const skipped = writes.filter(({ workspaceId }) => !written.has(workspaceId));
   for (const { workspaceId } of skipped) {
     logger.warn(
       { workspaceId },
