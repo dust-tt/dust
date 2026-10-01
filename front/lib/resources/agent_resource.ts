@@ -21,7 +21,10 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import { DustError } from "@app/lib/error";
-import { getEffectiveReasoningEffort } from "@app/lib/llms/model_configurations";
+import {
+  getEffectiveReasoningEffort,
+  getSupportedModelConfig,
+} from "@app/lib/llms/model_configurations";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
@@ -220,9 +223,19 @@ export type AgentVersionReference = {
  * `modelConfiguration`, e.g. the NOOP static reply), and MUST NOT affect custom agents. Global
  * resources are never cached, so a turn's context never reaches another read.
  */
+/**
+ * @cc [owner:tdraier,label:backend;performance] resolved-agent-actions
+ * With `withActions`, every resolved resource whose content the caller can view MUST carry its
+ * tools: custom agents' from one tools lookup per call, global agents' from their `full` build
+ * (with the same `globalAgentContext`). `listActions`/`batchListActions` MUST return the carried
+ * tools without looking them up again, and still MUST NOT return them to a caller who cannot view
+ * the content (see `actions-require-read`). Tools are never part of the cache snapshot.
+ * Without it, global agents are built `light` and tools are looked up by `batchListActions`.
+ */
 export type AgentFetchOptions = {
   dangerouslySkipFetchCheck?: boolean;
   globalAgentContext?: GlobalAgentContext;
+  withActions?: boolean;
 };
 
 // The outcome of a `bulkUpdate`: the agents whose save succeeded (`updatedAgentIds`, a change
@@ -507,6 +520,7 @@ export class AgentResource
   // content; `materialize` sets it for the caller.
   private _canViewContent = true;
   private _globalContent: AgentResourceInstructions | null = null;
+  private _actions: MCPServerConfigurationType[] | null = null;
 
   private _verbs: Set<GrantVerb> = new Set();
   private _isRegularApiKey = false;
@@ -867,11 +881,9 @@ export class AgentResource
   static async fetchByIds(
     auth: Authenticator,
     agentIds: string[],
-    {
-      dangerouslySkipFetchCheck = false,
-      globalAgentContext,
-    }: AgentFetchOptions = {}
+    options: AgentFetchOptions = {}
   ): Promise<AgentResource[]> {
+    const { dangerouslySkipFetchCheck = false } = options;
     if (agentIds.length === 0) {
       return [];
     }
@@ -882,26 +894,28 @@ export class AgentResource
 
     const [customResources, globalResources] = await Promise.all([
       this.fetchManyFromStore(auth, customAgentIds),
-      this.fetchGlobalAgents(auth, globalAgentIds, {
-        dangerouslySkipFetchCheck,
-        globalAgentContext,
-      }),
+      this.fetchGlobalAgents(auth, globalAgentIds, options),
     ]);
 
     const adminCanSeePrivateEntities =
       await this.resolveAdminCanSeePrivateEntities(auth, customResources);
 
+    const fetchedCustomResources = customResources
+      .map((resource) =>
+        resource.materialize(auth, { adminCanSeePrivateEntities })
+      )
+      .filter(
+        (resource) => dangerouslySkipFetchCheck || resource.canFetch(auth)
+      );
+    if (options.withActions) {
+      await this.loadCustomAgentActions(auth, fetchedCustomResources);
+    }
+
     const resourcesById = new Map(
-      [
-        ...customResources
-          .map((resource) =>
-            resource.materialize(auth, { adminCanSeePrivateEntities })
-          )
-          .filter(
-            (resource) => dangerouslySkipFetchCheck || resource.canFetch(auth)
-          ),
-        ...globalResources,
-      ].map((resource) => [resource.sId, resource])
+      [...fetchedCustomResources, ...globalResources].map((resource) => [
+        resource.sId,
+        resource,
+      ])
     );
     return removeNulls(uniqueAgentIds.map((id) => resourcesById.get(id)));
   }
@@ -915,6 +929,7 @@ export class AgentResource
     {
       dangerouslySkipFetchCheck = false,
       globalAgentContext,
+      withActions = false,
     }: AgentFetchOptions = {}
   ): Promise<AgentResource[]> {
     if (globalAgentIds.length === 0) {
@@ -924,11 +939,17 @@ export class AgentResource
     const configurations = await getGlobalAgents(
       auth,
       globalAgentIds,
-      "light",
+      withActions ? "full" : "light",
       { globalAgentContext }
     );
     return configurations
-      .map((configuration) => this.fromGlobalAgent(auth, configuration))
+      .map((configuration) => {
+        const resource = this.fromGlobalAgent(auth, configuration);
+        if (withActions) {
+          resource._actions = configuration.actions;
+        }
+        return resource;
+      })
       .filter(
         (resource) => dangerouslySkipFetchCheck || resource.canFetch(auth)
       );
@@ -948,11 +969,9 @@ export class AgentResource
   static async fetchByIdsAndVersions(
     auth: Authenticator,
     agentVersions: AgentVersionReference[],
-    {
-      dangerouslySkipFetchCheck = false,
-      globalAgentContext,
-    }: AgentFetchOptions = {}
+    options: AgentFetchOptions = {}
   ): Promise<AgentResource[]> {
+    const { dangerouslySkipFetchCheck = false } = options;
     const referenceKey = ({ agentId, agentVersion }: AgentVersionReference) =>
       isGlobalAgentId(agentId) ? agentId : `${agentId}:${agentVersion}`;
     const uniqueAgentVersions = uniqBy(agentVersions, referenceKey);
@@ -976,9 +995,13 @@ export class AgentResource
       this.fetchGlobalAgents(
         auth,
         globalAgentVersions.map(({ agentId }) => agentId),
-        { dangerouslySkipFetchCheck, globalAgentContext }
+        options
       ),
     ]);
+
+    if (options.withActions) {
+      await this.loadCustomAgentActions(auth, customResources);
+    }
 
     const resourcesByKey = new Map(
       [...customResources, ...globalResources].map((resource) => [
@@ -1688,6 +1711,35 @@ export class AgentResource
 
   // Global agents' tools are code-defined and depend on workspace data (data sources, tool views),
   // so they are only built, through the full global agent build, when asked for.
+  // Loads, in one tools lookup, the tools of the custom resources whose content the caller can view
+  // and keeps them on the resources (see `resolved-agent-actions`).
+  private static async loadCustomAgentActions(
+    auth: Authenticator,
+    resources: AgentResource[]
+  ): Promise<void> {
+    const viewableResources = resources.filter(
+      (resource) => resource.scope !== "global" && resource.canViewContent
+    );
+    if (viewableResources.length === 0) {
+      return;
+    }
+
+    const actionsByConfigurationModelId =
+      await fetchMCPServerActionConfigurations(auth, {
+        configurationModelIds: uniq(
+          viewableResources.map(
+            (resource) => resource.agentConfigurationModelId
+          )
+        ),
+        variant: "full",
+      });
+    for (const resource of viewableResources) {
+      resource._actions =
+        actionsByConfigurationModelId.get(resource.agentConfigurationModelId) ??
+        [];
+    }
+  }
+
   async listActions(
     auth: Authenticator,
     options: AgentActionsFetchOptions = {}
@@ -1725,9 +1777,11 @@ export class AgentResource
     const isListable = (agent: AgentResource) =>
       permissionFiltering === "dangerously_skip" ||
       agent.resolveCanViewContent(auth);
-    const viewableAgents = agents.filter(isListable);
+    const agentsToLookUp = agents.filter(
+      (agent) => isListable(agent) && agent._actions === null
+    );
     const [globalAgents, customAgents] = partition(
-      viewableAgents,
+      agentsToLookUp,
       (agent) => agent.scope === "global"
     );
 
@@ -1762,11 +1816,12 @@ export class AgentResource
           return [agent, []];
         }
         const actions =
-          agent.scope === "global"
+          agent._actions ??
+          (agent.scope === "global"
             ? globalActionsById.get(agent.sId)
             : actionsByConfigurationModelId.get(
                 agent.agentConfigurationModelId
-              );
+              ));
         return [agent, actions ?? []];
       })
     );
@@ -3191,6 +3246,13 @@ export class AgentResource
    * configuration builders add them (see `agent-json-redaction`). It MUST carry the resource's
    * `canViewContent`.
    */
+  /**
+   * @cc [owner:tdraier,label:backend] agent-json-effective-reasoning-effort
+   * For a custom agent with no stored `reasoningEffort`, `toJSON().model.reasoningEffort` MUST be
+   * the model's default reasoning effort (unset for an unknown model), as the legacy loaders served
+   * it: the agent loop runs on it. `modelConfiguration` and the save paths keep the stored value.
+   * A global agent's model is served as its builder produced it.
+   */
   toJSON(): AgentConfigurationBaseType {
     const isGlobal = this.scope === "global";
 
@@ -3201,7 +3263,15 @@ export class AgentResource
       sId: this.sId,
       version: this.version,
       versionAuthorId: this.versionAuthorId,
-      model: this.modelConfiguration,
+      model: isGlobal
+        ? this.modelConfiguration
+        : {
+            ...this.modelConfiguration,
+            reasoningEffort:
+              this.modelConfiguration.reasoningEffort ??
+              getSupportedModelConfig(this.modelConfiguration)
+                ?.defaultReasoningEffort,
+          },
       status: this.status,
       scope: this.scope,
       name: this.name,

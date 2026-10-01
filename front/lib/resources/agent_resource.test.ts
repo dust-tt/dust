@@ -2,6 +2,8 @@ import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configurati
 import { GLOBAL_AGENTS_WORKSPACE_ID } from "@app/lib/agent_search/constants";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import { Authenticator } from "@app/lib/auth";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import {
   AgentConfigurationModel,
   AgentModel,
@@ -2913,6 +2915,97 @@ describe("AgentResource", () => {
         (await AgentResource.fetchById(authenticator, custom.sId))
           ?.modelConfiguration
       );
+    });
+  });
+
+  describe("agent loop inputs", () => {
+    it("serves a custom agent's default reasoning effort when none is stored", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Default effort agent" }
+      );
+      const resource = await AgentResource.fetchById(
+        testContext.authenticator,
+        agent.sId
+      );
+      assert(resource);
+
+      expect(resource.modelConfiguration.reasoningEffort).toBeUndefined();
+      expect(resource.toJSON().model.reasoningEffort).toBe(
+        getSupportedModelConfig(resource.modelConfiguration)
+          ?.defaultReasoningEffort
+      );
+    });
+
+    it("lists a global agent's actions from its full build, without rebuilding it", async () => {
+      const { authenticator } = testContext;
+      const [helper] = await AgentResource.fetchByIds(
+        authenticator,
+        [GLOBAL_AGENTS_SID.HELPER],
+        { withActions: true }
+      );
+      assert(helper);
+      vi.mocked(getGlobalAgents).mockClear();
+
+      const actions = await AgentResource.batchListActions(authenticator, [
+        helper,
+      ]);
+
+      expect(getGlobalAgents).not.toHaveBeenCalled();
+      const [fullHelper] = await getGlobalAgents(
+        authenticator,
+        [GLOBAL_AGENTS_SID.HELPER],
+        "full"
+      );
+      expect(actions.get(helper)).toEqual(fullHelper?.actions);
+    });
+    it("keeps a custom agent's tools on the resource, and never for a caller who cannot view them", async () => {
+      const { authenticator, workspace, globalSpace } = testContext;
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Agent with kept tools", scope: "hidden" }
+      );
+      const server = await RemoteMCPServerFactory.create(workspace);
+      const mcpServerView = await MCPServerViewFactory.create(
+        workspace,
+        server.sId,
+        globalSpace
+      );
+      await AgentMCPServerConfigurationFactory.create(
+        authenticator,
+        globalSpace,
+        { agent, mcpServerView }
+      );
+      const { agentOwnerAuth: adminAuth } = await setupAgentOwner(
+        workspace,
+        "admin"
+      );
+      const reference = { agentId: agent.sId, agentVersion: agent.version };
+
+      const [editorView] = await AgentResource.fetchByIdsAndVersions(
+        authenticator,
+        [reference],
+        { withActions: true }
+      );
+      const [adminView] = await AgentResource.fetchByIdsAndVersions(
+        adminAuth,
+        [reference],
+        { withActions: true }
+      );
+      assert(editorView && adminView);
+      const findAll = vi.spyOn(AgentMCPServerConfigurationModel, "findAll");
+      try {
+        const actions = await AgentResource.batchListActions(authenticator, [
+          editorView,
+        ]);
+
+        expect(findAll).not.toHaveBeenCalled();
+        expect(actions.get(editorView)).toHaveLength(1);
+      } finally {
+        findAll.mockRestore();
+      }
+      expect(adminView.canViewContent).toBe(false);
+      expect(await adminView.listActions(adminAuth)).toEqual([]);
     });
   });
 
