@@ -148,6 +148,10 @@ msgstr "Theme"
 msgid "Notification sound"
 msgstr "Notification sound"
 
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "[Dust] {member} was auto-upgraded to a {newSeatType} seat"
+msgstr "[Dust] {member} was auto-upgraded to a {newSeatType} seat"
+
 #: front/components/UserSettingsPopover.tsx
 msgid "Used to sign in and receive notifications"
 msgstr "Used to sign in and receive notifications"
@@ -181,6 +185,10 @@ msgstr "Conversation font"
 #: front/lib/notifications/email-templates/_layout.tsx
 msgid "This is an automated email. Please do not reply."
 msgstr "This is an automated email. Please do not reply."
+
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "{count} members reached their credit limit and were automatically upgraded to higher seats so they can keep working:"
+msgstr "{count} members reached their credit limit and were automatically upgraded to higher seats so they can keep working:"
 
 #: front/hooks/useUserLocale.ts
 msgid "Could not save the language"
@@ -294,6 +302,10 @@ msgstr "Nothing"
 msgid "Workspace"
 msgstr "Workspace"
 
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "[Dust] {count} members were auto-upgraded to higher seats"
+msgstr "[Dust] {count} members were auto-upgraded to higher seats"
+
 #: front/components/me/NotificationPreferences.tsx
 msgid "Every 5 minutes"
 msgstr "Every 5 minutes"
@@ -314,6 +326,10 @@ msgstr "Your language could not be saved to your account."
 msgid "Access your favorite and most-used agents, or search for one from the home page."
 msgstr "Access your favorite and most-used agents, or search for one from the home page."
 
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "This might increase your subscription cost. You can turn off automatic seat upgrades from your workspace usage settings."
+msgstr "This might increase your subscription cost. You can turn off automatic seat upgrades from your workspace usage settings."
+
 #: front/components/assistant/conversation/InAppBanner.tsx
 msgid "Try it"
 msgstr "Try it"
@@ -327,9 +343,17 @@ msgctxt "verb, play a sound"
 msgid "Play"
 msgstr "Play"
 
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "there"
+msgstr "there"
+
 #: front/components/UserSettingsPopover.tsx
 msgid "Inbox notifications"
 msgstr "Inbox notifications"
+
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "Go to workspace usage"
+msgstr "Go to workspace usage"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "First name"
@@ -354,6 +378,10 @@ msgstr "Play a sound when an agent needs your input to continue"
 #: front/components/UserSettingsPopover.tsx
 msgid "Language"
 msgstr "Language"
+
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "{member} reached their credit limit and was automatically upgraded from a {previousSeatType} seat to a {newSeatType} seat so they can keep working."
+msgstr "{member} reached their credit limit and was automatically upgraded from a {previousSeatType} seat to a {newSeatType} seat so they can keep working."
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Choose how Dust looks on this device"
