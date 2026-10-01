@@ -70,6 +70,10 @@ msgstr "Email and Slack notifications are turned off for this workspace by an ad
 msgid "Personal Information"
 msgstr "Personal Information"
 
+#: sparkle/src/components/LoadMore.tsx
+msgid "Show less"
+msgstr "Show less"
+
 #: front/components/UserSettingsPopover.tsx
 msgctxt "theme"
 msgid "Auto"
@@ -86,6 +90,10 @@ msgstr "It applies on this device, but could not be saved to your account."
 #: front/components/UserSettingsPopover.tsx
 msgid "Other channels"
 msgstr "Other channels"
+
+#: sparkle/src/components/LoadMore.tsx
+msgid "Showing {rowCount} of {totalRowCount, plural, one {# item} other {# items}}"
+msgstr "Showing {rowCount} of {totalRowCount, plural, one {# item} other {# items}}"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Cmd + Enter (⌘ + ↵)"
@@ -107,6 +115,10 @@ msgstr "Enter"
 #: front/components/UserSettingsPopover.tsx
 msgid "Could not save the conversation font"
 msgstr "Could not save the conversation font"
+
+#: sparkle/src/components/Pagination.tsx
+msgid "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount}+ items"
+msgstr "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount}+ items"
 
 #: front/components/me/PendingInvitationsTable.tsx
 msgid "Invited"
@@ -253,6 +265,10 @@ msgstr "Mentions only"
 msgid "Email"
 msgstr "Email"
 
+#: sparkle/src/components/LoadMore.tsx
+msgid "Showing {rowCount} of {totalRowCount}+ items"
+msgstr "Showing {rowCount} of {totalRowCount}+ items"
+
 #: front/components/UserSettingsPopover.tsx
 msgctxt "theme"
 msgid "Light"
@@ -285,6 +301,10 @@ msgstr "Choose where else to receive notifications"
 #: front/components/UserSettingsPopover.tsx
 msgid "Customization"
 msgstr "Customization"
+
+#: sparkle/src/components/Pagination.tsx
+msgid "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plural, one {# item} other {# items}}"
+msgstr "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plural, one {# item} other {# items}}"
 
 #: front/hooks/useUserLocale.ts
 msgid "Your language could not be saved to your account."
@@ -360,6 +380,11 @@ msgctxt "font name"
 msgid "Lora"
 msgstr "Lora"
 
+#: sparkle/src/components/LoadMore.tsx
+#: sparkle/src/components/Pagination.tsx
+msgid "{rowCount, plural, one {# item} other {# items}}"
+msgstr "{rowCount, plural, one {# item} other {# items}}"
+
 #: front/components/UserSettingsPopover.tsx
 msgid "Dust builds a personal memory from your conversations and uses it to tailor future responses."
 msgstr "Dust builds a personal memory from your conversations and uses it to tailor future responses."
@@ -372,6 +397,15 @@ msgstr "Default"
 #: front/components/me/NotificationPreferences.tsx
 msgid "Notify me about"
 msgstr "Notify me about"
+
+#: sparkle/src/components/LoadMore.tsx
+msgid "Load more"
+msgstr "Load more"
+
+#: sparkle/src/components/LoadMore.tsx
+#: sparkle/src/components/Spinner.tsx
+msgid "Loading"
+msgstr "Loading"
 
 #: front/components/me/NotificationPreferences.tsx
 msgid "Applies to in-app popups, email, and Slack"

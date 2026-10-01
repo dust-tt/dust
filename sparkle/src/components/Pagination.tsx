@@ -1,3 +1,5 @@
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { ChevronLeft, ChevronRight } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import type { PaginationState } from "@tanstack/react-table";
@@ -43,6 +45,8 @@ export function Pagination({
   setPagination,
   disablePaginationNumbers = false,
 }: PaginationProps) {
+  const { t } = useLingui();
+
   // pageIndex is 0-based
   const { pageIndex, pageSize } = pagination;
 
@@ -60,6 +64,18 @@ export function Pagination({
     rowCount > (pageIndex + 1) * pageSize
       ? (pageIndex + 1) * pageSize
       : rowCount;
+
+  let details: string;
+  if (controlsAreHidden) {
+    details = t`${plural(rowCount, { one: "# item", other: "# items" })}`;
+  } else if (rowCountIsCapped) {
+    details = t`Showing ${firstItemOnPageIndex}-${lastItemOnPageIndex} of ${rowCount}+ items`;
+  } else {
+    details = t`Showing ${firstItemOnPageIndex}-${lastItemOnPageIndex} of ${plural(
+      rowCount,
+      { one: "# item", other: "# items" }
+    )}`;
+  }
 
   const onPaginationButtonClick = useCallback(
     (pageIndex: number) => {
@@ -124,11 +140,7 @@ export function Pagination({
           showDetails ? "visible" : "collapse"
         )}
       >
-        {controlsAreHidden
-          ? `${rowCount} item${rowCount === 1 ? "" : "s"}`
-          : `Showing ${firstItemOnPageIndex}-${lastItemOnPageIndex} of ${rowCount}${
-              rowCountIsCapped ? "+" : ""
-            } item${rowCount === 1 ? "" : "s"}`}
+        {details}
       </span>
     </div>
   );

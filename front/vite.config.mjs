@@ -52,5 +52,7 @@ export default defineConfig({
     alias: {
       "@app": path.resolve(__dirname, "./"),
     },
+    // Sparkle renders Lingui too: one `@lingui/react` keeps a single context.
+    dedupe: ["@lingui/react"],
   },
 });

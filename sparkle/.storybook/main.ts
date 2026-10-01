@@ -1,4 +1,5 @@
 import type { StorybookConfig } from "@storybook/react-vite";
+import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "url";
 import path from "path";
 import { searchForWorkspaceRoot } from "vite";
@@ -28,6 +29,23 @@ const config: StorybookConfig = {
   viteFinal: async (viteConfig) => {
     return {
       ...viteConfig,
+      plugins: [
+        ...(viteConfig.plugins ?? []),
+        // Compiles the Lingui macros as `npm run build:i18n` does. `storybook build` runs with a
+        // production NODE_ENV, where the default `descriptorFields` would drop the English
+        // messages and render ids.
+        react({
+          jsxRuntime: "classic",
+          babel: {
+            plugins: [
+              [
+                "@lingui/babel-plugin-lingui-macro",
+                { descriptorFields: "message" },
+              ],
+            ],
+          },
+        }),
+      ],
       server: {
         ...viteConfig.server,
         fs: {

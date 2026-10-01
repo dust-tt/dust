@@ -128,6 +128,41 @@
       "plugins": ["./.grit/patterns/noBareLocaleCompare.grit"]
     },
     {
+      "includes": [
+        "sparkle/src/**/*.{js,jsx,ts,tsx}",
+        "!sparkle/src/lib/i18n.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@lingui/core": "Sparkle translates through the Lingui macros only.",
+                  "@lingui/react": "Sparkle translates through the Lingui macros only.",
+                  "@lingui/core/macro": {
+                    "allowImportNames": ["msg", "plural", "select"],
+                    "message": "Its `t` uses a global instance that is never the app's: use `t` from `useLingui()` (@lingui/react/macro)."
+                  },
+                  "@lingui/react/macro": {
+                    "allowImportNames": ["Trans", "useLingui"],
+                    "message": "Sparkle's Lingui runtime only provides `Trans` and `useLingui`."
+                  }
+                },
+                "patterns": [
+                  {
+                    "group": ["@sparkle/lib/i18n", "**/lib/i18n", "./i18n"],
+                    "message": "The Lingui macros import this module; Sparkle code uses the macros."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "includes": ["front-api/**/*.ts", "!front-api/routes/types.ts"],
       "plugins": ["./.grit/patterns/noInlineSuccessResponseBody.grit"]
     },
