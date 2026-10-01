@@ -17,7 +17,6 @@ export type {
 } from "./namespace_types";
 export {
   FileSystemOperationError,
-  FileSystemOperationResponseSchema,
   FileSystemOperationSchema,
 } from "./namespace_types";
 

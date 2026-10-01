@@ -30,18 +30,6 @@ function getDescendantBlockIdsFromDoc(
 }
 
 /**
- * Returns every `data-block-id` nested under `targetBlockId` in serialized
- * instructions HTML
- */
-export function getDescendantBlockIds(
-  instructionsHtml: string,
-  targetBlockId: string
-): Set<string> {
-  const dom = new (getJSDOM())(instructionsHtml);
-  return getDescendantBlockIdsFromDoc(dom.window.document, targetBlockId);
-}
-
-/**
  * Returns every `data-block-id` present anywhere in serialized instructions HTML.
  */
 export function getAllBlockIds(instructionsHtml: string): Set<string> {

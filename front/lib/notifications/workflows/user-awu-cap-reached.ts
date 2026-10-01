@@ -1,7 +1,5 @@
 import config from "@app/lib/api/config";
 import { renderEmail } from "@app/lib/notifications/email-templates/default";
-import { getNovuClient } from "@app/lib/notifications/novu-client";
-import logger from "@app/logger/logger";
 import {
   USER_AWU_CAP_REACHED_TAG,
   USER_AWU_CAP_REACHED_TRIGGER_ID,
@@ -16,10 +14,6 @@ const UserAwuCapReachedPayloadSchema = z.object({
   // true → user has hit 100% and is now blocked; false → 80% warning.
   isBlocked: z.boolean(),
 });
-
-type UserAwuCapReachedPayloadType = z.infer<
-  typeof UserAwuCapReachedPayloadSchema
->;
 
 export const userAwuCapReachedWorkflow = workflow(
   USER_AWU_CAP_REACHED_TRIGGER_ID,
@@ -69,68 +63,3 @@ export const userAwuCapReachedWorkflow = workflow(
     tags: [USER_AWU_CAP_REACHED_TAG],
   }
 );
-
-/**
- * Send an in-app Novu notification about AWU usage.
- * isBlocked=true → user hit 100% and is now blocked.
- * isBlocked=false → 80% warning.
- * Fire-and-forget — errors are logged but don't block the caller.
- */
-export function notifyUserAwuCapReached({
-  userId,
-  userEmail,
-  userFirstName,
-  userLastName,
-  workspaceId,
-  workspaceName,
-  capAwuCredits,
-  isBlocked,
-}: {
-  userId: string;
-  userEmail: string;
-  userFirstName: string | null;
-  userLastName: string | null;
-  workspaceId: string;
-  workspaceName: string;
-  capAwuCredits: number;
-  isBlocked: boolean;
-}): void {
-  const payload: UserAwuCapReachedPayloadType = {
-    workspaceId,
-    workspaceName,
-    capAwuCredits,
-    isBlocked,
-  };
-
-  void getNovuClient()
-    .then((novuClient) =>
-      novuClient.triggerBulk({
-        events: [
-          {
-            workflowId: USER_AWU_CAP_REACHED_TRIGGER_ID,
-            to: {
-              subscriberId: userId,
-              email: userEmail,
-              firstName: userFirstName ?? undefined,
-              lastName: userLastName ?? undefined,
-            },
-            payload,
-          },
-        ],
-      })
-    )
-    .then((r) => {
-      if (r.result.some((res) => !!res.error?.length)) {
-        logger.error(
-          { workspaceId, userId, capAwuCredits },
-          "Failed to trigger user AWU cap reached notification"
-        );
-      }
-    })
-    .catch((err) => {
-      logger.error(
-        { err, workspaceId, userId, capAwuCredits },
-        "Failed to trigger user AWU cap reached notification"
-      );
-    });
-}

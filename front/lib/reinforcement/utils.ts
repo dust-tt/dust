@@ -19,11 +19,9 @@ export async function getAuthForWorkspace(
 }
 
 /**
- * Build continuation messages from exploratory tool calls and their results.
- * Returns an assistant function-call message followed by function-result messages.
- *
- * Defined in a standalone module (rather than in run_reinforced_analysis.ts) so
- * that Temporal workflow files can import it without pulling in heavy deps (zod, etc.).
+ * @internal Build continuation messages from exploratory tool calls and their results, for the
+ * reinforcement evals. Returns an assistant function-call message followed by function-result
+ * messages.
  */
 export function buildContinuationMessages(
   exploratoryToolCalls: ExploratoryToolCallInfo[],

@@ -16,6 +16,7 @@ import type { Extensions } from "@tiptap/core";
 const markdownPipelines: Partial<Record<InstructionsSchema, MarkdownPipeline>> =
   {};
 
+/** @internal Lets tests install a markdown pipeline. */
 export function setMarkdownPipelineForTesting(
   pipeline: MarkdownPipeline,
   schema: InstructionsSchema = "skill"
