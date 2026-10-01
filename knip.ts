@@ -90,8 +90,12 @@ const config: KnipConfig = {
         "platforms/*/main.tsx!",
         "platforms/*/background.ts!",
         "platforms/*/content-script.ts!",
+        // Webpack bundle entry of the chrome and firefox configs.
+        "shared/page.ts!",
+        // Build and watch scripts; they load the per-platform webpack configs.
+        "run/*.ts!",
       ],
-      project: ["{shared,platforms,ui}/**/*.{ts,tsx}!"],
+      project: ["{shared,platforms,ui,run}/**/*.{ts,tsx}!"],
       paths: {
         "@extension/*": ["./*"],
         "@app/*": ["../front/*"],
@@ -117,6 +121,8 @@ const config: KnipConfig = {
     // front-spa/vite.config.ts aliases `@app/lib/platform` to this file; knip resolves it to
     // front/lib/platform instead.
     "front-spa/src/lib/platform.tsx": ["exports", "types"],
+    // Same for the extension: its webpack config aliases `@app/lib/platform` to this file.
+    "extension/shared/platform.tsx": ["exports", "types"],
   },
   rules: {
     binaries: "off",

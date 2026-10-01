@@ -8,11 +8,6 @@ import type {
 } from "@extension/shared/services/capture";
 import { useCallback, useMemo, useState } from "react";
 
-export const MAX_FILE_SIZES: Record<"plainText" | "image", number> = {
-  plainText: 30 * 1024 * 1024, // 30MB.
-  image: 5 * 1024 * 1024, // 5 MB
-};
-
 export function useFileUploaderService(
   captureService: CaptureService | undefined,
   conversationId: string | null
@@ -231,5 +226,3 @@ export function useFileUploaderService(
 
   return value;
 }
-
-export type FileUploaderService = ReturnType<typeof useFileUploaderService>;
