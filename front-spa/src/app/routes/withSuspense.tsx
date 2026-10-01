@@ -9,6 +9,12 @@ function PageLoader() {
   );
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:react] lazy-route-export
+ * The module returned by importFn MUST export a React component under exportName.
+ * Route components loaded by name MUST retain their named export, even when they
+ * also have a default export.
+ */
 export function withSuspense(
   importFn: () => Promise<Record<string, unknown>>,
   exportName: string

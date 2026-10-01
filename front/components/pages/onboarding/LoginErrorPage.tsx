@@ -148,7 +148,7 @@ function getErrorMessage(domain: string | null, reason: string | null) {
   }
 }
 
-function LoginErrorPage() {
+export function LoginErrorPage() {
   const domain = useSearchParam("domain");
   const reason = useSearchParam("reason");
   const errorMessage = getErrorMessage(domain, reason);
