@@ -5,8 +5,8 @@ import { FilePreviewFallback } from "@app/components/file_explorer/FilePreviewFa
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import type { MarkdownFileEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
+import { formatFileSize } from "@app/lib/i18n/format";
 import type { FilePreviewCategory } from "@app/types/file_preview";
-import { fileSizeToHumanReadable } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 
 export function filePreviewLayoutClassName(
@@ -57,7 +57,7 @@ export function FilePreviewBody({
     return (
       <FilePreviewFallback
         download={download}
-        message={`This file is too large to preview (${fileSizeToHumanReadable(sizeBytes, 1)}).`}
+        message={`This file is too large to preview (${formatFileSize(sizeBytes, { decimals: 1 }, "en-US")}).`}
       />
     );
   }

@@ -16,6 +16,7 @@ import { writeToToolOutputsFolder } from "@app/lib/api/files/action_output_fs";
 import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
 import { uploadBase64ImageToFileStorage } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
+import { formatFileSize } from "@app/lib/i18n/format";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { statsDMetrics } from "@app/lib/utils/statsd";
@@ -24,7 +25,6 @@ import type { ImageModelIdType } from "@app/types/assistant/models/models";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import {
   extensionsForContentType,
-  fileSizeToHumanReadable,
   isSupportedImageContentType,
   MAX_FILE_SIZES,
   stripFileExtension,
@@ -436,7 +436,7 @@ async function processSingleImageFile(
 
     return new Err(
       new MCPError(
-        `Image file ${imageFileId} too large. Maximum allowed size is ${fileSizeToHumanReadable(maxImageSize, 0)}, but file is ${fileSizeToHumanReadable(sizeBytes, 0)}.`,
+        `Image file ${imageFileId} too large. Maximum allowed size is ${formatFileSize(maxImageSize, { decimals: 0 }, "en-US")}, but file is ${formatFileSize(sizeBytes, { decimals: 0 }, "en-US")}.`,
         { tracked: false }
       )
     );

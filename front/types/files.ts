@@ -420,22 +420,6 @@ export function resolveMaxFileSizes({
   }
 }
 
-export function fileSizeToHumanReadable(size: number, decimals = 0) {
-  if (size < 1024) {
-    return `${size.toFixed(decimals)} B`;
-  }
-
-  if (size < 1024 * 1024) {
-    return `${(size / 1024).toFixed(decimals)} KB`;
-  }
-
-  if (size < 1024 * 1024 * 1024) {
-    return `${(size / (1024 * 1024)).toFixed(decimals)} MB`;
-  }
-
-  return `${(size / (1024 * 1024 * 1024)).toFixed(decimals)} GB`;
-}
-
 const BIG_FILE_SIZE = 5_000_000;
 
 export function isBigFileSize(size: number) {

@@ -9,6 +9,7 @@ import {
 } from "@app/lib/api/provider_credentials";
 import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes_constants";
+import { formatFileSize } from "@app/lib/i18n/format";
 import { DATASOURCE_QUOTA_PER_SEAT } from "@app/lib/plans/usage/types";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { enqueueUpsertDocument } from "@app/lib/upsert_queue";
@@ -17,7 +18,6 @@ import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import { sectionFullText } from "@app/types/core/data_source";
-import { fileSizeToHumanReadable } from "@app/types/files";
 import type { LLMCredentialsType } from "@app/types/provider_credential";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { safeSubstring } from "@app/types/shared/utils/string_utils";
@@ -511,7 +511,7 @@ app.post(
           status_code: 403,
           api_error: {
             type: "workspace_quota_error",
-            message: `You've exceeded your plan limit (${fileSizeToHumanReadable(quotaUsed)} used / ${fileSizeToHumanReadable(activeSeats * DATASOURCE_QUOTA_PER_SEAT)} allowed)`,
+            message: `You've exceeded your plan limit (${formatFileSize(quotaUsed, { decimals: 0 }, "en-US")} used / ${formatFileSize(activeSeats * DATASOURCE_QUOTA_PER_SEAT, { decimals: 0 }, "en-US")} allowed)`,
           },
         });
       }

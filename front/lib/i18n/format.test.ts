@@ -146,10 +146,25 @@ describe.each(SUPPORTED_LOCALES)("with %s as the format locale", (locale) => {
       [1048575, "1024.0 KB"],
       [1048576, "1.00 MB"],
       [5244114, "5.00 MB"],
-      [3221225472, "3072.00 MB"],
+      [3221225472, "3.00 GB"],
     ])("formatFileSize pinned to en-US for %i bytes", (bytes, expected) => {
       setFormatLocale(locale);
-      expect(formatFileSize(bytes, "en-US")).toBe(expected);
+      expect(formatFileSize(bytes, undefined, "en-US")).toBe(expected);
+    });
+
+    it.each([
+      [512, 0, "512 B"],
+      [512, 2, "512.00 B"],
+      [1536, 0, "2 KB"],
+      [1536, 1, "1.5 KB"],
+      [10485760, 0, "10 MB"],
+      [5244114, 2, "5.00 MB"],
+      [3221225472, 0, "3 GB"],
+      [3221225472, 2, "3.00 GB"],
+      [5497558138880, 0, "5120 GB"],
+    ])("formatFileSize pinned to en-US for %i bytes with %i decimals", (bytes, decimals, expected) => {
+      setFormatLocale(locale);
+      expect(formatFileSize(bytes, { decimals }, "en-US")).toBe(expected);
     });
   });
 

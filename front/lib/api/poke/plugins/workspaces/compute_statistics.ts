@@ -1,8 +1,8 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import { computeWorkspaceStatistics } from "@app/lib/api/workspace_statistics";
+import { formatFileSize } from "@app/lib/i18n/format";
 import { DATASOURCE_QUOTA_PER_SEAT } from "@app/lib/plans/usage/types";
-import { fileSizeToHumanReadable } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 
 export const computeWorkspaceStatsPlugin = createPlugin({
@@ -32,7 +32,7 @@ export const computeWorkspaceStatsPlugin = createPlugin({
     return new Ok({
       display: "markdown",
       value: `
-Limit is ${fileSizeToHumanReadable(activeSeats * DATASOURCE_QUOTA_PER_SEAT)} per datasource (${activeSeats} active seats x 1 GB per seat)
+Limit is ${formatFileSize(activeSeats * DATASOURCE_QUOTA_PER_SEAT, { decimals: 0 }, "en-US")} per datasource (${activeSeats} active seats x 1 GB per seat)
 
 | Datasource | Document count | Total size |
 |------------|----------------|------------|
