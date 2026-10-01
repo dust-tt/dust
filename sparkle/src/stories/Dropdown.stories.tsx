@@ -1,5 +1,5 @@
 import { DropdownMenuCheckboxItemProps } from "@radix-ui/react-dropdown-menu";
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 import React, { useState } from "react";
 import { expect, fn, waitFor, within } from "storybook/test";
 
@@ -633,6 +633,36 @@ export const ScrollableItemPicker: Story = {
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+    );
+  },
+};
+
+/**
+ * Use `viewportRef` to observe the menu's scroll viewport without querying its DOM.
+ * @summary Access the scroll viewport directly.
+ */
+export const WithViewportRef: StoryObj<typeof DropdownMenuContent> = {
+  args: { viewportRef: fn() },
+  render: (args) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger>Open scrollable menu</DropdownMenuTrigger>
+      <DropdownMenuContent {...args} className="h-48 w-64">
+        {Array.from({ length: 30 }, (_, index) => (
+          <DropdownMenuItem key={index} label={`Item ${index + 1}`} />
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  ),
+  play: async ({ args, canvas, userEvent }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Open scrollable menu" })
+    );
+    await expect(args.viewportRef).toHaveBeenCalledWith(
+      expect.any(HTMLDivElement)
+    );
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(args.viewportRef).toHaveBeenLastCalledWith(null)
     );
   },
 };

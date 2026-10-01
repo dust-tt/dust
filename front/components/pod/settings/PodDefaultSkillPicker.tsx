@@ -39,11 +39,7 @@ export function PodDefaultSkillPicker({
   const useSkillSearch = hasFeature("skills_search");
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [scrollEnd, setScrollEnd] = useState<HTMLDivElement | null>(null);
-  // Observe the dropdown viewport, not the surrounding sheet's scroll area.
-  const scrollRoot = scrollEnd?.closest<HTMLElement>(
-    "[data-radix-scroll-area-viewport]"
-  );
+  const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
   const {
     skills: searchSkills,
     isSkillsLoading,
@@ -95,6 +91,7 @@ export function PodDefaultSkillPicker({
       <DropdownMenuContent
         className="w-80"
         align="start"
+        viewportRef={setScrollRoot}
         dropdownHeaders={
           <DropdownMenuSearchbar
             name="search-default-skills"
@@ -133,23 +130,21 @@ export function PodDefaultSkillPicker({
             }}
           />
         ) : null}
-        <div ref={setScrollEnd}>
-          {/* Recheck after each page, including pages with only selected skills. */}
-          {useSkillSearch && scrollRoot && (
-            <InfiniteScroll
-              key={searchSkills.length}
-              nextPage={loadMore}
-              hasMore={hasMore}
-              options={{ root: scrollRoot }}
-              showLoader={isSkillsLoading && matchingSkills.length > 0}
-              loader={
-                <div className="flex justify-center p-2">
-                  <Spinner size="sm" />
-                </div>
-              }
-            />
-          )}
-        </div>
+        {/* Recheck after each page, including pages with only selected skills. */}
+        {useSkillSearch && scrollRoot && (
+          <InfiniteScroll
+            key={searchSkills.length}
+            nextPage={loadMore}
+            hasMore={hasMore}
+            options={{ root: scrollRoot }}
+            showLoader={isSkillsLoading && matchingSkills.length > 0}
+            loader={
+              <div className="flex justify-center p-2">
+                <Spinner size="sm" />
+              </div>
+            }
+          />
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
