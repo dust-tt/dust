@@ -49,9 +49,15 @@ const useHandleMentions = ({
   stickyMentions,
 }: UseHandleMentionsOptions) => {
   const stickyMentionsTextContent = useRef<string | null>(null);
-  const { setSelectedSingleAgent } = useContext(InputBarContext);
+  const {
+    setSelectedSingleAgent,
+    setSuppressDefaultAgent,
+    suppressDefaultAgent,
+  } = useContext(InputBarContext);
   // When present, useAgentFromSearchParam owns the selection on the new-conversation page.
   const agentSearchParam = useSearchParam("agent");
+  // When present, useUserFromSearchParam owns the composer and clears any agent.
+  const userSearchParam = useSearchParam("user");
 
   // Priority: draft > sticky mentions > @dust fallback.
   // Also resets when the conversation changes so stale state doesn't leak.
@@ -67,6 +73,7 @@ const useHandleMentions = ({
     if (currentId !== prevConversationIdRef.current) {
       prevConversationIdRef.current = currentId;
       externalAgentSetRef.current = false;
+      setSuppressDefaultAgent(false);
       setSelectedSingleAgent(null);
     }
 
@@ -75,10 +82,24 @@ const useHandleMentions = ({
       return;
     }
 
+    // ?user= still in the URL: leave the composer to useUserFromSearchParam.
+    if (userSearchParam && !conversation && !isAgentBuilder) {
+      setSelectedSingleAgent(null);
+      return;
+    }
+
     // New conversation with ?agent= in the URL: leave selection to
     // useAgentFromSearchParam / the selectedAgent effect. Applying draft, sticky,
     // or @dust here races that path and can overwrite the custom agent in the URL.
+    // This must win over suppressDefaultAgent so Cmd+K → agent still applies after
+    // a prior member deep-link (existing composer content is kept).
     if (agentSearchParam && !conversation && !isAgentBuilder) {
+      return;
+    }
+
+    // After a user deep-link was consumed: suppress default @dust only.
+    if (suppressDefaultAgent && !conversation && !isAgentBuilder) {
+      setSelectedSingleAgent(null);
       return;
     }
 
@@ -127,12 +148,15 @@ const useHandleMentions = ({
     }
   }, [
     agentSearchParam,
+    userSearchParam,
+    suppressDefaultAgent,
     isAgentBuilder,
     conversation,
     stickyMentions,
     allAgents,
     getDraft,
     setSelectedSingleAgent,
+    setSuppressDefaultAgent,
     defaultAgentId,
     isDefaultAgentLoading,
   ]);
@@ -140,12 +164,19 @@ const useHandleMentions = ({
   useEffect(() => {
     if (selectedAgent) {
       // @TODO we should handle this in each event handler and not inside the useEffect
+      setSuppressDefaultAgent(false);
       setSelectedSingleAgent(selectedAgent);
       externalAgentSetRef.current = true;
     } else if (pendingInputText && !pendingInputText.replace) {
       queueMicrotask(() => editorService.insertText(pendingInputText.text));
     }
-  }, [selectedAgent, pendingInputText, editorService, setSelectedSingleAgent]);
+  }, [
+    selectedAgent,
+    pendingInputText,
+    editorService,
+    setSelectedSingleAgent,
+    setSuppressDefaultAgent,
+  ]);
 
   return { stickyMentionsTextContent };
 };

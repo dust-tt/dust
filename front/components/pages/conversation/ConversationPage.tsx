@@ -4,6 +4,7 @@ import { useAgentFromSearchParam } from "@app/hooks/useAgentFromSearchParam";
 import { useGoTemplateFromSearchParam } from "@app/hooks/useGoTemplateFromSearchParam";
 import { useOnboardingConversation } from "@app/hooks/useOnboardingConversation";
 import { useSkillFromSearchParam } from "@app/hooks/useSkillFromSearchParam";
+import { useUserFromSearchParam } from "@app/hooks/useUserFromSearchParam";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import { useEffect } from "react";
@@ -36,6 +37,9 @@ export function ConversationPage() {
     workspaceId: owner.sId,
     conversationId: activeConversationId,
   });
+
+  // Consume ?user= before ?agent= so a user deep-link wins and clears any agent.
+  useUserFromSearchParam(owner.sId);
 
   // Consume ?agent= param: fetch agent, set it in input bar
   useAgentFromSearchParam(owner.sId);

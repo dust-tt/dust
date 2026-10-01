@@ -91,6 +91,9 @@ export const InputBarContext = createContext<{
   setSelectedAgent: (agentMention: RichAgentMention | null) => void;
   selectedSingleAgent: RichAgentMention | null;
   setSelectedSingleAgent: (agentMention: RichAgentMention | null) => void;
+  // When true, new-conversation default agent resolution is skipped (e.g. ?user=).
+  suppressDefaultAgent: boolean;
+  setSuppressDefaultAgent: (suppress: boolean) => void;
   getAndClearPendingInputText: () => PendingInputText | null;
   setPendingInputText: (
     text: string | null,
@@ -124,6 +127,8 @@ export const InputBarContext = createContext<{
   setSelectedAgent: () => {},
   selectedSingleAgent: null,
   setSelectedSingleAgent: () => {},
+  suppressDefaultAgent: false,
+  setSuppressDefaultAgent: () => {},
   getAndClearPendingInputText: () => null,
   setPendingInputText: () => {},
   pendingSkill: null,
@@ -173,9 +178,23 @@ export function InputBarContextProvider({
     null
   );
 
+  // Skip new-conversation default agent (@dust / personal default), e.g. after ?user=.
+  const [suppressDefaultAgent, setSuppressDefaultAgent] = useState(false);
+
   // Persistent agent selection for single-agent input mode (displayed in the agent picker button).
-  const [selectedSingleAgent, setSelectedSingleAgent] =
+  const [selectedSingleAgent, setSelectedSingleAgentState] =
     useState<RichAgentMention | null>(null);
+
+  const setSelectedSingleAgent = useCallback(
+    (agentMention: RichAgentMention | null) => {
+      if (agentMention) {
+        // Explicit picker / URL agent selection re-enables default-agent resolution.
+        setSuppressDefaultAgent(false);
+      }
+      setSelectedSingleAgentState(agentMention);
+    },
+    []
+  );
 
   // Useful when a component needs to pre-fill the input bar with text.
   const [pendingInputText, setPendingInputTextState] =
@@ -279,6 +298,8 @@ export function InputBarContextProvider({
       setSelectedAgent: setSelectedAgentOuter,
       selectedSingleAgent,
       setSelectedSingleAgent,
+      suppressDefaultAgent,
+      setSuppressDefaultAgent,
       getAndClearPendingInputText,
       setPendingInputText,
       pendingSkill,
@@ -300,6 +321,8 @@ export function InputBarContextProvider({
       getAndClearSelectedAgent,
       setSelectedAgentOuter,
       selectedSingleAgent,
+      setSelectedSingleAgent,
+      suppressDefaultAgent,
       getAndClearPendingInputText,
       setPendingInputText,
       pendingSkill,
