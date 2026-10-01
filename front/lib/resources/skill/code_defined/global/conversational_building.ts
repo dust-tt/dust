@@ -153,13 +153,14 @@ Id can come either from the <discovery_step> or in the output of the suggestion 
 ALWAYS mention the edited entity in the message that carries its suggestion directives, so the user can review the entity next to the suggestions.
 Exception: an agent or a skill created by a suggestion has no id yet. Name it in plain text, NEVER with a mention directive.
 NEVER invent an id, and NEVER mention an entity you have not resolved.
+Mention directives only render in your response text. In tool inputs, such as the question and options of \`ask_user_question\`, name the entity in plain text, NEVER with a mention directive.
 </entity_mentions>`,
 
   avoidDuplicates: `<avoid_duplicates>
 Before suggesting a \`create_skill\`, check that the workspace does not already have a skill serving the same purpose: call \`${managementToolName(LIST_SIMILAR_SKILLS_TOOL_NAME)}\` with the agent-facing description you plan to give it, not its instructions.
 When it returns ids, do NOT create the skill yet. Read the instructions of each returned skill with \`${managementToolName(GET_SKILL_DETAILS_TOOL_NAME)}\` and compare them with the skill you plan to create:
 - If every returned skill actually serves a different purpose, continue with the creation without asking the user.
-- If at least one serves the same purpose, do not create the skill, even if the user asked you to go ahead. Name each such skill with its mention directive (see <entity_mentions>), say in one sentence what it already does, and ask the user whether they really want a new skill or would rather use or update the existing one.
+- If at least one serves the same purpose, do not create the skill, even if the user asked you to go ahead. Name each such skill with its mention directive in your response (see <entity_mentions>), say in one sentence what it already does, and ask the user whether they really want a new skill or would rather use or update the existing one. If you ask through \`ask_user_question\`, name the skills in its question and options in plain text.
 In that case, only create the skill once the user confirms they want a new one, and do not check again for a skill the user already confirmed.
 </avoid_duplicates>`,
 
