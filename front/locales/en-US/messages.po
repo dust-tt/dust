@@ -1138,6 +1138,7 @@ msgid "You can manage your notification preferences from <0>your workspace</0>."
 msgstr "You can manage your notification preferences from <0>your workspace</0>."
 
 #: front/lib/notifications/email-templates/agent-message-feedback-digest.tsx
+#: front/lib/notifications/email-templates/conversations-unread.tsx
 #: front/lib/notifications/email-templates/default.tsx
 msgid "Hi {name},"
 msgstr "Hi {name},"
@@ -1165,10 +1166,35 @@ msgctxt "quoted feedback"
 msgid "\"{feedbackContent}\""
 msgstr "\"{feedbackContent}\""
 
+#: front/lib/notifications/email-templates/conversations-unread.tsx
+msgid "{mentionCount, plural, one {You have been mentioned in the following conversation:} other {You have been mentioned in the following conversations:}}"
+msgstr "{mentionCount, plural, one {You have been mentioned in the following conversation:} other {You have been mentioned in the following conversations:}}"
+
+#: front/lib/notifications/email-templates/conversations-unread.tsx
+msgid "{unreadCount, plural, one {You have unread message(s) in the following conversation:} other {You have unread message(s) in the following conversations:}}"
+msgstr "{unreadCount, plural, one {You have unread message(s) in the following conversation:} other {You have unread message(s) in the following conversations:}}"
+
+#: front/lib/notifications/email-templates/conversations-unread.tsx
+msgid "{newProjectConversationCount, plural, one {There's a new conversation in {singleProjectName}:} other {There are # new conversations in {singleProjectName}:}}"
+msgstr "{newProjectConversationCount, plural, one {There's a new conversation in {singleProjectName}:} other {There are # new conversations in {singleProjectName}:}}"
+
+#: front/lib/notifications/email-templates/conversations-unread.tsx
+msgid "{newProjectConversationCount, plural, one {There is # new conversation in your Pods:} other {There are # new conversations in your Pods:}}"
+msgstr "{newProjectConversationCount, plural, one {There is # new conversation in your Pods:} other {There are # new conversations in your Pods:}}"
+
+#: front/lib/notifications/email-templates/conversations-unread.tsx
 #: front/lib/notifications/workflows/agent-message-feedback.ts
 #: front/lib/notifications/workflows/pod-added-as-member.ts
 msgid "Someone"
 msgstr "Someone"
+
+#: front/lib/notifications/email-templates/conversations-unread.tsx
+msgid "{createdBy} started \"{conversationTitle}\""
+msgstr "{createdBy} started \"{conversationTitle}\""
+
+#: front/lib/notifications/email-templates/conversations-unread.tsx
+msgid "{createdBy} started \"{conversationTitle}\" in {projectName}"
+msgstr "{createdBy} started \"{conversationTitle}\" in {projectName}"
 
 #: front/lib/notifications/workflows/agent-message-feedback.ts
 msgid "an agent"
@@ -1192,6 +1218,7 @@ msgid "{userWhoGaveFeedbackFullName} left a negative feedback on {agentName}."
 msgstr "{userWhoGaveFeedbackFullName} left a negative feedback on {agentName}."
 
 #: front/lib/notifications/workflows/agent-message-feedback.ts
+#: front/lib/notifications/workflows/conversation-unread.ts
 #: front/lib/notifications/workflows/pod-added-as-member.ts
 msgctxt "action"
 msgid "View"
@@ -1203,6 +1230,7 @@ msgstr "[Dust] {feedbackCount, plural, one {# feedback on your agents} other {# 
 
 #: front/lib/notifications/workflows/agent-message-feedback.ts
 #: front/lib/notifications/workflows/balance-threshold-reached.ts
+#: front/lib/notifications/workflows/conversation-unread.ts
 #: front/lib/notifications/workflows/pod-added-as-member.ts
 #: front/lib/notifications/workflows/programmatic-cap-reached.ts
 #: front/lib/notifications/workflows/seat-auto-upgraded.ts
@@ -1262,6 +1290,66 @@ msgstr "The raw consumption data you requested has finished generating and is re
 msgctxt "action"
 msgid "Download"
 msgstr "Download"
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "[Dust] {count, plural, one {New conversation in \"{projectName}\"} other {New conversations in \"{projectName}\"}}"
+msgstr "[Dust] {count, plural, one {New conversation in \"{projectName}\"} other {New conversations in \"{projectName}\"}}"
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "[Dust] New conversations in your Pods"
+msgstr "[Dust] New conversations in your Pods"
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "New unread message(s) in conversation"
+msgstr "New unread message(s) in conversation"
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "[Dust] New unread messages in {count} conversations"
+msgstr "[Dust] New unread messages in {count} conversations"
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "New conversation in {projectName}"
+msgstr "New conversation in {projectName}"
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "{author} created \"{conversationTitle}\""
+msgstr "{author} created \"{conversationTitle}\""
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "New message from {author}"
+msgstr "New message from {author}"
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "{author} replied in the conversation \"{conversationTitle}\"."
+msgstr "{author} replied in the conversation \"{conversationTitle}\"."
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "You have a new message from {author} in the conversation \"{conversationTitle}\"."
+msgstr "You have a new message from {author} in the conversation \"{conversationTitle}\"."
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "There is a new conversation in \"{projectName}\": {author} started \"{conversationTitle}\""
+msgstr "There is a new conversation in \"{projectName}\": {author} started \"{conversationTitle}\""
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "{author} replied in \"{conversationTitle}\""
+msgstr "{author} replied in \"{conversationTitle}\""
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "New message from {author} in \"{conversationTitle}\""
+msgstr "New message from {author} in \"{conversationTitle}\""
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "View conversation"
+msgstr "View conversation"
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "Preview not available due to data retention policy on conversations in this workspace."
+msgstr "Preview not available due to data retention policy on conversations in this workspace."
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "Preview not available due to data retention policy on agents in this conversation."
+msgstr "Preview not available due to data retention policy on agents in this conversation."
 
 #: front/lib/notifications/workflows/pod-added-as-member.ts
 msgid "A Pod"

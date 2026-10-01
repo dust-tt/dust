@@ -13,6 +13,7 @@ import {
   getEmailSummary,
 } from "@app/lib/notifications/helpers";
 import { getNotificationI18n } from "@app/lib/notifications/i18n";
+import { getNotificationLocale } from "@app/lib/notifications/locale";
 import type { ConversationUnreadPayloadType } from "@app/lib/notifications/triggers/conversation-unread";
 import {
   shouldSkipConversation,
@@ -20,7 +21,6 @@ import {
 } from "@app/lib/notifications/triggers/conversation-unread";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
-import { DEFAULT_LOCALE } from "@app/types/locale";
 import {
   CONVERSATION_UNREAD_TRIGGER_ID,
   NOTIFICATION_DELAY_OPTIONS,
@@ -28,7 +28,8 @@ import {
 } from "@app/types/notification_preferences";
 import { isDevelopment } from "@app/types/shared/env";
 import { stripMarkdown } from "@app/types/shared/utils/markdown";
-import { pluralize } from "@app/types/shared/utils/string_utils";
+import type { I18n } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
 import { workflow } from "@novu/framework";
 import assert from "assert";
 import z from "zod";
@@ -48,7 +49,8 @@ const UserNotificationDelaySchema = z.object({
   delay: z.enum(NOTIFICATION_DELAY_OPTIONS),
 });
 
-const getEmailSubject = (
+export const buildConversationUnreadEmailSubject = (
+  i18n: I18n,
   conversations: {
     title: string;
     projectName?: string;
@@ -63,24 +65,93 @@ const getEmailSubject = (
       new Set(conversations.map((c) => c.projectName).filter(Boolean))
     );
     if (uniqueProjectNames.length === 1) {
-      return `[Dust] New conversation${pluralize(conversations.length)} in '${uniqueProjectNames[0]}'`;
+      const projectName = uniqueProjectNames[0];
+      const count = conversations.length;
+      return i18n._(
+        msg`[Dust] ${plural(count, {
+          one: `New conversation in "${projectName}"`,
+          other: `New conversations in "${projectName}"`,
+        })}`
+      );
     }
-    return `[Dust] New conversations in your Pods`;
+    return i18n._(msg`[Dust] New conversations in your Pods`);
   }
   if (conversations.length === 1) {
-    return `[Dust] ${conversations[0]?.title ?? "New unread message(s) in conversation"}`;
+    return `[Dust] ${conversations[0]?.title ?? i18n._(msg`New unread message(s) in conversation`)}`;
   }
-  return `[Dust] New unread messages in ${conversations.length} conversations`;
+  const count = conversations.length;
+  return i18n._(msg`[Dust] New unread messages in ${count} conversations`);
 };
 
+export function buildConversationUnreadInAppCopy(
+  i18n: I18n,
+  d: Pick<
+    ConversationDetailsType,
+    | "isNewProjectConversation"
+    | "projectName"
+    | "author"
+    | "authorIsAgent"
+    | "subject"
+  >
+): { subject: string; body: string; actionLabel: string } {
+  const { author, subject: conversationTitle } = d;
+  const projectName = d.projectName ?? "";
+  const actionLabel = i18n._(msg({ message: "View", context: "action" }));
+  if (d.isNewProjectConversation) {
+    return {
+      subject: i18n._(msg`New conversation in ${projectName}`),
+      body: i18n._(msg`${author} created "${conversationTitle}"`),
+      actionLabel,
+    };
+  }
+  return {
+    subject: i18n._(msg`New message from ${author}`),
+    body: d.authorIsAgent
+      ? i18n._(
+          msg`${author} replied in the conversation "${conversationTitle}".`
+        )
+      : i18n._(
+          msg`You have a new message from ${author} in the conversation "${conversationTitle}".`
+        ),
+    actionLabel,
+  };
+}
+
+export function buildConversationUnreadSlackMessage(
+  i18n: I18n,
+  d: ConversationDetailsType,
+  conversationUrl: string
+): string {
+  const { author, subject: conversationTitle } = d;
+  const projectName = d.projectName ?? "";
+  const messagePreview = getMessagePreviewSlack(i18n, d);
+  const baseMessage = d.isNewProjectConversation
+    ? i18n._(
+        msg`There is a new conversation in "${projectName}": ${author} started "${conversationTitle}"`
+      )
+    : d.authorIsAgent
+      ? i18n._(msg`${author} replied in "${conversationTitle}"`)
+      : i18n._(msg`New message from ${author} in "${conversationTitle}"`);
+  const viewLink = `<${conversationUrl}|${i18n._(msg`View conversation`)}>`;
+
+  return messagePreview
+    ? `${baseMessage}\n${messagePreview}\n${viewLink}`
+    : `${baseMessage}\n${viewLink}`;
+}
+
 export const getMessagePreviewText = (
+  i18n: I18n,
   details: ConversationDetailsType
 ): string | undefined => {
   if (details.hasConversationRetentionPolicy) {
-    return "Preview not available due to data retention policy on conversations in this workspace.";
+    return i18n._(
+      msg`Preview not available due to data retention policy on conversations in this workspace.`
+    );
   }
   if (details.hasAgentRetentionPolicies) {
-    return "Preview not available due to data retention policy on agents in this conversation.";
+    return i18n._(
+      msg`Preview not available due to data retention policy on agents in this conversation.`
+    );
   }
   if (details.newMessageContent) {
     const stripped = stripMarkdown(details.newMessageContent);
@@ -90,9 +161,10 @@ export const getMessagePreviewText = (
 };
 
 export const getMessagePreviewSlack = (
+  i18n: I18n,
   details: ConversationDetailsType
 ): string | undefined => {
-  const preview = getMessagePreviewText(details);
+  const preview = getMessagePreviewText(i18n, details);
   if (!preview) {
     return undefined;
   }
@@ -139,21 +211,22 @@ export const conversationUnreadWorkflow = workflow(
         // details is guaranteed non-null here because skip prevents execution otherwise.
         const d = details!;
 
-        const isProjectNewConversation = d.isNewProjectConversation;
-        const subject = isProjectNewConversation
-          ? `New conversation in ${d.projectName}`
-          : `New message from ${d.author}`;
-        const body = isProjectNewConversation
-          ? `${d.author} created "${d.subject}"`
-          : d.authorIsAgent
-            ? `${d.author} replied in the conversation "${d.subject}".`
-            : `You have a new message from ${d.author} in the conversation "${d.subject}".`;
+        const i18n = await getNotificationI18n(
+          await getNotificationLocale(
+            subscriber.subscriberId,
+            payload.workspaceId
+          )
+        );
+        const { subject, body, actionLabel } = buildConversationUnreadInAppCopy(
+          i18n,
+          d
+        );
 
         return {
           subject,
           body,
           primaryAction: {
-            label: "View",
+            label: actionLabel,
             redirect: {
               url: getConversationRoute(
                 payload.workspaceId,
@@ -193,19 +266,17 @@ export const conversationUnreadWorkflow = workflow(
           config.getAppUrl()
         );
 
-        // Create message preview
-        const messagePreview = getMessagePreviewSlack(d);
-
-        const isProjectNewConversation = d.isNewProjectConversation;
-        const baseMessage = isProjectNewConversation
-          ? `There is a new conversation in "${d.projectName}": ${d.author} started "${d.subject}"`
-          : d.authorIsAgent
-            ? `${d.author} replied in "${d.subject}"`
-            : `New message from ${d.author} in "${d.subject}"`;
-
-        const message = messagePreview
-          ? `${baseMessage}\n${messagePreview}\n<${conversationUrl}|View conversation>`
-          : `${baseMessage}\n<${conversationUrl}|View conversation>`;
+        const i18n = await getNotificationI18n(
+          await getNotificationLocale(
+            subscriber.subscriberId,
+            payload.workspaceId
+          )
+        );
+        const message = buildConversationUnreadSlackMessage(
+          i18n,
+          d,
+          conversationUrl
+        );
 
         return {
           body: message,
@@ -290,6 +361,12 @@ export const conversationUnreadWorkflow = workflow(
     await step.email(
       "send-email",
       async () => {
+        const i18n = await getNotificationI18n(
+          await getNotificationLocale(
+            subscriber.subscriberId,
+            payload.workspaceId
+          )
+        );
         const conversations: Parameters<
           typeof renderEmail
         >[0]["conversations"] = [];
@@ -351,7 +428,10 @@ export const conversationUnreadWorkflow = workflow(
                 isNewProjectConversation: true,
                 projectName: detailsResult.value.projectName,
                 createdByFullName: detailsResult.value.author,
-                messagePreview: getMessagePreviewText(detailsResult.value),
+                messagePreview: getMessagePreviewText(
+                  i18n,
+                  detailsResult.value
+                ),
               });
             } else {
               const summary = await getEmailSummary({
@@ -372,8 +452,8 @@ export const conversationUnreadWorkflow = workflow(
 
         // details is guaranteed non-null here because skip prevents execution otherwise.
         const body = await renderEmail({
-          i18n: await getNotificationI18n(DEFAULT_LOCALE),
-          name: subscriber.firstName ?? "You",
+          i18n,
+          name: subscriber.firstName ?? i18n._(msg`there`),
           workspace: {
             id: payload.workspaceId,
             name: details!.workspaceName,
@@ -381,7 +461,10 @@ export const conversationUnreadWorkflow = workflow(
           conversations,
         });
 
-        const subject = getEmailSubject(conversations);
+        const subject = buildConversationUnreadEmailSubject(
+          i18n,
+          conversations
+        );
         return {
           subject,
           body,
