@@ -38,12 +38,6 @@ const meta = {
       description: "Whether the input is disabled",
       control: "boolean",
     },
-    variant: {
-      description:
-        "Borderless for picker headers; default for standalone fields",
-      control: "select",
-      options: ["default", "borderless"],
-    },
     value: {
       description: "Current value of the input",
       control: "text",
@@ -100,19 +94,14 @@ export const Default: Story = {
       />
     );
   },
-};
-
-/**
- * A flat search field for picker headers, without a nested outline or filled background.
- * @summary Borderless picker search field.
- */
-export const Borderless: Story = {
-  ...Default,
-  args: { ...Default.args, variant: "borderless" },
   play: async ({ canvas, args }) => {
     const input = canvas.getByRole("textbox");
     await userEvent.type(input, "Search skills");
     await expect(args.onChange).toHaveBeenLastCalledWith("Search skills");
+    await userEvent.tab();
+    await expect(input.parentElement).toHaveStyle({
+      "background-color": "rgba(0, 0, 0, 0)",
+    });
     await userEvent.click(canvas.getByRole("button"));
     await expect(input).toHaveValue("");
     await expect(args.onChange).toHaveBeenLastCalledWith("");

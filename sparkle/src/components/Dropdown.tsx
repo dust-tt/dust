@@ -919,7 +919,6 @@ const DropdownMenuSearchbar = React.forwardRef<
       className,
       disabled = false,
       isLoading = false,
-      variant = "borderless",
       button,
       autoFocus,
     },
@@ -972,7 +971,6 @@ const DropdownMenuSearchbar = React.forwardRef<
       >
         <SearchInput
           className="w-full"
-          variant={variant}
           ref={internalRef}
           placeholder={placeholder}
           name={name}
