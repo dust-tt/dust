@@ -196,6 +196,8 @@ export function useSearchSkills({
   limit,
   sortBy,
   sortOrder,
+  defaultToFavorites,
+  excludeSkillId,
   permissionFiltering,
   filters,
   facets,
@@ -207,6 +209,8 @@ export function useSearchSkills({
   limit?: number;
   sortBy?: SkillSearchSort;
   sortOrder?: SkillSearchSortOrder;
+  defaultToFavorites?: boolean;
+  excludeSkillId?: string | null;
   permissionFiltering?: SkillSearchPermissionFiltering;
   filters?: SkillSearchFilters;
   facets?: SkillSearchFacet[];
@@ -231,6 +235,8 @@ export function useSearchSkills({
     limit,
     sortBy,
     sortOrder,
+    defaultToFavorites,
+    excludeSkillId: excludeSkillId ?? undefined,
     permissionFiltering,
     facets,
   };

@@ -171,6 +171,12 @@ export function parseMentionSelectParam(
   };
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:product;security] empty-query-favorite-mentions
+ * With agents selected and agent search enabled, a blank query MUST return only active,
+ * readable favorites in alphabetical order when any exist, without searching. No favorites
+ * or a nonblank query MUST retain the existing suggestions behavior.
+ */
 export const suggestionsOfMentions = async (
   auth: Authenticator,
   {
@@ -196,6 +202,22 @@ export const suggestionsOfMentions = async (
   const normalizedQuery = query.toLowerCase();
   // can be called from the public API, so user may be null
   const currentUser = auth.user();
+
+  let useAgentSearch = false;
+  if (select.agents) {
+    useAgentSearch = await auth.hasFeatureFlag("new_manage_agents_page");
+  }
+  if (useAgentSearch && !query.trim()) {
+    const favorites = await AgentResource.listFavoritesForCurrentUser(auth);
+    const favoriteSuggestions = favorites
+      .filter((agent) => agent.status === "active" && auth.can("read", agent))
+      .toSorted((a, b) => a.name.localeCompare(b.name))
+      .slice(0, SUGGESTION_DISPLAY_LIMIT)
+      .map((agent) => agent.toMentionSuggestionJSON({ userFavorite: true }));
+    if (favoriteSuggestions.length > 0) {
+      return favoriteSuggestions;
+    }
+  }
 
   // Id of the last user or agent mentioned by the current user in the conversation
   let lastMentionedId: string | null = null;
@@ -280,7 +302,6 @@ export const suggestionsOfMentions = async (
   }
 
   if (select.agents) {
-    const useAgentSearch = await auth.hasFeatureFlag("new_manage_agents_page");
     let activeAgents: RichAgentMentionInConversation[] | null = null;
     if (useAgentSearch) {
       const result = await searchAgents(auth, {

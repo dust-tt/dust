@@ -39,6 +39,158 @@ describe("searchSkills pagination", () => {
     mockSearch.mockReset();
   });
 
+  it.each([
+    { searchTerm: "", defaultToFavorites: true, hasFavorites: true },
+    { searchTerm: "   ", defaultToFavorites: true, hasFavorites: true },
+    { searchTerm: "Zulu", defaultToFavorites: true, hasFavorites: true },
+    { searchTerm: "", defaultToFavorites: false, hasFavorites: true },
+    { searchTerm: "", defaultToFavorites: true, hasFavorites: false },
+  ])("lists alphabetical favorites only for an opted-in blank query: %j", async ({
+    searchTerm,
+    defaultToFavorites,
+    hasFavorites,
+  }) => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    const zulu = await SkillFactory.create(auth, { name: "Zulu" });
+    const beta = await SkillFactory.create(auth, { name: "Beta" });
+    const alpha = await SkillFactory.create(auth, { name: "Alpha" });
+    if (hasFavorites) {
+      const zuluResult = await zulu.setFavorite(auth, true);
+      const betaResult = await beta.setFavorite(auth, true);
+      expect(zuluResult.isOk() && betaResult.isOk()).toBe(true);
+    }
+    const documents = await SkillFactory.createSearchDocuments(auth, [
+      zulu,
+      beta,
+      alpha,
+    ]);
+    mockSearch.mockImplementation(async (request: estypes.SearchRequest) => {
+      const matching = documents
+        .filter((document) =>
+          matchesSkillSearchFilters(document, request.query!)
+        )
+        .toSorted((a, b) => a.name.localeCompare(b.name));
+      const offset = request.from ?? 0;
+      return {
+        hits: {
+          hits: matching
+            .slice(offset, offset + (request.size ?? matching.length))
+            .map((_source) => ({ _source })),
+          total: { value: matching.length, relation: "eq" },
+        },
+      };
+    });
+
+    const result = await searchSkills(auth, {
+      searchTerm,
+      defaultToFavorites,
+      limit: 1,
+    });
+    assert(result.isOk());
+    const favoritesOnly =
+      defaultToFavorites && !searchTerm.trim() && hasFavorites;
+    expect(result.value.skills[0].sId).toBe(
+      favoritesOnly ? beta.sId : alpha.sId
+    );
+    expect(result.value.total).toBe(favoritesOnly ? 2 : 3);
+    expect(result.value.hasMore).toBe(true);
+    expect(result.value.skills[0]).not.toHaveProperty("isFavorite");
+    if (favoritesOnly) {
+      expect(mockSearch.mock.lastCall![0].sort[0]).toEqual({
+        "name.keyword": { order: "asc", missing: "_last" },
+      });
+      const next = await searchSkills(auth, {
+        searchTerm,
+        defaultToFavorites,
+        limit: 1,
+        offset: 1,
+      });
+      assert(next.isOk());
+      expect(next.value.skills[0].sId).toBe(zulu.sId);
+      expect(next.value.hasMore).toBe(false);
+    } else {
+      const codeDefinedSkillIds =
+        await SkillResource.listAvailableCodeDefinedIds(auth);
+      expect(mockSearch.mock.lastCall![0].query).toEqual(
+        buildSkillSearchQuery(auth, { searchTerm, codeDefinedSkillIds })
+      );
+    }
+  });
+
+  it("falls back to ordinary search when stored favorites do not match the filters", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    const skill = await SkillFactory.create(auth, {
+      name: "Favorite",
+      availability: "workspace_users",
+    });
+    const otherSkill = await SkillFactory.create(auth, {
+      name: "Other skill",
+      availability: "editors",
+    });
+    const favoriteResult = await skill.setFavorite(auth, true);
+    expect(favoriteResult.isOk()).toBe(true);
+    const documents = await SkillFactory.createSearchDocuments(auth, [
+      skill,
+      otherSkill,
+    ]);
+    mockSearch.mockImplementation(async (request: estypes.SearchRequest) => {
+      const matching = documents.filter((document) =>
+        matchesSkillSearchFilters(document, request.query!)
+      );
+      return {
+        hits: {
+          hits: matching.map((_source) => ({ _source })),
+          total: { value: matching.length, relation: "eq" },
+        },
+      };
+    });
+
+    const result = await searchSkills(auth, {
+      searchTerm: "",
+      defaultToFavorites: true,
+      filters: { availability: ["editors"] },
+    });
+
+    assert(result.isOk());
+    expect(result.value.skills.map((item) => item.sId)).toEqual([
+      otherSkill.sId,
+    ]);
+    expect(mockSearch).toHaveBeenCalledTimes(2);
+    const codeDefinedSkillIds =
+      await SkillResource.listAvailableCodeDefinedIds(auth);
+    expect(mockSearch.mock.lastCall![0].query).toEqual(
+      buildSkillSearchQuery(auth, {
+        searchTerm: "",
+        filters: { availability: ["editors"] },
+        codeDefinedSkillIds,
+      })
+    );
+  });
+
+  it("falls back to ordinary search when the only favorite is the excluded skill", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    const skill = await SkillFactory.create(auth);
+    const favoriteResult = await skill.setFavorite(auth, true);
+    expect(favoriteResult.isOk()).toBe(true);
+    mockSearch.mockResolvedValue({
+      hits: { hits: [], total: { value: 0, relation: "eq" } },
+    });
+
+    const result = await searchSkills(auth, {
+      searchTerm: "",
+      defaultToFavorites: true,
+      excludeSkillId: skill.sId,
+    });
+
+    assert(result.isOk());
+    expect(mockSearch).toHaveBeenCalledOnce();
+    const codeDefinedSkillIds =
+      await SkillResource.listAvailableCodeDefinedIds(auth);
+    expect(mockSearch.mock.lastCall![0].query).toEqual(
+      buildSkillSearchQuery(auth, { searchTerm: "", codeDefinedSkillIds })
+    );
+  });
+
   it("defaults to the first page of maximum size and returns an empty total for empty results", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
     mockSearch.mockResolvedValue({
