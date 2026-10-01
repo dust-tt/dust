@@ -239,7 +239,7 @@ export async function toAgentConfigurationsWithSkills(
   // Only `sId` and `name` reach the wire, so skip the instructions, tools and file attachments:
   // see the `labels-only-skips-dynamic-instructions` contract.
   const [workspaceAgentSkills, codeDefinedSkills] = await Promise.all([
-    SkillResource.listByAgents(
+    SkillResource.listByAgentConfigurationModelIds(
       auth,
       workspaceAgents.map((agent) => agent.id),
       LABELS_ONLY_FETCH_OPTIONS

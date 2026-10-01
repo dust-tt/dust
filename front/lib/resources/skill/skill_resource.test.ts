@@ -2181,7 +2181,7 @@ describe("SkillResource", () => {
     });
   });
 
-  describe("listByAgents", () => {
+  describe("listByAgentConfigurationModelIds", () => {
     it("maps each agent to its own skills", async () => {
       const [firstAgent, secondAgent, skillLessAgent] = await Promise.all([
         AgentConfigurationFactory.createTestAgent(testContext.authenticator, {
@@ -2212,10 +2212,11 @@ describe("SkillResource", () => {
         });
       }
 
-      const skillsByAgent = await SkillResource.listByAgents(
-        testContext.authenticator,
-        [firstAgent.id, secondAgent.id, skillLessAgent.id]
-      );
+      const skillsByAgent =
+        await SkillResource.listByAgentConfigurationModelIds(
+          testContext.authenticator,
+          [firstAgent.id, secondAgent.id, skillLessAgent.id]
+        );
 
       expect(
         skillsByAgent
@@ -2239,10 +2240,11 @@ describe("SkillResource", () => {
         agentConfigurationId: agent.id,
       });
 
-      const skillsByAgent = await SkillResource.listByAgents(
-        testContext.authenticator,
-        [agent.id]
-      );
+      const skillsByAgent =
+        await SkillResource.listByAgentConfigurationModelIds(
+          testContext.authenticator,
+          [agent.id]
+        );
 
       expect(skillsByAgent.get(agent.id)?.map((skill) => skill.sId)).toEqual([
         "frames",
@@ -2251,7 +2253,12 @@ describe("SkillResource", () => {
 
     it("returns nothing for no agents", async () => {
       expect(
-        (await SkillResource.listByAgents(testContext.authenticator, [])).size
+        (
+          await SkillResource.listByAgentConfigurationModelIds(
+            testContext.authenticator,
+            []
+          )
+        ).size
       ).toBe(0);
     });
 
@@ -2280,7 +2287,11 @@ describe("SkillResource", () => {
       );
 
       expect(
-        (await SkillResource.listByAgents(otherAuth, [agent.id])).size
+        (
+          await SkillResource.listByAgentConfigurationModelIds(otherAuth, [
+            agent.id,
+          ])
+        ).size
       ).toBe(0);
     });
   });

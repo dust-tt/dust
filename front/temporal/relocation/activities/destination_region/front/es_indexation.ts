@@ -224,9 +224,13 @@ export async function recreateAgentSearchIndex({
     UserResource.fetchByModelIds(
       uniq(removeNulls(agents.map((agent) => agent.versionAuthorId)))
     ),
-    SkillResource.listByAgents(auth, configurationModelIds, {
-      permissionFiltering: "redact_unreadable",
-    }),
+    SkillResource.listByAgentConfigurationModelIds(
+      auth,
+      configurationModelIds,
+      {
+        permissionFiltering: "redact_unreadable",
+      }
+    ),
     AgentResource.batchCountFavorites(auth, agents),
   ]);
   const lastEditorByModelId = new Map(

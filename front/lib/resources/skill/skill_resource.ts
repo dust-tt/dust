@@ -1798,7 +1798,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    * Global agents hold no `AgentSkillModel` row (their skills are code-defined, resolve them with
    * `fetchByIds` on the ids their configuration declares), so they get no entry.
    */
-  static async listByAgents(
+  static async listByAgentConfigurationModelIds(
     auth: Authenticator,
     agentConfigurationModelIds: ModelId[],
     fetchOptions?: SkillHydrationOptions & {
