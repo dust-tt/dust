@@ -472,6 +472,7 @@ async function planSkillEdit(
     availability,
     addEditorUserIds,
     removeEditorUserIds,
+    addFilePaths,
     removeFileIds,
   }: EditSkillSuggestion
 ): Promise<Result<PlannedChange, MCPError>> {
@@ -546,9 +547,10 @@ async function planSkillEdit(
     rows.push({ kind: "editors", suggestion: validation.value });
   }
 
-  if (removeFileIds !== undefined) {
+  if (addFilePaths !== undefined || removeFileIds !== undefined) {
     const validation = await validateSkillFilesSuggestion(auth, skill, {
-      removeFileIds,
+      addFilePaths: addFilePaths ?? [],
+      removeFileIds: removeFileIds ?? [],
     });
     if (validation.isErr()) {
       return validation;
