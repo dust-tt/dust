@@ -153,3 +153,5 @@ export function JoinPage() {
     </OnboardingLayout>
   );
 }
+
+export default JoinPage;

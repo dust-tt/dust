@@ -172,3 +172,5 @@ export function LoginErrorPage() {
     </>
   );
 }
+
+export default LoginErrorPage;
