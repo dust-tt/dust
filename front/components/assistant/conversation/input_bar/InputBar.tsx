@@ -3,11 +3,10 @@ import { useFileDrop } from "@app/components/assistant/conversation/FileUploader
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
-import InputBarContainer, {
-  INPUT_BAR_ACTIONS,
-} from "@app/components/assistant/conversation/input_bar/InputBarContainer";
+import InputBarContainer from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { InputBarUsageBanner } from "@app/components/assistant/conversation/input_bar/InputBarUsageBanner";
+import { INPUT_BAR_ACTIONS } from "@app/components/assistant/conversation/input_bar/inputBarActions";
 import {
   INPUT_BAR_COMPACT_ENTER_ANIMATION_CLASSES,
   INPUT_BAR_COMPACT_MORPH_TRANSITION_CLASSES,
