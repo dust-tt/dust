@@ -1,6 +1,7 @@
-import { getAgentConfigurationForPoke } from "@app/lib/api/poke/agent_configurations";
 import type { PokeGetTriggerDetails } from "@app/lib/api/poke/triggers";
 import { makeWebhookRequestsGcsUrl } from "@app/lib/api/webhook_source";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
@@ -35,11 +36,11 @@ app.get(
       });
     }
 
-    const agentConfiguration = await getAgentConfigurationForPoke(
+    const agent = await AgentResource.fetchById(
       auth,
       trigger.agentConfigurationId
     );
-    if (!agentConfiguration) {
+    if (!agent) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -64,6 +65,8 @@ app.get(
           )
         : null;
     const webhookSource = webhookSourceView?.webhookSource ?? null;
+
+    const [agentConfiguration] = await toAgentConfigurations(auth, [agent]);
 
     return ctx.json({
       trigger: triggerJSON,

@@ -1,10 +1,11 @@
-import { getAuthors, getEditors } from "@app/lib/api/assistant/editors";
-import { listAgentConfigurationVersionsForPoke } from "@app/lib/api/poke/agent_configurations";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import type { PokeGetAgentDetails } from "@app/types/api/poke/agent_configurations";
-import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { removeNulls } from "@app/types/shared/utils/general";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -26,12 +27,12 @@ app.get(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
-    const agentConfigurations = await listAgentConfigurationVersionsForPoke(
-      auth,
-      aId
-    );
+    // Poke's superuser authenticator views every version's content (see
+    // `poke-agent-content-access`).
+    const agent = await AgentResource.fetchById(auth, aId);
+    const versions = agent ? await agent.listVersions(auth) : [];
 
-    if (agentConfigurations.length === 0) {
+    if (!agent || versions.length === 0) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -41,42 +42,33 @@ app.get(
       });
     }
 
-    const lastVersionEditors = await getEditors(auth, agentConfigurations[0]);
-    const [latestAgentConfiguration] = agentConfigurations;
-
-    const allRequestedSpaceIds = uniq(
-      agentConfigurations.flatMap((config) => config.requestedSpaceIds)
-    );
-    const spaces = await SpaceResource.fetchByIds(auth, allRequestedSpaceIds);
-    const authors = await getAuthors(agentConfigurations);
-
-    // `SkillResource.listByAgentConfigurationModelIds` only works for custom agents, as global agents are not versioned.
-    const skillsByVersion: Record<number, SkillType[]> = {};
-    if (isGlobalAgentId(aId)) {
-      const allSkills = await SkillResource.listByAgentConfiguration(
-        auth,
-        latestAgentConfiguration
-      );
-      skillsByVersion[latestAgentConfiguration.version] = allSkills.map((s) =>
-        s.toJSON(auth)
-      );
-    } else {
-      const skillsByAgent =
-        await SkillResource.listByAgentConfigurationModelIds(
+    const [agentConfigurations, lastVersionEditors, spaces, authors, skills] =
+      await Promise.all([
+        toAgentConfigurations(auth, versions),
+        agent.listEditors(auth),
+        SpaceResource.fetchByModelIds(
           auth,
-          agentConfigurations.map((config) => config.id)
-        );
-      for (const config of agentConfigurations) {
-        skillsByVersion[config.version] = (
-          skillsByAgent.get(config.id) ?? []
-        ).map((skill) => skill.toJSON(auth));
-      }
-    }
+          uniq(versions.flatMap((version) => version.requestedSpaceModelIds()))
+        ),
+        UserResource.fetchByModelIds(
+          uniq(removeNulls(versions.map((version) => version.versionAuthorId)))
+        ),
+        SkillResource.listByAgents(auth, versions),
+      ]);
+
+    const skillsByVersion: Record<number, SkillType[]> = Object.fromEntries(
+      versions.map((version) => [
+        version.version,
+        (skills.get(version) ?? []).map((skill) => skill.toJSON(auth)),
+      ])
+    );
 
     return ctx.json({
       agentConfigurations,
-      authors,
-      lastVersionEditors,
+      authors: authors.map((author) => author.toJSON()),
+      lastVersionEditors: (lastVersionEditors ?? []).map((editor) =>
+        editor.toJSON()
+      ),
       spaces: await SpaceResource.enrichSpacesWithAccess(auth, spaces),
       skillsByVersion,
     });

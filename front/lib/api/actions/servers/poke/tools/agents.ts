@@ -10,11 +10,13 @@ import {
   getTargetAuth,
   jsonResponse,
 } from "@app/lib/api/actions/servers/poke/tools/utils";
-import { getAuthors, getEditors } from "@app/lib/api/assistant/editors";
-import { getAgentConfigurationForPoke } from "@app/lib/api/poke/agent_configurations";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import { toPokeAgentSummaryJSON } from "@app/lib/resources/agent_resource_serialization";
+import {
+  toAgentConfigurations,
+  toPokeAgentSummaryJSON,
+} from "@app/lib/resources/agent_resource_serialization";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { Err } from "@app/types/shared/result";
 
 type AgentHandlers = Pick<
@@ -176,17 +178,12 @@ export const agentHandlers: AgentHandlers = {
     }
     const targetAuth = targetAuthResult.value;
 
-    const configuration = await getAgentConfigurationForPoke(
-      targetAuth,
-      agent_id
-    );
-    const agent =
-      configuration &&
-      (configuration.status === "active" || configuration.status === "archived")
-        ? configuration
-        : null;
+    const resource = await AgentResource.fetchById(targetAuth, agent_id);
 
-    if (!agent) {
+    if (
+      !resource ||
+      (resource.status !== "active" && resource.status !== "archived")
+    ) {
       return new Err(
         new MCPError(
           `Agent "${agent_id}" not found in workspace "${workspace_id}".`,
@@ -195,15 +192,14 @@ export const agentHandlers: AgentHandlers = {
       );
     }
 
-    const [authors, editors] = await Promise.all([
-      getAuthors([agent]),
-      getEditors(targetAuth, agent),
+    // The poke superuser authenticator views the agent's content (see `poke-agent-content-access`).
+    const [[agent], editors, [author]] = await Promise.all([
+      toAgentConfigurations(targetAuth, [resource]),
+      resource.listEditors(targetAuth),
+      UserResource.fetchByModelIds(
+        resource.versionAuthorId !== null ? [resource.versionAuthorId] : []
+      ),
     ]);
-
-    const author =
-      agent.versionAuthorId !== null
-        ? (authors.find((u) => u.id === agent.versionAuthorId) ?? null)
-        : null;
 
     return jsonResponse({
       workspace_id,
@@ -224,13 +220,13 @@ export const agentHandlers: AgentHandlers = {
           ? {
               userId: author.sId,
               email: author.email,
-              fullName: author.fullName,
+              fullName: author.fullName(),
             }
           : null,
-        editors: editors.map((e) => ({
+        editors: (editors ?? []).map((e) => ({
           userId: e.sId,
           email: e.email,
-          fullName: e.fullName,
+          fullName: e.fullName(),
         })),
       },
     });
