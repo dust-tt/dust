@@ -358,7 +358,7 @@ export function SearchSkillsPage({
       <SearchInput
         id="skill-search"
         name="skill-search"
-        placeholder="Search skills by name"
+        placeholder="Search skills by name or description"
         value={searchTerm}
         onChange={setSearchTerm}
         className="w-full"
