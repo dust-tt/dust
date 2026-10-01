@@ -50,12 +50,14 @@ function buildSpaceAccessFilter(
 
 /**
  * @cc [owner:aubin-tchoi,label:security] resource-editor-filter
- * Editor-only skills require the current user's sId in the indexed editor IDs.
+ * Editor-only skills require the current user's sId in the indexed editor IDs. Callers without a
+ * user match no editor-only skill.
  */
 function buildEditorFilter(
   auth: Authenticator
 ): estypes.QueryDslQueryContainer {
-  return { term: { editor_ids: auth.getNonNullableUser().sId } };
+  const user = auth.user();
+  return user ? { term: { editor_ids: user.sId } } : { match_none: {} };
 }
 
 function buildAvailabilityFilter(
