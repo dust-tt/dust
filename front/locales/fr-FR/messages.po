@@ -148,6 +148,10 @@ msgstr "Thème"
 msgid "Notification sound"
 msgstr "Son de notification"
 
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "[Dust] {member} was auto-upgraded to a {newSeatType} seat"
+msgstr "[Dust] {member} est passé automatiquement à un siège {newSeatType}"
+
 #: front/components/UserSettingsPopover.tsx
 msgid "Used to sign in and receive notifications"
 msgstr "Utilisé pour vous connecter et recevoir les notifications"
@@ -181,6 +185,10 @@ msgstr "Police des conversations"
 #: front/lib/notifications/email-templates/_layout.tsx
 msgid "This is an automated email. Please do not reply."
 msgstr "Cet e-mail est automatique. Merci de ne pas y répondre."
+
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "{count} members reached their credit limit and were automatically upgraded to higher seats so they can keep working:"
+msgstr "{count} membres ont atteint leur limite de crédits et sont passés automatiquement à des sièges supérieurs pour pouvoir continuer à travailler :"
 
 #: front/hooks/useUserLocale.ts
 msgid "Could not save the language"
@@ -294,6 +302,10 @@ msgstr "Rien"
 msgid "Workspace"
 msgstr "Espace de travail"
 
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "[Dust] {count} members were auto-upgraded to higher seats"
+msgstr "[Dust] {count} membres sont passés automatiquement à des sièges supérieurs"
+
 #: front/components/me/NotificationPreferences.tsx
 msgid "Every 5 minutes"
 msgstr "Toutes les 5 minutes"
@@ -314,6 +326,10 @@ msgstr "Votre langue n’a pas pu être enregistrée dans votre compte."
 msgid "Access your favorite and most-used agents, or search for one from the home page."
 msgstr "Accédez à vos agents favoris et les plus utilisés, ou recherchez-en un depuis la page d’accueil."
 
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "This might increase your subscription cost. You can turn off automatic seat upgrades from your workspace usage settings."
+msgstr "Cela peut augmenter le coût de votre abonnement. Vous pouvez désactiver le passage automatique à un siège supérieur dans les paramètres d’utilisation de votre espace de travail."
+
 #: front/components/assistant/conversation/InAppBanner.tsx
 msgid "Try it"
 msgstr "Essayer"
@@ -327,9 +343,17 @@ msgctxt "verb, play a sound"
 msgid "Play"
 msgstr "Écouter"
 
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "there"
+msgstr "à vous"
+
 #: front/components/UserSettingsPopover.tsx
 msgid "Inbox notifications"
 msgstr "Notifications de la boîte de réception"
+
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "Go to workspace usage"
+msgstr "Voir l’utilisation de l’espace de travail"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "First name"
@@ -354,6 +378,10 @@ msgstr "Jouer un son quand un agent a besoin de vous pour continuer"
 #: front/components/UserSettingsPopover.tsx
 msgid "Language"
 msgstr "Langue"
+
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "{member} reached their credit limit and was automatically upgraded from a {previousSeatType} seat to a {newSeatType} seat so they can keep working."
+msgstr "{member} a atteint sa limite de crédits et est passé automatiquement d’un siège {previousSeatType} à un siège {newSeatType} pour pouvoir continuer à travailler."
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Choose how Dust looks on this device"
