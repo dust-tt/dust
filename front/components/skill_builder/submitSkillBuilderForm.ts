@@ -13,7 +13,7 @@ type SubmittedSkill =
   | PostSkillResponseBody["skill"]
   | PatchSkillResponseBody["skill"];
 
-export interface SubmitSkillBuilderFormResult {
+interface SubmitSkillBuilderFormResult {
   skill: SubmittedSkill;
   /**
    * Set when the skill itself was saved but its editors could not be. Reported apart from the
