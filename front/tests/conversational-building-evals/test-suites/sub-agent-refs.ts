@@ -117,6 +117,11 @@ export const subAgentRefsSuite: TestSuite = {
 - The closing message must surface the recorded suggestion directive to the user.
 `.trim(),
     },
+    // One request that builds a whole delegation tree in a single suggest call, wired by refs:
+    // - the existing AccountManager gets two new sub-agents, ChurnRiskScorer and RenewalDrafter
+    // - AccountManager also gets a new skill, Account Health Summary
+    // - RenewalDrafter, itself new, gets a new skill, Renewal Email Style, at its creation
+    // The code check covers the two sub-agent refs, the judge covers the two skill wirings.
     {
       scenarioId: "account-review-fan-out",
       workspaceSeed: WORKSPACE_WITH_ACCOUNT_MANAGER,
