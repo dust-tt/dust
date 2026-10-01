@@ -3,6 +3,7 @@ import {
   assistantReasoningMessageToInputItems,
   assistantTextMessageToInputItem,
   assistantToolCallRequestToInputItem,
+  namespaceDeferredFunctionCalls,
   toolSpecsToOpenAITools,
 } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/utils";
 import { OpenAIGptFiveDotFourGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_four_global_openai_responses";
@@ -16,6 +17,7 @@ import type {
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
 import { TOOL_SEARCH_INSTRUCTION } from "@app/lib/model_constructors/types/tool_search";
+import type { ResponseInputItem } from "openai/resources/responses/responses";
 import { describe, expect, it } from "vitest";
 
 describe("assistantTextMessageToInputItem", () => {
@@ -463,6 +465,43 @@ describe("toolSpecsToOpenAITools", () => {
 
     expect(tools).toEqual([expect.objectContaining({ name: "get_weather" })]);
     expect(tools[0]).not.toHaveProperty("defer_loading");
+  });
+});
+
+describe("namespaceDeferredFunctionCalls", () => {
+  const tools = toolSpecsToOpenAITools(
+    [
+      {
+        name: "get_time",
+        description: "Get the current time",
+        inputSchema: { type: "object", properties: {} },
+        eager: true,
+      },
+      {
+        name: "get_weather",
+        description: "Get the current weather",
+        inputSchema: { type: "object", properties: {} },
+      },
+    ],
+    { forceTool: undefined, toolSearchEnabled: true }
+  );
+  const call = (name: string, namespace?: string): ResponseInputItem => ({
+    type: "function_call",
+    call_id: `call_${name}`,
+    name,
+    arguments: "{}",
+    namespace,
+  });
+
+  it("namespaces a deferred call replayed without one under its own name", () => {
+    expect(
+      namespaceDeferredFunctionCalls([call("get_weather")], tools)
+    ).toEqual([call("get_weather", "get_weather")]);
+  });
+
+  it("leaves eager and already-namespaced calls untouched", () => {
+    const input = [call("get_time"), call("get_weather", "weather")];
+    expect(namespaceDeferredFunctionCalls(input, tools)).toEqual(input);
   });
 });
 
