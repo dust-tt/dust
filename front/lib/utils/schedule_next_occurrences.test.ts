@@ -1,6 +1,6 @@
 import { getNextOccurrences } from "@app/lib/utils/schedule_next_occurrences";
 import type { IntervalScheduleConfig } from "@app/types/assistant/triggers";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const config: IntervalScheduleConfig = {
   type: "interval",
@@ -19,9 +19,20 @@ function occurrences(
   );
 }
 
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllEnvs();
+});
 
-describe("getNextOccurrences", () => {
+describe.each([
+  "UTC",
+  "Europe/Paris",
+  "America/New_York",
+])("getNextOccurrences with host timezone %s", (hostTimezone) => {
+  beforeEach(() => {
+    vi.stubEnv("TZ", hostTimezone);
+    expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe(hostTimezone);
+  });
   it("keeps local daily times across spring DST", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-03-07T12:00:00Z"));
@@ -69,6 +80,62 @@ describe("getNextOccurrences", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(now));
     expect(occurrences({ hour: 1, minute: 30 })[0]).toBe(expected);
+  });
+
+  it.each([
+    "2026-10-24T00:00:00Z",
+    "2026-10-25T00:00:00Z",
+  ])("preserves London's valid 02:30 when initializing and advancing (now: %s)", (now) => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(now));
+    const startDay = new Date(now).getUTCDate();
+    expect(
+      occurrences({ timezone: "Europe/London", hour: 2, minute: 30 })
+    ).toEqual(
+      startDay === 24
+        ? [
+            "2026-10-24T01:30:00.000Z",
+            "2026-10-25T02:30:00.000Z",
+            "2026-10-26T02:30:00.000Z",
+          ]
+        : [
+            "2026-10-25T02:30:00.000Z",
+            "2026-10-26T02:30:00.000Z",
+            "2026-10-27T02:30:00.000Z",
+          ]
+    );
+  });
+
+  it.each([
+    "2026-10-24T00:00:00Z",
+    "2026-10-25T00:00:00Z",
+  ])("selects Paris's earlier 02:30 when initializing and advancing (now: %s)", (now) => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(now));
+    const startDay = new Date(now).getUTCDate();
+    expect(
+      occurrences({ timezone: "Europe/Paris", hour: 2, minute: 30 })
+    ).toEqual(
+      startDay === 24
+        ? [
+            "2026-10-24T00:30:00.000Z",
+            "2026-10-25T00:30:00.000Z",
+            "2026-10-26T01:30:00.000Z",
+          ]
+        : [
+            "2026-10-25T00:30:00.000Z",
+            "2026-10-26T01:30:00.000Z",
+            "2026-10-27T01:30:00.000Z",
+          ]
+    );
+  });
+
+  it("skips Paris's repeated time once its earlier occurrence has passed", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-25T00:45:00Z"));
+    expect(
+      occurrences({ timezone: "Europe/Paris", hour: 2, minute: 30 })[0]
+    ).toBe("2026-10-26T01:30:00.000Z");
   });
 
   it("continues to support cron schedules and invalid cron expressions", () => {
