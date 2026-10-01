@@ -19,8 +19,10 @@ vi.mock("@app/lib/tracking/customerio/server", () => ({
 
 import { wipeUserPlugin } from "@app/lib/api/poke/plugins/global/wipe_user";
 import { Authenticator } from "@app/lib/auth";
-import { AcademyChapterVisitResource } from "@app/lib/resources/academy_chapter_visit_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
+import {
+  ANONYMIZED_USER_EMAIL_DOMAIN,
+  UserResource,
+} from "@app/lib/resources/user_resource";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -40,16 +42,26 @@ describe("wipeUserPlugin.execute", () => {
     mockDeleteCustomerioUser.mockResolvedValue(new Ok(undefined));
   });
 
-  it("deletes an unreferenced user and its metadata from every system", async () => {
+  it("deletes the user from Customer.io and WorkOS and anonymizes its row", async () => {
     const user = await UserFactory.withWorkOSId("user_workos_to_wipe");
     await user.setMetadata("some_key", "some_value");
 
     const result = await wipe(user.sId);
 
     assert(result.isOk(), result.isErr() ? result.error.message : "");
-    expect(mockDeleteCustomerioUser).toHaveBeenCalledOnce();
+    expect(mockDeleteCustomerioUser).toHaveBeenCalledWith({
+      email: user.email,
+    });
     expect(mockDeleteWorkOSUser).toHaveBeenCalledWith("user_workos_to_wipe");
-    await expect(UserResource.fetchById(user.sId)).resolves.toBeNull();
+
+    const anonymized = await UserResource.fetchById(user.sId);
+    assert(anonymized, "expected the user row to be kept");
+    expect(anonymized.email).toBe(
+      `${user.sId}@${ANONYMIZED_USER_EMAIL_DOMAIN}`
+    );
+    expect(anonymized.firstName).not.toBe(user.firstName);
+    expect(anonymized.workOSUserId).toBeNull();
+    await expect(anonymized.getMetadata("some_key")).resolves.toBeNull();
   });
 
   it("succeeds when the WorkOS user is already gone", async () => {
@@ -66,7 +78,6 @@ describe("wipeUserPlugin.execute", () => {
     const result = await wipe(user.sId);
 
     assert(result.isOk(), result.isErr() ? result.error.message : "");
-    await expect(UserResource.fetchById(user.sId)).resolves.toBeNull();
   });
 
   it("refuses a user with a membership", async () => {
@@ -79,23 +90,6 @@ describe("wipeUserPlugin.execute", () => {
     assert(result.isErr(), "expected the wipe to be refused");
     expect(result.error.message).toContain("membership");
     expect(mockDeleteCustomerioUser).not.toHaveBeenCalled();
-    await expect(UserResource.fetchById(user.sId)).resolves.not.toBeNull();
-  });
-
-  it("refuses a user referenced by another table and names it", async () => {
-    const user = await UserFactory.basic();
-    await AcademyChapterVisitResource.recordVisit(
-      { userId: user.id },
-      "course",
-      "chapter"
-    );
-
-    const result = await wipe(user.sId);
-
-    assert(result.isErr(), "expected the wipe to be refused");
-    expect(result.error.message).toContain("academy_chapter_visits.userId");
-    expect(mockDeleteCustomerioUser).not.toHaveBeenCalled();
-    expect(mockDeleteWorkOSUser).not.toHaveBeenCalled();
     await expect(UserResource.fetchById(user.sId)).resolves.not.toBeNull();
   });
 

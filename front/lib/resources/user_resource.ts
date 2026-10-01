@@ -48,7 +48,7 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op, QueryTypes } from "sequelize";
+import { Op } from "sequelize";
 
 export interface SearchMembersPaginationParams {
   offset: number;
@@ -95,16 +95,7 @@ type CachedUserData = {
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface UserResource extends ReadonlyAttributesType<UserModel> {}
 
-export type UserForeignKeyReference = {
-  tableName: string;
-  columnName: string;
-};
-
-export function formatForeignKeyReferences(
-  references: UserForeignKeyReference[]
-): string {
-  return references.map((r) => `${r.tableName}.${r.columnName}`).join(", ");
-}
+export const ANONYMIZED_USER_EMAIL_DOMAIN = "anonymized.invalid";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class UserResource extends BaseResource<UserModel> {
@@ -712,97 +703,40 @@ export class UserResource extends BaseResource<UserModel> {
   }
 
   /**
-   * @cc [owner:pmilliotte,label:security;backend] foreign-key-scan-is-exhaustive
-   * MUST return every `(table, column)` whose foreign key targets `users` and holds at least one
-   * row referencing this user, read from the database catalog rather than a hardcoded list. Only
-   * `user_metadata`, which `hardDeleteIfUnreferenced` deletes itself, MAY be omitted.
+   * @cc [owner:pmilliotte,label:security;backend] anonymize-scrubs-personal-data
+   * MUST overwrite every personal field of the user row and delete its metadata in one transaction.
+   * The row is kept, so rows in other tables referencing the user stay valid.
    */
-  async listForeignKeyReferences({
-    transaction,
-  }: {
-    transaction?: Transaction;
-  } = {}): Promise<UserForeignKeyReference[]> {
-    // biome-ignore lint/plugin/noRawSql: reads the foreign keys from the Postgres catalog.
-    const foreignKeys: UserForeignKeyReference[] = await frontSequelize.query(
-      `SELECT c.conrelid::regclass::text AS "tableName", a.attname AS "columnName"
-       FROM pg_constraint c
-       JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
-       WHERE c.contype = 'f' AND c.confrelid = CAST(:usersTable AS regclass)`,
-      {
-        replacements: { usersTable: UserModel.tableName },
-        type: QueryTypes.SELECT,
-        transaction,
-      }
-    );
+  async anonymize(): Promise<Result<undefined, Error>> {
+    const oldWorkOSUserId = this.workOSUserId;
 
-    const scanned = foreignKeys.filter(
-      (fk) => fk.tableName !== UserMetadataModel.tableName
-    );
-    if (scanned.length === 0) {
-      return [];
-    }
-
-    // `tableName` is already a quoted identifier, as printed by `regclass::text`.
-    const queryInterface = frontSequelize.getQueryInterface();
-    const existsChecks = scanned.map(
-      (fk, i) =>
-        `SELECT :tableName${i} AS "tableName", :columnName${i} AS "columnName"
-         WHERE EXISTS (SELECT 1 FROM ${fk.tableName} WHERE ${queryInterface.quoteIdentifier(fk.columnName)} = :userModelId)`
-    );
-    // biome-ignore lint/plugin/noRawSql: the tables and columns come from the catalog.
-    return frontSequelize.query(existsChecks.join(" UNION ALL "), {
-      replacements: {
-        userModelId: this.id,
-        ...Object.fromEntries(
-          scanned.flatMap((fk, i) => [
-            [`tableName${i}`, fk.tableName],
-            [`columnName${i}`, fk.columnName],
-          ])
-        ),
-      },
-      type: QueryTypes.SELECT,
-      transaction,
-    });
-  }
-
-  /**
-   * @cc [owner:pmilliotte,label:security;backend] hard-delete-only-when-unreferenced
-   * MUST delete the user row only if `listForeignKeyReferences` is empty within the same
-   * transaction, and MUST otherwise return an `Err` and leave every row in place.
-   */
-  async hardDeleteIfUnreferenced(): Promise<Result<undefined, Error>> {
-    return withTransaction(async (transaction) => {
-      // FK inserts take `FOR KEY SHARE` on the referenced row, which conflicts with this lock:
-      // no new reference can be created between the scan and the delete.
-      await UserModel.findOne({
-        where: { id: this.id },
-        lock: transaction.LOCK.UPDATE,
-        transaction,
-      });
-
-      const references = await this.listForeignKeyReferences({ transaction });
-      if (references.length > 0) {
-        const referenceList = formatForeignKeyReferences(references);
-        return new Err(
-          new Error(`User ${this.sId} is still referenced by: ${referenceList}`)
-        );
-      }
-
+    await withTransaction(async (transaction) => {
       await UserMetadataModel.destroy({
         where: { userId: this.id },
         transaction,
       });
-      await UserModel.destroy({ where: { id: this.id }, transaction });
-
-      const { workOSUserId } = this;
-      if (workOSUserId) {
+      await this.update(
+        {
+          username: this.sId,
+          email: `${this.sId}@${ANONYMIZED_USER_EMAIL_DOMAIN}`,
+          name: "Anonymized user",
+          firstName: "Anonymized",
+          lastName: null,
+          imageUrl: null,
+          workOSUserId: null,
+          provider: null,
+          providerId: null,
+        },
+        transaction
+      );
+      if (oldWorkOSUserId) {
         invalidateCacheAfterCommit(transaction, () =>
-          UserResource.invalidateUserByWorkOSIdCache(workOSUserId)
+          UserResource.invalidateUserByWorkOSIdCache(oldWorkOSUserId)
         );
       }
-
-      return new Ok(undefined);
     });
+
+    return launchIndexUserSearchWorkflow({ userId: this.sId });
   }
 
   async getMetadata(key: string, workspaceModelId?: number | null) {
