@@ -16,14 +16,15 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: `A horizontal row of single-select filter chips for narrowing a list or collection to one category at a time. Takes a list of **filters**, fires **onFilterClick** on selection, and can preselect one via **defaultFilter**.
+        component: `A horizontal row of single-select filter chips for narrowing a list or collection to one category at a time. Takes a list of **filters**, fires **onFilterClick** on selection, and can preselect one via **defaultFilter** or drive selection with **selectedFilter**.
 
 **When to use**
 - To let users switch between mutually exclusive views or categories (e.g. \`"Featured"\`, \`"Research"\`).
 
 **Guidelines**
 - Selection is single-choice: only one chip is active at a time, so use it for filtering rather than multi-tagging.
-- Pass a **defaultFilter** that matches an entry in **filters** to highlight the initial category.
+- Pass a **defaultFilter** that matches an entry in **filters** to highlight the initial category (uncontrolled), or pass **selectedFilter** to own the selection yourself.
+- Pass **disabledFilters** for chips that should stay visible but not selectable (for example categories with no matching results).
 - **variant** picks the selected look: \`primary\` fills the chip, \`secondary\` uses the lighter selected background for quieter surfaces such as a title bar.
 - For a single chip whose selection you control yourself (a panel toggle, an icon-only chip), use **FilterChip** directly.
 - For a standalone status or metadata label that is not interactive, use **Chip** instead.`,
@@ -78,6 +79,20 @@ export const Secondary: Story = {
   args: {
     filters: ["Featured", "Writing", "Productivity", "Research", "Knowledge"],
     defaultFilter: "Featured",
+    variant: "secondary",
+  },
+};
+
+/**
+ * Chips with no matching results stay visible but cannot be selected via
+ * **disabledFilters**. The selected chip is never disabled.
+ * @summary Some chips disabled while others stay selectable.
+ */
+export const WithDisabledFilters: Story = {
+  args: {
+    filters: ["Featured", "Writing", "Productivity", "Research", "Knowledge"],
+    defaultFilter: "Featured",
+    disabledFilters: ["Writing", "Knowledge"],
     variant: "secondary",
   },
 };

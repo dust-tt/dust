@@ -1,3 +1,4 @@
+import type { CommandPaletteCategory } from "@app/components/command_palette/CommandPaletteSearchPhase";
 import type { ReactNode } from "react";
 import {
   createContext,
@@ -7,9 +8,16 @@ import {
   useState,
 } from "react";
 
+export type OpenCommandPaletteOptions = {
+  /** Preselect a category chip (hides recent items in favor of a CTA). */
+  category?: CommandPaletteCategory;
+};
+
 interface CommandPaletteContextType {
   isOpen: boolean;
-  open: () => void;
+  /** Category requested when opening; cleared when the palette closes. */
+  initialCategory: CommandPaletteCategory | null;
+  open: (options?: OpenCommandPaletteOptions) => void;
   close: () => void;
 }
 
@@ -25,22 +33,27 @@ export function CommandPaletteProvider({
   children,
 }: CommandPaletteProviderProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [initialCategory, setInitialCategory] =
+    useState<CommandPaletteCategory | null>(null);
 
-  const open = useCallback(() => {
+  const open = useCallback((options?: OpenCommandPaletteOptions) => {
+    setInitialCategory(options?.category ?? null);
     setIsOpen(true);
   }, []);
 
   const close = useCallback(() => {
     setIsOpen(false);
+    setInitialCategory(null);
   }, []);
 
   const value = useMemo(
     () => ({
       isOpen,
+      initialCategory,
       open,
       close,
     }),
-    [isOpen, open, close]
+    [isOpen, initialCategory, open, close]
   );
 
   return (

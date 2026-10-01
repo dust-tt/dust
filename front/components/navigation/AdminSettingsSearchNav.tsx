@@ -34,7 +34,7 @@ export function AdminSettingsSearchNav({
         size="sm"
         icon={SearchMd}
         label={t`Search settings`}
-        onClick={openCommandPalette}
+        onClick={() => openCommandPalette({ category: "Settings" })}
         className="w-full justify-start"
       />
       <NavigationList>
