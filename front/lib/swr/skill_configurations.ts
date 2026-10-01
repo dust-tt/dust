@@ -10,6 +10,7 @@ import { parseGitHubRepoUrl } from "@app/lib/skill_detection";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { getManageSkillsRoute } from "@app/lib/utils/router";
 import type { GetSkillHistoryResponseBody } from "@app/types/api/assistant/skills/history";
+import type { SearchType } from "@app/types/api/search";
 import type {
   GetSkillResponseBody,
   GetSkillsResponseBody,
@@ -192,6 +193,7 @@ export function useSkills({
 export function useSearchSkills({
   owner,
   searchTerm,
+  searchType = "autocomplete",
   offset,
   limit,
   sortBy,
@@ -205,6 +207,7 @@ export function useSearchSkills({
 }: {
   owner: LightWorkspaceType;
   searchTerm: string;
+  searchType?: SearchType;
   offset?: number;
   limit?: number;
   sortBy?: SkillSearchSort;
@@ -231,6 +234,7 @@ export function useSearchSkills({
   const body = {
     ...filters,
     query: debouncedSearchTerm,
+    searchType,
     offset,
     limit,
     sortBy,

@@ -5,11 +5,13 @@ import {
   AGENT_SEARCH_SORT_ORDERS,
   AGENT_SEARCH_SORTS,
 } from "@app/types/agent_search/agent_search";
+import { SEARCH_TYPES } from "@app/types/api/search";
 import { AGENT_CONFIGURATION_SCOPES } from "@app/types/assistant/agent";
 import { z } from "zod";
 
 export const SearchAgentsQuerySchema = z.object({
   query: z.string().max(200).optional().default(""),
+  searchType: z.enum(SEARCH_TYPES).optional().default("autocomplete"),
   limit: z.number().int().min(0).max(MAX_AGENT_SEARCH_RESULTS).optional(),
   offset: z.number().int().min(0).optional(),
   permissionFiltering: z.enum(AGENT_SEARCH_PERMISSION_FILTERINGS).optional(),

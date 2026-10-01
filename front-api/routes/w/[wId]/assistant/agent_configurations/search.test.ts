@@ -77,6 +77,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
     expect(response.status).toBe(200);
     expect(searchAgents).toHaveBeenCalledWith(expect.anything(), {
       searchTerm: "research",
+      searchType: "autocomplete",
       limit: 100,
       offset: 25,
       sortBy: undefined,
@@ -128,6 +129,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
     expect(response.status).toBe(200);
     expect(searchAgents).toHaveBeenCalledWith(expect.anything(), {
       searchTerm: "",
+      searchType: "autocomplete",
       limit: undefined,
       offset: undefined,
       sortBy: "name",
@@ -139,12 +141,33 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
   });
 
   it.each([
+    "autocomplete",
+    "name",
+  ] as const)("passes %s search through", async (searchType) => {
+    const { workspace } = await setup();
+    searchAgents.mockResolvedValue(
+      new Ok({ agents: [], total: 0, hasMore: false, facets: {} })
+    );
+    const response = await searchRequest(workspace.sId, {
+      query: "Write",
+      searchType,
+    });
+    expect(response.status).toBe(200);
+    expect(searchAgents).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ searchTerm: "Write", searchType })
+    );
+  });
+
+  it.each([
     { limit: 101 },
     { offset: -1 },
     { offset: 1.5 },
     { offset: "25" },
     { permissionFiltering: "redact_unreadable" },
     { editedByMe: false },
+    { searchType: "unknown" },
+    { searchType: null },
     { sortBy: "unknown" },
     { sortOrder: "unknown" },
     { status: ["draft"] },

@@ -2,6 +2,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { CODE_DEFINED_SKILLS_WORKSPACE_ID } from "@app/lib/skill_search/constants";
 import { buildSkillNameAutocompleteQuery } from "@app/lib/skill_search/ranking";
+import type { SearchType } from "@app/types/api/search";
 import type {
   SkillSearchFilters,
   SkillSearchPermissionFiltering,
@@ -106,6 +107,11 @@ function buildSelectionFilters(
  * in the reserved global workspace. It defaults to active skills. Strict mode requires every
  * requested space and editor visibility. Callers must authorize admin-only metadata redaction upstream.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:product] search-mode-default
+ * All accepted search types currently use autocomplete matching. Adding searchType
+ * MUST NOT change workspace, permission, status or selection filters.
+ */
 export function buildSkillSearchQuery(
   auth: Authenticator,
   {
@@ -115,6 +121,7 @@ export function buildSkillSearchQuery(
     codeDefinedSkillIds = [],
   }: {
     searchTerm: string;
+    searchType?: SearchType;
     filters?: SkillSearchFilters;
     permissionFiltering?: SkillSearchPermissionFiltering;
     codeDefinedSkillIds?: string[];

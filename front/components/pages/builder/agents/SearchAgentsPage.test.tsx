@@ -238,6 +238,7 @@ describe("search-backed Manage Agents", () => {
     await screen.findByRole("button", { name: /Weekly report/ });
     expect(lastSearchBody(fetcherWithBody)).toEqual({
       query: "",
+      searchType: "autocomplete",
       status: ["active"],
       scope: ["visible", "hidden"],
       sortBy: "usage",
@@ -379,6 +380,7 @@ describe("search-backed Manage Agents", () => {
     await waitFor(() =>
       expect(lastSearchBody(fetcherWithBody)).toMatchObject({
         query: "report",
+        searchType: "autocomplete",
         sortBy: "relevance",
       })
     );
@@ -386,6 +388,7 @@ describe("search-backed Manage Agents", () => {
     await waitFor(() =>
       expect(lastSearchBody(fetcherWithBody)).toMatchObject({
         query: "report",
+        searchType: "autocomplete",
         sortBy: "name",
         sortOrder: "asc",
         offset: 0,

@@ -6,6 +6,7 @@ import type {
   AgentSearchFilters,
   AgentSearchPermissionFiltering,
 } from "@app/types/agent_search/agent_search";
+import type { SearchType } from "@app/types/api/search";
 import type { estypes } from "@elastic/elasticsearch";
 
 export const MAX_AGENT_SEARCH_RESULTS = 100;
@@ -126,6 +127,11 @@ function buildSelectionFilters(
  * custom agents additionally require visibility (see `agent-search-visibility`) and every
  * requested space; unrestricted mode lifts both. Callers must authorize unrestricted mode upstream.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:product] search-mode-default
+ * All accepted search types currently use autocomplete matching. Adding searchType
+ * MUST NOT change workspace, permission, status or selection filters.
+ */
 export function buildAgentSearchQuery(
   auth: Authenticator,
   {
@@ -135,6 +141,7 @@ export function buildAgentSearchQuery(
     globalAgentIds = [],
   }: {
     searchTerm: string;
+    searchType?: SearchType;
     permissionFiltering?: AgentSearchPermissionFiltering;
     filters?: AgentSearchFilters;
     globalAgentIds?: string[];

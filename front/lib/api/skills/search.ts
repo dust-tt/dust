@@ -13,6 +13,7 @@ import {
 } from "@app/lib/skill_search/query";
 import { buildSkillDefaultSort } from "@app/lib/skill_search/ranking";
 import { toSkillListItem } from "@app/lib/skill_search/serialization";
+import type { SearchType } from "@app/types/api/search";
 import type {
   SkillSearchFacet,
   SkillSearchFacetValues,
@@ -105,6 +106,7 @@ export async function searchSkills(
     ...options
   }: {
     searchTerm: string;
+    searchType?: SearchType;
     facets?: SkillSearchFacet[];
     filters?: SkillSearchFilters;
     permissionFiltering?: SkillSearchPermissionFiltering;

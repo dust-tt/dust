@@ -24,6 +24,7 @@ import type {
   AgentSearchSortOrder,
   AgentSearchTermsFacet,
 } from "@app/types/agent_search/agent_search";
+import type { SearchType } from "@app/types/api/search";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { Err, Ok } from "@app/types/shared/result";
 import { isNumber, removeNulls } from "@app/types/shared/utils/general";
@@ -117,6 +118,7 @@ export async function searchAgents(
     ...options
   }: {
     searchTerm: string;
+    searchType?: SearchType;
     facets?: AgentSearchFacet[];
     permissionFiltering?: AgentSearchPermissionFiltering;
     filters?: AgentSearchFilters;

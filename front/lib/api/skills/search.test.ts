@@ -522,7 +522,10 @@ describe("code-defined skill search", () => {
     expect(denied.value.skills).toEqual([]);
   });
 
-  it("uses the same autocomplete and offset pagination for a mixed ES page", async () => {
+  it.each([
+    "autocomplete",
+    "name",
+  ] as const)("uses %s matching and offset pagination for a mixed ES page", async (searchType) => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
     const skill = await SkillFactory.create(auth, { name: "WeeklyDeepReport" });
     const [custom] = await SkillFactory.createSearchDocuments(auth, [skill]);
@@ -546,7 +549,11 @@ describe("code-defined skill search", () => {
       },
     }));
 
-    const page = await searchSkills(auth, { searchTerm: "deep", limit: 2 });
+    const page = await searchSkills(auth, {
+      searchTerm: "deep",
+      searchType,
+      limit: 2,
+    });
     assert(page.isOk());
     expect(page.value.skills.map((item) => item.sId)).toEqual([
       skill.sId,
@@ -561,6 +568,7 @@ describe("code-defined skill search", () => {
 
     const next = await searchSkills(auth, {
       searchTerm: "deep",
+      searchType,
       limit: 2,
       offset: 2,
     });

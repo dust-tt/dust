@@ -4,6 +4,9 @@ import type { DataSourceType } from "@app/types/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import { z } from "zod";
 
+export const SEARCH_TYPES = ["autocomplete", "name"] as const;
+export type SearchType = (typeof SEARCH_TYPES)[number];
+
 export type DataSourceContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;
   dataSourceViews: DataSourceViewType[];

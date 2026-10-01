@@ -1,4 +1,5 @@
 import { MAX_SKILL_SEARCH_RESULTS } from "@app/lib/skill_search/query";
+import { SEARCH_TYPES } from "@app/types/api/search";
 import {
   SKILL_SEARCH_FACETS,
   SKILL_SEARCH_SORT_ORDERS,
@@ -9,6 +10,7 @@ import { z } from "zod";
 
 export const SearchSkillsQuerySchema = z.object({
   query: z.string().max(200).optional().default(""),
+  searchType: z.enum(SEARCH_TYPES).optional().default("autocomplete"),
   limit: z.number().int().min(0).max(MAX_SKILL_SEARCH_RESULTS).optional(),
   offset: z.number().int().min(0).optional(),
   permissionFiltering: z.enum(["strict", "redact_unreadable"]).optional(),
