@@ -2824,6 +2824,36 @@ describe("AgentResource", () => {
     });
   });
 
+  describe("poke content access", () => {
+    it("exposes a hidden agent's content to a Poke superuser without granting any verb", async () => {
+      const { authenticator, workspace } = testContext;
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { scope: "hidden", instructions: "support can read this" }
+      );
+      const { agentOwnerAuth: adminAuth } = await setupAgentOwner(
+        workspace,
+        "admin"
+      );
+      const pokeAuth = await Authenticator.fromDustSuperUser({
+        wId: workspace.sId,
+      });
+
+      const redacted = await AgentResource.fetchById(adminAuth, agent.sId);
+      const forPoke = await AgentResource.fetchById(pokeAuth, agent.sId);
+      const [pokeVersion] = (await forPoke?.listVersions(pokeAuth)) ?? [];
+
+      expect(redacted?.canViewContent).toBe(false);
+      for (const resource of [forPoke, pokeVersion]) {
+        assert(resource?.canViewContent);
+        expect((await resource.fetchInstructions()).instructions).toBe(
+          "support can read this"
+        );
+        expect(pokeAuth.can("read", resource)).toBe(false);
+      }
+    });
+  });
+
   describe("dangerous fetches", () => {
     it("keep an agent the caller cannot fetch, without verbs or content", async () => {
       const { authenticator, workspace } = testContext;

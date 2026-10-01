@@ -34,7 +34,7 @@ export const userHandlers: UserHandlers = {
       return gateResult;
     }
 
-    const targetAuthResult = await getTargetAuth(workspace_id);
+    const targetAuthResult = await getTargetAuth(extra, workspace_id);
     if (targetAuthResult.isErr()) {
       return targetAuthResult;
     }

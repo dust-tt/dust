@@ -432,8 +432,9 @@ export interface AgentResource
  * A resource built for a caller who cannot view the agent's content (`canViewContent` false: no
  * `read`, outside the `admin_can_see_private_entities` admin override) MUST NOT expose the agent's
  * instructions (`instructions`, `instructionsHtml`) to that caller: `fetchInstructions`/
- * `batchFetchInstructions` never return them for it, whatever their role, key type, or superuser
- * status. The instructions are the only private fields: the head fields (`name`, `status`, `scope`,
+ * `batchFetchInstructions` never return them for it, whatever their role or key type. The only
+ * exception is a Poke superuser authenticator (see `poke-agent-content-access`). The instructions
+ * are the only private fields: the head fields (`name`, `status`, `scope`,
  * `templateId`, `reinforcement`, `lastReinforcementAnalysisAt`) are core and carried by every
  * resource. This holds for every `fetch*` resolver, for `listVersions`, for `fromModels` and for
  * global agents, so a caller allowed to enumerate agents they cannot read (an admin or manager
@@ -464,7 +465,8 @@ export interface AgentResource
  *   agent, regardless of scope, status, or `requestedSpaceIds`.
  * Holding any verb makes the agent fetchable, but without `read` only its core fields may be
  * exposed (see `unreadable-agent-content-hidden`). The explicit `admin_can_see_private_entities` admin
- * override is the only exception and may expose the full configuration.
+ * override and the Poke superuser authenticator (see `poke-agent-content-access`) are the only
+ * exceptions and may expose the full configuration.
  * Global (code-defined) agents are `read`-only, for the roles in their audience.
  */
 /**
@@ -764,15 +766,22 @@ export class AgentResource
   /**
    * @cc [owner:tdraier,label:security] agent-content-visibility
    * The private content (instructions, tools) is visible to a caller who holds `read`, and to a
-   * workspace admin of a workspace with the `admin_can_see_private_entities` feature flag, whichever
-   * resolver or factory built the resource they are handed (`fetch*`,
-   * `dangerouslyFromConfigurationModels`). The flag MUST NOT grant any verb: what such an admin may
-   * do with the agent is decided by their verbs alone (see `agent-verbs`) — without `read` they
-   * cannot mention or run it, and the definition edits their `admin` verb allows (model, tags) are
-   * unchanged.
+   * workspace admin of a workspace with the `admin_can_see_private_entities` feature flag, and to a
+   * Poke superuser (see `poke-agent-content-access`), whichever resolver or factory built the
+   * resource they are handed (`fetch*`, `dangerouslyFromConfigurationModels`). The flag MUST NOT
+   * grant any verb: what such an admin may do with the agent is decided by their verbs alone (see
+   * `agent-verbs`) — without `read` they cannot mention or run it, and the definition edits their
+   * `admin` verb allows (model, tags) are unchanged.
+   */
+  /**
+   * @cc [owner:tdraier,label:security] poke-agent-content-access
+   * A Dust superuser authenticator (`auth.isDustSuperUser()`, only built by the Poke entrypoints)
+   * MUST be able to view every agent's content, instructions and tools included, whatever its
+   * verbs; it MUST NOT grant or change any verb.
    */
   private resolveCanViewContent(auth: Authenticator): boolean {
     return (
+      auth.isDustSuperUser() ||
       auth.can("read", this) ||
       (this._adminCanSeePrivateEntities && auth.isAdmin())
     );
