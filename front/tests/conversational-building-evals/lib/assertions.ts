@@ -315,6 +315,41 @@ export function validateFinalToolCall(
     case "suggestAgentCreation":
       return findSuggestion(finalToolCall, "create_agent");
 
+    case "suggestSubAgentByRef": {
+      const created = findSuggestion(finalToolCall, "create_agent");
+      if (!created.success) {
+        return created;
+      }
+      const { ref } = created.item;
+      if (!isString(ref)) {
+        return {
+          success: false,
+          error: `The create_agent suggestion declares no ref: ${JSON.stringify(created.item)}`,
+        };
+      }
+
+      const parent = findSuggestion(finalToolCall, "edit_agent", {
+        field: "agentId",
+        id: resolveAgentId(scenario, assertion.parentAgentKey),
+        label: `agent "${assertion.parentAgentKey}"`,
+      });
+      if (!parent.success) {
+        return parent;
+      }
+      const { subAgents } = parent.item;
+      const addAgentRefs =
+        isSuggestionItem(subAgents) && Array.isArray(subAgents.addAgentRefs)
+          ? subAgents.addAgentRefs
+          : [];
+      if (!addAgentRefs.includes(ref)) {
+        return {
+          success: false,
+          error: `The edit_agent suggestion does not add the created agent (ref "${ref}") as a sub-agent: ${JSON.stringify(parent.item)}`,
+        };
+      }
+      return { success: true };
+    }
+
     case "suggestSkillUpdate": {
       const found = findSkillEdit(finalToolCall, scenario, assertion.skillKey);
       if (!found.success) {
@@ -538,6 +573,8 @@ function getEntitiesToMention(
     // A created agent has no id the model could know: it is named in plain text.
     case "suggestAgentCreation":
       return [];
+    case "suggestSubAgentByRef":
+      return [{ kind: "agent", key: assertion.parentAgentKey }];
     case "suggestAgentInstructionsChange":
     case "suggestAgentModelChange":
     case "suggestAgentStructuredOutput":
