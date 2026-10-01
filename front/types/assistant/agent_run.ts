@@ -450,7 +450,7 @@ async function getAgentConfigurationForLoop(
   const [agent] = await AgentResource.fetchByIdsAndVersions(
     auth,
     [{ agentId, agentVersion }],
-    { globalAgentContext, withGlobalActions: true }
+    { globalAgentContext, withActions: true }
   );
   if (!agent?.canViewContent) {
     return null;
