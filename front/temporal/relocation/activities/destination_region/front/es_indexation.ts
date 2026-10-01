@@ -208,7 +208,7 @@ export async function recreateAgentSearchIndex({
     actionsByConfigurationId,
     feedbackCounts,
     lastEditors,
-    skillsByConfigurationModelId,
+    skillsByAgent,
     favoriteCountByAgent,
   ] = await Promise.all([
     AgentResource.batchListEditors(auth, agents),
@@ -224,13 +224,9 @@ export async function recreateAgentSearchIndex({
     UserResource.fetchByModelIds(
       uniq(removeNulls(agents.map((agent) => agent.versionAuthorId)))
     ),
-    SkillResource.listByAgentConfigurationModelIds(
-      auth,
-      configurationModelIds,
-      {
-        permissionFiltering: "redact_unreadable",
-      }
-    ),
+    AgentResource.batchListSkills(auth, agents, {
+      permissionFiltering: "redact_unreadable",
+    }),
     AgentResource.batchCountFavorites(auth, agents),
   ]);
   const lastEditorByModelId = new Map(
@@ -284,10 +280,7 @@ export async function recreateAgentSearchIndex({
         )
           .filter(isServerSideMCPServerConfiguration)
           .map((action) => action.mcpServerViewId),
-        skillIds: (
-          skillsByConfigurationModelId.get(agent.agentConfigurationModelId) ??
-          []
-        ).map((skill) => skill.sId),
+        skillIds: (skillsByAgent.get(agent) ?? []).map((skill) => skill.sId),
         tagIds: (tagsByAgent.get(agent) ?? []).map((tag) => tag.sId),
       });
       const result = await indexAgentDocument(document);
