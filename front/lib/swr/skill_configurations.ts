@@ -46,8 +46,8 @@ import type { SWRMutationConfiguration } from "swr/mutation";
 import useSWRMutation from "swr/mutation";
 
 const DETECT_SKILLS_DEBOUNCE_MS = 1_000;
-const SEARCH_SKILLS_DEBOUNCE_MS = 250;
-const SEARCH_SKILLS_QUERY_MAX_LENGTH = 200;
+export const SEARCH_SKILLS_DEBOUNCE_MS = 250;
+export const SEARCH_SKILLS_QUERY_MAX_LENGTH = 200;
 
 export function useSkill(options: {
   workspaceId: string;
