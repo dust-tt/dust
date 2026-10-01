@@ -115,6 +115,15 @@ export const HOMEPAGE_USE_CASES: HomepageUseCaseDefinition[] = [
     requires: [{ type: "internalServer", name: "web_search_&_browse" }],
   },
   {
+    id: "dust-news",
+    label: "Show me what's new in Dust",
+    prompt:
+      "Read the Dust changelog at https://docs.dust.tt/docs/changelog and tell me what shipped over the last month. Keep the five changes most useful to me, say in one line what each one lets me do, and link each entry.",
+    icon: "ActionSparklesIcon",
+    audience: { type: "everyone" },
+    requires: [{ type: "internalServer", name: "web_search_&_browse" }],
+  },
+  {
     id: "weekly-priorities",
     label: "Help me identify and prioritize my key priorities for the week",
     prompt:
