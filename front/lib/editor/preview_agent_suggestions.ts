@@ -153,6 +153,7 @@ export function previewAgentSuggestions({
       instructions,
       toolIds = [],
       skillIds = [],
+      subAgentIds = [],
     } = creation.suggestion;
     return new Ok({
       fields: {
@@ -169,7 +170,7 @@ export function previewAgentSuggestions({
         removedToolIds: [],
         addedSkillIds: skillIds,
         removedSkillIds: [],
-        addedSubAgentIds: [],
+        addedSubAgentIds: subAgentIds,
         removedSubAgentIds: [],
       },
     });

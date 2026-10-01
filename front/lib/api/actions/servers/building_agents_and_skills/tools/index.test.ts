@@ -758,6 +758,51 @@ describe("building_agents_and_skills tools", () => {
       expectMcpError(result, "is both deleted and added to an agent");
     });
 
+    it("refuses creating an agent with a sub-agent the same batch deletes", async () => {
+      const { authenticator } = await createAgentAuthorTestContext();
+      const subAgent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Helper" }
+      );
+
+      const result = await runSuggest(authenticator, {
+        title: "New agent",
+        analysis: "New agent.",
+        suggestions: [
+          {
+            kind: "create_agent",
+            name: "IncidentHelper",
+            description: "Helps triage incidents.",
+            instructions: "<p>Triage incidents.</p>",
+            subAgentIds: [subAgent.sId],
+          },
+          { kind: "delete_agent", agentId: subAgent.sId },
+        ],
+      });
+
+      expectMcpError(result, "is both deleted and added as a sub-agent");
+    });
+
+    it("refuses creating an agent with an unknown sub-agent", async () => {
+      const { authenticator } = await createAgentAuthorTestContext();
+
+      const result = await runSuggest(authenticator, {
+        title: "New agent",
+        analysis: "New agent.",
+        suggestions: [
+          {
+            kind: "create_agent",
+            name: "IncidentHelper",
+            description: "Helps triage incidents.",
+            instructions: "<p>Triage incidents.</p>",
+            subAgentIds: ["unknown_agent"],
+          },
+        ],
+      });
+
+      expectMcpError(result, "invalid or not accessible");
+    });
+
     const createSkill = {
       kind: "create_skill",
       name: "Meeting Notes",
@@ -1867,6 +1912,62 @@ describe("building_agents_and_skills tools", () => {
           });
 
           expectMcpError(result, "Only editors");
+        });
+
+        it("records the sub-agents of an agent creation, with the id of the pending agent it creates", async () => {
+          const { authenticator } = await createAgentAuthorTestContext();
+          const existingSubAgent =
+            await AgentConfigurationFactory.createTestAgent(authenticator, {
+              name: "ExistingHelper",
+            });
+
+          const batchId = extractBatchId(
+            await runSuggest(authenticator, {
+              title: "Sales lead",
+              analysis: "A sales agent delegating pricing.",
+              suggestions: [
+                {
+                  kind: "create_agent",
+                  name: "SalesLead",
+                  description: "Handles sales questions.",
+                  instructions: "<p>Handle sales questions.</p>",
+                  subAgentIds: [existingSubAgent.sId],
+                  subAgentRefs: ["pricing"],
+                },
+                createPricingAgent,
+              ],
+            })
+          );
+
+          const batch = await BatchSuggestionResource.fetchById(
+            authenticator,
+            batchId
+          );
+          const creations = (batch?.agentSuggestions ?? [])
+            .map((s) => s.toJSON())
+            .filter((s) => s.kind === "create");
+          const pricing = creations.find(
+            (s) => s.suggestion.name === "PricingHelper"
+          );
+          const salesLead = creations.find(
+            (s) => s.suggestion.name === "SalesLead"
+          );
+          assert(pricing);
+          expect(salesLead?.suggestion).toMatchObject({
+            subAgentIds: [existingSubAgent.sId, pricing.agentId],
+          });
+        });
+
+        it("refuses an agent creation that is its own sub-agent", async () => {
+          const { authenticator } = await createAgentAuthorTestContext();
+
+          const result = await runSuggest(authenticator, {
+            title: "Pricing helper",
+            analysis: "Pricing.",
+            suggestions: [{ ...createPricingAgent, subAgentRefs: ["pricing"] }],
+          });
+
+          expectMcpError(result, "its own sub-agent");
         });
       });
     });

@@ -180,6 +180,11 @@ export async function seedConversationalBuilding(
   logger.info("Seeding the references batch...");
   const references = await seedReferencesBatch(ctx);
 
+  logger.info("Seeding the created sub-agents batch...");
+  const createdSubAgentsBatch = references
+    ? await seedCreatedSubAgentsBatch(ctx, references.teamAssistant)
+    : null;
+
   // 6. The Dust conversations embedding the suggestions as `:skill_suggestion[]` and
   // `:batch_edit[]` directives.
   logger.info("Seeding conversations...");
@@ -238,6 +243,7 @@ export async function seedConversationalBuilding(
         __TEAM_ASSISTANT_AGENT_SID__: references?.teamAssistant.sId ?? "",
         __DECISION_LOG_SKILL_SID__: references?.decisionLog.sId ?? "",
         __REFERENCES_BATCH_SID__: references?.batch.sId ?? "",
+        __CREATED_SUB_AGENTS_BATCH_SID__: createdSubAgentsBatch?.sId ?? "",
       },
       additionalUsers: createdUsers,
     }
@@ -449,6 +455,53 @@ async function seedReferencesBatch(ctx: SeedContext): Promise<{
     decisionLog: decisionLog.value,
     skillSuggestions: new Map([["createDecisionLog", decisionLogCreation]]),
   };
+}
+
+// A batch creating an agent with sub-agents: the new SalesLead agent delegates to the new
+// PricingHelper agent of the same batch and to the existing TeamAssistant.
+async function seedCreatedSubAgentsBatch(
+  ctx: SeedContext,
+  teamAssistant: CreatedAgent
+): Promise<BatchSuggestionResource> {
+  const batch = await BatchSuggestionResource.makeNew(ctx.auth, {
+    title: "Delegate sales questions",
+    analysis:
+      "Sales questions mix pricing and general questions. A new SalesLead agent hands pricing to a new PricingHelper agent and the rest to TeamAssistant.",
+    sourceConversation: null,
+  });
+
+  const pendingAgents = await AgentResource.createPendings(ctx.auth, [
+    "SalesLead",
+    "PricingHelper",
+  ]);
+  if (pendingAgents.isErr()) {
+    throw pendingAgents.error;
+  }
+  const [salesLead, pricingHelper] = pendingAgents.value;
+
+  await AgentSuggestionFactory.createCreate(ctx.auth, salesLead, {
+    suggestion: {
+      name: "SalesLead",
+      description: "Answers sales questions, delegating pricing.",
+      instructions:
+        "<p>Answer sales questions. Hand pricing questions to PricingHelper and the rest to TeamAssistant.</p>",
+      subAgentIds: [pricingHelper.sId, teamAssistant.sId],
+    },
+    analysis: null,
+    batchModelId: batch.id,
+  });
+
+  await AgentSuggestionFactory.createCreate(ctx.auth, pricingHelper, {
+    suggestion: {
+      name: "PricingHelper",
+      description: "Answers pricing questions from the price list.",
+      instructions: "<p>Answer pricing questions from the price list.</p>",
+    },
+    analysis: null,
+    batchModelId: batch.id,
+  });
+
+  return batch;
 }
 
 async function seedPendingSkills(

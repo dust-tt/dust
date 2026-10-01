@@ -165,7 +165,7 @@ describe("previewAgentSuggestions", () => {
     }
   });
 
-  it("previews the tools and skills an agent creation comes with", () => {
+  it("previews the tools, skills and sub-agents an agent creation comes with", () => {
     const result = previewAgentSuggestions({
       agent: AGENT,
       suggestions: [
@@ -178,6 +178,7 @@ describe("previewAgentSuggestions", () => {
             instructions: "<p>Triage incidents.</p>",
             toolIds: ["msv_1"],
             skillIds: ["skl_1"],
+            subAgentIds: ["agt_1"],
           },
         },
       ],
@@ -191,7 +192,7 @@ describe("previewAgentSuggestions", () => {
         removedToolIds: [],
         addedSkillIds: ["skl_1"],
         removedSkillIds: [],
-        addedSubAgentIds: [],
+        addedSubAgentIds: ["agt_1"],
         removedSubAgentIds: [],
       });
     }

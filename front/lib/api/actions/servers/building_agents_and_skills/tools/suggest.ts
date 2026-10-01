@@ -86,6 +86,7 @@ type PlannedChange =
       ref: string | null;
       create: CreateSuggestionType;
       skillRefs: string[];
+      subAgentRefs: string[];
     }
   | {
       type: "agent";
@@ -137,6 +138,8 @@ async function planAgentCreation(
     toolIds = [],
     skillIds = [],
     skillRefs = [],
+    subAgentIds = [],
+    subAgentRefs = [],
   }: CreateAgentSuggestion
 ): Promise<Result<PlannedChange, MCPError>> {
   const validation = await validateAgentCreation(auth, { name });
@@ -144,9 +147,14 @@ async function planAgentCreation(
     return validation;
   }
 
+  if (new Set(subAgentRefs).size !== subAgentRefs.length) {
+    return new Err(new MCPError("Each sub-agent can only be added once."));
+  }
+
   const capabilities = await validateAgentCreationCapabilities(auth, {
     toolIds,
     skillIds,
+    subAgentIds,
   });
   if (capabilities.isErr()) {
     return capabilities;
@@ -161,8 +169,10 @@ async function planAgentCreation(
       instructions,
       toolIds,
       skillIds,
+      subAgentIds,
     },
     skillRefs,
+    subAgentRefs,
   });
 }
 
@@ -656,8 +666,8 @@ function agentSkillRefsOf(suggestions: Suggestion[]): string[] {
 /**
  * Checks that each skill ref is declared once among the skill creations, and each agent ref once
  * among the agent creations. Every skill tag citing a ref in the call's instructions, and every
- * skill ref given to an agent, must point at a declared skill ref. Every sub-agent ref must point
- * at a declared agent ref.
+ * skill ref given to an agent, must point at a declared skill ref. Every sub-agent ref, given to
+ * a new or an existing agent, must point at a declared agent ref other than the agent's own.
  */
 function validateRefs(suggestions: Suggestion[]): Result<undefined, MCPError> {
   const pendingSkillRefs = new Set<string>();
@@ -679,14 +689,19 @@ function validateRefs(suggestions: Suggestion[]): Result<undefined, MCPError> {
     pendingAgentRefs.add(ref);
   }
 
-  const subAgentRefs = suggestions.flatMap((suggestion) =>
-    suggestion.kind === "edit_agent"
-      ? (suggestion.subAgents?.addAgentRefs ?? [])
-      : []
+  const agentCitingItself = suggestions.find(
+    (suggestion) =>
+      suggestion.kind === "create_agent" &&
+      suggestion.ref &&
+      subAgentRefsOf(suggestion).includes(suggestion.ref)
   );
-  const unknownSubAgentRef = subAgentRefs.find(
-    (ref) => !pendingAgentRefs.has(ref)
-  );
+  if (agentCitingItself) {
+    return new Err(new MCPError("An agent cannot be its own sub-agent."));
+  }
+
+  const unknownSubAgentRef = suggestions
+    .flatMap(subAgentRefsOf)
+    .find((ref) => !pendingAgentRefs.has(ref));
   if (unknownSubAgentRef) {
     return new Err(
       new MCPError(
@@ -766,6 +781,17 @@ function findSkillAddedAndDeleted(suggestions: Suggestion[]): string | null {
   return null;
 }
 
+/** The refs of agents created in the call that a suggestion gives to an agent as sub-agents. */
+function subAgentRefsOf(suggestion: Suggestion): string[] {
+  if (suggestion.kind === "create_agent") {
+    return suggestion.subAgentRefs ?? [];
+  }
+  if (suggestion.kind === "edit_agent") {
+    return suggestion.subAgents?.addAgentRefs ?? [];
+  }
+  return [];
+}
+
 /** An agent the batch deletes cannot also be added as a sub-agent by the same batch. */
 function findSubAgentAddedAndDeleted(suggestions: Suggestion[]): string | null {
   const deletedAgentIds = new Set(
@@ -773,17 +799,17 @@ function findSubAgentAddedAndDeleted(suggestions: Suggestion[]): string | null {
       suggestion.kind === "delete_agent" ? [suggestion.agentId] : []
     )
   );
-  for (const suggestion of suggestions) {
-    if (suggestion.kind === "edit_agent") {
-      const addedAgentId = (suggestion.subAgents?.addAgentIds ?? []).find(
-        (id) => deletedAgentIds.has(id)
-      );
-      if (addedAgentId) {
-        return addedAgentId;
-      }
+  const addedAgentIds = suggestions.flatMap((suggestion) => {
+    if (suggestion.kind === "create_agent") {
+      return suggestion.subAgentIds ?? [];
     }
-  }
-  return null;
+    if (suggestion.kind === "edit_agent") {
+      return suggestion.subAgents?.addAgentIds ?? [];
+    }
+    return [];
+  });
+
+  return addedAgentIds.find((id) => deletedAgentIds.has(id)) ?? null;
 }
 
 /** Each existing agent or skill may be targeted by at most one suggestion of the batch. */
@@ -996,6 +1022,12 @@ async function recordPlannedChange(
               resolvePendingSkillId(ref, skillReferenceByRef)
             ),
           ],
+          subAgentIds: [
+            ...(change.create.subAgentIds ?? []),
+            ...change.subAgentRefs.map((ref) =>
+              resolvePendingAgentId(ref, agentIdByRef)
+            ),
+          ],
         },
         analysis: null,
         conversation,
@@ -1155,7 +1187,9 @@ export async function suggest(
   }
 
   const hasSubAgentRefs = plannedChanges.some(
-    (change) => change.type === "agent" && change.subAgentRefs.length > 0
+    (change) =>
+      (change.type === "agent" || change.type === "agent_creation") &&
+      change.subAgentRefs.length > 0
   );
   const runAgentTool = hasSubAgentRefs ? await fetchRunAgentTool(auth) : null;
   if (hasSubAgentRefs && !runAgentTool) {

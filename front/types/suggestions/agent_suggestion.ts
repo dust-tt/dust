@@ -132,6 +132,10 @@ const CreateSuggestionSchema = z.object({
     .array(z.string())
     .optional()
     .describe("Ids of the skills the agent is created with."),
+  subAgentIds: z
+    .array(z.string())
+    .optional()
+    .describe("Ids of the agents the agent is created with as sub-agents."),
 });
 
 const DeleteSuggestionSchema = z.object({
