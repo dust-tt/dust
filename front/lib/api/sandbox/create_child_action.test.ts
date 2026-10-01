@@ -212,7 +212,6 @@ describe("createSandboxChildAction", () => {
   ) {
     return createSandboxChildAction(auth, {
       parentActionId,
-      agentId: agentConfig.sId,
       agentVersion: agentConfig.version,
       conversationId: conversation.sId,
       agentMessageId: agentMessage.sId,

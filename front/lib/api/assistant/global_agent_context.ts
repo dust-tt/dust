@@ -31,27 +31,30 @@ export function getGlobalAgentContextForTurn({
 }
 
 // Callers outside the agent loop (the sandbox) resolve a global agent for the same turn as the
-// loop did: the user message version the agent message answers (its `parentId` row). Custom agents
-// ignore the context, so the user message is only read for global ones.
+// loop did: the user message the agent message answers (its `parentId` row, shared by all its
+// versions). Custom agents ignore the context, so the user message is only read for global ones,
+// unless the caller already holds it.
 export async function getGlobalAgentContextForAgentMessage(
   auth: Authenticator,
   {
     agentId,
     conversation,
     agentMessage,
+    userMessage,
   }: {
     agentId: string;
     conversation: ConversationResource;
     agentMessage: MessageModel;
+    userMessage?: MessageModel;
   }
 ): Promise<GlobalAgentContext | undefined> {
   if (!isGlobalAgentId(agentId) || !agentMessage.parentId) {
     return undefined;
   }
 
-  const [message] = await conversation.fetchMessagesByModelIds(auth, [
-    agentMessage.parentId,
-  ]);
+  const [message] = userMessage
+    ? [userMessage]
+    : await conversation.fetchMessagesByModelIds(auth, [agentMessage.parentId]);
   if (!message?.userMessage) {
     return undefined;
   }

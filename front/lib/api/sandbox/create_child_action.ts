@@ -12,7 +12,6 @@ import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { computeStepContexts } from "@app/lib/actions/utils";
 import { getPinnedAgentToolingForAgentMessage } from "@app/lib/api/assistant/configuration/run_configuration";
-import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { resolveAgentMessageModelConfig } from "@app/lib/api/assistant/resolve_model";
@@ -49,7 +48,6 @@ export async function createSandboxChildAction(
   auth: Authenticator,
   {
     parentActionId,
-    agentId,
     agentVersion,
     conversationId,
     agentMessageId,
@@ -58,7 +56,6 @@ export async function createSandboxChildAction(
     rawInputs,
   }: {
     parentActionId: string;
-    agentId: string;
     agentVersion: number;
     conversationId: string;
     agentMessageId: string;
@@ -104,15 +101,23 @@ export async function createSandboxChildAction(
     agentMessageId
   );
 
-  if (agentMessageRes.isErr()) {
+  if (agentMessageRes.isErr() || !agentMessageRes.value.parentId) {
     return new Err(new Error("Agent message not found."));
   }
 
+  const [userMessageRow] = await conversationResource.fetchMessagesByModelIds(
+    auth,
+    [agentMessageRes.value.parentId]
+  );
+  if (!userMessageRow?.userMessage) {
+    return new Err(new Error("User message not found."));
+  }
+
   const agentConfiguration = await getPinnedAgentToolingForAgentMessage(auth, {
-    agentId,
     agentVersion,
     conversation: conversationResource,
     agentMessage: agentMessageRes.value,
+    userMessage: userMessageRow,
   });
   if (!agentConfiguration) {
     return new Err(new Error("Agent configuration not found."));
@@ -328,19 +333,15 @@ export async function createSandboxChildAction(
     });
   }
 
-  const userMessageInfo = await getUserMessageIdFromMessageId(auth, {
-    messageId: agentMessage.sId,
-  });
-
   await launchSandboxChildToolWorkflow(auth, {
     agentLoopArgs: {
       agentMessageId: agentMessage.sId,
       agentMessageVersion: agentMessage.version,
       conversationId: conversation.sId,
       conversationTitle: conversation.title,
-      userMessageId: userMessageInfo.userMessageId,
-      userMessageVersion: userMessageInfo.userMessageVersion,
-      userMessageOrigin: userMessageInfo.userMessageOrigin,
+      userMessageId: userMessageRow.sId,
+      userMessageVersion: userMessageRow.version,
+      userMessageOrigin: userMessageRow.userMessage.userContextOrigin,
       initialStartTime: Date.now(),
     },
     action,

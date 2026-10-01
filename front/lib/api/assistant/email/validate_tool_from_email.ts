@@ -299,6 +299,7 @@ export async function validateActionFromEmail(
       {
         blockedActionsCount,
         messageId,
+        workspaceId: owner.sId,
       },
       "[email] Skipping agent loop launch because there are remaining blocked actions"
     );

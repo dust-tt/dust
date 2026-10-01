@@ -143,7 +143,6 @@ app.get("/", async (ctx): HandlerResult<GetSandboxToolsResponseType> => {
 
   // Fetch agent accessible servers.
   const agentConfig = await getPinnedAgentToolingForAgentMessage(auth, {
-    agentId,
     agentVersion,
     conversation: conversationResource,
     agentMessage: agentMessageRes.value,
@@ -165,7 +164,6 @@ app.get("/", async (ctx): HandlerResult<GetSandboxToolsResponseType> => {
   );
 
   // Fetch conversation-jitted servers.
-
   // No attachments: matches `createSandboxChildAction`, so the tools listed here are exactly
   // the ones `/call` can resolve. Deriving them would also mean recomputing the conversation's
   // attachment set on every poll.
