@@ -13,9 +13,10 @@ import {
 } from "@app/lib/api/assistant/skills_rendering";
 import { legacyModelIdToModel } from "@app/lib/api/llm";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
-import { getAgentConfigurationForPoke } from "@app/lib/api/poke/agent_configurations";
 import { Authenticator } from "@app/lib/auth";
 import { getStreamEndpoints } from "@app/lib/llms/stream";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { constructProjectContext } from "@app/lib/resources/skill/code_defined/global/projects";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -60,10 +61,10 @@ makeScript(
   ) => {
     const auth = await Authenticator.fromDustSuperUser({ wId: workspaceId });
 
-    const [conversationRes, agentConfiguration] = await Promise.all([
+    const [conversationRes, agent] = await Promise.all([
       // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
       getConversation(auth, conversationId, true),
-      getAgentConfigurationForPoke(auth, agentId),
+      AgentResource.fetchById(auth, agentId),
     ]);
 
     if (conversationRes.isErr()) {
@@ -75,10 +76,12 @@ makeScript(
     }
     const conversation = conversationRes.value;
 
-    if (!agentConfiguration) {
+    if (!agent) {
       logger.error({ agentId }, "Agent configuration not found");
       return;
     }
+    // The conversation rendering takes the configuration JSON.
+    const [agentConfiguration] = await toAgentConfigurations(auth, [agent]);
 
     // Script-only: no workspace routing needed, so pass permissive filters and
     // just select any endpoint for the agent's model.
