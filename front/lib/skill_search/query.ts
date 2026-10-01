@@ -115,7 +115,7 @@ function buildSelectionFilters(
 /**
  * @cc [owner:aubin-tchoi,label:product] search-mode-default
  * Omitted searchType MUST preserve autocomplete matching. Name mode MUST use word, substring and fuzzy
- * name matching without description matching or changes to workspace, permission,
+ * name matching and full-text description matching without changing workspace, permission,
  * status or selection filters.
  */
 export function buildSkillSearchQuery(

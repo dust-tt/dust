@@ -63,12 +63,14 @@ export function buildNameAutocompleteQuery(
 /**
  * @cc [owner:aubin-tchoi,label:product] name-token-matching
  * Empty or whitespace-only queries MUST match all names. Otherwise every whitespace-separated
- * term MUST match an analyzed name token, a literal name substring, or a fuzzy name token
- * (`write` MUST match "Typewriter"). Name mode MUST NOT match descriptions.
+ * term MUST match an analyzed name token, a literal name substring, a fuzzy name token, or an
+ * analyzed description token (`write` MUST match "Typewriter").
  * Names MUST use the existing autocomplete and ICU fields for word and fuzzy matching, and
- * the existing keyword field for substring matching.
+ * the existing keyword field for substring matching. Description matching MUST NOT use fuzziness
+ * or prefix matching.
  * For each term, exact name tokens MUST score above name substrings, which MUST score above fuzzy
- * name matches. The substring branch MUST treat wildcard operators in user input literally. Exact whole-name matches MUST receive an additional
+ * name matches, which MUST score above description matches. The substring branch MUST treat
+ * wildcard operators in user input literally. Exact whole-name matches MUST receive an additional
  * relevance boost.
  */
 export function buildNameSearchQuery(
@@ -81,7 +83,7 @@ export function buildNameSearchQuery(
   }
   return {
     bool: {
-      // Require every term to match the name, in any order.
+      // Require every term to match the name or description, in any order.
       must: terms.map((term) => ({
         // Use the strongest matching clause for each term instead of adding their scores.
         dis_max: {
@@ -123,6 +125,20 @@ export function buildNameSearchQuery(
                     fuzziness: "AUTO",
                   },
                 },
+              },
+            },
+            // Match description words without prefixes or typos, below all name matches.
+            {
+              constant_score: {
+                filter: {
+                  match: {
+                    description: {
+                      query: term,
+                      operator: "and",
+                    },
+                  },
+                },
+                boost: 0.5,
               },
             },
           ],
