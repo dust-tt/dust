@@ -93,6 +93,10 @@ function buildSelectionFilters(
   }
   if (filters.codeDefinedOnly) {
     selected.push({ term: { workspace_id: CODE_DEFINED_SKILLS_WORKSPACE_ID } });
+  } else if (filters.codeDefinedOnly === false) {
+    selected.push({
+      term: { workspace_id: auth.getNonNullableWorkspace().sId },
+    });
   }
   const { min, max } = filters.activeUsersCount ?? {};
   if (min !== undefined || max !== undefined) {
@@ -106,6 +110,8 @@ function buildSelectionFilters(
  * Every query is scoped to the caller's workspace and explicitly eligible code-defined IDs
  * in the reserved global workspace. It defaults to active skills. Strict mode requires every
  * requested space and editor visibility. Callers must authorize admin-only metadata redaction upstream.
+ * codeDefinedOnly true MUST restrict results to eligible code-defined skills, false to the
+ * caller's workspace skills, and omission MUST preserve both sources.
  */
 /**
  * @cc [owner:aubin-tchoi,label:product] search-mode-default

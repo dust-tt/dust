@@ -324,6 +324,50 @@ describe("searchSkills filters and facets", () => {
     mockSearch.mockReset();
   });
 
+  it.each([
+    true,
+    false,
+    undefined,
+  ])("selects the requested skill sources with codeDefinedOnly=%s", async (codeDefinedOnly) => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    const skill = await SkillFactory.create(auth, { name: "Workspace skill" });
+    const workspaceDocuments = await SkillFactory.createSearchDocuments(auth, [
+      skill,
+    ]);
+    const documents = [
+      ...workspaceDocuments,
+      ...SkillFactory.createCodeDefinedSearchDocuments(),
+    ];
+    mockSearch.mockImplementation(async (request: estypes.SearchRequest) => {
+      const matching = documents.filter((document) =>
+        matchesSkillSearchFilters(document, request.query!)
+      );
+      return {
+        hits: {
+          hits: matching.map((_source) => ({ _source })),
+          total: { value: matching.length, relation: "eq" },
+        },
+      };
+    });
+
+    const result = await searchSkills(auth, {
+      searchTerm: "",
+      filters: { codeDefinedOnly },
+    });
+
+    assert(result.isOk());
+    const availableGlobalIds =
+      await SkillResource.listAvailableCodeDefinedIds(auth);
+    const expectedIds = [
+      ...(codeDefinedOnly !== true ? [skill.sId] : []),
+      ...(codeDefinedOnly !== false ? availableGlobalIds : []),
+    ];
+    expect(result.value.skills.map((item) => item.sId).sort()).toEqual(
+      expectedIds.sort()
+    );
+    expect(result.value.total).toBe(expectedIds.length);
+  });
+
   it("sends the editor, child skill, space and usage filters", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
     mockSearch.mockResolvedValue({ hits: { hits: [] } });
