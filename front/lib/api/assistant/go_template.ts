@@ -14,10 +14,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 export type { GetGoTemplateDraftResponseBody } from "@app/types/api/assistant/go_template_types";
-export {
-  GetGoTemplateDraftResponseBodySchema,
-  GoTemplateApiErrorBodySchema,
-} from "@app/types/api/assistant/go_template_types";
 
 export type GoTemplateError =
   | { type: "template_not_found"; slug: string }

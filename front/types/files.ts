@@ -853,9 +853,6 @@ type SupportedAudioContentType = {
     : never;
 }[keyof typeof FILE_FORMATS];
 
-// All the ones listed above
-export const supportedUploadableContentType = Object.keys(FILE_FORMATS);
-
 export const DEFAULT_FILE_CONTENT_TYPE: SupportedFileContentType =
   "application/octet-stream";
 

@@ -18,7 +18,6 @@ import {
 } from "./constants";
 import type { MetronomeEvent, UsageType } from "./types";
 
-export { TOOL_COST_CATEGORIES } from "@app/lib/api/mcp";
 export {
   computeRunKey,
   FREE_ORIGINS,
@@ -105,21 +104,6 @@ export function toolAwuFromActions(
 ): number {
   return buildAgentMessageBillingPlan({
     actions,
-    contextOrigin,
-    runUsages: [],
-  }).totals.toolBilledCredits;
-}
-
-export function toolAwuFromAction(
-  action: {
-    toolName: string;
-    internalMCPServerName: InternalMCPServerNameType | null;
-    status: ToolExecutionStatus;
-  },
-  contextOrigin: UserMessageOrigin | null
-): number {
-  return buildAgentMessageBillingPlan({
-    actions: [action],
     contextOrigin,
     runUsages: [],
   }).totals.toolBilledCredits;

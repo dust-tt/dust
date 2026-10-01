@@ -68,11 +68,6 @@ export function getMcpResourceServerUrl(): string {
   );
 }
 
-/** MCP server URL safe to display in client UI (uses public API base URL). */
-export function getMcpResourceServerUrlForClient(): string {
-  return normalizeOAuthUrl(`${config.getApiBaseUrl().trim()}/mcp`);
-}
-
 /** MCP host origin for OAuth AS metadata discovery (proxied by front-api). */
 export function getMcpAuthorizationServerUrl(): string {
   return normalizeOAuthUrl(new URL(getMcpResourceServerUrl()).origin);

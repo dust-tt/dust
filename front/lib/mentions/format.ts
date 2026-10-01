@@ -47,10 +47,6 @@ export const USER_MENTION_REGEX_BEGINNING = new RegExp(
   USER_MENTION_REGEX.flags.replace("g", "")
 );
 
-export function startsWithUserMention(markdown: string): boolean {
-  return USER_MENTION_REGEX_BEGINNING.test(markdown.trimStart());
-}
-
 /**
  * Extracts mentions from content.
  * @param content the content to extract mentions from

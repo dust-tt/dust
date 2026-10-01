@@ -19,33 +19,6 @@ export const ERROR_MESSAGES = {
 } as const;
 
 /**
- * Wrapper to handle authentication and error logging for Google Sheets operations.
- * Provides access to both Drive and Sheets clients.
- */
-export async function withAuth(
-  { authInfo }: ToolHandlerExtra,
-  action: (clients: {
-    drive: drive_v3.Drive;
-    sheets: sheets_v4.Sheets;
-    accessToken: string;
-  }) => Promise<ToolHandlerResult>
-): Promise<ToolHandlerResult> {
-  const accessToken = authInfo?.token;
-  if (!accessToken) {
-    return new Err(new MCPError(ERROR_MESSAGES.NO_ACCESS_TOKEN));
-  }
-
-  const drive = getGoogleDriveClient(accessToken);
-  const sheets = getGoogleSheetsClient(accessToken);
-
-  try {
-    return await action({ drive, sheets, accessToken });
-  } catch (error: unknown) {
-    return logAndReturnError({ error, message: "Operation failed" });
-  }
-}
-
-/**
  * Wrapper specifically for operations that only need the Sheets client.
  */
 export async function withSheetsAuth(

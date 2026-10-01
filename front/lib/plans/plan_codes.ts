@@ -12,11 +12,6 @@ export const PRO_PLAN_SEAT_29_CODE = "PRO_PLAN_SEAT_29";
 export const PRO_PLAN_LARGE_FILES_CODE = "PRO_PLAN_LARGE_FILES";
 export const PRO_PLAN_SEAT_39_CODE = "PRO_PLAN_SEAT_39";
 
-// Legacy pro plans (kept for the legacy Pro → Business migration).
-export const PRO_PLAN_LARGE_FILES_10SPACES_CODE =
-  "PRO_PLAN_LARGE_FILES_10SPACES";
-export const PRO_PLAN_PLUS_SEAT_29_CODE = "PRO_PLAN_PLUS_SEAT_29";
-
 // Credit-priced plans:
 export const CREDIT_PRICED_BUSINESS_PLAN_CODE = "CP_BUSINESS_PLAN";
 // Business variant whose limits are permissive enough to fit any legacy PRO_*
@@ -31,11 +26,6 @@ export const CREDIT_PRICED_DUST_COMPANY_PLAN_CODE = "CP_DUST_COMPANY";
 
 // BYOK plan:
 export const FREE_BYOK_PLAN_CODE = "FREE_BYOK";
-
-/**
- * ENT_PLAN_FAKE is not subscribable and is only used to display the Enterprise plan in the UI (hence it's not stored on the db).
- */
-export const ENT_PLAN_FAKE_CODE = "ENT_PLAN_FAKE_CODE";
 
 // Dust's own workspace plan.
 export const DUST_COMPANY_PLAN_CODE = "DUST_COMPANY";

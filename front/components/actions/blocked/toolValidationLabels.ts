@@ -169,24 +169,6 @@ export function getToolOverride(
   return MCP_TOOL_OVERRIDES[metadata.mcpServerName]?.[metadata.toolName];
 }
 
-export function getToolValidationTitle(
-  data: ToolValidationLabelData,
-  canCurrentUserRespond: boolean
-): string {
-  if (!canCurrentUserRespond) {
-    return `Permission needed for ${asDisplayName(data.metadata.mcpServerName)}.`;
-  }
-  const toolOverride = getToolOverride(data.metadata);
-  if (toolOverride?.title) {
-    return toolOverride.title(data.inputs);
-  }
-  const subject =
-    data.metadata.displayedAs === "agent"
-      ? "agent"
-      : data.metadata.mcpServerName;
-  return `Allow ${asDisplayName(subject)} to ${asDisplayName(data.metadata.toolName)}?`;
-}
-
 export function getToolValidationAlwaysAllowLabel(
   data: ToolValidationLabelData
 ): string {

@@ -18,8 +18,6 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
-export const MAX_TAG_LENGTH = 100;
-
 export const TagsSuggestDialog = ({
   owner,
   isOpen,

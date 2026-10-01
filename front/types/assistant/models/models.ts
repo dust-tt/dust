@@ -1,5 +1,4 @@
 import type { ModelIdType } from "@app/types/assistant/models/types";
-import { ioTsEnum } from "@app/types/shared/utils/iots_utils";
 import { z } from "zod";
 
 import {
@@ -305,8 +304,6 @@ export const MODEL_IDS = [...STATIC_MODEL_IDS, ...CUSTOM_MODEL_IDS] as const;
 
 export const isModelId = (modelId: string): modelId is ModelIdType =>
   MODEL_IDS.includes(modelId as ModelIdType);
-
-export const ModelIdCodec = ioTsEnum<(typeof MODEL_IDS)[number]>(MODEL_IDS);
 
 // Note: MODEL_IDS includes dynamic custom models from GCS, so we use z.custom
 // with the isModelId guard rather than z.enum (which requires a static tuple).

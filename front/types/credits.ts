@@ -49,17 +49,6 @@ export const WORKSPACE_PROGRAMMATIC_CREDIT_STATES = [
 export type WorkspaceProgrammaticCreditState =
   (typeof WORKSPACE_PROGRAMMATIC_CREDIT_STATES)[number];
 
-export function isWorkspaceProgrammaticCreditState(
-  value: unknown
-): value is WorkspaceProgrammaticCreditState {
-  return (
-    typeof value === "string" &&
-    WORKSPACE_PROGRAMMATIC_CREDIT_STATES.includes(
-      value as WorkspaceProgrammaticCreditState
-    )
-  );
-}
-
 export const CREDIT_TYPES = ["free", "payg", "committed", "excess"] as const;
 
 export type CreditType = (typeof CREDIT_TYPES)[number];

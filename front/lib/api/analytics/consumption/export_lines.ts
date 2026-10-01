@@ -375,10 +375,6 @@ export function rowsToNdjson(rows: ConsumptionLineExportRow[]): string {
   );
 }
 
-export function rowsToCsvString(rows: ConsumptionLineExportRow[]): string {
-  return rowsToCsv(CONSUMPTION_LINE_EXPORT_HEADERS, rows);
-}
-
 /**
  * Streams consumption export data page by page. The first ES page is fetched
  * eagerly: if it fails, an Err is returned so the caller can respond with a

@@ -3,7 +3,6 @@ import { SOURCE_ORIGIN_LABELS } from "@app/lib/api/analytics/source_labels";
 
 export type { ObservabilityTimeRangeType } from "@app/lib/api/analytics/observability_constants";
 export {
-  CONVERSATION_FILES_AGGREGATE_KEY,
   DEFAULT_PERIOD_DAYS,
   OBSERVABILITY_TIME_RANGE,
 } from "@app/lib/api/analytics/observability_constants";

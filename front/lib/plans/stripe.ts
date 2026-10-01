@@ -423,74 +423,6 @@ export async function setStripeCustomerDefaultPaymentMethod({
 }
 
 /**
- * Ensure the Stripe customer has a default payment method
- * (`invoice_settings.default_payment_method`). A paid Stripe subscription can
- * keep its card on the subscription without the customer having a default;
- * Metronome bills the customer's default, so a missing one makes Metronome
- * invoices fail. No-op when a default is already set; otherwise adopt the
- * subscription's payment method (or, failing that, the customer's most recent
- * card). Returns the resolved default (null when none could be found to set).
- */
-export async function ensureStripeCustomerDefaultPaymentMethod({
-  stripeCustomerId,
-  stripeSubscription,
-  workspaceId,
-}: {
-  stripeCustomerId: string;
-  stripeSubscription: Stripe.Subscription;
-  workspaceId: string;
-}): Promise<
-  Result<
-    { defaultPaymentMethodId: string | null; updated: boolean },
-    { error_message: string }
-  >
-> {
-  const stripe = getStripeClient();
-  const customer = await getStripeCustomer(stripeCustomerId);
-  if (!customer) {
-    return new Err({
-      error_message: `Stripe customer not found: ${stripeCustomerId}.`,
-    });
-  }
-
-  const existing = customer.invoice_settings?.default_payment_method;
-  if (existing) {
-    return new Ok({
-      defaultPaymentMethodId: isString(existing) ? existing : existing.id,
-      updated: false,
-    });
-  }
-
-  // Adopt the subscription's payment method, else the customer's most recent card.
-  let paymentMethodId = getDefaultPaymentMethodId(stripeSubscription);
-  if (!paymentMethodId) {
-    const paymentMethods = await stripe.paymentMethods.list({
-      customer: stripeCustomerId,
-      type: "card",
-      limit: 1,
-    });
-    paymentMethodId = paymentMethods.data[0]?.id;
-  }
-  if (!paymentMethodId) {
-    logger.warn(
-      { workspaceId, stripeCustomerId },
-      "[Stripe] No payment method available to set as customer default"
-    );
-    return new Ok({ defaultPaymentMethodId: null, updated: false });
-  }
-
-  const result = await setStripeCustomerDefaultPaymentMethod({
-    stripeCustomerId,
-    paymentMethodId,
-    workspaceId,
-  });
-  if (result.isErr()) {
-    return new Err(result.error);
-  }
-  return new Ok({ defaultPaymentMethodId: paymentMethodId, updated: true });
-}
-
-/**
  * Calls the Stripe API to create a customer portal session for a given workspace/plan.
  * This allows the user to access her Stripe dashbaord without having to log in on Stripe.
  */
@@ -562,17 +494,6 @@ export async function getBillingStripeCustomerId({
 
   return new Ok(null);
 }
-
-/**
- * Calls the Stripe API to retrieve a product by its ID.
- */
-export const getProduct = async (
-  productId: string
-): Promise<Stripe.Product> => {
-  const stripe = getStripeClient();
-  const product = await stripe.products.retrieve(productId);
-  return product;
-};
 
 /**
  * Calls the Stripe API to retrieve a subscription by its ID.
@@ -692,23 +613,6 @@ export async function cancelSubscriptionImmediately({
     cancel_at_period_end: false,
   });
   await stripe.subscriptions.cancel(stripeSubscriptionId, { prorate: true });
-
-  return true;
-}
-
-/**
- * Cancel a subscription at the end of the current period,
- * allowing users to retain access until that time.
- */
-export async function cancelSubscriptionAtPeriodEnd({
-  stripeSubscriptionId,
-}: {
-  stripeSubscriptionId: string;
-}) {
-  const stripe = getStripeClient();
-  await stripe.subscriptions.update(stripeSubscriptionId, {
-    cancel_at_period_end: true,
-  });
 
   return true;
 }

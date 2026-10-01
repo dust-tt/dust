@@ -63,14 +63,6 @@ export const WARNING_BALANCE_RATIO = 0.8;
 export const LOW_BALANCE_OFFSET = 100;
 export const CRITICAL_BALANCE_OFFSET = 10;
 
-// Alert name prefixes used to identify which alert fired in webhook routing.
-export const PROGRAMMATIC_CAP_ALERT_NAME = "Programmatic cap";
-export const PROGRAMMATIC_WARNING_BALANCE_ALERT_NAME =
-  "Programmatic warning balance";
-export const PROGRAMMATIC_LOW_BALANCE_ALERT_NAME = "Programmatic low balance";
-export const PROGRAMMATIC_CRITICAL_BALANCE_ALERT_NAME =
-  "Programmatic critical balance";
-
 type ProgrammaticCapAlertState = {
   id: string;
   threshold: number;

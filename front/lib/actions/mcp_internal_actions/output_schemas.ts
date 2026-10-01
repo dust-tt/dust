@@ -173,25 +173,6 @@ export function isThinkingOutput(
 
 // Final output of the reasoning when successful with the non-CoT tokens.
 
-export const ReasoningSuccessOutputSchema = z.object({
-  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.REASONING_SUCCESS),
-  text: z.string(),
-  uri: z.literal(""),
-});
-
-export type ReasoningSuccessOutputType = z.infer<
-  typeof ReasoningSuccessOutputSchema
->;
-
-export function isReasoningSuccessOutput(
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is { type: "resource"; resource: ReasoningSuccessOutputType } {
-  return (
-    outputBlock.type === "resource" &&
-    ReasoningSuccessOutputSchema.safeParse(outputBlock.resource).success
-  );
-}
-
 // SQL query generated during the tool execution.
 
 const SqlQueryOutputSchema = z.object({
@@ -256,19 +237,6 @@ export const QueryWritingInstructionsResourceSchema = z.object({
 export type QueryWritingInstructionsResourceType = z.infer<
   typeof QueryWritingInstructionsResourceSchema
 >;
-
-export const isQueryWritingInstructionsResourceType = (
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is {
-  type: "resource";
-  resource: QueryWritingInstructionsResourceType;
-} => {
-  return (
-    outputBlock.type === "resource" &&
-    QueryWritingInstructionsResourceSchema.safeParse(outputBlock.resource)
-      .success
-  );
-};
 
 export const ExampleRowsResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXAMPLE_ROWS),
@@ -565,28 +533,6 @@ export const isRunAgentResultResourceType = (
   return (
     outputBlock.type === "resource" &&
     RunAgentResultResourceSchema.safeParse(outputBlock.resource).success
-  );
-};
-
-const RunAgentHandoverResourceSchema = z.object({
-  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_HANDOVER),
-  text: z.string(),
-  uri: z.string(),
-});
-
-type RunAgentHandoverResourceType = z.infer<
-  typeof RunAgentHandoverResourceSchema
->;
-
-export const isRunAgentHandoverResourceType = (
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is {
-  type: "resource";
-  resource: RunAgentHandoverResourceType;
-} => {
-  return (
-    outputBlock.type === "resource" &&
-    RunAgentHandoverResourceSchema.safeParse(outputBlock.resource).success
   );
 };
 
@@ -1103,21 +1049,9 @@ const OutlookMailFolderListResourceSchema = z.object({
   folders: z.array(OutlookFolderItemSchema),
 });
 
-type OutlookMailFolderListResourceType = z.infer<
+export type OutlookMailFolderListResourceType = z.infer<
   typeof OutlookMailFolderListResourceSchema
 >;
-
-export const isOutlookMailFolderListResource = (
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is {
-  type: "resource";
-  resource: OutlookMailFolderListResourceType;
-} => {
-  return (
-    outputBlock.type === "resource" &&
-    OutlookMailFolderListResourceSchema.safeParse(outputBlock.resource).success
-  );
-};
 
 // Clari Copilot tool outputs.
 
@@ -1138,17 +1072,10 @@ const ClariCallListResourceSchema = z.object({
     .optional(),
 });
 
-type ClariCallListResourceType = z.infer<typeof ClariCallListResourceSchema> & {
+export type ClariCallListResourceType = z.infer<
+  typeof ClariCallListResourceSchema
+> & {
   calls: ClariCall[];
-};
-
-export const isClariCallListResource = (
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is { type: "resource"; resource: ClariCallListResourceType } => {
-  return (
-    outputBlock.type === "resource" &&
-    ClariCallListResourceSchema.safeParse(outputBlock.resource).success
-  );
 };
 
 export const CLARI_CALL_DETAILS_MIME_TYPE =
@@ -1161,18 +1088,6 @@ const ClariCallDetailsResourceSchema = z.object({
   call: ClariCallDetailsSchema,
 });
 
-type ClariCallDetailsResourceType = z.infer<
+export type ClariCallDetailsResourceType = z.infer<
   typeof ClariCallDetailsResourceSchema
 > & { call: ClariCallDetails };
-
-export const isClariCallDetailsResource = (
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is {
-  type: "resource";
-  resource: ClariCallDetailsResourceType;
-} => {
-  return (
-    outputBlock.type === "resource" &&
-    ClariCallDetailsResourceSchema.safeParse(outputBlock.resource).success
-  );
-};

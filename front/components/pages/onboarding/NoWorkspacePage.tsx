@@ -13,7 +13,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 
-export function NoWorkspacePage() {
+function NoWorkspacePage() {
   const flow = useSearchParam("flow");
   const { user } = useUser();
   const { workspaceLookup, isWorkspaceLookupLoading } = useWorkspaceLookup({

@@ -77,7 +77,7 @@ function getMaintenancePageInfo(code: string): MaintenancePageInfo {
   }
 }
 
-export function MaintenancePage() {
+function MaintenancePage() {
   const code = useSearchParam("code");
   const maintenancePageInfo = getMaintenancePageInfo(code ?? "");
 

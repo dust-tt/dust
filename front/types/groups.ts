@@ -86,12 +86,6 @@ export type UserVisibleGroupKind = (typeof USER_VISIBLE_GROUP_KINDS)[number];
 export const GROUP_GRANTABLE_ROLES = ["admin", "manager"] as const;
 export type GroupGrantableRole = (typeof GROUP_GRANTABLE_ROLES)[number];
 
-export function isGroupGrantableRole(
-  value: unknown
-): value is GroupGrantableRole {
-  return GROUP_GRANTABLE_ROLES.includes(value as GroupGrantableRole);
-}
-
 // A group grants a billable seat *tier* to its active members — `workspace`,
 // `pro` or `max`. Only the base (monthly) variants are grantable: cadence is not
 // chosen per group. When a member is already on the granted tier the sync keeps
@@ -114,9 +108,6 @@ export function isGroupGrantableSeatType(
   return GROUP_GRANTABLE_SEAT_TYPES.some((seatType) => seatType === value);
 }
 
-export function isGroupKind(value: unknown): value is GroupKind {
-  return GROUP_KINDS.includes(value as GroupKind);
-}
 export function isSystemGroupKind(value: GroupKind): boolean {
   return value === "system";
 }
@@ -170,16 +161,6 @@ export function getGroupIdsFromHeaders(
   }
 }
 
-export function getHeaderFromGroupIds(groupIds: string[] | undefined) {
-  if (!groupIds) {
-    return undefined;
-  }
-
-  return {
-    [DustGroupIdsHeader]: groupIds.join(","),
-  };
-}
-
 const DustRoleHeader = "X-Dust-Role";
 
 export function getRoleFromHeaders(
@@ -207,7 +188,6 @@ export function getHeaderFromRole(role: RoleType | undefined) {
   };
 }
 
-export const SKILL_GROUP_PREFIX = "Group for Skill";
 export const SPACE_GROUP_PREFIX = "Group for space";
 export const PROJECT_GROUP_PREFIX = "Group for Pod";
 export const PROJECT_EDITOR_GROUP_PREFIX = "Editors for Pod";

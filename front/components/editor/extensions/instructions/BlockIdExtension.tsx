@@ -5,10 +5,7 @@ import {
 import { generateShortBlockId } from "@app/lib/generate_short_block_id";
 import UniqueID from "@tiptap/extension-unique-id";
 
-export {
-  BLOCK_ID_ATTRIBUTE,
-  BLOCK_ID_UNIQUE_ID_NODE_TYPES,
-} from "@app/lib/editor/node_constants";
+export { BLOCK_ID_ATTRIBUTE } from "@app/lib/editor/node_constants";
 
 /**
  * Block ID extension that adds unique IDs to block-level nodes

@@ -341,13 +341,6 @@ export function describeUsageFilter(filter: UsageFilter): string {
     .join("; ");
 }
 
-export function usageFilterSelectionCount(filter: UsageFilter): number {
-  return USAGE_FILTER_CATEGORIES.reduce(
-    (count, category) => count + (filter[category]?.length ?? 0),
-    0
-  );
-}
-
 export function toggleUsageFilterOption<C extends UsageFilterCategory>(
   filter: UsageFilter,
   category: C,

@@ -16,7 +16,3 @@ export const GetAgentMemoriesResponseBodySchema = z.object({
 export type GetAgentMemoriesResponseBody = z.infer<
   typeof GetAgentMemoriesResponseBodySchema
 >;
-
-export const PatchAgentMemoryRequestBodySchema = z.object({
-  content: z.string(),
-});

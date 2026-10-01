@@ -93,12 +93,6 @@ export type ModelMessageTypeMultiActions =
   | ModelMessageTypeMultiActionsWithoutContentFragment
   | ContentFragmentMessageTypeModel;
 
-export function isContentFragmentMessageTypeModel(
-  contentFragment: ModelMessageTypeMultiActions
-): contentFragment is ContentFragmentMessageTypeModel {
-  return contentFragment.role === "content_fragment";
-}
-
 export type ModelConversationTypeMultiActions = {
   messages: ModelMessageTypeMultiActionsWithoutContentFragment[];
 };
