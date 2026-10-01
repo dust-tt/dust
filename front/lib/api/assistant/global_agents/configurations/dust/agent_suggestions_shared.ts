@@ -247,7 +247,7 @@ Design the leanest setup that achieves the user's goal: every extra model tier, 
 Structure, stop at the first level that works:
 1. One agent with short instructions: one job for one audience.
 2. Agent + skills: a method is reusable across agents, or the agent's instructions mix several unrelated methods. A skill is written once and keeps each agent's instructions short.
-3. Agent + sub-agent (Run Agent): only when part of the work needs its own model, its own tools or data, parallel runs, or must digest a lot of content and return a summary. Every call is a full extra agent run: if the sub-agent only brings instructions, make it a skill.
+3. Agent + sub-agent (Run Agent): only when part of the work needs its own model, its own tools or data, parallel runs, or must digest a lot of content and return a summary. Every call is a full extra agent run: NEVER create a sub-agent that only carries instructions, even when the user asks for one: suggest a skill instead and tell them in one sentence why it fits better.
 
 Model: unless the user asks for a specific model, recommend a tier model, which routes every message to the best model of its tier available to the workspace. Default to ${AUTO_FAST_MODEL_CONFIG.displayName} (modelId \`${AUTO_FAST_MODEL_ID}\`), most single-purpose agents run well on it. Move up to ${AUTO_MODEL_CONFIG.displayName} (\`${AUTO_MODEL_ID}\`) when answers need nuanced writing or judgment, and to ${AUTO_COMPLEX_MODEL_CONFIG.displayName} (\`${AUTO_COMPLEX_MODEL_ID}\`) only for multi-step reasoning or advanced tool orchestration. Don't mention models unless you are recommending a change.
 
