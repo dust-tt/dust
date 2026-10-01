@@ -1,6 +1,7 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentEditors } from "@app/lib/api/assistant/editors";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -37,22 +38,68 @@ function isActiveWorkspaceAgentConfiguration(
   );
 }
 
+// The full definition is exported or written back as-is, so it needs the content: a redacted
+// configuration would export (or re-save) empty instructions and tools. A writer re-saving an agent
+// whose content it cannot view gets it from the resave source, whose tools are not listable for the
+// caller and are carried over as-is (see `resave-source-content`).
+async function getFullAgentConfiguration(
+  auth: Authenticator,
+  agent: AgentResource,
+  { forResave }: { forResave: boolean }
+): Promise<Result<AgentConfigurationType | null, Error>> {
+  if (agent.canViewContent) {
+    const [agentConfiguration] = await toAgentConfigurations(auth, [agent]);
+    return new Ok(agentConfiguration ?? null);
+  }
+  if (!forResave || !auth.can("write", agent)) {
+    return new Ok(null);
+  }
+
+  const sourceRes = await agent.getResaveSource(auth);
+  if (sourceRes.isErr()) {
+    return sourceRes;
+  }
+  const [[agentConfiguration], actions] = await Promise.all([
+    toAgentConfigurations(auth, [sourceRes.value]),
+    sourceRes.value.listActions(auth, {
+      permissionFiltering: "dangerously_skip",
+    }),
+  ]);
+  return new Ok(agentConfiguration ? { ...agentConfiguration, actions } : null);
+}
+
 export async function getActiveWorkspaceAgentConfiguration(
   auth: Authenticator,
   agentId: string,
   {
     dangerouslySkipPermissionFiltering,
-  }: { dangerouslySkipPermissionFiltering?: boolean } = {}
+    forResave = false,
+  }: {
+    dangerouslySkipPermissionFiltering?: boolean;
+    // The configuration is only written back as a new version, never returned to the caller.
+    forResave?: boolean;
+  } = {}
 ): Promise<
   Result<ActiveWorkspaceAgentConfiguration, APIErrorWithContentfulStatusCode>
 > {
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId,
-    variant: "full",
-    dangerouslySkipPermissionFiltering,
+  const agent = await AgentResource.fetchById(auth, agentId, {
+    dangerouslySkipFetchCheck: dangerouslySkipPermissionFiltering,
   });
+  const agentConfigurationRes = agent
+    ? await getFullAgentConfiguration(auth, agent, { forResave })
+    : new Ok(null);
+  if (agentConfigurationRes.isErr()) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: agentConfigurationRes.error.message,
+      },
+    });
+  }
+  const agentConfiguration = agentConfigurationRes.value;
 
-  if (!agentConfiguration || (!agentConfiguration.canRead && !auth.isAdmin())) {
+  if (!agentConfiguration) {
     return new Err({
       status_code: 404,
       api_error: {
@@ -81,8 +128,10 @@ export async function getAgentConfigurationContext(
   {
     requireEditorGroup = false,
     dangerouslySkipPermissionFiltering,
+    forResave,
   }: {
     requireEditorGroup?: boolean;
+    forResave?: boolean;
     // Resolves the agent and its skills even when they request spaces the caller cannot read.
     // Only for callers re-saving the agent as-is: dropping them would silently strip the agent's
     // skills from the new version.
@@ -96,6 +145,7 @@ export async function getAgentConfigurationContext(
     agentId,
     {
       dangerouslySkipPermissionFiltering,
+      forResave,
     }
   );
   if (agentResult.isErr()) {

@@ -1,7 +1,6 @@
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { pruneSuggestionsForAgent } from "@app/lib/api/assistant/agent_suggestion_pruning";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { resolveAgentRequestedSpaces } from "@app/lib/api/assistant/configuration/requested_spaces";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import type { Authenticator } from "@app/lib/auth";
@@ -9,6 +8,7 @@ import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { getModelTierAccessErrorForAgentConfiguration } from "@app/lib/model_tiers/access";
 import type { AgentAuditOptions } from "@app/lib/resources/agent_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -328,22 +328,22 @@ export async function createOrUpgradeAgentConfiguration({
   }
 
   // The save (configuration row + actions + skills) is atomic (see `agent-save-atomic`), so a
-  // returned Ok means everything committed. Re-read the full config skipping the read gate — the
-  // caller just wrote it, and may hold `write` without `read` (e.g. an admin API key editing a
-  // hidden agent) — to build the `AgentConfigurationType` response, including the actions just
-  // created.
-  const savedConfig = await getAgentConfiguration(auth, {
-    agentId: savedResource.sId,
-    variant: "full",
-    dangerouslySkipPermissionFiltering: true,
-  });
+  // returned Ok means everything committed. The response is built from the saved resource, redacted
+  // like any read when the caller holds `write` without `read` (e.g. an admin API key editing a
+  // hidden agent, see `unreadable-agent-content-hidden`).
+  const [savedConfig] = await toAgentConfigurations(auth, [savedResource]);
   if (!savedConfig) {
     return new Err(new Error("Failed to load the saved agent configuration."));
   }
 
   // Prune outdated suggestions after saving an existing agent.
-  // This must happen after skills/tools are added to the new version.
-  if (agentConfigurationId && !skipSuggestionPruning) {
+  // This must happen after skills/tools are added to the new version. Pruning compares suggestions
+  // against the new content, so it only runs for a caller who can view it.
+  if (
+    agentConfigurationId &&
+    !skipSuggestionPruning &&
+    savedResource.canViewContent
+  ) {
     await pruneSuggestionsForAgent(auth, savedConfig);
   }
 

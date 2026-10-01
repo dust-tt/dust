@@ -1022,9 +1022,10 @@ export class AgentResource
 
   static async fetchById(
     auth: Authenticator,
-    agentId: string
+    agentId: string,
+    options: AgentFetchOptions = {}
   ): Promise<AgentResource | null> {
-    const [resource] = await this.fetchByIds(auth, [agentId]);
+    const [resource] = await this.fetchByIds(auth, [agentId], options);
     return resource ?? null;
   }
 
@@ -3636,7 +3637,7 @@ export class AgentResource
       (providedDefinitionKeys.length > 0 || hasTagDelta) &&
       (this.canViewContent || auth.can("write", this))
     ) {
-      const resaveSourceRes = await this.getResaveSource();
+      const resaveSourceRes = await this.getResaveSource(auth);
       if (resaveSourceRes.isErr()) {
         return resaveSourceRes;
       }
@@ -3792,11 +3793,25 @@ export class AgentResource
 
   // A writer who cannot view the content (a regular admin API key on a hidden agent, see
   // `admin-key-agent-write`) rebuilds the new version from a caller-independent copy of the current
-  // one. The copy never leaves `updateConfiguration`: its content only flows into the new version
-  // (see `unreadable-agent-content-hidden`).
-  private async getResaveSource(): Promise<Result<AgentResource, Error>> {
+  // one.
+  /**
+   * @cc [owner:tdraier,label:security] resave-source-content
+   * `getResaveSource` returns this resource to a caller who can view its content, a
+   * caller-independent copy of the current version to a caller holding `write`, and an error to any
+   * other caller. The copy's content MUST only flow into a new version of the agent
+   * (`updateConfiguration`, the re-save context of `getActiveWorkspaceAgentConfiguration`) and MUST
+   * NOT be returned to the caller (see `unreadable-agent-content-hidden`).
+   */
+  async getResaveSource(
+    auth: Authenticator
+  ): Promise<Result<AgentResource, Error>> {
     if (this.canViewContent) {
       return new Ok(this);
+    }
+    if (!auth.can("write", this)) {
+      return new Err(
+        new Error("Re-saving this agent requires write access to it.")
+      );
     }
     const [current] = await AgentResource.loadResource(this.workspaceId, {
       id: [this.id],
