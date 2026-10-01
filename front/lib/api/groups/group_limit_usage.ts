@@ -12,10 +12,12 @@ import logger from "@app/logger/logger";
 
 /**
  * @cc [owner:rfrenoy,label:product;backend] limit-group-captured-at-recording
- * A message's credits MUST be recorded to the limit group stored on the message: the first recording
- * that resolves a limit group stores it, and every later recording of that message reuses it, even if
- * the member's limit group changed since. A recording made while the member has no limit group adds
- * nothing to any group.
+ * While group limits are enabled, a message's credits MUST be recorded to the limit group stored on
+ * the message: the first recording that resolves a limit group stores it, and every later recording of
+ * that message reuses it, even if the member's limit group changed or was removed since. A recording of
+ * a message with no stored group, made while the member has no limit group, adds nothing and stores
+ * nothing. Nothing is recorded once the stored group has been deleted. Recordings of one message are
+ * assumed not to overlap (as the cost delta in `computeAndStoreAgentMessageCredits` already assumes).
  */
 export async function recordGroupLimitUsage(
   auth: Authenticator,
