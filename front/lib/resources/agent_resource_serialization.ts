@@ -244,19 +244,23 @@ export async function toLightAgentConfiguration(
 
 /**
  * Renders full `AgentConfigurationType`s: the light enrichments plus the batched `instructionsHtml`
- * and `actions` (redacted when the caller cannot view the content). Favorites and tags can be
- * skipped as in `toLightAgentConfigurations`.
+ * and `actions` (redacted when the caller cannot view the content). Instructions, favorites and
+ * tags can be skipped as in `toLightAgentConfigurations` (`instructionsHtml` goes with
+ * `instructions`).
  */
 export async function toAgentConfigurations(
   auth: Authenticator,
   resources: AgentResource[],
   {
+    withInstructions = true,
     withFavorites = true,
     withTags = true,
-  }: { withFavorites?: boolean; withTags?: boolean } = {}
+  }: LightAgentConfigurationOptions = {}
 ): Promise<AgentConfigurationType[]> {
   const [instructions, favorites, tags, actions] = await Promise.all([
-    enrichWithInstructions(resources),
+    withInstructions
+      ? enrichWithInstructions(resources)
+      : new Map<AgentResource, AgentInstructionsEnrichment>(),
     withFavorites
       ? enrichWithFavorites(auth, resources)
       : new Map<string, AgentFavoriteEnrichment>(),
