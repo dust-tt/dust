@@ -1,9 +1,7 @@
 import { CreateAgentDropdown } from "@app/components/assistant/CreateAgentDropdown";
 import { useSearchAgents } from "@app/hooks/useSearchAgents";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import { filterAndSortAgents } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { RichAgentMentionCandidate } from "@app/types/assistant/mentions";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -45,9 +43,9 @@ interface AgentPickerProps {
 
 /**
  * @cc [owner:aubin-tchoi,label:react;product] agent-picker-search-rollout
- * With `new_manage_agents_page`, the open, enabled picker MUST search agents in
- * alphabetical order. Without the flag it MUST filter the supplied agents locally
- * and MUST NOT call agent search. A selected match stays first in either mode.
+ * The open, enabled picker MUST search agents in alphabetical order.
+ * A selected match MUST stay first, including a supplied selection beyond the
+ * first search page when the query is blank.
  */
 export function AgentPicker({
   owner,
@@ -65,8 +63,6 @@ export function AgentPicker({
   selectedAgentId,
   onDeselect,
 }: AgentPickerProps) {
-  const { hasFeature } = useFeatureFlags();
-  const useAgentSearch = hasFeature("new_manage_agents_page");
   const clientType = useClientType();
   const isMobile = useIsMobile();
   const [searchText, setSearchText] = useState("");
@@ -82,17 +78,15 @@ export function AgentPicker({
     sortBy: "name",
     sortOrder: "asc",
     permissionFiltering: "strict",
-    disabled: !useAgentSearch || !isOpen || disabled,
+    disabled: !isOpen || disabled,
   });
-  const isSearchLoading = useAgentSearch && isAgentsLoading;
-  const isSearchError = useAgentSearch && isAgentsError;
-  const searched: RichAgentMentionCandidate[] = useAgentSearch
-    ? searchResults
-    : filterAndSortAgents(agents, searchText);
+  const isSearchLoading = isAgentsLoading;
+  const isSearchError = isAgentsError;
+  const searched: RichAgentMentionCandidate[] = searchResults;
   const selected =
     searched.find((a) => a.sId === selectedAgentId) ??
     // Keep the current selection visible even if it is beyond the first search page.
-    (useAgentSearch && !searchText.trim()
+    (!searchText.trim()
       ? agents.find((a) => a.sId === selectedAgentId)
       : undefined);
   const searchedAgents = selected

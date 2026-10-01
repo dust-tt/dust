@@ -27,7 +27,7 @@ async function setup(hasFavorites = true) {
     subscription: auth.getNonNullableSubscription(),
     isAdmin: false,
     isManager: false,
-    featureFlags: ["skills_search"],
+    featureFlags: [],
     vizUrl: "http://localhost",
     providersHealth: null,
     workspacePermissions: await auth.getWorkspacePermissions(),

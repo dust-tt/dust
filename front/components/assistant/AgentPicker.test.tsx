@@ -60,7 +60,7 @@ const searchResponse = {
   facets: {},
 };
 
-async function setup(searchEnabled = true) {
+async function setup() {
   const { authenticator, user } = await createResourceTest({ role: "admin" });
   const owner = authenticator.getNonNullableWorkspace();
   const legacyAgent = await AgentConfigurationFactory.createTestAgent(
@@ -75,7 +75,7 @@ async function setup(searchEnabled = true) {
     subscription: authenticator.getNonNullableSubscription(),
     isAdmin: true,
     isManager: false,
-    featureFlags: searchEnabled ? ["new_manage_agents_page"] : [],
+    featureFlags: [],
     vizUrl: "http://localhost",
     providersHealth: null,
     workspacePermissions: await authenticator.getWorkspacePermissions(),
@@ -117,21 +117,6 @@ async function setup(searchEnabled = true) {
 }
 
 describe("AgentPicker", () => {
-  it("keeps local filtering and selection when the flag is off", async () => {
-    const { legacyAgent, fetcherWithBody, onItemClick, renderPicker } =
-      await setup(false);
-    const user = userEvent.setup();
-    renderPicker();
-    await user.click(screen.getByRole("button", { name: "Pick an agent" }));
-    expect(
-      await screen.findByRole("menuitem", { name: "Zulu" })
-    ).toBeInTheDocument();
-    await user.type(screen.getByPlaceholderText("Search Agents"), "zul");
-    await user.keyboard("{Enter}");
-    expect(onItemClick).toHaveBeenCalledWith(legacyAgent);
-    expect(fetcherWithBody).not.toHaveBeenCalled();
-  });
-
   it("searches only while open and selects results absent from the supplied list", async () => {
     const { owner, fetcherWithBody, onItemClick, renderPicker } = await setup();
     const user = userEvent.setup();

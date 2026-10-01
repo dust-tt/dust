@@ -9,7 +9,6 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MentionResource } from "@app/lib/resources/mention_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -195,7 +194,8 @@ describe("POST /api/w/:wId/assistant/mentions/parse", () => {
 
 describe("GET /api/w/:wId/assistant/mentions/suggestions", () => {
   it("returns agent suggestions", async () => {
-    const { workspace, agentConfig } = await setup();
+    const { workspace, auth, agentConfig } = await setup();
+    await mockAgentSearchResults(auth, [agentConfig.sId]);
     const response = await suggestions(workspace, { query: "test" });
 
     expect(response.status).toBe(200);
@@ -211,7 +211,7 @@ describe("GET /api/w/:wId/assistant/mentions/suggestions", () => {
       mockSearch.mock.calls.some(
         ([request]) => request.index === AGENT_SEARCH_ALIAS_NAME
       )
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("filters suggestions by query", async () => {
@@ -225,6 +225,7 @@ describe("GET /api/w/:wId/assistant/mentions/suggestions", () => {
       description: "Beta Description",
     });
 
+    await mockAgentSearchResults(auth, [alpha.sId]);
     const response = await suggestions(workspace, { query: "alpha" });
     expect(response.status).toBe(200);
     const body = await response.json();
@@ -236,7 +237,8 @@ describe("GET /api/w/:wId/assistant/mentions/suggestions", () => {
   });
 
   it("supports select=agents", async () => {
-    const { workspace } = await setup();
+    const { workspace, auth, agentConfig } = await setup();
+    await mockAgentSearchResults(auth, [agentConfig.sId]);
     const response = await suggestions(workspace, {
       query: "test",
       select: "agents",
@@ -284,12 +286,12 @@ describe("GET /api/w/:wId/assistant/mentions/suggestions", () => {
     { query: "", sortBy: "name" },
     { query: "   ", sortBy: "name" },
     { query: "sal mar", sortBy: "relevance" },
-  ])("uses $sortBy sorting and preserves search result order with the flag on (query: $query)", async ({
+  ])("uses $sortBy sorting and preserves search result order without feature flags (query: $query)", async ({
     query,
     sortBy,
   }) => {
     const { workspace, auth } = await setup();
-    await FeatureFlagFactory.basic(auth, "new_manage_agents_page");
+
     const first = await AgentConfigurationFactory.createTestAgent(auth, {
       name:
         sortBy === "relevance"
@@ -370,8 +372,8 @@ describe("GET /api/w/:wId/assistant/mentions/suggestions", () => {
   });
 
   it("keeps successful empty search results without falling back to the full listing", async () => {
-    const { workspace, auth } = await setup();
-    await FeatureFlagFactory.basic(auth, "new_manage_agents_page");
+    const { workspace } = await setup();
+
     const response = await suggestions(workspace, {
       query: "",
       select: "agents",
@@ -386,7 +388,7 @@ describe("GET /api/w/:wId/assistant/mentions/suggestions", () => {
     "agent",
   ])("includes a last-mentioned participant beyond the first search page (query: %s)", async (query) => {
     const { workspace, auth } = await setup();
-    await FeatureFlagFactory.basic(auth, "new_manage_agents_page");
+
     const page = [];
     for (let i = 0; i < 20; i++) {
       const agent = await AgentConfigurationFactory.createTestAgent(auth, {
@@ -459,7 +461,7 @@ describe("GET /api/w/:wId/assistant/mentions/suggestions", () => {
     "nonmatching",
   ] as const)("does not add a %s participant absent from search results", async (condition) => {
     const { workspace, auth, agentConfig } = await setup();
-    await FeatureFlagFactory.basic(auth, "new_manage_agents_page");
+
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: agentConfig.sId,
       messagesCreatedAt: [new Date()],
@@ -501,8 +503,8 @@ describe("GET /api/w/:wId/assistant/mentions/suggestions", () => {
   });
 
   it("falls back to the legacy lookup when agent search fails", async () => {
-    const { workspace, auth, agentConfig } = await setup();
-    await FeatureFlagFactory.basic(auth, "new_manage_agents_page");
+    const { workspace, agentConfig } = await setup();
+
     vi.mocked(withEs).mockResolvedValueOnce(
       new Err(new ElasticsearchError("connection_error", "Search unavailable"))
     );
@@ -517,9 +519,9 @@ describe("GET /api/w/:wId/assistant/mentions/suggestions", () => {
     );
   });
 
-  it("does not search agents for user-only requests with the flag on", async () => {
-    const { workspace, auth } = await setup();
-    await FeatureFlagFactory.basic(auth, "new_manage_agents_page");
+  it("does not search agents for user-only requests without feature flags", async () => {
+    const { workspace } = await setup();
+
     const response = await suggestions(workspace, {
       query: "test",
       select: "users",
@@ -534,7 +536,7 @@ describe("GET /api/w/:wId/assistant/mentions/suggestions", () => {
 
   it("keeps Sidekick mentionable when it participates in the conversation", async () => {
     const { workspace, auth } = await setup();
-    await FeatureFlagFactory.basic(auth, "new_manage_agents_page");
+
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.SIDEKICK,
       messagesCreatedAt: [new Date()],

@@ -14,19 +14,11 @@ import {
   useFeatureFlags,
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useSearchMembers } from "@app/lib/swr/memberships";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
-import { useSearchSkills, useSkills } from "@app/lib/swr/skill_configurations";
-import { filterAndSortAgents, subFilter } from "@app/lib/utils";
-import type { AgentSearchListItemType } from "@app/types/agent_search/agent_search";
+import { useSearchSkills } from "@app/lib/swr/skill_configurations";
 import { hasGroupManagementScope } from "@app/types/api/auth_context";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationListItemType } from "@app/types/assistant/conversation";
-import type {
-  SkillListItemType,
-  SkillWithoutInstructionsAndToolsType,
-} from "@app/types/assistant/skill_configuration";
 import type { PodType } from "@app/types/space";
 import type {
   LightUserTypeWithWorkspace,
@@ -45,14 +37,6 @@ const MAX_DISPLAYED_SETTINGS = 3;
 export const MIN_COMMAND_PALETTE_SEARCH_LENGTH = 1;
 /** Typeahead debounce — matches other product search fields (300ms). */
 const COMMAND_PALETTE_SEARCH_DEBOUNCE_MS = 300;
-
-type CommandPaletteSkill =
-  | SkillListItemType
-  | SkillWithoutInstructionsAndToolsType;
-
-type CommandPaletteAgent =
-  | LightAgentConfigurationType
-  | AgentSearchListItemType;
 
 type CommandPalettePod = PodType & { isMember: boolean };
 
@@ -107,55 +91,17 @@ function useCommandPaletteAgents({
   isOpen: boolean;
   debouncedQuery: string;
 }) {
-  const { hasFeature } = useFeatureFlags();
-  const isAgentsSearchEnabled = hasFeature("new_manage_agents_page");
   const isSearchActive = isOpen && debouncedQuery.length > 0;
-
-  const {
-    agentConfigurations,
-    isAgentConfigurationsLoading: isListedAgentsLoading,
-  } = useAgentConfigurations({
-    workspaceId: owner.sId,
-    agentsGetView: "list",
-    // Client-side filter fallback only — skip until there is a valid query.
-    disabled: !isSearchActive || isAgentsSearchEnabled,
-  });
-  const {
-    agents: searchAgents,
-    hasMore: hasMoreSearchAgents,
-    isAgentsLoading: isSearchAgentsLoading,
-  } = useSearchAgents({
+  const { agents, hasMore, isAgentsLoading } = useSearchAgents({
     owner,
     searchTerm: debouncedQuery,
     limit: MAX_DISPLAYED_AGENTS,
     sortBy: "relevance",
-    disabled: !isSearchActive || !isAgentsSearchEnabled,
+    disabled: !isSearchActive,
     keepPreviousData: false,
     debounceMs: 0,
   });
-
-  const allFilteredAgents = useMemo(
-    () =>
-      isSearchActive
-        ? filterAndSortAgents(agentConfigurations, debouncedQuery)
-        : [],
-    [agentConfigurations, debouncedQuery, isSearchActive]
-  );
-
-  return {
-    agents: (isAgentsSearchEnabled
-      ? searchAgents
-      : allFilteredAgents.slice(
-          0,
-          MAX_DISPLAYED_AGENTS
-        )) as CommandPaletteAgent[],
-    hasMoreAgents: isAgentsSearchEnabled
-      ? hasMoreSearchAgents
-      : allFilteredAgents.length > MAX_DISPLAYED_AGENTS,
-    isLoading: isAgentsSearchEnabled
-      ? isSearchAgentsLoading
-      : isListedAgentsLoading,
-  };
+  return { agents, hasMoreAgents: hasMore, isLoading: isAgentsLoading };
 }
 
 function useCommandPaletteSkills({
@@ -167,51 +113,16 @@ function useCommandPaletteSkills({
   isOpen: boolean;
   debouncedQuery: string;
 }) {
-  const { hasFeature } = useFeatureFlags();
-  const isSkillsSearchEnabled = hasFeature("skills_search");
   const isSearchActive = isOpen && debouncedQuery.length > 0;
-
-  const { skills, isSkillsLoading: isListedSkillsLoading } = useSkills({
-    owner,
-    // Client-side filter fallback only — skip until there is a valid query.
-    disabled: !isSearchActive || isSkillsSearchEnabled,
-    status: "active",
-  });
-  const {
-    skills: searchSkills,
-    hasMore: hasMoreSearchSkills,
-    isSkillsLoading: isSearchSkillsLoading,
-  } = useSearchSkills({
+  const { skills, hasMore, isSkillsLoading } = useSearchSkills({
     owner,
     searchTerm: debouncedQuery,
     limit: MAX_DISPLAYED_SKILLS,
-    disabled: !isSearchActive || !isSkillsSearchEnabled,
+    disabled: !isSearchActive,
     keepPreviousData: false,
     debounceMs: 0,
   });
-
-  const allFilteredSkills = useMemo(() => {
-    if (!isSearchActive) {
-      return [];
-    }
-    const lowerQuery = debouncedQuery.toLowerCase();
-    return skills.filter((s) => subFilter(lowerQuery, s.name.toLowerCase()));
-  }, [skills, debouncedQuery, isSearchActive]);
-
-  return {
-    skills: (isSkillsSearchEnabled
-      ? searchSkills
-      : allFilteredSkills.slice(
-          0,
-          MAX_DISPLAYED_SKILLS
-        )) as CommandPaletteSkill[],
-    hasMoreSkills: isSkillsSearchEnabled
-      ? hasMoreSearchSkills
-      : allFilteredSkills.length > MAX_DISPLAYED_SKILLS,
-    isLoading: isSkillsSearchEnabled
-      ? isSearchSkillsLoading
-      : isListedSkillsLoading,
-  };
+  return { skills, hasMoreSkills: hasMore, isLoading: isSkillsLoading };
 }
 
 function useCommandPalettePods({
