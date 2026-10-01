@@ -1,12 +1,12 @@
 import { CapabilitiesPickerItemsList } from "@app/components/assistant/CapabilitiesPicker";
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
+import { useSearchSkillsInfinite } from "@app/hooks/useSearchSkillsInfinite";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { compareStrings } from "@app/lib/i18n/format";
 import { getSkillAvatarIcon } from "@app/lib/skill";
-import { useSearchSkills } from "@app/lib/swr/skill_configurations";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Button,
   ChevronDown,
   DropdownMenu,
   DropdownMenuContent,
@@ -39,15 +39,19 @@ export function PodDefaultSkillPicker({
   const useSkillSearch = hasFeature("skills_search");
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [offset, setOffset] = useState(0);
+  const [scrollEnd, setScrollEnd] = useState<HTMLDivElement | null>(null);
+  // Observe the dropdown viewport, not the surrounding sheet's scroll area.
+  const scrollRoot = scrollEnd?.closest<HTMLElement>(
+    "[data-radix-scroll-area-viewport]"
+  );
   const {
     skills: searchSkills,
     isSkillsLoading,
     hasMore,
-  } = useSearchSkills({
+    loadMore,
+  } = useSearchSkillsInfinite({
     owner,
     searchTerm,
-    offset,
     limit: SKILL_SEARCH_PAGE_SIZE,
     disabled: !isOpen || !useSkillSearch,
   });
@@ -67,18 +71,13 @@ export function PodDefaultSkillPicker({
     (skill) => !selectedIds.has(skill.sId)
   );
 
-  const changeSearch = (query: string) => {
-    setSearchTerm(query);
-    setOffset(0);
-  };
-
   return (
     <DropdownMenu
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
         if (open) {
-          changeSearch("");
+          setSearchTerm("");
         }
       }}
     >
@@ -101,7 +100,7 @@ export function PodDefaultSkillPicker({
             name="search-default-skills"
             placeholder="Search skills"
             value={searchTerm}
-            onChange={changeSearch}
+            onChange={setSearchTerm}
           />
         }
       >
@@ -134,29 +133,23 @@ export function PodDefaultSkillPicker({
             }}
           />
         ) : null}
-        {useSkillSearch && (offset > 0 || hasMore) && (
-          <div className="flex items-center justify-between gap-2 p-2">
-            <Button
-              label="Previous"
-              variant="outline"
-              size="sm"
-              disabled={offset === 0 || isSkillsLoading}
-              onClick={() =>
-                setOffset((previous) => previous - SKILL_SEARCH_PAGE_SIZE)
+        <div ref={setScrollEnd}>
+          {/* Recheck after each page, including pages with only selected skills. */}
+          {useSkillSearch && scrollRoot && (
+            <InfiniteScroll
+              key={searchSkills.length}
+              nextPage={loadMore}
+              hasMore={hasMore}
+              options={{ root: scrollRoot }}
+              showLoader={isSkillsLoading && matchingSkills.length > 0}
+              loader={
+                <div className="flex justify-center p-2">
+                  <Spinner size="sm" />
+                </div>
               }
             />
-            <Button
-              label="Next"
-              variant="outline"
-              size="sm"
-              disabled={!hasMore || isSkillsLoading}
-              isLoading={isSkillsLoading}
-              onClick={() =>
-                setOffset((previous) => previous + SKILL_SEARCH_PAGE_SIZE)
-              }
-            />
-          </div>
-        )}
+          )}
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );
