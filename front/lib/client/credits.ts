@@ -112,8 +112,10 @@ export function formatMicroUsdCompact(microUsd: number): string {
 // ("on Oct 6"). Shared by the fair-use and premium-usage reset copy.
 /**
  * @cc [owner:sfriquet,label:product] reset-day-in-ui-locale
- * The day label MUST be formatted in the active UI locale (`getActiveLocale`), not in the format
- * locale of `setFormatLocale`, and "today" and "tomorrow" MUST come from `numeric: "auto"`.
+ * The day label MUST be formatted in the UI locale (`getActiveLocale`), passed explicitly to the
+ * formatters, and MUST NOT fall back to the default locale of `lib/i18n/format.ts`, which is the
+ * browser's when the `localisation` flag is off: a French browser MUST then get "tomorrow", not
+ * "demain". "today" and "tomorrow" MUST come from `numeric: "auto"`.
  */
 export function formatRelativeResetDay(isoDate: string): string {
   const resetAt = new Date(isoDate);

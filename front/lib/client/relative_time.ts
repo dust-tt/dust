@@ -31,9 +31,10 @@ const SHORT_FORM_STYLE_BY_LOCALE: Record<
 
 /**
  * @cc [owner:sfriquet,label:product] relative-time-in-ui-locale
- * Relative times MUST be formatted in the active UI locale (`getActiveLocale`), not in the format
- * locale of `setFormatLocale`: they are words of the surrounding UI sentence, so a browser locale
- * other than the UI one MUST NOT change them.
+ * Relative times MUST be formatted in the UI locale (`getActiveLocale`), passed explicitly to the
+ * formatter, and MUST NOT fall back to the default locale of `lib/i18n/format.ts`, which is the
+ * browser's when the `localisation` flag is off. With the flag off, a French browser MUST get
+ * "3 days ago", not "il y a 3 jours".
  */
 /**
  * @cc [owner:sfriquet,label:product] relative-time-wording
