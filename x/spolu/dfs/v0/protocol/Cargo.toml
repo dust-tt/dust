@@ -1,0 +1,17 @@
+[package]
+name = "dfs-protocol"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow = "1"
+base64 = "0.23"
+mime = "0.3"
+percent-encoding = "2"
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+uuid = { version = "1", features = ["v4"] }
+
+[lints]
+workspace = true

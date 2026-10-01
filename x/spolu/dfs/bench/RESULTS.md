@@ -537,3 +537,44 @@ so 3x the IOPS than 09/29 tests
 | write        | unlink (32 files)                              | once  |     59.06 | OK     |
 +--------------+------------------------------------------------+-------+-----------+--------+
 ```
+
+## Rust DFS — latest measured cold-start run (2026-09-30)
+
+Unchanged jd corpus/workloads; fresh server and client with no reused local disk caches. This run
+includes client metadata/content caching but predates kernel metadata caching and the latest
+concurrency fixes. A cold-start rerun of the current code is pending Docker/socket access.
+
+Population took **61.348 s**, followed by **83.358 s** of remaining GCS persistence drain before
+restart. Cached fsync acknowledges server visibility. All 24 checks passed; times are milliseconds.
+`first` is the first invocation of each workload; later workloads can benefit from earlier reads.
+
+```text
++--------------+------------------------------------------------+-------+------------+--------+
+| Feature      | Workload                                       | Phase | Time (ms)  | Result |
++--------------+------------------------------------------------+-------+------------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 111,135.02 | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  |   4,295.62 | OK     |
+| metadata     | rg --files (10,000 files)                      | first |      22.64 | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  |      22.80 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first |   4,754.69 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  |   4,822.44 | OK     |
+| metadata     | stat missing (256 paths)                       | first |     175.79 | OK     |
+| metadata     | stat missing (256 paths)                       | warm  |      97.75 | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 238,111.11 | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  |   1,335.48 | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first |   1,326.14 | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  |   1,354.57 | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first |     782.17 | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  |     763.71 | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first |     233.75 | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  |     197.82 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first |   5,847.15 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  |   5,859.33 | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first |     122.96 | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  |     125.86 | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  |     383.53 | OK     |
+| file sync    | fsync (32 files)                               | once  |      11.80 | OK     |
+| write        | close (32 files)                               | once  |       9.45 | OK     |
+| write        | unlink (32 files)                              | once  |      76.89 | OK     |
++--------------+------------------------------------------------+-------+------------+--------+
+```
