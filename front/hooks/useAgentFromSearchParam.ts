@@ -26,9 +26,12 @@ export function useAgentFromSearchParam(workspaceId: string) {
   // appliedParamRef is cleared (refs alone do not invalidate effects).
   const newConversationVisitRef = useRef(0);
 
-  // ?user= (or suppressDefaultAgent after it is consumed) means the composer is in
-  // "member mention, no agent" mode — do not read or write ?agent=.
-  const isUserDeepLink = !!user || suppressDefaultAgent;
+  // While ?user= is still in the URL, member deep-link owns the composer — do not
+  // apply or mirror ?agent=. Once ?user= is consumed, suppressDefaultAgent only
+  // blocks writing a stale default agent back into the URL; an explicit ?agent=
+  // (e.g. Cmd+K → New conversation with agent) must still apply and keeps
+  // existing composer content.
+  const isUserParamActive = !!user;
 
   // Entering /conversation/new from an existing conversation remounts the homepage
   // InputBar. Clear the applied marker so we re-push ?agent= through setSelectedAgent;
@@ -47,7 +50,7 @@ export function useAgentFromSearchParam(workspaceId: string) {
 
   const isSynced = !!agent && selectedSingleAgent?.id === agent;
   const isUrlAgentPending =
-    !!agent && appliedParamRef.current !== agent && !isUserDeepLink;
+    !!agent && appliedParamRef.current !== agent && !isUserParamActive;
 
   const { agentConfiguration, isAgentConfigurationError } =
     useAgentConfiguration({
@@ -64,7 +67,7 @@ export function useAgentFromSearchParam(workspaceId: string) {
     // appliedParamRef is cleared.
     void newConversationVisit;
 
-    if (isUserDeepLink) {
+    if (isUserParamActive) {
       return;
     }
 
@@ -85,7 +88,7 @@ export function useAgentFromSearchParam(workspaceId: string) {
   }, [
     agent,
     agentConfiguration,
-    isUserDeepLink,
+    isUserParamActive,
     newConversationVisit,
     selectedSingleAgent,
     setSelectedAgent,
@@ -94,7 +97,10 @@ export function useAgentFromSearchParam(workspaceId: string) {
   // Composer to URL. On a new conversation, once the URL agent has been applied, a picker
   // change is mirrored into the url param "agent" so the address bar always reflects the selected agent.
   useEffect(() => {
-    if (isUserDeepLink) {
+    // Block while ?user= is active, or after a user deep-link until an agent is
+    // explicitly chosen (suppressDefaultAgent). Applying ?agent= clears suppress
+    // via setSelectedSingleAgent, so mirroring resumes for that selection.
+    if (isUserParamActive || suppressDefaultAgent) {
       return;
     }
 
@@ -125,8 +131,9 @@ export function useAgentFromSearchParam(workspaceId: string) {
     agent,
     isAgentConfigurationError,
     isSynced,
-    isUserDeepLink,
+    isUserParamActive,
     router,
     selectedSingleAgent,
+    suppressDefaultAgent,
   ]);
 }

@@ -270,6 +270,22 @@ describe("useAgentFromSearchParam", () => {
     expect(replaceMock).not.toHaveBeenCalled();
   });
 
+  it("applies ?agent= even when suppressDefaultAgent is set after a user deep-link", async () => {
+    suppressDefaultAgentHolder.current = true;
+    setUrl("?agent=agent_1");
+    searchParamHolder.current = "agent_1";
+    agentConfigurationHolder.current = makeAgentConfiguration("agent_1");
+
+    renderHook(() => useAgentFromSearchParam("w_1"));
+
+    await waitFor(() => expect(setSelectedAgent).toHaveBeenCalledTimes(1));
+    expect(setSelectedAgent).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "agent_1", type: "agent" })
+    );
+    // Mirroring stays off until suppress is cleared by applying the selection.
+    expect(replaceMock).not.toHaveBeenCalled();
+  });
+
   it("re-pushes a matching URL agent when entering a new conversation", async () => {
     activeConversationIdHolder.current = "conv_1";
     setUrl("?agent=agent_1");

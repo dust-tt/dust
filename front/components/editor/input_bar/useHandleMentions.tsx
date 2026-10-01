@@ -82,13 +82,8 @@ const useHandleMentions = ({
       return;
     }
 
-    // New conversation with ?user= (or after it applied): leave the composer to
-    // useUserFromSearchParam (user mention, no agent). Do not apply @dust.
-    if (
-      (userSearchParam || suppressDefaultAgent) &&
-      !conversation &&
-      !isAgentBuilder
-    ) {
+    // ?user= still in the URL: leave the composer to useUserFromSearchParam.
+    if (userSearchParam && !conversation && !isAgentBuilder) {
       setSelectedSingleAgent(null);
       return;
     }
@@ -96,7 +91,15 @@ const useHandleMentions = ({
     // New conversation with ?agent= in the URL: leave selection to
     // useAgentFromSearchParam / the selectedAgent effect. Applying draft, sticky,
     // or @dust here races that path and can overwrite the custom agent in the URL.
+    // This must win over suppressDefaultAgent so Cmd+K → agent still applies after
+    // a prior member deep-link (existing composer content is kept).
     if (agentSearchParam && !conversation && !isAgentBuilder) {
+      return;
+    }
+
+    // After a user deep-link was consumed: suppress default @dust only.
+    if (suppressDefaultAgent && !conversation && !isAgentBuilder) {
+      setSelectedSingleAgent(null);
       return;
     }
 
