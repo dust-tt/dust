@@ -8,7 +8,10 @@ import type {
   SearchSkillsResponseBody,
   SkillSearchFacetValue,
 } from "@app/types/api/skills";
-import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration_constants";
+import {
+  isSkillVisibleToViewer,
+  SKILL_AVAILABILITIES,
+} from "@app/types/assistant/skill_configuration_constants";
 import { Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 
@@ -23,10 +26,11 @@ function facetCountsById(
 }
 
 /**
- * @cc [owner:tdraier,label:security] skill-search-listing-names
+ * @cc [owner:aubin-tchoi,label:security] skill-search-listing-names
  * Resolve editor, child skill, space and tool names for `searchSkills` results (listed skills and
  * facets) through resources, and only name child skills, spaces and tools the caller can read:
- * unreadable ones are dropped from the facets.
+ * unreadable ones are dropped from the facets. Editors-only skills are only named for callers
+ * who can write to them.
  */
 export async function searchSkillListings(
   auth: Authenticator,
@@ -103,6 +107,12 @@ export async function searchSkillListings(
       ...(facetValues.childSkills
         ? {
             childSkills: childSkills
+              .filter((skill) =>
+                isSkillVisibleToViewer({
+                  availability: skill.availability,
+                  viewerCanWrite: auth.can("write", skill),
+                })
+              )
               .map((skill) =>
                 skill.toSearchFacetJSON(childSkillCounts.get(skill.sId) ?? 0)
               )
