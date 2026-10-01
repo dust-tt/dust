@@ -1,6 +1,5 @@
 import {
   ASSISTANT_EMAIL_SUBDOMAIN,
-  type EmailAgent,
   emailAssistantMatcher,
   getEmailBlacklistedAgentIds,
   triggerFromEmail,
@@ -28,7 +27,6 @@ import { config as cellsConfig } from "@app/lib/api/cells/config";
 import apiConfig from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import { enrichWithFavorites } from "@app/lib/resources/agent_resource_serialization";
 import logger from "@app/logger/logger";
 import { isDevelopment } from "@app/types/shared/env";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -277,16 +275,9 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
         return;
       }
 
-      const readableAgents = await AgentResource.listReadable(auth);
-      const favorites = await enrichWithFavorites(auth, readableAgents);
-      const allAgentConfigurations = readableAgents.map((agent) => ({
-        sId: agent.sId,
-        name: agent.name,
-        scope: agent.scope,
-        userFavorite: favorites.get(agent.sId)?.userFavorite,
-      }));
+      const allAgentConfigurations = await AgentResource.listReadable(auth);
 
-      const agentConfigurations: EmailAgent[] = [];
+      const agentConfigurations: AgentResource[] = [];
       for (const targetEmail of targetEmails) {
         const matchResult = emailAssistantMatcher({
           allAgentConfigurations,

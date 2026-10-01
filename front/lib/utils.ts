@@ -1,4 +1,5 @@
 import { compareStrings } from "@app/lib/i18n/format";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
@@ -333,9 +334,7 @@ export function compareForFuzzySort(query: string, a: string, b: string) {
 }
 
 export function filterAndSortAgents<
-  T extends Pick<LightAgentConfigurationType, "sId" | "name" | "scope"> & {
-    userFavorite?: boolean;
-  },
+  T extends LightAgentConfigurationType | AgentResource,
 >(agents: T[], searchText: string): T[] {
   const lowerCaseSearchText = searchText.toLowerCase();
 
