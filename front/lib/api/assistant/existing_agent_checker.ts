@@ -4,9 +4,7 @@ import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -121,15 +119,17 @@ async function findSimilarAgentsInBatch(
   }: {
     model: ModelConfigurationType;
     naturalDescription: string;
-    agents: LightAgentConfigurationType[];
+    agents: AgentResource[];
   }
 ): Promise<Result<string[], Error>> {
   const owner = auth.getNonNullableWorkspace();
 
+  const instructionsByAgent =
+    await AgentResource.batchFetchInstructions(agents);
   const existingAgents = agents
     .map(
       (a) => `Agent ID ${a.sId}:
-"${truncateInstructions(a.instructions ?? "")}"`
+"${truncateInstructions(instructionsByAgent.get(a)?.instructions ?? "")}"`
     )
     .join("\n---\n");
   const inputText = `Input: "${naturalDescription}"
@@ -218,14 +218,9 @@ export async function getSimilarAgents(
     return new Ok({ similar_agents: [] });
   }
 
-  const agents = await toLightAgentConfigurations(auth, documentedAgents, {
-    withFavorites: false,
-    withTags: false,
-  });
-
   // Check agents in batches, one LLM call per batch, so all agents are
   // considered regardless of how many the workspace has.
-  const batches = chunk(agents, AGENTS_PER_LLM_CALL);
+  const batches = chunk(documentedAgents, AGENTS_PER_LLM_CALL);
   const results = await concurrentExecutor(
     batches,
     async (batch) =>

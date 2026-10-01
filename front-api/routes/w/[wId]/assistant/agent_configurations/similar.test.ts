@@ -81,6 +81,30 @@ describe("POST /api/w/:wId/assistant/agent_configurations/similar", () => {
     expect(runMultiActionsAgent).toHaveBeenCalledTimes(1);
   });
 
+  it("sends each agent's instructions to the model", async () => {
+    const { workspace, auth } = await setup();
+    await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "HR Agent",
+      description: "Answers HR questions",
+      instructions: "Answer questions about the parental leave policy.",
+    });
+
+    vi.mocked(runMultiActionsAgent).mockResolvedValue(
+      mockSimilarAgentsResponse([])
+    );
+
+    const response = await post(workspace, {
+      naturalDescription: "Answer questions about our HR policies",
+    });
+
+    expect(response.status).toBe(200);
+    const [, , { conversation }] =
+      vi.mocked(runMultiActionsAgent).mock.calls[0];
+    expect(JSON.stringify(conversation.messages)).toContain(
+      "Answer questions about the parental leave policy."
+    );
+  });
+
   it("returns empty similar agents when runMultiActionsAgent succeeds with empty array", async () => {
     const { workspace, auth } = await setup();
     await createAgents(auth, 1);
