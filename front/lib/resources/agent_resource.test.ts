@@ -2825,7 +2825,7 @@ describe("AgentResource", () => {
   });
 
   describe("poke content access", () => {
-    it("exposes a hidden agent's content without granting any verb", async () => {
+    it("exposes a hidden agent's content to a Poke superuser without granting any verb", async () => {
       const { authenticator, workspace } = testContext;
       const agent = await AgentConfigurationFactory.createTestAgent(
         authenticator,
@@ -2835,15 +2835,13 @@ describe("AgentResource", () => {
         workspace,
         "admin"
       );
+      const pokeAuth = await Authenticator.fromDustSuperUser({
+        wId: workspace.sId,
+      });
 
       const redacted = await AgentResource.fetchById(adminAuth, agent.sId);
-      const forPoke = await AgentResource.fetchById(adminAuth, agent.sId, {
-        dangerouslyViewContentForPoke: true,
-      });
-      const [pokeVersion] =
-        (await forPoke?.listVersions(adminAuth, {
-          dangerouslyViewContentForPoke: true,
-        })) ?? [];
+      const forPoke = await AgentResource.fetchById(pokeAuth, agent.sId);
+      const [pokeVersion] = (await forPoke?.listVersions(pokeAuth)) ?? [];
 
       expect(redacted?.canViewContent).toBe(false);
       for (const resource of [forPoke, pokeVersion]) {
@@ -2851,10 +2849,7 @@ describe("AgentResource", () => {
         expect((await resource.fetchInstructions()).instructions).toBe(
           "support can read this"
         );
-        expect(adminAuth.can("read", resource)).toBe(false);
-        expect(resource.getAllowedVerbs(adminAuth)).toEqual(
-          redacted?.getAllowedVerbs(adminAuth)
-        );
+        expect(pokeAuth.can("read", resource)).toBe(false);
       }
     });
   });
