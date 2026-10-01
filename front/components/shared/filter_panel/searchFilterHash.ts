@@ -33,13 +33,15 @@ export function useSearchPageHashState<
   categories,
   tabIds,
   defaultTabId,
+  hashParam = FILTER_HASH_PARAM,
 }: {
   categories: readonly Category[];
   tabIds: readonly TabId[];
   defaultTabId: TabId;
+  hashParam?: string;
 }) {
   const { user } = useAuth();
-  const [value, setValue] = useHashParam(FILTER_HASH_PARAM);
+  const [value, setValue] = useHashParam(hashParam);
   const { tabId, selection } = useMemo(
     () =>
       parseFilterHash(value, {
