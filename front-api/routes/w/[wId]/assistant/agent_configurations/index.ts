@@ -1,10 +1,10 @@
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
+import { listAgentsForView } from "@app/lib/api/assistant/agent_views";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import { getAgentsEditors } from "@app/lib/api/assistant/editors";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { runOnRedis } from "@app/lib/api/redis";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
-import { AgentResource } from "@app/lib/resources/agent_resource";
 import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import {
@@ -215,7 +215,7 @@ app.get("/", async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
       },
     });
   }
-  const agents = await AgentResource.listForView(
+  const agents = await listAgentsForView(
     auth,
     viewParam === "workspace"
       ? "published" // workspace is deprecated, return all visible agents
