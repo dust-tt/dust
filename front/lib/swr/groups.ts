@@ -1,6 +1,7 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { GetWorkspaceGrantedRolesResponseBody } from "@app/lib/api/workspace";
 import { clientFetch } from "@app/lib/egress/client";
+import { compareStrings } from "@app/lib/i18n/format";
 import type { BulkSeatChangePreviewBody } from "@app/lib/swr/memberships";
 import {
   BulkSeatChangePreviewResponseSchema,
@@ -77,7 +78,9 @@ export function useGroups({
 
   const groups = useMemo(
     () =>
-      data ? [...data.groups].sort((a, b) => a.name.localeCompare(b.name)) : [],
+      data
+        ? [...data.groups].sort((a, b) => compareStrings(a.name, b.name))
+        : [],
     [data]
   );
 
@@ -186,7 +189,9 @@ export function useMemberGroups({
 
   const groups = useMemo(
     () =>
-      data ? [...data.groups].sort((a, b) => a.name.localeCompare(b.name)) : [],
+      data
+        ? [...data.groups].sort((a, b) => compareStrings(a.name, b.name))
+        : [],
     [data]
   );
 

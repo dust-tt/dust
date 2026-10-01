@@ -6,7 +6,7 @@ import type {
   PokeSeatLimitScheduleResponseBody,
   SeatLimitScheduleInputPhase,
 } from "@app/lib/api/poke/seat_limits_schedule";
-import { formatDateTime } from "@app/lib/i18n/format";
+import { compareStrings, formatDateTime } from "@app/lib/i18n/format";
 import {
   usePokeSeatLimitSchedule,
   useUpdatePokeSeatLimitSchedule,
@@ -266,7 +266,8 @@ function ScheduleEditor({
   const orderedIndices = fields
     .map((_, index) => index)
     .sort((a, b) =>
-      (phaseValues?.[a]?.startAt ?? "").localeCompare(
+      compareStrings(
+        phaseValues?.[a]?.startAt ?? "",
         phaseValues?.[b]?.startAt ?? ""
       )
     );

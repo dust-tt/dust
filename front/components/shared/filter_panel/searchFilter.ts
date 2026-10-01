@@ -9,6 +9,7 @@ import type {
 } from "@app/components/shared/filter_panel/filterState";
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/constants";
 import type { MCPServerType } from "@app/lib/api/mcp";
+import { compareStrings } from "@app/lib/i18n/format";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { SKILL_AVAILABILITY_DISPLAY } from "@app/lib/skills/labels";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
@@ -137,7 +138,7 @@ function toToolFilterOptions(
     }
   }
   return [...optionsByServerId.values()].toSorted((a, b) =>
-    a.name.localeCompare(b.name)
+    compareStrings(a.name, b.name)
   );
 }
 
@@ -196,7 +197,7 @@ export function getSearchFilterOptions(
             disabled: false,
           })
         )
-        .toSorted((a, b) => a.name.localeCompare(b.name));
+        .toSorted((a, b) => compareStrings(a.name, b.name));
     case "skill":
       return (facets?.skills ?? [])
         .map(
@@ -208,7 +209,7 @@ export function getSearchFilterOptions(
             disabled: false,
           })
         )
-        .toSorted((a, b) => a.name.localeCompare(b.name));
+        .toSorted((a, b) => compareStrings(a.name, b.name));
     case "space":
       return (facets?.spaces ?? []).map((space) => ({
         category: "space",

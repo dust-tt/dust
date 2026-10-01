@@ -2,6 +2,7 @@ import { formatAmount } from "@app/components/workspace/billing/seatTypeUtils";
 import { formatPostSummary } from "@app/lib/api/actions/servers/slab/helpers";
 import type { SlabPost } from "@app/lib/api/actions/servers/slab/types";
 import {
+  compareStrings,
   formatCurrency,
   formatDate,
   formatDateTime,
@@ -40,6 +41,17 @@ import {
 
 // Tue 2025-09-23 15:37:32 UTC.
 const TIMESTAMP = Date.UTC(2025, 8, 23, 15, 37, 32);
+
+const SORTABLE_STRINGS = [
+  "zèbre",
+  "Éclair",
+  "eclair",
+  "Alpha",
+  "alpha",
+  "10",
+  "9",
+  "_x",
+];
 
 const SECOND_MS = 1000;
 const MINUTE_MS = 60 * SECOND_MS;
@@ -250,6 +262,16 @@ describe.each(SUPPORTED_LOCALES)("with %s as the format locale", (locale) => {
         Intl.DateTimeFormat().resolvedOptions().timeZone
       );
     });
+
+    it("compareStrings", () => {
+      setFormatLocale(locale);
+      expect(SORTABLE_STRINGS.toSorted((a, b) => compareStrings(a, b))).toEqual(
+        SORTABLE_STRINGS.toSorted((a, b) => a.localeCompare(b, locale))
+      );
+      expect(compareStrings("a", "A", { sensitivity: "base" })).toBe(
+        "a".localeCompare("A", locale, { sensitivity: "base" })
+      );
+    });
   });
 });
 
@@ -369,5 +391,8 @@ describe("format locale resolution", () => {
       date.toLocaleString(undefined, options)
     );
     expect(formatNumber(1234.5)).toBe((1234.5).toLocaleString());
+    expect(SORTABLE_STRINGS.toSorted((a, b) => compareStrings(a, b))).toEqual(
+      SORTABLE_STRINGS.toSorted((a, b) => a.localeCompare(b))
+    );
   });
 });

@@ -715,8 +715,9 @@ server code by the `noClientImportsInServer` lint rule.
 
 @cc [owner:sfriquet,label:product;react] ui-intl-through-format-module
 Code under `components/` and `hooks/` MUST NOT reference the `Intl` global: dates, numbers,
-currencies, file sizes, hour cycles and the local time zone go through `lib/i18n/format.ts`, the
-only place that calls `Intl` for UI code. Enforced by the `noRestrictedGlobals` lint rule.
+currencies, file sizes, hour cycles, the local time zone and string comparisons go through
+`lib/i18n/format.ts`, the only place that calls `Intl` for UI code. Enforced by the
+`noRestrictedGlobals` lint rule.
 
 @cc [owner:frankaloia,label:security;backend] oauth-connection-ownership-before-token
 Before calling getMCPConnectionAccessToken or otherwise using a caller-supplied OAuth
@@ -730,3 +731,8 @@ Outside tests, `toLocaleDateString` and `toLocaleTimeString` MUST NOT be called 
 (no argument, or `undefined` as the locale): dates and times MUST be formatted with `formatDate` or
 `formatTime` from `@app/lib/i18n/format`, which follow `format-locale-resolution`. Enforced by the
 `noLocaleLessDateTimeFormat` lint rule.
+
+@cc [owner:sfriquet,label:product] no-bare-locale-compare
+Outside tests, code under `components/`, `hooks/` and `lib/swr/` MUST NOT call `localeCompare`:
+locale-aware string comparisons MUST use `compareStrings` from `@app/lib/i18n/format`, which follows
+`format-locale-resolution`. Enforced by the `noBareLocaleCompare` lint rule.

@@ -3,6 +3,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
+import { compareStrings } from "@app/lib/i18n/format";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
 import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
@@ -178,7 +179,7 @@ export function SecretsPage() {
     .filter((secret) =>
       secret.name.toLowerCase().includes(searchQuery.toLowerCase())
     )
-    .sort((a, b) => a.name.localeCompare(b.name))
+    .sort((a, b) => compareStrings(a.name, b.name))
     .map((secret) => ({
       name: secret.name,
       isActionDisabled: isGenerating || isRevoking,

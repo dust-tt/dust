@@ -17,6 +17,7 @@ import { useConversationDrafts } from "@app/components/assistant/conversation/in
 import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
+import { compareStrings } from "@app/lib/i18n/format";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useAddConversationSelectedSpaces,
@@ -330,7 +331,7 @@ export const InputBar = React.memo(function InputBar({
       conversation?.sId
         ? conversationSelectableSpaces
         : workspaceRegularSpaces
-            .sort((a, b) => a.name.localeCompare(b.name))
+            .sort((a, b) => compareStrings(a.name, b.name))
             .map((regularSpace) => ({
               ...regularSpace,
               selected: rawSelectedSpaceIdSet.has(regularSpace.sId),

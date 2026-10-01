@@ -9,6 +9,7 @@ import {
   POD_AGENTS_MD_MAX_CHARACTER_COUNT,
 } from "@app/lib/api/projects/constants";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { compareStrings } from "@app/lib/i18n/format";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { usePodMetadata, useUpdatePodMetadata } from "@app/lib/swr/pods";
@@ -139,7 +140,7 @@ export function PodSettingsCustomizationTab({
             .toLowerCase()
             .includes(normalizedSkillSearch))
     )
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => compareStrings(a.name, b.name));
 
   const addDefaultSkill = useCallback(
     async (skillId: string) => {

@@ -7,6 +7,7 @@ import {
   getDataSourceNameFromView,
   isRemoteDatabase,
 } from "@app/lib/data_sources";
+import { compareStrings } from "@app/lib/i18n/format";
 import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
 import { CATEGORY_DETAILS, getSpaceIcon } from "@app/lib/spaces";
 import { timeAgoFrom } from "@app/lib/utils";
@@ -85,7 +86,7 @@ export function buildSpaceItems(
       if (a.isRestricted !== b.isRestricted) {
         return a.isRestricted ? 1 : -1;
       }
-      return a.name.localeCompare(b.name);
+      return compareStrings(a.name, b.name);
     })
     .map((space) => ({
       kind: "space",
@@ -190,7 +191,7 @@ export function buildDataSourceViewItems(
         dataSourceView: dsv,
       };
     })
-    .toSorted((a, b) => a.title.localeCompare(b.title));
+    .toSorted((a, b) => compareStrings(a.title, b.title));
 }
 
 // "5 items" for containers, "Space · Updated 6d ago" for leaves, trimmed to what is known.

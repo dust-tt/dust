@@ -1,3 +1,4 @@
+import { compareStrings } from "@app/lib/i18n/format";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -43,7 +44,7 @@ export const SkillsProvider = ({ owner, children }: SkillsProviderProps) => {
         if (aIsDiscover !== bIsDiscover) {
           return aIsDiscover ? -1 : 1;
         }
-        return a.name.localeCompare(b.name);
+        return compareStrings(a.name, b.name);
       }),
       isSkillsLoading,
       isSkillsError,

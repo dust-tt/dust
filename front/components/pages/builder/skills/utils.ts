@@ -1,3 +1,4 @@
+import { compareStrings } from "@app/lib/i18n/format";
 import { SKILL_AVAILABILITY_DISPLAY } from "@app/lib/skills/labels";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import type {
@@ -76,7 +77,7 @@ function getSkillSearchString(
 export function sortSkillsByName(
   skills: SkillWithoutInstructionsAndToolsWithRelationsType[]
 ) {
-  return skills.toSorted((a, b) => a.name.localeCompare(b.name));
+  return skills.toSorted((a, b) => compareStrings(a.name, b.name));
 }
 
 export function filterByAvailability(

@@ -1,7 +1,7 @@
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
-import { formatNumber } from "@app/lib/i18n/format";
+import { compareStrings, formatNumber } from "@app/lib/i18n/format";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
@@ -657,7 +657,7 @@ export function APIKeysTable({
       let comparison = 0;
       switch (activeSort.id) {
         case "name":
-          comparison = left.name.localeCompare(right.name);
+          comparison = compareStrings(left.name, right.name);
           break;
         case "credits":
           if (left.credits === null || right.credits === null) {

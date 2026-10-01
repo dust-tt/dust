@@ -3,6 +3,7 @@ import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerType } from "@app/lib/api/mcp";
+import { compareStrings } from "@app/lib/i18n/format";
 import { filterMCPServer } from "@app/lib/mcp";
 import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
 import {
@@ -126,7 +127,7 @@ export const AddToolsDialog = ({
             filterMCPServer(mcpServer, searchText)
         )
         .sort((a, b) =>
-          getMcpServerDisplayName(a).localeCompare(getMcpServerDisplayName(b))
+          compareStrings(getMcpServerDisplayName(a), getMcpServerDisplayName(b))
         ),
     [availableMCPServers, enabledServerNames, searchText]
   );

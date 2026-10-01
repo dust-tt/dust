@@ -1,6 +1,7 @@
 import { FrameSharingRow } from "@app/components/assistant/conversation/interactive_content/frame/FrameSharingRow";
 import { Section } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSection";
 import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
+import { compareStrings } from "@app/lib/i18n/format";
 import { MAX_EMAILS_OR_DOMAINS_PER_INVITE } from "@app/types/files";
 import type {
   FileSharingGrantType,
@@ -119,7 +120,7 @@ export function FrameSharingGrants({
   const grants = [...(sharing?.accessGrants ?? [])].sort(
     (a, b) =>
       Number(!!a.blockedByPolicy) - Number(!!b.blockedByPolicy) ||
-      a.target.value.localeCompare(b.target.value)
+      compareStrings(a.target.value, b.target.value)
   );
 
   const revoke = async (grant: FileSharingGrantType) => {

@@ -6,6 +6,7 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { compareStrings } from "@app/lib/i18n/format";
 import { useMCPServerViewsFromMemberSpaces } from "@app/lib/swr/mcp_servers";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { SpaceType } from "@app/types/space";
@@ -37,7 +38,7 @@ const sortMCPServerViewsByPriority = (
     }
 
     // If priorities are the same, sort alphabetically by label.
-    return a.label.localeCompare(b.label);
+    return compareStrings(a.label, b.label);
   });
 };
 

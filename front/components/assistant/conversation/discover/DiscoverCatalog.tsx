@@ -18,7 +18,7 @@ import type { PendingSkill } from "@app/components/assistant/conversation/input_
 import { serializeSkillNodeClipboardHTML } from "@app/components/editor/extensions/input_bar/SkillNode";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { formatNumber } from "@app/lib/i18n/format";
+import { compareStrings, formatNumber } from "@app/lib/i18n/format";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useCatalogSearch } from "@app/lib/swr/catalog_search";
@@ -225,7 +225,7 @@ function HydratedCatalog({
               )
             : 0) ||
           (query.view === "popular" ? b.usage - a.usage : 0) ||
-          a.sortName.localeCompare(b.sortName)
+          compareStrings(a.sortName, b.sortName)
       )
       .map(({ item }) => item);
   }, [activeAgents, query, skillsWithRelations]);

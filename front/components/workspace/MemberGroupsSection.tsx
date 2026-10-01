@@ -3,6 +3,7 @@ import {
   PROVISIONED_GROUP_TOOLTIP,
 } from "@app/components/groups/GroupKinds";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { compareStrings } from "@app/lib/i18n/format";
 import {
   useAddMemberToGroup,
   useGroups,
@@ -93,7 +94,7 @@ export function MemberGroupsSection({
 
     return pendingAddedGroup
       ? [...memberGroups, pendingAddedGroup].sort((a, b) =>
-          a.name.localeCompare(b.name)
+          compareStrings(a.name, b.name)
         )
       : memberGroups;
   }, [memberGroups, addableGroups, pendingGroupId]);
