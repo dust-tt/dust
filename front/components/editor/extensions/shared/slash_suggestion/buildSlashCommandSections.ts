@@ -37,6 +37,18 @@ export function buildSlashCommandSections({
   return sections;
 }
 
+// Whether some section renders on its own with no rows: placeholder rows while it loads, or its
+// empty message once loaded.
+export function someSectionShowsOwnState(
+  sections: SlashCommandSection[]
+): boolean {
+  return sections.some(
+    (section) =>
+      section.items.length === 0 &&
+      (section.isLoading === true || section.emptyMessage !== undefined)
+  );
+}
+
 export function flattenSlashCommandSections(
   sections: SlashCommandSection[]
 ): SlashCommand[] {

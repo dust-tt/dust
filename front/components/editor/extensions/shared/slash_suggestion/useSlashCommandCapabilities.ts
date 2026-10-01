@@ -60,10 +60,13 @@ function getSkillBuilderSlashCommandTools({
 }
 
 export function useInputBarSlashCommandCapabilities({
+  disabled = false,
   excludeSkillId,
   owner,
   query,
 }: {
+  // When true nothing is fetched and no capability is returned (a menu without capabilities).
+  disabled?: boolean;
   excludeSkillId?: string | null;
   owner: LightWorkspaceType;
   query: string;
@@ -73,13 +76,14 @@ export function useInputBarSlashCommandCapabilities({
   const { spaces: globalSpaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
     kinds: ["global"],
+    disabled,
     swrOptions: CAPABILITIES_SWR_OPTIONS,
   });
   const { skills: listedSkills, isSkillsLoading: isListedSkillsLoading } =
     useSkills({
       owner,
       status: "active",
-      disabled: useSkillSearch,
+      disabled: disabled || useSkillSearch,
       swrOptions: CAPABILITIES_SWR_OPTIONS,
     });
   const {
@@ -92,7 +96,7 @@ export function useInputBarSlashCommandCapabilities({
     defaultToFavorites: true,
     excludeSkillId,
     limit: MAX_RENDERED_CAPABILITY_ITEMS,
-    disabled: !useSkillSearch,
+    disabled: disabled || !useSkillSearch,
   });
   const skills = useSkillSearch ? searchSkills : listedSkills;
   // Use the displayed skills' query so tools and skills update together.
@@ -103,22 +107,30 @@ export function useInputBarSlashCommandCapabilities({
   // The JIT views endpoint only returns views whose tools can be enabled directly in a
   // conversation, no further filtering needed here.
   const { serverViews, isLoading: isServerViewsLoading } =
-    useJITMCPServerViewsFromSpaces(
-      owner,
-      globalSpaces,
-      CAPABILITIES_SWR_OPTIONS
-    );
+    useJITMCPServerViewsFromSpaces(owner, globalSpaces, {
+      ...CAPABILITIES_SWR_OPTIONS,
+      disabled,
+    });
 
   const capabilityItems = useMemo(
     () =>
-      buildCapabilitySlashCommandItems({
-        excludeSkillId,
-        query: capabilityQuery,
-        useSearchRanking: useSkillSearch,
-        skills,
-        tools: serverViews,
-      }),
-    [capabilityQuery, excludeSkillId, serverViews, skills, useSkillSearch]
+      disabled
+        ? []
+        : buildCapabilitySlashCommandItems({
+            excludeSkillId,
+            query: capabilityQuery,
+            useSearchRanking: useSkillSearch,
+            skills,
+            tools: serverViews,
+          }),
+    [
+      capabilityQuery,
+      disabled,
+      excludeSkillId,
+      serverViews,
+      skills,
+      useSkillSearch,
+    ]
   );
 
   return {
@@ -127,6 +139,7 @@ export function useInputBarSlashCommandCapabilities({
     // Every workspace has at least one global skill and one tool, so stop loading
     // as soon as either source returns a matching capability.
     isLoading:
+      !disabled &&
       capabilityItems.length === 0 &&
       (isSkillsLoading || isSpacesLoading || isServerViewsLoading),
   };

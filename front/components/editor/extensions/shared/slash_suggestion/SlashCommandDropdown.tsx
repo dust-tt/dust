@@ -2,6 +2,7 @@ import type { SlashCommandSection } from "@app/components/editor/extensions/shar
 import {
   flattenSlashCommandSections,
   SLASH_COMMAND_CAPABILITIES_SECTION_LABEL,
+  someSectionShowsOwnState,
 } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
 import { SLASH_COMMAND_DROPDOWN_LIST_CLASS_NAME } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import {
@@ -323,8 +324,15 @@ export const SlashCommandDropdown = forwardRef<
           section.items.length > 0
       ) ?? false;
     const showLoadingPlaceholder = isLoading && !capabilitiesSectionHasItems;
+    // Sections rendering their own loading rows or empty message, and a header such as
+    // breadcrumbs, are content too: a sub-menu without a Back row must not collapse them into the
+    // generic empty message.
     const hasVisibleContent =
-      selectableCount > 0 || showLoadingPlaceholder || !!subMenuNavigation;
+      selectableCount > 0 ||
+      showLoadingPlaceholder ||
+      !!subMenuNavigation ||
+      (sections !== undefined && someSectionShowsOwnState(sections)) ||
+      !!headerContent;
 
     const [selectedIndex, setSelectedIndex] = useState(() =>
       getDefaultSelectedIndex(!!subMenuNavigation, items, defaultSelectedItemId)

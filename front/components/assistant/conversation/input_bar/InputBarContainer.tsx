@@ -17,7 +17,10 @@ import { ToolBarContent } from "@app/components/assistant/conversation/input_bar
 import { useInputBarOverlayTracker } from "@app/components/assistant/conversation/input_bar/useInputBarOverlayTracker";
 import { EditorSelectionToolbar } from "@app/components/editor/EditorSelectionToolbar";
 import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
-import { getAvailableInputBarSlashCommands } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import {
+  getAvailableInputBarSlashCommands,
+  getInputBarSlashMenuMode,
+} from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/input_bar/SkillNode";
 import type {
   RunCommandSlashCommand,
@@ -396,7 +399,10 @@ const InputBarContainer = ({
   const inputBarButtonsRef = useRef<HTMLDivElement>(null);
   const plusButtonRef = useRef<HTMLDivElement>(null);
   const isWidthConstrained = useIsWidthConstrained();
-  const shouldEnableSlashSuggestion = actions.includes("capabilities");
+  // The extension composer keeps its own "+" menu and no slash menu.
+  const slashMenuMode =
+    clientType === "extension" ? null : getInputBarSlashMenuMode(actions);
+  const shouldEnableSlashSuggestion = slashMenuMode !== null;
 
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
@@ -406,6 +412,10 @@ const InputBarContainer = ({
   const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
   const selectedSpaceIdsRef = useRef(selectedSpaceIds);
   const shouldEnableSlashSuggestionRef = useRef(shouldEnableSlashSuggestion);
+  const slashMenuModeRef = useRef(slashMenuMode);
+  useEffect(() => {
+    slashMenuModeRef.current = slashMenuMode;
+  }, [slashMenuMode]);
   // The slash suggestion extension captures its options at editor initialization, while the
   // conversation may only be created after the first message; the ref keeps it current.
   const conversationIdRef = useRef<string | null>(conversation?.sId ?? null);
@@ -834,6 +844,7 @@ const InputBarContainer = ({
       includeSelectSpacesRef,
       onModelSelectRef,
       onNodeSelectRef,
+      slashMenuModeRef,
       spaceIdRef,
     },
     placeholderOverride: disableInput ? submitBlockMessage : placeholder,

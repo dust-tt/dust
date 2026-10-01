@@ -10,6 +10,7 @@ import {
   INPUT_BAR_PILL_HOVER_CLASSNAME,
   INPUT_BAR_PILL_SURFACE_CLASSNAME,
 } from "@app/components/assistant/conversation/input_bar/inputBarPillStyles";
+import { getInputBarSlashMenuMode } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import type useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
@@ -130,9 +131,10 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   const router = useAppRouter();
   const isMobile = useIsMobile();
   const isWidthConstrained = useIsWidthConstrained();
-  // With capabilities available the "+" opens the slash menu, which carries attach, model and
-  // capability commands; composers without them keep the plus menu and its pickers.
-  const shouldPlusOpenSlashCommand = actions.includes("capabilities");
+  // The "+" opens the slash menu wherever the composer has one. Without capabilities or
+  // attachments the plus menu below has nothing to offer and renders nothing; the extension
+  // composer's own "+" lives in the container.
+  const shouldPlusOpenSlashCommand = getInputBarSlashMenuMode(actions) !== null;
   const [serverToSetup, setServerToSetup] =
     React.useState<MCPServerType | null>(null);
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).

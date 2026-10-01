@@ -83,6 +83,7 @@ type SubMenuListProps =
 function getSubMenuListProps({
   mode,
   isRoot,
+  rootSection,
   browseSections,
   browseCommands,
   searchCommands,
@@ -90,6 +91,7 @@ function getSubMenuListProps({
 }: {
   mode: SubMenuMode;
   isRoot: boolean;
+  rootSection: SlashCommandSection | null;
   browseSections: SlashCommandSection[];
   browseCommands: SlashCommand[];
   searchCommands: SlashCommand[];
@@ -102,7 +104,14 @@ function getSubMenuListProps({
       return { sections: searchSections };
     case "browse":
       // The root renders labelled sections; they carry their own loading state.
-      return isRoot ? { sections: browseSections } : { items: browseCommands };
+      if (!isRoot) {
+        return { items: browseCommands };
+      }
+      return {
+        sections: rootSection
+          ? [...browseSections, rootSection]
+          : browseSections,
+      };
     default:
       assertNeverAndIgnore(mode);
       return { items: searchCommands };
@@ -114,10 +123,17 @@ interface AttachContextSubMenuDropdownProps
     SuggestionProps<SlashCommand>,
     "clientRect" | "editor" | "query" | "range"
   > {
-  activeFrame: SlashMenuStackFrame;
+  // The sub-menu command the user came from, and how to return to it. Absent when the browser is
+  // the whole menu: no Back row, Escape closes.
+  activeFrame?: SlashMenuStackFrame;
+  onBack?: () => void;
   conversationId?: string | null;
-  onBack: () => void;
   onClose: () => void;
+  // Extra rows shown as the last section of the browser's root with an empty query, for a menu
+  // where the browser is the whole menu and commands such as "Upload file" have nowhere else to go.
+  // Last so the first space stays the default highlight.
+  rootSection?: { label: string; items: SlashCommand[] };
+  onRootSectionSelect?: (item: SlashCommand) => void;
   onSelect: (selection: ContextSlashSearchSelection) => void;
   owner: LightWorkspaceType;
   spaceId?: string | null;
@@ -139,7 +155,9 @@ interface AttachContextSubMenuDropdownRef {
  * with those matches removed, while keeping the breadcrumbs and the navigation state. Back and
  * Escape MUST leave the sub-menu from any level; Backspace on an empty query MUST go up one level
  * while below the root (skipping levels the pod shortcut owns) and leave the sub-menu from the
- * root; a leading space in the query MUST NOT dismiss it.
+ * root; a leading space in the query MUST NOT dismiss it. Without `activeFrame` and `onBack` the
+ * browser is the whole menu: it MUST offer no Back row, and Escape, like Backspace on an empty
+ * query at the root, MUST close the menu.
  */
 export const AttachContextSubMenuDropdown = forwardRef<
   AttachContextSubMenuDropdownRef,
@@ -152,9 +170,11 @@ export const AttachContextSubMenuDropdown = forwardRef<
       conversationId = null,
       onBack,
       onClose,
+      onRootSectionSelect,
       onSelect,
       owner,
       query,
+      rootSection,
       spaceId = null,
       useCase,
     },
@@ -278,6 +298,8 @@ export const AttachContextSubMenuDropdown = forwardRef<
         }
       } else if (isAttachContextSlashCommand(item)) {
         onSelect(item.data.selection);
+      } else if (rootSection?.items.some((row) => row.id === item.id)) {
+        onRootSectionSelect?.(item);
       }
     };
 
@@ -336,15 +358,17 @@ export const AttachContextSubMenuDropdown = forwardRef<
         {...getSubMenuListProps({
           mode,
           isRoot: currentEntry.type === "root",
+          rootSection: rootSection ?? null,
           browseSections,
           browseCommands,
           searchCommands,
           searchSections,
         })}
-        subMenuNavigation={{
-          label: activeFrame.command.label,
-          onBack,
-        }}
+        subMenuNavigation={
+          activeFrame && onBack
+            ? { label: activeFrame.command.label, onBack }
+            : undefined
+        }
         size="wide"
       />
     );

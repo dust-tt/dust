@@ -6,7 +6,10 @@ import {
   InputBarSlashSuggestionExtension,
   inputBarSlashSuggestionPluginKey,
 } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionExtension";
-import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import type {
+  InputBarSlashCommand,
+  InputBarSlashMenuMode,
+} from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
 import { SkillNode } from "@app/components/editor/extensions/input_bar/SkillNode";
@@ -374,6 +377,7 @@ export interface CustomEditorProps {
     onNodeSelectRef: React.RefObject<
       ((node: DataSourceViewContentNode) => void) | undefined
     >;
+    slashMenuModeRef: React.RefObject<InputBarSlashMenuMode | null>;
     spaceIdRef: React.RefObject<string | null | undefined>;
   };
   // Override the default editor placeholder (e.g. to show a blocked-state reason).
@@ -539,6 +543,7 @@ export const buildEditorExtensions = ({
         includeAttachKnowledgeRef: slashSuggestion.includeAttachKnowledgeRef,
         includePickModelRef: slashSuggestion.includePickModelRef,
         includeSelectSpacesRef: slashSuggestion.includeSelectSpacesRef,
+        slashMenuModeRef: slashSuggestion.slashMenuModeRef,
         spaceIdRef: slashSuggestion.spaceIdRef,
       })
     );
