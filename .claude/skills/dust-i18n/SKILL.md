@@ -51,7 +51,8 @@ Rules:
 ## Where translated components can render
 
 Lingui components need an `I18nProvider`. The SPA mounts one at its root (`front-spa/src/app/App.tsx`).
-The browser extension (`extension/`, built with `ts-loader`, no Babel) and the `share`/`oauth`
+The browser extension (`extension/`) mounts one in each platform app and compiles the macros in its
+webpack build (`extension/config/webpack_lingui.ts`). It always renders `en-US`. The `share`/`oauth`
 entries have none yet: do not use Lingui in components they import.
 
 In front tests, `render` and `renderHook` from `@testing-library/react` already wrap the tree in an
