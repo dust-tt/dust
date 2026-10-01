@@ -99,18 +99,6 @@ type CachedGroup = {
   updatedAt: number;
 };
 
-function isHigherPriorityLimitGroup(
-  candidate: GroupModel,
-  current: GroupModel
-): boolean {
-  const candidatePriority = candidate.groupLimitPriority ?? Infinity;
-  const currentPriority = current.groupLimitPriority ?? Infinity;
-  return (
-    candidatePriority < currentPriority ||
-    (candidatePriority === currentPriority && candidate.id < current.id)
-  );
-}
-
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -1280,46 +1268,53 @@ export class GroupResource extends BaseResource<GroupModel> {
       return new Map();
     }
 
+    const limitedGroups = await GroupModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        kind: [...CAP_ELIGIBLE_GROUP_KINDS],
+        groupLimitAwuCredits: { [Op.ne]: null },
+        groupLimitPriority: { [Op.ne]: null },
+      },
+      order: [
+        ["groupLimitPriority", "ASC"],
+        ["id", "ASC"],
+      ],
+    });
+    if (limitedGroups.length === 0) {
+      return new Map();
+    }
+
     const now = new Date();
     const memberships = await GroupMembershipModel.findAll({
       where: {
         workspaceId: workspace.id,
+        groupId: limitedGroups.map((g) => g.id),
         userId: userModelIds,
         status: "active",
         startAt: { [Op.lte]: now },
         [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
       },
     });
-    if (memberships.length === 0) {
-      return new Map();
-    }
 
-    const groups = await GroupModel.findAll({
-      where: {
-        id: [...new Set(memberships.map((m) => m.groupId))],
-        workspaceId: workspace.id,
-        kind: [...CAP_ELIGIBLE_GROUP_KINDS],
-        groupLimitAwuCredits: { [Op.ne]: null },
-      },
-    });
-    const groupByModelId = new Map(groups.map((g) => [g.id, g]));
-
-    const limitGroupByUserModelId = new Map<ModelId, GroupModel>();
+    const rankByGroupModelId = new Map(
+      limitedGroups.map((group, rank) => [group.id, rank])
+    );
+    const bestRankByUserModelId = new Map<ModelId, number>();
     for (const m of memberships) {
-      const group = groupByModelId.get(m.groupId);
-      if (!group) {
+      const rank = rankByGroupModelId.get(m.groupId);
+      if (rank === undefined) {
         continue;
       }
-      const current = limitGroupByUserModelId.get(m.userId);
-      if (!current || isHigherPriorityLimitGroup(group, current)) {
-        limitGroupByUserModelId.set(m.userId, group);
+      const current = bestRankByUserModelId.get(m.userId);
+      if (current === undefined || rank < current) {
+        bestRankByUserModelId.set(m.userId, rank);
       }
     }
 
     return new Map(
-      [...limitGroupByUserModelId].map(([userModelId, group]) => [
+      [...bestRankByUserModelId].map(([userModelId, rank]) => [
         userModelId,
-        new GroupResource(GroupModel, group.get()),
+        new GroupResource(GroupModel, limitedGroups[rank].get()),
       ])
     );
   }
