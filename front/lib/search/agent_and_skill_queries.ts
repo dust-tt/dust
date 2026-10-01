@@ -127,7 +127,7 @@ export function buildNameSearchQuery(
                 },
               },
             },
-            // Match description words without prefixes or typos, below all name matches.
+            // Use description words as a weak signal, without prefixes or typos.
             {
               constant_score: {
                 filter: {
@@ -138,7 +138,7 @@ export function buildNameSearchQuery(
                     },
                   },
                 },
-                boost: 0.5,
+                boost: 0.1,
               },
             },
           ],
