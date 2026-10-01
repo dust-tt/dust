@@ -9,11 +9,17 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { JobType } from "@app/types/job_type";
 import type { MembershipRoleType } from "@app/types/memberships";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import chunk from "lodash/chunk";
 import keyBy from "lodash/keyBy";
 
 const CUSTOMERIO_HOST = "https://track-eu.customer.io/api";
+
+export type CustomerioUserToDelete = {
+  email: string;
+};
 
 export class CustomerioServerSideTracking {
   static trackSignup({
@@ -366,9 +372,11 @@ export class CustomerioServerSideTracking {
     }
   }
 
-  static async deleteUser({ user }: { user: UserType }) {
+  static async deleteUser({
+    email,
+  }: CustomerioUserToDelete): Promise<Result<undefined, Error>> {
     if (!config.getCustomerIoEnabled()) {
-      return;
+      return new Ok(undefined);
     }
 
     // eslint-disable-next-line no-restricted-globals
@@ -377,7 +385,7 @@ export class CustomerioServerSideTracking {
       headers: CustomerioServerSideTracking._headers(),
       body: JSON.stringify({
         identifiers: {
-          email: user.email,
+          email,
         },
         type: "person",
         action: "delete",
@@ -386,8 +394,10 @@ export class CustomerioServerSideTracking {
 
     if (!r.ok) {
       const json = await r.json();
-      throw new Error(`Failed to delete user ${user.email}: ${json}`);
+      return new Err(new Error(`Failed to delete user ${email}: ${json}`));
     }
+
+    return new Ok(undefined);
   }
 
   static async deleteWorkspace({

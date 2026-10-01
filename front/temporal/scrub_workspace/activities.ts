@@ -46,7 +46,9 @@ import { MAX_WORKSPACES_TO_DOWNGRADE_PER_RUN } from "@app/temporal/scrub_workspa
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { Result } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import chunk from "lodash/chunk";
 import groupBy from "lodash/groupBy";
@@ -446,13 +448,17 @@ async function cleanupCustomerio(auth: Authenticator) {
         );
 
         return CustomerioServerSideTracking.deleteUser({
-          user: u.toJSON(),
-        }).catch((err) => {
-          logger.error(
-            { userId: u.sId, err },
-            "Failed to delete user on Customer.io"
-          );
-        });
+          email: u.email,
+        })
+          .catch((err) => new Err(normalizeError(err)))
+          .then((result) => {
+            if (result.isErr()) {
+              logger.error(
+                { userId: u.sId, err: result.error },
+                "Failed to delete user on Customer.io"
+              );
+            }
+          });
       })
     );
   }

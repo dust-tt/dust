@@ -12,6 +12,7 @@ import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { sha256 } from "@app/types/shared/utils/encryption";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import type {
@@ -20,6 +21,7 @@ import type {
   DirectoryUser as WorkOSDirectoryUser,
   User as WorkOSUser,
 } from "@workos-inc/node";
+import { NotFoundException } from "@workos-inc/node";
 import { sealData, unsealData } from "iron-session";
 
 export type SessionCookie = {
@@ -603,4 +605,25 @@ export async function fetchOrCreateWorkOSUserWithEmail({
   localLogger.info("Found WorkOS user for webhook event.");
 
   return new Ok(existingUser);
+}
+
+function isWorkOSNotFoundError(err: unknown): err is NotFoundException {
+  return err instanceof NotFoundException;
+}
+
+/**
+ * @cc [owner:pmilliotte,label:backend] delete-workos-user-is-idempotent
+ * MUST return `Ok` when the WorkOS user is already gone, so an interrupted wipe can be re-run.
+ */
+export async function deleteWorkOSUser(
+  workOSUserId: string
+): Promise<Result<undefined, Error>> {
+  try {
+    await getWorkOS().userManagement.deleteUser(workOSUserId);
+    return new Ok(undefined);
+  } catch (err) {
+    return isWorkOSNotFoundError(err)
+      ? new Ok(undefined)
+      : new Err(normalizeError(err));
+  }
 }

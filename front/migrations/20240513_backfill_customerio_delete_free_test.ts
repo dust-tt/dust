@@ -74,12 +74,14 @@ const backfillCustomerIo = async (execute: boolean) => {
           }
           promises.push(
             CustomerioServerSideTracking.deleteUser({
-              user: user.toJSON(),
-            }).catch((err) => {
-              logger.error(
-                { userId: u.sId, err },
-                "Failed to delete user on Customer.io"
-              );
+              email: user.email,
+            }).then((result) => {
+              if (result.isErr()) {
+                logger.error(
+                  { userId: u.sId, err: result.error },
+                  "Failed to delete user on Customer.io"
+                );
+              }
             })
           );
         }
