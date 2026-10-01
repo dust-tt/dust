@@ -1,4 +1,5 @@
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
+import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
 import {
   ConsumptionProgressBar,
   ConsumptionProgressBarWithNumbers,
@@ -7,6 +8,7 @@ import { BuyCreditDialog } from "@app/components/workspace/BuyCreditDialog";
 import { CreditHistorySheet } from "@app/components/workspace/CreditHistorySheet";
 import { CreditsList, isExpired } from "@app/components/workspace/CreditsList";
 import { ProgrammaticCostChart } from "@app/components/workspace/ProgrammaticCostChart";
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   getBillingCycle,
@@ -347,120 +349,129 @@ export function CreditsUsagePage() {
             }
           />
 
-          {shouldShowLowCreditsWarning && (
-            <ContentMessage
-              title={`You're ${totalConsumed < totalCredits ? "almost" : ""} out of credits.`}
-              variant="warning"
-              size="lg"
-              icon={AlertCircle}
-            >
-              <div className="flex items-end justify-between">
-                <p>Add credits to ensure uninterrupted usage.</p>
-                <Button
-                  label="Buy credits"
-                  variant="primary"
-                  onClick={() => setShowBuyCreditDialog(true)}
-                />
-              </div>
-            </ContentMessage>
-          )}
-
-          {/* Purposefully not giving email since we want to test determination here and limit support requests, it's a very edgy case and most likely fraudulent. */}
-          {creditPurchaseLimits &&
-            !creditPurchaseLimits.canPurchase &&
-            creditPurchaseLimits.reason === "trialing" && (
-              <ContentMessage title="Available after trial" variant="info">
-                Credit purchases are available once you upgrade to a paid plan.
-                If you would like to purchase credits before upgrading, please
-                contact support.
-              </ContentMessage>
-            )}
-
-          {creditPurchaseLimits &&
-            !creditPurchaseLimits.canPurchase &&
-            creditPurchaseLimits.reason === "payment_issue" && (
-              <ContentMessage title="Subscription issue" variant="warning">
-                Credit purchases require an active subscription. Please ensure
-                your payment method is up to date.
-              </ContentMessage>
-            )}
-
-          {pendingCredits.length > 0 &&
-            (() => {
-              const totalPendingMicroUsd = pendingCredits.reduce(
-                (sum, c) => sum + c.initialAmountMicroUsd,
-                0
-              );
-              const isSingle = pendingCredits.length === 1;
-              const title = isSingle
-                ? `You have a pending ${getPriceAsString({ currency: "usd", priceInMicroUsd: totalPendingMicroUsd })} credit purchase awaiting payment.`
-                : `You have ${pendingCredits.length} pending credit purchases totaling ${getPriceAsString({ currency: "usd", priceInMicroUsd: totalPendingMicroUsd })} awaiting payment.`;
-
-              return (
-                <ContentMessage
-                  title={title}
-                  variant="info"
-                  size="lg"
-                  icon={AlertCircle}
-                >
-                  <div className="flex items-end justify-between">
-                    <p>Complete your payment to activate your credits.</p>
-                    <Button
-                      label={isSingle ? "Complete payment" : "Manage invoices"}
-                      variant="primary"
-                      onClick={() => {
-                        window.open(
-                          `/w/${owner.sId}/subscription/manage`,
-                          "_blank"
-                        );
-                      }}
-                    />
-                  </div>
-                </ContentMessage>
-              );
-            })()}
-
-          {/* Usage Section */}
-          <UsageSection
-            subscription={subscription}
-            isEnterprise={isEnterprise}
-            creditsByType={creditsByType}
-            totalConsumed={totalConsumed}
-            totalCredits={totalCredits}
-            freeCreditRenewalDateMs={freeCreditRenewalDateMs}
-            isLoading={isCreditsLoading || isCreditPurchaseInfoLoading}
-            setShowBuyCreditDialog={setShowBuyCreditDialog}
-          />
-
-          {/* Current Credits Section */}
-          <Page.Vertical sizing="grow">
-            <div className="flex w-full items-start justify-between">
-              <Page.Vertical gap="sm" sizing="grow">
-                <div className="flex w-full items-center justify-between">
-                  <Page.H variant="h5">Current credits</Page.H>
-                  <CreditHistorySheet
-                    credits={expiredCredits}
-                    isLoading={isCreditsLoading}
+          <AdminSectionAnchor
+            sectionId={ADMIN_SECTION_IDS.creditsUsage.credits}
+          >
+            {shouldShowLowCreditsWarning && (
+              <ContentMessage
+                title={`You're ${totalConsumed < totalCredits ? "almost" : ""} out of credits.`}
+                variant="warning"
+                size="lg"
+                icon={AlertCircle}
+              >
+                <div className="flex items-end justify-between">
+                  <p>Add credits to ensure uninterrupted usage.</p>
+                  <Button
+                    label="Buy credits"
+                    variant="primary"
+                    onClick={() => setShowBuyCreditDialog(true)}
                   />
                 </div>
-                <Page.P variant="secondary">
-                  Active credits for programmatic usage. Credits invoices are
-                  sent by email at time of purchase.
-                </Page.P>
-              </Page.Vertical>
-            </div>
-            <CreditsList credits={activeCredits} isLoading={isCreditsLoading} />
-          </Page.Vertical>
+              </ContentMessage>
+            )}
 
-          {/* Usage Graph */}
-          {isCreditPurchaseInfoLoading ? (
-            <LoadingBlock className="h-64" />
-          ) : (
-            <ProgrammaticCostChart
-              workspaceId={owner.sId}
-              billingCycleStartDay={billingCycleStartDay ?? 1}
+            {/* Purposefully not giving email since we want to test determination here and limit support requests, it's a very edgy case and most likely fraudulent. */}
+            {creditPurchaseLimits &&
+              !creditPurchaseLimits.canPurchase &&
+              creditPurchaseLimits.reason === "trialing" && (
+                <ContentMessage title="Available after trial" variant="info">
+                  Credit purchases are available once you upgrade to a paid
+                  plan. If you would like to purchase credits before upgrading,
+                  please contact support.
+                </ContentMessage>
+              )}
+
+            {creditPurchaseLimits &&
+              !creditPurchaseLimits.canPurchase &&
+              creditPurchaseLimits.reason === "payment_issue" && (
+                <ContentMessage title="Subscription issue" variant="warning">
+                  Credit purchases require an active subscription. Please ensure
+                  your payment method is up to date.
+                </ContentMessage>
+              )}
+
+            {pendingCredits.length > 0 &&
+              (() => {
+                const totalPendingMicroUsd = pendingCredits.reduce(
+                  (sum, c) => sum + c.initialAmountMicroUsd,
+                  0
+                );
+                const isSingle = pendingCredits.length === 1;
+                const title = isSingle
+                  ? `You have a pending ${getPriceAsString({ currency: "usd", priceInMicroUsd: totalPendingMicroUsd })} credit purchase awaiting payment.`
+                  : `You have ${pendingCredits.length} pending credit purchases totaling ${getPriceAsString({ currency: "usd", priceInMicroUsd: totalPendingMicroUsd })} awaiting payment.`;
+
+                return (
+                  <ContentMessage
+                    title={title}
+                    variant="info"
+                    size="lg"
+                    icon={AlertCircle}
+                  >
+                    <div className="flex items-end justify-between">
+                      <p>Complete your payment to activate your credits.</p>
+                      <Button
+                        label={
+                          isSingle ? "Complete payment" : "Manage invoices"
+                        }
+                        variant="primary"
+                        onClick={() => {
+                          window.open(
+                            `/w/${owner.sId}/subscription/manage`,
+                            "_blank"
+                          );
+                        }}
+                      />
+                    </div>
+                  </ContentMessage>
+                );
+              })()}
+
+            {/* Usage Section */}
+            <UsageSection
+              subscription={subscription}
+              isEnterprise={isEnterprise}
+              creditsByType={creditsByType}
+              totalConsumed={totalConsumed}
+              totalCredits={totalCredits}
+              freeCreditRenewalDateMs={freeCreditRenewalDateMs}
+              isLoading={isCreditsLoading || isCreditPurchaseInfoLoading}
+              setShowBuyCreditDialog={setShowBuyCreditDialog}
             />
-          )}
+
+            {/* Current Credits Section */}
+            <Page.Vertical sizing="grow">
+              <div className="flex w-full items-start justify-between">
+                <Page.Vertical gap="sm" sizing="grow">
+                  <div className="flex w-full items-center justify-between">
+                    <Page.H variant="h5">Current credits</Page.H>
+                    <CreditHistorySheet
+                      credits={expiredCredits}
+                      isLoading={isCreditsLoading}
+                    />
+                  </div>
+                  <Page.P variant="secondary">
+                    Active credits for programmatic usage. Credits invoices are
+                    sent by email at time of purchase.
+                  </Page.P>
+                </Page.Vertical>
+              </div>
+              <CreditsList
+                credits={activeCredits}
+                isLoading={isCreditsLoading}
+              />
+            </Page.Vertical>
+
+            {/* Usage Graph */}
+            {isCreditPurchaseInfoLoading ? (
+              <LoadingBlock className="h-64" />
+            ) : (
+              <ProgrammaticCostChart
+                workspaceId={owner.sId}
+                billingCycleStartDay={billingCycleStartDay ?? 1}
+              />
+            )}
+          </AdminSectionAnchor>
         </Page.Vertical>
         <div className="h-12" />
       </>

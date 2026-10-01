@@ -18,6 +18,7 @@ import type {
 import type { PodType } from "@app/types/space";
 import type { LightUserTypeWithWorkspace } from "@app/types/user";
 import {
+  ArrowRight,
   Avatar,
   cn,
   FilterChips,
@@ -70,7 +71,6 @@ export type CommandPaletteSetting = {
   pageHref: string;
   sectionId: AdminSectionId;
   tab?: string;
-  icon: React.ComponentType<{ className?: string }>;
 };
 
 export type CommandPaletteItem =
@@ -222,7 +222,7 @@ function CommandPaletteItemContent({ item }: { item: CommandPaletteItem }) {
     case "setting":
       return (
         <>
-          <Icon visual={item.setting.icon} size="xs" />
+          <Icon visual={ArrowRight} size="xs" />
           <div className="flex min-w-0 items-center gap-1.5">
             <span className="shrink-0 font-medium">{item.setting.label}</span>
             <span className="shrink-0 text-muted-foreground">-</span>
@@ -558,6 +558,7 @@ export function CommandPaletteSearchPhase({
 
         {showFrequentItems && (
           <div>
+            <ItemTitle>Suggestions</ItemTitle>
             {frequentItems.map((item, i) => (
               <ItemRow
                 key={getCommandPaletteItemKey(item)}

@@ -10,6 +10,7 @@ function sorted(ids: Iterable<string>): string[] {
 describe("ADMIN_SEARCH_INDEX drift", () => {
   const declaredSectionIds = new Set(allAdminSectionIds());
   const indexedSectionIds = new Set(ADMIN_SEARCH_INDEX.map((e) => e.sectionId));
+  const indexedPageIds = new Set(ADMIN_SEARCH_INDEX.map((e) => e.pageId));
 
   it("every index pageId is a known admin nav id", () => {
     const known = new Set(Object.keys(ADMIN_ROUTE_PATTERNS));
@@ -17,6 +18,17 @@ describe("ADMIN_SEARCH_INDEX drift", () => {
       expect(known.has(entry.pageId), `unknown pageId: ${entry.pageId}`).toBe(
         true
       );
+    }
+  });
+
+  it("every admin sidebar page has at least one search entry", () => {
+    for (const pageId of Object.keys(
+      ADMIN_ROUTE_PATTERNS
+    ) as (keyof typeof ADMIN_ROUTE_PATTERNS)[]) {
+      expect(
+        indexedPageIds.has(pageId),
+        `admin page missing from search index: ${pageId}`
+      ).toBe(true);
     }
   });
 

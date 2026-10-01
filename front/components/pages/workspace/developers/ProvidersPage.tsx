@@ -1,9 +1,11 @@
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
+import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
 import {
   MODEL_PROVIDER_CONFIGS,
   ProviderSetup,
   SERVICE_PROVIDER_CONFIGS,
 } from "@app/components/providers/ProviderSetup";
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   APP_MODEL_PROVIDER_IDS,
@@ -93,47 +95,55 @@ export function Providers({ owner }: ProvidersProps) {
 
       <Container className="h-full w-full" noPadding>
         <div className="space-y-8">
-          <div>
-            <Page.SectionHeader
-              title="Model Providers"
-              description="Model providers available to your Dust apps."
-            />
-            <ul role="list" className="divide-y divide-separator pt-4">
-              {filteredProviders.map((provider) => (
-                <ProviderListItem
-                  key={provider.providerId}
-                  name={provider.name}
-                  isEnabled={!!configs[provider.providerId]}
-                  apiKey={configs[provider.providerId]?.redactedApiKey}
-                  onAction={() => {
-                    setIsModelProvider(true);
-                    setSelectedProviderId(provider.providerId);
-                  }}
-                />
-              ))}
-            </ul>
-          </div>
+          <AdminSectionAnchor
+            sectionId={ADMIN_SECTION_IDS.appCredentials.modelProviders}
+          >
+            <div>
+              <Page.SectionHeader
+                title="Model Providers"
+                description="Model providers available to your Dust apps."
+              />
+              <ul role="list" className="divide-y divide-separator pt-4">
+                {filteredProviders.map((provider) => (
+                  <ProviderListItem
+                    key={provider.providerId}
+                    name={provider.name}
+                    isEnabled={!!configs[provider.providerId]}
+                    apiKey={configs[provider.providerId]?.redactedApiKey}
+                    onAction={() => {
+                      setIsModelProvider(true);
+                      setSelectedProviderId(provider.providerId);
+                    }}
+                  />
+                ))}
+              </ul>
+            </div>
+          </AdminSectionAnchor>
 
-          <div>
-            <Page.SectionHeader
-              title="Service Providers"
-              description="Service providers enable your Dust Apps to query external data or write to external services."
-            />
-            <ul role="list" className="divide-y divide-separator pt-4">
-              {serviceProviders.map((provider) => (
-                <ProviderListItem
-                  key={provider.providerId}
-                  name={provider.name}
-                  isEnabled={!!configs[provider.providerId]}
-                  apiKey={configs[provider.providerId]?.redactedApiKey}
-                  onAction={() => {
-                    setIsModelProvider(false);
-                    setSelectedProviderId(provider.providerId);
-                  }}
-                />
-              ))}
-            </ul>
-          </div>
+          <AdminSectionAnchor
+            sectionId={ADMIN_SECTION_IDS.appCredentials.serviceProviders}
+          >
+            <div>
+              <Page.SectionHeader
+                title="Service Providers"
+                description="Service providers enable your Dust Apps to query external data or write to external services."
+              />
+              <ul role="list" className="divide-y divide-separator pt-4">
+                {serviceProviders.map((provider) => (
+                  <ProviderListItem
+                    key={provider.providerId}
+                    name={provider.name}
+                    isEnabled={!!configs[provider.providerId]}
+                    apiKey={configs[provider.providerId]?.redactedApiKey}
+                    onAction={() => {
+                      setIsModelProvider(false);
+                      setSelectedProviderId(provider.providerId);
+                    }}
+                  />
+                ))}
+              </ul>
+            </div>
+          </AdminSectionAnchor>
         </div>
       </Container>
     </>
