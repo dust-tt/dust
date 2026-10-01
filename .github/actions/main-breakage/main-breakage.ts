@@ -249,8 +249,8 @@ async function getPreviousState({
   const run = context.payload.workflow_run;
   const runs = await listRecentRuns({ github, context, retryDelayMs });
   if (runs === null) {
-    core.warning(
-      `GitHub kept serving a stale ${run.name} run listing without the current run.`
+    core.info(
+      `No notification: GitHub kept serving a stale ${run.name} run listing.`
     );
     return { superseded: false, previous: null };
   }
