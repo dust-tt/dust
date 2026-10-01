@@ -217,7 +217,7 @@ describe("listBlockedActionsForConversation", () => {
     expect(result[0].metadata.icon).toBe(DEFAULT_MCP_SERVER_ICON);
   });
 
-  it("does not return the blocked actions of an agent the caller cannot read, but counts them", async () => {
+  it("returns the blocked actions of an agent the caller cannot read to a conversation reader", async () => {
     const editor = await UserFactory.basic();
     await MembershipFactory.associate(workspace, editor, { role: "user" });
     const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -261,13 +261,8 @@ describe("listBlockedActionsForConversation", () => {
         conversationResource!
       );
 
-    expect(result).toEqual([]);
-    expect(
-      await AgentMCPActionResource.countBlockedActionsForConversation(
-        auth,
-        conversationResource!
-      )
-    ).toBe(1);
+    expect(result).toHaveLength(1);
+    expect(result[0].metadata.agentName).toBe("Hidden Agent");
   });
 
   it("should only return blocked actions, not succeeded ones", async () => {

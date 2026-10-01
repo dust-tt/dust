@@ -152,20 +152,15 @@ export async function registerUserAnswer(
   }
 
   // Only launch the agent loop if there are no remaining blocked actions.
-  const blockedActionsCount =
-    await AgentMCPActionResource.countBlockedActionsForConversation(
+  const blockedActions =
+    await AgentMCPActionResource.listBlockedActionsForConversation(
       auth,
-      conversation,
-      { messageId }
+      conversation
     );
 
-  if (blockedActionsCount > 0) {
+  if (blockedActions.some((a) => a.messageId === messageId)) {
     logger.info(
-      {
-        blockedActionsCount,
-        messageId,
-        workspaceId: auth.getNonNullableWorkspace().sId,
-      },
+      { blockedActions },
       "Skipping agent loop launch because there are remaining blocked actions"
     );
     return new Ok(undefined);

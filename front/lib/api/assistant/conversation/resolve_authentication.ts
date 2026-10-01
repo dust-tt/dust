@@ -1,3 +1,4 @@
+import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
 import {
   isToolFileAuthRequiredEvent,
   isToolPersonalAuthRequiredEvent,
@@ -202,22 +203,25 @@ export async function resolveAuthentication(
     return new Ok(undefined);
   }
 
-  const blockedActionsCount =
-    remainingBlockedActionsForAgentMessage !== null
-      ? remainingBlockedActionsForAgentMessage.length
-      : await AgentMCPActionResource.countBlockedActionsForConversation(
-          auth,
-          conversation,
-          { messageId }
-        );
+  let blockedActions:
+    | AgentMCPActionResource[]
+    | AgentLoopBlockedToolExecution[];
+  if (remainingBlockedActionsForAgentMessage !== null) {
+    blockedActions = remainingBlockedActionsForAgentMessage;
+  } else {
+    const blockedActionsForConversation =
+      await AgentMCPActionResource.listBlockedActionsForConversation(
+        auth,
+        conversation
+      );
+    blockedActions = blockedActionsForConversation.filter(
+      (blockedAction) => blockedAction.messageId === messageId
+    );
+  }
 
-  if (blockedActionsCount > 0) {
+  if (blockedActions.length > 0) {
     logger.info(
-      {
-        blockedActionsCount,
-        messageId,
-        workspaceId: auth.getNonNullableWorkspace().sId,
-      },
+      { blockedActions },
       "Skipping agent loop launch because there are remaining blocked actions"
     );
     return new Ok(undefined);

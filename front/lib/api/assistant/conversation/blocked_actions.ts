@@ -179,13 +179,13 @@ export async function clearActionRequiredIfNoBlockedActions(
     return;
   }
 
-  const blockedActionsCount =
-    await AgentMCPActionResource.countBlockedActionsForConversation(
+  const blockedActions =
+    await AgentMCPActionResource.listBlockedActionsForConversation(
       auth,
       conversation
     );
 
-  if (blockedActionsCount === 0) {
+  if (blockedActions.length === 0) {
     await ConversationResource.clearActionRequiredForConversation(
       auth,
       conversation

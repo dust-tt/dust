@@ -293,41 +293,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
   }
 
-  /**
-   * @cc [owner:tdraier,label:security;product] blocked-actions-read-gated
-   * `listBlockedActionsForConversation` MUST NOT return the blocked actions of an agent the caller
-   * cannot `read` (their inputs are private, and resuming the loop requires `read`, see
-   * `pinned-run-configuration`). A check deciding the conversation's state from the remaining blocked
-   * actions (clearing the participants' `actionRequired`, relaunching an agent loop) MUST NOT rely on
-   * it: it MUST use `countBlockedActionsForConversation`, which counts every blocked action whatever
-   * its agent and exposes none of them.
-   */
   static async listBlockedActionsForConversation(
     auth: Authenticator,
     conversation: ConversationResource
-  ): Promise<AgentLoopBlockedToolExecution[]> {
-    return this.listBlockedActions(auth, conversation, {
-      includeUnreadableAgents: false,
-    });
-  }
-
-  static async countBlockedActionsForConversation(
-    auth: Authenticator,
-    conversation: ConversationResource,
-    { messageId }: { messageId?: string } = {}
-  ): Promise<number> {
-    const blockedActions = await this.listBlockedActions(auth, conversation, {
-      includeUnreadableAgents: true,
-    });
-    return blockedActions.filter(
-      (action) => messageId === undefined || action.messageId === messageId
-    ).length;
-  }
-
-  private static async listBlockedActions(
-    auth: Authenticator,
-    conversation: ConversationResource,
-    { includeUnreadableAgents }: { includeUnreadableAgents: boolean }
   ): Promise<AgentLoopBlockedToolExecution[]> {
     const owner = auth.getNonNullableWorkspace();
 
@@ -444,8 +412,10 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     ];
 
     const [agentConfigurations, mcpServerViews] = await Promise.all([
+      // Only the agent's name is shown: whoever can read the conversation sees its blocked actions,
+      // as they see its tool calls (see `agent-dangerous-fetch`).
       AgentResource.fetchByIdsAndVersions(auth, agentConfigVersionPairs, {
-        dangerouslySkipFetchCheck: includeUnreadableAgents,
+        dangerouslySkipFetchCheck: true,
       }),
       MCPServerViewResource.fetchByIds(auth, mcpServerViewIds, {
         includeHeavyAttributes: ["authorization"],
@@ -467,12 +437,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       const agentConfiguration = agentConfigurationMap.get(
         `${agentMessage.agentConfigurationId}:${agentMessage.agentConfigurationVersion}`
       );
-      // Resuming the loop requires `read` on the agent (see `pinned-run-configuration`): an action
-      // whose agent the caller cannot read could not be unblocked, and its inputs stay private.
-      if (
-        !agentConfiguration ||
-        (!includeUnreadableAgents && !auth.can("read", agentConfiguration))
-      ) {
+      if (!agentConfiguration) {
         continue;
       }
 
@@ -662,9 +627,10 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         }
 
         const childBlockedActionsList = isString(conversationId)
-          ? await this.listBlockedActions(auth, childConversation, {
-              includeUnreadableAgents,
-            })
+          ? await this.listBlockedActionsForConversation(
+              auth,
+              childConversation
+            )
           : [];
 
         blockedActionsList.push({

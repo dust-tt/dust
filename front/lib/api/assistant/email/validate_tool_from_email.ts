@@ -286,20 +286,18 @@ export async function validateActionFromEmail(
   }
 
   // We only launch the agent loop if there are no remaining blocked actions.
-  const blockedActionsCount =
-    await AgentMCPActionResource.countBlockedActionsForConversation(
+  const blockedActions =
+    await AgentMCPActionResource.listBlockedActionsForConversation(
       auth,
-      conversationResource,
-      { messageId }
+      conversationResource
     );
 
   // We only trigger an agent loop after all actions for the current message are validated.
-  if (blockedActionsCount > 0) {
+  if (blockedActions.filter((a) => a.messageId === messageId).length > 0) {
     logger.info(
       {
-        blockedActionsCount,
+        blockedActionsCount: blockedActions.length,
         messageId,
-        workspaceId: owner.sId,
       },
       "[email] Skipping agent loop launch because there are remaining blocked actions"
     );
