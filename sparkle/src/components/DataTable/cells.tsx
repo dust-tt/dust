@@ -160,6 +160,10 @@ interface CellTextProps {
   showSecondaryLine: boolean;
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:react] inline-control-alignment
+ * Direct button children MUST align with the middle of the primary text line.
+ */
 function CellText({
   children,
   description,
@@ -172,7 +176,8 @@ function CellText({
       <div
         className={cn(
           grow ? "flex-grow" : "",
-          "truncate text-sm",
+          // Inline controls should align with the text line, not its baseline.
+          "truncate text-sm [&>button]:align-middle",
           "text-foreground"
         )}
       >
