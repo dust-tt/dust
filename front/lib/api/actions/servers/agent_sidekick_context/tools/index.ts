@@ -26,6 +26,16 @@ import {
   formatMcpDescription,
 } from "@app/lib/api/assistant/global_agents/sidekick_context";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
+import { fetchSuggestableSkills } from "@app/lib/api/assistant/suggestable_skills";
+import {
+  checkSubAgentAddition,
+  fetchRunAgentTool,
+  fetchSuggestableSubAgents,
+} from "@app/lib/api/assistant/suggestable_sub_agents";
+import {
+  checkToolAddition,
+  fetchSuggestableTools,
+} from "@app/lib/api/assistant/suggestable_tools";
 import {
   describeMcpServer,
   listAvailableSkills,
@@ -44,7 +54,6 @@ import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type {
   AgentMessageType,
@@ -167,41 +176,22 @@ async function createToolsSuggestions({
     );
   }
 
-  // Validate that all tool IDs exist and are accessible.
-  const tools = await MCPServerViewResource.fetchByIds(
-    auth,
-    suggestionToolIds,
-    {
-      includeHeavyAttributes: [
-        "authorization",
-        "cachedTools",
-        "customHeaders",
-        "lastError",
-        "sharedSecret",
-      ],
-    }
-  );
-  const foundToolIds = new Set(
-    tools.filter((t) => auth.can("read", t)).map((t) => t.sId)
-  );
-  const missingToolIds = suggestionToolIds.filter(
-    (id) => !foundToolIds.has(id)
-  );
+  // Validate that all tool IDs are ones the builder offers (see `suggestable-tools-match-list-tools`).
+  const suggestable = await fetchSuggestableTools(auth, suggestionToolIds);
+  const missingToolIds = suggestionToolIds.filter((id) => !suggestable.has(id));
   if (missingToolIds.length > 0) {
     return new Err(
       `The following tool ID(s) are invalid or not accessible: ${missingToolIds.join(", ")}. ` +
         `Check <workspace_context> for valid tool IDs.`
     );
   }
+  const tools = [...suggestable.values()];
 
   // Reject knowledge tools — they should be suggested via suggest_knowledge.
-  const knowledgeTools = tools.filter((t) => {
-    const json = t.toJSON();
-    return json !== null && isToolWithKnowledge(json);
-  });
+  const knowledgeTools = tools.filter(isToolWithKnowledge);
   if (knowledgeTools.length > 0) {
     const knowledgeToolNames = knowledgeTools
-      .map((t) => `${t.sId} (${t.toJSON()?.server.name ?? "unknown"})`)
+      .map((t) => `${t.sId} (${t.server.name})`)
       .join(", ");
     return new Err(
       `The following ID(s) are knowledge tools, not regular tools: ${knowledgeToolNames}. ` +
@@ -210,7 +200,7 @@ async function createToolsSuggestions({
   }
 
   const runAgentTools = tools.filter(
-    (t) => t.toJSON()?.server.name === RUN_AGENT_SERVER_NAME
+    (t) => t.server.name === RUN_AGENT_SERVER_NAME
   );
   if (runAgentTools.length > 0) {
     const runAgentToolNames = runAgentTools.map((t) => t.sId).join(", ");
@@ -218,6 +208,16 @@ async function createToolsSuggestions({
       `The following ID(s) are run_agent tools: ${runAgentToolNames}. ` +
         `Use \`suggest_sub_agent\` instead of \`suggest_tools\` to add or remove a specific sub-agent.`
     );
+  }
+
+  for (const { action, toolId } of suggestions) {
+    if (action !== "add") {
+      continue;
+    }
+    const addition = checkToolAddition(toolId, suggestable);
+    if (addition.isErr()) {
+      return new Err(addition.error);
+    }
   }
 
   // Fetch pending suggestions and mark duplicates (same toolId) as outdated.
@@ -309,15 +309,28 @@ async function createSkillsSuggestions({
     );
   }
 
-  // Validate that all skill IDs exist and are accessible.
-  const skills = await SkillResource.fetchByIds(auth, suggestionSkillIds);
-  const foundSkillIds = new Set(skills.map((s) => s.sId));
+  // Validate that all skill IDs exist and are accessible, and that added skills are ones the
+  // builder offers (see `suggestable-skills-match-builder`).
+  const addedSkillIds = suggestions
+    .filter((s) => s.action === "add")
+    .map((s) => s.skillId);
+  const removedSkillIds = suggestions
+    .filter((s) => s.action !== "add")
+    .map((s) => s.skillId);
+  const [suggestable, removedSkills] = await Promise.all([
+    fetchSuggestableSkills(auth, addedSkillIds),
+    SkillResource.fetchByIds(auth, removedSkillIds),
+  ]);
+  const foundSkillIds = new Set([
+    ...suggestable.keys(),
+    ...removedSkills.map((s) => s.sId),
+  ]);
   const missingSkillIds = suggestionSkillIds.filter(
     (id) => !foundSkillIds.has(id)
   );
   if (missingSkillIds.length > 0) {
     return new Err(
-      `The following skill ID(s) are invalid or not accessible: ${missingSkillIds.join(", ")}. ` +
+      `The following skill ID(s) are invalid, archived or not accessible: ${missingSkillIds.join(", ")}. ` +
         `Check <workspace_context> for valid skill IDs.`
     );
   }
@@ -794,30 +807,34 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    // Validate that the sub-agent exists and is accessible.
+    // Validate that the sub-agent exists and is accessible, and that an added one is one the
+    // builder offers (see `suggestable-sub-agents-match-builder`).
     const { action, subAgentId } = params;
-    const subAgentConfiguration = await AgentResource.fetchById(
-      auth,
-      subAgentId
-    );
-
-    if (!subAgentConfiguration || !auth.can("read", subAgentConfiguration)) {
-      return new Err(
-        new MCPError(
-          `The sub-agent ID "${subAgentId}" is invalid or not accessible.`,
-          { tracked: false }
-        )
+    if (action === "add") {
+      const suggestable = await fetchSuggestableSubAgents(auth, [subAgentId]);
+      const addition = checkSubAgentAddition(subAgentId, suggestable, {
+        agentId: agentConfigurationId,
+      });
+      if (addition.isErr()) {
+        return new Err(new MCPError(addition.error, { tracked: false }));
+      }
+    } else {
+      const subAgentConfiguration = await AgentResource.fetchById(
+        auth,
+        subAgentId
       );
+      if (!subAgentConfiguration || !auth.can("read", subAgentConfiguration)) {
+        return new Err(
+          new MCPError(
+            `The sub-agent ID "${subAgentId}" is invalid or not accessible.`,
+            { tracked: false }
+          )
+        );
+      }
     }
 
-    // Get the run_agent MCP server view.
-    const runAgentServerView =
-      await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-        auth,
-        "run_agent"
-      );
-
-    if (!runAgentServerView) {
+    const runAgentTool = await fetchRunAgentTool(auth);
+    if (!runAgentTool) {
       return new Err(
         new MCPError(
           "The run_agent server is not available in this workspace.",
@@ -871,7 +888,7 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
     // Create the sub_agent suggestion.
     const suggestion: SubAgentSuggestionType = {
       action,
-      toolId: runAgentServerView.sId,
+      toolId: runAgentTool.sId,
       childAgentId: subAgentId,
     };
 
