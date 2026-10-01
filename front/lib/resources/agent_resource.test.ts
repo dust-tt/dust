@@ -2826,11 +2826,25 @@ describe("AgentResource", () => {
 
   describe("poke content access", () => {
     it("exposes a hidden agent's content to a Poke superuser without granting any verb", async () => {
-      const { authenticator, workspace } = testContext;
+      const { authenticator, workspace, user } = testContext;
       const agent = await AgentConfigurationFactory.createTestAgent(
         authenticator,
         { scope: "hidden", instructions: "support can read this" }
       );
+      // Poke's authenticator holds every workspace group, so it reads an agent through any editor
+      // grant: drop the only one to leave the superuser without `read`.
+      const owned = await AgentResource.fetchById(authenticator, agent.sId);
+      assert(owned?.id);
+      expect(
+        (
+          await GroupPermissionResource.revokeFromUser(authenticator, {
+            user: user.toJSON(),
+            resourceType: "agent",
+            resourceId: owned.id,
+            grantType: "editor",
+          })
+        ).isOk()
+      ).toBe(true);
       const { agentOwnerAuth: adminAuth } = await setupAgentOwner(
         workspace,
         "admin"
