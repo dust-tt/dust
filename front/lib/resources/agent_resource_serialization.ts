@@ -192,6 +192,12 @@ function toConfigurationJSON(
  * rendered messages) can skip their queries, and get `instructions: null`, `userFavorite: false`
  * and `tags: []`.
  */
+export type LightAgentConfigurationOptions = {
+  withInstructions?: boolean;
+  withFavorites?: boolean;
+  withTags?: boolean;
+};
+
 export async function toLightAgentConfigurations(
   auth: Authenticator,
   resources: AgentResource[],
@@ -199,11 +205,7 @@ export async function toLightAgentConfigurations(
     withInstructions = true,
     withFavorites = true,
     withTags = true,
-  }: {
-    withInstructions?: boolean;
-    withFavorites?: boolean;
-    withTags?: boolean;
-  } = {}
+  }: LightAgentConfigurationOptions = {}
 ): Promise<LightAgentConfigurationType[]> {
   const [instructions, favorites, tags] = await Promise.all([
     withInstructions
@@ -230,7 +232,7 @@ export async function toLightAgentConfigurations(
 export async function toLightAgentConfiguration(
   auth: Authenticator,
   resource: AgentResource,
-  options: { withFavorites?: boolean; withTags?: boolean } = {}
+  options: LightAgentConfigurationOptions = {}
 ): Promise<LightAgentConfigurationType> {
   const [configuration] = await toLightAgentConfigurations(
     auth,
