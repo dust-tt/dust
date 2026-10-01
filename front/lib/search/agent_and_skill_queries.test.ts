@@ -19,7 +19,7 @@ describe("buildDiscoverSearchQuery", () => {
     });
   });
 
-  it("requires most terms, with fuzzy and synonym clauses per term", () => {
+  it("requires most terms, with fuzzy clauses on the language sub-fields", () => {
     const query = buildDiscoverSearchQuery("Meetings recap");
     expect(query).toMatchObject({
       function_score: {
@@ -34,29 +34,9 @@ describe("buildDiscoverSearchQuery", () => {
 
     const serialized = JSON.stringify(query);
     expect(serialized).toContain('"fuzziness":"AUTO"');
-    expect(serialized).toContain("call sync standup notes");
-    expect(serialized).toContain("summarize summary digest tldr brief");
-  });
-
-  it("skips synonym clauses for a term outside the dictionary", () => {
-    expect(buildDiscoverSearchQuery("zorglub")).toMatchObject({
-      function_score: {
-        query: {
-          bool: {
-            should: [
-              {
-                dis_max: {
-                  queries: [
-                    expect.anything(),
-                    expect.anything(),
-                    expect.anything(),
-                  ],
-                },
-              },
-            ],
-          },
-        },
-      },
-    });
+    expect(serialized).toContain('"name.english"');
+    expect(serialized).toContain('"description.english"');
+    expect(serialized).toContain('"name.french"');
+    expect(serialized).toContain('"description.french"');
   });
 });

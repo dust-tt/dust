@@ -1,4 +1,3 @@
-import { getDiscoverSynonyms } from "@app/lib/search/discover_synonyms";
 import type { estypes } from "@elastic/elasticsearch";
 
 const NAME_SEARCH_FIELDS = ["name.autocomplete", "name.autocomplete_preserved"];
@@ -162,7 +161,6 @@ export function buildNameSearchQuery(
 const DISCOVER_USAGE_BOOST_WEIGHT = 0.5;
 
 function buildDiscoverTermQuery(term: string): estypes.QueryDslQueryContainer {
-  const synonyms = getDiscoverSynonyms(term).join(" ");
   const tiers: [estypes.QueryDslQueryContainer, number][] = [
     [
       {
@@ -178,20 +176,23 @@ function buildDiscoverTermQuery(term: string): estypes.QueryDslQueryContainer {
       {
         multi_match: {
           query: term,
-          fields: NAME_SEARCH_FIELDS,
+          fields: [...NAME_SEARCH_FIELDS, "name.english", "name.french"],
           fuzziness: "AUTO",
         },
       },
       2,
     ],
-    [{ match: { description: { query: term, fuzziness: "AUTO" } } }, 1],
+    [
+      {
+        multi_match: {
+          query: term,
+          fields: ["description", "description.english", "description.french"],
+          fuzziness: "AUTO",
+        },
+      },
+      1,
+    ],
   ];
-  if (synonyms) {
-    tiers.push(
-      [{ multi_match: { query: synonyms, fields: NAME_SEARCH_FIELDS } }, 2],
-      [{ match: { description: { query: synonyms } } }, 1]
-    );
-  }
 
   return {
     dis_max: {
@@ -205,9 +206,9 @@ function buildDiscoverTermQuery(term: string): estypes.QueryDslQueryContainer {
 /**
  * @cc [owner:adrsimon,label:product] discover-matching
  * Empty or whitespace-only queries MUST match everything. Otherwise at least 75% of the
- * whitespace-separated terms MUST match, each through a name prefix, a fuzzy name token, a fuzzy
- * description token, or a dictionary synonym in the name or description. Name matches MUST score
- * above description matches. The active users count MUST add a logarithmic bump to the score, so
+ * whitespace-separated terms MUST match, each through a name prefix, a fuzzy name token or a fuzzy
+ * description token, where tokens also match through the built-in `english` and `french`
+ * analyzers (stemming and stop words) on the matching sub-fields. Name matches MUST score above description matches. The active users count MUST add a logarithmic bump to the score, so
  * usage reorders close matches without making a non-matching item match.
  */
 export function buildDiscoverSearchQuery(
