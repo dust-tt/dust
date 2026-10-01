@@ -80,8 +80,6 @@ export interface ModelPickerProps {
   ) => void;
   // Lets keyboard `/` Pick model commit through the same path as the button picker.
   commitApiRef?: MutableRefObject<((selection: Selection) => void) | null>;
-  // Lets components outside the input bar (e.g. the sidebar banner) open the menu.
-  openApiRef?: MutableRefObject<(() => void) | null>;
   // When set, emits `assistant:model_picker:*` analytics tagged with this
   // surface. Consumers that don't pass it (e.g. the agent builder) are not
   // tracked.
@@ -108,7 +106,6 @@ export function ModelPicker({
   stickyModelOverride,
   setStickyModelOverride,
   commitApiRef,
-  openApiRef,
   trackingSurface,
   showDegradations = true,
   showAutoModelsHint = false,
@@ -209,10 +206,6 @@ export function ModelPicker({
       trackModelPickerOpen({ surface: trackingSurface, clientType });
     }
   };
-
-  if (openApiRef) {
-    openApiRef.current = openMenu;
-  }
 
   const onSelectTier = (tierId: ModelTierId) => {
     if (getTierLockReason(tierId, { lockPremiumEfforts, streamModels })) {
