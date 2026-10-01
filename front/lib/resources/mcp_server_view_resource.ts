@@ -283,13 +283,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     name: string;
     conflictDetails: MCPServerViewNameConflictDetails | null;
   }> {
-    const {
-      droppedPrefixNames,
-      prefixedNames: prefixedCandidates,
-    } = getModelFacingToolNames(
-      name,
-      tools.map((tool) => tool.name)
-    );
+    const { droppedPrefixNames, prefixedNames: prefixedCandidates } =
+      getModelFacingToolNames(
+        name,
+        tools.map((tool) => tool.name)
+      );
     const existingViews = await this.listBySpace(
       auth,
       space,
