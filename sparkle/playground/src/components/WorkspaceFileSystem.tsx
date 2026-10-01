@@ -1,111 +1,80 @@
 import {
   Button,
-  Cube01,
   Folder,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
-  Tree,
 } from "@dust-tt/sparkle";
 import {
-  type ComponentType,
+  type DragEvent,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 
-import { getCompanySpaceIcon } from "../data/companySpaces";
 import {
-  getDataSourceChildren,
-  getDataSourcesBySpaceId,
+  getDataSourceIcon,
   getFolderPath,
   isDataSourceFolder,
   sortDataSourcesForDisplay,
 } from "../data/dataSources";
-import type { DataSource, Space } from "../data/types";
-import { FilesBrowser } from "./FilesBrowser";
+import {
+  canDropInto,
+  dragMimeFor,
+  isDraggableItem,
+  isDropTargetFolder,
+  readDragId,
+} from "../data/fileMoves";
+import type { DataSource } from "../data/types";
+import { FilesBrowser, type FilesBrowserDnd } from "./FilesBrowser";
+import { TreeDnd } from "./TreeDnd";
 
-// Workspace-wide file system: every Company Space and Pod becomes a root
-// folder of one tree, so the same FilesBrowser (breadcrumbs, folder
-// navigation, search) browses the whole workspace. The tree and the view are
-// two halves of a single panel sharing the current folder.
+// The workspace file system as a single panel split in two: a folder tree on
+// the left, the files browser on the right, both looking at the same current
+// folder. Everything the workspace holds — Company Spaces, Pods, their
+// conversations, agents and skills — is in the one tree.
+//
+// Items are moved by dragging them, in the tree, in the table, or onto a
+// breadcrumb. What may be picked up and where it may land is decided in
+// `data/fileMoves`, not here.
 
 /** Below this width the tree folds into a dropdown above the view. */
 const COMPACT_BELOW = 720;
 
-type IconComponent = ComponentType<{ className?: string }>;
+/** The breadcrumbs name the workspace root this way; the model calls it null. */
+const ROOT_TARGET_ID = "root";
 
 interface WorkspaceFileSystemProps {
-  pods: Space[];
-  companySpaces: Space[];
+  files: DataSource[];
+  /** The tree's children index, so a branch never scans the whole workspace. */
+  filesByParentId: Map<string | null, DataSource[]>;
+  /** The same items by id, for the drop checks `dragover` runs constantly. */
+  filesById: Map<string, DataSource>;
   onFileOpen: (dataSource: DataSource) => void;
-}
-
-function spaceRootId(space: Space) {
-  return `space-root-${space.id}`;
-}
-
-function buildWorkspaceItems(
-  companySpaces: Space[],
-  pods: Space[]
-): { items: DataSource[]; rootIcons: Map<string, IconComponent> } {
-  const items: DataSource[] = [];
-  const rootIcons = new Map<string, IconComponent>();
-  const addSpace = (
-    space: Space,
-    source: DataSource["source"],
-    icon: IconComponent
-  ) => {
-    const rootId = spaceRootId(space);
-    rootIcons.set(rootId, icon);
-    const children = getDataSourcesBySpaceId(space.id);
-    const latest = children.reduce<Date | null>(
-      (acc, item) => (!acc || item.updatedAt > acc ? item.updatedAt : acc),
-      null
-    );
-    items.push({
-      id: rootId,
-      kind: "folder",
-      fileName: space.name,
-      parentId: null,
-      source,
-      createdBy: children[0]?.createdBy ?? "",
-      createdAt: latest ?? new Date(),
-      updatedAt: latest ?? new Date(),
-      icon,
-    });
-    for (const item of children) {
-      items.push({
-        ...item,
-        source,
-        parentId: item.parentId ?? rootId,
-      });
-    }
-  };
-
-  companySpaces.forEach((space) =>
-    addSpace(space, "company", getCompanySpaceIcon(space))
-  );
-  pods.forEach((space) => addSpace(space, "pod", Cube01));
-  return { items, rootIcons };
+  onMoveFile: (draggedId: string, targetFolderId: string | null) => void;
+  /** Opens the Pod creation dialog on the given folder. */
+  onCreatePod: (parentId: string | null) => void;
 }
 
 export function WorkspaceFileSystem({
-  pods,
-  companySpaces,
+  files,
+  filesByParentId,
+  filesById,
   onFileOpen,
+  onMoveFile,
+  onCreatePod,
 }: WorkspaceFileSystemProps) {
-  const { items, rootIcons } = useMemo(
-    () => buildWorkspaceItems(companySpaces, pods),
-    [companySpaces, pods]
-  );
-
   const [currentFolderId, setCurrentFolderIdState] = useState<string | null>(
     null
   );
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [isTreeMenuOpen, setIsTreeMenuOpen] = useState(false);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  // `dragover` can fire before React has re-rendered on the `dragstart`, so
+  // the checks read the carried item from here rather than from state.
+  const draggingIdRef = useRef<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [isCompact, setIsCompact] = useState(false);
@@ -122,13 +91,24 @@ export function WorkspaceFileSystem({
     return () => observer.disconnect();
   }, []);
 
-  /** Opening a folder from anywhere (tree, table, breadcrumbs) reveals it in the tree. */
+  const subfoldersByParentId = useMemo(() => {
+    const index = new Map<string | null, DataSource[]>();
+    filesByParentId.forEach((children, parentId) => {
+      const folders = children.filter(isDataSourceFolder);
+      if (folders.length > 0) {
+        index.set(parentId, folders);
+      }
+    });
+    return index;
+  }, [filesByParentId]);
+
+  /** Opening a folder from anywhere reveals it in the tree. */
   const setCurrentFolderId = (folderId: string | null) => {
     setCurrentFolderIdState(folderId);
     if (!folderId) {
       return;
     }
-    const ancestors = getFolderPath(items, folderId)
+    const ancestors = getFolderPath(files, folderId)
       .slice(0, -1)
       .map((folder) => folder.id);
     if (ancestors.length > 0) {
@@ -152,49 +132,139 @@ export function WorkspaceFileSystem({
     setIsTreeMenuOpen(false);
   };
 
-  const getSubfolders = (parentId: string) =>
-    sortDataSourcesForDisplay(
-      getDataSourceChildren(items, parentId).filter(isDataSourceFolder)
-    );
-  // Space roots keep their Company Spaces-then-Pods order.
-  const spaceRoots = getDataSourceChildren(items, null);
+  const getSubfolders = (parentId: string | null) =>
+    subfoldersByParentId.get(parentId) ?? [];
+
+  // ── Drag and drop ─────────────────────────────────────────────────────────
+  const startDrag = (item: DataSource, event: DragEvent<HTMLElement>) => {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData(dragMimeFor(item), item.id);
+    event.dataTransfer.setData("text/plain", item.fileName);
+    draggingIdRef.current = item.id;
+    setDraggingId(item.id);
+  };
+
+  const endDrag = () => {
+    draggingIdRef.current = null;
+    setDraggingId(null);
+    setDropTargetId(null);
+  };
+
+  const dragOverTarget = (
+    targetId: string,
+    targetFolderId: string | null,
+    event: DragEvent<HTMLElement>
+  ) => {
+    const carried = draggingIdRef.current;
+    if (!carried || !canDropInto(filesById, carried, targetFolderId)) {
+      return;
+    }
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setDropTargetId(targetId);
+  };
+
+  const dropOnTarget = (
+    targetFolderId: string | null,
+    event: DragEvent<HTMLElement>
+  ) => {
+    const droppedId = readDragId(event.dataTransfer) ?? draggingIdRef.current;
+    endDrag();
+    if (!droppedId) {
+      return;
+    }
+    event.preventDefault();
+    onMoveFile(droppedId, targetFolderId);
+  };
+
+  /** The whole drop contract for one tree row, or nothing if it cannot take one. */
+  const dropPropsFor = (folder: DataSource | null) => {
+    const targetId = folder?.id ?? ROOT_TARGET_ID;
+    const targetFolderId = folder?.id ?? null;
+    if (folder && !isDropTargetFolder(folder)) {
+      return {};
+    }
+    return {
+      onDragOver: (event: DragEvent<HTMLDivElement>) =>
+        dragOverTarget(targetId, targetFolderId, event),
+      onDragLeave: () =>
+        setDropTargetId((prev) => (prev === targetId ? null : prev)),
+      onDrop: (event: DragEvent<HTMLDivElement>) =>
+        dropOnTarget(targetFolderId, event),
+      isDropHighlight: dropTargetId === targetId,
+    };
+  };
 
   const renderFolder = (folder: DataSource) => {
     const subfolders = getSubfolders(folder.id);
+    const shared = {
+      label: folder.fileName,
+      visual: getDataSourceIcon(folder) ?? Folder,
+      isSelected: currentFolderId === folder.id,
+      onItemClick: () => selectFolder(folder.id),
+      draggable: isDraggableItem(folder),
+      onDragStart: (event: DragEvent<HTMLDivElement>) =>
+        startDrag(folder, event),
+      onDragEnd: endDrag,
+      isDragging: draggingId === folder.id,
+      ...dropPropsFor(folder),
+    };
+
+    if (subfolders.length === 0) {
+      return <TreeDnd.Item key={folder.id} {...shared} type="leaf" />;
+    }
+
     return (
-      <Tree.Item
+      <TreeDnd.Item
         key={folder.id}
-        label={folder.fileName}
-        visual={rootIcons.get(folder.id) ?? Folder}
-        type={subfolders.length > 0 ? "node" : "leaf"}
+        {...shared}
+        type="node"
         collapsed={!expandedIds.has(folder.id)}
         onChevronClick={() => toggleExpanded(folder.id)}
-        isSelected={currentFolderId === folder.id}
-        onItemClick={() => selectFolder(folder.id)}
-      >
-        {subfolders.length > 0 && (
-          <Tree variant="navigator">{subfolders.map(renderFolder)}</Tree>
+        renderTreeItems={() => (
+          <TreeDnd variant="navigator">
+            {sortDataSourcesForDisplay(subfolders).map(renderFolder)}
+          </TreeDnd>
         )}
-      </Tree.Item>
+      />
     );
   };
 
+  // The top level is reached, and dropped onto, through the "Files" breadcrumb.
   const tree = (
-    <Tree variant="navigator">
-      <Tree.Item
-        label="Files"
-        type="item"
-        visual={Folder}
-        isSelected={currentFolderId === null}
-        onItemClick={() => selectFolder(null)}
-      />
-      {spaceRoots.map(renderFolder)}
-    </Tree>
+    <TreeDnd variant="navigator">
+      {sortDataSourcesForDisplay(getSubfolders(null)).map(renderFolder)}
+    </TreeDnd>
   );
 
   const currentFolder = currentFolderId
-    ? items.find((item) => item.id === currentFolderId)
+    ? files.find((item) => item.id === currentFolderId)
     : undefined;
+
+  const browserDnd: FilesBrowserDnd = {
+    draggingFileId: draggingId,
+    dropHoverTargetId: dropTargetId,
+    onDragOverTarget: (targetId, event) =>
+      dragOverTarget(
+        targetId,
+        targetId === ROOT_TARGET_ID ? null : targetId,
+        event
+      ),
+    onDropOnTarget: (targetId, _targetParentId, event) =>
+      dropOnTarget(targetId === ROOT_TARGET_ID ? null : targetId, event),
+    onFileDragStart: (fileId, _fileName, event) => {
+      const item = filesById.get(fileId);
+      if (item) {
+        startDrag(item, event);
+      }
+    },
+    onFileDragEnd: endDrag,
+    canDragRow: isDraggableItem,
+    canDropOn: (item) =>
+      isDropTargetFolder(item) &&
+      (!draggingId || canDropInto(filesById, draggingId, item.id)),
+  };
+
   return (
     <div ref={containerRef} className="flex h-full min-h-0 w-full">
       {!isCompact && (
@@ -212,7 +282,7 @@ export function WorkspaceFileSystem({
                 isSelect
                 className="self-start"
                 icon={
-                  (currentFolderId && rootIcons.get(currentFolderId)) || Folder
+                  (currentFolder && getDataSourceIcon(currentFolder)) || Folder
                 }
                 label={currentFolder?.fileName ?? "Files"}
               />
@@ -226,11 +296,13 @@ export function WorkspaceFileSystem({
           </PopoverRoot>
         )}
         <FilesBrowser
-          dataSources={items}
+          dataSources={files}
           currentFolderId={currentFolderId}
           onCurrentFolderIdChange={setCurrentFolderId}
           onFileOpen={onFileOpen}
           onDeleteFile={() => {}}
+          onCreatePod={() => onCreatePod(currentFolderId)}
+          dnd={browserDnd}
           emptyMessage="No files in this workspace yet."
         />
       </div>

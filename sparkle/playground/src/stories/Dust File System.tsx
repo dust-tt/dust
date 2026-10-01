@@ -1,6 +1,7 @@
 import {
   Archive,
   Avatar,
+  Beaker02,
   Bell01,
   Breadcrumbs,
   Button,
@@ -115,25 +116,25 @@ import { WorkspaceFileSystem } from "../components/WorkspaceFileSystem";
 import {
   type AdminRequest,
   type Agent,
+  buildWorkspace,
+  canDropInto,
   type Conversation,
-  createConversationsWithMessages,
-  createMockRequests,
-  createMockTriggers,
-  createMockWakeUps,
-  createSpace,
-  createTriggeredConversations,
   type DataSource,
   type DataSourceFileType,
   DEFAULT_POD_NOTIFICATION_CONDITION,
+  deriveFolderFiles,
   getMembersBySpaceId,
-  getRandomAgents,
-  getRandomSpaces,
   getRandomUsers,
   getUserById,
+  hasPodDrag,
+  indexFilesById,
+  indexFilesByParentId,
+  isDropTargetFolder,
+  isPodFolder,
   isTriggeredConversation,
   mockAgents,
-  mockCompanySpaces,
-  mockConversations,
+  moveDataSource,
+  readPodDragId,
   mockUsers,
   MY_POD_SPACE,
   POD_NOTIFICATION_OPTIONS,
@@ -144,11 +145,10 @@ import {
   type TriggerPool,
   type User,
   type WakeUp,
+  type WorkspaceModel,
+  type WorkspaceProfile,
 } from "../data";
-import {
-  getDataSourceIcon,
-  getDataSourcesBySpaceId,
-} from "../data/dataSources";
+import { getDataSourceIcon, getFolderPath } from "../data/dataSources";
 import { getRandomGreetingForName } from "../data/greetings";
 import {
   buildPodTabOptions,
@@ -188,54 +188,42 @@ function getSpaceActivity(space: Space) {
   return { count, hasActivity: count ? true : c % 2 !== 0 };
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+/** The collaborators strip: a few of the workspace's agents, and some people. */
+function pickCollaborators(
+  model: WorkspaceModel,
+  currentUserId: string
+): Collaborator[] {
+  const agents = model.agents
+    .filter((agent) => agent.status === "active")
+    .slice(0, 3)
+    .map((data) => ({ type: "agent" as const, data }));
+  const people = mockUsers
+    .filter((person) => person.id !== currentUserId)
+    .slice(0, 3)
+    .map((data) => ({ type: "person" as const, data }));
+  return [...agents, ...people];
+}
 
-function DustFileSystem() {
+// ── Workspace view ────────────────────────────────────────────────────────────
+
+interface WorkspaceViewProps {
+  model: WorkspaceModel;
+  user: User;
+  onProfileChange: (profile: WorkspaceProfile) => void;
+}
+
+function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
   // ── Bootstrap state ───────────────────────────────────────────────────────
-  const [user, setUser] = useState<User | null>(null);
-  const [greeting, setGreeting] = useState<string>("");
-  useEffect(() => {
-    if (user) {
-      setGreeting(getRandomGreetingForName(user.firstName));
-    }
-  }, [user]);
-  const [spaces, setSpaces] = useState<Space[]>([]);
-  const [conversationsWithMessages, setConversationsWithMessages] = useState<
-    Conversation[]
-  >([]);
-  const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
-
-  useEffect(() => {
-    const u = getRandomUsers(1)[0];
-    setUser(u);
-    const agentCount = Math.floor(Math.random() * 5) + 1;
-    const peopleCount = Math.floor(Math.random() * 5) + 1;
-    setCollaborators([
-      ...getRandomAgents(agentCount).map((d) => ({
-        type: "agent" as const,
-        data: d,
-      })),
-      ...getRandomUsers(peopleCount).map((d) => ({
-        type: "person" as const,
-        data: d,
-      })),
-    ]);
-    const randomSpaces = getRandomSpaces(Math.floor(Math.random() * 7) + 3);
-    setSpaces(randomSpaces);
-    setStarredSpaceIds(
-      new Set(randomSpaces.slice(0, 2).map((space) => space.id))
-    );
-    const conversations = createConversationsWithMessages(u.id);
-    setConversationsWithMessages(conversations);
-    // Every trigger and wake-up belongs to whoever opened the playground, since
-    // the Manage tabs only ever list the ones you own.
-    const userTriggers = createMockTriggers(u.id);
-    setTriggers(userTriggers);
-    setTriggeredConversations(createTriggeredConversations(userTriggers));
-    setWakeUps(
-      createMockWakeUps([...conversations, ...mockConversations], u.id)
-    );
-  }, []);
+  // Everything below starts from the workspace model. The story is remounted
+  // when the simulated workspace changes, so these only need an initial value.
+  const [greeting] = useState(() => getRandomGreetingForName(user.firstName));
+  const [spaces, setSpaces] = useState<Space[]>(model.pods);
+  const [conversationsWithMessages] = useState<Conversation[]>(
+    model.conversations
+  );
+  const [collaborators] = useState<Collaborator[]>(() =>
+    pickCollaborators(model, user.id)
+  );
 
   // ── Navigation state ──────────────────────────────────────────────────────
   // P2 selection: what's shown in the "level 1" panel
@@ -278,15 +266,15 @@ function DustFileSystem() {
     useState<RequestsTab>("pending");
   const [automatedWorkTab, setAutomatedWorkTab] =
     useState<AutomatedWorkTab>("conversations");
-  const [triggers, setTriggers] = useState<Trigger[]>([]);
+  const [triggers, setTriggers] = useState<Trigger[]>(model.triggers);
   // A run that already happened is history: switching its trigger off or moving
   // it to another pool does not rewrite it. Keeping these conversations in
   // state rather than deriving them from `triggers` is what stops a toggle from
   // rebuilding every list that shows a conversation.
-  const [triggeredConversations, setTriggeredConversations] = useState<
-    Conversation[]
-  >([]);
-  const [wakeUps, setWakeUps] = useState<WakeUp[]>([]);
+  const [triggeredConversations] = useState<Conversation[]>(
+    model.triggeredConversations
+  );
+  const [wakeUps, setWakeUps] = useState<WakeUp[]>(model.wakeUps);
   // The inbox rows you have read, conversations and requests alike. Ones read
   // during a visit to the Inbox keep their place there; the next visit starts
   // without them.
@@ -300,7 +288,11 @@ function DustFileSystem() {
   const [leftConversationIds, setLeftConversationIds] = useState<Set<string>>(
     new Set()
   );
-  const [requests, setRequests] = useState<AdminRequest[]>(createMockRequests);
+  // The workspace's files, mutable from here on: dragging something into
+  // another folder rewrites this list, and every view that reads files reads it
+  // through the indexes derived below.
+  const [files, setFiles] = useState<DataSource[]>(model.files);
+  const [requests, setRequests] = useState<AdminRequest[]>(model.requests);
   // Requests handled since the list was last refreshed. They stay in Pending,
   // showing their outcome, instead of vanishing under the cursor.
   const [stickyRequestIds, setStickyRequestIds] = useState<Set<string>>(
@@ -340,8 +332,11 @@ function DustFileSystem() {
       new Map(prev).set(spaceId, condition)
     );
   };
-  const [starredSpaceIds, setStarredSpaceIds] = useState<Set<string>>(
-    new Set()
+  // The sidebar's Pod list, start to finish: a Pod shows there because it was
+  // put there, not because the user takes part in it. Every other Pod is
+  // reached from the browse menu or from Files.
+  const [favoritePodIds, setFavoritePodIds] = useState<Set<string>>(
+    () => new Set(model.pods.slice(0, 6).map((pod) => pod.id))
   );
   // ── Space management state ────────────────────────────────────────────────
   const [spaceMembers, setSpaceMembers] = useState<Map<string, string[]>>(
@@ -354,6 +349,12 @@ function DustFileSystem() {
     Map<string, boolean>
   >(new Map());
   const [isCreateRoomDialogOpen, setIsCreateRoomDialogOpen] = useState(false);
+  /** The folder the create dialog opens on, when asked for from Files. */
+  const [createPodParentId, setCreatePodParentId] = useState<string | null>(
+    null
+  );
+  /** A Pod is being dragged over the sidebar's Pod list. */
+  const [isPodDropHovered, setIsPodDropHovered] = useState(false);
   const [isInviteUsersScreenOpen, setIsInviteUsersScreenOpen] = useState(false);
   const [inviteSpaceId, setInviteSpaceId] = useState<string | null>(null);
   const [lastCreatedSpaceId, setLastCreatedSpaceId] = useState<string | null>(
@@ -384,15 +385,54 @@ function DustFileSystem() {
   }, [spaces, lastCreatedSpaceId]);
 
   // ── Derived data ──────────────────────────────────────────────────────────
+  // Everything below is read off `files`, so moving an item rewrites one list
+  // and every surface that shows it follows.
+  const filesById = useMemo(() => indexFilesById(files), [files]);
+  const filesByParentId = useMemo(() => indexFilesByParentId(files), [files]);
+
+  const podFilesBySpaceId = useMemo(
+    () =>
+      deriveFolderFiles(
+        filesByParentId,
+        files.filter((file) => file.folderType === "pod"),
+        { skipSystemFolders: true }
+      ),
+    [files, filesByParentId]
+  );
+
+  const conversationFilesByConversationId = useMemo(
+    () =>
+      deriveFolderFiles(
+        filesByParentId,
+        files.filter((file) => file.folderType === "conversation")
+      ),
+    [files, filesByParentId]
+  );
+
+  // A Pod's files come from the workspace, so its Files tab and the file
+  // system's tree are looking at the very same items.
+  const podFilesFor = useCallback(
+    (spaceId: string) => podFilesBySpaceId.get(spaceId) ?? [],
+    [podFilesBySpaceId]
+  );
+
+  const handleMoveFile = useCallback(
+    (draggedId: string, targetFolderId: string | null) => {
+      if (!canDropInto(filesById, draggedId, targetFolderId)) {
+        return;
+      }
+      setFiles((prev) => moveDataSource(prev, draggedId, targetFolderId));
+    },
+    [filesById]
+  );
+
   // Automated work is nothing but the runs of your triggers, so it joins the
   // conversations from the trigger list rather than from a coin flip.
   const allConversations = useMemo(
     () =>
-      [
-        ...conversationsWithMessages,
-        ...mockConversations,
-        ...triggeredConversations,
-      ].filter((conversation) => !leftConversationIds.has(conversation.id)),
+      [...conversationsWithMessages, ...triggeredConversations].filter(
+        (conversation) => !leftConversationIds.has(conversation.id)
+      ),
     [conversationsWithMessages, leftConversationIds, triggeredConversations]
   );
 
@@ -424,15 +464,17 @@ function DustFileSystem() {
     );
   }, [searchText, sortedSpaces]);
 
-  const starredSpaces = useMemo(
-    () => filteredSpaces.filter((s) => starredSpaceIds.has(s.id)),
-    [filteredSpaces, starredSpaceIds]
-  );
-
-  const unstarredSpaces = useMemo(
-    () => filteredSpaces.filter((s) => !starredSpaceIds.has(s.id)),
-    [filteredSpaces, starredSpaceIds]
-  );
+  // The sidebar list itself, plus the Pod you are currently in when it is not
+  // on it — otherwise the selection would have nowhere to show.
+  const sidebarSpaces = useMemo(() => {
+    const favorites = filteredSpaces.filter((s) => favoritePodIds.has(s.id));
+    const openSpaceId = p2View.kind === "space" ? p2View.spaceId : null;
+    if (!openSpaceId || favoritePodIds.has(openSpaceId)) {
+      return favorites;
+    }
+    const openSpace = spaces.find((s) => s.id === openSpaceId);
+    return openSpace ? [...favorites, openSpace] : favorites;
+  }, [favoritePodIds, filteredSpaces, p2View, spaces]);
 
   const [podBrowseSearch, setPodBrowseSearch] = useState("");
   const browsableSpaces = useMemo(() => {
@@ -598,7 +640,7 @@ function DustFileSystem() {
         return File02;
       }
 
-      const file = getDataSourcesBySpaceId(podContext.spaceId).find(
+      const file = podFilesFor(podContext.spaceId).find(
         (item) => item.id === dataSourceId
       );
       if (!file) {
@@ -607,7 +649,7 @@ function DustFileSystem() {
 
       return getDataSourceIcon(file) ?? File02;
     },
-    [podContext]
+    [podContext, podFilesFor]
   );
 
   const basePodTabOptions = useMemo((): PodTabOption[] => {
@@ -655,7 +697,7 @@ function DustFileSystem() {
         return;
       }
 
-      const file = getDataSourcesBySpaceId(podContext.spaceId).find(
+      const file = podFilesFor(podContext.spaceId).find(
         (dataSource) => dataSource.id === fileId
       );
       if (!file || file.kind === "folder") {
@@ -864,10 +906,10 @@ function DustFileSystem() {
     }
 
     const pinnedIds = new Set(dynamicFileTabIds);
-    return getDataSourcesBySpaceId(podContext.spaceId).filter(
+    return podFilesFor(podContext.spaceId).filter(
       (item) => item.kind === "file" && !pinnedIds.has(item.id)
     );
-  }, [dynamicFileTabIds, podContext]);
+  }, [dynamicFileTabIds, podContext, podFilesFor]);
 
   const podTabCustomizationTabs = useMemo(() => {
     if (!currentPodTabsState) {
@@ -903,12 +945,74 @@ function DustFileSystem() {
     : undefined;
 
   // ── Handlers ──────────────────────────────────────────────────────────────
-  const handleRoomNameNext = (name: string, isPublic: boolean) => {
-    const newSpace = createSpace(name, undefined, isPublic);
+  /** Every folder a Pod may be created in, as its full path. */
+  const podDestinations = useMemo(() => {
+    const options: { id: string | null; label: string }[] = [
+      { id: null, label: "Files" },
+    ];
+    for (const file of files) {
+      if (!isDropTargetFolder(file) || isPodFolder(file)) {
+        continue;
+      }
+      const path = getFolderPath(files, file.id);
+      if (path.some(isPodFolder)) {
+        continue;
+      }
+      options.push({
+        id: file.id,
+        label: path.map((folder) => folder.fileName).join(" / "),
+      });
+    }
+    return options;
+  }, [files]);
+
+  const addPodToSidebar = useCallback((spaceId: string) => {
+    setFavoritePodIds((prev) => new Set(prev).add(spaceId));
+  }, []);
+
+  /** Opens the create dialog with a folder already chosen. */
+  const handleCreatePodIn = useCallback((parentId: string | null) => {
+    setCreatePodParentId(parentId);
+    setIsCreateRoomDialogOpen(true);
+  }, []);
+
+  const handleRoomNameNext = (
+    name: string,
+    isPublic: boolean,
+    destinationId?: string | null
+  ) => {
+    // Built inline rather than through `createSpace`, which pushes into the
+    // shared mock list the seeded workspace draws its Pods from.
+    const newSpace: Space = {
+      id: `space-created-${Date.now()}`,
+      name,
+      description: `Room for ${name}`,
+      isPublic,
+    };
+    const parentId = destinationId ?? null;
+
     setSpaces((prev) => [...prev, newSpace]);
     setSpacePublicSettings((prev) => new Map(prev).set(newSpace.id, isPublic));
+    // A new Pod shows up in Files straight away, where it was asked for.
+    setFiles((prev) => [
+      ...prev,
+      {
+        id: `fs-pod-${newSpace.id}`,
+        kind: "folder",
+        fileName: name,
+        parentId,
+        source: "pod",
+        folderType: "pod",
+        refId: newSpace.id,
+        createdBy: user.id,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
+    addPodToSidebar(newSpace.id);
     setLastCreatedSpaceId(newSpace.id);
     setIsCreateRoomDialogOpen(false);
+    setCreatePodParentId(null);
   };
 
   const handleInviteMembers = (spaceId: string) => {
@@ -938,8 +1042,8 @@ function DustFileSystem() {
     );
   };
 
-  const toggleSpaceStar = (spaceId: string) => {
-    setStarredSpaceIds((prev) => {
+  const togglePodFavorite = (spaceId: string) => {
+    setFavoritePodIds((prev) => {
       const next = new Set(prev);
       if (next.has(spaceId)) {
         next.delete(spaceId);
@@ -958,7 +1062,7 @@ function DustFileSystem() {
   };
 
   const renderPodNavItem = (space: Space) => {
-    const isStarred = starredSpaceIds.has(space.id);
+    const isFavorite = favoritePodIds.has(space.id);
     const isRestricted = space.id.charCodeAt(space.id.length - 1) % 2 === 0;
     const { count, hasActivity } = getSpaceActivity(space);
     const members = getMembersBySpaceId(space.id)
@@ -980,12 +1084,14 @@ function DustFileSystem() {
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               <DropdownMenuItem
-                label={isStarred ? "Unstar" : "Star"}
+                label={
+                  isFavorite ? "Remove from sidebar" : "Keep in the sidebar"
+                }
                 icon={Star01}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  toggleSpaceStar(space.id);
+                  togglePodFavorite(space.id);
                 }}
               />
               <DropdownMenuSeparator />
@@ -1096,14 +1202,6 @@ function DustFileSystem() {
     );
   };
 
-  if (!user) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <p className="text-foreground">Loading…</p>
-      </div>
-    );
-  }
-
   // ── P2 content ────────────────────────────────────────────────────────────
   // What the three Build screens are called and badged with, in one place: the
   // sidebar row, the breadcrumb and the panel label all read from it.
@@ -1120,7 +1218,7 @@ function DustFileSystem() {
     if (p2View.kind === "build")
       return BUILD_SECTION_DISPLAY[p2View.section].label;
     if (p2View.kind === "inboxAlt") return "Inbox";
-    if (p2View.kind === "files") return "File";
+    if (p2View.kind === "files") return "Files";
     if (p2View.kind === "requests") return "Requests";
     if (p2View.kind === "conversations") return "Free conversations";
     if (p2View.kind === "automations") return "Automated work";
@@ -1135,12 +1233,16 @@ function DustFileSystem() {
   const p2Content = (() => {
     if (p2View.kind === "build") {
       if (p2View.section === "agents")
-        return <ManageAgentsView currentUserId={user.id} />;
+        return (
+          <ManageAgentsView currentUserId={user.id} agents={model.agents} />
+        );
       if (p2View.section === "skills")
-        return <ManageSkillsView currentUserId={user.id} />;
+        return (
+          <ManageSkillsView currentUserId={user.id} skills={model.skills} />
+        );
       return <ManageToolsView />;
     }
-    if (p2View.kind === "profile" && user) return <ProfilePanel user={user} />;
+    if (p2View.kind === "profile") return <ProfilePanel user={user} />;
     if (p2View.kind === "inboxAlt")
       return (
         <InboxAltView
@@ -1177,8 +1279,11 @@ function DustFileSystem() {
     if (p2View.kind === "files")
       return (
         <WorkspaceFileSystem
-          pods={sortedSpaces}
-          companySpaces={mockCompanySpaces}
+          files={files}
+          filesByParentId={filesByParentId}
+          filesById={filesById}
+          onMoveFile={handleMoveFile}
+          onCreatePod={handleCreatePodIn}
           onFileOpen={(dataSource) => {
             setP3View({ kind: "file", dataSource });
             setP4View(null);
@@ -1333,6 +1438,7 @@ function DustFileSystem() {
           }
           dynamicFileTabIds={dynamicFileTabIds}
           onAddFileToTopbar={handlePodFileDrop}
+          initialDataSources={podFilesFor(podContext.spaceId)}
           // Pod files open in a panel (frames take focus, others share).
           onFileOpen={(dataSource) => {
             setP3View({ kind: "file", dataSource });
@@ -1389,6 +1495,7 @@ function DustFileSystem() {
       setView,
       filesSource,
       conversationPool: conversationsWithMessages,
+      filesByConversationId: conversationFilesByConversationId,
     });
 
   const p3Label =
@@ -1661,7 +1768,7 @@ function DustFileSystem() {
     if (p2View.kind === "files")
       return (
         <Breadcrumbs
-          items={[{ label: "File", icon: File02 }]}
+          items={[{ label: "Files", icon: File02 }]}
           size="sm"
           hasLighterFont
         />
@@ -1829,7 +1936,7 @@ function DustFileSystem() {
                 }}
               />
               <NavigationListItem
-                label="File"
+                label="Files"
                 icon={File02}
                 selected={p2View.kind === "files"}
                 onClick={() => {
@@ -1874,26 +1981,49 @@ function DustFileSystem() {
               />
             </NavigationList>
 
-            {starredSpaces.length > 0 && (
-              <NavigationList className="mx-sidebar-side-spacing mt-2">
-                <NavigationListCollapsibleSection
-                  label="Starred"
-                  type="collapse"
-                  defaultOpen={true}
-                >
-                  {starredSpaces.map(renderPodNavItem)}
-                </NavigationListCollapsibleSection>
-              </NavigationList>
-            )}
-
             <NavigationList className="mx-sidebar-side-spacing mt-2 flex-shrink-0">
               <NavigationListCollapsibleSection
                 label="Pods"
                 type="collapse"
                 defaultOpen={true}
+                // Dropping a Pod here keeps it in the list; it stays where it
+                // is in Files.
+                className={cn(
+                  "rounded-xl",
+                  isPodDropHovered && "bg-selected ring-1 ring-highlight"
+                )}
+                onDragOver={(event) => {
+                  if (!hasPodDrag(event.dataTransfer)) {
+                    return;
+                  }
+                  event.preventDefault();
+                  setIsPodDropHovered(true);
+                }}
+                onDragLeave={(event) => {
+                  // Moving between the rows inside the section is not leaving it.
+                  if (
+                    event.relatedTarget instanceof Node &&
+                    event.currentTarget.contains(event.relatedTarget)
+                  ) {
+                    return;
+                  }
+                  setIsPodDropHovered(false);
+                }}
+                onDrop={(event) => {
+                  setIsPodDropHovered(false);
+                  const podFolderId = readPodDragId(event.dataTransfer);
+                  const refId = podFolderId
+                    ? filesById.get(podFolderId)?.refId
+                    : undefined;
+                  if (!refId) {
+                    return;
+                  }
+                  event.preventDefault();
+                  addPodToSidebar(refId);
+                }}
                 action={
                   <>
-                    {unstarredSpaces.length > 0 && (
+                    {sidebarSpaces.length > 0 && (
                       <Button
                         size="xs"
                         icon={Plus}
@@ -1902,7 +2032,7 @@ function DustFileSystem() {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          setIsCreateRoomDialogOpen(true);
+                          handleCreatePodIn(null);
                         }}
                       />
                     )}
@@ -1937,10 +2067,11 @@ function DustFileSystem() {
                               const isRestricted =
                                 space.id.charCodeAt(space.id.length - 1) % 2 ===
                                 0;
+                              const isFavorite = favoritePodIds.has(space.id);
                               return (
                                 <div
                                   key={space.id}
-                                  className="flex cursor-pointer items-start gap-2 rounded-lg p-2 hover:bg-muted-background"
+                                  className="group/browse flex cursor-pointer items-start gap-2 rounded-lg p-2 hover:bg-muted-background"
                                   onClick={() => {
                                     setP2View({
                                       kind: "space",
@@ -1964,6 +2095,26 @@ function DustFileSystem() {
                                       {space.description || "No description"}
                                     </div>
                                   </div>
+                                  <Button
+                                    size="xs"
+                                    variant={isFavorite ? "primary" : "ghost"}
+                                    icon={Star01}
+                                    tooltip={
+                                      isFavorite
+                                        ? "Remove from sidebar"
+                                        : "Keep in the sidebar"
+                                    }
+                                    className={
+                                      isFavorite
+                                        ? undefined
+                                        : "opacity-0 group-hover/browse:opacity-100"
+                                    }
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      togglePodFavorite(space.id);
+                                    }}
+                                  />
                                 </div>
                               );
                             })
@@ -1974,13 +2125,13 @@ function DustFileSystem() {
                   </>
                 }
               >
-                {unstarredSpaces.length > 0 ? (
-                  unstarredSpaces.map(renderPodNavItem)
+                {sidebarSpaces.length > 0 ? (
+                  sidebarSpaces.map(renderPodNavItem)
                 ) : (
                   <NavigationListItem
                     label="Create a Pod"
                     icon={Plus}
-                    onClick={() => setIsCreateRoomDialogOpen(true)}
+                    onClick={() => handleCreatePodIn(null)}
                   />
                 )}
               </NavigationListCollapsibleSection>
@@ -2003,6 +2154,7 @@ function DustFileSystem() {
             setP2View({ kind: "templates" });
             setP3View(null);
           }}
+          companySpaces={model.companySpaces}
         />
       )}
       {activeTab === "admin" && (
@@ -2082,6 +2234,25 @@ function DustFileSystem() {
               </DropdownMenuSubContent>
             </DropdownMenuPortal>
           </DropdownMenuSub>
+          {/* Swaps the whole simulated workspace, to show the product either
+              on its first day or after a company has lived in it. */}
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger icon={Beaker02} label="Dev" />
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent>
+                <DropdownMenuLabel label="Simulated workspace" />
+                <DropdownMenuRadioGroup
+                  value={model.profile}
+                  onValueChange={(value) =>
+                    onProfileChange(value as WorkspaceProfile)
+                  }
+                >
+                  <DropdownMenuRadioItem value="mature" label="Mature" />
+                  <DropdownMenuRadioItem value="clean" label="Clean" />
+                </DropdownMenuRadioGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             label="Signout"
@@ -2153,7 +2324,12 @@ function DustFileSystem() {
       {/* Dialogs (outside PanelLayout, portaled to body) */}
       <CreateRoomDialog
         isOpen={isCreateRoomDialogOpen}
-        onClose={() => setIsCreateRoomDialogOpen(false)}
+        onClose={() => {
+          setIsCreateRoomDialogOpen(false);
+          setCreatePodParentId(null);
+        }}
+        destinations={podDestinations}
+        defaultDestinationId={createPodParentId}
         onNext={handleRoomNameNext}
       />
       <Dialog
@@ -2200,6 +2376,41 @@ function DustFileSystem() {
         hasMultipleSelect
       />
     </>
+  );
+}
+
+// ── Profile shell ─────────────────────────────────────────────────────────────
+
+const PROFILE_STORAGE_KEY = "dust-file-system-workspace-profile";
+
+function readStoredProfile(): WorkspaceProfile {
+  return localStorage.getItem(PROFILE_STORAGE_KEY) === "clean"
+    ? "clean"
+    : "mature";
+}
+
+function DustFileSystem() {
+  const [profile, setProfile] = useState<WorkspaceProfile>(readStoredProfile);
+  const [user] = useState<User>(() => getRandomUsers(1)[0]);
+  const model = useMemo(
+    () => buildWorkspace(profile, user.id),
+    [profile, user]
+  );
+
+  const changeProfile = (next: WorkspaceProfile) => {
+    localStorage.setItem(PROFILE_STORAGE_KEY, next);
+    setProfile(next);
+  };
+
+  // Keyed on the profile: a different workspace is a different session, so the
+  // navigation, read rows and open panels all start over.
+  return (
+    <WorkspaceView
+      key={profile}
+      model={model}
+      user={user}
+      onProfileChange={changeProfile}
+    />
   );
 }
 
