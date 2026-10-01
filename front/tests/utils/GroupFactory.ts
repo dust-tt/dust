@@ -70,7 +70,7 @@ export class GroupFactory {
     });
   }
 
-  static async withoutMembers(
+  static async withRemovedMembers(
     auth: Authenticator,
     group: GroupResource,
     users: UserResource[]

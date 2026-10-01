@@ -149,7 +149,7 @@ describe("resolveLimitGroupForUser", () => {
       alice,
     ]);
     await limit(auth, engineering, 10_000);
-    const removed = await GroupFactory.withoutMembers(auth, engineering, [
+    const removed = await GroupFactory.withRemovedMembers(auth, engineering, [
       remy,
     ]);
     if (removed.isErr()) {
