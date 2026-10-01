@@ -51,6 +51,7 @@ export class RunFactory {
       },
       modelId,
       {
+        region: null,
         usageType: usageType ?? USAGE_TYPE_USER,
         useWorkspaceCredentials: false,
       }

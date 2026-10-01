@@ -4,7 +4,10 @@ import { RunResource } from "@app/lib/resources/run_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { RunFactory } from "@app/tests/utils/RunFactory";
-import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import {
+  GPT_5_4_MODEL_CONFIG,
+  GPT_5_MINI_MODEL_CONFIG,
+} from "@app/types/assistant/models/openai";
 import { describe, expect, it } from "vitest";
 
 describe("RunResource reasoning token usage", () => {
@@ -27,7 +30,11 @@ describe("RunResource reasoning token usage", () => {
         totalTokens: 1_300,
       },
       GPT_5_MINI_MODEL_CONFIG.modelId,
-      { usageType: USAGE_TYPE_USER, useWorkspaceCredentials: false }
+      {
+        region: null,
+        usageType: USAGE_TYPE_USER,
+        useWorkspaceCredentials: false,
+      }
     );
 
     const usages = await run.listRunUsages(auth);
@@ -57,7 +64,11 @@ describe("RunResource reasoning token usage", () => {
         totalTokens: 1_100,
       },
       GPT_5_MINI_MODEL_CONFIG.modelId,
-      { usageType: USAGE_TYPE_USER, useWorkspaceCredentials: false }
+      {
+        region: null,
+        usageType: USAGE_TYPE_USER,
+        useWorkspaceCredentials: false,
+      }
     );
 
     const usages = await run.listRunUsages(auth);
@@ -102,7 +113,8 @@ describe("RunResource service tier usage", () => {
         totalTokens: 1_300,
         serviceTier: "flex",
       },
-      GPT_5_MINI_MODEL_CONFIG.modelId
+      GPT_5_MINI_MODEL_CONFIG.modelId,
+      { region: "global" }
     );
 
     const usages = await run.listRunUsages(auth);
@@ -142,11 +154,91 @@ describe("RunResource service tier usage", () => {
         totalTokens: 1_100,
       },
       GPT_5_MINI_MODEL_CONFIG.modelId,
-      { usageType: USAGE_TYPE_USER, useWorkspaceCredentials: false }
+      {
+        region: null,
+        usageType: USAGE_TYPE_USER,
+        useWorkspaceCredentials: false,
+      }
     );
 
     const usages = await run.listRunUsages(auth);
     expect(usages[0]?.serviceTier).toBe("default");
+  });
+});
+
+describe("RunResource region pricing", () => {
+  const tokenUsage = {
+    inputTokens: 1_000,
+    totalOutputTokens: 300,
+    totalTokens: 1_300,
+  };
+
+  function expectedCostMicroUsd(inferenceRegion: "eu" | "global") {
+    return Math.round(
+      computeTokensCostForUsageInMicroUsd({
+        modelId: GPT_5_4_MODEL_CONFIG.modelId,
+        promptTokens: 1_000,
+        completionTokens: 300,
+        cachedTokens: null,
+        inferenceRegion,
+      })
+    );
+  }
+
+  it("prices a finalized usage at its endpoint region's rates", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const { run, runUsageModelId } = await RunResource.makeNewWithPendingUsage(
+      {
+        appId: null,
+        dustRunId: generateRandomModelSId(),
+        runType: "deploy",
+        useWorkspaceCredentials: false,
+        workspaceId: workspace.id,
+      },
+      {
+        inferenceProvider: "openai-responses",
+        modelId: GPT_5_4_MODEL_CONFIG.modelId,
+        providerId: GPT_5_4_MODEL_CONFIG.providerId,
+        region: "eu",
+        usageType: USAGE_TYPE_USER,
+        useWorkspaceCredentials: false,
+      }
+    );
+
+    const costMicroUsd = await run.finalizePendingTokenUsage(
+      auth,
+      runUsageModelId,
+      tokenUsage,
+      GPT_5_4_MODEL_CONFIG.modelId,
+      { region: "eu" }
+    );
+
+    expect(costMicroUsd).toBe(expectedCostMicroUsd("eu"));
+    expect(costMicroUsd).not.toBe(expectedCostMicroUsd("global"));
+  });
+
+  it("prices a recorded usage from a US endpoint at global rates", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const run = await RunResource.makeNew({
+      appId: null,
+      dustRunId: generateRandomModelSId(),
+      runType: "deploy",
+      useWorkspaceCredentials: false,
+      workspaceId: workspace.id,
+    });
+
+    const costMicroUsd = await run.recordTokenUsage(
+      auth,
+      tokenUsage,
+      GPT_5_4_MODEL_CONFIG.modelId,
+      {
+        region: "us",
+        usageType: USAGE_TYPE_USER,
+        useWorkspaceCredentials: false,
+      }
+    );
+
+    expect(costMicroUsd).toBe(expectedCostMicroUsd("global"));
   });
 });
 
@@ -239,7 +331,11 @@ describe("RunResource credential owner", () => {
         totalTokens: 1_100,
       },
       GPT_5_MINI_MODEL_CONFIG.modelId,
-      { usageType: USAGE_TYPE_USER, useWorkspaceCredentials: true }
+      {
+        region: null,
+        usageType: USAGE_TYPE_USER,
+        useWorkspaceCredentials: true,
+      }
     );
 
     expect(await run.listRunUsageAttempts(auth)).toMatchObject([

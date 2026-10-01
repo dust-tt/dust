@@ -3,8 +3,10 @@
 // execution. These attributed micro-credits are un-rounded and cache-naive, so they are not
 // expected to sum to the billed amount. Their job is to rank what drove the cost, not to
 // reconcile euros.
-import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
-import { inferenceRegionForEndpointRegion } from "@app/lib/api/llm/transitionLLM";
+import {
+  computeTokensCostForUsageInMicroUsd,
+  inferenceRegionForEndpointRegion,
+} from "@app/lib/api/assistant/token_pricing";
 import { MICRO_CREDITS_PER_CREDIT } from "@app/lib/credits/units";
 import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
 import type { RunUsageWithRunKeyType } from "@app/lib/resources/run_resource";

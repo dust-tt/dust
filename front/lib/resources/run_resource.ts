@@ -1,5 +1,7 @@
-import type { InferenceRegionType } from "@app/lib/api/assistant/token_pricing";
-import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
+import {
+  computeTokensCostForUsageInMicroUsd,
+  inferenceRegionForEndpointRegion,
+} from "@app/lib/api/assistant/token_pricing";
 import type { TokenUsage } from "@app/lib/api/llm/types/events";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
@@ -558,19 +560,19 @@ export class RunResource extends BaseResource<RunModel> {
     modelId: ModelIdType,
     {
       isBatch = false,
-      inferenceRegion = "global",
+      region,
       usageType,
       useWorkspaceCredentials,
     }: {
       isBatch?: boolean;
-      inferenceRegion?: InferenceRegionType;
+      region: Region | null;
       usageType: UsageType;
       useWorkspaceCredentials: boolean;
     }
   ) {
     const runUsage = this.tokenUsageToRunUsage(usage, modelId, {
       isBatch,
-      inferenceRegion,
+      region,
     });
     if (!runUsage) {
       return;
@@ -662,20 +664,21 @@ export class RunResource extends BaseResource<RunModel> {
     return true;
   }
 
+  /**
+   * @cc [owner:sfriquet,label:product] region-matches-pending-row
+   * `region` MUST be the `region` stored on the pending row `runUsageModelId`: the finalized
+   * `costMicroUsd` is priced at that region's rates, and `null` prices at global rates.
+   */
   async finalizePendingTokenUsage(
     auth: Authenticator,
     runUsageModelId: ModelId,
     usage: TokenUsage,
     modelId: ModelIdType,
-    {
-      inferenceRegion = "global",
-    }: {
-      inferenceRegion?: InferenceRegionType;
-    } = {}
+    { region }: { region: Region | null }
   ): Promise<number | undefined> {
     const runUsage = this.tokenUsageToRunUsage(usage, modelId, {
       isBatch: false,
-      inferenceRegion,
+      region,
     });
     if (!runUsage) {
       return undefined;
@@ -694,10 +697,10 @@ export class RunResource extends BaseResource<RunModel> {
     modelId: ModelIdType,
     {
       isBatch,
-      inferenceRegion,
+      region,
     }: {
       isBatch: boolean;
-      inferenceRegion: InferenceRegionType;
+      region: Region | null;
     }
   ): RunUsageType | null {
     const modelConfig = getModelConfigByModelId(modelId);
@@ -719,7 +722,9 @@ export class RunResource extends BaseResource<RunModel> {
       longCacheCreationTokens: usage.longCacheCreationTokens ?? null,
       isBatch,
       serviceTier: usage.serviceTier,
-      inferenceRegion,
+      inferenceRegion: region
+        ? inferenceRegionForEndpointRegion(region)
+        : "global",
     });
 
     return {
