@@ -4,10 +4,6 @@ import { formatInTimeZone } from "date-fns-tz";
 export const ONE_HOUR_MS = 60 * 60 * 1000;
 export const ONE_DAY_MS = 24 * ONE_HOUR_MS;
 
-export function dateToHumanReadable(date: Date) {
-  return format(date, "MMM d, yyyy 'at' h:mm a");
-}
-
 export function ordinalDay(day: number): string {
   const suffix =
     day >= 11 && day <= 13
