@@ -26,6 +26,7 @@ import { upsertGlobalAgentSettings } from "@app/lib/api/assistant/global_agents/
 import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import {
+  buildDiscoverSearchQuery,
   buildNameAutocompleteQuery,
   buildNameSearchQuery,
 } from "@app/lib/search/agent_and_skill_queries";
@@ -170,6 +171,21 @@ describe("searchAgents", () => {
     ]);
     expect(nameQuery.bool.filter).toEqual(autocompleteQuery.bool.filter);
     expect(nameQuery.bool.should).toEqual(autocompleteQuery.bool.should);
+  });
+
+  it("uses discover matching with the same permissions as autocomplete", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    mockSearch.mockResolvedValue({ hits: { hits: [] } });
+    await searchAgents(auth, { searchTerm: "recap", searchType: "discover" });
+    const discoverQuery = mockSearch.mock.lastCall![0].query;
+    expect(discoverQuery.bool.must).toEqual([
+      buildDiscoverSearchQuery("recap"),
+    ]);
+
+    await searchAgents(auth, { searchTerm: "recap" });
+    const autocompleteQuery = mockSearch.mock.lastCall![0].query;
+    expect(discoverQuery.bool.filter).toEqual(autocompleteQuery.bool.filter);
+    expect(discoverQuery.bool.should).toEqual(autocompleteQuery.bool.should);
   });
 
   it("filters on editors and models and returns facet values with counts", async () => {

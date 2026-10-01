@@ -2,6 +2,7 @@ import { GLOBAL_AGENTS_WORKSPACE_ID } from "@app/lib/agent_search/constants";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
+  buildDiscoverSearchQuery,
   buildNameAutocompleteQuery,
   buildNameSearchQuery,
 } from "@app/lib/search/agent_and_skill_queries";
@@ -134,8 +135,8 @@ function buildSelectionFilters(
 /**
  * @cc [owner:aubin-tchoi,label:product] search-mode-default
  * Omitted searchType MUST preserve autocomplete matching. Name mode MUST use word, substring and fuzzy
- * name matching and full-text description matching without changing workspace, permission,
- * status or selection filters.
+ * name matching and full-text description matching, and discover mode MUST follow
+ * `discover-matching`, without changing workspace, permission, status or selection filters.
  */
 export function buildAgentSearchQuery(
   auth: Authenticator,
@@ -160,6 +161,9 @@ export function buildAgentSearchQuery(
       break;
     case "name":
       nameQuery = buildNameSearchQuery(searchTerm);
+      break;
+    case "discover":
+      nameQuery = buildDiscoverSearchQuery(searchTerm);
       break;
     default:
       assertNever(searchType);

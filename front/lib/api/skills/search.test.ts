@@ -21,6 +21,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import {
+  buildDiscoverSearchQuery,
   buildNameAutocompleteQuery,
   buildNameSearchQuery,
 } from "@app/lib/search/agent_and_skill_queries";
@@ -572,6 +573,7 @@ describe("code-defined skill search", () => {
   it.each([
     "autocomplete",
     "name",
+    "discover",
   ] as const)("uses %s matching and offset pagination for a mixed ES page", async (searchType) => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
     const skill = await SkillFactory.create(auth, { name: "WeeklyDeepReport" });
@@ -610,9 +612,11 @@ describe("code-defined skill search", () => {
     expect(page.value.hasMore).toBe(true);
     expect(page.value.skills[1]).not.toHaveProperty("score");
     expect(mockSearch.mock.calls[0][0].query.bool.must).toEqual([
-      searchType === "name"
-        ? buildNameSearchQuery("deep")
-        : buildNameAutocompleteQuery("deep"),
+      {
+        autocomplete: buildNameAutocompleteQuery("deep"),
+        name: buildNameSearchQuery("deep"),
+        discover: buildDiscoverSearchQuery("deep"),
+      }[searchType],
     ]);
 
     const next = await searchSkills(auth, {

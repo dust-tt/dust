@@ -6,7 +6,7 @@ import { z } from "zod";
 
 export const MIN_NAME_SEARCH_QUERY_LENGTH = 3;
 
-export const SEARCH_TYPES = ["autocomplete", "name"] as const;
+export const SEARCH_TYPES = ["autocomplete", "name", "discover"] as const;
 export type SearchType = (typeof SEARCH_TYPES)[number];
 
 export type DataSourceContentNode = ContentNodeWithParent & {

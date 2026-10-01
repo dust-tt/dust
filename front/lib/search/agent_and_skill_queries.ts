@@ -1,3 +1,4 @@
+import { getDiscoverSynonyms } from "@app/lib/search/discover_synonyms";
 import type { estypes } from "@elastic/elasticsearch";
 
 const NAME_SEARCH_FIELDS = ["name.autocomplete", "name.autocomplete_preserved"];
@@ -154,6 +155,88 @@ export function buildNameSearchQuery(
           },
         },
       ],
+    },
+  };
+}
+
+const DISCOVER_USAGE_BOOST_WEIGHT = 0.5;
+
+function buildDiscoverTermQuery(term: string): estypes.QueryDslQueryContainer {
+  const synonyms = getDiscoverSynonyms(term).join(" ");
+  const tiers: [estypes.QueryDslQueryContainer, number][] = [
+    [
+      {
+        multi_match: {
+          query: term,
+          type: "bool_prefix",
+          fields: NAME_AUTOCOMPLETE_FIELDS,
+        },
+      },
+      3,
+    ],
+    [
+      {
+        multi_match: {
+          query: term,
+          fields: NAME_SEARCH_FIELDS,
+          fuzziness: "AUTO",
+        },
+      },
+      2,
+    ],
+    [{ match: { description: { query: term, fuzziness: "AUTO" } } }, 1],
+  ];
+  if (synonyms) {
+    tiers.push(
+      [{ multi_match: { query: synonyms, fields: NAME_SEARCH_FIELDS } }, 2],
+      [{ match: { description: { query: synonyms } } }, 1]
+    );
+  }
+
+  return {
+    dis_max: {
+      queries: tiers.map(([filter, boost]) => ({
+        constant_score: { filter, boost },
+      })),
+    },
+  };
+}
+
+/**
+ * @cc [owner:adrsimon,label:product] discover-matching
+ * Empty or whitespace-only queries MUST match everything. Otherwise at least 75% of the
+ * whitespace-separated terms MUST match, each through a name prefix, a fuzzy name token, a fuzzy
+ * description token, or a dictionary synonym in the name or description. Name matches MUST score
+ * above description matches. The active users count MUST add a logarithmic bump to the score, so
+ * usage reorders close matches without making a non-matching item match.
+ */
+export function buildDiscoverSearchQuery(
+  searchTerm: string
+): estypes.QueryDslQueryContainer {
+  const terms = searchTerm.split(/\s+/).filter((term) => term.length > 0);
+
+  return {
+    function_score: {
+      query:
+        terms.length === 0
+          ? { match_all: {} }
+          : {
+              bool: {
+                should: terms.map(buildDiscoverTermQuery),
+                minimum_should_match: "75%",
+              },
+            },
+      functions: [
+        {
+          field_value_factor: {
+            field: "active_users_count",
+            modifier: "log1p",
+            missing: 0,
+          },
+          weight: DISCOVER_USAGE_BOOST_WEIGHT,
+        },
+      ],
+      boost_mode: "sum",
     },
   };
 }
