@@ -60,6 +60,7 @@ export function SkillBuilderSuggestionsPanel({
         case "create":
         case "delete":
         case "editors":
+        case "files":
         case "name":
         case "user_facing_description":
           return;

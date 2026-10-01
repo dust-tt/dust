@@ -32,6 +32,7 @@ const SKILL_SUGGESTION_KIND_REQUIRED_VERBS: Record<
   editors: ["admin"],
   delete: ["admin"],
   availability: ["admin"],
+  files: ["write"],
 };
 
 function getRequiredCapabilities(
@@ -51,6 +52,7 @@ function getRequiredCapabilities(
         : ["publish"];
     case "edit":
     case "editors":
+    case "files":
     case "user_facing_description":
     case "name":
     case "delete":
