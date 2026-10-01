@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -314,5 +315,82 @@ describe("POST /api/v1/w/[wId]/assistant/conversations/[cId]/messages", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.message.user).toBeNull();
+  });
+});
+
+// Hidden agents are reserved to their editors: a caller without a Dust user, like a connector's
+// system key whose `x-api-user-email` matches no workspace member (e.g. a Slack bot user), MUST NOT
+// be able to talk to one.
+describe("POST /api/v1/w/[wId]/assistant/conversations/[cId]/messages, hidden agents", () => {
+  async function setupHiddenAgent() {
+    const { workspace, key } = await createPublicApiMockRequest({
+      method: "POST",
+      systemKey: true,
+    });
+    const editor = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, editor, { role: "user" });
+    const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      editor.sId,
+      workspace.sId
+    );
+    const hiddenAgent = await AgentConfigurationFactory.createTestAgent(
+      editorAuth,
+      { name: "Hidden helper", scope: "hidden" }
+    );
+    const conversation = await ConversationFactory.create(editorAuth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const mentionHiddenAgent = (extraHeaders: Record<string, string> = {}) =>
+      postMessage(
+        workspace,
+        conversation.sId,
+        key,
+        {
+          content: `:mention[Hidden helper]{sId=${hiddenAgent.sId}} hello`,
+          mentions: [{ configurationId: hiddenAgent.sId }],
+          context: {
+            username: "slack-bot",
+            timezone: "Europe/Paris",
+            origin: "api",
+          },
+        },
+        extraHeaders
+      );
+
+    return { editor, mentionHiddenAgent };
+  }
+
+  it("refuses a hidden agent when x-api-user-email matches no workspace member", async () => {
+    const { mentionHiddenAgent } = await setupHiddenAgent();
+
+    const response = await mentionHiddenAgent({
+      "x-api-user-email": "slack-bot@not-a-member.example.com",
+    });
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error.type).toBe("agent_inaccessible");
+  });
+
+  it("refuses a hidden agent to a system key without x-api-user-email", async () => {
+    const { mentionHiddenAgent } = await setupHiddenAgent();
+
+    const response = await mentionHiddenAgent();
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error.type).toBe("agent_inaccessible");
+  });
+
+  it("lets the agent's editor mention it through x-api-user-email", async () => {
+    const { editor, mentionHiddenAgent } = await setupHiddenAgent();
+
+    const response = await mentionHiddenAgent({
+      "x-api-user-email": editor.email,
+    });
+
+    expect(response.status).toBe(200);
   });
 });
