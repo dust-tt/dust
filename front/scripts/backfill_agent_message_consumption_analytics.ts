@@ -42,7 +42,7 @@ import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { launchStoreAgentMessageConsumptionAttributionWorkflow } from "@app/temporal/analytics_queue/client";
 import type { AgentMessageRef } from "@app/types/assistant/agent_run";
 import {
-  AGENT_MESSAGE_STATUSES_TO_TRACK,
+  AGENT_MESSAGE_STATUSES,
   isTerminalAgentMessageStatus,
 } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -54,7 +54,7 @@ import { fromError } from "zod-validation-error";
 
 const DEFAULT_BATCH_SIZE = 100;
 const DEFAULT_CONCURRENCY = 4;
-const TERMINAL_TRACKED_STATUSES = AGENT_MESSAGE_STATUSES_TO_TRACK.filter(
+const TERMINAL_STATUSES = AGENT_MESSAGE_STATUSES.filter(
   isTerminalAgentMessageStatus
 );
 const TimestampSchema = z.string().datetime({ offset: true });
@@ -109,7 +109,7 @@ async function listAgentMessageRefs({
     where: {
       id: { [Op.gt]: afterAgentMessageModelId },
       workspaceId: workspace.id,
-      status: { [Op.in]: TERMINAL_TRACKED_STATUSES },
+      status: { [Op.in]: TERMINAL_STATUSES },
       completedAt: { [Op.gte]: fromDate, [Op.lt]: toDate },
       costCredits: { [Op.ne]: null },
       runIds: { [Op.ne]: null },
