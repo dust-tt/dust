@@ -14,18 +14,29 @@ import { getDefaultMCPAction } from "@app/components/shared/tools_picker/formDef
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useSearchSkillsInfinite } from "@app/hooks/useSearchSkillsInfinite";
 import { nameToStorageFormat } from "@app/lib/actions/default_mcp_action";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
+import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useMemo, useState } from "react";
 
+const SKILL_SEARCH_PAGE_SIZE = 100;
+
 type UseSkillSelectionProps = {
+  owner: LightWorkspaceType;
+  disabled: boolean;
   alreadyAddedSkillIds: Set<string>;
   searchQuery: string;
 };
 
 export const useSkillSelection = ({
+  owner,
+  disabled,
   alreadyAddedSkillIds,
   searchQuery,
 }: UseSkillSelectionProps) => {
@@ -37,7 +48,22 @@ export const useSkillSelection = ({
     setLocalSelectedSkills([]);
   }, []);
 
-  const { skills, isSkillsLoading } = useSkillsContext();
+  const { skills, isSkillsLoading: isListedSkillsLoading } = useSkillsContext();
+  const { hasFeature } = useFeatureFlags();
+  const useSkillSearch = hasFeature("skills_search");
+  const sendNotification = useSendNotification();
+  const {
+    skills: searchSkills,
+    resolvedSearchTerm,
+    isSkillsLoading: isSearchSkillsLoading,
+    hasMore,
+    loadMore,
+  } = useSearchSkillsInfinite({
+    owner,
+    searchTerm: searchQuery,
+    limit: SKILL_SEARCH_PAGE_SIZE,
+    disabled: disabled || !useSkillSearch,
+  });
 
   const selectedSkillIds = useMemo(
     () => new Set(localSelectedSkills.map((s) => s.sId)),
@@ -45,6 +71,12 @@ export const useSkillSelection = ({
   );
 
   const filteredSkills = useMemo(() => {
+    if (useSkillSearch) {
+      return searchSkills.filter(
+        (skill) => !alreadyAddedSkillIds.has(skill.sId)
+      );
+    }
+
     const notAlreadyAddedSkills = skills.filter(
       (skill) => !alreadyAddedSkillIds.has(skill.sId)
     );
@@ -58,7 +90,7 @@ export const useSkillSelection = ({
         skill.name.toLowerCase().includes(query) ||
         skill.userFacingDescription.toLowerCase().includes(query)
     );
-  }, [skills, searchQuery, alreadyAddedSkillIds]);
+  }, [skills, searchSkills, useSkillSearch, searchQuery, alreadyAddedSkillIds]);
 
   const unselectSkill = useCallback((skill: AgentBuilderSkillsType) => {
     setLocalSelectedSkills((prev) =>
@@ -66,18 +98,10 @@ export const useSkillSelection = ({
     );
   }, []);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
-  const handleSkillToggle = useCallback(
+  const addSkill = useCallback(
     (skill: SkillWithoutInstructionsAndToolsType) => {
-      if (selectedSkillIds.has(skill.sId)) {
-        setLocalSelectedSkills((prev) =>
-          prev.filter((s) => s.sId !== skill.sId)
-        );
-        return;
-      }
-
       setLocalSelectedSkills((prev) => [
-        ...prev,
+        ...prev.filter((selected) => selected.sId !== skill.sId),
         {
           sId: skill.sId,
           name: skill.name,
@@ -88,15 +112,61 @@ export const useSkillSelection = ({
         },
       ]);
     },
-    [selectedSkillIds, setLocalSelectedSkills]
+    []
   );
+  const { fetchSkillWithRelations, isLoading: isSelectingSkill } =
+    useSkillWithRelations(owner, {
+      onSuccess: ({ skill }) => {
+        if (!disabled) {
+          addSkill(skill);
+        }
+      },
+      onError: () =>
+        sendNotification({
+          type: "error",
+          title: "Could not load skill",
+          description: "Please try again.",
+        }),
+    });
+
+  const handleSkillToggle = (skillId: string) => {
+    if (isSelectingSkill) {
+      return;
+    }
+    if (selectedSkillIds.has(skillId)) {
+      setLocalSelectedSkills((previous) =>
+        previous.filter((skill) => skill.sId !== skillId)
+      );
+    } else if (useSkillSearch) {
+      // The form needs the skill's current edit permission, not just listing metadata.
+      void fetchSkillWithRelations(skillId, { throwOnError: false });
+    } else {
+      const skill = skills.find((skill) => skill.sId === skillId);
+      if (skill) {
+        addSkill(skill);
+      }
+    }
+  };
 
   return {
     localSelectedSkills,
     unselectSkill,
     handleSkillToggle,
     filteredSkills,
-    isSkillsLoading,
+    isSkillsLoading: useSkillSearch
+      ? isSearchSkillsLoading
+      : isListedSkillsLoading,
+    isSelectingSkill,
+    resolvedSearchQuery: useSkillSearch
+      ? (resolvedSearchTerm ?? "")
+      : searchQuery,
+    skillPagination: useSkillSearch
+      ? {
+          hasMore,
+          loadMore,
+          loadedCount: searchSkills.length,
+        }
+      : null,
     selectedSkillIds,
     resetLocalState,
   };

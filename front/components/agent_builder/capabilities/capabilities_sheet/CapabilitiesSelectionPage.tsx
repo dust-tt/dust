@@ -2,19 +2,30 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import { SkillCard } from "@app/components/agent_builder/capabilities/capabilities_sheet/SkillCard";
 import { MCPServerCard } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
 import type { SheetState } from "@app/components/agent_builder/skills/types";
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { CapabilityFilterButtons } from "@app/components/shared/tools_picker/CapabilityFilterButtons";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { CapabilityFilterType } from "@app/components/shared/tools_picker/types";
 import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
-import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillListItemType,
+  SkillWithoutInstructionsAndToolsType,
+} from "@app/types/assistant/skill_configuration";
 import { SearchInput, Spinner } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
-type CapabilitiesSelectionPageProps = {
+interface CapabilitiesSelectionPageProps {
   onStateChange: (state: SheetState) => void;
-  handleSkillToggle: (skill: SkillWithoutInstructionsAndToolsType) => void;
-  filteredSkills: SkillWithoutInstructionsAndToolsType[];
+  handleSkillToggle: (skillId: string) => void;
+  filteredSkills: (SkillListItemType | SkillWithoutInstructionsAndToolsType)[];
+  isSelectingSkill: boolean;
+  skillPagination: {
+    hasMore: boolean;
+    loadMore: () => void;
+    loadedCount: number;
+  } | null;
   searchQuery: string;
+  resolvedSearchQuery: string;
   selectedSkillIds: Set<string>;
   setSearchQuery: (query: string) => void;
   isCapabilitiesLoading: boolean;
@@ -25,15 +36,18 @@ type CapabilitiesSelectionPageProps = {
   selectedMCPServerViewIds: Set<string>;
   handleToolToggle: (view: MCPServerViewTypeWithLabel) => void;
   handleToolInfoClick: (view: MCPServerViewTypeWithLabel) => void;
-};
+}
 
 export function CapabilitiesSelectionPageContent({
   handleSkillToggle,
   filteredSkills,
   searchQuery,
+  resolvedSearchQuery,
   selectedSkillIds,
   setSearchQuery,
   isCapabilitiesLoading,
+  isSelectingSkill,
+  skillPagination,
   filteredMCPServerViews,
   selectedMCPServerViewIds,
   handleToolToggle,
@@ -83,11 +97,14 @@ export function CapabilitiesSelectionPageContent({
 
       <CapabilityFilterButtons filter={filter} setFilter={setFilter} />
 
-      {isCapabilitiesLoading ? (
+      {isSelectingSkill && <Spinner size="sm" />}
+
+      {/* Keep the displayed results while the next search is loading. */}
+      {isCapabilitiesLoading && !hasAnyResults ? (
         <div className="flex h-40 items-center justify-center">
           <Spinner />
         </div>
-      ) : !hasAnyResults ? (
+      ) : !hasAnyResults && !(showSkillsSection && skillPagination?.hasMore) ? (
         <div className="flex flex-1 items-center justify-center py-12">
           <div className="px-4 text-center">
             <div className="mb-2 text-lg font-medium text-foreground">
@@ -119,7 +136,7 @@ export function CapabilitiesSelectionPageContent({
                     key={skill.sId}
                     skill={skill}
                     isSelected={selectedSkillIds.has(skill.sId)}
-                    onClick={() => handleSkillToggle(skill)}
+                    onClick={() => handleSkillToggle(skill.sId)}
                     onMoreInfoClick={() => fetchSkillWithRelations(skill.sId)}
                   />
                 ))}
@@ -147,6 +164,20 @@ export function CapabilitiesSelectionPageContent({
                 ))}
               </div>
             </>
+          )}
+          {showSkillsSection && skillPagination && (
+            // Recheck after every page, even when all its skills are already added.
+            <InfiniteScroll
+              key={`${resolvedSearchQuery}:${skillPagination.loadedCount}`}
+              nextPage={skillPagination.loadMore}
+              hasMore={skillPagination.hasMore}
+              showLoader={isCapabilitiesLoading}
+              loader={
+                <div className="flex justify-center py-4">
+                  <Spinner size="sm" />
+                </div>
+              }
+            />
           )}
         </>
       )}
