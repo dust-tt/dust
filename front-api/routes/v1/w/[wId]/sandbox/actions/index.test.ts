@@ -1,7 +1,15 @@
 import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
+import {
+  isSandboxExecTokenPayload,
+  verifySandboxExecToken,
+} from "@app/lib/api/sandbox/access_tokens";
+import { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import {
@@ -10,7 +18,7 @@ import {
 } from "@app/tests/utils/SandboxTokenFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it } from "vitest";
+import { assert, describe, expect, it } from "vitest";
 
 function getSandboxActions(workspace: { sId: string }, token: string) {
   return honoApp.request(`/api/v1/w/${workspace.sId}/sandbox/actions`, {
@@ -67,6 +75,66 @@ describe("GET /api/v1/w/[wId]/sandbox/actions", () => {
     expect(
       body.serverViews.map((serverView: { sId: string }) => serverView.sId)
     ).toContain(agentServerView?.sId);
+  });
+
+  it("does not widen the sandbox to the spaces of a non-editor group granted on the agent", async () => {
+    const { agentConfig, auth, token, workspace } =
+      await createSandboxTokenTestContext({
+        agentScope: "hidden",
+        usePodSpaceForConversation: true,
+      });
+    const otherSpace = await SpaceFactory.regular(workspace);
+    const manualGroup = await GroupFactory.regularManual(
+      workspace,
+      "Agent watchers"
+    );
+    await GroupFactory.withMembers(auth, manualGroup, [
+      auth.getNonNullableUser(),
+    ]);
+    const [otherSpaceGrant] = await GroupPermissionModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        resourceType: "space",
+        resourceId: otherSpace.id,
+      },
+    });
+    assert(otherSpaceGrant && agentConfig.agentModelId !== null);
+    await GroupPermissionModel.bulkCreate([
+      {
+        workspaceId: workspace.id,
+        groupId: manualGroup.id,
+        grantType: otherSpaceGrant.grantType,
+        resourceType: "space",
+        resourceId: otherSpace.id,
+      },
+      {
+        workspaceId: workspace.id,
+        groupId: manualGroup.id,
+        grantType: "editor",
+        resourceType: "agent",
+        resourceId: agentConfig.agentModelId,
+      },
+    ]);
+
+    const payload = await verifySandboxExecToken(token);
+    assert(payload && isSandboxExecTokenPayload(payload));
+    const sandboxAuthRes = await Authenticator.fromSandboxToken(
+      payload,
+      workspace.sId
+    );
+    assert(sandboxAuthRes.isOk());
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      auth.getNonNullableUser().sId,
+      workspace.sId
+    );
+    const space = await SpaceResource.fetchById(
+      await Authenticator.internalAdminForWorkspace(workspace.sId),
+      otherSpace.sId
+    );
+    assert(space);
+
+    expect(userAuth.can("read", space)).toBe(true);
+    expect(sandboxAuthRes.value.can("read", space)).toBe(false);
   });
 
   it("does not expose tools added to a later agent version", async () => {

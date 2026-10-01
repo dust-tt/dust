@@ -412,11 +412,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     ];
 
     const [agentConfigurations, mcpServerViews] = await Promise.all([
-      // The blocked actions' own agents are displayed by name even once the caller holds no verb
-      // on them (see `agent-dangerous-fetch`).
-      AgentResource.fetchByIdsAndVersions(auth, agentConfigVersionPairs, {
-        dangerouslySkipFetchCheck: true,
-      }),
+      AgentResource.fetchByIdsAndVersions(auth, agentConfigVersionPairs),
       MCPServerViewResource.fetchByIds(auth, mcpServerViewIds, {
         includeHeavyAttributes: ["authorization"],
       }),
@@ -437,7 +433,11 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       const agentConfiguration = agentConfigurationMap.get(
         `${agentMessage.agentConfigurationId}:${agentMessage.agentConfigurationVersion}`
       );
-      assert(agentConfiguration, "Agent not found.");
+      // Resuming the loop requires `read` on the agent (see `pinned-run-configuration`): an action
+      // whose agent the caller cannot read could not be unblocked, and its inputs stay private.
+      if (!agentConfiguration || !auth.can("read", agentConfiguration)) {
+        continue;
+      }
 
       // We just fetched on the status being blocked, we just don't get it typed properly.
       assert(

@@ -11,8 +11,9 @@ import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { computeStepContexts } from "@app/lib/actions/utils";
-import { getPinnedAgentConfigurationForRun } from "@app/lib/api/assistant/configuration/run_configuration";
+import { getPinnedAgentToolingForRun } from "@app/lib/api/assistant/configuration/run_configuration";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
+import { getGlobalAgentContextForAgentMessage } from "@app/lib/api/assistant/global_agent_context";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { resolveAgentMessageModelConfig } from "@app/lib/api/assistant/resolve_model";
@@ -72,14 +73,6 @@ export async function createSandboxChildAction(
     return new Err(new Error("MCP server view not found."));
   }
 
-  const agentConfiguration = await getPinnedAgentConfigurationForRun(auth, {
-    agentId,
-    agentVersion,
-  });
-  if (!agentConfiguration) {
-    return new Err(new Error("Agent configuration not found."));
-  }
-
   const conversationResource = await ConversationResource.fetchById(
     auth,
     conversationId
@@ -87,6 +80,19 @@ export async function createSandboxChildAction(
 
   if (!conversationResource) {
     return new Err(new Error("Conversation not found."));
+  }
+
+  const agentConfiguration = await getPinnedAgentToolingForRun(auth, {
+    agentId,
+    agentVersion,
+    globalAgentContext: await getGlobalAgentContextForAgentMessage(auth, {
+      agentId,
+      conversation: conversationResource,
+      agentMessageId,
+    }),
+  });
+  if (!agentConfiguration) {
+    return new Err(new Error("Agent configuration not found."));
   }
 
   const parentAction = await AgentMCPActionResource.fetchById(

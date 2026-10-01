@@ -1,12 +1,13 @@
 /**
  * Run agent arguments
  */
+
 import { getPinnedAgentConfigurationForRun } from "@app/lib/api/assistant/configuration/run_configuration";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
+import { getGlobalAgentContextForTurn } from "@app/lib/api/assistant/global_agent_context";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { resolveAgentMessageModelConfig } from "@app/lib/api/assistant/resolve_model";
-import { getStaticReplyForUserMessage } from "@app/lib/api/assistant/static_reply";
 import { legacyModelIdToModel } from "@app/lib/api/llm";
 import { selectPreferredStreamEndpointForWorkspace } from "@app/lib/api/llm/selectPreferredEndpointForWorkspace";
 import type { AuthenticatorType } from "@app/lib/auth";
@@ -18,7 +19,6 @@ import { cacheWithRedis } from "@app/lib/utils/cache";
 import type {
   AgentConfigurationType,
   AgentConfigurationWithoutModelType,
-  GlobalAgentContext,
 } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
@@ -449,13 +449,10 @@ async function buildAgentLoopRuntimeData(
 
   const agentId = agentMessage.configuration.sId;
 
-  const globalAgentContext: GlobalAgentContext = {
-    userMessageRank: userMessage.rank,
-    sidekickIsNewAgentFromScratch:
-      conversation.metadata?.sidekickIsNewAgentFromScratch === true ||
-      undefined,
-    staticReply: getStaticReplyForUserMessage({ conversation, userMessage }),
-  };
+  const globalAgentContext = getGlobalAgentContextForTurn({
+    conversation,
+    userMessage,
+  });
 
   // As the agent configuration is never supposed to change during a loop, we can cache it for a long time.
   // The key will be different for a new message or a new version of the same message (retries).
