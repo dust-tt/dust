@@ -91,13 +91,6 @@ function buildSelectionFilters(
   if (filters.editedByMe) {
     selected.push(buildEditorFilter(auth));
   }
-  if (filters.codeDefinedOnly) {
-    selected.push({ term: { workspace_id: CODE_DEFINED_SKILLS_WORKSPACE_ID } });
-  } else if (filters.codeDefinedOnly === false) {
-    selected.push({
-      term: { workspace_id: auth.getNonNullableWorkspace().sId },
-    });
-  }
   const { min, max } = filters.activeUsersCount ?? {};
   if (min !== undefined || max !== undefined) {
     selected.push({ range: { active_users_count: { gte: min, lte: max } } });
@@ -133,6 +126,33 @@ export function buildSkillSearchQuery(
     codeDefinedSkillIds?: string[];
   }
 ): estypes.QueryDslQueryContainer {
+  const should: estypes.QueryDslQueryContainer[] = [];
+  if (filters.codeDefinedOnly !== true) {
+    should.push({
+      bool: {
+        filter: [
+          { term: { workspace_id: auth.getNonNullableWorkspace().sId } },
+          ...(permissionFiltering === "strict"
+            ? [
+                buildAvailabilityFilter(auth),
+                buildSpaceAccessFilter(getSkillSearchReadableSpaceIds(auth)),
+              ]
+            : []),
+        ],
+      },
+    });
+  }
+  if (filters.codeDefinedOnly !== false) {
+    should.push({
+      bool: {
+        filter: [
+          { term: { workspace_id: CODE_DEFINED_SKILLS_WORKSPACE_ID } },
+          { terms: { skill_id: codeDefinedSkillIds } },
+        ],
+      },
+    });
+  }
+
   return {
     bool: {
       filter: [
@@ -140,31 +160,7 @@ export function buildSkillSearchQuery(
         ...buildSelectionFilters(auth, filters),
       ],
       must: [buildSkillNameAutocompleteQuery(searchTerm)],
-      should: [
-        {
-          bool: {
-            filter: [
-              { term: { workspace_id: auth.getNonNullableWorkspace().sId } },
-              ...(permissionFiltering === "strict"
-                ? [
-                    buildAvailabilityFilter(auth),
-                    buildSpaceAccessFilter(
-                      getSkillSearchReadableSpaceIds(auth)
-                    ),
-                  ]
-                : []),
-            ],
-          },
-        },
-        {
-          bool: {
-            filter: [
-              { term: { workspace_id: CODE_DEFINED_SKILLS_WORKSPACE_ID } },
-              { terms: { skill_id: codeDefinedSkillIds } },
-            ],
-          },
-        },
-      ],
+      should,
       minimum_should_match: 1,
     },
   };
