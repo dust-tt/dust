@@ -87,7 +87,7 @@ export class DustProjectConnectorManager extends BaseConnectorManager<null> {
     if (res.isErr()) {
       logger.error(
         { connectorId: this.connectorId, error: res.error },
-        "Failed to delete Discord bot connector"
+        "Failed to delete Dust project connector"
       );
       return res;
     }

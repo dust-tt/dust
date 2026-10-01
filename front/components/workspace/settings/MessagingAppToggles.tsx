@@ -1,5 +1,4 @@
 import { BotToggle } from "@app/components/workspace/settings/BotToggle";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useBotDataSources } from "@app/lib/swr/data_sources";
 import { useSystemSpace } from "@app/lib/swr/spaces";
 import type { WorkspaceType } from "@app/types/user";
@@ -17,11 +16,6 @@ export const MESSAGING_APP_METADATA = {
     description: "Whether the Dust Bot can be used in Microsoft Teams",
     documentationUrl: "https://docs.dust.tt/docs/dust-in-teams",
   },
-  discord_bot: {
-    name: "Discord Bot",
-    description: "Whether the Dust Bot can be used in Discord",
-    documentationUrl: undefined,
-  },
 } as const;
 
 interface MessagingAppTogglesProps {
@@ -29,18 +23,14 @@ interface MessagingAppTogglesProps {
 }
 
 export function MessagingAppToggles({ owner }: MessagingAppTogglesProps) {
-  const { hasFeature } = useFeatureFlags();
   const { systemSpace, isSystemSpaceLoading } = useSystemSpace({
     workspaceId: owner.sId,
   });
   const {
     slackBotDataSource,
     microsoftBotDataSource,
-    discordBotDataSource,
     isBotDataSourcesLoading,
   } = useBotDataSources({ workspaceId: owner.sId });
-
-  const isDiscordBotAvailable = hasFeature("discord_bot");
 
   if (isSystemSpaceLoading || isBotDataSourcesLoading || !systemSpace) {
     return (
@@ -72,20 +62,6 @@ export function MessagingAppToggles({ owner }: MessagingAppTogglesProps) {
         connectorProvider="microsoft_bot"
         {...MESSAGING_APP_METADATA.microsoft_bot}
       />
-      {isDiscordBotAvailable && (
-        <BotToggle
-          owner={owner}
-          botDataSource={discordBotDataSource}
-          systemSpace={systemSpace}
-          oauth={{
-            provider: "discord",
-            useCase: "bot",
-            extraConfig: {},
-          }}
-          connectorProvider="discord_bot"
-          {...MESSAGING_APP_METADATA.discord_bot}
-        />
-      )}
     </>
   );
 }

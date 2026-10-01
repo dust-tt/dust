@@ -31,7 +31,6 @@
     "migration:mark:pre-deploy": "node ../scripts/db/run-migrate.cjs --command mark-pre-deploy --execute",
     "migration:mark:post-deploy": "node ../scripts/db/run-migrate.cjs --command mark-post-deploy --execute",
     "teams:create-app": "tsx ./scripts/create-teams-app.ts",
-    "discord:register-commands": "tsx ./scripts/register-discord-commands.ts",
     "debug:profiler": "tsx ./scripts/debug/run_profiler.ts",
     "knip": "knip"
   },
@@ -105,7 +104,6 @@
     "talisman": "^1.1.4",
     "tar-stream": "^3.1.7",
     "turndown": "^7.1.2",
-    "tweetnacl": "^1.0.3",
     "umzug": "3.8.3",
     "undici": "^7.24.0",
     "uuid": "^9.0.0",

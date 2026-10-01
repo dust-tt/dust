@@ -14,20 +14,14 @@ app.get(
   async (ctx): HandlerResult<GetBotDataSourcesResponseBody> => {
     const auth = ctx.get("auth");
 
-    const [
-      [slackBotDataSource],
-      [microsoftBotDataSource],
-      [discordBotDataSource],
-    ] = await Promise.all([
+    const [[slackBotDataSource], [microsoftBotDataSource]] = await Promise.all([
       DataSourceResource.listByConnectorProvider(auth, "slack_bot"),
       DataSourceResource.listByConnectorProvider(auth, "microsoft_bot"),
-      DataSourceResource.listByConnectorProvider(auth, "discord_bot"),
     ]);
 
     return ctx.json({
       slackBotDataSource: slackBotDataSource?.toJSON() ?? null,
       microsoftBotDataSource: microsoftBotDataSource?.toJSON() ?? null,
-      discordBotDataSource: discordBotDataSource?.toJSON() ?? null,
     });
   }
 );

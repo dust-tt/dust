@@ -275,12 +275,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "id13",
   },
-  discord_bot: {
-    description:
-      "Discord bot integration for workspace-level Discord integration",
-    stage: "dust_only",
-    owner: "frankaloia",
-  },
   shopify_tool: {
     description: "Shopify MCP tool",
     stage: "self_serve",
