@@ -1141,6 +1141,15 @@ msgstr "Vous pouvez gérer vos préférences de notification depuis <0>votre esp
 msgid "Hi {name},"
 msgstr "Bonjour {name},"
 
+#: front/lib/notifications/workflows/agent-suggestions-ready.ts
+msgid "{suggestionCount, plural, one {# new improvement suggestion ready for review.} other {# new improvement suggestions ready for review.}}"
+msgstr "{suggestionCount, plural, one {# nouvelle suggestion d’amélioration prête à être examinée.} many {# nouvelles suggestions d’amélioration prêtes à être examinées.} other {# nouvelles suggestions d’amélioration prêtes à être examinées.}}"
+
+#: front/lib/notifications/workflows/agent-suggestions-ready.ts
+msgctxt "action"
+msgid "Review"
+msgstr "Examiner"
+
 #: front/lib/notifications/workflows/balance-threshold-reached.ts
 msgid "[Dust] Credit balance alert - your workspace balance dropped below {threshold} credits"
 msgstr "[Dust] Alerte de solde de crédits : le solde de votre espace de travail est passé sous {threshold} crédits"

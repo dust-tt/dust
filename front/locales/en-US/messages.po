@@ -1141,6 +1141,15 @@ msgstr "You can manage your notification preferences from <0>your workspace</0>.
 msgid "Hi {name},"
 msgstr "Hi {name},"
 
+#: front/lib/notifications/workflows/agent-suggestions-ready.ts
+msgid "{suggestionCount, plural, one {# new improvement suggestion ready for review.} other {# new improvement suggestions ready for review.}}"
+msgstr "{suggestionCount, plural, one {# new improvement suggestion ready for review.} other {# new improvement suggestions ready for review.}}"
+
+#: front/lib/notifications/workflows/agent-suggestions-ready.ts
+msgctxt "action"
+msgid "Review"
+msgstr "Review"
+
 #: front/lib/notifications/workflows/balance-threshold-reached.ts
 msgid "[Dust] Credit balance alert - your workspace balance dropped below {threshold} credits"
 msgstr "[Dust] Credit balance alert - your workspace balance dropped below {threshold} credits"
