@@ -50,6 +50,25 @@ describe("GET /api/v1/w/[wId]/sandbox/actions", () => {
     ).toContain(agentServerView?.sId);
   });
 
+  it("returns server views of a hidden agent the token user edits", async () => {
+    // A hidden agent is readable through its editor grant only, which the sandbox-token group
+    // narrowing must keep.
+    const { agentServerView, token, workspace } =
+      await createSandboxTokenTestContext({
+        agentScope: "hidden",
+        usePodSpaceForConversation: true,
+      });
+    expect(agentServerView).not.toBeNull();
+
+    const response = await getSandboxActions(workspace, token);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(
+      body.serverViews.map((serverView: { sId: string }) => serverView.sId)
+    ).toContain(agentServerView?.sId);
+  });
+
   it("does not expose tools added to a later agent version", async () => {
     const { agentConfig, agentServerView, auth, token, workspace } =
       await createSandboxTokenTestContext({
