@@ -224,11 +224,13 @@ export type AgentVersionReference = {
  * resources are never cached, so a turn's context never reaches another read.
  */
 /**
- * @cc [owner:tdraier,label:backend;performance] global-agent-actions-from-build
- * With `withGlobalActions`, global agents MUST be built from their `full` configuration (with the
- * same `globalAgentContext`), and `batchListActions` MUST return that build's actions for them
- * without building them again. Without it, global agents are built `light` and `batchListActions`
- * resolves their actions through `getGlobalAgents(…, "full")`.
+ * @cc [owner:tdraier,label:backend;performance] resolved-agent-actions
+ * With `withActions`, every resolved resource whose content the caller can view MUST carry its
+ * tools: custom agents' from one tools lookup per call, global agents' from their `full` build
+ * (with the same `globalAgentContext`). `listActions`/`batchListActions` MUST return the carried
+ * tools without looking them up again, and still MUST NOT return them to a caller who cannot view
+ * the content (see `actions-require-read`). Tools are never part of the cache snapshot.
+ * Without it, global agents are built `light` and tools are looked up by `batchListActions`.
  */
 /**
  * @cc [owner:tdraier,label:security] poke-agent-content-access
@@ -240,7 +242,7 @@ export type AgentFetchOptions = {
   dangerouslySkipFetchCheck?: boolean;
   dangerouslyViewContentForPoke?: boolean;
   globalAgentContext?: GlobalAgentContext;
-  withGlobalActions?: boolean;
+  withActions?: boolean;
 };
 
 // The outcome of a `bulkUpdate`: the agents whose save succeeded (`updatedAgentIds`, a change
@@ -526,7 +528,7 @@ export class AgentResource
   // content; `materialize` sets it for the caller.
   private _canViewContent = true;
   private _globalContent: AgentResourceInstructions | null = null;
-  private _globalActions: MCPServerConfigurationType[] | null = null;
+  private _actions: MCPServerConfigurationType[] | null = null;
 
   private _verbs: Set<GrantVerb> = new Set();
   private _isRegularApiKey = false;
@@ -914,20 +916,25 @@ export class AgentResource
     const adminCanSeePrivateEntities =
       await this.resolveAdminCanSeePrivateEntities(auth, customResources);
 
+    const fetchedCustomResources = customResources
+      .map((resource) =>
+        resource.materialize(auth, {
+          adminCanSeePrivateEntities,
+          pokeContentAccess: options.dangerouslyViewContentForPoke,
+        })
+      )
+      .filter(
+        (resource) => dangerouslySkipFetchCheck || resource.canFetch(auth)
+      );
+    if (options.withActions) {
+      await this.loadCustomAgentActions(auth, fetchedCustomResources);
+    }
+
     const resourcesById = new Map(
-      [
-        ...customResources
-          .map((resource) =>
-            resource.materialize(auth, {
-              adminCanSeePrivateEntities,
-              pokeContentAccess: options.dangerouslyViewContentForPoke,
-            })
-          )
-          .filter(
-            (resource) => dangerouslySkipFetchCheck || resource.canFetch(auth)
-          ),
-        ...globalResources,
-      ].map((resource) => [resource.sId, resource])
+      [...fetchedCustomResources, ...globalResources].map((resource) => [
+        resource.sId,
+        resource,
+      ])
     );
     return removeNulls(uniqueAgentIds.map((id) => resourcesById.get(id)));
   }
@@ -942,7 +949,7 @@ export class AgentResource
       dangerouslySkipFetchCheck = false,
       dangerouslyViewContentForPoke = false,
       globalAgentContext,
-      withGlobalActions = false,
+      withActions = false,
     }: AgentFetchOptions = {}
   ): Promise<AgentResource[]> {
     if (globalAgentIds.length === 0) {
@@ -952,7 +959,7 @@ export class AgentResource
     const configurations = await getGlobalAgents(
       auth,
       globalAgentIds,
-      withGlobalActions ? "full" : "light",
+      withActions ? "full" : "light",
       { globalAgentContext }
     );
     return configurations
@@ -961,8 +968,8 @@ export class AgentResource
         if (dangerouslyViewContentForPoke) {
           resource.materialize(auth, { pokeContentAccess: true });
         }
-        if (withGlobalActions) {
-          resource._globalActions = configuration.actions;
+        if (withActions) {
+          resource._actions = configuration.actions;
         }
         return resource;
       })
@@ -1016,6 +1023,10 @@ export class AgentResource
         options
       ),
     ]);
+
+    if (options.withActions) {
+      await this.loadCustomAgentActions(auth, customResources);
+    }
 
     const resourcesByKey = new Map(
       [...customResources, ...globalResources].map((resource) => [
@@ -1784,6 +1795,35 @@ export class AgentResource
 
   // Global agents' tools are code-defined and depend on workspace data (data sources, tool views),
   // so they are only built, through the full global agent build, when asked for.
+  // Loads, in one tools lookup, the tools of the custom resources whose content the caller can view
+  // and keeps them on the resources (see `resolved-agent-actions`).
+  private static async loadCustomAgentActions(
+    auth: Authenticator,
+    resources: AgentResource[]
+  ): Promise<void> {
+    const viewableResources = resources.filter(
+      (resource) => resource.scope !== "global" && resource.canViewContent
+    );
+    if (viewableResources.length === 0) {
+      return;
+    }
+
+    const actionsByConfigurationModelId =
+      await fetchMCPServerActionConfigurations(auth, {
+        configurationModelIds: uniq(
+          viewableResources.map(
+            (resource) => resource.agentConfigurationModelId
+          )
+        ),
+        variant: "full",
+      });
+    for (const resource of viewableResources) {
+      resource._actions =
+        actionsByConfigurationModelId.get(resource.agentConfigurationModelId) ??
+        [];
+    }
+  }
+
   async listActions(
     auth: Authenticator,
     options: AgentActionsFetchOptions = {}
@@ -1821,13 +1861,12 @@ export class AgentResource
     const isListable = (agent: AgentResource) =>
       permissionFiltering === "dangerously_skip" ||
       agent.resolveCanViewContent(auth);
-    const viewableAgents = agents.filter(isListable);
-    const [globalAgents, customAgents] = partition(
-      viewableAgents,
-      (agent) => agent.scope === "global"
+    const agentsToLookUp = agents.filter(
+      (agent) => isListable(agent) && agent._actions === null
     );
-    const globalAgentsToBuild = globalAgents.filter(
-      (agent) => agent._globalActions === null
+    const [globalAgents, customAgents] = partition(
+      agentsToLookUp,
+      (agent) => agent.scope === "global"
     );
 
     const [actionsByConfigurationModelId, globalConfigurations] =
@@ -1840,10 +1879,10 @@ export class AgentResource
               variant: "full",
             })
           : new Map<ModelId, MCPServerConfigurationType[]>(),
-        globalAgentsToBuild.length > 0
+        globalAgents.length > 0
           ? getGlobalAgents(
               auth,
-              uniq(globalAgentsToBuild.map((agent) => agent.sId)),
+              uniq(globalAgents.map((agent) => agent.sId)),
               "full"
             )
           : [],
@@ -1861,11 +1900,12 @@ export class AgentResource
           return [agent, []];
         }
         const actions =
-          agent.scope === "global"
-            ? (agent._globalActions ?? globalActionsById.get(agent.sId))
+          agent._actions ??
+          (agent.scope === "global"
+            ? globalActionsById.get(agent.sId)
             : actionsByConfigurationModelId.get(
                 agent.agentConfigurationModelId
-              );
+              ));
         return [agent, actions ?? []];
       })
     );
