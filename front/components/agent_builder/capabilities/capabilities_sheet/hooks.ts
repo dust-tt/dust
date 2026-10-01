@@ -15,14 +15,12 @@ import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_pi
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useSearchSkillsInfinite } from "@app/hooks/useSearchSkillsInfinite";
 import { nameToStorageFormat } from "@app/lib/actions/default_mcp_action";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import {
-  useSearchSkills,
-  useSkillWithRelations,
-} from "@app/lib/swr/skill_configurations";
+import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useMemo, useState } from "react";
@@ -54,16 +52,15 @@ export const useSkillSelection = ({
   const { hasFeature } = useFeatureFlags();
   const useSkillSearch = hasFeature("skills_search");
   const sendNotification = useSendNotification();
-  const [offset, setOffset] = useState(0);
   const {
     skills: searchSkills,
     resolvedSearchTerm,
     isSkillsLoading: isSearchSkillsLoading,
     hasMore,
-  } = useSearchSkills({
+    loadMore,
+  } = useSearchSkillsInfinite({
     owner,
     searchTerm: searchQuery,
-    offset,
     limit: SKILL_SEARCH_PAGE_SIZE,
     disabled: disabled || !useSkillSearch,
   });
@@ -151,8 +148,6 @@ export const useSkillSelection = ({
     }
   };
 
-  const resetSearchPagination = () => setOffset(0);
-
   return {
     localSelectedSkills,
     unselectSkill,
@@ -165,15 +160,11 @@ export const useSkillSelection = ({
     resolvedSearchQuery: useSkillSearch
       ? (resolvedSearchTerm ?? "")
       : searchQuery,
-    resetSearchPagination,
     skillPagination: useSkillSearch
       ? {
-          hasPrevious: offset > 0,
           hasMore,
-          previous: () =>
-            setOffset((previous) => previous - SKILL_SEARCH_PAGE_SIZE),
-          next: () =>
-            setOffset((previous) => previous + SKILL_SEARCH_PAGE_SIZE),
+          loadMore,
+          loadedCount: searchSkills.length,
         }
       : null,
     selectedSkillIds,

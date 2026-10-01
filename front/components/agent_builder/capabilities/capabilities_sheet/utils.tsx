@@ -159,10 +159,7 @@ export function useCapabilitiesPageAndFooter({
                 toolSelection.isMCPServerViewsLoading
               }
               searchQuery={searchQuery}
-              setSearchQuery={(query) => {
-                setSearchQuery(query);
-                skillSelection.resetSearchPagination();
-              }}
+              setSearchQuery={setSearchQuery}
               {...skillSelection}
               {...toolSelection}
               onStateChange={onStateChange}

@@ -2,6 +2,7 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import { SkillCard } from "@app/components/agent_builder/capabilities/capabilities_sheet/SkillCard";
 import { MCPServerCard } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
 import type { SheetState } from "@app/components/agent_builder/skills/types";
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { CapabilityFilterButtons } from "@app/components/shared/tools_picker/CapabilityFilterButtons";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { CapabilityFilterType } from "@app/components/shared/tools_picker/types";
@@ -10,7 +11,7 @@ import type {
   SkillListItemType,
   SkillWithoutInstructionsAndToolsType,
 } from "@app/types/assistant/skill_configuration";
-import { Button, SearchInput, Spinner } from "@dust-tt/sparkle";
+import { SearchInput, Spinner } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
 interface CapabilitiesSelectionPageProps {
@@ -19,12 +20,12 @@ interface CapabilitiesSelectionPageProps {
   filteredSkills: (SkillListItemType | SkillWithoutInstructionsAndToolsType)[];
   isSelectingSkill: boolean;
   skillPagination: {
-    hasPrevious: boolean;
     hasMore: boolean;
-    previous: () => void;
-    next: () => void;
+    loadMore: () => void;
+    loadedCount: number;
   } | null;
   searchQuery: string;
+  resolvedSearchQuery: string;
   selectedSkillIds: Set<string>;
   setSearchQuery: (query: string) => void;
   isCapabilitiesLoading: boolean;
@@ -41,6 +42,7 @@ export function CapabilitiesSelectionPageContent({
   handleSkillToggle,
   filteredSkills,
   searchQuery,
+  resolvedSearchQuery,
   selectedSkillIds,
   setSearchQuery,
   isCapabilitiesLoading,
@@ -102,11 +104,7 @@ export function CapabilitiesSelectionPageContent({
         <div className="flex h-40 items-center justify-center">
           <Spinner />
         </div>
-      ) : !hasAnyResults &&
-        !(
-          showSkillsSection &&
-          (skillPagination?.hasMore || skillPagination?.hasPrevious)
-        ) ? (
+      ) : !hasAnyResults && !(showSkillsSection && skillPagination?.hasMore) ? (
         <div className="flex flex-1 items-center justify-center py-12">
           <div className="px-4 text-center">
             <div className="mb-2 text-lg font-medium text-foreground">
@@ -146,30 +144,6 @@ export function CapabilitiesSelectionPageContent({
             </>
           )}
 
-          {showSkillsSection &&
-            skillPagination &&
-            (skillPagination.hasPrevious || skillPagination.hasMore) && (
-              <div className="flex items-center gap-2">
-                <Button
-                  label="Previous skills"
-                  variant="outline"
-                  size="sm"
-                  disabled={
-                    !skillPagination.hasPrevious || isCapabilitiesLoading
-                  }
-                  onClick={skillPagination.previous}
-                />
-                <Button
-                  label="Next skills"
-                  variant="outline"
-                  size="sm"
-                  disabled={!skillPagination.hasMore || isCapabilitiesLoading}
-                  isLoading={isCapabilitiesLoading}
-                  onClick={skillPagination.next}
-                />
-              </div>
-            )}
-
           {showToolsSection && hasTools && (
             <>
               <div>
@@ -190,6 +164,20 @@ export function CapabilitiesSelectionPageContent({
                 ))}
               </div>
             </>
+          )}
+          {showSkillsSection && skillPagination && (
+            // Recheck after every page, even when all its skills are already added.
+            <InfiniteScroll
+              key={`${resolvedSearchQuery}:${skillPagination.loadedCount}`}
+              nextPage={skillPagination.loadMore}
+              hasMore={skillPagination.hasMore}
+              showLoader={isCapabilitiesLoading}
+              loader={
+                <div className="flex justify-center py-4">
+                  <Spinner size="sm" />
+                </div>
+              }
+            />
           )}
         </>
       )}
