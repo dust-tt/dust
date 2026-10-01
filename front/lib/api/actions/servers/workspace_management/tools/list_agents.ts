@@ -11,8 +11,9 @@ import {
   renderFields,
   renderPageFooter,
 } from "@app/lib/api/actions/servers/workspace_management/tools/utils";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import type { AgentsGetViewType } from "@app/types/assistant/agent";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -80,14 +81,14 @@ export async function listAgents(
   // `limit` stays out of the fetch on purpose: it has no offset counterpart, and the view
   // applies it in SQL before the requested-space filtering, so a page would silently come
   // back short. Paginate the sorted set here instead, which also keeps `total` exact.
-  const agents = await getAgentConfigurationsForView({
+  const agents = await toLightAgentConfigurations(
     auth,
-    agentsGetView,
-    agentPrefix: namePrefix,
-    sort: "alphabetical",
-    variant: "light",
-    omitHeavyAttributes: true,
-  });
+    await AgentResource.listForView(auth, agentsGetView, {
+      namePrefix,
+      sort: "alphabetical",
+    }),
+    { withInstructions: false }
+  );
 
   const paginated = paginate(agents, { cursor, limit });
   if (paginated.isErr()) {

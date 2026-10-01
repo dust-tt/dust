@@ -1,10 +1,11 @@
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getAgentsEditors } from "@app/lib/api/assistant/editors";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { runOnRedis } from "@app/lib/api/redis";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import {
   GetAgentConfigurationsQuerySchema,
@@ -14,6 +15,7 @@ import type {
   GetAgentConfigurationsResponseBody,
   PostAgentConfigurationResponseBody,
 } from "@app/types/api/assistant/configuration";
+import { compareAgentsForSort } from "@app/types/assistant/assistant";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -213,18 +215,25 @@ app.get("/", async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
       },
     });
   }
-  let agentConfigurations = await getAgentConfigurationsForView({
+  const agents = await AgentResource.listForView(
     auth,
-    agentsGetView:
-      viewParam === "workspace"
-        ? "published" // workspace is deprecated, return all visible agents
-        : viewParam,
-    variant: "light",
-    limit,
-    sort,
-    // Stripped to stay under Next.js' 4MB API response limit.
-    omitHeavyAttributes: true,
+    viewParam === "workspace"
+      ? "published" // workspace is deprecated, return all visible agents
+      : viewParam,
+    { sort: sort === "priority" ? undefined : sort }
+  );
+  // Stripped to stay under Next.js' 4MB API response limit.
+  const configurations = await toLightAgentConfigurations(auth, agents, {
+    withInstructions: false,
   });
+  // Sorted and limited after the permission filtering, so a limit never drops a readable agent.
+  const sortedConfigurations =
+    sort === "priority"
+      ? configurations.toSorted(compareAgentsForSort)
+      : configurations;
+  let agentConfigurations = limit
+    ? sortedConfigurations.slice(0, limit)
+    : sortedConfigurations;
   if (withUsage === "true") {
     const mentionCounts = await runOnRedis(
       { origin: "agent_usage" },

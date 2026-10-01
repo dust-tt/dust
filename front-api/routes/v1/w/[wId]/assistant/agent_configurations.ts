@@ -1,7 +1,8 @@
 import { toAgentConfigurationsWithSkills } from "@app/lib/api/assistant/configuration/helpers";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { normalizeAgentView } from "@app/lib/api/v1/backward_compatibility";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -136,13 +137,13 @@ app.get(
     // ones built on spaces they cannot read included.
     const isUnrestricted = agentsGetView === "all_unrestricted";
 
-    let agentConfigurations = await getAgentConfigurationsForView({
+    let agentConfigurations = await toLightAgentConfigurations(
       auth,
-      agentsGetView: isUnrestricted
-        ? "admin_internal"
-        : normalizeAgentView(agentsGetView),
-      variant: "light",
-    });
+      await AgentResource.listForView(
+        auth,
+        isUnrestricted ? "admin_internal" : normalizeAgentView(agentsGetView)
+      )
+    );
 
     if (withAuthors) {
       const recentAuthors = await getAgentsRecentAuthors({
