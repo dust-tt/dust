@@ -137,12 +137,13 @@ app.get(
     // ones built on spaces they cannot read included.
     const isUnrestricted = agentsGetView === "all_unrestricted";
 
-    let agentConfigurations = await toLightAgentConfigurations(
+    const agents = await AgentResource.listForView(
       auth,
-      await AgentResource.listForView(
-        auth,
-        isUnrestricted ? "admin_internal" : normalizeAgentView(agentsGetView)
-      )
+      isUnrestricted ? "admin_internal" : normalizeAgentView(agentsGetView)
+    );
+    let agentConfigurations = await toLightAgentConfigurations(auth, agents);
+    const codeDefinedSkillIdsByAgentId = new Map(
+      agents.map((agent) => [agent.sId, agent.codeDefinedSkillIds])
     );
 
     if (withAuthors) {
@@ -161,9 +162,15 @@ app.get(
     }
 
     return ctx.json({
+      // Global agents' skills are code-defined: the light shape does not carry them.
       agentConfigurations: await toAgentConfigurationsWithSkills(
         auth,
-        agentConfigurations
+        agentConfigurations.map((agentConfiguration) => ({
+          ...agentConfiguration,
+          codeDefinedSkillIds: codeDefinedSkillIdsByAgentId.get(
+            agentConfiguration.sId
+          ),
+        }))
       ),
     });
   }

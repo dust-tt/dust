@@ -6,6 +6,7 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { AgentConfigurationWithSkillsType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
@@ -172,6 +173,24 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations", () => {
     expect(agentConfigurations.every((a) => Array.isArray(a.skills))).toBe(
       true
     );
+  });
+
+  it("returns the code-defined skills of global agents", async () => {
+    const { workspace, key } = await createPublicApiMockRequest({
+      role: "admin",
+    });
+
+    const response = await listAgents(workspace, key, { view: "all" });
+
+    expect(response.status).toBe(200);
+    const {
+      agentConfigurations,
+    }: { agentConfigurations: AgentConfigurationWithSkillsType[] } =
+      await response.json();
+    const helper = agentConfigurations.find(
+      (a) => a.sId === GLOBAL_AGENTS_SID.HELPER
+    );
+    expect(helper?.skills.map((skill) => skill.sId)).toContain("frames");
   });
 
   it("rejects the all_unrestricted view for non-admin keys", async () => {
