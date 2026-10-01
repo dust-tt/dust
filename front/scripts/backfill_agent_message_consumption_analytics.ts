@@ -5,7 +5,8 @@
  * backfilled.
  *
  * Messages are selected by the timestamp the index records as `completed_at`: `completedAt` for a
- * terminal message, `updatedAt` for a message that can still resume.
+ * terminal message, `updatedAt` for a message that can still resume. `--statuses` restricts the
+ * backfill to some statuses (all by default).
  *
  * Before enqueueing each batch, the script classifies any run usages whose usageType is still null.
  * It reconstructs the same billing classification as the live path from the triggering user
@@ -15,6 +16,11 @@
  * Dry run:
  *   npx tsx scripts/backfill_agent_message_consumption_analytics.ts \
  *     --fromDate 2026-08-01T00:00:00.000Z
+ *
+ * Only failed and paused messages:
+ *   npx tsx scripts/backfill_agent_message_consumption_analytics.ts \
+ *     --fromDate 2026-08-01T00:00:00.000Z \
+ *     --statuses failed created
  *
  * Execute:
  *   npx tsx scripts/backfill_agent_message_consumption_analytics.ts \
@@ -45,6 +51,8 @@ import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { launchStoreAgentMessageConsumptionAttributionWorkflow } from "@app/temporal/analytics_queue/client";
 import type { AgentMessageRef } from "@app/types/assistant/agent_run";
+import type { AgentMessageStatus } from "@app/types/assistant/conversation";
+import { AGENT_MESSAGE_STATUSES } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
@@ -55,6 +63,7 @@ import { fromError } from "zod-validation-error";
 const DEFAULT_BATCH_SIZE = 100;
 const DEFAULT_CONCURRENCY = 4;
 const TimestampSchema = z.string().datetime({ offset: true });
+const StatusesSchema = z.array(z.enum(AGENT_MESSAGE_STATUSES)).nonempty();
 
 type AgentMessageBackfillCandidate = {
   agentMessageModelId: ModelId;
@@ -92,12 +101,14 @@ async function listAgentMessageRefs({
   afterAgentMessageModelId,
   batchSize,
   fromDate,
+  statuses,
   toDate,
   workspace,
 }: {
   afterAgentMessageModelId: number;
   batchSize: number;
   fromDate: Date;
+  statuses: AgentMessageStatus[];
   toDate: Date;
   workspace: LightWorkspaceType;
 }): Promise<AgentMessageBackfillCandidate[]> {
@@ -106,6 +117,7 @@ async function listAgentMessageRefs({
     where: {
       id: { [Op.gt]: afterAgentMessageModelId },
       workspaceId: workspace.id,
+      status: { [Op.in]: statuses },
       [Op.or]: [
         { completedAt: { [Op.gte]: fromDate, [Op.lt]: toDate } },
         {
@@ -267,6 +279,12 @@ makeScript(
       description:
         "Exclusive ISO-8601 completion timestamp (defaults to script start).",
     },
+    statuses: {
+      type: "array",
+      choices: [...AGENT_MESSAGE_STATUSES],
+      default: [...AGENT_MESSAGE_STATUSES],
+      description: "Agent message statuses to backfill, space-separated.",
+    },
     workspaceId: {
       type: "string",
       required: false,
@@ -295,12 +313,20 @@ makeScript(
       execute,
       fromDate,
       fromWorkspaceId,
+      statuses,
       toDate,
       workspaceId,
     },
     logger
   ) => {
     const parsedFromDate = parseTimestamp(fromDate, "fromDate");
+    const statusesResult = StatusesSchema.safeParse(statuses);
+    if (!statusesResult.success) {
+      throw new Error(
+        `Invalid --statuses: ${fromError(statusesResult.error).toString()}`
+      );
+    }
+    const parsedStatuses = statusesResult.data;
     const parsedToDate = toDate ? parseTimestamp(toDate, "toDate") : new Date();
     assert(parsedFromDate < parsedToDate, "--fromDate must precede --toDate");
     assert(batchSize > 0, "--batchSize must be positive");
@@ -332,6 +358,7 @@ makeScript(
             afterAgentMessageModelId,
             batchSize,
             fromDate: parsedFromDate,
+            statuses: parsedStatuses,
             toDate: parsedToDate,
             workspace,
           });
@@ -415,6 +442,7 @@ makeScript(
     logger.info(
       {
         fromDate: parsedFromDate.toISOString(),
+        statuses: parsedStatuses,
         toDate: parsedToDate.toISOString(),
         totalCandidates,
         totalEnqueued,
