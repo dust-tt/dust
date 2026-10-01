@@ -14,7 +14,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useCallback } from "react";
 
-function InviteChoosePage() {
+export function InviteChoosePage() {
   const { cells } = useCellContext();
   const { user } = useUser();
   const { pendingInvitations, isPendingInvitationsLoading } =
