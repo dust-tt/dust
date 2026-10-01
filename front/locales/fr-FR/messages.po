@@ -70,6 +70,10 @@ msgstr "Les notifications par e-mail et Slack ont été désactivées pour cet e
 msgid "Personal Information"
 msgstr "Informations personnelles"
 
+#: sparkle/src/components/LoadMore.tsx
+msgid "Show less"
+msgstr "Afficher moins"
+
 #: front/components/UserSettingsPopover.tsx
 msgctxt "theme"
 msgid "Auto"
@@ -86,6 +90,10 @@ msgstr "Elle s’applique sur cet appareil, mais n’a pas pu être enregistrée
 #: front/components/UserSettingsPopover.tsx
 msgid "Other channels"
 msgstr "Autres canaux"
+
+#: sparkle/src/components/LoadMore.tsx
+msgid "Showing {rowCount} of {totalRowCount, plural, one {# item} other {# items}}"
+msgstr "{rowCount} sur {totalRowCount, plural, one {# élément} other {# éléments}}"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Cmd + Enter (⌘ + ↵)"
@@ -107,6 +115,10 @@ msgstr "Entrée"
 #: front/components/UserSettingsPopover.tsx
 msgid "Could not save the conversation font"
 msgstr "Impossible d’enregistrer la police des conversations"
+
+#: sparkle/src/components/Pagination.tsx
+msgid "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount}+ items"
+msgstr "{firstItemOnPageIndex}-{lastItemOnPageIndex} sur {rowCount}+ éléments"
 
 #: front/components/me/PendingInvitationsTable.tsx
 msgid "Invited"
@@ -245,6 +257,10 @@ msgstr "Mentions uniquement"
 msgid "Email"
 msgstr "E-mail"
 
+#: sparkle/src/components/LoadMore.tsx
+msgid "Showing {rowCount} of {totalRowCount}+ items"
+msgstr "{rowCount} sur {totalRowCount}+ éléments"
+
 #: front/components/UserSettingsPopover.tsx
 msgctxt "theme"
 msgid "Light"
@@ -277,6 +293,10 @@ msgstr "Choisissez où recevoir aussi les notifications"
 #: front/components/UserSettingsPopover.tsx
 msgid "Customization"
 msgstr "Personnalisation"
+
+#: sparkle/src/components/Pagination.tsx
+msgid "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plural, one {# item} other {# items}}"
+msgstr "{firstItemOnPageIndex}-{lastItemOnPageIndex} sur {rowCount, plural, one {# élément} other {# éléments}}"
 
 #: front/hooks/useUserLocale.ts
 msgid "Your language could not be saved to your account."
@@ -348,6 +368,11 @@ msgctxt "font name"
 msgid "Lora"
 msgstr "Lora"
 
+#: sparkle/src/components/LoadMore.tsx
+#: sparkle/src/components/Pagination.tsx
+msgid "{rowCount, plural, one {# item} other {# items}}"
+msgstr "{rowCount, plural, one {# élément} other {# éléments}}"
+
 #: front/components/UserSettingsPopover.tsx
 msgid "Dust builds a personal memory from your conversations and uses it to tailor future responses."
 msgstr "Dust constitue une mémoire personnelle à partir de vos conversations et l’utilise pour adapter ses prochaines réponses."
@@ -360,6 +385,15 @@ msgstr "Par défaut"
 #: front/components/me/NotificationPreferences.tsx
 msgid "Notify me about"
 msgstr "Me notifier pour"
+
+#: sparkle/src/components/LoadMore.tsx
+msgid "Load more"
+msgstr "Charger plus"
+
+#: sparkle/src/components/LoadMore.tsx
+#: sparkle/src/components/Spinner.tsx
+msgid "Loading"
+msgstr "Chargement"
 
 #: front/components/me/NotificationPreferences.tsx
 msgid "Applies to in-app popups, email, and Slack"

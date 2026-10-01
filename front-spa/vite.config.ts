@@ -367,7 +367,8 @@ export default defineConfig(({ mode }) => {
           replacement: path.dirname(require.resolve("zod/package.json")) + "$1",
         },
       ],
-      dedupe: ["react", "react-dom"],
+      // Sparkle renders Lingui too: one `@lingui/react` keeps a single context.
+      dedupe: ["react", "react-dom", "@lingui/react"],
     },
     build: {
       outDir: path.resolve(__dirname, `dist/${appName}`),

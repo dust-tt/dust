@@ -1,3 +1,5 @@
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { cn } from "@sparkle/lib/utils";
 import React from "react";
 
@@ -37,16 +39,30 @@ export function LoadMore({
   isLoading = false,
   onLoadMore,
   onShowLess,
-  label = "Load more",
-  loadingLabel = "Loading",
-  showLessLabel = "Show less",
+  label,
+  loadingLabel,
+  showLessLabel,
 }: LoadMoreProps) {
+  const { t } = useLingui();
+
   // When the total is known and everything is loaded, there is nothing left to
   // fetch: keep the details, hide the control (same behavior as Pagination).
   const loadMoreIsHidden =
     totalRowCount !== undefined &&
     !totalRowCountIsCapped &&
     rowCount >= totalRowCount;
+
+  let details: string;
+  if (totalRowCount === undefined) {
+    details = t`${plural(rowCount, { one: "# item", other: "# items" })}`;
+  } else if (totalRowCountIsCapped) {
+    details = t`Showing ${rowCount} of ${totalRowCount}+ items`;
+  } else {
+    details = t`Showing ${rowCount} of ${plural(totalRowCount, {
+      one: "# item",
+      other: "# items",
+    })}`;
+  }
 
   return (
     <div className="flex w-full items-center justify-between">
@@ -59,7 +75,7 @@ export function LoadMore({
         >
           {isLoading ? (
             <span>
-              {loadingLabel}
+              {loadingLabel ?? t`Loading`}
               {LOADING_DOT_DELAY_CLASS_NAMES.map((delayClassName) => (
                 <span
                   key={delayClassName}
@@ -73,7 +89,7 @@ export function LoadMore({
               ))}
             </span>
           ) : (
-            label
+            (label ?? t`Load more`)
           )}
         </button>
         {onShowLess && (
@@ -83,7 +99,7 @@ export function LoadMore({
             onClick={onShowLess}
             disabled={isLoading}
           >
-            {showLessLabel}
+            {showLessLabel ?? t`Show less`}
           </button>
         )}
       </div>
@@ -95,11 +111,7 @@ export function LoadMore({
           showDetails ? "visible" : "collapse"
         )}
       >
-        {totalRowCount === undefined
-          ? `${rowCount} item${rowCount === 1 ? "" : "s"}`
-          : `Showing ${rowCount} of ${totalRowCount}${
-              totalRowCountIsCapped ? "+" : ""
-            } item${totalRowCount === 1 ? "" : "s"}`}
+        {details}
       </span>
     </div>
   );

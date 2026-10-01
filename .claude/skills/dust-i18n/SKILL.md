@@ -52,7 +52,8 @@ Rules:
 
 Lingui components need an `I18nProvider`. The SPA mounts one at its root (`front-spa/src/app/App.tsx`).
 The browser extension (`extension/`, built with `ts-loader`, no Babel) and the `share`/`oauth`
-entries have none yet: do not use Lingui in components they import.
+entries have none yet: do not use Lingui in components they import. Sparkle components are the
+exception: they fall back to English without a provider (see [Sparkle components](#sparkle-components)).
 
 In front tests, `render` and `renderHook` from `@testing-library/react` already wrap the tree in an
 `I18nProvider` (see `front/vite.i18nSetup.ts`), around any `wrapper` the test passes, and the locale is
@@ -66,6 +67,23 @@ const messages = await loadCatalog("fr-FR");
 act(() => i18n.loadAndActivate({ locale: "fr-FR", messages }));
 render(<MyComponent />);
 ```
+
+## Sparkle components
+
+Sparkle uses the same macros, compiled at build time (`npm run build:i18n`) against its own runtime
+`sparkle/src/lib/i18n.tsx`. Its strings have no catalog of their own: `npm run i18n:extract` in
+`front/` collects them from `sparkle/src` into front's catalogs, so translate them there.
+
+- Allowed: `useLingui` and `Trans` from `@lingui/react/macro`; `msg`, `plural` and `select` from
+  `@lingui/core/macro`, the last two only inside a `t` template. Biome rejects every other Lingui
+  import, including `t` from `@lingui/core/macro` and the `@sparkle/lib/i18n` module: they would use
+  the provider-less English instance instead of the app's.
+- Without an `I18nProvider` (the extension, Storybook, Sparkle tests) Sparkle renders English, so
+  Sparkle components stay usable everywhere. Under front's provider they render the active locale.
+- Keep an existing label prop as an override of the translated default (`label ?? t\`Load more\``).
+- Format dates and numbers with `useLingui().i18n.locale`.
+- After changing Sparkle strings, rebuild Sparkle before testing them in front: front consumes
+  `sparkle/dist`.
 
 ## Workflow
 

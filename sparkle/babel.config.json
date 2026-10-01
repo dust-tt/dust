@@ -1,0 +1,6 @@
+{
+  "presets": [["@babel/preset-react", { "runtime": "classic" }]],
+  "plugins": [
+    ["@lingui/babel-plugin-lingui-macro", { "descriptorFields": "message" }]
+  ]
+}

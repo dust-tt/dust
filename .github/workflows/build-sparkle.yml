@@ -20,5 +20,9 @@ jobs:
         uses: ./.github/actions/setup-node-deps
       - name: Build
         run: npm -w sparkle run build
+      - name: Check i18n build output
+        run: npm -w sparkle run check:i18n
+      - name: Unit tests
+        run: npm -w sparkle run test:unit
       - name: Build Storybook
         run: npm -w sparkle run build-storybook
