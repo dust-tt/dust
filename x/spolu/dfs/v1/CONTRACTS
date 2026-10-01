@@ -1,0 +1,46 @@
+@cc [owner:spolu,label:security] workspace-isolation
+Every filesystem operation MUST derive its workspace and grants from its authenticated session.
+Neither matching grants nor knowledge of an object ID MUST permit cross-workspace access.
+
+@cc [owner:spolu,label:security] live-authorization
+Every read MUST authorize and return data from one consistent SlateDB snapshot. Every mutation MUST
+validate current authorization through publication. Effective grants are explicit grants on the
+object and its ancestors. Workspace keys alone authorize grant administration and session creation;
+the server key alone authorizes workspace creation. Sessions MUST reject more than 512 distinct grants.
+Expired, closed, and previous-process sessions MUST fail authorization.
+
+@cc [owner:spolu,label:security] private-projections
+Root and /shared MUST expose only authorized entries. Shared entries MUST use basename--object-id.
+Synthetic entries MUST NOT be mutated. Inode parents MUST follow the visible projection, never expose
+hidden canonical ancestry. Missing and inaccessible objects MUST produce indistinguishable errors.
+
+@cc [owner:spolu,label:backend] atomic-filesystem-mutations
+Each mutation MUST atomically publish its blocks, object records, child entries, and both explicit
+grant indexes in one SlateDB batch. Reads MUST NOT observe a partial mutation. Shrink followed by
+extension MUST return zeros for removed bytes. Renames MUST preserve object identity and reject cycles.
+
+@cc [owner:spolu,label:concurrency] compare-and-publish
+A mutation MUST compare expected versions under synchronization covering authorization and publication.
+A mismatch MUST publish nothing. Each changed object MUST advance its version once. Unrelated files
+MUST have independent versions. No automatic retry may replace a rejected expected version.
+
+@cc [owner:spolu,label:performance;backend] memory-acknowledgement
+Success MUST await SlateDB memory publication but MUST NOT await remote durability. Fsync MUST wait
+for preceding client writes and propagate errors without flushing SlateDB. SlateDB's internal WAL
+MUST remain enabled. Recovery MUST retain complete batches only; losing recent acknowledgements is
+allowed. An application WAL, overlay, or persistence worker MUST NOT be introduced.
+
+@cc [owner:spolu,label:backend;performance] bounded-slate-storage
+All file contents MUST use SlateDB keys with at most 65536 bytes per block. No separate GCS blobs.
+Requests, batches, caches, and retained handles MUST be bounded; large files MUST NOT require buffers
+proportional to file size. Server cache budgets MUST be shared across workspaces and configurable.
+Every restart MUST discard local caches and recover only from remote durable state.
+
+@cc [owner:spolu,label:security;error-handling] transport-boundary
+Credentials MUST appear only in RPC metadata or protected credential files, never URLs or logs.
+Errors MUST NOT expose hidden names, grants, or backend details. FUSE MUST use direct I/O, no kernel
+writeback, no data cache, and zero metadata TTL. Version conflicts MUST reach the caller as EAGAIN;
+ambiguous writes MUST return an error and MUST NOT be automatically replayed.
+
+@cc [owner:spolu,label:rust] fallible-rust
+Rust code MUST propagate or explicitly handle fallible operations; unwrap() and expect() are forbidden.

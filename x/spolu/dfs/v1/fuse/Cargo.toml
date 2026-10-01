@@ -1,0 +1,22 @@
+[package]
+name = "dfs-fuse"
+version = "0.2.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive", "env"] }
+dfs-client = { path = "../client" }
+dfs-protocol = { path = "../protocol" }
+libc = "0.2"
+parking_lot = "0.12"
+tonic = "0.14"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+fuser = { version = "0.18", default-features = false }
+nix = { version = "0.30", features = ["user"] }
+signal-hook = "0.3"
+
+[lints]
+workspace = true

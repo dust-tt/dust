@@ -1,0 +1,16 @@
+[package]
+name = "dfs-client"
+version = "0.2.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive", "env"] }
+dfs-protocol = { path = "../protocol" }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "time"] }
+tonic = { version = "0.14", features = ["tls-ring", "tls-native-roots"] }
+
+[lints]
+workspace = true
