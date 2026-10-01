@@ -1,7 +1,9 @@
 import config from "@app/lib/api/config";
 import { renderEmail } from "@app/lib/notifications/email-templates/default";
+import { getNotificationI18n } from "@app/lib/notifications/i18n";
 import type { UpgradeRequestCreatedPayloadType } from "@app/lib/notifications/triggers/upgrade-request-created";
 import { UpgradeRequestCreatedPayloadSchema } from "@app/lib/notifications/triggers/upgrade-request-created";
+import { DEFAULT_LOCALE } from "@app/types/locale";
 import {
   UPGRADE_REQUEST_CREATED_TAG,
   UPGRADE_REQUEST_CREATED_TRIGGER_ID,
@@ -81,6 +83,7 @@ export const upgradeRequestCreatedWorkflow = workflow(
         const content = [intro, list, outro].filter(Boolean).join("\n");
 
         const body = await renderEmail({
+          i18n: await getNotificationI18n(DEFAULT_LOCALE),
           name: subscriber.firstName ?? "there",
           workspace: {
             id: payload.workspaceId,

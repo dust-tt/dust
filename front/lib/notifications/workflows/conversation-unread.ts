@@ -12,6 +12,7 @@ import {
   getConversationDetails,
   getEmailSummary,
 } from "@app/lib/notifications/helpers";
+import { getNotificationI18n } from "@app/lib/notifications/i18n";
 import type { ConversationUnreadPayloadType } from "@app/lib/notifications/triggers/conversation-unread";
 import {
   shouldSkipConversation,
@@ -19,6 +20,7 @@ import {
 } from "@app/lib/notifications/triggers/conversation-unread";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
+import { DEFAULT_LOCALE } from "@app/types/locale";
 import {
   CONVERSATION_UNREAD_TRIGGER_ID,
   NOTIFICATION_DELAY_OPTIONS,
@@ -370,6 +372,7 @@ export const conversationUnreadWorkflow = workflow(
 
         // details is guaranteed non-null here because skip prevents execution otherwise.
         const body = await renderEmail({
+          i18n: await getNotificationI18n(DEFAULT_LOCALE),
           name: subscriber.firstName ?? "You",
           workspace: {
             id: payload.workspaceId,

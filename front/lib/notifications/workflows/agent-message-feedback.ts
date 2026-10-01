@@ -1,6 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
 import { renderEmail as renderDigestEmail } from "@app/lib/notifications/email-templates/agent-message-feedback-digest";
+import { getNotificationI18n } from "@app/lib/notifications/i18n";
 import type { AgentMessageFeedbackPayloadType } from "@app/lib/notifications/triggers/agent-message-feedback";
 import {
   AGENT_MESSAGE_FEEDBACK_TRIGGER_ID,
@@ -13,6 +14,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
+import { DEFAULT_LOCALE } from "@app/types/locale";
 import { isDevelopment } from "@app/types/shared/env";
 import { workflow } from "@novu/framework";
 import z from "zod";
@@ -287,6 +289,7 @@ export const agentMessageFeedbackWorkflow = workflow(
         ).length;
 
         const body = await renderDigestEmail({
+          i18n: await getNotificationI18n(DEFAULT_LOCALE),
           name: subscriber.firstName ?? "You",
           workspace: {
             id: payload.workspaceId,

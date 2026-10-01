@@ -2,11 +2,13 @@ import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
 import { renderEmail } from "@app/lib/notifications/email-templates/default";
+import { getNotificationI18n } from "@app/lib/notifications/i18n";
 import type { PodAddedAsMemberPayloadType } from "@app/lib/notifications/triggers/pod-added-as-member";
 import { PodAddedAsMemberPayloadSchema } from "@app/lib/notifications/triggers/pod-added-as-member";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { getPodRoute } from "@app/lib/utils/router";
+import { DEFAULT_LOCALE } from "@app/types/locale";
 import { POD_ADDED_AS_MEMBER_TRIGGER_ID } from "@app/types/notification_preferences";
 import { workflow } from "@novu/framework";
 import z from "zod";
@@ -123,6 +125,7 @@ export const podAddedAsMemberWorkflow = workflow(
       "send-email",
       async () => {
         const body = await renderEmail({
+          i18n: await getNotificationI18n(DEFAULT_LOCALE),
           name: subscriber.firstName ?? "You",
           workspace: {
             id: payload.workspaceId,
