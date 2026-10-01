@@ -1,3 +1,4 @@
+import { formatTime } from "@app/lib/i18n/format";
 import { format } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 
@@ -23,8 +24,17 @@ export function ordinalDay(day: number): string {
   return `${day}${suffix}`;
 }
 
+/**
+ * @cc [owner:sfriquet,label:product] twenty-four-hour-time
+ * The result MUST be the `HH:mm` 24-hour time of `date` in the local time zone, whatever the format
+ * locale set with `setFormatLocale`.
+ */
 export function getTime(date: number): string {
-  return format(new Date(date), "HH:mm");
+  return formatTime(date, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
 }
 
 export function formatUTCDateFromMillis(ms: number): string {
