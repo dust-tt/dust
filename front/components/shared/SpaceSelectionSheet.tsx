@@ -1,4 +1,4 @@
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
+import { useSpacesContext } from "@app/components/shared/SpacesContext";
 import { compareStrings } from "@app/lib/i18n/format";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";

@@ -1,5 +1,5 @@
-import { SpaceSelectionSheet } from "@app/components/agent_builder/capabilities/capabilities_sheet/SpaceSelectionPage";
 import { SpaceChips } from "@app/components/shared/SpaceChips";
+import { SpaceSelectionSheet } from "@app/components/shared/SpaceSelectionSheet";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSkillSpaceRestrictionsContext } from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
 import { useRemoveSkillSpace } from "@app/components/skill_builder/useRemoveSkillSpace";

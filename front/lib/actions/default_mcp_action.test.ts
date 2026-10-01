@@ -1,4 +1,4 @@
-import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
+import { getDefaultConfiguration } from "@app/components/shared/tools_picker/formDefaults";
 import { processAdditionalConfiguration } from "@app/lib/actions/additional_configuration";
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import {

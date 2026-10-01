@@ -11,7 +11,6 @@ import type { CapabilitiesSheetContentProps } from "@app/components/agent_builde
 import { MCPServerConfigurationPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerConfigurationPage";
 import { MCPServerInfoPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerInfoPage";
 import { generateUniqueActionName } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
-import { getDefaultFormValues } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { getMCPConfigurationFormSchema } from "@app/components/agent_builder/capabilities/mcp/utils/formValidation";
 import {
   getInfoPageDescription,
@@ -20,6 +19,7 @@ import {
 } from "@app/components/agent_builder/capabilities/mcp/utils/infoPageUtils";
 import type { ConfigurationState } from "@app/components/agent_builder/skills/types";
 import { isConfigurationState } from "@app/components/agent_builder/skills/types";
+import { getDefaultFormValues } from "@app/components/shared/tools_picker/formDefaults";
 import { nameToStorageFormat } from "@app/lib/actions/default_mcp_action";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getSkillIcon } from "@app/lib/skill";

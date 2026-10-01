@@ -15,26 +15,23 @@ interface SpaceSelectionSheetStubProps {
   selectedSpaces: string[];
 }
 
-vi.mock(
-  "@app/components/agent_builder/capabilities/capabilities_sheet/SpaceSelectionPage",
-  () => ({
-    SpaceSelectionSheet: ({
-      alreadyRequestedSpaceIds,
-      onSave,
-      open,
-      selectedSpaces,
-    }: SpaceSelectionSheetStubProps) =>
-      open ? (
-        <div>
-          <span data-testid="sheet-draft">{selectedSpaces.join(",")}</span>
-          <span data-testid="sheet-locked">
-            {[...alreadyRequestedSpaceIds].join(",")}
-          </span>
-          <button onClick={onSave}>Save spaces</button>
-        </div>
-      ) : null,
-  })
-);
+vi.mock("@app/components/shared/SpaceSelectionSheet", () => ({
+  SpaceSelectionSheet: ({
+    alreadyRequestedSpaceIds,
+    onSave,
+    open,
+    selectedSpaces,
+  }: SpaceSelectionSheetStubProps) =>
+    open ? (
+      <div>
+        <span data-testid="sheet-draft">{selectedSpaces.join(",")}</span>
+        <span data-testid="sheet-locked">
+          {[...alreadyRequestedSpaceIds].join(",")}
+        </span>
+        <button onClick={onSave}>Save spaces</button>
+      </div>
+    ) : null,
+}));
 
 vi.mock("@app/components/shared/SpaceChips", () => ({
   SpaceChips: () => null,

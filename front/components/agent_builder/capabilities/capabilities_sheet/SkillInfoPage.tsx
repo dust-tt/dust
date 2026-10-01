@@ -1,4 +1,4 @@
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
+import { useSpacesContext } from "@app/components/shared/SpacesContext";
 import { SkillDetailsButtonBar } from "@app/components/skills/SkillDetailsButtonBar";
 import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
 import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";

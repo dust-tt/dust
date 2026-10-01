@@ -1,11 +1,5 @@
-import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { dataSourceBuilderTreeType } from "@app/components/data_source_view/context/types";
-import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { mcpServerConfigurationSchema } from "@app/components/shared/tools_picker/types";
-import {
-  getDefaultMCPActionDescription,
-  getDefaultMCPActionName,
-} from "@app/lib/actions/default_mcp_action";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ProjectConfiguration } from "@app/lib/api/assistant/configuration/types";
@@ -17,7 +11,6 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 import type { Icon } from "@dust-tt/sparkle";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import uniqueId from "lodash/uniqueId";
 import type { ComponentProps } from "react";
 import { z } from "zod";
 
@@ -121,22 +114,6 @@ export const capabilityFormSchema = z
 
     return true;
   });
-
-export function getDefaultMCPAction(
-  mcpServerView?: MCPServerViewType
-): BuilderAction {
-  const { noRequirement } = getMCPServerRequirements(mcpServerView);
-
-  return {
-    id: uniqueId(),
-    configuration: getDefaultConfiguration(mcpServerView),
-    name: mcpServerView ? getDefaultMCPActionName(mcpServerView) : "",
-    description: mcpServerView
-      ? getDefaultMCPActionDescription(mcpServerView)
-      : "",
-    configurationRequired: !noRequirement,
-  };
-}
 
 export interface ActionSpecification {
   label: string;
