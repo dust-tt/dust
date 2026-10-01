@@ -67,12 +67,8 @@ import { defineCachedResourceValue } from "@app/lib/resources/cached_resource_st
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import type {
-  SkillFetchContext,
-  SkillPermissionFilteringMode,
-} from "@app/lib/resources/skill/skill_resource";
+import type { SkillFetchContext } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import type { SkillHydrationOptions } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import { GroupPinnedItemModel } from "@app/lib/resources/storage/models/group_pinned_items";
@@ -1895,53 +1891,6 @@ export class AgentResource
           : (tagsByConfigurationModelId[agent.agentConfigurationModelId] ?? []),
       ])
     );
-  }
-
-  // Batched `listSkills`, resolving each agent's skills by its scope as `agent-skills-by-scope`
-  // requires. Every agent gets an entry, `[]` when it has no skill.
-  static async batchListSkills(
-    auth: Authenticator,
-    agents: AgentResource[],
-    fetchOptions?: SkillHydrationOptions & {
-      permissionFiltering?: SkillPermissionFilteringMode;
-    }
-  ): Promise<Map<AgentResource, SkillResource[]>> {
-    const [globalAgents, customAgents] = partition(
-      agents,
-      (agent) => agent.scope === "global"
-    );
-    const [skillsByConfigurationModelId, codeDefinedSkills] = await Promise.all(
-      [
-        SkillResource.listByAgentConfigurationModelIds(
-          auth,
-          uniq(customAgents.map((agent) => agent.agentConfigurationModelId)),
-          fetchOptions
-        ),
-        SkillResource.fetchByIds(
-          auth,
-          uniq(globalAgents.flatMap((agent) => agent._codeDefinedSkillIds)),
-          fetchOptions
-        ),
-      ]
-    );
-    const codeDefinedSkillById = new Map(
-      codeDefinedSkills.map((skill) => [skill.sId, skill])
-    );
-
-    const skillsOf = (agent: AgentResource): SkillResource[] => {
-      if (agent.scope === "global") {
-        return removeNulls(
-          agent._codeDefinedSkillIds.map(
-            (skillId) => codeDefinedSkillById.get(skillId) ?? null
-          )
-        );
-      }
-      return (
-        skillsByConfigurationModelId.get(agent.agentConfigurationModelId) ?? []
-      );
-    };
-
-    return new Map(agents.map((agent) => [agent, skillsOf(agent)]));
   }
 
   static async listEditorConfigModelIds(

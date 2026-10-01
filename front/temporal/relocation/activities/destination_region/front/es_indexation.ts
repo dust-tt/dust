@@ -224,7 +224,7 @@ export async function recreateAgentSearchIndex({
     UserResource.fetchByModelIds(
       uniq(removeNulls(agents.map((agent) => agent.versionAuthorId)))
     ),
-    AgentResource.batchListSkills(auth, agents, {
+    SkillResource.listByAgents(auth, agents, {
       permissionFiltering: "redact_unreadable",
     }),
     AgentResource.batchCountFavorites(auth, agents),

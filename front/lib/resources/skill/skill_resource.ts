@@ -37,6 +37,7 @@ import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorite";
 import { updateAgentRequestedSpaceIdsInPlace } from "@app/lib/resources/agent_requested_spaces";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import {
   destroyAgentSkillLinksForCustomSkill,
   onCustomSkillStatusChanged,
@@ -129,6 +130,7 @@ import assert from "assert";
 import groupBy from "lodash/groupBy";
 import isEqual from "lodash/isEqual";
 import omit from "lodash/omit";
+import partition from "lodash/partition";
 import range from "lodash/range";
 import uniq from "lodash/uniq";
 import type {
@@ -1855,6 +1857,54 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     return skillsByAgent;
+  }
+
+  // The skills of each agent, resolved by its scope as `agent-skills-by-scope` requires: a global
+  // agent's from the `codeDefinedSkillIds` it declares, a custom agent's from its configuration
+  // row. Every agent gets an entry, `[]` when it has no skill.
+  static async listByAgents(
+    auth: Authenticator,
+    agents: AgentResource[],
+    fetchOptions?: SkillHydrationOptions & {
+      permissionFiltering?: SkillPermissionFilteringMode;
+    }
+  ): Promise<Map<AgentResource, SkillResource[]>> {
+    const [globalAgents, customAgents] = partition(
+      agents,
+      (agent) => agent.scope === "global"
+    );
+    const [skillsByConfigurationModelId, codeDefinedSkills] = await Promise.all(
+      [
+        this.listByAgentConfigurationModelIds(
+          auth,
+          uniq(customAgents.map((agent) => agent.agentConfigurationModelId)),
+          fetchOptions
+        ),
+        this.fetchByIds(
+          auth,
+          uniq(globalAgents.flatMap((agent) => agent.codeDefinedSkillIds)),
+          fetchOptions
+        ),
+      ]
+    );
+    const codeDefinedSkillById = new Map(
+      codeDefinedSkills.map((skill) => [skill.sId, skill])
+    );
+
+    const skillsOf = (agent: AgentResource): SkillResource[] => {
+      if (agent.scope === "global") {
+        return removeNulls(
+          agent.codeDefinedSkillIds.map(
+            (skillId) => codeDefinedSkillById.get(skillId) ?? null
+          )
+        );
+      }
+      return (
+        skillsByConfigurationModelId.get(agent.agentConfigurationModelId) ?? []
+      );
+    };
+
+    return new Map(agents.map((agent) => [agent, skillsOf(agent)]));
   }
 
   /**

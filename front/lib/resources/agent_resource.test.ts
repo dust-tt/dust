@@ -1336,51 +1336,6 @@ describe("AgentResource", () => {
     });
   });
 
-  describe("batchListSkills", () => {
-    it("lists each agent's skills by its scope, with no skill for skill-less agents", async () => {
-      const { authenticator } = testContext;
-      const [withSkill, skillLess] = await Promise.all([
-        AgentConfigurationFactory.createTestAgent(authenticator, {
-          name: "With Skill",
-        }),
-        AgentConfigurationFactory.createTestAgent(authenticator, {
-          name: "Skill-less",
-        }),
-      ]);
-      const skill = await SkillFactory.create(authenticator, {
-        name: "Linked Skill",
-      });
-      await SkillFactory.linkToAgent(authenticator, {
-        skillId: skill.id,
-        agentConfigurationId: withSkill.id,
-      });
-
-      const agents = await AgentResource.fetchByIds(authenticator, [
-        withSkill.sId,
-        skillLess.sId,
-        GLOBAL_AGENTS_SID.HELPER,
-      ]);
-      expect(agents).toHaveLength(3);
-      const [withSkillAgent, skillLessAgent, globalAgent] = agents;
-
-      const skillsByAgent = await AgentResource.batchListSkills(
-        authenticator,
-        agents
-      );
-
-      expect(
-        [...skillsByAgent].map(([agent, skills]) => [
-          agent,
-          skills.map((s) => s.sId),
-        ])
-      ).toEqual([
-        [withSkillAgent, [skill.sId]],
-        [skillLessAgent, []],
-        [globalAgent, ["frames"]],
-      ]);
-    });
-  });
-
   describe("batchCountFavorites", () => {
     it("counts each agent's favorites, with zero for agents nobody favorites", async () => {
       const { authenticator, workspace } = testContext;

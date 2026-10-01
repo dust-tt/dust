@@ -6,6 +6,7 @@ import {
   SkillDataSourceConfigurationModel,
 } from "@app/lib/models/skill";
 import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorite";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DiscoveryItemResource } from "@app/lib/resources/discovery_item_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
@@ -37,6 +38,7 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -2293,6 +2295,51 @@ describe("SkillResource", () => {
           ])
         ).size
       ).toBe(0);
+    });
+  });
+
+  describe("listByAgents", () => {
+    it("lists each agent's skills by its scope, with no skill for skill-less agents", async () => {
+      const { authenticator } = testContext;
+      const [withSkill, skillLess] = await Promise.all([
+        AgentConfigurationFactory.createTestAgent(authenticator, {
+          name: "With Skill",
+        }),
+        AgentConfigurationFactory.createTestAgent(authenticator, {
+          name: "Skill-less",
+        }),
+      ]);
+      const skill = await SkillFactory.create(authenticator, {
+        name: "Linked Skill",
+      });
+      await SkillFactory.linkToAgent(authenticator, {
+        skillId: skill.id,
+        agentConfigurationId: withSkill.id,
+      });
+
+      const agents = await AgentResource.fetchByIds(authenticator, [
+        withSkill.sId,
+        skillLess.sId,
+        GLOBAL_AGENTS_SID.HELPER,
+      ]);
+      expect(agents).toHaveLength(3);
+      const [withSkillAgent, skillLessAgent, globalAgent] = agents;
+
+      const skillsByAgent = await SkillResource.listByAgents(
+        authenticator,
+        agents
+      );
+
+      expect(
+        [...skillsByAgent].map(([agent, skills]) => [
+          agent,
+          skills.map((s) => s.sId),
+        ])
+      ).toEqual([
+        [withSkillAgent, [skill.sId]],
+        [skillLessAgent, []],
+        [globalAgent, ["frames"]],
+      ]);
     });
   });
 
