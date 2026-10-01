@@ -29,7 +29,6 @@ const run = {
   run_number: 7,
   run_attempt: 1,
   workflow_id: 3,
-  created_at: "2026-09-30T12:00:00Z",
   name: "Lint & Build & Test (front)",
   conclusion: "failure",
   head_sha: "abcdef1234567890",
@@ -88,6 +87,7 @@ describe("formatBreakageMessage", () => {
 
 function fakeGithub({
   otherRuns,
+  staleListings = 0,
   jobs = [],
   jobsByRunNumber = {},
   attempts = {},
@@ -95,11 +95,9 @@ function fakeGithub({
   pulls = [],
   mergedBy = null,
 }: {
-  otherRuns: Array<{
-    run_number: number;
-    conclusion: string | null;
-    created_at?: string;
-  }>;
+  otherRuns: Array<{ run_number: number; conclusion: string | null }>;
+  // How many listings are served stale, without the current run, before a fresh one.
+  staleListings?: number;
   jobs?: Array<{ name: string; conclusion: string | null }>;
   jobsByRunNumber?: Record<
     number,
@@ -113,20 +111,24 @@ function fakeGithub({
   pulls?: Array<{ number: number; html_url: string; merged_at: string | null }>;
   mergedBy?: string | null;
 }) {
+  let listings = 0;
   return {
     rest: {
       actions: {
-        listWorkflowRuns: async (params: { created: string }) => ({
-          data: {
-            workflow_runs: otherRuns
-              .filter(() => params.created === ">=2026-09-23T12:00:00.000Z")
-              .map((candidate) => ({
-                id: 1000 + candidate.run_number,
-                created_at: run.created_at,
-                ...candidate,
-              })),
-          },
-        }),
+        listWorkflowRuns: async () => {
+          const workflow_runs = otherRuns.map((candidate) => ({
+            id: 1000 + candidate.run_number,
+            ...candidate,
+          }));
+          if (listings++ >= staleListings) {
+            workflow_runs.push({
+              id: run.id,
+              run_number: run.run_number,
+              conclusion: null,
+            });
+          }
+          return { data: { workflow_runs } };
+        },
         listJobsForWorkflowRun: async ({ run_id }: { run_id: number }) => {
           if (run_id === run.id) {
             return { data: { jobs } };
@@ -192,16 +194,11 @@ describe("buildBreakageNotification", () => {
     assert.equal(text, null);
   });
 
-  it("ignores runs created more than 7 days earlier", async () => {
+  it("stays silent when every listing is stale", async () => {
     const text = await buildBreakageNotification({
       github: fakeGithub({
-        otherRuns: [
-          {
-            run_number: 6,
-            conclusion: "failure",
-            created_at: "2026-09-07T12:00:00Z",
-          },
-        ],
+        otherRuns: [{ run_number: 6, conclusion: "failure" }],
+        staleListings: 4,
         jobs: [{ name: "test", conclusion: "success" }],
       }),
       context: {
@@ -211,8 +208,28 @@ describe("buildBreakageNotification", () => {
       core,
       authors: "",
       slackToken: "token",
+      retryDelayMs: 0,
     });
     assert.equal(text, null);
+  });
+
+  it("refetches a stale listing until it contains the current run", async () => {
+    const text = await buildBreakageNotification({
+      github: fakeGithub({
+        otherRuns: [{ run_number: 6, conclusion: "failure" }],
+        staleListings: 3,
+        jobs: [{ name: "test", conclusion: "success" }],
+      }),
+      context: {
+        repo,
+        payload: { workflow_run: { ...run, conclusion: "success" } },
+      },
+      core,
+      authors: "",
+      slackToken: "token",
+      retryDelayMs: 0,
+    });
+    assert.match(text ?? "", /main is green again/);
   });
 
   it("stays silent when a newer run already completed", async () => {

@@ -7,7 +7,6 @@ type WorkflowRun = {
   run_number: number;
   run_attempt: number;
   workflow_id: number;
-  created_at: string;
   name: string | null;
   conclusion: string | null;
   head_sha: string;
@@ -31,7 +30,6 @@ type BreakageOptions = {
           params: Repository & {
             workflow_id: number;
             branch: string;
-            created: string;
             per_page: number;
           }
         ): Promise<{
@@ -39,7 +37,6 @@ type BreakageOptions = {
             workflow_runs: Array<{
               id: number;
               run_number: number;
-              created_at: string;
               conclusion: string | null;
             }>;
           };
@@ -83,6 +80,7 @@ type BreakageOptions = {
   };
   authors: string;
   slackToken: string;
+  retryDelayMs?: number;
 };
 
 // A run conclusion that carries information about main's state, as opposed to the raw
@@ -131,9 +129,11 @@ function isSignal(conclusion: string | null, jobs: Job[]): boolean {
   }
 }
 
-// How far back the run history search can see; the run-ordering contract depends on these values.
+// How far back the run history search can see; the run-ordering contract depends on this value.
 const RUN_LOOKBACK = 100;
-const RUN_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+// How many times, and how far apart, a stale run listing is refetched before giving up.
+const STALE_LISTING_RETRIES = 3;
+const STALE_LISTING_RETRY_DELAY_MS = 5000;
 // One page holds every job of a run for the workflows we watch.
 const JOBS_PER_PAGE = 100;
 
@@ -190,12 +190,45 @@ type PreviousState =
   | { superseded: false; previous: Conclusion | null };
 
 /**
+ * @cc [label:product] main-breakage-stale-listing
+ * GitHub sometimes serves a stale run listing, even weeks old, which hides the newest runs and
+ * passes an old conclusion off as the previous state. A listing is fresh only when it contains
+ * the current run; a stale one MUST be refetched, and if no fresh listing comes back after the
+ * retries the transition MUST be dropped silently, never computed from a stale listing.
+ */
+async function listRecentRuns({
+  github,
+  context,
+  retryDelayMs,
+}: Pick<BreakageOptions, "github" | "context" | "retryDelayMs">) {
+  const run = context.payload.workflow_run;
+  for (let attempt = 0; attempt <= STALE_LISTING_RETRIES; attempt++) {
+    if (attempt > 0) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, retryDelayMs ?? STALE_LISTING_RETRY_DELAY_MS)
+      );
+    }
+    const { data } = await github.rest.actions.listWorkflowRuns({
+      ...context.repo,
+      workflow_id: run.workflow_id,
+      branch: "main",
+      // No status filter: GitHub serves inconsistent, sometimes weeks-old pages with it, while
+      // in-progress runs are dropped below by their missing conclusion anyway.
+      per_page: RUN_LOOKBACK,
+    });
+    if (data.workflow_runs.some((candidate) => candidate.id === run.id)) {
+      return data.workflow_runs;
+    }
+  }
+  return null;
+}
+
+/**
  * @cc [label:product] main-breakage-run-ordering
  * Runs complete out of order: a completed signal run newer than the current one MUST silence it.
  * Otherwise, unless a previous attempt of the current run supplies the comparison state, it is
- * the newest older signal run within the 100 most recent runs, created at most 7 days before
- * the current one. A signal past that window is invisible by design; its transition MUST be
- * dropped silently, never guessed.
+ * the newest older signal run within the 100 most recent runs. A signal past that
+ * window is invisible by design; its transition MUST be dropped silently, never guessed.
  */
 /**
  * @cc [label:product] main-breakage-reruns
@@ -206,25 +239,23 @@ type PreviousState =
 async function getPreviousState({
   github,
   context,
-}: Pick<BreakageOptions, "github" | "context">): Promise<PreviousState> {
+  core,
+  retryDelayMs,
+}: Pick<
+  BreakageOptions,
+  "github" | "context" | "core" | "retryDelayMs"
+>): Promise<PreviousState> {
   const run = context.payload.workflow_run;
-  const oldestAllowed = Date.parse(run.created_at) - RUN_MAX_AGE_MS;
-  const { data } = await github.rest.actions.listWorkflowRuns({
-    ...context.repo,
-    workflow_id: run.workflow_id,
-    branch: "main",
-    // No status filter: GitHub serves inconsistent, sometimes weeks-old pages with it, while
-    // in-progress runs are dropped below by their missing conclusion anyway. A creation-date
-    // filter is reported to avoid those stale pages.
-    created: `>=${new Date(oldestAllowed).toISOString()}`,
-    per_page: RUN_LOOKBACK,
-  });
-  // The server-side date filter is not trusted alone: an old failure served anyway must not pass
-  // for the previous state.
-  const completed = data.workflow_runs.filter(
+  const runs = await listRecentRuns({ github, context, retryDelayMs });
+  if (runs === null) {
+    core.warning(
+      `GitHub kept serving a stale ${run.name} run listing without the current run.`
+    );
+    return { superseded: false, previous: null };
+  }
+  const completed = runs.filter(
     (candidate) =>
       candidate.run_number !== run.run_number &&
-      Date.parse(candidate.created_at) >= oldestAllowed &&
       (candidate.conclusion === "success" || candidate.conclusion === "failure")
   );
 
@@ -334,6 +365,7 @@ export async function buildBreakageNotification({
   core,
   authors,
   slackToken,
+  retryDelayMs,
 }: BreakageOptions): Promise<string | null> {
   const run = context.payload.workflow_run;
   const { data: jobsData } = await github.rest.actions.listJobsForWorkflowRun({
@@ -348,7 +380,12 @@ export async function buildBreakageNotification({
     return null;
   }
 
-  const state = await getPreviousState({ github, context });
+  const state = await getPreviousState({
+    github,
+    context,
+    core,
+    retryDelayMs,
+  });
   if (state.superseded) {
     core.info(`No notification: a newer ${run.name} run already completed.`);
     return null;
