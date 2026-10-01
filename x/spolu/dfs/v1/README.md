@@ -1,7 +1,7 @@
 # dfs:// v1
 
 Rust, gRPC, and SlateDB backed by GCS. See [DESIGN.md](DESIGN.md) for semantics and
-[PLAN.md](PLAN.md) for implementation progress. The Linux FUSE adapter and benchmarks are in progress.
+[PLAN.md](PLAN.md) for implementation progress. The server and CLI run natively on macOS; mounting requires Linux.
 
 ## Server and operator client
 
@@ -50,6 +50,46 @@ CLI; the gRPC clients transfer binary bytes directly, bounded to 1 MiB per read/
 Listen on loopback by default. For a local Docker VM, use `--listen 0.0.0.0:8080 --allow-insecure` and
 connect to `http://host.docker.internal:8080`. Use `--tls-cert` and `--tls-key` beyond local development;
 HTTPS clients validate server certificates using native trust roots.
+
+## Linux FUSE
+
+Build the client in Docker on macOS, then mount with an existing session key:
+
+```sh
+docker build -t dfs-v1-fuse-dev -f fuse/Dockerfile .
+docker run --rm -v "$PWD:/dfs" -v dfs-linux-cargo:/usr/local/cargo \
+  -v dfs-v1-linux-target:/target -e CARGO_TARGET_DIR=/target \
+  dfs-v1-fuse-dev cargo build --release -p dfs-fuse -p dfs-client
+docker run --rm -it --device /dev/fuse --cap-add SYS_ADMIN \
+  --security-opt apparmor=unconfined \
+  -v dfs-v1-linux-target:/target:ro -v "$PWD/session.key:/run/session.key:ro" \
+  dfs-v1-fuse-dev /bin/bash
+```
+
+Inside that container (server started with the Docker listener options above):
+
+```sh
+mkdir /mnt/dfs
+/target/release/dfs-fuse --endpoint http://host.docker.internal:8080 \
+  --session-key-file /run/session.key /mnt/dfs &
+ls /mnt/dfs/work
+```
+
+The synthetic root and `/shared` cannot be mutated; create a real folder such as `work` through the
+API first. Files use direct I/O, zero metadata TTLs, and eight FUSE workers (configurable with
+`--threads`, maximum 32). No client content cache. Handles are local and capped at 256 files plus
+256 directory handles. Inode numbers and pins track visible parents and references only.
+
+`user.*` xattrs, modes, and timestamps are supported. MIME types and arbitrary xattr names are
+available through the API. Symlinks, hard links, locks, ownership changes, and open-after-unlink
+semantics are deferred. Concurrent write conflicts surface as `EAGAIN`; retry is the application's
+choice, never automatic. Errors from a handle's writes also reach its next flush/fsync.
+
+Run the two-mount integration test from the host after building both platforms:
+
+```sh
+python3 tests/fuse_e2e.py
+```
 
 ## Guarantees and limits
 
