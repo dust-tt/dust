@@ -1,4 +1,5 @@
 import {
+  usePodConversationsSummary,
   useSearchPodConversations,
   useSearchPrivateConversations,
 } from "@app/hooks/conversations";
@@ -206,9 +207,44 @@ function useCommandPalettePods({
     limit: MAX_DISPLAYED_PODS,
   });
 
+  // Reuse the sidebar summary (SWR-cached) so empty-query pods can put starred
+  // first without an extra network request.
+  const { summary: podSummary } = usePodConversationsSummary({
+    workspaceId: owner.sId,
+    options: { disabled: !isOpen },
+  });
+
+  // Empty query: starred member pods first (sidebar summary order), then other
+  // readable pods. With a query, keep name search order from search_projects.
+  const { pods, hasMorePods } = useMemo(() => {
+    if (trimmedQuery) {
+      return {
+        pods: searchablePods as CommandPalettePod[],
+        hasMorePods: hasMoreSearchPods,
+      };
+    }
+
+    const starredPods: CommandPalettePod[] = [];
+    const starredIds = new Set<string>();
+    for (const { space } of podSummary) {
+      if (space.isStarred && !starredIds.has(space.sId)) {
+        starredIds.add(space.sId);
+        starredPods.push(space);
+      }
+    }
+
+    const rest = searchablePods.filter((pod) => !starredIds.has(pod.sId));
+    const merged = [...starredPods, ...rest];
+
+    return {
+      pods: merged.slice(0, MAX_DISPLAYED_PODS),
+      hasMorePods: merged.length > MAX_DISPLAYED_PODS || hasMoreSearchPods,
+    };
+  }, [trimmedQuery, searchablePods, hasMoreSearchPods, podSummary]);
+
   return {
-    pods: searchablePods as CommandPalettePod[],
-    hasMorePods: hasMoreSearchPods,
+    pods,
+    hasMorePods,
     isLoading: isSearchingPods,
   };
 }
