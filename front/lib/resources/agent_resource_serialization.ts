@@ -2,6 +2,7 @@ import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillHydrationOptions } from "@app/lib/resources/skill/types";
 import { tagsSorter } from "@app/lib/utils";
 import type {
@@ -142,7 +143,7 @@ export async function enrichWithSkills(
   auth: Authenticator,
   resources: AgentResource[]
 ): Promise<Map<AgentResource, { skills: AgentSkillType[] }>> {
-  const skillsByAgent = await AgentResource.batchListSkills(
+  const skillsByAgent = await SkillResource.listByAgents(
     auth,
     resources.filter((resource) => auth.can("read", resource)),
     SKILL_LABELS_ONLY_FETCH_OPTIONS
