@@ -20,6 +20,7 @@ import {
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
+import { formatTimeDistance } from "@app/lib/i18n/format";
 import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
 import { isFilePreviewableContentType } from "@app/types/file_preview";
 import {
@@ -37,7 +38,6 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { intlFormatDistance } from "date-fns";
 import type React from "react";
 import { useState } from "react";
 
@@ -243,7 +243,7 @@ function getFileSubtitle(
     entry.contentType
   );
   const timeLabel = entry.lastModifiedMs
-    ? intlFormatDistance(entry.lastModifiedMs, Date.now(), {
+    ? formatTimeDistance(entry.lastModifiedMs, Date.now(), {
         style: viewMode === "list" ? "long" : "narrow",
       })
     : null;

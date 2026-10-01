@@ -1,7 +1,7 @@
 import { FrameSharingRow } from "@app/components/assistant/conversation/interactive_content/frame/FrameSharingRow";
 import { Section } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSection";
 import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
-import { compareStrings } from "@app/lib/i18n/format";
+import { compareStrings, formatTimeDistance } from "@app/lib/i18n/format";
 import { MAX_EMAILS_OR_DOMAINS_PER_INVITE } from "@app/types/files";
 import type {
   FileSharingGrantType,
@@ -14,7 +14,6 @@ import {
 } from "@app/types/sharing_grants";
 import { Button, Globe01, Input, ListGroup, Spinner } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { intlFormatDistance } from "date-fns";
 import { useId, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -273,7 +272,7 @@ function GrantRow({ grant, isRevoking, onRevoke }: GrantRowProps) {
   const label = isDomain ? `@${grant.target.value}` : grant.target.value;
   const now = new Date();
   const grantedBy = grant.grantedBy?.fullName ?? grant.grantedBy?.email;
-  const grantedAgo = intlFormatDistance(new Date(grant.grantedAt), now);
+  const grantedAgo = formatTimeDistance(new Date(grant.grantedAt), now);
   const action = isDomain ? "Added" : "Invited";
   const grantedLabel = grantedBy
     ? `${action} by ${grantedBy} ${grantedAgo}`

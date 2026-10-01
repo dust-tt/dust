@@ -1,4 +1,8 @@
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import {
+  formatDateTime,
+  NUMERIC_DATE_TIME_OPTIONS,
+} from "@app/lib/i18n/format";
 import { useMembersLookup } from "@app/lib/swr/memberships";
 import type {
   SkillType,
@@ -17,7 +21,6 @@ import {
   DropdownMenuTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
-import { format } from "date-fns/format";
 import { useMemo } from "react";
 
 interface SkillVersionHistoryProps {
@@ -63,7 +66,7 @@ export function SkillVersionHistory({
 
   function formatVersionLabel(config: SkillWithVersionType): string {
     return config.updatedAt
-      ? format(config.updatedAt, "Pp")
+      ? formatDateTime(config.updatedAt, NUMERIC_DATE_TIME_OPTIONS)
       : `Version ${config.version}`;
   }
 

@@ -48,7 +48,6 @@ import {
   SlackLogo,
 } from "@dust-tt/sparkle";
 import { Separator } from "@radix-ui/react-select";
-import { format } from "date-fns/format";
 
 type SubscriptionStatus = "paymentFailed" | "ended" | "active" | "inconsistent";
 
@@ -216,7 +215,7 @@ function SubscriptionDetailsTable({
           <PokeTableCell>Start Date</PokeTableCell>
           <PokeTableCell>
             {subscription.startDate
-              ? format(subscription.startDate, "yyyy-MM-dd HH:mm")
+              ? `${formatDate(subscription.startDate)} ${formatTime(subscription.startDate)}`
               : "/"}
           </PokeTableCell>
         </PokeTableRow>
@@ -231,7 +230,7 @@ function SubscriptionDetailsTable({
                     "font-semibold text-red-500"
                 )}
               >
-                {format(subscription.endDate, "yyyy-MM-dd HH:mm")}
+                {`${formatDate(subscription.endDate)} ${formatTime(subscription.endDate)}`}
               </span>
             ) : (
               "/"
