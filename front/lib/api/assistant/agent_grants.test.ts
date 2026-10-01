@@ -1,3 +1,4 @@
+import { listAgentsForView } from "@app/lib/api/assistant/agent_views";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getEditors } from "@app/lib/api/assistant/editors";
 import { Authenticator } from "@app/lib/auth";
@@ -40,13 +41,13 @@ it("uses agent grants for list, manage and archived views", async () => {
   );
 
   for (const view of ["list", "manage"] as const) {
-    const agents = await AgentResource.listForView(auth, view);
+    const agents = await listAgentsForView(auth, view);
     expect(agents.map((agent) => agent.sId)).toContain(grantAgent.sId);
   }
   await (await AgentResource.fetchById(authorAuth, grantAgent.sId))!.archive(
     authorAuth
   );
-  const archived = await AgentResource.listForView(auth, "archived");
+  const archived = await listAgentsForView(auth, "archived");
   expect(archived.map((agent) => agent.sId)).toEqual([grantAgent.sId]);
 });
 

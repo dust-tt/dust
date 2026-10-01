@@ -11,8 +11,8 @@ import {
   renderFields,
   renderPageFooter,
 } from "@app/lib/api/actions/servers/workspace_management/tools/utils";
+import { listAgentsForView } from "@app/lib/api/assistant/agent_views";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentResource } from "@app/lib/resources/agent_resource";
 import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import type { AgentsGetViewType } from "@app/types/assistant/agent";
 import { Err, Ok } from "@app/types/shared/result";
@@ -83,7 +83,7 @@ export async function listAgents(
   // back short. Paginate the sorted set here instead, which also keeps `total` exact.
   const agents = await toLightAgentConfigurations(
     auth,
-    await AgentResource.listForView(auth, agentsGetView, {
+    await listAgentsForView(auth, agentsGetView, {
       namePrefix,
       sort: "alphabetical",
     }),

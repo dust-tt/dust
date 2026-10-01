@@ -1,7 +1,7 @@
+import { listAgentsForView } from "@app/lib/api/assistant/agent_views";
 import { toAgentConfigurationsWithSkills } from "@app/lib/api/assistant/configuration/helpers";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { normalizeAgentView } from "@app/lib/api/v1/backward_compatibility";
-import { AgentResource } from "@app/lib/resources/agent_resource";
 import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
@@ -137,7 +137,7 @@ app.get(
     // ones built on spaces they cannot read included.
     const isUnrestricted = agentsGetView === "all_unrestricted";
 
-    const agents = await AgentResource.listForView(
+    const agents = await listAgentsForView(
       auth,
       isUnrestricted ? "admin_internal" : normalizeAgentView(agentsGetView)
     );

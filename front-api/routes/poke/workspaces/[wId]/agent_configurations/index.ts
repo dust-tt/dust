@@ -29,12 +29,17 @@ app.get(
     const auth = ctx.get("auth");
     const { view } = ctx.req.valid("query");
 
-    const agentConfigurations = await toLightAgentConfigurations(
-      auth,
-      await AgentResource.listForView(auth, view, {
-        sort: view === "archived" ? "updatedAt" : undefined,
-      })
-    );
+    // Poke lists every active agent, or the archived ones by most recent version.
+    const agents =
+      view === "archived"
+        ? (
+            await AgentResource.listByWorkspace(auth, { status: "archived" })
+          ).toSorted(
+            (a, b) =>
+              b.versionUpdatedAt.getTime() - a.versionUpdatedAt.getTime()
+          )
+        : await AgentResource.listActive(auth);
+    const agentConfigurations = await toLightAgentConfigurations(auth, agents);
 
     const authors = await getAuthors(agentConfigurations);
     const authorMap = new Map(authors.map((a) => [a.id, a]));
