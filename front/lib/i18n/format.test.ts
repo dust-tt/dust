@@ -285,6 +285,17 @@ describe("date library calls keep their en-US output", () => {
   });
 
   it.each([
+    1000, 9999,
+  ])("formatDateTime with NUMERIC_DATE_TIME_OPTIONS matches date-fns Pp in year %i", (year) => {
+    setFormatLocale("en-US");
+    const date = new Date(TIMESTAMP);
+    date.setUTCFullYear(year);
+    expect(formatDateTime(date, NUMERIC_DATE_TIME_OPTIONS)).toBe(
+      format(date, "Pp")
+    );
+  });
+
+  it.each([
     [-30 * SECOND_MS, "long"],
     [-5 * MINUTE_MS, "long"],
     [-3 * HOUR_MS, "long"],

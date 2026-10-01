@@ -16,8 +16,9 @@ export function setFormatLocale(locale: SupportedLocale | undefined): void {
 
 /**
  * @cc [owner:sfriquet,label:product] numeric-date-time-matches-date-fns-pp
- * In `en-US`, `formatDateTime` with these options MUST render as the date-fns `Pp` pattern
- * (`MM/dd/yyyy, h:mm a`, e.g. `09/23/2025, 3:37 PM`).
+ * In `en-US`, `formatDateTime` with these options MUST render dates of years 1000 to 9999 as the
+ * date-fns `Pp` pattern (`MM/dd/yyyy, h:mm a`, e.g. `09/23/2025, 3:37 PM`). Earlier years are not
+ * zero-padded.
  */
 export const NUMERIC_DATE_TIME_OPTIONS: Intl.DateTimeFormatOptions = {
   year: "numeric",
