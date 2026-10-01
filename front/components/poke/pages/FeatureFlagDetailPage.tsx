@@ -5,6 +5,7 @@ import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { PokeFeatureFlagWorkspaceWithCell } from "@app/hooks/usePokeFeatureFlagWorkspaces";
 import { usePokeFeatureFlagWorkspacesAllCells } from "@app/hooks/usePokeFeatureFlagWorkspaces";
 import { useCellContext } from "@app/lib/auth/CellContext";
+import { formatDateTime } from "@app/lib/i18n/format";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { getCellChipColor, getCellDisplay } from "@app/lib/poke/cells";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
@@ -15,7 +16,6 @@ import {
   isWhitelistableFeature,
   WHITELISTABLE_FEATURES_CONFIG,
 } from "@app/types/shared/feature_flags";
-import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
 import {
   Button,
   Chip,
@@ -168,7 +168,10 @@ function makeColumns({
       ),
       cell: ({ row }) => (
         <span className="whitespace-nowrap text-sm">
-          {dateToHumanReadable(new Date(row.original.enabledAt))}
+          {formatDateTime(new Date(row.original.enabledAt), {
+            dateStyle: "medium",
+            timeStyle: "short",
+          })}
         </span>
       ),
     },

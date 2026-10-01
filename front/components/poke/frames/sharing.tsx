@@ -7,8 +7,8 @@ import {
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
 import type { PokeFrameSharing } from "@app/lib/api/poke/frames";
+import { formatDateTime } from "@app/lib/i18n/format";
 import type { SharingGrantType } from "@app/types/files";
-import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
 import { Chip } from "@dust-tt/sparkle";
 
 interface FrameSharingSectionProps {
@@ -40,7 +40,10 @@ export function FrameSharingSection({
             <PokeTableRow>
               <PokeTableHead>Shared at</PokeTableHead>
               <PokeTableCell>
-                {dateToHumanReadable(new Date(sharing.sharedAt))}
+                {formatDateTime(new Date(sharing.sharedAt), {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
               </PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
@@ -104,11 +107,19 @@ function GrantList({
                 )}
                 {grant.revokedAt && (
                   <span className="text-xs">
-                    Revoked {dateToHumanReadable(new Date(grant.revokedAt))}
+                    Revoked{" "}
+                    {formatDateTime(new Date(grant.revokedAt), {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}
                   </span>
                 )}
                 <span className="text-xs">
-                  Granted {dateToHumanReadable(new Date(grant.grantedAt))}
+                  Granted{" "}
+                  {formatDateTime(new Date(grant.grantedAt), {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })}
                 </span>
                 {grant.grantedBy && (
                   <span className="text-xs">by {grant.grantedBy.fullName}</span>
@@ -116,7 +127,10 @@ function GrantList({
                 {grant.lastViewedAt && (
                   <span className="text-xs">
                     Last viewed{" "}
-                    {dateToHumanReadable(new Date(grant.lastViewedAt))}
+                    {formatDateTime(new Date(grant.lastViewedAt), {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}
                   </span>
                 )}
               </div>

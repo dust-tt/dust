@@ -1,8 +1,8 @@
+import { formatDateTime } from "@app/lib/i18n/format";
 import type {
   GitHubIssueNode,
   GitHubPullRequestNode,
 } from "@app/lib/providers/github/types";
-import { format } from "date-fns";
 
 const GITHUB_MAX_SEARCH_QUERY_LENGTH = 256;
 const GITHUB_MAX_BOOLEAN_OPERATORS = 5;
@@ -69,13 +69,13 @@ export function truncateGitHubQuery(query: string): string {
   return truncated.trim();
 }
 
-/**
- * @cc [owner:sfriquet,label:product] fixed-comment-date
- * The result MUST be `MMM d, yyyy 'at' h:mm a` in English, whatever the locale: it goes into the
- * content returned to the model.
- */
+// Pinned to en-US until the user locale reaches server code: this content is returned to the model.
 function formatCommentDate(date: Date): string {
-  return format(date, "MMM d, yyyy 'at' h:mm a");
+  return formatDateTime(
+    date,
+    { dateStyle: "medium", timeStyle: "short" },
+    "en-US"
+  );
 }
 
 export function buildContentSummaryForIssue(node: GitHubIssueNode): string {

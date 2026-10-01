@@ -1,7 +1,7 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { TYPE_COLORS } from "@app/components/workspace/CreditsList";
+import { formatDateTime } from "@app/lib/i18n/format";
 import type { PokeCreditType } from "@app/types/api/poke/credits";
-import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
 import { Chip } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -68,7 +68,10 @@ export function makeColumnsForCredits(): ColumnDef<PokeCreditType>[] {
         }
         return (
           <span className="text-sm">
-            {dateToHumanReadable(new Date(startDate))}
+            {formatDateTime(new Date(startDate), {
+              dateStyle: "medium",
+              timeStyle: "short",
+            })}
           </span>
         );
       },
@@ -89,7 +92,10 @@ export function makeColumnsForCredits(): ColumnDef<PokeCreditType>[] {
         const isExpired = expDate < new Date();
         return (
           <span className={`text-sm ${isExpired ? "text-warning" : ""}`}>
-            {dateToHumanReadable(expDate)}
+            {formatDateTime(expDate, {
+              dateStyle: "medium",
+              timeStyle: "short",
+            })}
             {isExpired && " (Expired)"}
           </span>
         );
@@ -117,7 +123,10 @@ export function makeColumnsForCredits(): ColumnDef<PokeCreditType>[] {
       ),
       cell: ({ row }) => (
         <span className="text-sm">
-          {dateToHumanReadable(new Date(row.original.createdAt))}
+          {formatDateTime(new Date(row.original.createdAt), {
+            dateStyle: "medium",
+            timeStyle: "short",
+          })}
         </span>
       ),
     },
