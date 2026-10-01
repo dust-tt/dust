@@ -57,10 +57,20 @@ function isNonUtf8CsvError(error: DustError): boolean {
   return error.code === "invalid_csv_content" && /utf-?8/i.test(error.message);
 }
 
+/**
+ * @cc [owner:frankaloia,label:security] upsert-args-no-server-override
+ * `upsertArgs` supplied by callers MUST NOT be able to override server-controlled fields
+ * (`dataSource`, `auth`). Document processing functions (`upsertDocumentToDatasource`,
+ * `upsertSectionDocumentToDatasource`) MUST NOT spread `upsertArgs` directly into a core API
+ * call; only fields explicitly listed in this interface's Pick types may flow through.
+ */
 export interface UpsertFileToDataSourceRequestBody {
   fileId: string;
   upsertArgs?:
-    | Pick<UpsertDocumentArgs, "document_id" | "title" | "tags">
+    | Pick<
+        UpsertDocumentArgs,
+        "document_id" | "title" | "tags" | "parent_id" | "parents"
+      >
     | Pick<
         UpsertTableArgs,
         "name" | "title" | "description" | "tags" | "tableId"
@@ -81,13 +91,13 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
   let documentId = file.sId;
   let parent_id: string | null = null;
   let parents: string[] = [documentId];
+  let title = file.fileName;
   if (isUpsertDocumentArgs(upsertArgs)) {
     documentId = upsertArgs.document_id;
     parent_id = upsertArgs.parent_id ?? null;
     parents = upsertArgs.parents ?? [documentId];
+    title = upsertArgs.title ?? file.fileName;
   }
-  const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
-  const title = upsertTitle ?? file.fileName;
   const content = await getFileContent(auth, file);
   if (!content) {
     return new Err<DustError>({
@@ -99,7 +109,6 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
   }
 
   const upsertDocumentRes = await upsertDocument({
-    // Beware, most values here are default values that are overridden by the ...restArgs below.
     document_id: documentId,
     source_url: sourceUrl,
     text: content,
@@ -111,9 +120,6 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
     auth,
     mime_type: file.contentType,
     title,
-
-    // Used to override defaults.
-    ...restArgs,
   });
 
   if (upsertDocumentRes.isErr()) {
@@ -127,7 +133,7 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
 // We expect the content of the file to be the JSON representation of a CoreAPIDataSourceDocumentSection.
 const upsertSectionDocumentToDatasource: ProcessingFunction = async (
   auth,
-  { file, dataSource, upsertArgs }
+  { file, dataSource }
 ) => {
   // Get the content of the file.
   const content = await getFileContent(auth, file);
@@ -167,7 +173,6 @@ const upsertSectionDocumentToDatasource: ProcessingFunction = async (
       `fileName:${file.fileName}`,
     ],
     light_document_output: true,
-    ...upsertArgs,
   });
 
   if (upsertDocumentRes.isErr()) {

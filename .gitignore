@@ -37,6 +37,7 @@ thoughts/*
 
 # dust-hive worktrees
 .hives/
+.worktrees/
 
 # Direnv
 .direnv/
