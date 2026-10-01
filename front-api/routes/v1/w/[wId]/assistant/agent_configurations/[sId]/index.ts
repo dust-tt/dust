@@ -31,7 +31,7 @@ const VariantQuerySchema = z.object({
 });
 
 // The resource redacts the private fields unless the caller can view the content (see
-// `light-instructions-require-read`).
+// `agent-json-redaction`).
 async function serializeAgent(
   auth: Authenticator,
   agent: AgentResource,

@@ -1,4 +1,3 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
@@ -17,6 +16,7 @@ import {
   seedGovernanceGroups,
 } from "@app/scripts/seed/governance/groups";
 import type { Assets } from "@app/scripts/seed/governance/seed";
+import { getAgentConfiguration } from "@app/tests/utils/agent_configuration_reads";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import * as fs from "fs";
 import * as path from "path";

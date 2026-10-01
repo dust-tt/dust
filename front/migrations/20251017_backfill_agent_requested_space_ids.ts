@@ -1,7 +1,7 @@
 import * as _ from "lodash";
 import { Op } from "sequelize";
 
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfiguration } from "@app/tests/utils/agent_configuration_reads";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";

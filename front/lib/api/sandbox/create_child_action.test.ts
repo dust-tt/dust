@@ -36,7 +36,6 @@ import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guard
 import { WEBSEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { computeAndStoreAgentMessageConsumptionAttribution } from "@app/lib/api/assistant/agent_message_consumption_attribution/store";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { createSandboxChildAction } from "@app/lib/api/sandbox/create_child_action";
@@ -56,6 +55,7 @@ import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activiti
 import { launchSandboxChildToolWorkflow } from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
+import { getAgentConfiguration } from "@app/tests/utils/agent_configuration_reads";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";

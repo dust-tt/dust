@@ -1,9 +1,9 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { ONE_DAY_MS } from "@app/lib/api/assistant/inactivity/policy";
 import type { Authenticator } from "@app/lib/auth";
 import * as scheduleClient from "@app/temporal/triggers/schedule_client";
 import * as wakeUpClient from "@app/temporal/triggers/wakeup_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { getAgentConfiguration } from "@app/tests/utils/agent_configuration_reads";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MentionFactory } from "@app/tests/utils/MentionFactory";

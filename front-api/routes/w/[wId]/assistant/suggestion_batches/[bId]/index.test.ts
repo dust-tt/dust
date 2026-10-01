@@ -1,4 +1,3 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { getMarkdownPipeline } from "@app/lib/editor/server_markdown_pipeline";
 import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
@@ -10,6 +9,7 @@ import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_res
 import { serializeSkillTag } from "@app/lib/skills/format";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
+import { getAgentConfiguration } from "@app/tests/utils/agent_configuration_reads";
 import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";

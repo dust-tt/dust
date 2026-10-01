@@ -3411,6 +3411,16 @@ export class AgentResource
    * it: the agent loop runs on it. `modelConfiguration` and the save paths keep the stored value.
    * A global agent's model is served as its builder produced it.
    */
+  /**
+   * @cc [owner:philipperolet,label:security] regular-key-agent-editability
+   * For regular keys on custom agents, `canEdit` requires workspace admin access, active status,
+   * and read access to every requested space.
+   */
+  /**
+   * @cc [owner:philipperolet,label:security] agent-editability
+   * Outside regular API keys, `canEdit` is agent `write` permission; the workspace admin role alone
+   * does not grant it.
+   */
   toJSON(): AgentConfigurationBaseType {
     const isGlobal = this.scope === "global";
 
@@ -3456,7 +3466,7 @@ export class AgentResource
         this.creditSpendCheckpointThresholdAwuCredits === null,
       canRead: this._verbs.has("read"),
       // Regular API keys hold `write` from the admin role but may only edit an active version
-      // (see the `regular-key-agent-editability` contract on `enrichAgentConfigurations`).
+      // (see `regular-key-agent-editability`).
       canEdit:
         this._verbs.has("write") &&
         (!this._isRegularApiKey || this.status === "active"),
