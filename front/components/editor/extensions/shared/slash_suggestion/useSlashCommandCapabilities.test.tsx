@@ -29,9 +29,9 @@ async function setup(hasFavorites = true) {
     workspacePermissions: await auth.getWorkspacePermissions(),
   };
   const listedSkills = [
-    { sId: "zulu", name: "Zulu", isFavorite: hasFavorites, icon: null },
-    { sId: "beta", name: "Beta", isFavorite: hasFavorites, icon: null },
-    { sId: "alpha", name: "Alpha", isFavorite: false, icon: null },
+    { sId: "zulu", name: "Zulu", icon: null },
+    { sId: "beta", name: "Beta", icon: null },
+    { sId: "alpha", name: "Alpha", icon: null },
   ];
   const fetcher = vi.fn<FetcherFn>(async (url) => {
     if (url.includes("/skills")) {

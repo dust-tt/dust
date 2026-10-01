@@ -94,8 +94,8 @@ describe("searchSkills pagination", () => {
     );
     expect(result.value.total).toBe(favoritesOnly ? 2 : 3);
     expect(result.value.hasMore).toBe(true);
+    expect(result.value.skills[0]).not.toHaveProperty("isFavorite");
     if (favoritesOnly) {
-      expect(result.value.skills[0].isFavorite).toBe(true);
       expect(mockSearch.mock.lastCall![0].sort[0]).toEqual({
         "name.keyword": { order: "asc", missing: "_last" },
       });
@@ -109,7 +109,6 @@ describe("searchSkills pagination", () => {
       expect(next.value.skills[0].sId).toBe(zulu.sId);
       expect(next.value.hasMore).toBe(false);
     } else {
-      expect(result.value.skills[0]).not.toHaveProperty("isFavorite");
       const codeDefinedSkillIds =
         await SkillResource.listAvailableCodeDefinedIds(auth);
       expect(mockSearch.mock.lastCall![0].query).toEqual(

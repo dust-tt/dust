@@ -203,10 +203,9 @@ export async function searchSkills(
   }
 
   return new Ok({
-    skills: removeNulls(hits.map((hit) => hit._source)).map((document) => ({
-      ...toSkillListItem(auth, document),
-      ...(favoritesOnly ? { isFavorite: true } : {}),
-    })),
+    skills: removeNulls(hits.map((hit) => hit._source)).map((document) =>
+      toSkillListItem(auth, document)
+    ),
     total: totalCount,
     hasMore: offset + hits.length < totalCount,
     facets: facetValues,

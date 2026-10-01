@@ -97,10 +97,6 @@ export function useInputBarSlashCommandCapabilities({
   const skills = useSkillSearch ? searchSkills : listedSkills;
   // Use the displayed skills' query so tools and skills update together.
   const capabilityQuery = useSkillSearch ? (resolvedSearchTerm ?? "") : query;
-  const showFavorites =
-    useSkillSearch &&
-    !capabilityQuery.trim() &&
-    searchSkills.some((skill) => skill.isFavorite);
   const isSkillsLoading = useSkillSearch
     ? isSearchSkillsLoading
     : isListedSkillsLoading;
@@ -120,16 +116,9 @@ export function useInputBarSlashCommandCapabilities({
         query: capabilityQuery,
         useSearchRanking: useSkillSearch,
         skills,
-        tools: showFavorites ? [] : serverViews,
+        tools: serverViews,
       }),
-    [
-      capabilityQuery,
-      excludeSkillId,
-      serverViews,
-      skills,
-      useSkillSearch,
-      showFavorites,
-    ]
+    [capabilityQuery, excludeSkillId, serverViews, skills, useSkillSearch]
   );
 
   return {
@@ -138,7 +127,6 @@ export function useInputBarSlashCommandCapabilities({
     // Every workspace has at least one global skill and one tool, so stop loading
     // as soon as either source returns a matching capability.
     isLoading:
-      !showFavorites &&
       capabilityItems.length === 0 &&
       (isSkillsLoading || isSpacesLoading || isServerViewsLoading),
   };
@@ -180,10 +168,6 @@ export function useSkillBuilderSlashCommandCapabilities({
   const skills = useSkillSearch ? searchSkills : listedSkills;
   // Use the displayed skills' query so tools and skills update together.
   const capabilityQuery = useSkillSearch ? (resolvedSearchTerm ?? "") : query;
-  const showFavorites =
-    useSkillSearch &&
-    !capabilityQuery.trim() &&
-    searchSkills.some((skill) => skill.isFavorite);
   const isSkillsLoading = useSkillSearch
     ? isSearchSkillsLoading
     : isListedSkillsLoading;
@@ -203,27 +187,18 @@ export function useSkillBuilderSlashCommandCapabilities({
         excludeSkillId,
         query: capabilityQuery,
         skills,
-        tools: showFavorites ? [] : tools,
+        tools,
         useSearchRanking: useSkillSearch,
         toolFilter: (serverView) =>
           getMCPServerRequirements(serverView).noRequirement,
       }),
-    [
-      capabilityQuery,
-      excludeSkillId,
-      skills,
-      tools,
-      useSkillSearch,
-      showFavorites,
-    ]
+    [capabilityQuery, excludeSkillId, skills, tools, useSkillSearch]
   );
 
   return {
     capabilityItems,
     resolvedQuery: capabilityQuery,
     // Spaces are needed to label tools available in several spaces.
-    isLoading:
-      !showFavorites &&
-      (isSkillsLoading || isSpacesLoading || isServerViewsLoading),
+    isLoading: isSkillsLoading || isSpacesLoading || isServerViewsLoading,
   };
 }
