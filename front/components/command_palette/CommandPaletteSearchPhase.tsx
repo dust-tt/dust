@@ -100,7 +100,6 @@ interface CommandPaletteSearchPhaseProps {
   selectedIndex: number;
   onSelectedIndexChange: (index: number) => void;
   onItemSelect: (item: CommandPaletteItem) => void;
-  onClose: () => void;
 }
 
 function CommandPaletteItemContent({ item }: { item: CommandPaletteItem }) {
@@ -274,7 +273,6 @@ export function CommandPaletteSearchPhase({
   selectedIndex,
   onSelectedIndexChange,
   onItemSelect,
-  onClose,
 }: CommandPaletteSearchPhaseProps) {
   const isEmptyQuery = searchQuery.trim().length === 0;
 
@@ -393,10 +391,6 @@ export function CommandPaletteSearchPhase({
         if (flatItems[selectedIndex]) {
           onItemSelect(flatItems[selectedIndex]);
         }
-        break;
-      case "Escape":
-        e.preventDefault();
-        onClose();
         break;
     }
   }

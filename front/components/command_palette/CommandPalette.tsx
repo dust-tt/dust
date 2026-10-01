@@ -176,10 +176,26 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     [close]
   );
 
+  const handleEscapeKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      // First Esc clears the query; a second Esc (empty query) closes the dialog.
+      if (phase === "search" && searchQuery.length > 0) {
+        e.preventDefault();
+        setSearchQuery("");
+      }
+    },
+    [phase, searchQuery]
+  );
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-        <DialogContent size="lg" variant="command" trapFocusScope>
+        <DialogContent
+          size="lg"
+          variant="command"
+          trapFocusScope
+          onEscapeKeyDown={handleEscapeKeyDown}
+        >
           {phase === "search" ? (
             <CommandPaletteSearchPhase
               searchQuery={searchQuery}
@@ -199,7 +215,6 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
               selectedIndex={selectedIndex}
               onSelectedIndexChange={setSelectedIndex}
               onItemSelect={handleItemSelect}
-              onClose={close}
             />
           ) : selectedItem ? (
             <CommandPaletteActionPhase
