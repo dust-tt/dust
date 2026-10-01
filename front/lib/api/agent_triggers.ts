@@ -1,11 +1,9 @@
 import type { Authenticator } from "@app/lib/auth";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { AgentResource } from "@app/lib/resources/agent_resource";
+import { listActiveConfigurationIdentities } from "@app/lib/resources/agent_configuration_rows";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { ModelId } from "@app/types/shared/model_id";
-import { Op } from "sequelize";
 
 // To use in case of heavy db load emergency with these usages queries
 // If it is a problem, let's add caching
@@ -26,31 +24,8 @@ async function getAccessibleAgentsInfoBySId({
     return new Map();
   }
 
-  const getAgentsForUser = () => AgentResource.listEditorConfigModelIds(auth);
-
-  const agentWhereClause = auth.isAdmin()
-    ? {
-        workspaceId: owner.id,
-        status: "active" as const,
-      }
-    : {
-        workspaceId: owner.id,
-        status: "active" as const,
-        [Op.or]: [
-          {
-            scope: "visible",
-          },
-          {
-            id: {
-              [Op.in]: await getAgentsForUser(),
-            },
-          },
-        ],
-      };
-
-  const accessibleAgents = await AgentConfigurationModel.findAll({
-    attributes: ["id", "sId", "name", "pictureUrl"],
-    where: agentWhereClause,
+  const accessibleAgents = await listActiveConfigurationIdentities(auth, {
+    usageVisibleOnly: true,
   });
 
   return new Map(

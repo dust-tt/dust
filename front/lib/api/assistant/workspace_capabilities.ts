@@ -11,7 +11,7 @@ import { config as regionConfig } from "@app/lib/api/regions/config";
 import { filterEnabledModels } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { listActiveAgentModels } from "@app/lib/resources/agent_configuration_rows";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -116,7 +116,6 @@ export async function getAvailableModelsForWorkspace(
 export async function listActiveAgentsUsingNonRegionalModels(
   auth: Authenticator
 ): Promise<string[]> {
-  const workspaceId = auth.getNonNullableWorkspace().id;
   const region = regionConfig.getCurrentRegion();
 
   // Match against the full catalog: existing agents may use older
@@ -128,16 +127,13 @@ export async function listActiveAgentsUsingNonRegionalModels(
     }
   }
 
-  const activeAgents = await AgentConfigurationModel.findAll({
-    where: { workspaceId, status: "active" },
-    attributes: ["sId", "providerId", "modelId"],
-  });
+  const activeAgents = await listActiveAgentModels(auth);
 
   return activeAgents
     .filter(
       (agent) => !regionalModelKeys.has(`${agent.providerId}:${agent.modelId}`)
     )
-    .map((agent) => agent.sId);
+    .map((agent) => agent.agentId);
 }
 
 /**

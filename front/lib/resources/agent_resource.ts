@@ -1432,6 +1432,24 @@ export class AgentResource
     return this.fetchByIds(auth, agentIds);
   }
 
+  // Oldest first, the pending agents created before `createdBefore`, for the purge. Not
+  // `canFetch`-filtered: the purge runs as an internal admin over every pending agent.
+  static async dangerouslyListExpiredPendingAgents(
+    auth: Authenticator,
+    { createdBefore, limit }: { createdBefore: Date; limit: number }
+  ): Promise<AgentResource[]> {
+    const configurations = await AgentConfigurationModel.findAll({
+      where: {
+        status: "pending",
+        createdAt: { [Op.lt]: createdBefore },
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      limit,
+      order: [["createdAt", "ASC"]],
+    });
+    return this.dangerouslyFromConfigurationModels(auth, configurations);
+  }
+
   // Caller-independent query: the current resource of each identified agent — the row whose
   // `version` equals the agent's `currentVersion` pointer, joined via the unique `(agentId, version)`
   // index — one per agent, scoped to the workspace. No read-access decision is folded in; that is the
