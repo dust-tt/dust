@@ -4,6 +4,7 @@ import {
   ItemTitle,
   KeyboardHints,
 } from "@app/components/command_palette/CommandPaletteItems";
+import { MIN_COMMAND_PALETTE_SEARCH_LENGTH } from "@app/components/command_palette/useCommandPaletteSearch";
 import type { AdminSectionId } from "@app/lib/admin/adminSectionIds";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { getSpaceIcon } from "@app/lib/spaces";
@@ -15,6 +16,7 @@ import type {
   SkillListItemType,
   SkillWithoutInstructionsAndToolsType,
 } from "@app/types/assistant/skill_configuration";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { PodType } from "@app/types/space";
 import type { LightUserTypeWithWorkspace } from "@app/types/user";
 import {
@@ -25,6 +27,8 @@ import {
   Icon,
   LoadingBlock,
   MessageCircle01,
+  MessagePlusCircle,
+  Plus,
   SearchInput,
 } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
@@ -73,7 +77,13 @@ export type CommandPaletteSetting = {
   tab?: string;
 };
 
+export type CommandPaletteDefaultAction =
+  | "new_conversation_in_pod"
+  | "new_conversation"
+  | "new_pod";
+
 export type CommandPaletteItem =
+  | { kind: "action"; action: CommandPaletteDefaultAction }
   | { kind: "agent"; agent: CommandPaletteAgent }
   | { kind: "conversation"; conversation: CommandPaletteConversation }
   | { kind: "member"; member: CommandPaletteMember }
@@ -83,6 +93,8 @@ export type CommandPaletteItem =
 
 export function getCommandPaletteItemKey(item: CommandPaletteItem): string {
   switch (item.kind) {
+    case "action":
+      return `action:${item.action}`;
     case "agent":
       return `agent:${item.agent.sId}`;
     case "conversation":
@@ -95,6 +107,8 @@ export function getCommandPaletteItemKey(item: CommandPaletteItem): string {
       return `setting:${item.setting.pageHref}#${item.setting.sectionId}:${item.setting.label}`;
     case "skill":
       return `skill:${item.skill.sId}`;
+    default:
+      assertNever(item);
   }
 }
 
@@ -109,6 +123,8 @@ interface CommandPaletteSearchPhaseProps {
   settings: CommandPaletteSetting[];
   /** Top frecency-ranked items to show when the query is empty and All is selected. */
   frequentItems: CommandPaletteItem[];
+  /** When set, include "Create new conversation in pod" in the empty-All defaults. */
+  activePodId: string | null;
   hasMoreAgents: boolean;
   hasMoreConversations: boolean;
   hasMoreMembers: boolean;
@@ -125,7 +141,38 @@ interface CommandPaletteSearchPhaseProps {
 }
 
 function CommandPaletteItemContent({ item }: { item: CommandPaletteItem }) {
+  const { t } = useLingui();
+
   switch (item.kind) {
+    case "action": {
+      switch (item.action) {
+        case "new_conversation_in_pod":
+          return (
+            <>
+              <Icon visual={MessagePlusCircle} size="xs" />
+              <span className="font-medium">
+                {t`Create new conversation in pod`}
+              </span>
+            </>
+          );
+        case "new_conversation":
+          return (
+            <>
+              <Icon visual={MessagePlusCircle} size="xs" />
+              <span className="font-medium">{t`Create new conversation`}</span>
+            </>
+          );
+        case "new_pod":
+          return (
+            <>
+              <Icon visual={Plus} size="xs" />
+              <span className="font-medium">{t`Create new Pod`}</span>
+            </>
+          );
+        default:
+          assertNever(item.action);
+      }
+    }
     case "conversation": {
       const title = getConversationDisplayTitle(item.conversation);
       return (
@@ -232,6 +279,8 @@ function CommandPaletteItemContent({ item }: { item: CommandPaletteItem }) {
           </div>
         </>
       );
+    default:
+      assertNever(item);
   }
 }
 
@@ -309,6 +358,7 @@ export function CommandPaletteSearchPhase({
   skills,
   settings,
   frequentItems,
+  activePodId,
   hasMoreAgents,
   hasMoreConversations,
   hasMoreMembers,
@@ -324,7 +374,13 @@ export function CommandPaletteSearchPhase({
   onItemSelect,
 }: CommandPaletteSearchPhaseProps) {
   const { t } = useLingui();
-  const isEmptyQuery = searchQuery.trim().length === 0;
+  const trimmedQuery = searchQuery.trim();
+  const isEmptyQuery = trimmedQuery.length === 0;
+  const isQueryTooShort =
+    trimmedQuery.length > 0 &&
+    trimmedQuery.length < MIN_COMMAND_PALETTE_SEARCH_LENGTH;
+  const isSearchQueryReady =
+    trimmedQuery.length >= MIN_COMMAND_PALETTE_SEARCH_LENGTH;
 
   const accessibleCategories = useMemo((): CommandPaletteCategory[] => {
     return ACCESSIBLE_CATEGORY_ORDER.filter(
@@ -431,11 +487,27 @@ export function CommandPaletteSearchPhase({
       filteredSettings,
     ]
   );
-  // Empty query + a specific category: no recent list, only a CTA.
+
+  // Empty query + All: default create actions above frecency suggestions.
+  const defaultActions = useMemo((): CommandPaletteItem[] => {
+    if (!isEmptyQuery || effectiveSelectedCategory !== "All") {
+      return [];
+    }
+    const actions: CommandPaletteItem[] = [];
+    if (activePodId) {
+      actions.push({ kind: "action", action: "new_conversation_in_pod" });
+    }
+    actions.push({ kind: "action", action: "new_conversation" });
+    actions.push({ kind: "action", action: "new_pod" });
+    return actions;
+  }, [isEmptyQuery, effectiveSelectedCategory, activePodId]);
+
   const flatItems =
     isEmptyQuery && effectiveSelectedCategory === "All"
-      ? frequentItems
-      : searchFlatItems;
+      ? [...defaultActions, ...frequentItems]
+      : isSearchQueryReady
+        ? searchFlatItems
+        : [];
   const showCategoryCta = isEmptyQuery && effectiveSelectedCategory !== "All";
   const showFrequentItems =
     isEmptyQuery &&
@@ -445,6 +517,8 @@ export function CommandPaletteSearchPhase({
     isEmptyQuery &&
     effectiveSelectedCategory === "All" &&
     frequentItems.length === 0;
+  const showDefaultActions = defaultActions.length > 0;
+  const showQueryTooShortHint = isQueryTooShort;
 
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -506,6 +580,8 @@ export function CommandPaletteSearchPhase({
     ? t`Type to search conversations, pods, agents, members, skills, and settings. Items you open will show up here for quick access.`
     : t`Type to search conversations, pods, agents, members, and skills. Items you open will show up here for quick access.`;
 
+  const queryTooShortHint = t`Type to search.`;
+
   const categoryCtaHint = (() => {
     switch (effectiveSelectedCategory) {
       case "Conversations":
@@ -550,16 +626,9 @@ export function CommandPaletteSearchPhase({
         </div>
       </div>
       <div className="flex max-h-125 flex-col gap-2 overflow-y-auto p-1.5">
-        {showDefaultEmptyHint && (
-          <ItemEmptyState>{defaultEmptyHint}</ItemEmptyState>
-        )}
-
-        {showCategoryCta && <ItemEmptyState>{categoryCtaHint}</ItemEmptyState>}
-
-        {showFrequentItems && (
+        {showDefaultActions && (
           <div>
-            <ItemTitle>Suggestions</ItemTitle>
-            {frequentItems.map((item, i) => (
+            {defaultActions.map((item, i) => (
               <ItemRow
                 key={getCommandPaletteItemKey(item)}
                 ref={(el) => {
@@ -575,7 +644,39 @@ export function CommandPaletteSearchPhase({
           </div>
         )}
 
-        {!isEmptyQuery && isLoading && !hasSearchResults && (
+        {showDefaultEmptyHint && (
+          <ItemEmptyState>{defaultEmptyHint}</ItemEmptyState>
+        )}
+
+        {showCategoryCta && <ItemEmptyState>{categoryCtaHint}</ItemEmptyState>}
+
+        {showQueryTooShortHint && (
+          <ItemEmptyState>{queryTooShortHint}</ItemEmptyState>
+        )}
+
+        {showFrequentItems && (
+          <div>
+            <ItemTitle>Suggestions</ItemTitle>
+            {frequentItems.map((item, i) => {
+              const globalIndex = defaultActions.length + i;
+              return (
+                <ItemRow
+                  key={getCommandPaletteItemKey(item)}
+                  ref={(el) => {
+                    itemRefs.current[globalIndex] = el;
+                  }}
+                  isSelected={selectedIndex === globalIndex}
+                  onClick={() => onItemSelect(item)}
+                  onMouseMove={() => onSelectedIndexChange(globalIndex)}
+                >
+                  <CommandPaletteItemContent item={item} />
+                </ItemRow>
+              );
+            })}
+          </div>
+        )}
+
+        {isSearchQueryReady && isLoading && !hasSearchResults && (
           <div className="flex flex-col gap-1 p-1">
             {Array.from({ length: 9 }, (_, i) => (
               <div key={i} className="flex items-center gap-2.5 px-3 py-2.5">
@@ -588,11 +689,11 @@ export function CommandPaletteSearchPhase({
             ))}
           </div>
         )}
-        {!isEmptyQuery && !isLoading && !hasSearchResults && (
+        {isSearchQueryReady && !isLoading && !hasSearchResults && (
           <ItemEmptyState>No results found.</ItemEmptyState>
         )}
 
-        {!isEmptyQuery && filteredConversations.length > 0 && (
+        {isSearchQueryReady && filteredConversations.length > 0 && (
           <div>
             <ItemTitle>Conversations</ItemTitle>
             {filteredConversations.map((conversation, i) => (
@@ -620,7 +721,7 @@ export function CommandPaletteSearchPhase({
           </div>
         )}
 
-        {!isEmptyQuery && filteredPods.length > 0 && (
+        {isSearchQueryReady && filteredPods.length > 0 && (
           <div>
             <ItemTitle>Pods</ItemTitle>
             {filteredPods.map((pod, i) => {
@@ -647,7 +748,7 @@ export function CommandPaletteSearchPhase({
           </div>
         )}
 
-        {!isEmptyQuery && filteredAgents.length > 0 && (
+        {isSearchQueryReady && filteredAgents.length > 0 && (
           <div>
             <ItemTitle>Agents</ItemTitle>
             {filteredAgents.map((agent, i) => {
@@ -674,7 +775,7 @@ export function CommandPaletteSearchPhase({
           </div>
         )}
 
-        {!isEmptyQuery && filteredMembers.length > 0 && (
+        {isSearchQueryReady && filteredMembers.length > 0 && (
           <div>
             <ItemTitle>Members</ItemTitle>
             {filteredMembers.map((member, i) => {
@@ -703,7 +804,7 @@ export function CommandPaletteSearchPhase({
           </div>
         )}
 
-        {!isEmptyQuery && filteredSkills.length > 0 && (
+        {isSearchQueryReady && filteredSkills.length > 0 && (
           <div>
             <ItemTitle>Skills</ItemTitle>
             {filteredSkills.map((skill, i) => {
@@ -730,7 +831,7 @@ export function CommandPaletteSearchPhase({
           </div>
         )}
 
-        {!isEmptyQuery && filteredSettings.length > 0 && (
+        {isSearchQueryReady && filteredSettings.length > 0 && (
           <div>
             <ItemTitle>Settings</ItemTitle>
             {filteredSettings.map((setting, i) => {

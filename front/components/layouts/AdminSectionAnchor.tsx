@@ -4,8 +4,8 @@ import type { ReactNode } from "react";
 
 /** Anchor + highlight shell shared by admin section layouts. */
 export const ADMIN_SECTION_ANCHOR_CLASSNAME = cn(
-  "flex w-full scroll-mt-6 flex-col gap-4 rounded-2xl transition-shadow duration-700",
-  "[&.is-target]:shadow-[0_0_0_4px_var(--color-highlight-300)]"
+  "flex w-full scroll-mt-6 flex-col gap-4 rounded-lg transition-shadow duration-700",
+  "[&.is-target]:ring-4 [&.is-target]:ring-highlight-300 [&.is-target]:ring-offset-2 [&.is-target]:ring-offset-background"
 );
 
 interface AdminSectionAnchorProps {

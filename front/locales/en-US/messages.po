@@ -70,6 +70,10 @@ msgstr "Show your agents on the home page"
 msgid "Role: {role}"
 msgstr "Role: {role}"
 
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search."
+msgstr "Type to search."
+
 #: front/components/me/NotificationPreferences.tsx
 msgid "Email and Slack notifications are turned off for this workspace by an admin."
 msgstr "Email and Slack notifications are turned off for this workspace by an admin."
@@ -322,9 +326,17 @@ msgstr "Customization"
 msgid "Your language could not be saved to your account."
 msgstr "Your language could not be saved to your account."
 
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Create new conversation in pod"
+msgstr "Create new conversation in pod"
+
 #: front/components/UserSettingsPopover.tsx
 msgid "Access your favorite and most-used agents, or search for one from the home page."
 msgstr "Access your favorite and most-used agents, or search for one from the home page."
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Create new conversation"
+msgstr "Create new conversation"
 
 #: front/components/assistant/conversation/InAppBanner.tsx
 msgid "Try it"
@@ -342,6 +354,10 @@ msgstr "Play"
 #: front/components/UserSettingsPopover.tsx
 msgid "Inbox notifications"
 msgstr "Inbox notifications"
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Create new Pod"
+msgstr "Create new Pod"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "First name"

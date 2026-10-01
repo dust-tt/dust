@@ -211,6 +211,8 @@ export function useSearchSkills({
   filters,
   facets,
   disabled,
+  keepPreviousData = true,
+  debounceMs = SEARCH_SKILLS_DEBOUNCE_MS,
 }: {
   owner: LightWorkspaceType;
   searchEndpoint?: string;
@@ -226,6 +228,10 @@ export function useSearchSkills({
   filters?: SkillSearchFilters;
   facets?: SkillSearchFacet[];
   disabled?: boolean;
+  /** When false, clear results while the next query loads (e.g. command palette). */
+  keepPreviousData?: boolean;
+  /** Set to 0 when the caller already debounces the search term. */
+  debounceMs?: number;
 }) {
   const { fetcherWithBody } = useFetcher();
   const { mutate: globalMutate } = useSWRConfig();
@@ -239,7 +245,7 @@ export function useSearchSkills({
       ? ""
       : truncatedSearchTerm;
   const { debouncedValue: debouncedSearchTerm, setValue: setSearchTerm } =
-    useDebounce(query, { delay: SEARCH_SKILLS_DEBOUNCE_MS });
+    useDebounce(query, { delay: debounceMs });
   const isDebouncing = query !== debouncedSearchTerm;
 
   useEffect(() => {
@@ -276,7 +282,7 @@ export function useSearchSkills({
       disabled: disabled || isDebouncing,
       // Keep results visible while the next query debounces or loads, instead of
       // flashing a loading placeholder on every keystroke.
-      keepPreviousData: true,
+      keepPreviousData,
     }
   );
 

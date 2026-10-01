@@ -132,6 +132,8 @@ export function useSearchMembers<
   managedOnly,
   role,
   disabled,
+  keepPreviousData = true,
+  debounceMs = 300,
 }: {
   workspaceId: string;
   searchTerm: string;
@@ -141,6 +143,10 @@ export function useSearchMembers<
   managedOnly?: boolean;
   role?: ActiveRoleType;
   disabled?: boolean;
+  /** When false, clear results while the next query loads (e.g. command palette). */
+  keepPreviousData?: boolean;
+  /** Set to 0 when the caller already debounces the search term. */
+  debounceMs?: number;
 }) {
   const { fetcher } = useFetcher();
   const searchMembersFetcher: Fetcher<{
@@ -151,12 +157,17 @@ export function useSearchMembers<
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
 
   useEffect(() => {
+    if (debounceMs <= 0) {
+      setDebouncedSearchTerm(searchTerm);
+      return;
+    }
+
     const debouncedSearch = () => {
       setDebouncedSearchTerm(searchTerm);
     };
 
-    debounce(debounceHandle, debouncedSearch, 300);
-  }, [searchTerm]);
+    debounce(debounceHandle, debouncedSearch, debounceMs);
+  }, [searchTerm, debounceMs]);
 
   const searchParams = new URLSearchParams({
     searchTerm: debouncedSearchTerm,
@@ -181,7 +192,7 @@ export function useSearchMembers<
       `/api/w/${workspaceId}/members/search?${searchParams.toString()}`,
       searchMembersFetcher,
       {
-        keepPreviousData: true,
+        keepPreviousData,
         revalidateOnFocus: false,
         revalidateOnReconnect: false,
         disabled,
