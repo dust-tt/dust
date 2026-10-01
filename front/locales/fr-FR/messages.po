@@ -1139,3 +1139,31 @@ msgstr "Vous pouvez gérer vos préférences de notification depuis <0>votre esp
 #: front/lib/notifications/email-templates/default.tsx
 msgid "Hi {name},"
 msgstr "Bonjour {name},"
+
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "[Dust] {count, plural, one {# member was auto-upgraded to a higher seat} other {# members were auto-upgraded to higher seats}}"
+msgstr "[Dust] {count, plural, one {# membre est passé automatiquement à un siège supérieur} other {# membres sont passés automatiquement à des sièges supérieurs}}"
+
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "[Dust] {member} was auto-upgraded to a {newSeatType} seat"
+msgstr "[Dust] {member} est passé automatiquement à un siège {newSeatType}"
+
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "{count, plural, one {# member reached their credit limit and was automatically upgraded to a higher seat so they can keep working:} other {# members reached their credit limit and were automatically upgraded to higher seats so they can keep working:}}"
+msgstr "{count, plural, one {# membre a atteint sa limite de crédits et est passé automatiquement à un siège supérieur pour pouvoir continuer à travailler :} other {# membres ont atteint leur limite de crédits et sont passés automatiquement à des sièges supérieurs pour pouvoir continuer à travailler :}}"
+
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "{member} reached their credit limit and was automatically upgraded from a {previousSeatType} seat to a {newSeatType} seat so they can keep working."
+msgstr "{member} a atteint sa limite de crédits et est passé automatiquement d’un siège {previousSeatType} à un siège {newSeatType} pour pouvoir continuer à travailler."
+
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "This might increase your subscription cost. You can turn off automatic seat upgrades from your workspace usage settings."
+msgstr "Cela peut augmenter le coût de votre abonnement. Vous pouvez désactiver le passage automatique à un siège supérieur dans les paramètres d’utilisation de votre espace de travail."
+
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "there"
+msgstr "à vous"
+
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "Go to workspace usage"
+msgstr "Voir l’utilisation de l’espace de travail"
