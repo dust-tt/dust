@@ -3,8 +3,8 @@ import type {
   ScheduleConfig,
 } from "@app/types/assistant/triggers";
 import { isCronScheduleConfig } from "@app/types/assistant/triggers";
+import { TZDateMini } from "@date-fns/tz";
 import { CronExpressionParser } from "cron-parser";
-import { DateTime } from "luxon";
 
 const DAYS_PER_WEEK = 7;
 
@@ -35,39 +35,36 @@ function getNextCronOccurrences(
   }
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] interval-calendar-days
+ * Occurrences MUST be strictly after now and advance by local calendar days in the
+ * configured timezone, rather than fixed 24-hour durations. A time moved forward
+ * through a DST gap MUST remain the basis for subsequent interval occurrences.
+ * A repeated clock time resolves to its earlier occurrence.
+ */
 function getNextIntervalOccurrences(
   config: IntervalScheduleConfig,
   count: number
 ): Date[] {
-  const now = DateTime.now().setZone(config.timezone);
-  let candidate = now.set({
-    hour: config.hour,
-    minute: config.minute,
-    second: 0,
-    millisecond: 0,
-  });
+  const now = new Date();
+  const candidate = new TZDateMini(now, config.timezone);
+  candidate.setHours(config.hour, config.minute, 0, 0);
 
   if (config.dayOfWeek !== null) {
-    // Luxon weekdays: 1=Monday..7=Sunday; config uses 0=Sunday..6=Saturday.
-    const luxonWeekday =
-      config.dayOfWeek === 0 ? DAYS_PER_WEEK : config.dayOfWeek;
     const daysUntil =
-      (luxonWeekday - candidate.weekday + DAYS_PER_WEEK) % DAYS_PER_WEEK;
-    candidate = candidate.plus({ days: daysUntil });
-
+      (config.dayOfWeek - candidate.getDay() + DAYS_PER_WEEK) % DAYS_PER_WEEK;
+    candidate.setDate(candidate.getDate() + daysUntil);
     if (candidate <= now) {
-      candidate = candidate.plus({ days: config.intervalDays });
+      candidate.setDate(candidate.getDate() + config.intervalDays);
     }
-  } else {
-    if (candidate <= now) {
-      candidate = candidate.plus({ days: 1 });
-    }
+  } else if (candidate <= now) {
+    candidate.setDate(candidate.getDate() + 1);
   }
 
   const dates: Date[] = [];
   for (let i = 0; i < count; i++) {
-    dates.push(candidate.toJSDate());
-    candidate = candidate.plus({ days: config.intervalDays });
+    dates.push(new Date(candidate));
+    candidate.setDate(candidate.getDate() + config.intervalDays);
   }
 
   return dates;
