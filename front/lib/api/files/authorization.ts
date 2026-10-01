@@ -55,6 +55,8 @@ export async function readAuthorizedMountPath(
 /**
  * @cc [owner:frankaloia,label:security] source-file-read-deny-by-default
  * A caller MUST be denied unless one rule below grants read access.
+ * A system key MUST be granted for every use case: system-key uploads (connector table syncs)
+ * carry no user and no space, and system keys already hold wildcard grants.
  * `conversation` and `tool_output` MUST be granted only when
  * `useCaseMetadata.conversationId` is set and `ConversationResource.fetchById` returns that
  * conversation, or when the id is absent and `file.userId` is the caller's user id.
@@ -73,6 +75,10 @@ export async function canReadSourceFile(
   auth: Authenticator,
   file: FileResource
 ): Promise<boolean> {
+  if (auth.isSystemKey()) {
+    return true;
+  }
+
   switch (file.useCase) {
     case "conversation":
     case "tool_output": {

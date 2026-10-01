@@ -4,7 +4,9 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -50,6 +52,24 @@ describe("canReadSourceFile", () => {
       status: "ready",
     });
     expect(await canReadSourceFile(outsiderAuth, globalFile)).toBe(true);
+  });
+
+  it("grants a system key a user-less upsert_table upload and denies a regular key", async () => {
+    const { auth: systemAuth, workspace } = await createPublicApiMockRequest({
+      systemKey: true,
+    });
+    const file = await FileFactory.csv(systemAuth, null, {
+      useCase: "upsert_table",
+      status: "ready",
+    });
+
+    expect(await canReadSourceFile(systemAuth, file)).toBe(true);
+
+    const regularKey = await KeyFactory.regular(
+      (await GroupFactory.defaults(workspace)).globalGroup
+    );
+    const regularAuth = await Authenticator.fromKey(regularKey, workspace.sId);
+    expect(await canReadSourceFile(regularAuth, file)).toBe(false);
   });
 
   it("limits unattached uploads to the file owner", async () => {
