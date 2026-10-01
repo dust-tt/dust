@@ -30,7 +30,6 @@ import {
 import {
   EDIT_INFORMATION_TOOL_NAME,
   LIST_MEMBERS_TOOL_NAME,
-  MARK_CONVERSATION_READ_TOOL_NAME,
   MOVE_CONVERSATION_TOOL_NAME,
   POD_MANAGER_TOOLS_METADATA,
   SEMANTIC_SEARCH_TOOL_NAME,
@@ -47,7 +46,6 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
-import { clearActionRequiredIfNoBlockedActions } from "@app/lib/api/assistant/conversation/blocked_actions";
 import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
 import config from "@app/lib/api/config";
 import { DustFileSystem, SCOPED_PREFIX_POD } from "@app/lib/api/file_system";
@@ -1837,84 +1835,6 @@ export function createProjectManagerTools(
           })
         );
       }, "Failed to move conversation");
-    },
-
-    [MARK_CONVERSATION_READ_TOOL_NAME]: async (params) => {
-      return withErrorHandling(async () => {
-        const conversationId =
-          params.conversationId ??
-          (isAgentLoopRunContext(toolContext?.runContext)
-            ? toolContext.runContext.conversation.sId
-            : null);
-
-        if (!conversationId) {
-          return new Err(
-            new MCPError(
-              "No conversationId provided and no conversation in agent context; pass conversationId explicitly.",
-              { tracked: false }
-            )
-          );
-        }
-
-        const conversationRes =
-          // biome-ignore lint/plugin/noExpensiveConversationFetch: need unread + actionRequired
-          await ConversationResource.fetchConversationWithParticipantState(
-            auth,
-            conversationId
-          );
-        if (conversationRes.isErr()) {
-          return new Err(
-            new MCPError(`Conversation not found: ${conversationId}`, {
-              tracked: false,
-            })
-          );
-        }
-
-        const conversation = conversationRes.value;
-
-        if (params.read) {
-          // Mirror the PATCH conversation API: skip the write when already read
-          // so future-dated lastReadAt stamps are preserved.
-          if (conversation.unread) {
-            const markRes = await ConversationResource.markAsReadForAuthUser(
-              auth,
-              { conversation }
-            );
-            if (markRes.isErr()) {
-              return new Err(
-                new MCPError(markRes.error.message, { tracked: false })
-              );
-            }
-          }
-
-          if (conversation.actionRequired) {
-            await clearActionRequiredIfNoBlockedActions(auth, {
-              conversationId: conversation.sId,
-            });
-          }
-        } else {
-          const markRes = await ConversationResource.markAsUnreadForAuthUser(
-            auth,
-            { conversation }
-          );
-          if (markRes.isErr()) {
-            return new Err(
-              new MCPError(markRes.error.message, { tracked: false })
-            );
-          }
-        }
-
-        return new Ok(
-          makeSuccessResponse({
-            success: true,
-            conversationId: conversation.sId,
-            read: params.read,
-            message: params.read
-              ? `Conversation marked as read.`
-              : `Conversation marked as unread.`,
-          })
-        );
-      }, "Failed to update conversation read state");
     },
   };
 

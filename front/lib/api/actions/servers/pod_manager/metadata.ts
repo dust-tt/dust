@@ -26,8 +26,6 @@ export const EDIT_INFORMATION_TOOL_NAME = "edit_information" as const;
 export const SET_PINNED_FRAME_TOOL_NAME = "set_pinned_frame" as const;
 export const SET_FILE_TABS_TOOL_NAME = "set_file_tabs" as const;
 export const MOVE_CONVERSATION_TOOL_NAME = "move_conversation" as const;
-export const MARK_CONVERSATION_READ_TOOL_NAME =
-  "mark_conversation_read" as const;
 export const SET_DEFAULT_AGENT_TOOL_NAME = "set_default_agent" as const;
 
 export const POD_MANAGER_TOOLS_METADATA = [
@@ -606,33 +604,6 @@ export const POD_MANAGER_TOOLS_METADATA = [
     displayLabels: {
       running: "Moving conversation",
       done: "Move conversation",
-    },
-    toolCostCategory: "basic",
-    freeUsage: true,
-  },
-  {
-    name: MARK_CONVERSATION_READ_TOOL_NAME,
-    description:
-      "Mark a conversation as read or unread for the current user. " +
-      "Use after triaging unread conversations (list_conversations with unreadOnly=true), " +
-      "or when the user asks to mark a conversation read or unread. " +
-      "Acts on the authenticated user's read state only. " +
-      "If conversationId is omitted, the current agent conversation is used when available.",
-    schema: {
-      read: z
-        .boolean()
-        .describe("true = mark as read (clear unread); false = mark as unread"),
-      conversationId: z
-        .string()
-        .optional()
-        .describe(
-          "Conversation id to update; defaults to the conversation this agent run is in when omitted"
-        ),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Updating conversation read state",
-      done: "Update conversation read state",
     },
     toolCostCategory: "basic",
     freeUsage: true,

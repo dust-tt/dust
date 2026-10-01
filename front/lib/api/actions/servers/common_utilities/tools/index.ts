@@ -4,9 +4,12 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   COMMON_UTILITIES_TOOLS_METADATA,
+  MARK_CONVERSATION_READ_TOOL_NAME,
   SET_CONVERSATION_TITLE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/common_utilities/metadata";
+import { clearActionRequiredIfNoBlockedActions } from "@app/lib/api/assistant/conversation/blocked_actions";
 import { updateConversationTitle } from "@app/lib/api/assistant/conversation/title";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -133,6 +136,77 @@ const handlers: ToolHandlers<typeof COMMON_UTILITIES_TOOLS_METADATA> = {
       {
         type: "text",
         text: `Conversation title updated to "${title}".`,
+      },
+    ]);
+  },
+
+  [MARK_CONVERSATION_READ_TOOL_NAME]: async (
+    { read, conversationId: conversationIdParam },
+    { auth, runContext }
+  ) => {
+    const conversationId =
+      conversationIdParam ??
+      (isAgentLoopRunContext(runContext) ? runContext.conversation.sId : null);
+
+    if (!conversationId) {
+      return new Err(
+        new MCPError(
+          "No conversationId provided and no conversation in agent context; pass conversationId explicitly.",
+          { tracked: false }
+        )
+      );
+    }
+
+    const conversationRes =
+      // biome-ignore lint/plugin/noExpensiveConversationFetch: need unread + actionRequired
+      await ConversationResource.fetchConversationWithParticipantState(
+        auth,
+        conversationId
+      );
+    if (conversationRes.isErr()) {
+      return new Err(
+        new MCPError(`Conversation not found: ${conversationId}`, {
+          tracked: false,
+        })
+      );
+    }
+
+    const conversation = conversationRes.value;
+
+    if (read) {
+      // Mirror the PATCH conversation API: skip the write when already read
+      // so future-dated lastReadAt stamps are preserved.
+      if (conversation.unread) {
+        const markRes = await ConversationResource.markAsReadForAuthUser(auth, {
+          conversation,
+        });
+        if (markRes.isErr()) {
+          return new Err(
+            new MCPError(markRes.error.message, { tracked: false })
+          );
+        }
+      }
+
+      if (conversation.actionRequired) {
+        await clearActionRequiredIfNoBlockedActions(auth, {
+          conversationId: conversation.sId,
+        });
+      }
+    } else {
+      const markRes = await ConversationResource.markAsUnreadForAuthUser(auth, {
+        conversation,
+      });
+      if (markRes.isErr()) {
+        return new Err(new MCPError(markRes.error.message, { tracked: false }));
+      }
+    }
+
+    return new Ok([
+      {
+        type: "text",
+        text: read
+          ? `Conversation ${conversation.sId} marked as read.`
+          : `Conversation ${conversation.sId} marked as unread.`,
       },
     ]);
   },
