@@ -1,85 +1,135 @@
-# Group management manual QA
+# Group management QA — Dust (EU)
 
-Use this checklist to validate the [group manager behavior](group-management.md) delivered by the [implementation plan](group-management-plan.md). Record failures with the account, group, action, and observed result. Check a box only after running it.
+Test in **Dust (EU), `xt80HLpd1C`**, using the existing groups and members below.
+This checklist covers the [product behavior](group-management.md) and [implementation plan](group-management-plan.md).
+The inventory was checked through read-only EU production database queries on **1 October 2026**;
+the tests themselves have not been run. Assume `group_management` stays on.
 
-## Setup
+## What this workspace can cover
 
-Use a test workspace with `group_management` enabled and usage limits available. Keep separate
-sessions for a workspace admin, a workspace manager, and **Alex**, an ordinary member who will
-manage groups. Create these groups with active members:
+The workspace has credit pricing, active Metronome billing, SCIM, and usage requests enabled.
+It has 140 active members, 12 manual groups, and 8 provisioned groups. Core People, Usage,
+appointments, membership, and billing/security delegation tests can run here after the setup below.
 
-| Group | Membership | Alex manages it? |
+**[PREP]** means existing accounts or settings need arranging first. **[GAP]** means the current
+workspace does not cover the case as configured, or the required live data has not been verified.
+Keep these checks open until their stated prerequisite is met.
+
+| Coverage | Current state and remaining work |
+| --- | --- |
+| Core scoped views and membership | Existing manual groups overlap, and provisioned groups cover read-only membership and member pagination. Appoint RadjaTest first. |
+| Limit editing and precedence | **[PREP]** All manual group allowances are unset. Set two temporary values; use RadjaTest for predictable effective limits. |
+| Usage requests | **[PREP]** Requests are enabled, but none are pending. Create fresh requests with tester-controlled accounts before testing resolution. |
+| Access to a restricted space | **[PREP]** `Test space` exists, but neither core group grants access to it. Temporarily share it with `hello` and verify RadjaTest has no independent access. |
+| Usage from before joining a group | **[GAP: verify in UI]** Current-cycle consumption comes from Elasticsearch/Metronome, so this database inspection did not confirm a suitable account's usage. Send a message first if needed. |
+| Admin-group protection and Manager-role self-addition | **[GAP: configure a group]** No existing group grants Admin or Manager. These cases need an existing manual group prepared for role changes, or another workspace. Having admins among the members does not make a group Admin-granting. |
+| Seats granted through membership | **[GAP: contract and group setup]** No group grants seats. Active members have 123 `workspace_yearly` seats and 17 `none` seats; there are no Pro, Max, or free-seat examples. Confirm an allowed seat mapping and a suitable test account before running this case. |
+| Simultaneous approval and partial failures | **[PREP]** Use two ordinary group managers and fresh requests. Failure cases need browser request blocking or another controlled failure. |
+| Groups-list pagination | **[GAP: insufficient rows]** There are 20 visible groups; the list uses 25 rows per page. Member pagination is covered by `team-france`, but group pagination needs a separate larger fixture. |
+
+## Existing fixtures and setup
+
+Keep two sessions: **your own account** for admin setup and workspace-manager regressions, and
+**RadjaTest** for delegated actions. RadjaTest means the separate login supplied to each tester;
+it is not a confirmed display name from the inventory. Start it as an active ordinary workspace
+member with a pool-bearing seat and no other management permissions. A workspace Manager role
+would hide scope failures by granting workspace-wide access.
+
+Use these groups by their exact names:
+
+| Group | Existing active members / grants | Use |
 | --- | --- | --- |
-| Support | Manual: Lee and Pat | Yes |
-| Sales | Manual: Sam, Pat, and Alex | Yes |
-| Legal | Manual: Mira and Pat | No |
-| Directory | Provisioned: at least one member | Yes |
-| Admins | Manual, grants Admin: at least one member | Yes |
+| `hello` | Fabien Celier, Yuka Masuda; no role, seat, or direct permission grants | First managed manual group |
+| `test-fabien` | Achille Burah, Arthur Galy, Fabien Celier, Matteo Trabattoni; no role, seat, or direct permission grants | Second managed manual group; Fabien is the overlap |
+| `matteo-test` | Matteo Trabattoni | Unmanaged group belonging to a visible member |
+| `test-pr` | Elias Nefzi, Mzero_test (pr); grants billing access | Unmanaged group; its members are outside the core scope |
+| `Dev` | 30 active members; provisioned | Read-only membership phase |
+| `team-france` | 84 active members; provisioned | Member pagination phase |
+| `test-m0-pr` | Mzero_test (pr); grants billing and security access | Final privileged-membership phase only |
 
-- Appoint **Casey**, another ordinary member, manager of Support for checks involving two managers.
-  Keep **Jo**, an active member with some current-cycle usage, outside these groups for addition tests.
-- Give the workspace, Support, Legal, and Sales distinct allowances, with Sales highest. Give Pat
-  a personal limit different from these. Prepare pending requests from Lee, Pat, and Mira.
-- Share a test space with Support to check access changes. Use enough sample members to exercise
-  a second page when checking pagination.
-- Reserve a manual group **Privileged** granting Manager and, where supported, billing/security
-  access or a paid seat. Keep Alex outside it until the final checks.
+Useful identities: **Mzero_test (pr)** (`rXNgwOQeF1`) is outside both core groups;
+**Philippe R.** (`oO6YaZpIRd`, distinct from Philippe Rolet) is an ordinary member with no manual
+or provisioned group membership. Use existing colleagues for read checks and accounts controlled
+by the testers for changes that require signing in as the affected person.
 
-## Appointments and group settings
+1. Record the current managers, memberships, and allowances of groups you will change. Coordinate
+   shared groups between testers and restore your changes afterward.
+2. As admin, appoint RadjaTest manager of `hello` and `test-fabien`, initially without adding her
+   as a member. Her initial visible members should be the five unique people listed above.
+   Remove any extra test assignments that would broaden that scope.
+3. Leave `Dev` and `team-france` unmanaged for the core tests. Appoint RadjaTest to them only during
+   the provisioned-group phase, then revoke those assignments. Otherwise removing someone from a
+   manual group may leave them visible through a provisioned group.
+4. For a second delegated manager, use another tester's RadjaTest and appoint it to the same groups.
+   Alternatively, temporarily make your own account an ordinary member; restore its role for admin operations.
 
-- [ ] As admin, open each group dialog. Current managers are shown beside groups in the group list, and manager/member counts in the dialogs match the saved people.
-- [ ] In Support, select an existing member as manager. The non-member warning does not appear. Save; the assignment is visible after reopening, without changing that person's role or membership.
-- [ ] In Support, select an active non-member as manager. The picker marks them **Not group member** and explains the access they can grant. Cancel the warning: nothing is saved. Repeat and choose **Appoint anyway**: the manager is saved, but is still outside the group.
-- [ ] Select several non-members together. One warning uses plural copy and one confirmation saves all pending appointments. A member added only in the unsaved membership form still triggers the warning; a member pending removal is treated as a non-member.
-- [ ] In Directory and Admins, appoint a non-member manager. There is no membership warning; the picker explains directory-owned or admin-only membership instead. Both assignments save.
-- [ ] As Alex, try to edit manager assignments, rename or delete a group, or change what a group grants. These actions are unavailable; a direct request also fails. The admin can still update and clear manager assignments.
+## Appointments and scoped pages
 
-## Scoped People page
+- [ ] As admin, verify group managers beside group names and the manager/member counts in group dialogs. Appoint Fabien to `hello`: no non-member warning. Restore the original assignment afterward.
+- [ ] Appoint RadjaTest while she is outside `hello`. The blue **Not group member** badge and warning explain the access she can grant. Cancel: nothing saves. **Appoint anyway** saves the assignment without changing membership or workspace role.
+- [ ] Repeat with two outside accounts for the plural warning. An unsaved membership addition still counts as outside; a pending removal also triggers the warning. Restore the starting memberships.
+- [ ] As RadjaTest, open People and Usage from navigation and by URL. Only the two managed groups and their five unique members appear; Fabien appears once. Search, filters, and counts remain scoped when filters are cleared.
+- [ ] Open Matteo's People member dialog. `test-fabien` appears; unmanaged `matteo-test` does not. His Usage limit editor can explain inherited allowances from unmanaged groups but cannot edit them.
+- [ ] Search for Mzero_test or Philippe R. in the member list: neither appears. The add-member picker can find them by identity, without exposing usage. Direct usage reads or edits for them fail.
+- [ ] Invitations, workspace removal, direct role/seat changes, group creation/rename/deletion, changes to group grants, and manager appointments are unavailable to RadjaTest. Direct requests fail too.
 
-- [ ] As Alex, open **People** from navigation and by URL. **Members** shows active members of managed groups only; Pat appears once. Search, pagination, and counts stay within that set. Legal-only members and workspace-wide settings do not appear.
-- [ ] **Groups** shows Support, Sales, Directory, and Admins, with their members. Legal is absent. Support and Sales offer membership controls; Directory says membership is managed in the identity provider; Admins says it requires a workspace admin.
-- [ ] Open Pat's member dialog. Its group list shows Support and Sales, not Legal. Add/remove controls apply only to editable managed groups.
-- [ ] Open **Add members** for Support. Search finds Jo and other active workspace members outside Alex's managed groups, showing only the identity needed to select them. It does not show their usage or workspace administration data.
-- [ ] As Alex, check that invitations, direct role or seat changes, workspace removal, group creation/deletion, and manager appointments are unavailable. Opening their existing URLs or submitting their requests directly does not grant access.
+## Membership and provisioned groups
 
-## Membership changes
+- [ ] Add RadjaTest herself to `hello`. She appears in the scoped member list and can manage her own limit. Remove her from the group: her manager appointment remains, but usage authority over herself ends. Repeat an add/remove through a member's group controls using a tester-controlled member; removing group membership never removes workspace membership.
+- [ ] Remove Fabien from `hello`: he remains visible through `test-fabien`. Restore Fabien, then remove Yuka: she leaves RadjaTest's scope, even though she still belongs to unmanaged groups. A previously open edit fails. Restore Yuka before continuing.
+- [ ] Temporarily appoint RadjaTest manager of `matteo-test`. Try removing its sole member, Matteo, through the member's group controls: it must fail and leave membership unchanged. Revoke this temporary assignment.
+- [ ] **[PREP: space]** Share existing `Test space` with `hello`. Verify RadjaTest cannot access it before joining, can after joining, and loses access after leaving. Remove the temporary sharing afterward. `Company Data` is not a substitute: everyone already has reader access, so leaving `test-scbe` cannot remove all access to it.
+- [ ] **[GAP: usage fixture]** Before adding a tester-controlled account to `hello`, confirm nonzero usage in the current cycle. After adding it, RadjaTest sees that earlier consumption too. If no suitable account has usage, generate some and leave this case open until it appears.
+- [ ] Temporarily appoint RadjaTest to `Dev` and `team-france`. Non-member appointments skip the membership warning. Both groups appear and explain directory-managed membership; add/remove attempts fail. Their member usage and limits remain manageable. Check deduplication and a second page of members, then revoke these assignments.
+- [ ] Successful membership edits through both group and member dialogs refresh the current session's People data when PR 20 is included. A manual reload is acceptable without that optional follow-up; changes made in another session may require one.
 
-- [ ] As Alex, add Jo to Support. After reloading, Jo appears in People and Usage, including usage from before joining. Jo gains access to the test space. Remove Jo: group access ends, but Jo remains a workspace member. A manual reload is acceptable when the People list is stale.
-- [ ] Remove Pat from Support. Pat's Sales and Legal memberships remain, and Alex can still manage Pat through Sales. Remove Lee from Support: Alex can no longer see or edit Lee unless another managed group contains Lee.
-- [ ] Try adding or removing members in Legal, Directory, and Admins, including through direct requests. All fail for Alex; the saved membership and roles remain unchanged. The admin can still edit Admins, and directory provisioning remains the owner of Directory membership.
-- [ ] Check that existing last-member and self-lockout protections still apply to delegated membership edits.
-- [ ] Restore Pat and Lee to Support, and confirm Alex remains an ordinary member, before starting Usage and request checks. A manual reload is enough to update the People view.
-- [ ] If the optional PR 20 is included, add/remove Jo through both the group dialog and a member's group controls. Successful edits refresh the current session's People list and permissions without a reload. Changes made in another session may still require a reload.
+## Limits
 
-## Scoped Usage and limits
+**[PREP]** Temporarily set `hello` to 200 credits per member and `test-fabien` to 400, then add
+RadjaTest to both. She must have no other group allowance or personal override for the baseline.
+The workspace default is currently **100,000**. Values below are pool allowances; any seat allowance
+is added when showing the effective total.
 
-- [ ] As Alex, open **Usage** from navigation and by URL. The page explains the managed scope. **Members** shows Lee, Sam, Pat, and other current managed members once each, with consumption, effective limit, source, and edit action. Legal-only members are absent.
-- [ ] Switch between **All groups you manage**, Support, Sales, Directory, and Admins. Results, request counts, search, and pagination match the selected scope. Clearing a filter never reveals the whole workspace. **Groups** shows only managed groups and their editable per-member allowances.
-- [ ] Open Pat's personal-limit editor. It says the personal limit applies across the workspace. Set a valid limit lower than Sales' allowance; the personal override still wins. Clear it: Sales' allowance wins over Legal, Support, and the workspace default. Check the displayed source at each step.
-- [ ] Alex and Casey edit Pat's personal limit in sequence. The last successful edit applies across the workspace. Alex can also edit Alex's own personal limit through Sales. Existing seat allowance behavior is unchanged.
-- [ ] Edit Support's allowance and clear it. A personal override or higher Sales allowance may keep a member's effective value unchanged; Legal's allowance is unaffected. For Lee, with no other group allowance or personal override, the workspace default becomes effective after Support's allowance is cleared.
-- [ ] When editing a member who also belongs to Legal, Alex can edit the personal limit and allowances of managed groups only. Other inherited settings are explanatory and read-only. A direct attempt to change Legal's allowance fails.
-- [ ] As Alex, try to read or edit usage for a Legal-only member by URL or direct request. It fails. Purchases, workspace settings, bulk actions, seat upgrades, and workspace-wide reporting retain their existing permissions.
+Existing employees are less predictable fixtures: Fabien, Yuka, and Matteo also belong to `Team`,
+whose allowance is **1,000,000**; `Dev` grants **2,000**. Achille already has a personal override.
+Do not expect the temporary 200/400 settings to replace those higher or overriding limits.
+
+- [ ] As RadjaTest, set her personal pool limit to 100. The personal override wins even though it is lower than both group allowances. The editor says it applies across the workspace. Clear it: `test-fabien`'s 400 wins, even though the workspace default is higher.
+- [ ] Clear `test-fabien`'s allowance: `hello`'s 200 wins. Clear `hello`'s allowance: the workspace default applies. Verify the effective value and source each time. Restore both group settings and RadjaTest's starting personal limit.
+- [ ] With both testers acting as ordinary group managers, edit the same tester-controlled member's personal limit in sequence. The last successful edit applies, including over an override previously set by an admin.
+- [ ] On Fabien or Matteo, unmanaged inherited settings stay read-only; a direct attempt to edit `Team` or `matteo-test` fails. Changing a managed allowance need not change the effective limit while a higher inherited allowance applies.
+- [ ] Bulk actions, purchases, workspace defaults, and seat upgrades retain their existing permissions. Do not use a `none`-seat account for limit precedence: it has no pool access.
 
 ## Usage-limit requests
 
-- [ ] As Alex, the request list and count include Lee and Pat only while they belong to managed groups; Pat's request appears once. Mira's Legal-only request is absent, including under search and filters.
-- [ ] Create a fresh pending request, or reset the request fixture, before each resolution or failure check below. Use a Support requester for checks involving Casey.
-- [ ] Open a pending request's approval editor and cancel it. The request stays pending and no limit is saved. Simulate a failed limit save: the request stays pending and the attempted limit does not apply.
-- [ ] Deny Lee's pending request. Its status changes once; Lee's limit does not change. Repeating the resolution fails or reports that it is already handled.
-- [ ] Approve Pat's pending request through the limit editor. The chosen limit saves before the request becomes approved; the effective limit and request status reflect both changes.
-- [ ] With Casey, open the same pending Support request in two sessions. Resolve it in one session, then try in the other. Only one resolution succeeds; the second sees the current status after refresh.
-- [ ] Simulate failure of the approval update after a successful limit save. The limit remains saved; the UI says the limit was saved but approval failed, and automatically refreshes the request status. Resolve it afterward if still pending.
-- [ ] Remove a requester's last managed-group membership, then try to approve or deny their previously loaded request as Alex. The stale action fails with an error; reloading removes the request from Alex's view.
+**[PREP]** There are currently **zero pending requests**. Use a tester-controlled ordinary account
+with a seat: bring it near its limit through the UI, then submit a request. Workspace admins/managers
+do not get the ordinary member's request prompt. Request emails are enabled and keep their normal
+recipients. Create a fresh request for each case; changing membership moves an existing request
+between scopes without needing another account.
 
-## Revocation, flag, and existing roles
+- [ ] Start with the requester outside `hello` and `test-fabien`: RadjaTest cannot see the request. Add them to both: it appears once, with correct group filtering and counts.
+- [ ] Cancel the approval editor or fail the limit save. The request stays pending and the attempted limit does not apply. Deny a fresh request: only its status changes.
+- [ ] Approve a fresh request: the limit saves before approval. Use two ordinary group managers on another request; after one resolves it, the other's attempt fails and shows the refreshed status.
+- [ ] Fail the approval update after a successful limit save. The limit stays saved; the error explains that, and the request status refreshes automatically. This needs controlled request failure, not different workspace data.
+- [ ] Remove the requester from both managed groups while their request is open. RadjaTest's stale approve/deny attempt fails. Restore the memberships and test limit afterward.
 
-- [ ] Have the admin revoke Alex's Support assignment. After a reload, Support-only people, group settings, and requests leave Alex's scope. A stale edit or direct request fails with an error. Prior membership and limit changes remain saved.
-- [ ] Remove Alex's remaining assignments. People and Usage access gained only through group management disappears; stored changes to members, limits, and grants are not rolled back.
-- [ ] Disable `group_management` while the assignments are still stored, or restore an assignment before disabling it. Alex loses delegated page and API access. Re-enable it and verify current assignments work again.
-- [ ] As the workspace manager and admin, repeat a normal People membership change, Usage read/limit edit, and request resolution. Their existing workspace-wide access still works, including outside the managed groups; only the admin can edit Admins membership and manager assignments.
+## Revocation and existing roles
 
-## Sensitive membership, last
+- [ ] Keep a `hello` member edit open as RadjaTest, then revoke her `hello` appointment from the admin session. A stale edit fails; after reload, `hello` and members visible only through it disappear. Overlapping members remain visible through `test-fabien`. Earlier membership and limit changes remain saved.
+- [ ] Revoke all RadjaTest's assignments. Access gained only through group management disappears after reload. Restore her starting assignments afterward.
+- [ ] On your own account, repeat a membership change, limit edit, and request resolution as workspace Manager, then Admin. Existing workspace-wide access still works. Return RadjaTest to ordinary-member status before any further scoped checks.
 
-- [ ] With the flag enabled again, have the admin appoint Alex manager of Privileged. As Alex, add an ordinary test member, then add Alex. The group's configured Manager role, billing/security access, or seat follows membership. Direct role and seat controls still use their existing permissions.
-- [ ] Revoke Alex's Privileged manager assignment. Alex keeps privileges gained by joining the group. Have the admin remove Alex from Privileged; those group-derived privileges then end, subject to any independent grants. Do not use Alex for scoped-access checks after self-addition.
+## Privileges and remaining gaps — run last
+
+- [ ] Temporarily appoint RadjaTest manager of `test-m0-pr` while she is outside it. Add her as a member: she gains its billing/security access. Revoke only her manager appointment: that membership-derived access remains. Remove her membership as admin to restore the baseline. This existing group covers sensitive access without creating a group.
+- [ ] **[GAP: Admin-granting group]** Needs a manual group configured to grant Admin, with a controlled member already in it. Appoint RadjaTest from outside: no membership warning; membership stays read-only, and direct add/remove attempts fail without changing roles or membership. Usage management must still work. Restore the mapping afterward.
+- [ ] **[GAP: Manager-granting group]** Needs a manual group configured to grant Manager. A delegated RadjaTest can add herself and gains the workspace Manager role. Revoking her appointment does not undo that role; remove the membership separately, then restore the group. Check existing self-lockout protection with a separate admin session available.
+- [ ] **[GAP: seats]** Verify the contract offers a seat that an existing manual group can grant, and use an eligible tester-controlled account that does not already have it. Check allocation on membership and the result of removal. Existing `workspace_yearly` memberships alone do not prove the seat mapping is available; personal-seat allowance behavior needs a suitable Pro/Max fixture too.
+
+For these missing group mappings, agree which existing group to reconfigure and keep an original
+member in it for cleanup. Starting with an empty group is awkward: the normal membership controls
+will not let you remove its last member afterward.
+
+Restore the recorded memberships, grants, appointments, and limits. Record any unrun **[PREP]** or
+**[GAP]** checks as remaining QA; configuration inspection is not a test pass.
