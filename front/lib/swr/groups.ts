@@ -466,11 +466,11 @@ export function useUpdateGroup({
   const doUpdateGroup = useCallback(
     async ({
       name,
-      memberIds,
+      memberChanges,
       managerIds,
     }: {
       name?: string;
-      memberIds?: string[];
+      memberChanges?: { addMemberIds: string[]; removeMemberIds: string[] };
       managerIds?: string[];
     }): Promise<PatchGroupResponseBody | null> => {
       if (!groupId) {
@@ -481,7 +481,7 @@ export function useUpdateGroup({
         const res = await clientFetch(`/api/w/${owner.sId}/groups/${groupId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, memberIds, managerIds }),
+          body: JSON.stringify({ name, memberChanges, managerIds }),
         });
 
         if (!res.ok) {
@@ -518,7 +518,7 @@ export function useUpdateGroup({
         );
 
         await invalidateWorkspaceGroups(owner.sId);
-        if (memberIds !== undefined || managerIds !== undefined) {
+        if (memberChanges !== undefined || managerIds !== undefined) {
           await invalidatePeople(owner.sId);
         }
 

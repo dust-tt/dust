@@ -114,8 +114,12 @@ function GroupForm({
 }: GroupFormProps) {
   const { hasFeature } = useFeatureFlags();
   const [name, setName] = useState(initialName);
+  // The form works on the members it was mounted with: `initialMembers` can change when the group
+  // revalidates, and diffing the selection against the newer list would remove members the admin
+  // was never shown.
+  const [seededMembers] = useState(initialMembers);
   const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(
-    () => new Set(initialMembers.map((m) => m.sId))
+    () => new Set(seededMembers.map((m) => m.sId))
   );
   const [selectedManagers, setSelectedManagers] =
     useState<SearchMemberType[]>(initialManagers);
@@ -130,10 +134,10 @@ function GroupForm({
     group,
     initialManagers,
     selectedManagers,
-    initialMembers,
+    initialMembers: seededMembers,
     selectedMemberIds,
   });
-  const initialMemberIds = new Set(initialMembers.map((member) => member.sId));
+  const initialMemberIds = new Set(seededMembers.map((member) => member.sId));
   const hasGroupChanges =
     name.trim() !== initialName ||
     selectedMemberIds.size !== initialMemberIds.size ||
@@ -162,9 +166,18 @@ function GroupForm({
       return false;
     }
     if (hasGroupChanges) {
+      // Send only what the admin changed relative to the members they were shown: anyone else,
+      // including members added since the dialog's data was fetched, is left untouched.
       const result = await doUpdateGroup({
         name: name.trim() !== initialName ? name.trim() : undefined,
-        memberIds: Array.from(selectedMemberIds),
+        memberChanges: {
+          addMemberIds: [...selectedMemberIds].filter(
+            (id) => !initialMemberIds.has(id)
+          ),
+          removeMemberIds: [...initialMemberIds].filter(
+            (id) => !selectedMemberIds.has(id)
+          ),
+        },
       });
       if (!result) {
         return false;
@@ -252,7 +265,7 @@ function GroupForm({
               owner={owner}
               selectedMemberIds={selectedMemberIds}
               onSelectionChange={setSelectedMemberIds}
-              initialMembers={initialMembers}
+              initialMembers={seededMembers}
               disabled={readOnly || isSubmitting}
             />
           </div>

@@ -144,11 +144,13 @@ app.patch(
   async (ctx): HandlerResult<PatchGroupResponseBody> => {
     const auth = ctx.get("auth");
     const { groupId } = ctx.req.valid("param");
-    const { name, memberIds, managerIds } = ctx.req.valid("json");
+    const { name, memberIds, memberChanges, managerIds } =
+      ctx.req.valid("json");
 
     if (
       name === undefined &&
       memberIds === undefined &&
+      memberChanges === undefined &&
       managerIds === undefined
     ) {
       return apiError(ctx, {
@@ -156,7 +158,17 @@ app.patch(
         api_error: {
           type: "invalid_request_error",
           message:
-            "At least one of `name`, `memberIds`, or `managerIds` must be provided.",
+            "At least one of `name`, `memberIds`, `memberChanges`, or `managerIds` must be provided.",
+        },
+      });
+    }
+
+    if (memberIds !== undefined && memberChanges !== undefined) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Provide either `memberIds` or `memberChanges`, not both.",
         },
       });
     }
@@ -200,7 +212,11 @@ app.patch(
     if (managerIds !== undefined) {
       // Assignment changes use a separate PATCH so invalid membership/name changes cannot leave
       // a partially applied manager change (or vice versa).
-      if (name !== undefined || memberIds !== undefined) {
+      if (
+        name !== undefined ||
+        memberIds !== undefined ||
+        memberChanges !== undefined
+      ) {
         return apiError(ctx, {
           status_code: 400,
           api_error: {
@@ -284,6 +300,10 @@ app.patch(
     const updateRes = await group.updateRegularManualGroup(auth, {
       name,
       memberIds,
+      memberChanges: memberChanges && {
+        addUserIds: memberChanges.addMemberIds,
+        removeUserIds: memberChanges.removeMemberIds,
+      },
     });
     if (updateRes.isErr()) {
       switch (updateRes.error.code) {
