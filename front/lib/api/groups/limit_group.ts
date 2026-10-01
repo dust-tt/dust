@@ -6,8 +6,10 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 /**
  * @cc [owner:rfrenoy,label:product;backend] limit-group-resolution
  * A member's limit group is, among their active memberships in cap-eligible groups that have a group
- * limit, the one with the lowest `groupLimitPriority`. Recording, enforcement and UI data MUST resolve
- * it through this function, which returns nothing when group limits are not enabled.
+ * limit, the one with the lowest `groupLimitPriority`. Enforcement, UI data and the first recording of
+ * a message MUST resolve it through this function (later recordings reuse the group stored on the
+ * message, see `limit-group-captured-at-recording`). Returns nothing when group limits are not
+ * enabled.
  *
  * Returns each resolved member's limit group keyed by the member's sId; members without one, or whose
  * limit group the caller cannot `read`, are absent.
