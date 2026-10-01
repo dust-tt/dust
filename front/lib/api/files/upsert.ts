@@ -92,11 +92,13 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
   let parent_id: string | null = null;
   let parents: string[] = [documentId];
   let title = file.fileName;
+  let extraTags: string[] = [];
   if (isUpsertDocumentArgs(upsertArgs)) {
     documentId = upsertArgs.document_id;
     parent_id = upsertArgs.parent_id ?? null;
     parents = upsertArgs.parents ?? [documentId];
     title = upsertArgs.title ?? file.fileName;
+    extraTags = upsertArgs.tags ?? [];
   }
   const content = await getFileContent(auth, file);
   if (!content) {
@@ -114,7 +116,12 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
     text: content,
     parent_id,
     parents,
-    tags: [`title:${title}`, `fileId:${file.sId}`, `fileName:${file.fileName}`],
+    tags: [
+      `title:${title}`,
+      `fileId:${file.sId}`,
+      `fileName:${file.fileName}`,
+      ...extraTags,
+    ],
     light_document_output: true,
     dataSource,
     auth,
