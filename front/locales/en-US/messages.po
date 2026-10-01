@@ -1178,6 +1178,19 @@ msgstr "See usage details"
 msgid "there"
 msgstr "there"
 
+#: front/lib/notifications/workflows/consumption-export-ready.ts
+msgid "Your consumption export is ready"
+msgstr "Your consumption export is ready"
+
+#: front/lib/notifications/workflows/consumption-export-ready.ts
+msgid "The raw consumption data you requested has finished generating and is ready to download."
+msgstr "The raw consumption data you requested has finished generating and is ready to download."
+
+#: front/lib/notifications/workflows/consumption-export-ready.ts
+msgctxt "action"
+msgid "Download"
+msgstr "Download"
+
 #: front/lib/notifications/workflows/pod-added-as-member.ts
 msgid "A Pod"
 msgstr "A Pod"
