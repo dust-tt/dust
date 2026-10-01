@@ -123,6 +123,8 @@ export interface SlashCommandDropdownProps
   // Row highlighted when the list (re)renders; falls back to the first item.
   defaultSelectedItemId?: string | null;
   emptyMessage?: string;
+  // Rendered above the list and the empty message, outside the scroll area (e.g. filters).
+  filterBar?: React.ReactNode;
   header?: string;
   // Rendered at the top of the list, after the sub-menu "Back" row when there is one (e.g. the
   // breadcrumbs of a browsable sub-menu).
@@ -290,6 +292,7 @@ export const SlashCommandDropdown = forwardRef<
       clientRect,
       defaultSelectedItemId,
       emptyMessage = DEFAULT_EMPTY_MESSAGE,
+      filterBar,
       header,
       headerContent,
       isLoading = false,
@@ -480,7 +483,11 @@ export const SlashCommandDropdown = forwardRef<
           <div style={virtualTriggerStyle} />
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className={size === "wide" ? "w-80" : "w-64"}
+          className={cn(
+            size === "wide" ? "w-80" : "w-64",
+            filterBar && "h-auto xs:h-auto"
+          )}
+          dropdownHeaders={filterBar}
           align="start"
           avoidCollisions
           collisionPadding={12}

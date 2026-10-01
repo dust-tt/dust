@@ -13,6 +13,12 @@ import type {
 } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { SlashCommandDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { createSlashSuggestionExtension } from "@app/components/editor/extensions/shared/slash_suggestion/SlashSuggestionExtension";
+import type { SlashMenuFilter } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuFilter";
+import {
+  getSlashMenuFilterEmptyMessage,
+  getSlashMenuFilterSources,
+  SlashMenuFilterBar,
+} from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuFilter";
 import {
   ATTACH_CONTEXT_SUB_MENU_ID,
   clearSlashSubMenuStack,
@@ -37,6 +43,7 @@ import {
   useImperativeHandle,
   useMemo,
   useRef,
+  useState,
 } from "react";
 
 export const slashCommandPluginKey = new PluginKey("slashCommand");
@@ -77,6 +84,7 @@ const SkillBuilderSlashCommandDropdownInner = forwardRef<
   ) => {
     const dropdownRef = useRef<SlashCommandDropdownRef>(null);
     const subMenuRef = useRef<SlashCommandDropdownRef>(null);
+    const [filter, setFilter] = useState<SlashMenuFilter>("all");
     const { activeFrame, pop, storage } = useSlashMenuStack(
       editor,
       "slashCommand"
@@ -103,13 +111,18 @@ const SkillBuilderSlashCommandDropdownInner = forwardRef<
     const { capabilityItems, isLoading, resolvedQuery } =
       useSkillBuilderSlashCommandCapabilities({
         excludeSkillId: currentSkillIdRef?.current ?? null,
+        filter,
         owner,
         query,
       });
 
+    const { includeCommands } = getSlashMenuFilterSources(filter);
     const commandItems = useMemo(
-      () => filterSlashCommandItems(SLASH_COMMANDS, resolvedQuery),
-      [resolvedQuery]
+      () =>
+        includeCommands
+          ? filterSlashCommandItems(SLASH_COMMANDS, resolvedQuery)
+          : [],
+      [includeCommands, resolvedQuery]
     );
 
     const sections = useMemo(
@@ -192,7 +205,10 @@ const SkillBuilderSlashCommandDropdownInner = forwardRef<
         sections={sections}
         command={command}
         clientRect={clientRect}
-        emptyMessage="No commands found"
+        emptyMessage={getSlashMenuFilterEmptyMessage(filter)}
+        filterBar={
+          <SlashMenuFilterBar onSelect={setFilter} selectedFilter={filter} />
+        }
         isLoading={isLoading}
         onClose={onClose}
         onItemDetails={handleItemDetails}

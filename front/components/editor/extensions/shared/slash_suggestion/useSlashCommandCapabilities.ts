@@ -1,4 +1,6 @@
 import { MAX_RENDERED_CAPABILITY_ITEMS } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import type { SlashMenuFilter } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuFilter";
+import { getSlashMenuFilterSources } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuFilter";
 import {
   getMcpServerViewDisplayName,
   isToolWithKnowledge,
@@ -61,13 +63,16 @@ function getSkillBuilderSlashCommandTools({
 
 export function useInputBarSlashCommandCapabilities({
   excludeSkillId,
+  filter = "all",
   owner,
   query,
 }: {
   excludeSkillId?: string | null;
+  filter?: SlashMenuFilter;
   owner: LightWorkspaceType;
   query: string;
 }) {
+  const { includeSkills, includeTools } = getSlashMenuFilterSources(filter);
   const { hasFeature } = useFeatureFlags();
   const useSkillSearch = hasFeature("skills_search");
   const { spaces: globalSpaces, isSpacesLoading } = useSpaces({
@@ -115,10 +120,18 @@ export function useInputBarSlashCommandCapabilities({
         excludeSkillId,
         query: capabilityQuery,
         useSearchRanking: useSkillSearch,
-        skills,
-        tools: serverViews,
+        skills: includeSkills ? skills : [],
+        tools: includeTools ? serverViews : [],
       }),
-    [capabilityQuery, excludeSkillId, serverViews, skills, useSkillSearch]
+    [
+      capabilityQuery,
+      excludeSkillId,
+      includeSkills,
+      includeTools,
+      serverViews,
+      skills,
+      useSkillSearch,
+    ]
   );
 
   return {
@@ -134,13 +147,16 @@ export function useInputBarSlashCommandCapabilities({
 
 export function useSkillBuilderSlashCommandCapabilities({
   excludeSkillId,
+  filter = "all",
   owner,
   query,
 }: {
   excludeSkillId?: string | null;
+  filter?: SlashMenuFilter;
   owner: LightWorkspaceType;
   query: string;
 }) {
+  const { includeSkills, includeTools } = getSlashMenuFilterSources(filter);
   const { hasFeature } = useFeatureFlags();
   const useSkillSearch = hasFeature("skills_search");
   const { spaces, isSpacesLoading } = useSpaces({
@@ -186,13 +202,21 @@ export function useSkillBuilderSlashCommandCapabilities({
       buildCapabilitySlashCommandItems({
         excludeSkillId,
         query: capabilityQuery,
-        skills,
-        tools,
+        skills: includeSkills ? skills : [],
+        tools: includeTools ? tools : [],
         useSearchRanking: useSkillSearch,
         toolFilter: (serverView) =>
           getMCPServerRequirements(serverView).noRequirement,
       }),
-    [capabilityQuery, excludeSkillId, skills, tools, useSkillSearch]
+    [
+      capabilityQuery,
+      excludeSkillId,
+      includeSkills,
+      includeTools,
+      skills,
+      tools,
+      useSkillSearch,
+    ]
   );
 
   return {

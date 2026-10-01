@@ -12,6 +12,12 @@ import type {
   SlashCommandDropdownRef,
 } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { SlashCommandDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import type { SlashMenuFilter } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuFilter";
+import {
+  getSlashMenuFilterEmptyMessage,
+  getSlashMenuFilterSources,
+  SlashMenuFilterBar,
+} from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuFilter";
 import {
   ATTACH_CONTEXT_SUB_MENU_ID,
   clearSlashSubMenuStack,
@@ -31,6 +37,7 @@ import {
   useImperativeHandle,
   useMemo,
   useRef,
+  useState,
 } from "react";
 
 export const InputBarSlashSuggestionDropdown = forwardRef<
@@ -77,6 +84,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
   ) => {
     const dropdownRef = useRef<SlashCommandDropdownRef>(null);
     const subMenuRef = useRef<SlashCommandDropdownRef>(null);
+    const [filter, setFilter] = useState<SlashMenuFilter>("all");
     const {
       activeFrame: stackFrame,
       pop,
@@ -145,13 +153,18 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
 
     const { capabilityItems, isLoading, resolvedQuery } =
       useInputBarSlashCommandCapabilities({
+        filter,
         owner,
         query,
       });
 
+    const { includeCommands } = getSlashMenuFilterSources(filter);
     const commandItems = useMemo(
-      () => filterInputBarSlashCommandItems(allCommandItems, resolvedQuery),
-      [allCommandItems, resolvedQuery]
+      () =>
+        includeCommands
+          ? filterInputBarSlashCommandItems(allCommandItems, resolvedQuery)
+          : [],
+      [allCommandItems, includeCommands, resolvedQuery]
     );
 
     const sections = useMemo(
@@ -262,7 +275,10 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
         sections={sections}
         command={command}
         clientRect={clientRect}
-        emptyMessage="No commands found"
+        emptyMessage={getSlashMenuFilterEmptyMessage(filter)}
+        filterBar={
+          <SlashMenuFilterBar onSelect={setFilter} selectedFilter={filter} />
+        }
         isLoading={isLoading}
         onClose={onClose}
         onItemDetails={
