@@ -14,6 +14,7 @@ import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configurat
 import { getAuthors, getEditors } from "@app/lib/api/assistant/editors";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toPokeAgentSummaryJSON } from "@app/lib/resources/agent_resource_serialization";
 import { Err } from "@app/types/shared/result";
 
 type AgentHandlers = Pick<
@@ -81,15 +82,16 @@ export const agentHandlers: AgentHandlers = {
     const agents = await listAgentsByStatus(targetAuth, status);
     const instructionsByAgent =
       await AgentResource.batchFetchInstructions(agents);
-    const allAgents = agents.map((agent) => ({
-      ...agent.toJSON(),
-      instructionsLength:
-        instructionsByAgent.get(agent)?.instructions?.length ?? 0,
-    }));
+    const summaries = agents.map((agent) =>
+      toPokeAgentSummaryJSON(agent, {
+        instructionsLength:
+          instructionsByAgent.get(agent)?.instructions?.length ?? 0,
+      })
+    );
 
     // Sort by versionCreatedAt DESC, sId ASC as tiebreaker.
     // Null versionCreatedAt is treated as oldest.
-    const sorted = [...allAgents].sort((a, b) => {
+    const sorted = summaries.toSorted((a, b) => {
       const timeA = a.versionCreatedAt
         ? new Date(a.versionCreatedAt).getTime()
         : 0;
@@ -99,7 +101,7 @@ export const agentHandlers: AgentHandlers = {
       if (timeB !== timeA) {
         return timeB - timeA;
       }
-      return a.sId < b.sId ? -1 : a.sId > b.sId ? 1 : 0;
+      return a.agentId < b.agentId ? -1 : a.agentId > b.agentId ? 1 : 0;
     });
 
     const pageLimit = Math.min(limit ?? 50, 200);
@@ -121,7 +123,7 @@ export const agentHandlers: AgentHandlers = {
         if (aTime < cursorTime) {
           return true;
         }
-        if (aTime === cursorTime && a.sId > cursor.sId) {
+        if (aTime === cursorTime && a.agentId > cursor.sId) {
           return true;
         }
         return false;
@@ -137,24 +139,14 @@ export const agentHandlers: AgentHandlers = {
       startIndex + pageLimit < sorted.length && lastItem
         ? encodeCursor(
             lastItem.versionCreatedAt ?? new Date(0).toISOString(),
-            lastItem.sId
+            lastItem.agentId
           )
         : null;
 
     return jsonResponse({
       workspace_id,
       totalCount: sorted.length,
-      agents: page.map((a) => ({
-        agentId: a.sId,
-        name: a.name,
-        description: a.description,
-        scope: a.scope,
-        status: a.status,
-        version: a.version,
-        versionCreatedAt: a.versionCreatedAt,
-        instructionsLength: a.instructionsLength,
-        requestedSpaceCount: a.requestedSpaceIds.length,
-      })),
+      agents: page,
       nextPageCursor,
     });
   },
