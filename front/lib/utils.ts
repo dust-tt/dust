@@ -1,6 +1,10 @@
 import { compareStrings } from "@app/lib/i18n/format";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  AgentFavoriteEnrichment,
+  LightAgentConfigurationType,
+} from "@app/types/assistant/agent";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
 import { isDevelopment } from "@app/types/shared/env";
 import type { TagType } from "@app/types/tag";
@@ -332,21 +336,34 @@ export function compareForFuzzySort(query: string, a: string, b: string) {
   return 0;
 }
 
-export function filterAndSortAgents(
-  agents: LightAgentConfigurationType[],
-  searchText: string
-) {
+// `favorites` supplies the favorite state of agents that carry none (`AgentResource`).
+export function filterAndSortAgents<
+  T extends LightAgentConfigurationType | AgentResource,
+>(
+  agents: T[],
+  searchText: string,
+  favorites?: Map<string, AgentFavoriteEnrichment>
+): T[] {
   const lowerCaseSearchText = searchText.toLowerCase();
 
   const filtered = agents.filter((a) =>
     subFilter(lowerCaseSearchText, a.name.toLowerCase())
   );
 
+  const withFavorite = (agent: T) => ({
+    sId: agent.sId,
+    name: agent.name,
+    scope: agent.scope,
+    userFavorite: favorites?.get(agent.sId)?.userFavorite,
+  });
+
   if (searchText.length > 0) {
     filtered.sort(
       (a, b) =>
         compareForFuzzySort(lowerCaseSearchText, a.name, b.name) ||
-        compareAgentsForSort(a, b)
+        (favorites
+          ? compareAgentsForSort(withFavorite(a), withFavorite(b))
+          : compareAgentsForSort(a, b))
     );
   }
 

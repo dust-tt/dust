@@ -1,5 +1,5 @@
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { filterAndSortAgents } from "@app/lib/utils";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -31,14 +31,7 @@ export function registerAgentsListTool(server: McpServer) {
       inputSchema,
     },
     async (auth, { name, lastValue }) => {
-      const agents = await getAgentConfigurationsForView({
-        auth,
-        agentsGetView: "list",
-        variant: "extra_light",
-        omitHeavyAttributes: true,
-      });
-
-      const accessibleAgents = agents.filter((agent) => agent.canRead);
+      const accessibleAgents = await AgentResource.listReadable(auth);
 
       const sortedAgents = name
         ? filterAndSortAgents(accessibleAgents, name)

@@ -1,5 +1,4 @@
 import { searchAgents } from "@app/lib/api/agents/search";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getLastUserMessageMentions } from "@app/lib/api/assistant/conversation";
 import { fetchConversationParticipants } from "@app/lib/api/assistant/participants";
 import type { Authenticator } from "@app/lib/auth";
@@ -10,6 +9,7 @@ import {
   sortEditorSuggestionUsers,
 } from "@app/lib/mentions/editor/suggestion";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { enrichWithFavorites } from "@app/lib/resources/agent_resource_serialization";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -22,10 +22,7 @@ import type {
   RichMention,
   RichUserMentionInConversation,
 } from "@app/types/assistant/mentions";
-import {
-  toRichAgentMentionType,
-  toRichUserMentionType,
-} from "@app/types/assistant/mentions";
+import { toRichUserMentionType } from "@app/types/assistant/mentions";
 
 export function interleaveMentionsPreservingAgentOrder(
   agents: RichAgentMentionInConversation[],
@@ -331,14 +328,13 @@ export const suggestionsOfMentions = async (
 
     const isSearchResult = activeAgents !== null;
     if (activeAgents === null) {
-      const agentConfigurations = await getAgentConfigurationsForView({
-        auth,
-        agentsGetView: "list",
-        variant: "light",
-      });
-      activeAgents = agentConfigurations
-        .filter((agent) => agent.status === "active")
-        .map(toRichAgentMentionType);
+      const agents = await AgentResource.listReadable(auth);
+      const favorites = await enrichWithFavorites(auth, agents);
+      activeAgents = agents.map((agent) =>
+        agent.toMentionSuggestionJSON({
+          userFavorite: favorites.get(agent.sId)?.userFavorite ?? false,
+        })
+      );
     }
 
     const participantsById = new Map(

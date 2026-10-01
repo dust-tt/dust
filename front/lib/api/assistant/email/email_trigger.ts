@@ -26,7 +26,7 @@ import { filterAndSortAgents } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentFavoriteEnrichment } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { SupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
@@ -696,14 +696,16 @@ export async function userAndWorkspaceFromEmail({
 export function emailAssistantMatcher({
   targetEmail,
   allAgentConfigurations,
+  favorites,
   emailBlacklistedAgentIds,
 }: {
   targetEmail: string;
-  allAgentConfigurations: LightAgentConfigurationType[];
+  allAgentConfigurations: AgentResource[];
+  favorites: Map<string, AgentFavoriteEnrichment>;
   emailBlacklistedAgentIds: Set<string>;
 }): Result<
   {
-    agentConfiguration: LightAgentConfigurationType;
+    agentConfiguration: AgentResource;
   },
   EmailTriggerError
 > {
@@ -711,7 +713,8 @@ export function emailAssistantMatcher({
 
   const matchingAgents = filterAndSortAgents(
     allAgentConfigurations,
-    agentPrefix
+    agentPrefix,
+    favorites
   );
   if (matchingAgents.length === 0) {
     return new Err({
@@ -772,7 +775,7 @@ export async function triggerFromEmail(
     agentConfigurations,
     email,
   }: {
-    agentConfigurations: LightAgentConfigurationType[];
+    agentConfigurations: AgentResource[];
     email: InboundEmail;
   }
 ): Promise<

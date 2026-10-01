@@ -1,4 +1,3 @@
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import {
   ASSISTANT_EMAIL_SUBDOMAIN,
   emailAssistantMatcher,
@@ -27,8 +26,9 @@ import {
 import { config as cellsConfig } from "@app/lib/api/cells/config";
 import apiConfig from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { enrichWithFavorites } from "@app/lib/resources/agent_resource_serialization";
 import logger from "@app/logger/logger";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { isDevelopment } from "@app/types/shared/env";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
@@ -276,18 +276,14 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
         return;
       }
 
-      const allAgentConfigurations = await getAgentConfigurationsForView({
-        auth,
-        agentsGetView: "list",
-        variant: "light",
-        limit: undefined,
-        sort: undefined,
-      });
+      const allAgentConfigurations = await AgentResource.listReadable(auth);
+      const favorites = await enrichWithFavorites(auth, allAgentConfigurations);
 
-      const agentConfigurations: LightAgentConfigurationType[] = [];
+      const agentConfigurations: AgentResource[] = [];
       for (const targetEmail of targetEmails) {
         const matchResult = emailAssistantMatcher({
           allAgentConfigurations,
+          favorites,
           emailBlacklistedAgentIds: emailBlacklistedAgentIdsRes.value,
           targetEmail,
         });
