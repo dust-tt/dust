@@ -1,10 +1,10 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { agentBuilderFormSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLayout";
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { AgentCreatedDialog } from "@app/components/agent_builder/AgentCreatedDialog";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
+import { agentBuilderFormSchema } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { useAgentBuilderFormHydration } from "@app/components/agent_builder/hooks/useAgentBuilderFormHydration";
 import {
   PersonalConnectionRequiredDialog,

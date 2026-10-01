@@ -1,5 +1,5 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { MCPFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { CapabilitiesFooter } from "@app/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesFooter";
 import { CapabilitiesSelectionPageContent } from "@app/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesSelectionPage";
 import {

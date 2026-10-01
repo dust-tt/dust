@@ -1,6 +1,6 @@
 import { getDefaultMCPAction } from "@app/components/shared/tools_picker/formDefaults";
-import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
+import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
 import { Button, ReverseLeft, Separator } from "@dust-tt/sparkle";
 import { useFormContext, useFormState } from "react-hook-form";
 

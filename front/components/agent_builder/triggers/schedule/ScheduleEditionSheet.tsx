@@ -1,4 +1,4 @@
-import type { AgentBuilderScheduleTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderScheduleTriggerType } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { ScheduleEditionScheduler } from "@app/components/agent_builder/triggers/schedule/ScheduleEditionScheduler";
 import { TriggerPodSelector } from "@app/components/agent_builder/triggers/TriggerPodSelector";
 import { TriggerPoolSelector } from "@app/components/agent_builder/triggers/TriggerPoolSelector";

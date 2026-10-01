@@ -1,4 +1,4 @@
-import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { RecentWebhookRequests } from "@app/components/agent_builder/triggers/RecentWebhookRequests";
 import { TriggerPodSelector } from "@app/components/agent_builder/triggers/TriggerPodSelector";
 import { TriggerPoolSelector } from "@app/components/agent_builder/triggers/TriggerPoolSelector";

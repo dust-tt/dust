@@ -1,9 +1,9 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import type {
   AgentBuilderFormData,
   AgentBuilderSkillsType,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
-import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
+} from "@app/components/agent_builder/agentBuilderFormSchema";
 import { CapabilitiesSheet } from "@app/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesSheet";
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
 import { validateMCPActionConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formValidation";

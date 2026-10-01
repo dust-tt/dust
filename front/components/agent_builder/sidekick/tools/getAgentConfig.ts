@@ -1,4 +1,4 @@
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { splitInstructionsHtmlBlocks } from "@app/components/shared/utils";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";

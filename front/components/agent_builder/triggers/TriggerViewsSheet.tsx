@@ -2,7 +2,7 @@ import type {
   AgentBuilderScheduleTriggerType,
   AgentBuilderTriggerType,
   AgentBuilderWebhookTriggerType,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
+} from "@app/components/agent_builder/agentBuilderFormSchema";
 import { ScheduleEditionSheetContent } from "@app/components/agent_builder/triggers/schedule/ScheduleEditionSheet";
 import {
   formValuesToScheduleTriggerData,

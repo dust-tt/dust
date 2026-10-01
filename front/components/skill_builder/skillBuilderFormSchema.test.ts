@@ -1,4 +1,4 @@
-import { skillBuilderFormSchema } from "@app/components/skill_builder/SkillBuilderFormContext";
+import { skillBuilderFormSchema } from "@app/components/skill_builder/skillBuilderFormSchema";
 import {
   AGENT_FACING_DESCRIPTION_MAX_LENGTH,
   USER_FACING_DESCRIPTION_MAX_LENGTH,

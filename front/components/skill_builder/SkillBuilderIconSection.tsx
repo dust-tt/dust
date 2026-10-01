@@ -1,4 +1,4 @@
-import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
+import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
 import {
   ActionIcons,
   Avatar,

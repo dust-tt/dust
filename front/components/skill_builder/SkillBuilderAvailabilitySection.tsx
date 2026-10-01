@@ -1,7 +1,7 @@
 import { SkillBuilderAvailabilityMessage } from "@app/components/skill_builder/SkillBuilderAvailabilityMessage";
-import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { SkillBuilderSimilarDiscoverableSkills } from "@app/components/skill_builder/SkillBuilderSimilarDiscoverableSkills";
 import { useSkillSpaceRestrictionsContext } from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
+import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
 import type { WorkspaceType } from "@app/types/user";

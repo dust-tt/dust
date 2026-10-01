@@ -1,5 +1,5 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { BLUR_EVENT_NAME } from "@app/components/agent_builder/instructions/constants";
 import { getNameSuggestions } from "@app/components/agent_builder/settings/utils";
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";

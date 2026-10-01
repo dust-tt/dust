@@ -1,5 +1,5 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderTriggerType } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { describeScheduleConfig } from "@app/lib/utils/schedule_description";

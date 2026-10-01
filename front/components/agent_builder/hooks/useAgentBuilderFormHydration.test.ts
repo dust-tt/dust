@@ -1,4 +1,4 @@
-import type { AgentBuilderTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderTriggerType } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { useAgentBuilderFormHydration } from "@app/components/agent_builder/hooks/useAgentBuilderFormHydration";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/types/api/assistant/builder/slack/channels_linked_with_agent";

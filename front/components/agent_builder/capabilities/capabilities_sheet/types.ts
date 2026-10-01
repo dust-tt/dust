@@ -1,4 +1,4 @@
-import type { AgentBuilderSkillsType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderSkillsType } from "@app/components/agent_builder/agentBuilderFormSchema";
 import type { SelectedTool } from "@app/components/agent_builder/capabilities/shared/types";
 import type {
   CapabilitiesSheetState,

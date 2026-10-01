@@ -1,5 +1,5 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { buildDefaultAgentSlackPickerChannels } from "@app/components/agent_builder/settings/buildDefaultAgentSlackPickerChannels";
 import { useSlackUserPrivateChannels } from "@app/lib/swr/assistants";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
