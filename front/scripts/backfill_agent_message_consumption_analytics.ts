@@ -1,7 +1,11 @@
 /**
- * Enqueue the consumption attribution + Elasticsearch indexing workflow for historical agent
- * messages. Run once in each region after the consumption analytics index and V3 analytics worker
- * have been deployed, and after agent step content dustRunIds have been backfilled.
+ * Enqueue the consumption attribution + Elasticsearch indexing workflow for historical billed agent
+ * messages, whatever their status. Run once in each region after the consumption analytics index and
+ * V3 analytics worker have been deployed, and after agent step content dustRunIds have been
+ * backfilled.
+ *
+ * Messages are selected by the timestamp the index records as `completed_at`: `completedAt` for a
+ * terminal message, `updatedAt` for a message that can still resume.
  *
  * Before enqueueing each batch, the script classifies any run usages whose usageType is still null.
  * It reconstructs the same billing classification as the live path from the triggering user
@@ -41,10 +45,6 @@ import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { launchStoreAgentMessageConsumptionAttributionWorkflow } from "@app/temporal/analytics_queue/client";
 import type { AgentMessageRef } from "@app/types/assistant/agent_run";
-import {
-  AGENT_MESSAGE_STATUSES_TO_TRACK,
-  isTerminalAgentMessageStatus,
-} from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
@@ -54,9 +54,6 @@ import { fromError } from "zod-validation-error";
 
 const DEFAULT_BATCH_SIZE = 100;
 const DEFAULT_CONCURRENCY = 4;
-const TERMINAL_TRACKED_STATUSES = AGENT_MESSAGE_STATUSES_TO_TRACK.filter(
-  isTerminalAgentMessageStatus
-);
 const TimestampSchema = z.string().datetime({ offset: true });
 
 type AgentMessageBackfillCandidate = {
@@ -109,8 +106,13 @@ async function listAgentMessageRefs({
     where: {
       id: { [Op.gt]: afterAgentMessageModelId },
       workspaceId: workspace.id,
-      status: { [Op.in]: TERMINAL_TRACKED_STATUSES },
-      completedAt: { [Op.gte]: fromDate, [Op.lt]: toDate },
+      [Op.or]: [
+        { completedAt: { [Op.gte]: fromDate, [Op.lt]: toDate } },
+        {
+          completedAt: null,
+          updatedAt: { [Op.gte]: fromDate, [Op.lt]: toDate },
+        },
+      ],
       costCredits: { [Op.ne]: null },
       runIds: { [Op.ne]: null },
     },
@@ -256,7 +258,8 @@ makeScript(
     fromDate: {
       type: "string",
       required: true,
-      description: "Inclusive ISO-8601 completion timestamp.",
+      description:
+        "Inclusive ISO-8601 completion timestamp (last update for messages that can still resume).",
     },
     toDate: {
       type: "string",
