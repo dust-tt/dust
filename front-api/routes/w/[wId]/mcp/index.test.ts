@@ -14,6 +14,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
@@ -428,18 +429,11 @@ describe("POST /api/w/:wId/mcp/ — name conflict", () => {
         },
       ],
     });
-    const systemView =
-      await MCPServerViewResource.getMCPServerViewForSystemSpace(
-        auth,
-        existingServer.sId
-      );
-    expect(systemView).toBeDefined();
-
-    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-    await MCPServerViewResource.create(auth, {
-      systemView: systemView!,
-      space: globalSpace,
-    });
+    await MCPServerViewFactory.create(
+      workspace,
+      existingServer.sId,
+      await SpaceResource.fetchWorkspaceGlobalSpace(auth)
+    );
 
     // 62-char tool name: no room for the server-name prefix, so the model-facing
     // name is the bare tool name whatever the server is called. It must not be
@@ -490,18 +484,11 @@ describe("POST /api/w/:wId/mcp/ — name conflict", () => {
         },
       ],
     });
-    const systemView =
-      await MCPServerViewResource.getMCPServerViewForSystemSpace(
-        auth,
-        existingServer.sId
-      );
-    expect(systemView).toBeDefined();
-
-    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-    await MCPServerViewResource.create(auth, {
-      systemView: systemView!,
-      space: globalSpace,
-    });
+    await MCPServerViewFactory.create(
+      workspace,
+      existingServer.sId,
+      await SpaceResource.fetchWorkspaceGlobalSpace(auth)
+    );
 
     // Both servers expose the same 62-char tool: the model-facing name is the bare tool name on
     // both sides, so this is a genuine collision.
