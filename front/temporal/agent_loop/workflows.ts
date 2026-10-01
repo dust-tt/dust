@@ -5,6 +5,7 @@ import {
 } from "@app/lib/actions/constants";
 import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
+import type { UserBlockedReason } from "@app/lib/metronome/user_block";
 import type * as compactionActivities from "@app/temporal/agent_loop/activities/compaction";
 import type * as creditCheckActivities from "@app/temporal/agent_loop/activities/credit_check";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
@@ -277,8 +278,8 @@ export async function agentLoopWorkflow({
     gracefulStopRequested = true;
   });
 
-  // Credit stop: the per-step gate found the workspace pool exhausted.
-  let creditStopRequested = false;
+  // Credit stop: the per-step gate found the user blocked (pool exhausted, cap reached, no seat).
+  let creditStopReason: UserBlockedReason | null = null;
 
   // Credit spend checkpoint pause: this message's own spend reached the threshold at which we
   // ask the user whether to continue.
@@ -391,7 +392,7 @@ export async function agentLoopWorkflow({
           },
         });
         if (creditCheckResult.shouldStop) {
-          creditStopRequested = true;
+          creditStopReason = creditCheckResult.reason;
           break;
         }
 
@@ -430,10 +431,11 @@ export async function agentLoopWorkflow({
             authType,
             argsWithRunIds
           );
-        } else if (creditStopRequested) {
+        } else if (creditStopReason) {
           await finalizeCreditStoppedAgentLoopActivity(
             authType,
-            argsWithRunIds
+            argsWithRunIds,
+            creditStopReason
           );
         } else if (creditSpendCheckpointPaused) {
           await finalizeCreditSpendCheckpointPausedAgentLoopActivity(

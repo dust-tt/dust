@@ -5,12 +5,13 @@ import {
 } from "@app/lib/api/credits/access_control";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
 import type { Authenticator } from "@app/lib/auth";
+import type { UserBlockedReason } from "@app/lib/metronome/user_block";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { isCreditPricedPlan } from "@app/types/plan";
 
 export type CreditCheckResult =
   | { shouldStop: false; reason: null }
-  | { shouldStop: true; reason: "credits_exhausted" };
+  | { shouldStop: true; reason: UserBlockedReason };
 
 const DO_NOT_STOP: CreditCheckResult = { shouldStop: false, reason: null };
 
@@ -36,11 +37,13 @@ export async function checkPoolCreditGate(
   }
 
   const user = auth.user();
-  const blocked = user
-    ? (await isUserBlocked(auth, user)) !== null
-    : await isPoolDepleted(auth);
-  if (blocked) {
-    return { shouldStop: true, reason: "credits_exhausted" };
+  const blockedReason = user
+    ? await isUserBlocked(auth, user)
+    : (await isPoolDepleted(auth))
+      ? "credits_exhausted"
+      : null;
+  if (blockedReason) {
+    return { shouldStop: true, reason: blockedReason };
   }
 
   if (
