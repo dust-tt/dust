@@ -4,8 +4,8 @@ import {
 } from "@app/components/editor/extensions/shared/slash_suggestion/useSlashCommandCapabilities";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { AuthContext } from "@app/lib/auth/AuthContext";
+import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import type { FetcherFn, FetcherWithBodyFn } from "@app/lib/swr/fetcher";
-import { FetcherProvider } from "@app/lib/swr/swr";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";

@@ -56,8 +56,7 @@ export async function fetchSuggestableSubAgents(
 }
 
 /**
- * The agent a suggestion adds as a sub-agent, among the `suggestable` ones. `agentId` is the agent
- * it is added to, when that agent already exists: a new agent has no id to be its own sub-agent.
+ * Finds the agent to add as a sub-agent among the `suggestable` ones.
  */
 export function checkSubAgentAddition(
   subAgentId: string,
