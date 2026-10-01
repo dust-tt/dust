@@ -49,6 +49,7 @@ function getToolAlternatives(
 ): ToolRequirement[] {
   switch (requirement.type) {
     case "skill":
+    case "workspacePermission":
       return [];
     case "anyOf":
       return requirement.of;
@@ -213,15 +214,18 @@ function getAudienceTier(
   }
 }
 
-function selectSatisfiedUseCases({
-  profile,
-  skillsById,
-  toolsByKey,
-}: {
-  profile: UserProfile;
-  skillsById: Map<string, SkillReference>;
-  toolsByKey: Map<string, ToolReference>;
-}): HomepageUseCaseType[] {
+function selectSatisfiedUseCases(
+  auth: Authenticator,
+  {
+    profile,
+    skillsById,
+    toolsByKey,
+  }: {
+    profile: UserProfile;
+    skillsById: Map<string, SkillReference>;
+    toolsByKey: Map<string, ToolReference>;
+  }
+): HomepageUseCaseType[] {
   return HOMEPAGE_USE_CASES.flatMap(({ audience, requires, ...useCase }) => {
     const tier = getAudienceTier(audience, profile);
     if (!tier) {
@@ -237,7 +241,16 @@ function selectSatisfiedUseCases({
     const tools: ToolReference[] = [];
 
     for (const requirement of requires) {
-      if (requirement.type === "skill") {
+      if (requirement.type === "workspacePermission") {
+        if (
+          !auth.hasWorkspacePermission(
+            requirement.verb,
+            requirement.resourceType
+          )
+        ) {
+          return [];
+        }
+      } else if (requirement.type === "skill") {
         const skill = skillsById.get(requirement.id);
         if (!skill) {
           return [];
@@ -270,7 +283,7 @@ export async function listHomepageUseCases(
       getReachedMilestones(auth),
     ]);
 
-  return selectSatisfiedUseCases({
+  return selectSatisfiedUseCases(auth, {
     profile: { ...preferences, reachedMilestones },
     skillsById,
     toolsByKey,

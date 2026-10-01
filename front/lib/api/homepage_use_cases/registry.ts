@@ -1,6 +1,10 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { GlobalSkillId } from "@app/lib/resources/skill/code_defined/global_registry";
 import type { HomepageUseCaseType } from "@app/types/api/homepage_use_cases";
+import type {
+  ConcreteResourceType,
+  GrantVerb,
+} from "@app/types/group_permissions";
 import type { JobType } from "@app/types/job_type";
 
 export type ToolRequirement =
@@ -16,7 +20,12 @@ export type ToolRequirement =
 export type UseCaseRequirement =
   | { type: "skill"; id: GlobalSkillId }
   | ToolRequirement
-  | { type: "anyOf"; of: ToolRequirement[] };
+  | { type: "anyOf"; of: ToolRequirement[] }
+  | {
+      type: "workspacePermission";
+      verb: GrantVerb;
+      resourceType: ConcreteResourceType;
+    };
 
 export type UsageMilestone = "joined_pod";
 
@@ -46,7 +55,8 @@ export function isDismissibleAudience(audience: UseCaseAudience): boolean {
 /**
  * @cc [owner:adrsimon,label:product] requirements-are-conjunctive
  * A use case MUST be offered only when every requirement in `requires` resolves in the
- * workspace. An empty list imposes no requirement.
+ * workspace. An empty list imposes no requirement. A `workspacePermission` requirement resolves
+ * only when the user holds that workspace permission.
  */
 export interface HomepageUseCaseDefinition
   extends Omit<
@@ -122,6 +132,18 @@ export const HOMEPAGE_USE_CASES: HomepageUseCaseDefinition[] = [
     icon: "ActionSparklesIcon",
     audience: { type: "everyone" },
     requires: [{ type: "internalServer", name: "web_search_&_browse" }],
+  },
+  {
+    id: "build-agent",
+    label: "Build an agent for a task I keep repeating",
+    prompt:
+      "Help me build an agent for a task I keep repeating. Ask me what the task is, what it needs to read and what it should produce, then create the agent with me and show me how to use it.",
+    icon: "ActionRobotIcon",
+    audience: { type: "everyone" },
+    requires: [
+      { type: "skill", id: "conversational-building" },
+      { type: "workspacePermission", verb: "create", resourceType: "agent" },
+    ],
   },
   {
     id: "weekly-priorities",
