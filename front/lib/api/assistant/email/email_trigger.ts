@@ -693,18 +693,17 @@ export async function userAndWorkspaceFromEmail({
   });
 }
 
-export function emailAssistantMatcher(
-  {
-    targetEmail,
-    allAgentConfigurations,
-    emailBlacklistedAgentIds,
-  }: {
-    targetEmail: string;
-    allAgentConfigurations: AgentResource[];
-    emailBlacklistedAgentIds: Set<string>;
-  },
-  favorites: Map<string, AgentFavoriteEnrichment>
-): Result<
+export function emailAssistantMatcher({
+  targetEmail,
+  allAgentConfigurations,
+  favorites,
+  emailBlacklistedAgentIds,
+}: {
+  targetEmail: string;
+  allAgentConfigurations: AgentResource[];
+  favorites: Map<string, AgentFavoriteEnrichment>;
+  emailBlacklistedAgentIds: Set<string>;
+}): Result<
   {
     agentConfiguration: AgentResource;
   },

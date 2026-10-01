@@ -281,14 +281,12 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
 
       const agentConfigurations: AgentResource[] = [];
       for (const targetEmail of targetEmails) {
-        const matchResult = emailAssistantMatcher(
-          {
-            allAgentConfigurations,
-            emailBlacklistedAgentIds: emailBlacklistedAgentIdsRes.value,
-            targetEmail,
-          },
-          favorites
-        );
+        const matchResult = emailAssistantMatcher({
+          allAgentConfigurations,
+          favorites,
+          emailBlacklistedAgentIds: emailBlacklistedAgentIdsRes.value,
+          targetEmail,
+        });
         if (matchResult.isErr()) {
           await replyToError(email, matchResult.error, errorLogContext);
           continue;
