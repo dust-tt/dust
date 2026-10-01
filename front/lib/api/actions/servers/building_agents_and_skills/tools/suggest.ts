@@ -547,7 +547,9 @@ async function planSkillEdit(
   }
 
   if (removeFileIds !== undefined) {
-    const validation = validateSkillFilesSuggestion(skill, { removeFileIds });
+    const validation = await validateSkillFilesSuggestion(auth, skill, {
+      removeFileIds,
+    });
     if (validation.isErr()) {
       return validation;
     }

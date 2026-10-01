@@ -18,6 +18,7 @@ import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -28,6 +29,7 @@ import { TagFactory } from "@app/tests/utils/TagFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { MISTRAL_LARGE_MODEL_ID } from "@app/types/assistant/models/mistral";
+import { conversationScopedPath } from "@app/types/file_system";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { WorkspaceType } from "@app/types/user";
 import assert from "assert";
@@ -590,6 +592,113 @@ describe("applyBatchSuggestions", () => {
     expect(res.isErr()).toBe(true);
     expect(await fetchSkillName(skill.sId)).toBe(skill.name);
     expect(await fetchSkillFileIds(skill.sId)).toEqual([attached.sId]);
+  });
+
+  async function createConversationFile(rel: string, content: string) {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+    });
+    fileStorageMock.setFileMetadata(() => ({
+      contentType: "text/plain",
+      size: String(content.length),
+    }));
+    fileStorageMock.setFileContent(() => content);
+    return conversationScopedPath({ conversationId: conversation.sId, rel });
+  }
+
+  it("attaches a file added from the conversation", async () => {
+    const kept = await createSkillFile("kept.txt");
+    const skill = await SkillFactory.create(auth, { fileAttachments: [kept] });
+    await auth.refresh();
+    const path = await createConversationFile("notes/Q3 report.txt", "hello");
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await SkillSuggestionFactory.create(auth, skill, {
+      kind: "files",
+      suggestion: { addFilePaths: [path], removeFileIds: [] },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    assert(updated);
+    const files = updated.getFileAttachments();
+    expect(files.map((file) => file.fileName).sort()).toEqual([
+      "Q3 report.txt",
+      "kept.txt",
+    ]);
+    const added = files.find((file) => file.fileName === "Q3 report.txt");
+    expect(added?.useCase).toBe("skill_attachment");
+    expect(added?.useCaseMetadata).toMatchObject({ skillId: skill.sId });
+    expect(added?.isReady).toBe(true);
+  });
+
+  it("writes nothing when an added file has the name of an attached one", async () => {
+    const attached = await createSkillFile("Q3 notes.txt");
+    const skill = await SkillFactory.create(auth, {
+      fileAttachments: [attached],
+    });
+    await auth.refresh();
+    const path = await createConversationFile("Q3 notes.txt", "hello");
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await SkillSuggestionFactory.create(auth, skill, {
+      kind: "files",
+      suggestion: { addFilePaths: [path], removeFileIds: [] },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isErr()).toBe(true);
+    expect(await fetchSkillFileIds(skill.sId)).toEqual([attached.sId]);
+  });
+
+  it("replaces an attached file with an added one of the same name", async () => {
+    const attached = await createSkillFile("notes.txt");
+    const skill = await SkillFactory.create(auth, {
+      fileAttachments: [attached],
+    });
+    await auth.refresh();
+    const path = await createConversationFile("notes.txt", "hello");
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await SkillSuggestionFactory.create(auth, skill, {
+      kind: "files",
+      suggestion: { addFilePaths: [path], removeFileIds: [attached.sId] },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isOk()).toBe(true);
+    const updated = await SkillResource.fetchById(auth, skill.sId);
+    const files = updated?.getFileAttachments() ?? [];
+    expect(files.map((file) => file.fileName)).toEqual(["notes.txt"]);
+    expect(files[0]?.sId).not.toBe(attached.sId);
+  });
+
+  it("writes nothing when an added file does not exist", async () => {
+    const skill = await SkillFactory.create(auth);
+    await auth.refresh();
+    const path = await createConversationFile("missing.txt", "hello");
+    fileStorageMock.setFileExists(() => false);
+    const { id: batchModelId, sId } =
+      await BatchSuggestionFactory.createEmpty(auth);
+    await SkillSuggestionFactory.create(auth, skill, {
+      kind: "files",
+      suggestion: { addFilePaths: [path], removeFileIds: [] },
+      batchModelId,
+    });
+
+    const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
+
+    expect(res.isErr()).toBe(true);
+    expect(await fetchSkillFileIds(skill.sId)).toEqual([]);
   });
 
   it("keeps the skill's files when applying another change", async () => {

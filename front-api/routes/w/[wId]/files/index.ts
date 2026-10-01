@@ -1,19 +1,8 @@
-import { isUploadSupportedForContentType } from "@app/lib/api/files/processing";
+import { validateFileUpload } from "@app/lib/api/files/upload";
 import { buildEffectiveUseCaseMetadata } from "@app/lib/api/files/upload_metadata";
-import { getFeatureFlags } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
-import {
-  AUDIO_TRANSCRIPTION_UNAVAILABLE_MESSAGE,
-  isAudioTranscriptionAvailable,
-} from "@app/lib/workspace_policies";
 import logger from "@app/logger/logger";
-import {
-  ensureFileSize,
-  isSupportedAudioContentType,
-  isSupportedFileContentType,
-} from "@app/types/files";
-import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -179,68 +168,35 @@ app.post("/", validate("json", FileUploadUrlRequestSchema), async (ctx) => {
   const { contentType, fileName, fileSize, useCase, useCaseMetadata } =
     ctx.req.valid("json");
 
-  if (!isSupportedFileContentType(contentType)) {
+  const validation = await validateFileUpload(auth, {
+    contentType,
+    fileName,
+    fileSize,
+    useCase,
+  });
+  if (validation.isErr()) {
     return apiError(ctx, {
       status_code: 400,
       api_error: {
-        type: "file_type_not_supported",
-        message: `Content type "${contentType}" is not supported.`,
+        type: validation.error.code,
+        message: validation.error.message,
       },
     });
   }
-
-  if (
-    isSupportedAudioContentType(contentType) &&
-    !isAudioTranscriptionAvailable({ owner, plan: auth.getNonNullablePlan() })
-  ) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "file_type_not_supported",
-        message: AUDIO_TRANSCRIPTION_UNAVAILABLE_MESSAGE,
-      },
-    });
-  }
-
-  if (!isUploadSupportedForContentType({ contentType, useCase })) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "file_type_not_supported",
-        message: `Content type "${contentType}" is not supported for use-case ${useCase}.`,
-      },
-    });
-  }
-
-  const flags = await getFeatureFlags(auth);
-  const hasComputerAccess = isComputerFeatureEnabled(flags);
-
-  if (
-    !ensureFileSize(contentType, fileSize, {
-      hasSandboxTools: hasComputerAccess,
-      useCase,
-    })
-  ) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "file_too_large",
-        message: `File "${fileName}" is too large.`,
-      },
-    });
-  }
+  const { contentType: supportedContentType, hasSandboxTools } =
+    validation.value;
 
   const newFile = await FileResource.makeNew({
-    contentType,
+    contentType: supportedContentType,
     fileName,
     fileSize,
     userId: user.id,
     workspaceId: owner.id,
     useCase,
     useCaseMetadata: buildEffectiveUseCaseMetadata({
-      contentType,
+      contentType: supportedContentType,
       fileName,
-      flags: { hasSandboxTools: hasComputerAccess },
+      flags: { hasSandboxTools },
       providedMetadata: useCaseMetadata,
       useCase,
     }),
