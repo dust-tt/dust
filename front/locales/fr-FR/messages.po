@@ -930,6 +930,7 @@ msgid "After 3 attempts, your workspace will be downgraded to the free plan. Con
 msgstr "Après 3 tentatives, votre workspace passera au forfait gratuit. Les connexions seront supprimées et l’accès des membres sera révoqué. Détails <0>ici</0>."
 
 #: front/components/navigation/AppStatusBanner.tsx
+#: front/lib/notifications/workflows/balance-threshold-reached.ts
 msgid "Manage credits"
 msgstr "Gérer les crédits"
 
@@ -1140,6 +1141,39 @@ msgstr "Vous pouvez gérer vos préférences de notification depuis <0>votre esp
 msgid "Hi {name},"
 msgstr "Bonjour {name},"
 
+#: front/lib/notifications/workflows/balance-threshold-reached.ts
+msgid "[Dust] Credit balance alert - your workspace balance dropped below {threshold} credits"
+msgstr "[Dust] Alerte de solde de crédits : le solde de votre espace de travail est passé sous {threshold} crédits"
+
+#: front/lib/notifications/workflows/balance-threshold-reached.ts
+msgid "Your workspace's remaining credit balance has dropped below the threshold you configured."
+msgstr "Le solde de crédits restant de votre espace de travail est passé sous le seuil que vous avez configuré."
+
+#: front/lib/notifications/workflows/balance-threshold-reached.ts
+msgid "Alert threshold: {threshold} credits"
+msgstr "Seuil d’alerte : {threshold} crédits"
+
+#: front/lib/notifications/workflows/balance-threshold-reached.ts
+msgid "Remaining balance: {remaining} credits"
+msgstr "Solde restant : {remaining} crédits"
+
+#: front/lib/notifications/workflows/balance-threshold-reached.ts
+msgid "To avoid running out of credits, please reach out to your Dust representative."
+msgstr "Pour éviter de manquer de crédits, contactez votre interlocuteur Dust."
+
+#: front/lib/notifications/workflows/balance-threshold-reached.ts
+msgid "To avoid running out of credits, you can purchase more from your workspace usage page."
+msgstr "Pour éviter de manquer de crédits, vous pouvez en acheter depuis la page d’utilisation de votre espace de travail."
+
+#: front/lib/notifications/workflows/balance-threshold-reached.ts
+msgid "See usage details"
+msgstr "Voir le détail de l’utilisation"
+
+#: front/lib/notifications/workflows/balance-threshold-reached.ts
+#: front/lib/notifications/workflows/seat-auto-upgraded.ts
+msgid "there"
+msgstr "à vous"
+
 #: front/lib/notifications/workflows/seat-auto-upgraded.ts
 msgid "[Dust] {count, plural, one {# member was auto-upgraded to a higher seat} other {# members were auto-upgraded to higher seats}}"
 msgstr "[Dust] {count, plural, one {# membre est passé automatiquement à un siège supérieur} other {# membres sont passés automatiquement à des sièges supérieurs}}"
@@ -1159,10 +1193,6 @@ msgstr "{member} a atteint sa limite de crédits et est passé automatiquement d
 #: front/lib/notifications/workflows/seat-auto-upgraded.ts
 msgid "This might increase your subscription cost. You can turn off automatic seat upgrades from your workspace usage settings."
 msgstr "Cela peut augmenter le coût de votre abonnement. Vous pouvez désactiver le passage automatique à un siège supérieur dans les paramètres d’utilisation de votre espace de travail."
-
-#: front/lib/notifications/workflows/seat-auto-upgraded.ts
-msgid "there"
-msgstr "à vous"
 
 #: front/lib/notifications/workflows/seat-auto-upgraded.ts
 msgid "Go to workspace usage"
