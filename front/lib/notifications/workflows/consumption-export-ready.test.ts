@@ -1,5 +1,5 @@
 import * as novuClientModule from "@app/lib/notifications/novu-client";
-import { notifyConsumptionExportReady } from "@app/lib/notifications/workflows/consumption-export-ready";
+import { notifyConsumptionExportReady } from "@app/lib/notifications/triggers/consumption-export-ready";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { CONSUMPTION_EXPORT_READY_TRIGGER_ID } from "@app/types/notification_preferences";
 import { beforeEach, describe, expect, it, vi } from "vitest";

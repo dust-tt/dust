@@ -6,7 +6,7 @@ import {
 } from "@app/lib/notifications";
 import type { ConversationDetailsType } from "@app/lib/notifications/helpers";
 import { getEmailSummary } from "@app/lib/notifications/helpers";
-import type { ConversationUnreadPayloadType } from "@app/lib/notifications/workflows/conversation-unread";
+import type { ConversationUnreadPayloadType } from "@app/lib/notifications/triggers/conversation-unread";
 import {
   filterParticipantsByNotifyCondition,
   getMessagePreviewSlack,
@@ -16,7 +16,7 @@ import {
   shouldSkipConversationExternalNotification,
   shouldSkipNewProjectConversation,
   triggerConversationUnreadNotifications,
-} from "@app/lib/notifications/workflows/conversation-unread";
+} from "@app/lib/notifications/triggers/conversation-unread";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";

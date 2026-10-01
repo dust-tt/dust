@@ -9,7 +9,7 @@ import {
   clearWorkspaceBalanceThresholdReached,
   setWorkspaceBalanceThresholdReached,
 } from "@app/lib/metronome/user_block";
-import { notifyAdminsBalanceThresholdReached } from "@app/lib/notifications/workflows/balance-threshold-reached";
+import { notifyAdminsBalanceThresholdReached } from "@app/lib/notifications/triggers/balance-threshold-reached";
 import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import logger from "@app/logger/logger";
