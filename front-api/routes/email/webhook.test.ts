@@ -1,8 +1,11 @@
 import { randomUUID } from "node:crypto";
+import { existsSync, readdirSync } from "node:fs";
+import { tmpdir } from "node:os";
 import {
   EMAIL_WEBHOOK_RELAY_HEADER,
   EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
   EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER,
+  INBOUND_EMAIL_UPLOAD_DIR_PREFIX,
 } from "@app/lib/api/assistant/email/webhook_helpers";
 import { config as cellsConfig } from "@app/lib/api/cells/config";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -82,6 +85,7 @@ vi.mock(
 import { triggerFromEmail } from "@app/lib/api/assistant/email/email_trigger";
 import { sendEmailToRecipients } from "@app/lib/api/email";
 import type { CellInfo } from "@app/types/cell";
+import { Err } from "@app/types/shared/result";
 
 process.env.EMAIL_WEBHOOK_SECRET ||= "test-email-webhook-secret";
 const SENDGRID_AUTH_HEADER = `Basic ${Buffer.from(
@@ -93,10 +97,23 @@ const RELAY_AUTH_HEADERS = {
   [EMAIL_WEBHOOK_RELAY_HEADER]: EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
 };
 
+type WebhookAttachment = {
+  filename: string;
+  contentType: string;
+  content: string;
+};
+
+function inboundEmailUploadDirs(): string[] {
+  return readdirSync(tmpdir()).filter((name) =>
+    name.startsWith(INBOUND_EMAIL_UPLOAD_DIR_PREFIX)
+  );
+}
+
 function buildSendgridForm(
   senderEmail: string,
   messageId: string,
-  targetEmail: string
+  targetEmail: string,
+  attachment?: WebhookAttachment
 ): FormData {
   const senderDomain = senderEmail.split("@")[1];
   const form = new FormData();
@@ -111,6 +128,14 @@ function buildSendgridForm(
     JSON.stringify({ from: senderEmail, to: [targetEmail] })
   );
   form.set("headers", `Message-ID: ${messageId}`);
+  if (attachment) {
+    form.append(
+      "attachment1",
+      new File([attachment.content], attachment.filename, {
+        type: attachment.contentType,
+      })
+    );
+  }
   return form;
 }
 
@@ -121,11 +146,12 @@ const postWebhook = async (
   senderEmail: string,
   headers: Record<string, string>,
   messageId = `<${randomUUID()}@example.com>`,
-  targetEmail = "some-agent@dust.team"
+  targetEmail = "some-agent@dust.team",
+  attachment?: WebhookAttachment
 ): Promise<Response> => {
   const encoded = new Request("http://localhost/", {
     method: "POST",
-    body: buildSendgridForm(senderEmail, messageId, targetEmail),
+    body: buildSendgridForm(senderEmail, messageId, targetEmail, attachment),
   });
   const rawBody = Buffer.from(await encoded.arrayBuffer());
 
@@ -247,6 +273,40 @@ describe("POST /api/email/webhook", () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+
+  it("deletes formidable temp files when a duplicate relay is ignored", async () => {
+    const messageId = `<${randomUUID()}@example.com>`;
+    const attachment = {
+      filename: "note.txt",
+      contentType: "text/plain",
+      content: "hello from attachment",
+    };
+
+    const firstResponse = await postWebhook(
+      "unknown-sender@example.com",
+      RELAY_AUTH_HEADERS,
+      messageId,
+      "some-agent@dust.team",
+      attachment
+    );
+    expect(firstResponse.status).toBe(200);
+    await vi.waitFor(() =>
+      expect(sendEmailToRecipients).toHaveBeenCalledOnce()
+    );
+
+    const before = new Set(inboundEmailUploadDirs());
+    const secondResponse = await postWebhook(
+      "unknown-sender@example.com",
+      RELAY_AUTH_HEADERS,
+      messageId,
+      "some-agent@dust.team",
+      attachment
+    );
+    expect(secondResponse.status).toBe(200);
+    expect(sendEmailToRecipients).toHaveBeenCalledOnce();
+    const leaked = inboundEmailUploadDirs().filter((name) => !before.has(name));
+    expect(leaked).toEqual([]);
   });
 
   it("ignores a relayed email with the same Message-ID", async () => {
@@ -399,6 +459,82 @@ describe("POST /api/email/webhook", () => {
     const [, { agentConfigurations }] =
       vi.mocked(triggerFromEmail).mock.calls[0];
     expect(agentConfigurations.map((a) => a.sId)).toEqual([agent.sId]);
+  });
+
+  it("deletes formidable temp files after relaying an email with attachments", async () => {
+    getCurrentCellMock.mockReturnValue(cellsConfig.getCellInfo("cell-00000"));
+    const { user } = await createResourceTest({ role: "admin" });
+    const before = new Set(inboundEmailUploadDirs());
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const response = await postWebhook(
+        user.email,
+        { Authorization: SENDGRID_AUTH_HEADER },
+        undefined,
+        "some-agent@dust.team",
+        {
+          filename: "note.txt",
+          contentType: "text/plain",
+          content: "hello from attachment",
+        }
+      );
+      expect(response.status).toBe(200);
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+      expect(sendEmailToRecipients).not.toHaveBeenCalled();
+      await vi.waitFor(() => {
+        const leaked = inboundEmailUploadDirs().filter(
+          (name) => !before.has(name)
+        );
+        expect(leaked).toEqual([]);
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("deletes formidable temp files after the email is handled", async () => {
+    const { workspace, user, authenticator } = await createResourceTest({
+      role: "admin",
+    });
+    await WorkspaceResource.updateMetadata(workspace.id, {
+      allowEmailAgents: true,
+    });
+    await AgentConfigurationFactory.createTestAgent(authenticator, {
+      name: "SalesHelper",
+    });
+    const before = new Set(inboundEmailUploadDirs());
+    let attachmentPath: string | undefined;
+    vi.mocked(triggerFromEmail).mockImplementationOnce(async (_auth, args) => {
+      expect(args.email.attachments).toHaveLength(1);
+      attachmentPath = args.email.attachments[0]?.filepath;
+      expect(attachmentPath && existsSync(attachmentPath)).toBe(true);
+      return new Err({ type: "unexpected_error", message: "Trigger not run." });
+    });
+
+    const response = await postWebhook(
+      user.email,
+      { Authorization: SENDGRID_AUTH_HEADER },
+      undefined,
+      "saleshelper@dust.team",
+      {
+        filename: "note.txt",
+        contentType: "text/plain",
+        content: "hello from attachment",
+      }
+    );
+    expect(response.status).toBe(200);
+
+    await vi.waitFor(() => expect(triggerFromEmail).toHaveBeenCalledOnce());
+    await vi.waitFor(() => {
+      expect(attachmentPath && existsSync(attachmentPath)).toBe(false);
+      const leaked = inboundEmailUploadDirs().filter(
+        (name) => !before.has(name)
+      );
+      expect(leaked).toEqual([]);
+    });
   });
 
   it("replies with an error when no agent matches the target email", async () => {

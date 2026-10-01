@@ -32,8 +32,11 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import assert from "assert";
+import type { Files } from "formidable";
 import { IncomingForm } from "formidable";
-import { readFile } from "fs/promises";
+import { mkdtemp, readFile, rm } from "fs/promises";
+import { tmpdir } from "os";
+import { isAbsolute, join, relative, resolve, sep } from "path";
 
 /**
  * Node-style headers shape: matches the record built from
@@ -50,6 +53,7 @@ export const EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER =
 export const EMAIL_WEBHOOK_RELAY_HEADER_VALUE = "1";
 
 const EMAIL_RELAY_KEY_PREFIX = "email-webhook-relay";
+export const INBOUND_EMAIL_UPLOAD_DIR_PREFIX = "inbound-email-";
 const EMAIL_RELAY_DEDUPE_TTL_SECONDS = 5 * 60;
 const HTTP_SERVER_ERROR_STATUS_MIN = 500;
 
@@ -338,123 +342,226 @@ type EmailWebhookErrorLogContext = {
   workspaceName: string;
 };
 
-// Parses the Sendgrid webhook form data and validates it returning a fully formed InboundEmail.
+function isManagedInboundEmailUploadDir(uploadDir: string): boolean {
+  const relativeToTmp = relative(resolve(tmpdir()), resolve(uploadDir));
+  return (
+    relativeToTmp.startsWith(INBOUND_EMAIL_UPLOAD_DIR_PREFIX) &&
+    !relativeToTmp.includes(sep) &&
+    !relativeToTmp.startsWith("..") &&
+    !isAbsolute(relativeToTmp)
+  );
+}
+
+async function removeInboundEmailUploadDir(uploadDir: string): Promise<void> {
+  if (!isManagedInboundEmailUploadDir(uploadDir)) {
+    logger.warn(
+      { uploadDir },
+      "[email] Refusing to remove an inbound email temp dir outside the managed prefix"
+    );
+    return;
+  }
+
+  try {
+    await rm(uploadDir, { recursive: true, force: true });
+  } catch (error) {
+    logger.warn(
+      { error: normalizeError(error), uploadDir },
+      "[email] Failed to remove inbound email temp files"
+    );
+  }
+}
+
+async function deleteUnretainedFormidableFiles(
+  files: Files,
+  retainedFilepaths: ReadonlySet<string>
+): Promise<void> {
+  for (const fileArray of Object.values(files)) {
+    if (!fileArray) {
+      continue;
+    }
+    for (const file of fileArray) {
+      if (!file.filepath || retainedFilepaths.has(file.filepath)) {
+        continue;
+      }
+      try {
+        await rm(file.filepath, { force: true });
+      } catch (error) {
+        logger.warn(
+          { error: normalizeError(error), filepath: file.filepath },
+          "[email] Failed to remove unretained inbound email temp file"
+        );
+      }
+    }
+  }
+}
+
+/**
+ * @cc [owner:frankaloia,label:security] managed-temp-dir-only
+ * When `attachmentTempDir` is absent the call MUST leave the filesystem unchanged.
+ * Otherwise that directory, including every file still inside it, MUST be removed.
+ * A path that is not a direct child of the system temp directory named with the
+ * `inbound-email-` prefix MUST NOT be removed.
+ */
+export async function cleanupInboundEmailTempFiles(
+  attachmentTempDir: string | undefined
+): Promise<void> {
+  if (!attachmentTempDir) {
+    return;
+  }
+  await removeInboundEmailUploadDir(attachmentTempDir);
+}
+
+export type ParsedSendgridWebhook = {
+  email: InboundEmail;
+  attachmentTempDir: string;
+};
+
+/**
+ * @cc [owner:frankaloia,label:security] request-scoped-temp-files
+ * Every multipart file part MUST be written under one request-scoped directory.
+ * An error result MUST NOT leave that directory on disk. File parts omitted from
+ * `email.attachments` MUST already be gone when a success result is returned.
+ * A success result MUST include `attachmentTempDir` so the caller can remove the
+ * directory after the email is processed, relayed, or rejected.
+ */
 export const parseSendgridWebhookContent = async (
   rawBody: Buffer,
   headers: EmailWebhookHeaders
-): Promise<Result<InboundEmail, Error>> => {
-  const req = createBufferedRequestFromRawBody(rawBody, headers);
-  if (!isSendgridParseFormRequest(req)) {
-    return new Err(
-      new Error("Failed to recreate request body for multipart parsing")
-    );
-  }
-  const form = new IncomingForm({
-    allowEmptyFiles: true,
-    minFileSize: 0,
-  });
-  const [fields, files] = await form.parse(req);
+): Promise<Result<ParsedSendgridWebhook, Error>> => {
+  const uploadDir = await mkdtemp(
+    join(tmpdir(), INBOUND_EMAIL_UPLOAD_DIR_PREFIX)
+  );
+  let retainUploadDir = false;
 
   try {
-    const subject = fields["subject"] ? fields["subject"][0] : null;
-    const text = fields["text"] ? fields["text"][0] : null;
-    const senderFull = fields["from"] ? fields["from"][0] : null;
-    const SPF = fields["SPF"] ? fields["SPF"][0] : null;
-    const dkim = fields["dkim"] ? fields["dkim"][0] : null;
-    const rawHeaders = fields["headers"] ? fields["headers"][0] : null;
-    const envelope = fields["envelope"]
-      ? JSON.parse(fields["envelope"][0])
-      : null;
-
-    const dkimRaw = isString(dkim) ? dkim : "";
-
-    if (!envelope) {
-      return new Err(new Error("Failed to parse envelope"));
+    const req = createBufferedRequestFromRawBody(rawBody, headers);
+    if (!isSendgridParseFormRequest(req)) {
+      return new Err(
+        new Error("Failed to recreate request body for multipart parsing")
+      );
     }
+    const form = new IncomingForm({
+      allowEmptyFiles: true,
+      minFileSize: 0,
+      uploadDir,
+    });
+    const [fields, files] = await form.parse(req);
 
-    const from = envelope.from;
+    try {
+      const subject = fields["subject"] ? fields["subject"][0] : null;
+      const text = fields["text"] ? fields["text"][0] : null;
+      const senderFull = fields["from"] ? fields["from"][0] : null;
+      const SPF = fields["SPF"] ? fields["SPF"][0] : null;
+      const dkim = fields["dkim"] ? fields["dkim"][0] : null;
+      const rawHeaders = fields["headers"] ? fields["headers"][0] : null;
+      const envelope = fields["envelope"]
+        ? JSON.parse(fields["envelope"][0])
+        : null;
 
-    if (!from || typeof from !== "string") {
-      return new Err(new Error("Failed to parse envelope.from"));
-    }
-    if (!senderFull || typeof senderFull !== "string") {
-      return new Err(new Error("Failed to parse from"));
-    }
+      const dkimRaw = isString(dkim) ? dkim : "";
 
-    const senderHeaderValue =
-      (isString(rawHeaders) ? parseHeaderValue(rawHeaders, "From") : null) ??
-      senderFull;
-    const senderRes = extractSingleEmailAddressFromHeader(
-      "From",
-      senderHeaderValue
-    );
-    if (senderRes.isErr()) {
-      return senderRes;
-    }
-
-    // Extract attachments from files, filtering to supported content types.
-    const attachments: EmailAttachment[] = [];
-    for (const [key, fileArray] of Object.entries(files)) {
-      if (!fileArray) {
-        continue;
+      if (!envelope) {
+        return new Err(new Error("Failed to parse envelope"));
       }
-      for (const file of fileArray) {
-        if (file.size === 0) {
+
+      const from = envelope.from;
+
+      if (!from || typeof from !== "string") {
+        return new Err(new Error("Failed to parse envelope.from"));
+      }
+      if (!senderFull || typeof senderFull !== "string") {
+        return new Err(new Error("Failed to parse from"));
+      }
+
+      const senderHeaderValue =
+        (isString(rawHeaders) ? parseHeaderValue(rawHeaders, "From") : null) ??
+        senderFull;
+      const senderRes = extractSingleEmailAddressFromHeader(
+        "From",
+        senderHeaderValue
+      );
+      if (senderRes.isErr()) {
+        return senderRes;
+      }
+
+      // Extract attachments from files, filtering to supported content types.
+      // Every other file part was still written to disk; drop it now so rejected
+      // MIME types do not wait for the rest of the request.
+      const attachments: EmailAttachment[] = [];
+      const retainedFilepaths = new Set<string>();
+      for (const [key, fileArray] of Object.entries(files)) {
+        if (!fileArray) {
           continue;
         }
-        if (file.mimetype && isSupportedFileContentType(file.mimetype)) {
-          attachments.push({
-            filepath: file.filepath,
-            filename: file.originalFilename ?? key,
-            contentType: file.mimetype,
-            size: file.size,
-          });
+        for (const file of fileArray) {
+          if (file.size === 0) {
+            continue;
+          }
+          if (file.mimetype && isSupportedFileContentType(file.mimetype)) {
+            retainedFilepaths.add(file.filepath);
+            attachments.push({
+              filepath: file.filepath,
+              filename: file.originalFilename ?? key,
+              contentType: file.mimetype,
+              size: file.size,
+            });
+          }
         }
       }
-    }
 
-    return new Ok({
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      subject: subject || "(no subject)",
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      text: text || "",
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      auth: {
-        SPF: SPF || "",
-        dkim: parseSendgridDkimResults(dkimRaw),
-        dkimRaw,
-      },
-      threadingHeaders: parseThreadingHeaders(
-        isString(rawHeaders) ? rawHeaders : null
-      ),
-      rawHeaders: isString(rawHeaders) ? rawHeaders : null,
-      sender: {
-        email: senderRes.value,
-        full: senderHeaderValue,
-      },
-      envelope: {
-        // Use raw headers to get all To/Cc recipients: Sendgrid's envelope.to only
-        // contains addresses matching the inbound-parse domain, omitting human recipients.
-        // envelope.cc is not populated by Sendgrid at all.
-        // Fall back to envelope.to if headers are absent so agent routing still works.
-        to: (() => {
-          const fromHeaders = extractEmailAddressesFromHeader(
-            isString(rawHeaders) ? parseHeaderValue(rawHeaders, "To") : null
-          );
+      await deleteUnretainedFormidableFiles(files, retainedFilepaths);
+      retainUploadDir = true;
+
+      return new Ok({
+        email: {
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          return fromHeaders.length > 0 ? fromHeaders : envelope.to || [];
-        })(),
-        cc: extractEmailAddressesFromHeader(
-          isString(rawHeaders) ? parseHeaderValue(rawHeaders, "Cc") : null
-        ),
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        bcc: envelope.bcc || [],
-        from,
-      },
-      attachments,
-    });
-  } catch {
-    return new Err(new Error("Failed to parse email content"));
+          subject: subject || "(no subject)",
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          text: text || "",
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          auth: {
+            SPF: SPF || "",
+            dkim: parseSendgridDkimResults(dkimRaw),
+            dkimRaw,
+          },
+          threadingHeaders: parseThreadingHeaders(
+            isString(rawHeaders) ? rawHeaders : null
+          ),
+          rawHeaders: isString(rawHeaders) ? rawHeaders : null,
+          sender: {
+            email: senderRes.value,
+            full: senderHeaderValue,
+          },
+          envelope: {
+            // Use raw headers to get all To/Cc recipients: Sendgrid's envelope.to only
+            // contains addresses matching the inbound-parse domain, omitting human recipients.
+            // envelope.cc is not populated by Sendgrid at all.
+            // Fall back to envelope.to if headers are absent so agent routing still works.
+            to: (() => {
+              const fromHeaders = extractEmailAddressesFromHeader(
+                isString(rawHeaders) ? parseHeaderValue(rawHeaders, "To") : null
+              );
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+              return fromHeaders.length > 0 ? fromHeaders : envelope.to || [];
+            })(),
+            cc: extractEmailAddressesFromHeader(
+              isString(rawHeaders) ? parseHeaderValue(rawHeaders, "Cc") : null
+            ),
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            bcc: envelope.bcc || [],
+            from,
+          },
+          attachments,
+        },
+        attachmentTempDir: uploadDir,
+      });
+    } catch {
+      return new Err(new Error("Failed to parse email content"));
+    }
+  } finally {
+    if (!retainUploadDir) {
+      await removeInboundEmailUploadDir(uploadDir);
+    }
   }
 };
 
