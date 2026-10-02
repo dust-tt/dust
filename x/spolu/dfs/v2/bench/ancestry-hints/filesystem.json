@@ -1,0 +1,202 @@
+{
+  "label": "dfs v2 [FoundationDB + Elasticsearch]",
+  "manifest_sha256": "67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1",
+  "files": 10000,
+  "profile": "release",
+  "linux": "Linux-6.12.54-linuxkit-aarch64-with-glibc2.41",
+  "cpu_count": 16,
+  "memory": "MemTotal:        8024028 kB",
+  "server_binary_sha256": "799454c398f4f1362eacbf520fddb723a821da10a2695c6728321556d938d492",
+  "fdb_version": "7.3.69",
+  "es_version": "8.15.3",
+  "server_cache": "advisory directory/parent IDs only; 16384 entries / 8 MiB accounting budget",
+  "backend_caches": "FDB, ES, and OS caches retained across dfs-server restarts",
+  "durability": "normal FDB commits; no post-acknowledgement persistence drain",
+  "prefix": "dfs-v2-bench-fa096e6b2a28446a89fa33e3b273bbf4",
+  "warm_runs": 1,
+  "server_restarted_per_first_case": true,
+  "cold_scope": "new dfs-server/session/mount; backend caches retained",
+  "fuse_threads": 8,
+  "kernel_writeback": true,
+  "client_data_cache": "kernel",
+  "kernel_metadata_ttl_seconds": 4294967295,
+  "max_background": 32,
+  "read_ahead_requested_kib": 1024,
+  "results": [
+    [
+      "metadata",
+      "scandir + stat (100 dirs, 10,000 files)",
+      "first",
+      "7,315.20",
+      "OK"
+    ],
+    [
+      "metadata",
+      "scandir + stat (100 dirs, 10,000 files)",
+      "warm",
+      "145.22",
+      "OK"
+    ],
+    [
+      "metadata",
+      "rg --files (10,000 files)",
+      "first",
+      "401.22",
+      "OK"
+    ],
+    [
+      "metadata",
+      "rg --files (10,000 files)",
+      "warm",
+      "6.52",
+      "OK"
+    ],
+    [
+      "metadata",
+      "open + fstat + close (10,000 files)",
+      "first",
+      "35,190.00",
+      "OK"
+    ],
+    [
+      "metadata",
+      "open + fstat + close (10,000 files)",
+      "warm",
+      "879.23",
+      "OK"
+    ],
+    [
+      "metadata",
+      "stat missing (256 paths)",
+      "first",
+      "1,035.86",
+      "OK"
+    ],
+    [
+      "metadata",
+      "stat missing (256 paths)",
+      "warm",
+      "4.35",
+      "OK"
+    ],
+    [
+      "page cache",
+      "rg no-match scan (10,000 files, 177.5 MB)",
+      "first",
+      "6,438.43",
+      "OK"
+    ],
+    [
+      "page cache",
+      "rg no-match scan (10,000 files, 177.5 MB)",
+      "warm",
+      "191.78",
+      "OK"
+    ],
+    [
+      "search",
+      "rg rare literal (10,000 files, 4 matches)",
+      "first",
+      "6,346.39",
+      "OK"
+    ],
+    [
+      "search",
+      "rg rare literal (10,000 files, 4 matches)",
+      "warm",
+      "190.83",
+      "OK"
+    ],
+    [
+      "path pruning",
+      "rg branch glob (981 candidate files)",
+      "first",
+      "881.53",
+      "OK"
+    ],
+    [
+      "path pruning",
+      "rg branch glob (981 candidate files)",
+      "warm",
+      "33.51",
+      "OK"
+    ],
+    [
+      "path pruning",
+      "rg depth-10 subtree (136 files)",
+      "first",
+      "211.74",
+      "OK"
+    ],
+    [
+      "path pruning",
+      "rg depth-10 subtree (136 files)",
+      "warm",
+      "9.63",
+      "OK"
+    ],
+    [
+      "page cache",
+      "open + read + SHA-256 (10,000 files, 177.5 MB)",
+      "first",
+      "67,302.16",
+      "OK"
+    ],
+    [
+      "page cache",
+      "open + read + SHA-256 (10,000 files, 177.5 MB)",
+      "warm",
+      "1,241.85",
+      "OK"
+    ],
+    [
+      "random I/O",
+      "open + pread tail (256 files x 4 KiB)",
+      "first",
+      "1,871.66",
+      "OK"
+    ],
+    [
+      "random I/O",
+      "open + pread tail (256 files x 4 KiB)",
+      "warm",
+      "28.26",
+      "OK"
+    ],
+    [
+      "write",
+      "create + write (32 x 32 KiB files)",
+      "once",
+      "380.93",
+      "OK"
+    ],
+    [
+      "file sync",
+      "fsync (32 files)",
+      "once",
+      "234.62",
+      "OK"
+    ],
+    [
+      "write",
+      "close (32 files)",
+      "once",
+      "1.65",
+      "OK"
+    ],
+    [
+      "write",
+      "unlink (32 files)",
+      "once",
+      "295.66",
+      "OK"
+    ]
+  ],
+  "corpus_bytes": 177499149,
+  "untar_seconds": 244.14925269491505,
+  "population_client_writeback_seconds": 0.00014412496238946915,
+  "final_client_writeback_seconds": 0.00011354195885360241,
+  "shutdown_seconds": 0.03582504205405712,
+  "resets": 10,
+  "fixture_cleaned": true
+}

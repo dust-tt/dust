@@ -18,6 +18,66 @@ creates a new session and mount** (ten resets). Warm is one repeat on that mount
 and the Docker VM's OS cache are retained; local is the generated corpus on the container filesystem
 and is not guaranteed cold. All 24 rows passed the original workload's result checks.
 
+### dfs v2 [ancestry hints]
+
+Same 10,000-file corpus and setup, server revision `2e71c2b6e7`. Directory-to-parent ID hints
+parallelize live ancestor/grant reads; every first row starts with an empty hints cache. The unchanged
+FUSE client, API, FDB commit guarantees, and ES indexer are retained. All 24 result checks passed.
+
+```text
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 7,315.20  | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 145.22    | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 401.22    | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 6.52      | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 35,190.00 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 879.23    | OK     |
+| metadata     | stat missing (256 paths)                       | first | 1,035.86  | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 4.35      | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 6,438.43  | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 191.78    | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 6,346.39  | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 190.83    | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 881.53    | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 33.51     | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 211.74    | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 9.63      | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 67,302.16 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 1,241.85  | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 1,871.66  | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 28.26     | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 380.93    | OK     |
+| file sync    | fsync (32 files)                               | once  | 234.62    | OK     |
+| write        | close (32 files)                               | once  | 1.65      | OK     |
+| write        | unlink (32 files)                              | once  | 295.66    | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+```
+
+Untar: **244.149 s**, down from **735.751 s** (**3.01× faster**). Final client `syncfs` took
+**0.000144 s** after untar and **0.000114 s** after the suite; these measure only remaining writeback.
+Shutdown: **0.036 s**. Every accepted mutation already awaited FDB; no authoritative persistence drain.
+
+First open/stat/close improved **105.896 → 35.190 s** and full read/SHA-256 improved
+**202.412 → 67.302 s**, both about **3×**. Missing-path checks improved **3.659 → 1.036 s**;
+no-match ripgrep improved **11.291 → 6.438 s**. Scandir/stat improved less (**8.641 → 7.315 s**):
+its per-child reads remain sequential. Kernel-warm times are broadly unchanged. These are single runs,
+with backend/OS caches retained, rather than repeated statistical measurements.
+
+Untar RPC averages fell from **11.58 → 3.10 ms** for lookup, **12.56 → 5.62 ms** for create,
+**14.60 → 4.80 ms** for update, and **15.37 → 5.12 ms** for write. Lookup/create counts are identical;
+writeback produced fewer write/update calls (51,113 total RPCs versus 52,862), despite unchanged client
+settings. The remaining foreground cost still includes per-file RPCs, live FDB reads, and durable
+commits. In the sequential full-read case, cumulative lookup RPC time is **33.295 s** and read RPC
+time **29.991 s** out of **67.302 s** elapsed.
+
+[Run metadata](ancestry-hints/filesystem.json), [DFS rows](ancestry-hints/dfs.json),
+[local rows](ancestry-hints/local.json), and [per-case RPC counters](ancestry-hints/).
+The original filesystem and search results below are retained. Deep-path tests also verify grants
+below the workspace root and moves/revocations from another server, including FDB write conflicts;
+this algorithm has no root-specific shortcut.
+
 ### dfs v2 [FoundationDB + Elasticsearch]
 
 ```text
