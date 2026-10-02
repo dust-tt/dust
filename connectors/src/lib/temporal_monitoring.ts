@@ -214,7 +214,6 @@ export class ActivityInboundLogInterceptor
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">
   ): Promise<unknown> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let error: Error | any = undefined;
     const startTime = new Date();
     const tags = [

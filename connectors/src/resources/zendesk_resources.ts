@@ -31,11 +31,9 @@ import { col, fn, Op } from "sequelize";
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ZendeskConfigurationResource
   extends ReadonlyAttributesType<ZendeskConfigurationModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ZendeskConfigurationResource extends BaseResource<ZendeskConfigurationModel> {
   static model: ModelStatic<ZendeskConfigurationModel> =
     ZendeskConfigurationModel;
@@ -233,11 +231,9 @@ export class ZendeskConfigurationResource extends BaseResource<ZendeskConfigurat
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ZendeskBrandResource
   extends ReadonlyAttributesType<ZendeskBrandModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ZendeskBrandResource extends BaseResource<ZendeskBrandModel> {
   static model: ModelStatic<ZendeskBrandModel> = ZendeskBrandModel;
 
@@ -494,11 +490,9 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrandModel> {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ZendeskCategoryResource
   extends ReadonlyAttributesType<ZendeskCategoryModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ZendeskCategoryResource extends BaseResource<ZendeskCategoryModel> {
   static model: ModelStatic<ZendeskCategoryModel> = ZendeskCategoryModel;
 
@@ -754,11 +748,9 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategoryModel> 
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ZendeskTicketResource
   extends ReadonlyAttributesType<ZendeskTicketModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ZendeskTicketResource extends BaseResource<ZendeskTicketModel> {
   static model: ModelStatic<ZendeskTicketModel> = ZendeskTicketModel;
 
@@ -953,11 +945,9 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicketModel> {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ZendeskArticleResource
   extends ReadonlyAttributesType<ZendeskArticleModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ZendeskArticleResource extends BaseResource<ZendeskArticleModel> {
   static model: ModelStatic<ZendeskArticleModel> = ZendeskArticleModel;
 

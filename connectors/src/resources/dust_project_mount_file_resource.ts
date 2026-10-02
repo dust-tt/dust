@@ -9,10 +9,8 @@ import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface DustProjectMountFileResource
   extends ReadonlyAttributesType<DustProjectMountFileModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class DustProjectMountFileResource extends BaseResource<DustProjectMountFileModel> {
   static model: ModelStatic<DustProjectMountFileModel> =
     DustProjectMountFileModel;

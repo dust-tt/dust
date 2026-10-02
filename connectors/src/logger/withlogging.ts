@@ -9,7 +9,6 @@ import StatsD from "hot-shots";
 
 export const statsDClient = new StatsD();
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const withLogging = (handler: any) => {
   return async (req: Request, res: Response): Promise<void> => {
     const now = new Date();
