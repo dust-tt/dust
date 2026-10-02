@@ -6,6 +6,7 @@ import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { TRIGGERS_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/triggers_management/metadata";
 import { generateScheduleRule } from "@app/lib/api/assistant/configuration/triggers";
 import { getWebhookFilterGeneration } from "@app/lib/api/assistant/configuration/triggers/webhook_filter";
+import { WEBHOOK_PRESETS } from "@app/lib/api/triggers/webhook_presets";
 import type { Authenticator } from "@app/lib/auth";
 import { parseMatcherExpression } from "@app/lib/matcher/parser";
 import { AgentResource } from "@app/lib/resources/agent_resource";
@@ -15,7 +16,6 @@ import {
   TriggerResource,
 } from "@app/lib/resources/trigger_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
-import { WEBHOOK_PRESETS } from "@app/lib/triggers/webhook_presets";
 import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";

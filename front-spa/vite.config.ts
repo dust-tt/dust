@@ -73,6 +73,7 @@ function detectServerImportsPlugin(): Plugin {
   const SERVER_ONLY_PATTERNS = [
     /\/front\/temporal\//,
     /\/front\/lib\/resources\//,
+    /\/front\/lib\/api\/triggers\//,
   ];
 
   // Known exceptions that are tolerated.

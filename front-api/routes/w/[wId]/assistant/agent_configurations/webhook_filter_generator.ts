@@ -1,5 +1,5 @@
 import { getWebhookFilterGeneration } from "@app/lib/api/assistant/configuration/triggers/webhook_filter";
-import { WEBHOOK_PRESETS } from "@app/lib/triggers/webhook_presets";
+import { WEBHOOK_PRESETS } from "@app/lib/api/triggers/webhook_presets";
 import { WEBHOOK_PROVIDERS } from "@app/lib/triggers/webhooks";
 import type { PostWebhookFilterGeneratorResponseBody } from "@app/types/api/assistant/configuration/triggers/webhook_filter_generator";
 import { workspaceApp } from "@front-api/middlewares/ctx";
