@@ -127,6 +127,13 @@ export function getActiveSlashSubMenuFrame(
 
 export const SLASH_MENU_QUERY_PLACEHOLDER = "Type to search";
 
+// The "/" trigger and the "Type to search" ghost text are two adjacent spans; these classes draw
+// them as a single chip (left half on the trigger, right half on the placeholder).
+export const SLASH_MENU_TRIGGER_CLASS_NAME =
+  "bg-input-bar-background-secondary py-1 pl-1 rounded-l-lg";
+export const SLASH_MENU_QUERY_PLACEHOLDER_CLASS_NAME =
+  "bg-input-bar-background-secondary py-1 pr-2 rounded-r-lg";
+
 export function enterSlashSubMenu({
   command,
   editor,

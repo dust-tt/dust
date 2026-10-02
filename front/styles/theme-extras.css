@@ -25,16 +25,21 @@
    can reach it as `bg-`/`text-input-bar-background`. */
 :root {
   --color-input-bar-background: oklch(98.8% 0 89.876);
+  --color-input-bar-background-secondary: oklch(96.8% 0.002 89.876);
 }
 .dark {
   --color-input-bar-background: oklch(29.4% 0.008 84.593);
+  --color-input-bar-background-secondary: oklch(34% 0.008 84.593);
 }
 
 /* Map the border-darker token (defined in global.css :root/.dark) and the
-   input bar surface above. */
+   input bar surfaces above. */
 @theme inline {
   --color-border-darker: var(--color-border-darker);
   --color-input-bar-background: var(--color-input-bar-background);
+  --color-input-bar-background-secondary: var(
+    --color-input-bar-background-secondary
+  );
 }
 
 @theme {

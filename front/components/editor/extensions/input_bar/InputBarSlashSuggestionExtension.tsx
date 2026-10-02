@@ -11,6 +11,8 @@ import {
   getActiveSlashSubMenuFrame,
   handleSlashSubMenuCommand,
   SLASH_MENU_QUERY_PLACEHOLDER,
+  SLASH_MENU_QUERY_PLACEHOLDER_CLASS_NAME,
+  SLASH_MENU_TRIGGER_CLASS_NAME,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import {
   getSlashTriggerText,
@@ -164,5 +166,7 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     clearSlashSubMenuStack(storage);
   },
   queryPlaceholder: SLASH_MENU_QUERY_PLACEHOLDER,
+  queryPlaceholderClassName: SLASH_MENU_QUERY_PLACEHOLDER_CLASS_NAME,
+  triggerClassName: SLASH_MENU_TRIGGER_CLASS_NAME,
   preventEscapeDefault: true,
 });
