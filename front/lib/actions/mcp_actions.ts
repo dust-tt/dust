@@ -445,6 +445,10 @@ export async function* tryCallMCPTool(
 
   let mcpClient;
   let toolPromise: ReturnType<Client["callTool"]> | undefined;
+  let notificationStream:
+    | ReturnType<typeof fromEvent<MCPProgressNotificationType>>
+    | undefined;
+  let heartbeatTimer: NodeJS.Timeout | undefined;
   try {
     if (isServerSideMCPToolConfiguration(toolConfiguration)) {
       const connectStarted = performance.now();
@@ -555,7 +559,7 @@ export async function* tryCallMCPTool(
     const emitter = new EventEmitter();
 
     // Convert the emitter to an async generator.
-    const notificationStream = fromEvent<MCPProgressNotificationType>(
+    notificationStream = fromEvent<MCPProgressNotificationType>(
       emitter,
       MCP_NOTIFICATION_EVENT_NAME
     );
@@ -632,7 +636,6 @@ export async function* tryCallMCPTool(
     let notificationPromise = notificationStream.next();
 
     // Frequently heartbeat to get notified of cancellation.
-    let heartbeatTimer: NodeJS.Timeout | undefined;
     const createHeartbeatPromise = (): Promise<void> =>
       new Promise((resolve) => {
         heartbeatTimer = setTimeout(() => {
@@ -644,40 +647,35 @@ export async function* tryCallMCPTool(
     let heartbeatPromise = createHeartbeatPromise();
 
     logger.info(toolLogContext, "Starting MCP tool notification loop");
-    try {
-      while (!toolDone) {
-        const notificationOrDone = await Promise.race([
-          notificationPromise,
-          toolPromise
-            .then(() => MCP_TOOL_DONE_EVENT_NAME)
-            .catch(() => MCP_TOOL_ERROR_EVENT_NAME), // Or tool rejects (abort or error).
-          heartbeatPromise.then(() => MCP_TOOL_HEARTBEAT_EVENT_NAME),
-        ]);
+    while (!toolDone) {
+      const notificationOrDone = await Promise.race([
+        notificationPromise,
+        toolPromise
+          .then(() => MCP_TOOL_DONE_EVENT_NAME)
+          .catch(() => MCP_TOOL_ERROR_EVENT_NAME), // Or tool rejects (abort or error).
+        heartbeatPromise.then(() => MCP_TOOL_HEARTBEAT_EVENT_NAME),
+      ]);
 
-        // If the tool completed or errored, break from the loop and stop reading notifications.
-        if (
-          notificationOrDone === MCP_TOOL_DONE_EVENT_NAME ||
-          notificationOrDone === MCP_TOOL_ERROR_EVENT_NAME
-        ) {
-          toolDone = true;
-        } else if (notificationOrDone === MCP_TOOL_HEARTBEAT_EVENT_NAME) {
-          logger.info(toolLogContext, "MCP tool heartbeat");
-          await heartbeat();
-          // Renew the heartbeat promise for the next interval.
-          heartbeatPromise = createHeartbeatPromise();
-        } else {
-          const iteratorResult = notificationOrDone;
-          if (iteratorResult.done) {
-            // The notifications ended prematurely.
-            break;
-          }
-          notificationPromise = notificationStream.next();
-          yield makeToolNotificationEvent(iteratorResult.value);
+      // If the tool completed or errored, break from the loop and stop reading notifications.
+      if (
+        notificationOrDone === MCP_TOOL_DONE_EVENT_NAME ||
+        notificationOrDone === MCP_TOOL_ERROR_EVENT_NAME
+      ) {
+        toolDone = true;
+      } else if (notificationOrDone === MCP_TOOL_HEARTBEAT_EVENT_NAME) {
+        logger.info(toolLogContext, "MCP tool heartbeat");
+        await heartbeat();
+        // Renew the heartbeat promise for the next interval.
+        heartbeatPromise = createHeartbeatPromise();
+      } else {
+        const iteratorResult = notificationOrDone;
+        if (iteratorResult.done) {
+          // The notifications ended prematurely.
+          break;
         }
+        notificationPromise = notificationStream.next();
+        yield makeToolNotificationEvent(iteratorResult.value);
       }
-    } finally {
-      clearTimeout(heartbeatTimer);
-      await notificationStream.return();
     }
 
     let toolCallResult: Awaited<typeof toolPromise>;
@@ -826,6 +824,8 @@ export async function* tryCallMCPTool(
       ],
     };
   } finally {
+    clearTimeout(heartbeatTimer);
+    await notificationStream?.return();
     await mcpClient?.close();
     // Closing the client rejects a pending request. Join it before leaving the activity.
     await Promise.allSettled([toolPromise]);

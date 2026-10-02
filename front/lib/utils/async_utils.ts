@@ -110,28 +110,18 @@ export async function withPeriodicHeartbeat<T>(
     heartbeatFn: () => void | Promise<void>;
   }
 ): Promise<T> {
-  let pendingHeartbeat: Promise<void> | undefined;
-  const heartbeatFailure = Promise.withResolvers<never>();
+  let heartbeatPromise = Promise.resolve();
   const interval = setInterval(() => {
-    if (pendingHeartbeat) {
-      return;
-    }
-    pendingHeartbeat = Promise.resolve().then(heartbeatFn);
-    pendingHeartbeat.then(() => {
-      pendingHeartbeat = undefined;
-    }, heartbeatFailure.reject);
+    heartbeatPromise = heartbeatPromise.then(heartbeatFn);
+    // Handle timer rejections immediately; the await below propagates the error.
+    heartbeatPromise.catch(() => clearInterval(interval));
   }, intervalMs);
-  const work = Promise.resolve().then(fn);
 
   try {
-    const result = await Promise.race([work, heartbeatFailure.promise]);
-    clearInterval(interval);
-    // A heartbeat already in flight must also succeed before we return.
-    await pendingHeartbeat;
+    const result = await fn();
     return result;
   } finally {
     clearInterval(interval);
-    // Cancellation cannot stop arbitrary I/O. Join it before leaving the activity.
-    await Promise.allSettled([work, pendingHeartbeat]);
+    await heartbeatPromise;
   }
 }

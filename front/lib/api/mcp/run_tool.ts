@@ -136,72 +136,79 @@ export async function* runToolWithStreaming(
 
   // Tool result processing can legitimately take up to 5 minutes when processing files,
   // so heartbeat while this scoped post-processing phase is running.
-  try {
-    const { outputItems, generatedFiles, awaitDurablePersist } =
-      await withPeriodicHeartbeat(
-        () =>
-          processToolResults(auth, {
-            localLogger,
-            toolCallResultContent: toolCallResult.content,
-            toolCallResultStructuredContent: toolCallResult.structuredContent,
-            toolContext,
-          }),
-        {
-          intervalMs: TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS,
-          heartbeatFn: async () => {
-            await heartbeat();
-            localLogger.info("MCP tool result processing heartbeat");
-          },
-        }
-      );
-
-    // Parse the output resources to check if we find special events that require the agent loop to pause.
-    // This could be an authentication, validation, or unconditional exit from the action.
-    const pauseEventsStarted = performance.now();
-    const agentPauseEvents = await getExitOrPauseEvents(auth, {
-      outputItems,
-      toolContext,
-    });
-    recordMcpPauseEventsMs(roundMs(pauseEventsStarted));
-
-    if (agentPauseEvents.length > 0) {
-      // Durable GCS may still be in flight from createOutputItems; finish before exiting.
-      const persistResult = await awaitDurablePersist();
+  const { outputItems, generatedFiles, awaitDurablePersist } =
+    await withPeriodicHeartbeat(
+      () =>
+        processToolResults(auth, {
+          localLogger,
+          toolCallResultContent: toolCallResult.content,
+          toolCallResultStructuredContent: toolCallResult.structuredContent,
+          toolContext,
+        }),
+      {
+        intervalMs: TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS,
+        heartbeatFn: async () => {
+          await heartbeat();
+          localLogger.info("MCP tool result processing heartbeat");
+        },
+      }
+    ).catch(async (error) => {
+      // Processing may have started a deferred GCS write before cancellation.
+      // withPeriodicHeartbeat joins processing; finish its write before exiting.
+      const persistResult = await action.awaitDeferredOutputPersist();
       if (persistResult.isErr()) {
         localLogger.error(
           { err: persistResult.error },
-          "Failed to durably persist MCP tool output after pause event"
+          "Failed to durably persist MCP tool output after processing failure"
         );
       }
-      for (const event of agentPauseEvents) {
-        yield event;
-      }
-      return;
-    }
+      throw error;
+    });
 
-    const endDate = performance.now();
-    const markSucceededStarted = performance.now();
-    await action.markAsSucceeded({ executionDurationMs: endDate - startDate });
-    recordMcpMarkSucceededMs(roundMs(markSucceededStarted));
+  // Parse the output resources to check if we find special events that require the agent loop to pause.
+  // This could be an authentication, validation, or unconditional exit from the action.
+  const pauseEventsStarted = performance.now();
+  const agentPauseEvents = await getExitOrPauseEvents(auth, {
+    outputItems,
+    toolContext,
+  });
+  recordMcpPauseEventsMs(roundMs(pauseEventsStarted));
 
-    yield {
-      type: "tool_success",
-      created: Date.now(),
-      output: removeNulls(
-        [...intermediateOutputItems, ...outputItems].map(
-          hideFileFromActionOutput
-        )
-      ),
-      generatedFiles,
-    };
-  } finally {
-    // Finish writes already started on success, cancellation, or processing failure.
-    const persistResult = await action.awaitDeferredOutputPersist();
+  if (agentPauseEvents.length > 0) {
+    // Durable GCS may still be in flight from createOutputItems; finish before exiting.
+    const persistResult = await awaitDurablePersist();
     if (persistResult.isErr()) {
       localLogger.error(
         { err: persistResult.error },
-        "Failed to durably persist MCP tool output"
+        "Failed to durably persist MCP tool output after pause event"
       );
     }
+    for (const event of agentPauseEvents) {
+      yield event;
+    }
+    return;
+  }
+
+  const endDate = performance.now();
+  const markSucceededStarted = performance.now();
+  await action.markAsSucceeded({ executionDurationMs: endDate - startDate });
+  recordMcpMarkSucceededMs(roundMs(markSucceededStarted));
+
+  yield {
+    type: "tool_success",
+    created: Date.now(),
+    output: removeNulls(
+      [...intermediateOutputItems, ...outputItems].map(hideFileFromActionOutput)
+    ),
+    generatedFiles,
+  };
+
+  // Write-behind GCS: poll/agent already unblocked via Redis stage + succeeded status.
+  const persistResult = await awaitDurablePersist();
+  if (persistResult.isErr()) {
+    localLogger.error(
+      { err: persistResult.error },
+      "Failed to durably persist MCP tool output after success"
+    );
   }
 }
