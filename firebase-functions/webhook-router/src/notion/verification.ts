@@ -62,6 +62,12 @@ async function parseExpressRequestRawBody(req: Request): Promise<string> {
 }
 
 // Creates middleware that verifies Notion signature.
+/**
+ * @cc [owner:fabiencelier,label:security] verification-token-never-overwrites-secret
+ * With client credentials, a request carrying `verification_token` skips signature verification
+ * and MUST be rejected when a Notion webhook router entry already exists for
+ * `providerWorkspaceId`, so an unauthenticated request can only set the first signing secret.
+ */
 export function createNotionVerificationMiddleware(
   secretManager: SecretManager,
   webhookRouterConfigManager: WebhookRouterConfigManager,
@@ -86,6 +92,21 @@ export function createNotionVerificationMiddleware(
       // that is what gives us the signing secret in the first place. This applies to
       // both private client integrations and standard Dust integrations.
       if (req.body.verification_token) {
+        if (useClientCredentials) {
+          providerWorkspaceId = req.params.providerWorkspaceId;
+          // The verification request is unauthenticated: it must never overwrite an
+          // already-set signing secret, otherwise anyone could replace it and forge events.
+          if (
+            await webhookRouterConfigManager.hasEntry(
+              "notion",
+              providerWorkspaceId
+            )
+          ) {
+            throw new ReceiverAuthenticityError(
+              "Notion verification token rejected. A signing secret is already set."
+            );
+          }
+        }
         return next();
       }
 
@@ -131,6 +152,17 @@ export function createNotionVerificationMiddleware(
         signature: signature.slice(signaturePrefix.length),
         signingSecret: signingSecret,
       });
+
+      // The signing secret is per providerWorkspaceId, but connectors routes events by the
+      // body's workspace_id: they must match so a signed event can't target another workspace.
+      if (
+        useClientCredentials &&
+        req.body.workspace_id !== providerWorkspaceId
+      ) {
+        throw new ReceiverAuthenticityError(
+          "Notion request verification failed. Workspace ID mismatch."
+        );
+      }
 
       return next();
     } catch (e) {

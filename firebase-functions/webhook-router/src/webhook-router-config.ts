@@ -29,6 +29,16 @@ export function normalizeWebhookRouterConfig(
 export class WebhookRouterConfigManager {
   constructor(private client: Database) {}
 
+  async hasEntry(
+    provider: ProviderWithSigningSecret,
+    providerWorkspaceId: string
+  ): Promise<boolean> {
+    const snapshot = await this.client
+      .ref(`${provider}/${providerWorkspaceId}`)
+      .get();
+    return snapshot.exists();
+  }
+
   async getEntry(
     provider: ProviderWithSigningSecret,
     providerWorkspaceId: string
