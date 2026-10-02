@@ -1,15 +1,20 @@
-import { cn, KeyboardShortcut } from "@dust-tt/sparkle";
+import { ArrowRight, Button, cn, KeyboardShortcut } from "@dust-tt/sparkle";
 import React from "react";
 
 interface ItemRowProps {
   isSelected: boolean;
   onClick: () => void;
   onMouseMove: () => void;
+  /** When set, shows a trailing arrow control to open the actions phase. */
+  onOpenActions?: () => void;
   children: React.ReactNode;
 }
 
 export const ItemRow = React.forwardRef<HTMLDivElement, ItemRowProps>(
-  function ItemRow({ isSelected, onClick, onMouseMove, children }, ref) {
+  function ItemRow(
+    { isSelected, onClick, onMouseMove, onOpenActions, children },
+    ref
+  ) {
     return (
       <div
         ref={ref}
@@ -23,7 +28,22 @@ export const ItemRow = React.forwardRef<HTMLDivElement, ItemRowProps>(
         onClick={onClick}
         onMouseMove={onMouseMove}
       >
-        {children}
+        <div className="flex min-w-0 grow items-center gap-2.5">{children}</div>
+        {onOpenActions && (
+          <Button
+            variant="outline"
+            size="xs"
+            icon={ArrowRight}
+            aria-label="More actions"
+            // Keep the button mounted so showing it on selection doesn't shift layout.
+            className={cn(!isSelected && "invisible")}
+            tabIndex={isSelected ? undefined : -1}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenActions();
+            }}
+          />
+        )}
       </div>
     );
   }

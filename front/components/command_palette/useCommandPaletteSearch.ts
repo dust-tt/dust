@@ -19,7 +19,7 @@ import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useSearchSkills } from "@app/lib/swr/skill_configurations";
 import { hasGroupManagementScope } from "@app/types/api/auth_context";
 import type { ConversationListItemType } from "@app/types/assistant/conversation";
-import type { PodType } from "@app/types/space";
+import type { PodListItemType } from "@app/types/space";
 import type {
   LightUserTypeWithWorkspace,
   LightWorkspaceType,
@@ -36,7 +36,7 @@ const MAX_DISPLAYED_SETTINGS = 3;
 /** Minimum characters before the command palette runs a search. */
 export const MIN_COMMAND_PALETTE_SEARCH_LENGTH = 1;
 
-type CommandPalettePod = PodType & { isMember: boolean };
+type CommandPalettePod = PodListItemType;
 
 type CommandPaletteConversation = ConversationListItemType & {
   spaceName: string | null;

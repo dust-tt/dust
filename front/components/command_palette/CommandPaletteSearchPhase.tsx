@@ -5,7 +5,6 @@ import {
   KeyboardHints,
 } from "@app/components/command_palette/CommandPaletteItems";
 import { MIN_COMMAND_PALETTE_SEARCH_LENGTH } from "@app/components/command_palette/useCommandPaletteSearch";
-import { NavItemKeyboardShortcut } from "@app/components/navigation/NavItemKeyboardShortcut";
 import type { AdminSectionId } from "@app/lib/admin/adminSectionIds";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { getSpaceIcon } from "@app/lib/spaces";
@@ -18,10 +17,9 @@ import type {
   SkillWithoutInstructionsAndToolsType,
 } from "@app/types/assistant/skill_configuration";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { PodType } from "@app/types/space";
+import type { PodListItemType } from "@app/types/space";
 import type { LightUserTypeWithWorkspace } from "@app/types/user";
 import {
-  ArrowRight,
   Avatar,
   cn,
   FilterChips,
@@ -31,6 +29,7 @@ import {
   MessagePlusCircle,
   Plus,
   SearchInput,
+  Settings01,
 } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
 import type React from "react";
@@ -65,7 +64,7 @@ type CommandPaletteAgent =
   | LightAgentConfigurationType
   | AgentSearchListItemType;
 
-type CommandPalettePod = PodType & { isMember: boolean };
+type CommandPalettePod = PodListItemType;
 
 type CommandPaletteConversation = ConversationListItemType & {
   spaceName: string | null;
@@ -116,6 +115,30 @@ export function getCommandPaletteItemKey(item: CommandPaletteItem): string {
   }
 }
 
+/** True when Right arrow / the row chevron should open the actions phase. */
+export function commandPaletteItemHasActions(
+  item: CommandPaletteItem
+): item is Extract<
+  CommandPaletteItem,
+  { kind: "agent" | "member" | "skill" | "pod" }
+> {
+  switch (item.kind) {
+    case "agent":
+    case "member":
+    case "pod":
+      return true;
+    case "skill":
+      // Without edit access the only action is view details (the default).
+      return item.skill.canAdministrate;
+    case "action":
+    case "conversation":
+    case "setting":
+      return false;
+    default:
+      assertNever(item);
+  }
+}
+
 interface CommandPaletteSearchPhaseProps {
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
@@ -142,6 +165,7 @@ interface CommandPaletteSearchPhaseProps {
   selectedIndex: number;
   onSelectedIndexChange: (index: number) => void;
   onItemSelect: (item: CommandPaletteItem) => void;
+  onOpenActions: (item: CommandPaletteItem) => void;
 }
 
 function CommandPaletteItemContent({ item }: { item: CommandPaletteItem }) {
@@ -163,8 +187,7 @@ function CommandPaletteItemContent({ item }: { item: CommandPaletteItem }) {
           return (
             <>
               <Icon visual={MessagePlusCircle} size="xs" />
-              <span className="grow font-medium">{t`Create new conversation`}</span>
-              <NavItemKeyboardShortcut keys={["C"]} />
+              <span className="font-medium">{t`Create new conversation`}</span>
             </>
           );
         case "new_pod":
@@ -274,7 +297,7 @@ function CommandPaletteItemContent({ item }: { item: CommandPaletteItem }) {
     case "setting":
       return (
         <>
-          <Icon visual={ArrowRight} size="xs" />
+          <Icon visual={Settings01} size="xs" />
           <div className="flex min-w-0 items-center gap-1.5">
             <span className="shrink-0 font-medium">{item.setting.label}</span>
             <span className="shrink-0 text-muted-foreground">-</span>
@@ -377,6 +400,7 @@ export function CommandPaletteSearchPhase({
   selectedIndex,
   onSelectedIndexChange,
   onItemSelect,
+  onOpenActions,
 }: CommandPaletteSearchPhaseProps) {
   const { t } = useLingui();
   const trimmedQuery = searchQuery.trim();
@@ -568,6 +592,14 @@ export function CommandPaletteSearchPhase({
           onItemSelect(flatItems[selectedIndex]);
         }
         break;
+      case "ArrowRight": {
+        const item = flatItems[selectedIndex];
+        if (item && commandPaletteItemHasActions(item)) {
+          e.preventDefault();
+          onOpenActions(item);
+        }
+        break;
+      }
     }
   }
 
@@ -661,6 +693,11 @@ export function CommandPaletteSearchPhase({
                   isSelected={selectedIndex === globalIndex}
                   onClick={() => onItemSelect(item)}
                   onMouseMove={() => onSelectedIndexChange(globalIndex)}
+                  onOpenActions={
+                    commandPaletteItemHasActions(item)
+                      ? () => onOpenActions(item)
+                      : undefined
+                  }
                 >
                   <CommandPaletteItemContent item={item} />
                 </ItemRow>
@@ -698,6 +735,7 @@ export function CommandPaletteSearchPhase({
                 isSelected={selectedIndex === i}
                 onClick={() => onItemSelect({ kind: "agent", agent })}
                 onMouseMove={() => onSelectedIndexChange(i)}
+                onOpenActions={() => onOpenActions({ kind: "agent", agent })}
               >
                 <CommandPaletteItemContent item={{ kind: "agent", agent }} />
               </ItemRow>
@@ -715,6 +753,10 @@ export function CommandPaletteSearchPhase({
             <ItemTitle>Skills</ItemTitle>
             {filteredSkills.map((skill, i) => {
               const globalIndex = skillsOffset + i;
+              const item = {
+                kind: "skill" as const,
+                skill,
+              };
               return (
                 <ItemRow
                   key={skill.sId}
@@ -722,10 +764,15 @@ export function CommandPaletteSearchPhase({
                     itemRefs.current[globalIndex] = el;
                   }}
                   isSelected={selectedIndex === globalIndex}
-                  onClick={() => onItemSelect({ kind: "skill", skill })}
+                  onClick={() => onItemSelect(item)}
                   onMouseMove={() => onSelectedIndexChange(globalIndex)}
+                  onOpenActions={
+                    commandPaletteItemHasActions(item)
+                      ? () => onOpenActions(item)
+                      : undefined
+                  }
                 >
-                  <CommandPaletteItemContent item={{ kind: "skill", skill }} />
+                  <CommandPaletteItemContent item={item} />
                 </ItemRow>
               );
             })}
@@ -751,6 +798,9 @@ export function CommandPaletteSearchPhase({
                   isSelected={selectedIndex === globalIndex}
                   onClick={() => onItemSelect({ kind: "member", member })}
                   onMouseMove={() => onSelectedIndexChange(globalIndex)}
+                  onOpenActions={() =>
+                    onOpenActions({ kind: "member", member })
+                  }
                 >
                   <CommandPaletteItemContent
                     item={{ kind: "member", member }}
@@ -771,6 +821,7 @@ export function CommandPaletteSearchPhase({
             <ItemTitle>Pods</ItemTitle>
             {filteredPods.map((pod, i) => {
               const globalIndex = podsOffset + i;
+              const item = { kind: "pod" as const, pod };
               return (
                 <ItemRow
                   key={pod.sId}
@@ -778,10 +829,11 @@ export function CommandPaletteSearchPhase({
                     itemRefs.current[globalIndex] = el;
                   }}
                   isSelected={selectedIndex === globalIndex}
-                  onClick={() => onItemSelect({ kind: "pod", pod })}
+                  onClick={() => onItemSelect(item)}
                   onMouseMove={() => onSelectedIndexChange(globalIndex)}
+                  onOpenActions={() => onOpenActions(item)}
                 >
-                  <CommandPaletteItemContent item={{ kind: "pod", pod }} />
+                  <CommandPaletteItemContent item={item} />
                 </ItemRow>
               );
             })}
@@ -857,6 +909,7 @@ export function CommandPaletteSearchPhase({
         hints={[
           { keys: ["↑", "↓"], label: "Navigate" },
           { keys: ["↵"], label: "Select" },
+          { keys: ["→"], label: "Actions" },
           { keys: ["Esc"], label: "Close" },
         ]}
       />

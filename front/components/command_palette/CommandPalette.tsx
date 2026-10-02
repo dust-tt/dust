@@ -13,6 +13,7 @@ import type {
 } from "@app/components/command_palette/CommandPaletteSearchPhase";
 import {
   CommandPaletteSearchPhase,
+  commandPaletteItemHasActions,
   getCommandPaletteItemKey,
 } from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { useCommandPaletteSearch } from "@app/components/command_palette/useCommandPaletteSearch";
@@ -21,6 +22,8 @@ import { useActivePodId } from "@app/hooks/useActivePodId";
 import { useFrecencySorting } from "@app/hooks/useFrerencySorting";
 import { navigateToAdminSetting } from "@app/lib/admin/buildAdminSettingHref";
 import { useAppRouter } from "@app/lib/platform";
+import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
+import { useStarPod } from "@app/lib/swr/pods";
 import {
   getAgentBuilderRoute,
   getConversationRoute,
@@ -82,6 +85,16 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
 
   const podId = useActivePodId();
 
+  const starPod = useStarPod({
+    workspaceId: owner.sId,
+    podId: selectedItem?.kind === "pod" ? selectedItem.pod.sId : null,
+  });
+  const { updateUserFavorite } = useUpdateUserFavorite({
+    owner,
+    agentConfigurationId:
+      selectedItem?.kind === "agent" ? selectedItem.agent.sId : "",
+  });
+
   const { visitedItems, visitItem } = useFrecencySorting<CommandPaletteItem>(
     undefined,
     {
@@ -107,10 +120,9 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
 
   const executeAction = useCallback(
     (item: CommandPaletteItem, action: CommandPaletteAction) => {
-      close();
-
       switch (action) {
         case "chat_with_in_pod":
+          close();
           if (item.kind === "agent") {
             navigateToPod(
               (href) => {
@@ -134,6 +146,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
           }
           break;
         case "chat_with":
+          close();
           if (item.kind === "agent") {
             void router.push(
               getConversationRoute(owner.sId, "new", `agent=${item.agent.sId}`)
@@ -145,6 +158,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
           }
           break;
         case "view_details":
+          close();
           if (item.kind === "agent") {
             setAgentDetailsId(item.agent.sId);
           } else if (item.kind === "skill") {
@@ -154,17 +168,47 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
           }
           break;
         case "edit":
+          close();
           if (item.kind === "agent") {
             void router.push(getAgentBuilderRoute(owner.sId, item.agent.sId));
           } else if (item.kind === "skill") {
             void router.push(getSkillBuilderRoute(owner.sId, item.skill.sId));
           }
           break;
+        case "go":
+          close();
+          if (item.kind === "pod") {
+            navigateToPod(
+              (href) => {
+                void router.push(href);
+              },
+              owner.sId,
+              item.pod.sId
+            );
+          }
+          break;
+        case "star":
+        case "unstar":
+          close();
+          if (item.kind === "pod") {
+            void starPod(action === "star");
+          }
+          break;
+        case "favorite":
+        case "unfavorite":
+          close();
+          if (item.kind === "agent") {
+            void updateUserFavorite(action === "favorite");
+          }
+          break;
+        default:
+          assertNever(action);
       }
     },
-    [close, router, owner.sId, podId]
+    [close, router, owner.sId, podId, starPod, updateUserFavorite]
   );
 
+  // Enter / row click: run the item's default action.
   const handleItemSelect = useCallback(
     (item: CommandPaletteItem) => {
       if (item.kind === "action") {
@@ -196,44 +240,59 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
 
       void visitItem(item);
 
-      if (item.kind === "pod") {
-        close();
-        navigateToPod(
-          (href) => {
-            void router.push(href);
-          },
-          owner.sId,
-          item.pod.sId
-        );
-        return;
-      }
-      if (item.kind === "conversation") {
-        close();
-        void router.push(
-          getConversationRoute(owner.sId, item.conversation.sId)
-        );
-        return;
-      }
-      if (item.kind === "setting") {
-        close();
-        navigateToAdminSetting(
-          (href) => {
-            void router.push(href);
-          },
-          item.setting.pageHref,
-          item.setting
-        );
-        return;
-      }
-      // Skills without administration access have only one action (view details).
-      if (item.kind === "skill" && !item.skill.canAdministrate) {
-        executeAction(item, "view_details");
-      } else {
-        setSelectedItem(item);
-        setPhase("action");
+      switch (item.kind) {
+        case "pod":
+          close();
+          navigateToPod(
+            (href) => {
+              void router.push(href);
+            },
+            owner.sId,
+            item.pod.sId
+          );
+          break;
+        case "conversation":
+          close();
+          void router.push(
+            getConversationRoute(owner.sId, item.conversation.sId)
+          );
+          break;
+        case "setting":
+          close();
+          navigateToAdminSetting(
+            (href) => {
+              void router.push(href);
+            },
+            item.setting.pageHref,
+            item.setting
+          );
+          break;
+        case "agent":
+        case "member":
+          executeAction(item, "chat_with");
+          break;
+        case "skill":
+          executeAction(item, "view_details");
+          break;
+        default:
+          assertNever(item);
       }
     },
     [close, executeAction, owner.sId, podId, router, visitItem]
+  );
+
+  // Right arrow / row chevron: open the actions phase when the item has one.
+  const handleOpenActions = useCallback(
+    (item: CommandPaletteItem) => {
+      if (!commandPaletteItemHasActions(item)) {
+        return;
+      }
+
+      void visitItem(item);
+      setSelectedItem(item);
+      setPhase("action");
+    },
+    [visitItem]
   );
 
   const handleBack = useCallback(() => {
@@ -261,13 +320,19 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
 
   const handleEscapeKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      // First Esc clears the query; a second Esc (empty query) closes the dialog.
-      if (phase === "search" && searchQuery.length > 0) {
+      // Action phase: Esc returns to search (don't close the dialog).
+      if (phase === "action") {
+        e.preventDefault();
+        handleBack();
+        return;
+      }
+      // Search: first Esc clears the query; a second Esc closes the dialog.
+      if (searchQuery.length > 0) {
         e.preventDefault();
         setSearchQuery("");
       }
     },
-    [phase, searchQuery]
+    [phase, searchQuery, handleBack]
   );
 
   return (
@@ -304,6 +369,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
               selectedIndex={selectedIndex}
               onSelectedIndexChange={setSelectedIndex}
               onItemSelect={handleItemSelect}
+              onOpenActions={handleOpenActions}
             />
           ) : selectedItem ? (
             <CommandPaletteActionPhase
@@ -311,7 +377,6 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
               item={selectedItem}
               onAction={handleAction}
               onBack={handleBack}
-              onClose={close}
             />
           ) : null}
         </DialogContent>
