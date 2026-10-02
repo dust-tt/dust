@@ -1,4 +1,5 @@
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
+import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import type { GetTriggerEstimationResponseBody } from "@app/lib/triggers/trigger_usage_estimation";
 import { computeFilteredWebhookTriggerForecast } from "@app/lib/triggers/trigger_usage_estimation";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -34,6 +35,22 @@ app.get(
     );
 
     if (!webhookSourceResource) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "webhook_source_not_found",
+          message: "The webhook source was not found.",
+        },
+      });
+    }
+
+    // Payloads are only readable through a view the caller can access; a
+    // source with no such view is reported as not found.
+    const readableViews = await WebhookSourcesViewResource.listByWebhookSource(
+      auth,
+      webhookSourceResource.id
+    );
+    if (readableViews.length === 0) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
