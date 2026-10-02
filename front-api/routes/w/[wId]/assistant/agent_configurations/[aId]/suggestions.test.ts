@@ -2,11 +2,14 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -21,11 +24,12 @@ beforeAll(() => {
 
 async function setupTest(options: { role?: MembershipRoleType } = {}) {
   const role = options.role ?? "user";
-  const { workspace, auth, user } = await createPrivateApiMockRequest({
-    role,
-  });
+  const { workspace, auth, user, globalSpace } =
+    await createPrivateApiMockRequest({
+      role,
+    });
   const agent = await AgentConfigurationFactory.createTestAgent(auth);
-  return { workspace, auth, user, agent };
+  return { workspace, auth, user, agent, globalSpace };
 }
 
 function getSuggestions(
@@ -483,6 +487,29 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/suggestions - ad
     const { workspace, auth, agent } = await setupTest();
     const suggestion = await AgentSuggestionFactory.createTools(auth, agent, {
       suggestion: { action: "add", toolId: "mcp_server_view_gone" },
+    });
+
+    await expectApprovalRefused(workspace, auth, agent, suggestion);
+  });
+
+  it("refuses to approve removing a tool used by a second action since it was suggested", async () => {
+    const { workspace, auth, agent, globalSpace } = await setupTest();
+    const server = await RemoteMCPServerFactory.create(workspace);
+    const view = await MCPServerViewFactory.create(
+      workspace,
+      server.sId,
+      globalSpace
+    );
+    await AgentMCPServerConfigurationFactory.create(auth, globalSpace, {
+      agent,
+      mcpServerView: view,
+    });
+    const suggestion = await AgentSuggestionFactory.createTools(auth, agent, {
+      suggestion: { action: "remove", toolId: view.sId },
+    });
+    await AgentMCPServerConfigurationFactory.create(auth, globalSpace, {
+      agent,
+      mcpServerView: view,
     });
 
     await expectApprovalRefused(workspace, auth, agent, suggestion);
