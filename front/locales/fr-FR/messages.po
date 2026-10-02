@@ -17,6 +17,10 @@ msgstr ""
 msgid "How you appear to other members of the workspace"
 msgstr "Comment les autres membres de l’espace de travail vous voient"
 
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "New conversation"
+msgstr "Nouvelle conversation"
+
 #: front/components/me/NotificationPreferences.tsx
 msgid "Error updating notification preferences"
 msgstr "Erreur lors de la mise à jour des préférences de notification"
@@ -24,10 +28,6 @@ msgstr "Erreur lors de la mise à jour des préférences de notification"
 #: front/components/me/PendingInvitationsTable.tsx
 msgid "Join"
 msgstr "Rejoindre"
-
-#: front/components/navigation/AdminSettingsSearchNav.tsx
-msgid "Search settings"
-msgstr "Rechercher dans les paramètres"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Enable Memory"
@@ -87,10 +87,6 @@ msgctxt "theme"
 msgid "Auto"
 msgstr "Auto"
 
-#: front/components/command_palette/CommandPaletteSearchPhase.tsx
-msgid "Type to search conversations, pods, agents, members, and skills. Items you open will show up here for quick access."
-msgstr "Saisissez une recherche pour conversations, Pods, agents, membres et compétences. Les éléments que vous ouvrez apparaîtront ici pour un accès rapide."
-
 #: front/components/UserSettingsPopover.tsx
 msgid "Font used for agent answers in conversations"
 msgstr "Police utilisée pour les réponses des agents dans les conversations"
@@ -98,6 +94,11 @@ msgstr "Police utilisée pour les réponses des agents dans les conversations"
 #: front/components/UserSettingsPopover.tsx
 msgid "It applies on this device, but could not be saved to your account."
 msgstr "Elle s’applique sur cet appareil, mais n’a pas pu être enregistrée dans votre compte."
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+#: front/components/navigation/AdminSettingsSearchNav.tsx
+msgid "Search"
+msgstr "Rechercher"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Other channels"
@@ -275,10 +276,6 @@ msgstr "Saisissez une recherche pour les membres."
 #: front/components/me/NotificationPreferences.tsx
 msgid "Mentions only"
 msgstr "Mentions uniquement"
-
-#: front/components/command_palette/CommandPaletteSearchPhase.tsx
-msgid "Type to search conversations, pods, agents, members, skills, and settings. Items you open will show up here for quick access."
-msgstr "Saisissez une recherche pour conversations, Pods, agents, membres, compétences et paramètres. Les éléments que vous ouvrez apparaîtront ici pour un accès rapide."
 
 #: front/components/me/NotificationPreferences.tsx
 #: front/components/UserSettingsPopover.tsx

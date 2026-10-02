@@ -17,7 +17,9 @@ import {
   getGroupConversationsByUnreadAndActionRequired,
   groupUnreadConversations,
 } from "@app/components/assistant/conversation/utils";
+import { useCommandPalette } from "@app/components/command_palette/CommandPaletteContext";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
+import { NavItemKeyboardShortcut } from "@app/components/navigation/NavItemKeyboardShortcut";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import {
@@ -31,6 +33,7 @@ import { useActivePodId } from "@app/hooks/useActivePodId";
 import { useConversationsSectionCollapsed } from "@app/hooks/useConversationsSectionCollapsed";
 import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
 import { useHideTriggeredConversations } from "@app/hooks/useHideTriggeredConversations";
+import { useIsMac } from "@app/hooks/useKeyboardShortcutLabel";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import {
   useBulkMoveConversationsToPod,
@@ -40,7 +43,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { usePodsSectionCollapsed } from "@app/hooks/usePodsSectionCollapsed";
 import { useSearchPods } from "@app/hooks/useSearchPods";
 import { useStarredPodsSectionCollapsed } from "@app/hooks/useStarredPodsSectionCollapsed";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
@@ -96,12 +99,14 @@ import {
   Plus,
   Robot,
   ScrollArea,
+  SearchMd,
   Spinner,
   Trash01,
   XClose,
   Zap,
   ZapOff,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   memo,
@@ -418,12 +423,17 @@ export function AgentSidebarMenu({
   hideActions,
   hideInAppBanner,
 }: AgentSidebarMenuProps) {
+  const { t } = useLingui();
   const router = useAppRouter();
   const activeConversationId = useActiveConversationId();
   const activePodId = useActivePodId();
   const { hasPermission } = useWorkspacePermissions();
   const moveConversationToPod = useMoveConversationToPod(owner);
   const bulkMoveConversationsToPod = useBulkMoveConversationsToPod(owner);
+  const { hasFeature } = useFeatureFlags();
+  const hasUnifiedSearch = hasFeature("unified_search");
+  const { open: openCommandPalette } = useCommandPalette();
+  const isMac = useIsMac();
 
   const { providersHealth } = useAuth();
   const noHealthyProviders = !hasHealthyProviders(providersHealth);
@@ -1122,6 +1132,37 @@ export function AgentSidebarMenu({
                   onClick={toggleMultiSelect}
                 />
               </div>
+            ) : hasUnifiedSearch ? (
+              <NavigationList className="mx-sidebar-side-spacing">
+                <NavigationListItem
+                  label={t`New conversation`}
+                  icon={MessagePlusCircle}
+                  href={getConversationRoute(owner.sId)}
+                  suffix={<NavItemKeyboardShortcut keys={["C"]} />}
+                  onClick={withTracking(
+                    TRACKING_AREAS.NAVIGATION,
+                    "new_conversation",
+                    handleNewClick
+                  )}
+                />
+                <NavigationListItem
+                  label={t`Search`}
+                  icon={SearchMd}
+                  suffix={
+                    <NavItemKeyboardShortcut
+                      keys={[isMac ? "Cmd" : "Ctrl", "K"]}
+                    />
+                  }
+                  onClick={withTracking(
+                    TRACKING_AREAS.NAVIGATION,
+                    "open_command_palette",
+                    () => {
+                      setSidebarOpen(false);
+                      openCommandPalette();
+                    }
+                  )}
+                />
+              </NavigationList>
             ) : (
               <div className="z-50 flex justify-end gap-2 p-sidebar-side-spacing">
                 <div className="flex-1">
