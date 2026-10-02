@@ -85,7 +85,6 @@ app.get(
             action.type === "mcp_server_configuration",
             "Legacy action type, non-MCP, are no longer supported."
           );
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { id, sId, ...actionWithoutIds } = action;
           return {
             ...actionWithoutIds,

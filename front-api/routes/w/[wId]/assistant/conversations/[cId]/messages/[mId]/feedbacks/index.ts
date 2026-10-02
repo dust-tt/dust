@@ -169,7 +169,6 @@ app.post(
       conversation,
       user: user.toJSON(),
       thumbDirection: body.thumbDirection as AgentMessageFeedbackDirection,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       content: body.feedbackContent || "",
       isConversationShared: body.isConversationShared,
     });
