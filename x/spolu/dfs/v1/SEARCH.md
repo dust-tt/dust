@@ -31,13 +31,14 @@ Broad queries can return fewer hits with `partial=true` when authorization rejec
 | Search candidates / deadline | 4,096 / 10 seconds |
 | Per-search authorization cache | 8,192 objects, 16 MiB |
 | Hits / response size | Default 20, max 100 / approximately 1 MiB |
-| Index batch | 128 files, approximately 32 MiB text (one file can exceed the threshold) |
+| Index batch | 1,024 files, approximately 32 MiB retained text + eight bounded extractions |
 | Extracted text | Up to 8 MiB/file; larger, unsupported, or binary files retain metadata only |
 
 Lance uses its native CPU/I/O pools; `LANCE_CPU_THREADS` and `LANCE_IO_THREADS` can constrain them
 independently of filesystem RPC admission. Indexing waits for its source snapshot to become durable;
 filesystem writes/fsync never wait for indexing. Failed jobs back off, repeated edits coalesce, and
-startup resumes pending work. Missing tables initiate a resumable rebuild. Maintenance updates
+startup resumes pending work. Backfill finishes before queue consumption; extraction uses eight
+concurrent file reads. Maintenance runs at the end of a queue pass or every five minutes under load. Missing tables initiate a resumable rebuild. Maintenance updates
 indexes, compacts fragments, and retains Lance's default safe old-version cleanup window.
 Shutdown finishes the current bounded worker pass and flushes SlateDB; remaining queued work resumes
 on restart. It does not promise that all files have been indexed.

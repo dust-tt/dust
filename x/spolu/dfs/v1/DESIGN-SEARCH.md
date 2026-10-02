@@ -124,11 +124,15 @@ Add workspace-prefixed SlateDB keys:
 This is an at-least-once work queue, not a history of intermediate writes. On startup, resume pending
 keys and backfill cursors with bounded fair scans across workspaces and files. Creating an empty
 LanceDB table starts an automatic backfill of all current files; pending mutations continue to
-coalesce during that scan. The same path supports rebuilding a discarded index, without an endpoint.
+coalesce during that scan. Finish the backfill before consuming its queue to avoid re-enqueuing
+already completed files. The same path supports rebuilding a discarded index, without an endpoint.
 
 ## Maintenance and evaluation
 
-The background task owns index updates, compaction, and safe old-version cleanup. Native FTS can scan
+The background task owns index updates, compaction, and safe old-version cleanup. Process up to
+1,024 jobs per batch with eight concurrent extractions and about 32 MiB retained text (plus up to
+eight 8 MiB extractions in flight). Maintain at the end of a queue pass or every five minutes under
+sustained load. Log durability wait, extraction, commit, and maintenance time separately. Native FTS can scan
 unindexed fragments; schedule `optimize` to bound that cost and leave `fast_search` disabled so
 committed rows are not deliberately skipped. Pin and test the selected OSS Rust release, including
 newly introduced terms after insert/update. See the [FTS maintenance behavior](https://docs.lancedb.com/search/full-text-search#keeping-the-index-up-to-date).

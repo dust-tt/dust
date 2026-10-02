@@ -14,16 +14,18 @@ use dfs_protocol::{
     error::status,
     rpc::{ErrorCode, IndexStatus, Timestamp},
 };
+use futures::{StreamExt, stream};
 use lancedb::table::OptimizeAction;
 use slatedb::config::ScanOptions;
 use std::{
-    collections::{BTreeSet, HashSet},
+    collections::{BTreeSet, HashMap, HashSet},
     sync::{Arc, Weak},
-    time::Duration,
+    time::{Duration, Instant},
 };
 use tonic::Status;
 
-const BATCH: usize = 128;
+const BATCH: usize = 1024;
+const EXTRACT_CONCURRENCY: usize = 8;
 async fn meta(view: &View) -> Result<Meta, Status> {
     view.get(&view.keys.search_meta())
         .await?
@@ -125,6 +127,9 @@ impl Search {
             Err(error) => Err(failed(error)),
         }
     }
+    /// @cc [owner:spolu,label:performance] finish-backfill-before-consumption
+    /// A workspace MUST finish its backfill before queued jobs are consumed, so the backfill cannot
+    /// re-enqueue files completed by this worker during the same rebuild.
     async fn backfill(&self, state: &State, workspace: &str) -> Result<bool, Status> {
         let locks = state.locks(workspace).await;
         let _guard = locks.topology.write().await;
@@ -159,22 +164,30 @@ impl Search {
     /// LanceDB MUST only receive blocks/metadata from the captured snapshot after its sequence is
     /// durable. Completion MUST compare tokens under the publication gate; partial commits replay.
     pub(crate) async fn process(&self, state: &State, workspace: &str) -> Result<bool, Status> {
+        let started = Instant::now();
         let table = self.ensure_table(state, workspace).await?;
         let backfilled = self.backfill(state, workspace).await?;
         let view = View::new(&state.storage, workspace, BTreeSet::new()).await?;
         let metadata = meta(&view).await?;
+        // Finish backfill before consuming its queue, so completed files cannot be re-enqueued.
+        if !metadata.backfilled {
+            return Ok(true);
+        }
         let prefix = view.keys.pending();
         let rows = view
-            .rows(prefix.clone(), metadata.pending_after.as_deref(), BATCH)
+            .rows(prefix.clone(), metadata.pending_after.as_deref(), BATCH + 1)
             .await?;
         if rows.is_empty() && metadata.pending_after.is_none() {
             return Ok(backfilled);
         }
+        let durable_started = Instant::now();
         let mut durable = state.storage.db.subscribe();
         durable
             .wait_for(|s| s.durable_seq >= view.snapshot.seq())
             .await
             .map_err(failed)?;
+        let durable_ms = durable_started.elapsed().as_millis() as u64;
+        let extract_started = Instant::now();
         let now = model::now()?.seconds;
         let mut jobs = Vec::new();
         let mut documents = Vec::new();
@@ -182,54 +195,81 @@ impl Search {
         let mut failed_jobs = HashSet::new();
         let mut bytes = 0;
         let mut last = None;
-        for (key, value) in &rows {
-            let pending: Pending = decode(value)?;
-            let id = id(key)?;
-            if bytes >= 32 * 1024 * 1024 {
+        // Buffered extraction preserves cursor order and bounds speculative reads to eight files.
+        let snapshot = &view;
+        let mut extraction = stream::iter(
+            rows.iter()
+                .take(BATCH)
+                .cloned()
+                .collect::<Vec<_>>()
+                .into_iter()
+                .map(|(key, value)| async move {
+                    let pending: Pending = decode(&value)?;
+                    let id = id(&key)?;
+                    let document = match pending.version {
+                        Some(version) if pending.retry_after_seconds <= now => Some(
+                            async {
+                                let record = snapshot.object(&id).await?;
+                                if record.object.version != version {
+                                    return Err(status(ErrorCode::Unavailable));
+                                }
+                                index::extract(snapshot, record).await
+                            }
+                            .await,
+                        ),
+                        _ => None,
+                    };
+                    Ok::<_, Status>((key, id, pending, document))
+                }),
+        )
+        .buffered(EXTRACT_CONCURRENCY);
+        while bytes < 32 * 1024 * 1024 {
+            let Some(extracted) = extraction.next().await else {
                 break;
-            }
+            };
+            let (key, id, pending, document) = extracted?;
             last = Some(key[prefix.len()..].to_vec());
             if pending.retry_after_seconds > now {
                 continue;
             }
-            match pending.version {
-                Some(version) => {
-                    let extracted = async {
-                        let record = view.object(&id).await?;
-                        if record.object.version != version {
-                            return Err(status(ErrorCode::Unavailable));
-                        }
-                        index::extract(&view, record).await
-                    }
-                    .await;
-                    match extracted {
-                        Ok(document) => {
-                            bytes += document.text.len();
-                            documents.push(document);
-                        }
-                        Err(_) => {
-                            failed_jobs.insert(id.clone());
-                        }
-                    }
+            match document {
+                Some(Ok(document)) => {
+                    bytes += document.text.len();
+                    documents.push(document);
+                }
+                Some(Err(_)) => {
+                    failed_jobs.insert(id.clone());
                 }
                 None => deleted.push(id.clone()),
             }
             jobs.push((id, pending));
         }
-        let next =
-            if rows.len() < BATCH && last == rows.last().map(|(k, _)| k[prefix.len()..].to_vec()) {
-                None
-            } else {
-                last
-            };
+        drop(extraction);
+        let extract_ms = extract_started.elapsed().as_millis() as u64;
+        let next = if rows.len() <= BATCH
+            && last == rows.last().map(|(k, _)| k[prefix.len()..].to_vec())
+        {
+            None
+        } else {
+            last
+        };
         let committed = !documents.is_empty() || !deleted.is_empty();
-        let optimize = committed && (next.is_none() || now - metadata.last_optimized_seconds >= 60);
+        let optimize = (committed || metadata.pending_after.is_some())
+            && (next.is_none()
+                || (metadata.last_optimized_seconds != 0
+                    && now - metadata.last_optimized_seconds >= 300));
+        let mut commit_ms = 0;
+        let mut maintenance_ms = 0;
         let result = async {
+            let commit_started = Instant::now();
             index::commit(&table, &documents, &deleted).await?;
+            commit_ms = commit_started.elapsed().as_millis() as u64;
+            let maintenance_started = Instant::now();
             index::indexes(&table).await?;
             if optimize {
                 table.optimize(OptimizeAction::All).await.map_err(failed)?;
             }
+            maintenance_ms = maintenance_started.elapsed().as_millis() as u64;
             self.publish_table(workspace, table.clone()).await;
             Ok::<(), Status>(())
         }
@@ -238,17 +278,29 @@ impl Search {
         let _guard = locks.topology.write().await;
         let current = View::new(&state.storage, workspace, BTreeSet::new()).await?;
         let mut edit = Edit::new();
-        for (id, pending) in &jobs {
-            if result.is_ok() && !failed_jobs.contains(id) {
-                let indexed = documents
-                    .iter()
-                    .find(|d| d.record.object.id == *id)
-                    .map(|d| Indexed {
+        let indexed: HashMap<_, _> = documents
+            .iter()
+            .map(|d| {
+                (
+                    d.record.object.id.as_str(),
+                    Indexed {
                         version: d.record.object.version,
                         skipped: d.skipped,
                         failed: false,
-                    });
-                queue::complete(&current, &mut edit, id, &pending.token, indexed.as_ref()).await?;
+                    },
+                )
+            })
+            .collect();
+        for (id, pending) in &jobs {
+            if result.is_ok() && !failed_jobs.contains(id) {
+                queue::complete(
+                    &current,
+                    &mut edit,
+                    id,
+                    &pending.token,
+                    indexed.get(id.as_str()),
+                )
+                .await?;
             } else if let Some(bytes) = current.get(&current.keys.pending_file(id)?).await? {
                 let mut present: Pending = decode(&bytes)?;
                 if present.token == pending.token {
@@ -260,7 +312,7 @@ impl Search {
         }
         let mut meta = meta(&current).await?;
         meta.pending_after = next;
-        if optimize && result.is_ok() {
+        if (optimize || meta.last_optimized_seconds == 0) && result.is_ok() {
             meta.last_optimized_seconds = model::now()?.seconds;
         }
         if result.is_ok() && committed {
@@ -271,6 +323,12 @@ impl Search {
         result?;
         if !jobs.is_empty() {
             tracing::info!(
+                elapsed_ms = started.elapsed().as_millis() as u64,
+                durable_ms,
+                extract_ms,
+                commit_ms,
+                maintenance_ms,
+                optimize,
                 files = jobs.len(),
                 text_bytes = bytes,
                 "search batch indexed"

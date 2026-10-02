@@ -616,3 +616,37 @@ async fn discarded_index_rebuilds_and_candidate_exhaustion_is_partial() -> Resul
     assert!(result.partial);
     f.api.0.storage.close().await
 }
+
+#[tokio::test]
+async fn backfill_does_not_requeue_completed_files_and_full_batch_is_maintained() -> Result<()> {
+    let f = Fixture::new().await?;
+    for i in 0..2048 {
+        f.create(&f.workspace.root_id, &format!("file{i}"), false)
+            .await?;
+    }
+    // Two full object scans cannot yet finish the backfill, which also includes the root.
+    for _ in 0..2 {
+        f.search.process(&f.api.0, "test").await?;
+        assert_eq!(f.search.table("test").await?.count_rows(None).await?, 0);
+    }
+    f.search.process(&f.api.0, "test").await?;
+    assert_eq!(f.search.status(&f.api.0, "test").await?.pending, 1024);
+    f.search.process(&f.api.0, "test").await?;
+    assert_eq!(f.search.status(&f.api.0, "test").await?.pending, 0);
+    let table = f.search.table("test").await?;
+    assert_eq!(table.count_rows(None).await?, 2048);
+    let version = table.version().await?;
+    assert!(!f.search.process(&f.api.0, "test").await?);
+    assert_eq!(f.search.table("test").await?.version().await?, version);
+    // The final full batch already ran maintenance before its pending jobs were cleared.
+    let view = f.view().await?;
+    let meta: queue::Meta = decode(
+        &view
+            .get(&view.keys.search_meta())
+            .await?
+            .context("search meta")?,
+    )?;
+    assert!(meta.pending_after.is_none());
+    assert!(meta.last_optimized_seconds >= meta.last_commit_seconds);
+    f.api.0.storage.close().await
+}
