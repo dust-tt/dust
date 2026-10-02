@@ -17,7 +17,7 @@ import {
 
 interface WorkspacePickerRadioGroupProps {
   user: UserTypeWithWorkspaces;
-  workspace: LightWorkspaceType;
+  workspace: Pick<LightWorkspaceType, "sId" | "name">;
   onSelectOrganization?: (organizationId: string) => void;
   onSelectWorkspace?: (workspaceId: string) => void;
 }
@@ -84,7 +84,7 @@ export const WorkspacePickerRadioGroup = ({
 };
 interface WorkspacePickerProps {
   user: UserTypeWithWorkspaces;
-  workspace: LightWorkspaceType;
+  workspace: Pick<LightWorkspaceType, "sId" | "name">;
 }
 
 export default function WorkspacePicker({

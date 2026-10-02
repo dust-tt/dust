@@ -1,17 +1,28 @@
 import Custom404 from "@app/components/pages/Custom404";
-import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
+import config from "@app/lib/api/config";
 import { useSearchParam } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceLookup } from "@app/lib/swr/workspaces";
 import { isDevelopment } from "@app/types/shared/env";
+import { datadogLogs } from "@datadog/browser-logs";
 import {
   BarHeader,
+  Button,
   DustLogoSquare,
   Icon,
+  LogOut01,
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
+
+function signOut() {
+  datadogLogs.clearUser();
+  window.DD_RUM?.onReady(() => {
+    window.DD_RUM?.clearUser();
+  });
+  window.location.href = `${config.getApiBaseUrl()}/api/workos/logout`;
+}
 
 export function NoWorkspacePage() {
   const flow = useSearchParam("flow");
@@ -54,11 +65,13 @@ export function NoWorkspacePage() {
             {user && shouldShowPicker && (
               <WorkspacePicker user={user} workspace={workspace} />
             )}
-            <div>
-              {user && (
-                <UserMenu user={user} owner={workspace} subscription={null} />
-              )}
-            </div>
+            <Button
+              label="Sign out"
+              icon={LogOut01}
+              variant="ghost"
+              size="sm"
+              onClick={signOut}
+            />
           </div>
         }
       />
