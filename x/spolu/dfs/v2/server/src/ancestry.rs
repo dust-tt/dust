@@ -8,7 +8,7 @@ const MAX_ENTRIES: usize = 16_384;
 const MAX_BYTES: usize = 8 * 1024 * 1024;
 
 /// @cc [owner:spolu,label:security;performance] advisory-parent-edges
-/// Store only workspace-scoped directory/parent IDs, never grants or authorization decisions.
+/// Store only workspace-scoped object/parent IDs, never grants or authorization decisions.
 /// Hints MAY be stale or originate from aborted transactions. Consumers MUST read and validate all
 /// used parent links and grants in their current FDB transaction. Cache misses MUST preserve access.
 /// The cache MUST bound total entries/bytes across workspaces and each returned chain's length.
@@ -22,8 +22,8 @@ struct Edges {
     bytes: usize,
 }
 impl Ancestry {
-    pub async fn remember(&self, keys: &Keys, directory: &str, parent: &str) {
-        let (Ok(key), Ok(parent)) = (keys.object(directory), validate::id(parent)) else {
+    pub async fn remember(&self, keys: &Keys, object: &str, parent: &str) {
+        let (Ok(key), Ok(parent)) = (keys.object(object), validate::id(parent)) else {
             return;
         };
         self.0.lock().await.insert(key, parent);
@@ -148,6 +148,7 @@ pub(crate) mod tests {
             }),
         };
         let hints = Arc::new(Ancestry::default());
+        let unrelated = uuid::Uuid::new_v4().simple().to_string();
         // Change a grant, an ancestor link, or the prefetched object after preparation.
         for change_kind in 0..3 {
             store
@@ -164,14 +165,33 @@ pub(crate) mod tests {
                         edit.record(&keys, record)?;
                     }
                     edit.grant(&keys, &allowed.object.id, "reader", true)?;
+                    edit.put(keys.object(&unrelated)?, b"invalid metadata".to_vec())?;
+                    edit.grant(&keys, &unrelated, "unrelated", true)?;
                     Ok((edit.batch, ()))
                 })
                 .await?;
-            let view = View::new(&store, "test", BTreeSet::from(["reader".into()]))
-                .await?
-                .with_ancestry(hints.clone());
-            view.stat(&file.object.id).await?;
-            drop(view);
+            // A wrong file-parent hint MUST neither expose unrelated grants nor surface its errors.
+            for grant in ["unrelated", "reader"] {
+                hints.remember(&keys, &file.object.id, &unrelated).await;
+                let view = View::prefetch(
+                    store.snapshot().await?,
+                    "test",
+                    BTreeSet::from([grant.into()]),
+                    &file.object.id,
+                    None,
+                    hints.clone(),
+                )
+                .await?;
+                let result = view.stat(&file.object.id).await;
+                if grant == "reader" {
+                    result?;
+                } else {
+                    assert_eq!(
+                        code(&result.err().context("unrelated grant authorized access")?),
+                        ErrorCode::NotFound
+                    );
+                }
+            }
             let prepared = Notify::new();
             let changed = Notify::new();
             let first = AtomicBool::new(true);
@@ -181,9 +201,10 @@ pub(crate) mod tests {
                     "test",
                     BTreeSet::from(["reader".into()]),
                     &file.object.id,
+                    None,
+                    hints.clone(),
                 )
-                .await?
-                .with_ancestry(hints.clone());
+                .await?;
                 let (edit, response) = view
                     .write(WriteRequest {
                         object_id: file.object.id.clone(),

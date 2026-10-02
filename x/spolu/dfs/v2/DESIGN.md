@@ -108,9 +108,9 @@ See [FDB commit path](https://github.com/apple/foundationdb/wiki/Transaction-Com
 
 ### Ancestry read hints
 
-Filesystem authorization retains workspace-scoped directory-to-parent ID hints, bounded to 16,384
-entries and an 8 MiB accounting budget per server. Directory reads and successful directory
-creates/moves populate them, including newly extracted directories. They contain no grants,
+Filesystem authorization retains workspace-scoped object-to-parent ID hints, bounded to 16,384
+entries and an 8 MiB accounting budget per server. Object reads and successful creates/moves
+populate them, including newly extracted files and directories. They contain no grants,
 authorization decisions, or authoritative metadata.
 
 Hints schedule live object/grant reads for up to 16 nodes concurrently in the current transaction.
@@ -132,10 +132,11 @@ The local FDB deployment reduces read-version/commit batching delays and busy-wa
 timers. This trades CPU for latency while retaining normal log durability and conflict resolution;
 validate filesystem latency and independent writers after tuning. See [settings](README.md).
 
-Mutations read the workspace and primary object concurrently, retaining at most one prefetched
-object result within that transaction. Create overlaps parent authorization, name lookup, and UUID
-collision checks; ordinary lookup overlaps parent authorization and child lookup. Results/errors
-are consumed in their original validation order, so speculative reads cannot expose hidden objects.
+Filesystem requests start workspace, primary object, hinted ancestor/grant reads, and optional
+child-name lookup concurrently. Retain at most 16 object/grant results and one child entry, only
+within the current transaction. Create also overlaps authorization with UUID collision checks.
+Consume results/errors in the original validation order and use only the verified live parent chain;
+speculative reads cannot expose hidden objects or authorize through a stale parent hint.
 
 Block patches read up to 16 blocks concurrently. Skip the old-block read only when live object size
 proves the block is beyond EOF or the patch replaces every existing logical byte in it. Other bytes

@@ -86,6 +86,12 @@ pub(crate) enum Change {
     Write(WriteRequest),
 }
 impl Change {
+    pub fn child_name(&self) -> Option<&str> {
+        match self {
+            Self::Create(r) => Some(&r.name),
+            _ => None,
+        }
+    }
     pub fn primary_id(&self) -> &str {
         match self {
             Self::Create(r) => &r.parent_id,
