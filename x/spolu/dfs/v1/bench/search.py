@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Measure embedded LanceDB searches over jd's unchanged 10,000-file corpus."""
 import argparse
+from datetime import date
 import hashlib
 import json
 from pathlib import Path
@@ -16,6 +17,19 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tests'))
 from support import drain, rpc, secret_file, session, start_server
 from vfs import SOURCE, MANIFEST_SHA256, gcs
+
+
+def log_fields(path, message=None, kind=None):
+    values = []
+    for line in path.read_text().splitlines():
+        try:
+            fields = json.loads(line).get('fields', {})
+        except json.JSONDecodeError:
+            continue
+        if (message is not None and fields.get('message') == message or
+                kind is not None and fields.get('type') == kind):
+            values.append(fields)
+    return values
 
 
 def main():
@@ -47,8 +61,12 @@ def main():
            'manifest_sha256': manifest_hash, 'profile': 'release', 'warm_runs': 10,
            'server_restarted_per_query': True, 'slatedb_memory_mib': 1024,
            'slatedb_disk_gib': 16, 'lance_shared_cache_mib': 256,
+           'lance_object_memory_mib': 128, 'lance_object_disk_gib': 16,
+           'lance_object_cache_enabled': not args.local_store, 'index_batch_files': 1024,
            'rpc': 'loopback gRPC; persistent connection; no client result cache', 'results': []}
+    run['date'] = date.today().isoformat()
     run['host'] = platform.platform()
+    run['corpus_bytes'] = sum(p.stat().st_size for p in corpus.rglob('*.txt'))
     run['revision'] = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
     (work / 'run.json').write_text(json.dumps(run, indent=2) + '\n')
     process = None
@@ -59,6 +77,9 @@ def main():
             capture_output=True, text=True, check=True)
         run['indexing'] = json.loads(result.stdout)
         run['indexing']['shutdown_drain_seconds'] = drain(process)
+        batches = log_fields(work / 'populate-server.log', message='search batch indexed')
+        run['indexing']['batches'] = batches
+        run['indexing']['file_versions_processed'] = sum(b['files'] for b in batches)
         (work / 'run.json').write_text(json.dumps(run, indent=2) + '\n')
         process = None
         workspace = json.loads((work / 'workspace.json').read_text())
@@ -100,6 +121,10 @@ def main():
             run['results'].append(row)
             print(f"{label}: cold {row['cold_ms']:.2f} ms, warm p50 {row['warm_p50_ms']:.2f} ms", flush=True)
             drain(process)
+            row['server_search_metrics'] = log_fields(work / f'query-{index}-server.log', message='search completed')
+            plans = log_fields(work / f'query-{index}-server.log', kind='plan_run')
+            if plans:
+                row['last_completed_plan_io'] = plans[-1]
             process = None
             (work / 'run.json').write_text(json.dumps(run, indent=2) + '\n')
         if not args.local_store:

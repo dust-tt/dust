@@ -43,7 +43,8 @@ def start_server(work, phase, arguments, key_path):
     with log_path.open('w') as log:
         process = subprocess.Popen([str(ROOT / 'target/release/dfs-server'),
             '--listen', '0.0.0.0:0', '--allow-insecure', '--server-key-file', str(key_path),
-            '--cache-dir', str(work / 'cache'), *arguments], stdout=log, stderr=log,
+            '--cache-dir', str(work / 'cache'),
+            '--object-cache-dir', str(work / 'search-cache'), *arguments], stdout=log, stderr=log,
             env={name: value for name, value in os.environ.items() if not name.startswith('DFS_')})
     deadline = time.monotonic() + 90
     while time.monotonic() < deadline:

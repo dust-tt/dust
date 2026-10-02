@@ -11,7 +11,7 @@ use lancedb::{
 };
 use std::{
     collections::{HashMap, HashSet},
-    sync::Arc,
+    sync::{Arc, atomic::Ordering},
     time::Duration,
 };
 use tokio::time::{Instant, timeout_at};
@@ -148,6 +148,13 @@ impl Search {
             .try_acquire()
             .map_err(|_| status(ErrorCode::Capacity))?;
         let started = Instant::now();
+        let cache_before = self.object_cache.as_ref().map(|c| {
+            (
+                c.hits.load(Ordering::Relaxed),
+                c.remote_requests.load(Ordering::Relaxed),
+                c.remote_bytes.load(Ordering::Relaxed),
+            )
+        });
         let deadline = started + Duration::from_secs(10);
         let table = timeout_at(deadline, self.table(workspace))
             .await
@@ -172,6 +179,9 @@ impl Search {
         let mut response = SearchFilesResponse::default();
         let mut seen = HashSet::new();
         let mut bytes = 0;
+        let setup_ms = started.elapsed().as_millis() as u64;
+        let mut lance_wait_us = 0;
+        let mut authorization_us = 0;
         let work = async {
             let mut window = (limit * 4).max(64);
             loop {
@@ -191,9 +201,15 @@ impl Search {
                             .map_err(failed)?,
                     );
                 }
+                let query_started = Instant::now();
                 let mut stream = query.execute().await.map_err(failed)?;
+                lance_wait_us += query_started.elapsed().as_micros() as u64;
                 let mut count = 0;
-                while let Some(batch) = stream.try_next().await.map_err(failed)? {
+                loop {
+                    let batch_started = Instant::now();
+                    let batch = stream.try_next().await.map_err(failed)?;
+                    lance_wait_us += batch_started.elapsed().as_micros() as u64;
+                    let Some(batch) = batch else { break };
                     let ids = batch
                         .column_by_name("object_id")
                         .and_then(|a| a.as_any().downcast_ref::<StringArray>())
@@ -216,15 +232,21 @@ impl Search {
                         if !seen.insert(id.to_owned()) {
                             continue;
                         }
-                        let record = match auth.record(id).await {
+                        let auth_started = Instant::now();
+                        let record = auth.record(id).await;
+                        authorization_us += auth_started.elapsed().as_micros() as u64;
+                        let record = match record {
                             Ok(record) => record,
                             Err(error) if error.code() == Code::NotFound => continue,
                             Err(error) => return Err(error),
                         };
-                        if record.object.directory
-                            || record.object.version != versions.value(row)
-                            || !auth.allowed(record.clone()).await?
-                        {
+                        if record.object.directory || record.object.version != versions.value(row) {
+                            continue;
+                        }
+                        let auth_started = Instant::now();
+                        let allowed = auth.allowed(record.clone()).await?;
+                        authorization_us += auth_started.elapsed().as_micros() as u64;
+                        if !allowed {
                             continue;
                         }
                         let Some(parent) = &record.parent else {
@@ -265,7 +287,26 @@ impl Search {
             Ok(Err(error)) if error.code() == Code::ResourceExhausted => response.partial = true,
             Ok(result) => result?,
         }
+        // Cache deltas include concurrent process activity; phase timers belong to this request.
+        let (object_cache_hits, object_remote_requests, object_remote_bytes) = self
+            .object_cache
+            .as_ref()
+            .zip(cache_before)
+            .map(|(c, (hits, requests, bytes))| {
+                (
+                    c.hits.load(Ordering::Relaxed) - hits,
+                    c.remote_requests.load(Ordering::Relaxed) - requests,
+                    c.remote_bytes.load(Ordering::Relaxed) - bytes,
+                )
+            })
+            .unwrap_or_default();
         tracing::info!(
+            setup_ms,
+            lance_wait_us,
+            authorization_us,
+            object_cache_hits,
+            object_remote_requests,
+            object_remote_bytes,
             elapsed_ms = started.elapsed().as_millis() as u64,
             candidates = seen.len(),
             metadata_records = auth.records.len(),

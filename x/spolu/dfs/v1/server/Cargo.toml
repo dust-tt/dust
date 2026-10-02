@@ -6,6 +6,14 @@ publish.workspace = true
 
 [dependencies]
 anyhow = "1"
+async-trait = "0.1"
+bytes = "1"
+foyer = { version = "0.22.6", features = ["serde"] }
+lance-core = "=12.0.0"
+lance-io = { version = "=12.0.0", default-features = false }
+moka = { version = "0.12", features = ["sync"] }
+object_store = "0.14.2"
+url = "2"
 arrow-array = "58"
 arrow-schema = "58"
 base64 = "0.22"

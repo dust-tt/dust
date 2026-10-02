@@ -41,6 +41,6 @@ Implement [DESIGN-SEARCH.md](DESIGN-SEARCH.md) in milestones; commit and push ea
 - [x] Finish backfill before consuming work; enlarge bounded batches and parallelize extraction.
 - [x] Defer bulk maintenance until the queue pass ends, with periodic maintenance under sustained load.
 - [x] Add phase timings and regression coverage for duplicate work, rebuilds, and exact full batches.
-- [ ] Add a bounded Arrow object-store read cache for Lance files, discarded at every startup.
-- [ ] Verify range reads, eviction, cache failures, mutation bypass, isolation, and live grants.
+- [x] Add a bounded Arrow object-store read cache for Lance files, discarded at every startup.
+- [x] Verify range reads, eviction, cache failures, mutation bypass, isolation, and live grants.
 - [ ] Rerun the unchanged GCS corpus; preserve the original results and publish the comparison.

@@ -26,6 +26,8 @@ Broad queries can return fewer hits with `partial=true` when authorization rejec
 | Resource | Default / bound |
 | --- | --- |
 | LanceDB shared index + metadata RAM cache | 256 MiB (`DFS_SEARCH_CACHE_MIB`) |
+| GCS object bytes, RAM / disk | 128 MiB / 16 GiB (`DFS_SEARCH_OBJECT_MEMORY_MIB`, `DFS_SEARCH_OBJECT_DISK_GIB`) |
+| GCS object headers / part size | 16,384 / 256 KiB |
 | Retained table handles | 32 (`DFS_SEARCH_TABLES`) |
 | Concurrent searches | 4 |
 | Search candidates / deadline | 4,096 / 10 seconds |
@@ -33,6 +35,13 @@ Broad queries can return fewer hits with `partial=true` when authorization rejec
 | Hits / response size | Default 20, max 100 / approximately 1 MiB |
 | Index batch | 1,024 files, approximately 32 MiB retained text + eight bounded extractions |
 | Extracted text | Up to 8 MiB/file; larger, unsupported, or binary files retain metadata only |
+
+The object cache uses Arrow's `object_store` interface and Foyer RAM/disk eviction. It assumes this
+process performs every write, so cached reads have no TTL and writes invalidate their object headers.
+`DFS_SEARCH_OBJECT_CACHE_DIR` defaults to `/tmp/dfs-v1-search-cache`; only the hashed directory owned
+by this database is discarded on startup. A disk budget of zero keeps RAM caching; a RAM budget of
+zero disables the object cache. Local-store development uses the OS cache directly.
+Failed or cancelled mutations conservatively disable caching for their lock stripe until restart.
 
 Lance uses its native CPU/I/O pools; `LANCE_CPU_THREADS` and `LANCE_IO_THREADS` can constrain them
 independently of filesystem RPC admission. Indexing waits for its source snapshot to become durable;

@@ -54,6 +54,7 @@ impl Fixture {
             SearchConfig {
                 cache_mib: 32,
                 tables: 2,
+                ..Default::default()
             },
         )
         .await?;

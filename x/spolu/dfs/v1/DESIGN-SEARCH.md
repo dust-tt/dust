@@ -92,6 +92,20 @@ Background extraction should read file blocks with `cache_blocks = false` to red
 pollution while retaining normal metadata caching. This controls cache admission, not cache lookup;
 see [SlateDB caching](https://slatedb.io/docs/design/caching/).
 
+## Object cache
+
+Keep the native Lance index/metadata RAM caches. Wrap its GCS provider with an Arrow `object_store`
+read cache backed by Foyer: 128 MiB RAM + 16 GiB disk by default, shared across workspaces, with
+256 KiB parts and at most 16,384 cached object headers. Budgets and directory are configurable;
+zero object-cache RAM disables this layer. Cache misses stream bounded ranges from GCS.
+
+This PoC assumes all search-storage writes pass through this process. Headers have no TTL; writes,
+multipart completion, copies, and deletes invalidate them under bounded striped locks. Fresh headers
+use fresh part namespaces; range misses check the captured ETag. Failed/cancelled mutations disable
+caching for their stripe until restart. Lists and conditional writes retain upstream semantics.
+Cache failures fall back to GCS; startup discards the owned cache directory. No cached permission
+results, persistent local recovery, or delayed GCS writes are introduced by this layer.
+
 ## Pending work and publication
 
 Add workspace-prefixed SlateDB keys:

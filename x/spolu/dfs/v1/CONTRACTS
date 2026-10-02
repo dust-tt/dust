@@ -95,3 +95,8 @@ replayed work MUST be idempotent, and old completions MUST NOT clear newer work.
 Search filters, candidates, response bytes, memoization, worker batches, and retained tables MUST be
 bounded. Exhausted search budgets MUST produce partial results, never claim exhaustive completion.
 Unavailable indexes MUST return errors. Unsupported or oversized extraction MUST be explicit.
+
+@cc [owner:spolu,label:backend;performance] search-object-cache-authority
+All writes to cached Lance storage MUST pass through the same process and cache wrapper. Cached
+object bytes MAY survive indefinitely until eviction or mutation; they MUST NOT replace live search
+authorization. Cache read failures MUST fall back to GCS. Local cache state MUST be discarded on start.
