@@ -3,8 +3,8 @@ import type {
   AgentBuilderMCPConfigurationWithId,
 } from "@app/components/agent_builder/types";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
-import { getDefaultMCPServerActionConfiguration } from "@app/lib/agent_builder/default_action_configuration";
 import type {
   DataSourceConfiguration,
   TableDataSourceConfiguration,
@@ -116,42 +116,38 @@ async function getMCPServerActionConfiguration(
 ): Promise<AgentBuilderMCPConfigurationWithId> {
   assert(isServerSideMCPServerConfiguration(action));
 
-  const builderAction = getDefaultMCPServerActionConfiguration(mcpServerView);
-  builderAction.configuration.mcpServerViewId = action.mcpServerViewId;
-
-  builderAction.name = "";
-  builderAction.description = "";
-
-  builderAction.configuration.dataSourceConfigurations = action.dataSources
-    ? await renderDataSourcesConfigurations(
-        { ...action, dataSources: action.dataSources }, // repeating action.dataSources to satisfy the typing
-        dataSourceViews
-      )
-    : null;
-
-  builderAction.configuration.tablesConfigurations = action.tables
-    ? await renderTableDataSourcesConfigurations(
-        { ...action, tables: action.tables },
-        dataSourceViews
-      )
-    : null;
-
-  builderAction.configuration.dustAppConfiguration =
-    action.dustAppConfiguration;
-
-  builderAction.configuration.childAgentId = action.childAgentId;
-
-  builderAction.configuration.timeFrame = action.timeFrame;
-  builderAction.configuration.jsonSchema = action.jsonSchema;
-  builderAction.configuration._jsonSchemaString = action.jsonSchema
-    ? JSON.stringify(action.jsonSchema, null, 2)
-    : null;
-  builderAction.configuration.additionalConfiguration =
-    action.additionalConfiguration;
-  builderAction.configuration.secretName = action.secretName;
-  builderAction.configuration.dustProject = action.dustProject;
-
-  return { ...builderAction, id: action.sId };
+  return {
+    id: action.sId,
+    name: "",
+    description: "",
+    configurationRequired:
+      !getMCPServerRequirements(mcpServerView).noRequirement,
+    configuration: {
+      mcpServerViewId: action.mcpServerViewId,
+      dataSourceConfigurations: action.dataSources
+        ? await renderDataSourcesConfigurations(
+            { ...action, dataSources: action.dataSources }, // repeating action.dataSources to satisfy the typing
+            dataSourceViews
+          )
+        : null,
+      tablesConfigurations: action.tables
+        ? await renderTableDataSourcesConfigurations(
+            { ...action, tables: action.tables },
+            dataSourceViews
+          )
+        : null,
+      dustAppConfiguration: action.dustAppConfiguration,
+      childAgentId: action.childAgentId,
+      timeFrame: action.timeFrame,
+      jsonSchema: action.jsonSchema,
+      _jsonSchemaString: action.jsonSchema
+        ? JSON.stringify(action.jsonSchema, null, 2)
+        : null,
+      additionalConfiguration: action.additionalConfiguration,
+      secretName: action.secretName,
+      dustProject: action.dustProject,
+    },
+  };
 }
 
 async function renderDataSourcesConfigurations(
