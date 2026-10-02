@@ -12,10 +12,7 @@ import { isString } from "@app/types/shared/utils/general";
 import { stripNullBytes } from "@app/types/shared/utils/string_utils";
 import type { Bucket, File, SaveOptions } from "@google-cloud/storage";
 import { RETRYABLE_ERR_FN_DEFAULT, Storage } from "@google-cloud/storage";
-import type formidable from "formidable";
-import fs from "fs";
 import isNumber from "lodash/isNumber";
-import { pipeline } from "stream/promises";
 
 const GCS_TRANSIENT_RETRY_MAX_ATTEMPTS = 3;
 const GCS_TRANSIENT_RETRY_BASE_DELAY_MS = 500;
@@ -131,31 +128,6 @@ export class FileStorage {
   /**
    * Upload functions.
    */
-
-  async uploadFileToBucket(file: formidable.File, destPath: string) {
-    // Stream-based uploads via pipeline() + createWriteStream() bypass the
-    // SDK's built-in retryOptions, so we need application-level retry.
-    // Since the source is a local file we can safely re-create the read stream.
-    await withRetryOnTransientGCSError(
-      async () => {
-        const gcsFile = this.file(destPath);
-        const fileStream = fs.createReadStream(file.filepath);
-
-        await pipeline(
-          fileStream,
-          gcsFile.createWriteStream({
-            metadata: {
-              contentType: file.mimetype ?? undefined,
-            },
-          })
-        );
-      },
-      {
-        operationName: "file upload (stream)",
-        logContext: { destPath },
-      }
-    );
-  }
 
   async uploadBufferToBucket({
     buffer,
