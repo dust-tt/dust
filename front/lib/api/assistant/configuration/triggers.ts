@@ -1,5 +1,7 @@
 import { getCronTimezoneGeneration } from "@app/lib/api/assistant/configuration/triggers/cron_timezone";
 import type { Authenticator } from "@app/lib/auth";
+import type { ConversationType } from "@app/types/assistant/conversation";
+import { isUserMessageType } from "@app/types/assistant/conversation";
 import type { ScheduleConfig } from "@app/types/assistant/triggers";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -108,4 +110,12 @@ export async function generateScheduleRule(
   }
 
   return new Ok({ type: "cron", cron: cronRule, timezone });
+}
+
+/** The timezone of the last user message of `conversation`, null when it has none. */
+export function getConversationUserTimezone(
+  conversation: ConversationType
+): string | null {
+  const userMessage = conversation.content.flat().findLast(isUserMessageType);
+  return userMessage?.context.timezone ?? null;
 }

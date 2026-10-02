@@ -5,7 +5,10 @@ import type { ToolContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { TRIGGERS_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/triggers_management/metadata";
 import { getAccessibleWebhookSourceViews } from "@app/lib/api/agent_triggers";
-import { generateScheduleRule } from "@app/lib/api/assistant/configuration/triggers";
+import {
+  generateScheduleRule,
+  getConversationUserTimezone,
+} from "@app/lib/api/assistant/configuration/triggers";
 import { getWebhookFilterGeneration } from "@app/lib/api/assistant/configuration/triggers/webhook_filter";
 import type { Authenticator } from "@app/lib/auth";
 import { parseMatcherExpression } from "@app/lib/matcher/parser";
@@ -20,7 +23,6 @@ import { WEBHOOK_PRESETS } from "@app/lib/triggers/webhook_presets";
 import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
-import { isUserMessageType } from "@app/types/assistant/conversation";
 import type {
   ScheduleTriggerType,
   WebhookTriggerType,
@@ -128,13 +130,7 @@ function getUserTimezone(toolContext?: ToolContext): string | null {
     return null;
   }
 
-  const content = toolContext?.runContext?.conversation?.content;
-  if (!content) {
-    return null;
-  }
-
-  const userMessage = content.flat().findLast(isUserMessageType);
-  return userMessage?.context.timezone ?? null;
+  return getConversationUserTimezone(toolContext.runContext.conversation);
 }
 
 export function createTriggersManagementTools(
