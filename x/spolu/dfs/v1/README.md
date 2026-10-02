@@ -139,9 +139,11 @@ python3 bench/vfs.py
 
 This runs jd's unchanged 10,000-file corpus and 24 workload measurements on local Linux storage,
 then dfs backed by a fresh GCS prefix. It measures foreground work, client writeback via Linux
-`syncfs`, and remaining SlateDB persistence drain separately. Writeback completes before server shutdown. It records FUSE callback and RPC
-counts/timings,
-restarts the server with discarded local caches, and mounts a fresh session before the DFS suite.
+`syncfs`, and remaining SlateDB persistence drain separately. The workloads close/fsync all files,
+which already publishes their content; the final syncfs checks remaining filesystem writeback errors.
+It is not a general barrier for arbitrary open writers. Client publication completes before server
+shutdown. The harness records FUSE callback and RPC counts/timings, restarts the server with discarded
+local caches, and mounts a fresh session before the DFS suite.
 The server restarts once before the suite, not between rows; later rows benefit from prior reads.
 Successful runs remove their own GCS fixture. Reports contain timings and logs, with credentials
 removed. `--local-store` runs the same harness with a local object-store backend for offline checks.

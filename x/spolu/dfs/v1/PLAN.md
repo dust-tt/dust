@@ -29,13 +29,10 @@
 - [x] Configurable bounded read-ahead, asynchronous reads, and background concurrency. Collect FUSE
   callback/RPC counts and RPC timings; keep the server and schema unchanged.
 - [x] Update design, contracts, documentation, and native adapter tests.
-- [ ] Run updated two-mount Linux tests: cached access after edits/revocation, authorized misses,
+- [x] Run updated two-mount Linux tests: cached access after edits/revocation, authorized misses,
   remote unlink/deferred failure, local invalidations, conflicts across handles, partial-page writes,
-  append, truncate, and fsync/close error propagation. Native checks do not validate kernel behavior.
+  append, truncate, and fsync/close error propagation. Linux tests and the full native suite pass.
 - [ ] Run jd's benchmark as **dfs v1 [client optimization]** and publish results in `bench/RESULTS.md`.
   Start with fresh server/client caches, then warm repeats; record cache settings and FUSE/RPC counts.
   Measure foreground latency, client writeback to server visibility, and remaining SlateDB drain
   separately. Finish client writeback before measuring persistence drain.
-
-Linux mount validation and benchmarking currently require Docker access outside the restricted
-execution sandbox.

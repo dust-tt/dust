@@ -172,10 +172,12 @@ Use native Linux kernel caching, with no userspace content cache or freshness de
 - Cache attributes, positive/negative lookups, and directories using long kernel TTLs (the protocol
   requires a finite value: `u32::MAX` seconds). No configurable expiry or periodic refresh.
 - `readdirplus` reuses attributes from `List`. Keep one bounded RPC page per open directory.
-- Enable file page caching, `FOPEN_KEEP_CACHE`, directory caching, and `FUSE_WRITEBACK_CACHE`.
+- Enable page and directory caching with `FOPEN_KEEP_CACHE` on both file and directory opens,
+  plus `FUSE_WRITEBACK_CACHE`.
   Buffered `write(2)` can acknowledge client RAM; `fsync` drains writes to server visibility and
   reports deferred errors. Close also reports available write errors; it does not need a separate
-  synchronization RPC. Explicit fsync still checks current server authorization.
+  synchronization RPC. Explicit fsync still checks current server authorization. Successful local
+  unlink acknowledges Linux's later handle-free timestamp cleanup locally; content writes still fail.
 - Share one kernel inode per regular file across aliases. Directory inodes retain visible parents.
   Reuse small metadata/version records across handles; bound inodes and handles. Update or invalidate
   affected local entries and directory caches after namespace mutations. Serialize these changes

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Run jd's unchanged workloads with a fresh server and kernel caching/writeback."""
 import argparse
-import ctypes
 import hashlib
 import json
 import os
@@ -20,7 +19,7 @@ SOURCE = Path('/benchmark') if ROOT == Path('/dfs') else ROOT.parents[2] / 'jd/f
 MANIFEST_SHA256 = '67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1'
 LABEL = 'dfs v1 [client optimization]'
 sys.path.insert(0, str(ROOT / 'tests'))
-from support import docker, drain, mounted, rpc, secret_file, session, start_server
+from support import docker, drain, mounted, rpc, secret_file, session, start_server, syncfs
 
 
 def benchmark(corpus, work, label):
@@ -74,11 +73,8 @@ def inside(args):
                         raise RuntimeError('mounted corpus differs from reference')
                     benchmark(corpus, work, 'dfs')
                 started = time.monotonic()
-                libc = ctypes.CDLL(None, use_errno=True)
-                libc.syncfs.argtypes = [ctypes.c_int]
-                libc.syncfs.restype = ctypes.c_int
-                if libc.syncfs(mount_fd) != 0:
-                    raise OSError(ctypes.get_errno(), 'client writeback failed')
+                # Both workloads close all writers; FUSE close/fsync already publish their bytes.
+                syncfs(mount_fd)
                 client_seconds = time.monotonic() - started
                 report = {'client_writeback_seconds': client_seconds, 'barrier': 'Linux syncfs'}
                 if args.phase == 'populate':

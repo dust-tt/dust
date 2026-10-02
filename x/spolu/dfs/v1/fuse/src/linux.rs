@@ -47,6 +47,7 @@ struct CachedObject {
     object: Object,
     failure: Option<Errno>,
     refresh: bool,
+    deleted: bool,
 }
 impl CachedObject {
     fn new(mut object: Object) -> Self {
@@ -57,6 +58,7 @@ impl CachedObject {
             object,
             failure: None,
             refresh: false,
+            deleted: false,
         }
     }
     fn check(&self) -> Result<()> {
@@ -312,6 +314,7 @@ impl Filesystem {
                     {
                         state.published(object.clone());
                     } else {
+                        state.deleted = true;
                         state.failure = Some(Errno::ENOENT);
                     }
                 }
@@ -714,7 +717,10 @@ impl fuser::Filesystem for Filesystem {
             Ok(fh)
         })();
         match result {
-            Ok(fh) => reply.opened(FileHandle(fh), FopenFlags::FOPEN_CACHE_DIR),
+            Ok(fh) => reply.opened(
+                FileHandle(fh),
+                FopenFlags::FOPEN_CACHE_DIR | FopenFlags::FOPEN_KEEP_CACHE,
+            ),
             Err(e) => reply.error(e),
         }
     }
@@ -1049,7 +1055,7 @@ impl fuser::Filesystem for Filesystem {
         size: Option<u64>,
         atime: Option<TimeOrNow>,
         mtime: Option<TimeOrNow>,
-        _ctime: Option<SystemTime>,
+        ctime: Option<SystemTime>,
         fh: Option<FileHandle>,
         crtime: Option<SystemTime>,
         chgtime: Option<SystemTime>,
@@ -1068,6 +1074,25 @@ impl fuser::Filesystem for Filesystem {
                 || flags.is_some()
             {
                 return Err(Errno::EOPNOTSUPP);
+            }
+            // Linux flushes timestamps after a successful unlink, even without an open handle.
+            // Acknowledge that cleanup locally; deleted content and explicit mutations still fail.
+            if fh.is_none()
+                && mode.is_none()
+                && uid.is_none()
+                && gid.is_none()
+                && size.is_none()
+                && atime.is_none()
+                && mtime.is_some()
+                && ctime.is_some()
+            {
+                let state = self.state(ino)?;
+                let state = state.lock();
+                if state.deleted {
+                    let mut attr = self.attr(ino, &state.object)?;
+                    attr.nlink = 0;
+                    return Ok(attr);
+                }
             }
             let file = fh.map(|fh| self.file(ino, fh)).transpose()?;
             let file = file.as_ref().map(|file| file.lock());

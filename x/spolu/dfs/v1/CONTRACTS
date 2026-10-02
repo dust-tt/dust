@@ -62,6 +62,10 @@ Recovery requires discarding the failed kernel state, by inode reclamation or re
 aliases MUST share one kernel inode. Unlink MUST remove the server object immediately; cached state
 MUST NOT recreate it, and deferred writes MUST report the server's rejection.
 
+@cc [owner:spolu,label:concurrency] unlinked-kernel-timestamps
+Timestamp-only cleanup without a handle after this mount successfully unlinks an object MAY be
+acknowledged locally. It MUST NOT clear writeback errors, send an RPC, or acknowledge content changes.
+
 @cc [owner:spolu,label:rust] fallible-rust
 Rust code MUST propagate or explicitly handle fallible operations; unwrap() and expect() are forbidden.
 

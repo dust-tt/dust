@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 import secrets
 import tempfile
-from support import docker, drain, mounted, rpc, secret_file, session, start_server
+from support import docker, drain, mounted, rpc, secret_file, session, start_server, syncfs
 
 
 def expect_errno(codes, operation):
@@ -62,7 +62,12 @@ def inside(endpoint, work):
     rpc(endpoint, key, 'write', {'object_id': partial['id'], 'expected_version': 1, 'data': list(original)})
     shared_name = 'conversation--' + item['id']
     with tempfile.TemporaryDirectory(prefix='dfs-v1-mounts-') as temporary:
-        with mounted(endpoint, key, Path(temporary) / 'a') as a, mounted(endpoint, reader['session_key'], Path(temporary) / 'b') as b:
+        with (
+            mounted(endpoint, key, Path(temporary) / 'a',
+                    metrics_path=work / 'a-client-metrics.json') as a,
+            mounted(endpoint, reader['session_key'], Path(temporary) / 'b',
+                    metrics_path=work / 'b-client-metrics.json') as b,
+        ):
             conversation = a / 'private' / 'conversation'
             shared = b / 'shared' / shared_name
             assert os.listdir(b) == ['shared']
@@ -78,6 +83,20 @@ def inside(endpoint, work):
             finally:
                 os.close(fd)
             assert contents(partial['id']) == original[:7] + b'Y' + original[8:]
+
+            # A successful unlink must not turn kernel timestamp cleanup into a writeback error.
+            mount_fd = os.open(conversation, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                clean = conversation / 'clean'
+                clean.mkdir()
+                write_sync(clean / 'file', b'clean')
+                write_sync(clean / 'replacement', b'replaced')
+                (clean / 'file').rename(clean / 'replacement')
+                (clean / 'replacement').unlink()
+                clean.rmdir()
+                syncfs(mount_fd)
+            finally:
+                os.close(mount_fd)
 
             file = conversation / 'file'
             write_sync(file, b'initial')
@@ -149,10 +168,12 @@ def inside(endpoint, work):
             gone = lookup(item['id'], 'removed')
             fd = os.open(removed, os.O_RDWR)
             try:
+                assert os.pread(fd, 3, 0) == b'old'
                 rpc(endpoint, key, 'remove', {'object_id': gone['id'], 'expected': [
                     {'id': gone['id'], 'version': gone['version']},
                     {'id': item['id'], 'version': stat(item['id'])['version']} ]})
-                os.pwrite(fd, b'lost', 0)
+                assert os.pread(fd, 3, 0) == b'old', 'cached reads survive unlink'
+                os.pwrite(fd, b'new', 0)
                 expect_errno(deferred, lambda: os.fsync(fd))
             finally:
                 close_failed(fd)
@@ -183,6 +204,20 @@ def inside(endpoint, work):
             expect_errno({errno.ENOENT}, lambda: (shared / 'never-cached').stat())
             expect_errno({errno.ENOENT, errno.EIO}, lambda: os.fsync(fd))
             os.close(fd)
+        # Compare a fresh mount's first traversal with repeated traversals of the same directories.
+        counts = []
+        for repeats in (1, 2):
+            metrics_path = work / f'listing-{repeats}-client-metrics.json'
+            with mounted(endpoint, key, Path(temporary) / f'listing-{repeats}',
+                         metrics_path=metrics_path) as mount:
+                for _ in range(repeats):
+                    for path in (mount, mount / 'shared', mount / 'private' / 'conversation'):
+                        with os.scandir(path) as entries:
+                            for entry in entries:
+                                entry.stat()
+            metrics = json.loads(metrics_path.read_text())['dfs_client_metrics']
+            counts.append(metrics['rpc.list']['calls'])
+        assert counts[0] == counts[1], ('repeated listing missed kernel cache', counts)
     print('PASS: kernel caching/writeback, deferred conflicts/unlink, partial writes, append/truncate, paging, cached revocation', flush=True)
 
 

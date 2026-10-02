@@ -1,5 +1,6 @@
 """Operator-only helpers for isolated integration and performance fixtures."""
 import contextlib
+import ctypes
 import json
 import os
 from pathlib import Path
@@ -68,6 +69,16 @@ def drain(process):
     if process.returncode != 0:
         raise RuntimeError('persistence drain failed')
     return time.monotonic() - started
+
+
+def syncfs(fd):
+    # Workload files must already be closed/fsynced: this checks remaining filesystem writeback.
+    # fuser does not implement FUSE_SYNCFS, so this is not a barrier for arbitrary open writers.
+    libc = ctypes.CDLL(None, use_errno=True)
+    libc.syncfs.argtypes = [ctypes.c_int]
+    libc.syncfs.restype = ctypes.c_int
+    if libc.syncfs(fd) != 0:
+        raise OSError(ctypes.get_errno(), 'client writeback failed')
 
 
 @contextlib.contextmanager
