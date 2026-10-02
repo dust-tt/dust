@@ -1,7 +1,28 @@
 import { describe, expect, it } from "bun:test";
-import { routeFor } from "../../src/proxy-daemon";
+import { routeFor, startProxy } from "../../src/proxy-daemon";
 
 describe("proxy routing", () => {
+  it("allows a silent 25-second poll to complete", async () => {
+    const upstream = Bun.serve({
+      port: 0,
+      hostname: "localhost",
+      idleTimeout: 60,
+      async fetch() {
+        await Bun.sleep(25_000);
+        return Response.json({ events: [] });
+      },
+    });
+    const proxy = startProxy(0, { "front-api": upstream.port ?? 0, marketing: upstream.port ?? 0 });
+    try {
+      const response = await fetch(`http://localhost:${proxy.port}/api/events/poll`);
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ events: [] });
+    } finally {
+      proxy.stop(true);
+      upstream.stop(true);
+    }
+  }, 30_000);
+
   describe("routeFor", () => {
     it("routes /api/* to front-api", () => {
       expect(routeFor("/api/auth-context")).toBe("front-api");
