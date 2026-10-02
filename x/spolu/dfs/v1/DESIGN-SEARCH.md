@@ -81,7 +81,8 @@ candidate rejection and latency. The queue and schema need no replicated-grant m
 
 Use a bounded **per-search** cache of object records and resolved effective access for visited
 objects/ancestors. Its workspace, grant set, and SlateDB snapshot are fixed, so candidates can reuse
-allow/deny results without invalidation. Reuse ends with the request. No long-lived permission cache.
+allow/deny results without invalidation. The cache MUST be discarded when the request ends and MUST
+NOT be shared across searches, including searches within the same session. No global permission cache.
 
 Authorization reads only object/grant keys. SlateDB's existing RAM/disk caches provide reuse between
 searches, but scattered cold candidates can still miss. Measure unique ancestors, grant reads, cache
