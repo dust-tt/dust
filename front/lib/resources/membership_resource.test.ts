@@ -890,6 +890,74 @@ describe("MembershipResource", () => {
       expect(future[0].seatType).toBe("workspace");
       expect(future[0].creditState).toBe("on_pool");
     });
+
+    describe("followed by updateMembershipRole", () => {
+      it.each([
+        { role: "admin", newRole: "user" },
+        { role: "manager", newRole: "user" },
+        { role: "user", newRole: "admin" },
+      ] as const)("writes the $role to $newRole change on the scheduled row", async ({
+        role,
+        newRole,
+      }) => {
+        const otherAdmin = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, otherAdmin, {
+          role: "admin",
+        });
+        const user = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, user, {
+          role,
+          seatType: "max",
+        });
+        const active =
+          await MembershipResource.getActiveMembershipOfUserInWorkspace({
+            user,
+            workspace: lightWorkspace,
+          });
+        if (!active) {
+          throw new Error("Expected an active membership");
+        }
+
+        await active.scheduleSeatChange({
+          user,
+          workspace: lightWorkspace,
+          newSeatType: "workspace",
+          scheduledAt,
+          author: "no-author",
+          transaction: outerTransaction,
+        });
+
+        const result = await MembershipResource.updateMembershipRole({
+          user,
+          workspace: lightWorkspace,
+          newRole,
+          author: "no-author",
+        });
+        expect(result.isOk()).toBe(true);
+
+        const current =
+          await MembershipResource.getActiveMembershipOfUserInWorkspace({
+            user,
+            workspace: lightWorkspace,
+          });
+        expect(current?.role).toBe(newRole);
+
+        const future = await MembershipResource.getScheduledFutureMemberships({
+          workspace: lightWorkspace,
+        });
+        expect(future).toHaveLength(1);
+        expect(future[0].role).toBe(newRole);
+
+        const afterSwitch =
+          await MembershipResource.getActiveMembershipOfUserInWorkspace({
+            user,
+            workspace: lightWorkspace,
+            at: new Date(scheduledAt.getTime() + 1000),
+          });
+        expect(afterSwitch?.role).toBe(newRole);
+        expect(afterSwitch?.seatType).toBe("workspace");
+      });
+    });
   });
 
   describe("cancelScheduledSeatChange", () => {
