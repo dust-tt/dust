@@ -13,6 +13,12 @@ import { Err, Ok } from "@app/types/shared/result";
  * The attribution activity may reuse its already-loaded action snapshot; this module still owns
  * the ordering, projection, and completeness requirements of the indexed snapshot.
  */
+/**
+ * @cc [owner:sfriquet,label:product] billed-consumption-indexed-regardless-of-status
+ * Every billed consumption unit of the message MUST be indexed whatever the message status,
+ * including `created` while paused on a user question or a tool approval. A message without a
+ * `completedAt` is indexed at its `updatedAt`.
+ */
 export async function indexAgentMessageConsumptionAnalytics(
   auth: Authenticator,
   {
