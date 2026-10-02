@@ -1,27 +1,27 @@
 import {
   issueExample,
   issueSchema,
-} from "@app/lib/triggers/built-in-webhooks/github/schemas/issues";
+} from "@app/lib/api/triggers/built-in-webhooks/github/schemas/issues";
 import {
   projectsV2ItemExample,
   projectsV2ItemSchema,
-} from "@app/lib/triggers/built-in-webhooks/github/schemas/projects_v2_item";
+} from "@app/lib/api/triggers/built-in-webhooks/github/schemas/projects_v2_item";
 import {
   pullRequestExample,
   pullRequestSchema,
-} from "@app/lib/triggers/built-in-webhooks/github/schemas/pull_request";
+} from "@app/lib/api/triggers/built-in-webhooks/github/schemas/pull_request";
 import {
   prReviewExample,
   prReviewSchema,
-} from "@app/lib/triggers/built-in-webhooks/github/schemas/pull_request_review";
+} from "@app/lib/api/triggers/built-in-webhooks/github/schemas/pull_request_review";
 import {
   pushExample,
   pushSchema,
-} from "@app/lib/triggers/built-in-webhooks/github/schemas/push";
+} from "@app/lib/api/triggers/built-in-webhooks/github/schemas/push";
 import {
   releaseExample,
   releaseSchema,
-} from "@app/lib/triggers/built-in-webhooks/github/schemas/release";
+} from "@app/lib/api/triggers/built-in-webhooks/github/schemas/release";
 import type {
   BaseWebhookPreset,
   WebhookEvent,

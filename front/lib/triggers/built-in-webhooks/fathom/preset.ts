@@ -1,7 +1,7 @@
 import {
   meetingContentReadyExample,
   meetingContentReadySchema,
-} from "@app/lib/triggers/built-in-webhooks/fathom/schemas/meeting_content_ready";
+} from "@app/lib/api/triggers/built-in-webhooks/fathom/schemas/meeting_content_ready";
 import type {
   BaseWebhookPreset,
   WebhookEvent,
