@@ -1,15 +1,23 @@
+import type { DfmEnvelope } from "@app/components/editor/document/dfm_persistence";
 import {
   loadDfm,
   saveDfm,
 } from "@app/components/editor/document/dfm_persistence";
+import { setExternalCursor } from "@app/components/editor/document/ExternalCursor";
 import { documentExtensions } from "@app/components/editor/document/extensions";
+import {
+  adoptionFrames,
+  diffBlocks,
+  insertedTextLength,
+} from "@app/components/editor/document/external_changes";
 import type {
   DocumentProps,
   DocumentSaveResult,
 } from "@app/components/editor/document/types";
 import { Err } from "@app/types/shared/result";
 import { cn } from "@dust-tt/sparkle";
-import type { JSONContent } from "@tiptap/core";
+import type { Editor, JSONContent } from "@tiptap/core";
+import { Fragment } from "@tiptap/pm/model";
 import { useEditor } from "@tiptap/react";
 import {
   useCallback,
@@ -21,6 +29,14 @@ import {
 
 const SAVE_ERROR_MESSAGE =
   "Could not save. Your changes are still here. Try again.";
+const EXTERNAL_CHANGE_UNREADABLE_MESSAGE =
+  "This file changed to content the editor cannot open. Reopen it to see the new version.";
+/** Time between two frames of an external change, close to a display refresh. */
+const FRAME_MS = 30;
+/** Pace of an external change: brisker than a typist, slower than a stream, so the eye follows. */
+const TYPING_CHARS_PER_SECOND = 30;
+/** How long the caret lingers where an external change ended. */
+const CURSOR_LINGER_MS = 1_500;
 
 /**
  * @cc [owner:PopDaph,label:error-handling] document-save-callback-errors
@@ -39,9 +55,10 @@ const persistDocument = async (
 };
 
 interface UseDocumentEditorProps {
-  initialContent: string;
+  content: string;
   readOnly: boolean;
   autosaveDebounceMs: number;
+  externalChangeAnimationMs: number;
   onSave: DocumentProps["onSave"];
   onStateChange: DocumentProps["onStateChange"];
 }
@@ -49,29 +66,31 @@ interface UseDocumentEditorProps {
 /**
  * @cc [owner:PopDaph,label:product] document-draft-preservation
  * Failed saves, including host callback rejections, MUST preserve the draft. Successful saves
- * MUST acknowledge only the submitted content, leaving later edits unsaved. Prop changes MUST
- * NOT replace an open draft. A file the editor cannot open MUST disable editing and saving.
- * Returning to the saved content MUST clear save errors without making another save request.
- * Unmounting with unsaved, editable content MUST attempt one final save of that content,
- * after any save still in flight.
+ * MUST acknowledge only the submitted content, leaving later edits unsaved. A new `content`
+ * while the editor is clean MUST be adopted in place, becoming the saved baseline without a
+ * save; while a draft is open it MUST be ignored. A file the editor cannot open MUST disable
+ * editing and saving. Returning to the saved content MUST clear save errors without making
+ * another save request. Unmounting with unsaved, editable content MUST attempt one final save
+ * of that content, after any save still in flight.
  */
 /**
  * @cc [owner:PopDaph,label:product] document-autosave
  * Dirty, editable content MUST autosave after autosaveDebounceMs without edits (three seconds
  * by default), with at most one save in flight. Failure MUST suspend automatic retries, except
  * the final save on unmount, until the user explicitly retries or returns to saved content.
- * Unchanged content MUST NOT trigger
- * saves. Cmd/Ctrl+S MUST allow an immediate save. Parent renders and callback identity changes
- * MUST NOT restart the debounce. Saves MUST use the latest committed callback.
+ * Unchanged content MUST NOT trigger saves, and adopting an external change MUST NOT either.
+ * Cmd/Ctrl+S MUST allow an immediate save. Parent renders and callback identity changes MUST
+ * NOT restart the debounce. Saves MUST use the latest committed callback.
  */
 export const useDocumentEditor = ({
-  initialContent,
+  content,
   readOnly,
   autosaveDebounceMs,
+  externalChangeAnimationMs,
   onSave,
   onStateChange,
 }: UseDocumentEditorProps) => {
-  const [initial] = useState(() => loadDfm(initialContent));
+  const [initial] = useState(() => loadDfm(content));
   const [baseline, setBaseline] = useState<string | null>(null);
   const [draft, setDraft] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -84,6 +103,16 @@ export const useDocumentEditor = ({
   );
   const persistedRef = useRef<string | null>(null);
   const inflightRef = useRef<Promise<DocumentSaveResult> | null>(null);
+  // The front matter and threads saves are written into; an external change can move them.
+  const envelopeRef = useRef<DfmEnvelope | null>(
+    initial.isOk() ? initial.value.envelope : null
+  );
+  // The DFM source the editor currently reflects, so the host echoing our own save or the
+  // content we just adopted is not taken for another change.
+  const sourceRef = useRef(content);
+  const adoptionRef = useRef<{ timer: ReturnType<typeof setTimeout> } | null>(
+    null
+  );
 
   useLayoutEffect(() => {
     persistenceRef.current = { onSave, onStateChange, editable };
@@ -119,6 +148,9 @@ export const useDocumentEditor = ({
       setDraft(content);
     },
     onUpdate: ({ editor }) => {
+      if (adoptionRef.current !== null) {
+        return;
+      }
       const document = editor.getJSON();
       const content = JSON.stringify(document);
       latestRef.current = { document, content };
@@ -130,9 +162,14 @@ export const useDocumentEditor = ({
     },
   });
 
-  // TipTap ignores editable changes passed to useEditor after mount.
+  // TipTap ignores editable changes passed to useEditor after mount. Editing is also off while
+  // an external change plays, so the two cannot interleave.
   useLayoutEffect(() => {
-    if (editor && editor.isEditable !== editable) {
+    if (
+      editor &&
+      adoptionRef.current === null &&
+      editor.isEditable !== editable
+    ) {
       editor.setEditable(editable, false);
     }
   }, [editor, editable]);
@@ -146,17 +183,135 @@ export const useDocumentEditor = ({
     persistenceRef.current.onStateChange?.({ dirty, saving, error });
   }, [dirty, saving, error]);
 
+  /** Marks the editor's document as the saved one, after an adopted change. */
+  const settle = useCallback((editor: Editor) => {
+    const document = editor.getJSON();
+    const content = JSON.stringify(document);
+    latestRef.current = { document, content };
+    persistedRef.current = content;
+    setBaseline(content);
+    setDraft(content);
+  }, []);
+
+  // A new source while the editor is clean is written by someone else: an agent, or a colleague
+  // in another tab. It is applied in place, a few characters per frame with a caret at the
+  // insertion point, so the reader sees where the document changed and keeps their place.
+  useEffect(() => {
+    if (
+      !editor ||
+      !initial.isOk() ||
+      content === sourceRef.current ||
+      adoptionRef.current !== null ||
+      baseline === null ||
+      dirty
+    ) {
+      return;
+    }
+    sourceRef.current = content;
+    const loaded = loadDfm(content);
+    if (loaded.isErr()) {
+      setError(EXTERNAL_CHANGE_UNREADABLE_MESSAGE);
+      return;
+    }
+    envelopeRef.current = loaded.value.envelope;
+
+    const before = [...editor.state.doc.children];
+    const after = [
+      ...editor.schema.nodeFromJSON(loaded.value.content).children,
+    ];
+    const changes = diffBlocks(before, after);
+    const total = insertedTextLength(changes);
+    // Types at a human pace, faster only when the change would otherwise exceed the time cap.
+    const frameCount = Math.max(
+      1,
+      Math.floor(externalChangeAnimationMs / FRAME_MS)
+    );
+    const typingCharsPerFrame = Math.ceil(
+      (TYPING_CHARS_PER_SECOND * FRAME_MS) / 1_000
+    );
+    const charsPerFrame =
+      externalChangeAnimationMs === 0
+        ? Number.POSITIVE_INFINITY
+        : Math.max(typingCharsPerFrame, Math.ceil(total / frameCount));
+    const frames = adoptionFrames(
+      editor.schema,
+      changes,
+      before,
+      charsPerFrame
+    );
+
+    const finish = () => {
+      adoptionRef.current = null;
+      editor.setEditable(persistenceRef.current.editable, false);
+      settle(editor);
+      setError(null);
+      setTimeout(() => {
+        if (!editor.isDestroyed) {
+          editor.view.dispatch(setExternalCursor(editor.state.tr, null));
+        }
+      }, CURSOR_LINGER_MS);
+    };
+    const play = () => {
+      if (editor.isDestroyed) {
+        adoptionRef.current = null;
+        return;
+      }
+      const next = frames.next();
+      if (next.done) {
+        finish();
+        return;
+      }
+      const { from, to, blocks } = next.value;
+      const fragment = Fragment.fromArray(blocks);
+      const transaction = editor.state.tr.replaceWith(from, to, fragment);
+      let caret = from + fragment.size;
+      while (
+        caret > from &&
+        !transaction.doc.resolve(caret).parent.isTextblock
+      ) {
+        caret--;
+      }
+      transaction.setMeta("addToHistory", false);
+      editor.view.dispatch(setExternalCursor(transaction, caret));
+      adoptionRef.current = {
+        timer: setTimeout(play, externalChangeAnimationMs === 0 ? 0 : FRAME_MS),
+      };
+    };
+
+    editor.setEditable(false, false);
+    adoptionRef.current = { timer: setTimeout(play, 0) };
+  }, [
+    content,
+    editor,
+    initial,
+    baseline,
+    dirty,
+    externalChangeAnimationMs,
+    settle,
+  ]);
+
+  // A frame still scheduled when the editor goes away must not touch it.
+  useEffect(
+    () => () => {
+      if (adoptionRef.current !== null) {
+        clearTimeout(adoptionRef.current.timer);
+        adoptionRef.current = null;
+      }
+    },
+    []
+  );
+
   // Unmounting inside the autosave delay must not drop the edit. The editor is gone by then,
   // so this last attempt cannot report a failure; hosts hold close and navigation while dirty.
   // It waits for any save in flight, so an older write can never land after a newer one.
   useEffect(
     () => () => {
       const latest = latestRef.current;
+      const envelope = envelopeRef.current;
       const { onSave: persist, editable: canSave } = persistenceRef.current;
-      if (!persist || !canSave || !initial.isOk() || latest === null) {
+      if (!persist || !canSave || envelope === null || latest === null) {
         return;
       }
-      const envelope = initial.value.envelope;
       const flush = async () => {
         await inflightRef.current;
         if (latest.content === persistedRef.current) {
@@ -169,20 +324,22 @@ export const useDocumentEditor = ({
       };
       void flush();
     },
-    [initial]
+    []
   );
 
   const save = useCallback(async () => {
     const { onSave: persist, editable: canSave } = persistenceRef.current;
     const savedContent = persistedRef.current;
+    const envelope = envelopeRef.current;
 
     if (
       !editor ||
       !persist ||
       !canSave ||
-      !initial.isOk() ||
+      envelope === null ||
       savedContent === null ||
-      savingRef.current
+      savingRef.current ||
+      adoptionRef.current !== null
     ) {
       return;
     }
@@ -194,7 +351,7 @@ export const useDocumentEditor = ({
       return;
     }
 
-    const serialized = saveDfm(initial.value.envelope, document);
+    const serialized = saveDfm(envelope, document);
     if (serialized.isErr()) {
       setError(serialized.error);
       return;
@@ -215,6 +372,8 @@ export const useDocumentEditor = ({
     }
 
     if (result.isOk()) {
+      // The host will echo this source back as `content`; it is ours, not a change to adopt.
+      sourceRef.current = serialized.value;
       persistedRef.current = content;
       setBaseline(content);
       return;
@@ -223,7 +382,7 @@ export const useDocumentEditor = ({
     if (JSON.stringify(editor.getJSON()) !== savedContent) {
       setError(result.error || SAVE_ERROR_MESSAGE);
     }
-  }, [editor, initial]);
+  }, [editor]);
 
   useEffect(() => {
     if (draft === null || !dirty || saving || error || !editable) {
@@ -239,7 +398,7 @@ export const useDocumentEditor = ({
     editable,
     /** Why the file cannot be edited, with its source, or null when it opened. */
     unsupported: initial.isErr()
-      ? { reason: initial.error, source: initialContent }
+      ? { reason: initial.error, source: content }
       : null,
     dirty,
     saving,

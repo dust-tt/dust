@@ -80,8 +80,9 @@ a DFM file from a sandbox and the editor still opens it.
   target.
 - Indexing: the project sync runs after delete and extract but not after a PUT. A saved `.md`
   must reach search, body and comments.
-- A clean editor adopts an agent's version in place, keeping the scroll position, instead of
-  remounting on a new key. No change animation: per-character liveness is the live session.
+- A clean editor adopts an agent's version in place, keeping the scroll position, with the
+  change played a few characters per frame under a caret (#34043, stacked on #34041). This is a
+  replay of a finished edit; per-character liveness is the live session.
 - Outcome: in one conversation, the human edits in the editor, asks the agent for a change,
   the agent edits the file, the editor shows the result; then both edit at once and the loser
   is told, never overwritten. Nothing lost in ten rounds of this.

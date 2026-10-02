@@ -9,9 +9,10 @@ import { useEffect, useRef, useState } from "react";
 
 /** The rich Document editor takes over the file; the host hides its own edit controls. */
 export interface MarkdownRichEditor {
-  /** Changes when the editor must reopen on new content; use it as the component key. */
+  /** Changes when the editor must be rebuilt: another file. Use it as the component key. */
   mountKey: string;
-  initialContent: string;
+  /** The DFM source the editor shows; a new value while it is clean is adopted in place. */
+  content: string;
   onSave: (content: string) => Promise<DocumentSaveResult>;
   onStateChange: (state: DocumentDraftState) => void;
 }
@@ -88,8 +89,9 @@ function isOwnWrite(
 /**
  * Which content the rich editor is open on, and what happens when the file changes under it.
  * The decision to open depends only on the flag and the file as it was when it opened, never
- * on later content, so a change written by someone else cannot swap editors under a draft.
- * Saves are conditional on the revision the editor opened on or last saved, so two writers
+ * on later content, so a change written by someone else cannot swap editors under a draft. A
+ * clean editor takes the new content in place; a dirty one keeps its draft and refuses to
+ * write over the newer version. Saves are conditional on the revision the editor opened on or last saved, so two writers
  * racing between two fetches cannot overwrite each other either.
  */
 export function useRichMarkdownEditor({
@@ -105,8 +107,6 @@ export function useRichMarkdownEditor({
 }: UseRichMarkdownEditorParams): RichMarkdownEditorState {
   const [draft, setDraft] = useState<DocumentDraftState>(IDLE_DRAFT);
   const [opened, setOpened] = useState<Opened | null>(null);
-  // How many times the editor reopened on foreign content; part of the mount key.
-  const [version, setVersion] = useState(0);
   const [resetKey, setResetKey] = useState({ isActive, path: entryPath });
   // The content this hook wrote last, so the fetch catching up with it is not a foreign change.
   const writtenRef = useRef<Written | null>(null);
@@ -115,16 +115,15 @@ export function useRichMarkdownEditor({
     setResetKey({ isActive, path: entryPath });
     setDraft(IDLE_DRAFT);
     setOpened(null);
-    setVersion(0);
   }
 
   const opens = enabled && !(opened?.overLimit ?? exceedsWriteLimit);
   const source = rawContent ?? undefined;
   const base = opened?.content ?? null;
 
-  // The file changed under the editor, by another writer or an agent. A clean editor reopens on
-  // the new content; a dirty one keeps its draft, and `save` refuses to write over the newer
-  // version until the editor is clean or the file reopened.
+  // The file changed under the editor, by another writer or an agent. A clean editor takes the
+  // new content; a dirty one keeps its draft, and `save` refuses to write over the newer
+  // version until the editor is clean again.
   useEffect(() => {
     if (!opens || source === undefined || source === base) {
       return;
@@ -146,7 +145,6 @@ export function useRichMarkdownEditor({
       setOpened((current) => current && { ...current, overLimit: true });
     } else {
       setOpened({ content: source, revision, overLimit: false });
-      setVersion((current) => current + 1);
     }
   }, [
     opens,
@@ -192,8 +190,8 @@ export function useRichMarkdownEditor({
   const richEditor =
     opens && source !== undefined
       ? {
-          mountKey: `${entryPath}:${version}`,
-          initialContent: base ?? source,
+          mountKey: entryPath ?? "",
+          content: base ?? source,
           onSave: save,
           onStateChange: setDraft,
         }
