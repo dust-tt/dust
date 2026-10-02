@@ -55,7 +55,7 @@ impl State {
 #[test]
 fn local_backend_contracts() -> anyhow::Result<()> {
     network::run(async {
-        ancestry::tests::concurrent_authority_changes_abort_hinted_writes().await?;
+        ancestry::tests::concurrent_changes_abort_prefetched_writes().await?;
         auth::tests::workspace_lock_pruning_preserves_active_gates_and_bounds_idle_entries()
             .await?;
         api::tests::cancelled_write_keeps_guards_until_publication_before_close_and_revocation()

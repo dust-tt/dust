@@ -2,7 +2,7 @@ use crate::{
     ancestry::{Ancestry, WINDOW},
     keys::{Keys, prefix_end},
     model::{Record, WorkspaceRecord},
-    storage::{Scan, Snapshot, Storage, decode, failed},
+    storage::{Scan, Snapshot, Storage, decode, failed, measured},
 };
 use bytes::Bytes;
 use dfs_protocol::{
@@ -27,6 +27,7 @@ pub(crate) struct View {
     pub grants: BTreeSet<String>,
     pub root: String,
     ancestry: Option<Arc<Ancestry>>,
+    prefetched: Option<(String, Result<Option<Bytes>>)>,
 }
 impl View {
     pub async fn new(storage: &Storage, workspace: &str, grants: BTreeSet<String>) -> Result<Self> {
@@ -51,7 +52,32 @@ impl View {
             grants,
             root: workspace.root,
             ancestry: None,
+            prefetched: None,
         })
+    }
+    /// @cc [owner:spolu,label:concurrency;security] transaction-local-prefetch
+    /// Prefetch at most one primary object alongside the live workspace record. Both reads MUST
+    /// use this same conflict-tracked transaction. Consume workspace errors first and defer object
+    /// errors until the operation requests that object, preserving validation/authorization order.
+    /// The prefetched result MUST NOT escape this view or be reused in another transaction.
+    pub async fn prefetch(
+        snapshot: Arc<Snapshot>,
+        workspace: &str,
+        grants: BTreeSet<String>,
+        object_id: &str,
+    ) -> Result<Self> {
+        let (view, prefetched) = tokio::join!(
+            Self::from_snapshot(snapshot.clone(), workspace, grants),
+            async {
+                let keys = Keys::new(workspace).ok()?;
+                let id = validate::id(object_id).ok()?;
+                let key = keys.object(&id).ok()?;
+                Some((id, measured("prefetch_object", snapshot.get(key)).await))
+            }
+        );
+        let mut view = view?;
+        view.prefetched = prefetched;
+        Ok(view)
     }
     pub fn with_ancestry(mut self, ancestry: Arc<Ancestry>) -> Self {
         self.ancestry = Some(ancestry);
@@ -62,10 +88,11 @@ impl View {
     }
     pub async fn object(&self, id: &str) -> Result<Record> {
         let id = validate::id(id)?;
-        let bytes = self
-            .get(&self.keys.object(&id)?)
-            .await?
-            .ok_or_else(|| status(ErrorCode::NotFound))?;
+        let bytes = match &self.prefetched {
+            Some((prefetched_id, value)) if prefetched_id == &id => value.clone()?,
+            _ => self.get(&self.keys.object(&id)?).await?,
+        }
+        .ok_or_else(|| status(ErrorCode::NotFound))?;
         let record: Record = decode(&bytes)?;
         if record.object.id != id {
             return Err(status(ErrorCode::Unavailable));
@@ -193,8 +220,8 @@ impl View {
         }
     }
     pub async fn stat(&self, id: &str) -> Result<Record> {
-        let object = self.object(id).await?;
-        if !self.authorized(&object).await? {
+        let object = measured("object", self.object(id)).await?;
+        if !measured("authorize", self.authorized(&object)).await? {
             return Err(status(ErrorCode::NotFound));
         }
         Ok(object)
@@ -228,18 +255,21 @@ impl View {
             }
             return Ok(record.object);
         }
-        let id = if parent == "root" {
-            self.root.clone()
-        } else {
-            self.directory(parent).await?.object.id
-        };
-        let child = self
-            .child(&id, name)
-            .await?
-            .ok_or_else(|| status(ErrorCode::NotFound))?;
-        if parent == "root" && !self.authorized(&child).await? {
-            return Err(status(ErrorCode::NotFound));
+        if parent == "root" {
+            let child = self
+                .child(&self.root, name)
+                .await?
+                .ok_or_else(|| status(ErrorCode::NotFound))?;
+            if !self.authorized(&child).await? {
+                return Err(status(ErrorCode::NotFound));
+            }
+            return Ok(child.object);
         }
+        let parent = validate::id(parent)?;
+        let (directory, child) = tokio::join!(self.directory(&parent), self.child(&parent, name));
+        // Parent errors take precedence; speculative child results never establish access.
+        directory?;
+        let child = child?.ok_or_else(|| status(ErrorCode::NotFound))?;
         Ok(child.object)
     }
     pub async fn list(&self, directory: &str, after: Option<&str>, limit: u32) -> Result<Page> {

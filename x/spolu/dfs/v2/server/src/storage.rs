@@ -104,7 +104,18 @@ impl Storage {
                     remaining.as_millis().clamp(1, 4000) as i32,
                 ))
                 .map_err(failed)?;
-            let prepared = operation(snapshot.clone()).await;
+            let version = if tracing::enabled!(target: "dfs_server_v2::profile", tracing::Level::DEBUG)
+            {
+                measured("read_version", snapshot.transaction.get_read_version())
+                    .await
+                    .map_err(|e| snapshot.failed(e))
+            } else {
+                Ok(0)
+            };
+            let prepared = match version {
+                Ok(_) => measured("prepare", operation(snapshot.clone())).await,
+                Err(error) => Err(error),
+            };
             let (error, status) = match prepared {
                 Ok((batch, result)) => {
                     batch.apply(&snapshot)?;
@@ -120,7 +131,7 @@ impl Storage {
                     let snapshot =
                         Arc::try_unwrap(snapshot).map_err(|_| status(ErrorCode::Internal))?;
                     let started = std::time::Instant::now();
-                    match snapshot.transaction.commit().await {
+                    match measured("commit", snapshot.transaction.commit()).await {
                         Ok(_) => {
                             tracing::debug!(
                                 commit_us = started.elapsed().as_micros() as u64,
@@ -156,6 +167,18 @@ impl Storage {
     pub async fn get(&self, key: impl AsRef<[u8]>) -> Result<Option<Bytes>, Status> {
         self.snapshot().await?.get(key).await
     }
+}
+
+/// Opt-in timings contain only fixed phase names, never workspace IDs, credentials, or values.
+pub(crate) async fn measured<T>(phase: &'static str, operation: impl Future<Output = T>) -> T {
+    let started = tracing::enabled!(target: "dfs_server_v2::profile", tracing::Level::DEBUG)
+        .then(std::time::Instant::now);
+    let result = operation.await;
+    if let Some(started) = started {
+        tracing::debug!(target: "dfs_server_v2::profile", phase,
+            elapsed_us = started.elapsed().as_micros() as u64, "filesystem phase");
+    }
+    result
 }
 
 pub struct Snapshot {

@@ -83,3 +83,21 @@ manifest; it restarts dfs-server and remounts before each `first` read case. FDB
 stay warm across these restarts. Native FDB commit durability is included in foreground writes.
 The small workspace runner checks shared-list pagination at 1/2/512 grants, search isolation, and
 two concurrent writers alongside 16 idle workspaces. It enables debug FDB commit timing logs.
+
+For a shorter write diagnostic, extract 1,000 files selected from that same corpus six directories
+below a grant attached six directories below the workspace root:
+
+```sh
+local/run exec python3 /dfs/v2/bench/untar.py --profile
+```
+
+This uses the unchanged FUSE client, validates every selected file hash, and records phase totals,
+client counters, and the server binary hash. `--files` selects 1..10,000 files; `--server` selects a
+saved server binary for comparisons. `--indexer-unavailable` points ES at an unreachable local port
+to measure imports with indexing unable to run; pending work is still written normally. Fixtures are
+isolated and cleaned after success. Run diagnostics sequentially, separately from the full benchmark.
+
+`--profile` enables `RUST_LOG=info,dfs_server_v2::profile=debug`. Phase logs contain static operation
+names and durations, not paths or values. Read-version acquisition is timed explicitly in this mode;
+normal benchmarks keep profiling disabled. Preparation includes its nested workspace/object,
+authorization, and block-read phases, so phase totals must not be summed together indiscriminately.
