@@ -37,6 +37,18 @@ export interface RichMarkdownEditorState {
   holdsNavigation: boolean;
 }
 
+/** What the editor opened on, or last saved. Latched: later fetches do not rewrite it. */
+interface Opened {
+  content: string;
+  /** The file was over the preview limit at that moment; the plain editor keeps it. */
+  truncated: boolean;
+}
+
+interface Written {
+  path: string | undefined;
+  content: string;
+}
+
 const IDLE_DRAFT: DocumentDraftState = {
   dirty: false,
   saving: false,
@@ -45,6 +57,16 @@ const IDLE_DRAFT: DocumentDraftState = {
 
 const CONFLICT_MESSAGE =
   "This file changed while you were editing. Copy your changes, then reopen the file.";
+
+function isOwnWrite(
+  written: Written | null,
+  path: string | undefined,
+  content: string
+): boolean {
+  return (
+    written !== null && written.path === path && written.content === content
+  );
+}
 
 /**
  * Which content the rich editor is open on, and what happens when the file changes under it.
@@ -61,64 +83,56 @@ export function useRichMarkdownEditor({
   adoptWritten,
 }: UseRichMarkdownEditorParams): RichMarkdownEditorState {
   const [draft, setDraft] = useState<DocumentDraftState>(IDLE_DRAFT);
-  // The content the editor opened on or last saved, and how many times it reopened.
-  const [base, setBase] = useState<string | null>(null);
+  const [opened, setOpened] = useState<Opened | null>(null);
+  // How many times the editor reopened on foreign content; part of the mount key.
   const [version, setVersion] = useState(0);
-  const [conflict, setConflict] = useState(false);
-  // Whether the file was over the preview limit when the editor opened on it. Latched, so a
-  // foreign write growing the file cannot unmount an open editor.
-  const [truncatedAtOpen, setTruncatedAtOpen] = useState<boolean | null>(null);
   const [resetKey, setResetKey] = useState({ isActive, path: entryPath });
   // The content this hook wrote last, so the fetch catching up with it is not a foreign change.
-  const writtenRef = useRef<{
-    path: string | undefined;
-    content: string;
-  } | null>(null);
+  const writtenRef = useRef<Written | null>(null);
 
   if (isActive !== resetKey.isActive || entryPath !== resetKey.path) {
     setResetKey({ isActive, path: entryPath });
     setDraft(IDLE_DRAFT);
-    setBase(null);
+    setOpened(null);
     setVersion(0);
-    setConflict(false);
-    setTruncatedAtOpen(null);
   }
 
-  const opens = enabled && !(truncatedAtOpen ?? isTruncated);
+  const opens = enabled && !(opened?.truncated ?? isTruncated);
   const source = rawContent ?? undefined;
+  const base = opened?.content ?? null;
 
   // The file changed under the editor, by another writer or an agent. A clean editor reopens on
-  // the new content; a dirty one keeps its draft and refuses to save over the newer version
-  // until the file is reopened. The revision check on save will narrow the remaining race.
+  // the new content; a dirty one keeps its draft, and `save` refuses to write over the newer
+  // version until the editor is clean or the file reopened. The revision check on save will
+  // narrow the remaining race.
   useEffect(() => {
     if (!opens || source === undefined || source === base) {
       return;
     }
-    const written = writtenRef.current;
     if (base === null) {
-      setBase(source);
-      setTruncatedAtOpen(isTruncated);
-    } else if (
-      written !== null &&
-      written.path === entryPath &&
-      written.content === source
-    ) {
+      setOpened({ content: source, truncated: isTruncated });
+    } else if (isOwnWrite(writtenRef.current, entryPath, source)) {
       // Our own write came back from the cache; the version it raced is overwritten anyway.
-      setBase(source);
-      setConflict(false);
+      setOpened({ content: source, truncated: false });
     } else if (draft.dirty || draft.saving) {
-      setConflict(true);
+      return;
     } else if (isTruncated) {
       // Reopening on cut text would save a cut file; the plain editor takes over.
-      setTruncatedAtOpen(true);
+      setOpened({ content: base, truncated: true });
     } else {
-      setBase(source);
+      setOpened({ content: source, truncated: false });
       setVersion((current) => current + 1);
-      setConflict(false);
     }
   }, [opens, source, base, draft.dirty, draft.saving, isTruncated, entryPath]);
 
   const save = async (content: string): Promise<DocumentSaveResult> => {
+    // A foreign version arrived while the editor was dirty: the fetched content moved away from
+    // what the editor opened on, and it is not a write of ours catching up.
+    const conflict =
+      base !== null &&
+      source !== undefined &&
+      source !== base &&
+      !isOwnWrite(writtenRef.current, entryPath, source);
     if (conflict) {
       return new Err(CONFLICT_MESSAGE);
     }
