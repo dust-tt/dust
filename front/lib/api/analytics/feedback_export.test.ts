@@ -7,11 +7,12 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { getNamespace } from "@app/tests/utils/test_cls";
 import type { ModelId } from "@app/types/shared/model_id";
 import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
-import { formatInTimeZone } from "date-fns-tz";
+import { tz } from "@date-fns/tz";
+import { format } from "date-fns";
 import { describe, expect, it, vi } from "vitest";
 
 const formatAsUtcYyyyMmDd = (date: Date) =>
-  formatInTimeZone(date, "UTC", "yyyy-MM-dd");
+  format(date, "yyyy-MM-dd", { in: tz("UTC") });
 
 // fetchAgentMetadata and fetchFeedbackExportRows read from the read replica;
 // in tests there is no replica, so point them at the primary test connection.
@@ -89,11 +90,9 @@ describe("fetchFeedbackExportRows", () => {
     expect(result.value).toHaveLength(1);
     expect(result.value[0]).toEqual({
       feedbackId: feedback.sId,
-      createdAt: formatInTimeZone(
-        feedback.createdAt,
-        "UTC",
-        "yyyy-MM-dd HH:mm:ss"
-      ),
+      createdAt: format(feedback.createdAt, "yyyy-MM-dd HH:mm:ss", {
+        in: tz("UTC"),
+      }),
       assistantId: agent.sId,
       assistantName: "Test Agent",
       conversationUrl: expect.stringContaining(conv.sId),
