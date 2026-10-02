@@ -1,30 +1,31 @@
 # v2 implementation
 
 Implement [DESIGN.md](DESIGN.md) in small, tested milestones; commit and push each completed group.
-Keep v1 and its results intact. The current milestone is the proposal; runtime work is still pending.
+Keep v1 and its results intact. Local services and the FDB transaction layer are implemented;
+filesystem and search porting remain pending.
 
 ## 0. Scope and contracts
 
 - [x] Define the v1 compatibility boundary, `/shared` change, FDB/ES architecture, and localhost scope.
-- [ ] Create the v2 Rust server workspace; reuse the unchanged v1 protocol/client/FUSE crates.
-- [ ] Port relevant contracts, replacing SlateDB/LanceDB assumptions with transaction, isolation,
+- [x] Create the v2 Rust server workspace; reuse the unchanged v1 protocol/client/FUSE crates.
+- [x] Port relevant contracts, replacing SlateDB/LanceDB assumptions with transaction, isolation,
       search-publication, and `/shared` requirements. Preserve client contracts and RPC error details.
 - [ ] Add configuration for FDB cluster file/subspace and ES URL/index; no v2 GCS dependency.
 
 ## 1. Reproducible local services
 
-- [ ] Pin FDB server/native-client/Rust-binding and ES versions; verify host/container architecture.
-- [ ] Provide one-command local FDB/ES startup, initialization, readiness, logs, and stop commands.
-- [ ] Use one FDB node and one ES node, persistent volumes, configurable budgets, and local-only access.
+- [x] Pin FDB server/native-client/Rust-binding and ES versions; verify host/container architecture.
+- [x] Provide one-command local FDB/ES startup, initialization, readiness, logs, and stop commands.
+- [x] Use one FDB node and one ES node, persistent volumes, configurable budgets, and local-only access.
 - [ ] Verify advertised FDB addresses from dfs-server and connectivity from the Linux FUSE container.
-- [ ] Add isolated per-test FDB prefixes/ES indexes and explicit fixture reset; preserve other data.
-- [ ] Smoke-test FDB transaction/restart persistence and ES bulk/search/refresh before filesystem work.
+- [x] Add isolated per-test FDB prefixes/ES indexes and explicit fixture reset; preserve other data.
+- [x] Smoke-test FDB transaction/restart persistence and ES bulk/search/refresh before filesystem work.
 
 ## 2. FoundationDB storage
 
 - [ ] Port workspace-prefixed key families, ordered scans/cursors, format marker, and 64 KiB blocks.
 - [ ] Encode metadata with bounded overflow parts; cover maximum binary xattrs without new API limits.
-- [ ] Implement short read views and transaction-scoped writes; bound lifetime, bytes, and conflicts.
+- [x] Implement short read views and transaction-scoped writes; bound lifetime, bytes, and conflicts.
 - [ ] Implement bounded retries for known aborts; preserve expected versions and surface unknown commits.
 - [ ] Add atomic range clears for content, tail trimming, and bounded reverse-grant cleanup.
 - [ ] Test snapshot consistency, rollback, size/time boundaries, and durable reopening after process loss.
