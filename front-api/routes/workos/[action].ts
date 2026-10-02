@@ -451,9 +451,12 @@ async function handleCallback(ctx: Context) {
   if (!nonceCookie || nonceCookie !== stateObj.nonce) {
     statsDMetrics.increment("login.callback.nonce_mismatch", 1);
     const validatedReturnTo = validateRelativePath(stateObj.returnTo);
-    const params = new URLSearchParams();
+    const params = new URLSearchParams(extractUTMParams(stateObj.utm ?? {}));
     if (validatedReturnTo.valid) {
       params.set("returnTo", validatedReturnTo.sanitizedPath);
+    }
+    if (isString(stateObj.organizationId)) {
+      params.set("organizationId", stateObj.organizationId);
     }
     return redirectTo(ctx, `/api/workos/login?${params.toString()}`);
   }

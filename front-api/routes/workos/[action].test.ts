@@ -71,8 +71,13 @@ describe("WorkOS login nonce", () => {
     expect(nonceCookie).toBeUndefined();
   });
 
-  it("restarts the login without exchanging the code when the nonce cookie is missing", async () => {
-    const state = encodeState({ nonce: "attacker-nonce", returnTo: "/w/abc" });
+  it("restarts the login with the original state when the nonce cookie is missing", async () => {
+    const state = encodeState({
+      nonce: "attacker-nonce",
+      returnTo: "/w/abc",
+      organizationId: "org_123",
+      utm: { utm_source: "newsletter" },
+    });
 
     const res = await honoApp.request(
       `/api/workos/callback?code=CODE&state=${encodeURIComponent(state)}`
@@ -80,7 +85,7 @@ describe("WorkOS login nonce", () => {
 
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toBe(
-      "/api/workos/login?returnTo=%2Fw%2Fabc"
+      "/api/workos/login?utm_source=newsletter&returnTo=%2Fw%2Fabc&organizationId=org_123"
     );
     expect(authenticateWithWorkOSCode).not.toHaveBeenCalled();
   });
