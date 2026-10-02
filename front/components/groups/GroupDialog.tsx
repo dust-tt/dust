@@ -46,10 +46,10 @@ export function GroupDialog({
     disabled: !isOpen,
   });
 
-  // Managing the membership of a group that grants the admin role is restricted
-  // to admins: adding a member escalates them to admin. Managers can view but
-  // not edit such a group's membership.
-  const isReadOnlyForManager =
+  // Membership of an admin-only group (granting the admin role or an admin-only
+  // capability such as billing or security) is restricted to admins: the member
+  // list is read-only for everyone else, independently of the group details.
+  const areMembersReadOnly =
     isEdit && group?.allowedActions?.canEditMembers !== true;
 
   // In edit mode we wait for the group and its members before mounting the
@@ -71,7 +71,7 @@ export function GroupDialog({
             initialName={group?.name ?? ""}
             initialMembers={members}
             initialManagers={managers}
-            readOnly={isReadOnlyForManager}
+            membersReadOnly={areMembersReadOnly}
             onCreated={onCreated}
             onClose={() => onOpenChange(false)}
           />
@@ -94,9 +94,9 @@ interface GroupFormProps {
   initialName: string;
   initialMembers: SearchMemberType[];
   initialManagers: SearchMemberType[];
-  // When true, the group grants the admin role and the current user is not an
-  // admin: membership is read-only (see the admin-only membership contract).
-  readOnly?: boolean;
+  // When true, the current user may not change this group's members (see the
+  // admin-only membership contract); the group details follow `canEditDetails`.
+  membersReadOnly?: boolean;
   onCreated?: (group: GroupType) => void;
   onClose: () => void;
 }
@@ -108,7 +108,7 @@ function GroupForm({
   initialName,
   initialMembers,
   initialManagers,
-  readOnly = false,
+  membersReadOnly = false,
   onCreated,
   onClose,
 }: GroupFormProps) {
@@ -142,10 +142,11 @@ function GroupForm({
     selectedMemberIds,
   });
   const initialMemberIds = new Set(initialMembers.map((member) => member.sId));
-  const hasGroupChanges =
-    name.trim() !== initialName ||
+  const hasNameChange = name.trim() !== initialName;
+  const hasMemberChanges =
     selectedMemberIds.size !== initialMemberIds.size ||
     [...selectedMemberIds].some((id) => !initialMemberIds.has(id));
+  const hasGroupChanges = hasNameChange || hasMemberChanges;
   const initialManagerIds = new Set(
     initialManagers.map((manager) => manager.sId)
   );
@@ -154,11 +155,11 @@ function GroupForm({
     (selectedManagers.length !== initialManagerIds.size ||
       selectedManagers.some((manager) => !initialManagerIds.has(manager.sId)));
   const shouldDisableButton =
-    (readOnly && !canAssignManagers) ||
     isSubmitting ||
     name.trim().length === 0 ||
+    (membersReadOnly && !canEditDetails && !canAssignManagers) ||
     (!groupId && selectedMemberIds.size === 0) ||
-    (hasGroupChanges && selectedMemberIds.size === 0);
+    (hasMemberChanges && selectedMemberIds.size === 0);
 
   /**
    * @cc [owner:philipperolet,label:product;security] manager-save-order
@@ -171,8 +172,8 @@ function GroupForm({
     }
     if (hasGroupChanges) {
       const result = await doUpdateGroup({
-        name: name.trim() !== initialName ? name.trim() : undefined,
-        memberIds: Array.from(selectedMemberIds),
+        name: hasNameChange ? name.trim() : undefined,
+        memberIds: hasMemberChanges ? Array.from(selectedMemberIds) : undefined,
       });
       if (!result) {
         return false;
@@ -220,15 +221,16 @@ function GroupForm({
     <>
       <DialogContainer>
         <div className="flex flex-col gap-5">
-          {readOnly && group?.grantedRole === "admin" && (
+          {membersReadOnly && (
             <ContentMessage
               variant="warning"
               icon={InfoCircle}
-              title="Managed by admins"
+              title="Read-only members"
               size="sm"
             >
-              This group grants the Admin role. Only workspace admins can change
-              its members.
+              {group?.grantedRole === "admin"
+                ? "This group grants the Admin role. Only workspace admins can change its members."
+                : "You can't change this group's members. Groups that grant admin-only access, such as billing or security, are managed by workspace admins."}
             </ContentMessage>
           )}
           <Input
@@ -237,7 +239,7 @@ function GroupForm({
             placeholder="e.g. Sales"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            disabled={readOnly || !canEditDetails}
+            disabled={!canEditDetails}
             autoFocus
           />
           <div className="flex flex-col gap-2">
@@ -251,7 +253,7 @@ function GroupForm({
               selectedMemberIds={selectedMemberIds}
               onSelectionChange={setSelectedMemberIds}
               initialMembers={initialMembers}
-              disabled={readOnly || isSubmitting}
+              disabled={membersReadOnly || isSubmitting}
             />
           </div>
           {canAssignManagers && (

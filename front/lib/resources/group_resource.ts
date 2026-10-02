@@ -35,6 +35,10 @@ import logger from "@app/logger/logger";
 import { launchMetronomeSeatCountSyncWorkflow } from "@app/temporal/usage_queue/client";
 import { launchSyncWorkOSITContactsWorkflow } from "@app/temporal/workos_events_queue/client";
 import type { GrantVerb } from "@app/types/group_permissions";
+import {
+  ADMIN_ONLY_GOVERNANCE_CAPABILITIES,
+  WHOLE_TYPE_RESOURCE_ID,
+} from "@app/types/group_permissions";
 import type {
   GroupGrantableRole,
   GroupGrantableSeatType,
@@ -83,6 +87,8 @@ import { col, fn, Op, QueryTypes } from "sequelize";
 
 const LAST_GROUP_MEMBER_ERROR_MESSAGE =
   "A group must always keep at least one member. To remove everyone, delete the group instead.";
+const ADMIN_ONLY_MEMBERSHIP_ERROR_MESSAGE =
+  "Only workspace admins can manage members of a group that grants the admin role or an admin-only capability (billing, security).";
 
 type CachedGroup = {
   id: ModelId;
@@ -2191,17 +2197,11 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Changing the members of an admin-granting group escalates/de-escalates
-    // admins, so it is restricted to workspace admins.
-    if (
-      memberIds !== undefined &&
-      !this.canManageMembersGivenGrantedRole(auth)
-    ) {
+    // Changing the members of an admin-only group hands out or takes away admin-reserved
+    // access, so it is restricted to workspace admins.
+    if (memberIds !== undefined && !(await this.canManageMembers(auth))) {
       return new Err(
-        new DustError(
-          "unauthorized",
-          "Only workspace admins can manage members of a group that grants the admin role."
-        )
+        new DustError("unauthorized", ADMIN_ONLY_MEMBERSHIP_ERROR_MESSAGE)
       );
     }
 
@@ -2300,14 +2300,11 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Changing the members of an admin-granting group escalates/de-escalates
-    // admins, so it is restricted to workspace admins.
-    if (!this.canManageMembersGivenGrantedRole(auth)) {
+    // Changing the members of an admin-only group hands out or takes away admin-reserved
+    // access, so it is restricted to workspace admins.
+    if (!(await this.canManageMembers(auth))) {
       return new Err(
-        new DustError(
-          "unauthorized",
-          "Only workspace admins can manage members of a group that grants the admin role."
-        )
+        new DustError("unauthorized", ADMIN_ONLY_MEMBERSHIP_ERROR_MESSAGE)
       );
     }
 
@@ -2743,18 +2740,58 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
-   * @cc [owner:tdraier,label:security] admin-group-membership-admin-only
-   * Membership of a group that grants the admin role (`grantedRole === "admin"`)
-   * MUST only be mutated by workspace admins. Adding a member to such a group
-   * escalates them to admin, so managers (who otherwise have `write` on manual
-   * groups) MUST NOT be able to add or remove its members — mirroring the
-   * members UI, where managers cannot assign the admin role.
-   *
-   * Returns true when `auth` is allowed to change this group's membership given
-   * the role it grants. Callers must still enforce `auth.can("write", group)`.
+   * @cc [owner:tdraier;rfrenoy,label:security] admin-group-membership-admin-only
+   * Membership of an admin-only group MUST only be mutated by workspace admins. A group is
+   * admin-only when it grants the admin role (`grantedRole === "admin"`) or holds a type-wide
+   * grant (`resourceId === WHOLE_TYPE_RESOURCE_ID`) for a capability in
+   * `ADMIN_ONLY_GOVERNANCE_CAPABILITIES` (today `admin` on `billing` or `security`). Adding a
+   * member to such a group hands them admin-reserved access, so managers and delegated group
+   * managers (who otherwise have `write` on manual groups) MUST NOT be able to add or remove its
+   * members. Callers MUST still enforce `auth.can("write", group)`.
    */
-  canManageMembersGivenGrantedRole(auth: Authenticator): boolean {
-    return this.grantedRole !== "admin" || auth.isAdmin();
+  async canManageMembers(auth: Authenticator): Promise<boolean> {
+    const adminOnlyGroupModelIds =
+      await GroupResource.listAdminOnlyMembershipGroupModelIds(auth, [this]);
+    return !adminOnlyGroupModelIds.has(this.id);
+  }
+
+  /**
+   * The ids of the `groups` whose membership only workspace admins may change (see
+   * `admin-group-membership-admin-only`), resolved with a single query. Empty for admins.
+   */
+  static async listAdminOnlyMembershipGroupModelIds(
+    auth: Authenticator,
+    groups: GroupResource[]
+  ): Promise<Set<ModelId>> {
+    if (auth.isAdmin() || groups.length === 0) {
+      return new Set();
+    }
+
+    const adminOnlyGroupModelIds = new Set(
+      groups.filter((g) => g.grantedRole === "admin").map((g) => g.id)
+    );
+    const candidateGroupModelIds = groups
+      .map((g) => g.id)
+      .filter((id) => !adminOnlyGroupModelIds.has(id));
+    if (candidateGroupModelIds.length === 0) {
+      return adminOnlyGroupModelIds;
+    }
+
+    const grants = await GroupPermissionModel.findAll({
+      attributes: ["groupId"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        groupId: candidateGroupModelIds,
+        resourceId: WHOLE_TYPE_RESOURCE_ID,
+        [Op.or]: ADMIN_ONLY_GOVERNANCE_CAPABILITIES.map(
+          ({ grantType, resourceType }) => ({ grantType, resourceType })
+        ),
+      },
+    });
+    for (const grant of grants) {
+      adminOnlyGroupModelIds.add(grant.groupId);
+    }
+    return adminOnlyGroupModelIds;
   }
 
   /**

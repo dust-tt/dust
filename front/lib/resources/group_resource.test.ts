@@ -83,6 +83,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { CapabilitySpec } from "@app/types/group_permissions";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
@@ -1801,6 +1802,238 @@ describe("GroupResource", () => {
         expect(res.isOk()).toBe(true);
         expect(await roleOf(targetAdmin)).toBe("admin");
       });
+    });
+  });
+
+  describe("admin-only capability group membership is admin-only", () => {
+    async function makeCapabilityGroup(
+      name: string,
+      capability: CapabilitySpec | null
+    ) {
+      const member = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, member, { role: "user" });
+      const group = await GroupResource.makeNew(
+        { name, workspaceId: workspace.id, kind: "regular_manual" },
+        { memberIds: [member.id] }
+      );
+      if (capability) {
+        await GroupPermissionResource.grantTypeWide(authenticator, {
+          group,
+          ...capability,
+        });
+      }
+      return { group, member };
+    }
+
+    async function actorWithRole(role: "manager" | "user") {
+      const actor = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, actor, { role });
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        actor.sId,
+        workspace.sId
+      );
+      return { actor, auth };
+    }
+
+    async function memberIdsOf(group: GroupResource) {
+      return (await group.getActiveMembers(authenticator)).map((m) => m.sId);
+    }
+
+    it("blocks a manager from adding themselves to a group holding admin on security", async () => {
+      const { group, member } = await makeCapabilityGroup("Security", {
+        grantType: "admin",
+        resourceType: "security",
+      });
+      const { actor, auth } = await actorWithRole("manager");
+
+      const res = await group.updateRegularManualGroupMembers(auth, {
+        addUserIds: [actor.sId],
+        removeUserIds: [],
+      });
+
+      expect(res.isErr()).toBe(true);
+      if (res.isErr()) {
+        expect(res.error.code).toBe("unauthorized");
+      }
+      expect(await memberIdsOf(group)).toEqual([member.sId]);
+    });
+
+    it("blocks a manager from adding themselves to a group holding admin on billing", async () => {
+      const { group, member } = await makeCapabilityGroup("Billing", {
+        grantType: "admin",
+        resourceType: "billing",
+      });
+      const { actor, auth } = await actorWithRole("manager");
+
+      const res = await group.updateRegularManualGroupMembers(auth, {
+        addUserIds: [actor.sId],
+        removeUserIds: [],
+      });
+
+      expect(res.isErr()).toBe(true);
+      if (res.isErr()) {
+        expect(res.error.code).toBe("unauthorized");
+      }
+      expect(await memberIdsOf(group)).toEqual([member.sId]);
+    });
+
+    it("blocks a manager from removing a member of a group holding admin on security", async () => {
+      const { group, member } = await makeCapabilityGroup("Security", {
+        grantType: "admin",
+        resourceType: "security",
+      });
+      const other = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, other, { role: "user" });
+      await group.dangerouslyAddMembers(authenticator, {
+        users: [other.toJSON()],
+      });
+      const { auth } = await actorWithRole("manager");
+
+      const res = await group.updateRegularManualGroupMembers(auth, {
+        addUserIds: [],
+        removeUserIds: [member.sId],
+      });
+
+      expect(res.isErr()).toBe(true);
+      if (res.isErr()) {
+        expect(res.error.code).toBe("unauthorized");
+      }
+      expect(new Set(await memberIdsOf(group))).toEqual(
+        new Set([member.sId, other.sId])
+      );
+    });
+
+    it("blocks a manager from replacing the members of a group holding admin on security", async () => {
+      const { group, member } = await makeCapabilityGroup("Security", {
+        grantType: "admin",
+        resourceType: "security",
+      });
+      const { actor, auth } = await actorWithRole("manager");
+
+      const res = await group.updateRegularManualGroup(auth, {
+        memberIds: [member.sId, actor.sId],
+      });
+
+      expect(res.isErr()).toBe(true);
+      if (res.isErr()) {
+        expect(res.error.code).toBe("unauthorized");
+      }
+      expect(await memberIdsOf(group)).toEqual([member.sId]);
+    });
+
+    it("lets an admin add and remove members of a group holding admin on security", async () => {
+      const { group, member } = await makeCapabilityGroup("Security", {
+        grantType: "admin",
+        resourceType: "security",
+      });
+      const other = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, other, { role: "user" });
+
+      const addRes = await group.updateRegularManualGroupMembers(
+        authenticator,
+        { addUserIds: [other.sId], removeUserIds: [] }
+      );
+      expect(addRes.isOk()).toBe(true);
+      expect(new Set(await memberIdsOf(group))).toEqual(
+        new Set([member.sId, other.sId])
+      );
+
+      const removeRes = await group.updateRegularManualGroupMembers(
+        authenticator,
+        { addUserIds: [], removeUserIds: [member.sId] }
+      );
+      expect(removeRes.isOk()).toBe(true);
+      expect(await memberIdsOf(group)).toEqual([other.sId]);
+    });
+
+    it("lets a manager add themselves to a group holding create on agent", async () => {
+      const { group, member } = await makeCapabilityGroup("Builders", {
+        grantType: "create",
+        resourceType: "agent",
+      });
+      const { actor, auth } = await actorWithRole("manager");
+
+      const res = await group.updateRegularManualGroupMembers(auth, {
+        addUserIds: [actor.sId],
+        removeUserIds: [],
+      });
+
+      expect(res.isOk()).toBe(true);
+      expect(new Set(await memberIdsOf(group))).toEqual(
+        new Set([member.sId, actor.sId])
+      );
+    });
+
+    it("blocks a delegated group manager from adding themselves to a group holding admin on security", async () => {
+      const { group, member } = await makeCapabilityGroup("Security", {
+        grantType: "admin",
+        resourceType: "security",
+      });
+      const actor = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, actor, { role: "user" });
+      const grantRes = await GroupPermissionResource.grantToUser(
+        authenticator,
+        {
+          user: actor.toJSON(),
+          grantType: "group_manager",
+          resourceType: "group",
+          resourceId: group.id,
+        }
+      );
+      expect(grantRes.isOk()).toBe(true);
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        actor.sId,
+        workspace.sId
+      );
+      expect(auth.can("write", group)).toBe(true);
+
+      const res = await group.updateRegularManualGroupMembers(auth, {
+        addUserIds: [actor.sId],
+        removeUserIds: [],
+      });
+
+      expect(res.isErr()).toBe(true);
+      if (res.isErr()) {
+        expect(res.error.code).toBe("unauthorized");
+      }
+      expect(await memberIdsOf(group)).toEqual([member.sId]);
+    });
+
+    it("resolves admin-only membership groups in batch for non-admins only", async () => {
+      const { group: security } = await makeCapabilityGroup("Security", {
+        grantType: "admin",
+        resourceType: "security",
+      });
+      const { group: billing } = await makeCapabilityGroup("Billing", {
+        grantType: "admin",
+        resourceType: "billing",
+      });
+      const { group: builders } = await makeCapabilityGroup("Builders", {
+        grantType: "create",
+        resourceType: "agent",
+      });
+      const { group: plain } = await makeCapabilityGroup("Plain", null);
+      const admins = await GroupResource.makeNew({
+        name: "Admins",
+        workspaceId: workspace.id,
+        kind: "regular_manual",
+        grantedRole: "admin",
+      });
+      const groups = [security, billing, builders, plain, admins];
+      const { auth } = await actorWithRole("manager");
+
+      expect(
+        await GroupResource.listAdminOnlyMembershipGroupModelIds(auth, groups)
+      ).toEqual(new Set([security.id, billing.id, admins.id]));
+      expect(
+        await GroupResource.listAdminOnlyMembershipGroupModelIds(
+          authenticator,
+          groups
+        )
+      ).toEqual(new Set());
+      expect(await security.canManageMembers(auth)).toBe(false);
+      expect(await builders.canManageMembers(auth)).toBe(true);
+      expect(await security.canManageMembers(authenticator)).toBe(true);
     });
   });
 

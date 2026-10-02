@@ -166,4 +166,50 @@ describe("group management scope", () => {
       await getMemberScopeWithGroupVerb(managerAuth, "read_usage")
     ).toEqual({ kind: "all" });
   });
+
+  it("excludes groups holding an admin-only capability from a delegated manager's write scope", async () => {
+    const { workspace, authenticator: adminAuth } = await createResourceTest({
+      role: "admin",
+    });
+    const delegate = await UserFactory.basic();
+    const member = await UserFactory.basic();
+    for (const user of [delegate, member]) {
+      await MembershipFactory.associate(workspace, user, { role: "user" });
+    }
+    const security = await GroupResource.makeNew(
+      { name: "Security", kind: "regular_manual", workspaceId: workspace.id },
+      { memberIds: [member.id] }
+    );
+    const plain = await GroupResource.makeNew(
+      { name: "Plain", kind: "regular_manual", workspaceId: workspace.id },
+      { memberIds: [member.id] }
+    );
+    await GroupPermissionResource.grantTypeWide(adminAuth, {
+      group: security,
+      grantType: "admin",
+      resourceType: "security",
+    });
+    for (const group of [security, plain]) {
+      const result = await GroupPermissionResource.grantToUser(adminAuth, {
+        user: delegate.toJSON(),
+        grantType: "group_manager",
+        resourceType: "group",
+        resourceId: group.id,
+      });
+      expect(result.isOk()).toBe(true);
+    }
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      delegate.sId,
+      workspace.sId
+    );
+
+    expect((await listGroupsWithVerb(auth, "write")).map((g) => g.id)).toEqual([
+      plain.id,
+    ]);
+    expect(
+      new Set((await listGroupsWithVerb(auth, "read_usage")).map((g) => g.id))
+    ).toEqual(new Set([plain.id, security.id]));
+    expect(await security.canManageMembers(auth)).toBe(false);
+    expect(await plain.canManageMembers(auth)).toBe(true);
+  });
 });

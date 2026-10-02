@@ -113,7 +113,7 @@ app.get(
     }
 
     const members = await group.getActiveMembers(auth);
-    const allowedActions = getGroupAllowedActions(
+    const allowedActions = await getGroupAllowedActions(
       auth,
       group,
       await auth.hasFeatureFlag("group_management")
@@ -247,7 +247,7 @@ app.patch(
         group: {
           ...group.toJSON(),
           memberCount: members.length,
-          allowedActions: getGroupAllowedActions(
+          allowedActions: await getGroupAllowedActions(
             auth,
             group,
             isGroupManagementEnabled
@@ -324,7 +324,7 @@ app.patch(
       group: {
         ...group.toJSON(),
         memberCount: members.length,
-        allowedActions: getGroupAllowedActions(
+        allowedActions: await getGroupAllowedActions(
           auth,
           group,
           isGroupManagementEnabled

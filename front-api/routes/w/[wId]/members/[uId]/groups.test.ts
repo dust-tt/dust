@@ -1,5 +1,6 @@
 import { replaceGroupManagers } from "@app/lib/api/groups/manager_assignments";
 import { Authenticator } from "@app/lib/auth";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
@@ -393,5 +394,54 @@ describe("delegated membership writes", () => {
       workspace.sId
     );
     expect(refreshed.isManager()).toBe(true);
+  });
+});
+
+describe("groups holding an admin-only capability", () => {
+  it("rejects a manager adding or removing members but lets an admin", async () => {
+    const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const alice = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, alice, { role: "user" });
+    const group = await GroupFactory.regularManual(workspace, "Billing admins");
+    await GroupFactory.withMembers(adminAuth, group, [alice]);
+    await GroupPermissionResource.grantTypeWide(adminAuth, {
+      group,
+      grantType: "admin",
+      resourceType: "billing",
+    });
+
+    const { user: manager } = await createPrivateApiMockRequest({
+      role: "manager",
+      workspace,
+    });
+    const add = await postMemberGroup(workspace, manager.sId, {
+      groupId: group.sId,
+    });
+    expect(add.status).toBe(403);
+    expect((await add.json()).error.type).toBe("workspace_auth_error");
+    expect(
+      (await deleteMemberGroup(workspace, alice.sId, group.sId)).status
+    ).toBe(403);
+    expect((await group.getActiveMembers(adminAuth)).map((m) => m.sId)).toEqual(
+      [alice.sId]
+    );
+
+    const { user: admin } = await createPrivateApiMockRequest({
+      role: "admin",
+      workspace,
+    });
+    expect(
+      (await postMemberGroup(workspace, admin.sId, { groupId: group.sId }))
+        .status
+    ).toBe(200);
+    expect(
+      (await deleteMemberGroup(workspace, alice.sId, group.sId)).status
+    ).toBe(200);
+    expect((await group.getActiveMembers(adminAuth)).map((m) => m.sId)).toEqual(
+      [admin.sId]
+    );
   });
 });

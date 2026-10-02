@@ -1,9 +1,11 @@
 import { Authenticator } from "@app/lib/auth";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
@@ -189,5 +191,89 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
       managerIds: [alice.sId],
     });
     expect(user.status).toBe(403);
+  });
+});
+
+describe("groups holding an admin-only capability", () => {
+  async function makeSecurityGroup(workspace: WorkspaceType) {
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const alice = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, alice, { role: "user" });
+    const group = await GroupFactory.regularManual(
+      workspace,
+      "Security delegates"
+    );
+    await GroupFactory.withMembers(adminAuth, group, [alice]);
+    await GroupPermissionResource.grantTypeWide(adminAuth, {
+      group,
+      grantType: "admin",
+      resourceType: "security",
+    });
+    return { adminAuth, alice, group };
+  }
+
+  it("rejects membership edits from a manager and hides the control", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+    const { adminAuth, alice, group } = await makeSecurityGroup(workspace);
+    const { user: manager } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "manager",
+      workspace,
+    });
+
+    const denied = await patchGroupRequest(workspace.sId, group.sId, {
+      memberIds: [alice.sId, manager.sId],
+    });
+
+    expect(denied.status).toBe(403);
+    expect((await denied.json()).error.type).toBe("workspace_auth_error");
+    expect((await group.getActiveMembers(adminAuth)).map((m) => m.sId)).toEqual(
+      [alice.sId]
+    );
+
+    const detail = await getGroupRequest(workspace.sId, group.sId);
+    expect(detail.status).toBe(200);
+    expect((await detail.json()).group.allowedActions).toEqual(
+      expect.objectContaining({ canEditMembers: false, canEditDetails: true })
+    );
+
+    const list = await honoApp.request(
+      `/api/w/${workspace.sId}/groups?kind=regular_manual`
+    );
+    expect(list.status).toBe(200);
+    const listed = (await list.json()).groups.find(
+      (g: { sId: string }) => g.sId === group.sId
+    );
+    expect(listed.allowedActions.canEditMembers).toBe(false);
+  });
+
+  it("lets an admin edit the members", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+    const { adminAuth, alice, group } = await makeSecurityGroup(workspace);
+    const { user: admin } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+      workspace,
+    });
+
+    const response = await patchGroupRequest(workspace.sId, group.sId, {
+      memberIds: [alice.sId, admin.sId],
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).group.allowedActions.canEditMembers).toBe(
+      true
+    );
+    expect(
+      new Set((await group.getActiveMembers(adminAuth)).map((m) => m.sId))
+    ).toEqual(new Set([alice.sId, admin.sId]));
   });
 });
