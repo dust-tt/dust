@@ -1,19 +1,17 @@
 import config from "@app/lib/api/config";
-import { getWorkspaceOAuthConnectionIdForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
+import { getWorkspaceOAuthConnectionForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
 import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import {
   finalizeUriForProvider,
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
-import logger from "@app/logger/logger";
 import type {
   ExtraConfigType,
   OAuthConnectionType,
   OAuthUseCase,
 } from "@app/types/oauth/lib";
 import { isValidAtlassianCloudUrlOrEmpty } from "@app/types/oauth/lib";
-import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { ParsedUrlQuery } from "querystring";
 
 export class ConfluenceToolsOAuthProvider implements BaseOAuthStrategyProvider {
@@ -53,9 +51,8 @@ export class ConfluenceToolsOAuthProvider implements BaseOAuthStrategyProvider {
   }
 
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
-    if (useCase === "personal_actions") {
-      // If we have an mcp_server_id it means the admin already setup the connection and we have
-      // everything we need, otherwise we'll need the client_id and client_secret.
+    if (useCase === "personal_actions" || useCase === "platform_actions") {
+      // Existing workspace connection may already pin confluence_cloud_url.
       if (extraConfig.mcp_server_id) {
         return true;
       }
@@ -74,33 +71,27 @@ export class ConfluenceToolsOAuthProvider implements BaseOAuthStrategyProvider {
       useCase: OAuthUseCase;
     }
   ): Promise<ExtraConfigType> {
-    if (useCase === "personal_actions") {
+    if (useCase === "personal_actions" || useCase === "platform_actions") {
       const { mcp_server_id, ...restConfig } = extraConfig;
 
       if (mcp_server_id) {
-        const oauthConnectionIdRes =
-          await getWorkspaceOAuthConnectionIdForMCPServer(auth, mcp_server_id);
-        if (oauthConnectionIdRes.isErr()) {
-          throw new Error(oauthConnectionIdRes.error.message);
+        const connectionRes = await getWorkspaceOAuthConnectionForMCPServer(
+          auth,
+          mcp_server_id
+        );
+        if (connectionRes.isOk()) {
+          const connection = connectionRes.value;
+          return {
+            ...restConfig,
+            ...(connection.metadata.confluence_cloud_url && {
+              confluence_cloud_url: connection.metadata.confluence_cloud_url,
+            }),
+          };
         }
-
-        const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-        const connectionRes = await oauthApi.getConnectionMetadata({
-          connectionId: oauthConnectionIdRes.value,
-        });
-        if (connectionRes.isErr()) {
-          throw new Error(
-            "Failed to get connection metadata: " + connectionRes.error.message
-          );
+        if (useCase === "personal_actions") {
+          throw new Error(connectionRes.error.message);
         }
-        const connection = connectionRes.value.connection;
-
-        return {
-          ...restConfig,
-          ...(connection.metadata.confluence_cloud_url && {
-            confluence_cloud_url: connection.metadata.confluence_cloud_url,
-          }),
-        };
+        // platform_actions first connect: fall through.
       }
     }
 

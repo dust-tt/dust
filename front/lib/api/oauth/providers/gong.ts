@@ -51,6 +51,9 @@ export class GongOAuthProvider implements BaseOAuthStrategyProvider {
       );
     }
 
-    return Object.keys(extraConfig).length === 0;
+    return (
+      Object.keys(extraConfig).length === 0 ||
+      (Object.keys(extraConfig).length === 1 && "mcp_server_id" in extraConfig)
+    );
   }
 }

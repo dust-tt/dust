@@ -1,32 +1,17 @@
 import { ZendeskOAuthProvider } from "@app/lib/api/oauth/providers/zendesk";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { OAuthConnectionType } from "@app/types/oauth/lib";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  getConnectionMetadata: vi.fn(),
-  getWorkspaceOAuthConnectionIdForMCPServer: vi.fn(),
+  getWorkspaceOAuthConnectionForMCPServer: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/oauth/mcp_server_connection_auth", () => ({
-  getWorkspaceOAuthConnectionIdForMCPServer:
-    mocks.getWorkspaceOAuthConnectionIdForMCPServer,
+  getWorkspaceOAuthConnectionForMCPServer:
+    mocks.getWorkspaceOAuthConnectionForMCPServer,
 }));
-
-vi.mock("@app/types/oauth/oauth_api", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@app/types/oauth/oauth_api")>();
-
-  return {
-    ...actual,
-    OAuthAPI: vi.fn().mockImplementation(function OAuthAPIMock() {
-      return {
-        getConnectionMetadata: mocks.getConnectionMetadata,
-      };
-    }),
-  };
-});
 
 function makeConnection(metadata: Record<string, string>): OAuthConnectionType {
   return {
@@ -50,6 +35,15 @@ describe("ZendeskOAuthProvider.isExtraConfigValid", () => {
     ).toBe(true);
   });
 
+  it("accepts platform_actions with an mcp_server_id (Refresh reuses workspace connection)", () => {
+    expect(
+      provider.isExtraConfigValid(
+        { mcp_server_id: "srv_123" },
+        "platform_actions"
+      )
+    ).toBe(true);
+  });
+
   it("requires a valid subdomain for personal_actions without an mcp_server_id", () => {
     expect(
       provider.isExtraConfigValid(
@@ -65,7 +59,7 @@ describe("ZendeskOAuthProvider.isExtraConfigValid", () => {
     ).toBe(false);
   });
 
-  it("requires a valid subdomain for platform_actions", () => {
+  it("requires a valid subdomain for platform_actions without mcp_server_id", () => {
     expect(
       provider.isExtraConfigValid(
         { zendesk_subdomain: "mycompany" },
@@ -75,7 +69,7 @@ describe("ZendeskOAuthProvider.isExtraConfigValid", () => {
     expect(provider.isExtraConfigValid({}, "platform_actions")).toBe(false);
   });
 
-  it("rejects extra config keys for platform_actions", () => {
+  it("rejects extra config keys for platform_actions without mcp_server_id", () => {
     expect(
       provider.isExtraConfigValid(
         { zendesk_subdomain: "mycompany", extra: "x" },
@@ -87,30 +81,25 @@ describe("ZendeskOAuthProvider.isExtraConfigValid", () => {
 
 describe("ZendeskOAuthProvider.getUpdatedExtraConfig", () => {
   beforeEach(() => {
-    mocks.getConnectionMetadata.mockReset();
-    mocks.getWorkspaceOAuthConnectionIdForMCPServer.mockReset();
+    mocks.getWorkspaceOAuthConnectionForMCPServer.mockReset();
   });
 
-  it("inherits the subdomain from the workspace connection for personal actions", async () => {
+  it.each([
+    "personal_actions",
+    "platform_actions",
+  ] as const)("inherits the subdomain from the workspace connection for %s", async (useCase) => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const provider = new ZendeskOAuthProvider();
 
-    mocks.getWorkspaceOAuthConnectionIdForMCPServer.mockResolvedValue(
-      new Ok("con_workspace")
-    );
-    mocks.getConnectionMetadata.mockResolvedValue(
-      new Ok({
-        connection: makeConnection({ zendesk_subdomain: "admincompany" }),
-      })
+    mocks.getWorkspaceOAuthConnectionForMCPServer.mockResolvedValue(
+      new Ok(makeConnection({ zendesk_subdomain: "admincompany" }))
     );
 
     const updated = await provider.getUpdatedExtraConfig(authenticator, {
-      useCase: "personal_actions",
+      useCase,
       extraConfig: { mcp_server_id: "srv_123" },
     });
 
-    // The admin-configured subdomain is stamped in, and the transient
-    // mcp_server_id is dropped from the personal connection config.
     expect(updated.zendesk_subdomain).toBe("admincompany");
     expect(updated.mcp_server_id).toBeUndefined();
   });
@@ -119,13 +108,8 @@ describe("ZendeskOAuthProvider.getUpdatedExtraConfig", () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const provider = new ZendeskOAuthProvider();
 
-    mocks.getWorkspaceOAuthConnectionIdForMCPServer.mockResolvedValue(
-      new Ok("con_workspace")
-    );
-    mocks.getConnectionMetadata.mockResolvedValue(
-      new Ok({
-        connection: makeConnection({}),
-      })
+    mocks.getWorkspaceOAuthConnectionForMCPServer.mockResolvedValue(
+      new Ok(makeConnection({}))
     );
 
     await expect(
@@ -148,23 +132,30 @@ describe("ZendeskOAuthProvider.getUpdatedExtraConfig", () => {
 
     expect(updated).toEqual(extraConfig);
     expect(
-      mocks.getWorkspaceOAuthConnectionIdForMCPServer
+      mocks.getWorkspaceOAuthConnectionForMCPServer
     ).not.toHaveBeenCalled();
   });
 
-  it("leaves config unchanged for platform actions", async () => {
+  it("falls through for platform_actions when workspace connection is missing", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const provider = new ZendeskOAuthProvider();
 
-    const extraConfig = { zendesk_subdomain: "mycompany" };
+    mocks.getWorkspaceOAuthConnectionForMCPServer.mockResolvedValue(
+      new Err({
+        code: "credential_retrieval_failed",
+        message: "Failed to find MCP server connection",
+      })
+    );
+
+    const extraConfig = {
+      mcp_server_id: "srv_missing",
+      zendesk_subdomain: "mycompany",
+    };
     const updated = await provider.getUpdatedExtraConfig(authenticator, {
       useCase: "platform_actions",
       extraConfig,
     });
 
     expect(updated).toEqual(extraConfig);
-    expect(
-      mocks.getWorkspaceOAuthConnectionIdForMCPServer
-    ).not.toHaveBeenCalled();
   });
 });

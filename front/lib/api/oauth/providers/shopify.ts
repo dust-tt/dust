@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import config from "@app/lib/api/config";
+import { getWorkspaceOAuthConnectionForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
 import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import {
   finalizeUriForProvider,
@@ -86,15 +87,21 @@ export class ShopifyOAuthProvider implements BaseOAuthStrategyProvider {
   }
 
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
+    if (useCase !== "platform_actions") {
+      return false;
+    }
+    // Existing workspace connection already has the store domain.
+    if (extraConfig.mcp_server_id) {
+      return true;
+    }
     return (
-      useCase === "platform_actions" &&
       Object.keys(extraConfig).length === 1 &&
       isValidShopifyStoreDomain(extraConfig.shopify_store_domain)
     );
   }
 
   async getUpdatedExtraConfig(
-    _auth: Authenticator,
+    auth: Authenticator,
     {
       extraConfig,
     }: {
@@ -102,6 +109,23 @@ export class ShopifyOAuthProvider implements BaseOAuthStrategyProvider {
       useCase: OAuthUseCase;
     }
   ): Promise<ExtraConfigType> {
+    const { mcp_server_id } = extraConfig;
+    if (mcp_server_id) {
+      const connectionRes = await getWorkspaceOAuthConnectionForMCPServer(
+        auth,
+        mcp_server_id
+      );
+      if (connectionRes.isOk()) {
+        const storeDomain = normalizeShopifyStoreDomain(
+          connectionRes.value.metadata.shopify_store_domain
+        );
+        if (storeDomain) {
+          return { shopify_store_domain: storeDomain };
+        }
+      }
+      // First connect: fall through to caller-supplied domain.
+    }
+
     const storeDomain = normalizeShopifyStoreDomain(
       extraConfig.shopify_store_domain
     );

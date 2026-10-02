@@ -173,7 +173,10 @@ export class SlackToolsOAuthProvider implements BaseOAuthStrategyProvider {
       );
     }
     // For platform_actions, no extra config is required.
-    return Object.keys(extraConfig).length === 0;
+    return (
+      Object.keys(extraConfig).length === 0 ||
+      (Object.keys(extraConfig).length === 1 && "mcp_server_id" in extraConfig)
+    );
   }
 
   checkConnectionValidPostFinalize(connection: OAuthConnectionType) {

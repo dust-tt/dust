@@ -246,6 +246,28 @@ describe("MCPServerSettings sync auth status", () => {
     expect(mockConnectDialogProps.last?.isOpen).toBe(false);
   });
 
+  it("Refresh relaunches OAuth without dialog for salesforce (reuses stored credentials)", async () => {
+    const user = userEvent.setup();
+    renderSettings({
+      oAuthUseCase: "platform_actions",
+      server: {
+        url: "https://mcp.example.com",
+        authorization: {
+          provider: "salesforce",
+          supported_use_cases: ["platform_actions"],
+        },
+        lastError: "401 Unauthorized",
+      },
+    });
+
+    await user.click(screen.getByRole("button", { name: "Refresh" }));
+
+    await waitFor(() => {
+      expect(mockSubmitConnect).toHaveBeenCalledTimes(1);
+    });
+    expect(mockConnectDialogProps.last?.isOpen).toBe(false);
+  });
+
   it("Refresh opens the connect dialog with locked use case when a static form is required", async () => {
     const user = userEvent.setup();
     renderSettings({

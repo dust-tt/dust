@@ -1,7 +1,9 @@
 import config from "@app/lib/api/config";
+import type { OAuthError } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
+import type { OAuthConnectionType } from "@app/types/oauth/lib";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -63,6 +65,43 @@ export async function getWorkspaceOAuthConnectionIdForMCPServer(
   }
 
   return new Ok(connectionId);
+}
+
+/**
+ * Load the workspace OAuth connection for an MCP server (metadata + redirect).
+ * Uses getConnectionMetadata (not getAccessToken) so Refresh works when the
+ * stored access token is expired — credentials and endpoints live on the
+ * connection even after the token dies.
+ */
+export async function getWorkspaceOAuthConnectionForMCPServer(
+  auth: Authenticator,
+  mcpServerId: string
+): Promise<Result<OAuthConnectionType, OAuthError>> {
+  const oauthConnectionIdRes = await getWorkspaceOAuthConnectionIdForMCPServer(
+    auth,
+    mcpServerId
+  );
+  if (oauthConnectionIdRes.isErr()) {
+    return new Err({
+      code: "credential_retrieval_failed",
+      message: oauthConnectionIdRes.error.message,
+    });
+  }
+
+  const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+  const connectionRes = await oauthApi.getConnectionMetadata({
+    connectionId: oauthConnectionIdRes.value,
+  });
+  if (connectionRes.isErr()) {
+    return new Err({
+      code: "credential_retrieval_failed",
+      message:
+        "Failed to get connection metadata: " + connectionRes.error.message,
+      oAuthAPIError: connectionRes.error,
+    });
+  }
+
+  return new Ok(connectionRes.value.connection);
 }
 
 // Verify that the workspace-level OAuth connection for this MCP server exists and still

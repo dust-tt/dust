@@ -1,6 +1,5 @@
-import config from "@app/lib/api/config";
 import type { OAuthError } from "@app/lib/api/oauth";
-import { getWorkspaceOAuthConnectionIdForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
+import { getWorkspaceOAuthConnectionForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
 import type {
   BaseOAuthStrategyProvider,
   RelatedCredential,
@@ -11,16 +10,14 @@ import {
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { getPKCEConfig } from "@app/lib/utils/pkce";
-import logger from "@app/logger/logger";
 import type {
   ExtraConfigType,
   OAuthConnectionType,
   OAuthUseCase,
 } from "@app/types/oauth/lib";
 import { isValidSalesforceDomain } from "@app/types/oauth/lib";
-import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import type { ParsedUrlQuery } from "querystring";
 
 export class SalesforceOAuthProvider implements BaseOAuthStrategyProvider {
@@ -67,9 +64,8 @@ export class SalesforceOAuthProvider implements BaseOAuthStrategyProvider {
   }
 
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
-    if (useCase === "personal_actions") {
-      // If we have an mcp_server_id it means the admin already setup the connection and we have
-      // everything we need, otherwise we'll need the instance_url and client_id.
+    if (useCase === "personal_actions" || useCase === "platform_actions") {
+      // Existing workspace connection already has instance_url / client credentials.
       if (extraConfig.mcp_server_id) {
         return true;
       }
@@ -95,45 +91,28 @@ export class SalesforceOAuthProvider implements BaseOAuthStrategyProvider {
       useCase: OAuthUseCase;
     }
   ): Promise<Result<RelatedCredential, OAuthError>> {
-    if (useCase === "personal_actions") {
-      // For personal actions we reuse the existing connection credential id from the existing
-      // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
-      // we have client_secret and instance_url (initial admin setup).
+    if (useCase === "personal_actions" || useCase === "platform_actions") {
       const { mcp_server_id } = extraConfig;
 
       if (mcp_server_id) {
-        const oauthConnectionIdRes =
-          await getWorkspaceOAuthConnectionIdForMCPServer(auth, mcp_server_id);
-        if (oauthConnectionIdRes.isErr()) {
-          return new Err({
-            code: "credential_retrieval_failed",
-            message: oauthConnectionIdRes.error.message,
+        const connectionRes = await getWorkspaceOAuthConnectionForMCPServer(
+          auth,
+          mcp_server_id
+        );
+        if (connectionRes.isOk()) {
+          const connection = connectionRes.value;
+          return new Ok({
+            content: {
+              from_connection_id: connection.connection_id,
+            },
+            metadata: { workspace_id: workspaceId, user_id: userId },
+            redirectUri: connection.redirect_uri,
           });
         }
-
-        const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-        const connectionRes = await oauthApi.getConnectionMetadata({
-          connectionId: oauthConnectionIdRes.value,
-        });
-        if (connectionRes.isErr()) {
-          return new Err({
-            code: "credential_retrieval_failed",
-            message:
-              "Failed to get connection metadata: " +
-              connectionRes.error.message,
-            oAuthAPIError: connectionRes.error,
-          });
+        if (useCase === "personal_actions") {
+          return connectionRes;
         }
-        const connection = connectionRes.value.connection;
-        const connectionId = connection.connection_id;
-
-        return new Ok({
-          content: {
-            from_connection_id: connectionId,
-          },
-          metadata: { workspace_id: workspaceId, user_id: userId },
-          redirectUri: connection.redirect_uri,
-        });
+        // platform_actions first connect: fall through to caller credentials.
       }
     }
 
@@ -158,39 +137,30 @@ export class SalesforceOAuthProvider implements BaseOAuthStrategyProvider {
       useCase: OAuthUseCase;
     }
   ): Promise<ExtraConfigType> {
-    if (useCase === "personal_actions") {
-      // For personal actions we reuse the existing connection credential id from the existing
-      // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
-      // we have client_secret and instance_url (initial admin setup).
+    if (useCase === "personal_actions" || useCase === "platform_actions") {
       const { mcp_server_id, ...restConfig } = extraConfig;
 
       if (mcp_server_id) {
-        const oauthConnectionIdRes =
-          await getWorkspaceOAuthConnectionIdForMCPServer(auth, mcp_server_id);
-        if (oauthConnectionIdRes.isErr()) {
-          throw new Error(oauthConnectionIdRes.error.message);
+        const connectionRes = await getWorkspaceOAuthConnectionForMCPServer(
+          auth,
+          mcp_server_id
+        );
+        if (connectionRes.isOk()) {
+          const connection = connectionRes.value;
+          const { code_verifier, code_challenge } = await getPKCEConfig();
+
+          return {
+            ...restConfig,
+            client_id: connection.metadata.client_id,
+            instance_url: connection.metadata.instance_url,
+            code_verifier,
+            code_challenge,
+          };
         }
-
-        const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-        const connectionRes = await oauthApi.getConnectionMetadata({
-          connectionId: oauthConnectionIdRes.value,
-        });
-        if (connectionRes.isErr()) {
-          throw new Error(
-            "Failed to get connection metadata: " + connectionRes.error.message
-          );
+        if (useCase === "personal_actions") {
+          throw new Error(connectionRes.error.message);
         }
-        const connection = connectionRes.value.connection;
-
-        const { code_verifier, code_challenge } = await getPKCEConfig();
-
-        return {
-          ...restConfig,
-          client_id: connection.metadata.client_id,
-          instance_url: connection.metadata.instance_url,
-          code_verifier,
-          code_challenge,
-        };
+        // platform_actions first connect: fall through.
       }
     }
 

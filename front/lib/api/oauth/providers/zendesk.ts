@@ -1,19 +1,17 @@
 import { isValidZendeskSubdomain } from "@app/lib/api/actions/servers/zendesk/types";
 import config from "@app/lib/api/config";
-import { getWorkspaceOAuthConnectionIdForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
+import { getWorkspaceOAuthConnectionForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
 import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import {
   finalizeUriForProvider,
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
-import logger from "@app/logger/logger";
 import type {
   ExtraConfigType,
   OAuthConnectionType,
   OAuthUseCase,
 } from "@app/types/oauth/lib";
-import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { ParsedUrlQuery } from "querystring";
 
@@ -67,15 +65,14 @@ export class ZendeskOAuthProvider implements BaseOAuthStrategyProvider {
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
     switch (useCase) {
       case "personal_actions":
-        // If we have an mcp_server_id it means the admin already set up the
-        // workspace connection, so we inherit the Zendesk subdomain from it.
+      case "platform_actions":
+        // Existing workspace connection already has the Zendesk subdomain.
         if (extraConfig.mcp_server_id) {
           return true;
         }
         break;
       case "connection":
       case "labs_transcripts":
-      case "platform_actions":
       case "bot":
       case "webhooks":
         break;
@@ -101,38 +98,32 @@ export class ZendeskOAuthProvider implements BaseOAuthStrategyProvider {
     }
   ): Promise<ExtraConfigType> {
     switch (useCase) {
-      case "personal_actions": {
-        // For personal actions we inherit the Zendesk subdomain from the
-        // existing workspace connection (set up by the admin) identified by
-        // mcp_server_id.
+      case "personal_actions":
+      case "platform_actions": {
         const { mcp_server_id, ...restConfig } = extraConfig;
 
         if (!mcp_server_id) {
           return extraConfig;
         }
 
-        const oauthConnectionIdRes =
-          await getWorkspaceOAuthConnectionIdForMCPServer(auth, mcp_server_id);
-        if (oauthConnectionIdRes.isErr()) {
-          throw new Error(oauthConnectionIdRes.error.message);
-        }
-
-        const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-        const connectionRes = await oauthApi.getConnectionMetadata({
-          connectionId: oauthConnectionIdRes.value,
-        });
+        const connectionRes = await getWorkspaceOAuthConnectionForMCPServer(
+          auth,
+          mcp_server_id
+        );
         if (connectionRes.isErr()) {
-          throw new Error(
-            "Failed to get connection metadata: " + connectionRes.error.message
-          );
+          if (useCase === "personal_actions") {
+            throw new Error(connectionRes.error.message);
+          }
+          // platform_actions first connect: fall through with caller config.
+          return extraConfig;
         }
-        const connection = connectionRes.value.connection;
+        const connection = connectionRes.value;
         const { zendesk_subdomain } = connection.metadata;
 
         if (!zendesk_subdomain) {
           throw new Error(
             "Zendesk workspace connection is missing a subdomain; " +
-              "cannot set up a personal connection."
+              "cannot set up a connection from it."
           );
         }
 
@@ -143,7 +134,6 @@ export class ZendeskOAuthProvider implements BaseOAuthStrategyProvider {
       }
       case "connection":
       case "labs_transcripts":
-      case "platform_actions":
       case "bot":
       case "webhooks":
         return extraConfig;

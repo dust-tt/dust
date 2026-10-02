@@ -33,11 +33,29 @@ describe("canRefreshMCPAuthWithoutDialog", () => {
     ).toBe(false);
   });
 
-  it("returns true for mcp_static — Refresh reuses stored client credentials", () => {
+  it("returns true for credential providers — existing connection has everything", () => {
     expect(
       canRefreshMCPAuthWithoutDialog({
         authorization: {
           provider: "mcp_static",
+          supported_use_cases: ["platform_actions"],
+        },
+        useCase: "platform_actions",
+      })
+    ).toBe(true);
+    expect(
+      canRefreshMCPAuthWithoutDialog({
+        authorization: {
+          provider: "salesforce",
+          supported_use_cases: ["platform_actions"],
+        },
+        useCase: "platform_actions",
+      })
+    ).toBe(true);
+    expect(
+      canRefreshMCPAuthWithoutDialog({
+        authorization: {
+          provider: "gmail",
           supported_use_cases: ["platform_actions"],
         },
         useCase: "platform_actions",

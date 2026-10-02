@@ -69,7 +69,10 @@ export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
         return true;
       }
     }
-    return Object.keys(extraConfig).length === 0;
+    return (
+      Object.keys(extraConfig).length === 0 ||
+      (Object.keys(extraConfig).length === 1 && "mcp_server_id" in extraConfig)
+    );
   }
 
   async getUpdatedExtraConfig(
