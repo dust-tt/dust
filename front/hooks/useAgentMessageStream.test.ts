@@ -1,3 +1,4 @@
+import assert from "node:assert";
 import type { PendingToolCall } from "@app/components/assistant/conversation/types";
 import { makeInitialMessageStreamState } from "@app/components/assistant/conversation/types";
 import {
@@ -1339,5 +1340,113 @@ describe("useAgentMessageStream", () => {
         id: "cot-0-0",
       },
     ]);
+  });
+});
+
+describe("useAgentMessageStream after a refetch made the message terminal", () => {
+  type StreamedMessage = ReturnType<typeof makeInitialMessageStreamState>;
+
+  function renderStreamingMessage() {
+    const store: { message: StreamedMessage } = {
+      message: makeInitialMessageStreamState(
+        makeLightAgentMessage({ content: null, chainOfThought: null })
+      ),
+    };
+    const stream: { emit: ((event: string) => void) | null } = { emit: null };
+
+    mockUseVirtuosoMethods.mockReturnValue(
+      makeVirtuosoMethodsMock(
+        (updater: (message: StreamedMessage) => StreamedMessage) => {
+          store.message = updater(store.message);
+          return [store.message];
+        }
+      )
+    );
+    mockUseEventSource.mockImplementation(
+      (_buildURL: unknown, callback: (event: string) => void) => {
+        stream.emit = callback;
+        return { isError: null };
+      }
+    );
+
+    renderHook(() =>
+      useAgentMessageStream({
+        agentMessage: store.message,
+        conversationId: "conv_123",
+        owner: mockOwner,
+        streamId: "stream_123",
+      })
+    );
+
+    const emitTokens = (
+      eventId: string,
+      text: string,
+      classification: "tokens" | "chain_of_thought"
+    ) => {
+      assert(stream.emit, "useEventSource callback was not registered");
+      stream.emit(
+        JSON.stringify({
+          eventId,
+          data: {
+            type: "generation_tokens",
+            created: Date.now(),
+            configurationId: "agent_123",
+            messageId: store.message.sId,
+            text,
+            classification,
+            step: 0,
+          },
+        })
+      );
+    };
+
+    const applyTerminalRefetch = () => {
+      store.message = {
+        ...store.message,
+        status: "succeeded",
+        content: "Added the October 1 update.",
+        chainOfThought: "Persisted thinking",
+      };
+    };
+
+    return { store, emitTokens, applyTerminalRefetch };
+  }
+
+  it("keeps the refetched answer when a throttled token flush fires afterwards", () => {
+    vi.useFakeTimers();
+    const { store, emitTokens, applyTerminalRefetch } =
+      renderStreamingMessage();
+
+    act(() => {
+      emitTokens("1-0", "Let me update", "chain_of_thought");
+      emitTokens("2-0", " the page.", "chain_of_thought");
+    });
+    applyTerminalRefetch();
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+
+    expect(store.message.status).toBe("succeeded");
+    expect(store.message.content).toBe("Added the October 1 update.");
+    expect(store.message.chainOfThought).toBe("Persisted thinking");
+  });
+
+  it("ignores token events that arrive after the refetch", () => {
+    vi.useFakeTimers();
+    const { store, emitTokens, applyTerminalRefetch } =
+      renderStreamingMessage();
+
+    act(() => {
+      emitTokens("1-0", "Let me update the page.", "chain_of_thought");
+    });
+    applyTerminalRefetch();
+    act(() => {
+      emitTokens("2-0", "Added", "tokens");
+      vi.advanceTimersByTime(1000);
+    });
+
+    expect(store.message.content).toBe("Added the October 1 update.");
+    expect(store.message.chainOfThought).toBe("Persisted thinking");
+    expect(store.message.streaming.inlineActivitySteps).toEqual([]);
   });
 });
