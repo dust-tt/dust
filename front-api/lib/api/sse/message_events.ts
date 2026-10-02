@@ -9,7 +9,6 @@ import {
 } from "@app/lib/api/assistant/pubsub";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import type { GetAgentMessageEventsResponseBody } from "@app/types/api/assistant/messages";
 import {
   ConversationError,
   isTerminalAgentMessageStatus,
@@ -17,6 +16,7 @@ import {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { pollEvents } from "@front-api/lib/api/sse/poll_events";
 import { streamEvents } from "@front-api/lib/api/sse/stream_events";
 import { apiError } from "@front-api/middlewares/utils";
 import type { Context } from "hono";
@@ -31,7 +31,6 @@ export type MessageEventsOptions = {
   transformEvent: (auth: Authenticator, event: MessageStreamEvent) => unknown;
 };
 
-const MESSAGE_EVENTS_LONG_POLL_TIMEOUT_MS = 25_000;
 const MESSAGE_STREAM_END_EVENT = {
   eventId: "end-of-stream",
   data: { type: "end-of-stream" },
@@ -139,19 +138,11 @@ export async function pollMessageEventsForRoute(
     return validation.error;
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(
-    () => controller.abort(),
-    MESSAGE_EVENTS_LONG_POLL_TIMEOUT_MS
-  );
-  const onRequestAbort = () => controller.abort();
-  ctx.req.raw.signal.addEventListener("abort", onRequestAbort, { once: true });
-
-  try {
+  return pollEvents(ctx, async (signal) => {
     const events = await getMessagesEventsBatch({
       messageId,
       lastEventId,
-      signal: controller.signal,
+      signal,
     });
 
     if (events.length === 0 && !ctx.req.raw.signal.aborted) {
@@ -161,17 +152,14 @@ export async function pollMessageEventsForRoute(
         messageId
       );
       if (status && isTerminalAgentMessageStatus(status)) {
-        return ctx.json<GetAgentMessageEventsResponseBody>({
+        return {
           events: [JSON.stringify(MESSAGE_STREAM_END_EVENT)],
-        });
+        };
       }
     }
 
-    return ctx.json<GetAgentMessageEventsResponseBody>({
+    return {
       events: events.map((event) => JSON.stringify(event)),
-    });
-  } finally {
-    clearTimeout(timeout);
-    ctx.req.raw.signal.removeEventListener("abort", onRequestAbort);
-  }
+    };
+  });
 }
