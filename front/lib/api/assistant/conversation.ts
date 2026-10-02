@@ -87,6 +87,7 @@ import {
   microCreditsToCredits,
   roundCreditsToMicroCredits,
 } from "@app/lib/credits/units";
+import { DustError } from "@app/lib/error";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString } from "@app/lib/mentions/format";
 import { isFreeOrigin } from "@app/lib/metronome/events";
@@ -1911,6 +1912,19 @@ export async function postNewContentFragment(
     (await ConversationResource.canAccess(auth, conversation.sId)) !== "allowed"
   ) {
     return new Err(new Error("Conversation access restricted."));
+  }
+
+  const canInteractRes = await WakeUpResource.canUserInteract(
+    auth,
+    conversation
+  );
+  if (canInteractRes.isErr()) {
+    return new Err(
+      new DustError(
+        "conversation_locked",
+        canInteractRes.error.api_error.message
+      )
+    );
   }
 
   // Project conversations only allow content fragments from the project space or the global space.
