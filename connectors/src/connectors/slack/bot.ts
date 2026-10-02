@@ -243,6 +243,12 @@ export async function botAnswerMessage(
   }
 }
 
+/**
+ * @cc [owner:tdraier,label:security] bot-message-scoped-to-connector
+ * The `SlackChatBotMessage` row named by the interaction payload MUST be loaded with a
+ * `connectorId` predicate equal to the connector resolved from the Slack team. A row belonging to
+ * another connector MUST be treated as missing.
+ */
 export async function botReplaceMention(
   messageId: number,
   mentionOverride: string,
@@ -257,7 +263,7 @@ export async function botReplaceMention(
 
   try {
     const slackChatBotMessage = await SlackChatBotMessageModel.findOne({
-      where: { id: messageId },
+      where: { id: messageId, connectorId: connector.id },
     });
     if (!slackChatBotMessage) {
       throw new Error("Missing initial message");
@@ -335,6 +341,12 @@ type ToolValidationParams = {
   text: string;
 };
 
+/**
+ * @cc [owner:tdraier,label:security] bot-message-scoped-to-connector
+ * The `SlackChatBotMessage` row named by the interaction payload MUST be loaded with a
+ * `connectorId` predicate equal to the connector resolved from the Slack team. A row belonging to
+ * another connector MUST be treated as missing.
+ */
 export async function botValidateToolExecution(
   {
     actionId,
@@ -363,7 +375,7 @@ export async function botValidateToolExecution(
 
   try {
     const slackChatBotMessage = await SlackChatBotMessageModel.findOne({
-      where: { id: slackChatBotMessageId },
+      where: { id: slackChatBotMessageId, connectorId: connector.id },
     });
     if (!slackChatBotMessage) {
       throw new Error("Missing Slack message");
@@ -588,6 +600,12 @@ type UserQuestionAnswerParams = {
   responseUrl: string | undefined;
 };
 
+/**
+ * @cc [owner:tdraier,label:security] bot-message-scoped-to-connector
+ * The `SlackChatBotMessage` row named by the interaction payload MUST be loaded with a
+ * `connectorId` predicate equal to the connector resolved from the Slack team. A row belonging to
+ * another connector MUST be treated as missing.
+ */
 export async function botAnswerUserQuestion({
   actionId,
   answer,
@@ -616,7 +634,7 @@ export async function botAnswerUserQuestion({
   }
 
   const slackChatBotMessage = await SlackChatBotMessageModel.findOne({
-    where: { id: slackChatBotMessageId },
+    where: { id: slackChatBotMessageId, connectorId: connector.id },
   });
   if (!slackChatBotMessage) {
     return new Err(new Error("Missing Slack message"));
