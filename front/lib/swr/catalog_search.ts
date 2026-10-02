@@ -97,6 +97,7 @@ export function useCatalogSearch({
               {
                 ...request.query.agentFilters,
                 query: request.query.searchTerm,
+                searchType: "discover",
                 offset: agentOffset,
                 limit: request.query.limit,
                 sortBy: request.query.sortBy,
@@ -112,6 +113,7 @@ export function useCatalogSearch({
               {
                 ...request.query.skillFilters,
                 query: request.query.searchTerm,
+                searchType: "discover",
                 offset: skillOffset,
                 limit: request.query.limit,
                 sortBy: request.query.sortBy,

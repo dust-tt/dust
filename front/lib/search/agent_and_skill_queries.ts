@@ -157,3 +157,88 @@ export function buildNameSearchQuery(
     },
   };
 }
+
+const DISCOVER_USAGE_BOOST_WEIGHT = 0.5;
+
+function buildDiscoverTermQuery(term: string): estypes.QueryDslQueryContainer {
+  const tiers: [estypes.QueryDslQueryContainer, number][] = [
+    [
+      {
+        multi_match: {
+          query: term,
+          type: "bool_prefix",
+          fields: NAME_AUTOCOMPLETE_FIELDS,
+        },
+      },
+      3,
+    ],
+    [
+      {
+        multi_match: {
+          query: term,
+          fields: [...NAME_SEARCH_FIELDS, "name.english", "name.french"],
+          fuzziness: "AUTO",
+        },
+      },
+      2,
+    ],
+    [
+      {
+        multi_match: {
+          query: term,
+          fields: ["description.english", "description.french"],
+        },
+      },
+      1,
+    ],
+  ];
+
+  return {
+    dis_max: {
+      queries: tiers.map(([filter, boost]) => ({
+        constant_score: { filter, boost },
+      })),
+    },
+  };
+}
+
+/**
+ * @cc [owner:adrsimon,label:product] discover-matching
+ * Empty or whitespace-only queries MUST match everything. Queries of up to two whitespace-separated
+ * terms MUST match every term, longer ones at least 75% of them, rounded down. A term matches
+ * through a name prefix, a fuzzy name token, or a description token analyzed by the built-in
+ * `english` or `french` analyzer (stemming and stop words), without fuzziness. For each term, name
+ * matches MUST score above description matches. The active users count MUST then add a
+ * logarithmic bump to the score, so usage reorders matches without making a non-matching item
+ * match.
+ */
+export function buildDiscoverSearchQuery(
+  searchTerm: string
+): estypes.QueryDslQueryContainer {
+  const terms = searchTerm.split(/\s+/).filter((term) => term.length > 0);
+
+  return {
+    function_score: {
+      query:
+        terms.length === 0
+          ? { match_all: {} }
+          : {
+              bool: {
+                should: terms.map(buildDiscoverTermQuery),
+                minimum_should_match: "2<75%",
+              },
+            },
+      functions: [
+        {
+          field_value_factor: {
+            field: "active_users_count",
+            modifier: "log1p",
+            missing: 0,
+          },
+          weight: DISCOVER_USAGE_BOOST_WEIGHT,
+        },
+      ],
+      boost_mode: "sum",
+    },
+  };
+}

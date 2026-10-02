@@ -1,0 +1,6 @@
+POST /front.agents_1/_update_by_query?conflicts=proceed&wait_for_completion=false
+{
+  "query": {
+    "match_all": {}
+  }
+}
