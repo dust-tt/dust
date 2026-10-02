@@ -47,13 +47,6 @@ interface InputBarMenuPanelsProps
   subMenuRef: RefObject<SlashCommandDropdownRef>;
 }
 
-/**
- * @cc [owner:ykmsd,label:architecture;product] shared-menu-panels
- * The "/" menu and the "+" menu MUST both render their panels (attach-only browser, attach-context
- * sub-menu, pick-model sub-menu, root command list) through this component, so the two menus offer
- * the same entries and act alike. A difference between the two menus MUST be expressed through this
- * component's props, not by rendering a panel elsewhere.
- */
 export function InputBarMenuPanels({
   activeFrame,
   attachOnlyRootSection,
