@@ -252,10 +252,7 @@ export function SelfImprovingSkillsListSection({
     useSkillsWithRelations({ owner, status: "active", onlyCustom: true });
   const { spentMicroUsdBySkillId, spentAwuCreditsBySkillId } =
     useSkillsSelfImprovingSpend({ owner });
-  const { updateSkillReinforcement } = useUpdateSkillReinforcement({
-    owner,
-    onlyCustom: true,
-  });
+  const { updateSkillReinforcement } = useUpdateSkillReinforcement({ owner });
 
   // Spend per skill in the display unit.
   const spentBySkillId = useMemo(

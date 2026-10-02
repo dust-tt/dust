@@ -1,9 +1,7 @@
 import { ConfirmContext } from "@app/components/Confirm";
+import { useInvalidateSkills } from "@app/hooks/useInvalidateSkills";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import {
-  useSkill,
-  useSkillsWithRelations,
-} from "@app/lib/swr/skill_configurations";
+import { useSkill } from "@app/lib/swr/skill_configurations";
 import {
   REQUESTABLE_SPACE_KINDS,
   useAddSpaceMembers,
@@ -44,13 +42,7 @@ export function RedactedSkillMessage({
     skillId: skill.sId,
     disabled: true, // We only use the hook to mutate the cache
   });
-  const {
-    mutateSkillsWithRelationsRegardlessOfQueryParams: mutateSkillsWithRelations,
-  } = useSkillsWithRelations({
-    owner,
-    status: "active",
-    disabled: true, // We only use the hook to mutate the cache
-  });
+  const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
   const [isJoiningSpaces, setIsJoiningSpaces] = useState(false);
   const confirm = useContext(ConfirmContext);
 
@@ -97,7 +89,7 @@ export function RedactedSkillMessage({
         { concurrency: 4 }
       );
       void mutateSkill();
-      void mutateSkillsWithRelations();
+      void invalidateSkills();
     } finally {
       setIsJoiningSpaces(false);
     }
