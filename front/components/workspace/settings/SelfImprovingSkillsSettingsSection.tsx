@@ -81,39 +81,40 @@ export function SelfImprovingSkillsSettingsSection({
   const { isEnabled, isChanging, doToggleReinforcement } =
     useSelfImprovingToggle({ owner });
 
+  // ContextItem.List validates child *element types* (and nested types inside
+  // wrappers). Fragments whose nested children include custom components
+  // (e.g. SelfImprovingBatchModeToggle) fail that check even when those
+  // components eventually render a ContextItem. Keep list children flat.
   return (
     <Page.Vertical align="stretch" gap="md">
       <Page.SectionHeader title={SELF_IMPROVING_SETTINGS_SECTION_LABEL} />
       <ContextItem.List>
-        <div className="h-full border-b border-border" />
-        {showToggles && (
-          <>
-            <ContextItem
-              title={ALLOW_SELF_IMPROVING_SKILLS_LABEL}
-              visual={<></>}
-              hasSeparatorIfLast={true}
-              action={
-                <SliderToggle
-                  selected={isEnabled}
-                  disabled={isChanging}
-                  onClick={doToggleReinforcement}
-                />
-              }
-            >
-              <ContextItem.Description description="Allow Dust to analyze conversations to improve your workspace's skills. Dust does not use conversations to train models." />
-            </ContextItem>
-            <SelfImprovingBatchModeToggle owner={owner} />
-          </>
-        )}
-        {showCaps && (
-          <>
-            <SelfImprovingCapItem owner={owner} onCapSaved={onCapSaved} />
-            <SelfImprovementCapPerSkillItem
-              owner={owner}
-              onSaved={onDefaultCapPerSkillSaved}
-            />
-          </>
-        )}
+        {showToggles ? (
+          <ContextItem
+            title={ALLOW_SELF_IMPROVING_SKILLS_LABEL}
+            visual={<></>}
+            hasSeparatorIfLast={true}
+            action={
+              <SliderToggle
+                selected={isEnabled}
+                disabled={isChanging}
+                onClick={doToggleReinforcement}
+              />
+            }
+          >
+            <ContextItem.Description description="Allow Dust to analyze conversations to improve your workspace's skills. Dust does not use conversations to train models." />
+          </ContextItem>
+        ) : null}
+        {showToggles ? <SelfImprovingBatchModeToggle owner={owner} /> : null}
+        {showCaps ? (
+          <SelfImprovingCapItem owner={owner} onCapSaved={onCapSaved} />
+        ) : null}
+        {showCaps ? (
+          <SelfImprovementCapPerSkillItem
+            owner={owner}
+            onSaved={onDefaultCapPerSkillSaved}
+          />
+        ) : null}
       </ContextItem.List>
     </Page.Vertical>
   );
