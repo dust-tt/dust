@@ -398,6 +398,3 @@ export const fetchTree = async ({
 
   return new Ok(tree);
 };
-
-// BigQuery is read-only as we force the readonly scope when creating the client.
-export const isConnectionReadonly = () => new Ok(undefined);
