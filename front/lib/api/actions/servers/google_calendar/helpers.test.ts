@@ -12,6 +12,8 @@ import {
   normalizeTimezone,
   parseAvailabilityDateTime,
 } from "@app/lib/api/actions/servers/google_calendar/helpers";
+import { GOOGLE_CALENDAR_TOOLS_METADATA } from "@app/lib/api/actions/servers/google_calendar/metadata";
+import assert from "assert";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("formatEventAsText - attachments", () => {
@@ -392,6 +394,10 @@ describe("parseAvailabilityDateTime", () => {
     ["2026-07-01T10:00:00+0200", "2026-07-01T08:00:00.000Z"],
     ["2026-07-01T10:00:00-0530", "2026-07-01T15:30:00.000Z"],
     ["2026-07-01T10:00:00.123", "2026-07-01T10:00:00.123Z"],
+    ["2026-07-01T10:30.5", "2026-07-01T10:30:30.000Z"],
+    ["2026-07-01T10:30,5", "2026-07-01T10:30:30.000Z"],
+    ["2026-07-01T10.5", "2026-07-01T10:30:00.000Z"],
+    ["2026-07-01T10:30.5+02:00", "2026-07-01T08:30:30.000Z"],
     ["2026-03-29T02:30:00", "2026-03-29T02:30:00.000Z"],
     ["2026-07-01", "2026-07-01T00:00:00.000Z"],
     ["2026-07-01T24:00:00Z", "2026-07-02T00:00:00.000Z"],
@@ -411,7 +417,44 @@ describe("parseAvailabilityDateTime", () => {
     "2026-07-01T10:00:00+02:00Z",
     "2026-07-01T10:00:00ZZ",
     "2026-07-01T10:00:00junk",
+    "2026-07-01T24.5",
+    "2026-07-01T10.5:30",
+    "2026-07-01T10:30.5:20",
   ])("rejects invalid timestamp %s", (value) => {
     expect(Number.isNaN(parseAvailabilityDateTime(value).getTime())).toBe(true);
+  });
+});
+
+describe("availability participant timezone validation", () => {
+  const tool = GOOGLE_CALENDAR_TOOLS_METADATA.find(
+    (tool) => tool.name === "check_availability"
+  );
+  assert(tool);
+
+  it.each([
+    0, 1,
+  ])("rejects an invalid timezone for participant %i", (invalidIndex) => {
+    const participants = [
+      { email: "first@example.com", timezone: "Europe/Paris" },
+      { email: "second@example.com", timezone: "America/New_York" },
+    ].map((participant, index) => ({
+      ...participant,
+      timezone:
+        index === invalidIndex ? "America/NewYork" : participant.timezone,
+    }));
+    const result = tool.schema.participants.safeParse(participants);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0]?.path).toEqual([invalidIndex, "timezone"]);
+    }
+  });
+
+  it("accepts valid participant timezones", () => {
+    expect(
+      tool.schema.participants.safeParse([
+        { email: "first@example.com", timezone: "UTC" },
+        { email: "second@example.com", timezone: "America/New_York" },
+      ]).success
+    ).toBe(true);
   });
 });
