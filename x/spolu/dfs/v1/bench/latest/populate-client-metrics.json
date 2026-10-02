@@ -1,0 +1,89 @@
+{
+  "dfs_client_metrics": {
+    "fuse.create": {
+      "calls": 10001,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.flush": {
+      "calls": 10001,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.forget": {
+      "calls": 10102,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.getattr": {
+      "calls": 10185,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.init": {
+      "calls": 1,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.lookup": {
+      "calls": 10204,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.mkdir": {
+      "calls": 101,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.opendir": {
+      "calls": 2,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.release": {
+      "calls": 10001,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.releasedir": {
+      "calls": 2,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.setattr": {
+      "calls": 20204,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.write": {
+      "calls": 10018,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "rpc.create": {
+      "calls": 10102,
+      "elapsed_ms": 3007.531531,
+      "errors": 0
+    },
+    "rpc.lookup": {
+      "calls": 10204,
+      "elapsed_ms": 2800.859452,
+      "errors": 10102
+    },
+    "rpc.stat": {
+      "calls": 1,
+      "elapsed_ms": 0.3725,
+      "errors": 0
+    },
+    "rpc.update": {
+      "calls": 20204,
+      "elapsed_ms": 5678.698817,
+      "errors": 0
+    },
+    "rpc.write": {
+      "calls": 10018,
+      "elapsed_ms": 3197.788485,
+      "errors": 0
+    }
+  }
+}
