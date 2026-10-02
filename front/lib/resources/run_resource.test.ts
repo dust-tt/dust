@@ -1,5 +1,6 @@
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import { USAGE_TYPE_FREE, USAGE_TYPE_USER } from "@app/lib/metronome/constants";
+import { EUROPE } from "@app/lib/model_constructors/types/regions";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -378,6 +379,78 @@ describe("RunResource credential owner", () => {
     expect(await run.listRunUsageAttempts(auth)).toMatchObject([
       { useWorkspaceCredentials: true, usageState: "reported" },
       { useWorkspaceCredentials: true, usageState: "reported" },
+    ]);
+  });
+});
+
+describe("RunResource inference location", () => {
+  it("persists the endpoint that served a recorded token usage", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const run = await RunResource.makeNew({
+      appId: null,
+      dustRunId: generateRandomModelSId(),
+      runType: "deploy",
+      useWorkspaceCredentials: false,
+      workspaceId: workspace.id,
+    });
+
+    await run.recordTokenUsage(
+      auth,
+      {
+        inputTokens: 1_000,
+        totalOutputTokens: 100,
+        totalTokens: 1_100,
+      },
+      GPT_5_MINI_MODEL_CONFIG.modelId,
+      {
+        isBatch: true,
+        inferenceProvider: "openai-responses",
+        region: EUROPE,
+        usageType: USAGE_TYPE_USER,
+        useWorkspaceCredentials: false,
+      }
+    );
+
+    expect(await run.listRunUsageAttempts(auth)).toMatchObject([
+      { inferenceProvider: "openai-responses", region: EUROPE },
+    ]);
+  });
+
+  it("keeps the finalized row's endpoint on extra usages", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const { run, runUsageModelId } = await RunResource.makeNewWithPendingUsage(
+      {
+        appId: null,
+        dustRunId: generateRandomModelSId(),
+        runType: "deploy",
+        useWorkspaceCredentials: false,
+        workspaceId: workspace.id,
+      },
+      {
+        inferenceProvider: "openai-responses",
+        modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
+        providerId: GPT_5_MINI_MODEL_CONFIG.providerId,
+        region: EUROPE,
+        usageType: USAGE_TYPE_USER,
+        useWorkspaceCredentials: false,
+      }
+    );
+
+    const usage = {
+      cachedTokens: null,
+      completionTokens: 30,
+      costMicroUsd: 10,
+      isBatch: false,
+      modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
+      promptTokens: 120,
+      providerId: GPT_5_MINI_MODEL_CONFIG.providerId,
+      reasoningTokens: null,
+    };
+    await run.finalizePendingRunUsage(auth, runUsageModelId, [usage, usage]);
+
+    expect(await run.listRunUsageAttempts(auth)).toMatchObject([
+      { inferenceProvider: "openai-responses", region: EUROPE },
+      { inferenceProvider: "openai-responses", region: EUROPE },
     ]);
   });
 });
