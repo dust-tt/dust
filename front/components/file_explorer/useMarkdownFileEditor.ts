@@ -1,8 +1,7 @@
-import type {
-  DocumentDraftState,
-  DocumentSaveResult,
-} from "@app/components/editor/document";
+import type { DocumentSaveResult } from "@app/components/editor/document";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
+import type { MarkdownRichEditor } from "@app/components/file_explorer/useRichMarkdownEditor";
+import { useRichMarkdownEditor } from "@app/components/file_explorer/useRichMarkdownEditor";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
@@ -13,6 +12,8 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useEffect, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
+
+export type { MarkdownRichEditor } from "@app/components/file_explorer/useRichMarkdownEditor";
 
 interface UseMarkdownFileEditorParams {
   category: FilePreviewCategory;
@@ -27,15 +28,6 @@ interface UseMarkdownFileEditorParams {
   /** The file text as fetched, for the rich editor. The processed text is trimmed. */
   rawContent: string | null;
   processedContent: ProcessedContent | null;
-}
-
-/** The rich Document editor takes over the file; the host hides its own edit controls. */
-export interface MarkdownRichEditor {
-  /** Changes when the editor must reopen on new content; use it as the component key. */
-  mountKey: string;
-  initialContent: string;
-  onSave: (content: string) => Promise<DocumentSaveResult>;
-  onStateChange: (state: DocumentDraftState) => void;
 }
 
 export interface MarkdownFileEditor {
@@ -55,15 +47,6 @@ export interface MarkdownFileEditor {
   viewMode: MarkdownFilePreviewViewMode;
 }
 
-const IDLE_DRAFT: DocumentDraftState = {
-  dirty: false,
-  saving: false,
-  error: null,
-};
-
-const CONFLICT_MESSAGE =
-  "This file changed while you were editing. Copy your changes, then reopen the file.";
-
 export function useMarkdownFileEditor({
   category,
   entryPath,
@@ -82,18 +65,8 @@ export function useMarkdownFileEditor({
   const [savedContent, setSavedContent] = useState("");
   const [sourcePath, setSourcePath] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [richDraft, setRichDraft] = useState<DocumentDraftState>(IDLE_DRAFT);
-  // The content the rich editor opened on or last saved, and how many times it reopened.
-  const [richBase, setRichBase] = useState<string | null>(null);
-  const [richVersion, setRichVersion] = useState(0);
-  const [richConflict, setRichConflict] = useState(false);
-  // Whether the file was over the preview limit when the rich editor opened on it. Latched, so
-  // a foreign write growing the file cannot unmount an open editor.
-  const [richTruncated, setRichTruncated] = useState<boolean | null>(null);
   const [resetKey, setResetKey] = useState({ isActive, path: entryPath });
   const initKeyRef = useRef<string | null>(null);
-  // The content this hook wrote last, so the fetch catching up with it is not a foreign change.
-  const writtenRef = useRef<string | null>(null);
 
   const sendNotification = useSendNotification();
   const { mutate } = useSWRConfig();
@@ -111,13 +84,7 @@ export function useMarkdownFileEditor({
     setSourcePath(null);
     setDraft("");
     setSavedContent("");
-    setRichDraft(IDLE_DRAFT);
-    setRichBase(null);
-    setRichVersion(0);
-    setRichConflict(false);
-    setRichTruncated(null);
     initKeyRef.current = null;
-    writtenRef.current = null;
   }
 
   const isPlainDirty = draft !== savedContent;
@@ -158,8 +125,7 @@ export function useMarkdownFileEditor({
     processedContent,
   ]);
 
-  /** Writes the file and makes the written content the one the preview shows. */
-  const persist = async (content: string): Promise<DocumentSaveResult> => {
+  const writeFile = async (content: string): Promise<DocumentSaveResult> => {
     if (!owner || !editablePath) {
       return { ok: false, error: "This file cannot be edited." };
     }
@@ -170,10 +136,14 @@ export function useMarkdownFileEditor({
         content,
         contentType: "text/markdown",
       });
+      return { ok: true };
     } catch (e) {
       return { ok: false, error: normalizeError(e).message };
     }
-    writtenRef.current = content;
+  };
+
+  /** Makes written content the one the preview and the plain editor show. */
+  const adoptWritten = async (content: string) => {
     await mutate(
       fileUrl,
       { kind: "loaded", content },
@@ -184,7 +154,6 @@ export function useMarkdownFileEditor({
     setDraft(content);
     setSavedContent(content);
     initKeyRef.current = `${entryPath}:${content}`;
-    return { ok: true };
   };
 
   const save = async () => {
@@ -192,91 +161,42 @@ export function useMarkdownFileEditor({
       return;
     }
     setIsSaving(true);
-    const result = await persist(draft);
-    setIsSaving(false);
-    if (result.ok) {
-      sendNotification({ type: "success", title: "File saved" });
-    } else {
-      sendNotification({
-        type: "error",
-        title: "Failed to save file",
-        description: result.error,
-      });
+    try {
+      const result = await writeFile(draft);
+      if (result.ok) {
+        await adoptWritten(draft);
+        sendNotification({ type: "success", title: "File saved" });
+      } else {
+        sendNotification({
+          type: "error",
+          title: "Failed to save file",
+          description: result.error,
+        });
+      }
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  // The decision depends only on the flag and the file, never on its content, so a change
-  // written by someone else cannot swap editors under an open draft. A file the rich editor
-  // cannot open is shown by it as read-only source, with the reason.
-  const opensRich =
-    hasFeature("co_edition") && canEdit && !(richTruncated ?? isTruncated);
-  const richSource = rawContent ?? undefined;
-
-  // The file changed under the editor, by another writer or an agent. A clean editor reopens on
-  // the new content; a dirty one keeps its draft and refuses to save over the newer version
-  // until the file is reopened. The revision check on save will narrow the remaining race.
-  useEffect(() => {
-    if (!opensRich || richSource === undefined || richSource === richBase) {
-      return;
-    }
-    if (richBase === null) {
-      setRichBase(richSource);
-      setRichTruncated(isTruncated);
-    } else if (richSource === writtenRef.current) {
-      // Our own write came back from the cache; the version it raced is overwritten anyway.
-      setRichBase(richSource);
-      setRichConflict(false);
-    } else if (richDraft.dirty || richDraft.saving) {
-      setRichConflict(true);
-    } else if (isTruncated) {
-      // Reopening on cut text would save a cut file; the plain editor takes over.
-      setRichTruncated(true);
-    } else {
-      setRichBase(richSource);
-      setRichVersion((version) => version + 1);
-      setRichConflict(false);
-    }
-  }, [
-    opensRich,
-    richSource,
-    richBase,
-    richDraft.dirty,
-    richDraft.saving,
+  const rich = useRichMarkdownEditor({
+    enabled: hasFeature("co_edition") && canEdit,
+    entryPath,
+    isActive,
+    rawContent,
     isTruncated,
-  ]);
-
-  const saveRichSource = async (
-    content: string
-  ): Promise<DocumentSaveResult> => {
-    if (richConflict) {
-      return { ok: false, error: CONFLICT_MESSAGE };
-    }
-    return persist(content);
-  };
-
-  const richEditor =
-    opensRich && richSource !== undefined
-      ? {
-          mountKey: `${entryPath}:${richVersion}`,
-          initialContent: richBase ?? richSource,
-          onSave: saveRichSource,
-          onStateChange: setRichDraft,
-        }
-      : null;
+    writeFile,
+    adoptWritten,
+  });
 
   return {
     canEdit,
     content:
       canEdit && sourcePath === entryPath ? draft : processedContent?.text,
-    // Once a save has failed the editor shows it with Retry; leaving then is the user's call.
-    holdsNavigation:
-      richEditor !== null &&
-      (richDraft.dirty || richDraft.saving) &&
-      richDraft.error === null,
-    isDirty: opensRich ? richDraft.dirty : isPlainDirty,
-    isSaving: opensRich ? richDraft.saving : isSaving,
+    holdsNavigation: rich.holdsNavigation,
+    isDirty: rich.richEditor ? rich.isDirty : isPlainDirty,
+    isSaving: rich.richEditor ? rich.isSaving : isSaving,
     revert: () => setDraft(savedContent),
-    richEditor,
+    richEditor: rich.richEditor,
     save,
     setDraft,
     setViewMode,
