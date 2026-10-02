@@ -5,6 +5,13 @@ import {
 import { notifyAdminsTriggerBlockedByProgrammaticCap } from "@app/lib/api/credits/programmatic_cap_trigger_alert";
 import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage/tracking";
 import { FathomClient } from "@app/lib/api/triggers/built-in-webhooks/fathom/fathom_client";
+import type { RateLimitCheckResult } from "@app/lib/api/triggers/rate_limits";
+import {
+  checkTriggerForExecutionPerDayLimit,
+  checkWebhookRequestForRateLimit,
+  isTriggerProgrammaticCapReached,
+} from "@app/lib/api/triggers/rate_limits";
+import { verifySignature } from "@app/lib/api/triggers/webhook_signature";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { getWebhookRequestsBucket } from "@app/lib/file_storage";
@@ -15,15 +22,8 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import type { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
-import type { RateLimitCheckResult } from "@app/lib/triggers/rate_limits";
-import {
-  checkTriggerForExecutionPerDayLimit,
-  checkWebhookRequestForRateLimit,
-  isTriggerProgrammaticCapReached,
-} from "@app/lib/triggers/rate_limits";
 import { WEBHOOK_PRESETS } from "@app/lib/triggers/webhook_presets";
 import { statsDMetrics } from "@app/lib/utils/statsd";
-import { verifySignature } from "@app/lib/webhook_source_server";
 import logger from "@app/logger/logger";
 import { launchTriggersWorkflows } from "@app/temporal/triggers/webhook_client";
 import type {
@@ -42,19 +42,6 @@ import {
 } from "@app/types/shared/utils/error_utils";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
-
-export interface GetWebhookRequestsResponseBody {
-  requests: Array<{
-    id: number;
-    timestamp: number;
-    status: WebhookRequestTriggerStatus;
-    errorMessage: string | null;
-    payload?: {
-      headers?: Record<string, string | string[]>;
-      body?: unknown;
-    };
-  }>;
-}
 
 /**
  * To avoid storing sensitive information, only these headers are allowed to be stored in GCS.

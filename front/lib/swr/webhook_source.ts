@@ -7,9 +7,9 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { GetWebhookRequestsResponseBody } from "@app/lib/triggers/webhook";
 import type {
   DeleteWebhookSourceResponseBody,
+  GetWebhookRequestsResponseBody,
   GetWebhookSourcesResponseBody,
   GetWebhookSourceViewsResponseBody,
   PostWebhookSourcesBody,

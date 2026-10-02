@@ -1,5 +1,5 @@
+import { fetchRecentWebhookRequestTriggersWithPayload } from "@app/lib/api/triggers/webhook";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
-import { fetchRecentWebhookRequestTriggersWithPayload } from "@app/lib/triggers/webhook";
 import type { PokeGetWebhookRequestsResponseBody } from "@app/types/api/poke/triggers";
 import { WEBHOOK_REQUEST_TRIGGER_STATUSES } from "@app/types/assistant/triggers";
 import { pokeApp } from "@front-api/middlewares/ctx";
