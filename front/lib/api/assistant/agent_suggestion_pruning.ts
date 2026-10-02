@@ -8,7 +8,6 @@ import {
 import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -133,7 +132,7 @@ function splitByKind(
  */
 async function pruneSuggestions(
   auth: Authenticator,
-  agentConfiguration: AgentConfigurationType,
+  agent: AgentResource,
   pendingSuggestions: AgentSuggestionResource[]
 ): Promise<void> {
   if (pendingSuggestions.length === 0) {
@@ -143,23 +142,29 @@ async function pruneSuggestions(
   const { tools, sub_agent, skills, model, structured_output, instructions } =
     splitByKind(pendingSuggestions);
 
+  const agentModel = agent.effectiveModelConfiguration;
+  const [actions, { instructionsHtml }] = await Promise.all([
+    agent.listActions(auth),
+    agent.fetchInstructions(),
+  ]);
+
   const outdatedByKind = await Promise.all([
-    getOutdatedToolsSuggestions(tools, agentConfiguration.actions),
-    getOutdatedSubAgentSuggestions(sub_agent, agentConfiguration.actions),
-    getOutdatedSkillsSuggestions(auth, skills, agentConfiguration),
+    getOutdatedToolsSuggestions(tools, actions),
+    getOutdatedSubAgentSuggestions(sub_agent, actions),
+    getOutdatedSkillsSuggestions(auth, skills, agent),
     getOutdatedModelSuggestions(
       model,
-      agentConfiguration.model.modelId,
-      agentConfiguration.model.reasoningEffort ?? null
+      agentModel.modelId,
+      agentModel.reasoningEffort ?? null
     ),
     getOutdatedStructuredOutputSuggestions(
       structured_output,
       model,
-      agentConfiguration.model
+      agentModel
     ),
     getInstructionSuggestionsWithoutExistingBlockId(
       instructions,
-      agentConfiguration.instructionsHtml
+      instructionsHtml
     ),
   ]);
 
@@ -233,15 +238,12 @@ function getOutdatedSubAgentSuggestions(
 async function getOutdatedSkillsSuggestions(
   auth: Authenticator,
   suggestions: SkillsSuggestionResource[],
-  agentConfiguration: AgentConfigurationType
+  agent: AgentResource
 ): Promise<SkillsSuggestionResource[]> {
   if (suggestions.length === 0) {
     return [];
   }
-  const currentSkills = await SkillResource.listByAgentConfiguration(
-    auth,
-    agentConfiguration
-  );
+  const currentSkills = await agent.listSkills(auth);
   const currentSkillIds = new Set(currentSkills.map((s) => s.sId));
 
   const outdatedSuggestions: SkillsSuggestionResource[] = [];
@@ -417,16 +419,14 @@ export async function pruneConflictingInstructionSuggestions(
 
 export async function pruneSuggestionsForAgent(
   auth: Authenticator,
-  agentConfiguration: AgentConfigurationType
+  agent: AgentResource
 ): Promise<void> {
   const pendingSuggestions =
-    await AgentSuggestionResource.listByAgentConfigurationId(
-      auth,
-      agentConfiguration.sId,
-      { states: ["pending"] }
-    );
+    await AgentSuggestionResource.listByAgentConfigurationId(auth, agent.sId, {
+      states: ["pending"],
+    });
 
-  await pruneSuggestions(auth, agentConfiguration, pendingSuggestions);
+  await pruneSuggestions(auth, agent, pendingSuggestions);
 }
 
 /**

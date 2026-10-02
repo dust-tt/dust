@@ -13,7 +13,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import {
-  toAgentConfigurations,
+  toPokeAgentDetailsJSON,
   toPokeAgentSummaryJSON,
 } from "@app/lib/resources/agent_resource_serialization";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -193,8 +193,9 @@ export const agentHandlers: AgentHandlers = {
     }
 
     // The poke superuser authenticator views the agent's content (see `poke-agent-content-access`).
-    const [[agent], editors, [author]] = await Promise.all([
-      toAgentConfigurations(targetAuth, [resource]),
+    const [{ instructions }, actions, editors, [author]] = await Promise.all([
+      resource.fetchInstructions(),
+      resource.listActions(targetAuth),
       resource.listEditors(targetAuth),
       UserResource.fetchByModelIds(
         resource.versionAuthorId !== null ? [resource.versionAuthorId] : []
@@ -203,32 +204,12 @@ export const agentHandlers: AgentHandlers = {
 
     return jsonResponse({
       workspace_id,
-      agent: {
-        agentId: agent.sId,
-        name: agent.name,
-        description: agent.description,
-        scope: agent.scope,
-        status: agent.status,
-        version: agent.version,
-        versionCreatedAt: agent.versionCreatedAt,
-        instructions: agent.instructions,
-        instructionsLength: agent.instructions?.length ?? 0,
-        toolCount: agent.actions.length,
-        toolNames: agent.actions.map((a) => a.name),
-        requestedSpaceIds: agent.requestedSpaceIds,
-        author: author
-          ? {
-              userId: author.sId,
-              email: author.email,
-              fullName: author.fullName(),
-            }
-          : null,
-        editors: (editors ?? []).map((e) => ({
-          userId: e.sId,
-          email: e.email,
-          fullName: e.fullName(),
-        })),
-      },
+      agent: toPokeAgentDetailsJSON(resource, {
+        instructions,
+        actions,
+        author: author ?? null,
+        editors: editors ?? [],
+      }),
     });
   },
 };

@@ -39,7 +39,7 @@ it("serves single, batch, and context editor reads from grants", async () => {
   // Revoking the grant drops the editor from all three read paths.
   expect(await getEditors(authenticator, agent)).toEqual([]);
 
-  const batch = await getAgentsEditors(authenticator, [agent]);
+  const batch = await getAgentsEditors(authenticator, [resource]);
   expect(batch[agent.sId]).toEqual([]);
 
   const context = await getAgentConfigurationContext(authenticator, agent.sId);
@@ -49,16 +49,14 @@ it("serves single, batch, and context editor reads from grants", async () => {
 
 it("reports global agents as having no editor group", async () => {
   const { authenticator } = await createResourceTest({ role: "user" });
-  const agent = await AgentConfigurationFactory.createTestAgent(authenticator, {
-    scope: "hidden",
-  });
-  const globalAgent = { ...agent, scope: "global" as const };
+  const globalAgent = await AgentResource.fetchById(authenticator, "dust");
+  assert(globalAgent !== null);
 
   const result = await getAgentEditors(authenticator, globalAgent);
   assert(result.isErr());
   expect(result.error.code).toBe("group_not_found");
 
   // `getEditors` swallows the error, and the batch read skips global agents.
-  expect(await getEditors(authenticator, globalAgent)).toEqual([]);
+  expect(await getEditors(authenticator, globalAgent.toJSON())).toEqual([]);
   expect(await getAgentsEditors(authenticator, [globalAgent])).toEqual({});
 });

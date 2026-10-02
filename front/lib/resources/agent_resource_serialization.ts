@@ -1,9 +1,11 @@
+import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillHydrationOptions } from "@app/lib/resources/skill/types";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { tagsSorter } from "@app/lib/utils";
 import type {
   AgentActionsEnrichment,
@@ -384,5 +386,52 @@ export function toPokeAgentSummaryJSON(
     versionCreatedAt: json.versionCreatedAt,
     instructionsLength,
     requestedSpaceCount: json.requestedSpaceIds.length,
+  };
+}
+
+type PokeAgentUserJSON = { userId: string; email: string; fullName: string };
+
+function toPokeAgentUserJSON(user: UserResource): PokeAgentUserJSON {
+  return { userId: user.sId, email: user.email, fullName: user.fullName() };
+}
+
+export type PokeAgentDetailsJSON = Omit<
+  PokeAgentSummaryJSON,
+  "requestedSpaceCount"
+> & {
+  instructions: string | null;
+  toolCount: number;
+  toolNames: string[];
+  requestedSpaceIds: string[];
+  author: PokeAgentUserJSON | null;
+  editors: PokeAgentUserJSON[];
+};
+
+export function toPokeAgentDetailsJSON(
+  resource: AgentResource,
+  {
+    instructions,
+    actions,
+    author,
+    editors,
+  }: {
+    instructions: string | null;
+    actions: MCPServerConfigurationType[];
+    author: UserResource | null;
+    editors: UserResource[];
+  }
+): PokeAgentDetailsJSON {
+  const { requestedSpaceCount: _requestedSpaceCount, ...summary } =
+    toPokeAgentSummaryJSON(resource, {
+      instructionsLength: instructions?.length ?? 0,
+    });
+  return {
+    ...summary,
+    instructions,
+    toolCount: actions.length,
+    toolNames: actions.map((action) => action.name),
+    requestedSpaceIds: resource.toJSON().requestedSpaceIds,
+    author: author ? toPokeAgentUserJSON(author) : null,
+    editors: editors.map(toPokeAgentUserJSON),
   };
 }

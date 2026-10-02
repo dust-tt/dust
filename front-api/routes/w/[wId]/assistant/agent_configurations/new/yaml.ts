@@ -1,4 +1,5 @@
 import { importAgentConfigurationFromYAMLString } from "@app/lib/api/assistant/configuration/yaml_import";
+import { toAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -35,7 +36,8 @@ app.post(
       return apiError(ctx, result.error);
     }
 
-    const { agentConfiguration, skippedActions } = result.value;
+    const { agent, skippedActions } = result.value;
+    const [agentConfiguration] = await toAgentConfigurations(auth, [agent]);
     return ctx.json({ agentConfiguration, skippedActions });
   }
 );

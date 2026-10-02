@@ -15,7 +15,6 @@ import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_res
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
-import { getAgentConfiguration } from "@app/tests/utils/agent_configuration_reads";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -100,11 +99,8 @@ async function addMember(
 }
 
 async function fetchAgentToolIds(auth: Authenticator, agentId: string) {
-  const agent = await getAgentConfiguration(auth, {
-    agentId,
-    variant: "full",
-  });
-  return (agent?.actions ?? [])
+  const agent = await AgentConfigurationFactory.refetch(auth, agentId);
+  return (agent ? await agent.listActions(auth) : [])
     .filter(isServerSideMCPServerConfiguration)
     .map((action) => action.mcpServerViewId);
 }
@@ -454,10 +450,10 @@ describe("building_agents_and_skills tools", () => {
         expect(suggestion.source).toBe("conversational");
       }
 
-      const untouched = await getAgentConfiguration(authenticator, {
-        agentId: agent.sId,
-        variant: "light",
-      });
+      const untouched = await AgentConfigurationFactory.refetch(
+        authenticator,
+        agent.sId
+      );
       expect(untouched?.name).toBe("OldHelper");
     });
 

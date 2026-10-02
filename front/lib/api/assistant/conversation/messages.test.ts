@@ -25,6 +25,7 @@ import {
   MentionModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
+import { toLightAgentConfiguration } from "@app/lib/resources/agent_resource_serialization";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -32,7 +33,6 @@ import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { getAgentConfiguration } from "@app/tests/utils/agent_configuration_reads";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -448,17 +448,22 @@ describe("createAgentMessages", () => {
     ];
 
     // Get the updated agent configuration with requestedSpaceIds as sIds
-    const agentConfigWithSpaces = await getAgentConfiguration(auth, {
-      agentId: agentConfig.sId,
-      agentVersion: agentConfig.version,
-      variant: "light",
-    });
-    expect(agentConfigWithSpaces).not.toBeNull();
-    expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space1.sId);
-    expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space2.sId);
+    const agentWithSpaces = await AgentConfigurationFactory.refetch(
+      auth,
+      agentConfig.sId,
+      { agentVersion: agentConfig.version }
+    );
+    assert(agentWithSpaces, "Unexpected: agent not found");
+    expect(agentWithSpaces.requestedSpaceModelIds()).toContain(space1.id);
+    expect(agentWithSpaces.requestedSpaceModelIds()).toContain(space2.id);
+    // The agent message carries its agent's configuration on the wire.
+    const agentConfigWithSpaces = await toLightAgentConfiguration(
+      auth,
+      agentWithSpaces
+    );
 
     const modelResolution = await resolveModelForMentionedAgent(auth, {
-      agent: await toAgentResource(auth, agentConfigWithSpaces!),
+      agent: agentWithSpaces,
     });
 
     // Call createAgentMessages
@@ -467,7 +472,7 @@ describe("createAgentMessages", () => {
         conversation: testConversation,
         metadata: {
           type: "create",
-          agentConfiguration: agentConfigWithSpaces!,
+          agentConfiguration: agentConfigWithSpaces,
           skipToolsValidation: false,
           nextMessageRank: 1,
           userMessage,
@@ -580,17 +585,22 @@ describe("createAgentMessages", () => {
     ];
 
     // Agent has space1 and space2, conversation already has space1
-    const agentConfigWithSpaces = await getAgentConfiguration(auth, {
-      agentId: agentConfig.sId,
-      agentVersion: agentConfig.version,
-      variant: "light",
-    });
-    expect(agentConfigWithSpaces).not.toBeNull();
-    expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space1.sId);
-    expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space2.sId);
+    const agentWithSpaces = await AgentConfigurationFactory.refetch(
+      auth,
+      agentConfig.sId,
+      { agentVersion: agentConfig.version }
+    );
+    assert(agentWithSpaces, "Unexpected: agent not found");
+    expect(agentWithSpaces.requestedSpaceModelIds()).toContain(space1.id);
+    expect(agentWithSpaces.requestedSpaceModelIds()).toContain(space2.id);
+    // The agent message carries its agent's configuration on the wire.
+    const agentConfigWithSpaces = await toLightAgentConfiguration(
+      auth,
+      agentWithSpaces
+    );
 
     const modelResolution = await resolveModelForMentionedAgent(auth, {
-      agent: await toAgentResource(auth, agentConfigWithSpaces!),
+      agent: agentWithSpaces,
     });
 
     // Call createAgentMessages
@@ -599,7 +609,7 @@ describe("createAgentMessages", () => {
         conversation: testConversation,
         metadata: {
           type: "create",
-          agentConfiguration: agentConfigWithSpaces!,
+          agentConfiguration: agentConfigWithSpaces,
           skipToolsValidation: false,
           nextMessageRank: 1,
           userMessage,
@@ -712,17 +722,22 @@ describe("createAgentMessages", () => {
     ];
 
     // Agent has the same spaces as conversation
-    const agentConfigWithSpaces = await getAgentConfiguration(auth, {
-      agentId: agentConfig.sId,
-      agentVersion: agentConfig.version,
-      variant: "light",
-    });
-    expect(agentConfigWithSpaces).not.toBeNull();
-    expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space1.sId);
-    expect(agentConfigWithSpaces?.requestedSpaceIds).toContain(space2.sId);
+    const agentWithSpaces = await AgentConfigurationFactory.refetch(
+      auth,
+      agentConfig.sId,
+      { agentVersion: agentConfig.version }
+    );
+    assert(agentWithSpaces, "Unexpected: agent not found");
+    expect(agentWithSpaces.requestedSpaceModelIds()).toContain(space1.id);
+    expect(agentWithSpaces.requestedSpaceModelIds()).toContain(space2.id);
+    // The agent message carries its agent's configuration on the wire.
+    const agentConfigWithSpaces = await toLightAgentConfiguration(
+      auth,
+      agentWithSpaces
+    );
 
     const modelResolution = await resolveModelForMentionedAgent(auth, {
-      agent: await toAgentResource(auth, agentConfigWithSpaces!),
+      agent: agentWithSpaces,
     });
 
     // Call createAgentMessages
@@ -731,7 +746,7 @@ describe("createAgentMessages", () => {
         conversation: testConversation,
         metadata: {
           type: "create",
-          agentConfiguration: agentConfigWithSpaces!,
+          agentConfiguration: agentConfigWithSpaces,
           skipToolsValidation: false,
           nextMessageRank: 1,
           userMessage,
@@ -822,12 +837,16 @@ describe("createAgentMessages", () => {
         }
       );
 
-      const updatedAgentConfig = await getAgentConfiguration(auth, {
-        agentId: agentConfig.sId,
-        agentVersion: agentConfig.version,
-        variant: "light",
-      });
-      expect(updatedAgentConfig).not.toBeNull();
+      const updatedAgent = await AgentConfigurationFactory.refetch(
+        auth,
+        agentConfig.sId,
+        { agentVersion: agentConfig.version }
+      );
+      assert(updatedAgent, "Unexpected: agent not found");
+      const updatedAgentConfig = await toLightAgentConfiguration(
+        auth,
+        updatedAgent
+      );
 
       const { userMessage } = await ConversationFactory.createUserMessage({
         auth,
@@ -843,19 +862,19 @@ describe("createAgentMessages", () => {
       ];
 
       const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
-        agent: await toAgentResource(auth, updatedAgentConfig!),
+        agent: updatedAgent,
         conversation: spaceConversation.toJSON(),
       });
 
       const modelResolution = await resolveModelForMentionedAgent(auth, {
-        agent: await toAgentResource(auth, updatedAgentConfig!),
+        agent: updatedAgent,
       });
 
       const { agentMessages, richMentions } = await createAgentMessages(auth, {
         conversation: spaceConversation.toJSON(),
         metadata: {
           type: "create",
-          agentConfiguration: updatedAgentConfig!,
+          agentConfiguration: updatedAgentConfig,
           skipToolsValidation: false,
           nextMessageRank: 1,
           userMessage,

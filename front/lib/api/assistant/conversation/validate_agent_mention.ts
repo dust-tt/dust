@@ -206,7 +206,12 @@ export async function validateAgentMention(
     });
   }
 
-  const configuration = await toLightAgentConfiguration(auth, agent);
+  // The agent message created for the mention carries its agent's configuration on the wire, as
+  // on the other mention paths: without favorites or tags.
+  const configuration = await toLightAgentConfiguration(auth, agent, {
+    withFavorites: false,
+    withTags: false,
+  });
 
   const limitResult = await checkMessagesLimit(auth, {
     mentions: [{ configurationId: agentConfigurationId }],

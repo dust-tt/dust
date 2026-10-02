@@ -55,7 +55,6 @@ import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activiti
 import { launchSandboxChildToolWorkflow } from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
-import { getAgentConfiguration } from "@app/tests/utils/agent_configuration_reads";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -239,11 +238,14 @@ describe("createSandboxChildAction", () => {
   // Resolves the function-call name the model sees on direct calls for this
   // tool, going through the same agent configuration the child path uses.
   async function getDirectCallToolName(): Promise<string> {
-    const fullConfig = await getAgentConfiguration(auth, {
-      agentId: agentConfig.sId,
-      variant: "full",
-    });
-    const serverConfig = fullConfig?.actions
+    const agent = await AgentConfigurationFactory.refetch(
+      auth,
+      agentConfig.sId
+    );
+    if (!agent) {
+      throw new Error("Expected the agent to exist.");
+    }
+    const serverConfig = (await agent.listActions(auth))
       .filter(isServerSideMCPServerConfiguration)
       .find((a) => a.mcpServerViewId === view.sId);
     if (!serverConfig) {
@@ -445,12 +447,15 @@ describe("createSandboxChildAction", () => {
     await setToolPermission("never_ask");
     await AgentConfigurationFactory.updateTestAgent(auth, agentConfig.sId);
 
-    const latestConfig = await getAgentConfiguration(auth, {
-      agentId: agentConfig.sId,
-      variant: "full",
-    });
+    const latestAgent = await AgentConfigurationFactory.refetch(
+      auth,
+      agentConfig.sId
+    );
+    if (!latestAgent) {
+      throw new Error("Expected the agent to exist.");
+    }
     expect(
-      latestConfig?.actions
+      (await latestAgent.listActions(auth))
         .filter(isServerSideMCPServerConfiguration)
         .some((action) => action.mcpServerViewId === view.sId)
     ).toBe(false);
@@ -499,11 +504,14 @@ describe("createSandboxChildAction", () => {
       workspace.sId
     );
 
-    const fullConfig = await getAgentConfiguration(auth, {
-      agentId: agentConfig.sId,
-      variant: "full",
-    });
-    const rawConfigName = fullConfig?.actions
+    const agent = await AgentConfigurationFactory.refetch(
+      auth,
+      agentConfig.sId
+    );
+    if (!agent) {
+      throw new Error("Expected the agent to exist.");
+    }
+    const rawConfigName = (await agent.listActions(auth))
       .filter(isServerSideMCPServerConfiguration)
       .find((a) => a.mcpServerViewId === otherView.sId)?.name;
     if (!rawConfigName) {

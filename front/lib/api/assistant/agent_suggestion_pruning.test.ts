@@ -7,14 +7,10 @@ import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
-import { getAgentConfiguration } from "@app/tests/utils/agent_configuration_reads";
 import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
-import type {
-  AgentConfigurationType,
-  LightAgentConfigurationType,
-} from "@app/types/assistant/agent";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { MISTRAL_LARGE_MODEL_ID } from "@app/types/assistant/models/mistral";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import assert from "assert";
@@ -29,20 +25,6 @@ async function fetchFullAgent(
     agent?.canViewContent,
     `Readable agent not found for agentId: ${agentId}`
   );
-  return agent;
-}
-
-async function getFullAgentConfiguration(
-  auth: Authenticator,
-  agentId: string
-): Promise<AgentConfigurationType> {
-  const agent = await getAgentConfiguration(auth, {
-    agentId,
-    variant: "full",
-  });
-  if (!agent) {
-    throw new Error(`Agent configuration not found for agentId: ${agentId}`);
-  }
   return agent;
 }
 
@@ -70,7 +52,7 @@ describe("pruneSuggestionsForAgent", () => {
         }
       );
 
-      const fullAgent = await getFullAgentConfiguration(
+      const fullAgent = await fetchFullAgent(
         authenticator,
         agentConfiguration.sId
       );
@@ -96,7 +78,7 @@ describe("pruneSuggestionsForAgent", () => {
         }
       );
 
-      const fullAgent = await getFullAgentConfiguration(
+      const fullAgent = await fetchFullAgent(
         authenticator,
         agentConfiguration.sId
       );
@@ -122,7 +104,7 @@ describe("pruneSuggestionsForAgent", () => {
         }
       );
 
-      const fullAgent = await getFullAgentConfiguration(
+      const fullAgent = await fetchFullAgent(
         authenticator,
         agentConfiguration.sId
       );
@@ -158,7 +140,7 @@ describe("pruneSuggestionsForAgent", () => {
     ) {
       await pruneSuggestionsForAgent(
         authenticator,
-        await getFullAgentConfiguration(authenticator, agent.sId)
+        await fetchFullAgent(authenticator, agent.sId)
       );
       const fetched = await AgentSuggestionResource.fetchById(
         authenticator,
@@ -243,7 +225,7 @@ describe("pruneSuggestionsForAgent", () => {
         }
       );
 
-      const fullAgent = await getFullAgentConfiguration(
+      const fullAgent = await fetchFullAgent(
         authenticator,
         agentConfiguration.sId
       );
@@ -269,7 +251,7 @@ describe("pruneSuggestionsForAgent", () => {
         }
       );
 
-      const fullAgent = await getFullAgentConfiguration(
+      const fullAgent = await fetchFullAgent(
         authenticator,
         agentConfiguration.sId
       );
@@ -299,7 +281,7 @@ describe("pruneSuggestionsForAgent", () => {
         }
       );
 
-      const fullAgent = await getFullAgentConfiguration(
+      const fullAgent = await fetchFullAgent(
         authenticator,
         agentConfiguration.sId
       );
@@ -326,7 +308,7 @@ describe("pruneSuggestionsForAgent", () => {
         }
       );
 
-      const fullAgent = await getFullAgentConfiguration(
+      const fullAgent = await fetchFullAgent(
         authenticator,
         agentConfiguration.sId
       );
@@ -363,7 +345,7 @@ describe("pruneSuggestionsForAgent", () => {
         }
       );
 
-      const fullAgent = await getFullAgentConfiguration(
+      const fullAgent = await fetchFullAgent(
         authenticator,
         agentConfiguration.sId
       );
@@ -394,7 +376,7 @@ describe("pruneSuggestionsForAgent", () => {
         }
       );
 
-      const fullAgent = await getFullAgentConfiguration(
+      const fullAgent = await fetchFullAgent(
         authenticator,
         agentConfiguration.sId
       );
@@ -420,7 +402,7 @@ describe("pruneSuggestionsForAgent", () => {
         }
       );
 
-      const fullAgent = await getFullAgentConfiguration(
+      const fullAgent = await fetchFullAgent(
         authenticator,
         agentConfiguration.sId
       );
@@ -446,7 +428,7 @@ describe("pruneSuggestionsForAgent", () => {
         }
       );
 
-      const fullAgent = await getFullAgentConfiguration(
+      const fullAgent = await fetchFullAgent(
         authenticator,
         agentConfiguration.sId
       );
@@ -486,7 +468,7 @@ describe("pruneSuggestionsForAgent", () => {
         }
       );
 
-      const fullAgent = await getFullAgentConfiguration(
+      const fullAgent = await fetchFullAgent(
         authenticator,
         agentWithInstructions.sId
       );
@@ -524,7 +506,7 @@ describe("pruneSuggestionsForAgent", () => {
         }
       );
 
-      const fullAgent = await getFullAgentConfiguration(
+      const fullAgent = await fetchFullAgent(
         authenticator,
         agentWithInstructions.sId
       );
@@ -561,7 +543,7 @@ describe("pruneSuggestionsForAgent", () => {
         }
       );
 
-      const fullAgent = await getFullAgentConfiguration(
+      const fullAgent = await fetchFullAgent(
         authenticator,
         agentWithInstructions.sId
       );
@@ -597,7 +579,7 @@ describe("pruneSuggestionsForAgent", () => {
         }
       );
 
-      const fullAgent = await getFullAgentConfiguration(
+      const fullAgent = await fetchFullAgent(
         authenticator,
         agentWithoutInstructions.sId
       );
@@ -646,7 +628,7 @@ describe("pruneSuggestionsForAgent", () => {
         }
       );
 
-      const fullAgent = await getFullAgentConfiguration(
+      const fullAgent = await fetchFullAgent(
         authenticator,
         agentWithMultipleBlocks.sId
       );
@@ -707,7 +689,7 @@ describe("pruneSuggestionsForAgent", () => {
         }
       );
 
-      const fullAgent = await getFullAgentConfiguration(
+      const fullAgent = await fetchFullAgent(
         authenticator,
         agentWithBlocks.sId
       );

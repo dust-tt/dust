@@ -7,6 +7,7 @@ import {
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -940,13 +941,17 @@ describe("updateConversationRequirements", () => {
       );
 
       // Fetch agents with updated requirements
-      const { getAgentConfigurations } = await import(
-        "@app/tests/utils/agent_configuration_reads"
+      // `updateConversationRequirements` takes the agents' wire configurations.
+      const agents = await toLightAgentConfigurations(
+        auth,
+        removeNulls(
+          await Promise.all(
+            [agent1.sId, agent2.sId].map((agentId) =>
+              AgentConfigurationFactory.refetch(auth, agentId)
+            )
+          )
+        )
       );
-      const agents = await getAgentConfigurations(auth, {
-        agentIds: [agent1.sId, agent2.sId],
-        variant: "light",
-      });
 
       // Fetch conversation
       const fetchedConversationResult = await getConversation(
@@ -1069,13 +1074,17 @@ describe("updateConversationRequirements", () => {
       );
 
       // Fetch agents and conversation
-      const { getAgentConfigurations } = await import(
-        "@app/tests/utils/agent_configuration_reads"
+      // `updateConversationRequirements` takes the agents' wire configurations.
+      const agents = await toLightAgentConfigurations(
+        auth,
+        removeNulls(
+          await Promise.all(
+            [agent.sId].map((agentId) =>
+              AgentConfigurationFactory.refetch(auth, agentId)
+            )
+          )
+        )
       );
-      const agents = await getAgentConfigurations(auth, {
-        agentIds: [agent.sId],
-        variant: "light",
-      });
 
       const fetchedConversationResult = await getConversation(
         auth,
@@ -1143,13 +1152,17 @@ describe("updateConversationRequirements", () => {
       );
 
       // Fetch agent and conversation
-      const { getAgentConfigurations } = await import(
-        "@app/tests/utils/agent_configuration_reads"
+      // `updateConversationRequirements` takes the agents' wire configurations.
+      const agents = await toLightAgentConfigurations(
+        auth,
+        removeNulls(
+          await Promise.all(
+            [agent.sId].map((agentId) =>
+              AgentConfigurationFactory.refetch(auth, agentId)
+            )
+          )
+        )
       );
-      const agents = await getAgentConfigurations(auth, {
-        agentIds: [agent.sId],
-        variant: "light",
-      });
 
       const fetchedConversationResult = await getConversation(
         auth,
@@ -1196,13 +1209,17 @@ describe("updateConversationRequirements", () => {
       });
 
       // Fetch agent and conversation
-      const { getAgentConfigurations } = await import(
-        "@app/tests/utils/agent_configuration_reads"
+      // `updateConversationRequirements` takes the agents' wire configurations.
+      const agents = await toLightAgentConfigurations(
+        auth,
+        removeNulls(
+          await Promise.all(
+            [agent.sId].map((agentId) =>
+              AgentConfigurationFactory.refetch(auth, agentId)
+            )
+          )
+        )
       );
-      const agents = await getAgentConfigurations(auth, {
-        agentIds: [agent.sId],
-        variant: "light",
-      });
 
       const fetchedConversationResult = await getConversation(
         auth,
@@ -1310,13 +1327,17 @@ describe("updateConversationRequirements", () => {
       );
 
       // Fetch agent and conversation
-      const { getAgentConfigurations } = await import(
-        "@app/tests/utils/agent_configuration_reads"
+      // `updateConversationRequirements` takes the agents' wire configurations.
+      const agents = await toLightAgentConfigurations(
+        auth,
+        removeNulls(
+          await Promise.all(
+            [agent.sId].map((agentId) =>
+              AgentConfigurationFactory.refetch(auth, agentId)
+            )
+          )
+        )
       );
-      const agents = await getAgentConfigurations(auth, {
-        agentIds: [agent.sId],
-        variant: "light",
-      });
 
       const fetchedConversationResult = await getConversation(
         auth,
