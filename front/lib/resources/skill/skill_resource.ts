@@ -4482,9 +4482,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           transaction,
         });
 
-        await ProjectMetadataResource.removeSkillFromAllDefaultSkills(
+        await ProjectMetadataResource.removeSkillsFromAllDefaultSkills(
           auth,
-          this.sId,
+          [this.sId],
           transaction
         );
 

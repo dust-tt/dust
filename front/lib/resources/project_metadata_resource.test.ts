@@ -277,6 +277,96 @@ describe("ProjectMetadataResource", () => {
       expect(reloaded!.defaultSkillIds).toEqual([]);
       expect(reloaded!.defaultSkillsIds).toBeNull();
     });
+
+    describe("removeSkillsFromAllDefaultSkills", () => {
+      it("removes every given skill from every project, keeping the order of the others", async () => {
+        const { workspace: skillWorkspace, authenticator } =
+          await createResourceTest({ role: "admin" });
+        const [skillA, skillB, skillC, skillD] = await Promise.all(
+          ["A", "B", "C", "D"].map((name) =>
+            SkillFactory.create(authenticator, { name })
+          )
+        );
+
+        const firstSpace = await SpaceFactory.project(skillWorkspace);
+        const first = await ProjectMetadataResource.makeNew(
+          authenticator,
+          firstSpace,
+          { description: "first" }
+        );
+        await first.setDefaultSkills([skillA, skillB, skillC, skillD]);
+
+        const secondSpace = await SpaceFactory.project(skillWorkspace);
+        const second = await ProjectMetadataResource.makeNew(
+          authenticator,
+          secondSpace,
+          { description: "second" }
+        );
+        await second.setDefaultSkills([skillD, skillB]);
+
+        const untouchedSpace = await SpaceFactory.project(skillWorkspace);
+        const untouched = await ProjectMetadataResource.makeNew(
+          authenticator,
+          untouchedSpace,
+          { description: "untouched" }
+        );
+        await untouched.setDefaultSkills([skillC, skillA]);
+
+        await ProjectMetadataResource.removeSkillsFromAllDefaultSkills(
+          authenticator,
+          [skillB.sId, skillD.sId]
+        );
+
+        const firstAfter = await ProjectMetadataResource.fetchBySpace(
+          authenticator,
+          firstSpace
+        );
+        expect(firstAfter!.defaultSkillsIds).toEqual([skillA.sId, skillC.sId]);
+
+        // A project left without default skills stores null.
+        const secondAfter = await ProjectMetadataResource.fetchBySpace(
+          authenticator,
+          secondSpace
+        );
+        expect(secondAfter!.defaultSkillsIds).toBeNull();
+
+        const untouchedAfter = await ProjectMetadataResource.fetchBySpace(
+          authenticator,
+          untouchedSpace
+        );
+        expect(untouchedAfter!.defaultSkillsIds).toEqual([
+          skillC.sId,
+          skillA.sId,
+        ]);
+      });
+
+      it("does not touch other workspaces", async () => {
+        const { authenticator } = await createResourceTest({ role: "admin" });
+        const { workspace: otherWorkspace, authenticator: otherAuthenticator } =
+          await createResourceTest({ role: "admin" });
+        const otherSkill = await SkillFactory.create(otherAuthenticator, {
+          name: "other",
+        });
+        const otherSpace = await SpaceFactory.project(otherWorkspace);
+        const otherMetadata = await ProjectMetadataResource.makeNew(
+          otherAuthenticator,
+          otherSpace,
+          { description: "other" }
+        );
+        await otherMetadata.setDefaultSkills([otherSkill]);
+
+        await ProjectMetadataResource.removeSkillsFromAllDefaultSkills(
+          authenticator,
+          [otherSkill.sId]
+        );
+
+        const otherAfter = await ProjectMetadataResource.fetchBySpace(
+          otherAuthenticator,
+          otherSpace
+        );
+        expect(otherAfter!.defaultSkillsIds).toEqual([otherSkill.sId]);
+      });
+    });
   });
   describe("renameFramePath", () => {
     const oldPath = "pod-p1/Status/manifest.json";

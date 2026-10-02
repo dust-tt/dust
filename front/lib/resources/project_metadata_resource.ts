@@ -5,6 +5,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { getFrameV2NameFromManifestPath } from "@app/types/api/frame_manifest";
 import type { PodFileTab } from "@app/types/pod_file_tab";
 import {
@@ -18,7 +19,7 @@ import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
-import { col, fn, literal, Op } from "sequelize";
+import { Op } from "sequelize";
 
 export type ProjectMetadataBlob = Omit<
   CreationAttributes<ProjectMetadataModel>,
@@ -118,27 +119,39 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     );
   }
 
-  static async removeSkillFromAllDefaultSkills(
+  static async removeSkillsFromAllDefaultSkills(
     auth: Authenticator,
-    skillId: string,
+    skillIds: string[],
     transaction?: Transaction
   ): Promise<void> {
-    await ProjectMetadataModel.update(
-      {
-        defaultSkillsIds: fn(
-          "nullif",
-          fn("array_remove", col("defaultSkillsIds"), skillId),
-          literal("'{}'")
-        ),
-      },
-      {
+    if (skillIds.length === 0) {
+      return;
+    }
+
+    await withTransaction(async (t) => {
+      const projects = await ProjectMetadataModel.findAll({
         where: {
-          defaultSkillsIds: { [Op.contains]: [skillId] },
+          defaultSkillsIds: { [Op.overlap]: skillIds },
           workspaceId: auth.getNonNullableWorkspace().id,
         },
-        transaction,
+        lock: t.LOCK.UPDATE,
+        transaction: t,
+      });
+
+      const removedSkillIds = new Set(skillIds);
+      for (const project of projects) {
+        const remainingSkillIds = (project.defaultSkillsIds ?? []).filter(
+          (skillId) => !removedSkillIds.has(skillId)
+        );
+        await project.update(
+          {
+            defaultSkillsIds:
+              remainingSkillIds.length > 0 ? remainingSkillIds : null,
+          },
+          { transaction: t }
+        );
       }
-    );
+    }, transaction);
   }
 
   static async makeNew(
