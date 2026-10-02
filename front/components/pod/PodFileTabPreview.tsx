@@ -241,7 +241,7 @@ export function PodFileTabPreview({
         {isTooLarge ? (
           <FilePreviewFallback
             download={{ href: getFilePathDownloadUrl(owner, filePath) }}
-            message={`This file is too large to preview (${formatFileSize(sizeBytes, { decimals: 1 }, "en-US")}).`}
+            message={`This file is too large to preview (${formatFileSize(sizeBytes, { decimals: 1 })}).`}
           />
         ) : hasError ? (
           <FilePreviewFallback

@@ -1,6 +1,6 @@
 import { PluginRunDetailsModal } from "@app/components/poke/plugins/PluginRunDetailsModal";
 import { PluginRunStatusChip } from "@app/components/poke/plugins/PluginRunStatusChip";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { usePokePluginRuns } from "@app/poke/swr/plugins";
 import type {
   PluginResourceTarget,

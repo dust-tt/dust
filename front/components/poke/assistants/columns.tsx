@@ -1,7 +1,7 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import config from "@app/lib/api/config";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { clientFetch } from "@app/lib/egress/client";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { PokeAgentConfigurationType } from "@app/types/api/poke/agent_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
 import {

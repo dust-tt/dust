@@ -110,7 +110,7 @@ export default function ConnectorSyncingChip({
       case "workspace_quota_exceeded":
         return (
           <Tooltip
-            label={`You've exceeded the total storage quota of ${formatFileSize(activeSeats * DATASOURCE_QUOTA_PER_SEAT, { decimals: 0 }, "en-US")} for your workspace. Contact support@dust.tt to upgrade your plan.`}
+            label={`You've exceeded the total storage quota of ${formatFileSize(activeSeats * DATASOURCE_QUOTA_PER_SEAT, { decimals: 0 })} for your workspace. Contact support@dust.tt to upgrade your plan.`}
             trigger={<Chip color="warning">Quota exceeded</Chip>}
           />
         );

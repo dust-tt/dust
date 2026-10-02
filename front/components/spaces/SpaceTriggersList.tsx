@@ -2,8 +2,8 @@ import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchCon
 import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useQueryParams } from "@app/hooks/useQueryParams";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { useWebhookSourceViews } from "@app/lib/swr/webhook_source";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import { DataTable, Spinner } from "@dust-tt/sparkle";

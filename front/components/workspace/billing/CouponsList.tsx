@@ -1,7 +1,7 @@
 import { formatCredits } from "@app/lib/client/credits";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { formatCurrencyAmountCents } from "@app/lib/metronome/amounts";
 import { useWorkspaceCoupons } from "@app/lib/swr/workspaces";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type {
   CreditPoolTopUpCouponData,
   SeatCouponData,

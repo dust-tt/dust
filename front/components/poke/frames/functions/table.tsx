@@ -2,7 +2,7 @@ import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortabl
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { PokeFrameFunction } from "@app/lib/api/poke/frames";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { usePokeFrameFunctions } from "@app/poke/swr/frames";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { LightWorkspaceType } from "@app/types/user";

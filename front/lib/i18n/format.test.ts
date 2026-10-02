@@ -2,6 +2,7 @@ import { getPastedFileName } from "@app/components/assistant/conversation/input_
 import { formatAmount } from "@app/components/workspace/billing/seatTypeUtils";
 import { formatPostSummary } from "@app/lib/api/actions/servers/slab/helpers";
 import type { SlabPost } from "@app/lib/api/actions/servers/slab/types";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import {
   compareStrings,
   formatCurrency,
@@ -21,7 +22,6 @@ import {
   formatCurrencyAmount,
   formatCurrencyAmountCents,
 } from "@app/lib/metronome/amounts";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import {
   formatDate as formatDatePattern,
   formatShortDate,
@@ -79,7 +79,7 @@ describe.each(SUPPORTED_LOCALES)("with %s as the format locale", (locale) => {
     it.each([
       ["long", "September 23, 2025 at 3:37:32 PM"],
       ["short", "September 23, 2025"],
-      ["compact", "Sep, 2025"],
+      ["compact", "Sep 2025"],
       ["compactWithDay", "Sep 23, 2025"],
     ] as const)("formatTimestampToFriendlyDate %s", (version, expected) => {
       setFormatLocale(locale);
@@ -103,33 +103,6 @@ describe.each(SUPPORTED_LOCALES)("with %s as the format locale", (locale) => {
     ])("formatDateFromMillis in %s", (timezone, expected) => {
       setFormatLocale(locale);
       expect(formatDateFromMillis(TIMESTAMP, timezone)).toBe(expected);
-    });
-
-    it.each([
-      [1234.567, "usd", "$1,234.57"],
-      [1234.5, "eur", "€1,234.50"],
-      [0.0087, "gbp", "£0.01"],
-    ] as const)("formatCurrencyAmount %d %s", (amountCurrencyUnits, currency, expected) => {
-      setFormatLocale(locale);
-      expect(
-        formatCurrencyAmount({ amount: amountCurrencyUnits, currency })
-      ).toBe(expected);
-      expect(
-        formatCurrencyAmountCents({
-          amountCents: amountCurrencyUnits * 100,
-          currency,
-        })
-      ).toBe(expected);
-    });
-
-    it.each([
-      [123456, "usd", "$1,234.56"],
-      [123456, "USD", "$1,234.56"],
-      [123456, "eur", "1\u202f234,56\u00a0€"],
-      [5, "gbp", "0,05\u00a0£GB"],
-    ])("seat formatAmount %i %s", (amountCents, currency, expected) => {
-      setFormatLocale(locale);
-      expect(formatAmount(amountCents, currency)).toBe(expected);
     });
 
     it.each([
@@ -168,6 +141,57 @@ describe.each(SUPPORTED_LOCALES)("with %s as the format locale", (locale) => {
       expect(getPastedFileName(7)).toBe(
         "pasted-text-7_2025-09-23_15-37-32.txt"
       );
+    });
+  });
+
+  describe("currency helpers follow the format locale", () => {
+    const EXPECTED: Record<
+      SupportedLocale,
+      { usd: string; eur: string; gbp: string; seatGbp: string }
+    > = {
+      "en-US": {
+        usd: "$1,234.57",
+        eur: "€1,234.50",
+        gbp: "£0.01",
+        seatGbp: "£0.05",
+      },
+      "en-GB": {
+        usd: "US$1,234.57",
+        eur: "€1,234.50",
+        gbp: "£0.01",
+        seatGbp: "£0.05",
+      },
+      "fr-FR": {
+        usd: "1\u202f234,57\u00a0$US",
+        eur: "1\u202f234,50\u00a0€",
+        gbp: "0,01\u00a0£GB",
+        seatGbp: "0,05\u00a0£GB",
+      },
+    };
+
+    it.each([
+      [1234.567, "usd"],
+      [1234.5, "eur"],
+      [0.0087, "gbp"],
+    ] as const)("formatCurrencyAmount %d %s", (amountCurrencyUnits, currency) => {
+      setFormatLocale(locale);
+      expect(
+        formatCurrencyAmount({ amount: amountCurrencyUnits, currency })
+      ).toBe(EXPECTED[locale][currency]);
+      expect(
+        formatCurrencyAmountCents({
+          amountCents: amountCurrencyUnits * 100,
+          currency,
+        })
+      ).toBe(EXPECTED[locale][currency]);
+    });
+
+    it("seat formatAmount", () => {
+      setFormatLocale(locale);
+      expect(formatAmount(123457, "usd")).toBe(EXPECTED[locale].usd);
+      expect(formatAmount(123457, "USD")).toBe(EXPECTED[locale].usd);
+      expect(formatAmount(123450, "eur")).toBe(EXPECTED[locale].eur);
+      expect(formatAmount(5, "gbp")).toBe(EXPECTED[locale].seatGbp);
     });
   });
 

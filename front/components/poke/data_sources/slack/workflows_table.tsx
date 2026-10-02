@@ -1,5 +1,5 @@
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { usePokeSlackWorkflows } from "@app/poke/swr/slack_workflows";
 import type { SlackWorkflowType } from "@app/types/api/slack/workflows";
 import type { LightWorkspaceType } from "@app/types/user";

@@ -2,6 +2,7 @@ import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
 import { MAX_CYCLE_HISTORY_LIMIT } from "@app/lib/credits/awu_purchase_constants";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import {
   useAwuPoolCurrentCycle,
   useAwuPoolCycleHistory,
@@ -223,7 +224,7 @@ export function WorkspaceCreditPoolCycleHistoryTable({
   const rows: CycleHistoryRowData[] = cycleBreakdown.map((cycle) => ({
     cycle:
       cycle.cycleStartMs && cycle.cycleEndMs
-        ? `${formatConsumptionDate(cycle.cycleStartMs)} – ${formatConsumptionDate(cycle.cycleEndMs)}`
+        ? `${formatConsumptionDate(cycle.cycleStartMs, getActiveLocale())} – ${formatConsumptionDate(cycle.cycleEndMs, getActiveLocale())}`
         : "Unknown cycle",
     consumedCredits: formatCredits(Math.round(cycle.consumedCredits)),
   }));

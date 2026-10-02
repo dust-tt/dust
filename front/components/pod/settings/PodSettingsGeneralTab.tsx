@@ -1,6 +1,7 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { DeletePodDialog } from "@app/components/pod/settings/DeletePodDialog";
 import { useArchivePod } from "@app/hooks/useArchivePod";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { spaceMembershipProperties } from "@app/lib/spaces_utils";
 import {
   useCheckPodName,
@@ -11,7 +12,6 @@ import {
 } from "@app/lib/swr/pods";
 import { useSpaceInfo, useUpdateSpace } from "@app/lib/swr/spaces";
 import { useUserMetadata } from "@app/lib/swr/user";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { RichSpaceType } from "@app/types/api/spaces";
 import type { NotificationCondition } from "@app/types/notification_preferences";
 import {

@@ -743,6 +743,12 @@ Outside tests, code under `components/`, `hooks/` and `lib/swr/` MUST NOT call `
 locale-aware string comparisons MUST use `compareStrings` from `@app/lib/i18n/format`, which follows
 `format-locale-resolution`. Enforced by the `noBareLocaleCompare` lint rule.
 
+@cc [owner:sfriquet,label:product] no-hardcoded-en-us-in-ui
+Outside tests, code under `components/`, `hooks/`, `lib/client/` and `lib/swr/` MUST NOT contain
+the `"en-US"` literal, except a machine-facing one (export, API parameter, file name, map key),
+which MUST carry a `biome-ignore` comment saying why. Enforced by the `noHardcodedEnUsLocale` lint
+rule.
+
 @cc [owner:sfriquet,label:product;react] ui-dates-without-date-libraries
 Code under `components/` and `hooks/` MUST NOT format dates with `dayjs`, `luxon` or the formatting
 functions of `date-fns` and `date-fns-tz` (`format*`, `intlFormat*`, `lightFormat`): displayed

@@ -12,6 +12,7 @@ import {
   formatCreditsCompact,
   formatCreditValue,
 } from "@app/lib/client/credits";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 import {
@@ -84,7 +85,7 @@ function ConsumptionBurnUpTooltip({
 
   return (
     <ChartTooltipCard
-      title={formatConsumptionDate(datum.timestamp)}
+      title={formatConsumptionDate(datum.timestamp, getActiveLocale())}
       rows={rows}
       footer={
         delta !== null
@@ -181,7 +182,7 @@ export function ConsumptionBurnUpChart({
           tickMargin={8}
           minTickGap={24}
           tickFormatter={(timestamp: number) =>
-            formatConsumptionDate(timestamp)
+            formatConsumptionDate(timestamp, getActiveLocale())
           }
         />
         <YAxis

@@ -6,6 +6,8 @@ import { CHART_HEIGHT, CHART_MARGIN } from "@app/components/charts/constants";
 import { ConsumptionProgressBarWithNumbers } from "@app/components/pages/workspace/developers/ConsumptionProgressBar";
 import { SELF_IMPROVING_CONSUMPTION_SECTION_LABEL } from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
 import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { formatDate } from "@app/lib/i18n/format";
 import type { ReinforcementBillingUnit } from "@app/lib/reinforcement/enforcement";
 import {
   useReinforcementBillingUnit,
@@ -75,10 +77,14 @@ function SpendTooltip(
     return null;
   }
 
-  const date = new Date(data.timestamp).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
+  const date = formatDate(
+    new Date(data.timestamp),
+    {
+      month: "short",
+      day: "numeric",
+    },
+    getActiveLocale()
+  );
 
   const rows: { label: string; value: string; colorClassName: string }[] = [];
 
@@ -300,10 +306,14 @@ function SelfImprovingSpendChart({
           tickMargin={8}
           minTickGap={8}
           tickFormatter={(value) =>
-            new Date(value).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-            })
+            formatDate(
+              new Date(value),
+              {
+                month: "short",
+                day: "numeric",
+              },
+              getActiveLocale()
+            )
           }
         />
         <YAxis

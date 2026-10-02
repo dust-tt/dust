@@ -19,6 +19,8 @@ import {
 } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { formatDate } from "@app/lib/i18n/format";
 import {
   isEnterprisePlanPrefix,
   isProOrBusinessPlanCode,
@@ -284,11 +286,15 @@ export function SubscriptionPage() {
   const displayPricingTable = subscription.stripeSubscriptionId === null;
 
   const endDate = subscription.endDate
-    ? new Date(subscription.endDate).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
+    ? formatDate(
+        new Date(subscription.endDate),
+        {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        },
+        getActiveLocale()
+      )
     : null;
 
   if (isLoading) {

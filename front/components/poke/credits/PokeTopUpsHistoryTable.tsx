@@ -1,6 +1,6 @@
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { formatCredits } from "@app/lib/client/credits";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { usePokeTopUpsHistory } from "@app/poke/swr/credits";
 import type { WorkspaceType } from "@app/types/user";
 import { AlertCircle, ContentMessage } from "@dust-tt/sparkle";

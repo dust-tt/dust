@@ -387,11 +387,7 @@ function buildColumns({
                 label={
                   info.row.original.activeMembers !== undefined &&
                   info.row.original.totalMembers !== undefined
-                    ? `${info.row.original.activeMembers.toLocaleString(
-                        "en-US"
-                      )} / ${info.row.original.totalMembers.toLocaleString(
-                        "en-US"
-                      )}`
+                    ? `${formatNumber(info.row.original.activeMembers)} / ${formatNumber(info.row.original.totalMembers)}`
                     : "--"
                 }
               />

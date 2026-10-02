@@ -1,5 +1,6 @@
 import { POOL_OPTIONS } from "@app/components/workspace/analytics/automations/trigger_pool_options";
 import { useTriggerExecutionModes } from "@app/hooks/useTriggerExecutionModes";
+import { formatNumber } from "@app/lib/i18n/format";
 import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
 import { isTriggerExecutionMode } from "@app/types/assistant/triggers";
 import {
@@ -74,7 +75,7 @@ function BulkTriggerPoolForm({
     <>
       <DialogHeader>
         <DialogTitle>
-          Set the pool for {triggerCount.toLocaleString("en-US")} automations
+          Set the pool for {formatNumber(triggerCount)} automations
         </DialogTitle>
         <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
           Runs are billed to the workspace&apos;s credits, or to the credits of
