@@ -1258,6 +1258,25 @@ export class GroupResource extends BaseResource<GroupModel> {
     );
   }
 
+  static async listLimitedGroups(
+    auth: Authenticator
+  ): Promise<GroupResource[]> {
+    const groups = await GroupModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        kind: [...CAP_ELIGIBLE_GROUP_KINDS],
+        groupLimitAwuCredits: { [Op.ne]: null },
+      },
+      order: [
+        ["groupLimitPriority", "ASC"],
+        ["id", "ASC"],
+      ],
+    });
+    return groups
+      .map((group) => new GroupResource(GroupModel, group.get()))
+      .filter((group) => auth.can("read", group));
+  }
+
   /**
    * @cc [owner:rfrenoy,label:security;product;backend] limit-group-drop-not-reassign
    * Each member's limit group is resolved from memberships and priorities alone, and the `read`

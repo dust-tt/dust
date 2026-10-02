@@ -189,6 +189,7 @@ async function loadConsumptionPools(
       id: entry.value,
       group_ids: [...(groupIdsByUserId.get(entry.value) ?? [])].sort(),
       seat_type: "pro",
+      limit_group_id: null,
     })),
     models: removeNulls(
       catalog.model.map((entry) => getModelConfigByModelId(entry.value) ?? null)
