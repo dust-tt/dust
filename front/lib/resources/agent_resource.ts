@@ -3929,7 +3929,7 @@ export class AgentResource
    * `getResaveSource` returns this resource to a caller who can view its content, a
    * caller-independent copy of the current version to a caller holding `write`, and an error to any
    * other caller. The copy's content MUST only flow into a new version of the agent
-   * (`updateConfiguration`, the re-save context of `getActiveWorkspaceAgentConfiguration`) and MUST
+   * (`updateConfiguration`, the YAML patch of `patchAgentConfigurationFromJSON`) and MUST
    * NOT be returned to the caller (see `unreadable-agent-content-hidden`).
    */
   async getResaveSource(
