@@ -3,6 +3,7 @@ import { agentSkillRefsSuite } from "@app/tests/conversational-building-evals/te
 import { architectureSuite } from "@app/tests/conversational-building-evals/test-suites/architecture";
 import { batchEditSuite } from "@app/tests/conversational-building-evals/test-suites/batch-edit";
 import { createAgentSuite } from "@app/tests/conversational-building-evals/test-suites/create-agent";
+import { similarSkillsSuite } from "@app/tests/conversational-building-evals/test-suites/similar-skills";
 import { skillManagementSuite } from "@app/tests/conversational-building-evals/test-suites/skill-management";
 import { skillMetadataSuite } from "@app/tests/conversational-building-evals/test-suites/skill-metadata";
 import { skillRefsSuite } from "@app/tests/conversational-building-evals/test-suites/skill-refs";
@@ -21,4 +22,5 @@ export const allTestSuites: TestSuite[] = [
   agentSkillRefsSuite,
   skillRefsSuite,
   architectureSuite,
+  similarSkillsSuite,
 ];

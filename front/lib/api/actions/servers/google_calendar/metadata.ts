@@ -1,4 +1,5 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { isValidTimezone } from "@app/lib/api/timezone";
 import { z } from "zod";
 
 const conferenceEntryPointsSchema = z
@@ -310,6 +311,7 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = [
               ),
             timezone: z
               .string()
+              .refine(isValidTimezone, "Invalid timezone")
               .describe(
                 "IANA timezone identifier for this participant (e.g., 'America/New_York')."
               ),

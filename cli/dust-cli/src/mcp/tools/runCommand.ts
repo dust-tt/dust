@@ -9,6 +9,7 @@ import type { McpTool } from "../types/tools.js";
 
 export class RunCommandTool implements McpTool {
   name = "run_command";
+  stake = "high" as const;
   description =
     "Execute system commands with full control over arguments, working directory, and timeout. Returns structured output with exit code, stdout, stderr, and command info. Use this for running shell commands, build scripts, tests, or any system operations. " +
     "Commands are scoped to the workspace the CLI was started in: arguments pointing outside it are refused.";

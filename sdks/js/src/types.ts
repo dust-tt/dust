@@ -922,9 +922,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "whitelabel_frames"
   | "user_memory"
   | "similar_agents_check"
-  | "skills_search"
-  | "new_manage_skills_page"
-  | "new_manage_agents_page"
   | "enforce_premium_model_message_limit"
   | "editable_tool_inputs"
   | "skip_free_usage_rate_limit"
@@ -934,6 +931,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "discovery_homepage"
   | "localisation"
   | "co_edition"
+  | "unified_search"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

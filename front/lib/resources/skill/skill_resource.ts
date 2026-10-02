@@ -19,6 +19,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { formatDateTime } from "@app/lib/i18n/format";
 import { hasAll } from "@app/lib/matcher/operators/array";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
@@ -84,7 +85,6 @@ import {
   serializeSkillTag,
   serializeUnavailableSkillTag,
 } from "@app/lib/skills/format";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
@@ -3509,9 +3509,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         });
 
         if (existingArchivedSkill) {
-          const timestamp = formatTimestampToFriendlyDate(
-            existingArchivedSkill.updatedAt.getTime(),
-            "long"
+          const timestamp = formatDateTime(
+            existingArchivedSkill.updatedAt,
+            {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+              hour: "numeric",
+              minute: "numeric",
+              second: "numeric",
+            },
+            "en-US"
           );
           const suffix = ` (archived on ${timestamp}, ${SkillResource.modelIdToSId(existingArchivedSkill)})`;
           const name = existingArchivedSkill.name.slice(
@@ -3702,6 +3710,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       assert(
         auth.hasWorkspacePermission("make_discoverable", "skill"),
         "User is not authorized to update this skill's availability"
+      );
+    }
+
+    if (reinforcement !== undefined && reinforcement !== this.reinforcement) {
+      assert(
+        this.canChangeReinforcement(auth),
+        "User is not authorized to update this skill's self-improvement"
       );
     }
 
@@ -4020,6 +4035,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
     }
     return changedSkillIds;
+  }
+
+  canChangeReinforcement(auth: Authenticator): boolean {
+    return !this.selfImprovementLock || auth.isAdmin();
   }
 
   async updateReinforcement(

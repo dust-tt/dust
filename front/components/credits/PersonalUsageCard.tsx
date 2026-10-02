@@ -7,6 +7,8 @@ import {
   formatRelativeResetDay,
   getTimeframeSecondsFromLiteral,
 } from "@app/lib/client/credits";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { formatDate } from "@app/lib/i18n/format";
 import { useMyUsage, useSeatPlan } from "@app/lib/swr/credits";
 import { useFairUseCredits } from "@app/lib/swr/fair_use_credits";
 import { useWorkspaceUsageStatus } from "@app/lib/swr/user";
@@ -149,10 +151,14 @@ export function PersonalUsageCard({
                   myUsage?.seatType !== "free" &&
                   (() => {
                     const resetAt = new Date(nextCreditResetAt);
-                    const month = resetAt.toLocaleDateString("en-US", {
-                      month: "long",
-                      timeZone: "UTC",
-                    });
+                    const month = formatDate(
+                      resetAt,
+                      {
+                        month: "long",
+                        timeZone: "UTC",
+                      },
+                      getActiveLocale()
+                    );
                     return (
                       <span className="text-xs text-muted-foreground">
                         Resets on {month} {ordinalDay(resetAt.getUTCDate())}
@@ -222,11 +228,15 @@ export function PersonalUsageCard({
                       {fairUseAwuCreditsState.refillSchedule.map(
                         ({ date, credits }) => (
                           <span key={date}>
-                            {new Date(date).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              timeZone: "UTC",
-                            })}
+                            {formatDate(
+                              new Date(date),
+                              {
+                                month: "short",
+                                day: "numeric",
+                                timeZone: "UTC",
+                              },
+                              getActiveLocale()
+                            )}
                             : +{formatCredits(credits)}
                           </span>
                         )
@@ -302,11 +312,15 @@ export function PersonalUsageCard({
                       {premiumModelUsage.refillSchedule.map(
                         ({ date, messages }) => (
                           <span key={date}>
-                            {new Date(date).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              timeZone: "UTC",
-                            })}
+                            {formatDate(
+                              new Date(date),
+                              {
+                                month: "short",
+                                day: "numeric",
+                                timeZone: "UTC",
+                              },
+                              getActiveLocale()
+                            )}
                             : +{messages}
                           </span>
                         )

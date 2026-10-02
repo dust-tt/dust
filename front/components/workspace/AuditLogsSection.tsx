@@ -1,3 +1,4 @@
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import type { AuditLogsPortal } from "@app/lib/api/audit/workos_audit";
 import { useOpenAuditLogsPortal } from "@app/lib/swr/workos";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -5,6 +6,10 @@ import { Button, File04, Page } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 import { WorkspaceSection } from "./WorkspaceSection";
+
+export const AUDIT_LOGS_SECTION_TITLE = "Audit Logs";
+export const AUDIT_LOGS_VIEW_LABEL = "View Logs";
+export const AUDIT_LOGS_CONFIGURE_EXPORT_LABEL = "Configure Export";
 
 interface AuditLogsSectionProps {
   owner: LightWorkspaceType;
@@ -26,7 +31,11 @@ export function AuditLogsSection({ owner }: AuditLogsSectionProps) {
   };
 
   return (
-    <WorkspaceSection title="Audit Logs" icon={File04}>
+    <WorkspaceSection
+      title={AUDIT_LOGS_SECTION_TITLE}
+      icon={File04}
+      sectionId={ADMIN_SECTION_IDS.identity.auditLogs}
+    >
       <div className="flex w-full flex-row items-center gap-2">
         <div className="flex-1">
           <Page.P variant="secondary">
@@ -36,14 +45,14 @@ export function AuditLogsSection({ owner }: AuditLogsSectionProps) {
         </div>
         <div className="flex justify-end gap-2">
           <Button
-            label="View Logs"
+            label={AUDIT_LOGS_VIEW_LABEL}
             size="sm"
             variant="outline"
             disabled={loadingPortal !== null}
             onClick={() => void handleClick("view_logs")}
           />
           <Button
-            label="Configure Export"
+            label={AUDIT_LOGS_CONFIGURE_EXPORT_LABEL}
             size="sm"
             variant="outline"
             disabled={loadingPortal !== null}

@@ -98,11 +98,9 @@ afterEach(() => {
 
 async function setup({
   role = "admin",
-  pageEnabled = true,
   tagsLoaded,
 }: {
   role?: MembershipRoleType;
-  pageEnabled?: boolean;
   tagsLoaded?: Promise<void>;
 } = {}) {
   const { authenticator, user } = await createResourceTest({ role });
@@ -139,7 +137,7 @@ async function setup({
     subscription: authenticator.getNonNullableSubscription(),
     isAdmin: role === "admin",
     isManager: false,
-    featureFlags: pageEnabled ? ["new_manage_agents_page"] : [],
+    featureFlags: [],
     vizUrl: "http://localhost",
     providersHealth: null,
     workspacePermissions: await authenticator.getWorkspacePermissions(),
@@ -220,21 +218,6 @@ function lastSearchBody(fetcherWithBody: ReturnType<typeof vi.fn>) {
 }
 
 describe("search-backed Manage Agents", () => {
-  it("keeps the legacy page when the flag is off", async () => {
-    const { fetcherWithBody, fetcher, mount } = await setup({
-      pageEnabled: false,
-    });
-    mount();
-
-    expect(
-      await screen.findByPlaceholderText("Search (Name, Editors)")
-    ).toBeInTheDocument();
-    expect(fetchedUrls(fetcher)).toContainEqual(
-      expect.stringContaining("/assistant/agent_configurations?view=manage")
-    );
-    expect(fetcherWithBody).not.toHaveBeenCalled();
-  });
-
   it("loads custom agents by usage and opens details on click", async () => {
     const { agent, fetcherWithBody, fetcher, mount } = await setup();
     mount();

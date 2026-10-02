@@ -21,6 +21,15 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+export const ALLOW_SELF_IMPROVING_SKILLS_LABEL = "Allow self-improving skills";
+export const ENABLE_BATCH_PROCESSING_LABEL = "Enable batch processing";
+export const DEFAULT_COST_CAP_PER_SKILL_LABEL = "Default cost cap per skill";
+export const GLOBAL_SPENDING_CAP_LABEL = "Global spending cap";
+export const SELF_IMPROVING_SETTINGS_SECTION_LABEL = "Settings";
+export const SELF_IMPROVING_SKILLS_LIST_SECTION_LABEL = "Skills";
+export const SELF_IMPROVING_CONSUMPTION_SECTION_LABEL =
+  "Current period consumption";
+
 export function capUnitLabel(unit: ReinforcementBillingUnit): string {
   switch (unit) {
     case "awu_credits":
@@ -67,11 +76,11 @@ export function SelfImprovingSkillsSettingsSection({
 
   return (
     <Page.Vertical align="stretch" gap="md">
-      <Page.SectionHeader title="Settings" />
+      <Page.SectionHeader title={SELF_IMPROVING_SETTINGS_SECTION_LABEL} />
       <ContextItem.List>
         <div className="h-full border-b border-border" />
         <ContextItem
-          title="Allow self-improving skills"
+          title={ALLOW_SELF_IMPROVING_SKILLS_LABEL}
           visual={<></>}
           hasSeparatorIfLast={true}
           action={
@@ -103,7 +112,7 @@ function SelfImprovingBatchModeToggle({
 
   return (
     <ContextItem
-      title="Enable batch processing"
+      title={ENABLE_BATCH_PROCESSING_LABEL}
       visual={<></>}
       hasSeparatorIfLast={true}
       action={
@@ -158,7 +167,7 @@ function SelfImprovementCapPerSkillItem({
 
   return (
     <ContextItem
-      title="Default cost cap per skill"
+      title={DEFAULT_COST_CAP_PER_SKILL_LABEL}
       visual={<></>}
       hasSeparatorIfLast={true}
       action={
@@ -216,7 +225,7 @@ function SelfImprovingCapItem({
 
   return (
     <ContextItem
-      title="Global spending cap"
+      title={GLOBAL_SPENDING_CAP_LABEL}
       visual={<></>}
       hasSeparatorIfLast={true}
       action={

@@ -1,5 +1,11 @@
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
+import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
+import {
+  CREATE_SECRET_LABEL,
+  DEVELOPER_SECRETS_PAGE_TITLE,
+} from "@app/components/pages/workspace/developers/secretsAdminSearchEntries";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
@@ -282,51 +288,53 @@ export function SecretsPage() {
 
         <Page.Vertical gap="xl" align="stretch">
           <Page.Header
-            title="Developer Secrets"
+            title={DEVELOPER_SECRETS_PAGE_TITLE}
             description="Secrets usable in Dust apps or MCP servers to safely store sensitive data."
           />
-          <Page.Vertical align="stretch" gap="md">
-            <div className="flex items-center gap-2">
-              <SearchInput
-                className="flex-grow"
-                name="secrets-search"
-                placeholder="Search secrets"
-                value={searchQuery}
-                onChange={setSearchQuery}
-              />
-              <Button
-                label="API Reference"
-                size="sm"
-                variant="outline"
-                icon={BookOpen01}
-                onClick={() => {
-                  window.open(
-                    "https://docs.dust.tt/reference/developer-platform-overview#developer-secrets",
-                    "_blank"
-                  );
-                }}
-              />
-              {isAdmin && (
-                <Button
-                  label="Create Secret"
-                  variant="primary"
-                  onClick={() => {
-                    setNewDustAppSecret(defaultSecret);
-                    setIsInputNameDisabled(false);
-                    setIsNewSecretPromptOpen(true);
-                  }}
-                  icon={Plus}
-                  disabled={isGenerating || isRevoking}
+          <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.secrets.secrets}>
+            <Page.Vertical align="stretch" gap="md">
+              <div className="flex items-center gap-2">
+                <SearchInput
+                  className="flex-grow"
+                  name="secrets-search"
+                  placeholder="Search secrets"
+                  value={searchQuery}
+                  onChange={setSearchQuery}
                 />
-              )}
-            </div>
-            <SecretsTable
-              isLoading={isSecretsLoading}
-              isError={!!isSecretsError}
-              rows={rows}
-              searchQuery={searchQuery}
-            />
-          </Page.Vertical>
+                <Button
+                  label="API Reference"
+                  size="sm"
+                  variant="outline"
+                  icon={BookOpen01}
+                  onClick={() => {
+                    window.open(
+                      "https://docs.dust.tt/reference/developer-platform-overview#developer-secrets",
+                      "_blank"
+                    );
+                  }}
+                />
+                {isAdmin && (
+                  <Button
+                    label={CREATE_SECRET_LABEL}
+                    variant="primary"
+                    onClick={() => {
+                      setNewDustAppSecret(defaultSecret);
+                      setIsInputNameDisabled(false);
+                      setIsNewSecretPromptOpen(true);
+                    }}
+                    icon={Plus}
+                    disabled={isGenerating || isRevoking}
+                  />
+                )}
+              </div>
+              <SecretsTable
+                isLoading={isSecretsLoading}
+                isError={!!isSecretsError}
+                rows={rows}
+                searchQuery={searchQuery}
+              />
+            </Page.Vertical>
+          </AdminSectionAnchor>
         </Page.Vertical>
         <div className="h-12" />
       </>

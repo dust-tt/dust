@@ -1,6 +1,6 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { formatDateTime } from "@app/lib/i18n/format";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { MembershipInvitationTypeWithLink } from "@app/types/membership_invitation";
 import {
   Clipboard,

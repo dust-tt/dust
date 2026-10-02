@@ -1,4 +1,5 @@
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
+import { formatDate } from "@app/lib/i18n/format";
 import { useMemberDetails } from "@app/lib/swr/assistants";
 import type { RoleType, WorkspaceType } from "@app/types/user";
 import {
@@ -21,12 +22,12 @@ type MemberDetailsProps = {
   userId: string | null;
 };
 
-const formatDate = (dateString: string | null) => {
+const formatMembershipDate = (dateString: string | null) => {
   if (!dateString) {
     return null;
   }
   const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
+  return formatDate(date, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -100,9 +101,9 @@ export function MemberDetails({ userId, onClose, owner }: MemberDetailsProps) {
                   {(userDetails.startAt ?? userDetails.endAt) && (
                     <p className="text-sm text-muted-foreground">
                       {userDetails.revoked && userDetails.endAt
-                        ? `Left the workspace: ${formatDate(userDetails.endAt)}`
+                        ? `Left the workspace: ${formatMembershipDate(userDetails.endAt)}`
                         : userDetails.startAt
-                          ? `Joined the workspace: ${formatDate(userDetails.startAt)}`
+                          ? `Joined the workspace: ${formatMembershipDate(userDetails.startAt)}`
                           : null}
                     </p>
                   )}

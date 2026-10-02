@@ -1,7 +1,9 @@
 import { WorkspaceGroupsList } from "@app/components/groups/WorkspaceGroupsList";
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
+import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
 import { WorkspaceMembersSection } from "@app/components/members/WorkspaceMembersSection";
 import { useQueryParams } from "@app/hooks/useQueryParams";
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isSCIMEnabled } from "@app/lib/plans/scim";
 import {
@@ -47,22 +49,26 @@ export function MembersPage() {
               <TabsTrigger value="groups" label="Groups" />
             </TabsList>
             <TabsContent value="members" className="flex flex-col gap-4">
-              {isManager ? (
-                <WorkspacePeopleMembers />
-              ) : (
-                <WorkspaceMembersSection
-                  currentUser={user}
-                  owner={owner}
-                  subscription={subscription}
-                  isProvisioningEnabled={false}
-                  isManualInvitationsEnabled={false}
-                  perSeatPricing={null}
-                  hasAvailableSeats={false}
-                />
-              )}
+              <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.people.members}>
+                {isManager ? (
+                  <WorkspacePeopleMembers />
+                ) : (
+                  <WorkspaceMembersSection
+                    currentUser={user}
+                    owner={owner}
+                    subscription={subscription}
+                    isProvisioningEnabled={false}
+                    isManualInvitationsEnabled={false}
+                    perSeatPricing={null}
+                    hasAvailableSeats={false}
+                  />
+                )}
+              </AdminSectionAnchor>
             </TabsContent>
             <TabsContent value="groups" className="flex flex-col gap-4">
-              <WorkspaceGroupsList owner={owner} />
+              <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.people.groups}>
+                <WorkspaceGroupsList owner={owner} />
+              </AdminSectionAnchor>
             </TabsContent>
           </Tabs>
         </div>

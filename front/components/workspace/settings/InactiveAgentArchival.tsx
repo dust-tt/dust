@@ -17,6 +17,7 @@ import { useState } from "react";
 export const INACTIVE_AGENT_ARCHIVAL_LABEL = "Archive unused agents";
 export const INACTIVE_AGENT_ARCHIVAL_DESCRIPTION =
   "Automatically archive unused agents";
+export const INACTIVITY_THRESHOLD_LABEL = "Inactivity threshold";
 
 interface InactiveAgentArchivalProps {
   owner: WorkspaceType;
@@ -92,7 +93,7 @@ export function InactiveAgentArchival({ owner }: InactiveAgentArchivalProps) {
       <GovernanceSettingRowLayout
         label={
           <span className={cn(!isEnabled && "text-faint")}>
-            Inactivity threshold
+            {INACTIVITY_THRESHOLD_LABEL}
           </span>
         }
         description={

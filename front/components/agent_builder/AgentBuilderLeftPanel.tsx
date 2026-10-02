@@ -24,6 +24,7 @@ interface AgentBuilderLeftPanelProps {
   initialRequestedSpaceIds?: string[];
   isEditorGateVisible: boolean;
   isAddingSelfAsEditor: boolean;
+  isEditorsListUnavailable: boolean;
   onAddSelfAsEditor: () => void;
 }
 
@@ -37,6 +38,7 @@ export function AgentBuilderLeftPanel({
   initialRequestedSpaceIds,
   isEditorGateVisible,
   isAddingSelfAsEditor,
+  isEditorsListUnavailable,
   onAddSelfAsEditor,
 }: AgentBuilderLeftPanelProps) {
   const { owner } = useAgentBuilderContext();
@@ -81,6 +83,7 @@ export function AgentBuilderLeftPanel({
             initialRequestedSpaceIds={initialRequestedSpaceIds}
             isEditorGateVisible={isEditorGateVisible}
             isAddingSelfAsEditor={isAddingSelfAsEditor}
+            isEditorsListUnavailable={isEditorsListUnavailable}
             onAddSelfAsEditor={onAddSelfAsEditor}
           />
         </div>

@@ -1,4 +1,3 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
@@ -9,6 +8,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AppFactory } from "@app/tests/utils/AppFactory";
+import { getAgentConfiguration } from "@app/tests/utils/agent_configuration_reads";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -1160,9 +1160,9 @@ describe("GET /api/w/:wId/assistant/agent_configurations - instructionsHtml", ()
       variant: "light",
     });
     expect(lightAgent).not.toBeNull();
-    // instructionsHtml is not part of LightAgentConfigurationType but we verify
-    // the runtime value is null (not leaked from the DB).
-    expect(lightAgent).toHaveProperty("instructionsHtml", null);
+    // instructionsHtml is not part of LightAgentConfigurationType: verify it is
+    // not leaked from the DB at runtime.
+    expect(lightAgent).not.toHaveProperty("instructionsHtml");
 
     // Full variant (via getAgentConfiguration) should include instructionsHtml.
     const fullAgent = await getAgentConfiguration(auth, {

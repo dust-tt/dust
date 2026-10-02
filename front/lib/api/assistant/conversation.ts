@@ -503,6 +503,15 @@ export function isUserMessageContextValid(
   }
 }
 
+/**
+ * @cc [owner:davidebbo,label:security;product] steering-requires-authenticated-author
+ * Pending (steering) messages are later run with their author's authority, or with the running
+ * loop's authority when they have no author (see `updateAgentMessageWithFinalStatus`). A message
+ * MUST only be posted as `pending` when `auth` is a system key, or `auth` has a user and the
+ * message's author is that user or nobody. Otherwise (`auth` is not a system key and either has no
+ * user or the author is only attributed from `context.email`), the message MUST be posted as
+ * `visible` and answered with `auth`'s own authority.
+ */
 export async function postUserMessage(
   auth: Authenticator,
   {
@@ -793,6 +802,12 @@ export async function postUserMessage(
     context.email
   );
 
+  // A user resolved from `context.email` is attributed, not authenticated: steering would run the
+  // promoted message as that user. System keys are trusted to act as any workspace member.
+  const canSteer =
+    auth.isSystemKey() ||
+    (user !== null && (messageUser === null || messageUser.sId === user.sId));
+
   const resolvedUserMentions = await resolveUserMentions(auth, {
     mentions,
     conversation,
@@ -886,9 +901,12 @@ export async function postUserMessage(
     // We set the visibility of the user message to "pending" if steering is enabled, we have a
     // running agent message and there are agent mentions in the user messsage. If we are handing
     // over we don't attempt steering as the intent is to start a new agentic loop and stop the
-    // parent one ASAP.
+    // parent one ASAP. Callers that cannot steer get their own agentic loop instead.
     const visibility: MessageVisibility =
-      runningAgentMessage && explicitAgentMentions.length > 0 && !isHandover
+      runningAgentMessage &&
+      explicitAgentMentions.length > 0 &&
+      !isHandover &&
+      canSteer
         ? "pending"
         : "visible";
 
@@ -2529,7 +2547,11 @@ export async function checkMessagesLimit(
         });
       }
     }
-  } else if (user && !isFreeOrigin(context.origin)) {
+  } else if (
+    user &&
+    !isFreeOrigin(context.origin) &&
+    !isProgrammaticUsage(auth, { userMessageOrigin: context.origin })
+  ) {
     // Non-credit-priced plans: no workspace pool and no Metronome per-user cap,
     // so the per-user credit limit is enforced solely from the Redis fixed-window
     // counter, bucketed on the UTC calendar month. Admin-set (poke) workspace

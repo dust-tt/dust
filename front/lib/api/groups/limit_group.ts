@@ -9,7 +9,8 @@ import type { UserResource } from "@app/lib/resources/user_resource";
  * limit, the one with the lowest `groupLimitPriority`. Recording, enforcement and UI data MUST resolve
  * it through this function, which returns nothing when group limits are not enabled.
  *
- * Returns each resolved member's limit group keyed by the member's sId; members without one are absent.
+ * Returns each resolved member's limit group keyed by the member's sId; members without one, or whose
+ * limit group the caller cannot `read`, are absent.
  */
 export async function resolveLimitGroupsForUsers(
   auth: Authenticator,
@@ -20,8 +21,7 @@ export async function resolveLimitGroupsForUsers(
   }
 
   const limitGroupByUserModelId =
-    await GroupResource.dangerouslyListLimitGroupByUserModelIdInWorkspace({
-      workspace: auth.getNonNullableWorkspace(),
+    await GroupResource.listLimitGroupByUserModelIdInWorkspace(auth, {
       userModelIds: users.map((user) => user.id),
     });
 

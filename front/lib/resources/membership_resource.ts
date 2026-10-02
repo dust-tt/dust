@@ -1301,6 +1301,12 @@ export class MembershipResource extends BaseResource<MembershipModel> {
    * Caller of this method should call `ServerSideTracking.trackUpdateMembershipRole`. Prefer
    * `updateMembershipRoleAndTrack` from `@app/lib/api/membership` which handles it.
    */
+  /**
+   * @cc [owner:rfrenoy,label:security;backend] role-write-covers-unended-rows
+   * A role update MUST be written to every membership row of the (user, workspace) whose
+   * `endAt` is null or not in the past, including a scheduled seat-change row that has not
+   * started yet. A scheduled row MUST NOT retain a role the active row no longer carries.
+   */
   static async updateMembershipRole({
     user,
     workspace,
@@ -1380,7 +1386,16 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
       await MembershipModel.update(
         { role: newRole },
-        { where: { id: membership.id }, transaction }
+        {
+          where: {
+            userId: user.id,
+            workspaceId: workspace.id,
+            endAt: {
+              [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }],
+            },
+          },
+          transaction,
+        }
       );
 
       const workspaceId = workspace.sId;

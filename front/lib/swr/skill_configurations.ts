@@ -7,7 +7,12 @@ import type {
   DetectSkillsResponseBody,
 } from "@app/lib/skill_detection";
 import { parseGitHubRepoUrl } from "@app/lib/skill_detection";
-import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import {
+  emptyArray,
+  useFetcher,
+  useSWRInfiniteWithDefaults,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
 import { getManageSkillsRoute } from "@app/lib/utils/router";
 import type { GetSkillHistoryResponseBody } from "@app/types/api/assistant/skills/history";
 import type { SearchType } from "@app/types/api/search";
@@ -211,6 +216,8 @@ export function useSearchSkills({
   filters,
   facets,
   disabled,
+  keepPreviousData = true,
+  debounceMs = SEARCH_SKILLS_DEBOUNCE_MS,
 }: {
   owner: LightWorkspaceType;
   searchEndpoint?: string;
@@ -226,6 +233,10 @@ export function useSearchSkills({
   filters?: SkillSearchFilters;
   facets?: SkillSearchFacet[];
   disabled?: boolean;
+  /** When false, clear results while the next query loads (e.g. command palette). */
+  keepPreviousData?: boolean;
+  /** Set to 0 when the caller already debounces the search term. */
+  debounceMs?: number;
 }) {
   const { fetcherWithBody } = useFetcher();
   const { mutate: globalMutate } = useSWRConfig();
@@ -239,7 +250,7 @@ export function useSearchSkills({
       ? ""
       : truncatedSearchTerm;
   const { debouncedValue: debouncedSearchTerm, setValue: setSearchTerm } =
-    useDebounce(query, { delay: SEARCH_SKILLS_DEBOUNCE_MS });
+    useDebounce(query, { delay: debounceMs });
   const isDebouncing = query !== debouncedSearchTerm;
 
   useEffect(() => {
@@ -276,7 +287,7 @@ export function useSearchSkills({
       disabled: disabled || isDebouncing,
       // Keep results visible while the next query debounces or loads, instead of
       // flashing a loading placeholder on every keystroke.
-      keepPreviousData: true,
+      keepPreviousData,
     }
   );
 
@@ -297,6 +308,90 @@ export function useSearchSkills({
     isSkillsLoading: !disabled && (isDebouncing || isLoading),
     mutate,
     mutateRegardlessOfQueryParams,
+  };
+}
+
+/**
+ * @cc [owner:aubin-tchoi,label:react] skill-search-infinite-pages
+ * Pages accumulate for one query only. A new query starts at offset zero, and
+ * pagination must not advance while disabled, loading, or showing a previous query.
+ */
+export function useSearchSkillsInfinite({
+  owner,
+  searchTerm,
+  limit,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  searchTerm: string;
+  limit: number;
+  disabled?: boolean;
+}) {
+  const { fetcherWithBody } = useFetcher();
+  const query = searchTerm.slice(0, SEARCH_SKILLS_QUERY_MAX_LENGTH);
+  const { debouncedValue: debouncedSearchTerm, setValue: setSearchTerm } =
+    useDebounce(query, { delay: SEARCH_SKILLS_DEBOUNCE_MS });
+  const isDebouncing = query !== debouncedSearchTerm;
+
+  useEffect(() => {
+    setSearchTerm(query);
+  }, [query, setSearchTerm]);
+
+  const { data, error, size, setSize, isLoading, isValidating } =
+    useSWRInfiniteWithDefaults(
+      (pageIndex: number, previousPage: SearchSkillsResponseBody | null) => {
+        if (previousPage && !previousPage.hasMore) {
+          return null;
+        }
+
+        return [
+          `/api/w/${owner.sId}/skills/search`,
+          { query: debouncedSearchTerm, offset: pageIndex * limit, limit },
+        ] as const;
+      },
+      async ([url, body]) => {
+        const response: SearchSkillsResponseBody = await fetcherWithBody([
+          url,
+          body,
+          "POST",
+        ]);
+        return { ...response, searchTerm: body.query };
+      },
+      {
+        disabled: disabled || isDebouncing,
+        revalidateFirstPage: false,
+        // Keep the current list visible while the next query debounces or loads.
+        keepPreviousData: true,
+      }
+    );
+
+  const hasMore = data?.at(-1)?.hasMore ?? false;
+  const isSkillsLoading =
+    !disabled &&
+    (isDebouncing ||
+      isLoading ||
+      isValidating ||
+      (!error && size > (data?.length ?? 0)));
+  const loadMore = useCallback(() => {
+    if (
+      !disabled &&
+      !isSkillsLoading &&
+      !error &&
+      hasMore &&
+      data?.[0]?.searchTerm === query
+    ) {
+      void setSize(size + 1);
+    }
+  }, [disabled, isSkillsLoading, error, hasMore, data, query, setSize, size]);
+
+  return {
+    skills:
+      (disabled ? undefined : data?.flatMap((page) => page.skills)) ??
+      emptyArray<SkillListItemType>(),
+    resolvedSearchTerm: disabled ? null : (data?.[0]?.searchTerm ?? null),
+    isSkillsLoading,
+    hasMore,
+    loadMore,
   };
 }
 

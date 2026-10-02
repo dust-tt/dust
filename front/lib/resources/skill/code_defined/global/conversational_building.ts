@@ -6,13 +6,15 @@ import {
   SUGGEST_TOOL_NAME,
 } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import {
+  GET_SKILL_DETAILS_TOOL_NAME,
   GET_TOOL_DETAILS_TOOL_NAME,
-  LIST_AGENTS_TOOL_NAME,
   LIST_MODELS_TOOL_NAME,
-  LIST_SKILLS_TOOL_NAME,
+  LIST_SIMILAR_SKILLS_TOOL_NAME,
   LIST_TOOLS_TOOL_NAME,
   LIST_WORKSPACE_MEMBERS_TOOL_NAME,
+  SEARCH_AGENTS_TOOL_NAME,
   SEARCH_KNOWLEDGE_TOOL_NAME,
+  SEARCH_SKILLS_TOOL_NAME,
   WORKSPACE_MANAGEMENT_SERVER_NAME,
 } from "@app/lib/api/actions/servers/workspace_management/metadata";
 import {
@@ -82,6 +84,7 @@ Determine what the user wants to achieve with this interaction. If it is not cle
 Step 4: Plan the change
 Build a plan from the retrieved configuration and the user's intent. Do not call \`${SUGGEST}\` yet.
 Apply <good_entity>, <architecture_guidance>, <preserve_entity_goals> and, depending on the entity, <agent_guidance> or <skill_guidance>.
+When the plan creates a skill, follow <avoid_duplicates> first.
 Determine which research is required (see <company_data_guidance>).
 It is acceptable to change the plan mid-execution based on findings.
 
@@ -97,12 +100,13 @@ Refer to <workflow_visualization> when the user asks for a diagram of an entity 
 
   discoveryStep: `<discovery_step>
 Tools operate on entity ids, not names. Use these tools to get up-to-date information:
-- \`${managementToolName(LIST_AGENTS_TOOL_NAME)}\`: find all agents and resolve a name to an id.
-- \`${managementToolName(LIST_SKILLS_TOOL_NAME)}\`: find all skills and resolve a name to an id.
+- \`${managementToolName(SEARCH_AGENTS_TOOL_NAME)}\`: search agents by name and resolve a name to an id.
+- \`${managementToolName(SEARCH_SKILLS_TOOL_NAME)}\`: search skills by name and resolve a name to an id.
 - \`${managementToolName(LIST_TOOLS_TOOL_NAME)}\`: find the tools that can be equipped on agents and skills and resolve a name to an id.
 - \`${managementToolName(GET_TOOL_DETAILS_TOOL_NAME)}\`: a tool's description and the functions it exposes with their parameters. Use it before referencing a tool in a suggestion.
 - \`${managementToolName(LIST_MODELS_TOOL_NAME)}\`: the models an agent can be set to, with their \`modelId\` and supported reasoning efforts. Use it before suggesting a model change, except for the tier models of <architecture_guidance> whose \`modelId\` is already known.
 - \`${managementToolName(SEARCH_KNOWLEDGE_TOOL_NAME)}\`: without a query, the knowledge sources (data source views) of the workspace; with a query, the sources and document nodes matching it. Use it before referencing knowledge in a suggestion (see <knowledge_guidance> and <knowledge_nodes>).
+- \`${managementToolName(LIST_SIMILAR_SKILLS_TOOL_NAME)}\`: the ids of the existing skills serving the same purpose as the given skill description (see <avoid_duplicates>).
 - \`${managementToolName(LIST_WORKSPACE_MEMBERS_TOOL_NAME)}\`: information about members (pass \`userIds\` to look up specific people, e.g. to change an agent's or a skill's editors).
 - \`${buildingToolName(DESCRIBE_SKILL_TOOL_NAME)}\`: a custom skill's name, settings, and instructions as HTML whose blocks carry a \`data-block-id\`. Call it to get any info about a skill before acting on it; the block ids are required to target edits.
 - \`${buildingToolName(DESCRIBE_AGENT_TOOL_NAME)}\`: an agent's full configuration, with instructions as HTML whose blocks carry a \`data-block-id\`. Call it before targeting instruction edits on an agent; the block ids are required to target edits.
@@ -149,7 +153,16 @@ Id can come either from the <discovery_step> or in the output of the suggestion 
 ALWAYS mention the edited entity in the message that carries its suggestion directives, so the user can review the entity next to the suggestions.
 Exception: an agent or a skill created by a suggestion has no id yet. Name it in plain text, NEVER with a mention directive.
 NEVER invent an id, and NEVER mention an entity you have not resolved.
+Mention directives only render in your response text. In tool inputs, such as the question and options of \`ask_user_question\`, name the entity in plain text, NEVER with a mention directive.
 </entity_mentions>`,
+
+  avoidDuplicates: `<avoid_duplicates>
+Before suggesting a \`create_skill\`, check that the workspace does not already have a skill serving the same purpose: call \`${managementToolName(LIST_SIMILAR_SKILLS_TOOL_NAME)}\` with the agent-facing description you plan to give it, not its instructions.
+When it returns ids, do NOT create the skill yet. Read the instructions of each returned skill with \`${managementToolName(GET_SKILL_DETAILS_TOOL_NAME)}\` and compare them with the skill you plan to create:
+- If every returned skill actually serves a different purpose, continue with the creation without asking the user.
+- If at least one serves the same purpose, do not create the skill, even if the user asked you to go ahead. Name each such skill with its mention directive in your response (see <entity_mentions>), say in one sentence what it already does, and ask the user whether they really want a new skill or would rather use or update the existing one. If you ask through \`ask_user_question\`, name the skills in its question and options in plain text.
+In that case, only create the skill once the user confirms they want a new one, and do not check again for a skill the user already confirmed.
+</avoid_duplicates>`,
 
   preserveEntityGoals: `<preserve_entity_goals>
 Before suggesting a change, understand the entity's purpose from its description and instructions, and make sure the change serves that purpose.
@@ -188,9 +201,9 @@ ${KNOWLEDGE_GUIDANCE_SECTION}
 
   agentCapabilities: `<agent_capabilities>
 Skills, tools and sub-agents are added to or removed from an agent with the \`skills\`, \`tools\` and \`subAgents\` fields of \`edit_agent\`, or given to a new agent by \`create_agent\`, never by writing about them in its instructions.
-- Skills: take the ids of the skills to add from \`${managementToolName(LIST_SKILLS_TOOL_NAME)}\`; only active skills can be added, and an unpublished skill only by one of its editors. Take the ids of the skills to remove from the agent's skills in \`${buildingToolName(DESCRIBE_AGENT_TOOL_NAME)}\`.
+- Skills: take the ids of the skills to add from \`${managementToolName(SEARCH_SKILLS_TOOL_NAME)}\`; only active skills can be added, and an unpublished skill only by one of its editors. Take the ids of the skills to remove from the agent's skills in \`${buildingToolName(DESCRIBE_AGENT_TOOL_NAME)}\`.
 - Tools: take the ids of the tools to add from \`${managementToolName(LIST_TOOLS_TOOL_NAME)}\`, and the ids of the tools to remove from the agent's tools in \`${buildingToolName(DESCRIBE_AGENT_TOOL_NAME)}\`. Only tools that need no configuration can be added or removed: for a knowledge tool or a tool with settings to pick, tell the user to change it from the agent builder.
-- Sub-agents: agents the agent can run to delegate a task. Before creating one, apply <architecture_guidance>: NEVER create a sub-agent that only carries instructions, even when the user asks for one, suggest a skill instead. Take the ids of the active agents to add from \`${managementToolName(LIST_AGENTS_TOOL_NAME)}\`, and the ids of the sub-agents to remove from the agent's tools in \`${buildingToolName(DESCRIBE_AGENT_TOOL_NAME)}\`. An agent created in the same call has no id yet but can still be a sub-agent: give its \`create_agent\` a \`ref\` and pass that ref in \`subAgentRefs\` or \`addAgentRefs\`, so both are created and linked in one call. An agent cannot be its own sub-agent.
+- Sub-agents: agents the agent can run to delegate a task. Before creating one, apply <architecture_guidance>: NEVER create a sub-agent that only carries instructions, even when the user asks for one, suggest a skill instead. Take the ids of the active agents to add from \`${managementToolName(SEARCH_AGENTS_TOOL_NAME)}\`, and the ids of the sub-agents to remove from the agent's tools in \`${buildingToolName(DESCRIBE_AGENT_TOOL_NAME)}\`. An agent created in the same call has no id yet but can still be a sub-agent: give its \`create_agent\` a \`ref\` and pass that ref in \`subAgentRefs\` or \`addAgentRefs\`, so both are created and linked in one call. An agent cannot be its own sub-agent.
 - Model: take the \`modelId\` from \`${managementToolName(LIST_MODELS_TOOL_NAME)}\`, resolving the model the user names to its exact \`modelId\`, without the provider prefix \`${buildingToolName(DESCRIBE_AGENT_TOOL_NAME)}\` shows. Only pass a \`reasoningEffort\` the model lists as supported, and only when the user asks for one or the model change calls for it.
 - Structured output: Only set structured output when explicitly requested, see <structured_output>.
 - Prefer adding a skill that wraps a tool over adding the tool alone (see <skills_tools_guidance>).
@@ -277,6 +290,7 @@ const CONVERSATIONAL_BUILDING_INSTRUCTIONS = [
   SECTIONS.suggestionContext,
   SECTIONS.batching,
   SECTIONS.entityMentions,
+  SECTIONS.avoidDuplicates,
   SECTIONS.preserveEntityGoals,
   SECTIONS.goodEntity,
   SECTIONS.architectureGuidance,
@@ -304,6 +318,6 @@ export const conversationalBuildingSkill = {
     { name: BUILDING_AGENTS_AND_SKILLS_SERVER_NAME },
     { name: WORKSPACE_MANAGEMENT_SERVER_NAME },
   ],
-  version: 2,
+  version: 3,
   icon: "ActionListCheckIcon",
 } as const satisfies GlobalSkillDefinition;

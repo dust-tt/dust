@@ -3,12 +3,14 @@ import { PodHeaderActions } from "@app/components/pod/PodHeaderActions";
 import { PodNavAddFileTabButton } from "@app/components/pod/PodNavAddFileTabButton";
 import { PodPageContent } from "@app/components/pod/PodPageContent";
 import { useActivePodId } from "@app/hooks/useActivePodId";
+import { useAgentFromSearchParam } from "@app/hooks/useAgentFromSearchParam";
 import { useScopedPodUiPreferences } from "@app/hooks/useScopedUIPreferences";
 import {
   DEFAULT_POD_UI_PREFERENCES,
   isValidPodTabValue,
   usePodTabs,
 } from "@app/hooks/useSpaceProjectTabs";
+import { useUserFromSearchParam } from "@app/hooks/useUserFromSearchParam";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { usePodFiles } from "@app/lib/swr/pods";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
@@ -58,6 +60,11 @@ export function PodPage() {
   const owner = useWorkspace();
   const { user } = useAuth();
   const podId = useActivePodId();
+
+  // Consume ?user= before ?agent= so a user deep-link wins and clears any agent.
+  useUserFromSearchParam(owner.sId);
+  // Consume ?agent=: fetch agent and set it in the pod input bar (one-shot; no URL mirror).
+  useAgentFromSearchParam(owner.sId);
 
   const {
     spaceInfo: podInfo,

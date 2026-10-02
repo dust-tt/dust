@@ -12,10 +12,15 @@ pattern unverified_workspace_bypass() {
     `dangerouslyBypassWorkspaceIsolationSecurity: true`
 }
 
-unverified_workspace_bypass() as $prop where {
-    register_diagnostic(
-        span = $prop,
-        message = "Usage of dangerouslyBypassWorkspaceIsolationSecurity requires a preceding comment starting with 'WORKSPACE_ISOLATION_BYPASS:' explaining the security bypass.",
-        severity = "warn"
-    )
+// Skip structural matching when the source cannot contain this rule's target.
+// Keep backslashes as candidates so escaped spellings are still checked.
+file(body = $body) where {
+    $body <: or { includes "dangerouslyBypassWorkspaceIsolationSecurity", includes "\\" },
+    $body <: contains bubble unverified_workspace_bypass() as $prop where {
+        register_diagnostic(
+            span = $prop,
+            message = "Usage of dangerouslyBypassWorkspaceIsolationSecurity requires a preceding comment starting with 'WORKSPACE_ISOLATION_BYPASS:' explaining the security bypass.",
+            severity = "warn"
+        )
+    }
 }

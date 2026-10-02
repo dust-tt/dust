@@ -8,7 +8,7 @@ import {
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
 import type { PokeMCPServerViewSpaceAvailabilityType } from "@app/lib/api/poke/mcp_server_views";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import type { LightWorkspaceType } from "@app/types/user";
 
 interface MCPServerSpaceAvailabilityTableProps {

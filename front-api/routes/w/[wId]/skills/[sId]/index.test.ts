@@ -1344,6 +1344,106 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
   });
 });
 
+describe("PATCH /api/w/:wId/skills/:sId - self-improvement lock", () => {
+  function saveBody(skill: SkillResource, reinforcement: string) {
+    return {
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: skill.instructions,
+      icon: skill.icon,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: skill.instructionsHtml,
+      reinforcement,
+    };
+  }
+
+  it("denies a reinforcement change to a non-admin editor of a locked skill", async () => {
+    const { workspace, skill, requestUserAuth } = await setupTest({
+      skillOwnerRole: "user",
+      requestUserRole: "user",
+    });
+    await skill.updateReinforcement("off");
+    await skill.updateSelfImprovementLock(true);
+
+    const response = await patchSkill(
+      workspace,
+      skill.sId,
+      saveBody(skill, "on")
+    );
+
+    expect(response.status).toBe(403);
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill?.reinforcement).toBe("off");
+  });
+
+  it("lets a non-admin editor save a locked skill when reinforcement is unchanged", async () => {
+    const { workspace, skill, requestUserAuth } = await setupTest({
+      skillOwnerRole: "user",
+      requestUserRole: "user",
+    });
+    await skill.updateReinforcement("off");
+    await skill.updateSelfImprovementLock(true);
+
+    const response = await patchSkill(workspace, skill.sId, {
+      ...saveBody(skill, "off"),
+      name: "Renamed By Editor",
+    });
+
+    expect(response.status).toBe(200);
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill?.name).toBe("Renamed By Editor");
+    expect(updatedSkill?.reinforcement).toBe("off");
+  });
+
+  it("lets an admin editor change reinforcement on a locked skill", async () => {
+    const { workspace, skill, requestUserAuth } = await setupTest();
+    await skill.updateReinforcement("off");
+    await skill.updateSelfImprovementLock(true);
+
+    const response = await patchSkill(
+      workspace,
+      skill.sId,
+      saveBody(skill, "on")
+    );
+
+    expect(response.status).toBe(200);
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill?.reinforcement).toBe("on");
+  });
+
+  it("lets a non-admin editor change reinforcement on an unlocked skill", async () => {
+    const { workspace, skill, requestUserAuth } = await setupTest({
+      skillOwnerRole: "user",
+      requestUserRole: "user",
+    });
+    await skill.updateReinforcement("off");
+
+    const response = await patchSkill(
+      workspace,
+      skill.sId,
+      saveBody(skill, "on")
+    );
+
+    expect(response.status).toBe(200);
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill?.reinforcement).toBe("on");
+  });
+});
+
 describe("PATCH /api/w/:wId/skills/:sId - manually requested spaces", () => {
   // Sets up an open space the request user can read, plus a folder in it so knowledge attached
   // from that space makes it required automatically as well as manually.

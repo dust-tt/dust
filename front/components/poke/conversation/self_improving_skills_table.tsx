@@ -1,7 +1,7 @@
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { REINFORCED_SKILLS_METADATA_KEYS } from "@app/lib/reinforcement/types";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { PokeConversationsFetchProps } from "@app/poke/swr/conversation";
 import { usePokeConversations } from "@app/poke/swr/conversation";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";

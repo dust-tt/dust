@@ -1,21 +1,19 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { BaseSearchAgentsSchema } from "@app/lib/agent_search/query_schema";
+import { BaseSearchSkillsSchema } from "@app/lib/skill_search/query_schema";
 import { KNOWLEDGE_CATEGORIES } from "@app/types/api/public/spaces";
-import type { AgentsGetViewType } from "@app/types/assistant/agent";
 import { ModelProviderIdSchema } from "@app/types/assistant/models/providers";
-import {
-  SKILL_AVAILABILITIES,
-  SKILL_STATUSES,
-} from "@app/types/assistant/skill_configuration_constants";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import { JOB_TYPES } from "@app/types/job_type";
 import { z } from "zod";
 
 export const WORKSPACE_MANAGEMENT_SERVER_NAME = "workspace_management" as const;
 
-export const LIST_AGENTS_TOOL_NAME = "list_agents" as const;
+export const SEARCH_AGENTS_TOOL_NAME = "search_agents" as const;
 export const GET_AGENT_DETAILS_TOOL_NAME = "get_agent_details" as const;
-export const LIST_SKILLS_TOOL_NAME = "list_skills" as const;
+export const SEARCH_SKILLS_TOOL_NAME = "search_skills" as const;
 export const GET_SKILL_DETAILS_TOOL_NAME = "get_skill_details" as const;
+export const LIST_SIMILAR_SKILLS_TOOL_NAME = "list_similar_skills" as const;
 export const LIST_TOOLS_TOOL_NAME = "list_tools" as const;
 export const GET_TOOL_DETAILS_TOOL_NAME = "get_tool_details" as const;
 export const LIST_MODELS_TOOL_NAME = "list_models" as const;
@@ -49,24 +47,6 @@ export const MAX_MEMBERS_PAGE_SIZE = 1000;
 export const DEFAULT_PAGE_SIZE = 20;
 export const MAX_PAGE_SIZE = 50;
 
-const PASS_THROUGH_AGENT_VIEWS = [
-  "list",
-  "all",
-  "published",
-  "global",
-  "archived",
-] as const satisfies readonly AgentsGetViewType[];
-
-// Mirrors the `view` parameter of the public
-// GET /api/v1/w/{wId}/assistant/agent_configurations endpoint so both surfaces share one
-// vocabulary, plus `archived`. `all_unrestricted` is ours: it is the admin-only view that lifts
-// both the scope restriction (unpublished agents the caller does not edit) and the space one.
-export const AGENT_VIEWS = [
-  ...PASS_THROUGH_AGENT_VIEWS,
-  "all_unrestricted",
-] as const;
-export type AgentViewType = (typeof AGENT_VIEWS)[number];
-
 const paginationSchemaShape = {
   cursor: z
     .number()
@@ -87,68 +67,33 @@ const paginationSchemaShape = {
     ),
 };
 
-const listAgentsSchema = {
-  view: z
-    .enum(AGENT_VIEWS)
-    .optional()
-    .describe(
-      "Which agents to list. 'list' (default): the agents the caller can see " +
-        "(the non-private ones plus the unpublished ones they edit); falls back " +
-        "to 'all' without an interactive user. 'all': every non-private agent " +
-        "of the workspace, excluding unpublished ones. " +
-        "'published': published agents only. 'global': Dust's " +
-        "built-in agents only. 'archived': agents that were deleted, limited " +
-        "to those the caller edits, or all of them for an admin. " +
-        "'all_unrestricted': every active agent of the " +
-        "workspace, including unpublished agents the caller does not edit and " +
-        "agents built on spaces the caller cannot access — requires a workspace " +
-        "admin."
-    ),
-  namePrefix: z
-    .string()
-    .optional()
-    .describe(
-      "Only return agents whose name starts with this prefix (case-insensitive)."
-    ),
+/**
+ * @cc [owner:aubin-tchoi,label:product;mcp] name-query-required
+ * Agent and skill search tools MUST require a non-empty name query after trimming whitespace.
+ * Missing or blank queries MUST fail validation rather than return an exhaustive inventory.
+ */
+const searchQuerySchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(200)
+  .describe(
+    "Search by name. Words can appear anywhere in the name and in any order; " +
+      "partial words are supported. Results are ordered by relevance."
+  );
+
+const searchAgentsSchema = BaseSearchAgentsSchema.extend({
+  query: searchQuerySchema,
   ...paginationSchemaShape,
-};
+});
+
+const searchSkillsSchema = BaseSearchSkillsSchema.extend({
+  query: searchQuerySchema,
+  ...paginationSchemaShape,
+});
 
 const getAgentDetailsSchema = {
-  agentId: z.string().describe("The agent's id, as returned by list_agents."),
-};
-
-const listSkillsSchema = {
-  availability: z
-    .array(z.enum(SKILL_AVAILABILITIES))
-    .optional()
-    .describe(
-      "Only return skills with one of these availabilities. 'editors': visible " +
-        "to the skill's editors only. 'workspace_users': users can enable it " +
-        "themselves. 'users_and_agents': also discoverable by agents on their " +
-        "own. Omit for all availabilities."
-    ),
-  status: z
-    .enum(SKILL_STATUSES)
-    .exclude(["pending"])
-    .optional()
-    .describe(
-      "Skill status to list. 'active' (default), 'archived', or 'suggested'."
-    ),
-  kind: z
-    .enum(["custom", "global", "system", "all"])
-    .default("custom")
-    .describe(
-      "'custom' (default): skills built in this workspace. 'global' and " +
-        "'system': Dust's built-in skills, the latter always on. 'all': every kind."
-    ),
-  includeUsage: z
-    .boolean()
-    .optional()
-    .describe(
-      "Also return how many agents use each skill. Costs an extra query, so " +
-        "only set it when the question is about adoption or unused skills."
-    ),
-  ...paginationSchemaShape,
+  agentId: z.string().describe("The agent's id, as returned by search_agents."),
 };
 
 const listWorkspaceMembersSchema = {
@@ -260,8 +205,18 @@ const createGroupSchema = {
     ),
 };
 
+const listSimilarSkillsSchema = {
+  description: z
+    .string()
+    .min(1)
+    .describe(
+      "The agent-facing description of the skill to compare against (when " +
+        "agents should use it), not its instructions."
+    ),
+};
+
 const getSkillSchema = {
-  skillId: z.string().describe("The skill's id, as returned by list_skills."),
+  skillId: z.string().describe("The skill's id, as returned by search_skills."),
 };
 
 const listToolsSchema = {
@@ -310,16 +265,17 @@ const searchKnowledgeSchema = {
 
 export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
   {
-    name: LIST_AGENTS_TOOL_NAME,
+    name: SEARCH_AGENTS_TOOL_NAME,
     description:
-      "List the workspace's agents. Use this to inventory which agents exist, " +
-      "whether they are published, and who can edit them.",
-    schema: listAgentsSchema,
+      "Search agents by name and return matching ids and descriptions, ordered " +
+      "by relevance. Matches partial words anywhere in the name and in any order. " +
+      "Only returns agents accessible to the caller, including eligible built-in agents.",
+    schema: searchAgentsSchema.shape,
     stake: "never_ask",
     eager: true,
     displayLabels: {
-      running: "Listing agents",
-      done: "Listed agents",
+      running: "Searching agents",
+      done: "Searched agents",
     },
     toolCostCategory: "basic",
     freeUsage: true,
@@ -343,16 +299,17 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
     freeUsage: true,
   },
   {
-    name: LIST_SKILLS_TOOL_NAME,
+    name: SEARCH_SKILLS_TOOL_NAME,
     description:
-      "List the workspace's skills. Use this to inventory which skills exist " +
-      "and who can reach them.",
-    schema: listSkillsSchema,
+      "Search skills by name and return matching ids and descriptions, ordered " +
+      "by relevance. Matches partial words anywhere in the name and in any order. " +
+      "Only returns skills accessible to the caller, including eligible built-in skills.",
+    schema: searchSkillsSchema.shape,
     stake: "never_ask",
     eager: true,
     displayLabels: {
-      running: "Listing skills",
-      done: "Listed skills",
+      running: "Searching skills",
+      done: "Searched skills",
     },
     toolCostCategory: "basic",
     freeUsage: true,
@@ -369,6 +326,22 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
     displayLabels: {
       running: "Retrieving skill",
       done: "Retrieved skill",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: LIST_SIMILAR_SKILLS_TOOL_NAME,
+    description:
+      "Return the ids of the workspace's existing published custom skills that " +
+      "serve the same purpose as the given skill description. Existing skills " +
+      "are compared on their agent-facing description.",
+    schema: listSimilarSkillsSchema,
+    stake: "never_ask",
+    eager: true,
+    displayLabels: {
+      running: "Looking for similar skills",
+      done: "Looked for similar skills",
     },
     toolCostCategory: "basic",
     freeUsage: true,
@@ -536,7 +509,7 @@ export const WORKSPACE_MANAGEMENT_SERVER = {
     name: WORKSPACE_MANAGEMENT_SERVER_NAME,
     version: "1.0.0",
     description:
-      "Inventory the workspace's agents, skills, tools, tags and groups.",
+      "Search the workspace's agents and skills, and inventory tools, tags and groups.",
     icon: "ActionListCheckIcon",
     authorization: null,
     documentationUrl: null,

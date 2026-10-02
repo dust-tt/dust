@@ -28,10 +28,15 @@ pattern raw_sql_query() {
     }
 }
 
-raw_sql_query() as $match where {
-    register_diagnostic(
-        span = $match,
-        message = "Raw SQL queries are not allowed. Use Sequelize models and methods instead.",
-        severity = "error"
-    )
+// Skip structural matching when the source cannot contain this rule's target.
+// Keep backslashes as candidates so escaped spellings are still checked.
+file(body = $body) where {
+    $body <: or { includes "query", includes "\\" },
+    $body <: contains bubble raw_sql_query() as $match where {
+        register_diagnostic(
+            span = $match,
+            message = "Raw SQL queries are not allowed. Use Sequelize models and methods instead.",
+            severity = "error"
+        )
+    }
 }

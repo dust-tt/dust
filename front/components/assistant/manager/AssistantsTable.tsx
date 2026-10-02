@@ -9,15 +9,12 @@ import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { useAppRouter } from "@app/lib/platform";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useTags } from "@app/lib/swr/tags";
-import {
-  classNames,
-  formatTimestampToFriendlyDate,
-  tagsSorter,
-} from "@app/lib/utils";
+import { classNames, tagsSorter } from "@app/lib/utils";
 import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type {

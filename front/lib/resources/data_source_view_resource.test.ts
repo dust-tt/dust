@@ -226,6 +226,59 @@ describe("DataSourceViewResource", () => {
     });
   });
 
+  describe("createViewInSpaceFromDataSource", () => {
+    it("should refuse to create a view in a project", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      await SpaceFactory.defaults(
+        await Authenticator.internalAdminForWorkspace(workspace.sId)
+      );
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+      const regularSpace = await SpaceFactory.regular(workspace);
+      const project = await SpaceFactory.project(workspace);
+      const defaultView = await DataSourceViewFactory.folder(
+        workspace,
+        regularSpace
+      );
+
+      const res = await DataSourceViewResource.createViewInSpaceFromDataSource(
+        auth,
+        project,
+        defaultView.dataSource,
+        []
+      );
+
+      expect(res.isErr()).toBe(true);
+      const projectViews = await DataSourceViewResource.listBySpace(
+        auth,
+        project
+      );
+      expect(projectViews).toHaveLength(0);
+    });
+
+    it("should create a view in a regular space", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      await SpaceFactory.defaults(
+        await Authenticator.internalAdminForWorkspace(workspace.sId)
+      );
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+      const ownerSpace = await SpaceFactory.regular(workspace);
+      const otherSpace = await SpaceFactory.regular(workspace);
+      const defaultView = await DataSourceViewFactory.folder(
+        workspace,
+        ownerSpace
+      );
+
+      const res = await DataSourceViewResource.createViewInSpaceFromDataSource(
+        auth,
+        otherSpace,
+        defaultView.dataSource,
+        ["node"]
+      );
+
+      expect(res.isOk()).toBe(true);
+    });
+  });
+
   describe("removeChildrenIfEnclosedBy", () => {
     it("should return empty array for empty input", () => {
       const result = DataSourceViewResource.removeChildrenIfEnclosedBy([]);

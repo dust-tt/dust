@@ -1,6 +1,7 @@
 import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
 import createWorkspaceManagementServer from "@app/lib/api/actions/servers/workspace_management";
 import { TOOLS } from "@app/lib/api/actions/servers/workspace_management/tools";
+import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -15,10 +16,31 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TagFactory } from "@app/tests/utils/TagFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
+
+const { mockSearch, mockWithEs } = vi.hoisted(() => ({
+  mockSearch: vi.fn(),
+  mockWithEs: vi.fn(),
+}));
+
+vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/elasticsearch")>();
+  return { ...actual, withEs: mockWithEs };
+});
+
+// The similarity checker calls an LLM: keep the tests hermetic.
+vi.mock("@app/lib/api/skills/existing_skill_checker", () => ({
+  getSimilarSkills: vi.fn(),
+}));
+
+import { getSimilarSkills } from "@app/lib/api/skills/existing_skill_checker";
+
+const mockGetSimilarSkills = vi.mocked(getSimilarSkills);
 
 function getToolByName(name: string) {
   const tool = TOOLS.find((t) => t.name === name);
@@ -101,35 +123,21 @@ async function createOtherMemberAuth(workspace: LightWorkspaceType) {
   return Authenticator.fromUserIdAndWorkspaceId(agentOwner.sId, workspace.sId);
 }
 
-// Creates, as another workspace member, one published agent, one unpublished agent the caller
-// does not edit, and one published agent requesting a space the caller cannot read.
-async function setupOtherMembersAgents(workspace: LightWorkspaceType) {
-  const agentOwnerAuth = await createOtherMemberAuth(workspace);
-
-  const restrictedSpace = await SpaceFactory.regular(
-    agentOwnerAuth.getNonNullableWorkspace()
-  );
-
-  await AgentConfigurationFactory.createTestAgent(agentOwnerAuth, {
-    name: "Published Agent",
-    scope: "visible",
-  });
-  await AgentConfigurationFactory.createTestAgent(agentOwnerAuth, {
-    name: "Unpublished Agent",
-    scope: "hidden",
-  });
-  await AgentConfigurationFactory.createTestAgent(agentOwnerAuth, {
-    name: "Restricted Space Agent",
-    scope: "visible",
-    requestedSpaceIds: [restrictedSpace.id],
-  });
-}
-
 describe("workspace_management tools", () => {
+  beforeEach(() => {
+    mockSearch.mockReset();
+    mockSearch.mockResolvedValue({
+      hits: { hits: [], total: { value: 0, relation: "eq" } },
+    });
+    mockWithEs.mockReset();
+    mockWithEs.mockImplementation(
+      async (fn) => new Ok(await fn({ search: mockSearch }))
+    );
+  });
   it.each([
-    "list_agents",
+    "search_agents",
     "get_agent_details",
-    "list_skills",
+    "search_skills",
     "get_skill_details",
     "list_tags",
   ])("%s is available to regular members", async (toolName) => {
@@ -140,169 +148,175 @@ describe("workspace_management tools", () => {
       toolName,
       // The get_* tools need an id; an unknown one exercises the not-found path, which is
       // enough to show the tool is not refused outright.
-      { agentId: "unknown", skillId: "unknown" },
+      { agentId: "unknown", skillId: "unknown", query: "unknown" },
       authenticator
     );
 
     expect(result.isOk()).toBe(true);
   });
 
-  it("only lists the agents a regular member may read", async () => {
-    const { workspace, authenticator } = await createResourceTest({
-      role: "user",
-    });
-    await setupOtherMembersAgents(workspace);
-
-    const text = await callTool("list_agents", {}, authenticator);
-
-    expect(text).toContain("Published Agent");
-    expect(text).not.toContain("Unpublished Agent");
-    expect(text).not.toContain("Restricted Space Agent");
-  });
-
-  it("refuses all_unrestricted for regular members", async () => {
-    const { authenticator } = await createResourceTest({ role: "user" });
-
-    const result = await runTool(
-      "list_agents",
-      { view: "all_unrestricted" },
-      authenticator
-    );
-
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.message).toBe(
-        "This tool is restricted to workspace admins."
-      );
-    }
-  });
-
-  describe("list_agents", () => {
-    it("hides unpublished and restricted space agents with the default view", async () => {
-      const { workspace, authenticator } = await createResourceTest({
-        role: "admin",
-      });
-      await setupOtherMembersAgents(workspace);
-
-      const text = await callTool("list_agents", {}, authenticator);
-
-      expect(text).toContain("Published Agent");
-      expect(text).not.toContain("Unpublished Agent");
-      expect(text).not.toContain("Restricted Space Agent");
-    });
-
-    it("includes the caller's own unpublished agents with the default view", async () => {
+  describe("search tools", () => {
+    it("registers search tools without exhaustive agent or skill listings", async () => {
       const { authenticator } = await createResourceTest({ role: "user" });
-      await AgentConfigurationFactory.createTestAgent(authenticator, {
-        name: "My Unpublished Agent",
-        scope: "hidden",
-      });
+      const names = await toolNamesFor(authenticator);
 
-      const byDefault = await callTool("list_agents", {}, authenticator);
-      expect(byDefault).toContain("My Unpublished Agent");
+      expect(names).toContain("search_agents");
+      expect(names).toContain("search_skills");
+      expect(names).not.toContain("list_agents");
+      expect(names).not.toContain("list_skills");
 
-      const all = await callTool("list_agents", { view: "all" }, authenticator);
-      expect(all).not.toContain("My Unpublished Agent");
-    });
-
-    it("returns unpublished and restricted space agents with all_unrestricted", async () => {
-      const { workspace, authenticator } = await createResourceTest({
-        role: "admin",
-      });
-      await setupOtherMembersAgents(workspace);
-
-      const text = await callTool(
-        "list_agents",
-        { view: "all_unrestricted" },
-        authenticator
-      );
-
-      expect(text).toContain("Published Agent");
-      expect(text).toContain("Unpublished Agent");
-      expect(text).toContain("Restricted Space Agent");
-    });
-
-    it("refuses all_unrestricted for managers who are not admins", async () => {
-      const { authenticator } = await createResourceTest({ role: "manager" });
-      expect(authenticator.isManager()).toBe(true);
-      expect(authenticator.isAdmin()).toBe(false);
-
-      const result = await runTool(
-        "list_agents",
-        { view: "all_unrestricted" },
-        authenticator
-      );
-
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error.message).toBe(
-          "This tool is restricted to workspace admins."
-        );
+      for (const name of ["search_agents", "search_skills"]) {
+        const schema = z.object(getToolByName(name).schema);
+        expect(schema.safeParse({}).success).toBe(false);
+        expect(schema.safeParse({ query: " " }).success).toBe(false);
       }
     });
 
-    it("lists archived agents only with the archived view", async () => {
-      const { authenticator } = await createResourceTest({ role: "admin" });
-      const kept = await AgentConfigurationFactory.createTestAgent(
-        authenticator,
-        { name: "Kept Agent" }
-      );
-      const removed = await AgentConfigurationFactory.createTestAgent(
-        authenticator,
-        { name: "Removed Agent" }
-      );
-      await (await AgentResource.fetchById(
-        authenticator,
-        removed.sId
-      ))!.archive(authenticator);
+    it("supports skill search without an interactive user", async () => {
+      const { workspace } = await createResourceTest({ role: "user" });
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+      expect(auth.user()).toBeNull();
+      mockSearch.mockResolvedValue({
+        hits: { hits: [], total: { value: 0, relation: "eq" } },
+      });
 
-      // The default view also carries Dust's global agents, so assert on membership.
-      const active = await callTool("list_agents", {}, authenticator);
-      expect(active).toContain(kept.name);
-      expect(active).not.toContain("Removed Agent");
-
-      const archived = await callToolLines(
-        "list_agents",
-        { view: "archived" },
-        authenticator
+      expect(await callTool("search_skills", { query: "sales" }, auth)).toBe(
+        "Showing 0 of 0."
       );
-      expect(archived).toEqual([
-        expect.stringContaining(`Removed Agent [${removed.sId}]`),
-        "Showing 1 of 1.",
-      ]);
-      expect(archived[0]).toContain("status: archived");
     });
 
-    it("returns the agent's scope, model and tags, and paginates", async () => {
-      const { authenticator } = await createResourceTest({ role: "admin" });
-      await AgentConfigurationFactory.createTestAgent(authenticator, {
-        name: "Aardvark Agent",
+    it("returns agents in ES relevance order and paginates in ES", async () => {
+      const { authenticator, user } = await createResourceTest({
+        role: "user",
       });
-      await AgentConfigurationFactory.createTestAgent(authenticator, {
-        name: "Zebra Agent",
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Zulu Sales" }
+      );
+      const resource = await AgentResource.fetchById(authenticator, agent.sId);
+      expect(resource).not.toBeNull();
+      const document = resource!.toSearchDocument(authenticator, {
+        activeUsersCount: 0,
+        editors: [user],
+        favoriteCount: 0,
+        feedbackNegativeCount: 0,
+        feedbackPositiveCount: 0,
+        lastEditedByUser: user,
+        mcpServerViewIds: [],
+        skillIds: [],
+        tagIds: [],
+      });
+      mockSearch.mockResolvedValue({
+        hits: {
+          hits: [
+            { _source: document },
+            {
+              _source: { ...document, name: "Alpha Sales", agent_id: "alpha" },
+            },
+          ],
+          total: { value: 5, relation: "eq" },
+        },
       });
 
-      const firstPage = await callToolLines(
-        "list_agents",
-        { namePrefix: "Aardvark", limit: 1 },
+      const lines = await callToolLines(
+        "search_agents",
+        { query: "sales", cursor: 1, limit: 2 },
         authenticator
       );
 
-      expect(firstPage).toHaveLength(2);
-      expect(firstPage[0]).toContain("Aardvark Agent");
-      expect(firstPage[0]).toContain(
-        "scope: visible, status: active, model: gpt-5-mini"
+      expect(lines[0]).toContain(`Zulu Sales [${agent.sId}]`);
+      expect(lines[1]).toContain("Alpha Sales [alpha]");
+      expect(lines[2]).toBe(
+        "Showing 2 of 5. Pass cursor: 3 for the next page."
       );
-      expect(firstPage[0]).toContain("canEdit: true");
-      expect(firstPage[1]).toBe("Showing 1 of 1.");
+      expect(mockSearch.mock.lastCall?.[0]).toMatchObject({ from: 1, size: 2 });
+      expect(lines.join("\n")).not.toContain("Test Instructions");
+    });
 
-      // Both agents match, so the first page must hand back a cursor for the second.
-      const paged = await callToolLines(
-        "list_agents",
-        { namePrefix: "", limit: 1 },
+    it("returns skill summaries from the index with the selected filters", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await SkillFactory.create(authenticator, {
+        name: "Marketing Sales",
+        availability: "users_and_agents",
+      });
+      const [document] = await SkillFactory.createSearchDocuments(
+        authenticator,
+        [skill]
+      );
+      mockSearch.mockResolvedValue({
+        hits: {
+          hits: [{ _source: document }],
+          total: { value: 1, relation: "eq" },
+        },
+      });
+
+      const lines = await callToolLines(
+        "search_skills",
+        { query: "sal mar", availability: ["users_and_agents"] },
         authenticator
       );
-      expect(paged.at(-1)).toContain("Pass cursor: 1 for the next page.");
+
+      expect(lines[0]).toContain(`Marketing Sales [${skill.sId}]`);
+      expect(lines[0]).toContain("availability: users_and_agents");
+      expect(lines[1]).toBe("Showing 1 of 1.");
+      expect(mockSearch.mock.lastCall?.[0].query.bool.filter).toContainEqual({
+        terms: { availability: ["users_and_agents"] },
+      });
+      expect(mockSearch.mock.lastCall?.[0]).toMatchObject({
+        from: 0,
+        size: 20,
+      });
+      expect(lines.join("\n")).not.toContain(skill.instructions);
+    });
+
+    it.each([
+      "search_agents",
+      "search_skills",
+    ])("%s distinguishes empty results, bad cursors and ES failures", async (toolName) => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      mockSearch.mockResolvedValue({
+        hits: { hits: [], total: { value: 0, relation: "eq" } },
+      });
+      expect(
+        await callTool(toolName, { query: "unknown" }, authenticator)
+      ).toBe("Showing 0 of 0.");
+
+      const invalidCursor = await runTool(
+        toolName,
+        { query: "unknown", cursor: 1 },
+        authenticator
+      );
+      expect(invalidCursor.isErr()).toBe(true);
+      if (invalidCursor.isErr()) {
+        expect(invalidCursor.error.message).toContain(
+          "cursor 1 is out of range"
+        );
+        expect(invalidCursor.error.tracked).toBe(false);
+      }
+
+      mockSearch.mockClear();
+      const invalidWindow = await runTool(
+        toolName,
+        { query: "unknown", cursor: 10_000 },
+        authenticator
+      );
+      expect(invalidWindow.isErr()).toBe(true);
+      expect(mockSearch).not.toHaveBeenCalled();
+
+      const error = new ElasticsearchError(
+        "connection_error",
+        "ES unavailable"
+      );
+      mockWithEs.mockResolvedValueOnce(new Err(error));
+      const failure = await runTool(
+        toolName,
+        { query: "unknown" },
+        authenticator
+      );
+      expect(failure.isErr()).toBe(true);
+      if (failure.isErr()) {
+        expect(failure.error.cause).toBe(error);
+      }
     });
   });
 
@@ -427,90 +441,6 @@ describe("workspace_management tools", () => {
 
       expect(text).toContain("No agent found");
       expect(text).not.toContain("Unpublished Agent");
-    });
-  });
-
-  describe("list_skills", () => {
-    it("returns custom skills with their availability", async () => {
-      const { authenticator } = await createResourceTest({ role: "admin" });
-      await SkillFactory.create(authenticator, {
-        name: "Editors Only Skill",
-        availability: "editors",
-      });
-      await SkillFactory.create(authenticator, {
-        name: "Discoverable Skill",
-        availability: "users_and_agents",
-      });
-
-      const lines = await callToolLines("list_skills", {}, authenticator);
-
-      expect(lines).toEqual([
-        expect.stringContaining("Discoverable Skill"),
-        expect.stringContaining("Editors Only Skill"),
-        "Showing 2 of 2.",
-      ]);
-      expect(lines[0]).toContain(
-        "kind: custom, availability: users_and_agents, status: active, canWrite: true"
-      );
-      expect(lines[1]).toContain("availability: editors");
-      // Usage is opt-in.
-      expect(lines[0]).not.toContain("agentsUsing");
-    });
-
-    it("filters by availability", async () => {
-      const { authenticator } = await createResourceTest({ role: "admin" });
-      await SkillFactory.create(authenticator, {
-        name: "Editors Only Skill",
-        availability: "editors",
-      });
-      await SkillFactory.create(authenticator, {
-        name: "Discoverable Skill",
-        availability: "users_and_agents",
-      });
-
-      const lines = await callToolLines(
-        "list_skills",
-        { availability: ["users_and_agents"] },
-        authenticator
-      );
-
-      expect(lines).toEqual([
-        expect.stringContaining("Discoverable Skill"),
-        "Showing 1 of 1.",
-      ]);
-    });
-
-    it("returns the agent count when includeUsage is set", async () => {
-      const { authenticator } = await createResourceTest({ role: "admin" });
-      await SkillFactory.create(authenticator, { name: "Unused Skill" });
-
-      const lines = await callToolLines(
-        "list_skills",
-        { includeUsage: true },
-        authenticator
-      );
-
-      expect(lines[0]).toContain("Unused Skill");
-      expect(lines[0]).toContain("agentsUsing: 0");
-    });
-
-    it("excludes archived skills unless asked for them", async () => {
-      const { authenticator } = await createResourceTest({ role: "admin" });
-      await SkillFactory.create(authenticator, {
-        name: "Archived Skill",
-        status: "archived",
-      });
-
-      const active = await callTool("list_skills", {}, authenticator);
-      expect(active).toBe("No custom skills found.");
-
-      const archived = await callToolLines(
-        "list_skills",
-        { status: "archived" },
-        authenticator
-      );
-      expect(archived[0]).toContain("Archived Skill");
-      expect(archived[0]).toContain("status: archived");
     });
   });
 
@@ -1216,6 +1146,71 @@ describe("workspace_management tools", () => {
   });
 
   // Auto internal tools are listed too, so the assertions isolate the fixtures with a prefix.
+  describe("list_similar_skills", () => {
+    beforeEach(() => {
+      mockGetSimilarSkills.mockReset();
+    });
+
+    it("returns the ids of the similar skills", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      mockGetSimilarSkills.mockResolvedValue(
+        new Ok({ similar_skills: ["skill1", "skill2"] })
+      );
+
+      const lines = await callToolLines(
+        "list_similar_skills",
+        { description: "Use when the user wants to open a GitHub issue." },
+        authenticator
+      );
+
+      expect(lines).toEqual(["skill1", "skill2"]);
+      expect(mockGetSimilarSkills).toHaveBeenCalledWith(authenticator, {
+        naturalDescription: "Use when the user wants to open a GitHub issue.",
+        excludeSkillId: null,
+      });
+    });
+
+    it("says so when no skill is similar", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      mockGetSimilarSkills.mockResolvedValue(new Ok({ similar_skills: [] }));
+
+      const text = await callTool(
+        "list_similar_skills",
+        { description: "Build slide decks." },
+        authenticator
+      );
+
+      expect(text).toBe("No similar skills found.");
+    });
+
+    it("returns an error when the similarity check fails", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      mockGetSimilarSkills.mockResolvedValue(new Err(new Error("LLM down")));
+
+      const result = await runTool(
+        "list_similar_skills",
+        { description: "Build slide decks." },
+        authenticator
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toBe(
+          "Failed to list similar skills: LLM down"
+        );
+      }
+    });
+
+    it("rejects an empty description", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+
+      expect(() =>
+        runTool("list_similar_skills", { description: "" }, authenticator)
+      ).toThrow();
+      expect(mockGetSimilarSkills).not.toHaveBeenCalled();
+    });
+  });
+
   describe("list_tools", () => {
     it("lists the tools of readable spaces only, sorted by name", async () => {
       const { workspace, globalSpace, authenticator } =

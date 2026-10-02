@@ -11,10 +11,17 @@ pattern sparkle_class_in_front() {
     r"\"(?:s-|[^\"]*\ss-)[^\"]*\""
 }
 
-sparkle_class_in_front() as $val where {
-    register_diagnostic(
-        span = $val,
-        message = "className values with 's-' prefix are not allowed in front. These are reserved for sparkle components.",
-        severity = "error"
-    )
+// Skip structural matching when the source cannot contain this rule's target.
+file(body = $body) where {
+    $body <: includes "s-",
+    $body <: contains bubble and {
+        includes "s-",
+        sparkle_class_in_front()
+    } as $val where {
+        register_diagnostic(
+            span = $val,
+            message = "className values with 's-' prefix are not allowed in front. These are reserved for sparkle components.",
+            severity = "error"
+        )
+    }
 }

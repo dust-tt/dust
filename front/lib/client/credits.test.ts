@@ -4,6 +4,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { formatAvgCredits, formatRelativeResetDay } from "./credits";
 
 describe("formatAvgCredits", () => {
+  beforeEach(() => {
+    setFormatLocale("en-US");
+  });
+
+  afterEach(() => {
+    setFormatLocale(undefined);
+  });
+
   it.each([
     [310, "310.0"],
     [46.12, "46.1"],

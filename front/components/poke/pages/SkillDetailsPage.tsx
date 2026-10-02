@@ -5,8 +5,8 @@ import { SkillSuggestionDataTable } from "@app/components/poke/skill_suggestions
 import { SkillOverviewTable } from "@app/components/poke/skills/SkillOverviewTable";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { useRequiredPathParam } from "@app/lib/platform";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import {
   usePokeSkillDetails,

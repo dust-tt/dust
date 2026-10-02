@@ -249,6 +249,11 @@ const _webhookSlackBotInteractionsAPIHandler = async (
 ) => {
   res.status(200).end();
 
+  if (typeof req.body.payload !== "string") {
+    logger.error("Missing or non-string payload in slack interactions");
+    return;
+  }
+
   const rawPayload = JSON.parse(req.body.payload);
   const bodyValidation = SlackInteractionPayloadSchema.decode(rawPayload);
   if (isLeft(bodyValidation)) {

@@ -15,6 +15,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useCellContext } from "@app/lib/auth/CellContext";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import {
   CONNECTOR_UI_CONFIGURATIONS,
@@ -35,7 +36,6 @@ import {
 import { useSlackIsLegacy } from "@app/lib/swr/oauth";
 import { useSpaceDataSourceViews, useSystemSpace } from "@app/lib/swr/spaces";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { CellInfo } from "@app/types/cell";
 import type {
   ConnectorPermission,

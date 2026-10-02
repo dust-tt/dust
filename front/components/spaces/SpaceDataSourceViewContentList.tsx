@@ -20,6 +20,7 @@ import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationF
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { usePeriodicRefresh } from "@app/hooks/usePeriodicRefresh";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
@@ -31,7 +32,6 @@ import {
   useDataSourceViews,
 } from "@app/lib/swr/data_source_views";
 import { useSpaces } from "@app/lib/swr/spaces";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import { isValidContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { ConnectorType } from "@app/types/data_source";

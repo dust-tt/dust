@@ -3,6 +3,7 @@ import { getConversationsDataRetention } from "@app/lib/data_retention";
 import { unsafeGetUsageData } from "@app/lib/workspace_usage";
 import { getWorkspaceUsageRetentionErrorMessage } from "@app/lib/workspace_usage_retention";
 import { publicApiApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
@@ -25,7 +26,7 @@ const app = publicApiApp();
  * Deprecated: this endpoint will be removed after 2026-06-01.
  * Use GET /api/v1/w/{wId}/analytics/export instead.
  */
-app.get("/", async (ctx) => {
+app.get("/", ensureIsAdmin(), async (ctx) => {
   const auth = ctx.get("auth");
 
   const owner = auth.getNonNullableWorkspace();

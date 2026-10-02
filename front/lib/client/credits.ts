@@ -1,5 +1,10 @@
 import { getActiveLocale } from "@app/lib/i18n/active_locale";
-import { formatDate, formatRelativeTime } from "@app/lib/i18n/format";
+import {
+  formatCurrency,
+  formatDate,
+  formatNumber,
+  formatRelativeTime,
+} from "@app/lib/i18n/format";
 import type {
   MaxAwuCreditsTimeframeType,
   MaxMessagesTimeframeType,
@@ -13,13 +18,13 @@ import { pluralize } from "@app/types/shared/utils/string_utils";
 // one decimal). Shared across the credits usage table and the message /
 // conversation cost menu entries.
 export function formatCredits(credits: number): string {
-  return credits.toLocaleString("en-US", { maximumFractionDigits: 1 });
+  return formatNumber(credits, { maximumFractionDigits: 1 });
 }
 
 // Format AWU credits with exactly one decimal (e.g. "310.0"), so values in
 // per-message average columns stay visually consistent.
 export function formatAvgCredits(credits: number): string {
-  return credits.toLocaleString("en-US", {
+  return formatNumber(credits, {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   });
@@ -30,13 +35,12 @@ export function formatAvgCredits(credits: number): string {
 // microcredit-derived figures (e.g. the rate-limiter counter), where an
 // integer-rounded display would hide fractional-credit divergence.
 export function formatCreditsPrecise(credits: number): string {
-  return credits.toLocaleString("en-US", { maximumFractionDigits: 6 });
+  return formatNumber(credits, { maximumFractionDigits: 6 });
 }
 
 export function formatCreditValue(credits: number): string {
-  const formattedCredits = formatCredits(credits);
-  const displayedCredits = Number(formattedCredits.replaceAll(",", ""));
-  return `${formattedCredits} credit${pluralize(displayedCredits)}`;
+  const displayedCredits = Math.round(credits * 10) / 10;
+  return `${formatCredits(credits)} credit${pluralize(displayedCredits)}`;
 }
 
 export function toolUsageLabel(callCount: number): string {
@@ -93,7 +97,7 @@ export function formatLimitTimeframe(
 }
 
 export function formatCreditsCompact(credits: number): string {
-  return credits.toLocaleString("en-US", {
+  return formatNumber(credits, {
     notation: "compact",
     maximumFractionDigits: 1,
   });
@@ -101,10 +105,10 @@ export function formatCreditsCompact(credits: number): string {
 
 export function formatMicroUsdCompact(microUsd: number): string {
   const dollars = microUsd / 1_000_000;
-  return `$${dollars.toLocaleString("en-US", {
+  return formatCurrency(dollars, "USD", {
     notation: "compact",
     maximumFractionDigits: 1,
-  })}`;
+  });
 }
 
 // Relative UTC day label for a reset/refill date: "today", "tomorrow", a

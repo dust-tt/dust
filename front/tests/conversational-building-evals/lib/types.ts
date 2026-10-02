@@ -141,6 +141,8 @@ export type FinalToolCallAssertion =
       type: "suggestSubAgentByRef";
       // The seeded agent that must get the created agent as a sub-agent, through its ref.
       parentAgentKey: string;
+      // How many created agents it must get. Defaults to 1.
+      subAgentCount?: number;
     }
   | {
       type: "suggestAgentSkillByRef";
@@ -153,6 +155,12 @@ export type FinalToolCallAssertion =
       // The seeded skill whose instruction edits must cite the created skill. Without it, one
       // created skill must cite another one.
       skillKey?: string;
+    }
+  | {
+      // The run must record no suggestion, e.g. because it has to ask the user first, and must have
+      // successfully called each of these (prefixed) tools.
+      type: "noSuggestion";
+      requiredToolNames: string[];
     }
   | {
       type: "suggestAgentInstructionsChange";

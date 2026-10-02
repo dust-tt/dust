@@ -52,7 +52,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import type { MenuItem } from "@dust-tt/sparkle";
 import { cn, ScrollableDataTable, SearchInput } from "@dust-tt/sparkle";
-import type { SortingState } from "@tanstack/table-core";
+import type { SortingState } from "@tanstack/react-table";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 
 const DEFAULT_VIEW_TYPE = "all";

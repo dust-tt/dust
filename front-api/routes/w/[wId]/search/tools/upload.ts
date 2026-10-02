@@ -25,7 +25,6 @@ app.post(
     const {
       serverViewId,
       externalId,
-      useCase,
       useCaseMetadata,
       conversationId,
       serverName,
@@ -49,7 +48,6 @@ app.post(
       tool,
       accessToken,
       externalId,
-      useCase,
       useCaseMetadata: {
         ...(useCaseMetadata ? useCaseMetadata : {}),
         conversationId,

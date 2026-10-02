@@ -743,9 +743,21 @@ Outside tests, code under `components/`, `hooks/` and `lib/swr/` MUST NOT call `
 locale-aware string comparisons MUST use `compareStrings` from `@app/lib/i18n/format`, which follows
 `format-locale-resolution`. Enforced by the `noBareLocaleCompare` lint rule.
 
+@cc [owner:sfriquet,label:product] no-hardcoded-en-us-in-ui
+Outside tests, code under `components/`, `hooks/`, `lib/client/` and `lib/swr/` MUST NOT contain
+the `"en-US"` literal, except a machine-facing one (export, API parameter, file name, map key),
+which MUST carry a `biome-ignore` comment saying why. Enforced by the `noHardcodedEnUsLocale` lint
+rule.
+
 @cc [owner:sfriquet,label:product;react] ui-dates-without-date-libraries
 Code under `components/` and `hooks/` MUST NOT format dates with `dayjs`, `luxon` or the formatting
 functions of `date-fns` and `date-fns-tz` (`format*`, `intlFormat*`, `lightFormat`): displayed
 dates go through `lib/i18n/format.ts`, and fixed patterns that must not follow the locale (such
 as file names parsed back) through `formatDate` of `lib/utils/timestamps.ts`. `date-fns` date
 arithmetic stays allowed. Enforced by the `noRestrictedImports` lint rule.
+
+@cc [owner:fabiencelier,label:security;react] secrets-masked-from-session-replay
+In UI served with Datadog RUM (Real User Monitoring) session replay (`front-spa` main app, `defaultPrivacyLevel:
+"mask-user-input"`), any credential rendered as DOM text outside a form input (API keys, URL
+secrets, signing secrets, tokens, or a URL embedding one) MUST be inside an element carrying the
+`dd-privacy-mask` class.

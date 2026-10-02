@@ -1,4 +1,3 @@
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { DATABASE_FILE_SYSTEM_POD_PREFIX } from "@app/lib/api/file_system/storage_mode";
 import { getProjectConversationsDatasourceName } from "@app/lib/api/projects/data_sources";
 import {
@@ -16,6 +15,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { getAgentConfigurations } from "@app/tests/utils/agent_configuration_reads";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";

@@ -1,5 +1,6 @@
 import { getWorkOSSessionWithSetCookies } from "@app/lib/api/workos/user";
 import { Authenticator, getSessionFromBearerToken } from "@app/lib/auth";
+import { sessionSatisfiesSSOEnforcement } from "@app/lib/iam/session";
 import { getClientIp } from "@app/lib/utils/request";
 import type { Context } from "hono";
 import { getCookie } from "hono/cookie";
@@ -43,6 +44,12 @@ export async function resolveOptionalAuth(
   const auth = await Authenticator.fromSession(session, workspaceId);
   // biome-ignore lint/plugin/noDirectRoleCheck: helper function with custom auth flow, not a route handler
   if (!auth.isUser()) {
+    return null;
+  }
+
+  if (
+    !sessionSatisfiesSSOEnforcement(auth.getNonNullableWorkspace(), session)
+  ) {
     return null;
   }
 

@@ -40,7 +40,7 @@ export async function describeAgentHandler(
   }
 
   const agent = result.value;
-  // Tags are public (`list_agents` shows them too), so they are not withheld from non-readers.
+  // Tags are public, so they are not withheld from non-readers.
   const tagNames = (await agent.listTags(auth))
     .map((tag) => tag.name)
     .sort((a, b) => a.localeCompare(b))
@@ -81,7 +81,7 @@ export async function describeAgentHandler(
           : `${action.name} [${action.mcpServerViewId}]`
     )
     .join(", ");
-  // Skills carry their id, as `list_skills` prints them, so that they can be removed.
+  // Skills carry their id so that they can be removed.
   const skillNames = skills
     .map((skill) => `${skill.name} [${skill.sId}]`)
     .join(", ");

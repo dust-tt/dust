@@ -1,3 +1,4 @@
+import { setFormatLocale } from "@app/lib/i18n/format";
 import {
   AWU_PRICE_PER_CREDIT,
   amountCents,
@@ -7,7 +8,7 @@ import {
   formatCurrencyAmountCents,
   metronomeAmount,
 } from "@app/lib/metronome/amounts";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 describe("amountCents", () => {
   it("passes USD through (already in cents) and rounds to an integer", () => {
@@ -79,6 +80,14 @@ describe("awuCreditsToCurrency / currencyToAwuCredits", () => {
 });
 
 describe("formatCurrencyAmount / formatCurrencyAmountCents", () => {
+  beforeEach(() => {
+    setFormatLocale("en-US");
+  });
+
+  afterEach(() => {
+    setFormatLocale(undefined);
+  });
+
   it("formats currency amounts with the requested currency", () => {
     expect(formatCurrencyAmount({ amount: 12.34, currency: "usd" })).toBe(
       "$12.34"

@@ -3,6 +3,7 @@ import { AuditLogsSection } from "@app/components/workspace/AuditLogsSection";
 import UserProvisioning from "@app/components/workspace/DirectorySync";
 import SSOConnection from "@app/components/workspace/SSOConnection";
 import { AutoJoinToggle } from "@app/components/workspace/sso/AutoJoinToggle";
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isSCIMEnabled } from "@app/lib/plans/scim";
 import {
@@ -30,6 +31,9 @@ import type { Organization } from "@workos-inc/node";
 import React from "react";
 
 import { WorkspaceSection } from "./WorkspaceSection";
+
+export const DOMAIN_VERIFICATION_TITLE = "Domain Verification";
+export const ADD_DOMAIN_LABEL = "Add Domain";
 
 interface WorkspaceAccessPanelProps {
   workspaceVerifiedDomains: WorkspaceDomain[];
@@ -94,7 +98,11 @@ function DomainVerification({
   owner,
 }: DomainVerificationProps) {
   return (
-    <WorkspaceSection icon={Globe01} title="Domain Verification">
+    <WorkspaceSection
+      icon={Globe01}
+      title={DOMAIN_VERIFICATION_TITLE}
+      sectionId={ADMIN_SECTION_IDS.identity.domain}
+    >
       <Page.P variant="secondary">
         Verify your company domains to enable Single Sign-On (SSO), automatic
         workspace enrollment for team members, and secure connections to your
@@ -106,7 +114,7 @@ function DomainVerification({
         <EmptyCTA
           action={
             <Button
-              label="Add Domain"
+              label={ADD_DOMAIN_LABEL}
               variant="primary"
               icon={Plus}
               href={addDomainLink}
@@ -237,7 +245,7 @@ function DomainVerificationTable({
       {addDomainLink && (
         <div>
           <Button
-            label="Add Domain"
+            label={ADD_DOMAIN_LABEL}
             variant="primary"
             href={addDomainLink}
             icon={Plus}

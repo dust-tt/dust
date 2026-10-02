@@ -292,6 +292,31 @@ function validateSeparateSuggestions(
   return { success: true };
 }
 
+function validateNoSuggestion(
+  requiredToolNames: string[],
+  toolCalls: ExecutedToolCall[]
+): AssertionResult {
+  const missing = requiredToolNames.filter(
+    (name) => !toolCalls.some((tc) => tc.name === name && !tc.isError)
+  );
+  if (missing.length > 0) {
+    return {
+      success: false,
+      error: `Expected a successful call to ${missing.join(", ")}`,
+    };
+  }
+  const recorded = toolCalls.filter(
+    (tc) => tc.name === TOOL.suggest && !tc.isError
+  );
+  if (recorded.length > 0) {
+    return {
+      success: false,
+      error: `Expected no ${TOOL.suggest} call; got ${JSON.stringify(recorded.map(getSuggestions))}`,
+    };
+  }
+  return { success: true };
+}
+
 /**
  * Validates the run's final (last non-exploratory) tool call against the scenario expectation: it
  * must be a `suggest` call carrying the expected change on the expected entity. Skill, agent and
@@ -305,6 +330,10 @@ export function validateFinalToolCall(
   }: Pick<ExecutionResult, "finalToolCall" | "toolCalls">,
   scenario: SeededScenario
 ): AssertionResult {
+  if (assertion.type === "noSuggestion") {
+    return validateNoSuggestion(assertion.requiredToolNames, toolCalls);
+  }
+
   if (!finalToolCall) {
     return {
       success: false,
@@ -321,13 +350,10 @@ export function validateFinalToolCall(
       if (!created.success) {
         return created;
       }
-      const { ref } = created.item;
-      if (!isString(ref)) {
-        return {
-          success: false,
-          error: `The create_agent suggestion declares no ref: ${JSON.stringify(created.item)}`,
-        };
-      }
+      const createdRefs = getSuggestions(finalToolCall)
+        .filter((s) => s.kind === "create_agent")
+        .map((s) => s.ref)
+        .filter(isString);
 
       const parent = findSuggestion(finalToolCall, "edit_agent", {
         field: "agentId",
@@ -342,10 +368,15 @@ export function validateFinalToolCall(
         isSuggestionItem(subAgents) && Array.isArray(subAgents.addAgentRefs)
           ? subAgents.addAgentRefs
           : [];
-      if (!addAgentRefs.includes(ref)) {
+      const addedCreatedRefs = createdRefs.filter((ref) =>
+        addAgentRefs.includes(ref)
+      );
+
+      const expectedCount = assertion.subAgentCount ?? 1;
+      if (addedCreatedRefs.length < expectedCount) {
         return {
           success: false,
-          error: `The edit_agent suggestion does not add the created agent (ref "${ref}") as a sub-agent: ${JSON.stringify(parent.item)}`,
+          error: `The edit_agent suggestion adds ${addedCreatedRefs.length} created agent(s) as sub-agents by ref, expected ${expectedCount} (created refs ${JSON.stringify(createdRefs)}): ${JSON.stringify(parent.item)}`,
         };
       }
       return { success: true };
@@ -668,6 +699,8 @@ function getEntitiesToMention(
     // A created agent has no id the model could know: it is named in plain text.
     case "suggestAgentCreation":
     case "suggestSkillCreation":
+    // Nothing was suggested: what the response must name is left to the judge criteria.
+    case "noSuggestion":
       return [];
     case "suggestSubAgentByRef":
       return [{ kind: "agent", key: assertion.parentAgentKey }];

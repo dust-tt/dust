@@ -17,6 +17,10 @@ msgstr ""
 msgid "How you appear to other members of the workspace"
 msgstr "How you appear to other members of the workspace"
 
+#: front/components/assistant/conversation/sidebar/UnifiedSearchNav.tsx
+msgid "New conversation"
+msgstr "New conversation"
+
 #: front/components/me/NotificationPreferences.tsx
 msgid "Error updating notification preferences"
 msgstr "Error updating notification preferences"
@@ -28,6 +32,10 @@ msgstr "Join"
 #: front/components/UserSettingsPopover.tsx
 msgid "Enable Memory"
 msgstr "Enable Memory"
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search agents."
+msgstr "Type to search agents."
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Last name"
@@ -62,6 +70,10 @@ msgstr "Show your agents on the home page"
 msgid "Role: {role}"
 msgstr "Role: {role}"
 
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search."
+msgstr "Type to search."
+
 #: front/components/me/NotificationPreferences.tsx
 msgid "Email and Slack notifications are turned off for this workspace by an admin."
 msgstr "Email and Slack notifications are turned off for this workspace by an admin."
@@ -82,6 +94,11 @@ msgstr "Font used for agent answers in conversations"
 #: front/components/UserSettingsPopover.tsx
 msgid "It applies on this device, but could not be saved to your account."
 msgstr "It applies on this device, but could not be saved to your account."
+
+#: front/components/assistant/conversation/sidebar/UnifiedSearchNav.tsx
+#: front/components/navigation/AdminSettingsSearchNav.tsx
+msgid "Search"
+msgstr "Search"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Other channels"
@@ -115,6 +132,10 @@ msgstr "Invited"
 #: front/components/me/NotificationPreferences.tsx
 msgid "How often to send email notification summaries"
 msgstr "How often to send email notification summaries"
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search skills."
+msgstr "Type to search skills."
 
 #: front/components/UserSettingsPopover.tsx
 msgid "We couldn't load your notification settings. Please try again later."
@@ -240,9 +261,17 @@ msgstr "Once a week"
 msgid "Cmd + Enter"
 msgstr "Cmd + Enter"
 
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search settings."
+msgstr "Type to search settings."
+
 #: front/components/assistant/conversation/InAppBanner.tsx
 msgid "You can now build and edit skills and agents directly in conversations."
 msgstr "You can now build and edit skills and agents directly in conversations."
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search members."
+msgstr "Type to search members."
 
 #: front/components/me/NotificationPreferences.tsx
 msgid "Mentions only"
@@ -257,6 +286,10 @@ msgstr "Email"
 msgctxt "theme"
 msgid "Light"
 msgstr "Light"
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search conversations."
+msgstr "Type to search conversations."
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Keyboard shortcut to send a message"
@@ -290,9 +323,17 @@ msgstr "Customization"
 msgid "Your language could not be saved to your account."
 msgstr "Your language could not be saved to your account."
 
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Create new conversation in pod"
+msgstr "Create new conversation in pod"
+
 #: front/components/UserSettingsPopover.tsx
 msgid "Access your favorite and most-used agents, or search for one from the home page."
 msgstr "Access your favorite and most-used agents, or search for one from the home page."
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Create new conversation"
+msgstr "Create new conversation"
 
 #: front/components/assistant/conversation/InAppBanner.tsx
 msgid "Try it"
@@ -311,6 +352,10 @@ msgstr "Play"
 msgid "Inbox notifications"
 msgstr "Inbox notifications"
 
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Create new Pod"
+msgstr "Create new Pod"
+
 #: front/components/UserSettingsPopover.tsx
 msgid "First name"
 msgstr "First name"
@@ -322,6 +367,10 @@ msgstr "Memory"
 #: front/components/UserSettingsPopover.tsx
 msgid "Adjust how Dust looks and behaves for you."
 msgstr "Adjust how Dust looks and behaves for you."
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search pods."
+msgstr "Type to search pods."
 
 #: front/components/UserSettingsPopover.tsx
 msgid "The content of your saved memory may appear in responses sent to Slack and other external integrations."

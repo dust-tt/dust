@@ -334,9 +334,7 @@ export function useUpdateDefaultUserSpendLimit({
         sendNotification({
           type: "success",
           title: "Default spend limit updated",
-          description: `The default per-user spend limit has been set to ${body.awuCredits.toLocaleString(
-            "en-US"
-          )} credits.`,
+          description: `The default per-user spend limit has been set to ${formatNumber(body.awuCredits)} credits.`,
         });
 
         await mutate(defaultUserSpendLimitUrl(workspaceId));

@@ -324,6 +324,16 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
         },
       });
     }
+  } else if (file.useCase === "project_context") {
+    if (!canWriteInSpace) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "You cannot edit files in that pod.",
+        },
+      });
+    }
   } else if (!auth.isManager() && file.useCase !== "conversation") {
     return apiError(ctx, {
       status_code: 403,

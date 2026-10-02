@@ -59,6 +59,7 @@ export const useFileSystemServer = async (
       {
         description: tool.description,
         inputSchema: tool.inputSchema.shape,
+        ...("stake" in tool && { _meta: { dust: { stake: tool.stake } } }),
       },
       tool.execute.bind(tool)
     );

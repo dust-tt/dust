@@ -53,6 +53,7 @@ import type {
   AgentMessageType,
   ConversationType,
   UserMessageNewEvent,
+  UserMessageOrigin,
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import {
@@ -96,6 +97,8 @@ vi.mock("@app/lib/api/assistant/conversation/content_fragment", () => ({
 }));
 
 import { runOnRedis } from "@app/lib/api/redis";
+// Mock rateLimiter from the utils module
+import * as spendLimitModule from "@app/lib/api/users/spend_limit";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
@@ -103,7 +106,6 @@ import { ModelDegradationResource } from "@app/lib/resources/model_degradation_r
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-// Mock rateLimiter from the utils module
 import * as rateLimiterModule from "@app/lib/utils/rate_limiter";
 
 const TEST_PROGRAMMATIC_CREDIT_AMOUNT_MICRO_USD = 100_000_000;
@@ -1672,6 +1674,41 @@ describe("postUserMessage", () => {
     rateLimiterSpy.mockRestore();
   });
 
+  it("applies a member's per-user cap to their messages but not to their Slack workflow messages", async () => {
+    const spendLimitSpy = vi
+      .spyOn(spendLimitModule, "isNonCreditPricedUserSpendLimitReached")
+      .mockResolvedValue(true);
+    const userJson = auth.getNonNullableUser().toJSON();
+    const post = (origin: UserMessageOrigin) =>
+      postUserMessage(auth, {
+        conversationResource,
+        content: `Hello @${agentConfig1.name}`,
+        mentions: [
+          { configurationId: agentConfig1.sId } satisfies AgentMention,
+        ],
+        context: {
+          username: userJson.username,
+          timezone: "UTC",
+          fullName: userJson.fullName,
+          email: userJson.email,
+          profilePictureUrl: userJson.image,
+          origin,
+        },
+        skipToolsValidation: false,
+      });
+
+    const webResult = await post("web");
+    expect(webResult.isErr()).toBe(true);
+    if (webResult.isErr()) {
+      expect(webResult.error.api_error.type).toBe("user_cap_reached");
+    }
+
+    const workflowResult = await post("slack_workflow");
+    expect(workflowResult.isOk()).toBe(true);
+
+    spendLimitSpy.mockRestore();
+  });
+
   it("should reject mentions of a retired global agent", async () => {
     const user = auth.getNonNullableUser();
     const userJson = user.toJSON();
@@ -2953,6 +2990,90 @@ describe("postUserMessage", () => {
       if (result.isOk()) {
         expect(result.value.userMessage.content).toBe("Hello from API key");
       }
+    });
+  });
+
+  describe("steering a running agent loop", () => {
+    let runningConversationResource: ConversationResource;
+
+    beforeEach(async () => {
+      // The factory leaves the agent message of each created exchange running.
+      const runningConversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agentConfig1.sId,
+        messagesCreatedAt: [new Date()],
+      });
+      runningConversationResource = await fetchConversationResource(
+        auth,
+        runningConversation.sId
+      );
+      vi.clearAllMocks();
+    });
+
+    const postSteeringMessage = (
+      postingAuth: Authenticator,
+      email: string | null
+    ) =>
+      postUserMessage(postingAuth, {
+        conversationResource: runningConversationResource,
+        content: "Steering message",
+        mentions: [{ configurationId: agentConfig1.sId }],
+        context: {
+          username: "steering-user",
+          timezone: "UTC",
+          fullName: null,
+          email,
+          profilePictureUrl: null,
+          origin: "api",
+        },
+        skipToolsValidation: false,
+      });
+
+    it("steers the running loop with a message from the authenticated user", async () => {
+      const result = await postSteeringMessage(auth, null);
+
+      if (result.isErr()) {
+        throw new Error("Failed to post the steering message");
+      }
+      expect(result.value.userMessage.visibility).toBe("pending");
+      expect(result.value.agentMessages).toHaveLength(0);
+      expect(gracefullyStopAgentLoop).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not steer with a message an API key attributes to a member by email", async () => {
+      const member = auth.getNonNullableUser();
+      const apiKey = await KeyFactory.regular(globalGroup);
+      const apiKeyAuth = await Authenticator.fromKey(apiKey, workspace.sId);
+
+      const result = await postSteeringMessage(apiKeyAuth, member.email);
+
+      if (result.isErr()) {
+        throw new Error("Failed to post the attributed message");
+      }
+      // The message stays attributed to the member, but is answered by its own agent loop run
+      // with the API key's authority rather than promoted as the member.
+      expect(result.value.userMessage.user?.sId).toBe(member.sId);
+      expect(result.value.userMessage.visibility).toBe("visible");
+      expect(result.value.agentMessages).toHaveLength(1);
+      expect(gracefullyStopAgentLoop).not.toHaveBeenCalled();
+      expect(launchAgentLoopWorkflow).toHaveBeenCalledTimes(1);
+      expect(
+        vi.mocked(launchAgentLoopWorkflow).mock.calls[0][0].auth.user()
+      ).toBeNull();
+    });
+
+    it("does not steer with an unattributed message from an API key", async () => {
+      const apiKey = await KeyFactory.regular(globalGroup);
+      const apiKeyAuth = await Authenticator.fromKey(apiKey, workspace.sId);
+
+      const result = await postSteeringMessage(apiKeyAuth, null);
+
+      if (result.isErr()) {
+        throw new Error("Failed to post the API key message");
+      }
+      expect(result.value.userMessage.user).toBeNull();
+      expect(result.value.userMessage.visibility).toBe("visible");
+      expect(result.value.agentMessages).toHaveLength(1);
+      expect(gracefullyStopAgentLoop).not.toHaveBeenCalled();
     });
   });
 

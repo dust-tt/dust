@@ -97,7 +97,6 @@ app.post(
       tool,
       accessToken,
       externalId,
-      useCase: "conversation",
       useCaseMetadata: {
         conversationId,
       },

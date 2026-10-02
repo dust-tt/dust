@@ -6,7 +6,7 @@ import {
   PokeTableHead,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { isManageableGroupKind } from "@app/types/groups";
 import type { PokeSpaceType } from "@app/types/poke";
 

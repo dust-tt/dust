@@ -1,26 +1,13 @@
-import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
-import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import type { Authenticator } from "@app/lib/auth";
-import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { AgentResource } from "@app/lib/resources/agent_resource";
-import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillHydrationOptions } from "@app/lib/resources/skill/types";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { TagResource } from "@app/lib/resources/tags_resource";
-import { TemplateResource } from "@app/lib/resources/template_resource";
-import { tagsSorter } from "@app/lib/utils";
 import type {
-  AgentConfigurationType,
   AgentConfigurationWithSkillsType,
-  AgentFetchVariant,
-  AgentModelConfigurationType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import { removeNulls } from "@app/types/shared/utils/general";
-import assert from "assert";
 import partition from "lodash/partition";
 import uniq from "lodash/uniq";
 
@@ -29,36 +16,6 @@ const LABELS_ONLY_FETCH_OPTIONS: SkillHydrationOptions = {
   withTools: false,
   withFileAttachments: false,
 };
-
-export function getModelForAgentConfiguration(
-  agent: AgentConfigurationModel
-): AgentModelConfigurationType {
-  const model: AgentModelConfigurationType = {
-    providerId: agent.providerId,
-    modelId: agent.modelId,
-    temperature: agent.temperature,
-  };
-
-  if (agent.responseFormat) {
-    model.responseFormat = agent.responseFormat;
-  }
-
-  // Always set reasoning effort, using model default if null/undefined
-  if (agent.reasoningEffort) {
-    model.reasoningEffort = agent.reasoningEffort;
-  } else {
-    // Get the model configuration to use default reasoning effort
-    const modelConfig = getSupportedModelConfig({
-      providerId: agent.providerId,
-      modelId: agent.modelId,
-    });
-    if (modelConfig) {
-      model.reasoningEffort = modelConfig.defaultReasoningEffort;
-    }
-  }
-
-  return model;
-}
 
 export async function getAgentIdFromName(
   auth: Authenticator,
@@ -80,137 +37,6 @@ export async function getAgentIdFromName(
   }
 
   return agent.sId;
-}
-
-/**
- * Enrich agent configurations with additional data (actions, tags, favorites).
- */
-/**
- * @cc [owner:philipperolet,label:security] regular-key-agent-editability
- * For regular keys on custom agents, `canEdit` requires workspace admin access, active status,
- * and read access to every requested space.
- */
-/**
- * @cc [owner:philipperolet,label:security] agent-editability
- * Outside regular API keys, `canEdit` is agent `write` permission; the workspace admin role alone
- * does not grant it.
- */
-/**
- * @cc [owner:sfriquet,label:security] light-instructions-require-read
- * For the `light` and `extra_light` variants, `instructions` MUST be `null` when `canRead` is
- * false (see `unreadable-agent-content-hidden`). The `full` variant carries them regardless, so a
- * caller exposing a `full` configuration with `canRead === false` MUST redact it first, by
- * serializing the agent from an `AgentResource` built for that caller (see `agent-json-redaction`).
- */
-export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
-  auth: Authenticator,
-  agentConfigurations: AgentConfigurationModel[],
-  { variant }: { variant: V }
-): Promise<AgentConfigurationType[]> {
-  const configurationModelIds = agentConfigurations.map((a) => a.id);
-  const configurationIds = agentConfigurations.map((a) => a.sId);
-  const user = auth.user();
-  const isRegularApiKey = auth.isKey() && !auth.isSystemKey();
-
-  const mcpServerActionsConfigurationsPerAgent =
-    await fetchMCPServerActionConfigurations(auth, {
-      configurationModelIds,
-      variant,
-    });
-  const favoriteStatePerAgent =
-    user && variant !== "extra_light"
-      ? await getFavoriteStates(auth, { configurationIds })
-      : new Map<string, boolean>();
-  const spacesForApiKey =
-    isRegularApiKey && auth.isAdmin()
-      ? await SpaceResource.fetchByModelIds(auth, [
-          ...new Set(
-            agentConfigurations.flatMap((agent) => agent.requestedSpaceIds)
-          ),
-        ])
-      : [];
-  const spaceById = new Map(spacesForApiKey.map((space) => [space.id, space]));
-
-  // Build the resources (used below for the per-agent read/write permission checks) from the real
-  // `agents` identity rows, batch-loaded once, rather than synthesizing them from configuration rows.
-  const resources = await AgentResource.dangerouslyFromConfigurationModels(
-    auth,
-    agentConfigurations
-  );
-  const resourceByConfigurationModelId = new Map(
-    resources.map((resource) => [resource.agentConfigurationModelId, resource])
-  );
-  const tagsPerAgent =
-    variant !== "extra_light"
-      ? await AgentResource.batchListTags(auth, resources)
-      : new Map<AgentResource, TagResource[]>();
-
-  const agentConfigurationTypes: AgentConfigurationType[] = [];
-  for (const agent of agentConfigurations) {
-    const actions =
-      variant === "full"
-        ? (mcpServerActionsConfigurationsPerAgent.get(agent.id) ?? [])
-        : [];
-
-    const model = getModelForAgentConfiguration(agent);
-
-    const resource = resourceByConfigurationModelId.get(agent.id);
-    assert(
-      resource,
-      `Unexpected: missing resource for configuration ${agent.id}`
-    );
-    const tags = tagsPerAgent.get(resource) ?? [];
-
-    const canRead = auth.can("read", resource);
-    const canEdit = isRegularApiKey
-      ? auth.can("write", resource) &&
-        agent.status === "active" &&
-        canReadRequestedSpaces(auth, spaceById, agent.requestedSpaceIds)
-      : auth.can("write", resource);
-    const agentConfigurationType: AgentConfigurationType = {
-      id: agent.id,
-      agentModelId: agent.agentId,
-      sId: agent.sId,
-      versionCreatedAt: agent.createdAt.toISOString(),
-      version: agent.version,
-      scope: agent.scope,
-      userFavorite: !!favoriteStatePerAgent.get(agent.sId),
-      name: agent.name,
-      pictureUrl: agent.pictureUrl,
-      description: agent.description,
-      instructions: variant === "full" || canRead ? agent.instructions : null,
-      instructionsHtml: variant === "full" ? agent.instructionsHtml : null,
-      model,
-      status: agent.status,
-      actions,
-      versionAuthorId: agent.authorId,
-      maxStepsPerRun: agent.maxStepsPerRun,
-      templateId: agent.templateId
-        ? TemplateResource.modelIdToSId({ id: agent.templateId })
-        : null,
-      // TODO(2025-10-20 flav): Remove once SDK JS does not rely on it anymore.
-      visualizationEnabled: false,
-      requestedGroupIds: [],
-      requestedSpaceIds: agent.requestedSpaceIds.map((spaceId) =>
-        SpaceResource.modelIdToSId({
-          id: spaceId,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        })
-      ),
-      tags: tags.map((t) => t.toJSON()).sort(tagsSorter),
-      reinforcement: agent.reinforcement,
-      lastReinforcementAnalysisAt:
-        agent.lastReinforcementAnalysisAt?.toISOString() ?? null,
-      ignoreCreditSpendThresholdAlert:
-        agent.creditSpendCheckpointThresholdAwuCredits === null,
-      canRead,
-      canEdit,
-    };
-
-    agentConfigurationTypes.push(agentConfigurationType);
-  }
-
-  return agentConfigurationTypes;
 }
 
 // Identifies one agent configuration: an agent id alone spans every version of that agent.

@@ -1,5 +1,7 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { formatDate } from "@app/lib/i18n/format";
 import { spaceMembershipProperties } from "@app/lib/spaces_utils";
 import { useUpdateSpace } from "@app/lib/swr/spaces";
 import type { RichSpaceType } from "@app/types/api/spaces";
@@ -226,13 +228,15 @@ export function PodMembersTable({
           const date = new Date(info.row.original.joinedAt);
           return (
             <DataTable.BasicCellContent
-              label={
-                date?.toLocaleDateString("en-US", {
+              label={formatDate(
+                date,
+                {
                   year: "numeric",
                   month: "short",
                   day: "numeric",
-                }) ?? ""
-              }
+                },
+                getActiveLocale()
+              )}
             />
           );
         },

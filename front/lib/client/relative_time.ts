@@ -24,6 +24,7 @@ const SHORT_FORM_STYLE_BY_LOCALE: Record<
   SupportedLocale,
   Intl.RelativeTimeFormatStyle
 > = {
+  // biome-ignore lint/plugin/noHardcodedEnUsLocale: key of a map over every supported locale
   "en-US": "narrow",
   "en-GB": "narrow",
   "fr-FR": "short",

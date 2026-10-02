@@ -14,8 +14,8 @@ import {
 import {
   GET_AGENT_DETAILS_TOOL_NAME,
   GET_SKILL_DETAILS_TOOL_NAME,
-  LIST_AGENTS_TOOL_NAME,
-  LIST_SKILLS_TOOL_NAME,
+  SEARCH_AGENTS_TOOL_NAME,
+  SEARCH_SKILLS_TOOL_NAME,
   WORKSPACE_MANAGEMENT_SERVER_NAME,
 } from "@app/lib/api/actions/servers/workspace_management/metadata";
 import type { Authenticator } from "@app/lib/auth";
@@ -51,7 +51,7 @@ Credits combine model compute and tool usage and are the same billed credits the
 - Who or what is most active, by volume rather than cost: ${analyticsToolName(GET_TOP_ENTITIES_BY_MESSAGE_COUNT_TOOL_NAME)} with the dimension asked about, or ${analyticsToolName(GET_TOP_ENTITIES_BY_EXECUTION_COUNT_TOOL_NAME)} for how often tools and skills ran.
 - Anything over time (trend, evolution, per day, per week): a single ${analyticsToolName(GET_CREDIT_TIMESERIES_TOOL_NAME)} call. Set breakdownBy to split the trend along a dimension into its top groups plus an 'others' series. Never rebuild a trend by calling a ranking tool once per period, and never make one filtered call per entity when a breakdown does it in one call.
 - What an agent does: ${managementToolName(GET_AGENT_DETAILS_TOOL_NAME)} with the agent's id.
-- What exists rather than what is used (which agents or skills the workspace has, whether they are published, which ones nobody uses): ${managementToolName(LIST_AGENTS_TOOL_NAME)} or ${managementToolName(LIST_SKILLS_TOOL_NAME)}, then ${managementToolName(GET_AGENT_DETAILS_TOOL_NAME)} or ${managementToolName(GET_SKILL_DETAILS_TOOL_NAME)} to inspect a single one. Listing the agents other members have not published is admin-only, so fall back to the default view on an authorization error.
+- Find an agent or skill by name: ${managementToolName(SEARCH_AGENTS_TOOL_NAME)} or ${managementToolName(SEARCH_SKILLS_TOOL_NAME)}, then ${managementToolName(GET_AGENT_DETAILS_TOOL_NAME)} or ${managementToolName(GET_SKILL_DETAILS_TOOL_NAME)} to inspect a single one.
 
 # Filters
 Filters take ids, not names. Every ranking row carries the entity's id: feed those back as filters to narrow any other call, and never guess an id from a display name.
@@ -71,18 +71,17 @@ export const workspaceAnalyticsSkill = {
   name: "Workspace Analytics",
   userFacingDescription:
     "Analyze how your workspace is used: who and what consumes credits and " +
-    "drives activity, headline figures, and trends over time. Also " +
-    "inventories the workspace's agents and skills.",
+    "drives activity, headline figures, and trends over time.",
   agentFacingDescription:
     "Enable when the user asks how their Dust workspace is used: credit " +
     "consumption or spend, who or what is most active, headline figures, " +
-    "trends over time, or an inventory of the workspace's agents and skills.",
+    "or trends over time.",
   instructions: WORKSPACE_ANALYTICS_INSTRUCTIONS,
   mcpServers: [
     { name: WORKSPACE_ANALYTICS_SERVER_NAME },
     { name: WORKSPACE_MANAGEMENT_SERVER_NAME },
   ],
-  version: 10,
+  version: 11,
   icon: "ActionPieChartIcon",
   isRestricted: async (auth: Authenticator) => {
     if (!auth.isManager()) {

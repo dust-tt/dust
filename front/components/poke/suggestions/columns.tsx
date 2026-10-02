@@ -1,6 +1,6 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { clientFetch } from "@app/lib/egress/client";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Chip, IconButton, Trash01 } from "@dust-tt/sparkle";

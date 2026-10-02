@@ -1,6 +1,5 @@
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { applyBatchSuggestions } from "@app/lib/api/assistant/apply_batch_suggestions";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { fetchRunAgentTool } from "@app/lib/api/assistant/suggestable_sub_agents";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
@@ -12,6 +11,7 @@ import { serializeSkillTag } from "@app/lib/skills/format";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
+import { getAgentConfiguration } from "@app/tests/utils/agent_configuration_reads";
 import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
