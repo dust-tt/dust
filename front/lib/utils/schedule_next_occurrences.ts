@@ -3,12 +3,13 @@ import type {
   ScheduleConfig,
 } from "@app/types/assistant/triggers";
 import { isCronScheduleConfig } from "@app/types/assistant/triggers";
-import { resolveCalendarDate } from "@app/types/shared/utils/date_utils";
+import {
+  DAYS_PER_WEEK,
+  ONE_MINUTE_MS,
+  resolveCalendarDate,
+} from "@app/types/shared/utils/date_utils";
 import { tzOffset } from "@date-fns/tz";
 import { CronExpressionParser } from "cron-parser";
-
-const DAYS_PER_WEEK = 7;
-const ONE_MINUTE_MS = 60 * 1000;
 
 export function getNextOccurrences(
   config: ScheduleConfig,
