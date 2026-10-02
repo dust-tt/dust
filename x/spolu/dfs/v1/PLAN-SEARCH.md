@@ -43,4 +43,4 @@ Implement [DESIGN-SEARCH.md](DESIGN-SEARCH.md) in milestones; commit and push ea
 - [x] Add phase timings and regression coverage for duplicate work, rebuilds, and exact full batches.
 - [x] Add a bounded Arrow object-store read cache for Lance files, discarded at every startup.
 - [x] Verify range reads, eviction, cache failures, mutation bypass, isolation, and live grants.
-- [ ] Rerun the unchanged GCS corpus; preserve the original results and publish the comparison.
+- [x] Rerun the unchanged GCS corpus; preserve the original results and publish the comparison.
