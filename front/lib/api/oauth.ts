@@ -299,13 +299,19 @@ export async function createConnectionAndGetSetupUrl(
   );
 }
 
+/**
+ * @cc [owner:flvndvd,label:backend] tolerate-missing-workspace
+ * `auth` MAY be null or carry no workspace: the callback session can reference a workspace
+ * unknown to this region. Finalization MUST proceed without a workspace and MUST skip the
+ * audit event in that case.
+ */
 export async function finalizeConnection(
   auth: Authenticator | null,
   provider: OAuthProvider,
   query: ParsedUrlQuery
 ): Promise<Result<OAuthConnectionType, OAuthError>> {
   const childLogger = logger.child({
-    workspaceId: auth?.getNonNullableWorkspace().sId,
+    workspaceId: auth?.workspace()?.sId,
     userId: auth?.user()?.sId,
     provider,
   });
