@@ -22,6 +22,7 @@ import type React from "react";
 import { useId, useRef } from "react";
 
 const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
+const DEFAULT_EXTERNAL_CHANGE_ANIMATION_MS = 8_000;
 
 /**
  * @cc [owner:PopDaph,label:product] document-ui-fixed
@@ -46,20 +47,22 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
  * the least text first, then cycle outward on repeated clicks.
  */
 export const Document = ({
-  initialContent,
+  content,
   className,
   mountPortalContainer,
   readOnly = false,
   autosaveDebounceMs = DEFAULT_AUTOSAVE_DEBOUNCE_MS,
+  externalChangeAnimationMs = DEFAULT_EXTERNAL_CHANGE_ANIMATION_MS,
   onSave,
   onStateChange,
   badge,
 }: DocumentProps) => {
   const { editor, editable, unsupported, dirty, saving, error, save } =
     useDocumentEditor({
-      initialContent,
+      content,
       readOnly,
       autosaveDebounceMs,
+      externalChangeAnimationMs,
       onSave,
       onStateChange,
     });

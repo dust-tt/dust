@@ -176,7 +176,7 @@ describe("useMarkdownFileEditor", () => {
 
     const { result } = renderHook(() => useMarkdownFileEditor(params));
 
-    expect(result.current.richEditor?.initialContent).toBe("# Notes\n");
+    expect(result.current.richEditor?.content).toBe("# Notes\n");
   });
 
   it("keeps the plain editor when the file exceeds the write limit", () => {
@@ -209,7 +209,7 @@ describe("useMarkdownFileEditor", () => {
     expect(vi.mocked(writeFileContentByPath).mock.calls.length).toBe(writes);
   });
 
-  it("reopens a clean editor on content written by someone else", () => {
+  it("hands a clean editor the content written by someone else, without a remount", () => {
     flags.add("co_edition");
     const { result, rerender } = renderHook(
       (props) => useMarkdownFileEditor(props),
@@ -219,10 +219,8 @@ describe("useMarkdownFileEditor", () => {
 
     rerender(revised);
 
-    expect(result.current.richEditor?.mountKey).not.toBe(firstKey);
-    expect(result.current.richEditor?.initialContent).toBe(
-      "# Notes, revised\n"
-    );
+    expect(result.current.richEditor?.mountKey).toBe(firstKey);
+    expect(result.current.richEditor?.content).toBe("# Notes, revised\n");
   });
 
   it("lifts the conflict once the editor is clean and reopens on the new content", async () => {
@@ -251,9 +249,7 @@ describe("useMarkdownFileEditor", () => {
       });
     });
 
-    expect(result.current.richEditor?.initialContent).toBe(
-      "# Notes, revised\n"
-    );
+    expect(result.current.richEditor?.content).toBe("# Notes, revised\n");
     const saved = await result.current.richEditor?.onSave("# Notes, again\n");
     expect(saved?.isOk()).toBe(true);
   });
@@ -408,7 +404,7 @@ describe("useMarkdownFileEditor", () => {
     rerender(revised);
 
     expect(result.current.richEditor?.mountKey).toBe(firstKey);
-    expect(result.current.richEditor?.initialContent).toBe("# Notes\n");
+    expect(result.current.richEditor?.content).toBe("# Notes\n");
     expect(result.current.isDirty).toBe(true);
     const saved = await result.current.richEditor?.onSave("# Notes, mine");
     expect(saved?.isErr() && saved.error).toContain(

@@ -4,6 +4,7 @@ import {
   DocumentCommentMark,
   DocumentComments,
 } from "@app/components/editor/document/DocumentComments";
+import { ExternalCursor } from "@app/components/editor/document/ExternalCursor";
 import { cn } from "@dust-tt/sparkle";
 import { Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
@@ -14,6 +15,7 @@ export const documentExtensions = [
   DocumentComments,
   DocumentCommentMark,
   DocumentCommentAnchor,
+  ExternalCursor,
   StarterKit.configure({
     heading: {
       HTMLAttributes: {

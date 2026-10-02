@@ -11,11 +11,16 @@ copy persists DFM only. Suggestions and named visual blocks are not here yet.
 ## Usage
 
 ```tsx
-<Document initialContent={dfmSource} onSave={persistDfmSource} />
+<Document content={dfmSource} onSave={persistDfmSource} />
 ```
 
-`initialContent` is the file's DFM source and is captured at mount: remount with a new key to
-open another file. `onSave` receives the DFM source to persist and resolves `Ok` once
+`content` is the file's DFM source. Remount with a new key to open another file. A new value
+while the editor is clean, written by an agent or a colleague elsewhere, is adopted in place:
+changed blocks are typed in at about thirty characters a second, faster when the change is long
+enough to exceed an eight-second cap, a caret marks
+where the text arrives, and the saved baseline moves without a save, so the reader keeps their
+scroll position and sees what changed. While a draft is open a new value is ignored; the host
+holds the file instead. A new value the editor cannot open is reported as an error. `onSave` receives the DFM source to persist and resolves `Ok` once
 stored, or `Err` with a message. Without `onSave`, or with `readOnly`, the document is
 read-only. Hosts apply their authorization through `readOnly`.
 

@@ -410,7 +410,7 @@ export function FilePreviewContent({
           <div className="min-h-0 flex-1 overflow-y-auto">
             <Document
               key={markdownRichEditor.mountKey}
-              initialContent={markdownRichEditor.initialContent}
+              content={markdownRichEditor.content}
               onSave={markdownRichEditor.onSave}
               onStateChange={markdownRichEditor.onStateChange}
               badge={<CoEditionBadge />}
