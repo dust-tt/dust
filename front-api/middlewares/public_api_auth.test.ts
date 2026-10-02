@@ -1,5 +1,8 @@
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { createHono } from "@front-api/lib/hono";
 import type { PublicApiCtx } from "@front-api/middlewares/ctx";
 import { describe, expect, it } from "vitest";
@@ -21,6 +24,8 @@ function appReportingAuth() {
       keyName: auth.key()?.name ?? null,
       keyIsSystem: auth.key()?.isSystem ?? null,
       role: auth.role(),
+      userId: auth.user()?.sId ?? null,
+      requestedGroupModelIds: auth._requestedGroupModelIds,
     });
   });
   return app;
@@ -28,12 +33,23 @@ function appReportingAuth() {
 
 function get(
   app: ReturnType<typeof appReportingAuth>,
-  { wId, secret, keyName }: { wId: string; secret: string; keyName?: string }
+  {
+    wId,
+    secret,
+    keyName,
+    extraHeaders,
+  }: {
+    wId: string;
+    secret: string;
+    keyName?: string;
+    extraHeaders?: Record<string, string>;
+  }
 ) {
   return app.request(`/${wId}`, {
     headers: {
       authorization: `Bearer ${secret}`,
       ...(keyName ? { "x-dust-api-key-name": keyName } : {}),
+      ...extraHeaders,
     },
   });
 }
@@ -178,6 +194,117 @@ describe("publicApiAuth — x-dust-api-key-name attribution", () => {
         attributionKeyName: null,
         attributionKeyModelId: null,
       })
+    );
+  });
+});
+
+describe("publicApiAuth — x-api-user-email impersonation", () => {
+  it("acts as the active member the email resolves to", async () => {
+    const { workspace, key: systemKey } = await createPublicApiMockRequest({
+      systemKey: true,
+    });
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "admin" });
+
+    const response = await get(appReportingAuth(), {
+      wId: workspace.sId,
+      secret: systemKey.secret,
+      extraHeaders: { "x-api-user-email": user.email },
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(
+      expect.objectContaining({ userId: user.sId, role: "user" })
+    );
+  });
+
+  it("matches the member's email regardless of letter case", async () => {
+    const { workspace, key: systemKey } = await createPublicApiMockRequest({
+      systemKey: true,
+    });
+    const user = await UserFactory.withEmail("alice@acme.test");
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+
+    const response = await get(appReportingAuth(), {
+      wId: workspace.sId,
+      secret: systemKey.secret,
+      extraHeaders: { "x-api-user-email": "Alice@Acme.test" },
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(
+      expect.objectContaining({ userId: user.sId, role: "user" })
+    );
+  });
+
+  it("rejects an email that resolves to no member when no groups are named", async () => {
+    const { workspace, key: systemKey } = await createPublicApiMockRequest({
+      systemKey: true,
+    });
+
+    const response = await get(appReportingAuth(), {
+      wId: workspace.sId,
+      secret: systemKey.secret,
+      extraHeaders: { "x-api-user-email": "nobody@acme.test" },
+    });
+
+    expect(response.status).toBe(401);
+  });
+
+  it("rejects an email whose user is not a member of the workspace", async () => {
+    const { workspace, key: systemKey } = await createPublicApiMockRequest({
+      systemKey: true,
+    });
+    const outsider = await UserFactory.basic();
+
+    const response = await get(appReportingAuth(), {
+      wId: workspace.sId,
+      secret: systemKey.secret,
+      extraHeaders: { "x-api-user-email": outsider.email },
+    });
+
+    expect(response.status).toBe(401);
+  });
+
+  it("keeps only the named groups and the user role when the email resolves to no member", async () => {
+    const { workspace, key: systemKey } = await createPublicApiMockRequest({
+      systemKey: true,
+    });
+    const group = await GroupFactory.regularManual(workspace, "Guests");
+
+    const response = await get(appReportingAuth(), {
+      wId: workspace.sId,
+      secret: systemKey.secret,
+      extraHeaders: {
+        "x-api-user-email": "guest@partner.test",
+        "x-dust-group-ids": group.sId,
+        // A requested role must not lift the fallback above `user`.
+        "x-dust-role": "admin",
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(
+      expect.objectContaining({
+        userId: null,
+        role: "user",
+        requestedGroupModelIds: [group.id],
+      })
+    );
+  });
+
+  it("ignores the header on a regular key", async () => {
+    const { workspace, key: regularKey } = await createPublicApiMockRequest();
+
+    const response = await get(appReportingAuth(), {
+      wId: workspace.sId,
+      secret: regularKey.secret,
+      extraHeaders: { "x-api-user-email": "nobody@acme.test" },
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(
+      expect.objectContaining({ userId: null, keyIsSystem: false })
     );
   });
 });
