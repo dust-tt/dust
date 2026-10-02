@@ -1016,6 +1016,50 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
+  static async fetchAgentMessageLimitGroup(
+    auth: Authenticator,
+    { agentMessageId }: { agentMessageId: string }
+  ): Promise<{
+    agentMessageModelId: ModelId;
+    limitGroupModelId: ModelId | null;
+  } | null> {
+    const messageRow = await MessageModel.findOne({
+      where: {
+        sId: agentMessageId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      include: [
+        { model: AgentMessageModel, as: "agentMessage", required: true },
+      ],
+    });
+    const agentMessage = messageRow?.agentMessage;
+    if (!agentMessage) {
+      return null;
+    }
+    return {
+      agentMessageModelId: agentMessage.id,
+      limitGroupModelId: agentMessage.limitGroupModelId,
+    };
+  }
+
+  static async setAgentMessageLimitGroup(
+    auth: Authenticator,
+    {
+      agentMessageModelId,
+      limitGroupModelId,
+    }: { agentMessageModelId: ModelId; limitGroupModelId: ModelId }
+  ): Promise<void> {
+    await AgentMessageModel.update(
+      { limitGroupModelId },
+      {
+        where: {
+          id: agentMessageModelId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
+  }
+
   /**
    * Recursively sums the `costCredits` of every sub-agent spawned by a single
    * origin agent message (one recursive query, `maxDepth`-bounded). Only counts

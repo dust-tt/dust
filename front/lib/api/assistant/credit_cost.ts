@@ -7,6 +7,7 @@ import {
 } from "@app/lib/api/assistant/rate_limits";
 import { maybeProactivelyAutoUpgradeSeatOnCapReached } from "@app/lib/api/credits/auto_seat_upgrade";
 import { recordProgrammaticSpendLimitUsage } from "@app/lib/api/credits/programmatic_usage_limit";
+import { recordGroupLimitUsage } from "@app/lib/api/groups/group_limit_usage";
 import { recordApiKeySpendLimitUsage } from "@app/lib/api/keys/spend_limit";
 import { PostHogServerSideTracking } from "@app/lib/api/posthog";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
@@ -320,6 +321,11 @@ export async function computeAndStoreAgentMessageCredits(
           user,
           incrementBy: recordedCostDelta,
           cycle: spendLimitCycleOverrideForAuth(auth),
+        });
+        await recordGroupLimitUsage(auth, {
+          user,
+          agentMessageId,
+          incrementBy: recordedCostDelta,
         });
       }
 
