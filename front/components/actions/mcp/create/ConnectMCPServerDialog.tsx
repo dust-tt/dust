@@ -57,6 +57,8 @@ interface ConnectMCPServerDialogProps {
   setIsOpen: (isOpen: boolean) => void;
   /** Prefills and preserves the credential mode when refreshing an existing connection. */
   initialUseCase?: MCPOAuthUseCase | null;
+  /** When true (Refresh), hide the use-case picker and keep the existing mode. */
+  lockUseCase?: boolean;
 }
 
 export function ConnectMCPServerDialog({
@@ -66,6 +68,7 @@ export function ConnectMCPServerDialog({
   isOpen = false,
   setIsOpen,
   initialUseCase = null,
+  lockUseCase = false,
 }: ConnectMCPServerDialogProps) {
   const sendNotification = useSendNotification();
   const cellContext = useCellContext();
@@ -415,6 +418,7 @@ export function ConnectMCPServerDialog({
                   mcpServerView.server?.documentationUrl ?? undefined
                 }
                 staticCredentialConfig={staticCredentialConfig}
+                lockUseCase={lockUseCase}
               />
             )}
           </div>
