@@ -1,7 +1,15 @@
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import { isStaticIpForcedRemoteMcpUrl } from "@app/lib/api/mcp/static_ip_forced_urls";
+import { removeWorkOSOrganizationDomain } from "@app/lib/api/workos/organization_primitives";
 import type { Authenticator } from "@app/lib/auth";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import type { Result } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
 import {
   isHostUnderDomain,
   isIpAddress,
@@ -82,4 +90,54 @@ export async function shouldUseStaticIpProxy(
   }
 
   return isHostUnderVerifiedDomain(auth, parsed.hostname);
+}
+
+function emitDomainRemovedAuditLogEvent(auth: Authenticator, domain: string) {
+  void emitAuditLogEvent({
+    auth,
+    action: "domain.removed",
+    targets: [buildAuditLogTarget("workspace", auth.getNonNullableWorkspace())],
+    context: getAuditLogContext(auth),
+    metadata: { domain },
+  });
+}
+
+/**
+ * @cc [owner:tdraier,label:security;product] domain-removal-revokes-locally
+ * The workspace's local `workspace_has_domains` row for `domain` MUST be deleted before the domain
+ * is removed from WorkOS, so auto-join stops honoring the domain even if the WorkOS call fails or
+ * its `organization.updated` webhook is delayed or never delivered.
+ */
+/**
+ * @cc [owner:tdraier,label:audit-logging;security] domain-removal-audited
+ * A `domain.removed` audit event MUST be emitted exactly once whenever the local row is deleted
+ * (regardless of the WorkOS outcome), or, when no local row existed, once the WorkOS removal
+ * succeeds. Callers MUST NOT emit their own `domain.removed` event.
+ */
+export async function removeWorkspaceDomain(
+  auth: Authenticator,
+  { domain }: { domain: string }
+): Promise<Result<void, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+  const workspace = await WorkspaceResource.fetchById(owner.sId);
+  if (!workspace) {
+    return new Err(new Error(`Workspace not found: ${owner.sId}`));
+  }
+
+  const localDomains = await workspace.getVerifiedDomains();
+  const revokedLocally = localDomains.some((d) => d.domain === domain);
+  if (revokedLocally) {
+    const deleteRes = await workspace.deleteDomain({ domain });
+    if (deleteRes.isErr()) {
+      return deleteRes;
+    }
+    emitDomainRemovedAuditLogEvent(auth, domain);
+  }
+
+  const removeRes = await removeWorkOSOrganizationDomain(owner, { domain });
+  if (removeRes.isOk() && !revokedLocally) {
+    emitDomainRemovedAuditLogEvent(auth, domain);
+  }
+
+  return removeRes;
 }

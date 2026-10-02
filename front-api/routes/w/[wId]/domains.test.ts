@@ -1,3 +1,5 @@
+import type * as workosAudit from "@app/lib/api/audit/workos_audit";
+import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
 import { removeWorkOSOrganizationDomain } from "@app/lib/api/workos/organization_primitives";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -6,6 +8,16 @@ import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/audit/workos_audit", async () => {
+  const actual = await vi.importActual<typeof workosAudit>(
+    "@app/lib/api/audit/workos_audit"
+  );
+  return {
+    ...actual,
+    emitAuditLogEvent: vi.fn(),
+  };
+});
 
 vi.mock("@app/lib/api/workos/organization_primitives", async () => {
   const actual = await vi.importActual(
@@ -42,6 +54,13 @@ async function seedDomain(workspaceId: string, domain: string) {
   const resource = await WorkspaceResource.fetchById(workspaceId);
   const res = await resource?.upsertWorkspaceDomain({ domain });
   expect(res?.isOk()).toBe(true);
+}
+
+function expectDomainRemovedAuditedOnce(domain: string) {
+  expect(vi.mocked(emitAuditLogEvent)).toHaveBeenCalledTimes(1);
+  expect(vi.mocked(emitAuditLogEvent)).toHaveBeenCalledWith(
+    expect.objectContaining({ action: "domain.removed", metadata: { domain } })
+  );
 }
 
 async function verifiedDomains(workspaceId: string) {
@@ -160,6 +179,7 @@ describe("DELETE /api/w/:wId/domains", () => {
       expect.objectContaining({ sId: workspace.sId }),
       { domain: "acme.com" }
     );
+    expectDomainRemovedAuditedOnce("acme.com");
   });
 
   it("revokes the local domain even when the WorkOS removal fails", async () => {
@@ -173,6 +193,19 @@ describe("DELETE /api/w/:wId/domains", () => {
 
     expect(response.status).toBe(400);
     expect(await verifiedDomains(workspace.sId)).toEqual([]);
+    expectDomainRemovedAuditedOnce("acme.com");
+  });
+
+  it("does not audit when a WorkOS-only removal fails", async () => {
+    vi.mocked(removeWorkOSOrganizationDomain).mockResolvedValueOnce(
+      new Err(new Error("WorkOS unavailable"))
+    );
+    const { workspace } = await setup();
+
+    const response = await del(workspace, { domain: "pending.com" });
+
+    expect(response.status).toBe(400);
+    expect(vi.mocked(emitAuditLogEvent)).not.toHaveBeenCalled();
   });
 
   it("removes a domain that only exists in WorkOS", async () => {
@@ -188,6 +221,7 @@ describe("DELETE /api/w/:wId/domains", () => {
       expect.objectContaining({ sId: workspace.sId }),
       { domain: "pending.com" }
     );
+    expectDomainRemovedAuditedOnce("pending.com");
   });
 
   it("returns 403 for a member without the admin:security permission", async () => {
@@ -198,5 +232,6 @@ describe("DELETE /api/w/:wId/domains", () => {
 
     expect(response.status).toBe(403);
     expect(await verifiedDomains(workspace.sId)).toHaveLength(1);
+    expect(vi.mocked(emitAuditLogEvent)).not.toHaveBeenCalled();
   });
 });

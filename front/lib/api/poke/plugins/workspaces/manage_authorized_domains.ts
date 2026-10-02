@@ -4,8 +4,8 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import {
   addWorkOSOrganizationDomain,
   getOrCreateWorkOSOrganization,
-  removeWorkspaceDomain,
 } from "@app/lib/api/workos/organization";
+import { removeWorkspaceDomain } from "@app/lib/api/workspace_has_domains";
 import type { Authenticator } from "@app/lib/auth";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isDomain } from "@app/lib/utils";
@@ -85,9 +85,7 @@ export async function handleRemoveDomain(
     );
   }
 
-  const result = await removeWorkspaceDomain(existingDomainWorkspace, {
-    domain,
-  });
+  const result = await removeWorkspaceDomain(auth, { domain });
   if (result.isErr()) {
     return new Err(result.error);
   }
