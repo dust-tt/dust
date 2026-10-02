@@ -1,0 +1,253 @@
+{
+  "label": "dfs v2 [FoundationDB + Elasticsearch]",
+  "manifest_sha256": "67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1",
+  "files": 1000,
+  "profile": "release",
+  "linux": "Linux-6.12.54-linuxkit-aarch64-with-glibc2.41",
+  "cpu_count": 16,
+  "memory": "MemTotal:        8024028 kB",
+  "server_binary_sha256": "38f27c14cf9d0b8d06064fbe5962df0f1794bae9f972f7c638f0605f7a70e18c",
+  "fdb_version": "7.3.69",
+  "es_version": "8.15.3",
+  "server_cache": "advisory directory/parent IDs only; 16384 entries / 8 MiB accounting budget",
+  "backend_caches": "FDB, ES, and OS caches retained across dfs-server restarts",
+  "durability": "normal FDB commits; no post-acknowledgement persistence drain",
+  "prefix": "dfs-v2-bench-80a762219c48416fbd56a4a96f44be21",
+  "profile_timings": true,
+  "indexer_available": true,
+  "outer_depth": 6,
+  "depth_below_grant": 6,
+  "corpus_selection": "first manifest paths",
+  "started_at": "2026-10-02T19:21:43.159465+00:00",
+  "untar_seconds": 22.43878401000984,
+  "remaining_client_writeback_seconds": 0.00016191706527024508,
+  "finished_at": "2026-10-02T19:22:05.598853+00:00",
+  "phases": [
+    {
+      "operation": "background",
+      "phase": "authorize",
+      "calls": 1035,
+      "total_ms": 733.47,
+      "mean_us": 708.6666666666666
+    },
+    {
+      "operation": "background",
+      "phase": "commit",
+      "calls": 45,
+      "total_ms": 53.939,
+      "mean_us": 1198.6444444444444
+    },
+    {
+      "operation": "background",
+      "phase": "object",
+      "calls": 1035,
+      "total_ms": 438.054,
+      "mean_us": 423.2405797101449
+    },
+    {
+      "operation": "background",
+      "phase": "prepare",
+      "calls": 45,
+      "total_ms": 348.116,
+      "mean_us": 7735.9111111111115
+    },
+    {
+      "operation": "background",
+      "phase": "read_version",
+      "calls": 45,
+      "total_ms": 34.363,
+      "mean_us": 763.6222222222223
+    },
+    {
+      "operation": "create",
+      "phase": "authorize",
+      "calls": 1012,
+      "total_ms": 733.945,
+      "mean_us": 725.2420948616601
+    },
+    {
+      "operation": "create",
+      "phase": "child",
+      "calls": 1012,
+      "total_ms": 437.029,
+      "mean_us": 431.84683794466406
+    },
+    {
+      "operation": "create",
+      "phase": "collision",
+      "calls": 1012,
+      "total_ms": 446.604,
+      "mean_us": 441.30830039525694
+    },
+    {
+      "operation": "create",
+      "phase": "commit",
+      "calls": 1012,
+      "total_ms": 1834.022,
+      "mean_us": 1812.2747035573123
+    },
+    {
+      "operation": "create",
+      "phase": "locks",
+      "calls": 1012,
+      "total_ms": 3.076,
+      "mean_us": 3.039525691699605
+    },
+    {
+      "operation": "create",
+      "phase": "object",
+      "calls": 1012,
+      "total_ms": 2.026,
+      "mean_us": 2.0019762845849804
+    },
+    {
+      "operation": "create",
+      "phase": "prefetch_object",
+      "calls": 1012,
+      "total_ms": 286.809,
+      "mean_us": 283.40810276679844
+    },
+    {
+      "operation": "create",
+      "phase": "prepare",
+      "calls": 1012,
+      "total_ms": 1069.541,
+      "mean_us": 1056.858695652174
+    },
+    {
+      "operation": "create",
+      "phase": "read_version",
+      "calls": 1012,
+      "total_ms": 1308.796,
+      "mean_us": 1293.2766798418972
+    },
+    {
+      "operation": "create",
+      "phase": "workspace",
+      "calls": 1012,
+      "total_ms": 307.345,
+      "mean_us": 303.7005928853755
+    },
+    {
+      "operation": "update",
+      "phase": "authorize",
+      "calls": 2026,
+      "total_ms": 1594.101,
+      "mean_us": 786.8218163869694
+    },
+    {
+      "operation": "update",
+      "phase": "commit",
+      "calls": 2026,
+      "total_ms": 3708.686,
+      "mean_us": 1830.5459032576505
+    },
+    {
+      "operation": "update",
+      "phase": "locks",
+      "calls": 2026,
+      "total_ms": 7.911,
+      "mean_us": 3.9047384007897334
+    },
+    {
+      "operation": "update",
+      "phase": "object",
+      "calls": 2026,
+      "total_ms": 1.618,
+      "mean_us": 0.7986179664363278
+    },
+    {
+      "operation": "update",
+      "phase": "prefetch_object",
+      "calls": 2026,
+      "total_ms": 605.529,
+      "mean_us": 298.8790720631787
+    },
+    {
+      "operation": "update",
+      "phase": "prepare",
+      "calls": 2026,
+      "total_ms": 2296.983,
+      "mean_us": 1133.7527147087858
+    },
+    {
+      "operation": "update",
+      "phase": "read_version",
+      "calls": 2026,
+      "total_ms": 2804.903,
+      "mean_us": 1384.453603158934
+    },
+    {
+      "operation": "update",
+      "phase": "workspace",
+      "calls": 2026,
+      "total_ms": 646.481,
+      "mean_us": 319.0923000987167
+    },
+    {
+      "operation": "write",
+      "phase": "authorize",
+      "calls": 1035,
+      "total_ms": 822.563,
+      "mean_us": 794.7468599033816
+    },
+    {
+      "operation": "write",
+      "phase": "block_read",
+      "calls": 35,
+      "total_ms": 17.392,
+      "mean_us": 496.9142857142857
+    },
+    {
+      "operation": "write",
+      "phase": "commit",
+      "calls": 1035,
+      "total_ms": 1980.196,
+      "mean_us": 1913.232850241546
+    },
+    {
+      "operation": "write",
+      "phase": "locks",
+      "calls": 1035,
+      "total_ms": 4.422,
+      "mean_us": 4.272463768115942
+    },
+    {
+      "operation": "write",
+      "phase": "object",
+      "calls": 1035,
+      "total_ms": 0.832,
+      "mean_us": 0.8038647342995169
+    },
+    {
+      "operation": "write",
+      "phase": "prefetch_object",
+      "calls": 1035,
+      "total_ms": 280.527,
+      "mean_us": 271.0405797101449
+    },
+    {
+      "operation": "write",
+      "phase": "prepare",
+      "calls": 1035,
+      "total_ms": 1177.57,
+      "mean_us": 1137.7487922705313
+    },
+    {
+      "operation": "write",
+      "phase": "read_version",
+      "calls": 1035,
+      "total_ms": 1435.146,
+      "mean_us": 1386.6144927536232
+    },
+    {
+      "operation": "write",
+      "phase": "workspace",
+      "calls": 1035,
+      "total_ms": 301.563,
+      "mean_us": 291.3652173913043
+    }
+  ],
+  "validated_files": 1000,
+  "fixture_cleaned": true
+}

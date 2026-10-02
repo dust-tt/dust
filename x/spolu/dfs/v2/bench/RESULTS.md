@@ -18,6 +18,98 @@ creates a new session and mount** (ten resets). Warm is one repeat on that mount
 and the Docker VM's OS cache are retained; local is the generated corpus on the container filesystem
 and is not guaranteed cold. All 24 rows passed the original workload's result checks.
 
+### dfs v2 [transaction read optimization]
+
+Same 10,000-file corpus, unchanged client/API, and durable FDB acknowledgment. Server revision
+`9caf79ade4`; phase profiling is **off** for this full run. Independent reads share the same
+conflict-tracked transaction; block patches skip old data only when live metadata proves it unnecessary.
+All 24 result checks passed, with ten server/session/mount resets.
+
+```text
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 7,302.77  | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 159.76    | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 322.09    | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 7.61      | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 24,501.63 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 916.50    | OK     |
+| metadata     | stat missing (256 paths)                       | first | 954.62    | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 4.88      | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 5,956.67  | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 195.61    | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 6,680.60  | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 211.93    | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 860.02    | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 29.62     | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 203.42    | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 5.94      | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 55,918.01 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 1,274.29  | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 1,475.89  | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 28.74     | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 304.44    | OK     |
+| file sync    | fsync (32 files)                               | once  | 226.59    | OK     |
+| write        | close (32 files)                               | once  | 2.96      | OK     |
+| write        | unlink (32 files)                              | once  | 220.83    | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+```
+
+Untar: **197.439 s**, down from **244.149 s** (**19.1% less time**, **1.24× faster**).
+Final client `syncfs`: **0.000331 s** after untar and **0.000093 s** after the suite; only remaining
+writeback is measured. Shutdown: **0.035 s**. Every accepted mutation already awaited FDB;
+there is no authoritative persistence drain after acknowledgment.
+
+First open/stat/close improved **35.190 → 24.502 s** (**30.4% less time**); full read/SHA-256 improved
+**67.302 → 55.918 s** (**16.9%**). Create/write improved **380.93 → 304.44 ms** and unlink
+**295.66 → 220.83 ms**. Scandir/stat and fsync changed little. Kernel-warm results remain similar;
+rare-literal ripgrep was slower (**6.346 → 6.681 s**). These are single runs with retained backend/OS
+caches, so small differences do not establish a regression or gain.
+
+Untar remains far slower than [v1 with client optimization](../../v1/bench/RESULTS.md): **17.084 s**
+plus **5.570 s** remaining SlateDB persistence. v1 acknowledges in RAM; v2 requires durable FDB commits.
+The measurements use different backend topology and do not isolate durability's contribution.
+
+[Run metadata](transaction-reads/filesystem.json), [DFS rows](transaction-reads/dfs.json),
+[local rows](transaction-reads/local.json), and [per-case RPC counters](transaction-reads/).
+The measured revision precedes a follow-up error-ordering guard: a definitive application rejection
+wins over a failed speculative read instead of retrying it. That guard changes only failure handling.
+Previous filesystem tables and search results are retained below.
+
+#### Deep-path untar diagnostics
+
+Separate, profiled 1,000-file samples use a grant below six outer directories, six more directories
+below that grant, then the corpus tree. The mount has only that selective grant. These diagnose the
+same general path; there is no root-specific optimization. Every file's SHA-256 was verified.
+The before binary is the ancestry-hints implementation plus the same phase instrumentation; raw
+reports retain all binary hashes. These smaller instrumented timings are separate from the full run.
+
+| Measurement | Before | After |
+| --- | ---: | ---: |
+| Untar wall time | 27.053 s | 22.439 s |
+| Create preparation, mean | 2.953 ms | 1.057 ms |
+| Metadata update preparation, mean | 1.773 ms | 1.134 ms |
+| Write preparation, mean | 2.188 ms | 1.138 ms |
+| Old block reads | 1,039 | 35 |
+| Mutation preparation, summed | 8.851 s | 4.544 s |
+| Mutation read-version acquisition, summed | 4.804 s | 5.549 s |
+| Mutation commit waits, summed | 7.919 s | 7.523 s |
+
+Read-version acquisition and durable commit waits now dominate the measured mutation phases.
+Local lock waits totaled **15 ms** after optimization. Preparation excludes read-version acquisition
+in these diagnostic runs; its nested phases overlap and must not be added together. Sums across calls
+are not elapsed wall time. FUSE still issues separate create, metadata update, and content RPCs.
+
+With ES deliberately unreachable, the before run took **27.694 s**, versus **27.053 s** with indexing
+running. Pending jobs were still written to FDB. Indexing did not explain the foreground cost in this
+small sample; this does not establish its impact under heavier concurrent load.
+
+[Before profile](transaction-reads/profile-before.json),
+[before with ES unavailable](transaction-reads/profile-before-no-indexer.json),
+[after profile](transaction-reads/profile-after.json). Reproduce with [bench/untar.py](untar.py);
+see [README](../README.md) for commands and profiling caveats.
+
 ### dfs v2 [ancestry hints]
 
 Same 10,000-file corpus and setup, server revision `2e71c2b6e7`. Directory-to-parent ID hints
