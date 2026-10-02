@@ -1,7 +1,7 @@
 # dfs:// v2 development
 
 The local server serves the filesystem and keyword search through shared FoundationDB and
-Elasticsearch; see [PLAN.md](PLAN.md) for remaining validation and benchmarks.
+Elasticsearch; see [benchmark results](bench/RESULTS.md) and [PLAN.md](PLAN.md) for future work.
 The v1 protocol/client/FUSE sources remain unchanged. Start with local Docker; no GCS credentials.
 
 From `v2/`:
@@ -61,16 +61,25 @@ Inject transport failures around the real ES node (no database mocks):
 
 ```sh
 local/run exec python3 /dfs/v2/tests/search_failures.py
+python3 local/restarts.py
 ```
+
+`restarts.py` restarts both local databases during writes while keeping dfs-server alive, verifies
+acknowledged metadata/content and search recovery, and cleans its own fixture. Run it without any
+other workload using these databases.
 
 Run benchmarks sequentially, with no tests or other workloads running:
 
 ```sh
 local/run exec python3 /dfs/v2/bench/search.py
 local/run exec python3 /dfs/v2/bench/vfs.py
+local/run exec cargo build --release --example workspace_bench
+local/run exec python3 /dfs/v2/bench/workspaces.py
 ```
 
-Both print the report directory. The search runner reuses v1's Rust population/query helper and all
+All print the report directory. The search runner reuses v1's Rust population/query helper and all
 eight query cases. The filesystem runner imports jd's unmodified benchmark and validates its fixed
 manifest; it restarts dfs-server and remounts before each `first` read case. FDB, ES, and OS caches
 stay warm across these restarts. Native FDB commit durability is included in foreground writes.
+The small workspace runner checks shared-list pagination at 1/2/512 grants, search isolation, and
+two concurrent writers alongside 16 idle workspaces. It enables debug FDB commit timing logs.
