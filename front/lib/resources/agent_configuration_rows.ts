@@ -1,10 +1,14 @@
 import type { Authenticator } from "@app/lib/auth";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import {
+  AgentConfigurationModel,
+  AgentModel,
+} from "@app/lib/models/agent/agent";
 import type {
   ModelIdType,
   ModelProviderIdType,
 } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { Transaction } from "sequelize";
 import { col, fn, Op } from "sequelize";
 
@@ -12,22 +16,33 @@ import { col, fn, Op } from "sequelize";
 // for callers that need the whole workspace whatever they can read (name uniqueness, model
 // availability, usage listings, space cleanup). A leaf module, like `agent_resource_cache`, so lower
 // level paths that `AgentResource` itself depends on can use it without an import cycle.
+// An agent's name, scope and status live on its `agents` row; the other fields on its current
+// configuration row, joined on `agents.currentVersion` (see `agent-current-version-pointer`).
 
-// The names of every active configuration row of the workspace.
+const currentConfigurationOfActiveAgent = {
+  model: AgentModel,
+  required: true,
+  attributes: [],
+  where: { status: "active" as const },
+};
+
+const currentVersionWhere = { version: { [Op.col]: "agent.currentVersion" } };
+
+// The names of every active agent of the workspace.
 export async function listActiveAgentNames(
   auth: Authenticator
 ): Promise<string[]> {
-  const configurations = await AgentConfigurationModel.findAll({
+  const agents = await AgentModel.findAll({
     attributes: ["name"],
     where: {
       workspaceId: auth.getNonNullableWorkspace().id,
       status: "active",
     },
   });
-  return configurations.map((configuration) => configuration.name);
+  return removeNulls(agents.map((agent) => agent.name));
 }
 
-// The model of every active configuration row of the workspace.
+// The model of every active agent of the workspace.
 export async function listActiveAgentModels(
   auth: Authenticator
 ): Promise<
@@ -37,8 +52,9 @@ export async function listActiveAgentModels(
     attributes: ["sId", "providerId", "modelId"],
     where: {
       workspaceId: auth.getNonNullableWorkspace().id,
-      status: "active",
+      ...currentVersionWhere,
     },
+    include: [currentConfigurationOfActiveAgent],
   });
   return configurations.map(({ sId, providerId, modelId }) => ({
     agentId: sId,
@@ -73,9 +89,9 @@ export async function listVersionAuthors(
   }));
 }
 
-// The identity of active configuration rows (restricted to `configurationModelIds` when given).
-// With `usageVisibleOnly`, a non-admin caller only gets the visible ones and the versions of the
-// agents they hold `write` on.
+// The identity of the current configuration rows of active agents (restricted to
+// `configurationModelIds` when given). With `usageVisibleOnly`, a non-admin caller only gets the
+// visible agents and the ones they hold `write` on.
 export async function listActiveConfigurationIdentities(
   auth: Authenticator,
   {
@@ -92,28 +108,40 @@ export async function listActiveConfigurationIdentities(
   const restrictToUsageVisible =
     usageVisibleOnly && !auth.isAdmin() && writableAgents.kind !== "all";
 
-  return AgentConfigurationModel.findAll({
-    raw: true,
-    attributes: ["id", "sId", "name", "pictureUrl"],
+  const configurations = await AgentConfigurationModel.findAll({
+    attributes: ["id", "sId", "pictureUrl"],
     where: {
       workspaceId,
-      status: "active",
+      ...currentVersionWhere,
       ...(configurationModelIds
         ? { id: { [Op.in]: configurationModelIds } }
         : {}),
       ...(restrictToUsageVisible
         ? {
             [Op.or]: [
-              { scope: "visible" },
+              { "$agent.scope$": "visible" },
               { agentId: { [Op.in]: writableAgents.resourceIds } },
             ],
           }
         : {}),
     },
+    include: [{ ...currentConfigurationOfActiveAgent, attributes: ["name"] }],
+  });
+  return configurations.map((configuration) => {
+    // The `agents` row joined by `currentConfigurationOfActiveAgent`.
+    const { agent } = configuration as AgentConfigurationModel & {
+      agent: AgentModel;
+    };
+    return {
+      id: configuration.id,
+      sId: configuration.sId,
+      name: agent.name ?? "",
+      pictureUrl: configuration.pictureUrl,
+    };
   });
 }
 
-// The active configuration rows whose requested spaces include `spaceModelId`.
+// The current configuration rows of active agents whose requested spaces include `spaceModelId`.
 export async function listActiveConfigurationsRequestingSpace(
   auth: Authenticator,
   spaceModelId: ModelId,
@@ -125,9 +153,10 @@ export async function listActiveConfigurationsRequestingSpace(
     attributes: ["id", "requestedSpaceIds"],
     where: {
       workspaceId: auth.getNonNullableWorkspace().id,
-      status: "active",
+      ...currentVersionWhere,
       requestedSpaceIds: { [Op.contains]: [spaceModelId] },
     },
+    include: [currentConfigurationOfActiveAgent],
     transaction,
   });
   return configurations.map(({ id, requestedSpaceIds }) => ({
