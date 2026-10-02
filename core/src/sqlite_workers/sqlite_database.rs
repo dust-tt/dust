@@ -9,6 +9,7 @@ use crate::{
 };
 use anyhow::{anyhow, Result};
 use futures::future::try_join_all;
+use itertools::Itertools;
 use parking_lot::Mutex;
 use rayon::prelude::*;
 use rusqlite::{
@@ -28,6 +29,8 @@ pub struct SqliteDatabase {
     conn: Option<Arc<Mutex<Connection>>>,
     interrupt_handle: Option<Arc<tokio::sync::Mutex<InterruptHandle>>>,
     temporary_files: Option<Vec<NamedTempFile>>,
+    // Sorted unique ids of the tables loaded into `conn`.
+    table_unique_ids: Vec<String>,
 }
 
 #[derive(Debug, Error)]
@@ -63,37 +66,53 @@ impl SqliteDatabase {
             conn: None,
             interrupt_handle: None,
             temporary_files: None,
+            table_unique_ids: vec![],
         }
     }
 
+    /**
+     * @cc [owner:davidebbo,label:security] init-matches-requested-tables
+     * After a successful `init`, the connection MUST hold exactly the requested multiset of tables
+     * (by unique id). When already initialized from a different multiset, `init` MUST rebuild the
+     * connection from the requested tables rather than reuse the loaded ones. If the rebuild
+     * fails, `init` MUST fail and the previous connection MUST remain associated with its own
+     * tables.
+     */
     pub async fn init(
         &mut self,
         tables: Vec<LocalTable>,
         databases_store: Box<dyn DatabasesStore + Sync + Send>,
     ) -> Result<()> {
-        match &self.conn {
-            Some(_) => Ok(()),
-            None => {
-                let (conn, temporary_files) =
-                    create_in_memory_sqlite_db(databases_store, tables).await?;
+        let table_unique_ids = tables
+            .iter()
+            .map(|lt| lt.table.unique_id())
+            .sorted()
+            .collect::<Vec<_>>();
 
-                let interrupt_handle = {
-                    let conn = conn.lock();
-                    conn.get_interrupt_handle()
-                };
-                self.conn = Some(conn);
-                self.interrupt_handle = Some(Arc::new(tokio::sync::Mutex::new(interrupt_handle)));
-                self.temporary_files = temporary_files;
-
-                Ok(())
+        if self.conn.is_some() {
+            if table_unique_ids == self.table_unique_ids {
+                return Ok(());
             }
+            info!(
+                table_count = table_unique_ids.len(),
+                "Rebuilding database initialized with a different set of tables"
+            );
         }
+
+        let (conn, temporary_files) = create_in_memory_sqlite_db(databases_store, tables).await?;
+
+        let interrupt_handle = {
+            let conn = conn.lock();
+            conn.get_interrupt_handle()
+        };
+        self.conn = Some(conn);
+        self.interrupt_handle = Some(Arc::new(tokio::sync::Mutex::new(interrupt_handle)));
+        self.temporary_files = temporary_files;
+        self.table_unique_ids = table_unique_ids;
+
+        Ok(())
     }
 
-    /// @cc [owner:frankaloia,label:security;performance] timeout-interrupts-sqlite
-    /// When the configured timeout elapses, `InterruptHandle::interrupt` MUST be called before
-    /// the error is returned, ensuring the blocking thread and connection mutex are freed rather
-    /// than pinned for the duration of the underlying SQLite statement.
     pub async fn query(
         &self,
         query: &str,
@@ -416,7 +435,9 @@ async fn create_in_memory_sqlite_db_with_csv(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::databases::table::Table;
     use crate::databases::table_schema::{TableSchema, TableSchemaColumn, TableSchemaFieldType};
+    use crate::project::Project;
     use std::path::Path;
 
     fn create_test_database() -> Result<SqliteDatabase> {
@@ -430,7 +451,59 @@ mod tests {
             conn: Some(Arc::new(Mutex::new(conn))),
             interrupt_handle: Some(Arc::new(tokio::sync::Mutex::new(interrupt_handle))),
             temporary_files: None,
+            table_unique_ids: vec![],
         })
+    }
+
+    fn local_table(table_id: &str) -> Result<LocalTable> {
+        LocalTable::from_table(Table::new(
+            Project::new_from_id(42),
+            "data_source_id".to_string(),
+            "data_source_internal_id".to_string(),
+            utils::now(),
+            table_id.to_string(),
+            table_id.to_string(),
+            "".to_string(),
+            utils::now(),
+            table_id.to_string(),
+            "text/csv".to_string(),
+            None,
+            vec![],
+            None,
+            vec![],
+            None,
+            None,
+            None,
+            None,
+            None,
+        ))
+    }
+
+    #[tokio::test]
+    async fn init_rebuilds_when_tables_differ_from_loaded_ones() -> Result<()> {
+        let mut database = create_test_database()?;
+        let loaded = vec![local_table("a")?, local_table("r")?];
+        database.table_unique_ids = loaded
+            .iter()
+            .map(|lt| lt.table.unique_id())
+            .sorted()
+            .collect();
+
+        let same_tables_reversed = vec![local_table("r")?, local_table("a")?];
+        database
+            .init(
+                same_tables_reversed,
+                Box::new(GoogleCloudStorageDatabasesStore::new()),
+            )
+            .await?;
+        assert_eq!(database.query("SELECT * FROM data", 1_000).await?.len(), 1);
+
+        database
+            .init(vec![], Box::new(GoogleCloudStorageDatabasesStore::new()))
+            .await?;
+        assert!(database.table_unique_ids.is_empty());
+        assert!(database.query("SELECT * FROM data", 1_000).await.is_err());
+        Ok(())
     }
 
     #[tokio::test]
