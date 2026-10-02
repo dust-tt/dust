@@ -27,7 +27,7 @@ import {
   roundMs,
 } from "@app/lib/api/sandbox_functions/sandbox_function_mcp_action_server_timings";
 import type { Authenticator } from "@app/lib/auth";
-import { heartbeatWithoutCancellation } from "@app/lib/temporal";
+import { heartbeat } from "@app/lib/temporal";
 import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS } from "@app/temporal/agent_loop/config";
@@ -148,7 +148,7 @@ export async function* runToolWithStreaming(
       {
         intervalMs: TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS,
         heartbeatFn: () => {
-          heartbeatWithoutCancellation();
+          heartbeat({ ignoreCancellations: true });
           localLogger.info("MCP tool result processing heartbeat");
         },
       }

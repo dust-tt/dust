@@ -107,7 +107,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
-import { heartbeatWithoutCancellation } from "@app/lib/temporal";
+import { heartbeat } from "@app/lib/temporal";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
@@ -547,7 +547,7 @@ export async function* tryCallMCPTool(
       mcpClient = connectionResult.value;
     }
 
-    heartbeatWithoutCancellation();
+    heartbeat({ ignoreCancellations: true });
 
     const emitter = new EventEmitter();
 
@@ -634,7 +634,7 @@ export async function* tryCallMCPTool(
       new Promise((resolve) => {
         heartbeatTimer = setTimeout(() => {
           logger.info(toolLogContext, "MCP tool heartbeat");
-          heartbeatWithoutCancellation();
+          heartbeat({ ignoreCancellations: true });
           resolve();
           // Reasonable delay to react to cancellation under 10s.
         }, 10_000);

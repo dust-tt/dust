@@ -145,20 +145,13 @@ export async function checkRunningUpsertWorkflows({
   return count;
 }
 
-export function heartbeatWithoutCancellation(): void {
-  let context: Context;
-  try {
-    context = Context.current();
-  } catch {
-    // Inline tool runs can execute outside a Temporal activity.
-    return;
-  }
-  context.heartbeat();
-}
-
 // This function allows to heartbeat back to the temporal workflow, but also
-// awaits a temporal sleep(0), which allows to throw an exception if the activity should be cancelled.
-export async function heartbeat() {
+// awaits a temporal sleep(0) to check cancellation unless the caller handles it separately.
+export async function heartbeat({
+  ignoreCancellations = false,
+}: {
+  ignoreCancellations?: boolean;
+} = {}) {
   try {
     Context.current();
   } catch (_error) {
@@ -168,5 +161,7 @@ export async function heartbeat() {
     return;
   }
   Context.current().heartbeat();
-  await Context.current().sleep(0);
+  if (!ignoreCancellations) {
+    await Context.current().sleep(0);
+  }
 }
