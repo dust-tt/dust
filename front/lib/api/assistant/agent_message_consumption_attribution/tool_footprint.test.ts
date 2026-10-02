@@ -176,7 +176,7 @@ describe("toolCallFootprintTexts", () => {
 describe("measureToolCallFootprints", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getLlmCredentials).mockResolvedValue({} as never);
+    vi.mocked(getLlmCredentials).mockResolvedValue({});
     // Count is the character length of each text, keeping the assertions readable.
     vi.mocked(tokenCountForTexts).mockImplementation(
       async (texts) => new Ok(texts.map((text) => text.length))

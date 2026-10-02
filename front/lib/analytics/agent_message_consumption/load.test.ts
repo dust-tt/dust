@@ -488,12 +488,11 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
         },
       }
     );
-    const agentMessageRow = await AgentMessageModel.findOne({
-      where: {
-        id: context.agentMessage.agentMessageId!,
-        workspaceId: context.workspace.id,
-      },
-    });
+    const analyticsContext =
+      await ConversationResource.fetchAgentMessageConsumptionAnalyticsContext(
+        context.auth,
+        { agentMessageId: context.agentMessage.sId }
+      );
 
     const input = await loadAgentMessageConsumptionAnalyticsInput(
       context.auth,
@@ -502,7 +501,7 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
 
     expect(input).toMatchObject({
       billedCredits: 5,
-      completedAt: agentMessageRow?.updatedAt,
+      completedAt: analyticsContext?.agentMessage.updatedAt,
       messageStatus: "created",
     });
   });
