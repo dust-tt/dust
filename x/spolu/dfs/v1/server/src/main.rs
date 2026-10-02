@@ -54,9 +54,37 @@ struct Config {
     shutdown_timeout_seconds: u64,
     #[command(flatten)]
     cache: CacheConfig,
+    #[command(flatten)]
+    search: dfs_server::search::SearchConfig,
 }
-#[tokio::main]
-async fn main() -> Result<()> {
+/// @cc [owner:spolu,label:security] lance-process-environment
+/// The server MUST remove non-ADC service-account aliases before Lance initializes. This MUST happen
+/// in a replacement process, without unsafe mutation of the multithreaded process environment.
+fn main() -> Result<()> {
+    use std::os::unix::process::CommandExt;
+    let aliases = [
+        "SERVICE_ACCOUNT",
+        "SERVICE_ACCOUNT_PATH",
+        "SERVICE_ACCOUNT_KEY",
+        "GOOGLE_SERVICE_ACCOUNT",
+        "GOOGLE_SERVICE_ACCOUNT_PATH",
+        "GOOGLE_SERVICE_ACCOUNT_KEY",
+    ];
+    if aliases.iter().any(|key| std::env::var_os(key).is_some()) {
+        let mut command = std::process::Command::new(std::env::current_exe()?);
+        command.args(std::env::args_os().skip(1));
+        for key in aliases {
+            command.env_remove(key);
+        }
+        return Err(command.exec().into());
+    }
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?
+        .block_on(run())
+}
+
+async fn run() -> Result<()> {
     let config = Config::parse();
     tracing_subscriber::fmt()
         .with_env_filter(
@@ -74,7 +102,7 @@ async fn main() -> Result<()> {
         Some(bucket) => {
             // Ignore unrelated SERVICE_ACCOUNT settings inherited from other Dust services.
             let mut builder = GoogleCloudStorageBuilder::new().with_bucket_name(&bucket);
-            if let Some(path) = config.application_credentials {
+            if let Some(path) = &config.application_credentials {
                 builder = builder.with_application_credentials(path);
             }
             (Arc::new(builder.build()?), format!("gs://{bucket}"))
@@ -91,6 +119,18 @@ async fn main() -> Result<()> {
     };
     let storage = Storage::open(store, &config.prefix, &identity, &config.cache).await?;
     let state = State::new(storage, &key)?;
+    let search_uri = format!("{}/{}/search", identity, config.prefix);
+    let search = dfs_server::search::Search::open(
+        &search_uri,
+        config.application_credentials.as_deref(),
+        config.search,
+    )
+    .await?;
+    state
+        .search
+        .set(search.clone())
+        .map_err(|_| anyhow::anyhow!("search already initialized"))?;
+    search.start(&state).await?;
     let mut server = Server::builder();
     if let (Some(cert), Some(key)) = (config.tls_cert, config.tls_key) {
         server = server.tls_config(ServerTlsConfig::new().identity(Identity::from_pem(

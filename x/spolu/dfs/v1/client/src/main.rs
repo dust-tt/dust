@@ -47,6 +47,8 @@ enum Method {
     Read,
     Write,
     Fsync,
+    SearchFiles,
+    GetIndexStatus,
 }
 fn main() -> Result<()> {
     let config = Config::parse();
@@ -99,6 +101,8 @@ fn main() -> Result<()> {
         Method::Read => call!(read, ReadRequest),
         Method::Write => call!(write, WriteRequest),
         Method::Fsync => call!(fsync, ObjectRequest),
+        Method::SearchFiles => call!(search_files, SearchFilesRequest),
+        Method::GetIndexStatus => call!(get_index_status, IndexStatusRequest),
     };
     match config.output {
         Some(path) => write_private(&path, &result)?,

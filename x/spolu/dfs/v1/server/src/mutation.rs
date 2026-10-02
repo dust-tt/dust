@@ -40,13 +40,24 @@ impl Edit {
         self.batch.put(key, value);
         Ok(())
     }
-    fn delete(&mut self, key: Vec<u8>) -> Result<()> {
+    pub(crate) fn delete(&mut self, key: Vec<u8>) -> Result<()> {
         self.reserve(key.len() + 64)?;
         self.batch.delete(key);
         Ok(())
     }
     pub fn record(&mut self, keys: &Keys, record: &Record) -> Result<()> {
-        self.put(keys.object(&record.object.id)?, encode(record)?)
+        self.put(keys.object(&record.object.id)?, encode(record)?)?;
+        if !record.object.directory {
+            self.search_pending(keys, &record.object.id, Some(record.object.version))?;
+        }
+        Ok(())
+    }
+    /// @cc [owner:spolu,label:backend] coalesced-file-work
+    /// Each changed file MUST replace its pending token inside this same atomic edit. Deletion MUST
+    /// enqueue a tombstone, including rename replacement. Directory edits MUST NOT fan out.
+    pub fn search_pending(&mut self, keys: &Keys, id: &str, version: Option<u64>) -> Result<()> {
+        let pending = crate::search::queue::Pending::new(version)?;
+        self.put(keys.pending_file(id)?, encode(&pending)?)
     }
     pub fn grant(&mut self, keys: &Keys, id: &str, grant: &str, attached: bool) -> Result<()> {
         let forward = keys.grant(id, grant)?;
@@ -332,6 +343,9 @@ impl View {
         self.empty_directory(record).await?;
         let mut edit = Edit::new();
         edit.delete(self.keys.object(&record.object.id)?)?;
+        if !record.object.directory {
+            edit.search_pending(&self.keys, &record.object.id, None)?;
+        }
         let parent = record
             .parent
             .as_ref()

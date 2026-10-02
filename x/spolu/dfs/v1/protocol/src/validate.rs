@@ -107,6 +107,74 @@ pub fn timestamp(value: &Timestamp) -> Result<(), Status> {
     Ok(())
 }
 
+/// @cc [owner:spolu,label:api;security] bounded-search-input
+/// Queries MUST NOT exceed 4096 bytes or 256 tokens. Filter cardinality and byte values MUST be
+/// bounded; inverted ranges and invalid metadata MUST fail before accessing an index.
+pub fn search(request: &crate::rpc::SearchFilesRequest) -> Result<(), Status> {
+    if request.query.len() > 4096
+        || request.query.contains('\0')
+        || request.query.split_whitespace().count() > 256
+        || request.limit > 100
+    {
+        return Err(status(ErrorCode::InvalidInput));
+    }
+    let Some(filter) = &request.filter else {
+        return Ok(());
+    };
+    if let Some(value) = &filter.name {
+        name(value)?;
+    }
+    if let Some(value) = &filter.name_prefix
+        && (value.len() > 255 || value.contains(['/', '\0']))
+    {
+        return Err(status(ErrorCode::InvalidInput));
+    }
+    if filter.mime_types.len() > 32 || filter.xattrs.len() > 32 {
+        return Err(status(ErrorCode::InvalidInput));
+    }
+    for mime in &filter.mime_types {
+        if mime.len() > 255 || mime.parse::<mime::Mime>().is_err() {
+            return Err(status(ErrorCode::InvalidInput));
+        }
+    }
+    if filter
+        .min_size
+        .zip(filter.max_size)
+        .is_some_and(|(a, b)| a > b)
+        || filter
+            .max_size
+            .or(filter.min_size)
+            .is_some_and(|v| v > i64::MAX as u64)
+    {
+        return Err(status(ErrorCode::InvalidInput));
+    }
+    for value in [&filter.modified_after, &filter.modified_before]
+        .into_iter()
+        .flatten()
+    {
+        timestamp(value)?;
+    }
+    if filter
+        .modified_after
+        .as_ref()
+        .zip(filter.modified_before.as_ref())
+        .is_some_and(|(a, b)| (a.seconds, a.nanos) > (b.seconds, b.nanos))
+    {
+        return Err(status(ErrorCode::InvalidInput));
+    }
+    let mut bytes = 0usize;
+    for attr in &filter.xattrs {
+        if attr.name.is_empty() || attr.name.len() > 255 || attr.name.contains('\0') {
+            return Err(status(ErrorCode::InvalidInput));
+        }
+        bytes += attr.name.len() + attr.value.as_ref().map_or(0, Vec::len);
+    }
+    if bytes > MAX_XATTRS {
+        return Err(status(ErrorCode::InvalidInput));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

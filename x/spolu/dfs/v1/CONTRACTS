@@ -31,10 +31,12 @@ await remote durability. Buffered FUSE writes MAY acknowledge client RAM. Fsync 
 kernel writeback and client write RPCs and propagate deferred errors without
 flushing SlateDB. SlateDB's internal WAL
 MUST remain enabled. Recovery MUST retain complete batches only; losing recent acknowledgements is
-allowed. An application WAL, overlay, or persistence worker MUST NOT be introduced.
+allowed. An application WAL, overlay, or filesystem persistence worker MUST NOT be introduced.
+Derived search indexing MAY run in the background and MUST NOT be awaited by filesystem mutations or fsync.
 
 @cc [owner:spolu,label:backend;performance] bounded-slate-storage
-All file contents MUST use SlateDB keys with at most 65536 bytes per block. No separate GCS blobs.
+Authoritative file contents MUST use SlateDB keys with at most 65536 bytes per block. No separate
+filesystem GCS blobs. LanceDB MAY contain derived, rebuildable text for search.
 Requests, batches, caches, and retained handles MUST be bounded; large files MUST NOT require buffers
 proportional to file size. Server cache budgets MUST be shared across workspaces and configurable.
 Every restart MUST discard local caches and recover only from remote durable state.
@@ -72,3 +74,20 @@ Rust code MUST propagate or explicitly handle fallible operations; unwrap() and 
 @cc [owner:spolu,label:security;backend] gcs-adc-identity
 GCS authentication MUST use GOOGLE_APPLICATION_CREDENTIALS, local application-default credentials,
 or the attached service identity. Unrelated SERVICE_ACCOUNT configuration MUST NOT override ADC.
+
+@cc [owner:spolu,label:security;performance] search-authority-and-cache
+Search MUST derive its workspace/grants from the session and authorize every returned hit against
+one live SlateDB snapshot, requiring a matching indexed object version. Excerpts, metadata, and IDs
+of rejected hits MUST NOT be returned. Permission memoization MUST be bounded and discarded at the
+end of each search; no cross-request permission cache or materialized grants in LanceDB.
+
+@cc [owner:spolu,label:backend;concurrency] atomic-search-work
+Every changed or deleted file MUST enqueue coalesced indexing work in the same batch as its mutation.
+Directory moves/grant changes MUST NOT enqueue descendant work. Search indexing MUST consume only
+complete, remotely durable snapshots. LanceDB commits MUST precede token-checked queue completion;
+replayed work MUST be idempotent, and old completions MUST NOT clear newer work.
+
+@cc [owner:spolu,label:performance;error-handling] bounded-search
+Search filters, candidates, response bytes, memoization, worker batches, and retained tables MUST be
+bounded. Exhausted search budgets MUST produce partial results, never claim exhaustive completion.
+Unavailable indexes MUST return errors. Unsupported or oversized extraction MUST be explicit.

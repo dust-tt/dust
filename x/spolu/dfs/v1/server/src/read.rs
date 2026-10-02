@@ -115,7 +115,7 @@ impl View {
         }
         Ok(Some(child))
     }
-    async fn attached(&self, id: &str) -> Result<bool> {
+    pub(crate) async fn attached(&self, id: &str) -> Result<bool> {
         stream::iter(self.grants.clone())
             .map(|grant| async move {
                 Ok::<_, Status>(self.get(&self.keys.grant(id, &grant)?).await?.is_some())

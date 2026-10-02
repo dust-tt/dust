@@ -20,6 +20,8 @@ service Dfs {
   rpc Read(ReadRequest) returns (ReadResponse);
   rpc Write(WriteRequest) returns (Mutation);
   rpc Fsync(ObjectRequest) returns (Object);
+  rpc SearchFiles(SearchFilesRequest) returns (SearchFilesResponse);
+  rpc GetIndexStatus(IndexStatusRequest) returns (IndexStatus);
 }
 message Empty {}
 message Timestamp { int64 seconds = 1; uint32 nanos = 2; }
@@ -89,3 +91,25 @@ enum ErrorCode {
   NOT_EMPTY = 9; CAPACITY = 10; UNAVAILABLE = 11; UNSUPPORTED = 12; NAME_TOO_LONG = 13;
 }
 message ErrorDetails { ErrorCode code = 1; repeated Expected current = 2; }
+
+// Search authority comes only from the session. Filters are combined with AND.
+message SearchFilter {
+  optional string name = 1;
+  optional string name_prefix = 2;
+  repeated string mime_types = 3;
+  optional uint64 min_size = 4;
+  optional uint64 max_size = 5;
+  Timestamp modified_after = 6;
+  Timestamp modified_before = 7;
+  repeated SearchXattr xattrs = 8;
+}
+// An absent value means EXISTS; a present value means byte-exact equality, including empty bytes.
+message SearchXattr { string name = 1; optional bytes value = 2; }
+message SearchFilesRequest { string query = 1; SearchFilter filter = 2; uint32 limit = 3; }
+message SearchHit { string uri = 1; Object object = 2; string name = 3; string excerpt = 4; }
+message SearchFilesResponse { repeated SearchHit hits = 1; bool partial = 2; }
+message IndexStatusRequest { string workspace_id = 1; }
+message IndexStatus {
+  uint64 pending = 1; uint64 failed = 2; uint64 skipped = 3;
+  uint64 oldest_pending_seconds = 4; Timestamp last_commit = 5; bool backfilling = 6;
+}

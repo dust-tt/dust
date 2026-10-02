@@ -72,6 +72,41 @@ impl Keys {
     pub fn workspace(&self) -> Vec<u8> {
         self.family(6)
     }
+    pub fn objects(&self) -> Vec<u8> {
+        self.family(1)
+    }
+    pub fn pending(&self) -> Vec<u8> {
+        self.family(7)
+    }
+    pub fn pending_file(&self, id: &str) -> Result<Vec<u8>, Status> {
+        self.object_family(7, id)
+    }
+    pub fn search_statuses(&self) -> Vec<u8> {
+        self.family(8)
+    }
+    pub fn search_status(&self, id: &str) -> Result<Vec<u8>, Status> {
+        self.object_family(8, id)
+    }
+    pub fn search_meta(&self) -> Vec<u8> {
+        self.family(9)
+    }
+    pub fn end(&self) -> Vec<u8> {
+        prefix_end(&self.0)
+    }
+    pub fn workspace_from_key(key: &[u8]) -> Result<String, Status> {
+        let length: [u8; 4] = key
+            .get(1..5)
+            .ok_or_else(|| status(ErrorCode::Unavailable))?
+            .try_into()
+            .map_err(|_| status(ErrorCode::Unavailable))?;
+        let length = u32::from_be_bytes(length) as usize;
+        let value = key
+            .get(5..5 + length)
+            .ok_or_else(|| status(ErrorCode::Unavailable))?;
+        let workspace = std::str::from_utf8(value).map_err(|_| status(ErrorCode::Unavailable))?;
+        validate::workspace(workspace)?;
+        Ok(workspace.to_owned())
+    }
 }
 fn string(key: &mut Vec<u8>, value: &str) -> Result<(), Status> {
     key.extend_from_slice(

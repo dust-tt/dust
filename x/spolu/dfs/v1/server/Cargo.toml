@@ -6,6 +6,10 @@ publish.workspace = true
 
 [dependencies]
 anyhow = "1"
+arrow-array = "58"
+arrow-schema = "58"
+base64 = "0.22"
+lancedb = { version = "=0.39.0", default-features = false, features = ["gcs", "remote"] }
 clap = { version = "4", features = ["derive", "env"] }
 dfs-protocol = { path = "../protocol" }
 futures = "0.3"

@@ -114,6 +114,53 @@ impl Api {
 }
 #[tonic::async_trait]
 impl Dfs for Api {
+    async fn search_files(
+        &self,
+        request: Request<SearchFilesRequest>,
+    ) -> Result<Response<SearchFilesResponse>> {
+        self.call(move |state| async move {
+            let session = state.sessions.get(&request).await?;
+            dfs_protocol::validate::search(request.get_ref())?;
+            let search = state
+                .search
+                .get()
+                .ok_or_else(|| status(ErrorCode::Unavailable))?;
+            let view = View::new(
+                &state.storage,
+                &session.info.workspace_id,
+                session.grants.clone(),
+            )
+            .await?;
+            let response = search
+                .files(view, &session.info.workspace_id, request.into_inner())
+                .await?;
+            session.active()?;
+            Ok(response)
+        })
+        .await
+    }
+    async fn get_index_status(
+        &self,
+        request: Request<IndexStatusRequest>,
+    ) -> Result<Response<IndexStatus>> {
+        self.call(move |state| async move {
+            state
+                .workspace_authority(&request, &request.get_ref().workspace_id)
+                .await?;
+            let search = state
+                .search
+                .get()
+                .ok_or_else(|| status(ErrorCode::Unavailable))?;
+            tokio::time::timeout(
+                std::time::Duration::from_secs(10),
+                search.status(&state, &request.get_ref().workspace_id),
+            )
+            .await
+            .map_err(|_| status(ErrorCode::Capacity))?
+        })
+        .await
+    }
+
     async fn create_workspace(
         &self,
         request: Request<CreateWorkspaceRequest>,

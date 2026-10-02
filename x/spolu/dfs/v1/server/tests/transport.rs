@@ -27,6 +27,21 @@ async fn grpc_binary_io_authentication_and_conflict_details() -> Result<()> {
     .await?;
     let server_key = "ab".repeat(32);
     let state = State::new(storage, &server_key)?;
+    let search = ::dfs_server::search::Search::open(
+        directory
+            .path()
+            .join("search")
+            .to_str()
+            .context("search path")?,
+        None,
+        ::dfs_server::search::SearchConfig::default(),
+    )
+    .await?;
+    state
+        .search
+        .set(search.clone())
+        .map_err(|_| anyhow::anyhow!("already initialized"))?;
+    search.start(&state).await?;
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
     let endpoint = format!("http://{}", listener.local_addr()?);
     let (stop, stopped) = tokio::sync::oneshot::channel();
@@ -100,6 +115,32 @@ async fn grpc_binary_io_authentication_and_conflict_details() -> Result<()> {
         })
         .await?;
     assert_eq!(read.data, data);
+    tokio::time::timeout(std::time::Duration::from_secs(30), async {
+        loop {
+            let indexed = manager
+                .get_index_status(IndexStatusRequest {
+                    workspace_id: "transport".into(),
+                })
+                .await?;
+            if indexed.pending == 0 && !indexed.backfilling && indexed.last_commit.is_some() {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        }
+        anyhow::Ok(())
+    })
+    .await??;
+    let search = client
+        .search_files(SearchFilesRequest {
+            filter: Some(SearchFilter {
+                name: Some("binary".into()),
+                ..Default::default()
+            }),
+            ..Default::default()
+        })
+        .await?;
+    assert_eq!(search.hits.len(), 1);
+    assert!(search.hits[0].excerpt.is_empty());
     client.close_session(Empty {}).await?;
     let error = client
         .stat(ObjectRequest { object_id: file.id })

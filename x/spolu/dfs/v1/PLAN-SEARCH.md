@@ -4,28 +4,28 @@ Implement [DESIGN-SEARCH.md](DESIGN-SEARCH.md) in milestones; commit and push ea
 
 ## 1. API and indexing obligations
 
-- [ ] Add bounded protobuf search filters, hits, and workspace-authorized status; wire Rust clients/CLI.
-- [ ] Define contracts for live authorization, per-request caches, durable indexing, and replay.
-- [ ] Add atomic coalescing pending work to every file mutation, including replacement/deletion.
-- [ ] Test that rejected mutations enqueue nothing and newer pending work survives old completions.
+- [x] Add bounded protobuf search filters, hits, and workspace-authorized status; wire Rust clients/CLI.
+- [x] Define contracts for live authorization, per-request caches, durable indexing, and replay.
+- [x] Add atomic coalescing pending work to every file mutation, including replacement/deletion.
+- [x] Test that rejected mutations enqueue nothing and newer pending work survives old completions.
 
 ## 2. Embedded LanceDB and background processing
 
-- [ ] Pin the OSS Rust dependency; configure GCS/local search storage, bounded shared caches/handles.
-- [ ] Implement file rows, byte-exact xattr labels, text extraction limits, FTS and scalar indexes.
-- [ ] Implement one in-process worker with bounded batches, durable snapshots, and ordered upsert/delete.
-- [ ] Persist completion/failure status, fair retry scheduling, and resumable initial/rebuild backfills.
-- [ ] Integrate startup/shutdown, index maintenance, and progress metrics without blocking fsync.
-- [ ] Verify actual LanceDB insert/update/delete, new terms, skipped content, and crash/replay boundaries.
+- [x] Pin the OSS Rust dependency; configure GCS/local search storage, bounded shared caches/handles.
+- [x] Implement file rows, byte-exact xattr labels, text extraction limits, FTS and scalar indexes.
+- [x] Implement one in-process worker with bounded batches, durable snapshots, and ordered upsert/delete.
+- [x] Persist completion/failure status, fair retry scheduling, and resumable initial/rebuild backfills.
+- [x] Integrate startup/shutdown, index maintenance, and progress metrics without blocking fsync.
+- [x] Verify actual LanceDB insert/update/delete, new terms, skipped content, and crash/replay boundaries.
 
 ## 3. Authorized search
 
-- [ ] Compile typed filters into LanceDB expressions; reject invalid or unbounded requests.
-- [ ] Search a pinned table version, expand candidates, and report candidate/time budget exhaustion.
-- [ ] Recheck object versions and current grants with bounded per-search metadata/permission caches.
-- [ ] Return stable URIs, current metadata, basename, and bounded excerpts; expose no hidden ancestry.
-- [ ] Test grants, moves, revocation, sessions, cross-workspace isolation, filters, and stale rows.
-- [ ] Test real gRPC search/status and preserve existing filesystem/client behavior.
+- [x] Compile typed filters into LanceDB expressions; reject invalid or unbounded requests.
+- [x] Search a pinned table version, expand candidates, and report candidate/time budget exhaustion.
+- [x] Recheck object versions and current grants with bounded per-search metadata/permission caches.
+- [x] Return stable URIs, current metadata, basename, and bounded excerpts; expose no hidden ancestry.
+- [x] Test grants, moves, revocation, sessions, cross-workspace isolation, filters, and stale rows.
+- [x] Test real gRPC search/status and preserve existing filesystem/client behavior.
 
 ## 4. End-to-end validation and benchmark
 

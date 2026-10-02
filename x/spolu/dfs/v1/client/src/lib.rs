@@ -144,6 +144,8 @@ methods! {
     rename: RenameRequest => Mutation,
     remove: RemoveRequest => Mutation,
     fsync: ObjectRequest => Object,
+    search_files: SearchFilesRequest => SearchFilesResponse,
+    get_index_status: IndexStatusRequest => IndexStatus,
 }
 
 impl Client {
