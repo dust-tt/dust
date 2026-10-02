@@ -4,10 +4,10 @@ import { WebhookEndpointUsageInfo } from "@app/components/triggers/WebhookEndpoi
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
 import { formatDate } from "@app/lib/i18n/format";
+import { WEBHOOK_PRESETS } from "@app/lib/triggers/webhook_presets";
+import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/lib/triggers/webhooks_client_side";
 import { buildWebhookUrl, normalizeWebhookIcon } from "@app/lib/webhook_source";
 import type { WebhookSourceViewForAdminType } from "@app/types/triggers/webhooks";
-import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
-import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/types/triggers/webhooks_client_side";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ActionIcons,

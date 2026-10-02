@@ -1,9 +1,9 @@
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
+import { WEBHOOK_PROVIDERS } from "@app/lib/triggers/webhooks";
+import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/lib/triggers/webhooks_client_side";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
-import { WEBHOOK_PROVIDERS } from "@app/types/triggers/webhooks";
-import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/types/triggers/webhooks_client_side";
 import {
   ActionCard,
   Button,

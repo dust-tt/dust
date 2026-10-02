@@ -2,11 +2,11 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { AgentBuilderTriggerType } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/lib/triggers/webhooks_client_side";
 import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
 import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
-import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/types/triggers/webhooks_client_side";
 import { ActionCard, Clock } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 

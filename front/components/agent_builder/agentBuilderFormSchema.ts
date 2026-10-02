@@ -4,13 +4,13 @@ import {
   generationSettingsSchema,
 } from "@app/components/shared/tools_picker/types";
 import type { ProjectConfiguration } from "@app/lib/api/assistant/configuration/types";
+import { WEBHOOK_PROVIDERS } from "@app/lib/triggers/webhooks";
 import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration";
 import {
   TRIGGER_EXECUTION_MODES,
   TRIGGER_STATUSES,
 } from "@app/types/assistant/triggers";
 import { editorUserSchema } from "@app/types/editors";
-import { WEBHOOK_PROVIDERS } from "@app/types/triggers/webhooks";
 import { z } from "zod";
 
 const TAG_KINDS = z.union([z.literal("standard"), z.literal("protected")]);

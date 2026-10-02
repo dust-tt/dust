@@ -6,6 +6,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateSecureSecret } from "@app/lib/resources/string_ids_server";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
+import { WebhookSourcesSchema } from "@app/lib/triggers/webhooks";
 import { buildWebhookUrl } from "@app/lib/webhook_source";
 import logger from "@app/logger/logger";
 import type {
@@ -13,7 +14,6 @@ import type {
   PostWebhookSourcesResponseBody,
 } from "@app/types/api/webhook_source";
 import type { ModelId } from "@app/types/shared/model_id";
-import { WebhookSourcesSchema } from "@app/types/triggers/webhooks";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";

@@ -21,6 +21,7 @@ import {
   checkWebhookRequestForRateLimit,
   isTriggerProgrammaticCapReached,
 } from "@app/lib/triggers/rate_limits";
+import { WEBHOOK_PRESETS } from "@app/lib/triggers/webhook_presets";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 import { verifySignature } from "@app/lib/webhook_source_server";
 import logger from "@app/logger/logger";
@@ -41,7 +42,6 @@ import {
 } from "@app/types/shared/utils/error_utils";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
-import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
 export interface GetWebhookRequestsResponseBody {
   requests: Array<{

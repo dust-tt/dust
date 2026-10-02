@@ -25,6 +25,8 @@ import {
   useDeleteWebhookSource,
   useWebhookSourcesWithViews,
 } from "@app/lib/swr/webhook_source";
+import { WEBHOOK_PRESETS } from "@app/lib/triggers/webhook_presets";
+import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/lib/triggers/webhooks_client_side";
 import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { RequireAtLeastOne } from "@app/types/shared/typescipt_utils";
@@ -33,8 +35,6 @@ import type {
   WebhookProvider,
   WebhookSourceWithSystemViewType,
 } from "@app/types/triggers/webhooks";
-import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
-import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/types/triggers/webhooks_client_side";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { MultiPageSheetPage, RegularButtonProps } from "@dust-tt/sparkle";
 import {

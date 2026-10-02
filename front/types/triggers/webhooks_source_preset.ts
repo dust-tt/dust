@@ -1,15 +1,5 @@
-import type {
-  WebhookCreateFormComponentProps,
-  WebhookDetailsComponentProps,
-} from "@app/components/triggers/webhook_preset_components";
-import type { ConnectorOauthExtraConfigProps } from "@app/lib/connector_providers_ui";
-import type {
-  CustomResourceIconType,
-  InternalAllowedIconType,
-} from "@app/types/resources_icon_names";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import type React from "react";
 
 export type EventCheck = {
   type: "headers" | "body";
@@ -55,17 +45,4 @@ export type BaseWebhookPreset = {
   webhookPageUrl?: string;
 
   featureFlag?: WhitelistableFeature;
-};
-
-// Full preset type including everything the UI needs (icon + React components).
-// Import this (and CLIENT_SIDE_WEBHOOK_PRESETS) from client code.
-export type ClientSideWebhookPreset = BaseWebhookPreset & {
-  icon: InternalAllowedIconType | CustomResourceIconType;
-
-  // React components to render the webhook details and creation form.
-  components: {
-    detailsComponent: React.ComponentType<WebhookDetailsComponentProps>;
-    createFormComponent: React.ComponentType<WebhookCreateFormComponentProps>;
-    oauthExtraConfigInput?: React.ComponentType<ConnectorOauthExtraConfigProps>;
-  };
 };

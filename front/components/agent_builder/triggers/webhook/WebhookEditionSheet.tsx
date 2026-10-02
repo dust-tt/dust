@@ -6,10 +6,10 @@ import { TriggerStatusToggle } from "@app/components/agent_builder/triggers/Trig
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { WebhookEditionFilters } from "@app/components/agent_builder/triggers/webhook/WebhookEditionFilters";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { WEBHOOK_PRESETS } from "@app/lib/triggers/webhook_presets";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
-import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 import type {
   BaseWebhookPreset,
   WebhookEvent,
