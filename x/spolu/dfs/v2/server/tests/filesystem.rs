@@ -655,9 +655,137 @@ async fn maximum_binary_xattrs_roundtrip() -> Result<()> {
     f.cleanup().await
 }
 
+async fn deep_hints_follow_moves_and_grants_from_another_server() -> Result<()> {
+    let f = Fixture::new().await?;
+    let mut parent = f.workspace.root_id.clone();
+    for i in 0..6 {
+        parent = f.create(&parent, &format!("outer-{i}"), true).await?.id;
+    }
+    let allowed = f.create(&parent, "allowed", true).await?;
+    let forbidden = f.create(&parent, "forbidden", true).await?;
+    f.share(&allowed, &[("reader", true)]).await?;
+    let reader = f.session(&["reader"]).await?;
+    let subtree = f.create(&allowed.id, "subtree", true).await?;
+    parent = subtree.id.clone();
+    // More than one prefetch window, with an inherited grant far below the workspace root.
+    for i in 0..24 {
+        parent = f.create(&parent, &format!("inner-{i}"), true).await?.id;
+    }
+    let directory = f.stat(&parent).await?;
+    let file = object(
+        f.api
+            .create(request(
+                &reader.session_key,
+                CreateRequest {
+                    parent_id: parent,
+                    expected_parent_version: directory.version,
+                    name: "new-file".into(),
+                    mode: 0o600,
+                    ..Default::default()
+                },
+            )?)
+            .await?
+            .into_inner(),
+    )?;
+    let file = object(
+        f.api
+            .write(request(
+                &reader.session_key,
+                WriteRequest {
+                    object_id: file.id,
+                    expected_version: file.version,
+                    data: b"original".to_vec(),
+                    ..Default::default()
+                },
+            )?)
+            .await?
+            .into_inner(),
+    )?;
+
+    // The second server shares FDB but neither sessions nor hints with the first.
+    let other = Api(State::new(Storage::open(&f.config).await?, SERVER_KEY)?);
+    let owner = other
+        .create_session(request(
+            &f.workspace.workspace_key,
+            CreateSessionRequest {
+                workspace_id: f.workspace.workspace_id.clone(),
+                grants: vec!["owner".into()],
+            },
+        )?)
+        .await?
+        .into_inner();
+    other
+        .rename(request(
+            &owner.session_key,
+            RenameRequest {
+                object_id: subtree.id.clone(),
+                parent_id: forbidden.id.clone(),
+                name: "moved".into(),
+                expected: vec![
+                    expected(&f.stat(&subtree.id).await?),
+                    expected(&f.stat(&allowed.id).await?),
+                    expected(&f.stat(&forbidden.id).await?),
+                ],
+                ..Default::default()
+            },
+        )?)
+        .await?;
+    let error = f
+        .api
+        .write(request(
+            &reader.session_key,
+            WriteRequest {
+                object_id: file.id.clone(),
+                expected_version: file.version,
+                data: b"forbidden".to_vec(),
+                ..Default::default()
+            },
+        )?)
+        .await
+        .err()
+        .context("stale ancestry authorized a write")?;
+    assert_eq!(code(&error), ErrorCode::NotFound);
+    assert_eq!(f.read(&file, 0, 8).await?, b"original");
+    for attached in [true, false] {
+        other
+            .update_grants(request(
+                &f.workspace.workspace_key,
+                UpdateGrantsRequest {
+                    workspace_id: f.workspace.workspace_id.clone(),
+                    object_id: forbidden.id.clone(),
+                    expected_version: f.stat(&forbidden.id).await?.version,
+                    changes: vec![GrantChange {
+                        grant: "reader".into(),
+                        attached,
+                    }],
+                },
+            )?)
+            .await?;
+        let result = f
+            .api
+            .stat(request(
+                &reader.session_key,
+                ObjectRequest {
+                    object_id: file.id.clone(),
+                },
+            )?)
+            .await;
+        if attached {
+            assert_eq!(result?.into_inner().version, file.version);
+        } else {
+            assert_eq!(
+                code(&result.err().context("revoked grant remained cached")?),
+                ErrorCode::NotFound
+            );
+        }
+    }
+    f.cleanup().await
+}
+
 #[test]
 fn real_fdb_filesystem_contracts() -> Result<()> {
     dfs_server_v2::network::run(async {
+        deep_hints_follow_moves_and_grants_from_another_server().await?;
         maximum_binary_xattrs_roundtrip().await?;
         blocks_sparse_truncate_append_and_stale_writes().await?;
         grants_private_projection_pagination_revocation_and_workspace_isolation().await?;

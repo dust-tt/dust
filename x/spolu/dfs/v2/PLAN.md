@@ -89,6 +89,15 @@ benchmarks are complete; see [bench/RESULTS.md](bench/RESULTS.md). Cloud work re
 - [x] Audit API/client compatibility and contracts; complete local setup, tests, and benchmarks before
       starting the cloud phase.
 
+## 8. Filesystem ancestry read hints
+
+- [x] Keep bounded, workspace-scoped directory/parent ID hints; populate reads and new directories.
+- [x] Prefetch live ancestor records/grants in bounded windows and verify the actual chain in the
+      same FDB transaction; preserve fallback, conflict detection, and expected versions.
+- [x] Test deep paths, cache bounds/isolation, and moves/revocations from another server, including
+      changes between a write's authorization reads and its commit.
+- [ ] Rerun unchanged Linux FUSE/filesystem workloads; retain baseline tables and record comparisons.
+
 ## Future work: after the local benchmark
 
 - [ ] Deploy shared FDB/ES clusters and dfs-server to `dust-dev` with private access and credentials.

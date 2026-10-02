@@ -52,6 +52,11 @@ impl Api {
             let session = state.sessions.get(&request).await?;
             let _session_guard = session.gate.read().await;
             let change = change(request.into_inner());
+            let hint_parent = match &change {
+                Change::Create(r) => Some(r.parent_id.clone()),
+                Change::Rename(r) => Some(r.parent_id.clone()),
+                _ => None,
+            };
             let locks = state.locks(&session.info.workspace_id).await;
             let file = change.file()?;
             let _topology_write = if file.is_none() {
@@ -72,11 +77,12 @@ impl Api {
                 Some(lock) => Some(lock.lock().await),
                 None => None,
             };
-            state
+            let response = state
                 .storage
                 .transact(|snapshot| {
                     let session = &session;
                     let change = change.clone();
+                    let ancestry = state.ancestry.clone();
                     async move {
                         session.active()?;
                         let view = View::from_snapshot(
@@ -84,13 +90,23 @@ impl Api {
                             &session.info.workspace_id,
                             session.grants.clone(),
                         )
-                        .await?;
+                        .await?
+                        .with_ancestry(ancestry);
                         let (edit, response) = change.prepare(&view).await?;
                         session.active()?;
                         Ok((edit.batch, response))
                     }
                 })
-                .await
+                .await?;
+            if let (Some(parent), Some(object)) = (hint_parent, &response.object)
+                && object.directory
+            {
+                state
+                    .ancestry
+                    .remember(&Keys::new(&session.info.workspace_id)?, &object.id, &parent)
+                    .await;
+            }
+            Ok(response)
         })
         .await
     }
@@ -112,7 +128,8 @@ impl Api {
                 &session.info.workspace_id,
                 session.grants.clone(),
             )
-            .await?;
+            .await?
+            .with_ancestry(state.ancestry.clone());
             let response = operation(view, request.into_inner()).await?;
             session.active()?;
             Ok(response)
