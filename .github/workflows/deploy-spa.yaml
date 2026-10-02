@@ -179,7 +179,7 @@ jobs:
             --minified-path-prefix=/assets/ \
             --repository-url=https://github.com/dust-tt/dust \
             --project-path=front-spa \
-            --release-version=${{ github.sha }} \
+            --release-version=${{ needs.prepare.outputs.short_sha }} \
             --service=${{ inputs.app }}-spa-browser
 
       - name: Remove sourcemaps
