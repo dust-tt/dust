@@ -33,6 +33,10 @@ msgstr "Search settings"
 msgid "Enable Memory"
 msgstr "Enable Memory"
 
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search agents."
+msgstr "Type to search agents."
+
 #: front/components/UserSettingsPopover.tsx
 msgid "Last name"
 msgstr "Last name"
@@ -79,6 +83,10 @@ msgctxt "theme"
 msgid "Auto"
 msgstr "Auto"
 
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search conversations, pods, agents, members, and skills. Items you open will show up here for quick access."
+msgstr "Type to search conversations, pods, agents, members, and skills. Items you open will show up here for quick access."
+
 #: front/components/UserSettingsPopover.tsx
 msgid "Font used for agent answers in conversations"
 msgstr "Font used for agent answers in conversations"
@@ -119,6 +127,10 @@ msgstr "Invited"
 #: front/components/me/NotificationPreferences.tsx
 msgid "How often to send email notification summaries"
 msgstr "How often to send email notification summaries"
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search skills."
+msgstr "Type to search skills."
 
 #: front/components/UserSettingsPopover.tsx
 msgid "We couldn't load your notification settings. Please try again later."
@@ -244,13 +256,25 @@ msgstr "Once a week"
 msgid "Cmd + Enter"
 msgstr "Cmd + Enter"
 
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search settings."
+msgstr "Type to search settings."
+
 #: front/components/assistant/conversation/InAppBanner.tsx
 msgid "You can now build and edit skills and agents directly in conversations."
 msgstr "You can now build and edit skills and agents directly in conversations."
 
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search members."
+msgstr "Type to search members."
+
 #: front/components/me/NotificationPreferences.tsx
 msgid "Mentions only"
 msgstr "Mentions only"
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search conversations, pods, agents, members, skills, and settings. Items you open will show up here for quick access."
+msgstr "Type to search conversations, pods, agents, members, skills, and settings. Items you open will show up here for quick access."
 
 #: front/components/me/NotificationPreferences.tsx
 #: front/components/UserSettingsPopover.tsx
@@ -261,6 +285,10 @@ msgstr "Email"
 msgctxt "theme"
 msgid "Light"
 msgstr "Light"
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search conversations."
+msgstr "Type to search conversations."
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Keyboard shortcut to send a message"
@@ -326,6 +354,10 @@ msgstr "Memory"
 #: front/components/UserSettingsPopover.tsx
 msgid "Adjust how Dust looks and behaves for you."
 msgstr "Adjust how Dust looks and behaves for you."
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search pods."
+msgstr "Type to search pods."
 
 #: front/components/UserSettingsPopover.tsx
 msgid "The content of your saved memory may appear in responses sent to Slack and other external integrations."

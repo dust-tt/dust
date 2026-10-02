@@ -37,12 +37,12 @@ import type {
 } from "@app/types/user";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-const MAX_DISPLAYED_AGENTS = 5;
-const MAX_DISPLAYED_CONVERSATIONS = 5;
-const MAX_DISPLAYED_MEMBERS = 5;
-const MAX_DISPLAYED_PODS = 5;
-const MAX_DISPLAYED_SKILLS = 5;
-const MAX_DISPLAYED_SETTINGS = 5;
+const MAX_DISPLAYED_AGENTS = 3;
+const MAX_DISPLAYED_CONVERSATIONS = 3;
+const MAX_DISPLAYED_MEMBERS = 3;
+const MAX_DISPLAYED_PODS = 3;
+const MAX_DISPLAYED_SKILLS = 3;
+const MAX_DISPLAYED_SETTINGS = 3;
 
 type CommandPaletteSkill =
   | SkillListItemType

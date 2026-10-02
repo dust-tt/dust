@@ -6,7 +6,10 @@ import type {
 } from "@app/components/command_palette/CommandPaletteActionPhase";
 import { CommandPaletteActionPhase } from "@app/components/command_palette/CommandPaletteActionPhase";
 import { useCommandPalette } from "@app/components/command_palette/CommandPaletteContext";
-import type { CommandPaletteItem } from "@app/components/command_palette/CommandPaletteSearchPhase";
+import type {
+  CommandPaletteFilter,
+  CommandPaletteItem,
+} from "@app/components/command_palette/CommandPaletteSearchPhase";
 import {
   CommandPaletteSearchPhase,
   getCommandPaletteItemKey,
@@ -26,7 +29,7 @@ import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { Dialog, DialogContent } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-const MAX_FREQUENT_ITEMS = 15;
+const MAX_FREQUENT_ITEMS = 5;
 
 interface CommandPaletteProps {
   owner: LightWorkspaceType;
@@ -34,12 +37,14 @@ interface CommandPaletteProps {
 }
 
 export function CommandPalette({ owner, user }: CommandPaletteProps) {
-  const { isOpen, close } = useCommandPalette();
+  const { isOpen, close, initialCategory } = useCommandPalette();
   const router = useAppRouter();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [phase, setPhase] = useState<"search" | "action">("search");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedCategory, setSelectedCategory] =
+    useState<CommandPaletteFilter>("All");
   const [selectedItem, setSelectedItem] = useState<ActionPhaseItem | null>(
     null
   );
@@ -90,8 +95,9 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
       setPhase("search");
       setSelectedIndex(0);
       setSelectedItem(null);
+      setSelectedCategory(initialCategory ?? "All");
     }
-  }, [isOpen]);
+  }, [isOpen, initialCategory]);
 
   const executeAction = useCallback(
     (item: CommandPaletteItem, action: CommandPaletteAction) => {
@@ -229,6 +235,8 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
               hasMoreSkills={hasMoreSkills}
               hasMoreSettings={hasMoreSettings}
               canSearchSettings={canSearchSettings}
+              selectedCategory={selectedCategory}
+              onSelectedCategoryChange={setSelectedCategory}
               isLoading={isLoading}
               selectedIndex={selectedIndex}
               onSelectedIndexChange={setSelectedIndex}
