@@ -2,6 +2,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import config from "@app/lib/api/config";
 
+import { signHS256Jwt, verifyHS256Jwt } from "@app/lib/utils/hs256_jwt";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { CLAUDE_SONNET_4_6_MODEL_ID } from "@app/types/assistant/models/anthropic";
@@ -10,10 +11,9 @@ import { getClientIpFromContext } from "@front-api/lib/request";
 import { unauthedApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import type { Context } from "hono";
-import jwt from "jsonwebtoken";
 import { z } from "zod";
 
-const CSRF_TOKEN_EXPIRY = "30m";
+const CSRF_TOKEN_EXPIRY_SECONDS = 30 * 60;
 
 const MAX_REQUESTS_PER_MINUTE = 20;
 const MAX_MESSAGE_LENGTH = 2000;
@@ -106,27 +106,19 @@ ${truncatedContent}
 
 // The CSRF token is self-issued (GET) and self-verified (POST) within this
 // service, so the HS256 secret never leaves front-api.
-function generateCsrfToken(): string {
-  return jwt.sign({ type: "academy_chat" }, config.getAcademyJwtSecret(), {
-    algorithm: "HS256",
-    expiresIn: CSRF_TOKEN_EXPIRY,
+function generateCsrfToken(): Promise<string> {
+  return signHS256Jwt({ type: "academy_chat" }, config.getAcademyJwtSecret(), {
+    expiresInSeconds: CSRF_TOKEN_EXPIRY_SECONDS,
   });
 }
 
-function verifyCsrfToken(token: string): boolean {
+async function verifyCsrfToken(token: string): Promise<boolean> {
   try {
-    const payload = jwt.verify(token, config.getAcademyJwtSecret(), {
-      algorithms: ["HS256"],
-    });
-    return (
-      typeof payload === "object" &&
-      payload !== null &&
-      "type" in payload &&
-      payload.type === "academy_chat"
-    );
+    const payload = await verifyHS256Jwt(token, config.getAcademyJwtSecret());
+    return payload.type === "academy_chat";
   } catch {
-    // `jsonwebtoken` throws on any verification failure (bad signature,
-    // expiry, ...); treat all of these as an invalid token.
+    // Verification throws on any failure (bad signature, expiry, ...); treat
+    // all of these as an invalid token.
     return false;
   }
 }
@@ -161,7 +153,7 @@ app.get("/", async (ctx) => {
     });
   }
 
-  return ctx.json({ csrfToken: generateCsrfToken() });
+  return ctx.json({ csrfToken: await generateCsrfToken() });
 });
 
 // POST: stream the quiz-master response as SSE.
@@ -177,7 +169,7 @@ app.post("/", async (ctx) => {
   }
 
   const csrfToken = ctx.req.header("x-csrf-token");
-  if (!csrfToken || !verifyCsrfToken(csrfToken)) {
+  if (!csrfToken || !(await verifyCsrfToken(csrfToken))) {
     return apiError(ctx, {
       status_code: 403,
       api_error: {
