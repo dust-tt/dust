@@ -34,10 +34,36 @@ import { createHono } from "@front-api/lib/hono";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { OauthException } from "@workos-inc/node";
+import { randomBytes } from "crypto";
 import type { Context } from "hono";
-import { getCookie } from "hono/cookie";
+import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { sealData } from "iron-session";
 import { z } from "zod";
+
+const LOGIN_NONCE_COOKIE = "workos_login_nonce";
+const LOGIN_NONCE_MAX_AGE_SECONDS = 600;
+
+function loginNonceCookieOptions() {
+  const domain = config.getWorkOSSessionCookieDomain();
+  return {
+    path: "/api/workos",
+    httpOnly: true,
+    secure: !isDevelopment(),
+    sameSite: "Lax" as const,
+    ...(domain ? { domain } : {}),
+  };
+}
+
+function parseLoginState(state: string | undefined) {
+  if (!isString(state)) {
+    return {};
+  }
+  try {
+    return JSON.parse(Buffer.from(state, "base64").toString("utf-8"));
+  } catch {
+    return {};
+  }
+}
 
 const ParamsSchema = z.object({
   action: z.string(),
@@ -262,7 +288,18 @@ async function handleLogin(ctx: Context) {
       ? validatedReturnTo.sanitizedPath
       : null;
     const utmParams = extractUTMParams(query);
+
+    let nonce: string | undefined;
+    if (!isString(redirect_uri)) {
+      nonce = randomBytes(32).toString("base64url");
+      setCookie(ctx, LOGIN_NONCE_COOKIE, nonce, {
+        ...loginNonceCookieOptions(),
+        maxAge: LOGIN_NONCE_MAX_AGE_SECONDS,
+      });
+    }
+
     const state = {
+      ...(nonce ? { nonce } : {}),
       ...(sanitizedReturnTo ? { returnTo: sanitizedReturnTo } : {}),
       ...(organizationIdToUse ? { organizationId: organizationIdToUse } : {}),
       ...(Object.keys(utmParams).length > 0 ? { utm: utmParams } : {}),
@@ -391,6 +428,13 @@ async function handleAuthenticate(ctx: Context) {
   }
 }
 
+/**
+ * @cc [owner:adrsimon,label:security] workos-callback-requires-login-nonce
+ * `handleCallback` MUST NOT exchange the authorization code unless `state.nonce` matches the
+ * `workos_login_nonce` cookie set by `handleLogin` in the same browser. On a missing or mismatched
+ * nonce it MUST restart the login instead, so a code minted in another browser (login CSRF) is
+ * never turned into a session.
+ */
 async function handleCallback(ctx: Context) {
   const { code, state } = ctx.req.query();
   if (!code || !isString(code)) {
@@ -400,9 +444,19 @@ async function handleCallback(ctx: Context) {
     );
   }
 
-  const stateObj = isString(state)
-    ? JSON.parse(Buffer.from(state, "base64").toString("utf-8"))
-    : {};
+  const stateObj = parseLoginState(state);
+
+  const nonceCookie = getCookie(ctx, LOGIN_NONCE_COOKIE);
+  if (!nonceCookie || nonceCookie !== stateObj.nonce) {
+    statsDMetrics.increment("login.callback.nonce_mismatch", 1);
+    const validatedReturnTo = validateRelativePath(stateObj.returnTo);
+    const params = new URLSearchParams();
+    if (validatedReturnTo.valid) {
+      params.set("returnTo", validatedReturnTo.sanitizedPath);
+    }
+    return redirectTo(ctx, `/api/workos/login?${params.toString()}`);
+  }
+  deleteCookie(ctx, LOGIN_NONCE_COOKIE, loginNonceCookieOptions());
 
   let callbackWorkspaceId: string | undefined;
   let callbackUserEmail: string | undefined;
