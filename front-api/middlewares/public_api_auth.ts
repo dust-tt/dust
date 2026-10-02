@@ -98,7 +98,8 @@ function applyClientIp(auth: Authenticator, headers: HeaderRecord): void {
  * Authenticates a public-API request (Authorization header required:
  * sandbox token, OAuth bearer, or API key) and stashes the resolved
  * `Authenticator` on the Hono context under `auth`.
- *
+ */
+/**
  * @cc [owner:avervaet,label:security] user-email-impersonation-fails-closed
  * A system-key request carrying `x-api-user-email` MUST NOT run with the system key's default
  * `admin` role or its workspace-wide groups. When the email resolves to no active member, the
@@ -226,7 +227,7 @@ export const publicApiAuth = createMiddleware<PublicApiCtx>(
       );
       if (userAuth) {
         workspaceAuth = userAuth;
-      } else if (!requestedGroupIds) {
+      } else if (!requestedGroupIds?.length) {
         // Without named groups there is nothing narrower to fall back to.
         logger.warn(
           { workspaceId: wId, keyModelId: keyRes.value.id },
