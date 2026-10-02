@@ -296,23 +296,14 @@ impl TableUpsertsBackgroundWorker {
                     // removes the entry or resets attempts, and new activity from the producer
                     // overwrites this entry and resets attempts to 0.
                     table_data.attempts += 1;
-                    if let Err(e) = self
+                    let _: () = self
                         .redis_conn
-                        .hset::<_, _, _, ()>(
+                        .hset(
                             REDIS_TABLE_UPSERT_HASH_NAME,
                             &key,
                             serde_json::to_string(&table_data)?,
                         )
-                        .await
-                    {
-                        error!(
-                            table_id = table.table_id(),
-                            "TableUpsertsBackgroundWorker: Failed to record attempt, skipping: {}",
-                            e
-                        );
-                        lock_manager.unlock(&lock).await;
-                        continue;
-                    }
+                        .await?;
 
                     // If it fails, log an error but continue processing other tables.
                     // Also, we need to make sure the lock is always released.
