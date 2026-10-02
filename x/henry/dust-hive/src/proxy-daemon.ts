@@ -117,6 +117,10 @@ export function startProxy(listenPort: number, ports: Record<Target, number>) {
   return Bun.serve<WsClientData>({
     port: listenPort,
     hostname: "localhost",
+    // Bun closes idle connections after 10 seconds by default, which cuts the long-lived
+    // server-sent event streams (conversation and message events) that stay silent between
+    // events. Zero disables the timeout.
+    idleTimeout: 0,
     async fetch(req, srv) {
       const url = new URL(req.url);
 
