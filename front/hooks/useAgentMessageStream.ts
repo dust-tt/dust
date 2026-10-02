@@ -37,6 +37,17 @@ type VirtuosoMethods = VirtuosoMessageListMethods<
   VirtuosoMessageListContext
 >;
 
+function isStillRunningAgentMessage(
+  m: VirtuosoMessage,
+  sId: string
+): m is AgentMessageWithStreaming {
+  return (
+    isAgentMessageWithStreaming(m) &&
+    m.sId === sId &&
+    !isTerminalAgentMessageStatus(m.status)
+  );
+}
+
 /**
  * @cc [owner:pmilliotte,label:react;reliability] live-stream-never-overwrites-terminal-message
  * A non-terminal stream event MUST NOT modify an agent message whose status is terminal: its
@@ -47,13 +58,7 @@ function updateLiveAgentMessage(
   sId: string,
   update: (m: AgentMessageWithStreaming) => VirtuosoMessage
 ) {
-  methods.data.map((m) =>
-    isAgentMessageWithStreaming(m) &&
-    m.sId === sId &&
-    !isTerminalAgentMessageStatus(m.status)
-      ? update(m)
-      : m
-  );
+  methods.data.map((m) => (isStillRunningAgentMessage(m, sId) ? update(m) : m));
 }
 
 type UpdateMessageThrottledParams = {
