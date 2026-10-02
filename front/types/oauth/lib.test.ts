@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  isValidSalesforceDomain,
   isValidShopifyStoreDomain,
   isValidSnowflakeAccount,
   isValidSnowflakeRole,
@@ -24,6 +25,51 @@ describe("Shopify store domain", () => {
     expect(isValidShopifyStoreDomain("https://my-store.myshopify.com")).toBe(
       false
     );
+  });
+});
+
+describe("isValidSalesforceDomain", () => {
+  it("accepts bare https Salesforce origins", () => {
+    expect(isValidSalesforceDomain("https://my-org.salesforce.com")).toBe(true);
+    expect(isValidSalesforceDomain("https://my-org.my.salesforce.com")).toBe(
+      true
+    );
+  });
+
+  it("rejects hosts that only end with .salesforce.com as a string", () => {
+    expect(
+      isValidSalesforceDomain("https://evil.example/x.salesforce.com")
+    ).toBe(false);
+    expect(
+      isValidSalesforceDomain("https://evil.example?.salesforce.com")
+    ).toBe(false);
+    expect(
+      isValidSalesforceDomain("https://evil.example#.salesforce.com")
+    ).toBe(false);
+    expect(
+      isValidSalesforceDomain("https://user@evil.example/.salesforce.com")
+    ).toBe(false);
+  });
+
+  it("rejects non-https, paths, ports, uppercase hosts and non-strings", () => {
+    expect(isValidSalesforceDomain("http://my-org.salesforce.com")).toBe(false);
+    expect(isValidSalesforceDomain("https://my-org.salesforce.com/")).toBe(
+      false
+    );
+    expect(isValidSalesforceDomain("https://my-org.salesforce.com/api")).toBe(
+      false
+    );
+    expect(isValidSalesforceDomain("https://my-org.salesforce.com:443")).toBe(
+      false
+    );
+    expect(isValidSalesforceDomain("https://my-org.salesforce.com:8443")).toBe(
+      false
+    );
+    expect(isValidSalesforceDomain("https://MY-ORG.salesforce.com")).toBe(
+      false
+    );
+    expect(isValidSalesforceDomain("https://salesforce.com")).toBe(false);
+    expect(isValidSalesforceDomain(undefined)).toBe(false);
   });
 });
 
