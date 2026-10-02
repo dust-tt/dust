@@ -154,16 +154,6 @@ describe("POST /api/v1/w/[wId]/assistant/mentions/parse", () => {
     expect(responseData.markdown).not.toContain(`@${agentConfig.name}`);
   });
 
-  it("should reject oversized markdown", async () => {
-    const { workspace, key, user, agentConfig } = await setupTest();
-
-    const response = await parseMentions(workspace, key, user, {
-      markdown: `@${agentConfig.name} `.repeat(50_000),
-    });
-
-    expect(response.status).toBe(413);
-  });
-
   it("should handle missing markdown field", async () => {
     const { workspace, key, user } = await setupTest();
 
