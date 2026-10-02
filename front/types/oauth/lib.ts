@@ -115,6 +115,9 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "ukg_ready_company_id",
   "jira_cloud_url",
   "confluence_cloud_url",
+  // Lookup key to reuse an existing workspace MCP OAuth connection's metadata /
+  // credentials (personal inherit and admin Refresh). Never shown as a form field.
+  "mcp_server_id",
 ] as const;
 
 export type SupportedOAuthCredentials =
