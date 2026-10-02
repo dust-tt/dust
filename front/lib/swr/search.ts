@@ -1,4 +1,4 @@
-import { clientEventSource } from "@app/lib/egress/client";
+import { clientFetch } from "@app/lib/egress/client";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
 import { usePodFiles } from "@app/lib/swr/pods";
 import { emptyArray } from "@app/lib/swr/swr";
@@ -9,7 +9,6 @@ import type { DataSourceViewType } from "@app/types/data_source_view";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
-import type { EventSourcePolyfill } from "event-source-polyfill";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 export type DataSourceViewContentNode = ContentNodeWithParent & {
@@ -23,7 +22,7 @@ export type ProjectFileSearchResult = {
   contentType: string;
 };
 
-interface UnifiedSearchStreamChunk {
+interface UnifiedSearchResponse {
   knowledgeResults?: {
     nodes: DataSourceViewContentNode[];
     warningCode: string | null;
@@ -33,6 +32,11 @@ interface UnifiedSearchStreamChunk {
   toolResults?: ToolSearchResult[];
 }
 
+/**
+ * @cc [owner:id13,label:react;concurrency] latest-search-request-wins
+ * Query changes, disabling, and unmounting MUST cancel pending requests. Late responses MUST NOT
+ * replace newer results. Pagination MUST have at most one pending request per hook instance.
+ */
 export function useUnifiedSearch({
   owner,
   query,
@@ -70,7 +74,7 @@ export function useUnifiedSearch({
   const [isSearchError, setIsSearchError] = useState<Error | null>(null);
   const [nextPageCursor, setNextPageCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
-  const eventSourceRef = useRef<EventSourcePolyfill | null>(null);
+  const requestRef = useRef<AbortController | null>(null);
 
   const { files: projectFiles, isPodFilesLoading: isProjectFilesLoading } =
     usePodFiles({
@@ -118,14 +122,24 @@ export function useUnifiedSearch({
       if (disabled) {
         setIsSearchLoading(false);
         setIsLoadingNextPage(false);
+        setIsSearchValidating(false);
         return;
       }
 
+      if (appendResults && requestRef.current) {
+        return;
+      }
+      setIsSearchError(null);
+      setIsSearchValidating(true);
       if (appendResults) {
         setIsLoadingNextPage(true);
       } else {
         setIsSearchLoading(true);
       }
+
+      requestRef.current?.abort();
+      const controller = new AbortController();
+      requestRef.current = controller;
 
       const params = new URLSearchParams();
       params.append("query", query);
@@ -153,54 +167,46 @@ export function useUnifiedSearch({
       }
 
       const url = `/api/w/${owner.sId}/search?${params.toString()}`;
-      const eventSource = await clientEventSource(url);
-      eventSourceRef.current = eventSource;
-
-      eventSource.onopen = () => {
-        setIsSearchValidating(true);
-      };
-
-      eventSource.onmessage = (event) => {
-        try {
-          const chunk: UnifiedSearchStreamChunk = JSON.parse(event.data);
-
-          if (chunk.knowledgeResults) {
-            const { knowledgeResults } = chunk;
-            if (appendResults) {
-              setRawKnowledgeResults((prev) => [
-                ...prev,
-                ...knowledgeResults.nodes,
-              ]);
-            } else {
-              setRawKnowledgeResults(knowledgeResults.nodes);
-            }
-            setNextPageCursor(knowledgeResults.nextPageCursor);
-            setHasMore(!!knowledgeResults.nextPageCursor);
-          }
-
-          if (chunk.toolResults) {
-            // Tool results only come on first page
-            const { toolResults } = chunk;
-            setToolResults((prev) => [...prev, ...toolResults]);
-          }
-
-          setIsSearchValidating(false);
-        } catch (error) {
+      try {
+        const response = await clientFetch(url, {
+          headers: { Accept: "application/json" },
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch search results");
+        }
+        const chunk: UnifiedSearchResponse = await response.json();
+        if (requestRef.current !== controller || controller.signal.aborted) {
+          return;
+        }
+        if (chunk.knowledgeResults) {
+          const { knowledgeResults } = chunk;
+          setRawKnowledgeResults((previous) =>
+            appendResults
+              ? [...previous, ...knowledgeResults.nodes]
+              : knowledgeResults.nodes
+          );
+          setNextPageCursor(knowledgeResults.nextPageCursor);
+          setHasMore(!!knowledgeResults.nextPageCursor);
+        }
+        const results = chunk.toolResults;
+        if (results) {
+          setToolResults((previous) =>
+            appendResults ? [...previous, ...results] : results
+          );
+        }
+      } catch (error) {
+        if (requestRef.current === controller && !controller.signal.aborted) {
           setIsSearchError(normalizeError(error));
+        }
+      } finally {
+        if (requestRef.current === controller) {
+          requestRef.current = null;
           setIsSearchLoading(false);
           setIsLoadingNextPage(false);
           setIsSearchValidating(false);
-          eventSource.close();
         }
-      };
-
-      eventSource.onerror = () => {
-        setIsSearchError(new Error("Failed to fetch search results"));
-        setIsSearchLoading(false);
-        setIsLoadingNextPage(false);
-        setIsSearchValidating(false);
-        eventSource.close();
-      };
+      }
     },
     [
       disabled,
@@ -225,21 +231,13 @@ export function useUnifiedSearch({
     setHasMore(false);
     setIsSearchError(null);
 
-    // Close any existing EventSource
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-    }
+    requestRef.current?.abort();
+    requestRef.current = null;
+    void loadPage();
 
-    // Load first page
-    loadPage();
-
-    // Cleanup function
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
-      }
+      requestRef.current?.abort();
+      requestRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -260,7 +258,7 @@ export function useUnifiedSearch({
 
   const nextPage = useCallback(async () => {
     if (nextPageCursor && !isLoadingNextPage) {
-      loadPage(nextPageCursor, true);
+      await loadPage(nextPageCursor, true);
     }
   }, [nextPageCursor, isLoadingNextPage, loadPage]);
 
