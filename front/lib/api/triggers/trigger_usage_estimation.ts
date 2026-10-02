@@ -14,11 +14,6 @@ import { Op } from "sequelize";
 const NUMBER_HOURS_TO_FETCH = 24;
 const MAX_OUTPUT = 100;
 
-export type GetTriggerEstimationResponseBody = {
-  matchingCount: number;
-  totalCount: number;
-};
-
 export async function computeFilteredWebhookTriggerForecast(
   auth: Authenticator,
   {

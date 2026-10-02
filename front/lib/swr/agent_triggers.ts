@@ -9,7 +9,6 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { GetTriggerEstimationResponseBody } from "@app/lib/triggers/trigger_usage_estimation";
 import type {
   GetTriggersResponseBody,
   PatchTriggerExecutionModeRequestBody,
@@ -23,6 +22,7 @@ import type {
   PostWebhookFilterGeneratorRequestBody,
   PostWebhookFilterGeneratorResponseBody,
 } from "@app/types/api/assistant/configuration/triggers/webhook_filter_generator";
+import type { GetTriggerEstimationResponseBody } from "@app/types/api/webhook_source";
 import type {
   BulkTriggerUpdateOutcome,
   ScheduleConfig,

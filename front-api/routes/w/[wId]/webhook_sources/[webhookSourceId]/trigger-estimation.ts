@@ -1,7 +1,7 @@
+import { computeFilteredWebhookTriggerForecast } from "@app/lib/api/triggers/trigger_usage_estimation";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
-import type { GetTriggerEstimationResponseBody } from "@app/lib/triggers/trigger_usage_estimation";
-import { computeFilteredWebhookTriggerForecast } from "@app/lib/triggers/trigger_usage_estimation";
+import type { GetTriggerEstimationResponseBody } from "@app/types/api/webhook_source";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";

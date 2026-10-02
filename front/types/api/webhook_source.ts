@@ -1,3 +1,4 @@
+import type { WebhookRequestTriggerStatus } from "@app/types/assistant/triggers";
 import type {
   WebhookProvider,
   WebhookSourceForAdminType,
@@ -47,4 +48,22 @@ export type DeleteWebhookSourceResponseBody = {
 export type GetWebhookSourceViewsForSourceResponseBody = {
   success: true;
   views: WebhookSourceViewType[];
+};
+
+export interface GetWebhookRequestsResponseBody {
+  requests: Array<{
+    id: number;
+    timestamp: number;
+    status: WebhookRequestTriggerStatus;
+    errorMessage: string | null;
+    payload?: {
+      headers?: Record<string, string | string[]>;
+      body?: unknown;
+    };
+  }>;
+}
+
+export type GetTriggerEstimationResponseBody = {
+  matchingCount: number;
+  totalCount: number;
 };
