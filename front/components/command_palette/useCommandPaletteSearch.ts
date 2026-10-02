@@ -14,25 +14,17 @@ import {
   useFeatureFlags,
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useSearchMembers } from "@app/lib/swr/memberships";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
-import { useSearchSkills, useSkills } from "@app/lib/swr/skill_configurations";
-import { filterAndSortAgents, subFilter } from "@app/lib/utils";
-import type { AgentSearchListItemType } from "@app/types/agent_search/agent_search";
+import { useSearchSkills } from "@app/lib/swr/skill_configurations";
 import { hasGroupManagementScope } from "@app/types/api/auth_context";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationListItemType } from "@app/types/assistant/conversation";
-import type {
-  SkillListItemType,
-  SkillWithoutInstructionsAndToolsType,
-} from "@app/types/assistant/skill_configuration";
 import type { PodType } from "@app/types/space";
 import type {
   LightUserTypeWithWorkspace,
   LightWorkspaceType,
 } from "@app/types/user";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 
 const MAX_DISPLAYED_AGENTS = 3;
 const MAX_DISPLAYED_CONVERSATIONS = 3;
@@ -43,16 +35,6 @@ const MAX_DISPLAYED_SETTINGS = 3;
 
 /** Minimum characters before the command palette runs a search. */
 export const MIN_COMMAND_PALETTE_SEARCH_LENGTH = 1;
-/** Typeahead debounce — matches other product search fields (300ms). */
-const COMMAND_PALETTE_SEARCH_DEBOUNCE_MS = 300;
-
-type CommandPaletteSkill =
-  | SkillListItemType
-  | SkillWithoutInstructionsAndToolsType;
-
-type CommandPaletteAgent =
-  | LightAgentConfigurationType
-  | AgentSearchListItemType;
 
 type CommandPalettePod = PodType & { isMember: boolean };
 
@@ -60,187 +42,76 @@ type CommandPaletteConversation = ConversationListItemType & {
   spaceName: string | null;
 };
 
-function useDebouncedSearchQuery(trimmedQuery: string) {
-  const searchableQuery =
-    trimmedQuery.length >= MIN_COMMAND_PALETTE_SEARCH_LENGTH
-      ? trimmedQuery
-      : "";
-  const [debouncedQuery, setDebouncedQuery] = useState(searchableQuery);
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    // Clear immediately when below the minimum (or emptied) so short queries
-    // never reach search hooks and reset doesn't briefly keep old results.
-    if (searchableQuery === "") {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-      setDebouncedQuery("");
-      return;
-    }
-
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-    debounceTimerRef.current = setTimeout(() => {
-      setDebouncedQuery(searchableQuery);
-    }, COMMAND_PALETTE_SEARCH_DEBOUNCE_MS);
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-    };
-  }, [searchableQuery]);
-
-  return {
-    debouncedQuery,
-    isDebouncing: searchableQuery !== debouncedQuery,
-  };
-}
-
 function useCommandPaletteAgents({
   owner,
   isOpen,
-  debouncedQuery,
+  trimmedQuery,
 }: {
   owner: LightWorkspaceType;
   isOpen: boolean;
-  debouncedQuery: string;
+  trimmedQuery: string;
 }) {
-  const { hasFeature } = useFeatureFlags();
-  const isAgentsSearchEnabled = hasFeature("new_manage_agents_page");
-  const isSearchActive = isOpen && debouncedQuery.length > 0;
-
-  const {
-    agentConfigurations,
-    isAgentConfigurationsLoading: isListedAgentsLoading,
-  } = useAgentConfigurations({
-    workspaceId: owner.sId,
-    agentsGetView: "list",
-    // Client-side filter fallback only — skip until there is a valid query.
-    disabled: !isSearchActive || isAgentsSearchEnabled,
-  });
-  const {
-    agents: searchAgents,
-    hasMore: hasMoreSearchAgents,
-    isAgentsLoading: isSearchAgentsLoading,
-  } = useSearchAgents({
+  const isSearchActive = isOpen && trimmedQuery.length > 0;
+  const { agents, hasMore, isAgentsLoading } = useSearchAgents({
     owner,
-    searchTerm: debouncedQuery,
+    searchTerm: trimmedQuery,
     limit: MAX_DISPLAYED_AGENTS,
     sortBy: "relevance",
-    disabled: !isSearchActive || !isAgentsSearchEnabled,
+    disabled: !isSearchActive,
     keepPreviousData: false,
-    debounceMs: 0,
   });
-
-  const allFilteredAgents = useMemo(
-    () =>
-      isSearchActive
-        ? filterAndSortAgents(agentConfigurations, debouncedQuery)
-        : [],
-    [agentConfigurations, debouncedQuery, isSearchActive]
-  );
-
-  return {
-    agents: (isAgentsSearchEnabled
-      ? searchAgents
-      : allFilteredAgents.slice(
-          0,
-          MAX_DISPLAYED_AGENTS
-        )) as CommandPaletteAgent[],
-    hasMoreAgents: isAgentsSearchEnabled
-      ? hasMoreSearchAgents
-      : allFilteredAgents.length > MAX_DISPLAYED_AGENTS,
-    isLoading: isAgentsSearchEnabled
-      ? isSearchAgentsLoading
-      : isListedAgentsLoading,
-  };
+  return { agents, hasMoreAgents: hasMore, isLoading: isAgentsLoading };
 }
 
 function useCommandPaletteSkills({
   owner,
   isOpen,
-  debouncedQuery,
+  trimmedQuery,
 }: {
   owner: LightWorkspaceType;
   isOpen: boolean;
-  debouncedQuery: string;
+  trimmedQuery: string;
 }) {
-  const { hasFeature } = useFeatureFlags();
-  const isSkillsSearchEnabled = hasFeature("skills_search");
-  const isSearchActive = isOpen && debouncedQuery.length > 0;
-
-  const { skills, isSkillsLoading: isListedSkillsLoading } = useSkills({
+  const isSearchActive = isOpen && trimmedQuery.length > 0;
+  const { skills, hasMore, isSkillsLoading } = useSearchSkills({
     owner,
-    // Client-side filter fallback only — skip until there is a valid query.
-    disabled: !isSearchActive || isSkillsSearchEnabled,
-    status: "active",
-  });
-  const {
-    skills: searchSkills,
-    hasMore: hasMoreSearchSkills,
-    isSkillsLoading: isSearchSkillsLoading,
-  } = useSearchSkills({
-    owner,
-    searchTerm: debouncedQuery,
+    searchTerm: trimmedQuery,
     limit: MAX_DISPLAYED_SKILLS,
-    disabled: !isSearchActive || !isSkillsSearchEnabled,
+    disabled: !isSearchActive,
     keepPreviousData: false,
-    debounceMs: 0,
   });
-
-  const allFilteredSkills = useMemo(() => {
-    if (!isSearchActive) {
-      return [];
-    }
-    const lowerQuery = debouncedQuery.toLowerCase();
-    return skills.filter((s) => subFilter(lowerQuery, s.name.toLowerCase()));
-  }, [skills, debouncedQuery, isSearchActive]);
-
-  return {
-    skills: (isSkillsSearchEnabled
-      ? searchSkills
-      : allFilteredSkills.slice(
-          0,
-          MAX_DISPLAYED_SKILLS
-        )) as CommandPaletteSkill[],
-    hasMoreSkills: isSkillsSearchEnabled
-      ? hasMoreSearchSkills
-      : allFilteredSkills.length > MAX_DISPLAYED_SKILLS,
-    isLoading: isSkillsSearchEnabled
-      ? isSearchSkillsLoading
-      : isListedSkillsLoading,
-  };
+  return { skills, hasMoreSkills: hasMore, isLoading: isSkillsLoading };
 }
 
 function useCommandPalettePods({
   owner,
   isOpen,
-  debouncedQuery,
+  trimmedQuery,
 }: {
   owner: LightWorkspaceType;
   isOpen: boolean;
-  debouncedQuery: string;
+  trimmedQuery: string;
 }) {
-  const isSearchActive = isOpen && debouncedQuery.length > 0;
+  const isSearchActive = isOpen && trimmedQuery.length > 0;
 
   // Same readable-pods search as the sidebar (member + open pods).
   const {
     pods: searchablePods,
     isSearching: isSearchingPods,
     hasMore: hasMoreSearchPods,
+    searchQuery,
   } = useSearchPods({
     workspaceId: owner.sId,
-    query: debouncedQuery,
+    query: trimmedQuery,
     enabled: isSearchActive,
     limit: MAX_DISPLAYED_PODS,
-    debounceMs: 0,
   });
 
+  const hasCurrentResults = isSearchActive && searchQuery === trimmedQuery;
+
   return {
-    pods: isSearchActive ? (searchablePods as CommandPalettePod[]) : [],
-    hasMorePods: isSearchActive ? hasMoreSearchPods : false,
+    pods: hasCurrentResults ? (searchablePods as CommandPalettePod[]) : [],
+    hasMorePods: hasCurrentResults ? hasMoreSearchPods : false,
     isLoading: isSearchingPods,
   };
 }
@@ -248,32 +119,32 @@ function useCommandPalettePods({
 function useCommandPaletteMembers({
   owner,
   isOpen,
-  debouncedQuery,
+  trimmedQuery,
   currentUserId,
 }: {
   owner: LightWorkspaceType;
   isOpen: boolean;
-  debouncedQuery: string;
+  trimmedQuery: string;
   currentUserId: string;
 }) {
   // Same member search as People / editor pickers.
-  const isSearchActive = isOpen && debouncedQuery.length > 0;
+  const isSearchActive = isOpen && trimmedQuery.length > 0;
   const {
     members: searchMembers,
     totalMembersCount,
     isLoading: isSearchingMembers,
+    searchQuery,
   } = useSearchMembers({
     workspaceId: owner.sId,
-    searchTerm: debouncedQuery,
+    searchTerm: trimmedQuery,
     pageIndex: 0,
     pageSize: MAX_DISPLAYED_MEMBERS + 1,
     disabled: !isSearchActive,
     keepPreviousData: false,
-    debounceMs: 0,
   });
 
   const members = useMemo(() => {
-    if (!isSearchActive) {
+    if (!isSearchActive || searchQuery !== trimmedQuery) {
       return [];
     }
     const withoutSelf = searchMembers.filter(
@@ -283,55 +154,61 @@ function useCommandPaletteMembers({
       0,
       MAX_DISPLAYED_MEMBERS
     ) as LightUserTypeWithWorkspace[];
-  }, [isSearchActive, searchMembers, currentUserId]);
+  }, [isSearchActive, searchQuery, trimmedQuery, searchMembers, currentUserId]);
 
   return {
     members,
     hasMoreMembers:
       isSearchActive &&
+      searchQuery === trimmedQuery &&
       (totalMembersCount > MAX_DISPLAYED_MEMBERS ||
         searchMembers.filter((member) => member.sId !== currentUserId).length >
           MAX_DISPLAYED_MEMBERS),
-    isLoading: isSearchingMembers,
+    isLoading:
+      isSearchingMembers || (isSearchActive && searchQuery !== trimmedQuery),
   };
 }
 
 function useCommandPaletteConversations({
   owner,
   isOpen,
-  debouncedQuery,
+  trimmedQuery,
 }: {
   owner: LightWorkspaceType;
   isOpen: boolean;
-  debouncedQuery: string;
+  trimmedQuery: string;
 }) {
-  const isSearchActive = isOpen && debouncedQuery.length > 0;
+  const isSearchActive = isOpen && trimmedQuery.length > 0;
 
   // Same conversation search as the sidebar (private title + pod semantic).
   const {
     conversations: privateConversationResults,
     isSearching: isSearchingPrivateConversations,
     hasMore: hasMorePrivateConversations,
+    searchQuery: privateSearchQuery,
   } = useSearchPrivateConversations({
     workspaceId: owner.sId,
-    query: debouncedQuery,
+    query: trimmedQuery,
     enabled: isSearchActive,
     limit: MAX_DISPLAYED_CONVERSATIONS,
-    debounceMs: 0,
   });
   const {
     conversations: podConversationResults,
     isSearching: isSearchingPodConversations,
+    searchQuery: podSearchQuery,
   } = useSearchPodConversations({
     workspaceId: owner.sId,
-    query: debouncedQuery,
+    query: trimmedQuery,
     enabled: isSearchActive,
     limit: MAX_DISPLAYED_CONVERSATIONS,
-    debounceMs: 0,
   });
 
   const { conversations, hasMoreConversations } = useMemo(() => {
-    if (!isSearchActive) {
+    if (
+      !isSearchActive ||
+      privateSearchQuery !== trimmedQuery ||
+      podSearchQuery !== trimmedQuery
+    ) {
       return { conversations: [], hasMoreConversations: false };
     }
 
@@ -360,6 +237,9 @@ function useCommandPaletteConversations({
     };
   }, [
     isSearchActive,
+    trimmedQuery,
+    privateSearchQuery,
+    podSearchQuery,
     privateConversationResults,
     podConversationResults,
     hasMorePrivateConversations,
@@ -374,10 +254,10 @@ function useCommandPaletteConversations({
 
 function useCommandPaletteSettings({
   isOpen,
-  debouncedQuery,
+  trimmedQuery,
 }: {
   isOpen: boolean;
-  debouncedQuery: string;
+  trimmedQuery: string;
 }): {
   settings: CommandPaletteSetting[];
   hasMoreSettings: boolean;
@@ -393,7 +273,7 @@ function useCommandPaletteSettings({
   const { hasFeature } = useFeatureFlags();
   const { hasPermission } = useWorkspacePermissions();
   const canSearchSettings = isAdminUser;
-  const isSearchActive = isOpen && debouncedQuery.length > 0;
+  const isSearchActive = isOpen && trimmedQuery.length > 0;
 
   const menusByPageId = useMemo(() => {
     if (!canSearchSettings || !isSearchActive) {
@@ -427,7 +307,7 @@ function useCommandPaletteSettings({
     }
     const labelFor = (pageId: string) =>
       menusByPageId.get(pageId as SubNavigationAdminId)?.label ?? pageId;
-    const matches = searchAdminSettingsIndex(debouncedQuery, labelFor).filter(
+    const matches = searchAdminSettingsIndex(trimmedQuery, labelFor).filter(
       (entry) => menusByPageId.has(entry.pageId)
     );
     return {
@@ -448,11 +328,16 @@ function useCommandPaletteSettings({
       }),
       hasMoreSettings: matches.length > MAX_DISPLAYED_SETTINGS,
     };
-  }, [canSearchSettings, isSearchActive, debouncedQuery, menusByPageId]);
+  }, [canSearchSettings, isSearchActive, trimmedQuery, menusByPageId]);
 
   return { settings, hasMoreSettings, canSearchSettings };
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] current-query-results
+ * Pods, conversations, and members from a previous search query MUST NOT be exposed
+ * as selectable results while the current trimmed query is debouncing.
+ */
 export function useCommandPaletteSearch({
   owner,
   isOpen,
@@ -465,34 +350,32 @@ export function useCommandPaletteSearch({
   currentUserId: string;
 }) {
   const trimmedQuery = searchQuery.trim();
-  const { debouncedQuery, isDebouncing } =
-    useDebouncedSearchQuery(trimmedQuery);
   const isSearchActive =
     trimmedQuery.length >= MIN_COMMAND_PALETTE_SEARCH_LENGTH;
 
   const agents = useCommandPaletteAgents({
     owner,
     isOpen,
-    debouncedQuery,
+    trimmedQuery,
   });
   const skills = useCommandPaletteSkills({
     owner,
     isOpen,
-    debouncedQuery,
+    trimmedQuery,
   });
-  const pods = useCommandPalettePods({ owner, isOpen, debouncedQuery });
+  const pods = useCommandPalettePods({ owner, isOpen, trimmedQuery });
   const conversations = useCommandPaletteConversations({
     owner,
     isOpen,
-    debouncedQuery,
+    trimmedQuery,
   });
   const members = useCommandPaletteMembers({
     owner,
     isOpen,
-    debouncedQuery,
+    trimmedQuery,
     currentUserId,
   });
-  const settings = useCommandPaletteSettings({ isOpen, debouncedQuery });
+  const settings = useCommandPaletteSettings({ isOpen, trimmedQuery });
 
   // Below the minimum (including empty): no search results. Empty query uses
   // frecency / default actions in the UI instead.
@@ -512,26 +395,6 @@ export function useCommandPaletteSearch({
       hasMoreSettings: false,
       canSearchSettings: settings.canSearchSettings,
       isLoading: false,
-    };
-  }
-
-  // Drop results while debouncing so the previous search doesn't flash.
-  if (isDebouncing) {
-    return {
-      agents: [],
-      conversations: [],
-      members: [],
-      pods: [],
-      skills: [],
-      settings: [],
-      hasMoreAgents: false,
-      hasMoreConversations: false,
-      hasMoreMembers: false,
-      hasMorePods: false,
-      hasMoreSkills: false,
-      hasMoreSettings: false,
-      canSearchSettings: settings.canSearchSettings,
-      isLoading: true,
     };
   }
 

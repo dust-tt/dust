@@ -1,6 +1,5 @@
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -38,7 +37,7 @@ describe("GET /api/w/:wId/assistant/mentions/suggestions", () => {
     const { auth, workspace } = await createPrivateApiMockRequest({
       role: "user",
     });
-    await FeatureFlagFactory.basic(auth, "new_manage_agents_page");
+
     const zuluConfiguration = await AgentConfigurationFactory.createTestAgent(
       auth,
       { name: "Zulu Favorite" }

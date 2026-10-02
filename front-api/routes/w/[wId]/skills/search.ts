@@ -5,7 +5,6 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
 
 // Mounted at /api/w/:wId/skills/search.
 const app = workspaceApp();
@@ -13,7 +12,6 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.post(
   "/",
-  withFeatureFlag("skills_search"),
   validate("json", SearchSkillsQuerySchema),
   async (ctx): HandlerResult<SearchSkillsResponseBody> => {
     const auth = ctx.get("auth");

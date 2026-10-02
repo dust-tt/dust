@@ -13,14 +13,13 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerType, MCPServerViewLightType } from "@app/lib/api/mcp";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { CAPABILITIES_SWR_OPTIONS } from "@app/lib/swr/capabilities";
 import {
   useAvailableMCPServers,
   useJITMCPServerViewsFromSpaces,
 } from "@app/lib/swr/mcp_servers";
-import { useSearchSkills, useSkills } from "@app/lib/swr/skill_configurations";
+import { useSearchSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
@@ -209,8 +208,6 @@ export function CapabilitiesPicker({
   onExternalOpenChange,
   anchorRef,
 }: CapabilitiesPickerProps) {
-  const { hasFeature } = useFeatureFlags();
-  const useSkillSearch = hasFeature("skills_search");
   const isMobile = useIsMobile();
   const [searchText, setSearchText] = useState("");
   const [internalOpen, setInternalOpen] = useState(false);
@@ -249,35 +246,15 @@ export function CapabilitiesPicker({
       swrOptions: CAPABILITIES_SWR_OPTIONS,
     });
 
-  const { skills: listedSkills, isSkillsLoading: isListedSkillsLoading } =
-    useSkills({
-      owner,
-      status: "active",
-      disabled: useSkillSearch,
-      swrOptions: CAPABILITIES_SWR_OPTIONS,
-    });
-  const {
-    skills: searchSkills,
-    resolvedSearchTerm,
-    isSkillsError,
-  } = useSearchSkills({
+  const { skills, resolvedSearchTerm, isSkillsError } = useSearchSkills({
     owner,
     searchTerm: searchText,
     limit: MAX_RENDERED_CAPABILITY_ITEMS,
-    disabled: !useSkillSearch || !isOpen,
+    disabled: !isOpen,
   });
   // Use the displayed skills' query so tools and skills update together.
-  const normalizedSearchText = (
-    useSkillSearch ? (resolvedSearchTerm ?? "") : searchText
-  )
-    .trim()
-    .toLowerCase();
-  const skills: CapabilityPickerSkill[] = useSkillSearch
-    ? searchSkills
-    : listedSkills;
-  const isSkillsDataReady = useSkillSearch
-    ? resolvedSearchTerm !== null || isSkillsError
-    : !isListedSkillsLoading;
+  const normalizedSearchText = (resolvedSearchTerm ?? "").trim().toLowerCase();
+  const isSkillsDataReady = resolvedSearchTerm !== null || isSkillsError;
   const isToolsDataReady =
     !isServerViewsLoading &&
     (!isWorkspaceAdmin || !isAvailableMCPServersLoading);
@@ -344,7 +321,7 @@ export function CapabilitiesPicker({
           kind: "skill",
           skill,
           id: `skills-picker-${skill.sId}`,
-          isFavorite: skill.isFavorite ?? false,
+          isFavorite: false,
           label: skill.name,
           sortName: skill.name.toLowerCase(),
           description,
@@ -411,31 +388,24 @@ export function CapabilitiesPicker({
 
   const capabilityPickerSearchResults = useMemo(
     () =>
-      useSkillSearch
-        ? [
-            ...capabilityPickerIndex.filter((item) => item.kind === "skill"),
-            ...searchCapabilityIndex({
-              items: capabilityPickerIndex.filter(
-                (item) => item.kind !== "skill"
-              ),
-              query: normalizedSearchText,
-            }),
-          ]
-            .toSorted(
-              (a, b) =>
-                (a.sortGroup ?? 0) - (b.sortGroup ?? 0) ||
-                compareForAutocompleteSort(
-                  normalizedSearchText,
-                  a.sortName,
-                  b.sortName
-                )
+      [
+        ...capabilityPickerIndex.filter((item) => item.kind === "skill"),
+        ...searchCapabilityIndex({
+          items: capabilityPickerIndex.filter((item) => item.kind !== "skill"),
+          query: normalizedSearchText,
+        }),
+      ]
+        .toSorted(
+          (a, b) =>
+            (a.sortGroup ?? 0) - (b.sortGroup ?? 0) ||
+            compareForAutocompleteSort(
+              normalizedSearchText,
+              a.sortName,
+              b.sortName
             )
-            .slice(0, MAX_RENDERED_CAPABILITY_ITEMS)
-        : searchCapabilityIndex({
-            items: capabilityPickerIndex,
-            query: normalizedSearchText,
-          }),
-    [capabilityPickerIndex, normalizedSearchText, useSkillSearch]
+        )
+        .slice(0, MAX_RENDERED_CAPABILITY_ITEMS),
+    [capabilityPickerIndex, normalizedSearchText]
   );
 
   const capabilityPickerItems = useMemo(

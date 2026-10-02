@@ -31,11 +31,7 @@ import {
 } from "@app/components/sparkle/AppLayoutContext";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useQueryParams } from "@app/hooks/useQueryParams";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
   useSkillsWithRelations,
@@ -67,15 +63,10 @@ import type { RowSelectionState } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export function ManageSkillsPage() {
-  const { hasFeature } = useFeatureFlags();
-  return hasFeature("skills_search") && hasFeature("new_manage_skills_page") ? (
-    <SearchSkillsPage />
-  ) : (
-    <LegacyManageSkillsPage />
-  );
+  return <SearchSkillsPage />;
 }
 
-function LegacyManageSkillsPage() {
+export function LegacyManageSkillsPage() {
   const owner = useWorkspace();
   const { user, isAdmin } = useAuth();
   const { hasPermission } = useWorkspacePermissions();

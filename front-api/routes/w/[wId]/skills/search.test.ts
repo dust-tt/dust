@@ -1,7 +1,6 @@
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -20,7 +19,7 @@ vi.mock("@app/lib/api/skills/search", () => ({
 
 async function setup(role: MembershipRoleType = "user") {
   const context = await createPrivateApiMockRequest({ role });
-  await FeatureFlagFactory.basic(context.auth, "skills_search");
+
   return context;
 }
 
@@ -106,16 +105,16 @@ describe("POST /api/w/:wId/skills/search", () => {
   it.each([
     "user",
     "admin",
-  ] as const)("rejects search for a %s when skills_search is disabled", async (role) => {
+  ] as const)("allows search for a %s without feature flags", async (role) => {
     const { workspace } = await createPrivateApiMockRequest({ role });
 
+    searchSkills.mockResolvedValue(
+      new Ok({ skills: [], total: 0, hasMore: false, facets: {} })
+    );
     const response = await searchRequest(workspace.sId);
 
-    expect(response.status).toBe(403);
-    expect(await response.json()).toMatchObject({
-      error: { type: "feature_flag_not_found" },
-    });
-    expect(searchSkills).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(searchSkills).toHaveBeenCalledOnce();
   });
 
   it.each([

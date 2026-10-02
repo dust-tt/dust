@@ -73,13 +73,9 @@ afterEach(() => {
 });
 
 async function setup({
-  searchEnabled = true,
-  pageEnabled = true,
   skillStatus = "active",
   role = "admin",
 }: {
-  searchEnabled?: boolean;
-  pageEnabled?: boolean;
   skillStatus?: SkillStatus;
   role?: MembershipRoleType;
 } = {}) {
@@ -119,12 +115,6 @@ async function setup({
     providersHealth: null,
     workspacePermissions: await authenticator.getWorkspacePermissions(),
   };
-  if (searchEnabled) {
-    context.featureFlags.push("skills_search");
-  }
-  if (pageEnabled) {
-    context.featureFlags.push("new_manage_skills_page");
-  }
   const search = vi
     .fn<() => Promise<SearchSkillsResponseBody>>()
     .mockResolvedValue({
@@ -1225,28 +1215,11 @@ describe("search-backed Manage Skills", () => {
     await screen.findByText("No skills to show.");
     expect(fetcher).not.toHaveBeenCalled();
   });
-
-  it.each([
-    { searchEnabled: false, pageEnabled: false },
-    { searchEnabled: true, pageEnabled: false },
-    { searchEnabled: false, pageEnabled: true },
-  ])("keeps the legacy page with searchEnabled=$searchEnabled and pageEnabled=$pageEnabled", async (flags) => {
-    const { fetcherWithBody, fetcher, mount } = await setup(flags);
-    mount();
-    await waitFor(() => expect(fetcher).toHaveBeenCalled());
-    expect(
-      screen.queryByRole("tab", { name: "Workspace" })
-    ).not.toBeInTheDocument();
-    expect(fetcherWithBody).not.toHaveBeenCalled();
-  });
 });
 
 describe("Poke Manage Skills", () => {
   it("uses Poke search without feature flags and opens Poke skill details", async () => {
-    const { mount, context, skill, fetcherWithBody } = await setup({
-      searchEnabled: false,
-      pageEnabled: false,
-    });
+    const { mount, context, skill, fetcherWithBody } = await setup();
     mount(<SkillsDataTable owner={context.workspace} />);
     await screen.findByText(skill.name);
     expect(fetcherWithBody).toHaveBeenCalledWith([

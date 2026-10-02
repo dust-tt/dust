@@ -17,7 +17,6 @@ import {
 import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useSearchAgents } from "@app/hooks/useSearchAgents";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { compareStrings, formatNumber } from "@app/lib/i18n/format";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
@@ -325,31 +324,13 @@ export function DiscoverCatalog({
     setSearchTerm(searchTerm);
   }, [searchTerm, setSearchTerm]);
 
-  const { hasFeature } = useFeatureFlags();
-  // Skill search 403s without its flag. Favorites stay hydrated because search
-  // results have no favorite flag.
-  const skillsSearchEnabled = hasFeature("skills_search");
-  const useSearch =
-    filters.view !== "favorites" &&
-    (filters.kind !== "skill" || skillsSearchEnabled);
-  const query = useMemo(() => {
-    const built = buildCatalogQuery(
-      filters,
-      useSearch ? debouncedSearchTerm : searchTerm
-    );
-    // Skill search 403s without the flag. Favorites and the skill-only view stay
-    // on the hydrated lists, which still include skills.
-    if (!useSearch || skillsSearchEnabled) {
-      return built;
-    }
-    return { ...built, showSkills: false };
-  }, [
-    debouncedSearchTerm,
-    filters,
-    searchTerm,
-    skillsSearchEnabled,
-    useSearch,
-  ]);
+  // Favorites stay hydrated because search results have no favorite flag.
+  const useSearch = filters.view !== "favorites";
+  const query = useMemo(
+    () =>
+      buildCatalogQuery(filters, useSearch ? debouncedSearchTerm : searchTerm),
+    [debouncedSearchTerm, filters, searchTerm, useSearch]
+  );
   const updateFilters = (update: Partial<CatalogFilters>) => {
     setFilters((current) => ({ ...current, ...update }));
     onFiltersChange();

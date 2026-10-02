@@ -5,22 +5,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "ask_owner",
     owner: "philipperolet",
   },
-  skills_search: {
-    description: "Enable Elasticsearch-backed skill search",
-    stage: "dust_only",
-    owner: "aubin-tchoi",
-  },
-  new_manage_skills_page: {
-    description:
-      "Enable the search-backed Manage Skills page (requires skills_search)",
-    stage: "dust_only",
-    owner: "aubin-tchoi",
-  },
-  new_manage_agents_page: {
-    description: "Enable the search-backed Manage Agents page",
-    stage: "dust_only",
-    owner: "tdraier",
-  },
   dust_lean_agent: {
     description:
       "Enable @dust-lean, a Dust agent that starts without tools, skills, or company knowledge",

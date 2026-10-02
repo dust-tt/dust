@@ -202,6 +202,7 @@ export function useSearchMembers<
 
   return {
     members: data?.members ?? emptyArray(),
+    searchQuery: debouncedSearchTerm,
     totalMembersCount: data?.total ?? 0,
     isLoading: !error && !data && !disabled,
     isMembersValidating: isValidating,

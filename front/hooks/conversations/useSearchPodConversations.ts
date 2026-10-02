@@ -61,5 +61,6 @@ export function useSearchPodConversations({
     isSearching:
       isDebouncing || (!error && !data && shouldFetch) || isValidating,
     isError: !!error,
+    searchQuery: debouncedQuery,
   };
 }

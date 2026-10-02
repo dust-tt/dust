@@ -124,12 +124,18 @@ async function setup({
     deepLink ? `/#?skillId=${skill.sId}` : "/"
   );
 
+  const fetcherWithBody = vi.fn().mockResolvedValue({
+    skills: listed ? [skill] : [],
+    total: listed ? 1 : 0,
+    hasMore: false,
+    facets: {},
+  });
   const mount = () =>
     render(
       <SWRConfig
         value={{ provider: () => new Map(), shouldRetryOnError: false }}
       >
-        <FetcherProvider fetcher={fetcher} fetcherWithBody={vi.fn()}>
+        <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
           <AuthContext.Provider value={context}>
             {entryPoint === "manage" ? (
               <ManageSkillsPage />
@@ -302,13 +308,12 @@ describe("Manage Skills detail loading", () => {
   });
 
   it.each([
-    { isAdmin: false, status: "active", visible: false },
-    { isAdmin: true, status: "active", visible: true },
-    { isAdmin: false, status: "suggested", visible: true },
-  ] as const)("preserves editor visibility for admin=$isAdmin / $status", async ({
+    { isAdmin: false, status: "active" },
+    { isAdmin: true, status: "active" },
+    { isAdmin: false, status: "suggested" },
+  ] as const)("opens readable editors-only skills for admin=$isAdmin / $status", async ({
     isAdmin,
     status,
-    visible,
   }) => {
     const { mount } = await setup({
       deepLink: true,
@@ -316,22 +321,14 @@ describe("Manage Skills detail loading", () => {
       skillOverrides: {
         status,
         availability: "editors",
+        canRead: true,
         canWrite: false,
         canAdministrate: true,
       },
     });
     mount();
-    if (visible) {
-      expect(
-        await screen.findByRole("heading", { name: "Fetched skill" })
-      ).toBeInTheDocument();
-    } else {
-      expect(
-        await screen.findByText("Skill not available")
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByRole("heading", { name: "Fetched skill" })
-      ).not.toBeInTheDocument();
-    }
+    expect(
+      await screen.findByRole("heading", { name: "Fetched skill" })
+    ).toBeInTheDocument();
   });
 });

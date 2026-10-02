@@ -291,7 +291,6 @@ export function PodSettingsCustomizationTab({
           {isPodEditor && (
             <PodDefaultSkillPicker
               owner={owner}
-              skills={skills}
               selectedSkillIds={defaultSkillIds}
               onSelect={(skillId) => void addDefaultSkill(skillId)}
               triggerClassName={cn(
