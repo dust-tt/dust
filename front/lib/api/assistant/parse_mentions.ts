@@ -5,8 +5,6 @@ import type { RichAgentMention } from "@app/types/assistant/mentions";
 
 const MAX_MENTION_LABEL_LENGTH = 1000;
 
-// Pasted text is capped at 10K characters client-side; leave headroom for JSON
-// escaping and multi-byte characters.
 export const PARSE_MENTIONS_MAX_BODY_SIZE_BYTES = 256 * 1024;
 
 /**
