@@ -289,17 +289,40 @@ function SandboxFunctionInvocation({
   onSettle,
 }: SandboxFunctionInvocationProps) {
   const buildEventSourceURL = useCallback(
-    (lastEvent: string | null) => {
-      const esURL = `/api/sse/w/${workspaceId}/sandbox-functions/${functionId}/invocations/${invocationId}/events`;
+    (lastEvent: string | null, polling = false) => {
+      const esURL = `/api/sse/w/${workspaceId}/sandbox-functions/${functionId}/invocations/${invocationId}/events${polling ? "/poll" : ""}`;
       let lastEventId = "";
       if (lastEvent) {
         const eventPayload: { eventId: string } = JSON.parse(lastEvent);
         lastEventId = eventPayload.eventId;
       }
-      return esURL + "?lastEventId=" + lastEventId;
+      return esURL + "?lastEventId=" + encodeURIComponent(lastEventId);
     },
     [workspaceId, functionId, invocationId]
   );
+
+  const buildLongPollURL = useCallback(
+    (lastEvent: string | null) => buildEventSourceURL(lastEvent, true),
+    [buildEventSourceURL]
+  );
+  const isTerminalEvent = useCallback((event: string) => {
+    try {
+      const parsed: unknown = JSON.parse(event);
+      if (!parsed || typeof parsed !== "object" || !("data" in parsed)) {
+        return false;
+      }
+      const { data } = parsed;
+      return (
+        data !== null &&
+        typeof data === "object" &&
+        "type" in data &&
+        (data.type === "sandbox_function_invocation_result" ||
+          data.type === "sandbox_function_invocation_error")
+      );
+    } catch {
+      return false;
+    }
+  }, []);
 
   const onEventCallback = useCallback(
     (eventStr: string) => {
@@ -355,7 +378,7 @@ function SandboxFunctionInvocation({
     buildEventSourceURL,
     onEventCallback,
     `sandbox-function-invocation-${invocationId}`,
-    { onTerminalError, workspaceId }
+    { onTerminalError, workspaceId, buildLongPollURL, isTerminalEvent }
   );
 
   return null;
