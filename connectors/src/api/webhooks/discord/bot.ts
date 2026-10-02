@@ -1,4 +1,5 @@
 import { makeDiscordContentFragments } from "@connectors/api/webhooks/discord/content_fragments";
+import { makeDiscordDustAPI } from "@connectors/api/webhooks/discord/dust_api";
 import { DISCORD_API_BASE_URL } from "@connectors/api/webhooks/discord/utils";
 import { apiConfig } from "@connectors/lib/api/config";
 import type { MessageFootnotes } from "@connectors/lib/bot/citations";
@@ -14,7 +15,7 @@ import type {
   LightAgentConfigurationType,
   Result,
 } from "@dust-tt/client";
-import { DustAPI, Err, Ok } from "@dust-tt/client";
+import { type DustAPI, Err, Ok } from "@dust-tt/client";
 
 const UPDATE_INTERVAL_MS = 2000;
 
@@ -41,14 +42,20 @@ export async function sendMessageToAgent(
     logger,
   } = params;
 
-  const dustAPI = new DustAPI(
-    { url: apiConfig.getDustFrontAPIUrl() },
-    {
-      workspaceId: connector.workspaceId,
-      apiKey: connector.workspaceAPIKey,
-    },
-    logger
-  );
+  const dustAPIRes = await makeDiscordDustAPI(connector, logger);
+  if (dustAPIRes.isErr()) {
+    logger.error(
+      { error: dustAPIRes.error, workspaceId: connector.workspaceId },
+      "Failed to build Dust API client for Discord"
+    );
+    await updateDiscordMessage(
+      interactionToken,
+      `Error: ${dustAPIRes.error.message}`,
+      logger
+    );
+    return dustAPIRes;
+  }
+  const dustAPI = dustAPIRes.value;
 
   const messageReqBody = {
     content: message,
