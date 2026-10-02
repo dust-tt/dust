@@ -69,8 +69,9 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     { role: "manager", grant: "none", expected: false },
     { role: "manager", grant: "editor", expected: true },
     { role: "admin", grant: "none", expected: true },
+    { role: "admin", grant: "editor", expected: true },
     { role: "user", grant: "*", expected: true },
-  ] as const)("returns administration permissions for $role with $grant grants", async ({
+  ] as const)("returns current permissions for $role with $grant grants", async ({
     role,
     grant,
     expected,
@@ -91,7 +92,7 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
       await auth.refresh();
     }
     const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
-    // Indexed editors may be stale; administration must use the current caller's grants.
+    // Indexed editors may be stale; permissions must use the current caller's grants.
     document.editor_ids = expected ? [] : [user.sId];
     const global = SkillFactory.createCodeDefinedSearchDocuments().find(
       (document) => document.skill_id === "go-deep"
@@ -108,8 +109,16 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
 
     expect(response.status).toBe(200);
     expect((await response.json()).skills).toEqual([
-      expect.objectContaining({ sId: skill.sId, canAdministrate: expected }),
-      expect.objectContaining({ sId: global.skill_id, canAdministrate: false }),
+      expect.objectContaining({
+        sId: skill.sId,
+        canWrite: grant !== "none",
+        canAdministrate: expected,
+      }),
+      expect.objectContaining({
+        sId: global.skill_id,
+        canWrite: false,
+        canAdministrate: false,
+      }),
     ]);
   });
 
