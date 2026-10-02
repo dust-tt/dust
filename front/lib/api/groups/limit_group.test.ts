@@ -12,6 +12,7 @@ import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import type { WithAccessControl } from "@app/types/resource_permissions";
 import type { WorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -73,6 +74,10 @@ async function limit(
   if (result.isErr()) {
     throw result.error;
   }
+}
+
+function isGroupResource(target: WithAccessControl): target is GroupResource {
+  return target instanceof GroupResource;
 }
 
 describe("resolveLimitGroupForUser", () => {
@@ -254,7 +259,7 @@ describe("read filter", () => {
     await limit(auth, sales, 6_000);
     vi.spyOn(auth, "can").mockImplementation(
       (_verb, target) =>
-        !(target instanceof GroupResource && target.id === engineering.id)
+        !(isGroupResource(target) && target.id === engineering.id)
     );
 
     expect(await resolveLimitGroupForUser(auth, { user: remy })).toBeNull();
