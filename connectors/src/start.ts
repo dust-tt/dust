@@ -9,7 +9,6 @@ import { runSnowflakeWorker } from "@connectors/connectors/snowflake/temporal/wo
 import { normalizeError } from "@connectors/types";
 import minimist from "minimist";
 
-import { initializeDiscordCommands } from "./api/webhooks/discord/startup";
 import { runGithubWorker } from "./connectors/github/temporal/worker";
 import { runGoogleWorkers } from "./connectors/google_drive/temporal/worker";
 import { runIntercomWorker } from "./connectors/intercom/temporal/worker";
@@ -73,5 +72,3 @@ runGongWorker().catch((err) =>
 runDustProjectWorker().catch((err) =>
   logger.error(normalizeError(err), "Error running dust project worker")
 );
-
-initializeDiscordCommands();

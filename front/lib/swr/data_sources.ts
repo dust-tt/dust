@@ -73,7 +73,6 @@ export function useBotDataSources({
   return {
     slackBotDataSource: data?.slackBotDataSource ?? null,
     microsoftBotDataSource: data?.microsoftBotDataSource ?? null,
-    discordBotDataSource: data?.discordBotDataSource ?? null,
     isBotDataSourcesLoading: !error && !data && !disabled,
     isBotDataSourcesError: error,
   };

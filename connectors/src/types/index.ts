@@ -4,7 +4,6 @@ export * from "./configuration";
 export * from "./confluence";
 export * from "./content_nodes";
 export * from "./data_source_config";
-export * from "./discord_bot";
 export * from "./google_drive";
 export * from "./intercom";
 export * from "./microsoft";

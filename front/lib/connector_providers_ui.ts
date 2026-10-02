@@ -18,7 +18,6 @@ import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import {
   BigQueryLogo,
   ConfluenceLogo,
-  DiscordLogo,
   DriveLogo,
   DustLogoSquare,
   Folder,
@@ -214,26 +213,6 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     selectLabel: "N/A",
     getLogoComponent: () => {
       return SlackLogo;
-    },
-    isNested: false,
-    isTitleFilterEnabled: true,
-    permissions: {
-      selected: "read_write",
-      unselected: "write",
-    },
-    isHiddenAsDataSource: true,
-  },
-  discord_bot: {
-    hide: true,
-    isPermissionsConfigurableBlocked: true,
-    permissionsDisabledPlaceholder: "N/A",
-    description: "N/A",
-    limitations: "N/A",
-    mismatchError: "N/A",
-    guideLink: "https://docs.dust.tt/docs/discord-bot",
-    selectLabel: "N/A",
-    getLogoComponent: () => {
-      return DiscordLogo;
     },
     isNested: false,
     isTitleFilterEnabled: true,

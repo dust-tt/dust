@@ -90,7 +90,6 @@ const EXCLUDED_MCP_SERVERS = new Set([
 // Connectors to exclude (hidden or bot-only or internal)
 const EXCLUDED_CONNECTORS = new Set<ConnectorProvider>([
   "slack_bot",
-  "discord_bot",
   "microsoft_bot",
   "dust_project", // Internal connector for Dust projects
 ]);
@@ -184,7 +183,6 @@ const CONNECTOR_CATEGORY_MAP: Record<ConnectorProvider, IntegrationCategory> = {
   google_drive: "storage",
   slack: "communication",
   slack_bot: "communication",
-  discord_bot: "communication",
   github: "development",
   intercom: "support",
   microsoft: "storage",
@@ -285,7 +283,6 @@ function getConnectorIcon(
     salesforce: "SalesforceLogo",
     gong: "GongLogo",
     webcrawler: "ActionGlobeAltIcon",
-    discord_bot: "ActionMegaphoneIcon",
   };
 
   return iconMap[provider] ?? "ActionCloudArrowLeftRightIcon";

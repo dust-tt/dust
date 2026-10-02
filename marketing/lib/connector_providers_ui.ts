@@ -21,10 +21,6 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     description: "Connect Confluence spaces to Dust.",
     guideLink: null,
   },
-  discord_bot: {
-    description: "Bring Dust into Discord channels.",
-    guideLink: null,
-  },
   dust_project: {
     description: "Internal Dust project connector.",
     guideLink: null,

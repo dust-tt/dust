@@ -5,7 +5,6 @@ import {
   ConfluencePageModel,
   ConfluenceSpaceModel,
 } from "@connectors/lib/models/confluence";
-import { DiscordConfigurationModel } from "@connectors/lib/models/discord";
 import {
   DustProjectConfigurationModel,
   DustProjectConversationModel,
@@ -105,7 +104,6 @@ async function main(): Promise<void> {
   await ConfluenceFolderModel.sync({ alter: true });
   await ConfluencePageModel.sync({ alter: true });
   await ConfluenceSpaceModel.sync({ alter: true });
-  await DiscordConfigurationModel.sync({ alter: true });
   await SlackConfigurationModel.sync({ alter: true });
   await SlackMessagesModel.sync({ alter: true });
   await SlackChannelModel.sync({ alter: true });

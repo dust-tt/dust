@@ -64,7 +64,6 @@ export function getContentNodeInternalIdFromTableId(
     case "slack":
     case "webcrawler":
     case "zendesk":
-    case "discord_bot":
     case "dust_project":
       throw new Error(
         `Provider ${dataSource.connectorProvider} is not supported`

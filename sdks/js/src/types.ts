@@ -565,7 +565,6 @@ const Timezone = z.string().refine((s) => TIMEZONE_NAMES.includes(s), {
 
 const ConnectorProvidersSchema = FlexibleEnumSchema<
   | "confluence"
-  | "discord_bot"
   | "dust_project"
   | "github"
   | "google_drive"
@@ -861,7 +860,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "disable_frames_v2"
   | "disable_gpt_6_astra"
   | "disable_run_logs"
-  | "discord_bot"
   | "dummy_feature_for_flag_testing"
   | "dust_agent_sonnet_5_default"
   | "dust_filesystem"

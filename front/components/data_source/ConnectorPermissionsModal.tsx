@@ -1251,8 +1251,6 @@ export function ConnectorPermissionsModal({
           case "slack_bot":
           case "microsoft_bot":
             return null;
-          case "discord_bot":
-            return null;
           case "dust_project":
             return null;
           default:

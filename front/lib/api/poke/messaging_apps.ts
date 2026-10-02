@@ -9,7 +9,6 @@ import type { ConnectorProvider } from "@app/types/data_source";
 const BOT_CONNECTOR_PROVIDERS = [
   "slack_bot",
   "microsoft_bot",
-  "discord_bot",
 ] as const satisfies readonly ConnectorProvider[];
 
 export type PokeMessagingAppProvider = (typeof BOT_CONNECTOR_PROVIDERS)[number];
@@ -29,10 +28,9 @@ export type PokeGetMessagingApps = {
 export async function getPokeMessagingApps(
   auth: Authenticator
 ): Promise<PokeMessagingApp[]> {
-  const [[slackBot], [microsoftBot], [discordBot]] = await Promise.all([
+  const [[slackBot], [microsoftBot]] = await Promise.all([
     DataSourceResource.listByConnectorProvider(auth, "slack_bot"),
     DataSourceResource.listByConnectorProvider(auth, "microsoft_bot"),
-    DataSourceResource.listByConnectorProvider(auth, "discord_bot"),
   ]);
 
   const connectorsAPI = new ConnectorsAPI(
@@ -46,10 +44,9 @@ export async function getPokeMessagingApps(
   > = {
     slack_bot: slackBot,
     microsoft_bot: microsoftBot,
-    discord_bot: discordBot,
   };
 
-  // The `botEnabled` flag lives in the connectors service, one call per bot (at most three).
+  // The `botEnabled` flag lives in the connectors service, one call per bot.
   return Promise.all(
     BOT_CONNECTOR_PROVIDERS.map(async (provider) => {
       const dataSource = dataSourceByProvider[provider];

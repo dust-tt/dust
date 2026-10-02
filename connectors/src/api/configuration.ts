@@ -64,7 +64,6 @@ const _patchConnectorConfiguration = async (
 
     case "notion":
     case "confluence":
-    case "discord_bot":
     case "github":
     case "google_drive":
     case "intercom":

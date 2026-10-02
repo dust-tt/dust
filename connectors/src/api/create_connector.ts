@@ -12,7 +12,6 @@ import type {
 } from "@connectors/types";
 import {
   ConnectorConfigurationTypeSchema,
-  DiscordBotConfigurationTypeSchema,
   normalizeError,
   SlackConfigurationTypeSchema,
   WebCrawlerConfigurationTypeSchema,
@@ -130,35 +129,6 @@ const _createConnectorAPIHandler = async (
               dataSourceId,
             },
             connectionId,
-          },
-        });
-        break;
-      }
-
-      case "discord_bot": {
-        const configurationRes = zodParsePayload(
-          configuration,
-          DiscordBotConfigurationTypeSchema
-        );
-        if (configurationRes.isErr()) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: `Invalid request body: ${configurationRes.error}`,
-            },
-          });
-        }
-        connectorRes = await createConnector({
-          connectorProvider: req.params.connector_provider,
-          params: {
-            dataSourceConfig: {
-              workspaceId,
-              workspaceAPIKey,
-              dataSourceId,
-            },
-            connectionId,
-            configuration: configurationRes.value,
           },
         });
         break;
