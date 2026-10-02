@@ -13,6 +13,31 @@ import { SnowflakeCastKnownErrorsInterceptor } from "./cast_known_errors";
 
 describe("SnowflakeCastKnownErrorsInterceptor", () => {
   it.each([
+    "Error",
+    "OperationFailedError",
+  ])("classifies MFA enrollment failures named %s as authorization errors", async (name) => {
+    const error = new Error(
+      "Multi-factor authentication is required for this account. Log in to Snowsight to enroll. [811d9584-fb2e-48a5-a7f8-f7f12f96cd1d]"
+    );
+    error.name = name;
+    const next = vi.fn(async () => {
+      throw error;
+    }) satisfies Next<ActivityInboundCallsInterceptor, "execute">;
+
+    await expect(
+      new SnowflakeCastKnownErrorsInterceptor().execute(
+        { args: [], headers: {} },
+        next
+      )
+    ).rejects.toSatisfy(
+      (caught: unknown) =>
+        caught instanceof ExternalOAuthTokenError &&
+        caught.cause === error &&
+        caught.innerError === error
+    );
+  });
+
+  it.each([
     { code: "390189", message: "Role not found" },
     { code: "390186", message: "Role not authorized" },
     { code: 390189, message: "Role not found" },
@@ -47,6 +72,10 @@ describe("SnowflakeCastKnownErrorsInterceptor", () => {
   });
 
   it.each([
+    {
+      message:
+        "Multi-factor authentication is required for this account. Log in to Snowsight to enroll. [811d9584-fb2e-48a5-a7f8-f7f12f96cd1d]",
+    },
     {
       name: "OperationFailedError",
       code: "390189",
