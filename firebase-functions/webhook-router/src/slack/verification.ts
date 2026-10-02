@@ -95,7 +95,8 @@ function parseSlackTeamIdFromPayload(payload: string): string | undefined {
  * @cc [owner:tdraier,label:security] signing-team-matches-forwarded-team
  * The team whose signing secret verifies the request MUST be the team connectors resolves the
  * connector from: `payload.team.id` when the body carries a `payload` field (interactions),
- * `team_id` otherwise (events). A body carrying both fields MUST be rejected.
+ * `team_id` otherwise (events). A body carrying both fields MUST be rejected, and a form-encoded
+ * body carrying any field other than a single `payload` MUST be rejected.
  */
 function getSlackTeamId(body: Record<string, unknown>): string | undefined {
   const { payload, team_id: teamId } = body;
@@ -140,8 +141,9 @@ export function createSlackVerificationMiddleware(
 
       const isUrlEncoded =
         req.headers["content-type"] === "application/x-www-form-urlencoded";
-      const bodyFields: Record<string, unknown> = isUrlEncoded
-        ? Object.fromEntries(new URLSearchParams(rawBody))
+      const formFields = isUrlEncoded ? new URLSearchParams(rawBody) : null;
+      const bodyFields: Record<string, unknown> = formFields
+        ? Object.fromEntries(formFields)
         : req.body;
 
       // Functions-framework parses body as json by default, keep raw for interactions.
@@ -152,6 +154,13 @@ export function createSlackVerificationMiddleware(
       let signingSecret: string;
 
       if (useClientCredentials) {
+        // Connectors decodes forms with `qs`, which reads aliases such as `payload[]` as `payload`.
+        if (formFields && [...formFields.keys()].join() !== "payload") {
+          throw new ReceiverAuthenticityError(
+            "Slack request signing verification failed. Unexpected form fields."
+          );
+        }
+
         teamId = getSlackTeamId(bodyFields);
         if (!teamId) {
           throw new ReceiverAuthenticityError(
