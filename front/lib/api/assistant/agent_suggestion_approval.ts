@@ -19,13 +19,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
-/**
- * Accepting a Sidekick suggestion lets the builder apply it as recorded, so a tool it adds or
- * removes, and a skill or sub-agent it adds, is checked again against live state: it may have
- * stopped qualifying (archived, restricted to skills, access lost, now used by several actions)
- * since the suggestion was recorded. A tool the agent no longer has is skipped, as there is nothing
- * left to remove.
- */
 export async function checkSuggestionsApproval(
   auth: Authenticator,
   agent: AgentResource,
