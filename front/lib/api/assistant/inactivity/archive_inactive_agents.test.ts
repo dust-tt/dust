@@ -4,7 +4,6 @@ import type { Authenticator } from "@app/lib/auth";
 import * as scheduleClient from "@app/temporal/triggers/schedule_client";
 import * as wakeUpClient from "@app/temporal/triggers/wakeup_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { getAgentConfiguration } from "@app/tests/utils/agent_configuration_reads";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MentionFactory } from "@app/tests/utils/MentionFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -42,10 +41,7 @@ async function createUnusedAgent(auth: Authenticator, name: string) {
 }
 
 async function statusOf(auth: Authenticator, agentId: string) {
-  const agent = await getAgentConfiguration(auth, {
-    agentId,
-    variant: "light",
-  });
+  const agent = await AgentConfigurationFactory.refetch(auth, agentId);
 
   return agent?.status;
 }

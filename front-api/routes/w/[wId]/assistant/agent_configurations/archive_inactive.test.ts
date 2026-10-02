@@ -3,7 +3,6 @@ import type { Authenticator } from "@app/lib/auth";
 import * as scheduleClient from "@app/temporal/triggers/schedule_client";
 import * as wakeUpClient from "@app/temporal/triggers/wakeup_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { getAgentConfiguration } from "@app/tests/utils/agent_configuration_reads";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MentionFactory } from "@app/tests/utils/MentionFactory";
@@ -98,10 +97,7 @@ function mockTemporalClients() {
 }
 
 async function statusOf(auth: Authenticator, agentId: string) {
-  const agent = await getAgentConfiguration(auth, {
-    agentId,
-    variant: "light",
-  });
+  const agent = await AgentConfigurationFactory.refetch(auth, agentId);
 
   return agent?.status;
 }
@@ -213,10 +209,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/archive_inactive/previ
     expect((await previewBody(first)).eligibleCount).toBe(1);
 
     // Still active, and still counted a second time: a dry run reports, it does not act.
-    const stillThere = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "light",
-    });
+    const stillThere = await AgentConfigurationFactory.refetch(auth, agent.sId);
     expect(stillThere?.status).toBe("active");
 
     const second = await postPreview(workspace.sId, {

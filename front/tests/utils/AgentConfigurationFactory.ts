@@ -9,6 +9,7 @@ import type {
   AgentConfigurationType,
   AgentReinforcementMode,
 } from "@app/types/assistant/agent";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type {
   ModelIdType,
   ModelProviderIdType,
@@ -191,5 +192,36 @@ export class AgentConfigurationFactory {
       AgentModel.update({ createdAt }, { where }),
       AgentConfigurationModel.update({ createdAt }, { where }),
     ]);
+  }
+
+  /**
+   * Re-reads an agent for `auth`, its current version or the pinned `agentVersion`. It drops the
+   * cached entry first, since tests update agent rows directly behind the resource cache.
+   */
+  static async refetch(
+    auth: Authenticator,
+    agentId: string,
+    {
+      agentVersion,
+      dangerouslySkipFetchCheck,
+    }: { agentVersion?: number; dangerouslySkipFetchCheck?: boolean } = {}
+  ): Promise<AgentResource | null> {
+    if (!isGlobalAgentId(agentId)) {
+      await AgentResource.invalidateCache(
+        auth.getNonNullableWorkspace().id,
+        agentId
+      );
+    }
+    const [agent] =
+      agentVersion === undefined
+        ? await AgentResource.fetchByIds(auth, [agentId], {
+            dangerouslySkipFetchCheck,
+          })
+        : await AgentResource.fetchByIdsAndVersions(
+            auth,
+            [{ agentId, agentVersion }],
+            { dangerouslySkipFetchCheck }
+          );
+    return agent ?? null;
   }
 }

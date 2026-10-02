@@ -24,7 +24,6 @@ import { CODE_DEFINED_SKILLS_WORKSPACE_ID } from "@app/lib/skill_search/constant
 import { toSkillListItem } from "@app/lib/skill_search/serialization";
 import { serializeSkillTag } from "@app/lib/skills/format";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { getAgentConfiguration } from "@app/tests/utils/agent_configuration_reads";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -1938,23 +1937,24 @@ describe("SkillResource", () => {
       // Archiving the skill should drop its space from the agent's requirements.
       await skill.archive(testContext.authenticator);
 
-      const agentAfterArchive = await getAgentConfiguration(
+      const agentAfterArchive = await AgentConfigurationFactory.refetch(
         testContext.authenticator,
-        { agentId: agent.sId, variant: "light" }
+        agent.sId
       );
-      expect(agentAfterArchive?.requestedSpaceIds).not.toContain(
-        restrictedSpace.sId
+      expect(agentAfterArchive).not.toBeNull();
+      expect(agentAfterArchive!.requestedSpaceModelIds()).not.toContain(
+        restrictedSpace.id
       );
 
       // Restoring the skill should add its space back to the agent's requirements.
       await skill.restore(testContext.authenticator);
 
-      const agentAfterRestore = await getAgentConfiguration(
+      const agentAfterRestore = await AgentConfigurationFactory.refetch(
         testContext.authenticator,
-        { agentId: agent.sId, variant: "light" }
+        agent.sId
       );
-      expect(agentAfterRestore?.requestedSpaceIds).toContain(
-        restrictedSpace.sId
+      expect(agentAfterRestore?.requestedSpaceModelIds()).toContain(
+        restrictedSpace.id
       );
     });
 
@@ -1991,14 +1991,11 @@ describe("SkillResource", () => {
       // Archiving skill1 must not remove sharedSpace because skill2 still requires it.
       await skill1.archive(testContext.authenticator);
 
-      const agentAfter = await getAgentConfiguration(
+      const agentAfter = await AgentConfigurationFactory.refetch(
         testContext.authenticator,
-        {
-          agentId: agent.sId,
-          variant: "light",
-        }
+        agent.sId
       );
-      expect(agentAfter?.requestedSpaceIds).toContain(sharedSpace.sId);
+      expect(agentAfter?.requestedSpaceModelIds()).toContain(sharedSpace.id);
     });
 
     it("marks parent skill references unavailable while a child skill is archived", async () => {

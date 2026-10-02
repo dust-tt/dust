@@ -4,7 +4,6 @@ import { AgentResource } from "@app/lib/resources/agent_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
-import { getAgentConfiguration } from "@app/tests/utils/agent_configuration_reads";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -335,11 +334,13 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - non-editor adm
 
     expect(response.status).toBe(403);
 
-    const unchanged = await getAgentConfiguration(agentOwnerAuth, {
-      agentId: agent.sId,
-      variant: "light",
-    });
-    expect(unchanged?.instructions).toBe(agent.instructions);
+    const unchanged = await AgentConfigurationFactory.refetch(
+      agentOwnerAuth,
+      agent.sId
+    );
+    expect((await unchanged?.fetchInstructions())?.instructions).toBe(
+      agent.instructions
+    );
   });
 });
 

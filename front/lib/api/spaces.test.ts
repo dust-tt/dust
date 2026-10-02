@@ -15,7 +15,6 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { getAgentConfigurations } from "@app/tests/utils/agent_configuration_reads";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
@@ -1622,15 +1621,15 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
         }
       );
 
-      // Verify the agent has both spaces in its requestedSpaceIds (using sIds)
-      const agentsBefore = await getAgentConfigurations(adminAuth, {
-        agentIds: [agentConfig.sId],
-        variant: "light",
-      });
-      expect(agentsBefore).toHaveLength(1);
-      expect(agentsBefore[0].requestedSpaceIds).toHaveLength(2);
-      expect(agentsBefore[0].requestedSpaceIds).toContain(space1!.sId);
-      expect(agentsBefore[0].requestedSpaceIds).toContain(space2!.sId);
+      // Verify the agent has both spaces in its requestedSpaceIds
+      const agentBefore = await AgentConfigurationFactory.refetch(
+        adminAuth,
+        agentConfig.sId
+      );
+      expect(agentBefore).not.toBeNull();
+      expect(agentBefore!.requestedSpaceModelIds()).toHaveLength(2);
+      expect(agentBefore!.requestedSpaceModelIds()).toContain(space1!.id);
+      expect(agentBefore!.requestedSpaceModelIds()).toContain(space2!.id);
 
       // Delete space1
       const deleteResult = await softDeleteSpaceAndLaunchScrubWorkflow(
@@ -1641,14 +1640,14 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       expect(deleteResult.isOk()).toBe(true);
 
       // Verify the agent's requestedSpaceIds no longer contains space1 but still has space2
-      const agentsAfter = await getAgentConfigurations(adminAuth, {
-        agentIds: [agentConfig.sId],
-        variant: "light",
-      });
-      expect(agentsAfter).toHaveLength(1);
-      expect(agentsAfter[0].requestedSpaceIds).toHaveLength(1);
-      expect(agentsAfter[0].requestedSpaceIds).toContain(space2!.sId);
-      expect(agentsAfter[0].requestedSpaceIds).not.toContain(space1!.sId);
+      const agentAfter = await AgentConfigurationFactory.refetch(
+        adminAuth,
+        agentConfig.sId
+      );
+      expect(agentAfter).not.toBeNull();
+      expect(agentAfter!.requestedSpaceModelIds()).toHaveLength(1);
+      expect(agentAfter!.requestedSpaceModelIds()).toContain(space2!.id);
+      expect(agentAfter!.requestedSpaceModelIds()).not.toContain(space1!.id);
     });
   });
 });

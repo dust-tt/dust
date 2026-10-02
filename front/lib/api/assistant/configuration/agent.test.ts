@@ -21,7 +21,6 @@ import * as scheduleClient from "@app/temporal/triggers/schedule_client";
 import * as wakeUpClient from "@app/temporal/triggers/wakeup_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
-import { getAgentConfiguration } from "@app/tests/utils/agent_configuration_reads";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -555,13 +554,13 @@ describe("saveAgentConfiguration with pending agent", () => {
       throw pendingAgentRes.error;
     }
     const { sId: pendingId } = pendingAgentRes.value;
-    const pendingAgent = await getAgentConfiguration(authenticator, {
-      agentId: pendingId,
-      variant: "light",
-    });
+    const pendingAgent = await AgentConfigurationFactory.refetch(
+      authenticator,
+      pendingId
+    );
     expect(pendingAgent).not.toBeNull();
 
-    const originalAgentId = pendingAgent!.id;
+    const originalAgentId = pendingAgent!.agentConfigurationModelId;
 
     await AgentSuggestionFactory.createInstructions(
       authenticator,
@@ -1701,12 +1700,11 @@ it("revokes grant-only editors when saving the complete editor set", async () =>
     editor.sId,
     workspace.sId
   );
-  expect(
-    (
-      await getAgentConfiguration(editorAuth, {
-        agentId: agent.sId,
-        variant: "light",
-      })
-    )?.canEdit
-  ).toBe(false);
+  const editorAgent = await AgentConfigurationFactory.refetch(
+    editorAuth,
+    agent.sId
+  );
+  expect(editorAgent !== null && editorAuth.can("write", editorAgent)).toBe(
+    false
+  );
 });

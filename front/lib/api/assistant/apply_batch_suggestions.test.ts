@@ -11,7 +11,6 @@ import { serializeSkillTag } from "@app/lib/skills/format";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
-import { getAgentConfiguration } from "@app/tests/utils/agent_configuration_reads";
 import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -65,11 +64,8 @@ describe("applyBatchSuggestions", () => {
   });
 
   async function fetchAgentToolIds(agentId: string) {
-    const agent = await getAgentConfiguration(auth, {
-      agentId,
-      variant: "full",
-    });
-    return (agent?.actions ?? [])
+    const agent = await AgentConfigurationFactory.refetch(auth, agentId);
+    return ((await agent?.listActions(auth)) ?? [])
       .filter(isServerSideMCPServerConfiguration)
       .map((action) => action.mcpServerViewId);
   }
@@ -80,20 +76,14 @@ describe("applyBatchSuggestions", () => {
   }
 
   async function fetchAgentSkillIds(agentId: string) {
-    const agent = await getAgentConfiguration(auth, {
-      agentId,
-      variant: "full",
-    });
+    const agent = await AgentConfigurationFactory.refetch(auth, agentId);
     assert(agent);
-    const skills = await SkillResource.listByAgentConfiguration(auth, agent);
+    const skills = await agent.listSkills(auth);
     return skills.map((skill) => skill.sId);
   }
 
   async function fetchAgentName(agentId: string) {
-    const agent = await getAgentConfiguration(auth, {
-      agentId,
-      variant: "light",
-    });
+    const agent = await AgentConfigurationFactory.refetch(auth, agentId);
     return agent?.name;
   }
 
@@ -183,10 +173,7 @@ describe("applyBatchSuggestions", () => {
     const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
 
     expect(res.isOk()).toBe(true);
-    const archived = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "light",
-    });
+    const archived = await AgentConfigurationFactory.refetch(auth, agent.sId);
     expect(archived?.status).toBe("archived");
     expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -483,11 +470,8 @@ describe("applyBatchSuggestions", () => {
     if (res.isErr()) {
       throw res.error;
     }
-    const updated = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "light",
-    });
-    expect(updated?.requestedSpaceIds).toEqual([]);
+    const updated = await AgentConfigurationFactory.refetch(auth, agent.sId);
+    expect(updated?.requestedSpaceModelIds()).toEqual([]);
     expect(await fetchAgentSkillIds(agent.sId)).toEqual([]);
   });
 
@@ -732,12 +716,12 @@ describe("applyBatchSuggestions", () => {
 
     expect(res.isOk()).toBe(true);
     expect(await fetchAgentName(agent.sId)).toBe("RenamedAgent");
-    const updated = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "full",
-    });
+    const updated = await AgentConfigurationFactory.refetch(auth, agent.sId);
+    assert(updated);
     expect(
-      updated?.actions.filter(isServerSideMCPServerConfiguration)
+      (await updated.listActions(auth)).filter(
+        isServerSideMCPServerConfiguration
+      )
     ).toMatchObject([
       {
         mcpServerViewId: view.sId,
@@ -833,11 +817,8 @@ describe("applyBatchSuggestions", () => {
     const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
 
     expect(res.isOk()).toBe(true);
-    const updated = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "light",
-    });
-    expect(updated?.requestedSpaceIds).toEqual([]);
+    const updated = await AgentConfigurationFactory.refetch(auth, agent.sId);
+    expect(updated?.requestedSpaceModelIds()).toEqual([]);
   });
 
   it("writes nothing when the removed tool is used by several actions", async () => {
@@ -868,10 +849,10 @@ describe("applyBatchSuggestions", () => {
     if (pending.isErr()) {
       throw pending.error;
     }
-    const agent = await getAgentConfiguration(auth, {
-      agentId: pending.value.sId,
-      variant: "light",
-    });
+    const agent = await AgentConfigurationFactory.refetch(
+      auth,
+      pending.value.sId
+    );
     assert(agent);
     return agent;
   }
@@ -904,11 +885,10 @@ describe("applyBatchSuggestions", () => {
     if (res.isErr()) {
       throw res.error;
     }
-    const created = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "full",
-    });
-    expect(created).toMatchObject({ status: "active", name: "IncidentHelper" });
+    const created = await AgentConfigurationFactory.refetch(auth, agent.sId);
+    assert(created);
+    expect(created.status).toBe("active");
+    expect(created.name).toBe("IncidentHelper");
     expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "agent.created",
@@ -919,7 +899,9 @@ describe("applyBatchSuggestions", () => {
       })
     );
     expect(
-      created?.actions.filter(isServerSideMCPServerConfiguration)
+      (await created.listActions(auth)).filter(
+        isServerSideMCPServerConfiguration
+      )
     ).toMatchObject([{ mcpServerViewId: view.sId, name: "ticket_tracker" }]);
     expect(await fetchAgentSkillIds(agent.sId)).toEqual([skill.sId]);
   });
@@ -1087,10 +1069,7 @@ describe("applyBatchSuggestions", () => {
     const res = await applyBatchSuggestions(auth, await fetchBatch(sId));
 
     expect(res.isOk()).toBe(true);
-    const updated = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "light",
-    });
+    const updated = await AgentConfigurationFactory.refetch(auth, agent.sId);
     expect(updated?.scope).toBe("hidden");
     expect(updated?.version).toBe(agent.version);
     expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
@@ -1132,10 +1111,7 @@ describe("applyBatchSuggestions", () => {
     const res = await applyBatchSuggestions(adminAuth, batch);
 
     expect(res.isOk()).toBe(true);
-    const updated = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "light",
-    });
+    const updated = await AgentConfigurationFactory.refetch(auth, agent.sId);
     expect(updated?.scope).toBe("hidden");
   });
 
@@ -1170,10 +1146,7 @@ describe("applyBatchSuggestions", () => {
         }),
       })
     );
-    const updated = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "light",
-    });
+    const updated = await AgentConfigurationFactory.refetch(auth, agent.sId);
     expect(updated?.version).toBe(agent.version);
   });
 
@@ -1364,12 +1337,9 @@ describe("applyBatchSuggestions", () => {
   });
 
   async function fetchAgentModel(agentId: string) {
-    const agent = await getAgentConfiguration(auth, {
-      agentId,
-      variant: "light",
-    });
+    const agent = await AgentConfigurationFactory.refetch(auth, agentId);
     assert(agent);
-    return agent.model;
+    return agent.modelConfiguration;
   }
 
   it("sets the structured output of an agent, keeping its model", async () => {
@@ -1469,11 +1439,8 @@ describe("applyBatchSuggestions", () => {
   }
 
   async function fetchAgentSubAgentActions(agentId: string) {
-    const agent = await getAgentConfiguration(auth, {
-      agentId,
-      variant: "full",
-    });
-    return (agent?.actions ?? [])
+    const agent = await AgentConfigurationFactory.refetch(auth, agentId);
+    return ((await agent?.listActions(auth)) ?? [])
       .filter(isServerSideMCPServerConfiguration)
       .filter((action) => action.childAgentId !== null);
   }
@@ -1567,11 +1534,8 @@ describe("applyBatchSuggestions", () => {
     if (res.isErr()) {
       throw res.error;
     }
-    const updated = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "light",
-    });
-    expect(updated?.requestedSpaceIds).toEqual([restrictedSpace.sId]);
+    const updated = await AgentConfigurationFactory.refetch(auth, agent.sId);
+    expect(updated?.requestedSpaceModelIds()).toEqual([restrictedSpace.id]);
     expect(await fetchAgentSubAgentActions(agent.sId)).toEqual([]);
   });
 

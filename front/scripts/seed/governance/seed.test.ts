@@ -16,7 +16,7 @@ import {
   seedGovernanceGroups,
 } from "@app/scripts/seed/governance/groups";
 import type { Assets } from "@app/scripts/seed/governance/seed";
-import { getAgentConfiguration } from "@app/tests/utils/agent_configuration_reads";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import * as fs from "fs";
 import * as path from "path";
@@ -192,15 +192,12 @@ describe("governance seed script integration test", () => {
     // The agent is created and uses Alfred's skill.
     expect(incidentReporter).toBeDefined();
 
-    const agentConfiguration = await getAgentConfiguration(authenticator, {
-      agentId: incidentReporter!.sId,
-      variant: "full",
-    });
-    expect(agentConfiguration).toBeDefined();
-    const agentSkills = await SkillResource.listByAgentConfiguration(
+    const agentConfiguration = await AgentConfigurationFactory.refetch(
       authenticator,
-      agentConfiguration!
+      incidentReporter!.sId
     );
+    expect(agentConfiguration).not.toBeNull();
+    const agentSkills = await agentConfiguration!.listSkills(authenticator);
     expect(agentSkills.map((s) => s.sId)).toEqual([alfredSkill!.sId]);
 
     // The private space holds Alfred only: the current user is not a member.
@@ -223,36 +220,34 @@ describe("governance seed script integration test", () => {
       alfred!.sId,
       workspace.sId
     );
-    const unpublishedConfiguration = await getAgentConfiguration(alfredAuth, {
-      agentId: alfredUnpublishedAgent!.sId,
-      variant: "light",
-    });
+    const unpublishedConfiguration = await AgentConfigurationFactory.refetch(
+      alfredAuth,
+      alfredUnpublishedAgent!.sId
+    );
     expect(unpublishedConfiguration!.scope).toBe("hidden");
     expect(unpublishedConfiguration!.versionAuthorId).toBe(alfred!.id);
 
-    const privateSpaceConfiguration = await getAgentConfiguration(alfredAuth, {
-      agentId: alfredPrivateSpaceAgent!.sId,
-      variant: "light",
-    });
+    const privateSpaceConfiguration = await AgentConfigurationFactory.refetch(
+      alfredAuth,
+      alfredPrivateSpaceAgent!.sId
+    );
     expect(privateSpaceConfiguration!.scope).toBe("visible");
     expect(privateSpaceConfiguration!.versionAuthorId).toBe(alfred!.id);
-    expect(privateSpaceConfiguration!.requestedSpaceIds).toEqual([
-      privateSpace!.sId,
+    expect(privateSpaceConfiguration!.requestedSpaceModelIds()).toEqual([
+      privateSpace!.id,
     ]);
 
-    const unpublishedPrivateSpaceConfiguration = await getAgentConfiguration(
-      alfredAuth,
-      {
-        agentId: alfredUnpublishedPrivateSpaceAgent!.sId,
-        variant: "light",
-      }
-    );
+    const unpublishedPrivateSpaceConfiguration =
+      await AgentConfigurationFactory.refetch(
+        alfredAuth,
+        alfredUnpublishedPrivateSpaceAgent!.sId
+      );
     expect(unpublishedPrivateSpaceConfiguration!.scope).toBe("hidden");
     expect(unpublishedPrivateSpaceConfiguration!.versionAuthorId).toBe(
       alfred!.id
     );
-    expect(unpublishedPrivateSpaceConfiguration!.requestedSpaceIds).toEqual([
-      privateSpace!.sId,
-    ]);
+    expect(
+      unpublishedPrivateSpaceConfiguration!.requestedSpaceModelIds()
+    ).toEqual([privateSpace!.id]);
   });
 });
