@@ -49,6 +49,11 @@ interface FilterPanelProps<
   onClearAll?: () => void;
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:product;react] responsive-filter-panel
+ * The panel MUST fit the viewport while keeping category navigation, option selection
+ * and Apply accessible. The supplementary selection summary may hide on narrow screens.
+ */
 export function FilterPanel<
   Category extends string,
   Option extends FilterOptionBase,
@@ -142,10 +147,11 @@ export function FilterPanel<
       <PopoverContent
         fullWidth
         align="start"
-        className="w-auto rounded-2xl p-0"
+        className="flex max-h-(--radix-popover-content-available-height) w-[calc(100vw-2rem)] max-w-[44rem] flex-col rounded-2xl p-0 sm:w-auto"
       >
-        <div className="flex h-96 flex-row divide-x divide-border dark:divide-border-dark">
+        <div className="flex h-96 min-h-0 flex-row divide-x divide-border dark:divide-border-dark">
           <FilterCategoryNav
+            className="w-32 shrink-0 sm:w-44"
             categories={categories}
             categoryLabels={categoryLabels}
             selectionCounts={categorySelectionCounts}
@@ -157,7 +163,7 @@ export function FilterPanel<
             }}
             footer={categoryNavFooter}
           />
-          <div className="flex h-full w-80 flex-col gap-3 p-2">
+          <div className="flex h-full min-w-0 flex-1 flex-col gap-3 p-2 sm:w-80 sm:flex-none">
             <FilterSection
               title={categoryLabels[activeCategory]}
               action={
@@ -221,14 +227,16 @@ export function FilterPanel<
               )}
             </div>
           </div>
-          <FilterSelectionSummary
-            categoriesWithSelection={categoriesWithSelection}
-            categoryLabels={categoryLabels}
-            filter={draftFilter}
-            onClearCategory={clearCategory}
-            onRemoveOption={removeOption}
-            renderIcon={renderIcon}
-          />
+          <div className="hidden md:block">
+            <FilterSelectionSummary
+              categoriesWithSelection={categoriesWithSelection}
+              categoryLabels={categoryLabels}
+              filter={draftFilter}
+              onClearCategory={clearCategory}
+              onRemoveOption={removeOption}
+              renderIcon={renderIcon}
+            />
+          </div>
         </div>
         {warning && (
           <div role="alert" className="px-4 py-2 text-sm text-warning">

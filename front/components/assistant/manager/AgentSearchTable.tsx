@@ -148,6 +148,11 @@ function AgentSearchTagSelector({
 // Cells render as components, so a new `columns` identity remounts every cell: an open menu
 // closes and an in-flight checkbox click is lost.
 /**
+ * @cc [owner:aubin-tchoi,label:product] agent-name-column-visibility
+ * Secondary columns MUST hide based on available container width to keep agent names
+ * visible. The name column MUST fill the space left by the visible fixed-width columns.
+ */
+/**
  * @cc [owner:tdraier,label:react;performance] stable-columns
  * `columns` MUST only be rebuilt when `canSelect`, `onSelect`, `onRefresh`, `owner`, `readOnly`,
  * `renderActions` or the theme change, never on data the table loads itself. Callers MUST keep
@@ -296,7 +301,7 @@ export function AgentSearchTable({
               />
             </DataTable.CellContent>
           ),
-          meta: { className: "w-48 @lg:w-full", rowHeader: true },
+          meta: { rowHeader: true },
         },
         {
           id: "access" as const,
@@ -349,7 +354,7 @@ export function AgentSearchTable({
           ),
           meta: {
             type: "numeric",
-            className: "hidden @sm:w-24 @sm:table-cell",
+            className: "hidden w-24 @xs:table-cell",
           },
         },
         {
@@ -370,7 +375,7 @@ export function AgentSearchTable({
           },
           meta: {
             type: "numeric",
-            className: "hidden @lg:w-24 @lg:table-cell",
+            className: "hidden w-24 @xl:table-cell",
           },
         },
         {
@@ -412,7 +417,7 @@ export function AgentSearchTable({
               </DataTable.CellContent>
             );
           },
-          meta: { className: "hidden @lg:table-cell @lg:w-24 @xl:w-40" },
+          meta: { className: "hidden w-40 @xl:table-cell" },
         },
         {
           id: "updatedAt" as const,
@@ -423,7 +428,7 @@ export function AgentSearchTable({
           cell: ({ row: { original: agent } }) => (
             <SkillLastEditedCell updatedAt={agent.updatedAt} emptyLabel="-" />
           ),
-          meta: { className: "hidden @sm:w-32 @sm:table-cell" },
+          meta: { className: "hidden w-32 @md:table-cell" },
         },
         {
           id: "actions" as const,
@@ -440,7 +445,7 @@ export function AgentSearchTable({
                 onRefresh={onRefresh}
               />
             ),
-          meta: { className: "hidden @md:table-cell @md:w-14" },
+          meta: { className: "w-14" },
         },
       ] satisfies ColumnDef<AgentSearchRow>[],
     [canSelect, isDark, onRefresh, onSelect, owner, readOnly, renderActions]

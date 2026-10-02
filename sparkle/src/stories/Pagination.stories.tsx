@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { PaginationState } from "@tanstack/react-table";
 import React, { useState } from "react";
 import { expect, fn } from "storybook/test";
@@ -69,6 +69,44 @@ export const Default: Story = {};
  */
 export const SinglePage: Story = {
   args: { rowCount: 4 },
+};
+
+/** @summary Page controls and range summary fit a narrow container. */
+export const Narrow: Story = {
+  args: {
+    size: "xs",
+    rowCount: 1000,
+    pagination: { pageIndex: 4, pageSize: 25 },
+  },
+  decorators: [
+    (Story) => (
+      <div className="w-64">
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvas, canvasElement, userEvent, args }) => {
+    const summary = canvas.getByText("Showing 101-125 of 1000 items");
+    const pageButton = canvas.getByRole("button", { name: "5" });
+    await expect(summary.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      pageButton.getBoundingClientRect().bottom
+    );
+    const container = canvasElement.querySelector(".w-64");
+    await expect(container).not.toBeNull();
+    if (container) {
+      await expect(container.scrollWidth).toBeLessThanOrEqual(
+        container.clientWidth
+      );
+    }
+    await userEvent.click(canvas.getByRole("button", { name: "6" }));
+    await expect(args.setPagination).toHaveBeenCalledWith({
+      pageIndex: 5,
+      pageSize: 25,
+    });
+    await expect(
+      canvas.getByText("Showing 126-150 of 1000 items")
+    ).toBeVisible();
+  },
 };
 
 /**

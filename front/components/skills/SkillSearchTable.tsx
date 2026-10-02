@@ -28,15 +28,6 @@ import type {
 } from "@tanstack/react-table";
 import { useMemo } from "react";
 
-// Leave room for Select, Usage and Actions, then Editors/Last edited at @sm and Availability at @md.
-/**
- * @cc [owner:aubin-tchoi,label:product] skill-name-column-visibility
- * Secondary columns MUST hide based on available container width to keep skill names
- * visible.
- */
-const SKILL_SEARCH_NAME_COLUMN_WIDTH =
-  "w-[calc(100%-12rem)] @sm:w-[calc(100%-28rem)] @md:w-[calc(100%-38rem)]";
-
 interface SkillSearchTableProps {
   owner: LightWorkspaceType;
   readOnly?: boolean;
@@ -58,6 +49,11 @@ type SkillSearchRow = SkillListItemType & { onClick: () => void };
 
 // Cells render as components, so a new `columns` identity remounts every cell: an open menu
 // closes and an in-flight checkbox click is lost.
+/**
+ * @cc [owner:aubin-tchoi,label:product] skill-name-column-visibility
+ * Secondary columns MUST hide based on available container width to keep skill names
+ * visible. The name column MUST fill the space left by the visible fixed-width columns.
+ */
 /**
  * @cc [owner:tdraier,label:react;performance] stable-columns
  * `columns` MUST only be rebuilt when `onSelect`, `onRefresh`, `owner` or `readOnly` change, never
@@ -199,10 +195,7 @@ export function SkillSearchTable({
               </DataTable.CellContent>
             );
           },
-          meta: {
-            className: SKILL_SEARCH_NAME_COLUMN_WIDTH,
-            rowHeader: true,
-          },
+          meta: { rowHeader: true },
         },
         {
           id: "availability" as const,
@@ -212,7 +205,7 @@ export function SkillSearchTable({
           ),
           meta: {
             type: "status",
-            className: "hidden w-40 @md:table-cell",
+            className: "hidden w-40 @lg:table-cell",
           },
         },
         {
@@ -235,7 +228,10 @@ export function SkillSearchTable({
               }
             />
           ),
-          meta: { type: "numeric", className: "w-24 font-mono" },
+          meta: {
+            type: "numeric",
+            className: "hidden w-24 font-mono @xs:table-cell",
+          },
         },
         {
           id: "editors" as const,
@@ -245,7 +241,7 @@ export function SkillSearchTable({
               editors={isDustProvidedSkill(skill) ? null : skill.editors}
             />
           ),
-          meta: { className: "hidden w-32 pl-6 @sm:table-cell" },
+          meta: { className: "hidden w-32 pl-6 @md:table-cell" },
         },
         {
           id: "updatedAt" as const,
