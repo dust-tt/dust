@@ -24,19 +24,17 @@ export function WorkspaceIdentityProvisioningPage() {
 
   return (
     <AdminPageContainer>
-      <div className="mb-4">
-        <Page.Vertical gap="lg" align="stretch">
-          <Page.Header
-            title="IT & Security"
-            description="Verify your domain, manage team members and their permissions."
-          />
-          <WorkspaceAccessPanel
-            workspaceVerifiedDomains={verifiedDomains}
-            owner={owner}
-            plan={plan}
-          />
-        </Page.Vertical>
-      </div>
+      <Page.Vertical gap="lg" align="stretch">
+        <Page.Header
+          title="IT & Security"
+          description="Verify your domain, manage team members and their permissions."
+        />
+        <WorkspaceAccessPanel
+          workspaceVerifiedDomains={verifiedDomains}
+          owner={owner}
+          plan={plan}
+        />
+      </Page.Vertical>
     </AdminPageContainer>
   );
 }

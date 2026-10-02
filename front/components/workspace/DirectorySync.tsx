@@ -21,7 +21,6 @@ import {
   DialogTitle,
   LoadingBlock,
   Page,
-  Separator,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -284,7 +283,6 @@ export default function UserProvisioning({
           />
         </div>
       </div>
-      <Separator />
       <UpgradePlanDialog
         isOpen={showUpgradePlanDialog}
         onClose={() => setShowUpgradePlanDialog(false)}

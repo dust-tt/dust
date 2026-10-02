@@ -34,44 +34,39 @@ export function MembersPage() {
 
   return (
     <AdminPageContainer>
-      <div className="mb-4">
-        <div className="flex flex-col gap-6">
-          <Page.Header
-            title="People"
-            description="Manage team members and their roles."
-          />
-          <Tabs
-            value={activeTab}
-            onValueChange={(value) => tab.setParam(value)}
-          >
-            <TabsList className="mb-6">
-              <TabsTrigger value="members" label="Members" />
-              <TabsTrigger value="groups" label="Groups" />
-            </TabsList>
-            <TabsContent value="members" className="flex flex-col gap-4">
-              <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.people.members}>
-                {isManager ? (
-                  <WorkspacePeopleMembers />
-                ) : (
-                  <WorkspaceMembersSection
-                    currentUser={user}
-                    owner={owner}
-                    subscription={subscription}
-                    isProvisioningEnabled={false}
-                    isManualInvitationsEnabled={false}
-                    perSeatPricing={null}
-                    hasAvailableSeats={false}
-                  />
-                )}
-              </AdminSectionAnchor>
-            </TabsContent>
-            <TabsContent value="groups" className="flex flex-col gap-4">
-              <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.people.groups}>
-                <WorkspaceGroupsList owner={owner} />
-              </AdminSectionAnchor>
-            </TabsContent>
-          </Tabs>
-        </div>
+      <div className="flex flex-col gap-6">
+        <Page.Header
+          title="People"
+          description="Manage team members and their roles."
+        />
+        <Tabs value={activeTab} onValueChange={(value) => tab.setParam(value)}>
+          <TabsList className="mb-6">
+            <TabsTrigger value="members" label="Members" />
+            <TabsTrigger value="groups" label="Groups" />
+          </TabsList>
+          <TabsContent value="members" className="flex flex-col gap-4">
+            <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.people.members}>
+              {isManager ? (
+                <WorkspacePeopleMembers />
+              ) : (
+                <WorkspaceMembersSection
+                  currentUser={user}
+                  owner={owner}
+                  subscription={subscription}
+                  isProvisioningEnabled={false}
+                  isManualInvitationsEnabled={false}
+                  perSeatPricing={null}
+                  hasAvailableSeats={false}
+                />
+              )}
+            </AdminSectionAnchor>
+          </TabsContent>
+          <TabsContent value="groups" className="flex flex-col gap-4">
+            <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.people.groups}>
+              <WorkspaceGroupsList owner={owner} />
+            </AdminSectionAnchor>
+          </TabsContent>
+        </Tabs>
       </div>
     </AdminPageContainer>
   );
