@@ -78,15 +78,24 @@ a DFM file from a sandbox and the editor still opens it.
   target.
 - Indexing: the project sync runs after delete and extract but not after a PUT. A saved `.md`
   must reach search, body and comments.
+- A clean editor adopts an agent's version in place, keeping the scroll position, instead of
+  remounting on a new key. No change animation: per-character liveness is the live session.
 - Outcome: in one conversation, the human edits in the editor, asks the agent for a change,
   the agent edits the file, the editor shows the result; then both edit at once and the loser
   is told, never overwritten. Nothing lost in ten rounds of this.
 
-### M3. Create a document from the UI, no agent, no tokens (stream 1)
+### M3. Live session (stream 2, human-present mode)
 
-- New document from the conversation files panel and from a Pod: name, empty DFM body or a
-  template body, correct content type, opens in the editor.
-- Outcome: a user with no agent in the loop creates and edits a doc in a Pod.
+- Sync-layer spike first (Yjs vs ProseMirror collab, README decision 3), answering: can an
+  agent tool act as a client from the server, and how is the file checkpoint produced from
+  the shared document through the codec, anchors included.
+- Then: session opens when a human opens the document and closes when the last one leaves;
+  shared document state on the server; presence with cursors, agents included; agent edits
+  through co-edition tools emitting operations streamed to open editors; direct file writes
+  refused with a pointer to those tools while the session is open; checkpoints and close write
+  the file through the codec; reload or disconnect loses nothing; several humans at once.
+- Outcome: a human watches the agent's cursor move and its text appear; two humans and one
+  agent edit together; killing the tab and reopening shows the same document.
 
 ### M4. Comments (stream 3)
 
@@ -105,18 +114,13 @@ a DFM file from a sandbox and the editor still opens it.
   thread and, if asked, edits the paragraph; both are attributed correctly; search finds the
   comment.
 
-### M5. Live session (stream 2, human-present mode)
+### M5. Create a document from the UI, no agent, no tokens (stream 1)
 
-- Sync-layer spike first (Yjs vs ProseMirror collab, README decision 3), answering: can an
-  agent tool act as a client from the server, and how is the file checkpoint produced from
-  the shared document through the codec, anchors included.
-- Then: session opens when a human opens the document and closes when the last one leaves;
-  shared document state on the server; presence with cursors, agents included; agent edits
-  through co-edition tools emitting operations streamed to open editors; direct file writes
-  refused with a pointer to those tools while the session is open; checkpoints and close write
-  the file through the codec; reload or disconnect loses nothing; several humans at once.
-- Outcome: a human watches the agent's cursor move and its text appear; two humans and one
-  agent edit together; killing the tab and reopening shows the same document.
+- Deliberately after the live session and comments: no new entry point into documents while
+  the co-edition experience itself is not there yet. New document from the conversation files
+  panel and from a Pod: name, empty DFM body or a
+  template body, correct content type, opens in the editor.
+- Outcome: a user with no agent in the loop creates and edits a doc in a Pod.
 
 ### M6. Suggestions (stream 4)
 
@@ -131,8 +135,8 @@ a DFM file from a sandbox and the editor still opens it.
   anonymous comments or edits.
 - Frame documents retirement: skill files (#33087, #33132), flag, viz wrapper, Sparkle
   `Document`. Tell flav before. Can land any time after M1 replaces the editor.
-- Rollout per the product doc: Dust internal until live editing and comments work (M4 and
-  M5), then GA with ship-day comms and in-product banner.
+- Rollout per the product doc: Dust internal until live editing and comments work (M3 and
+  M4), then GA with ship-day comms and in-product banner.
 
 ### Later (stream 5, extras)
 
