@@ -71,8 +71,9 @@ export const SinglePage: Story = {
   args: { rowCount: 4 },
 };
 
-/** @summary Page controls and range summary fit a narrow container. */
+/** @summary Page controls and range summary fit a narrow container on mobile. */
 export const Narrow: Story = {
+  globals: { viewport: { value: "mobile1" } },
   args: {
     size: "xs",
     rowCount: 1000,

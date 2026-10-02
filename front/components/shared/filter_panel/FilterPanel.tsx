@@ -51,8 +51,8 @@ interface FilterPanelProps<
 
 /**
  * @cc [owner:aubin-tchoi,label:product;react] responsive-filter-panel
- * The panel MUST fit the viewport while keeping category navigation, option selection
- * and Apply accessible. The supplementary selection summary may hide on narrow screens.
+ * Below 768px viewport width, the panel MUST fit the viewport while keeping category
+ * navigation, option selection and Apply accessible. Desktop layout MUST remain unchanged.
  */
 export function FilterPanel<
   Category extends string,
@@ -147,11 +147,11 @@ export function FilterPanel<
       <PopoverContent
         fullWidth
         align="start"
-        className="flex max-h-(--radix-popover-content-available-height) w-[calc(100vw-2rem)] max-w-[44rem] flex-col rounded-2xl p-0 sm:w-auto"
+        className="w-auto rounded-2xl p-0 max-md:flex max-md:max-h-(--radix-popover-content-available-height) max-md:w-[calc(100vw-2rem)] max-md:flex-col"
       >
-        <div className="flex h-96 min-h-0 flex-row divide-x divide-border dark:divide-border-dark">
+        <div className="flex h-96 flex-row divide-x divide-border max-md:min-h-0 dark:divide-border-dark">
           <FilterCategoryNav
-            className="w-32 shrink-0 sm:w-44"
+            className="max-md:w-32 max-md:shrink-0"
             categories={categories}
             categoryLabels={categoryLabels}
             selectionCounts={categorySelectionCounts}
@@ -163,7 +163,7 @@ export function FilterPanel<
             }}
             footer={categoryNavFooter}
           />
-          <div className="flex h-full min-w-0 flex-1 flex-col gap-3 p-2 sm:w-80 sm:flex-none">
+          <div className="flex h-full w-80 flex-col gap-3 p-2 max-md:min-w-0 max-md:flex-1">
             <FilterSection
               title={categoryLabels[activeCategory]}
               action={
@@ -227,7 +227,7 @@ export function FilterPanel<
               )}
             </div>
           </div>
-          <div className="hidden md:block">
+          <div className="hidden md:contents">
             <FilterSelectionSummary
               categoriesWithSelection={categoriesWithSelection}
               categoryLabels={categoryLabels}

@@ -35,7 +35,8 @@ interface PaginationProps {
  */
 /**
  * @cc [owner:aubin-tchoi,label:product] pagination-narrow-layout
- * The range summary MUST wrap below the page controls when they do not fit on one line.
+ * Below 768px viewport width, the range summary MUST wrap below the page controls when
+ * they do not fit on one line. Desktop layout MUST remain unchanged.
  */
 export function Pagination({
   size = "sm",
@@ -83,13 +84,13 @@ export function Pagination({
   return (
     <div
       className={cn(
-        "flex w-full flex-wrap items-center gap-2",
+        "flex w-full items-center max-md:flex-wrap max-md:gap-2",
         controlsAreHidden ? "justify-end" : "justify-between"
       )}
     >
       <div
         className={cn(
-          "flex shrink-0",
+          "flex max-md:shrink-0",
           controlsAreHidden ? "invisible" : "visible",
           showPageButtons ? "gap-0" : "gap-2"
         )}
@@ -99,7 +100,6 @@ export function Pagination({
           size="xs"
           disabled={!canPreviousPage}
           icon={ChevronLeft}
-          tooltip="Previous page"
           onClick={previousPage}
         />
 
@@ -118,7 +118,6 @@ export function Pagination({
           size="xs"
           disabled={!canNextPage}
           icon={ChevronRight}
-          tooltip="Next page"
           onClick={nextPage}
         />
       </div>
