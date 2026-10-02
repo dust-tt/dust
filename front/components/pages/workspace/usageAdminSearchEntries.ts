@@ -1,8 +1,8 @@
-import { CREDIT_SPEND_CHECKPOINT_LABEL } from "@app/components/workspace/usage/CreditSpendCheckpointSettingsCard";
 import {
-  PUBLISHED_AGENTS_MODEL_ACCESS_LABEL,
-  WORKSPACE_MODEL_ACCESS_LABEL,
-} from "@app/components/workspace/usage/ModelTiersSettingsCard";
+  DEFAULT_COST_CAP_PER_SKILL_LABEL,
+  GLOBAL_SPENDING_CAP_LABEL,
+} from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
+import { CREDIT_SPEND_CHECKPOINT_LABEL } from "@app/components/workspace/usage/CreditSpendCheckpointSettingsCard";
 import {
   UPGRADE_REQUEST_EMAILS_LABEL,
   WORKSPACE_CREDIT_POOL_THRESHOLD_ALERT_LABEL,
@@ -19,16 +19,16 @@ import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 
 const U = ADMIN_SECTION_IDS.usage;
-const PAGE = "usage" as const;
+const PAGE = "credits" as const;
 const SETTINGS_TAB = "settings";
 
 /**
- * Search entries for Usage. Settings-tab rows use the same label constants the
- * cards render. Tab targets carry `?tab=` so deep links open the right pane.
+ * Search entries for Credits (formerly Usage). Model tiers live under Models;
+ * self-improving spend caps sit in the programmatic settings section.
  */
 export const USAGE_SEARCH_ENTRIES: AdminSettingEntry[] = [
   ...adminSearchEntries(PAGE, U.members, [
-    ["Members usage", "seats spend limit upgrade requests model tiers"],
+    ["Members usage", "seats spend limit upgrade requests"],
     ["Upgrade requests", "review member requests deny"],
     ["Change seat type", "upgrade seat assign seat remove seat"],
     ["Edit spend limit", "override member limit"],
@@ -37,7 +37,7 @@ export const USAGE_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     U.groups,
     [
-      ["Groups usage", "group spend limit seat model tiers"],
+      ["Groups usage", "group spend limit seat"],
       ["Group monthly spend limit", "per group limit"],
     ],
     "groups"
@@ -72,24 +72,14 @@ export const USAGE_SEARCH_ENTRIES: AdminSettingEntry[] = [
   ),
   ...adminSearchEntries(
     PAGE,
-    U.modelTiers,
-    [
-      [
-        WORKSPACE_MODEL_ACCESS_LABEL,
-        "highest model tier standard advanced frontier",
-      ],
-      [PUBLISHED_AGENTS_MODEL_ACCESS_LABEL, "run above member tier"],
-    ],
-    SETTINGS_TAB
-  ),
-  ...adminSearchEntries(
-    PAGE,
     U.programmatic,
     [
       [
         PROGRAMMATIC_MONTHLY_LIMIT_LABEL,
         "api keys triggers block programmatic access",
       ],
+      [GLOBAL_SPENDING_CAP_LABEL, "self improving skills monthly cap credits"],
+      [DEFAULT_COST_CAP_PER_SKILL_LABEL, "self improving skills per run cap"],
     ],
     SETTINGS_TAB
   ),

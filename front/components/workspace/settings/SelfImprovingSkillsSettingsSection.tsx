@@ -64,12 +64,19 @@ interface SelfImprovingSkillsSettingsSectionProps {
   // billed by Metronome, dollars otherwise.
   onCapSaved?: (cap: number) => void;
   onDefaultCapPerSkillSaved?: (cap: number) => void;
+  // Allow/batch-mode toggles. Shown on Governance (agents tab).
+  showToggles?: boolean;
+  // Global spending cap + default cost cap per skill. Shown on Credits
+  // (programmatic section).
+  showCaps?: boolean;
 }
 
 export function SelfImprovingSkillsSettingsSection({
   owner,
   onCapSaved,
   onDefaultCapPerSkillSaved,
+  showToggles = true,
+  showCaps = true,
 }: SelfImprovingSkillsSettingsSectionProps) {
   const { isEnabled, isChanging, doToggleReinforcement } =
     useSelfImprovingToggle({ owner });
@@ -79,26 +86,34 @@ export function SelfImprovingSkillsSettingsSection({
       <Page.SectionHeader title={SELF_IMPROVING_SETTINGS_SECTION_LABEL} />
       <ContextItem.List>
         <div className="h-full border-b border-border" />
-        <ContextItem
-          title={ALLOW_SELF_IMPROVING_SKILLS_LABEL}
-          visual={<></>}
-          hasSeparatorIfLast={true}
-          action={
-            <SliderToggle
-              selected={isEnabled}
-              disabled={isChanging}
-              onClick={doToggleReinforcement}
+        {showToggles && (
+          <>
+            <ContextItem
+              title={ALLOW_SELF_IMPROVING_SKILLS_LABEL}
+              visual={<></>}
+              hasSeparatorIfLast={true}
+              action={
+                <SliderToggle
+                  selected={isEnabled}
+                  disabled={isChanging}
+                  onClick={doToggleReinforcement}
+                />
+              }
+            >
+              <ContextItem.Description description="Allow Dust to analyze conversations to improve your workspace's skills. Dust does not use conversations to train models." />
+            </ContextItem>
+            <SelfImprovingBatchModeToggle owner={owner} />
+          </>
+        )}
+        {showCaps && (
+          <>
+            <SelfImprovingCapItem owner={owner} onCapSaved={onCapSaved} />
+            <SelfImprovementCapPerSkillItem
+              owner={owner}
+              onSaved={onDefaultCapPerSkillSaved}
             />
-          }
-        >
-          <ContextItem.Description description="Allow Dust to analyze conversations to improve your workspace's skills. Dust does not use conversations to train models." />
-        </ContextItem>
-        <SelfImprovingBatchModeToggle owner={owner} />
-        <SelfImprovingCapItem owner={owner} onCapSaved={onCapSaved} />
-        <SelfImprovementCapPerSkillItem
-          owner={owner}
-          onSaved={onDefaultCapPerSkillSaved}
-        />
+          </>
+        )}
       </ContextItem.List>
     </Page.Vertical>
   );

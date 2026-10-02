@@ -1,17 +1,70 @@
+import {
+  PUBLISHED_AGENTS_MODEL_ACCESS_LABEL,
+  WORKSPACE_MODEL_ACCESS_LABEL,
+} from "@app/components/workspace/usage/ModelTiersSettingsCard";
 import type { AdminSettingEntry } from "@app/lib/admin/adminSearchTypes";
 import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 
 const M = ADMIN_SECTION_IDS.modelProviders;
-const PAGE = "model_providers" as const;
+const A = ADMIN_SECTION_IDS.appCredentials;
+const PAGE = "models" as const;
 
-/** Search entries for Model Providers. */
+/** Search entries for Models (providers, access tiers, app credentials). */
 export const MODEL_PROVIDERS_SEARCH_ENTRIES: AdminSettingEntry[] = [
-  ...adminSearchEntries(PAGE, M.providers, [
-    ["Model Providers", "ai models llm openai anthropic google"],
-    ["EU-hosted models only", "regional data residency europe"],
-    ["Make all providers available", "enable all providers"],
-    ["Provider list", "toggle enable disable models"],
-    ["Embedding model", "default embedding provider"],
-  ]),
+  ...adminSearchEntries(
+    PAGE,
+    M.providers,
+    [
+      ["Model Providers", "ai models llm openai anthropic google"],
+      ["EU-hosted models only", "regional data residency europe"],
+      ["Make all providers available", "enable all providers"],
+      ["Provider list", "toggle enable disable models"],
+      ["Embedding model", "default embedding provider"],
+    ],
+    "providers"
+  ),
+  ...adminSearchEntries(
+    PAGE,
+    M.tiers,
+    [
+      [
+        WORKSPACE_MODEL_ACCESS_LABEL,
+        "highest model tier standard advanced frontier",
+      ],
+      [PUBLISHED_AGENTS_MODEL_ACCESS_LABEL, "run above member tier"],
+      ["Group model tiers", "models tier per group"],
+    ],
+    "tiers"
+  ),
+  ...adminSearchEntries(
+    PAGE,
+    A.modelProviders,
+    [
+      [
+        "App Credentials",
+        "dust apps providers api keys openai azure anthropic",
+      ],
+      ["Model Providers for Dust Apps", "api key openai azure anthropic"],
+    ],
+    "apps"
+  ),
+  ...adminSearchEntries(
+    PAGE,
+    A.serviceProviders,
+    [
+      [
+        "Service Providers",
+        "serpapi serper browserless google search web scrape",
+      ],
+    ],
+    "apps"
+  ),
+  // Anchor wrapper around the App Credentials tab content.
+  ...adminSearchEntries(
+    PAGE,
+    M.apps,
+    [["App Credentials tab", "legacy dust apps credentials"]],
+    "apps"
+  ),
 ];

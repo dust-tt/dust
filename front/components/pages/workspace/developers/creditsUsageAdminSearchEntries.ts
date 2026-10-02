@@ -3,15 +3,20 @@ import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 
 const C = ADMIN_SECTION_IDS.creditsUsage;
-const PAGE = "credits_usage" as const;
+const PAGE = "credits" as const;
 
-/** Search entries for Credits Usage (legacy programmatic credits). */
+/**
+ * Legacy Programmatic Usage page (non–credit-priced plans). Indexed under
+ * Credits so deep links land on the Credits settings area that superseded it.
+ */
 export const CREDITS_USAGE_SEARCH_ENTRIES: AdminSettingEntry[] = [
-  ...adminSearchEntries(PAGE, C.credits, [
-    ["Programmatic Usage", "credits usage api"],
-    ["Available credits", "free purchased pay as you go"],
-    ["Buy credits", "purchase top up"],
-    ["Current credits", "active credits list"],
-    ["Past credits", "credit history expired"],
-  ]),
+  ...adminSearchEntries(
+    PAGE,
+    C.credits,
+    [
+      ["Programmatic Usage", "credits usage api"],
+      ["Purchase additional credits", "buy top-up programmatic"],
+    ],
+    "settings"
+  ),
 ];

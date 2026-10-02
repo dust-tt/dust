@@ -7,6 +7,7 @@ export const ADMIN_SECTION_IDS = {
   people: {
     members: "people-members",
     groups: "people-groups",
+    joining: "people-joining",
   },
   governance: {
     agents: "agents",
@@ -17,7 +18,6 @@ export const ADMIN_SECTION_IDS = {
     roles: "roles",
     pods: "pods",
     features: "features",
-    messaging: "messaging",
     audit: "audit",
   },
   identity: {
@@ -35,12 +35,18 @@ export const ADMIN_SECTION_IDS = {
     topUps: "usage-top-ups",
     spendingPolicies: "usage-spending-policies",
     costManagement: "usage-cost-management",
-    modelTiers: "usage-model-tiers",
     programmatic: "usage-programmatic",
     notifications: "usage-notifications",
   },
   modelProviders: {
     providers: "model-providers",
+    tiers: "model-tiers",
+    apps: "model-apps",
+  },
+  integrations: {
+    messaging: "integrations-messaging",
+    email: "integrations-email",
+    clients: "integrations-clients",
   },
   analytics: {
     consumption: "analytics-consumption",
@@ -77,7 +83,6 @@ export const ADMIN_SECTION_IDS = {
   },
   selfImprovingSkills: {
     settings: "self-improving-settings",
-    consumption: "self-improving-consumption",
     skills: "self-improving-skills-list",
   },
 } as const;
@@ -99,6 +104,9 @@ export type UsageSectionId =
 
 export type ModelProvidersSectionId =
   (typeof ADMIN_SECTION_IDS.modelProviders)[keyof typeof ADMIN_SECTION_IDS.modelProviders];
+
+export type IntegrationsSectionId =
+  (typeof ADMIN_SECTION_IDS.integrations)[keyof typeof ADMIN_SECTION_IDS.integrations];
 
 export type AnalyticsSectionId =
   (typeof ADMIN_SECTION_IDS.analytics)[keyof typeof ADMIN_SECTION_IDS.analytics];
@@ -137,6 +145,7 @@ export type AdminSectionId =
   | BrandingSectionId
   | UsageSectionId
   | ModelProvidersSectionId
+  | IntegrationsSectionId
   | AnalyticsSectionId
   | BillingSectionId
   | SubscriptionSectionId
@@ -157,6 +166,7 @@ export function allAdminSectionIds(): AdminSectionId[] {
     ...Object.values(ADMIN_SECTION_IDS.branding),
     ...Object.values(ADMIN_SECTION_IDS.usage),
     ...Object.values(ADMIN_SECTION_IDS.modelProviders),
+    ...Object.values(ADMIN_SECTION_IDS.integrations),
     ...Object.values(ADMIN_SECTION_IDS.analytics),
     ...Object.values(ADMIN_SECTION_IDS.billing),
     ...Object.values(ADMIN_SECTION_IDS.subscription),
