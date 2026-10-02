@@ -13,14 +13,26 @@
  */
 
 const DustGroupIdsHeader = "X-Dust-Group-Ids";
+const DustRoleHeader = "X-Dust-Role";
 
-export function getHeaderFromGroupIds(groupIds: string[] | undefined) {
+// Front keeps a system key's default `admin` role when narrowing it to requested groups, unless a
+// role is requested.
+/**
+ * @cc [owner:tdraier,label:security] requested-groups-carry-user-role
+ * A request narrowed to `groupIds` MUST also send `X-Dust-Role: user`, so a caller without a Dust
+ * user to exchange for (a whitelisted Slack bot, an email with no membership) never runs as a
+ * workspace admin. Callers MUST NOT send `X-Dust-Group-Ids` through any other path.
+ */
+export function getHeadersFromRequestedGroupIds(
+  groupIds: string[] | undefined
+) {
   if (!groupIds) {
     return undefined;
   }
 
   return {
     [DustGroupIdsHeader]: groupIds.join(","),
+    [DustRoleHeader]: "user",
   };
 }
 
