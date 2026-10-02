@@ -3,7 +3,7 @@ import {
   computeAndStoreAgentMessageCredits,
 } from "@app/lib/api/assistant/credit_cost";
 import { recordProgrammaticSpendLimitUsage } from "@app/lib/api/credits/programmatic_usage_limit";
-import { recordGroupLimitUsage } from "@app/lib/api/groups/group_limit_usage";
+import { recordGroupLimitUsage } from "@app/lib/api/groups/group_limit";
 import {
   recordFreeSeatLifetimeUsage,
   recordUserSpendLimitUsage,
@@ -43,7 +43,7 @@ vi.mock(
   })
 );
 
-vi.mock("@app/lib/api/groups/group_limit_usage", () => ({
+vi.mock("@app/lib/api/groups/group_limit", () => ({
   recordGroupLimitUsage: vi.fn(),
 }));
 
