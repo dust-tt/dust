@@ -81,6 +81,51 @@ export function SelfImprovingSkillsSettingsSection({
   const { isEnabled, isChanging, doToggleReinforcement } =
     useSelfImprovingToggle({ owner });
 
+  // #region agent log
+  fetch("http://127.0.0.1:7242/ingest", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      location: "SelfImprovingSkillsSettingsSection.tsx:render",
+      message: "Rendering SelfImprovingSkillsSettingsSection",
+      data: {
+        showToggles,
+        showCaps,
+        ownerSid: owner.sId,
+        suspectedInvalidChildren: [
+          {
+            type: "div",
+            reason: "bare border div is not ContextItem",
+            hypothesisId: "A",
+          },
+          showToggles
+            ? {
+                type: "Fragment",
+                nested: ["ContextItem", "SelfImprovingBatchModeToggle"],
+                reason:
+                  "SelfImprovingBatchModeToggle element type is not ContextItem before render",
+                hypothesisId: "B",
+              }
+            : null,
+          showCaps
+            ? {
+                type: "Fragment",
+                nested: [
+                  "SelfImprovingCapItem",
+                  "SelfImprovementCapPerSkillItem",
+                ],
+                reason: "cap item wrappers are not ContextItem element types",
+                hypothesisId: "B",
+              }
+            : null,
+        ].filter(Boolean),
+      },
+      timestamp: Date.now(),
+      hypothesisId: "A,B,C,E",
+    }),
+  }).catch(() => {});
+  // #endregion
+
   return (
     <Page.Vertical align="stretch" gap="md">
       <Page.SectionHeader title={SELF_IMPROVING_SETTINGS_SECTION_LABEL} />

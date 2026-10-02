@@ -131,6 +131,23 @@ export const GovernancePage = () => {
     useFrameSharingToggle({ owner });
 
   const hasSelfImprovement = useIsSelfImprovementAvailable();
+  // #region agent log
+  fetch("http://127.0.0.1:7242/ingest", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      location: "GovernancePage.tsx:hasSelfImprovement",
+      message: "Governance self-improvement gate",
+      data: {
+        hasSelfImprovement,
+        isAdmin,
+        isLoading: isGroupsLoading || isGovernancePermissionsLoading,
+      },
+      timestamp: Date.now(),
+      hypothesisId: "E",
+    }),
+  }).catch(() => {});
+  // #endregion
   const reinforcementUnit = useReinforcementBillingUnit({ owner });
   const [defaultCapPerSkill, setDefaultCapPerSkill] = useState(() =>
     reinforcementUnit === "awu_credits"
