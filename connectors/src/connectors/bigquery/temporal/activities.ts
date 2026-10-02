@@ -1,4 +1,7 @@
-import { fetchTree } from "@connectors/connectors/bigquery/lib/bigquery_api";
+import {
+  fetchTree,
+  isConnectionReadonly,
+} from "@connectors/connectors/bigquery/lib/bigquery_api";
 import { BigQueryConfigurationModel } from "@connectors/lib/models/bigquery";
 import {
   hasSelectedRemoteDatabasePermissions,
@@ -65,6 +68,8 @@ export async function syncBigQueryConnection(connectorId: ModelId) {
       `Connector configuration not found for connector ${connector.id}`
     );
   }
+
+  const _readonlyConnectionCheck = isConnectionReadonly();
 
   const useMetadataForDBML = connectorConfig.useMetadataForDBML;
 
