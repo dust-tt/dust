@@ -11,6 +11,7 @@ import {
 } from "@app/components/assistant/conversation/discover/catalog";
 import {
   CatalogRow,
+  CatalogRowsSkeleton,
   ItemAuthor,
   SkillCatalogAvatar,
 } from "@app/components/assistant/conversation/discover/DiscoverCatalog";
@@ -40,6 +41,7 @@ import {
   ChevronRight,
   cn,
   EmptyCTA,
+  LoadingBlock,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -256,7 +258,9 @@ function FeaturedCarousel({
     });
   };
 
-  const placeholderCount = Math.max(0, FEATURED_SLOT_COUNT - items.length);
+  const placeholderCount = isLoading
+    ? 0
+    : Math.max(0, FEATURED_SLOT_COUNT - items.length);
 
   return (
     <section className="flex flex-col gap-3">
@@ -289,14 +293,24 @@ function FeaturedCarousel({
           onScroll={updateCanScroll}
           className="scrollbar-hide flex snap-x snap-mandatory gap-4 overflow-x-auto"
         >
-          {items.map((item) => (
-            <div
-              key={`${item.kind}-${getItemId(item)}`}
-              className={FEATURED_ITEM_CLASSES}
-            >
-              <FeaturedCard item={item} onClick={() => onUse(item)} />
-            </div>
-          ))}
+          {isLoading
+            ? Array.from({ length: FEATURED_SLOT_COUNT }, (_, slot) => (
+                <div
+                  key={`skeleton-${slot}`}
+                  aria-hidden
+                  className={FEATURED_ITEM_CLASSES}
+                >
+                  <FeaturedCardSkeleton />
+                </div>
+              ))
+            : items.map((item) => (
+                <div
+                  key={`${item.kind}-${getItemId(item)}`}
+                  className={FEATURED_ITEM_CLASSES}
+                >
+                  <FeaturedCard item={item} onClick={() => onUse(item)} />
+                </div>
+              ))}
           {Array.from({ length: placeholderCount }, (_, slot) => (
             <div
               key={`slot-${slot}`}
@@ -309,19 +323,13 @@ function FeaturedCarousel({
             />
           ))}
         </div>
-        {isLoading ? (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Spinner />
+        {!isLoading && items.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center px-6">
+            <p className="copy-sm text-center text-muted-foreground">
+              Nothing featured yet. Pin agents and skills from the list to show
+              them here.
+            </p>
           </div>
-        ) : (
-          items.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center px-6">
-              <p className="copy-sm text-center text-muted-foreground">
-                Nothing featured yet. Pin agents and skills from the list to
-                show them here.
-              </p>
-            </div>
-          )
         )}
       </div>
     </section>
@@ -388,9 +396,7 @@ function DiscoverSection({
         )}
       </div>
       {isLoading ? (
-        <div className="flex justify-center py-6">
-          <Spinner />
-        </div>
+        <CatalogRowsSkeleton count={SECTION_ITEM_COUNT} />
       ) : items.length === 0 ? (
         <EmptyCTA
           message={emptyMessage}
@@ -478,6 +484,34 @@ function FeaturedCard({ item, onClick }: FeaturedCardProps) {
         </span>
       </div>
     </button>
+  );
+}
+
+function FeaturedCardSkeleton() {
+  return (
+    <div
+      className={cn(
+        FEATURED_SLOT_CLASSES,
+        "flex w-full flex-col overflow-hidden border-border bg-background"
+      )}
+    >
+      <div className="flex h-32 w-full shrink-0 items-center justify-center bg-muted-background">
+        <LoadingBlock className="h-12 w-12 rounded-xl" />
+      </div>
+      <div className="flex flex-col gap-1 px-4 py-3">
+        <div className="flex h-6 items-center">
+          <LoadingBlock className="h-4 w-32" />
+        </div>
+        <div className="flex flex-col">
+          <div className="flex h-5 items-center">
+            <LoadingBlock className="h-3 w-full" />
+          </div>
+          <div className="flex h-5 items-center">
+            <LoadingBlock className="h-3 w-2/3" />
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

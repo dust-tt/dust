@@ -38,6 +38,7 @@ import {
   cn,
   EmptyCTA,
   Icon,
+  LoadingBlock,
   NavigationList,
   NavigationListItem,
   Pin02,
@@ -53,6 +54,9 @@ const CATALOG_VIEWS: { id: CatalogView; label: string }[] = [
   { id: "favorites", label: "Favorites" },
   { id: "mine", label: "Mine" },
 ];
+
+const CATALOG_SKELETON_ROW_COUNT = 6;
+const TAGS_SKELETON_WIDTHS = ["w-20", "w-28", "w-16", "w-24"];
 
 const DEFAULT_FILTERS: CatalogFilters = {
   view: "all",
@@ -472,8 +476,12 @@ function CatalogFiltersNav({
           </NavigationList>
         ) : (
           isTagsLoading && (
-            <div className="flex px-2 py-1">
-              <Spinner size="xs" />
+            <div aria-hidden className="flex flex-col gap-0.5">
+              {TAGS_SKELETON_WIDTHS.map((width) => (
+                <div key={width} className="flex h-9 items-center px-2">
+                  <LoadingBlock className={cn("h-3", width)} />
+                </div>
+              ))}
             </div>
           )
         ))}
@@ -514,9 +522,7 @@ function CatalogResults({
         </div>
       )}
       {isInitialLoading ? (
-        <div className="flex justify-center py-6">
-          <Spinner />
-        </div>
+        <CatalogRowsSkeleton count={CATALOG_SKELETON_ROW_COUNT} />
       ) : items.length === 0 ? (
         hasError ? (
           <EmptyCTA
@@ -645,6 +651,42 @@ export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
           onClick={onDetails}
         />
       </div>
+    </div>
+  );
+}
+
+interface CatalogRowsSkeletonProps {
+  count: number;
+}
+
+export function CatalogRowsSkeleton({ count }: CatalogRowsSkeletonProps) {
+  return (
+    <div aria-hidden className="flex flex-col">
+      {Array.from({ length: count }, (_, index) => (
+        <div
+          key={index}
+          className="flex items-center gap-4 border-b border-separator py-4 last:border-b-0"
+        >
+          <LoadingBlock className="h-12 w-12 shrink-0 self-start rounded-xl" />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex h-6 items-center">
+              <LoadingBlock className="h-4 w-40 max-w-full" />
+            </div>
+            <div className="flex h-5 items-center">
+              <LoadingBlock className="h-3 w-24" />
+            </div>
+            <div className="mt-1 flex flex-col">
+              <div className="flex h-5 items-center">
+                <LoadingBlock className="h-3 w-full max-w-md" />
+              </div>
+              <div className="flex h-5 items-center">
+                <LoadingBlock className="h-3 w-2/3 max-w-xs" />
+              </div>
+            </div>
+          </div>
+          <LoadingBlock className="h-8 w-20 shrink-0 self-start rounded-xl" />
+        </div>
+      ))}
     </div>
   );
 }
