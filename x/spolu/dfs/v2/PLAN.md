@@ -118,6 +118,18 @@ deferred publication are out of scope. See [design constraints](DESIGN.md#non-ne
 - [x] Rerun untar and the unchanged filesystem workloads; retain prior results and document gains
       with the same client, API, and durable acknowledgment boundary.
 
+## 10. Sequential latency milestones
+
+Implement and benchmark each group before starting the next. Preserve full tables and raw reports
+under `bench/`, with the unchanged client/workload and normal durable commits.
+
+- [ ] Tune FDB read-version/commit batching and short timer waits; validate independent writers and
+      record the full filesystem benchmark, including untar.
+- [ ] Reuse a recent successful commit version for the first mutation attempt; refresh rejected,
+      conflicting, expired, or read-only attempts. Verify cross-server freshness and record a new run.
+- [ ] Start independent lookup/authorization reads earlier using bounded advisory hints; preserve
+      snapshot checks/error ordering, verify deep moves/grants, and record a third full run.
+
 ## Future work: after the local benchmark
 
 - [ ] Deploy shared FDB/ES clusters and dfs-server to `dust-dev` with private access and credentials.

@@ -14,6 +14,8 @@ struct Config {
     #[arg(long)]
     endpoint: String,
     #[arg(long)]
+    second_endpoint: String,
+    #[arg(long)]
     key_file: PathBuf,
 }
 
@@ -88,7 +90,7 @@ fn main() -> Result<()> {
                     },
                 ],
             })?;
-            if j == 0 {
+            if i == 0 && j < 2 {
                 targets.push(file);
             }
         }
@@ -182,15 +184,23 @@ fn main() -> Result<()> {
         );
         search.push(json!({"workspace": i, "hits": result.hits.len(), "milliseconds": started.elapsed().as_secs_f64() * 1000.}));
     }
+    let mut writers = Vec::new();
+    for endpoint in [&config.endpoint, &config.second_endpoint] {
+        let workspace = &workspaces[0];
+        let manager = BlockingClient::connect(endpoint, &workspace.workspace_key)?;
+        let session = manager.create_session(CreateSessionRequest {
+            workspace_id: workspace.workspace_id.clone(),
+            grants: vec!["owner".into()],
+        })?;
+        writers.push(BlockingClient::connect(endpoint, &session.session_key)?);
+    }
     let started = Instant::now();
     let times = std::thread::scope(|scope| -> Result<Vec<f64>> {
-        let jobs: Vec<_> = sessions
-            .iter()
+        let jobs: Vec<_> = writers
+            .into_iter()
             .zip(targets)
-            .map(|(session, mut file)| {
-                let endpoint = &config.endpoint;
+            .map(|(client, mut file)| {
                 scope.spawn(move || -> Result<f64> {
-                    let client = BlockingClient::connect(endpoint, &session.session_key)?;
                     let started = Instant::now();
                     for _ in 0..50 {
                         file = client
@@ -224,6 +234,7 @@ fn main() -> Result<()> {
     println!(
         "{}",
         json!({"active_workspaces": 2, "idle_workspaces": 16, "shared": listing, "search": search,
+        "writer_servers": 2, "writer_workspaces": 1,
         "concurrent_writes": 100, "writer_seconds": times, "concurrent_wall_seconds": started.elapsed().as_secs_f64()})
     );
     Ok(())

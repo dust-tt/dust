@@ -122,6 +122,10 @@ per-request cache; the client and API are unchanged.
 
 ### Transaction read scheduling
 
+The local FDB deployment reduces read-version/commit batching delays and busy-waits briefly for short
+timers. This trades CPU for latency while retaining normal log durability and conflict resolution;
+validate filesystem latency and independent writers after tuning. See [settings](README.md).
+
 Mutations read the workspace and primary object concurrently, retaining at most one prefetched
 object result within that transaction. Create overlaps parent authorization, name lookup, and UUID
 collision checks; ordinary lookup overlaps parent authorization and child lookup. Results/errors

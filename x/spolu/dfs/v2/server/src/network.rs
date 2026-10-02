@@ -1,3 +1,4 @@
+use foundationdb::options::NetworkOption;
 use std::future::Future;
 
 /// @cc [owner:spolu,label:rust;concurrency] fdb-network-lifetime
@@ -5,7 +6,10 @@ use std::future::Future;
 /// leak them outside its runtime. The runtime and all FDB work MUST stop before the network is dropped.
 #[allow(unsafe_code)]
 pub fn run(operation: impl Future<Output = anyhow::Result<()>>) -> anyhow::Result<()> {
-    let builder = foundationdb::api::FdbApiBuilder::default().build()?;
+    let builder = foundationdb::api::FdbApiBuilder::default()
+        .build()?
+        .set_option(NetworkOption::Knob("grv_batch_timeout=0.000001".into()))?
+        .set_option(NetworkOption::Knob("busy_wait_threshold=0.0001".into()))?;
     // SAFETY: This scope retains the network until the runtime and its tasks have been dropped.
     let network = unsafe { builder.boot()? };
     let result = {

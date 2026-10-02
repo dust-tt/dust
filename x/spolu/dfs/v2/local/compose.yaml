@@ -2,10 +2,12 @@ name: dfs-v2
 services:
   fdb:
     image: foundationdb/foundationdb:7.3.69
+    entrypoint: ["/usr/bin/tini", "-g", "--", "/bin/bash", "/etc/dfs/fdb.bash"]
     environment:
       FDB_NETWORKING_MODE: container
     volumes:
       - fdb-data:/var/fdb
+      - ./fdb.bash:/etc/dfs/fdb.bash:ro
     mem_limit: ${DFS_V2_FDB_MEMORY:-3g}
     healthcheck:
       test: ["CMD-SHELL", "fdbcli --exec 'status minimal' --timeout 5 | grep -q 'The database is available'"]

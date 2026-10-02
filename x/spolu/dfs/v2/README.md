@@ -24,6 +24,12 @@ The images support native Linux ARM64 on this Mac. FDB uses single-node SSD stor
 primary and no replicas for application/test indexes. Defaults: 3 GiB container memory each, with
 1 GiB ES heap. Configure `DFS_V2_FDB_MEMORY`, `DFS_V2_ES_MEMORY`, and `DFS_V2_ES_JAVA_OPTS` before `up`.
 
+The server's FDB client caps read-version batching at 1 µs and busy-waits for timers up to 100 µs.
+The FDB node uses 10 µs minimum/idle commit batch intervals and the same busy-wait threshold.
+These pinned-version settings favor latency at increased CPU cost; conflict checks and normal log
+synchronization are unchanged. `local/fdb.bash` preserves the official image's startup/volume setup.
+Run `local/run up` after changing these settings so Compose recreates the node with its data intact.
+
 The development container reads FDB's cluster file from a shared volume and connects over the private
 Compose network, independently of database restarts. ES is reachable as `http://es:9200`.
 Host ports are loopback-only:
@@ -82,7 +88,8 @@ eight query cases. The filesystem runner imports jd's unmodified benchmark and v
 manifest; it restarts dfs-server and remounts before each `first` read case. FDB, ES, and OS caches
 stay warm across these restarts. Native FDB commit durability is included in foreground writes.
 The small workspace runner checks shared-list pagination at 1/2/512 grants, search isolation, and
-two concurrent writers alongside 16 idle workspaces. It enables debug FDB commit timing logs.
+two independent server writers in the same workspace alongside 16 idle workspaces. It enables debug
+FDB commit timing logs; both servers share the same FDB prefix and ES index.
 
 For a shorter write diagnostic, extract 1,000 files selected from that same corpus six directories
 below a grant attached six directories below the workspace root:
