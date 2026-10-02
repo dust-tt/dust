@@ -98,7 +98,10 @@ export function ModelProvidersPageContent({
             size="sm"
             iconRight={ArrowRight}
             onClick={() => {
-              void router.push(`/w/${workspace.sId}/models?tab=tiers`);
+              // Per-member and per-group model tiers are edited on Credits
+              // (Members / Groups tables). Workspace-level defaults live on
+              // Models › Access tiers.
+              void router.push(`/w/${workspace.sId}/credits`);
             }}
           />
         </div>
