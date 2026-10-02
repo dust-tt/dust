@@ -101,6 +101,8 @@ interface MCPServerAuthConnectionProps {
   // When provided, these credential inputs are shown instead of the provider's
   // default set (e.g. host-derived static-OAuth servers show custom fields).
   credentialInputsOverride?: OAuthCredentialInputs;
+  // When true (Refresh), hide the use-case picker and show the existing mode.
+  lockUseCase?: boolean;
 }
 
 export function MCPServerAuthConnection({
@@ -112,6 +114,7 @@ export function MCPServerAuthConnection({
   onSelectedScopesChange,
   serverId,
   credentialInputsOverride,
+  lockUseCase = false,
 }: MCPServerAuthConnectionProps) {
   const { setValue, control } = useFormContext<MCPServerOAuthFormValues>();
 
@@ -225,27 +228,39 @@ export function MCPServerAuthConnection({
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <div className="w-full space-y-4">
-        <div className="heading-lg text-foreground">
-          {supportsBoth ? "How do you want to connect?" : "Connection type"}
+      {lockUseCase && useCase ? (
+        <div className="w-full space-y-1">
+          <div className="heading-lg text-foreground">Credentials</div>
+          <div className="text-sm text-muted-foreground">
+            <span className="font-semibold text-foreground">
+              {OAUTH_USE_CASE_TO_LABEL[useCase]}
+            </span>
+            : {OAUTH_USE_CASE_TO_DESCRIPTION[useCase]}
+          </div>
         </div>
-        <div className="grid w-full grid-cols-2 gap-4">
-          <UseCaseCard
-            useCaseType="personal_actions"
-            isSelected={useCase === "personal_actions"}
-            isSupported={supportsPersonalActions}
-            toolName={toolName}
-            onSelect={handleUseCaseSelect}
-          />
-          <UseCaseCard
-            useCaseType="platform_actions"
-            isSelected={useCase === "platform_actions"}
-            isSupported={supportsPlatformActions}
-            toolName={toolName}
-            onSelect={handleUseCaseSelect}
-          />
+      ) : (
+        <div className="w-full space-y-4">
+          <div className="heading-lg text-foreground">
+            {supportsBoth ? "How do you want to connect?" : "Connection type"}
+          </div>
+          <div className="grid w-full grid-cols-2 gap-4">
+            <UseCaseCard
+              useCaseType="personal_actions"
+              isSelected={useCase === "personal_actions"}
+              isSupported={supportsPersonalActions}
+              toolName={toolName}
+              onSelect={handleUseCaseSelect}
+            />
+            <UseCaseCard
+              useCaseType="platform_actions"
+              isSelected={useCase === "platform_actions"}
+              isSupported={supportsPlatformActions}
+              toolName={toolName}
+              onSelect={handleUseCaseSelect}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {StaticFormComp && staticCredentialConfig ? (
         <StaticFormComp
