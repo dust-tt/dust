@@ -158,7 +158,7 @@ export function CapabilitiesSelectionPageContent({
               </div>
             </>
           )}
-          {showSkillsSection && (
+          {showSkillsSection && !(showToolsSection && hasTools) && (
             // Recheck after every page, even when all its skills are already added.
             <InfiniteScroll
               key={`${resolvedSearchQuery}:${skillPagination.loadedCount}`}
