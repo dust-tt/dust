@@ -4,7 +4,10 @@ import {
   isSandboxFunctionRunContext,
 } from "@app/lib/actions/types";
 import { isValidTimezone } from "@app/lib/api/timezone";
-import { resolveCalendarDate } from "@app/types/shared/utils/date_utils";
+import {
+  ONE_MINUTE_MS,
+  resolveCalendarDate,
+} from "@app/types/shared/utils/date_utils";
 import { tzOffset } from "@date-fns/tz";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { parseISO } from "date-fns";
@@ -464,13 +467,16 @@ interface AvailabilityParticipant {
 export function parseAvailabilityDateTime(value: string): Date {
   // parseISO defaults unrecognized timezone suffixes to UTC, so validate syntax first.
   const match =
-    /^([+-]?\d[\dW-]*)(?:[T ](\d{2}(?::?\d{2}(?::?\d{2}(?:[.,]\d+)?)?)?)([Zz]|[+-](?:[01]\d|2[0-3])(?::?[0-5]\d)?)?)?$/.exec(
+    /^([+-]?\d[\dW-]*)(?:[T ](\d{2}(?::?\d{2}(?::?\d{2})?)?(?:[.,]\d+)?)([Zz]|[+-](?:[01]\d|2[0-3])(?::?[0-5]\d)?)?)?$/.exec(
       value
     );
   if (!match) {
     return new Date(NaN);
   }
   const [, date, time, offset] = match;
+  if (time?.startsWith("24") && /[1-9]/.test(time.slice(2))) {
+    return new Date(NaN);
+  }
   return parseISO(
     `${date}T${time ?? "00:00:00"}${offset?.toUpperCase() ?? "Z"}`
   );
@@ -516,7 +522,7 @@ export function buildUnavailableIntervals(
   const { timezone } = participant;
   // UTC fields carry local calendar fields, avoiding host timezone setters.
   let cursor = new Date(
-    range.start.getTime() + tzOffset(timezone, range.start) * 60 * 1000
+    range.start.getTime() + tzOffset(timezone, range.start) * ONE_MINUTE_MS
   );
   cursor.setUTCHours(0, 0, 0, 0);
 
