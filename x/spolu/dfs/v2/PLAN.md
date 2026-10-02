@@ -115,7 +115,7 @@ deferred publication are out of scope. See [design constraints](DESIGN.md#non-ne
       publication boundaries, or public semantics; avoid root-specific optimizations.
 - [x] Verify changes against independent server writers, including concurrent moves/grant changes,
       conflicting writes, sparse writes, and truncate/re-extension.
-- [ ] Rerun untar and the unchanged filesystem workloads; retain prior results and document gains
+- [x] Rerun untar and the unchanged filesystem workloads; retain prior results and document gains
       with the same client, API, and durable acknowledgment boundary.
 
 ## Future work: after the local benchmark
