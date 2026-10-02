@@ -158,3 +158,30 @@ export async function getWebhookSourcesUsage({
 
   return usage;
 }
+
+/**
+ * Returns the webhook source views agents can be given triggers on: the views the caller can read
+ * or administrate, outside system and conversation spaces, one per webhook source (the most
+ * recent), newest first.
+ */
+export async function getAccessibleWebhookSourceViews(
+  auth: Authenticator
+): Promise<WebhookSourcesViewResource[]> {
+  const views = await WebhookSourcesViewResource.listByWorkspace(auth);
+  const usable = views.filter(
+    (view) =>
+      (auth.can("read", view) || auth.can("admin", view)) &&
+      !view.space.isSystem() &&
+      !view.space.isConversations()
+  );
+
+  const bySourceId = new Map<number, WebhookSourcesViewResource>();
+  for (const view of usable) {
+    if (!bySourceId.has(view.webhookSourceId)) {
+      bySourceId.set(view.webhookSourceId, view);
+    }
+  }
+  return [...bySourceId.values()].sort((a, b) =>
+    a.createdAt >= b.createdAt ? -1 : 1
+  );
+}

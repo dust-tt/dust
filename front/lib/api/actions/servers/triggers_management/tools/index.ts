@@ -4,6 +4,7 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import type { ToolContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { TRIGGERS_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/triggers_management/metadata";
+import { getAccessibleWebhookSourceViews } from "@app/lib/api/agent_triggers";
 import { generateScheduleRule } from "@app/lib/api/assistant/configuration/triggers";
 import { getWebhookFilterGeneration } from "@app/lib/api/assistant/configuration/triggers/webhook_filter";
 import type { Authenticator } from "@app/lib/auth";
@@ -75,28 +76,6 @@ function renderWebhookTrigger(
   }
   lines.push(`  Status: ${trigger.status}`);
   return lines.join("\n");
-}
-
-async function getAccessibleWebhookSourceViews(
-  auth: Authenticator
-): Promise<WebhookSourcesViewResource[]> {
-  const views = await WebhookSourcesViewResource.listByWorkspace(auth);
-  const usable = views.filter(
-    (view) =>
-      (auth.can("read", view) || auth.can("admin", view)) &&
-      !view.space.isSystem() &&
-      !view.space.isConversations()
-  );
-
-  const bySourceId = new Map<number, WebhookSourcesViewResource>();
-  for (const view of usable) {
-    if (!bySourceId.has(view.webhookSourceId)) {
-      bySourceId.set(view.webhookSourceId, view);
-    }
-  }
-  return [...bySourceId.values()].sort((a, b) =>
-    a.createdAt >= b.createdAt ? -1 : 1
-  );
 }
 
 function renderSubscribedEvents(
