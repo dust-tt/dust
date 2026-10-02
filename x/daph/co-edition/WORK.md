@@ -23,8 +23,9 @@ Update this file in the same PR as the work it describes. Dates are absolute.
 - Editor PR 1: draft #34022. Done in it after review: the editor choice depends only on the
   flag and the file (a file the editor cannot load is shown read-only with the reason), one last
   save on unmount, files above the preview limit stay in the plain editor, the dialog holds
-  Prev and Next while edits are unsaved, a clean editor reopens on content written by someone
-  else while a dirty one keeps its draft and refuses to save over it. Still to do from M1: raw bytes, revision-aware save,
+  close, Prev and Next while edits are unsaved (lifted once a save has failed), a clean editor
+  reopens on content written by someone else while a dirty one keeps its draft and refuses to
+  save over it, an unmount save queues behind the save in flight. Still to do from M1: raw bytes, revision-aware save,
   Source toggle, Pod tab parity, Storybook tests ported.
 
 ## Plan, as milestones

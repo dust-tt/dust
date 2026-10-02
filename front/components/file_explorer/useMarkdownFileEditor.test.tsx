@@ -15,6 +15,10 @@ vi.mock("@app/hooks/useNotification", () => ({
   useSendNotification: () => vi.fn(),
 }));
 
+vi.mock("@app/lib/swr/files", () => ({
+  writeFileContentByPath: vi.fn().mockResolvedValue(undefined),
+}));
+
 const owner: LightWorkspaceType = {
   id: 1,
   sId: "w_1",
@@ -38,7 +42,14 @@ const params = {
   isTooLarge: false,
   isTruncated: false,
   owner,
+  rawContent: "# Notes\n",
   processedContent: { text: "# Notes", format: "markdown" as const },
+};
+
+const revised = {
+  ...params,
+  rawContent: "# Notes, revised\n",
+  processedContent: { text: "# Notes, revised", format: "markdown" as const },
 };
 
 describe("useMarkdownFileEditor", () => {
@@ -58,7 +69,7 @@ describe("useMarkdownFileEditor", () => {
 
     const { result } = renderHook(() => useMarkdownFileEditor(params));
 
-    expect(result.current.richEditor?.initialContent).toBe("# Notes");
+    expect(result.current.richEditor?.initialContent).toBe("# Notes\n");
   });
 
   it("keeps the plain editor when the preview text was truncated", () => {
@@ -79,13 +90,66 @@ describe("useMarkdownFileEditor", () => {
     );
     const firstKey = result.current.richEditor?.mountKey;
 
-    rerender({
-      ...params,
-      processedContent: { text: "# Notes, revised", format: "markdown" },
-    });
+    rerender(revised);
 
     expect(result.current.richEditor?.mountKey).not.toBe(firstKey);
-    expect(result.current.richEditor?.initialContent).toBe("# Notes, revised");
+    expect(result.current.richEditor?.initialContent).toBe(
+      "# Notes, revised\n"
+    );
+  });
+
+  it("does not take its own save for a foreign change", async () => {
+    flags.add("co_edition");
+    const { result, rerender } = renderHook(
+      (props) => useMarkdownFileEditor(props),
+      { initialProps: params }
+    );
+    act(() => {
+      result.current.richEditor?.onStateChange({
+        dirty: true,
+        saving: true,
+        error: null,
+      });
+    });
+
+    await act(async () => {
+      await result.current.richEditor?.onSave("# Notes, mine\n");
+    });
+    rerender({ ...params, rawContent: "# Notes, mine\n" });
+    act(() => {
+      result.current.richEditor?.onStateChange({
+        dirty: true,
+        saving: false,
+        error: null,
+      });
+    });
+
+    const again = await result.current.richEditor?.onSave("# Notes, more\n");
+    expect(again).toEqual({ ok: true });
+  });
+
+  it("holds navigation while unsaved, and lifts it once a save has failed", () => {
+    flags.add("co_edition");
+    const { result } = renderHook(() => useMarkdownFileEditor(params));
+    expect(result.current.holdsNavigation).toBe(false);
+
+    act(() => {
+      result.current.richEditor?.onStateChange({
+        dirty: true,
+        saving: false,
+        error: null,
+      });
+    });
+    expect(result.current.holdsNavigation).toBe(true);
+
+    act(() => {
+      result.current.richEditor?.onStateChange({
+        dirty: true,
+        saving: false,
+        error: "Could not save.",
+      });
+    });
+    expect(result.current.holdsNavigation).toBe(false);
   });
 
   it("keeps a dirty editor on its draft and refuses to save over the new content", async () => {
@@ -96,16 +160,17 @@ describe("useMarkdownFileEditor", () => {
     );
     const firstKey = result.current.richEditor?.mountKey;
     act(() => {
-      result.current.richEditor?.onStateChange({ dirty: true, saving: false });
+      result.current.richEditor?.onStateChange({
+        dirty: true,
+        saving: false,
+        error: null,
+      });
     });
 
-    rerender({
-      ...params,
-      processedContent: { text: "# Notes, revised", format: "markdown" },
-    });
+    rerender(revised);
 
     expect(result.current.richEditor?.mountKey).toBe(firstKey);
-    expect(result.current.richEditor?.initialContent).toBe("# Notes");
+    expect(result.current.richEditor?.initialContent).toBe("# Notes\n");
     expect(result.current.isDirty).toBe(true);
     const saved = await result.current.richEditor?.onSave("# Notes, mine");
     expect(saved).toEqual({

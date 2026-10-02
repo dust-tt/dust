@@ -50,7 +50,8 @@ interface UseDocumentEditorProps {
  * MUST acknowledge only the submitted content, leaving later edits unsaved. Prop changes MUST
  * NOT replace an open draft. A file the editor cannot open MUST disable editing and saving.
  * Returning to the saved content MUST clear save errors without making another save request.
- * Unmounting with unsaved, editable content MUST attempt one final save of that content.
+ * Unmounting with unsaved, editable content MUST attempt one final save of that content,
+ * after any save still in flight.
  */
 /**
  * @cc [owner:PopDaph,label:product] document-autosave
@@ -77,6 +78,8 @@ export const useDocumentEditor = ({
   const latestRef = useRef<{ document: JSONContent; content: string } | null>(
     null
   );
+  const persistedRef = useRef<string | null>(null);
+  const inflightRef = useRef<Promise<DocumentSaveResult> | null>(null);
 
   useLayoutEffect(() => {
     persistenceRef.current = { onSave, editable, baseline };
@@ -107,6 +110,7 @@ export const useDocumentEditor = ({
       const document = editor.getJSON();
       const content = JSON.stringify(document);
       latestRef.current = { document, content };
+      persistedRef.current = content;
       setBaseline(content);
       setDraft(content);
     },
@@ -131,29 +135,28 @@ export const useDocumentEditor = ({
 
   const dirty = baseline !== null && draft !== baseline;
 
-  // Closing the host inside the autosave delay must not drop the edit. The editor is gone by
-  // then, so this last attempt cannot report a failure; hosts hold navigation while dirty.
+  // Unmounting inside the autosave delay must not drop the edit. The editor is gone by then,
+  // so this last attempt cannot report a failure; hosts hold close and navigation while dirty.
+  // It waits for any save in flight, so an older write can never land after a newer one.
   useEffect(
     () => () => {
       const latest = latestRef.current;
-      const {
-        onSave: persist,
-        editable: canSave,
-        baseline: savedContent,
-      } = persistenceRef.current;
-      if (
-        !persist ||
-        !canSave ||
-        !initial.isOk() ||
-        latest === null ||
-        latest.content === savedContent
-      ) {
+      const { onSave: persist, editable: canSave } = persistenceRef.current;
+      if (!persist || !canSave || !initial.isOk() || latest === null) {
         return;
       }
-      const serialized = saveDfm(initial.value.envelope, latest.document);
-      if (serialized.isOk()) {
-        void persistDocument(persist, serialized.value);
-      }
+      const envelope = initial.value.envelope;
+      const flush = async () => {
+        await inflightRef.current;
+        if (latest.content === persistedRef.current) {
+          return;
+        }
+        const serialized = saveDfm(envelope, latest.document);
+        if (serialized.isOk()) {
+          await persistDocument(persist, serialized.value);
+        }
+      };
+      void flush();
     },
     [initial]
   );
@@ -193,12 +196,15 @@ export const useDocumentEditor = ({
     setSaving(true);
     setError(null);
 
-    const result = await persistDocument(persist, serialized.value);
+    const inflight = persistDocument(persist, serialized.value);
+    inflightRef.current = inflight;
+    const result = await inflight;
 
     savingRef.current = false;
     setSaving(false);
 
     if (result.ok) {
+      persistedRef.current = content;
       setBaseline(content);
       return;
     }

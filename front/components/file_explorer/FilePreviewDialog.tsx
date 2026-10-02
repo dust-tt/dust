@@ -77,12 +77,18 @@ export function FilePreviewDialog({
     isTooLarge: preview.isTooLarge,
     isTruncated: preview.isTruncated,
     owner,
+    rawContent: preview.truncatedContent,
     processedContent: preview.processedContent,
   });
 
   // The rich editor autosaves after a delay; leaving the file before that would drop the edit.
-  const holdsNavigation =
-    markdown.richEditor !== null && (markdown.isDirty || markdown.isSaving);
+  const { holdsNavigation } = markdown;
+  const handleOpenChange = (open: boolean) => {
+    if (!open && holdsNavigation) {
+      return;
+    }
+    onOpenChange(open);
+  };
 
   useEffect(() => {
     if (!isOpen) {
@@ -113,7 +119,7 @@ export function FilePreviewDialog({
   }, [isOpen, onPrev, onNext, holdsNavigation]);
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent size="2xl" height="2xl" className="gap-4 px-4">
         <DialogHeader className="flex gap-4">
           <DialogTitle>

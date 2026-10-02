@@ -33,6 +33,10 @@ links and tilde fences are refused for now, since the TipTap Markdown parser can
 them. A refused file is shown as read-only source with the reason. Line endings are not
 preserved: a CRLF file opens and is written back with LF.
 
+Hosts hold close and navigation while an edit is unsaved, through `onStateChange`, and lift the
+hold once a save has failed and the user has seen it. Any other unmount with unsaved content
+queues one last save behind the save in flight.
+
 Front matter and comment threads already in the file are kept in an envelope and written back
 unchanged on save. The editor only rewrites the body, and only when the codec confirms the
 result reads back identically.

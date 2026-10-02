@@ -53,8 +53,8 @@ export const Document = ({
   const blockMenu = useDocumentBlockMenu(editor, editable);
 
   useEffect(() => {
-    onStateChange?.({ dirty, saving });
-  }, [dirty, saving, onStateChange]);
+    onStateChange?.({ dirty, saving, error });
+  }, [dirty, saving, error, onStateChange]);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
     if (

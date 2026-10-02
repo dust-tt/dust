@@ -24,6 +24,8 @@ interface UseMarkdownFileEditorParams {
   /** The preview text was cut; an editor fed with it would save a truncated file. */
   isTruncated: boolean;
   owner: LightWorkspaceType | undefined;
+  /** The file text as fetched, for the rich editor. The processed text is trimmed. */
+  rawContent: string | null;
   processedContent: ProcessedContent | null;
 }
 
@@ -39,6 +41,8 @@ export interface MarkdownRichEditor {
 export interface MarkdownFileEditor {
   canEdit: boolean;
   content: string | undefined;
+  /** True while leaving the file would drop an edit the rich editor has not saved yet. */
+  holdsNavigation: boolean;
   /** Unsaved edits in whichever editor is open. */
   isDirty: boolean;
   isSaving: boolean;
@@ -51,7 +55,11 @@ export interface MarkdownFileEditor {
   viewMode: MarkdownFilePreviewViewMode;
 }
 
-const IDLE_DRAFT: DocumentDraftState = { dirty: false, saving: false };
+const IDLE_DRAFT: DocumentDraftState = {
+  dirty: false,
+  saving: false,
+  error: null,
+};
 
 const CONFLICT_MESSAGE =
   "This file changed while you were editing. Copy your changes, then reopen the file.";
@@ -65,6 +73,7 @@ export function useMarkdownFileEditor({
   isTooLarge,
   isTruncated,
   owner,
+  rawContent,
   processedContent,
 }: UseMarkdownFileEditorParams): MarkdownFileEditor {
   const [viewMode, setViewMode] =
@@ -80,6 +89,8 @@ export function useMarkdownFileEditor({
   const [richConflict, setRichConflict] = useState(false);
   const [resetKey, setResetKey] = useState({ isActive, path: entryPath });
   const initKeyRef = useRef<string | null>(null);
+  // The content this hook wrote last, so the fetch catching up with it is not a foreign change.
+  const writtenRef = useRef<string | null>(null);
 
   const sendNotification = useSendNotification();
   const { mutate } = useSWRConfig();
@@ -102,6 +113,7 @@ export function useMarkdownFileEditor({
     setRichVersion(0);
     setRichConflict(false);
     initKeyRef.current = null;
+    writtenRef.current = null;
   }
 
   const isPlainDirty = draft !== savedContent;
@@ -157,6 +169,7 @@ export function useMarkdownFileEditor({
     } catch (e) {
       return { ok: false, error: normalizeError(e).message };
     }
+    writtenRef.current = content;
     await mutate(
       fileUrl,
       { kind: "loaded", content },
@@ -166,7 +179,6 @@ export function useMarkdownFileEditor({
     );
     setDraft(content);
     setSavedContent(content);
-    setRichBase(content);
     initKeyRef.current = `${entryPath}:${content}`;
     return { ok: true };
   };
@@ -193,7 +205,7 @@ export function useMarkdownFileEditor({
   // written by someone else cannot swap editors under an open draft. A file the rich editor
   // cannot open is shown by it as read-only source, with the reason.
   const opensRich = hasFeature("co_edition") && canEdit && !isTruncated;
-  const richSource = processedContent?.text;
+  const richSource = rawContent ?? undefined;
 
   // The file changed under the editor, by another writer or an agent. A clean editor reopens on
   // the new content; a dirty one keeps its draft and refuses to save over the newer version
@@ -202,7 +214,7 @@ export function useMarkdownFileEditor({
     if (!opensRich || richSource === undefined || richSource === richBase) {
       return;
     }
-    if (richBase === null) {
+    if (richBase === null || richSource === writtenRef.current) {
       setRichBase(richSource);
     } else if (!richDraft.dirty && !richDraft.saving) {
       setRichBase(richSource);
@@ -235,6 +247,11 @@ export function useMarkdownFileEditor({
     canEdit,
     content:
       canEdit && sourcePath === entryPath ? draft : processedContent?.text,
+    // Once a save has failed the editor shows it with Retry; leaving then is the user's call.
+    holdsNavigation:
+      richEditor !== null &&
+      (richDraft.dirty || richDraft.saving) &&
+      richDraft.error === null,
     isDirty: opensRich ? richDraft.dirty : isPlainDirty,
     isSaving: opensRich ? richDraft.saving : isSaving,
     revert: () => setDraft(savedContent),

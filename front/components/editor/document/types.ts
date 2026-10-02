@@ -20,4 +20,6 @@ export interface DocumentProps {
 export interface DocumentDraftState {
   dirty: boolean;
   saving: boolean;
+  /** The last save failure shown to the user, or null. */
+  error: string | null;
 }
