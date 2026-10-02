@@ -1,3 +1,4 @@
+import { deleteAgentTriggers } from "@app/lib/api/agent_triggers";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -159,45 +160,20 @@ app.delete(
       });
     }
 
-    const allTriggers = await TriggerResource.listByAgentConfigurationId(
-      auth,
-      aId
-    );
-    const userTriggers = allTriggers.filter(
-      (trigger) => trigger.editor === auth.getNonNullableUser().id
-    );
-
     const { triggerIds } = ctx.req.valid("json");
-    const workspace = auth.getNonNullableWorkspace();
 
-    for (const triggerId of triggerIds) {
-      const triggerToDelete = auth.isAdmin()
-        ? allTriggers.find((t) => t.sId === triggerId)
-        : userTriggers.find((t) => t.sId === triggerId);
-
-      if (!triggerToDelete) {
-        continue;
-      }
-
-      const deleteResult = await triggerToDelete.delete(auth);
-      if (deleteResult.isErr()) {
-        logger.error(
-          {
-            workspaceId: workspace.sId,
-            agentConfigurationId: aId,
-            triggerId,
-            error: deleteResult.error,
-          },
-          "Failed to delete trigger"
-        );
-        return apiError(ctx, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: `Failed to delete trigger ${triggerId}.`,
-          },
-        });
-      }
+    const deleteResult = await deleteAgentTriggers(auth, {
+      agentId: aId,
+      triggerIds,
+    });
+    if (deleteResult.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: deleteResult.error.message,
+        },
+      });
     }
 
     return ctx.body(null, 204);

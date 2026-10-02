@@ -1,12 +1,32 @@
+import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";
+import type { WorkspaceType } from "@app/types/user";
 import assert from "assert";
 import { describe, expect, it } from "vitest";
 
-import { getWebhookSourcesUsage } from "./agent_triggers";
+import { deleteAgentTriggers, getWebhookSourcesUsage } from "./agent_triggers";
+
+const CRON_CONFIGURATION = {
+  type: "cron" as const,
+  cron: "0 9 * * *",
+  timezone: "UTC",
+};
+
+async function createMemberAuth(
+  workspace: WorkspaceType,
+  role: "user" | "admin"
+): Promise<Authenticator> {
+  const user = await UserFactory.basic();
+  await MembershipFactory.associate(workspace, user, { role });
+  return Authenticator.fromUserIdAndWorkspaceId(user.sId, workspace.sId);
+}
 
 describe("getWebhookSourcesUsage", () => {
   it("returns webhook source usage for accessible agents", async () => {
@@ -142,5 +162,59 @@ describe("getWebhookSourcesUsage", () => {
         },
       ],
     });
+  });
+});
+
+describe("deleteAgentTriggers", () => {
+  it("only deletes the caller's own triggers and skips unknown ids", async () => {
+    const { workspace, authenticator } = await createResourceTest({
+      role: "user",
+      plan: "creditPriced",
+    });
+    const otherAuth = await createMemberAuth(workspace, "user");
+    const agent = await AgentConfigurationFactory.createTestAgent(authenticator);
+    const ownTrigger = await TriggerFactory.schedule(authenticator, {
+      agentConfigurationId: agent.sId,
+      configuration: CRON_CONFIGURATION,
+    });
+    const otherTrigger = await TriggerFactory.schedule(otherAuth, {
+      agentConfigurationId: agent.sId,
+      configuration: CRON_CONFIGURATION,
+    });
+
+    const res = await deleteAgentTriggers(authenticator, {
+      agentId: agent.sId,
+      triggerIds: [ownTrigger.sId, otherTrigger.sId, "unknown"],
+    });
+
+    expect(res.isOk()).toBe(true);
+    const remaining = await TriggerResource.listByAgentConfigurationId(
+      authenticator,
+      agent.sId
+    );
+    expect(remaining.map((t) => t.sId)).toEqual([otherTrigger.sId]);
+  });
+
+  it("lets a workspace admin delete any trigger of the agent", async () => {
+    const { workspace, authenticator } = await createResourceTest({
+      role: "admin",
+      plan: "creditPriced",
+    });
+    const otherAuth = await createMemberAuth(workspace, "user");
+    const agent = await AgentConfigurationFactory.createTestAgent(otherAuth);
+    const otherTrigger = await TriggerFactory.schedule(otherAuth, {
+      agentConfigurationId: agent.sId,
+      configuration: CRON_CONFIGURATION,
+    });
+
+    const res = await deleteAgentTriggers(authenticator, {
+      agentId: agent.sId,
+      triggerIds: [otherTrigger.sId],
+    });
+
+    expect(res.isOk()).toBe(true);
+    expect(
+      await TriggerResource.listByAgentConfigurationId(authenticator, agent.sId)
+    ).toEqual([]);
   });
 });

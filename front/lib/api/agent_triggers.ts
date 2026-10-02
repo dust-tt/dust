@@ -1,9 +1,13 @@
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { listActiveConfigurationIdentities } from "@app/lib/resources/agent_configuration_rows";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
+import logger from "@app/logger/logger";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 // To use in case of heavy db load emergency with these usages queries
 // If it is a problem, let's add caching
@@ -184,4 +188,47 @@ export async function getAccessibleWebhookSourceViews(
   return [...bySourceId.values()].sort((a, b) =>
     a.createdAt >= b.createdAt ? -1 : 1
   );
+}
+
+/**
+ * @cc [owner:fabiencelier,label:security] trigger-deletion-scope
+ * Among `triggerIds`, MUST only delete the triggers of `agentId` whose editor is the caller, or any
+ * trigger of `agentId` when the caller is a workspace admin. Other ids are skipped without failing.
+ */
+export async function deleteAgentTriggers(
+  auth: Authenticator,
+  { agentId, triggerIds }: { agentId: string; triggerIds: string[] }
+): Promise<Result<undefined, DustError<"internal_error">>> {
+  const allTriggers = await TriggerResource.listByAgentConfigurationId(
+    auth,
+    agentId
+  );
+  const deletableTriggers = allTriggers.filter(
+    (trigger) =>
+      triggerIds.includes(trigger.sId) &&
+      (auth.isAdmin() || trigger.isEditedBy(auth))
+  );
+
+  for (const trigger of deletableTriggers) {
+    const res = await trigger.delete(auth);
+    if (res.isErr()) {
+      logger.error(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          agentConfigurationId: agentId,
+          triggerId: trigger.sId,
+          error: res.error,
+        },
+        "Failed to delete trigger"
+      );
+      return new Err(
+        new DustError(
+          "internal_error",
+          `Failed to delete trigger ${trigger.sId}.`
+        )
+      );
+    }
+  }
+
+  return new Ok(undefined);
 }
