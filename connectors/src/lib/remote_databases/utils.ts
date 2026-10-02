@@ -44,6 +44,23 @@ export type RemoteDBTree = {
   })[];
 };
 
+export const REMOTE_DATABASE_CREDENTIAL_ERROR_MESSAGE =
+  "Failed to retrieve credentials";
+
+function credentialBelongsToWorkspace({
+  credentialWorkspaceId,
+  workspaceId,
+}: {
+  credentialWorkspaceId: string | undefined;
+  workspaceId: string;
+}): boolean {
+  return (
+    credentialWorkspaceId !== undefined &&
+    credentialWorkspaceId.length > 0 &&
+    credentialWorkspaceId === workspaceId
+  );
+}
+
 // Helper functions to get connector and credentials
 export const getConnector = async ({
   connectorId,
@@ -67,14 +84,20 @@ export const getConnector = async ({
   return new Ok({ connector });
 };
 
+/**
+ * @cc [owner:frankaloia,label:security] credential-workspace-binding
+ * Returns credential content only when `metadata.workspace_id` is a non-empty string equal to `workspaceId`. A missing, empty, or different workspace id MUST yield the same error as an unavailable credential and MUST NOT return credential content.
+ */
 export const getCredentials = async <T extends ConnectionCredentials>({
   credentialsId,
   isTypeGuard,
   logger,
+  workspaceId,
 }: {
   credentialsId: string;
   isTypeGuard: (credentials: ConnectionCredentials) => credentials is T;
   logger: Logger;
+  workspaceId: string;
 }): Promise<
   Result<
     {
@@ -90,8 +113,27 @@ export const getCredentials = async <T extends ConnectionCredentials>({
   });
   if (credentialsRes.isErr()) {
     logger.error({ credentialsId }, "Failed to retrieve credentials");
-    return new Err(Error("Failed to retrieve credentials"));
+    return new Err(new Error(REMOTE_DATABASE_CREDENTIAL_ERROR_MESSAGE));
   }
+
+  const credentialWorkspaceId =
+    credentialsRes.value.credential.metadata.workspace_id;
+  if (
+    !credentialBelongsToWorkspace({
+      credentialWorkspaceId,
+      workspaceId,
+    })
+  ) {
+    logger.error(
+      {
+        connectorWorkspaceId: workspaceId,
+        credentialWorkspaceId,
+      },
+      "Refusing credential from another workspace"
+    );
+    return new Err(new Error(REMOTE_DATABASE_CREDENTIAL_ERROR_MESSAGE));
+  }
+
   // Narrow the type of credentials to just the username/password variant
   const credentials = credentialsRes.value.credential.content;
   if (!isTypeGuard(credentials)) {
@@ -104,6 +146,10 @@ export const getCredentials = async <T extends ConnectionCredentials>({
   });
 };
 
+/**
+ * @cc [owner:frankaloia,label:security] credential-workspace-binding
+ * Returns credential content only when `metadata.workspace_id` is a non-empty string equal to the connector's `workspaceId`. A missing, empty, or different workspace id MUST yield `invalid_credentials` and MUST NOT return credential content.
+ */
 export const getConnectorAndCredentials = async <
   T extends ConnectionCredentials,
 >({
@@ -141,9 +187,32 @@ export const getConnectorAndCredentials = async <
     logger.error({ connectorId }, "Failed to retrieve credentials");
     return new Err({
       code: "invalid_credentials",
-      error: Error("Failed to retrieve credentials"),
+      error: new Error(REMOTE_DATABASE_CREDENTIAL_ERROR_MESSAGE),
     });
   }
+
+  const credentialWorkspaceId =
+    credentialsRes.value.credential.metadata.workspace_id;
+  if (
+    !credentialBelongsToWorkspace({
+      credentialWorkspaceId,
+      workspaceId: connector.workspaceId,
+    })
+  ) {
+    logger.error(
+      {
+        connectorId,
+        connectorWorkspaceId: connector.workspaceId,
+        credentialWorkspaceId,
+      },
+      "Refusing credential from another workspace"
+    );
+    return new Err({
+      code: "invalid_credentials",
+      error: new Error(REMOTE_DATABASE_CREDENTIAL_ERROR_MESSAGE),
+    });
+  }
+
   // Narrow the type of credentials to just the username/password variant
   const credentials = credentialsRes.value.credential.content;
   if (!isTypeGuard(credentials)) {
