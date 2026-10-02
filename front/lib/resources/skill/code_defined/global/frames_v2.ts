@@ -734,8 +734,14 @@ UI.
 
 `
     : ""
-}The only interactive-content MCP tool available under Frames v2 is
-\`export_interactive_content_file\`: use it to export a Frame as a PNG screenshot or PDF document.
+}Two interactive-content MCP tools are available under Frames v2:
+
+- \`export_interactive_content_file\`: export a Frame as a PNG screenshot or PDF document.
+- \`create_interactive_content_file\`: create a Frame from an existing template (a knowledge base
+  node or a scoped file path), copied server-side without reading its source. It creates a legacy
+  Frame at \`/files/conversation-<conversationId>/<file_name>\`: edit that file in place, then
+  publish it with \`dsbx frame publish /files/conversation-<conversationId>/<file_name>\`.
+
 Use the Computer and CLI for all other Frame operations. Use \`dsbx frame --help\` as the authority
 for available operations.
 
