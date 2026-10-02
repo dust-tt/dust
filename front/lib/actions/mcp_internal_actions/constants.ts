@@ -506,8 +506,8 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     isRestricted: undefined,
     isPreview: false,
     tools_arguments_requiring_approval: {
-      post_message: ["channel"],
-      schedule_message: ["channel"],
+      post_message: ["to"],
+      schedule_message: ["to"],
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
