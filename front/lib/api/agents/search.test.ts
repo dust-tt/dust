@@ -325,6 +325,82 @@ describe("searchAgents", () => {
     });
   });
 
+  it("includes disabled defaults only in global-only searches, with their workspace status", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    await upsertGlobalAgentSettings(auth, {
+      agentId: GLOBAL_AGENTS_SID.DUST,
+      status: "disabled_by_admin",
+    });
+    mockHits([
+      makeDocument({ workspace_id: workspace.sId, agent_id: "custom" }),
+      makeDocument({
+        workspace_id: GLOBAL_AGENTS_WORKSPACE_ID,
+        agent_id: GLOBAL_AGENTS_SID.DUST,
+        scope: "global",
+      }),
+      makeDocument({
+        workspace_id: GLOBAL_AGENTS_WORKSPACE_ID,
+        agent_id: "not-a-global-agent",
+        scope: "global",
+      }),
+    ]);
+
+    expect(await searchAgentIds(auth)).toEqual(["custom"]);
+    expect(
+      await searchAgentIds(auth, { filters: { scope: ["global", "visible"] } })
+    ).toEqual(["custom"]);
+
+    const result = await searchAgents(auth, {
+      searchTerm: "",
+      filters: { scope: ["global"] },
+    });
+    assert(result.isOk());
+    expect(result.value.agents).toEqual([
+      expect.objectContaining({
+        sId: GLOBAL_AGENTS_SID.DUST,
+        status: "disabled_by_admin",
+        model: expect.objectContaining({ modelId: expect.any(String) }),
+      }),
+    ]);
+    expect(result.value.total).toBe(1);
+
+    await upsertGlobalAgentSettings(auth, {
+      agentId: GLOBAL_AGENTS_SID.DUST,
+      status: "active",
+    });
+    const enabled = await searchAgents(auth, {
+      searchTerm: "",
+      filters: { scope: ["global"] },
+    });
+    assert(enabled.isOk());
+    expect(enabled.value.agents[0].status).toBe("active");
+    expect(await searchAgentIds(auth)).toEqual([
+      "custom",
+      GLOBAL_AGENTS_SID.DUST,
+    ]);
+  });
+
+  it("preserves global audience restrictions in global-only searches", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    mockHits([
+      makeDocument({
+        workspace_id: GLOBAL_AGENTS_WORKSPACE_ID,
+        agent_id: GLOBAL_AGENTS_SID.ANALYST,
+        scope: "global",
+      }),
+      makeDocument({
+        workspace_id: GLOBAL_AGENTS_WORKSPACE_ID,
+        agent_id: GLOBAL_AGENTS_SID.HELPER,
+        scope: "global",
+      }),
+    ]);
+    expect(
+      await searchAgentIds(auth, { filters: { scope: ["global"] } })
+    ).toEqual([GLOBAL_AGENTS_SID.HELPER]);
+  });
+
   it("rejects offsets past the result window without querying", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
 
