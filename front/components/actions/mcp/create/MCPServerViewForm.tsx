@@ -1,7 +1,7 @@
 import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { Input } from "@dust-tt/sparkle";
+import { Input, Label, TextArea } from "@dust-tt/sparkle";
 import { useFormContext } from "react-hook-form";
 
 interface MCPServerViewFormProps {
@@ -27,11 +27,14 @@ export function MCPServerViewForm({ mcpServerView }: MCPServerViewFormProps) {
       </div>
 
       <div className="space-y-2">
-        <Input
+        <Label htmlFor="mcp-server-view-description">Description</Label>
+        <TextArea
+          id="mcp-server-view-description"
           {...form.register("description")}
-          label="Description"
-          isError={!!form.formState.errors.description?.message}
-          message={form.formState.errors.description?.message}
+          error={form.formState.errors.description?.message}
+          showErrorLabel
+          minRows={3}
+          resize="vertical"
           placeholder={getMcpServerViewDescription(mcpServerView)}
         />
       </div>
