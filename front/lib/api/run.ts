@@ -17,7 +17,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import { createParser } from "eventsource-parser";
 import fs from "fs";
 import path from "path";
-import peg from "pegjs";
+import peggy from "peggy";
 
 import { recomputeIndents, restoreTripleBackticks } from "../specification";
 
@@ -207,7 +207,7 @@ export async function getSpecification(
   // TODO(spolu): check type compatibility at run time.
   const libDir = path.join(process.cwd(), "lib");
   const dustPegJs = fs.readFileSync(libDir + "/dust.pegjs", "utf8");
-  const specParser = peg.generate(dustPegJs);
+  const specParser = peggy.generate(dustPegJs);
 
   const spec = specParser.parse(
     s.value.specification.data

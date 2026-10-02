@@ -38,6 +38,7 @@
     "hono": "^4.12.15",
     "jsonwebtoken": "^9.0.0",
     "openai": "^6.46.0",
+    "peggy": "^5.1.0",
     "snowflake-sdk": "2.3.4",
     "swagger-jsdoc": "^6.2.8",
     "tar": "^7.5.22",
