@@ -1,5 +1,3 @@
-// Pass through to workOS, do not enforce return types.
-
 import config from "@app/lib/api/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import {

@@ -1,5 +1,3 @@
-// This endpoint only returns void as it is used only for deletion, so no need to use @dust-tt/client types.
-
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { publicApiApp } from "@front-api/middlewares/ctx";
