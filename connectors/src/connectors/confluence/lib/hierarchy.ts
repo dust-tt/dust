@@ -6,6 +6,7 @@ import {
   ConfluenceFolderModel,
   ConfluencePageModel,
 } from "@connectors/lib/models/confluence";
+import logger from "@connectors/logger/logger";
 import type { ModelId } from "@connectors/types";
 
 type RawConfluenceEntity = {
@@ -70,6 +71,11 @@ export async function getSpaceHierarchy(
   } as Record<string, ConfluenceContentWithType>;
 }
 
+/**
+ * @cc [owner:tdraier,label:security;performance] terminates-on-cyclic-hierarchy
+ * MUST terminate on any hierarchy input, including cyclic parent links. Each content id MUST
+ * appear at most once in the returned parents; the walk stops before revisiting an id.
+ */
 export async function getConfluenceContentParentIds(
   connectorId: ModelId,
   content: RawConfluenceEntity,
@@ -80,6 +86,7 @@ export async function getConfluenceContentParentIds(
 
   const parentEntities: { id: string; type: "page" | "folder" }[] = [];
   let currentId = content.id;
+  const visitedIds = new Set<string>([currentId]);
 
   // If the content has not been saved yet. Let's add it to the object.
   if (!(currentId in contentIdToParentContentMap)) {
@@ -90,6 +97,19 @@ export async function getConfluenceContentParentIds(
   while (currentId in contentIdToParentContentMap) {
     const parentContent = contentIdToParentContentMap[currentId];
     if (parentContent?.parentId && parentContent?.parentType) {
+      if (visitedIds.has(parentContent.parentId)) {
+        logger.warn(
+          {
+            connectorId,
+            contentId: content.id,
+            cycleAtId: parentContent.parentId,
+          },
+          "Cycle detected in Confluence content hierarchy, truncating parents."
+        );
+        break;
+      }
+      visitedIds.add(parentContent.parentId);
+
       parentEntities.push({
         id: parentContent.parentId,
         type: parentContent.parentType,
