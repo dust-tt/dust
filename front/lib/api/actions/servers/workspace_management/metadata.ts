@@ -1,6 +1,6 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { SearchAgentsQuerySchema } from "@app/lib/agent_search/query_schema";
-import { SearchSkillsQuerySchema } from "@app/lib/skill_search/query_schema";
+import { BaseSearchAgentsSchema } from "@app/lib/agent_search/query_schema";
+import { BaseSearchSkillsSchema } from "@app/lib/skill_search/query_schema";
 import { KNOWLEDGE_CATEGORIES } from "@app/types/api/public/spaces";
 import { ModelProviderIdSchema } from "@app/types/assistant/models/providers";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
@@ -81,25 +81,15 @@ const searchQuerySchema = z
       "partial words are supported. Results are ordered by relevance."
   );
 
-const searchAgentsSchema = SearchAgentsQuerySchema.omit({
-  searchType: true,
-  offset: true,
-  facets: true,
-  permissionFiltering: true,
-  sortBy: true,
-  sortOrder: true,
-}).extend({ query: searchQuerySchema, ...paginationSchemaShape });
+const searchAgentsSchema = BaseSearchAgentsSchema.extend({
+  query: searchQuerySchema,
+  ...paginationSchemaShape,
+});
 
-const searchSkillsSchema = SearchSkillsQuerySchema.omit({
-  searchType: true,
-  defaultToFavorites: true,
-  excludeSkillId: true,
-  offset: true,
-  facets: true,
-  permissionFiltering: true,
-  sortBy: true,
-  sortOrder: true,
-}).extend({ query: searchQuerySchema, ...paginationSchemaShape });
+const searchSkillsSchema = BaseSearchSkillsSchema.extend({
+  query: searchQuerySchema,
+  ...paginationSchemaShape,
+});
 
 const getAgentDetailsSchema = {
   agentId: z.string().describe("The agent's id, as returned by search_agents."),

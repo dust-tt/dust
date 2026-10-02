@@ -97,8 +97,8 @@ Refer to <workflow_visualization> when the user asks for a diagram of an entity 
 
   discoveryStep: `<discovery_step>
 Tools operate on entity ids, not names. Use these tools to get up-to-date information:
-- \`${managementToolName(SEARCH_AGENTS_TOOL_NAME)}\`: search agents by name and resolve a name to an id. Matches partial words anywhere in the name and in any order.
-- \`${managementToolName(SEARCH_SKILLS_TOOL_NAME)}\`: search skills by name and resolve a name to an id. Matches partial words anywhere in the name and in any order.
+- \`${managementToolName(SEARCH_AGENTS_TOOL_NAME)}\`: search agents by name and resolve a name to an id.
+- \`${managementToolName(SEARCH_SKILLS_TOOL_NAME)}\`: search skills by name and resolve a name to an id.
 - \`${managementToolName(LIST_TOOLS_TOOL_NAME)}\`: find the tools that can be equipped on agents and skills and resolve a name to an id.
 - \`${managementToolName(GET_TOOL_DETAILS_TOOL_NAME)}\`: a tool's description and the functions it exposes with their parameters. Use it before referencing a tool in a suggestion.
 - \`${managementToolName(LIST_MODELS_TOOL_NAME)}\`: the models an agent can be set to, with their \`modelId\` and supported reasoning efforts. Use it before suggesting a model change, except for the tier models of <architecture_guidance> whose \`modelId\` is already known.
@@ -304,6 +304,6 @@ export const conversationalBuildingSkill = {
     { name: BUILDING_AGENTS_AND_SKILLS_SERVER_NAME },
     { name: WORKSPACE_MANAGEMENT_SERVER_NAME },
   ],
-  version: 2,
+  version: 3,
   icon: "ActionListCheckIcon",
 } as const satisfies GlobalSkillDefinition;
