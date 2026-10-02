@@ -298,7 +298,7 @@ function InputBarHiddenFileInput({
   );
 }
 
-export function InputBarButtons({
+export const InputBarButtons = React.memo(function InputBarButtons({
   actions,
   allAgents,
   buttonSize,
@@ -406,4 +406,4 @@ export function InputBarButtons({
       )}
     </>
   );
-}
+});
