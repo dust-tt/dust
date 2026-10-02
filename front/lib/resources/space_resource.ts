@@ -842,18 +842,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     name: string,
     t?: Transaction
   ): Promise<SpaceResource | null> {
+    const trimmedName = name.trim();
     const [space] = await this.baseFetch(
       auth,
-      {
-        where: {
-          [Op.and]: [
-            Sequelize.where(
-              Sequelize.fn("LOWER", Sequelize.col("spaces.name")),
-              Sequelize.fn("LOWER", name.trim())
-            ),
-          ],
-        },
-      },
+      { where: { name: { [Op.iLike]: trimmedName } } },
       t
     );
     return space ?? null;

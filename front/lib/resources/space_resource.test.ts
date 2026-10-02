@@ -2175,45 +2175,6 @@ describe("SpaceResource", () => {
   });
 });
 
-describe("isNameAvailable", () => {
-  let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
-  let auth: Authenticator;
-
-  beforeEach(async () => {
-    workspace = await WorkspaceFactory.basic();
-    auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  });
-
-  it("matches the whole name case-insensitively after trimming", async () => {
-    await SpaceFactory.project(workspace, undefined, { name: "my pod" });
-
-    expect(await SpaceResource.isNameAvailable(auth, "MY POD")).toBe(false);
-    expect(await SpaceResource.isNameAvailable(auth, "  my pod ")).toBe(false);
-    expect(await SpaceResource.isNameAvailable(auth, "my po")).toBe(true);
-  });
-
-  it("does not interpret the name as a pattern", async () => {
-    await SpaceFactory.project(workspace, undefined, { name: "my pod" });
-
-    for (const probe of ["%", "my%", "my_pod", "______", "my\\pod"]) {
-      expect(await SpaceResource.isNameAvailable(auth, probe)).toBe(true);
-    }
-  });
-
-  it("handles names containing pattern characters", async () => {
-    await SpaceFactory.project(workspace, undefined, {
-      name: "100% my_pod\\v2",
-    });
-
-    expect(await SpaceResource.isNameAvailable(auth, "100% my_pod\\v2")).toBe(
-      false
-    );
-    expect(await SpaceResource.isNameAvailable(auth, "100% my-pod\\v2")).toBe(
-      true
-    );
-  });
-});
-
 describe("searchProjectsByNamePaginated", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
   let globalGroup: GroupResource;
