@@ -1,5 +1,6 @@
 import { ManageAgentsPage } from "@app/components/pages/builder/agents/ManageAgentsPage";
 import { AssistantsDataTable } from "@app/components/poke/assistants/table";
+import { serializeFilterHash } from "@app/components/shared/filter_panel/filterHash";
 import { getModelFilterDisplayName } from "@app/components/shared/filter_panel/searchFilter";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { AuthContext } from "@app/lib/auth/AuthContext";
@@ -760,6 +761,80 @@ describe("search-backed Manage Agents", () => {
         offset: 0,
       })
     );
+  });
+
+  it.each([
+    "all",
+    "default",
+  ] as const)("ignores hidden Dust filters when starting on the %s tab", async (tabId) => {
+    const { fetcherWithBody, mount } = await setup();
+    const hash = serializeFilterHash(
+      {
+        tabId,
+        selection: {
+          access: { hidden: "Not published" },
+          editor: { "other-editor": "Alice Other" },
+          tag: { "workspace-tag": "Workspace tag" },
+          skill: { "workspace-skill": "Workspace skill" },
+          space: { "workspace-space": "Workspace space" },
+          usage: { "1-5": "1–5 active users" },
+          model: { "claude-sonnet-5": "Sonnet" },
+        },
+      },
+      "all"
+    );
+    window.history.replaceState({}, "", `/#?search=${hash}`);
+    mount();
+    if (tabId === "all") {
+      await screen.findByRole("button", { name: /Weekly report/ });
+      await userEvent.click(screen.getByRole("tab", { name: "Dust" }));
+    }
+    await screen.findByRole("switch", { name: "Default Dust" });
+    expect(lastSearchBody(fetcherWithBody)).toMatchObject({
+      scope: ["global"],
+      modelIds: ["claude-sonnet-5"],
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    await userEvent.click(
+      await screen.findByRole("checkbox", {
+        name: getModelFilterDisplayName("claude-sonnet-5"),
+      })
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+    await waitFor(() =>
+      expect(lastSearchBody(fetcherWithBody)).not.toHaveProperty("modelIds")
+    );
+
+    const dustRequests = fetcherWithBody.mock.calls
+      .map(([[, body]]) => body)
+      .filter((body) => body.scope?.includes("global"));
+    for (const body of dustRequests) {
+      for (const key of [
+        "editorIds",
+        "tagIds",
+        "skillIds",
+        "spaceIds",
+        "activeUsersCount",
+      ]) {
+        expect(body).not.toHaveProperty(key);
+      }
+      if (body.limit === 0) {
+        expect(body).toMatchObject({ facets: ["models"] });
+      }
+    }
+
+    await userEvent.click(screen.getByRole("tab", { name: "Workspace" }));
+    await waitFor(() =>
+      expect(lastSearchBody(fetcherWithBody)).toMatchObject({
+        scope: ["hidden"],
+        editorIds: ["other-editor"],
+        tagIds: ["workspace-tag"],
+        skillIds: ["workspace-skill"],
+        spaceIds: ["workspace-space"],
+        activeUsersCount: { min: 1, max: 5 },
+      })
+    );
+    expect(lastSearchBody(fetcherWithBody)).not.toHaveProperty("modelIds");
   });
 
   it("only shows model filters on the Dust tab", async () => {

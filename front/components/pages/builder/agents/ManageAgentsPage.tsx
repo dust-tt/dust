@@ -3,6 +3,7 @@ import { CreateAgentDropdown } from "@app/components/assistant/CreateAgentDropdo
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { AgentFilterPanel } from "@app/components/assistant/manager/AgentFilterPanel";
 import { AgentSearchTable } from "@app/components/assistant/manager/AgentSearchTable";
+import type { AgentFilter } from "@app/components/assistant/manager/agentFilter";
 import {
   AGENT_FILTER_CATEGORIES,
   AGENT_FILTER_CATEGORY_FACET,
@@ -267,6 +268,8 @@ interface ManageAgentsPageProps {
  * @cc [owner:aubin-tchoi,label:product] default-agent-management
  * The editable Dust tab MUST include disabled default agents and allow only workspace
  * admins to change their status. Read-only views MUST NOT expose mutation controls.
+ * Only visible filter categories may constrain results and facets; hidden selections remain
+ * available when switching back to a tab that supports them.
  */
 export function ManageAgentsPage({
   readOnly = false,
@@ -310,6 +313,13 @@ export function ManageAgentsPage({
         ? category !== "access" && category !== "usage"
         : category === "model")
   );
+  const getVisibleFilter = (filter: AgentFilter): AgentFilter =>
+    Object.fromEntries(
+      filterCategories.map((category) => [category, filter[category]])
+    );
+  const unresolvedVisibleCategories = unresolvedCategories.filter((category) =>
+    filterCategories.includes(category)
+  );
   const activeTab =
     AGENT_SEARCH_TABS.find((tab) => tab.id === selectedTab) ??
     AGENT_SEARCH_TABS[0];
@@ -337,14 +347,18 @@ export function ManageAgentsPage({
       searchTerm: "",
       searchType: "name",
       limit: 0,
-      filters: toAgentSearchFilters(pendingFilter, activeTab.filters),
+      filters: toAgentSearchFilters(
+        getVisibleFilter(pendingFilter),
+        activeTab.filters
+      ),
       permissionFiltering: getPermissionFiltering(activeTab.id),
-      facets: unresolvedCategories.flatMap(
+      facets: unresolvedVisibleCategories.flatMap(
         (category) => AGENT_FILTER_CATEGORY_FACET[category] ?? []
       ),
-      disabled: unresolvedCategories.length === 0,
+      disabled: unresolvedVisibleCategories.length === 0,
     });
   const filter = resolveFilter(selectionFacets);
+  const visibleFilter = getVisibleFilter(filter);
 
   const searchInput = (
     <div className="w-full md:w-1/2">
@@ -412,8 +426,10 @@ export function ManageAgentsPage({
               searchTerm={searchTerm}
               tabFilters={activeTab.filters}
               permissionFiltering={getPermissionFiltering(activeTab.id)}
-              filter={filter}
-              onFilterChange={setFilter}
+              filter={visibleFilter}
+              onFilterChange={(nextFilter) =>
+                setFilter({ ...filter, ...getVisibleFilter(nextFilter) })
+              }
               hiddenAgents={
                 canShowHiddenAgents
                   ? {
@@ -427,7 +443,7 @@ export function ManageAgentsPage({
           <FilterSummaryChips
             isLoading={isSelectionLoading}
             summaries={getFilterSummaries(
-              filter,
+              visibleFilter,
               filterCategories,
               SEARCH_FILTER_CATEGORY_SINGULAR_LABEL
             )}
@@ -450,7 +466,7 @@ export function ManageAgentsPage({
                 : []
             }
             onClearAll={() => {
-              setFilter({});
+              setFilter({ ...filter, ...getVisibleFilter({}) });
               setShowHiddenAgents(false);
             }}
           />
@@ -460,7 +476,7 @@ export function ManageAgentsPage({
             renderActions={renderActions}
             key={`${owner.sId}-${activeTab.id}`}
             searchTerm={searchTerm}
-            filters={toAgentSearchFilters(filter, activeTab.filters)}
+            filters={toAgentSearchFilters(visibleFilter, activeTab.filters)}
             permissionFiltering={getPermissionFiltering(activeTab.id)}
             onSelect={onSelect ?? setDetailedAgentId}
           />
