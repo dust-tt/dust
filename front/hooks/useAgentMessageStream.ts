@@ -22,6 +22,7 @@ import type {
   InlineActivityStep,
   LightAgentMessageWithActionsType,
 } from "@app/types/assistant/conversation";
+import { isTerminalAgentMessageStatus } from "@app/types/assistant/conversation";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { VirtuosoMessageListMethods } from "@virtuoso.dev/message-list";
@@ -36,27 +37,39 @@ type VirtuosoMethods = VirtuosoMessageListMethods<
   VirtuosoMessageListContext
 >;
 
+/**
+ * @cc [owner:pmilliotte,label:react;reliability] live-stream-never-overwrites-terminal-message
+ * A non-terminal stream event MUST NOT modify an agent message whose status is terminal: its
+ * persisted state comes from the server (refetch or terminal event `contentView`).
+ */
+function updateLiveAgentMessage(
+  methods: VirtuosoMethods,
+  sId: string,
+  update: (m: AgentMessageWithStreaming) => VirtuosoMessage
+) {
+  methods.data.map((m) =>
+    isAgentMessageWithStreaming(m) &&
+    m.sId === sId &&
+    !isTerminalAgentMessageStatus(m.status)
+      ? update(m)
+      : m
+  );
+}
+
+type UpdateMessageThrottledParams = {
+  chainOfThought: string;
+  content: string;
+  sId: string;
+};
+
 function createUpdateMessageThrottled(methods: VirtuosoMethods) {
   return throttle(
-    ({
-      chainOfThought,
-      content,
-      sId,
-    }: {
-      chainOfThought: string;
-      content: string;
-      sId: string;
-    }) => {
-      methods.data.map((m) => {
-        if (isAgentMessageWithStreaming(m) && m.sId === sId) {
-          return {
-            ...m,
-            content,
-            chainOfThought,
-          };
-        }
-        return m;
-      });
+    ({ chainOfThought, content, sId }: UpdateMessageThrottledParams) => {
+      updateLiveAgentMessage(methods, sId, (m) => ({
+        ...m,
+        content,
+        chainOfThought,
+      }));
     },
     TOKEN_BUFFER_THRESHOLD_MS
   );
@@ -313,6 +326,13 @@ export function useAgentMessageStream({
       agentMessage.streaming.agentState !== "placeholder",
     [agentMessage.status, agentMessage.streaming.agentState]
   );
+
+  useEffect(() => {
+    if (!shouldStream) {
+      updateMessageThrottled.cancel();
+    }
+  }, [shouldStream, updateMessageThrottled]);
+
   const managerStreamId = `message-${sId}`;
   useRegisterAgentLoopStream({
     conversationId,
@@ -410,11 +430,7 @@ export function useAgentMessageStream({
             lastCoTTraceId.current = null;
             retryCoTBuffer.current = null;
             currentStep.current = null;
-            methods.data.map((m) => {
-              if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
-                return m;
-              }
-
+            updateLiveAgentMessage(methods, sId, (m) => {
               return {
                 ...m,
                 content: "",
@@ -451,10 +467,7 @@ export function useAgentMessageStream({
                   currentStep.current !== null &&
                   eventStep === currentStep.current
                 ) {
-                  methods.data.map((m) => {
-                    if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
-                      return m;
-                    }
+                  updateLiveAgentMessage(methods, sId, (m) => {
                     return {
                       ...m,
                       streaming: {
@@ -483,10 +496,7 @@ export function useAgentMessageStream({
               updateMessageThrottled.cancel();
               const newAgentState =
                 classification === "tokens" ? "writing" : "thinking";
-              methods.data.map((m) => {
-                if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
-                  return m;
-                }
+              updateLiveAgentMessage(methods, sId, (m) => {
                 const { steps, contentCleared } = flushPendingSegment({
                   lastClassification,
                   chainOfThought,
@@ -511,10 +521,7 @@ export function useAgentMessageStream({
               classification === "tokens"
             ) {
               // First tokens event in inline mode — set agentState to writing.
-              methods.data.map((m) => {
-                if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
-                  return m;
-                }
+              updateLiveAgentMessage(methods, sId, (m) => {
                 return {
                   ...m,
                   streaming: { ...m.streaming, agentState: "writing" },
@@ -557,10 +564,7 @@ export function useAgentMessageStream({
         case "agent_action_success":
           const action = eventPayload.data.action;
           const actionStep = eventPayload.data.step;
-          methods.data.map((m) => {
-            if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
-              return m;
-            }
+          updateLiveAgentMessage(methods, sId, (m) => {
             // Add the completed action to inline activity steps.
             const alreadyCaptured = m.streaming.inlineActivitySteps.some(
               (s) => s.id === `action-${action.id}`
@@ -605,10 +609,7 @@ export function useAgentMessageStream({
         case "tool_params":
           updateMessageThrottled.cancel();
           const toolParams = eventPayload.data;
-          methods.data.map((m) => {
-            if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
-              return m;
-            }
+          updateLiveAgentMessage(methods, sId, (m) => {
             const { steps, contentCleared } = flushPendingSegment({
               lastClassification,
               chainOfThought,
@@ -637,10 +638,8 @@ export function useAgentMessageStream({
 
         case "tool_notification":
           const toolNotification = eventPayload.data;
-          methods.data.map((m) =>
-            isAgentMessageWithStreaming(m) && m.sId === sId
-              ? updateProgress(m, toolNotification)
-              : m
+          updateLiveAgentMessage(methods, sId, (m) =>
+            updateProgress(m, toolNotification)
           );
           break;
 
@@ -649,11 +648,7 @@ export function useAgentMessageStream({
           if (toolCallStarted.type !== "tool_call_started") {
             break;
           }
-          methods.data.map((m) => {
-            if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
-              return m;
-            }
-
+          updateLiveAgentMessage(methods, sId, (m) => {
             return {
               ...m,
               streaming: {
@@ -705,14 +700,10 @@ export function useAgentMessageStream({
           break;
 
         case "agent_context_pruned":
-          methods.data.map((m) =>
-            isAgentMessageWithStreaming(m) && m.sId === sId
-              ? {
-                  ...m,
-                  prunedContext: true,
-                }
-              : m
-          );
+          updateLiveAgentMessage(methods, sId, (m) => ({
+            ...m,
+            prunedContext: true,
+          }));
           break;
 
         // Both the pause and its resolution are streamed, so replayed history lands on the state
@@ -720,22 +711,18 @@ export function useAgentMessageStream({
         // acknowledged. A decline is followed by the terminal cancelled event.
         case "agent_credit_spend_checkpoint_updated": {
           const { status } = eventPayload.data;
-          methods.data.map((m) =>
-            isAgentMessageWithStreaming(m) && m.sId === sId
-              ? {
-                  ...m,
-                  creditSpendCheckpointStatus: status,
-                  streaming:
-                    status === "acknowledged"
-                      ? { ...m.streaming, agentState: "thinking" }
-                      : {
-                          ...m.streaming,
-                          agentState: "done",
-                          pendingToolCalls: [],
-                        },
-                }
-              : m
-          );
+          updateLiveAgentMessage(methods, sId, (m) => ({
+            ...m,
+            creditSpendCheckpointStatus: status,
+            streaming:
+              status === "acknowledged"
+                ? { ...m.streaming, agentState: "thinking" }
+                : {
+                    ...m.streaming,
+                    agentState: "done",
+                    pendingToolCalls: [],
+                  },
+          }));
           break;
         }
 
