@@ -12,7 +12,7 @@ import {
   normalizeTimezone,
   parseAvailabilityDateTime,
 } from "@app/lib/api/actions/servers/google_calendar/helpers";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("formatEventAsText - attachments", () => {
   it("surfaces attachment title, mime type and file URL", () => {
@@ -179,7 +179,16 @@ function interval(start: string, end: string) {
   return { start: new Date(start), end: new Date(end) };
 }
 
-describe("calendar availability", () => {
+describe.each([
+  "UTC",
+  "Europe/Paris",
+  "America/New_York",
+])("calendar availability with host timezone %s", (hostTimezone) => {
+  beforeEach(() => {
+    vi.stubEnv("TZ", hostTimezone);
+    expect(Intl.DateTimeFormat().resolvedOptions().timeZone).toBe(hostTimezone);
+  });
+  afterEach(() => vi.unstubAllEnvs());
   it("merges overlapping and adjacent intervals without mutating inputs", () => {
     const intervals = [
       interval("2026-07-01T12:00Z", "2026-07-01T13:00Z"),
@@ -271,6 +280,93 @@ describe("calendar availability", () => {
         false
       )
     ).toEqual([interval("2026-03-08T21:00Z", "2026-03-09T04:00Z")]);
+  });
+
+  it("preserves London's valid window across a cross-zone rollback", () => {
+    const range = interval("2026-10-24T00:00Z", "2026-10-27T00:00Z");
+    const unavailable = buildUnavailableIntervals(
+      range,
+      {
+        email: "user@example.com",
+        timezone: "Europe/London",
+        dailyTimeWindowStart: "02:30",
+        dailyTimeWindowEnd: "03:30",
+      },
+      false
+    );
+    expect(computeAvailability(range, mergeIntervals(unavailable))).toEqual([
+      interval("2026-10-24T01:30Z", "2026-10-24T02:30Z"),
+      interval("2026-10-25T02:30Z", "2026-10-25T03:30Z"),
+      interval("2026-10-26T02:30Z", "2026-10-26T03:30Z"),
+    ]);
+  });
+
+  it("selects the earlier Paris window start in a repeated hour", () => {
+    const range = interval("2026-10-24T00:00Z", "2026-10-27T00:00Z");
+    const unavailable = buildUnavailableIntervals(
+      range,
+      {
+        email: "user@example.com",
+        timezone: "Europe/Paris",
+        dailyTimeWindowStart: "02:30",
+        dailyTimeWindowEnd: "03:30",
+      },
+      false
+    );
+    expect(computeAvailability(range, mergeIntervals(unavailable))).toEqual([
+      interval("2026-10-24T00:30Z", "2026-10-24T01:30Z"),
+      interval("2026-10-25T00:30Z", "2026-10-25T02:30Z"),
+      interval("2026-10-26T01:30Z", "2026-10-26T02:30Z"),
+    ]);
+  });
+
+  it("selects the earlier Paris window end in a repeated hour", () => {
+    const range = interval("2026-10-24T22:00Z", "2026-10-25T23:00Z");
+    const unavailable = buildUnavailableIntervals(
+      range,
+      {
+        email: "user@example.com",
+        timezone: "Europe/Paris",
+        dailyTimeWindowStart: "01:30",
+        dailyTimeWindowEnd: "02:30",
+      },
+      false
+    );
+    expect(computeAvailability(range, mergeIntervals(unavailable))).toEqual([
+      interval("2026-10-24T23:30Z", "2026-10-25T00:30Z"),
+    ]);
+  });
+
+  it("ends an excluded weekend at midnight after a skipped midnight", () => {
+    const range = interval("2026-09-05T04:00Z", "2026-09-08T03:00Z");
+    const unavailable = buildUnavailableIntervals(
+      range,
+      {
+        email: "user@example.com",
+        timezone: "America/Santiago",
+      },
+      true
+    );
+    expect(computeAvailability(range, mergeIntervals(unavailable))).toEqual([
+      interval("2026-09-07T03:00Z", "2026-09-08T03:00Z"),
+    ]);
+  });
+
+  it("skips a missing calendar day when excluding weekends", () => {
+    const range = interval("2011-12-29T10:00Z", "2012-01-01T10:00Z");
+    const unavailable = buildUnavailableIntervals(
+      range,
+      {
+        email: "user@example.com",
+        timezone: "Pacific/Apia",
+        dailyTimeWindowStart: "09:00",
+        dailyTimeWindowEnd: "17:00",
+      },
+      true
+    );
+    expect(computeAvailability(range, mergeIntervals(unavailable))).toEqual([
+      interval("2011-12-29T19:00Z", "2011-12-30T03:00Z"),
+    ]);
   });
 
   it("preserves availability summary formatting in the reference timezone", () => {
