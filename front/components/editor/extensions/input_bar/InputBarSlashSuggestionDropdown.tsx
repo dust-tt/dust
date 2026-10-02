@@ -1,34 +1,23 @@
-import {
-  filterInputBarSlashCommandItems,
-  getInputBarSlashCommandItems,
-} from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionItems";
-import type {
-  InputBarSlashCommand,
-  InputBarSlashMenuMode,
-} from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
-import { isRunCommandSlashCommand } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
-import { AttachContextSubMenuDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/AttachContextSubMenuDropdown";
+import { InputBarMenuPanels } from "@app/components/editor/extensions/input_bar/InputBarMenuPanels";
+import type { InputBarSlashMenuRefs } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import { useInputBarSlashMenuSections } from "@app/components/editor/extensions/input_bar/useInputBarSlashMenuSections";
 import { applyAttachContextSelection } from "@app/components/editor/extensions/shared/slash_suggestion/applyAttachContextSelection";
-import { buildSlashCommandSections } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
-import { PickModelSubMenuDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/PickModelSubMenuDropdown";
+import { flattenSlashCommandSections } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
+import type { ContextSlashSearchSelection } from "@app/components/editor/extensions/shared/slash_suggestion/contextSlashSearchTypes";
 import type {
   SlashCommand,
   SlashCommandDropdownRef,
 } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
-import { SlashCommandDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import {
   ATTACH_CONTEXT_SUB_MENU_ID,
   clearSlashSubMenuStack,
   PICK_MODEL_SUB_MENU_ID,
   resolveSlashSubMenuFromQuery,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
-import { useInputBarSlashCommandCapabilities } from "@app/components/editor/extensions/shared/slash_suggestion/useSlashCommandCapabilities";
 import { useSlashMenuStack } from "@app/components/editor/extensions/shared/slash_suggestion/useSlashMenuStack";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
-import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { SuggestionProps } from "@tiptap/suggestion";
-import type { RefObject } from "react";
 import {
   forwardRef,
   useCallback,
@@ -36,8 +25,6 @@ import {
   useMemo,
   useRef,
 } from "react";
-
-const ATTACH_ONLY_FILES_SECTION_LABEL = "Files";
 
 /**
  * @cc [owner:smb2268,label:product] attach-only-menu-is-locked
@@ -52,22 +39,11 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
   Pick<
     SuggestionProps<SlashCommand>,
     "clientRect" | "command" | "editor" | "query" | "range"
-  > & {
-    conversationIdRef?: RefObject<string | null>;
-    includeAttachKnowledgeRef: RefObject<boolean>;
-    includePickModelRef: RefObject<boolean>;
-    includeSelectSpacesRef: RefObject<boolean>;
-    onClose: () => void;
-    onDetailsRef?: RefObject<((item: SlashCommand) => void) | undefined>;
-    onModelSelectRef: RefObject<((selection: Selection) => void) | undefined>;
-    onNodeSelectRef: RefObject<
-      ((node: DataSourceViewContentNode) => void) | undefined
-    >;
-    owner: LightWorkspaceType;
-    slashCommandsRef: RefObject<InputBarSlashCommand[]>;
-    slashMenuModeRef: RefObject<InputBarSlashMenuMode | null>;
-    spaceIdRef: RefObject<string | null | undefined>;
-  }
+  > &
+    InputBarSlashMenuRefs & {
+      onClose: () => void;
+      owner: LightWorkspaceType;
+    }
 >(
   (
     {
@@ -101,11 +77,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     } = useSlashMenuStack(editor, "inputBarSlashSuggestion");
 
     const handleAttachContextSelect = useCallback(
-      (
-        selection: Parameters<
-          typeof applyAttachContextSelection
-        >[0]["selection"]
-      ) => {
+      (selection: ContextSlashSearchSelection) => {
         clearSlashSubMenuStack(storage);
         applyAttachContextSelection({
           editor,
@@ -129,21 +101,16 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       [editor, onClose, onModelSelectRef, range, storage]
     );
 
-    const allCommandItems = useMemo(
-      () =>
-        getInputBarSlashCommandItems({
-          commands: slashCommandsRef.current ?? [],
-          includeAttachKnowledge: includeAttachKnowledgeRef.current ?? false,
-          includePickModel: includePickModelRef.current ?? false,
-          includeSelectSpaces: includeSelectSpacesRef.current ?? false,
-        }),
-      [
+    const { allCommandItems, attachOnlyRootSection, isLoading, sections } =
+      useInputBarSlashMenuSections({
         includeAttachKnowledgeRef,
         includePickModelRef,
         includeSelectSpacesRef,
+        isAttachOnly,
+        owner,
+        query,
         slashCommandsRef,
-      ]
-    );
+      });
 
     // "/model fab" opens the model sub-menu with "fab" as its query without pushing a frame.
     // Back then relies on `pop` deleting the text after "/", not on the (empty) stack.
@@ -160,29 +127,8 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     const activeFrame = stackFrame ?? queryFrame?.frame ?? null;
     const subMenuQuery = queryFrame?.query ?? query;
 
-    const { capabilityItems, isLoading, resolvedQuery } =
-      useInputBarSlashCommandCapabilities({
-        disabled: isAttachOnly,
-        owner,
-        query,
-      });
-
-    const commandItems = useMemo(
-      () => filterInputBarSlashCommandItems(allCommandItems, resolvedQuery),
-      [allCommandItems, resolvedQuery]
-    );
-
-    const sections = useMemo(
-      () =>
-        buildSlashCommandSections({
-          commandItems,
-          capabilityItems,
-        }),
-      [capabilityItems, commandItems]
-    );
-
-    const flatItems = useMemo(
-      () => sections.flatMap((section) => section.items),
+    const flatItemCount = useMemo(
+      () => flattenSlashCommandSections(sections).length,
       [sections]
     );
 
@@ -222,7 +168,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
 
           if (
             (event.key === "Enter" || event.key === "Tab") &&
-            flatItems.length === 0
+            flatItemCount === 0
           ) {
             event.preventDefault();
             return true;
@@ -233,7 +179,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       }),
       [
         activeFrame?.subMenuId,
-        flatItems.length,
+        flatItemCount,
         isAttachOnly,
         onClose,
         query,
@@ -242,76 +188,19 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       ]
     );
 
-    if (isAttachOnly) {
-      // The browser is the whole menu, so the file upload command rides along at its root.
-      const uploadItems = allCommandItems.filter(
-        (item) =>
-          isRunCommandSlashCommand<InputBarSlashCommand>(item) &&
-          item.data.command.id === "upload-file"
-      );
-      return (
-        <AttachContextSubMenuDropdown
-          ref={subMenuRef}
-          clientRect={clientRect}
-          conversationId={conversationIdRef?.current ?? null}
-          onClose={onClose}
-          onRootSectionSelect={command}
-          onSelect={handleAttachContextSelect}
-          owner={owner}
-          query={query}
-          rootSection={
-            uploadItems.length > 0
-              ? { label: ATTACH_ONLY_FILES_SECTION_LABEL, items: uploadItems }
-              : undefined
-          }
-          spaceId={spaceIdRef.current ?? null}
-          useCase="conversation-input"
-        />
-      );
-    }
-
-    if (activeFrame?.subMenuId === ATTACH_CONTEXT_SUB_MENU_ID) {
-      return (
-        <AttachContextSubMenuDropdown
-          ref={subMenuRef}
-          activeFrame={activeFrame}
-          clientRect={clientRect}
-          conversationId={conversationIdRef?.current ?? null}
-          onBack={() => pop(range)}
-          onClose={onClose}
-          onSelect={handleAttachContextSelect}
-          owner={owner}
-          query={subMenuQuery}
-          spaceId={spaceIdRef.current ?? null}
-          useCase="conversation-input"
-        />
-      );
-    }
-
-    if (activeFrame?.subMenuId === PICK_MODEL_SUB_MENU_ID) {
-      return (
-        <PickModelSubMenuDropdown
-          ref={subMenuRef}
-          activeFrame={activeFrame}
-          clientRect={clientRect}
-          onBack={() => pop(range)}
-          onClose={onClose}
-          onSelect={handleModelSelect}
-          owner={owner}
-          query={subMenuQuery}
-        />
-      );
-    }
-
     return (
-      <SlashCommandDropdown
-        ref={dropdownRef}
-        sections={sections}
-        command={command}
+      <InputBarMenuPanels
+        activeFrame={activeFrame}
+        attachOnlyRootSection={attachOnlyRootSection}
         clientRect={clientRect}
-        emptyMessage="No commands found"
+        conversationId={conversationIdRef?.current ?? null}
+        dropdownRef={dropdownRef}
+        isAttachOnly={isAttachOnly}
         isLoading={isLoading}
+        onAttachContextSelect={handleAttachContextSelect}
+        onBack={() => pop(range)}
         onClose={onClose}
+        onCommand={command}
         onItemDetails={
           onDetailsRef
             ? (item) => {
@@ -321,7 +210,12 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
               }
             : undefined
         }
-        size="wide"
+        onModelSelect={handleModelSelect}
+        owner={owner}
+        query={subMenuQuery}
+        sections={sections}
+        spaceId={spaceIdRef.current ?? null}
+        subMenuRef={subMenuRef}
       />
     );
   }

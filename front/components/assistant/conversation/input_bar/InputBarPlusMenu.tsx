@@ -2,60 +2,34 @@ import {
   INPUT_BAR_PILL_HOVER_CLASSNAME,
   INPUT_BAR_PILL_SURFACE_CLASSNAME,
 } from "@app/components/assistant/conversation/input_bar/inputBarPillStyles";
-import {
-  filterInputBarSlashCommandItems,
-  getInputBarSlashCommandItems,
-} from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionItems";
-import type {
-  InputBarSlashCommand,
-  InputBarSlashMenuMode,
-} from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
-import { isRunCommandSlashCommand } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
-import { AttachContextSubMenuDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/AttachContextSubMenuDropdown";
+import { InputBarMenuPanels } from "@app/components/editor/extensions/input_bar/InputBarMenuPanels";
+import type { InputBarSlashMenuRefs } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import { useInputBarSlashMenuSections } from "@app/components/editor/extensions/input_bar/useInputBarSlashMenuSections";
 import { applyAttachContextSelection } from "@app/components/editor/extensions/shared/slash_suggestion/applyAttachContextSelection";
-import { buildSlashCommandSections } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
 import type { ContextSlashSearchSelection } from "@app/components/editor/extensions/shared/slash_suggestion/contextSlashSearchTypes";
-import { PickModelSubMenuDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/PickModelSubMenuDropdown";
 import type {
   SlashCommand,
   SlashCommandDropdownRef,
 } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
-import { SlashCommandDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type { SlashMenuStackFrame } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import {
   ATTACH_CONTEXT_SUB_MENU_ID,
   getSlashCommandSubMenuId,
   PICK_MODEL_SUB_MENU_ID,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
-import { useInputBarSlashCommandCapabilities } from "@app/components/editor/extensions/shared/slash_suggestion/useSlashCommandCapabilities";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
-import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, cn, DropdownMenuSearchbar, Plus } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/core";
 import type React from "react";
 import type { RefObject } from "react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
-const ATTACH_ONLY_FILES_SECTION_LABEL = "Files";
-
-// The same refs the "/" menu reads, so both menus offer the same entries and act alike.
-export interface InputBarPlusMenuSlashMenu {
-  conversationIdRef: RefObject<string | null>;
+// The same refs the "/" menu reads, so both menus offer the same entries and act alike, plus the
+// editor the knowledge browser inserts into.
+export type InputBarPlusMenuSlashMenu = InputBarSlashMenuRefs & {
   editorRef: RefObject<Editor | null>;
-  includeAttachKnowledgeRef: RefObject<boolean>;
-  includePickModelRef: RefObject<boolean>;
-  includeSelectSpacesRef: RefObject<boolean>;
-  onDetailsRef: RefObject<((item: SlashCommand) => void) | undefined>;
-  onModelSelectRef: RefObject<((selection: Selection) => void) | undefined>;
-  onNodeSelectRef: RefObject<
-    ((node: DataSourceViewContentNode) => void) | undefined
-  >;
-  onSelectRef: RefObject<((item: SlashCommand) => void) | undefined>;
-  slashCommandsRef: RefObject<InputBarSlashCommand[]>;
-  slashMenuModeRef: RefObject<InputBarSlashMenuMode | null>;
-  spaceIdRef: RefObject<string | null | undefined>;
-}
+};
 
 interface InputBarPlusMenuProps {
   buttonSize: "xs" | "sm";
@@ -147,40 +121,16 @@ function InputBarPlusMenuContent({
     [anchorRef]
   );
 
-  const allCommandItems = useMemo(
-    () =>
-      getInputBarSlashCommandItems({
-        commands: slashCommandsRef.current ?? [],
-        includeAttachKnowledge: includeAttachKnowledgeRef.current ?? false,
-        includePickModel: includePickModelRef.current ?? false,
-        includeSelectSpaces: includeSelectSpacesRef.current ?? false,
-      }),
-    [
+  const { attachOnlyRootSection, isLoading, sections } =
+    useInputBarSlashMenuSections({
       includeAttachKnowledgeRef,
       includePickModelRef,
       includeSelectSpacesRef,
-      slashCommandsRef,
-    ]
-  );
-
-  const { capabilityItems, isLoading, resolvedQuery } =
-    useInputBarSlashCommandCapabilities({
-      disabled: isAttachOnly,
+      isAttachOnly,
       owner,
       query: activeFrame ? "" : query,
+      slashCommandsRef,
     });
-
-  const sections = useMemo(
-    () =>
-      buildSlashCommandSections({
-        commandItems: filterInputBarSlashCommandItems(
-          allCommandItems,
-          resolvedQuery
-        ),
-        capabilityItems,
-      }),
-    [allCommandItems, capabilityItems, resolvedQuery]
-  );
 
   const enterFrame = (frame: SlashMenuStackFrame | null) => {
     setActiveFrame(frame);
@@ -267,85 +217,34 @@ function InputBarPlusMenuContent({
     />
   );
 
-  if (isAttachOnly) {
-    // As in the "/" menu, the browser is the whole menu and the file upload rides at its root.
-    const uploadItems = allCommandItems.filter(
-      (item) =>
-        isRunCommandSlashCommand<InputBarSlashCommand>(item) &&
-        item.data.command.id === "upload-file"
-    );
-    return (
-      <AttachContextSubMenuDropdown
-        ref={subMenuRef}
-        clientRect={clientRect}
-        conversationId={conversationIdRef.current ?? null}
-        dropdownHeaders={searchbar}
-        onClose={onClose}
-        onRootSectionSelect={handleCommand}
-        onSelect={handleAttachContextSelect}
-        owner={owner}
-        query={query}
-        rootSection={
-          uploadItems.length > 0
-            ? { label: ATTACH_ONLY_FILES_SECTION_LABEL, items: uploadItems }
-            : undefined
-        }
-        spaceId={spaceIdRef.current ?? null}
-        useCase="conversation-input"
-      />
-    );
-  }
-
-  if (activeFrame?.subMenuId === ATTACH_CONTEXT_SUB_MENU_ID) {
-    return (
-      <AttachContextSubMenuDropdown
-        ref={subMenuRef}
-        activeFrame={activeFrame}
-        clientRect={clientRect}
-        conversationId={conversationIdRef.current ?? null}
-        dropdownHeaders={searchbar}
-        onBack={() => enterFrame(null)}
-        onClose={onClose}
-        onSelect={handleAttachContextSelect}
-        owner={owner}
-        query={query}
-        spaceId={spaceIdRef.current ?? null}
-        useCase="conversation-input"
-      />
-    );
-  }
-
-  if (activeFrame?.subMenuId === PICK_MODEL_SUB_MENU_ID) {
-    return (
-      <PickModelSubMenuDropdown
-        ref={subMenuRef}
-        activeFrame={activeFrame}
-        clientRect={clientRect}
-        dropdownHeaders={searchbar}
-        onBack={() => enterFrame(null)}
-        onClose={onClose}
-        onSelect={handleModelSelect}
-        owner={owner}
-        query={query}
-      />
-    );
-  }
-
   return (
-    <SlashCommandDropdown
-      ref={dropdownRef}
-      sections={sections}
-      command={handleCommand}
+    <InputBarMenuPanels
+      activeFrame={activeFrame}
+      attachOnlyRootSection={attachOnlyRootSection}
       clientRect={clientRect}
+      conversationId={conversationIdRef?.current ?? null}
       dropdownHeaders={searchbar}
-      emptyMessage="No commands found"
+      dropdownRef={dropdownRef}
+      isAttachOnly={isAttachOnly}
       isLoading={isLoading}
+      onAttachContextSelect={handleAttachContextSelect}
+      onBack={() => enterFrame(null)}
       onClose={onClose}
-      onItemDetails={(item) => {
-        onClose();
-        onDetailsRef.current?.(item);
-      }}
-      size="wide"
+      onCommand={handleCommand}
+      onItemDetails={
+        onDetailsRef
+          ? (item) => {
+              onClose();
+              onDetailsRef.current?.(item);
+            }
+          : undefined
+      }
+      onModelSelect={handleModelSelect}
+      owner={owner}
+      query={query}
+      sections={sections}
+      spaceId={spaceIdRef.current ?? null}
+      subMenuRef={subMenuRef}
     />
   );
 }
