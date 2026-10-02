@@ -3,12 +3,12 @@ import { getWebhookRequestsBucket } from "@app/lib/file_storage";
 import { matchPayload, parseMatcherExpression } from "@app/lib/matcher";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import type { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
+import { WEBHOOK_PRESETS } from "@app/lib/triggers/webhook_presets";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 import { Op } from "sequelize";
 
 const NUMBER_HOURS_TO_FETCH = 24;

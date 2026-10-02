@@ -15,6 +15,7 @@ import {
   TriggerResource,
 } from "@app/lib/resources/trigger_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
+import { WEBHOOK_PRESETS } from "@app/lib/triggers/webhook_presets";
 import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
@@ -29,7 +30,6 @@ import {
   isWebhookTrigger,
 } from "@app/types/assistant/triggers";
 import { Err, Ok } from "@app/types/shared/result";
-import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 import assert from "assert";
 import { UniqueConstraintError } from "sequelize";
 

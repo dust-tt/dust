@@ -1,10 +1,10 @@
 import { CreateWebhookSourceWithProviderForm } from "@app/components/triggers/CreateWebhookSourceWithProviderForm";
-import type { WebhookProvider } from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS } from "@app/lib/triggers/webhook_presets";
 import {
-  WEBHOOK_PRESETS,
   WEBHOOK_SOURCE_SIGNATURE_ALGORITHMS,
   WebhookSourcesSchema,
-} from "@app/types/triggers/webhooks";
+} from "@app/lib/triggers/webhooks";
+import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
