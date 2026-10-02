@@ -144,7 +144,10 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("shared Zod domain");
     expect(instructions).toContain("instead of `bun build`");
     expect(instructions).toContain(
-      "`export_interactive_content_file`: use it to export a Frame as a PNG screenshot or PDF document"
+      "`export_interactive_content_file`: export a Frame as a PNG screenshot or PDF document"
+    );
+    expect(instructions).toContain(
+      "`create_interactive_content_file`: create a Frame from an existing template"
     );
     expect(framesSkill.mcpServers).toEqual([
       { name: "interactive_content" },
