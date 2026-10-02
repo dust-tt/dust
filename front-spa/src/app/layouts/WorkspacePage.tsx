@@ -3,11 +3,12 @@ import { ProfileOnboardingDialog } from "@dust-tt/front/components/onboarding/Pr
 import { AppAuthContextLayout } from "@dust-tt/front/components/sparkle/AppAuthContextLayout";
 import { computeIsMetronomeCheckout } from "@dust-tt/front/lib/client/subscription";
 import { useAuthContext } from "@dust-tt/front/lib/swr/workspaces";
+import { isAPIErrorResponse } from "@dust-tt/front/types/error";
 import { AuthErrorPage } from "@spa/app/components/AuthErrorPage";
 import { useAppReadyContext } from "@spa/app/contexts/AppReadyContext";
 import { useRequiredPathParam } from "@spa/lib/platform";
 import { type ReactNode, useEffect } from "react";
-import { Navigate, Outlet, useMatches } from "react-router-dom";
+import { Navigate, Outlet, useLocation, useMatches } from "react-router-dom";
 
 function useIsRequireCanUseProduct(): boolean {
   const matches = useMatches();
@@ -36,6 +37,7 @@ export function WorkspacePage({ children }: WorkspacePageProps) {
   });
 
   const signalAppReady = useAppReadyContext();
+  const location = useLocation();
 
   // Signal that the app is ready on error. Otherwise `UserLocaleSync` signals it once the user
   // locale is active, which dismisses the loading screen.
@@ -44,6 +46,17 @@ export function WorkspacePage({ children }: WorkspacePageProps) {
       signalAppReady();
     }
   }, [authContextError, signalAppReady]);
+
+  if (
+    isAPIErrorResponse(authContextError) &&
+    authContextError.error.type === "sso_enforced"
+  ) {
+    const params = new URLSearchParams({
+      workspaceId: wId,
+      returnTo: location.pathname + location.search,
+    });
+    return <Navigate to={`/sso-enforced?${params.toString()}`} replace />;
+  }
 
   if (authContextError) {
     return <AuthErrorPage error={authContextError} />;

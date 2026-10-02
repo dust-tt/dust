@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { sessionSatisfiesSSOEnforcement } from "@app/lib/iam/session";
 import { createCustomerPortalSession } from "@app/lib/plans/stripe";
 import { sessionApp } from "@front-api/middlewares/ctx";
 import { sessionAuth } from "@front-api/middlewares/session_auth";
@@ -37,6 +38,17 @@ app.post(
         api_error: {
           type: "workspace_not_found",
           message: "The workspace was not found.",
+        },
+      });
+    }
+
+    if (!sessionSatisfiesSSOEnforcement(owner, session)) {
+      return apiError(ctx, {
+        status_code: 401,
+        api_error: {
+          type: "sso_enforced",
+          message:
+            "Access requires Single Sign-On (SSO) authentication. Use your SSO provider to sign in.",
         },
       });
     }
