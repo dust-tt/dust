@@ -274,7 +274,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     <>
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogContent
-          size="xl"
+          size="lg"
           variant="command"
           trapFocusScope
           onEscapeKeyDown={handleEscapeKeyDown}

@@ -5,6 +5,7 @@ import {
   KeyboardHints,
 } from "@app/components/command_palette/CommandPaletteItems";
 import { MIN_COMMAND_PALETTE_SEARCH_LENGTH } from "@app/components/command_palette/useCommandPaletteSearch";
+import { NavItemKeyboardShortcut } from "@app/components/navigation/NavItemKeyboardShortcut";
 import type { AdminSectionId } from "@app/lib/admin/adminSectionIds";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { getSpaceIcon } from "@app/lib/spaces";
@@ -45,13 +46,16 @@ export type CommandPaletteCategory =
 export type CommandPaletteFilter = "All" | CommandPaletteCategory;
 
 const ACCESSIBLE_CATEGORY_ORDER: CommandPaletteCategory[] = [
-  "Conversations",
-  "Pods",
   "Agents",
-  "Members",
   "Skills",
+  "Members",
+  "Pods",
+  "Conversations",
   "Settings",
 ];
+
+/** Stable empty list so category filters don't invalidate memos every render. */
+const NO_ITEMS: never[] = [];
 
 type CommandPaletteSkill =
   | SkillListItemType
@@ -159,7 +163,8 @@ function CommandPaletteItemContent({ item }: { item: CommandPaletteItem }) {
           return (
             <>
               <Icon visual={MessagePlusCircle} size="xs" />
-              <span className="font-medium">{t`Create new conversation`}</span>
+              <span className="grow font-medium">{t`Create new conversation`}</span>
+              <NavItemKeyboardShortcut keys={["C"]} />
             </>
           );
         case "new_pod":
@@ -285,26 +290,26 @@ function CommandPaletteItemContent({ item }: { item: CommandPaletteItem }) {
 }
 
 function getFlatItems(
-  conversations: CommandPaletteConversation[],
-  pods: CommandPalettePod[],
   agents: CommandPaletteAgent[],
-  members: CommandPaletteMember[],
   skills: CommandPaletteSkill[],
+  members: CommandPaletteMember[],
+  pods: CommandPalettePod[],
+  conversations: CommandPaletteConversation[],
   settings: CommandPaletteSetting[]
 ): CommandPaletteItem[] {
   return [
+    ...agents.map((agent): CommandPaletteItem => ({ kind: "agent", agent })),
+    ...skills.map((skill): CommandPaletteItem => ({ kind: "skill", skill })),
+    ...members.map(
+      (member): CommandPaletteItem => ({ kind: "member", member })
+    ),
+    ...pods.map((pod): CommandPaletteItem => ({ kind: "pod", pod })),
     ...conversations.map(
       (conversation): CommandPaletteItem => ({
         kind: "conversation",
         conversation,
       })
     ),
-    ...pods.map((pod): CommandPaletteItem => ({ kind: "pod", pod })),
-    ...agents.map((agent): CommandPaletteItem => ({ kind: "agent", agent })),
-    ...members.map(
-      (member): CommandPaletteItem => ({ kind: "member", member })
-    ),
-    ...skills.map((skill): CommandPaletteItem => ({ kind: "skill", skill })),
     ...settings.map(
       (setting): CommandPaletteItem => ({ kind: "setting", setting })
     ),
@@ -312,35 +317,35 @@ function getFlatItems(
 }
 
 function getAvailableCategories({
-  conversations,
-  pods,
   agents,
-  members,
   skills,
+  members,
+  pods,
+  conversations,
   settings,
 }: {
-  conversations: CommandPaletteConversation[];
-  pods: CommandPalettePod[];
   agents: CommandPaletteAgent[];
-  members: CommandPaletteMember[];
   skills: CommandPaletteSkill[];
+  members: CommandPaletteMember[];
+  pods: CommandPalettePod[];
+  conversations: CommandPaletteConversation[];
   settings: CommandPaletteSetting[];
 }): CommandPaletteCategory[] {
   const categories: CommandPaletteCategory[] = [];
-  if (conversations.length > 0) {
-    categories.push("Conversations");
-  }
-  if (pods.length > 0) {
-    categories.push("Pods");
-  }
   if (agents.length > 0) {
     categories.push("Agents");
+  }
+  if (skills.length > 0) {
+    categories.push("Skills");
   }
   if (members.length > 0) {
     categories.push("Members");
   }
-  if (skills.length > 0) {
-    categories.push("Skills");
+  if (pods.length > 0) {
+    categories.push("Pods");
+  }
+  if (conversations.length > 0) {
+    categories.push("Conversations");
   }
   if (settings.length > 0) {
     categories.push("Settings");
@@ -403,14 +408,14 @@ export function CommandPaletteSearchPhase({
   const categoriesWithResults = useMemo(
     () =>
       getAvailableCategories({
-        conversations,
-        pods,
         agents,
-        members,
         skills,
+        members,
+        pods,
+        conversations,
         settings,
       }),
-    [conversations, pods, agents, members, skills, settings]
+    [agents, skills, members, pods, conversations, settings]
   );
 
   const hasSearchResults = categoriesWithResults.length > 0;
@@ -442,48 +447,48 @@ export function CommandPaletteSearchPhase({
     effectiveSelectedCategory === "All" ||
     effectiveSelectedCategory === "Conversations"
       ? conversations
-      : [];
+      : NO_ITEMS;
   const filteredPods =
     effectiveSelectedCategory === "All" || effectiveSelectedCategory === "Pods"
       ? pods
-      : [];
+      : NO_ITEMS;
   const filteredAgents =
     effectiveSelectedCategory === "All" ||
     effectiveSelectedCategory === "Agents"
       ? agents
-      : [];
+      : NO_ITEMS;
   const filteredMembers =
     effectiveSelectedCategory === "All" ||
     effectiveSelectedCategory === "Members"
       ? members
-      : [];
+      : NO_ITEMS;
   const filteredSkills =
     effectiveSelectedCategory === "All" ||
     effectiveSelectedCategory === "Skills"
       ? skills
-      : [];
+      : NO_ITEMS;
   const filteredSettings =
     effectiveSelectedCategory === "All" ||
     effectiveSelectedCategory === "Settings"
       ? settings
-      : [];
+      : NO_ITEMS;
 
   const searchFlatItems = useMemo(
     () =>
       getFlatItems(
-        filteredConversations,
-        filteredPods,
         filteredAgents,
-        filteredMembers,
         filteredSkills,
+        filteredMembers,
+        filteredPods,
+        filteredConversations,
         filteredSettings
       ),
     [
-      filteredConversations,
-      filteredPods,
       filteredAgents,
-      filteredMembers,
       filteredSkills,
+      filteredMembers,
+      filteredPods,
+      filteredConversations,
       filteredSettings,
     ]
   );
@@ -513,10 +518,6 @@ export function CommandPaletteSearchPhase({
     isEmptyQuery &&
     effectiveSelectedCategory === "All" &&
     frequentItems.length > 0;
-  const showDefaultEmptyHint =
-    isEmptyQuery &&
-    effectiveSelectedCategory === "All" &&
-    frequentItems.length === 0;
   const showDefaultActions = defaultActions.length > 0;
   const showQueryTooShortHint = isQueryTooShort;
 
@@ -570,15 +571,11 @@ export function CommandPaletteSearchPhase({
     }
   }
 
-  const podsOffset = filteredConversations.length;
-  const agentsOffset = podsOffset + filteredPods.length;
-  const membersOffset = agentsOffset + filteredAgents.length;
-  const skillsOffset = membersOffset + filteredMembers.length;
-  const settingsOffset = skillsOffset + filteredSkills.length;
-
-  const defaultEmptyHint = canSearchSettings
-    ? t`Type to search conversations, pods, agents, members, skills, and settings. Items you open will show up here for quick access.`
-    : t`Type to search conversations, pods, agents, members, and skills. Items you open will show up here for quick access.`;
+  const skillsOffset = filteredAgents.length;
+  const membersOffset = skillsOffset + filteredSkills.length;
+  const podsOffset = membersOffset + filteredMembers.length;
+  const conversationsOffset = podsOffset + filteredPods.length;
+  const settingsOffset = conversationsOffset + filteredConversations.length;
 
   const queryTooShortHint = t`Type to search.`;
 
@@ -597,7 +594,7 @@ export function CommandPaletteSearchPhase({
       case "Settings":
         return t`Type to search settings.`;
       case "All":
-        return defaultEmptyHint;
+        return t`Type to search.`;
     }
   })();
 
@@ -642,10 +639,6 @@ export function CommandPaletteSearchPhase({
               </ItemRow>
             ))}
           </div>
-        )}
-
-        {showDefaultEmptyHint && (
-          <ItemEmptyState>{defaultEmptyHint}</ItemEmptyState>
         )}
 
         {showCategoryCta && <ItemEmptyState>{categoryCtaHint}</ItemEmptyState>}
@@ -693,83 +686,52 @@ export function CommandPaletteSearchPhase({
           <ItemEmptyState>No results found.</ItemEmptyState>
         )}
 
-        {isSearchQueryReady && filteredConversations.length > 0 && (
+        {isSearchQueryReady && filteredAgents.length > 0 && (
           <div>
-            <ItemTitle>Conversations</ItemTitle>
-            {filteredConversations.map((conversation, i) => (
+            <ItemTitle>Agents</ItemTitle>
+            {filteredAgents.map((agent, i) => (
               <ItemRow
-                key={conversation.sId}
+                key={agent.sId}
                 ref={(el) => {
                   itemRefs.current[i] = el;
                 }}
                 isSelected={selectedIndex === i}
-                onClick={() =>
-                  onItemSelect({ kind: "conversation", conversation })
-                }
+                onClick={() => onItemSelect({ kind: "agent", agent })}
                 onMouseMove={() => onSelectedIndexChange(i)}
               >
-                <CommandPaletteItemContent
-                  item={{ kind: "conversation", conversation }}
-                />
+                <CommandPaletteItemContent item={{ kind: "agent", agent }} />
               </ItemRow>
             ))}
-            {hasMoreConversations && (
-              <div className="px-3 py-2 text-xs text-muted-foreground">
-                More conversations available. Type to filter.
-              </div>
-            )}
-          </div>
-        )}
-
-        {isSearchQueryReady && filteredPods.length > 0 && (
-          <div>
-            <ItemTitle>Pods</ItemTitle>
-            {filteredPods.map((pod, i) => {
-              const globalIndex = podsOffset + i;
-              return (
-                <ItemRow
-                  key={pod.sId}
-                  ref={(el) => {
-                    itemRefs.current[globalIndex] = el;
-                  }}
-                  isSelected={selectedIndex === globalIndex}
-                  onClick={() => onItemSelect({ kind: "pod", pod })}
-                  onMouseMove={() => onSelectedIndexChange(globalIndex)}
-                >
-                  <CommandPaletteItemContent item={{ kind: "pod", pod }} />
-                </ItemRow>
-              );
-            })}
-            {hasMorePods && (
-              <div className="px-3 py-2 text-xs text-muted-foreground">
-                More pods available. Type to filter.
-              </div>
-            )}
-          </div>
-        )}
-
-        {isSearchQueryReady && filteredAgents.length > 0 && (
-          <div>
-            <ItemTitle>Agents</ItemTitle>
-            {filteredAgents.map((agent, i) => {
-              const globalIndex = agentsOffset + i;
-              return (
-                <ItemRow
-                  key={agent.sId}
-                  ref={(el) => {
-                    itemRefs.current[globalIndex] = el;
-                  }}
-                  isSelected={selectedIndex === globalIndex}
-                  onClick={() => onItemSelect({ kind: "agent", agent })}
-                  onMouseMove={() => onSelectedIndexChange(globalIndex)}
-                >
-                  <CommandPaletteItemContent item={{ kind: "agent", agent }} />
-                </ItemRow>
-              );
-            })}
             {hasMoreAgents && (
               <div className="px-3 py-2 text-xs text-muted-foreground">
                 More agents available. Type to filter.
+              </div>
+            )}
+          </div>
+        )}
+
+        {isSearchQueryReady && filteredSkills.length > 0 && (
+          <div>
+            <ItemTitle>Skills</ItemTitle>
+            {filteredSkills.map((skill, i) => {
+              const globalIndex = skillsOffset + i;
+              return (
+                <ItemRow
+                  key={skill.sId}
+                  ref={(el) => {
+                    itemRefs.current[globalIndex] = el;
+                  }}
+                  isSelected={selectedIndex === globalIndex}
+                  onClick={() => onItemSelect({ kind: "skill", skill })}
+                  onMouseMove={() => onSelectedIndexChange(globalIndex)}
+                >
+                  <CommandPaletteItemContent item={{ kind: "skill", skill }} />
+                </ItemRow>
+              );
+            })}
+            {hasMoreSkills && (
+              <div className="px-3 py-2 text-xs text-muted-foreground">
+                More skills available. Type to filter.
               </div>
             )}
           </div>
@@ -804,28 +766,59 @@ export function CommandPaletteSearchPhase({
           </div>
         )}
 
-        {isSearchQueryReady && filteredSkills.length > 0 && (
+        {isSearchQueryReady && filteredPods.length > 0 && (
           <div>
-            <ItemTitle>Skills</ItemTitle>
-            {filteredSkills.map((skill, i) => {
-              const globalIndex = skillsOffset + i;
+            <ItemTitle>Pods</ItemTitle>
+            {filteredPods.map((pod, i) => {
+              const globalIndex = podsOffset + i;
               return (
                 <ItemRow
-                  key={skill.sId}
+                  key={pod.sId}
                   ref={(el) => {
                     itemRefs.current[globalIndex] = el;
                   }}
                   isSelected={selectedIndex === globalIndex}
-                  onClick={() => onItemSelect({ kind: "skill", skill })}
+                  onClick={() => onItemSelect({ kind: "pod", pod })}
                   onMouseMove={() => onSelectedIndexChange(globalIndex)}
                 >
-                  <CommandPaletteItemContent item={{ kind: "skill", skill }} />
+                  <CommandPaletteItemContent item={{ kind: "pod", pod }} />
                 </ItemRow>
               );
             })}
-            {hasMoreSkills && (
+            {hasMorePods && (
               <div className="px-3 py-2 text-xs text-muted-foreground">
-                More skills available. Type to filter.
+                More pods available. Type to filter.
+              </div>
+            )}
+          </div>
+        )}
+
+        {isSearchQueryReady && filteredConversations.length > 0 && (
+          <div>
+            <ItemTitle>Conversations</ItemTitle>
+            {filteredConversations.map((conversation, i) => {
+              const globalIndex = conversationsOffset + i;
+              return (
+                <ItemRow
+                  key={conversation.sId}
+                  ref={(el) => {
+                    itemRefs.current[globalIndex] = el;
+                  }}
+                  isSelected={selectedIndex === globalIndex}
+                  onClick={() =>
+                    onItemSelect({ kind: "conversation", conversation })
+                  }
+                  onMouseMove={() => onSelectedIndexChange(globalIndex)}
+                >
+                  <CommandPaletteItemContent
+                    item={{ kind: "conversation", conversation }}
+                  />
+                </ItemRow>
+              );
+            })}
+            {hasMoreConversations && (
+              <div className="px-3 py-2 text-xs text-muted-foreground">
+                More conversations available. Type to filter.
               </div>
             )}
           </div>

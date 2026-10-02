@@ -931,6 +931,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "discovery_homepage"
   | "localisation"
   | "co_edition"
+  | "unified_search"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

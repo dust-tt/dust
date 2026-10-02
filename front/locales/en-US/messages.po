@@ -17,6 +17,10 @@ msgstr ""
 msgid "How you appear to other members of the workspace"
 msgstr "How you appear to other members of the workspace"
 
+#: front/components/assistant/conversation/sidebar/UnifiedSearchNav.tsx
+msgid "New conversation"
+msgstr "New conversation"
+
 #: front/components/me/NotificationPreferences.tsx
 msgid "Error updating notification preferences"
 msgstr "Error updating notification preferences"
@@ -24,10 +28,6 @@ msgstr "Error updating notification preferences"
 #: front/components/me/PendingInvitationsTable.tsx
 msgid "Join"
 msgstr "Join"
-
-#: front/components/navigation/AdminSettingsSearchNav.tsx
-msgid "Search settings"
-msgstr "Search settings"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Enable Memory"
@@ -87,10 +87,6 @@ msgctxt "theme"
 msgid "Auto"
 msgstr "Auto"
 
-#: front/components/command_palette/CommandPaletteSearchPhase.tsx
-msgid "Type to search conversations, pods, agents, members, and skills. Items you open will show up here for quick access."
-msgstr "Type to search conversations, pods, agents, members, and skills. Items you open will show up here for quick access."
-
 #: front/components/UserSettingsPopover.tsx
 msgid "Font used for agent answers in conversations"
 msgstr "Font used for agent answers in conversations"
@@ -98,6 +94,11 @@ msgstr "Font used for agent answers in conversations"
 #: front/components/UserSettingsPopover.tsx
 msgid "It applies on this device, but could not be saved to your account."
 msgstr "It applies on this device, but could not be saved to your account."
+
+#: front/components/assistant/conversation/sidebar/UnifiedSearchNav.tsx
+#: front/components/navigation/AdminSettingsSearchNav.tsx
+msgid "Search"
+msgstr "Search"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Other channels"
@@ -275,10 +276,6 @@ msgstr "Type to search members."
 #: front/components/me/NotificationPreferences.tsx
 msgid "Mentions only"
 msgstr "Mentions only"
-
-#: front/components/command_palette/CommandPaletteSearchPhase.tsx
-msgid "Type to search conversations, pods, agents, members, skills, and settings. Items you open will show up here for quick access."
-msgstr "Type to search conversations, pods, agents, members, skills, and settings. Items you open will show up here for quick access."
 
 #: front/components/me/NotificationPreferences.tsx
 #: front/components/UserSettingsPopover.tsx
