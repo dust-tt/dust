@@ -333,10 +333,10 @@ export async function botReplaceMention(
 }
 
 /**
- * Groups a Slack user clicking a bot interaction acts with: none for a Dust member, the
+ * Groups a Slack user clicking a bot interaction acts with: none for a workspace member, the
  * whitelisted ones for an allowed external user. `null` when the user is not allowed, after they
- * were notified. A system-key call carrying the user's email without these groups is rejected
- * whenever the email matches no Dust member.
+ * were notified. Calls made on the user's behalf must carry these groups, since their email alone
+ * grants nothing to a non-member.
  */
 async function getInteractingSlackUserGroups(
   connector: ConnectorResource,
