@@ -1,4 +1,4 @@
-import { ManageAgentsPage } from "@app/components/pages/builder/agents/ManageAgentsPage";
+import { ManageAgentsPage } from "@app/components/pages/builder/agents/SearchAgentsPage";
 import { AssistantsDataTable } from "@app/components/poke/assistants/table";
 import { getModelFilterDisplayName } from "@app/components/shared/filter_panel/searchFilter";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";

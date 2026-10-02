@@ -31,7 +31,7 @@ const EditAgentPage = withSuspense(
 );
 const ManageAgentsPage = withSuspense(
   () =>
-    import("@dust-tt/front/components/pages/builder/agents/ManageAgentsPage"),
+    import("@dust-tt/front/components/pages/builder/agents/SearchAgentsPage"),
   "ManageAgentsPage"
 );
 const NewAgentPage = withSuspense(
@@ -49,7 +49,7 @@ const EditSkillPage = withSuspense(
 );
 const ManageSkillsPage = withSuspense(
   () =>
-    import("@dust-tt/front/components/pages/builder/skills/ManageSkillsPage"),
+    import("@dust-tt/front/components/pages/builder/skills/SearchSkillsPage"),
   "ManageSkillsPage"
 );
 
