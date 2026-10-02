@@ -134,7 +134,7 @@ async function setupSettledMessageWithUsage({
 describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getLlmCredentials).mockResolvedValue({} as never);
+    vi.mocked(getLlmCredentials).mockResolvedValue({});
     vi.mocked(tokenCountForTexts).mockImplementation(
       async (texts) => new Ok(texts.map(() => TOKENS_PER_FOOTPRINT))
     );
