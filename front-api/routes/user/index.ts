@@ -89,6 +89,7 @@ const app = sessionApp();
  *                   type: string
  *               emailProvider:
  *                 type: string
+ *                 enum: [google, microsoft, other]
  *               workspaceId:
  *                 type: string
  *     responses:

@@ -1,5 +1,4 @@
 import { Authenticator } from "@app/lib/auth";
-import { UserMessageModel } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -52,13 +51,22 @@ function postFollowUp(
 }
 
 async function listUserMessageContents(
-  workspace: WorkspaceType,
+  auth: Authenticator,
   conversation: ConversationWithoutContentType
 ): Promise<string[]> {
-  const rows = await UserMessageModel.findAll({
-    where: { workspaceId: workspace.id, conversationId: conversation.id },
+  const conversationResource = await ConversationResource.fetchById(
+    auth,
+    conversation.sId
+  );
+  if (!conversationResource) {
+    throw new Error("Conversation not found");
+  }
+  const { messages } = await conversationResource.fetchMessagesForPage(auth, {
+    limit: 10,
   });
-  return rows.map((r) => r.content);
+  return messages.flatMap((m) =>
+    m.userMessage ? [m.userMessage.content] : []
+  );
 }
 
 describe("POST /api/w/:wId/assistant/conversations/:cId/onboarding-followup", () => {
@@ -74,7 +82,7 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/onboarding-followup", ()
     });
 
     expect(response.status).toBe(200);
-    const contents = await listUserMessageContents(workspace, conversation);
+    const contents = await listUserMessageContents(auth, conversation);
     expect(contents).toHaveLength(1);
     expect(contents[0]).toContain("You MUST respond in fr.");
   });
@@ -102,7 +110,7 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/onboarding-followup", ()
     const response = await postFollowUp(workspace, conversation.sId);
 
     expect(response.status).toBe(404);
-    expect(await listUserMessageContents(workspace, conversation)).toEqual([]);
+    expect(await listUserMessageContents(auth, conversation)).toEqual([]);
   });
 
   it("drops an Accept-Language value that is not a bare language code", async () => {
@@ -117,7 +125,7 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/onboarding-followup", ()
     });
 
     expect(response.status).toBe(200);
-    const contents = await listUserMessageContents(workspace, conversation);
+    const contents = await listUserMessageContents(auth, conversation);
     expect(contents).toHaveLength(1);
     expect(contents[0]).not.toContain("Ignore previous");
     expect(contents[0]).not.toContain("You MUST respond in");

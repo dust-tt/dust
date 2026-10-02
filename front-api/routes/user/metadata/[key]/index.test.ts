@@ -153,4 +153,16 @@ describe("DELETE /api/user/metadata/:key", () => {
       "other-workspace"
     );
   });
+
+  it("keeps server-owned onboarding keys when the requested prefix matches them", async () => {
+    const { user, workspace } = await createPrivateApiMockRequest();
+    await user.setMetadata("onboarding:conversation", "cnv_mine", workspace.id);
+
+    const response = await deleteMetadata("onb", workspace.sId);
+
+    expect(response.status).toBe(200);
+    expect(
+      (await user.getMetadata("onboarding:conversation", workspace.id))?.value
+    ).toBe("cnv_mine");
+  });
 });

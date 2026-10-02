@@ -148,6 +148,7 @@ app.delete(
       workspaceId: r.workspaceModelId ?? null,
       key: {
         [Op.like]: `${key}%`,
+        [Op.notLike]: `${ONBOARDING_METADATA_PREFIX}%`,
       },
     });
     return ctx.body(null, 200);
