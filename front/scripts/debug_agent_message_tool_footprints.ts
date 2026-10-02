@@ -21,8 +21,10 @@ import {
 } from "@app/lib/api/assistant/agent_message_consumption_attribution/enabled_skill_footprint";
 import { toolCallFootprintTexts } from "@app/lib/api/assistant/agent_message_consumption_attribution/tool_footprint";
 import { getAttachmentCapabilityContext } from "@app/lib/api/assistant/conversation/attachment_capabilities";
-import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
-import { inferenceRegionForEndpointRegion } from "@app/lib/api/llm/transitionLLM";
+import {
+  computeTokensCostForUsageInMicroUsd,
+  inferenceRegionForEndpointRegion,
+} from "@app/lib/api/assistant/token_pricing";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { Authenticator } from "@app/lib/auth";
 import { buildAgentMessageBillingPlan } from "@app/lib/credits/agent_message_billing";

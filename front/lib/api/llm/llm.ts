@@ -128,7 +128,6 @@ export abstract class LLM<
     this.metadata = {
       clientId: providerId,
       inferenceProvider: providerId,
-      inferenceRegion: "global",
       modelId: this.modelId,
     };
 
@@ -729,7 +728,7 @@ export abstract class LLM<
             this.modelId,
             {
               isBatch: true,
-              inferenceRegion: this.metadata.inferenceRegion,
+              region: this.metadata.region ?? null,
               usageType,
               useWorkspaceCredentials,
             }
@@ -926,7 +925,6 @@ export abstract class LLM<
     const lifecycle = await LLMRunLifecycle.start(this.authenticator, {
       dustRunId: this.traceId,
       inferenceProvider: this.metadata.inferenceProvider,
-      inferenceRegion: this.metadata.inferenceRegion,
       modelId: this.modelId,
       providerId: this.modelConfig.providerId,
       region: this.metadata.region ?? null,
