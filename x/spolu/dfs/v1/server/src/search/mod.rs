@@ -106,6 +106,13 @@ impl Search {
         }
         cache.push_back((workspace.to_owned(), table));
     }
+    /// @cc [owner:spolu,label:concurrency] publish-index-handle
+    /// After committing, the worker MUST replace any cached handle for this workspace before clearing
+    /// pending work. An older handle reopened during eviction MUST NOT hide the new commit indefinitely.
+    async fn publish_table(&self, workspace: &str, table: Table) {
+        let mut cache = self.tables.lock().await;
+        Self::remember(&mut cache, self.table_limit, workspace, table);
+    }
     async fn create_table(&self, workspace: &str) -> Result<Table, Status> {
         let mut cache = self.tables.lock().await;
         let table = self

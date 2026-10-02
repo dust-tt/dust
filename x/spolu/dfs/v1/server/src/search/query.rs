@@ -103,6 +103,13 @@ impl Authorization {
                 break *allowed;
             }
             path.push(id.clone());
+            if record
+                .parent
+                .as_ref()
+                .is_some_and(|parent| self.access.get(&parent.id) == Some(&true))
+            {
+                break true;
+            }
             self.grant_checks += 1;
             if self.view.attached(id).await? {
                 break true;
@@ -202,6 +209,10 @@ impl Search {
                     for row in 0..batch.num_rows() {
                         count += 1;
                         let id = ids.value(row);
+                        if seen.len() >= 4096 && !seen.contains(id) {
+                            response.partial = true;
+                            return Ok(());
+                        }
                         if !seen.insert(id.to_owned()) {
                             continue;
                         }

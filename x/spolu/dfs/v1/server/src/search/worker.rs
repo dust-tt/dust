@@ -230,6 +230,7 @@ impl Search {
             if optimize {
                 table.optimize(OptimizeAction::All).await.map_err(failed)?;
             }
+            self.publish_table(workspace, table.clone()).await;
             Ok::<(), Status>(())
         }
         .await;

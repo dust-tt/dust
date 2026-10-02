@@ -30,6 +30,10 @@ struct Fixture {
 }
 impl Fixture {
     async fn new() -> Result<Self> {
+        let _ = tracing_subscriber::fmt()
+            .with_env_filter("error")
+            .with_test_writer()
+            .try_init();
         let dir = tempfile::tempdir()?;
         let storage = Storage::open(
             Arc::new(InMemory::new()),
@@ -309,7 +313,11 @@ async fn live_grants_filters_stale_rows_and_idempotent_replay() -> Result<()> {
     let view = f.view().await?;
     let document = index::extract(&view, view.object(&file.id).await?).await?;
     let table = f.search.table("test").await?;
+    // Reopening during an in-flight commit can leave a different cached table handle behind.
+    f.search.tables.lock().await.clear();
+    let _reopened = f.search.table("test").await?;
     index::commit(&table, &[document], &[]).await?;
+    f.search.publish_table("test", table.clone()).await;
     assert_eq!(
         f.find(&f.session.session_key, "novelword", None)
             .await?
@@ -554,5 +562,57 @@ async fn oversampling_cross_workspace_and_directory_moves() -> Result<()> {
         )?)
         .await;
     assert!(denied.is_err());
+    f.api.0.storage.close().await
+}
+
+#[tokio::test]
+async fn discarded_index_rebuilds_and_candidate_exhaustion_is_partial() -> Result<()> {
+    let f = Fixture::new().await?;
+    let file = f.create(&f.workspace.root_id, "rebuild", false).await?;
+    f.write(&file, b"rebuiltneedle").await?;
+    f.index().await?;
+    f.search
+        .connection
+        .drop_table(Search::name("test"), &[])
+        .await?;
+    f.search.tables.lock().await.clear();
+    f.index().await?;
+    assert_eq!(
+        f.find(&f.session.session_key, "rebuiltneedle", None)
+            .await?
+            .hits
+            .len(),
+        1
+    );
+    // This batch is deliberately larger than the request budget, with no accessible candidates.
+    for index in 0..4100 {
+        f.create(&f.workspace.root_id, &format!("candidate{index}"), false)
+            .await?;
+    }
+    f.api.0.storage.flush().await?;
+    let view = f.view().await?;
+    let records = view.rows(view.keys.objects(), None, 5000).await?;
+    let mut documents = Vec::new();
+    for (_, bytes) in records {
+        let record: crate::model::Record = decode(&bytes)?;
+        if !record.object.directory {
+            documents.push(index::extract(&view, record).await?);
+        }
+    }
+    index::commit(&f.search.table("test").await?, &documents, &[]).await?;
+    let none = f
+        .api
+        .create_session(request(
+            &f.workspace.workspace_key,
+            CreateSessionRequest {
+                workspace_id: "test".into(),
+                grants: vec![],
+            },
+        )?)
+        .await?
+        .into_inner();
+    let result = f.find(&none.session_key, "", None).await?;
+    assert!(result.hits.is_empty());
+    assert!(result.partial);
     f.api.0.storage.close().await
 }
