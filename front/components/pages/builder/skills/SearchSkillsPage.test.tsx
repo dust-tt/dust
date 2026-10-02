@@ -34,7 +34,15 @@ beforeEach(() => {
   }
 });
 
-const push = vi.hoisted(() => vi.fn());
+const { push, patch, notify } = vi.hoisted(() => ({
+  push: vi.fn(),
+  patch: vi.fn(),
+  notify: vi.fn(),
+}));
+vi.mock("@app/hooks/useNotification", () => ({
+  useSendNotification: () => notify,
+}));
+vi.mock("@app/lib/egress/client", () => ({ clientFetch: patch }));
 
 vi.mock("@app/lib/platform", () => ({
   useAppRouter: () => ({
@@ -69,15 +77,18 @@ vi.mock("@app/components/skills/SkillsBatchEdit", async (importOriginal) => ({
 
 afterEach(() => {
   window.history.replaceState({}, "", "/");
+  vi.clearAllMocks();
   vi.unstubAllGlobals();
 });
 
 async function setup({
   skillStatus = "active",
   role = "admin",
+  withSuggestion = false,
 }: {
   skillStatus?: SkillStatus;
   role?: MembershipRoleType;
+  withSuggestion?: boolean;
 } = {}) {
   const { authenticator, user } = await createResourceTest({ role });
   const resource = await SkillFactory.create(authenticator, {
@@ -104,6 +115,14 @@ async function setup({
       childSkills: [],
     },
   };
+  const suggestedSkill = {
+    ...fullSkill,
+    sId: "suggested-skill",
+    name: "Suggested report",
+    status: "suggested" as const,
+  };
+  let dismissed = false;
+  patch.mockResolvedValue({ ok: true });
   const context: AuthContextValue = {
     workspace: authenticator.getNonNullableWorkspace(),
     user: user.toJSON(),
@@ -167,6 +186,9 @@ async function setup({
       url.endsWith("/skills/availability")
     ) {
       await mutation();
+      if (url.includes("/suggested-skill")) {
+        dismissed = true;
+      }
       return {};
     }
     if (url.endsWith("/skills/import")) {
@@ -188,8 +210,19 @@ async function setup({
     if (url.includes(`/skills/${skill.sId}`)) {
       return { skill: fullSkill };
     }
+    if (url.endsWith("/suggested-skill/editors")) {
+      return { editors: [] };
+    }
+    if (url.includes("/suggested-skill")) {
+      return { skill: suggestedSkill };
+    }
     if (url.includes("/skills?")) {
-      return { skills: [] };
+      return {
+        skills:
+          withSuggestion && !dismissed && url.includes("status=suggested")
+            ? [suggestedSkill]
+            : [],
+      };
     }
     if (url.endsWith("/spaces")) {
       return { spaces: [] };
@@ -220,6 +253,7 @@ async function setup({
   return {
     skill,
     fullSkill,
+    suggestedSkill,
     context,
     search,
     fetcher,
@@ -232,6 +266,116 @@ async function setup({
 }
 
 describe("search-backed Manage Skills", () => {
+  it("shows suggestions only in the editable Workspace tab", async () => {
+    const { mount } = await setup({ withSuggestion: true });
+    mount();
+    await screen.findByText("Suggested report");
+    await userEvent.click(screen.getByRole("tab", { name: "Dust" }));
+    expect(screen.queryByText("Suggested skills")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("tab", { name: "Archived" }));
+    expect(screen.queryByText("Suggested skills")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("tab", { name: "Workspace" }));
+    await screen.findByText("Suggested report");
+  });
+
+  it("hides suggestions when filtering by availability", async () => {
+    const { mount } = await setup({ withSuggestion: true });
+    mount();
+    await screen.findByText("Suggested report");
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Members" }));
+    await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(screen.queryByText("Suggested skills")).not.toBeInTheDocument();
+  });
+
+  it("does not fetch suggestions without skill-creation permission", async () => {
+    const { mount, fetcher, context } = await setup({ withSuggestion: true });
+    context.workspacePermissions = {
+      ...context.workspacePermissions,
+      skill: [],
+    };
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+    expect(screen.queryByText("Suggested skills")).not.toBeInTheDocument();
+    expect(
+      fetcher.mock.calls.some(([url]) => url.includes("status=suggested"))
+    ).toBe(false);
+  });
+
+  it("opens suggestion details without adopting it", async () => {
+    const { mount, fetcher } = await setup({ withSuggestion: true });
+    mount();
+    await userEvent.click(await screen.findByText("Suggested report"));
+    await waitFor(() =>
+      expect(fetcher).toHaveBeenCalledWith(
+        expect.stringContaining("/skills/suggested-skill?withRelations=true")
+      )
+    );
+    expect(patch).not.toHaveBeenCalled();
+  });
+
+  it("does not fetch suggestions in read-only views", async () => {
+    const { mount, fetcher } = await setup({ withSuggestion: true });
+    mount(<ManageSkillsPage readOnly />);
+    await screen.findByRole("button", { name: /Weekly report/ });
+    expect(screen.queryByText("Suggested skills")).not.toBeInTheDocument();
+    expect(
+      fetcher.mock.calls.some(([url]) => url.includes("status=suggested"))
+    ).toBe(false);
+  });
+
+  it("opens the builder only after successfully adopting a suggestion", async () => {
+    const { mount, context, suggestedSkill } = await setup({
+      withSuggestion: true,
+    });
+    mount();
+    const add = await screen.findByRole("button", { name: "Add skill" });
+    patch.mockResolvedValueOnce({ ok: false });
+    await userEvent.click(add);
+    await waitFor(() =>
+      expect(notify).toHaveBeenCalledWith({
+        type: "error",
+        title: "Failed to update editors",
+      })
+    );
+    expect(push).not.toHaveBeenCalled();
+    await userEvent.click(add);
+    await waitFor(() =>
+      expect(push).toHaveBeenCalledWith(
+        `/w/${context.workspace.sId}/builder/skills/${suggestedSkill.sId}`
+      )
+    );
+    expect(patch).toHaveBeenLastCalledWith(
+      `/api/w/${context.workspace.sId}/skills/${suggestedSkill.sId}/editors`,
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({
+          addEditorIds: [context.user.sId],
+          removeEditorIds: [],
+        }),
+      })
+    );
+  });
+
+  it("dismisses suggestions through the archive confirmation", async () => {
+    const { mount, fetcher } = await setup({ withSuggestion: true });
+    mount();
+    await screen.findByText("Suggested report");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Dismiss suggested skill" })
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Archive for everyone" })
+    );
+    await waitFor(() =>
+      expect(screen.queryByText("Suggested report")).not.toBeInTheDocument()
+    );
+    expect(fetcher).toHaveBeenCalledWith(
+      expect.stringContaining("/skills/suggested-skill"),
+      { method: "DELETE" }
+    );
+  });
+
   it("applies hidden skills from the filter popover and clears the active chip", async () => {
     const { fetcherWithBody, facetSearch, mount } = await setup();
     mount();
@@ -483,7 +627,9 @@ describe("search-backed Manage Skills", () => {
     await userEvent.click(
       screen.getByRole("checkbox", { name: `${context.user.fullName} (You)` })
     );
-    expect(fetcher).not.toHaveBeenCalled();
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
+      expect.stringContaining("status=suggested"),
+    ]);
 
     await userEvent.click(screen.getByRole("tab", { name: "Tools" }));
     await userEvent.click(
@@ -782,7 +928,9 @@ describe("search-backed Manage Skills", () => {
       },
       "POST",
     ]);
-    expect(fetcher).not.toHaveBeenCalled();
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
+      expect.stringContaining("status=suggested"),
+    ]);
 
     const skillButton = screen.getByRole("button", { name: /Weekly report/ });
     const user = userEvent.setup();
@@ -1213,7 +1361,9 @@ describe("search-backed Manage Skills", () => {
     });
     await userEvent.click(screen.getByRole("button", { name: "Retry" }));
     await screen.findByText("No skills to show.");
-    expect(fetcher).not.toHaveBeenCalled();
+    expect(fetcher.mock.calls.map(([url]) => url)).toEqual([
+      expect.stringContaining("status=suggested"),
+    ]);
   });
 });
 

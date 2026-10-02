@@ -2,6 +2,7 @@ import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
 import { useAppRouter } from "@app/lib/platform";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useUpdateSkillEditors } from "@app/lib/swr/skill_editors";
+import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { SkillWithoutInstructionsAndToolsWithRelationsType } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
@@ -22,6 +23,11 @@ type SuggestedSkillCardProps = {
   user: UserType;
 };
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] adopt-before-edit
+ * The Add skill action MUST open the builder only after adding the current user
+ * as an editor succeeds. Failed adoption MUST leave the user on the management page.
+ */
 function SuggestedSkillCard({
   skill,
   onMoreInfoClick,
@@ -40,11 +46,18 @@ function SuggestedSkillCard({
   const handleAddSkillClick = async () => {
     setIsAddingSkill(true);
     try {
-      await updateSkillEditors({
+      const success = await updateSkillEditors({
         addEditorIds: [user.sId],
         removeEditorIds: [],
       });
-      void router.push(getSkillBuilderRoute(owner.sId, skill.sId));
+      if (success) {
+        trackEvent({
+          area: TRACKING_AREAS.SKILLS,
+          object: "suggested_skill_adopt",
+          extra: { skill_id: skill.sId },
+        });
+        void router.push(getSkillBuilderRoute(owner.sId, skill.sId));
+      }
     } finally {
       setIsAddingSkill(false);
     }
@@ -65,6 +78,7 @@ function SuggestedSkillCard({
           <CardActionButton
             size="icon"
             icon={XClose}
+            tooltip="Dismiss suggested skill"
             onClick={(e) => {
               e.stopPropagation();
               setIsArchiveDialogOpen(true);

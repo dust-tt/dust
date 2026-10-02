@@ -1,3 +1,4 @@
+import { sortSkillsByName } from "@app/components/pages/builder/skills/utils";
 import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
 import {
   clearFilterCategory,
@@ -15,6 +16,7 @@ import {
   BatchAvailabilityDialog,
   SkillsBatchEditBar,
 } from "@app/components/skills/SkillsBatchEdit";
+import { SuggestedSkillsSection } from "@app/components/skills/SuggestedSkillsSection";
 import {
   SKILL_FILTER_CATEGORIES,
   SKILL_FILTER_CATEGORY_FACET,
@@ -32,6 +34,7 @@ import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
   useSearchSkills,
+  useSkillsWithRelations,
   useUpdateSkillsAvailability,
 } from "@app/lib/swr/skill_configurations";
 import type {
@@ -291,6 +294,11 @@ interface ManageSkillsPageProps {
  * In readOnly mode, built-in creation, batch-edit and detail controls MUST NOT render.
  * Table and facet requests MUST use the same searchEndpoint when supplied.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:product] suggested-skills-visibility
+ * Suggested skill controls MUST only appear on the editable Workspace tab for users
+ * with skill-creation permission, when no availability filter is selected.
+ */
 export function ManageSkillsPage({
   readOnly = false,
   showHeader = true,
@@ -347,6 +355,16 @@ export function ManageSkillsPage({
     });
   const filter = resolveFilter(toSkillSearchFilterFacets(selectionFacets));
   const searchFilters = toSkillSearchFilters(filter);
+  const showSuggestedSkills =
+    !readOnly &&
+    selectedTab === "all" &&
+    hasPermission("create", "skill") &&
+    !pendingFilter.availability?.length;
+  const { skillsWithRelations: suggestedSkills } = useSkillsWithRelations({
+    owner,
+    status: "suggested",
+    disabled: !showSuggestedSkills,
+  });
   useSetContentWidth("wide");
   useSetPageTitle("Dust - Manage Skills");
 
@@ -459,6 +477,14 @@ export function ManageSkillsPage({
               setShowHiddenSkills(false);
             }}
           />
+          {showSuggestedSkills && (
+            <SuggestedSkillsSection
+              skills={sortSkillsByName(suggestedSkills)}
+              onSkillClick={(skill) => setSkillId(skill.sId)}
+              owner={owner}
+              user={user}
+            />
+          )}
           <SkillsList
             readOnly={readOnly}
             searchEndpoint={searchEndpoint}
