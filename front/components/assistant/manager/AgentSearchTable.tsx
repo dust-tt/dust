@@ -150,7 +150,8 @@ function AgentSearchTagSelector({
 /**
  * @cc [owner:aubin-tchoi,label:product] mobile-table-layout
  * Below 768px viewport width, names MUST fill the available column width and row actions
- * MUST remain visible. At 768px and above, preserve the existing container-based layout.
+ * MUST remain visible. Usage, Model and Last edited MUST appear as the table reaches
+ * 384px, 512px and 640px respectively. At 768px and above, preserve the existing layout.
  */
 /**
  * @cc [owner:tdraier,label:react;performance] stable-columns
@@ -330,7 +331,8 @@ export function AgentSearchTable({
             <AgentSearchModelCell model={agent.model} isDark={isDark} />
           ),
           meta: {
-            className: "hidden md:@sm:w-28 md:@sm:table-cell md:@xl:w-32",
+            className:
+              "hidden w-28 max-md:@xs:table-cell @sm:table-cell @xl:w-32",
           },
         },
         {
@@ -356,7 +358,7 @@ export function AgentSearchTable({
           ),
           meta: {
             type: "numeric",
-            className: "hidden md:@sm:w-24 md:@sm:table-cell",
+            className: "hidden w-24 max-md:@xxs:table-cell @sm:table-cell",
           },
         },
         {
@@ -430,7 +432,7 @@ export function AgentSearchTable({
           cell: ({ row: { original: agent } }) => (
             <SkillLastEditedCell updatedAt={agent.updatedAt} emptyLabel="-" />
           ),
-          meta: { className: "hidden md:@sm:w-32 md:@sm:table-cell" },
+          meta: { className: "hidden w-32 @sm:table-cell" },
         },
         {
           id: "actions" as const,
