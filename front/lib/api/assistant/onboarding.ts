@@ -145,6 +145,16 @@ function getToolsForOnboarding(
   return tools;
 }
 
+/**
+ * @cc [owner:avervaet,label:security] bare-language-code-only
+ * Returns the trimmed input only when it is a 2-3 letter language code, and null otherwise. Every
+ * caller-provided language interpolated into an onboarding prompt MUST go through this first.
+ */
+function toLanguageCode(language: string | null): string | null {
+  const code = language?.trim();
+  return code && /^[a-z]{2,3}$/i.test(code) ? code : null;
+}
+
 function buildOnboardingPrompt(options: {
   emailProvider: EmailProviderType;
   userJobType: string | null;
@@ -209,8 +219,9 @@ function buildOnboardingPrompt(options: {
         suggestedTopToolNames
       );
 
-  const languageInstruction = options.language
-    ? `\n## LANGUAGE\n\nYou MUST respond in ${options.language}. All your messages, including greetings, instructions, and button labels, must be in ${options.language}.\n`
+  const language = toLanguageCode(options.language);
+  const languageInstruction = language
+    ? `\n## LANGUAGE\n\nYou MUST respond in ${language}. All your messages, including greetings, instructions, and button labels, must be in ${language}.\n`
     : "";
 
   return `<dust_system>
@@ -440,8 +451,9 @@ export function buildOnboardingFollowUpPrompt(
     TOOL_TASK_SUGGESTIONS[toolId] ?? DEFAULT_AUTO_QUERY_GUIDANCE;
   const toolName = asDisplayName(toolId);
 
-  const languageInstruction = language
-    ? `\n**IMPORTANT:** You MUST respond in ${language}. All your messages must be in ${language}.\n`
+  const languageCode = toLanguageCode(language);
+  const languageInstruction = languageCode
+    ? `\n**IMPORTANT:** You MUST respond in ${languageCode}. All your messages must be in ${languageCode}.\n`
     : "";
 
   return `<dust_system>

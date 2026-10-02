@@ -1,4 +1,5 @@
 import { fetchUserFromSession } from "@app/lib/iam/users";
+import { SERVER_OWNED_USER_METADATA_PREFIX } from "@app/lib/onboarding";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -115,6 +116,16 @@ app.post(
     }
 
     const { key } = ctx.req.valid("param");
+    if (key.startsWith(SERVER_OWNED_USER_METADATA_PREFIX)) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "This metadata key cannot be set.",
+        },
+      });
+    }
+
     const { value } = ctx.req.valid("json");
     await r.user.setMetadata(key, value, r.workspaceModelId);
     return ctx.json({ metadata: { key, value } });

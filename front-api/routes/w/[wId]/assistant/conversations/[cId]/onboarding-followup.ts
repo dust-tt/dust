@@ -1,6 +1,7 @@
 import { isInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
 import { buildOnboardingFollowUpPrompt } from "@app/lib/api/assistant/onboarding";
+import { isUserOnboardingConversation } from "@app/lib/onboarding";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
@@ -45,10 +46,13 @@ app.post(
       });
     }
 
-    const conversationResource = await ConversationResource.fetchById(
+    const isOnboardingConversation = await isUserOnboardingConversation(
       auth,
       conversationId
     );
+    const conversationResource = isOnboardingConversation
+      ? await ConversationResource.fetchById(auth, conversationId)
+      : null;
     if (!conversationResource) {
       return apiError(ctx, {
         status_code: 404,
