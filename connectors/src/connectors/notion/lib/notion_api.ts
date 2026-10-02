@@ -653,6 +653,7 @@ export const getBlockParentMemoized = cacheWithRedis(
   (
     notionAccessToken: string,
     blockId: string,
+    // Unused, kept to match getBlockParent's signature for memoization.
     localLogger: Logger,
     onProgress?: () => Promise<void>
   ) => {
