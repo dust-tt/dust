@@ -438,13 +438,13 @@ impl LocalTable {
             "DSSTRUCTSTAT [upsert_rows] validation"
         );
 
-        self.upsert_rows_to_gcs_or_queue_work(
-            &store,
-            &databases_store,
-            rows.as_ref().clone(),
-            truncate,
-        )
-        .await?;
+        // The validation task has completed and dropped its reference, so we can take the rows
+        // back without deep-cloning them (which would double peak memory for large tables).
+        let rows = Arc::try_unwrap(rows)
+            .map_err(|_| anyhow!("Rows are still shared after validation in upsert_rows"))?;
+
+        self.upsert_rows_to_gcs_or_queue_work(&store, &databases_store, rows, truncate)
+            .await?;
 
         Ok(())
     }
