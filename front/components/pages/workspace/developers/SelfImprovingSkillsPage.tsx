@@ -82,28 +82,26 @@ export function SelfImprovingSkillsPage() {
 
   return (
     <AdminPageContainer>
-      <div className="mb-4">
-        <Page.Vertical gap="xl" align="stretch">
-          <Page.Header
-            title="Self-Improving Skills"
-            description={
-              <span>
-                Configure self-improving skills settings for this workspace.{" "}
-                <a
-                  href="https://docs.dust.tt/docs/self-improving-skills"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-highlight underline"
-                >
-                  Learn more
-                </a>
-                .
-              </span>
-            }
-          />
-          {renderBody()}
-        </Page.Vertical>
-      </div>
+      <Page.Vertical gap="xl" align="stretch">
+        <Page.Header
+          title="Self-Improving Skills"
+          description={
+            <span>
+              Configure self-improving skills settings for this workspace.{" "}
+              <a
+                href="https://docs.dust.tt/docs/self-improving-skills"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-highlight underline"
+              >
+                Learn more
+              </a>
+              .
+            </span>
+          }
+        />
+        {renderBody()}
+      </Page.Vertical>
     </AdminPageContainer>
   );
 }

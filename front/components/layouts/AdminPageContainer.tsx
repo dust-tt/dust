@@ -13,10 +13,12 @@ export function AdminPageContainer({
 }: AdminPageContainerProps) {
   useAdminSectionHighlight();
 
+  // `shrink-0`: the container is a flex item of the scrolling column; without it
+  // `min-h-full` lets it shrink to the viewport and the bottom padding is lost.
   return (
     <div
       className={cn(
-        "mx-auto flex min-h-full w-full max-w-6xl flex-col px-4 py-4 sm:px-10 sm:py-8",
+        "mx-auto flex min-h-full w-full max-w-6xl shrink-0 flex-col px-4 py-4 sm:px-10 sm:py-8",
         className
       )}
     >
