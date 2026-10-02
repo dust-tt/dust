@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
@@ -6,6 +7,7 @@ import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory"
 import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
@@ -385,6 +387,105 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/suggestions", ()
     );
     expect(fetched1?.state).toBe("approved");
     expect(fetched2?.state).toBe("approved");
+  });
+});
+
+describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/suggestions - additions", () => {
+  async function expectApprovalRefused(
+    workspace: { sId: string },
+    auth: Authenticator,
+    agent: { sId: string },
+    suggestion: AgentSuggestionResource
+  ) {
+    const response = await patchSuggestions(workspace, agent.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.type).toBe("invalid_request_error");
+    const fetched = await AgentSuggestionResource.fetchById(
+      auth,
+      suggestion.sId
+    );
+    expect(fetched?.state).toBe("pending");
+  }
+
+  it("approves adding a skill that is still active", async () => {
+    const { workspace, auth, agent } = await setupTest();
+    const skill = await SkillFactory.create(auth);
+    const suggestion = await AgentSuggestionFactory.createSkills(auth, agent, {
+      suggestion: { action: "add", skillId: skill.sId },
+    });
+
+    const response = await patchSuggestions(workspace, agent.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+    });
+
+    expect(response.status).toBe(200);
+  });
+
+  it("refuses to approve adding a skill archived since it was suggested", async () => {
+    const { workspace, auth, agent } = await setupTest();
+    const skill = await SkillFactory.create(auth);
+    const suggestion = await AgentSuggestionFactory.createSkills(auth, agent, {
+      suggestion: { action: "add", skillId: skill.sId },
+    });
+    await skill.archive(auth);
+
+    await expectApprovalRefused(workspace, auth, agent, suggestion);
+  });
+
+  it("still rejects a suggestion adding a skill archived since it was suggested", async () => {
+    const { workspace, auth, agent } = await setupTest();
+    const skill = await SkillFactory.create(auth);
+    const suggestion = await AgentSuggestionFactory.createSkills(auth, agent, {
+      suggestion: { action: "add", skillId: skill.sId },
+    });
+    await skill.archive(auth);
+
+    const response = await patchSuggestions(workspace, agent.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "rejected",
+    });
+
+    expect(response.status).toBe(200);
+  });
+
+  it("refuses to approve adding a sub-agent archived since it was suggested", async () => {
+    const { workspace, auth, agent } = await setupTest();
+    const childAgent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Child Agent",
+    });
+    const suggestion = await AgentSuggestionFactory.createSubAgent(
+      auth,
+      agent,
+      {
+        suggestion: {
+          action: "add",
+          toolId: "run_agent",
+          childAgentId: childAgent.sId,
+        },
+      }
+    );
+    const childAgentResource = await AgentResource.fetchById(
+      auth,
+      childAgent.sId
+    );
+    expect(childAgentResource).not.toBeNull();
+    await childAgentResource?.archive(auth);
+
+    await expectApprovalRefused(workspace, auth, agent, suggestion);
+  });
+
+  it("refuses to approve adding a tool that is no longer accessible", async () => {
+    const { workspace, auth, agent } = await setupTest();
+    const suggestion = await AgentSuggestionFactory.createTools(auth, agent, {
+      suggestion: { action: "add", toolId: "mcp_server_view_gone" },
+    });
+
+    await expectApprovalRefused(workspace, auth, agent, suggestion);
   });
 });
 

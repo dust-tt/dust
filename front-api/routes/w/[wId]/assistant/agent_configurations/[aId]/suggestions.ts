@@ -1,3 +1,16 @@
+import {
+  checkSkillAddition,
+  fetchSuggestableSkills,
+} from "@app/lib/api/assistant/suggestable_skills";
+import {
+  checkSubAgentAddition,
+  fetchSuggestableSubAgents,
+} from "@app/lib/api/assistant/suggestable_sub_agents";
+import {
+  checkToolAddition,
+  fetchSuggestableTools,
+} from "@app/lib/api/assistant/suggestable_tools";
+import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type {
@@ -5,6 +18,8 @@ import type {
   PatchSuggestionResponseBody,
 } from "@app/types/api/assistant/agent_suggestion";
 import { PatchSuggestionRequestBodySchema } from "@app/types/api/assistant/agent_suggestion";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -26,6 +41,50 @@ const GetSuggestionsQuerySchema = z.object({
 const ParamsSchema = z.object({
   aId: z.string(),
 });
+
+/**
+ * Accepting a Sidekick suggestion lets the builder apply it as recorded, so a tool, skill or
+ * sub-agent it adds is checked again against live state: it may have stopped qualifying (archived,
+ * restricted to skills, access lost) since the suggestion was recorded.
+ */
+async function checkSuggestedAdditions(
+  auth: Authenticator,
+  agent: AgentResource,
+  suggestions: AgentSuggestionResource[]
+): Promise<Result<undefined, string>> {
+  const toolIds: string[] = [];
+  const skillIds: string[] = [];
+  const subAgentIds: string[] = [];
+  for (const { kind, suggestion } of suggestions.map((s) => s.toJSON())) {
+    if (kind === "tools" && suggestion.action === "add") {
+      toolIds.push(suggestion.toolId);
+    } else if (kind === "skills" && suggestion.action === "add") {
+      skillIds.push(suggestion.skillId);
+    } else if (kind === "sub_agent" && suggestion.action === "add") {
+      subAgentIds.push(suggestion.childAgentId);
+    }
+  }
+
+  const [suggestableTools, suggestableSkills, suggestableSubAgents] =
+    await Promise.all([
+      fetchSuggestableTools(auth, toolIds),
+      fetchSuggestableSkills(auth, skillIds),
+      fetchSuggestableSubAgents(auth, subAgentIds),
+    ]);
+  const additions = [
+    ...toolIds.map((id) => checkToolAddition(id, suggestableTools)),
+    ...skillIds.map((id) => checkSkillAddition(id, suggestableSkills)),
+    ...subAgentIds.map((id) =>
+      checkSubAgentAddition(id, suggestableSubAgents, { agentId: agent.sId })
+    ),
+  ];
+  for (const addition of additions) {
+    if (addition.isErr()) {
+      return new Err(addition.error);
+    }
+  }
+  return new Ok(undefined);
+}
 
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/suggestions.
 const app = workspaceApp();
@@ -155,6 +214,19 @@ app.patch(
           message: `Only Sidekick suggestions can be reviewed here: ${nonSidekickSuggestionIds.join(", ")}.`,
         },
       });
+    }
+
+    if (state === "approved") {
+      const check = await checkSuggestedAdditions(auth, agent, suggestions);
+      if (check.isErr()) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: check.error,
+          },
+        });
+      }
     }
 
     await AgentSuggestionResource.bulkUpdateState(auth, suggestions, state);
