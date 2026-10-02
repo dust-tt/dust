@@ -33,7 +33,7 @@ describe("canRefreshMCPAuthWithoutDialog", () => {
     ).toBe(false);
   });
 
-  it("returns false when the provider needs admin-entered credentials", () => {
+  it("returns true for credential providers — existing connection has everything", () => {
     expect(
       canRefreshMCPAuthWithoutDialog({
         authorization: {
@@ -42,7 +42,25 @@ describe("canRefreshMCPAuthWithoutDialog", () => {
         },
         useCase: "platform_actions",
       })
-    ).toBe(false);
+    ).toBe(true);
+    expect(
+      canRefreshMCPAuthWithoutDialog({
+        authorization: {
+          provider: "salesforce",
+          supported_use_cases: ["platform_actions"],
+        },
+        useCase: "platform_actions",
+      })
+    ).toBe(true);
+    expect(
+      canRefreshMCPAuthWithoutDialog({
+        authorization: {
+          provider: "gmail",
+          supported_use_cases: ["platform_actions"],
+        },
+        useCase: "platform_actions",
+      })
+    ).toBe(true);
   });
 
   it("returns false for snowflake shared static credential form", () => {

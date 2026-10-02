@@ -1,6 +1,9 @@
-import config from "@app/lib/api/config";
 import type { OAuthError } from "@app/lib/api/oauth";
-import { getWorkspaceOAuthConnectionIdForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
+import type { WorkspaceOAuthConnectionLookupError } from "@app/lib/api/oauth/mcp_server_connection_auth";
+import {
+  getWorkspaceOAuthConnectionForMCPServer,
+  shouldFallThroughPlatformWorkspaceReuse,
+} from "@app/lib/api/oauth/mcp_server_connection_auth";
 import type {
   BaseOAuthStrategyProvider,
   RelatedCredential,
@@ -12,7 +15,6 @@ import {
 import { shouldUseStaticIpProxy } from "@app/lib/api/workspace_has_domains";
 import type { Authenticator } from "@app/lib/auth";
 import { getPKCEConfig } from "@app/lib/utils/pkce";
-import logger from "@app/logger/logger";
 import type { MCPOAuthConnectionMetadataType } from "@app/types/api/oauth/providers/mcp";
 import {
   BaseMCPMetadataSchema,
@@ -24,7 +26,6 @@ import type {
   OAuthProvider,
   OAuthUseCase,
 } from "@app/types/oauth/lib";
-import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { ParsedUrlQuery } from "querystring";
@@ -119,9 +120,10 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
     extraConfig: ExtraConfigType,
     useCase: OAuthUseCase
   ): extraConfig is MCPOAuthConnectionMetadataType {
-    if (useCase === "personal_actions") {
-      // If we have an mcp_server_id it means the admin already setup the connection and we have
-      // everything we need, otherwise we'll need the instance_url and client_id.
+    if (useCase === "personal_actions" || useCase === "platform_actions") {
+      // mcp_server_id means we can reuse the workspace connection's stored OAuth
+      // metadata (discovery endpoints / static client credentials from first connect).
+      // Used for personal inherit and for admin Refresh without rediscovery.
       if (extraConfig.mcp_server_id) {
         return true;
       }
@@ -144,46 +146,41 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
       useCase: OAuthUseCase;
     }
   ): Promise<Result<RelatedCredential, OAuthError>> {
-    if (useCase === "personal_actions") {
-      // For personal actions we reuse the existing connection credential id from the existing
-      // workspace connection (setup by admin) if we have it.
+    if (useCase === "personal_actions" || useCase === "platform_actions") {
       const { mcp_server_id } = extraConfig;
 
       if (mcp_server_id) {
-        const oauthConnectionIdRes =
-          await getWorkspaceOAuthConnectionIdForMCPServer(auth, mcp_server_id);
-        if (oauthConnectionIdRes.isErr()) {
+        const reused = await this.getRelatedCredentialFromWorkspaceConnection(
+          auth,
+          {
+            mcpServerId: mcp_server_id,
+            workspaceId,
+            userId,
+          }
+        );
+        if (reused.isOk()) {
+          return reused;
+        }
+        if (
+          !shouldFallThroughPlatformWorkspaceReuse({
+            useCase,
+            error: reused.error,
+          })
+        ) {
           return new Err({
             code: "credential_retrieval_failed",
-            message: oauthConnectionIdRes.error.message,
+            message: reused.error.message,
+            ...(reused.error.kind === "oauth_metadata_failed" &&
+            reused.error.oAuthAPIError
+              ? { oAuthAPIError: reused.error.oAuthAPIError }
+              : {}),
           });
         }
-
-        const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-        const connectionRes = await oauthApi.getConnectionMetadata({
-          connectionId: oauthConnectionIdRes.value,
-        });
-        if (connectionRes.isErr()) {
-          return new Err({
-            code: "credential_retrieval_failed",
-            message:
-              "Failed to get connection metadata: " +
-              connectionRes.error.message,
-            oAuthAPIError: connectionRes.error,
-          });
-        }
-        const connection = connectionRes.value.connection;
-        const connectionId = connection.connection_id;
-
-        return new Ok({
-          content: {
-            from_connection_id: connectionId,
-          },
-          metadata: { workspace_id: workspaceId, user_id: userId },
-          redirectUri: connection.redirect_uri,
-        });
+        // platform_actions first connect only: no workspace connection yet.
       }
-    } else if (useCase === "platform_actions") {
+    }
+
+    if (useCase === "platform_actions") {
       const { client_secret } = extraConfig;
 
       const content: { client_id: string; client_secret?: string } = {
@@ -216,86 +213,133 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
       useCase: OAuthUseCase;
     }
   ): Promise<ExtraConfigType> {
-    if (useCase === "personal_actions") {
-      // For personal actions we reuse the existing connection credential id from the existing
-      // workspace connection (setup by admin) if we have it.
+    if (useCase === "personal_actions" || useCase === "platform_actions") {
       const {
         mcp_server_id,
         // eslint-disable-next-line @typescript-eslint/no-unused-vars -- caller-controlled proxy routing is ignored.
         use_static_ip_proxy: _ignoredUseStaticIpProxy,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- never persist secrets in connection metadata.
+        client_secret: _ignoredClientSecret,
         ...restConfig
       } = extraConfig;
 
       if (mcp_server_id) {
-        const oauthConnectionIdRes =
-          await getWorkspaceOAuthConnectionIdForMCPServer(auth, mcp_server_id);
-        if (oauthConnectionIdRes.isErr()) {
-          throw new Error(oauthConnectionIdRes.error.message);
+        const reused = await this.getUpdatedExtraConfigFromWorkspaceConnection(
+          auth,
+          {
+            mcpServerId: mcp_server_id,
+            restConfig,
+          }
+        );
+        if (reused.isOk()) {
+          return reused.value;
         }
-
-        const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-        const connectionRes = await oauthApi.getConnectionMetadata({
-          connectionId: oauthConnectionIdRes.value,
-        });
-        if (connectionRes.isErr()) {
-          throw new Error(
-            "Failed to get connection metadata: " + connectionRes.error.message
-          );
+        if (
+          !shouldFallThroughPlatformWorkspaceReuse({
+            useCase,
+            error: reused.error,
+          })
+        ) {
+          throw new Error(reused.error.message);
         }
-        const connection = connectionRes.value.connection;
+        // platform_actions first connect only: no workspace connection yet.
+      }
 
+      if (useCase === "platform_actions") {
         const { code_verifier, code_challenge } = await getPKCEConfig();
-        const tokenEndpoint = connection.metadata.token_endpoint;
+        const finalConfig: ExtraConfigType = {
+          ...restConfig,
+          code_challenge,
+          code_verifier,
+        };
 
         return {
-          ...restConfig,
-          client_id: connection.metadata.client_id,
-          token_endpoint: tokenEndpoint,
-          authorization_endpoint: connection.metadata.authorization_endpoint,
-          scope: connection.metadata.scope,
-          resource: connection.metadata.resource,
-          token_endpoint_auth_method:
-            connection.metadata.token_endpoint_auth_method,
-          code_verifier,
-          code_challenge,
+          ...finalConfig,
           use_static_ip_proxy: String(
             await shouldUseStaticIpProxy(auth, {
-              url: tokenEndpoint,
-              relatedMcpServerUrl: connection.metadata.resource,
+              url: finalConfig.token_endpoint,
+              relatedMcpServerUrl:
+                typeof finalConfig.resource === "string"
+                  ? finalConfig.resource
+                  : undefined,
             })
           ),
         };
       }
-    } else if (useCase === "platform_actions") {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we filter out the client_secret from the extraConfig
-      const {
-        client_secret,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- caller-controlled proxy routing is ignored.
-        use_static_ip_proxy: _ignoredUseStaticIpProxy,
-        ...restConfig
-      } = extraConfig;
-
-      const { code_verifier, code_challenge } = await getPKCEConfig();
-      const finalConfig: ExtraConfigType = {
-        ...restConfig,
-        code_challenge,
-        code_verifier,
-      };
-
-      return {
-        ...finalConfig,
-        use_static_ip_proxy: String(
-          await shouldUseStaticIpProxy(auth, {
-            url: finalConfig.token_endpoint,
-            relatedMcpServerUrl:
-              typeof finalConfig.resource === "string"
-                ? finalConfig.resource
-                : undefined,
-          })
-        ),
-      };
     }
     throw new Error("MCP oauth provider does not support use case: " + useCase);
+  }
+
+  private async getRelatedCredentialFromWorkspaceConnection(
+    auth: Authenticator,
+    {
+      mcpServerId,
+      workspaceId,
+      userId,
+    }: {
+      mcpServerId: string;
+      workspaceId: string;
+      userId: string;
+    }
+  ): Promise<Result<RelatedCredential, WorkspaceOAuthConnectionLookupError>> {
+    const connectionRes = await getWorkspaceOAuthConnectionForMCPServer(
+      auth,
+      mcpServerId
+    );
+    if (connectionRes.isErr()) {
+      return connectionRes;
+    }
+    const connection = connectionRes.value;
+
+    return new Ok({
+      content: {
+        from_connection_id: connection.connection_id,
+      },
+      metadata: { workspace_id: workspaceId, user_id: userId },
+      redirectUri: connection.redirect_uri,
+    });
+  }
+
+  private async getUpdatedExtraConfigFromWorkspaceConnection(
+    auth: Authenticator,
+    {
+      mcpServerId,
+      restConfig,
+    }: {
+      mcpServerId: string;
+      restConfig: ExtraConfigType;
+    }
+  ): Promise<Result<ExtraConfigType, WorkspaceOAuthConnectionLookupError>> {
+    const connectionRes = await getWorkspaceOAuthConnectionForMCPServer(
+      auth,
+      mcpServerId
+    );
+    if (connectionRes.isErr()) {
+      return connectionRes;
+    }
+    const connection = connectionRes.value;
+
+    const { code_verifier, code_challenge } = await getPKCEConfig();
+    const tokenEndpoint = connection.metadata.token_endpoint;
+
+    return new Ok({
+      ...restConfig,
+      client_id: connection.metadata.client_id,
+      token_endpoint: tokenEndpoint,
+      authorization_endpoint: connection.metadata.authorization_endpoint,
+      scope: connection.metadata.scope,
+      resource: connection.metadata.resource,
+      token_endpoint_auth_method:
+        connection.metadata.token_endpoint_auth_method,
+      code_verifier,
+      code_challenge,
+      use_static_ip_proxy: String(
+        await shouldUseStaticIpProxy(auth, {
+          url: tokenEndpoint,
+          relatedMcpServerUrl: connection.metadata.resource,
+        })
+      ),
+    });
   }
 
   isExtraConfigValidPostRelatedCredential(

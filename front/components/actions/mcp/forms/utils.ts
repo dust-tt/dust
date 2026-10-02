@@ -12,11 +12,7 @@ import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type { MCPServerViewNameConflictDetails } from "@app/lib/api/mcp";
 import type { MCPOAuthUseCase, OAuthProvider } from "@app/types/oauth/lib";
-import {
-  getProviderRequiredOAuthCredentialInputs,
-  isSupportedOAuthCredential,
-  OAUTH_PROVIDER_NAMES,
-} from "@app/types/oauth/lib";
+import { OAUTH_PROVIDER_NAMES } from "@app/types/oauth/lib";
 
 type SendErrorNotification = (title: string, description: string) => void;
 
@@ -157,23 +153,15 @@ export function canRefreshMCPAuthWithoutDialog({
     return false;
   }
 
+  // Keypair / non-OAuth static forms are not stored on the OAuth connection.
   if (getStaticCredentialForm(authorization.provider, useCase)) {
     return false;
   }
 
-  const inputs = getProviderRequiredOAuthCredentialInputs({
-    provider: authorization.provider,
-    useCase,
-  });
-  if (!inputs) {
-    return true;
-  }
-
-  // Any credential that still needs admin input requires the dialog.
-  return !Object.entries(inputs).some(
-    ([key, inputData]) =>
-      isSupportedOAuthCredential(key) && inputData.value === undefined
-  );
+  // Refresh always has an existing workspace OAuth connection that already
+  // stores endpoints and client credentials from first connect. Providers
+  // reuse them via mcp_server_id — no dialog, no rediscovery, no re-entry.
+  return true;
 }
 
 export function getCreateMCPServerDialogDefaultValues(
