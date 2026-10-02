@@ -26,6 +26,11 @@ blocks, metadata, grants, and pending search jobs. Related reads MUST use one tr
 Acknowledgement MUST await normal FDB commit. Fsync MUST propagate client writeback errors and check
 current server authority without waiting for ES.
 
+@cc [owner:spolu,label:backend;performance] fdb-latency-tuning
+FDB latency settings MAY reduce batching delays and increase CPU use for short timer waits. They
+MUST retain normal conflict resolution and log synchronization before successful acknowledgment.
+Changes MUST be benchmarked with the unchanged filesystem workload and independent writers.
+
 @cc [owner:spolu,label:error-handling;concurrency] bounded-fdb-retries
 Only FDB attempts known not to have committed MAY be retried automatically, within a bounded deadline.
 Each retry MUST reauthorize and use the original expected object versions. Ambiguous outcomes MUST
