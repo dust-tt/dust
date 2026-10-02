@@ -13,12 +13,14 @@ import { stripMimeParameters } from "@app/types/files";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
+  Chip,
   CodeBlock,
   cn,
   DataTable,
   Markdown,
   ScrollableDataTable,
   Spinner,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 
@@ -366,6 +368,21 @@ export function FilePreviewContent({
       if (markdownRichEditor) {
         return (
           <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="mx-auto flex max-w-[50rem] justify-end px-5 pt-3">
+              <Tooltip
+                tooltipTriggerAsChild
+                label="This editor for Markdown files is work in progress from the Co-edition initiative. It is only enabled on the Dust workspace while we build it."
+                trigger={
+                  <span>
+                    <Chip
+                      size="mini"
+                      color="info"
+                      label="Co-edition · WIP · Dust only"
+                    />
+                  </span>
+                }
+              />
+            </div>
             <Document
               key={entry.path}
               initialContent={markdownRichEditor.initialContent}
