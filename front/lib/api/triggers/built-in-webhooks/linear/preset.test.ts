@@ -1,5 +1,5 @@
+import { LINEAR_WEBHOOK_PRESET } from "@app/lib/api/triggers/built-in-webhooks/linear/preset";
 import { matchPayload, parseMatcherExpression } from "@app/lib/matcher";
-import { LINEAR_WEBHOOK_PRESET } from "@app/lib/triggers/built-in-webhooks/linear/preset";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { describe, expect, it } from "vitest";
 

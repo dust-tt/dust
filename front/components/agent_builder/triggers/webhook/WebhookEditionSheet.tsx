@@ -11,8 +11,8 @@ import { isCreditPricedPlan } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type {
-  BaseWebhookPreset,
-  WebhookEvent,
+  WebhookEventMetadata,
+  WebhookPresetMetadata,
 } from "@app/types/triggers/webhooks_source_preset";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -148,8 +148,8 @@ function WebhookEditionExecutionLimit({
 
 interface WebhookEditionEventSelectorProps {
   isEditor: boolean;
-  selectedPreset: BaseWebhookPreset | null;
-  availableEvents: WebhookEvent[];
+  selectedPreset: WebhookPresetMetadata | null;
+  availableEvents: WebhookEventMetadata[];
 }
 
 function WebhookEditionEventSelector({
@@ -297,7 +297,7 @@ export function WebhookEditionSheetContent({
   webhookSourceView,
   isEditor,
 }: WebhookEditionSheetContentProps) {
-  const selectedPreset = useMemo((): BaseWebhookPreset | null => {
+  const selectedPreset = useMemo((): WebhookPresetMetadata | null => {
     if (!webhookSourceView || webhookSourceView.provider === null) {
       return null;
     }
