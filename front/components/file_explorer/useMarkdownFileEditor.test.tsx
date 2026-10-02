@@ -98,6 +98,39 @@ describe("useMarkdownFileEditor", () => {
     );
   });
 
+  it("lifts the conflict once the editor is clean and reopens on the new content", async () => {
+    flags.add("co_edition");
+    const { result, rerender } = renderHook(
+      (props) => useMarkdownFileEditor(props),
+      { initialProps: params }
+    );
+    act(() => {
+      result.current.richEditor?.onStateChange({
+        dirty: true,
+        saving: false,
+        error: null,
+      });
+    });
+    rerender(revised);
+    const refused = await result.current.richEditor?.onSave("# Notes, mine\n");
+    expect(refused?.ok).toBe(false);
+
+    // The user undoes the local edit: the editor reports clean and reopens on the new content.
+    act(() => {
+      result.current.richEditor?.onStateChange({
+        dirty: false,
+        saving: false,
+        error: null,
+      });
+    });
+
+    expect(result.current.richEditor?.initialContent).toBe(
+      "# Notes, revised\n"
+    );
+    const saved = await result.current.richEditor?.onSave("# Notes, again\n");
+    expect(saved).toEqual({ ok: true });
+  });
+
   it("does not take its own save for a foreign change", async () => {
     flags.add("co_edition");
     const { result, rerender } = renderHook(

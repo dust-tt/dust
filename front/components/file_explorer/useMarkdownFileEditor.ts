@@ -219,6 +219,7 @@ export function useMarkdownFileEditor({
     } else if (!richDraft.dirty && !richDraft.saving) {
       setRichBase(richSource);
       setRichVersion((version) => version + 1);
+      setRichConflict(false);
     } else {
       setRichConflict(true);
     }
