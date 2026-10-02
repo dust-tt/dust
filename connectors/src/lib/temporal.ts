@@ -10,7 +10,7 @@ import {
 } from "@temporalio/client";
 import { defineSearchAttributeKey } from "@temporalio/common";
 import { NativeConnection } from "@temporalio/worker";
-import fs from "fs-extra";
+import fs from "fs/promises";
 
 // Define the connectorId search attribute key for typed access.
 export const connectorIdSearchAttribute = defineSearchAttributeKey<"INT">(
