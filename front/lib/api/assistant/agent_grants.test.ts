@@ -75,11 +75,13 @@ it("revokes active-agent author access and keeps admin redaction", async () => {
   );
   expect(await getEditors(authorAuth, agent)).toEqual([]);
   await authorAuth.refresh();
-  const authorAgent = await getAgentConfiguration(authorAuth, {
-    agentId: agent.sId,
-    variant: "light",
-  });
-  expect([authorAgent?.canRead, authorAgent?.canEdit]).toEqual([false, false]);
+  // Without any grant left, the author can no longer even fetch the hidden agent.
+  expect(
+    await getAgentConfiguration(authorAuth, {
+      agentId: agent.sId,
+      variant: "light",
+    })
+  ).toBeNull();
   const admin = await UserFactory.basic();
   await MembershipFactory.associate(workspace, admin, { role: "admin" });
   const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(

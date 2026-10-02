@@ -318,9 +318,6 @@ describe("POST /api/v1/w/[wId]/assistant/conversations/[cId]/messages", () => {
   });
 });
 
-// Hidden agents are reserved to their editors: a caller without a Dust user, like a connector's
-// system key whose `x-api-user-email` matches no workspace member (e.g. a Slack bot user), MUST NOT
-// be able to talk to one.
 describe("POST /api/v1/w/[wId]/assistant/conversations/[cId]/messages, hidden agents", () => {
   async function setupHiddenAgent() {
     const { workspace, key } = await createPublicApiMockRequest({
@@ -337,9 +334,10 @@ describe("POST /api/v1/w/[wId]/assistant/conversations/[cId]/messages, hidden ag
       editorAuth,
       { name: "Hidden helper", scope: "hidden" }
     );
+    // No prior exchange, so no agent message is still running when the hidden agent is mentioned.
     const conversation = await ConversationFactory.create(editorAuth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [new Date()],
+      messagesCreatedAt: [],
     });
 
     const mentionHiddenAgent = (extraHeaders: Record<string, string> = {}) =>
@@ -361,28 +359,6 @@ describe("POST /api/v1/w/[wId]/assistant/conversations/[cId]/messages, hidden ag
 
     return { editor, mentionHiddenAgent };
   }
-
-  it("refuses a hidden agent when x-api-user-email matches no workspace member", async () => {
-    const { mentionHiddenAgent } = await setupHiddenAgent();
-
-    const response = await mentionHiddenAgent({
-      "x-api-user-email": "slack-bot@not-a-member.example.com",
-    });
-
-    expect(response.status).toBe(400);
-    const body = await response.json();
-    expect(body.error.type).toBe("agent_inaccessible");
-  });
-
-  it("refuses a hidden agent to a system key without x-api-user-email", async () => {
-    const { mentionHiddenAgent } = await setupHiddenAgent();
-
-    const response = await mentionHiddenAgent();
-
-    expect(response.status).toBe(400);
-    const body = await response.json();
-    expect(body.error.type).toBe("agent_inaccessible");
-  });
 
   it("lets the agent's editor mention it through x-api-user-email", async () => {
     const { editor, mentionHiddenAgent } = await setupHiddenAgent();

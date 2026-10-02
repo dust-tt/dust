@@ -1160,9 +1160,9 @@ describe("GET /api/w/:wId/assistant/agent_configurations - instructionsHtml", ()
       variant: "light",
     });
     expect(lightAgent).not.toBeNull();
-    // instructionsHtml is not part of LightAgentConfigurationType but we verify
-    // the runtime value is null (not leaked from the DB).
-    expect(lightAgent).toHaveProperty("instructionsHtml", null);
+    // instructionsHtml is not part of LightAgentConfigurationType: verify it is
+    // not leaked from the DB at runtime.
+    expect(lightAgent).not.toHaveProperty("instructionsHtml");
 
     // Full variant (via getAgentConfiguration) should include instructionsHtml.
     const fullAgent = await getAgentConfiguration(auth, {
