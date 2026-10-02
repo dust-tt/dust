@@ -13,6 +13,7 @@ export const SEARCH_AGENTS_TOOL_NAME = "search_agents" as const;
 export const GET_AGENT_DETAILS_TOOL_NAME = "get_agent_details" as const;
 export const SEARCH_SKILLS_TOOL_NAME = "search_skills" as const;
 export const GET_SKILL_DETAILS_TOOL_NAME = "get_skill_details" as const;
+export const LIST_SIMILAR_SKILLS_TOOL_NAME = "list_similar_skills" as const;
 export const LIST_TOOLS_TOOL_NAME = "list_tools" as const;
 export const GET_TOOL_DETAILS_TOOL_NAME = "get_tool_details" as const;
 export const LIST_MODELS_TOOL_NAME = "list_models" as const;
@@ -204,6 +205,16 @@ const createGroupSchema = {
     ),
 };
 
+const listSimilarSkillsSchema = {
+  description: z
+    .string()
+    .min(1)
+    .describe(
+      "The agent-facing description of the skill to compare against (when " +
+        "agents should use it), not its instructions."
+    ),
+};
+
 const getSkillSchema = {
   skillId: z.string().describe("The skill's id, as returned by search_skills."),
 };
@@ -315,6 +326,22 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
     displayLabels: {
       running: "Retrieving skill",
       done: "Retrieved skill",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: LIST_SIMILAR_SKILLS_TOOL_NAME,
+    description:
+      "Return the ids of the workspace's existing published custom skills that " +
+      "serve the same purpose as the given skill description. Existing skills " +
+      "are compared on their agent-facing description.",
+    schema: listSimilarSkillsSchema,
+    stake: "never_ask",
+    eager: true,
+    displayLabels: {
+      running: "Looking for similar skills",
+      done: "Looked for similar skills",
     },
     toolCostCategory: "basic",
     freeUsage: true,

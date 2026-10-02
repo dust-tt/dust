@@ -33,6 +33,15 @@ vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {
   return { ...actual, withEs: mockWithEs };
 });
 
+// The similarity checker calls an LLM: keep the tests hermetic.
+vi.mock("@app/lib/api/skills/existing_skill_checker", () => ({
+  getSimilarSkills: vi.fn(),
+}));
+
+import { getSimilarSkills } from "@app/lib/api/skills/existing_skill_checker";
+
+const mockGetSimilarSkills = vi.mocked(getSimilarSkills);
+
 function getToolByName(name: string) {
   const tool = TOOLS.find((t) => t.name === name);
   if (!tool) {
@@ -1137,6 +1146,71 @@ describe("workspace_management tools", () => {
   });
 
   // Auto internal tools are listed too, so the assertions isolate the fixtures with a prefix.
+  describe("list_similar_skills", () => {
+    beforeEach(() => {
+      mockGetSimilarSkills.mockReset();
+    });
+
+    it("returns the ids of the similar skills", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      mockGetSimilarSkills.mockResolvedValue(
+        new Ok({ similar_skills: ["skill1", "skill2"] })
+      );
+
+      const lines = await callToolLines(
+        "list_similar_skills",
+        { description: "Use when the user wants to open a GitHub issue." },
+        authenticator
+      );
+
+      expect(lines).toEqual(["skill1", "skill2"]);
+      expect(mockGetSimilarSkills).toHaveBeenCalledWith(authenticator, {
+        naturalDescription: "Use when the user wants to open a GitHub issue.",
+        excludeSkillId: null,
+      });
+    });
+
+    it("says so when no skill is similar", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      mockGetSimilarSkills.mockResolvedValue(new Ok({ similar_skills: [] }));
+
+      const text = await callTool(
+        "list_similar_skills",
+        { description: "Build slide decks." },
+        authenticator
+      );
+
+      expect(text).toBe("No similar skills found.");
+    });
+
+    it("returns an error when the similarity check fails", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      mockGetSimilarSkills.mockResolvedValue(new Err(new Error("LLM down")));
+
+      const result = await runTool(
+        "list_similar_skills",
+        { description: "Build slide decks." },
+        authenticator
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toBe(
+          "Failed to list similar skills: LLM down"
+        );
+      }
+    });
+
+    it("rejects an empty description", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+
+      expect(() =>
+        runTool("list_similar_skills", { description: "" }, authenticator)
+      ).toThrow();
+      expect(mockGetSimilarSkills).not.toHaveBeenCalled();
+    });
+  });
+
   describe("list_tools", () => {
     it("lists the tools of readable spaces only, sorted by name", async () => {
       const { workspace, globalSpace, authenticator } =

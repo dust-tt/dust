@@ -10,6 +10,8 @@ import {
 import { TOOLS as BUILDING_TOOLS } from "@app/lib/api/actions/servers/building_agents_and_skills/tools";
 import {
   GET_AGENT_DETAILS_TOOL_NAME,
+  GET_SKILL_DETAILS_TOOL_NAME,
+  LIST_SIMILAR_SKILLS_TOOL_NAME,
   WORKSPACE_MANAGEMENT_SERVER_NAME,
 } from "@app/lib/api/actions/servers/workspace_management/metadata";
 import { TOOLS as WORKSPACE_MANAGEMENT_TOOLS } from "@app/lib/api/actions/servers/workspace_management/tools";
@@ -39,6 +41,14 @@ export const TOOL = {
   getAgentDetails: getPrefixedToolName(
     WORKSPACE_MANAGEMENT_SERVER_NAME,
     GET_AGENT_DETAILS_TOOL_NAME
+  ),
+  getSkillDetails: getPrefixedToolName(
+    WORKSPACE_MANAGEMENT_SERVER_NAME,
+    GET_SKILL_DETAILS_TOOL_NAME
+  ),
+  listSimilarSkills: getPrefixedToolName(
+    WORKSPACE_MANAGEMENT_SERVER_NAME,
+    LIST_SIMILAR_SKILLS_TOOL_NAME
   ),
 } as const;
 

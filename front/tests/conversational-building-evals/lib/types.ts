@@ -157,6 +157,12 @@ export type FinalToolCallAssertion =
       skillKey?: string;
     }
   | {
+      // The run must record no suggestion, e.g. because it has to ask the user first, and must have
+      // successfully called each of these (prefixed) tools.
+      type: "noSuggestion";
+      requiredToolNames: string[];
+    }
+  | {
       type: "suggestAgentInstructionsChange";
       agentKey: string;
       // The edit must target one of these block ids (from the seeded HTML). Guards against a
