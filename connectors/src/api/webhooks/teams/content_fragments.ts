@@ -23,6 +23,12 @@ const MAX_FILE_SIZE_TO_UPLOAD = 10 * 1024 * 1024; // 10 MB
  * Download Teams attachment using Bot Framework authentication
  * Used for direct Teams attachments (smba.trafficmanager.net URLs)
  */
+/**
+ * @cc [owner:tdraier,label:security] bot-token-only-to-allowed-hosts
+ * The Bot Framework bearer token MUST only be sent over HTTPS to a hostname that equals an allowed
+ * host or is a subdomain of it (`hostname === host || hostname.endsWith(".host")`). A bare suffix
+ * match is forbidden: `evilsmba.trafficmanager.net` is attacker-registrable and MUST be rejected.
+ */
 export async function downloadTeamsAttachment(
   attachmentUrl: string
 ): Promise<Result<Buffer, Error>> {
@@ -35,7 +41,11 @@ export async function downloadTeamsAttachment(
     "api.spaces.skype.com",
   ];
 
-  if (!allowedHosts.some((host) => url.hostname.endsWith(host))) {
+  if (
+    !allowedHosts.some(
+      (host) => url.hostname === host || url.hostname.endsWith(`.${host}`)
+    )
+  ) {
     return new Err(
       new Error(`Untrusted attachment URL hostname: ${url.hostname}`)
     );
