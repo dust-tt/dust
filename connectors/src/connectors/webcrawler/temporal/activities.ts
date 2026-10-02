@@ -713,6 +713,12 @@ export async function firecrawlCrawlPage(
   }
 }
 
+/**
+ * @cc [owner:tdraier,label:security;product] gc-only-on-confirmed-crawl
+ * The result MUST carry a `lastSyncStartTs` (which triggers garbage collection) only when Firecrawl
+ * returned the status of `crawlId`, or reported the job as expired. Any other failure to fetch the
+ * crawl status MUST NOT trigger garbage collection.
+ */
 export async function firecrawlCrawlCompleted(
   connectorId: ModelId,
   crawlId: string
@@ -800,23 +806,23 @@ export async function firecrawlCrawlCompleted(
           },
           "Firecrawl job expired. They expired 24h after the crawl finish. Moving the connector to succeed."
         );
-      } else {
-        localLogger.error(
-          {
-            connectorId,
-            crawlId,
-            firecrawlError: {
-              statusCode: error.statusCode,
-              name: error.name,
-            },
-          },
-          `Error feching crawl status or error: ${error.message}`
-        );
+        return {
+          lastSyncStartTs: connector.lastSyncStartTime?.getTime() ?? null,
+        };
       }
 
-      return {
-        lastSyncStartTs: connector.lastSyncStartTime?.getTime() ?? null,
-      };
+      localLogger.error(
+        {
+          connectorId,
+          crawlId,
+          firecrawlError: {
+            statusCode: error.statusCode,
+            name: error.name,
+          },
+        },
+        `Error feching crawl status or error: ${error.message}`
+      );
+      return;
     }
 
     // If we didn't get a handled FirecrawlError, we can bubble up the error.
