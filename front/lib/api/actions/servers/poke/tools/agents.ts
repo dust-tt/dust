@@ -12,7 +12,10 @@ import {
 } from "@app/lib/api/actions/servers/poke/tools/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import { toPokeAgentSummaryJSON } from "@app/lib/resources/agent_resource_serialization";
+import {
+  toPokeAgentDetailsJSON,
+  toPokeAgentSummaryJSON,
+} from "@app/lib/resources/agent_resource_serialization";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { Err } from "@app/types/shared/result";
 
@@ -190,7 +193,6 @@ export const agentHandlers: AgentHandlers = {
     }
 
     // The poke superuser authenticator views the agent's content (see `poke-agent-content-access`).
-    const agent = resource.toJSON();
     const [{ instructions }, actions, editors, [author]] = await Promise.all([
       resource.fetchInstructions(),
       resource.listActions(targetAuth),
@@ -202,32 +204,12 @@ export const agentHandlers: AgentHandlers = {
 
     return jsonResponse({
       workspace_id,
-      agent: {
-        agentId: agent.sId,
-        name: agent.name,
-        description: agent.description,
-        scope: agent.scope,
-        status: agent.status,
-        version: agent.version,
-        versionCreatedAt: agent.versionCreatedAt,
+      agent: toPokeAgentDetailsJSON(resource, {
         instructions,
-        instructionsLength: instructions?.length ?? 0,
-        toolCount: actions.length,
-        toolNames: actions.map((a) => a.name),
-        requestedSpaceIds: agent.requestedSpaceIds,
-        author: author
-          ? {
-              userId: author.sId,
-              email: author.email,
-              fullName: author.fullName(),
-            }
-          : null,
-        editors: (editors ?? []).map((e) => ({
-          userId: e.sId,
-          email: e.email,
-          fullName: e.fullName(),
-        })),
-      },
+        actions,
+        author: author ?? null,
+        editors: editors ?? [],
+      }),
     });
   },
 };

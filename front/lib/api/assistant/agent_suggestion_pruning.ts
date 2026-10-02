@@ -142,7 +142,7 @@ async function pruneSuggestions(
   const { tools, sub_agent, skills, model, structured_output, instructions } =
     splitByKind(pendingSuggestions);
 
-  const { model: agentModel } = agent.toJSON();
+  const agentModel = agent.effectiveModelConfiguration;
   const [actions, { instructionsHtml }] = await Promise.all([
     agent.listActions(auth),
     agent.fetchInstructions(),

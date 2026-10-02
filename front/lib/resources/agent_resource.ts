@@ -3405,6 +3405,20 @@ export class AgentResource
     return [...this._codeDefinedSkillIds];
   }
 
+  // The model the agent runs on (see `agent-json-effective-reasoning-effort`).
+  get effectiveModelConfiguration(): AgentModelConfigurationType {
+    if (this.scope === "global") {
+      return this.modelConfiguration;
+    }
+    return {
+      ...this.modelConfiguration,
+      reasoningEffort:
+        this.modelConfiguration.reasoningEffort ??
+        getSupportedModelConfig(this.modelConfiguration)
+          ?.defaultReasoningEffort,
+    };
+  }
+
   /**
    * @cc [owner:tdraier,label:security;backend] agent-json-without-instructions
    * `toJSON` serializes every resource, custom or global, with its head fields,
@@ -3414,9 +3428,9 @@ export class AgentResource
    */
   /**
    * @cc [owner:tdraier,label:backend] agent-json-effective-reasoning-effort
-   * For a custom agent with no stored `reasoningEffort`, `toJSON().model.reasoningEffort` MUST be
-   * the model's default reasoning effort (unset for an unknown model), as the legacy loaders served
-   * it: the agent loop runs on it. `modelConfiguration` and the save paths keep the stored value.
+   * For a custom agent with no stored `reasoningEffort`, `toJSON().model.reasoningEffort` (built from
+   * `effectiveModelConfiguration`) MUST be the model's default reasoning effort (unset for an unknown
+   * model), as the legacy loaders served it: the agent loop runs on it. `modelConfiguration` and the save paths keep the stored value.
    * A global agent's model is served as its builder produced it.
    */
   /**
@@ -3439,15 +3453,7 @@ export class AgentResource
       sId: this.sId,
       version: this.version,
       versionAuthorId: this.versionAuthorId,
-      model: isGlobal
-        ? this.modelConfiguration
-        : {
-            ...this.modelConfiguration,
-            reasoningEffort:
-              this.modelConfiguration.reasoningEffort ??
-              getSupportedModelConfig(this.modelConfiguration)
-                ?.defaultReasoningEffort,
-          },
+      model: this.effectiveModelConfiguration,
       status: this.status,
       scope: this.scope,
       name: this.name,

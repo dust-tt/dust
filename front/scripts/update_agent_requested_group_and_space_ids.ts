@@ -155,6 +155,8 @@ async function updateAgentRequestedSpaceIds(
           silent: true,
         }
       );
+      // The write skips the hooks, so the cached resource would keep the old requirements.
+      await AgentResource.invalidateCache(workspace.id, agent.sId);
       updatedCount++;
     } else {
       updatedCount++;
