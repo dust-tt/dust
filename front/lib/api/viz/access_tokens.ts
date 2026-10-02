@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import { signHS256Jwt, verifyHS256Jwt } from "@app/lib/utils/hs256_jwt";
 import logger from "@app/logger/logger";
 import type { FileShareScope, FrameFileContentType } from "@app/types/files";
 import {
@@ -10,7 +11,6 @@ import {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import jwt from "jsonwebtoken";
 import { z } from "zod";
 
 // Zod schema for VizAccessTokenPayload.
@@ -28,7 +28,7 @@ const VizAccessTokenPayloadSchema = z.object({
 
 type VizAccessTokenPayload = z.infer<typeof VizAccessTokenPayloadSchema>;
 
-export function generateVizAccessToken({
+export async function generateVizAccessToken({
   contentType,
   fileToken,
   userId,
@@ -40,7 +40,7 @@ export function generateVizAccessToken({
   userId?: string;
   shareScope: FileShareScope;
   workspaceId: string;
-}): string {
+}): Promise<string> {
   const payload: VizAccessTokenPayload = {
     contentType,
     fileToken,
@@ -49,22 +49,15 @@ export function generateVizAccessToken({
     workspaceId,
   };
 
-  const secret = config.getVizJwtSecret();
-
-  // Sign JWT with HS256 algorithm, valid for 1 minute.
-  return jwt.sign(payload, secret, { algorithm: "HS256", expiresIn: "1m" });
+  // Valid for 1 minute.
+  return signHS256Jwt(payload, config.getVizJwtSecret(), {
+    expiresInSeconds: 60,
+  });
 }
 
-function getRawPayloadFromToken(token: string): unknown {
-  const secret = config.getVizJwtSecret();
-
+async function getRawPayloadFromToken(token: string): Promise<unknown> {
   try {
-    // Verify JWT signature.
-    const rawPayload = jwt.verify(token, secret, {
-      algorithms: ["HS256"],
-    });
-
-    return rawPayload;
+    return await verifyHS256Jwt(token, config.getVizJwtSecret());
   } catch (error) {
     logger.error(
       {
@@ -76,8 +69,10 @@ function getRawPayloadFromToken(token: string): unknown {
   }
 }
 
-function verifyVizAccessToken(token: string): VizAccessTokenPayload | null {
-  const rawPayload = getRawPayloadFromToken(token);
+async function verifyVizAccessToken(
+  token: string
+): Promise<VizAccessTokenPayload | null> {
+  const rawPayload = await getRawPayloadFromToken(token);
   if (rawPayload === null) {
     return null;
   }
@@ -104,9 +99,9 @@ const BEARER_PREFIX = "Bearer ";
  * failure cases map to a `401 / workspace_auth_error` at the handler layer; only the user-facing
  * message differs, which is why the error type is a plain string rather than an HTTP envelope.
  */
-export function extractAndVerifyVizAccessTokenFromHeader(
+export async function extractAndVerifyVizAccessTokenFromHeader(
   authHeader: string | undefined
-): Result<VizAccessTokenPayload, string> {
+): Promise<Result<VizAccessTokenPayload, string>> {
   if (!authHeader) {
     return new Err("Authorization header required.");
   }
@@ -117,7 +112,7 @@ export function extractAndVerifyVizAccessTokenFromHeader(
   if (!accessToken) {
     return new Err("Access token is required.");
   }
-  const tokenPayload = verifyVizAccessToken(accessToken);
+  const tokenPayload = await verifyVizAccessToken(accessToken);
   if (!tokenPayload) {
     return new Err("Invalid or expired access token.");
   }

@@ -241,7 +241,7 @@ app.get(
         shareScope === "emails_only");
 
     // Generate access token for viz rendering.
-    const accessToken = generateVizAccessToken({
+    const accessToken = await generateVizAccessToken({
       contentType: file.contentType,
       fileToken: token,
       userId: user?.sId,

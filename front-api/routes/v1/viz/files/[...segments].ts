@@ -54,7 +54,7 @@ app.get("/:scope/:rel{.+}", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  const tokenRes = extractAndVerifyVizAccessTokenFromHeader(
+  const tokenRes = await extractAndVerifyVizAccessTokenFromHeader(
     ctx.req.header("authorization")
   );
   if (tokenRes.isErr()) {

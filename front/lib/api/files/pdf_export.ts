@@ -85,7 +85,7 @@ export async function exportInteractiveContentFileAsPdf(
 
   const owner = auth.getNonNullableWorkspace();
   const user = auth.user();
-  const accessToken = generateVizAccessToken({
+  const accessToken = await generateVizAccessToken({
     contentType: file.contentType,
     fileToken: shareToken,
     userId: user?.sId,

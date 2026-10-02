@@ -29,7 +29,7 @@ const app = unauthedApp();
 app.get("/:fileId", validate("param", ParamsSchema), async (ctx) => {
   const { fileId } = ctx.req.valid("param");
 
-  const tokenRes = extractAndVerifyVizAccessTokenFromHeader(
+  const tokenRes = await extractAndVerifyVizAccessTokenFromHeader(
     ctx.req.header("authorization")
   );
   if (tokenRes.isErr()) {

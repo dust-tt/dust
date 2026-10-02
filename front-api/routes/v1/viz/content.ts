@@ -16,7 +16,7 @@ const app = unauthedApp();
  * The access token determines what content to return and user permissions.
  */
 app.get("/", async (ctx): HandlerResult<PublicVizContentResponseBodyType> => {
-  const tokenRes = extractAndVerifyVizAccessTokenFromHeader(
+  const tokenRes = await extractAndVerifyVizAccessTokenFromHeader(
     ctx.req.header("authorization")
   );
   if (tokenRes.isErr()) {

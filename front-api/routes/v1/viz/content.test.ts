@@ -66,7 +66,7 @@ describe("/api/v1/viz/content endpoint tests", () => {
       throw new Error("No file token found");
     }
 
-    const accessToken = generateVizAccessToken({
+    const accessToken = await generateVizAccessToken({
       contentType: frameContentType,
       fileToken,
       workspaceId: workspace.sId,
@@ -104,7 +104,7 @@ describe("/api/v1/viz/content endpoint tests", () => {
     if (!fileToken) {
       throw new Error("No file token found");
     }
-    const accessToken = generateVizAccessToken({
+    const accessToken = await generateVizAccessToken({
       contentType: frameV2ContentType,
       fileToken,
       workspaceId: workspace.sId,
@@ -202,7 +202,7 @@ describe("/api/v1/viz/content endpoint tests", () => {
     }
 
     // Generate token with current time.
-    const accessToken = generateVizAccessToken({
+    const accessToken = await generateVizAccessToken({
       contentType: frameContentType,
       fileToken,
       workspaceId: workspace.sId,
@@ -243,7 +243,7 @@ describe("/api/v1/viz/content endpoint tests", () => {
       throw new Error("No file token found");
     }
 
-    const accessToken = generateVizAccessToken({
+    const accessToken = await generateVizAccessToken({
       contentType: frameContentType,
       fileToken,
       workspaceId: workspace.sId,
@@ -283,7 +283,7 @@ describe("/api/v1/viz/content endpoint tests", () => {
       throw new Error("No file token found");
     }
 
-    const accessToken = generateVizAccessToken({
+    const accessToken = await generateVizAccessToken({
       contentType: frameContentType,
       fileToken,
       workspaceId: workspace.sId,
@@ -326,7 +326,7 @@ describe("/api/v1/viz/content endpoint tests", () => {
       throw new Error("No file token found");
     }
 
-    const accessToken = generateVizAccessToken({
+    const accessToken = await generateVizAccessToken({
       contentType: frameContentType,
       fileToken,
       workspaceId: workspace.sId,
