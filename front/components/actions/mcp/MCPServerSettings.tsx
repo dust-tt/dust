@@ -5,6 +5,7 @@ import {
 } from "@app/components/actions/mcp/MCPServerAuthConnection";
 import { SensitivityLabelsConfig } from "@app/components/shared/labels/SensitivityLabelsConfig";
 import type { SensitivityLabelsController } from "@app/components/shared/labels/types";
+import { isRemoteMCPServerType } from "@app/lib/actions/mcp_helper";
 import { getSensitivityLabelProviderForServerId } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -14,13 +15,31 @@ import {
 } from "@app/lib/swr/mcp_servers";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, Chip, LogIn01, XClose } from "@dust-tt/sparkle";
+import {
+  Button,
+  Chip,
+  Hoverable,
+  LogIn01,
+  RefreshCw02,
+  Tooltip,
+  XClose,
+} from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
 interface MCPServerSettingsProps {
   mcpServerView: MCPServerViewType;
   owner: LightWorkspaceType;
   sensitivityLabelsController?: SensitivityLabelsController;
+}
+
+function getSyncAuthWarningTooltip(
+  oAuthUseCase: MCPOAuthUseCase | null
+): string {
+  if (oAuthUseCase === "personal_actions") {
+    return "The authentication used to set up and sync this tool is no longer valid and must be refreshed. Agents still use each member's personal authentication and are unaffected.";
+  }
+
+  return "Shared authentication is no longer valid and must be refreshed. Until then, agents cannot use these tools.";
 }
 
 export function MCPServerSettings({
@@ -62,6 +81,10 @@ export function MCPServerSettings({
     mcpServerView.server.sId
   );
 
+  const hasSyncError =
+    isRemoteMCPServerType(mcpServerView.server) &&
+    !!mcpServerView.server.lastError;
+
   const handleDeleteConnection = () => {
     if (!connection) {
       return;
@@ -82,17 +105,36 @@ export function MCPServerSettings({
         setIsLoading={setIsLoading}
         isOpen={isConnectDialogOpen}
         setIsOpen={setIsConnectDialogOpen}
+        initialUseCase={mcpServerView.oAuthUseCase}
       />
       <div className="space-y-2">
         <div className="heading-base">Authentication</div>
         <div className="flex space-x-2">
-          <div className="flex-grow">
+          <div className="flex flex-grow items-center gap-2">
             {mcpServerView.oAuthUseCase &&
               !isConnectionsLoading &&
               (connection ? (
-                <Chip color="success" size="sm">
-                  Active
-                </Chip>
+                hasSyncError ? (
+                  <>
+                    <Chip color="warning" size="sm">
+                      Warning
+                    </Chip>
+                    <Tooltip
+                      label={getSyncAuthWarningTooltip(
+                        mcpServerView.oAuthUseCase
+                      )}
+                      className="max-w-sm"
+                      tooltipTriggerAsChild
+                      trigger={
+                        <Hoverable variant="primary">More info</Hoverable>
+                      }
+                    />
+                  </>
+                ) : (
+                  <Chip color="success" size="sm">
+                    Active
+                  </Chip>
+                )
               ) : (
                 <Chip color="warning" size="sm">
                   Requires authentication
@@ -100,12 +142,22 @@ export function MCPServerSettings({
               ))}
           </div>
           {connection ? (
-            <Button
-              label="Deactivate"
-              icon={XClose}
-              variant="outline"
-              onClick={handleDeleteConnection}
-            />
+            <>
+              <Button
+                label="Refresh"
+                icon={RefreshCw02}
+                variant="outline"
+                onClick={() => setIsConnectDialogOpen(true)}
+                disabled={isLoading}
+                isLoading={isLoading}
+              />
+              <Button
+                label="Deactivate"
+                icon={XClose}
+                variant="outline"
+                onClick={handleDeleteConnection}
+              />
+            </>
           ) : (
             <Button
               label="Activate"

@@ -30,6 +30,7 @@ import {
   useUpdateMCPServerView,
 } from "@app/lib/swr/mcp_servers";
 import datadogLogger from "@app/logger/datadogLogger";
+import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import {
   OAUTH_PROVIDER_NAMES,
   providerUsesWellKnownOAuthDiscovery,
@@ -54,6 +55,8 @@ interface ConnectMCPServerDialogProps {
   setIsLoading: (isCreating: boolean) => void;
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
+  /** Prefills and preserves the credential mode when refreshing an existing connection. */
+  initialUseCase?: MCPOAuthUseCase | null;
 }
 
 export function ConnectMCPServerDialog({
@@ -62,11 +65,15 @@ export function ConnectMCPServerDialog({
   setIsLoading: setExternalIsLoading,
   isOpen = false,
   setIsOpen,
+  initialUseCase = null,
 }: ConnectMCPServerDialogProps) {
   const sendNotification = useSendNotification();
   const cellContext = useCellContext();
 
-  const defaultValues = getConnectMCPServerDialogDefaultValues();
+  const defaultValues = useMemo(
+    () => getConnectMCPServerDialogDefaultValues(initialUseCase),
+    [initialUseCase]
+  );
   const form = useForm<MCPServerOAuthFormValues>({
     resolver: zodResolver(mcpServerOAuthFormSchema),
     defaultValues,
@@ -185,12 +192,19 @@ export function ConnectMCPServerDialog({
 
   const resetState = () => {
     setExternalIsLoading(false);
-    form.reset(defaultValues);
+    form.reset(getConnectMCPServerDialogDefaultValues(initialUseCase));
     setIsLoading(false);
     setIsStaticFormValid(false);
     setRemoteMCPServerOAuthDiscoveryDone(false);
     setAuthorization(null);
   };
+
+  // Re-seed the form when the dialog opens so Refresh keeps the existing use case.
+  useEffect(() => {
+    if (isOpen) {
+      form.reset(getConnectMCPServerDialogDefaultValues(initialUseCase));
+    }
+  }, [isOpen, initialUseCase, form]);
 
   // Synchronous validation — no race condition with useEffect.
   const credentialError = useMemo(

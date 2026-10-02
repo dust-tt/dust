@@ -127,8 +127,12 @@ export function handleCreateMCPServerDialogSubmitError({
   }
 }
 
-export function getConnectMCPServerDialogDefaultValues(): MCPServerOAuthFormValues {
-  return mcpServerOAuthFormSchema.parse({});
+export function getConnectMCPServerDialogDefaultValues(
+  initialUseCase?: MCPServerOAuthFormValues["useCase"]
+): MCPServerOAuthFormValues {
+  return mcpServerOAuthFormSchema.parse({
+    useCase: initialUseCase ?? null,
+  });
 }
 
 export function getCreateMCPServerDialogDefaultValues(
