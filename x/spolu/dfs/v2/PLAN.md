@@ -123,7 +123,7 @@ deferred publication are out of scope. See [design constraints](DESIGN.md#non-ne
 Implement and benchmark each group before starting the next. Preserve full tables and raw reports
 under `bench/`, with the unchanged client/workload and normal durable commits.
 
-- [ ] Tune FDB read-version/commit batching and short timer waits; validate independent writers and
+- [x] Tune FDB read-version/commit batching and short timer waits; validate independent writers and
       record the full filesystem benchmark, including untar.
 - [ ] Reuse a recent successful commit version for the first mutation attempt; refresh rejected,
       conflicting, expired, or read-only attempts. Verify cross-server freshness and record a new run.
