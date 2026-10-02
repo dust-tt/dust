@@ -17,7 +17,7 @@ msgstr ""
 msgid "How you appear to other members of the workspace"
 msgstr "Comment les autres membres de l’espace de travail vous voient"
 
-#: front/components/assistant/conversation/SidebarMenu.tsx
+#: front/components/assistant/conversation/sidebar/UnifiedSearchNav.tsx
 msgid "New conversation"
 msgstr "Nouvelle conversation"
 
@@ -95,7 +95,7 @@ msgstr "Police utilisée pour les réponses des agents dans les conversations"
 msgid "It applies on this device, but could not be saved to your account."
 msgstr "Elle s’applique sur cet appareil, mais n’a pas pu être enregistrée dans votre compte."
 
-#: front/components/assistant/conversation/SidebarMenu.tsx
+#: front/components/assistant/conversation/sidebar/UnifiedSearchNav.tsx
 #: front/components/navigation/AdminSettingsSearchNav.tsx
 msgid "Search"
 msgstr "Rechercher"

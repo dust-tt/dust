@@ -17,7 +17,7 @@ msgstr ""
 msgid "How you appear to other members of the workspace"
 msgstr "How you appear to other members of the workspace"
 
-#: front/components/assistant/conversation/SidebarMenu.tsx
+#: front/components/assistant/conversation/sidebar/UnifiedSearchNav.tsx
 msgid "New conversation"
 msgstr "New conversation"
 
@@ -95,7 +95,7 @@ msgstr "Font used for agent answers in conversations"
 msgid "It applies on this device, but could not be saved to your account."
 msgstr "It applies on this device, but could not be saved to your account."
 
-#: front/components/assistant/conversation/SidebarMenu.tsx
+#: front/components/assistant/conversation/sidebar/UnifiedSearchNav.tsx
 #: front/components/navigation/AdminSettingsSearchNav.tsx
 msgid "Search"
 msgstr "Search"
