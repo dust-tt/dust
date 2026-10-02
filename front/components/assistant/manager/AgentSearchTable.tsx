@@ -1,5 +1,6 @@
 import { SCOPE_INFO } from "@app/components/assistant/details/AgentDetailsSheet";
 import { AgentSearchActionsMenu } from "@app/components/assistant/manager/AgentSearchActionsMenu";
+import { DefaultAgentToggle } from "@app/components/assistant/manager/DefaultAgentToggle";
 import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
 import { ModelTierChip } from "@app/components/model_picker/ModelTierChip";
 import { getModelMakerLogo } from "@app/components/providers/types";
@@ -431,7 +432,14 @@ export function AgentSearchTable({
           cell: ({ row: { original: agent } }) =>
             renderActions ? (
               renderActions(agent, onRefresh)
-            ) : readOnly || agent.status === "archived" ? null : (
+            ) : readOnly || agent.status === "archived" ? null : agent.scope ===
+              "global" ? (
+              <DefaultAgentToggle
+                owner={owner}
+                agent={agent}
+                onRefresh={onRefresh}
+              />
+            ) : (
               <AgentSearchActionsMenu
                 owner={owner}
                 agentId={agent.sId}
