@@ -127,8 +127,12 @@ under `bench/`, with the unchanged client/workload and normal durable commits.
       record the full filesystem benchmark, including untar.
 - [x] Reuse a recent successful commit version for the first mutation attempt; refresh rejected,
       conflicting, expired, or read-only attempts. Verify cross-server freshness and record a new run.
-- [ ] Start independent lookup/authorization reads earlier using bounded advisory hints; preserve
+- [x] Start independent lookup/authorization reads earlier using bounded advisory hints; preserve
       snapshot checks/error ordering, verify deep moves/grants, and record a third full run.
+
+Results: [full tables and raw reports](bench/RESULTS.md). Untar: **197.439 → 44.301 → 43.066 →
+36.421 seconds**. All three milestones retain the API/client and normal durable commits. The
+30-second untar target remains unmet; these are single-run local measurements.
 
 ## Future work: after the local benchmark
 

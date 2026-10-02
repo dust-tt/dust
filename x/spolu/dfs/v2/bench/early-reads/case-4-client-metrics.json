@@ -1,0 +1,29 @@
+{
+  "dfs_client_metrics": {
+    "fuse.getattr": {
+      "calls": 1,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.init": {
+      "calls": 1,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.lookup": {
+      "calls": 357,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "rpc.lookup": {
+      "calls": 357,
+      "elapsed_ms": 153.901868,
+      "errors": 256
+    },
+    "rpc.stat": {
+      "calls": 1,
+      "elapsed_ms": 0.354958,
+      "errors": 0
+    }
+  }
+}

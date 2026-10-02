@@ -18,6 +18,74 @@ creates a new session and mount** (ten resets). Warm is one repeat on that mount
 and the Docker VM's OS cache are retained; local is the generated corpus on the container filesystem
 and is not guaranteed cold. All 24 rows passed the original workload's result checks.
 
+Sequential milestones (single runs; full tables and raw reports follow):
+
+| Server changes | Untar |
+| --- | ---: |
+| Before these three steps | 197.439 s |
+| 1. FDB latency tuning | 44.301 s |
+| 2. Recent commit version reuse | 43.066 s |
+| 3. Early metadata/authorization reads | 36.421 s |
+
+The 30-second target remains unmet. The population mount recorded 40,335 mutation RPCs averaging
+about 0.752 ms each, plus 10,205 lookups averaging 0.391 ms. These are client RPC timings, not FDB
+commit-only measurements or an additive wall-time breakdown; mount counters also include setup
+and manifest reads outside timed untar. See [counters](early-reads/case-0-client-metrics.json).
+
+### dfs v2 [early metadata and authorization reads]
+
+Builds on both previous steps. Workspace, primary object, hinted ancestors/grants, and child-name
+reads now start together in the current transaction. File-parent hints cover writes after create.
+Untar measured **43.066 → 36.421 s** (**15.4% less time**); full read/SHA-256 measured
+**14.229 → 12.060 s**. The 30-second untar target is still unmet.
+Measured server revision `f4944598bf`; all 24 checks passed with the unchanged client/workload,
+normal durable FDB commits, and ten server/session/mount resets. Phase profiling was disabled.
+
+```text
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 1,942.81  | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 151.05    | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 313.69    | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 8.49      | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 6,606.75  | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 875.86    | OK     |
+| metadata     | stat missing (256 paths)                       | first | 170.96    | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 1.89      | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 5,580.49  | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 199.35    | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 5,637.36  | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 199.91    | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 771.52    | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 39.21     | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 123.46    | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 6.78      | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 12,059.95 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 1,326.46  | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 348.92    | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 16.34     | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 62.87     | OK     |
+| file sync    | fsync (32 files)                               | once  | 20.23     | OK     |
+| write        | close (32 files)                               | once  | 0.76      | OK     |
+| write        | unlink (32 files)                              | once  | 34.09     | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+```
+
+Untar: **36.421 s**. Remaining client `syncfs`: **0.000069 s**
+after untar and **0.000072 s** after the suite. Shutdown: **0.069 s**.
+These drain timings exclude writeback already completed during the workload; there is no remaining
+FDB persistence drain after acknowledgment. Backend/OS caches remain warm; these are single runs.
+
+A separate run through **two server processes in the same workspace** completed and verified
+100 writes (50 × 1 KiB per writer) in **44.65 ms**. It also checked search/workspace
+isolation and shared discovery with 1/2/512 grants. This writer setup differs from the historical
+single-server, different-workspace sample; debug commit logging was enabled only for this separate run.
+
+[Run metadata](early-reads/filesystem.json), [DFS rows](early-reads/dfs.json),
+[local rows](early-reads/local.json), [two-server results](early-reads/workspaces.json),
+[configuration](early-reads/configuration.json), and [per-case RPC counters](early-reads/).
+
 ### dfs v2 [recent commit version]
 
 Builds on the FDB latency settings. First mutation attempts reuse a recent committed snapshot;

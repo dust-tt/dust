@@ -1,0 +1,170 @@
+[
+  [
+    "metadata",
+    "scandir + stat (100 dirs, 10,000 files)",
+    "first",
+    "1,942.81",
+    "OK"
+  ],
+  [
+    "metadata",
+    "scandir + stat (100 dirs, 10,000 files)",
+    "warm",
+    "151.05",
+    "OK"
+  ],
+  [
+    "metadata",
+    "rg --files (10,000 files)",
+    "first",
+    "313.69",
+    "OK"
+  ],
+  [
+    "metadata",
+    "rg --files (10,000 files)",
+    "warm",
+    "8.49",
+    "OK"
+  ],
+  [
+    "metadata",
+    "open + fstat + close (10,000 files)",
+    "first",
+    "6,606.75",
+    "OK"
+  ],
+  [
+    "metadata",
+    "open + fstat + close (10,000 files)",
+    "warm",
+    "875.86",
+    "OK"
+  ],
+  [
+    "metadata",
+    "stat missing (256 paths)",
+    "first",
+    "170.96",
+    "OK"
+  ],
+  [
+    "metadata",
+    "stat missing (256 paths)",
+    "warm",
+    "1.89",
+    "OK"
+  ],
+  [
+    "page cache",
+    "rg no-match scan (10,000 files, 177.5 MB)",
+    "first",
+    "5,580.49",
+    "OK"
+  ],
+  [
+    "page cache",
+    "rg no-match scan (10,000 files, 177.5 MB)",
+    "warm",
+    "199.35",
+    "OK"
+  ],
+  [
+    "search",
+    "rg rare literal (10,000 files, 4 matches)",
+    "first",
+    "5,637.36",
+    "OK"
+  ],
+  [
+    "search",
+    "rg rare literal (10,000 files, 4 matches)",
+    "warm",
+    "199.91",
+    "OK"
+  ],
+  [
+    "path pruning",
+    "rg branch glob (981 candidate files)",
+    "first",
+    "771.52",
+    "OK"
+  ],
+  [
+    "path pruning",
+    "rg branch glob (981 candidate files)",
+    "warm",
+    "39.21",
+    "OK"
+  ],
+  [
+    "path pruning",
+    "rg depth-10 subtree (136 files)",
+    "first",
+    "123.46",
+    "OK"
+  ],
+  [
+    "path pruning",
+    "rg depth-10 subtree (136 files)",
+    "warm",
+    "6.78",
+    "OK"
+  ],
+  [
+    "page cache",
+    "open + read + SHA-256 (10,000 files, 177.5 MB)",
+    "first",
+    "12,059.95",
+    "OK"
+  ],
+  [
+    "page cache",
+    "open + read + SHA-256 (10,000 files, 177.5 MB)",
+    "warm",
+    "1,326.46",
+    "OK"
+  ],
+  [
+    "random I/O",
+    "open + pread tail (256 files x 4 KiB)",
+    "first",
+    "348.92",
+    "OK"
+  ],
+  [
+    "random I/O",
+    "open + pread tail (256 files x 4 KiB)",
+    "warm",
+    "16.34",
+    "OK"
+  ],
+  [
+    "write",
+    "create + write (32 x 32 KiB files)",
+    "once",
+    "62.87",
+    "OK"
+  ],
+  [
+    "file sync",
+    "fsync (32 files)",
+    "once",
+    "20.23",
+    "OK"
+  ],
+  [
+    "write",
+    "close (32 files)",
+    "once",
+    "0.76",
+    "OK"
+  ],
+  [
+    "write",
+    "unlink (32 files)",
+    "once",
+    "34.09",
+    "OK"
+  ]
+]

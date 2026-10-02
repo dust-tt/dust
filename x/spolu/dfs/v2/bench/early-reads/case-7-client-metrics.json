@@ -1,0 +1,79 @@
+{
+  "dfs_client_metrics": {
+    "fuse.flush": {
+      "calls": 1962,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.getattr": {
+      "calls": 102,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.init": {
+      "calls": 1,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.lookup": {
+      "calls": 853,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.open": {
+      "calls": 1962,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.opendir": {
+      "calls": 202,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.read": {
+      "calls": 1962,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.readdir": {
+      "calls": 217,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.readdirplus": {
+      "calls": 102,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.release": {
+      "calls": 1962,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.releasedir": {
+      "calls": 202,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "rpc.list": {
+      "calls": 210,
+      "elapsed_ms": 2060.76275,
+      "errors": 0
+    },
+    "rpc.lookup": {
+      "calls": 853,
+      "elapsed_ms": 1135.044845,
+      "errors": 0
+    },
+    "rpc.read": {
+      "calls": 1962,
+      "elapsed_ms": 2819.910098,
+      "errors": 0
+    },
+    "rpc.stat": {
+      "calls": 1,
+      "elapsed_ms": 0.447875,
+      "errors": 0
+    }
+  }
+}
