@@ -18,7 +18,8 @@ const GetWorkspaceLookupQuerySchema = z.object({
  * @cc [owner:tdraier,label:security] non-member-workspace-name-only
  * The caller is not necessarily a member of the looked-up workspace (`no-auto-join` resolves it from
  * the caller's e-mail domain alone). The response MUST NOT expose any workspace field other than its
- * `name`: no identifiers (sId, WorkOS organization, Metronome customer), metadata, plan or settings.
+ * `sId` and `name`: no internal id, WorkOS organization, Metronome customer, metadata, plan or
+ * settings.
  */
 export const workspaceLookupApp = sessionApp();
 
@@ -58,7 +59,7 @@ workspaceLookupApp.get(
       }
 
       return ctx.json({
-        workspace: { name: workspace.name },
+        workspace: { sId: workspace.sId, name: workspace.name },
         status: "auto-join-disabled" as const,
         workspaceVerifiedDomain,
       });
@@ -76,7 +77,7 @@ workspaceLookupApp.get(
     }
 
     return ctx.json({
-      workspace: { name: result.value.name },
+      workspace: { sId: result.value.sId, name: result.value.name },
       status: "revoked" as const,
       workspaceVerifiedDomain: null,
     });

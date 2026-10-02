@@ -63,7 +63,7 @@ export function NoWorkspacePage() {
         rightActions={
           <div className="flex flex-row items-center">
             {user && shouldShowPicker && (
-              <WorkspacePicker user={user} workspace={null} />
+              <WorkspacePicker user={user} workspace={workspace} />
             )}
             <Button
               label="Sign out"

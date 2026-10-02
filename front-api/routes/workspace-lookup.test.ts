@@ -19,7 +19,7 @@ function lookup(flow: string) {
 }
 
 describe("GET /api/workspace-lookup", () => {
-  it("returns only the name of the non-member workspace owning the user's e-mail domain", async () => {
+  it("returns only the sId and name of the non-member workspace owning the user's e-mail domain", async () => {
     const { user } = await createPrivateApiMockRequest();
     const [, userEmailDomain] = user.email.split("@");
 
@@ -36,7 +36,7 @@ describe("GET /api/workspace-lookup", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
-      workspace: { name: otherWorkspace.name },
+      workspace: { sId: otherWorkspace.sId, name: otherWorkspace.name },
       status: "auto-join-disabled",
       workspaceVerifiedDomain: userEmailDomain,
     });
@@ -50,14 +50,14 @@ describe("GET /api/workspace-lookup", () => {
     expect(response.status).toBe(404);
   });
 
-  it("returns only the name of the revoked workspace", async () => {
+  it("returns only the sId and name of the revoked workspace", async () => {
     const { workspace } = await createPrivateApiMockRequest();
 
     const response = await lookup("revoked");
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
-      workspace: { name: workspace.name },
+      workspace: { sId: workspace.sId, name: workspace.name },
       status: "revoked",
       workspaceVerifiedDomain: null,
     });
