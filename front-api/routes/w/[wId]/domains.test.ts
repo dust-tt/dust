@@ -1,7 +1,9 @@
+import { removeWorkOSOrganizationDomain } from "@app/lib/api/workos/organization_primitives";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import type { MembershipRoleType } from "@app/types/memberships";
+import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
 
@@ -12,6 +14,7 @@ vi.mock("@app/lib/api/workos/organization_primitives", async () => {
   return {
     ...actual,
     listWorkOSOrganizationsWithDomain: vi.fn().mockResolvedValue([]),
+    removeWorkOSOrganizationDomain: vi.fn(),
   };
 });
 
@@ -22,6 +25,14 @@ async function setup(role: MembershipRoleType = "admin") {
 function post(workspace: { sId: string }, body: unknown) {
   return honoApp.request(`/api/w/${workspace.sId}/domains`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+function del(workspace: { sId: string }, body: unknown) {
+  return honoApp.request(`/api/w/${workspace.sId}/domains`, {
+    method: "DELETE",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
@@ -127,5 +138,65 @@ describe("POST /api/w/:wId/domains (auto-join)", () => {
           "You do not have permission to manage identity and provisioning settings.",
       },
     });
+  });
+});
+
+describe("DELETE /api/w/:wId/domains", () => {
+  it("deletes the local domain and removes it from WorkOS", async () => {
+    vi.mocked(removeWorkOSOrganizationDomain).mockResolvedValueOnce(
+      new Ok(undefined)
+    );
+    const { workspace } = await setup();
+    await seedDomain(workspace.sId, "acme.com");
+    await seedDomain(workspace.sId, "acme.io");
+
+    const response = await del(workspace, { domain: "acme.com" });
+
+    expect(response.status).toBe(204);
+    expect(await verifiedDomains(workspace.sId)).toEqual([
+      { domain: "acme.io", domainAutoJoinEnabled: false },
+    ]);
+    expect(removeWorkOSOrganizationDomain).toHaveBeenCalledWith(
+      expect.objectContaining({ sId: workspace.sId }),
+      { domain: "acme.com" }
+    );
+  });
+
+  it("revokes the local domain even when the WorkOS removal fails", async () => {
+    vi.mocked(removeWorkOSOrganizationDomain).mockResolvedValueOnce(
+      new Err(new Error("WorkOS unavailable"))
+    );
+    const { workspace } = await setup();
+    await seedDomain(workspace.sId, "acme.com");
+
+    const response = await del(workspace, { domain: "acme.com" });
+
+    expect(response.status).toBe(400);
+    expect(await verifiedDomains(workspace.sId)).toEqual([]);
+  });
+
+  it("removes a domain that only exists in WorkOS", async () => {
+    vi.mocked(removeWorkOSOrganizationDomain).mockResolvedValueOnce(
+      new Ok(undefined)
+    );
+    const { workspace } = await setup();
+
+    const response = await del(workspace, { domain: "pending.com" });
+
+    expect(response.status).toBe(204);
+    expect(removeWorkOSOrganizationDomain).toHaveBeenCalledWith(
+      expect.objectContaining({ sId: workspace.sId }),
+      { domain: "pending.com" }
+    );
+  });
+
+  it("returns 403 for a member without the admin:security permission", async () => {
+    const { workspace } = await setup("user");
+    await seedDomain(workspace.sId, "acme.com");
+
+    const response = await del(workspace, { domain: "acme.com" });
+
+    expect(response.status).toBe(403);
+    expect(await verifiedDomains(workspace.sId)).toHaveLength(1);
   });
 });

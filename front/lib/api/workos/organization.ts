@@ -1,7 +1,10 @@
 import schemaVersionsJson from "@app/lib/api/audit/schema_versions.json";
 import { config as cellConfig } from "@app/lib/api/cells/config";
 import { getWorkOS } from "@app/lib/api/workos/client";
-import { getWorkOSOrganization } from "@app/lib/api/workos/organization_primitives";
+import {
+  getWorkOSOrganization,
+  removeWorkOSOrganizationDomain,
+} from "@app/lib/api/workos/organization_primitives";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -9,6 +12,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchSyncWorkOSITContactsWorkflow } from "@app/temporal/workos_events_queue/client";
 import type { Result } from "@app/types/shared/result";
@@ -162,6 +166,32 @@ export async function addWorkOSOrganizationDomain(
   });
 
   return new Ok(undefined);
+}
+
+/**
+ * @cc [owner:tdraier,label:security;product] domain-removal-revokes-locally
+ * The workspace's local `workspace_has_domains` row for `domain` MUST be deleted before the domain
+ * is removed from WorkOS, so auto-join stops honoring the domain even if the WorkOS call fails or
+ * its `organization.updated` webhook is delayed or never delivered.
+ */
+export async function removeWorkspaceDomain(
+  workspace: WorkspaceResource,
+  { domain }: { domain: string }
+): Promise<Result<void, Error>> {
+  const localDomains = await workspace.getVerifiedDomains();
+  if (localDomains.some((d) => d.domain === domain)) {
+    const deleteRes = await workspace.deleteDomain({ domain });
+    if (deleteRes.isErr()) {
+      return deleteRes;
+    }
+  }
+
+  return removeWorkOSOrganizationDomain(
+    renderLightWorkspaceType({ workspace }),
+    {
+      domain,
+    }
+  );
 }
 
 export async function updateWorkOSOrganizationName(

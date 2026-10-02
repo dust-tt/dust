@@ -4,11 +4,8 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import {
   addWorkOSOrganizationDomain,
   getOrCreateWorkOSOrganization,
+  removeWorkspaceDomain,
 } from "@app/lib/api/workos/organization";
-import {
-  getWorkOSOrganization,
-  removeWorkOSOrganizationDomain,
-} from "@app/lib/api/workos/organization_primitives";
 import type { Authenticator } from "@app/lib/auth";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isDomain } from "@app/lib/utils";
@@ -88,12 +85,7 @@ export async function handleRemoveDomain(
     );
   }
 
-  const organization = await getWorkOSOrganization(workspace);
-  if (!organization) {
-    return new Err(new Error("Failed to get WorkOS organization."));
-  }
-
-  const result = await removeWorkOSOrganizationDomain(workspace, {
+  const result = await removeWorkspaceDomain(existingDomainWorkspace, {
     domain,
   });
   if (result.isErr()) {
@@ -102,9 +94,7 @@ export async function handleRemoveDomain(
 
   return new Ok({
     display: "text",
-    value:
-      `Domain ${domain} has been removed from the workspace in WorkOS. Next webhook will ` +
-      "remove it from the workspace in the database.",
+    value: `Domain ${domain} has been removed from the workspace.`,
   });
 }
 
