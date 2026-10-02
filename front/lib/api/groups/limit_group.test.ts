@@ -6,7 +6,7 @@ import {
   resolveLimitGroupsForUsers,
 } from "@app/lib/api/groups/limit_group";
 import { Authenticator } from "@app/lib/auth";
-import type { GroupResource } from "@app/lib/resources/group_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -210,5 +210,53 @@ describe("resolveLimitGroupsForUsers", () => {
     expect(limitGroups.get(alice.sId)?.sId).toBe(engineering.sId);
     expect(limitGroups.get(bruno.sId)?.sId).toBe(sales.sId);
     expect(limitGroups.has(carol.sId)).toBe(false);
+  });
+});
+
+describe("read filter", () => {
+  it("resolves the member's own limit group with the member's auth", async () => {
+    const { workspace, auth } = await setup();
+    const remy = await makeMember(workspace);
+    const engineering = await makeGroup(auth, workspace, "Engineering", [remy]);
+    await limit(auth, engineering, 10_000);
+    const remyAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      remy.sId,
+      workspace.sId
+    );
+
+    expect(
+      (await resolveLimitGroupForUser(remyAuth, { user: remy }))?.sId
+    ).toBe(engineering.sId);
+  });
+
+  it("returns nothing to a caller who cannot read the member's groups", async () => {
+    const { workspace, auth } = await setup();
+    const remy = await makeMember(workspace);
+    const engineering = await makeGroup(auth, workspace, "Engineering", [remy]);
+    await limit(auth, engineering, 10_000);
+    const outsider = await UserFactory.basic();
+    const outsiderAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      outsider.sId,
+      workspace.sId
+    );
+
+    expect(
+      await resolveLimitGroupForUser(outsiderAuth, { user: remy })
+    ).toBeNull();
+  });
+
+  it("drops a member whose limit group is unreadable instead of reassigning them", async () => {
+    const { workspace, auth } = await setup();
+    const remy = await makeMember(workspace);
+    const engineering = await makeGroup(auth, workspace, "Engineering", [remy]);
+    const sales = await makeGroup(auth, workspace, "Sales", [remy]);
+    await limit(auth, engineering, 10_000);
+    await limit(auth, sales, 6_000);
+    vi.spyOn(auth, "can").mockImplementation(
+      (_verb, target) =>
+        !(target instanceof GroupResource && target.id === engineering.id)
+    );
+
+    expect(await resolveLimitGroupForUser(auth, { user: remy })).toBeNull();
   });
 });
