@@ -49,6 +49,7 @@ import {
   ActivityCancellationType,
   CancellationScope,
   deprecatePatch,
+  isCancellation,
   log,
   patched,
   proxyActivities,
@@ -199,7 +200,13 @@ export async function agentLoopConversationTitleWorkflow({
   authType: AuthenticatorType;
   agentLoopArgs: AgentLoopArgs;
 }) {
-  await ensureConversationTitleActivity(authType, agentLoopArgs);
+  try {
+    await ensureConversationTitleActivity(authType, agentLoopArgs);
+  } catch (error) {
+    if (!isCancellation(error)) {
+      throw error;
+    }
+  }
 }
 
 export async function compactionWorkflow({

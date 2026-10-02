@@ -1,5 +1,5 @@
 import { ActivityFailure, RetryState } from "@temporalio/common";
-import { proxyActivities } from "@temporalio/workflow";
+import { isCancellation, proxyActivities } from "@temporalio/workflow";
 
 import type * as activities from "./activities";
 
@@ -70,6 +70,10 @@ export async function wakeUpWorkflow({
   try {
     await runWakeUpActivity({ workspaceId, wakeUpId });
   } catch (error) {
+    if (isCancellation(error)) {
+      return;
+    }
+
     if (isRunWakeUpActivityFailure(error)) {
       // Older workers used WakeUpNonRetryableError for expected stale wake-up states.
       if (error.retryState === RetryState.NON_RETRYABLE_FAILURE) {
@@ -77,7 +81,13 @@ export async function wakeUpWorkflow({
       }
 
       if (isWakeUpActivityRetryExhausted(error)) {
-        await expireWakeUpActivity({ workspaceId, wakeUpId });
+        try {
+          await expireWakeUpActivity({ workspaceId, wakeUpId });
+        } catch (error) {
+          if (!isCancellation(error)) {
+            throw error;
+          }
+        }
         return;
       }
     }
