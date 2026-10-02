@@ -2763,6 +2763,9 @@
           "401": {
             "description": "Unauthorized. Invalid or missing authentication token."
           },
+          "413": {
+            "description": "Request body too large."
+          },
           "500": {
             "description": "Internal Server Error."
           }

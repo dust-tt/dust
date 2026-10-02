@@ -139,6 +139,31 @@ describe("POST /api/v1/w/[wId]/assistant/mentions/parse", () => {
     expect(responseData.markdown).toContain(agentConfig.sId);
   });
 
+  it("should replace every repeated mention and keep surrounding text", async () => {
+    const { workspace, key, user, agentConfig } = await setupTest();
+
+    const response = await parseMentions(workspace, key, user, {
+      markdown: `Hey @${agentConfig.name} and @${agentConfig.name}, Bye.`,
+    });
+
+    expect(response.status).toBe(200);
+    const responseData = await response.json();
+    expect(responseData.markdown.match(/:mention\[/g)).toHaveLength(2);
+    expect(responseData.markdown.startsWith("Hey ")).toBe(true);
+    expect(responseData.markdown.endsWith(", Bye.")).toBe(true);
+    expect(responseData.markdown).not.toContain(`@${agentConfig.name}`);
+  });
+
+  it("should reject oversized markdown", async () => {
+    const { workspace, key, user, agentConfig } = await setupTest();
+
+    const response = await parseMentions(workspace, key, user, {
+      markdown: `@${agentConfig.name} `.repeat(50_000),
+    });
+
+    expect(response.status).toBe(413);
+  });
+
   it("should handle missing markdown field", async () => {
     const { workspace, key, user } = await setupTest();
 

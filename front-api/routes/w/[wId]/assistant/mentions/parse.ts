@@ -1,4 +1,8 @@
-import { parseMentionsInMarkdown } from "@app/lib/api/assistant/parse_mentions";
+import {
+  PARSE_MENTIONS_MAX_BODY_SIZE_BYTES,
+  parseMentionsInMarkdown,
+} from "@app/lib/api/assistant/parse_mentions";
+import { bodyLimit } from "@front-api/middlewares/body_limit";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -11,12 +15,17 @@ const ParseMentionsRequestBodySchema = z.object({
 const app = workspaceApp();
 
 /** @ignoreswagger */
-app.post("/", validate("json", ParseMentionsRequestBodySchema), async (ctx) => {
-  const auth = ctx.get("auth");
-  const { markdown } = ctx.req.valid("json");
+app.post(
+  "/",
+  bodyLimit(PARSE_MENTIONS_MAX_BODY_SIZE_BYTES),
+  validate("json", ParseMentionsRequestBodySchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { markdown } = ctx.req.valid("json");
 
-  const processedMarkdown = await parseMentionsInMarkdown({ auth, markdown });
-  return ctx.json({ markdown: processedMarkdown });
-});
+    const processedMarkdown = await parseMentionsInMarkdown({ auth, markdown });
+    return ctx.json({ markdown: processedMarkdown });
+  }
+);
 
 export default app;

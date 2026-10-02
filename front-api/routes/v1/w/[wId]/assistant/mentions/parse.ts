@@ -1,6 +1,10 @@
-import { parseMentionsInMarkdown } from "@app/lib/api/assistant/parse_mentions";
+import {
+  PARSE_MENTIONS_MAX_BODY_SIZE_BYTES,
+  parseMentionsInMarkdown,
+} from "@app/lib/api/assistant/parse_mentions";
 import type { ParseMentionsResponseBodyType } from "@dust-tt/client";
 import { ParseMentionsRequestBodySchema } from "@dust-tt/client";
+import { bodyLimit } from "@front-api/middlewares/body_limit";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -55,11 +59,14 @@ const app = publicApiApp();
  *         description: Bad Request. Missing or invalid request body.
  *       401:
  *         description: Unauthorized. Invalid or missing authentication token.
+ *       413:
+ *         description: Request body too large.
  *       500:
  *         description: Internal Server Error.
  */
 app.post(
   "/",
+  bodyLimit(PARSE_MENTIONS_MAX_BODY_SIZE_BYTES),
   validate("json", ParseMentionsRequestBodySchema),
   async (ctx): HandlerResult<ParseMentionsResponseBodyType> => {
     const auth = ctx.get("auth");
