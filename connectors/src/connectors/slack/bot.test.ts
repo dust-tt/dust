@@ -72,10 +72,10 @@ async function makeSlackChatBotMessage(connector: ConnectorResource) {
 
 function sentExtraHeaders(): Record<string, string> | undefined {
   const [dustAPI] = vi.mocked(DustAPI.prototype.answerUserQuestion).mock
-    .contexts as unknown as {
-    _credentials: { extraHeaders?: Record<string, string> };
-  }[];
-  return dustAPI?._credentials.extraHeaders;
+    .contexts;
+  return dustAPI instanceof DustAPI
+    ? dustAPI._credentials.extraHeaders
+    : undefined;
 }
 
 function answerParams(slackTeamId: string, slackChatBotMessageId: number) {

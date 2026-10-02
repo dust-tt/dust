@@ -355,7 +355,7 @@ async function getInteractingSlackUserGroups(
   }
 ): Promise<Result<string[] | null, Error>> {
   if (!slackUserId) {
-    throw new Error("Failed to get slack user info");
+    return new Err(new Error("Failed to get slack user info"));
   }
 
   let slackUserInfo: SlackUserInfo;
