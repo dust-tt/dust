@@ -1,5 +1,6 @@
 import type { ProcessAndStoreFileError } from "@app/lib/api/files/processing";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
+import { validateExternalUrl } from "@app/lib/api/url_safety";
 import type { Authenticator } from "@app/lib/auth";
 import { untrustedFetch } from "@app/lib/egress/server";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -14,6 +15,8 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
 import { Readable } from "stream";
+
+const FETCH_FROM_URL_TIMEOUT_MS = 60_000;
 
 export async function processAndStoreFromUrl(
   auth: Authenticator,
@@ -40,8 +43,19 @@ export async function processAndStoreFromUrl(
     });
   }
 
+  const urlSafetyError = await validateExternalUrl(validUrl.standardized);
+  if (urlSafetyError) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: urlSafetyError,
+    });
+  }
+
   try {
-    const response = await untrustedFetch(url);
+    const response = await untrustedFetch(validUrl.standardized, {
+      signal: AbortSignal.timeout(FETCH_FROM_URL_TIMEOUT_MS),
+    });
     if (!response.ok) {
       return new Err({
         name: "dust_error",
