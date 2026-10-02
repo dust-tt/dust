@@ -158,7 +158,7 @@ describe("archiveWorkspaceInactiveAgentsActivity", () => {
 
     expect(res.archivedCount).toBe(1);
     expect(res.skippedCount).toBe(0);
-    expect(await statusOf(authenticator, agent.sId)).toBeUndefined();
+    expect(await statusOf(authenticator, agent.sId)).toBe("archived");
   });
 
   it("archives nothing once the workspace clears its threshold", async () => {

@@ -9,6 +9,11 @@ import { CLAUDE_OPUS_4_8_MODEL_ID } from "@app/types/assistant/models/anthropic"
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("@app/temporal/agent_loop/client", () => ({
+  launchAgentLoopWorkflow: vi.fn(),
+  launchCompactionWorkflow: vi.fn(),
+}));
+
 vi.mock("@app/lib/api/programmatic_usage/tracking", () => ({
   isProgrammaticUsage: () => false,
   checkProgrammaticUsageLimits: vi.fn(),
