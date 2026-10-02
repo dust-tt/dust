@@ -458,17 +458,22 @@ interface AvailabilityParticipant {
 /**
  * @cc [owner:aubin-tchoi,label:product] availability-iso-utc
  * ISO timestamps without an explicit offset MUST be interpreted in UTC, independently
- * of the host timezone. Invalid timestamps MUST produce an invalid Date.
+ * of the host timezone. Invalid timestamps, including malformed offsets, MUST
+ * produce an invalid Date rather than defaulting to UTC.
  */
 export function parseAvailabilityDateTime(value: string): Date {
-  const hasTime = /[T ]/.test(value);
-  const hasOffset = hasTime && /(?:Z|[+-]\d{2}(?::?\d{2})?)$/i.test(value);
-  const utcValue = hasOffset
-    ? value
-    : hasTime
-      ? `${value}Z`
-      : `${value}T00:00:00Z`;
-  return parseISO(utcValue);
+  // parseISO defaults unrecognized timezone suffixes to UTC, so validate syntax first.
+  const match =
+    /^([+-]?\d[\dW-]*)(?:[T ](\d{2}(?::?\d{2}(?::?\d{2}(?:[.,]\d+)?)?)?)([Zz]|[+-](?:[01]\d|2[0-3])(?::?[0-5]\d)?)?)?$/.exec(
+      value
+    );
+  if (!match) {
+    return new Date(NaN);
+  }
+  const [, date, time, offset] = match;
+  return parseISO(
+    `${date}T${time ?? "00:00:00"}${offset?.toUpperCase() ?? "Z"}`
+  );
 }
 
 export interface CalendarInterval {
