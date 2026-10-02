@@ -3,6 +3,7 @@ use bytes::Bytes;
 use clap::Args;
 use dfs_protocol::{error::status, rpc::ErrorCode};
 use foundationdb::{Database, FdbError, RangeOption, Transaction, options::TransactionOption};
+use serde::{Serialize, de::DeserializeOwned};
 use std::{
     collections::VecDeque,
     future::Future,
@@ -76,6 +77,7 @@ impl Storage {
             transaction,
             prefix: self.prefix.clone(),
             error: AtomicI32::new(0),
+            started: std::time::Instant::now(),
         }))
     }
 
@@ -159,8 +161,14 @@ pub struct Snapshot {
     transaction: Transaction,
     prefix: Arc<[u8]>,
     error: AtomicI32,
+    started: std::time::Instant,
 }
 impl Snapshot {
+    pub(crate) fn expiring(&self) -> bool {
+        self.started.elapsed() >= Duration::from_millis(3500)
+            || matches!(self.error.load(Ordering::Relaxed), 1007 | 1031)
+    }
+
     fn key(&self, suffix: &[u8]) -> Vec<u8> {
         let mut key = self.prefix.to_vec();
         key.extend_from_slice(suffix);
@@ -310,4 +318,14 @@ pub(crate) fn prefix_end(prefix: &[u8]) -> Vec<u8> {
 pub(crate) fn failed(error: impl std::fmt::Display) -> Status {
     tracing::error!(error = %error, "storage operation failed");
     status(ErrorCode::Unavailable)
+}
+pub(crate) fn encode<T: Serialize>(value: &T) -> Result<Vec<u8>, Status> {
+    postcard::to_stdvec(value).map_err(failed)
+}
+pub(crate) fn decode<T: DeserializeOwned>(value: &[u8]) -> Result<T, Status> {
+    let (value, rest) = postcard::take_from_bytes(value).map_err(failed)?;
+    if !rest.is_empty() {
+        return Err(status(ErrorCode::Unavailable));
+    }
+    Ok(value)
 }

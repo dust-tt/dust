@@ -47,6 +47,53 @@ fn local_fdb_transactions_and_recovery() -> Result<()> {
         ensure!(rejected.is_err());
         ensure!(store.get(b"never").await?.is_none());
 
+        // One read version must remain coherent across a concurrent committed write.
+        let view = store.snapshot().await?;
+        assert!(view.get(b"snapshot-key").await?.is_none());
+        store
+            .transact(|_| async {
+                let mut batch = WriteBatch::new();
+                batch.put(b"snapshot-key", b"new");
+                Ok((batch, ()))
+            })
+            .await?;
+        assert!(view.get(b"snapshot-key").await?.is_none());
+        assert_eq!(
+            store
+                .get(b"snapshot-key")
+                .await?
+                .context("new value")?
+                .as_ref(),
+            b"new"
+        );
+        drop(view);
+        let oversized = store
+            .transact(|_| async {
+                let mut batch = WriteBatch::new();
+                batch.put(b"oversized-first", b"absent");
+                for i in 0_u32..150 {
+                    batch.put(i.to_be_bytes(), vec![0; 65_536]);
+                }
+                Ok((batch, ()))
+            })
+            .await;
+        assert!(oversized.is_err());
+        assert!(store.get(b"oversized-first").await?.is_none());
+        assert_eq!(
+            store
+                .get(0_u32.to_be_bytes())
+                .await?
+                .context("original value")?
+                .len(),
+            4
+        );
+
+        let expired = store.snapshot().await?;
+        expired.get(b"block").await?;
+        tokio::time::sleep(std::time::Duration::from_millis(4100)).await;
+        assert!(expired.get(b"block").await.is_err());
+        drop(expired);
+
         let increment = || {
             store.transact(|view| async move {
                 let value = view.get(b"counter").await?;

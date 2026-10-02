@@ -62,8 +62,8 @@ There is no global or workspace object-version counter.
 
 FDB limits values to 100,000 bytes and transactions to 10,000,000 affected bytes, with a roughly
 five-second transaction lifetime. The existing 65,536-byte content blocks fit. Metadata encoding
-MUST support every v1-valid xattr payload; oversized encoded records use bounded overflow parts,
-read/written atomically with their object record. Keep 1 MiB RPC writes and account for keys and
+MUST support every v1-valid xattr payload. Keep compact Postcard records: at most three times the
+32 KiB xattr budget plus 1 KiB for other fields fits one FDB value. No overflow records are needed. Keep 1 MiB RPC writes and account for keys and
 conflict ranges in the transaction budget. Never split an atomic filesystem mutation across commits
 or lower public limits to hide a storage-format problem. See [FDB limits](https://apple.github.io/foundationdb/known-limitations.html).
 
