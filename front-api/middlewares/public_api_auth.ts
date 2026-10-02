@@ -190,14 +190,16 @@ export const publicApiAuth = createMiddleware<PublicApiCtx>(
     const userEmailFromHeader = keyRes.value.isSystem
       ? getUserEmailFromHeaders(headers)
       : undefined;
+    // Presence, not value, marks impersonation: an empty email must not keep the system defaults.
+    const isImpersonating = userEmailFromHeader !== undefined;
 
     // An impersonation request starts from the narrowest grant (the `user` role and only the
     // groups it names) and gains the user's own access only once the email resolves to a member.
     let workspaceAuth = await Authenticator.fromKey(
       keyRes.value,
       wId,
-      userEmailFromHeader ? (requestedGroupIds ?? []) : requestedGroupIds,
-      userEmailFromHeader ? "user" : requestedRole
+      isImpersonating ? (requestedGroupIds ?? []) : requestedGroupIds,
+      isImpersonating ? "user" : requestedRole
     );
 
     const workspaceError = validateWorkspaceFromAuth(workspaceAuth);
@@ -215,7 +217,7 @@ export const publicApiAuth = createMiddleware<PublicApiCtx>(
       });
     }
 
-    if (userEmailFromHeader) {
+    if (isImpersonating) {
       const userAuth = await workspaceAuth.exchangeSystemKeyForUserAuthByEmail(
         workspaceAuth,
         {
@@ -228,7 +230,7 @@ export const publicApiAuth = createMiddleware<PublicApiCtx>(
       } else if (!requestedGroupIds) {
         // Without named groups there is nothing narrower to fall back to.
         logger.warn(
-          { workspaceId: wId, keyId: keyRes.value.id },
+          { workspaceId: wId, keyModelId: keyRes.value.id },
           "Rejected system-key impersonation of an email with no active membership"
         );
         return apiError(ctx, {
