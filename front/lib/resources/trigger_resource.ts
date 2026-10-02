@@ -151,6 +151,11 @@ export class TriggerResource extends BaseResource<TriggerModel> {
    * workspace role; otherwise `makeNew` fails with `TriggerAgentNotReadableError` without persisting
    * the trigger.
    */
+  /**
+   * @cc [owner:fabiencelier,label:security] trigger-webhook-view-checked-by-caller
+   * `makeNew` does not check access to `webhookSourceViewId`. Callers MUST only pass the model id of
+   * a view that belongs to the caller's workspace and that the caller holds `read` or `admin` on.
+   */
   static async makeNew(
     auth: Authenticator,
     {
@@ -514,6 +519,12 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }>;
   }
 
+  /**
+   * @cc [owner:fabiencelier,label:security] trigger-webhook-view-checked-by-caller
+   * `update` does not check access to `blob.webhookSourceViewId`. When it differs from the
+   * trigger's current view, callers MUST only pass the model id of a view that belongs to the
+   * caller's workspace and that the caller holds `read` or `admin` on.
+   */
   static async update(
     auth: Authenticator,
     sId: string,
