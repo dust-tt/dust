@@ -182,6 +182,24 @@ describe("POST/PATCH /api/w/:wId/triggers (webhookSourceViewId)", () => {
     const unchanged = await TriggerResource.fetchById(auth, trigger.sId);
     expect(unchanged?.webhookSourceViewId).toBe(readableView.id);
   });
+
+  it("keeps the view of a trigger whose editor cannot read it", async () => {
+    const { workspace, auth, agent, restrictedView } = await setup();
+    const trigger = await TriggerFactory.webhook(auth, {
+      agentConfigurationId: agent.sId,
+      webhookSourceViewId: restrictedView.id,
+    });
+    const body = webhookTriggerBody(restrictedView.sId);
+
+    const response = await patchTriggers(workspace, agent.sId, {
+      triggers: [{ ...body, sId: trigger.sId }],
+    });
+
+    expect(response.status).toBe(204);
+    const updated = await TriggerResource.fetchById(auth, trigger.sId);
+    expect(updated?.name).toBe(body.name);
+    expect(updated?.webhookSourceViewId).toBe(restrictedView.id);
+  });
 });
 
 describe("POST /api/w/:wId/triggers (spaceId)", () => {
