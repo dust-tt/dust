@@ -434,7 +434,6 @@ export async function botValidateToolExecution(
     slackTeamId,
     responseUrl,
     slackUserId,
-    slackBotId,
   } = params;
 
   const connectorRes = await getSlackConnector(params);
@@ -456,10 +455,6 @@ export async function botValidateToolExecution(
       slackChatBotMessage.slackEmail !== "unknown"
         ? slackChatBotMessage.slackEmail
         : undefined;
-
-    if (!slackUserId && slackBotId) {
-      throw new Error("Unreachable: bot cannot validate tool execution.");
-    }
 
     const requestedGroupsRes = await getInteractingSlackUserGroups(
       connector,
