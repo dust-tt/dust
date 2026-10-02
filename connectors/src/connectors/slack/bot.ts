@@ -645,7 +645,7 @@ export async function botAnswerUserQuestion({
   slackUserId,
   responseUrl,
 }: UserQuestionAnswerParams): Promise<
-  Result<AnswerUserQuestionResponseType, Error | APIError>
+  Result<AnswerUserQuestionResponseType | undefined, Error | APIError>
 > {
   const slackConfig =
     await SlackConfigurationResource.fetchByActiveBot(slackTeamId);
@@ -687,7 +687,7 @@ export async function botAnswerUserQuestion({
     }
     const requestedGroups = requestedGroupsRes.value;
     if (!requestedGroups) {
-      return new Err(new Error("Slack user is not allowed to answer."));
+      return new Ok(undefined);
     }
 
     const dustAPI = new DustAPI(

@@ -98,8 +98,7 @@ function applyClientIp(auth: Authenticator, headers: HeaderRecord): void {
  * Authenticates a public-API request (Authorization header required:
  * sandbox token, OAuth bearer, or API key) and stashes the resolved
  * `Authenticator` on the Hono context under `auth`.
- */
-/**
+ *
  * @cc [owner:avervaet,label:security] user-email-impersonation-fails-closed
  * A system-key request carrying `x-api-user-email` MUST NOT run with the system key's default
  * `admin` role or its workspace-wide groups. When the email resolves to no active member, the

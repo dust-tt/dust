@@ -154,7 +154,8 @@ describe("botAnswerUserQuestion", () => {
 
     const res = await botAnswerUserQuestion(answerParams("T_OWN", message.id));
 
-    expect(res.isErr()).toBe(true);
+    expect(res.isOk()).toBe(true);
+    expect(res.isOk() && res.value).toBeUndefined();
     expect(DustAPI.prototype.answerUserQuestion).not.toHaveBeenCalled();
   });
 });
