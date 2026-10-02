@@ -1,4 +1,5 @@
 use crate::{
+    ancestry::{Ancestry, WINDOW},
     keys::{Keys, prefix_end},
     model::{Record, WorkspaceRecord},
     storage::{Scan, Snapshot, Storage, decode, failed},
@@ -25,6 +26,7 @@ pub(crate) struct View {
     pub keys: Keys,
     pub grants: BTreeSet<String>,
     pub root: String,
+    ancestry: Option<Arc<Ancestry>>,
 }
 impl View {
     pub async fn new(storage: &Storage, workspace: &str, grants: BTreeSet<String>) -> Result<Self> {
@@ -48,7 +50,12 @@ impl View {
             keys,
             grants,
             root: workspace.root,
+            ancestry: None,
         })
+    }
+    pub fn with_ancestry(mut self, ancestry: Arc<Ancestry>) -> Self {
+        self.ancestry = Some(ancestry);
+        self
     }
     pub async fn get(&self, key: &[u8]) -> Result<Option<Bytes>> {
         self.snapshot.get(key).await.map_err(failed)
@@ -62,6 +69,11 @@ impl View {
         let record: Record = decode(&bytes)?;
         if record.object.id != id {
             return Err(status(ErrorCode::Unavailable));
+        }
+        if record.object.directory
+            && let (Some(hints), Some(parent)) = (&self.ancestry, &record.parent)
+        {
+            hints.remember(&self.keys, &id, &parent.id).await;
         }
         Ok(record)
     }
@@ -123,23 +135,61 @@ impl View {
             .try_any(|present| async move { present })
             .await
     }
+    /// @cc [owner:spolu,label:security;concurrency] validate-hinted-ancestry
+    /// Hints MUST only schedule reads. Follow parent IDs from live records in this transaction and
+    /// ignore speculative results outside that chain, including their errors. Only a live grant on
+    /// the verified chain may authorize. Moves/revocations MUST remain conflict-tracked for writes.
+    /// Missing/stale hints MUST fall back to the actual chain without changing authorization.
     pub async fn authorized(&self, object: &Record) -> Result<bool> {
         let mut current = object.clone();
         let mut visited = HashSet::new();
         loop {
-            if !visited.insert(current.object.id.clone()) || visited.len() > 4096 {
-                return Err(status(ErrorCode::Unavailable));
+            let mut expected = current.object.id.clone();
+            let mut nodes = vec![(expected.clone(), Some(current.clone()))];
+            if let (Some(hints), Some(parent)) = (&self.ancestry, &current.parent) {
+                nodes.extend(
+                    hints
+                        .chain(&self.keys, &parent.id)
+                        .await
+                        .into_iter()
+                        .map(|id| (id, None)),
+                );
             }
-            if self.attached(&current.object.id).await? {
-                return Ok(true);
+            let mut reads = stream::iter(nodes)
+                .map(|(id, known)| async move {
+                    let (record, allowed) = tokio::join!(
+                        async {
+                            match known {
+                                Some(record) => Ok(record),
+                                None => self.object(&id).await,
+                            }
+                        },
+                        self.attached(&id),
+                    );
+                    (id, record, allowed)
+                })
+                .buffered(WINDOW);
+            while let Some((id, record, allowed)) = reads.next().await {
+                if id != expected {
+                    break;
+                }
+                let record = record?;
+                if (!visited.is_empty() && !record.object.directory)
+                    || !visited.insert(id)
+                    || visited.len() > 4096
+                {
+                    return Err(status(ErrorCode::Unavailable));
+                }
+                if allowed? {
+                    return Ok(true);
+                }
+                let Some(parent) = record.parent else {
+                    return Ok(false);
+                };
+                expected = parent.id;
             }
-            let Some(parent) = current.parent else {
-                return Ok(false);
-            };
-            current = self.object(&parent.id).await?;
-            if !current.object.directory {
-                return Err(status(ErrorCode::Unavailable));
-            }
+            drop(reads);
+            current = self.object(&expected).await?;
         }
     }
     pub async fn stat(&self, id: &str) -> Result<Record> {

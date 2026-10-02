@@ -1,6 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{Mutex, Semaphore};
 
+mod ancestry;
 pub mod api;
 mod auth;
 mod keys;
@@ -20,6 +21,7 @@ pub struct State {
     locks: Mutex<HashMap<String, Arc<auth::WorkspaceLocks>>>,
     creation: Mutex<()>,
     admission: Arc<Semaphore>,
+    ancestry: Arc<ancestry::Ancestry>,
 }
 impl State {
     pub fn new(storage: storage::Storage, server_key: &str) -> anyhow::Result<Arc<Self>> {
@@ -35,6 +37,7 @@ impl State {
             locks: Default::default(),
             creation: Mutex::new(()),
             admission: Arc::new(Semaphore::new(64)),
+            ancestry: Default::default(),
         }))
     }
 }
@@ -52,6 +55,7 @@ impl State {
 #[test]
 fn local_backend_contracts() -> anyhow::Result<()> {
     network::run(async {
+        ancestry::tests::concurrent_authority_changes_abort_hinted_writes().await?;
         auth::tests::workspace_lock_pruning_preserves_active_gates_and_bounds_idle_entries()
             .await?;
         api::tests::cancelled_write_keeps_guards_until_publication_before_close_and_revocation()

@@ -76,7 +76,8 @@ Reads return related metadata/content from one transaction read version.
 Retry only attempts known not to have committed, within a bounded deadline, using the original
 client-supplied expected versions. A retried transaction MUST reauthorize and revalidate; an object
 version mismatch is still a client-visible conflict. Ambiguous commit outcomes return the existing
-error without automatic replay or retry receipts. Keep side effects outside transaction retries.
+error without automatic replay or retry receipts. Only advisory ancestry hints may be learned inside
+transaction retries; keep other external side effects outside them.
 See [FDB transaction errors](https://apple.github.io/foundationdb/developer-guide.html#the-commit-unknown-result-error).
 
 Shrink trims the surviving tail and range-clears later blocks; unlink range-clears content and removes
@@ -88,6 +89,20 @@ stronger durability than v1's minimum server-visibility guarantee: FDB acknowled
 durability boundary. `fsync` still drains client writeback and checks access; successful write RPCs
 have already committed. No application WAL, deferred FDB writes, or server staging cache.
 See [FDB commit path](https://github.com/apple/foundationdb/wiki/Transaction-Commit-Path).
+
+### Ancestry read hints
+
+Filesystem authorization retains workspace-scoped directory-to-parent ID hints, bounded to 16,384
+entries and an 8 MiB accounting budget per server. Directory reads and successful directory
+creates/moves populate them, including newly extracted directories. They contain no grants,
+authorization decisions, or authoritative metadata.
+
+Hints schedule live object/grant reads for up to 16 nodes concurrently in the current transaction.
+Follow only the parent chain verified by those live records; discard off-chain results/errors and
+fall back to the actual parent after a move or cache miss. All used reads retain FDB conflict tracking.
+Stale hints and hints learned during aborted attempts are harmless: moves and grant changes require
+no invalidation or expiry delay. The same algorithm applies at every depth. Search keeps its existing
+per-request cache; the client and API are unchanged.
 
 ## Shared Elasticsearch index
 

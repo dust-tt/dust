@@ -83,8 +83,9 @@ impl Storage {
 
     /// @cc [owner:spolu,label:concurrency;error-handling] fdb-transaction-replay
     /// The closure MUST perform all precondition reads through the supplied view and MUST NOT have
-    /// external side effects. Only known-uncommitted attempts may repeat. Captured client versions
-    /// MUST remain unchanged. Read views MUST NOT escape the closure's result.
+    /// external side effects; advisory ancestry hints MAY be learned from reads because every use is
+    /// revalidated in its own transaction. Only known-uncommitted attempts may repeat. Captured client
+    /// versions MUST remain unchanged. Read views MUST NOT escape the closure's result.
     pub async fn transact<T, F, Fut>(&self, mut operation: F) -> Result<T, Status>
     where
         F: FnMut(Arc<Snapshot>) -> Fut,
