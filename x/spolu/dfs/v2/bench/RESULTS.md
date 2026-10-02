@@ -1,4 +1,4 @@
-# dfs v2 — localhost results
+# Benchmark results — dfs v2 localhost
 
 2026-10-02. Native Linux ARM64 in Docker Desktop on an Apple M4 Max; Rust 1.98.1 release builds.
 One FDB 7.3.69 node (single SSD storage), one ES 8.15.3 node (one primary, zero replicas).
@@ -10,6 +10,94 @@ Database data lives on persistent Docker volumes without a separate per-volume d
 These are **local shared-cluster measurements**. Each first search starts a new dfs-server/session
 and connection; FDB, ES, and OS caches remain warm. This differs from v1's native macOS server,
 remote GCS, and discarded backend caches. No cold-disk or GCP claim is made.
+
+## Filesystem
+
+Same jd workload, unchanged v1 Linux FUSE client. **Every first read row restarts dfs-server and
+creates a new session and mount** (ten resets). Warm is one repeat on that mount. FDB/ES caches
+and the Docker VM's OS cache are retained; local is the generated corpus on the container filesystem
+and is not guaranteed cold. All 24 rows passed the original workload's result checks.
+
+### dfs v2 [FoundationDB + Elasticsearch]
+
+```text
++--------------+------------------------------------------------+-------+------------+--------+
+| Feature      | Workload                                       | Phase | Time (ms)  | Result |
++--------------+------------------------------------------------+-------+------------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 8,640.62   | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 154.48     | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 387.65     | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 9.04       | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 105,895.74 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 864.01     | OK     |
+| metadata     | stat missing (256 paths)                       | first | 3,659.38   | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 4.37       | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 11,290.74  | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 189.75     | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 11,445.11  | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 190.92     | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 1,445.76   | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 29.79      | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 336.99     | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 6.96       | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 202,411.60 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 1,297.34   | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 5,901.04   | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 17.06      | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 681.54     | OK     |
+| file sync    | fsync (32 files)                               | once  | 448.49     | OK     |
+| write        | close (32 files)                               | once  | 1.41       | OK     |
+| write        | unlink (32 files)                              | once  | 463.53     | OK     |
++--------------+------------------------------------------------+-------+------------+--------+
+```
+
+Untar: **735.751 s**. The final client `syncfs` took **0.000145 s** after untar and **0.000131 s**
+after the suite: these measure only remaining writeback, because file closes already published data
+during the timed workload. They are not total client writeback time. Server shutdown: **0.069 s**.
+There is no remaining authoritative persistence drain: each accepted mutation already awaited FDB.
+
+The client uses eight FUSE workers, `max_background=32`, 1 MiB requested readahead, kernel writeback,
+and effectively unbounded metadata TTL (4,294,967,295 s). See [run metadata](latest/filesystem.json),
+[DFS rows](latest/dfs.json), [local rows](latest/local.json), and per-case client RPC counters in
+[latest/](latest/). The measured server revision is `ab61baf616`; raw reports include its binary hash.
+
+These measurements expose substantial latency in first-touch per-file operations. Kernel-warm
+reads benefit strongly from the unchanged v1 cache behavior. The ripgrep workloads parallelize reads;
+the sequential open/read loop pays RPC and authoritative FDB lookup costs repeatedly. No application
+metadata/authorization cache or batched filesystem RPCs were added for this comparison.
+
+### Local Linux baseline
+
+```text
++--------------+------------------------------------------------+-------+------------+--------+
+| Feature      | Workload                                       | Phase | Time (ms)  | Result |
++--------------+------------------------------------------------+-------+------------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 129.49     | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 133.50     | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 7.18       | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 7.30       | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 43.13      | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 42.31      | OK     |
+| metadata     | stat missing (256 paths)                       | first | 2.38       | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 1.65       | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 18.94      | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 17.88      | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 17.90      | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 17.99      | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 13.74      | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 10.78      | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 5.48       | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 4.39       | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 147.20     | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 142.11     | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 1.78       | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 1.35       | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 0.60       | OK     |
+| file sync    | fsync (32 files)                               | once  | 21.89      | OK     |
+| write        | close (32 files)                               | once  | 0.02       | OK     |
+| write        | unlink (32 files)                              | once  | 0.22       | OK     |
++--------------+------------------------------------------------+-------+------------+--------+
+```
 
 ## Keyword search
 
@@ -41,55 +129,6 @@ is mostly live metadata/authorization reads in FDB, rather than ES query executi
 per-request phase timings in [raw results](latest/search.json); the earlier run is retained in
 [initial results](initial/search.json). Backend topology and write durability differ substantially
 from [v1](../../v1/bench/SEARCH-RESULTS.md), so these are not an isolated ES-versus-LanceDB comparison.
-
-## Filesystem
-
-Same jd workload, unchanged v1 Linux FUSE client. **Every first read row restarts dfs-server and
-creates a new session and mount** (ten resets). Warm is one repeat on that mount. FDB/ES caches
-and the Docker VM's OS cache are retained; local is the generated corpus on the container filesystem
-and is not guaranteed cold. All 24 rows passed the original workload's result checks.
-
-| Category | Benchmark | Run | Local (ms) | dfs v2 (ms) | Result |
-| --- | --- | --- | ---: | ---: | --- |
-| metadata | scandir + stat (100 dirs, 10,000 files) | first | 129.49 | 8,640.62 | OK |
-| metadata | scandir + stat (100 dirs, 10,000 files) | warm | 133.50 | 154.48 | OK |
-| metadata | rg --files (10,000 files) | first | 7.18 | 387.65 | OK |
-| metadata | rg --files (10,000 files) | warm | 7.30 | 9.04 | OK |
-| metadata | open + fstat + close (10,000 files) | first | 43.13 | 105,895.74 | OK |
-| metadata | open + fstat + close (10,000 files) | warm | 42.31 | 864.01 | OK |
-| metadata | stat missing (256 paths) | first | 2.38 | 3,659.38 | OK |
-| metadata | stat missing (256 paths) | warm | 1.65 | 4.37 | OK |
-| page cache | rg no-match scan (10,000 files, 177.5 MB) | first | 18.94 | 11,290.74 | OK |
-| page cache | rg no-match scan (10,000 files, 177.5 MB) | warm | 17.88 | 189.75 | OK |
-| search | rg rare literal (10,000 files, 4 matches) | first | 17.90 | 11,445.11 | OK |
-| search | rg rare literal (10,000 files, 4 matches) | warm | 17.99 | 190.92 | OK |
-| path pruning | rg branch glob (981 candidate files) | first | 13.74 | 1,445.76 | OK |
-| path pruning | rg branch glob (981 candidate files) | warm | 10.78 | 29.79 | OK |
-| path pruning | rg depth-10 subtree (136 files) | first | 5.48 | 336.99 | OK |
-| path pruning | rg depth-10 subtree (136 files) | warm | 4.39 | 6.96 | OK |
-| page cache | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 147.20 | 202,411.60 | OK |
-| page cache | open + read + SHA-256 (10,000 files, 177.5 MB) | warm | 142.11 | 1,297.34 | OK |
-| random I/O | open + pread tail (256 files x 4 KiB) | first | 1.78 | 5,901.04 | OK |
-| random I/O | open + pread tail (256 files x 4 KiB) | warm | 1.35 | 17.06 | OK |
-| write | create + write (32 x 32 KiB files) | once | 0.60 | 681.54 | OK |
-| file sync | fsync (32 files) | once | 21.89 | 448.49 | OK |
-| write | close (32 files) | once | 0.02 | 1.41 | OK |
-| write | unlink (32 files) | once | 0.22 | 463.53 | OK |
-
-Untar: **735.751 s**. The final client `syncfs` took **0.000145 s** after untar and **0.000131 s**
-after the suite: these measure only remaining writeback, because file closes already published data
-during the timed workload. They are not total client writeback time. Server shutdown: **0.069 s**.
-There is no remaining authoritative persistence drain: each accepted mutation already awaited FDB.
-
-The client uses eight FUSE workers, `max_background=32`, 1 MiB requested readahead, kernel writeback,
-and effectively unbounded metadata TTL (4,294,967,295 s). See [run metadata](latest/filesystem.json),
-[DFS rows](latest/dfs.json), [local rows](latest/local.json), and per-case client RPC counters in
-[latest/](latest/). The measured server revision is `ab61baf616`; raw reports include its binary hash.
-
-These measurements expose substantial latency in first-touch per-file operations. Kernel-warm
-reads benefit strongly from the unchanged v1 cache behavior. The ripgrep workloads parallelize reads;
-the sequential open/read loop pays RPC and authoritative FDB lookup costs repeatedly. No application
-metadata/authorization cache or batched filesystem RPCs were added for this comparison.
 
 ## Multiple workspaces and grants
 
