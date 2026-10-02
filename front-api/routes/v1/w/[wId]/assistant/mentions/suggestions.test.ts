@@ -1,31 +1,62 @@
+import { AGENT_SEARCH_ALIAS_NAME } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { buildNameAutocompleteQuery } from "@app/lib/search/agent_and_skill_queries";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { Ok } from "@app/types/shared/result";
+import type { estypes } from "@elastic/elasticsearch";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
 
-// Mock Elasticsearch
+const mockSearch = vi.hoisted(() => vi.fn());
+
+// Mock Elasticsearch so `suggestionsOfMentions` doesn't hit a real cluster.
 vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {
-  const actual: any = await importOriginal();
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/elasticsearch")>();
   return {
     ...actual,
-    withEs: vi.fn(async (fn: any) => {
-      const mockClient = {
-        search: vi.fn().mockResolvedValue({
-          hits: { hits: [], total: { value: 0 } },
-        }),
-      };
-      // Mock successful result
-      return {
-        isOk: () => true,
-        isErr: () => false,
-        value: await fn(mockClient),
-      };
-    }),
+    withEs: vi.fn(
+      async (
+        fn: (client: { search: typeof mockSearch }) => Promise<unknown>
+      ) => {
+        const result = await fn({ search: mockSearch });
+        return new Ok(result);
+      }
+    ),
   };
 });
+
+async function mockAgentSearchResults(auth: Authenticator, agentIds: string[]) {
+  const agents = await AgentResource.fetchByIds(auth, agentIds);
+  const documents = agents.map((agent) =>
+    agent.toSearchDocument(auth, {
+      activeUsersCount: 0,
+      editors: [],
+      favoriteCount: 0,
+      feedbackNegativeCount: 0,
+      feedbackPositiveCount: 0,
+      lastEditedByUser: null,
+      mcpServerViewIds: [],
+      skillIds: [],
+      tagIds: [],
+    })
+  );
+  mockSearch.mockImplementation(async (request: estypes.SearchRequest) => ({
+    hits: {
+      hits:
+        request.index === AGENT_SEARCH_ALIAS_NAME
+          ? documents.map((document) => ({ _source: document }))
+          : [],
+      total: {
+        value: request.index === AGENT_SEARCH_ALIAS_NAME ? documents.length : 0,
+      },
+    },
+  }));
+}
 
 async function setup() {
   const { workspace, key } = await createPublicApiMockRequest({
@@ -44,6 +75,7 @@ async function setup() {
     name: "Test Agent",
     description: "Test Agent Description",
   });
+  await mockAgentSearchResults(auth, [agentConfig.sId]);
 
   return {
     workspace,
@@ -112,6 +144,8 @@ describe("GET /api/v1/w/[wId]/assistant/mentions/suggestions", () => {
       description: "Beta Description",
     });
 
+    await mockAgentSearchResults(auth, [agentConfig1.sId]);
+
     const response = await getSuggestions(workspace, key, user.email!, {
       query: "alpha",
     });
@@ -126,6 +160,16 @@ describe("GET /api/v1/w/[wId]/assistant/mentions/suggestions", () => {
     );
     const betaFound = suggestions.some(
       (s: { id: string }) => s.id === agentConfig2.sId
+    );
+    expect(mockSearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        index: AGENT_SEARCH_ALIAS_NAME,
+        query: expect.objectContaining({
+          bool: expect.objectContaining({
+            must: [buildNameAutocompleteQuery("alpha")],
+          }),
+        }),
+      })
     );
     expect(alphaFound).toBe(true);
     expect(betaFound).toBe(false);
