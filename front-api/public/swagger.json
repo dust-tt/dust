@@ -2551,6 +2551,12 @@
                     "description": "Whether to wait for the agent to generate the initial message. If true the query will wait for the agent's answer. If false (default), the API will return a conversation ID directly and you will need to use streaming events to get the messages.",
                     "example": true
                   },
+                  "depth": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "The depth of the conversation in a chain of sub-agent conversations (optional, defaults to 0)",
+                    "example": 0
+                  },
                   "spaceId": {
                     "type": "string",
                     "description": "The sId of the space (project) in which to create the conversation (optional). If not provided, the conversation is created outside projects",
