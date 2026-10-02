@@ -1,6 +1,7 @@
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { CHART_HEIGHT } from "@app/components/charts/constants";
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
+import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import { AnalyticsConversationPanel } from "@app/components/workspace/analytics/AnalyticsConversationPanel";
@@ -32,6 +33,7 @@ import {
 import { useAnalyticsViewState } from "@app/hooks/useAnalyticsViewState";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import { useResolvedUsageFilter } from "@app/hooks/useResolvedUsageFilter";
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import type {
   ConsumptionGranularity,
   ConsumptionPeriodSelection,
@@ -215,23 +217,25 @@ export function AnalyticsConsumptionPage() {
 
   const content = (
     <AdminPageContainer>
-      <AnalyticsConsumptionContent
-        owner={owner}
-        state={{ ...state, filter }}
-        headerActions={
-          analyticsAssistantEnabled &&
-          !isOpen && (
-            <Button
-              variant="primary"
-              icon={Robot}
-              label="Ask @analyst"
-              onClick={() => setIsOpen(true)}
-            />
-          )
-        }
-        onAgentClick={setAgentDetailsId}
-        onSkillClick={setSkillDetailsId}
-      />
+      <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.analytics.consumption}>
+        <AnalyticsConsumptionContent
+          owner={owner}
+          state={{ ...state, filter }}
+          headerActions={
+            analyticsAssistantEnabled &&
+            !isOpen && (
+              <Button
+                variant="primary"
+                icon={Robot}
+                label="Ask @analyst"
+                onClick={() => setIsOpen(true)}
+              />
+            )
+          }
+          onAgentClick={setAgentDetailsId}
+          onSkillClick={setSkillDetailsId}
+        />
+      </AdminSectionAnchor>
     </AdminPageContainer>
   );
 

@@ -485,7 +485,6 @@ function useCommandPaletteSettings({
             pageHref: menu.href,
             sectionId: entry.sectionId,
             tab: entry.tab,
-            icon: menu.icon,
           } satisfies CommandPaletteSetting,
         ];
       }),
