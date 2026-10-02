@@ -4,7 +4,8 @@ import {
   isSandboxFunctionRunContext,
 } from "@app/lib/actions/types";
 import { isValidTimezone } from "@app/lib/api/timezone";
-import { TZDateMini } from "@date-fns/tz";
+import { resolveCalendarDate } from "@app/types/shared/utils/date_utils";
+import { tzOffset } from "@date-fns/tz";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { parseISO } from "date-fns";
 import { google } from "googleapis";
@@ -477,15 +478,18 @@ export interface CalendarInterval {
 
 function applyTimeToDate(base: Date, timeStr: string, timezone: string): Date {
   const [hourStr, minuteStr = "0", secondStr = "0"] = timeStr.split(":");
-  const date = new TZDateMini(base, timezone);
-  date.setHours(Number(hourStr), Number(minuteStr), Number(secondStr), 0);
-  return date;
+  const date = new Date(base);
+  date.setUTCHours(Number(hourStr), Number(minuteStr), Number(secondStr), 0);
+  return resolveCalendarDate(date, timezone);
 }
 
 /**
  * @cc [owner:aubin-tchoi,label:product] participant-local-calendar
  * Daily windows and excluded weekends MUST use each participant's timezone, including
- * DST changes. Returned unavailable intervals MUST be clipped to the requested range.
+ * DST changes, independently of the host timezone. Repeated window boundaries MUST
+ * select the earlier occurrence; skipped times MUST move forward by the offset change.
+ * Each day boundary MUST be resolved independently so a skipped midnight cannot
+ * shift subsequent midnights. Intervals MUST be clipped to the requested range.
  */
 export function buildUnavailableIntervals(
   range: CalendarInterval,
@@ -505,8 +509,11 @@ export function buildUnavailableIntervals(
 
   const unavailable: CalendarInterval[] = [];
   const { timezone } = participant;
-  let cursor = new TZDateMini(range.start, timezone);
-  cursor.setHours(0, 0, 0, 0);
+  // UTC fields carry local calendar fields, avoiding host timezone setters.
+  let cursor = new Date(
+    range.start.getTime() + tzOffset(timezone, range.start) * 60 * 1000
+  );
+  cursor.setUTCHours(0, 0, 0, 0);
 
   function addUnavailable(start: Date, end: Date): void {
     const clippedStart = new Date(
@@ -518,11 +525,17 @@ export function buildUnavailableIntervals(
     }
   }
 
-  while (cursor < range.end) {
-    const dayStart = cursor;
-    const weekday = dayStart.getDay();
-    const dayEnd = new TZDateMini(dayStart, timezone);
-    dayEnd.setDate(dayEnd.getDate() + 1);
+  let dayStart = resolveCalendarDate(cursor, timezone);
+  while (dayStart < range.end) {
+    const weekday = cursor.getUTCDay();
+    const nextDay = new Date(cursor);
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+    const dayEnd = resolveCalendarDate(nextDay, timezone);
+    if (dayStart >= dayEnd) {
+      cursor = nextDay;
+      dayStart = dayEnd;
+      continue;
+    }
 
     if (excludeWeekends && (weekday === 0 || weekday === 6)) {
       addUnavailable(dayStart, dayEnd);
@@ -530,17 +543,18 @@ export function buildUnavailableIntervals(
       if (participant.dailyTimeWindowStart) {
         addUnavailable(
           dayStart,
-          applyTimeToDate(dayStart, participant.dailyTimeWindowStart, timezone)
+          applyTimeToDate(cursor, participant.dailyTimeWindowStart, timezone)
         );
       }
       if (participant.dailyTimeWindowEnd) {
         addUnavailable(
-          applyTimeToDate(dayStart, participant.dailyTimeWindowEnd, timezone),
+          applyTimeToDate(cursor, participant.dailyTimeWindowEnd, timezone),
           dayEnd
         );
       }
     }
-    cursor = dayEnd;
+    cursor = nextDay;
+    dayStart = dayEnd;
   }
 
   return unavailable;
