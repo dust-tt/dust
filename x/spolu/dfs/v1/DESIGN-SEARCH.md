@@ -1,4 +1,4 @@
-# dfs:// v1 search proposal
+# dfs:// v1 search
 
 Keyword search over files, filtered by metadata, MIME type, and xattrs. Seconds-to-minutes indexing
 lag is acceptable. SlateDB remains authoritative; LanceDB is a rebuildable derived index. This
@@ -19,7 +19,7 @@ extends [DESIGN.md](DESIGN.md); filesystem writes and fsync retain their existin
 
 ## gRPC surface
 
-Proposed RPCs; credentials remain in authorization metadata. Search derives its workspace and
+RPCs; credentials remain in authorization metadata. Search derives its workspace and
 at-most-512 grants exclusively from the session, never from request fields.
 
 | RPC | Authority | Request → response |
@@ -27,8 +27,8 @@ at-most-512 grants exclusively from the session, never from request fields.
 | `SearchFiles` | Session | `query, filter, limit` → `hits[], partial` |
 | `GetIndexStatus` (optional) | Workspace key | `workspace_id` → pending/failed/skipped counts, oldest pending age, last successful commit time |
 
-Only `SearchFiles` is required. Indexing, completion bookkeeping, and backfills are internal;
-progress can initially use logs/metrics. No indexing or reindexing RPCs.
+Both RPCs are implemented. Indexing, completion bookkeeping, and backfills are internal.
+No indexing or reindexing RPCs. See [SEARCH.md](SEARCH.md) for usage and configured limits.
 
 - `query` is plain text, not SQL: case-insensitive token search ranked by BM25, initially matching
   any query token. Empty query performs metadata-only search. No regex, vectors, or query DSL.
@@ -137,4 +137,4 @@ Measure p50/p95 search latency and candidate rejection for selective and broad q
 512 session grants. Verify ancestor grant changes cause no descendant indexing. Include cold GCS
 tables, many idle workspaces, xattr selectivity, write coalescing, index lag, and GCS write amplification.
 Verify restart between publication/completion steps, edits during extraction, unlink, revocation, and
-cross-workspace isolation. Promote these rules into code contracts when implementing.
+cross-workspace isolation. These rules are enforced by [CONTRACTS](CONTRACTS) and the search implementation.

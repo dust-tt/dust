@@ -29,9 +29,9 @@ Implement [DESIGN-SEARCH.md](DESIGN-SEARCH.md) in milestones; commit and push ea
 
 ## 4. End-to-end validation and benchmark
 
-- [ ] Run native Rust checks and Linux FUSE regression tests with indexing enabled.
-- [ ] Add a reproducible search benchmark using jd's unchanged 10,000-file corpus and real GCS.
-- [ ] Measure indexing time/drain, cold searches after restart, warm repeats, metadata/xattr filters,
+- [x] Run native Rust checks and Linux FUSE regression tests with indexing enabled.
+- [x] Add a reproducible search benchmark using jd's unchanged 10,000-file corpus and real GCS.
+- [x] Measure indexing time/drain, cold searches after restart, warm repeats, metadata/xattr filters,
       and selective permissions; verify expected hits and record cache state and raw measurements.
-- [ ] Publish cold/warm results, usage instructions, and any measured limitations.
-- [ ] Audit the complete implementation against the design and contracts; mark only verified work done.
+- [x] Publish cold/warm results, usage instructions, and any measured limitations.
+- [x] Audit the complete implementation against the design and contracts; mark only verified work done.
