@@ -137,10 +137,18 @@ Decide how to split the changes into calls following <batching>.
 All the suggestions sent in one \`${SUGGEST}\` call are reviewed together: the user accepts or rejects them as a whole.
 - Group suggestions in ONE call only when they must be accepted together because they do not make sense alone: accepting some without the others would leave an agent or a skill broken or inconsistent. For example:
   - adding a tool or a skill to an agent, together with the instruction edits telling the agent when to use it;
-  - extracting part of an agent's or a skill's instructions into a new skill: creating the skill, and editing the existing entity to remove the extracted instructions;
+  - extracting part of an agent's or a skill's instructions into a new skill: creating the skill, and editing the existing entity to remove the extracted instructions, linked to the new skill by ref;
   - creating an agent together with a new agent it delegates to, linked as its sub-agent by ref.
 - When changes are independent, call the tool once per change, in parallel, so the user can accept or reject each one on its own. For example, renaming several agents to follow a naming convention is one call per agent.
 </batching>`,
+
+  refs: `<refs>
+An agent or a skill created by a suggestion has no id until the suggestions are accepted. To use it elsewhere in the same \`${SUGGEST}\` call, give its \`create_agent\` or \`create_skill\` a \`ref\`, a short name unique among the creations of its kind, and use that ref where the id would go:
+- a new agent as a sub-agent: \`subAgentRefs\` in \`create_agent\`, \`addAgentRefs\` in \`edit_agent\`
+- a new skill on an agent: \`skillRefs\` in \`create_agent\`, \`addSkillRefs\` in \`edit_agent\`
+- a new skill cited in a skill's instructions: \`<skill ref="name"/>\`
+A ref only resolves within its own call. An agent cannot be its own sub-agent, and a new skill cannot cite its own ref.
+</refs>`,
 
   entityMentions: `<entity_mentions>
 Whenever you name an entity in your response, write it as a mention directive rather than plain text, so the user can click it to open the entity:
@@ -201,9 +209,9 @@ ${KNOWLEDGE_GUIDANCE_SECTION}
 
   agentCapabilities: `<agent_capabilities>
 Skills, tools and sub-agents are added to or removed from an agent with the \`skills\`, \`tools\` and \`subAgents\` fields of \`edit_agent\`, or given to a new agent by \`create_agent\`, never by writing about them in its instructions.
-- Skills: take the ids of the skills to add from \`${managementToolName(SEARCH_SKILLS_TOOL_NAME)}\`; only active skills can be added, and an unpublished skill only by one of its editors. Take the ids of the skills to remove from the agent's skills in \`${buildingToolName(DESCRIBE_AGENT_TOOL_NAME)}\`.
+- Skills: take the ids of the skills to add from \`${managementToolName(SEARCH_SKILLS_TOOL_NAME)}\`; only active skills can be added, and an unpublished skill only by one of its editors. Take the ids of the skills to remove from the agent's skills in \`${buildingToolName(DESCRIBE_AGENT_TOOL_NAME)}\`. A skill created in the same call is added by ref, see <refs>.
 - Tools: take the ids of the tools to add from \`${managementToolName(LIST_TOOLS_TOOL_NAME)}\`, and the ids of the tools to remove from the agent's tools in \`${buildingToolName(DESCRIBE_AGENT_TOOL_NAME)}\`. Only tools that need no configuration can be added or removed: for a knowledge tool or a tool with settings to pick, tell the user to change it from the agent builder.
-- Sub-agents: agents the agent can run to delegate a task. Before creating one, apply <architecture_guidance>: NEVER create a sub-agent that only carries instructions, even when the user asks for one, suggest a skill instead. Take the ids of the active agents to add from \`${managementToolName(SEARCH_AGENTS_TOOL_NAME)}\`, and the ids of the sub-agents to remove from the agent's tools in \`${buildingToolName(DESCRIBE_AGENT_TOOL_NAME)}\`. An agent created in the same call has no id yet but can still be a sub-agent: give its \`create_agent\` a \`ref\` and pass that ref in \`subAgentRefs\` or \`addAgentRefs\`, so both are created and linked in one call. An agent cannot be its own sub-agent.
+- Sub-agents: agents the agent can run to delegate a task. Before creating one, apply <architecture_guidance>: NEVER create a sub-agent that only carries instructions, even when the user asks for one, suggest a skill instead. Take the ids of the active agents to add from \`${managementToolName(SEARCH_AGENTS_TOOL_NAME)}\`, and the ids of the sub-agents to remove from the agent's tools in \`${buildingToolName(DESCRIBE_AGENT_TOOL_NAME)}\`. An agent created in the same call is added by ref, see <refs>.
 - Model: take the \`modelId\` from \`${managementToolName(LIST_MODELS_TOOL_NAME)}\`, resolving the model the user names to its exact \`modelId\`, without the provider prefix \`${buildingToolName(DESCRIBE_AGENT_TOOL_NAME)}\` shows. Only pass a \`reasoningEffort\` the model lists as supported, and only when the user asks for one or the model change calls for it.
 - Structured output: Only set structured output when explicitly requested, see <structured_output>.
 - Prefer adding a skill that wraps a tool over adding the tool alone (see <skills_tools_guidance>).
@@ -235,6 +243,8 @@ This section applies to skills only. Skills are shared across agents and users: 
 
 Skills carry their tools and knowledge INLINE in their instructions, through \`<tool>\` and \`<knowledge>\` tags. This only works for skills, NEVER for agents.
 
+A skill created in the same call is cited by ref, see <refs>.
+
 <instructions_guidance>
 ${SKILL_INSTRUCTIONS_GUIDANCE_BODY}
 </instructions_guidance>
@@ -261,10 +271,10 @@ Suggestions: \`${SUGGEST}\`, with:
 - \`title\`: a short, action-oriented title for the whole call (max 25 characters).
 - \`analysis\`: why these changes are needed (max 255 characters).
 - \`suggestions\`: the changes, one item per entity, discriminated by \`kind\`:
-  - \`create_agent\`: a new agent from a \`name\`, a \`description\` and \`instructions\` (HTML), with optional \`toolIds\`, \`skillIds\` / \`skillRefs\` and \`subAgentIds\` / \`subAgentRefs\`, see <agent_capabilities>. Give it a \`ref\` when another suggestion of the call uses it as a sub-agent.
-  - \`edit_agent\`: changes to an existing agent, by \`agentId\`: \`name\`, \`description\`, \`instructionEdits\` (block-targeted, see <block_aware_editing>), \`modelId\` with an optional \`reasoningEffort\`, \`scope\` (\`visible\` to publish, \`hidden\` to unpublish), \`structuredOutput\` (see <structured_output>), \`skills\` (\`addSkillIds\` / \`removeSkillIds\`), \`tools\` (\`addToolIds\` / \`removeToolIds\`), \`subAgents\` (\`addAgentIds\` / \`addAgentRefs\` / \`removeAgentIds\`), see <agent_capabilities>, and \`editors\`.
+  - \`create_agent\`: a new agent from a \`name\`, a \`description\` and \`instructions\` (HTML), with optional \`toolIds\`, \`skillIds\` / \`skillRefs\` and \`subAgentIds\` / \`subAgentRefs\`, see <agent_capabilities>. Give it a \`ref\` when another suggestion of the call uses it, see <refs>.
+  - \`edit_agent\`: changes to an existing agent, by \`agentId\`: \`name\`, \`description\`, \`instructionEdits\` (block-targeted, see <block_aware_editing>), \`modelId\` with an optional \`reasoningEffort\`, \`scope\` (\`visible\` to publish, \`hidden\` to unpublish), \`structuredOutput\` (see <structured_output>), \`skills\` (\`addSkillIds\` / \`addSkillRefs\` / \`removeSkillIds\`), \`tools\` (\`addToolIds\` / \`removeToolIds\`), \`subAgents\` (\`addAgentIds\` / \`addAgentRefs\` / \`removeAgentIds\`), see <agent_capabilities>, and \`editors\`.
   - \`delete_agent\`: deletes an existing agent, by \`agentId\`.
-  - \`create_skill\`: a new skill from a \`name\`, a \`userFacingDescription\`, an \`agentFacingDescription\` and \`instructions\` (HTML).
+  - \`create_skill\`: a new skill from a \`name\`, a \`userFacingDescription\`, an \`agentFacingDescription\` and \`instructions\` (HTML). Give it a \`ref\` when another suggestion of the call uses it, see <refs>.
   - \`edit_skill\`: changes to an existing custom skill, by \`skillId\`: \`name\` (unique among the workspace's active skills), \`userFacingDescription\`, \`agentFacingDescription\`, \`instructionEdits\` (block-targeted, see <block_aware_editing>), \`availability\` (\`editors\`, \`workspace_users\` or \`users_and_agents\`, requires the workspace permission to publish skills), \`addEditorUserIds\` / \`removeEditorUserIds\` (a change leaving the skill without any editor is refused).
   - \`delete_skill\`: deletes an existing custom skill, by \`skillId\`.
 Only set the fields the user asked to change: every field you omit is left untouched, and every field you set is a change the user has to review.
@@ -289,6 +299,7 @@ const CONVERSATIONAL_BUILDING_INSTRUCTIONS = [
   SECTIONS.discoveryStep,
   SECTIONS.suggestionContext,
   SECTIONS.batching,
+  SECTIONS.refs,
   SECTIONS.entityMentions,
   SECTIONS.avoidDuplicates,
   SECTIONS.preserveEntityGoals,
