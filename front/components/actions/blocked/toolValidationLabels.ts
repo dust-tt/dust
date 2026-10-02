@@ -71,7 +71,7 @@ const MCP_TOOL_OVERRIDES: Partial<
         const count = inputs.tasks.length;
         return `Allow agent to create ${count} task${count === 1 ? "" : "s"}?`;
       },
-      alwaysAllowLabel: () => `Always allow agent to create tasks`,
+      alwaysAllowLabel: () => `Always allow agents to create tasks`,
     },
     [UPDATE_TASKS_TOOL_NAME]: {
       title: (inputs) => {
@@ -90,7 +90,7 @@ const MCP_TOOL_OVERRIDES: Partial<
         }
         return `Allow agent to update ${count} task${count === 1 ? "" : "s"}?`;
       },
-      alwaysAllowLabel: () => `Always allow agent to update tasks`,
+      alwaysAllowLabel: () => `Always allow agents to update tasks`,
     },
   },
   [POD_MANAGER_SERVER_NAME]: {
@@ -117,7 +117,7 @@ const MCP_TOOL_OVERRIDES: Partial<
         }
         return `Allow agent to update Pod ${fields.join(", ")}?`;
       },
-      alwaysAllowLabel: () => `Always allow agent to edit Pod information`,
+      alwaysAllowLabel: () => `Always allow agents to edit Pod information`,
     },
     [UPDATE_MEMBERS_TOOL_NAME]: {
       title: (inputs) => {
@@ -135,7 +135,7 @@ const MCP_TOOL_OVERRIDES: Partial<
         }
         return `Allow agent to ${parts.join(" and ")} Pod user${addCount + removeCount === 1 ? "" : "s"}?`;
       },
-      alwaysAllowLabel: () => `Always allow agent to update Pod members`,
+      alwaysAllowLabel: () => `Always allow agents to update Pod members`,
     },
     [SET_DEFAULT_AGENT_TOOL_NAME]: {
       title: (inputs) => {
@@ -147,7 +147,8 @@ const MCP_TOOL_OVERRIDES: Partial<
         }
         return `Allow agent to set the Pod default agent to @${inputs.agentName}?`;
       },
-      alwaysAllowLabel: () => "Always allow agent to set the Pod default agent",
+      alwaysAllowLabel: () =>
+        "Always allow agents to set the Pod default agent",
     },
   },
   [WAKEUPS_SERVER_NAME]: {
@@ -210,5 +211,5 @@ export function getToolValidationAlwaysAllowLabel(
     scopeLabel = ` only when ${approvalScopes.map(({ label }) => label).join(" and ")}`;
   }
 
-  return `Always allow ${data.metadata.agentName} to ${asDisplayName(data.metadata.toolName)}${scopeLabel}`;
+  return `Always allow agents to ${asDisplayName(data.metadata.toolName)}${scopeLabel}`;
 }

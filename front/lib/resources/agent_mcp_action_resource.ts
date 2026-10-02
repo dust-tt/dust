@@ -514,7 +514,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           auth,
           internalMCPServerName,
           toolName: action.toolConfiguration.originalName,
-          agentName: agentConfiguration.name,
           inputs: action.augmentedInputs,
           argumentsRequiringApproval:
             action.toolConfiguration.argumentsRequiringApproval ?? [],
