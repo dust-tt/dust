@@ -15,14 +15,6 @@ import {
   vi,
 } from "vitest";
 
-const feature = vi.hoisted(() => ({ enabled: true }));
-vi.mock(import("@app/lib/auth/AuthContext"), () => ({
-  useFeatureFlags: () => ({
-    featureFlags: [],
-    hasFeature: () => feature.enabled,
-  }),
-}));
-
 const owner = LightWorkspaceFactory.build();
 
 function renderPicker() {
@@ -57,7 +49,6 @@ function renderPicker() {
       <FetcherProvider fetcher={vi.fn()} fetcherWithBody={fetcherWithBody}>
         <PodDefaultSkillPicker
           owner={owner}
-          skills={[]}
           selectedSkillIds={["selected"]}
           onSelect={onSelect}
           triggerClassName=""
@@ -81,7 +72,6 @@ describe("PodDefaultSkillPicker", () => {
     Element.prototype.releasePointerCapture = vi.fn();
   });
   beforeEach(() => {
-    feature.enabled = true;
     vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(100);
     vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockImplementation(
       function (this: HTMLElement) {
@@ -147,16 +137,5 @@ describe("PodDefaultSkillPicker", () => {
     ]);
     fireEvent.click(screen.getByText("Server match"));
     expect(onSelect).toHaveBeenCalledWith("match");
-  });
-
-  it("does not call search with the flag off", async () => {
-    feature.enabled = false;
-    const user = userEvent.setup();
-    const { fetcherWithBody } = renderPicker();
-    await user.click(
-      screen.getByRole("button", { name: "Add a default skill" })
-    );
-    await screen.findByText("No more skills to add");
-    expect(fetcherWithBody).not.toHaveBeenCalled();
   });
 });

@@ -1,10 +1,7 @@
 import { CapabilitiesPickerItemsList } from "@app/components/assistant/CapabilitiesPicker";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { compareStrings } from "@app/lib/i18n/format";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useSearchSkillsInfinite } from "@app/lib/swr/skill_configurations";
-import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ChevronDown,
@@ -22,7 +19,6 @@ const SKILL_SEARCH_PAGE_SIZE = 100;
 
 interface PodDefaultSkillPickerProps {
   owner: LightWorkspaceType;
-  skills: SkillWithoutInstructionsAndToolsType[];
   selectedSkillIds: string[];
   onSelect: (skillId: string) => void;
   triggerClassName: string;
@@ -30,13 +26,10 @@ interface PodDefaultSkillPickerProps {
 
 export function PodDefaultSkillPicker({
   owner,
-  skills,
   selectedSkillIds,
   onSelect,
   triggerClassName,
 }: PodDefaultSkillPickerProps) {
-  const { hasFeature } = useFeatureFlags();
-  const useSkillSearch = hasFeature("skills_search");
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
@@ -49,21 +42,12 @@ export function PodDefaultSkillPicker({
     owner,
     searchTerm,
     limit: SKILL_SEARCH_PAGE_SIZE,
-    disabled: !isOpen || !useSkillSearch,
+    disabled: !isOpen,
   });
 
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const selectedIds = new Set(selectedSkillIds);
-  const matchingSkills = useSkillSearch
-    ? searchSkills
-    : skills
-        .filter(
-          (skill) =>
-            skill.name.toLowerCase().includes(normalizedSearch) ||
-            skill.userFacingDescription.toLowerCase().includes(normalizedSearch)
-        )
-        .toSorted((a, b) => compareStrings(a.name, b.name));
-  const addableSkills = matchingSkills.filter(
+  const addableSkills = searchSkills.filter(
     (skill) => !selectedIds.has(skill.sId)
   );
 
@@ -102,11 +86,11 @@ export function PodDefaultSkillPicker({
         }
       >
         {/* Keep the previous results visible while the next query loads. */}
-        {isSkillsLoading && matchingSkills.length === 0 ? (
+        {isSkillsLoading && searchSkills.length === 0 ? (
           <div className="flex justify-center p-4">
             <Spinner size="sm" />
           </div>
-        ) : addableSkills.length > 0 || !useSkillSearch || !hasMore ? (
+        ) : addableSkills.length > 0 || !hasMore ? (
           <CapabilitiesPickerItemsList
             emptyMessage={
               normalizedSearch ? "No skills found" : "No more skills to add"
@@ -131,13 +115,13 @@ export function PodDefaultSkillPicker({
           />
         ) : null}
         {/* Recheck after each page, including pages with only selected skills. */}
-        {useSkillSearch && scrollRoot && (
+        {scrollRoot && (
           <InfiniteScroll
             key={searchSkills.length}
             nextPage={loadMore}
             hasMore={hasMore}
             options={{ root: scrollRoot }}
-            showLoader={isSkillsLoading && matchingSkills.length > 0}
+            showLoader={isSkillsLoading && searchSkills.length > 0}
             loader={
               <div className="flex justify-center p-2">
                 <Spinner size="sm" />
