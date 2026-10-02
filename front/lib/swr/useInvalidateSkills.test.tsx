@@ -5,7 +5,7 @@ import useSWR, { SWRConfig } from "swr";
 import { describe, expect, it, vi } from "vitest";
 
 describe("useInvalidateSkills", () => {
-  it("refreshes list variants, search pages and settings only in the requested workspace", async () => {
+  it("refreshes lists, search, settings and discovery only in the requested workspace", async () => {
     const fetcher = vi.fn().mockResolvedValue("initial");
     const skillsUrl = "/api/w/workspace-a/skills";
     const cache = new Map();
@@ -43,6 +43,11 @@ describe("useInvalidateSkills", () => {
           "/api/w/workspace-b/skills/reinforcement_settings",
           fetcher
         ).data,
+        featured: useSWR("/api/w/workspace-a/discovery/featured", fetcher).data,
+        forYou: useSWR("/api/w/workspace-a/discovery/for_you", fetcher).data,
+        trending: useSWR("/api/w/workspace-a/discovery/trending", fetcher).data,
+        otherDiscovery: useSWR("/api/w/workspace-b/discovery/featured", fetcher)
+          .data,
         otherWorkspace: useSWR(
           "/api/w/workspace-b/skills?status=active",
           fetcher
@@ -57,7 +62,7 @@ describe("useInvalidateSkills", () => {
     );
 
     await waitFor(() => {
-      expect(fetcher).toHaveBeenCalledTimes(11);
+      expect(fetcher).toHaveBeenCalledTimes(15);
       expect(result.current.detail).toBe("initial");
     });
     fetcher.mockResolvedValue("updated");
@@ -74,6 +79,10 @@ describe("useInvalidateSkills", () => {
     expect(result.current.nextPage).toBe("updated");
     expect(result.current.reinforcementSettings).toBe("updated");
     expect(result.current.otherSettings).toBe("initial");
+    expect(result.current.featured).toBe("updated");
+    expect(result.current.forYou).toBe("updated");
+    expect(result.current.trending).toBe("updated");
+    expect(result.current.otherDiscovery).toBe("initial");
     expect(result.current.otherWorkspace).toBe("initial");
     expect(result.current.otherSearch).toBe("initial");
     expect(result.current.detail).toBe("initial");

@@ -4,6 +4,7 @@ import { DustError } from "@app/lib/error";
 import type { PinnedDiscoveryItemInput } from "@app/lib/resources/discovery_item_resource";
 import { DiscoveryItemResource } from "@app/lib/resources/discovery_item_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { fetchDiscoveryForYouCandidates } from "@app/lib/search_usage/for_you";
 import { fetchDiscoveryTrendingCandidates } from "@app/lib/search_usage/trending";
 import type { SearchUsageDimension } from "@app/lib/search_usage/usage";
@@ -14,6 +15,7 @@ import type {
   GetGroupDiscoveryPinsResponseBody,
   PutGroupDiscoveryPinResponseBody,
 } from "@app/types/api/discovery";
+import { isSkillVisibleToViewer } from "@app/types/assistant/skill_configuration";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -23,11 +25,44 @@ export type DiscoveryPinError = DustError<
   "group_not_found" | "invalid_id" | "invalid_request_error" | "unauthorized"
 >;
 
+/**
+ * @cc [owner:aubin-tchoi,label:security;product] featured-skill-visibility
+ * Featured skill targets MUST satisfy the skill list's editor visibility rule.
+ * Include editor display names without loading relations for unrelated skills.
+ */
 export async function listFeaturedDiscoveryItems(
   auth: Authenticator
 ): Promise<GetFeaturedDiscoveryItemsResponseBody> {
-  const items = await DiscoveryItemResource.listPinnedForAuth(auth);
-  return { items: items.map((item) => DiscoveryItemResource.toJSON(item)) };
+  const items = (await DiscoveryItemResource.listPinnedForAuth(auth)).filter(
+    (item) =>
+      item.type !== "skill" ||
+      isSkillVisibleToViewer({
+        availability: item.target.availability,
+        viewerCanWrite: auth.can("write", item.target),
+      })
+  );
+  const editorsBySkillId = await SkillResource.batchListEditors(
+    auth,
+    items.filter((item) => item.type === "skill").map((item) => item.target)
+  );
+
+  return {
+    items: items.map((item) => {
+      const serialized = DiscoveryItemResource.toJSON(item);
+      if (serialized.type !== "skill") {
+        return serialized;
+      }
+      return {
+        ...serialized,
+        target: {
+          ...serialized.target,
+          authors: (editorsBySkillId.get(item.target.sId) ?? []).map((editor) =>
+            editor.fullName()
+          ),
+        },
+      };
+    }),
+  };
 }
 
 export async function listGroupDiscoveryPins(
@@ -128,6 +163,11 @@ const DISCOVERY_TRENDING_ITEMS_PER_KIND_LIMIT = 5;
 const DISCOVERY_FOR_YOU_ITEM_LIMIT = 10;
 const DISCOVERY_FOR_YOU_CANDIDATE_POOL_SIZE = 5 * DISCOVERY_FOR_YOU_ITEM_LIMIT;
 
+/**
+ * @cc [owner:aubin-tchoi,label:security;product] ranked-skill-visibility
+ * Ranked skills MUST be readable and satisfy the skill list's editor visibility
+ * rule. Include editor display names only for those visible skill targets.
+ */
 async function resolveViewerVisibleItems(
   auth: Authenticator,
   candidates: { resourceType: SearchUsageDimension; resourceId: string }[]
@@ -140,6 +180,22 @@ async function resolveViewerVisibleItems(
     }))
   );
 
+  const visibleSkillsById = new Map(
+    [...skillsById.values()]
+      .filter(
+        (skill) =>
+          auth.can("read", skill) &&
+          isSkillVisibleToViewer({
+            availability: skill.availability,
+            viewerCanWrite: auth.can("write", skill),
+          })
+      )
+      .map((skill) => [skill.sId, skill])
+  );
+  const editorsBySkillId = await SkillResource.batchListEditors(auth, [
+    ...visibleSkillsById.values(),
+  ]);
+
   return removeNulls(
     candidates.map(
       ({ resourceType, resourceId }): DiscoveryRankedItemType | null => {
@@ -151,9 +207,17 @@ async function resolveViewerVisibleItems(
               : null;
           }
           case "skill": {
-            const skill = skillsById.get(resourceId);
-            return skill && auth.can("read", skill)
-              ? { type: "skill", target: skill.toDiscoveryJSON() }
+            const skill = visibleSkillsById.get(resourceId);
+            return skill
+              ? {
+                  type: "skill",
+                  target: {
+                    ...skill.toDiscoveryJSON(),
+                    authors: (editorsBySkillId.get(skill.sId) ?? []).map(
+                      (editor) => editor.fullName()
+                    ),
+                  },
+                }
               : null;
           }
           default:

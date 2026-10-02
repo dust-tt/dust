@@ -1,13 +1,9 @@
-import type {
-  CatalogItem,
-  DiscoverSkill,
-} from "@app/components/assistant/conversation/discover/catalog";
+import type { CatalogItem } from "@app/components/assistant/conversation/discover/catalog";
 import {
   getItemDescription,
   getItemId,
   getItemName,
   toHydratedAgentCatalogItem,
-  toHydratedSkillCatalogItem,
 } from "@app/components/assistant/conversation/discover/catalog";
 import {
   CatalogRow,
@@ -30,7 +26,6 @@ import {
   useDiscoveryForYou,
   useDiscoveryTrending,
 } from "@app/lib/swr/discovery";
-import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
 import type { DiscoveryRankedItemType } from "@app/types/api/discovery";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { RichAgentMentionCandidate } from "@app/types/assistant/mentions";
@@ -58,8 +53,7 @@ const FEATURED_ITEM_CLASSES =
 
 function resolveCatalogItems(
   items: DiscoveryRankedItemType[],
-  agentsById: Map<string, LightAgentConfigurationType>,
-  skillsById: Map<string, DiscoverSkill>
+  agentsById: Map<string, LightAgentConfigurationType>
 ): CatalogItem[] {
   const seen = new Set<string>();
   const resolved: CatalogItem[] = [];
@@ -78,10 +72,18 @@ function resolveCatalogItems(
         break;
       }
       case "skill": {
-        const skill = skillsById.get(target.sId);
-        if (skill) {
-          resolved.push(toHydratedSkillCatalogItem(skill));
-        }
+        resolved.push({
+          kind: "skill",
+          skill: {
+            sId: target.sId,
+            name: target.name,
+            icon: target.icon,
+            userFacingDescription: target.description,
+          },
+          authors: target.authors ?? [],
+          isDustProvided: target.isDustProvided ?? false,
+          activeUsersCount: null,
+        });
         break;
       }
       default:
@@ -110,8 +112,6 @@ export function DiscoverHome({
 }: DiscoverHomeProps) {
   const { agentConfigurations, isLoading: isAgentsLoading } =
     useUnifiedAgentConfigurations({ workspaceId: owner.sId });
-  const { skillsWithRelations, isSkillsWithRelationsLoading } =
-    useSkillsWithRelations({ owner, status: "active", withUsage: true });
   const { featuredItems, isFeaturedLoading } = useDiscoveryFeatured({
     workspaceId: owner.sId,
   });
@@ -129,15 +129,12 @@ export function DiscoverHome({
           .filter((a) => a.status === "active")
           .map((a) => [a.sId, a])
       );
-      const skillsById = new Map(skillsWithRelations.map((s) => [s.sId, s]));
-      return resolveCatalogItems(items, agentsById, skillsById);
+      return resolveCatalogItems(items, agentsById);
     },
-    [agentConfigurations, skillsWithRelations]
+    [agentConfigurations]
   );
 
-  const isCatalogLoading =
-    (isAgentsLoading && agentConfigurations.length === 0) ||
-    isSkillsWithRelationsLoading;
+  const isCatalogLoading = isAgentsLoading && agentConfigurations.length === 0;
   const isCatalogRefreshing = isAgentsLoading && !isCatalogLoading;
 
   const featured = resolve(featuredItems);
