@@ -17,7 +17,14 @@ describe("skill listing avatars", () => {
       icon: null,
     });
     const fullSkillIcon = getSkillAvatarIcon(fullSkill);
+    const settingsIcon = getSkillAvatarIcon({
+      isDustProvided: editedBy === null,
+      icon: null,
+    });
     expect(renderToStaticMarkup(createElement(listingIcon))).toBe(
+      renderToStaticMarkup(createElement(fullSkillIcon))
+    );
+    expect(renderToStaticMarkup(createElement(settingsIcon))).toBe(
       renderToStaticMarkup(createElement(fullSkillIcon))
     );
   });
