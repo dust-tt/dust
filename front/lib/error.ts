@@ -66,6 +66,7 @@ export type DustErrorCode =
   | "generation_failed"
   | "invalid_conversation"
   | "conversation_agent_running"
+  | "conversation_locked"
   // Subscription / billing errors
   | "subscription_already_exists"
   | "workspace_not_found"
