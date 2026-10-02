@@ -173,7 +173,6 @@
     "jsdom": "^26.0.0",
     "jsforce": "^3.8.2",
     "jsonwebtoken": "^9.0.0",
-    "jwks-rsa": "^3.1.0",
     "libphonenumber-js": "^1.12.33",
     "lodash": "^4.17.21",
     "lru-memoizer": "^3.0.0",

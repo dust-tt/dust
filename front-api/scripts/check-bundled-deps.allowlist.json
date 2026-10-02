@@ -84,7 +84,6 @@
   "jsdom",
   "jsforce",
   "json-schema-to-typescript",
-  "jwks-rsa",
   "lodash",
   "lru-memoizer",
   "marked",

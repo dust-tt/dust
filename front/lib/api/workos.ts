@@ -5,8 +5,8 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import jwt from "jsonwebtoken";
-import jwksClient from "jwks-rsa";
+import type { JWTPayload } from "jose";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 import { z } from "zod";
 
 const WorkOSConnectApplicationRedirectUriSchema = z.object({
@@ -63,7 +63,7 @@ export const WorkOSJwtPayloadSchema = z
   .catchall(WorkOSJwtClaimValueSchema);
 
 export type WorkOSJwtPayload = z.infer<typeof WorkOSJwtPayloadSchema> &
-  jwt.JwtPayload;
+  JWTPayload;
 
 export function parseWorkOSJwtPayload(
   payload: unknown
@@ -75,77 +75,49 @@ export function parseWorkOSJwtPayload(
   return new Ok(validation.data);
 }
 
-/**
- * Get the public key to verify a WorkOS token.
- * key id (kid) is used to find the right key in the JWKS.
- */
-async function getSigningKey(jwksUri: string, kid: string): Promise<string> {
-  const client = jwksClient({
-    jwksUri,
-    cache: true,
-    rateLimit: true,
-  });
+// Created lazily so a missing client id surfaces at verification time, not at import. The key set
+// caches fetched keys across calls.
+let workOSJwks: ReturnType<typeof createRemoteJWKSet> | null = null;
 
-  return new Promise((resolve, reject) => {
-    client.getSigningKey(kid, (err, key) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      if (!key) {
-        reject(new Error("Key not found"));
-        return;
-      }
-      resolve(key.getPublicKey());
-    });
-  });
+function getWorkOSJwks(): ReturnType<typeof createRemoteJWKSet> {
+  if (!workOSJwks) {
+    workOSJwks = createRemoteJWKSet(
+      new URL(`https://api.workos.com/sso/jwks/${config.getWorkOSClientId()}`)
+    );
+  }
+  return workOSJwks;
 }
 
 /**
- * Verify a WorkOS token.
+ * @cc [owner:avervaet,label:security] workos-token-verification
+ * Returns Ok only for an RS256 token signed by a key from the WorkOS JWKS, issued by the WorkOS
+ * issuer, unexpired, and with a valid payload shape. Any other failure, including key fetch
+ * errors, is returned as Err; an expired but correctly signed token is an Err holding jose's
+ * `JWTExpired`.
  */
 export async function verifyWorkOSToken(
   accessToken: string
 ): Promise<Result<WorkOSJwtPayload, Error>> {
-  const verify = `https://api.workos.com/sso/jwks/${config.getWorkOSClientId()}`;
+  const jwks = getWorkOSJwks();
   const issuer = config.getWorkOSIssuerURL();
 
-  return new Promise((resolve) => {
-    jwt.verify(
-      accessToken,
-      async (header, callback) => {
-        try {
-          if (!header.kid) {
-            throw new Error("No 'kid' in token header");
-          }
-          const signingKey = await getSigningKey(verify, header.kid);
-          callback(null, signingKey);
-        } catch (err) {
-          callback(normalizeError(err));
-        }
-      },
-      {
-        algorithms: ["RS256"],
-        issuer: issuer,
-      },
-      (err, decoded) => {
-        if (err) {
-          return resolve(new Err(err));
-        }
-        if (!decoded || typeof decoded !== "object") {
-          return resolve(new Err(Error("No token payload")));
-        }
+  let decoded: JWTPayload;
+  try {
+    ({ payload: decoded } = await jwtVerify(accessToken, jwks, {
+      algorithms: ["RS256"],
+      issuer,
+    }));
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
 
-        const payloadValidation = parseWorkOSJwtPayload(decoded);
-        if (payloadValidation.isErr()) {
-          logger.error("Invalid token payload.");
-          return resolve(payloadValidation);
-        }
+  const payloadValidation = parseWorkOSJwtPayload(decoded);
+  if (payloadValidation.isErr()) {
+    logger.error("Invalid token payload.");
+    return payloadValidation;
+  }
 
-        return resolve(new Ok(payloadValidation.value));
-      }
-    );
-  });
+  return new Ok(payloadValidation.value);
 }
 
 /**

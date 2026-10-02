@@ -84,7 +84,7 @@ import type {
 } from "@app/types/user";
 import { isAdmin, isManager, isUser, lowestRole } from "@app/types/user";
 import assert from "assert";
-import { TokenExpiredError } from "jsonwebtoken";
+import { errors as joseErrors } from "jose";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -1964,7 +1964,7 @@ export async function getSessionFromBearerToken(
     return new Ok(null);
   }
   if (workOSDecoded.isErr()) {
-    if (workOSDecoded.error instanceof TokenExpiredError) {
+    if (workOSDecoded.error instanceof joseErrors.JWTExpired) {
       // Token signature was valid but expired — this is definitely a WorkOS token.
       return new Err("expired_oauth_token_error");
     }
@@ -1992,7 +1992,9 @@ export async function getSessionFromBearerToken(
       picture: user.imageUrl ?? undefined,
     },
     region: multiRegionsConfig.getCurrentRegion(),
-    organizationId: workOSDecoded.value.org_id,
+    organizationId: isString(workOSDecoded.value.org_id)
+      ? workOSDecoded.value.org_id
+      : undefined,
     isSSO: false,
     authenticationMethod: "bearer",
   });
