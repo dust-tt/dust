@@ -108,73 +108,6 @@ ContextItem.List = function ({
   className,
   hasBorder,
 }: ContextItemListProps) {
-  // #region agent log
-  const __dbgType = (el: React.ReactNode): string => {
-    if (el == null) {
-      return String(el);
-    }
-    if (!React.isValidElement(el)) {
-      return typeof el;
-    }
-    const t = el.type;
-    if (t === ContextItem) {
-      return "ContextItem";
-    }
-    if (t === ContextItem.SectionHeader) {
-      return "ContextItem.SectionHeader";
-    }
-    if (typeof t === "string") {
-      return t;
-    }
-    if (typeof t === "symbol") {
-      return String(t);
-    }
-    const fn = t as { displayName?: string; name?: string };
-    return fn.displayName || fn.name || typeof t;
-  };
-  const __dbgChildren = React.Children.toArray(children).map((child, index) => {
-    const fails =
-      !(child === null || child === undefined) &&
-      (!React.isValidElement(child) ||
-        (child.type !== ContextItem &&
-          child.type !== ContextItem.SectionHeader &&
-          React.Children.toArray(
-            (child as React.ReactElement<{ children?: React.ReactNode }>).props
-              .children
-          ).some(
-            (c) =>
-              !React.isValidElement(c) ||
-              (c.type !== ContextItem && c.type !== ContextItem.SectionHeader)
-          )));
-    return {
-      index,
-      type: __dbgType(child),
-      fails,
-      nestedTypes: React.isValidElement(child)
-        ? React.Children.toArray(
-            (child as React.ReactElement<{ children?: React.ReactNode }>).props
-              .children
-          ).map(__dbgType)
-        : [],
-    };
-  });
-  fetch("http://127.0.0.1:7242/ingest", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      location: "ContextItem.tsx:List",
-      message: "ContextItem.List children validation",
-      data: {
-        childCount: __dbgChildren.length,
-        children: __dbgChildren,
-        anyFail: __dbgChildren.some((c) => c.fails),
-      },
-      timestamp: Date.now(),
-      hypothesisId: "A,B,D",
-      runId: "post-fix",
-    }),
-  }).catch(() => {});
-  // #endregion
   // Ensure all children are of type ContextItem or ContextItem.SectionHeader
   React.Children.forEach(children, (child) => {
     if (child === null || child === undefined) {
@@ -191,27 +124,6 @@ ContextItem.List = function ({
             (c.type !== ContextItem && c.type !== ContextItem.SectionHeader)
         ))
     ) {
-      // #region agent log
-      fetch("http://127.0.0.1:7242/ingest", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          location: "ContextItem.tsx:List:throw",
-          message: "Throwing invalid ContextItem.List child",
-          data: {
-            childType: __dbgType(child),
-            nestedTypes: React.isValidElement(child)
-              ? React.Children.toArray(
-                  (child as React.ReactElement<{ children?: React.ReactNode }>)
-                    .props.children
-                ).map(__dbgType)
-              : [],
-          },
-          timestamp: Date.now(),
-          hypothesisId: "A,B",
-        }),
-      }).catch(() => {});
-      // #endregion
       throw new Error(
         "All children of ContextItem.List must be of type ContextItem or ContextItem.SectionHeader"
       );

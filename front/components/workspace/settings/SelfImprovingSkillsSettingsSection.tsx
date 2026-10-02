@@ -81,26 +81,6 @@ export function SelfImprovingSkillsSettingsSection({
   const { isEnabled, isChanging, doToggleReinforcement } =
     useSelfImprovingToggle({ owner });
 
-  // #region agent log
-  fetch("http://127.0.0.1:7242/ingest", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      location: "SelfImprovingSkillsSettingsSection.tsx:render",
-      message: "Rendering SelfImprovingSkillsSettingsSection",
-      data: {
-        showToggles,
-        showCaps,
-        ownerSid: owner.sId,
-        listStructure: "flat-direct-children-no-fragment",
-      },
-      timestamp: Date.now(),
-      hypothesisId: "B",
-      runId: "post-fix",
-    }),
-  }).catch(() => {});
-  // #endregion
-
   // ContextItem.List validates child *element types* (and nested types inside
   // wrappers). Fragments whose nested children include custom components
   // (e.g. SelfImprovingBatchModeToggle) fail that check even when those
