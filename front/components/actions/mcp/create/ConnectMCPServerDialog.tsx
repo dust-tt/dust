@@ -166,11 +166,19 @@ export function ConnectMCPServerDialog({
             });
             setRemoteMCPServerOAuthDiscoveryDone(true);
           } else if (discoverOAuthMetadataRes.isErr()) {
-            sendNotification({
-              type: "error",
-              title: "Failed to discover OAuth metadata for MCP server",
-              description: `${discoverOAuthMetadataRes.error.message} (${mcpServerView.server.url})`,
-            });
+            // Refresh must still work when the server is unreachable (e.g. expired
+            // admin token): fall back to the authorization already stored on the
+            // server so the admin can re-run the auth flow with the same settings.
+            if (mcpServerView.server.authorization) {
+              setAuthorization(mcpServerView.server.authorization);
+              setRemoteMCPServerOAuthDiscoveryDone(true);
+            } else {
+              sendNotification({
+                type: "error",
+                title: "Failed to discover OAuth metadata for MCP server",
+                description: `${discoverOAuthMetadataRes.error.message} (${mcpServerView.server.url})`,
+              });
+            }
           }
         }
         setIsLoading(false);
