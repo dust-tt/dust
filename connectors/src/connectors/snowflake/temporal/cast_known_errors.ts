@@ -156,6 +156,18 @@ function isSnowflakeListingTrialExpiredError(err: unknown): err is Error {
   );
 }
 
+function isSnowflakeMfaRequiredError(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "message" in err &&
+    typeof err.message === "string" &&
+    err.message.startsWith(
+      "Multi-factor authentication is required for this account. Log in to Snowsight to enroll."
+    )
+  );
+}
+
 export class SnowflakeCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor
 {
@@ -163,6 +175,12 @@ export class SnowflakeCastKnownErrorsInterceptor
    * @cc [owner:aubin-tchoi,label:error-handling] snowflake-session-requires-relogin
    * Activity failures named `OperationFailedError` whose message contains
    * `Session no longer exists` MUST be thrown as `ExternalOAuthTokenError`.
+   */
+  /**
+   * @cc [owner:aubin-tchoi,label:error-handling] snowflake-mfa-requires-reauthorization
+   * Activity failures whose message starts with `Multi-factor authentication is
+   * required for this account. Log in to Snowsight to enroll.` MUST be thrown as
+   * `ExternalOAuthTokenError`, preserving the original Error as the cause.
    */
   async execute(
     input: ActivityExecuteInput,
@@ -182,7 +200,8 @@ export class SnowflakeCastKnownErrorsInterceptor
         isSnowflakeUserAccessDisabledError(err) ||
         isSnowflakeInsufficientPrivilegesError(err) ||
         isSnowflakeInvalidJwtError(err) ||
-        isSnowflakeSessionNoLongerExistsError(err)
+        isSnowflakeSessionNoLongerExistsError(err) ||
+        isSnowflakeMfaRequiredError(err)
       ) {
         throw new ExternalOAuthTokenError(normalizeError(err));
       }
