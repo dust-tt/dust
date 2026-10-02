@@ -1,5 +1,7 @@
+import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -106,10 +108,10 @@ describe("GET /api/w/:wId/spaces", () => {
   });
 
   it("does not list Pods to non-admins asking with the admin role", async () => {
-    const { workspace, user } = await createPrivateApiMockRequest({
+    const { workspace } = await createPrivateApiMockRequest({
       role: "user",
     });
-    const projectSpace = await SpaceFactory.project(workspace, user.id);
+    const projectSpace = await SpaceFactory.project(workspace);
 
     const response = await honoApp.request(
       `/api/w/${workspace.sId}/spaces?role=admin&kind=project`
@@ -123,6 +125,94 @@ describe("GET /api/w/:wId/spaces", () => {
         expect.objectContaining({ sId: projectSpace.sId }),
       ]),
     });
+  });
+
+  it("does not list restricted regular spaces nor their groups to non-admins asking with the admin role", async () => {
+    const { workspace } = await createPrivateApiMockRequest({ role: "user" });
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const [{ groupIds: restrictedGroupIds }] =
+      await SpaceResource.enrichSpacesWithAccess(adminAuth, [restrictedSpace]);
+    expect(restrictedGroupIds.length).toBeGreaterThan(0);
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/spaces?role=admin&kind=regular`
+    );
+
+    expect(response.status).toBe(200);
+    const data = (await response.json()) as GetSpacesResponseBody;
+    expect(data.spaces.map((space) => space.sId)).not.toContain(
+      restrictedSpace.sId
+    );
+    const returnedGroupIds = data.spaces.flatMap((space) => space.groupIds);
+    expect(returnedGroupIds).not.toEqual(
+      expect.arrayContaining(restrictedGroupIds)
+    );
+  });
+
+  it("gives non-admins asking with the admin role their member view", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const memberSpace = await SpaceFactory.regular(workspace);
+    await memberSpace.addMembers(adminAuth, { userIds: [user.sId] });
+    await SpaceFactory.regular(workspace);
+    await auth.refresh();
+
+    const adminViewResponse = await honoApp.request(
+      `/api/w/${workspace.sId}/spaces?role=admin&kind=regular&kind=global`
+    );
+    const memberViewResponse = await honoApp.request(
+      `/api/w/${workspace.sId}/spaces?kind=regular&kind=global`
+    );
+
+    expect(adminViewResponse.status).toBe(200);
+    expect(memberViewResponse.status).toBe(200);
+    const adminView = (await adminViewResponse.json()) as GetSpacesResponseBody;
+    expect(adminView.spaces.map((space) => space.sId)).toContain(
+      memberSpace.sId
+    );
+    expect(adminView).toEqual(await memberViewResponse.json());
+  });
+
+  it("still returns the system space to non-admins asking for it with the admin role", async () => {
+    const { workspace, systemSpace } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/spaces?role=admin&kind=system`
+    );
+
+    expect(response.status).toBe(200);
+    const data = (await response.json()) as GetSpacesResponseBody;
+    expect(data.spaces).toEqual([
+      expect.objectContaining({ sId: systemSpace.sId, kind: "system" }),
+    ]);
+  });
+
+  it("lists every regular space to admins asking with the admin role", async () => {
+    const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/spaces?role=admin&kind=regular`
+    );
+
+    expect(response.status).toBe(200);
+    const data = (await response.json()) as GetSpacesResponseBody;
+    expect(data.spaces).toContainEqual(
+      expect.objectContaining({
+        sId: restrictedSpace.sId,
+        kind: "regular",
+        isRestricted: true,
+      })
+    );
   });
 
   it("rejects invalid kinds", async () => {

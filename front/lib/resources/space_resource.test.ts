@@ -2175,6 +2175,45 @@ describe("SpaceResource", () => {
   });
 });
 
+describe("isNameAvailable", () => {
+  let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
+  let auth: Authenticator;
+
+  beforeEach(async () => {
+    workspace = await WorkspaceFactory.basic();
+    auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  });
+
+  it("matches the whole name case-insensitively after trimming", async () => {
+    await SpaceFactory.project(workspace, undefined, { name: "my pod" });
+
+    expect(await SpaceResource.isNameAvailable(auth, "MY POD")).toBe(false);
+    expect(await SpaceResource.isNameAvailable(auth, "  my pod ")).toBe(false);
+    expect(await SpaceResource.isNameAvailable(auth, "my po")).toBe(true);
+  });
+
+  it("does not interpret the name as a pattern", async () => {
+    await SpaceFactory.project(workspace, undefined, { name: "my pod" });
+
+    for (const probe of ["%", "my%", "my_pod", "______", "my\\pod"]) {
+      expect(await SpaceResource.isNameAvailable(auth, probe)).toBe(true);
+    }
+  });
+
+  it("handles names containing pattern characters", async () => {
+    await SpaceFactory.project(workspace, undefined, {
+      name: "100% my_pod\\v2",
+    });
+
+    expect(await SpaceResource.isNameAvailable(auth, "100% my_pod\\v2")).toBe(
+      false
+    );
+    expect(await SpaceResource.isNameAvailable(auth, "100% my-pod\\v2")).toBe(
+      true
+    );
+  });
+});
+
 describe("searchProjectsByNamePaginated", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
   let globalGroup: GroupResource;
@@ -2276,6 +2315,66 @@ describe("searchProjectsByNamePaginated", () => {
     expect(result.spaces.some((s) => s.id === permittedSpace1.id)).toBe(true);
     expect(result.spaces.some((s) => s.id === permittedSpace2.id)).toBe(true);
     expect(result.spaces.some((s) => s.id === unpermittedSpace.id)).toBe(false);
+  });
+
+  async function memberOfPods(podNames: string[]) {
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    const pods = [];
+    for (const name of podNames) {
+      const pod = await SpaceFactory.project(workspace, undefined, { name });
+      await pod.addMembers(internalAdminAuth, { userIds: [user.sId] });
+      pods.push(pod);
+    }
+
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    return { userAuth, pods };
+  }
+
+  it("derives hasMore and lastValue from readable Pods only", async () => {
+    const { userAuth, pods } = await memberOfPods(["A readable"]);
+    await SpaceFactory.project(workspace, undefined, { name: "B hidden" });
+    await SpaceFactory.project(workspace, undefined, { name: "C hidden" });
+
+    const result = await SpaceResource.searchProjectsByNamePaginated(userAuth, {
+      pagination: { limit: 1, orderDirection: "asc" },
+    });
+
+    expect(result.spaces.map((s) => s.id)).toEqual([pods[0].id]);
+    expect(result.hasMore).toBe(false);
+    expect(result.lastValue).toBe("A readable");
+  });
+
+  it("never uses a Pod the caller cannot read as the cursor", async () => {
+    const { userAuth, pods } = await memberOfPods(["A readable"]);
+    await SpaceFactory.project(workspace, undefined, { name: "0 hidden" });
+
+    const result = await SpaceResource.searchProjectsByNamePaginated(userAuth, {
+      pagination: { limit: 1, orderDirection: "asc" },
+    });
+
+    expect(result.spaces.map((s) => s.id)).toEqual([pods[0].id]);
+    expect(result.hasMore).toBe(false);
+    expect(result.lastValue).toBe("A readable");
+  });
+
+  it("returns no cursor when the caller can read no Pod", async () => {
+    const { userAuth } = await memberOfPods([]);
+    await SpaceFactory.project(workspace, undefined, { name: "A hidden" });
+    await SpaceFactory.project(workspace, undefined, { name: "B hidden" });
+
+    const result = await SpaceResource.searchProjectsByNamePaginated(userAuth, {
+      pagination: { limit: 1, orderDirection: "asc" },
+    });
+
+    expect(result).toEqual({ spaces: [], hasMore: false, lastValue: null });
   });
 });
 
