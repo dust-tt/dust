@@ -1,6 +1,6 @@
-import { makeLinearWebhookEnvelopeSchema } from "@app/lib/triggers/built-in-webhooks/linear/schemas/envelope";
-import { issueSchema } from "@app/lib/triggers/built-in-webhooks/linear/schemas/issue";
-import { projectSchema } from "@app/lib/triggers/built-in-webhooks/linear/schemas/project";
+import { makeLinearWebhookEnvelopeSchema } from "@app/lib/api/triggers/built-in-webhooks/linear/schemas/envelope";
+import { issueSchema } from "@app/lib/api/triggers/built-in-webhooks/linear/schemas/issue";
+import { projectSchema } from "@app/lib/api/triggers/built-in-webhooks/linear/schemas/project";
 import type {
   BaseWebhookPreset,
   WebhookEvent,

@@ -1,15 +1,15 @@
 import {
   issueCreatedExample,
   issueCreatedSchema,
-} from "@app/lib/triggers/built-in-webhooks/jira/schemas/issue_created";
+} from "@app/lib/api/triggers/built-in-webhooks/jira/schemas/issue_created";
 import {
   issueDeletedExample,
   issueDeletedSchema,
-} from "@app/lib/triggers/built-in-webhooks/jira/schemas/issue_deleted";
+} from "@app/lib/api/triggers/built-in-webhooks/jira/schemas/issue_deleted";
 import {
   issueUpdatedExample,
   issueUpdatedSchema,
-} from "@app/lib/triggers/built-in-webhooks/jira/schemas/issue_updated";
+} from "@app/lib/api/triggers/built-in-webhooks/jira/schemas/issue_updated";
 import type {
   BaseWebhookPreset,
   WebhookEvent,
