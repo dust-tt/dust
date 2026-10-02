@@ -55,8 +55,8 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { ModelId } from "@connectors/types";
 import {
-  getHeaderFromGroupIds,
   getHeaderFromUserEmail,
+  getHeadersFromRequestedGroupIds,
 } from "@connectors/types";
 import type {
   AgentMessageSuccessEvent,
@@ -450,7 +450,7 @@ export async function botValidateToolExecution(
         apiKey: connector.workspaceAPIKey,
         // Validation must include user's groups and email for personal tools and group-gated actions.
         extraHeaders: {
-          ...getHeaderFromGroupIds(requestedGroups),
+          ...getHeadersFromRequestedGroupIds(requestedGroups),
           ...getHeaderFromUserEmail(userEmailHeader),
         },
         workspaceId: connector.workspaceId,
@@ -986,7 +986,7 @@ async function answerMessage(
       workspaceId: connector.workspaceId,
       apiKey: connector.workspaceAPIKey,
       extraHeaders: {
-        ...getHeaderFromGroupIds(requestedGroups),
+        ...getHeadersFromRequestedGroupIds(requestedGroups),
         ...getHeaderFromUserEmail(userEmailHeader),
       },
     },
