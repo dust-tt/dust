@@ -11,6 +11,11 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+export const USAGE_NOTIFICATIONS_SECTION_LABEL = "Notifications";
+export const WORKSPACE_CREDIT_POOL_THRESHOLD_ALERT_LABEL =
+  "Workspace credit pool threshold alert";
+export const UPGRADE_REQUEST_EMAILS_LABEL = "Upgrade request emails";
+
 interface UsageNotificationsCardProps {
   workspaceId: string;
 }
@@ -62,14 +67,16 @@ export function UsageNotificationsCard({
   return (
     <Page.Vertical gap="sm" align="stretch">
       <div className="flex flex-col gap-0.5">
-        <span className="heading-base text-foreground">Notifications</span>
+        <span className="heading-base text-foreground">
+          {USAGE_NOTIFICATIONS_SECTION_LABEL}
+        </span>
         <Page.P variant="secondary">
           Customize when and how you receive usage based notification
         </Page.P>
       </div>
       <SettingsList>
         <SettingsList.Row
-          title="Workspace credit pool threshold alert"
+          title={WORKSPACE_CREDIT_POOL_THRESHOLD_ALERT_LABEL}
           description={
             <>
               Email all workspace admins when your remaining workspace credit
@@ -104,7 +111,7 @@ export function UsageNotificationsCard({
           }
         />
         <SettingsList.Row
-          title="Upgrade request emails"
+          title={UPGRADE_REQUEST_EMAILS_LABEL}
           description="Email all workspace admins and managers when a member requests a spend-limit upgrade."
           action={
             <SliderToggle

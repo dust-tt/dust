@@ -189,6 +189,11 @@ interface SandboxEnvVarsSectionProps {
   canEdit?: boolean;
 }
 
+export const ENVIRONMENT_VARIABLES_LABEL = "Environment variables";
+export const HTTPS_SECRETS_LABEL = "HTTPS secrets (DSEC_)";
+export const CONFIG_ENV_VARS_LABEL = `Config (${SANDBOX_ENV_VAR_PREFIX})`;
+export const WRITE_ONLY_ENV_VALUES_LABEL = "Write-only values";
+
 export function SandboxEnvVarsSection({
   owner,
   spaceId,
@@ -471,7 +476,7 @@ export function SandboxEnvVarsSection({
     return (
       <Page.Vertical align="stretch" gap="lg">
         <Page.SectionHeader
-          title="Environment variables"
+          title={ENVIRONMENT_VARIABLES_LABEL}
           description={description}
         />
 

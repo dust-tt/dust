@@ -1,0 +1,105 @@
+import { CREDIT_SPEND_CHECKPOINT_LABEL } from "@app/components/workspace/usage/CreditSpendCheckpointSettingsCard";
+import {
+  PUBLISHED_AGENTS_MODEL_ACCESS_LABEL,
+  WORKSPACE_MODEL_ACCESS_LABEL,
+} from "@app/components/workspace/usage/ModelTiersSettingsCard";
+import {
+  UPGRADE_REQUEST_EMAILS_LABEL,
+  WORKSPACE_CREDIT_POOL_THRESHOLD_ALERT_LABEL,
+} from "@app/components/workspace/usage/UsageNotificationsCard";
+import { PROGRAMMATIC_MONTHLY_LIMIT_LABEL } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
+import {
+  AUTO_UPGRADE_SEATS_LABEL,
+  DEFAULT_PER_USER_POOL_LIMIT_LABEL,
+  REQUIRE_UPGRADE_REQUEST_REASON_LABEL,
+  UPGRADE_REQUEST_LABEL,
+} from "@app/components/workspace/usage/UsageSettingsCard";
+import type { AdminSettingEntry } from "@app/lib/admin/adminSearchTypes";
+import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
+
+const U = ADMIN_SECTION_IDS.usage;
+const PAGE = "usage" as const;
+const SETTINGS_TAB = "settings";
+
+/**
+ * Search entries for Usage. Settings-tab rows use the same label constants the
+ * cards render. Tab targets carry `?tab=` so deep links open the right pane.
+ */
+export const USAGE_SEARCH_ENTRIES: AdminSettingEntry[] = [
+  ...adminSearchEntries(PAGE, U.members, [
+    ["Members usage", "seats spend limit upgrade requests model tiers"],
+    ["Upgrade requests", "review member requests deny"],
+    ["Change seat type", "upgrade seat assign seat remove seat"],
+    ["Edit spend limit", "override member limit"],
+  ]),
+  ...adminSearchEntries(
+    PAGE,
+    U.groups,
+    [
+      ["Groups usage", "group spend limit seat model tiers"],
+      ["Group monthly spend limit", "per group limit"],
+    ],
+    "groups"
+  ),
+  ...adminSearchEntries(
+    PAGE,
+    U.topUps,
+    [
+      [
+        "Top-ups history",
+        "credit grants added credits expiration bonus purchased",
+      ],
+    ],
+    "top-ups"
+  ),
+  ...adminSearchEntries(
+    PAGE,
+    U.spendingPolicies,
+    [
+      [DEFAULT_PER_USER_POOL_LIMIT_LABEL, "spending policy default limit pool"],
+      [UPGRADE_REQUEST_LABEL, "allow members request upgrade"],
+      [REQUIRE_UPGRADE_REQUEST_REASON_LABEL, "justification"],
+      [AUTO_UPGRADE_SEATS_LABEL, "free pro max at limit"],
+    ],
+    SETTINGS_TAB
+  ),
+  ...adminSearchEntries(
+    PAGE,
+    U.costManagement,
+    [[CREDIT_SPEND_CHECKPOINT_LABEL, "pause agent message threshold"]],
+    SETTINGS_TAB
+  ),
+  ...adminSearchEntries(
+    PAGE,
+    U.modelTiers,
+    [
+      [
+        WORKSPACE_MODEL_ACCESS_LABEL,
+        "highest model tier standard advanced frontier",
+      ],
+      [PUBLISHED_AGENTS_MODEL_ACCESS_LABEL, "run above member tier"],
+    ],
+    SETTINGS_TAB
+  ),
+  ...adminSearchEntries(
+    PAGE,
+    U.programmatic,
+    [
+      [
+        PROGRAMMATIC_MONTHLY_LIMIT_LABEL,
+        "api keys triggers block programmatic access",
+      ],
+    ],
+    SETTINGS_TAB
+  ),
+  ...adminSearchEntries(
+    PAGE,
+    U.notifications,
+    [
+      [WORKSPACE_CREDIT_POOL_THRESHOLD_ALERT_LABEL, "email alert pool percent"],
+      [UPGRADE_REQUEST_EMAILS_LABEL, "email admins managers"],
+    ],
+    SETTINGS_TAB
+  ),
+];

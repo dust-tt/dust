@@ -1,4 +1,5 @@
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
+import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
 import { EditMemberSpendLimitModal } from "@app/components/workspace/EditMemberSpendLimitModal";
 import { GroupsUsageTable } from "@app/components/workspace/GroupsUsageTable";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
@@ -6,6 +7,7 @@ import { UpgradeRequests } from "@app/components/workspace/UpgradeRequests";
 import { UsageMembersSection } from "@app/components/workspace/UsageMembersSection";
 import type { DefaultUserSpendLimitState } from "@app/components/workspace/WorkspaceDefaultLimitInput";
 import { useQueryParams } from "@app/hooks/useQueryParams";
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
@@ -160,79 +162,83 @@ export function GroupManagerUsagePage() {
             forceMount
             className={tab === "members" ? "block min-h-panel" : "hidden"}
           >
-            <UsageMembersSection
-              searchTerm={searchTerm}
-              onSearchChange={(value) => {
-                setSearchTerm(value);
-                setPagination((current) => ({ ...current, pageIndex: 0 }));
-              }}
-              groups={visibleGroups}
-              groupId={groupId}
-              onGroupChange={(value) => {
-                setGroupId(value);
-                setPagination((current) => ({ ...current, pageIndex: 0 }));
-              }}
-              allGroupsLabel="All managed groups"
-              requests={
-                canHandleRequests
-                  ? {
-                      count: upgradeRequests.length,
-                      activeTab: membersTab,
-                      onTabChange: setMembersTab,
-                      table: (
-                        <UpgradeRequests
-                          owner={owner}
-                          requests={upgradeRequests}
-                          isLoading={isUpgradeRequestsLoading}
-                          isError={isUpgradeRequestsError}
-                          groups={groups}
-                          editableGroupIds={editableGroupIds}
-                        />
-                      ),
+            <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.usage.members}>
+              <UsageMembersSection
+                searchTerm={searchTerm}
+                onSearchChange={(value) => {
+                  setSearchTerm(value);
+                  setPagination((current) => ({ ...current, pageIndex: 0 }));
+                }}
+                groups={visibleGroups}
+                groupId={groupId}
+                onGroupChange={(value) => {
+                  setGroupId(value);
+                  setPagination((current) => ({ ...current, pageIndex: 0 }));
+                }}
+                allGroupsLabel="All managed groups"
+                requests={
+                  canHandleRequests
+                    ? {
+                        count: upgradeRequests.length,
+                        activeTab: membersTab,
+                        onTabChange: setMembersTab,
+                        table: (
+                          <UpgradeRequests
+                            owner={owner}
+                            requests={upgradeRequests}
+                            isLoading={isUpgradeRequestsLoading}
+                            isError={isUpgradeRequestsError}
+                            groups={groups}
+                            editableGroupIds={editableGroupIds}
+                          />
+                        ),
+                      }
+                    : undefined
+                }
+                membersTable={
+                  <MembersUsageTable
+                    members={membersUsage}
+                    isLoading={isMembersUsageLoading}
+                    isRefreshing={isMembersUsageRefreshing}
+                    totalAllowedUsagePendingMemberIds={EMPTY_IDS}
+                    seatChangePendingMemberIds={EMPTY_IDS}
+                    isSeatBased={false}
+                    showSpendLimit={
+                      isCreditPriced && !isFreePlan(subscription.plan.code)
                     }
-                  : undefined
-              }
-              membersTable={
-                <MembersUsageTable
-                  members={membersUsage}
-                  isLoading={isMembersUsageLoading}
-                  isRefreshing={isMembersUsageRefreshing}
-                  totalAllowedUsagePendingMemberIds={EMPTY_IDS}
-                  seatChangePendingMemberIds={EMPTY_IDS}
-                  isSeatBased={false}
-                  showSpendLimit={
-                    isCreditPriced && !isFreePlan(subscription.plan.code)
-                  }
-                  canEditSpendLimit={canEditMember}
-                  showSeatAndCredits={isCreditPriced}
-                  showSeatActions={false}
-                  showGroupsColumn={visibleGroups.length > 0}
-                  onChangeSeat={NOOP_MEMBER_ACTION}
-                  onRemoveSeat={NOOP_MEMBER_ACTION}
-                  onEditSpendLimit={setSelectedMember}
-                  onOpenSpendLimitRecap={setSelectedMember}
-                  pagination={pagination}
-                  setPagination={setPagination}
-                  totalRowCount={totalMembersUsage}
-                  sorting={effectiveSorting}
-                  setSorting={(next) => {
-                    setSorting(next);
-                    setPagination((current) => ({
-                      ...current,
-                      pageIndex: 0,
-                    }));
-                  }}
-                />
-              }
-            />
+                    canEditSpendLimit={canEditMember}
+                    showSeatAndCredits={isCreditPriced}
+                    showSeatActions={false}
+                    showGroupsColumn={visibleGroups.length > 0}
+                    onChangeSeat={NOOP_MEMBER_ACTION}
+                    onRemoveSeat={NOOP_MEMBER_ACTION}
+                    onEditSpendLimit={setSelectedMember}
+                    onOpenSpendLimitRecap={setSelectedMember}
+                    pagination={pagination}
+                    setPagination={setPagination}
+                    totalRowCount={totalMembersUsage}
+                    sorting={effectiveSorting}
+                    setSorting={(next) => {
+                      setSorting(next);
+                      setPagination((current) => ({
+                        ...current,
+                        pageIndex: 0,
+                      }));
+                    }}
+                  />
+                }
+              />
+            </AdminSectionAnchor>
           </TabsContent>
           <TabsContent value="groups" className="block min-h-panel">
-            <GroupsUsageTable
-              owner={owner}
-              visibleGroupIds={visibleGroupIds}
-              editableGroupIds={editableGroupIds}
-              showSpendLimitColumn={isCreditPriced}
-            />
+            <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.usage.groups}>
+              <GroupsUsageTable
+                owner={owner}
+                visibleGroupIds={visibleGroupIds}
+                editableGroupIds={editableGroupIds}
+                showSpendLimitColumn={isCreditPriced}
+              />
+            </AdminSectionAnchor>
           </TabsContent>
         </Tabs>
         <EditMemberSpendLimitModal

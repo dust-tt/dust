@@ -14,6 +14,14 @@ import {
   SliderToggle,
 } from "@dust-tt/sparkle";
 
+export const SPENDING_POLICIES_SECTION_LABEL = "Spending policies";
+export const DEFAULT_PER_USER_POOL_LIMIT_LABEL =
+  "Default per-user workspace credit pool monthly limit";
+export const UPGRADE_REQUEST_LABEL = "Upgrade request";
+export const REQUIRE_UPGRADE_REQUEST_REASON_LABEL =
+  "Require a reason for upgrade requests";
+export const AUTO_UPGRADE_SEATS_LABEL = "Auto-upgrade seats";
+
 interface UsageSettingsCardProps {
   workspaceId: string;
   hasPool: boolean;
@@ -77,11 +85,13 @@ export function UsageSettingsCard({
 
   return (
     <Page.Vertical gap="sm" align="stretch">
-      <span className="heading-base text-foreground">Spending policies</span>
+      <span className="heading-base text-foreground">
+        {SPENDING_POLICIES_SECTION_LABEL}
+      </span>
       <SettingsList>
         <LockedSection locked={!hasPool}>
           <SettingsList.Row
-            title="Default per-user workspace credit pool monthly limit"
+            title={DEFAULT_PER_USER_POOL_LIMIT_LABEL}
             description={
               seatsHaveBuiltInAllowance ? (
                 <>
@@ -125,7 +135,7 @@ export function UsageSettingsCard({
           />
         </LockedSection>
         <SettingsList.Row
-          title="Upgrade request"
+          title={UPGRADE_REQUEST_LABEL}
           description="Allow members who reach their limit to request an upgrade. Workspace admins and managers review requests on the this page."
           action={
             <SliderToggle
@@ -140,7 +150,7 @@ export function UsageSettingsCard({
           tooltipContent="Enable upgrade requests to enable this setting"
         >
           <SettingsList.Row
-            title="Require a reason for upgrade requests"
+            title={REQUIRE_UPGRADE_REQUEST_REASON_LABEL}
             description="Members must explain why they need an upgrade before their request can be submitted."
             action={
               <SliderToggle
@@ -159,7 +169,7 @@ export function UsageSettingsCard({
           />
         </LockedSection>
         <SettingsList.Row
-          title="Auto-upgrade seats"
+          title={AUTO_UPGRADE_SEATS_LABEL}
           description={
             usageSettings.autoSeatUpgradeAvailable ? (
               "When a member reaches their credit limit, automatically move them to the next seat tier available in your plan (free → pro, pro → max) instead of blocking them. This may increase your subscription cost."

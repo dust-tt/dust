@@ -1,4 +1,5 @@
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
+import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
 import { BillingInformation } from "@app/components/workspace/billing/BillingInformation";
 import { BillingOverview } from "@app/components/workspace/billing/BillingOverview";
 import { BillingSeatsOverview } from "@app/components/workspace/billing/BillingSeatsOverview";
@@ -10,6 +11,7 @@ import { NextInvoicePreview } from "@app/components/workspace/billing/NextInvoic
 import { RecentInvoices } from "@app/components/workspace/billing/RecentInvoices";
 import { SubscriptionProvider } from "@app/components/workspace/billing/SubscriptionContext";
 import { useQueryParams } from "@app/hooks/useQueryParams";
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { isCreditPricedFreePlan } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
@@ -94,27 +96,39 @@ export function BillingPage() {
                 {hasCoupons && <TabsTrigger value="coupons" label="Coupons" />}
               </TabsList>
               <TabsContent value="billing-information">
-                <div className="flex flex-col mt-8 gap-8">
-                  <div className="flex flex-col gap-4">
-                    <BillingOverview />
-                    <BillingSeatsOverview owner={owner} />
+                <AdminSectionAnchor
+                  sectionId={ADMIN_SECTION_IDS.billing.information}
+                >
+                  <div className="flex flex-col mt-8 gap-8">
+                    <div className="flex flex-col gap-4">
+                      <BillingOverview />
+                      <BillingSeatsOverview owner={owner} />
+                    </div>
+                    <BillingUpgrade />
+                    <BillingInformation />
                   </div>
-                  <BillingUpgrade />
-                  <BillingInformation />
-                </div>
+                </AdminSectionAnchor>
               </TabsContent>
               <TabsContent value="invoices">
-                <div className="flex flex-col mt-8 gap-8">
-                  <NextInvoiceOverview />
-                  <NextInvoicePreview />
-                  <RecentInvoices />
-                </div>
+                <AdminSectionAnchor
+                  sectionId={ADMIN_SECTION_IDS.billing.invoices}
+                >
+                  <div className="flex flex-col mt-8 gap-8">
+                    <NextInvoiceOverview />
+                    <NextInvoicePreview />
+                    <RecentInvoices />
+                  </div>
+                </AdminSectionAnchor>
               </TabsContent>
               {hasCoupons && (
                 <TabsContent value="coupons">
-                  <div className="flex flex-col mt-8 gap-8">
-                    <CouponsList />
-                  </div>
+                  <AdminSectionAnchor
+                    sectionId={ADMIN_SECTION_IDS.billing.coupons}
+                  >
+                    <div className="flex flex-col mt-8 gap-8">
+                      <CouponsList />
+                    </div>
+                  </AdminSectionAnchor>
                 </TabsContent>
               )}
             </Tabs>

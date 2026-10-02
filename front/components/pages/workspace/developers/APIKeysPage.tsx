@@ -1,4 +1,6 @@
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
+import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
+import { API_KEYS_PAGE_TITLE } from "@app/components/pages/workspace/developers/apiKeysAdminSearchEntries";
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { APIKeyCreationSheet } from "@app/components/workspace/api-keys/APIKeyCreationSheet";
@@ -9,6 +11,7 @@ import { NewAPIKeyDialog } from "@app/components/workspace/api-keys/NewAPIKeyDia
 import type { KeyRole } from "@app/components/workspace/api-keys/utils";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
@@ -288,28 +291,30 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
             showLegacyUsdMonthlyCap={showLegacyUsdMonthlyCap}
           />
         </Page.Horizontal>
-        {!isKeysError && (
-          <APIKeysOverview
+        <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.apiKeys.keys}>
+          {!isKeysError && (
+            <APIKeysOverview
+              keys={keys}
+              workspaceId={owner.sId}
+              period={period}
+              isKeysLoading={isKeysLoading}
+            />
+          )}
+          <APIKeysTable
             keys={keys}
             workspaceId={owner.sId}
             period={period}
-            isKeysLoading={isKeysLoading}
+            isLoading={isKeysLoading}
+            isError={!!isKeysError}
+            showAnalyticsConsumption={showCreditMonthlyCap}
+            isRevoking={isRevoking}
+            isGenerating={isGenerating}
+            onRevoke={handleRevoke}
+            onEditCap={setEditCapKey}
+            showLegacyUsdMonthlyCap={showLegacyUsdMonthlyCap}
+            showCreditMonthlyCap={showCreditMonthlyCap}
           />
-        )}
-        <APIKeysTable
-          keys={keys}
-          workspaceId={owner.sId}
-          period={period}
-          isLoading={isKeysLoading}
-          isError={!!isKeysError}
-          showAnalyticsConsumption={showCreditMonthlyCap}
-          isRevoking={isRevoking}
-          isGenerating={isGenerating}
-          onRevoke={handleRevoke}
-          onEditCap={setEditCapKey}
-          showLegacyUsdMonthlyCap={showLegacyUsdMonthlyCap}
-          showCreditMonthlyCap={showCreditMonthlyCap}
-        />
+        </AdminSectionAnchor>
       </Page.Vertical>
       {showLegacyUsdMonthlyCap && editCapKey && (
         <EditKeyCapDialog
@@ -346,7 +351,7 @@ export function APIKeysPage() {
           title={
             <div className="flex w-full flex-col justify-between gap-4 sm:flex-row sm:items-start">
               <div className="flex max-w-2xl flex-col gap-1">
-                <Page.H variant="h3">Dust API Keys</Page.H>
+                <Page.H variant="h3">{API_KEYS_PAGE_TITLE}</Page.H>
                 <Page.P variant="secondary">
                   Create and manage keys to access the Dust API, track their
                   usage, and control their monthly spend.
