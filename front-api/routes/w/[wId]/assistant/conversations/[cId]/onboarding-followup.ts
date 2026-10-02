@@ -46,13 +46,20 @@ app.post(
       });
     }
 
-    const isOnboardingConversation = await isUserOnboardingConversation(
+    if (!(await isUserOnboardingConversation(auth, conversationId))) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "conversation_not_found",
+          message: "Conversation not found",
+        },
+      });
+    }
+
+    const conversationResource = await ConversationResource.fetchById(
       auth,
       conversationId
     );
-    const conversationResource = isOnboardingConversation
-      ? await ConversationResource.fetchById(auth, conversationId)
-      : null;
     if (!conversationResource) {
       return apiError(ctx, {
         status_code: 404,
