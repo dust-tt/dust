@@ -1,4 +1,4 @@
-import { ManageSkillsPage } from "@app/components/pages/builder/skills/SearchSkillsPage";
+import { ManageSkillsPage } from "@app/components/pages/builder/skills/ManageSkillsPage";
 import { SkillsDataTable } from "@app/components/poke/skills/table";
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
