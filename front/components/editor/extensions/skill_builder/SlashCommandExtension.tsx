@@ -20,6 +20,8 @@ import {
   enterSlashSubMenu,
   handleSlashSubMenuCommand,
   SLASH_MENU_QUERY_PLACEHOLDER,
+  SLASH_MENU_QUERY_PLACEHOLDER_CLASS_NAME,
+  SLASH_MENU_TRIGGER_CLASS_NAME,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import { createAttachKnowledgeSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/slashStaticCommands";
 import { getSlashTriggerText } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
@@ -334,6 +336,8 @@ export const SlashCommandExtension = createSlashSuggestionExtension<
   }),
   allow: ({ storage }) => storage.hasBeenFocused,
   queryPlaceholder: SLASH_MENU_QUERY_PLACEHOLDER,
+  queryPlaceholderClassName: SLASH_MENU_QUERY_PLACEHOLDER_CLASS_NAME,
+  triggerClassName: SLASH_MENU_TRIGGER_CLASS_NAME,
   items: ({ query }) => filterSlashCommandItems(SLASH_COMMANDS, query),
   command: ({ editor, range, props, options, storage }) => {
     if (
