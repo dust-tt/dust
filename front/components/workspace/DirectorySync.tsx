@@ -1,4 +1,5 @@
 import { UpgradePlanDialog } from "@app/components/workspace/UpgradePlanDialog";
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useGroups } from "@app/lib/swr/groups";
 import {
@@ -264,7 +265,11 @@ export default function UserProvisioning({
   } = useDirectorySyncStatus({ owner, plan });
 
   return (
-    <WorkspaceSection title="User provisioning" icon={Users01}>
+    <WorkspaceSection
+      title="User provisioning"
+      icon={Users01}
+      sectionId={ADMIN_SECTION_IDS.identity.provisioning}
+    >
       <div className="flex w-full flex-row items-center gap-2">
         <div className="flex-1">
           <DirectorySyncStatus

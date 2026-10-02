@@ -1,3 +1,4 @@
+import { useAdminSectionHighlight } from "@app/hooks/useAdminSectionHighlight";
 import { cn } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 
@@ -10,6 +11,8 @@ export function AdminPageContainer({
   children,
   className,
 }: AdminPageContainerProps) {
+  useAdminSectionHighlight();
+
   return (
     <div
       className={cn(
