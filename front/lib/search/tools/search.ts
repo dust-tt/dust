@@ -2,7 +2,6 @@ import { getConnectionForMCPServer } from "@app/lib/actions/mcp_authentication";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
-import { addFileToProject } from "@app/lib/api/projects/context";
 import type { Authenticator } from "@app/lib/auth";
 import {
   download as githubDownload,
@@ -40,11 +39,7 @@ import type {
 } from "@app/lib/search/tools/types";
 import logger from "@app/logger/logger";
 import type { ConnectorProvider } from "@app/types/data_source";
-import type {
-  FileType,
-  FileUseCase,
-  FileUseCaseMetadata,
-} from "@app/types/files";
+import type { FileType, FileUseCaseMetadata } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { Readable } from "stream";
@@ -54,10 +49,8 @@ export const ToolUploadRequestBodySchema = z.object({
   serverViewId: z.string().min(1, "serverViewId is required"),
   externalId: z.string().min(1, "externalId is required"),
   conversationId: z.string().optional(), // TODO(seb): remove after the next extension release + a few days.
-  useCase: z.enum(["conversation", "project_context"]).default("conversation"),
   useCaseMetadata: z.object({
     conversationId: z.string().optional(),
-    spaceId: z.string().optional(),
   }),
   serverName: z.string().optional(),
   serverIcon: z.string().optional(),
@@ -295,7 +288,6 @@ export async function downloadAndUploadToolFile({
   tool,
   accessToken,
   externalId,
-  useCase,
   useCaseMetadata,
   metadata,
   serverName,
@@ -305,7 +297,6 @@ export async function downloadAndUploadToolFile({
   tool: SearchableTool;
   accessToken: string;
   externalId: string;
-  useCase: FileUseCase;
   useCaseMetadata?: FileUseCaseMetadata;
   metadata?: Record<string, string>;
   serverName?: string;
@@ -351,7 +342,7 @@ export async function downloadAndUploadToolFile({
     fileSize: Buffer.byteLength(downloadResult.content, "utf8"),
     userId: user.id,
     workspaceId: owner.id,
-    useCase,
+    useCase: "conversation",
     useCaseMetadata: {
       ...(useCaseMetadata ? useCaseMetadata : {}),
       ...(serverName ? { sourceProvider: serverName } : {}),
@@ -371,22 +362,6 @@ export async function downloadAndUploadToolFile({
     return new Err(
       new Error(`Failed to process file: ${processResult.error.message}`)
     );
-  }
-
-  // TODO(seb): we shouldn't have multiple places where we handle the post file upload logic.
-  if (useCase === "project_context" && useCaseMetadata?.spaceId) {
-    const space = await SpaceResource.fetchById(auth, useCaseMetadata?.spaceId);
-    if (!space) {
-      return new Err(new Error("Space not found."));
-    }
-    const addFileToProjectRes = await addFileToProject(auth, {
-      file,
-      space,
-    });
-
-    if (addFileToProjectRes.isErr()) {
-      return new Err(new Error("Failed to add file to project."));
-    }
   }
 
   return new Ok(file.toJSON(auth));

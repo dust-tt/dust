@@ -1911,7 +1911,6 @@ const InputBarContainer = ({
                           onNodeSelect={handleNodeSelect}
                           buttonSize={buttonSize}
                           toolFileUpload={{
-                            useCase: "conversation",
                             useCaseMetadata: {
                               conversationId: conversation?.sId,
                             },

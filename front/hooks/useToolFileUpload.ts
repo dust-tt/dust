@@ -10,13 +10,11 @@ import { useCallback, useState } from "react";
 export function useToolFileUpload({
   owner,
   fileUploaderService,
-  useCase,
   useCaseMetadata,
   onUploadSuccess,
 }: {
   owner: LightWorkspaceType;
   fileUploaderService: FileUploaderService;
-  useCase: "conversation" | "project_context";
   useCaseMetadata: FileUseCaseMetadata;
   onUploadSuccess: (file: File) => void;
 }) {
@@ -55,7 +53,6 @@ export function useToolFileUpload({
       const body: ToolUploadRequestBody = {
         serverViewId: toolFile.serverViewId,
         externalId: toolFile.externalId,
-        useCase,
         useCaseMetadata,
         serverName: toolFile.serverName,
         serverIcon: toolFile.serverIcon,
@@ -111,7 +108,6 @@ export function useToolFileUpload({
       fileUploaderService,
       sendNotification,
       getFileKey,
-      useCase,
       useCaseMetadata,
       onUploadSuccess,
     ]

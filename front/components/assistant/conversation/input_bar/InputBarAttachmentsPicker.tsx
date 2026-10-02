@@ -100,7 +100,6 @@ interface InputBarAttachmentsPickerProps {
   buttonSize?: "xs" | "sm" | "md";
   // Will be used to upload files found via tools and not the connected datasources.
   toolFileUpload: {
-    useCase: "conversation" | "project_context";
     useCaseMetadata: FileUseCaseMetadata;
   };
   spaceId?: string;
@@ -468,7 +467,6 @@ export const InputBarAttachmentsPicker = ({
   } = useToolFileUpload({
     owner,
     fileUploaderService,
-    useCase: toolFileUpload.useCase,
     useCaseMetadata: toolFileUpload.useCaseMetadata,
     onUploadSuccess: () => {
       onFileChange?.();
