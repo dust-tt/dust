@@ -1,0 +1,4 @@
+@cc [owner:sfriquet,label:product] billed-consumption-indexed-regardless-of-status
+Every billed consumption unit of an agent message MUST be indexed whatever the message status,
+including `created` while paused on a user question or a tool approval. A message without a
+`completedAt` is indexed at its `updatedAt`.
