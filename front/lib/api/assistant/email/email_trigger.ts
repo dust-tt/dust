@@ -34,7 +34,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import fs from "fs";
 import sanitizeHtml from "sanitize-html";
 import { Op } from "sequelize";
 import { Readable } from "stream";
@@ -306,7 +305,7 @@ async function findConversationIdFromThreadingHeaders(
 export { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/constants";
 
 export type EmailAttachment = {
-  filepath: string; // Temp file path from formidable
+  content: Buffer<ArrayBuffer>;
   filename: string; // Original filename
   contentType: string; // MIME type
   size: number; // File size in bytes
@@ -895,12 +894,11 @@ export async function triggerFromEmail(
         useCaseMetadata: null,
       });
 
-      const fileStream = fs.createReadStream(attachment.filepath);
       const processRes = await processAndStoreFile(auth, {
         file,
         content: {
           type: "readable",
-          value: Readable.from(fileStream),
+          value: Readable.from(attachment.content),
         },
       });
 
