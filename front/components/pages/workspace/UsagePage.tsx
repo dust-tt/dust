@@ -1139,25 +1139,26 @@ export function UsagePage() {
             </div>
           ) : null}
 
-          {isCreditPriced ? (
-            <div className="flex flex-col items-stretch gap-4">
-              <AdminSectionAnchor
-                sectionId={ADMIN_SECTION_IDS.usage.addCredits}
-              >
-                <div className="flex justify-end">{topUpButton}</div>
-              </AdminSectionAnchor>
-              <CreditPoolCards owner={owner} disabled={!isCreditPriced} />
-            </div>
-          ) : isWorkspaceAdmin ? (
-            // Search deep-link target for Add / Purchase credits. The buy CTA
-            // for non–credit-priced plans still lives on the legacy
-            // developers/credits-usage page.
-            <AdminSectionAnchor
-              sectionId={ADMIN_SECTION_IDS.usage.addCredits}
-              className="hidden"
-            >
-              <span />
+          {isWorkspaceAdmin ? (
+            <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.usage.addCredits}>
+              <div className="flex justify-end">
+                {isCreditPriced ? (
+                  topUpButton
+                ) : (
+                  // Non–credit-priced plans still purchase on the legacy page.
+                  <Button
+                    label="Add credits"
+                    icon={Plus}
+                    size="sm"
+                    variant="outline"
+                    href={`/w/${owner.sId}/developers/credits-usage`}
+                  />
+                )}
+              </div>
             </AdminSectionAnchor>
+          ) : null}
+          {isCreditPriced ? (
+            <CreditPoolCards owner={owner} disabled={!isCreditPriced} />
           ) : null}
 
           <Tabs
@@ -1265,7 +1266,13 @@ export function UsagePage() {
             )}
 
             {isWorkspaceAdmin && (
-              <TabsContent value="settings" className={TAB_CONTENT_CLASS}>
+              <TabsContent
+                value="settings"
+                forceMount
+                className={
+                  usageTab === "settings" ? TAB_CONTENT_CLASS : "hidden"
+                }
+              >
                 <Page.Vertical align="stretch" gap="xl">
                   {isCreditPriced && (
                     <AdminSectionAnchor
@@ -1285,7 +1292,8 @@ export function UsagePage() {
                       workspaceId={owner.sId}
                     />
                   </AdminSectionAnchor>
-                  {isCreditPriced && (
+                  {/* Always mounted so search deep links resolve on all plans. */}
+                  {isCreditPriced ? (
                     <LockedSection
                       locked={!isAwuPoolCurrentCycleLoading && !hasPool}
                       className="flex flex-col gap-8"
@@ -1309,6 +1317,20 @@ export function UsagePage() {
                         <UsageNotificationsCard workspaceId={owner.sId} />
                       </AdminSectionAnchor>
                     </LockedSection>
+                  ) : (
+                    <AdminSectionAnchor
+                      sectionId={ADMIN_SECTION_IDS.usage.programmatic}
+                    >
+                      <div className="flex flex-col gap-8">
+                        <UsageProgrammaticLimitCard workspaceId={owner.sId} />
+                        {hasSelfImprovement && (
+                          <SelfImprovingSkillsSettingsSection
+                            owner={owner}
+                            showToggles={false}
+                          />
+                        )}
+                      </div>
+                    </AdminSectionAnchor>
                   )}
                 </Page.Vertical>
               </TabsContent>
