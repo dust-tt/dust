@@ -294,9 +294,7 @@ const DropdownMenuSubContent = React.forwardRef<
         {...props}
       >
         {dropdownHeaders && (
-          <div className="sticky top-0 bg-overlay-background px-1 pt-1">
-            {dropdownHeaders}
-          </div>
+          <div className="sticky top-0 px-1 pt-1">{dropdownHeaders}</div>
         )}
         <ScrollArea
           className="w-full flex-1"
@@ -519,12 +517,7 @@ const DropdownMenuContent = React.forwardRef<
         onCloseAutoFocus={handleCloseAutoFocus}
         {...props}
       >
-        <div
-          className={cn(
-            "sticky top-0 bg-overlay-background",
-            dropdownHeaders && "px-1 pt-1"
-          )}
-        >
+        <div className={cn("sticky top-0", dropdownHeaders && "px-1 pt-1")}>
           {dropdownHeaders && dropdownHeaders}
         </div>
         <ScrollArea
