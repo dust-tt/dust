@@ -66,10 +66,13 @@ a DFM file from a sandbox and the editor still opens it.
   messages look like from inside a tool.
 - Guard the agent write paths: `files.edit` and `files.create` adopt the revision check the
   PUT route has; sandbox writes in GCS mode cannot be guarded and that fact is recorded.
-- The human side learns about agent writes: today nothing refreshes an open editor. Minimum:
-  on an agent file action that touched the open path, refetch and, if the draft is clean,
-  reload; if dirty, surface the conflict and keep the draft. A `doc_updated` conversation event
-  modeled on `plan_updated` is the clean version.
+- The human side learns about agent writes. Minimum done (stacked on #34029): when a `files` or
+  `sandbox` tool action finishes, the conversation revalidates open file contents, so a clean
+  editor reopens on the agent's version and a dirty one holds its draft. Two cases it does not
+  cover, which the `doc_updated` conversation event modeled on `plan_updated` would: a file
+  tool the agent calls from inside a sandbox `bash` session (child actions emit no event, so the
+  refresh waits for the enclosing `bash` to finish), and a preview opened by file id rather than
+  by path (different cache key).
 - The agent learns about the human side: today nothing tells an agent which file is open in
   the side panel. Pass the open document path in the message context so "refine this" has a
   target.

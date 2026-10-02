@@ -494,6 +494,17 @@ export function AgentMessage({
             ) {
               void mutateSandboxFiles();
             }
+            if (
+              action.internalMCPServerName === "files" ||
+              action.internalMCPServerName === "sandbox"
+            ) {
+              // An agent wrote a file; an open preview or editor of it must learn now rather
+              // than on the next window focus. The editor reopens when clean and holds its
+              // draft otherwise. Same reliable per-message stream as the plan revalidation.
+              void mutate(
+                (key) => typeof key === "string" && key.includes("/files/path/")
+              );
+            }
             if (action.internalMCPServerName === "plan_mode") {
               // The conversation-channel `plan_updated` event can be lost (flaky SSE + small replay
               // buffer), leaving the plan card/panel stale until turn end. The tool action rides the
