@@ -276,7 +276,7 @@ function SkillsList({
   );
 }
 
-interface SearchSkillsPageProps {
+interface ManageSkillsPageProps {
   readOnly?: boolean;
   showHeader?: boolean;
   searchEndpoint?: string;
@@ -291,7 +291,7 @@ interface SearchSkillsPageProps {
  * In readOnly mode, built-in creation, batch-edit and detail controls MUST NOT render.
  * Table and facet requests MUST use the same searchEndpoint when supplied.
  */
-export function SearchSkillsPage({
+export function ManageSkillsPage({
   readOnly = false,
   showHeader = true,
   searchEndpoint,
@@ -299,7 +299,7 @@ export function SearchSkillsPage({
   permissionFiltering: permissionFilteringOverride,
   searchActions,
   onSelect,
-}: SearchSkillsPageProps) {
+}: ManageSkillsPageProps) {
   const owner = useWorkspace();
   const { user, isAdmin } = useAuth();
   const { hasPermission } = useWorkspacePermissions();

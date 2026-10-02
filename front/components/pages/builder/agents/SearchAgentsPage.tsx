@@ -242,7 +242,7 @@ function AgentsList({
   );
 }
 
-interface SearchAgentsPageProps {
+interface ManageAgentsPageProps {
   readOnly?: boolean;
   showHeader?: boolean;
   searchEndpoint?: string;
@@ -258,7 +258,7 @@ interface SearchAgentsPageProps {
  * In readOnly mode, built-in creation, batch-edit and detail controls MUST NOT render.
  * Table and facet requests MUST use the same searchEndpoint when supplied.
  */
-export function SearchAgentsPage({
+export function ManageAgentsPage({
   readOnly = false,
   showHeader = true,
   searchEndpoint,
@@ -267,7 +267,7 @@ export function SearchAgentsPage({
   searchActions,
   onSelect,
   renderActions,
-}: SearchAgentsPageProps) {
+}: ManageAgentsPageProps) {
   const owner = useWorkspace();
   const { user, isAdmin } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
