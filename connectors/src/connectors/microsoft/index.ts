@@ -24,7 +24,9 @@ import {
   getSubSites,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { MicrosoftNodeType } from "@connectors/connectors/microsoft/lib/types";
+import type { SelectableContainer } from "@connectors/connectors/microsoft/lib/utils";
 import {
+  getSelectableContainer,
   internalIdFromTypeAndPath,
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/utils";
@@ -70,7 +72,11 @@ import type {
 } from "@connectors/types";
 import { concurrentExecutor } from "@connectors/types/shared/utils/async_utils";
 import { isString } from "@connectors/types/shared/utils/general";
-import type { ConnectorProvider, Result } from "@dust-tt/client";
+import type {
+  ConnectorProvider,
+  LoggerInterface,
+  Result,
+} from "@dust-tt/client";
 import {
   assertNever,
   Err,
@@ -81,6 +87,7 @@ import {
 import { Client, GraphError } from "@microsoft/microsoft-graph-client";
 import type { Site } from "@microsoft/microsoft-graph-types";
 import { decodeJwt } from "jose";
+import { z } from "zod";
 
 function shouldStartSensitivityLabelsWorkflow(
   config: MicrosoftConfigurationResource
@@ -336,6 +343,12 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
    * A Microsoft Graph 404 while retrieving a container's permissions MUST be
    * returned as `CONTENT_NODE_NOT_FOUND`, rather than escaping as an internal error.
    */
+  /**
+   * @cc [owner:tdraier,label:security] browse-only-selectable-parents
+   * Outside the `read` filter and table view, a caller-provided `parentInternalId` MUST be
+   * rejected with `INVALID_PARENT_INTERNAL_ID` when `getUnselectableInternalIds` reports it,
+   * before its children are listed.
+   */
   async retrievePermissions({
     parentInternalId,
     filterPermission,
@@ -395,6 +408,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       await MicrosoftRootResource.listRootsByConnectorId(connector.id)
     ).map((r) => r.internalId);
 
+    const requestedParentInternalId = parentInternalId;
     if (!parentInternalId) {
       parentInternalId = internalIdFromTypeAndPath({
         nodeType: "sites-root",
@@ -402,10 +416,26 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       });
     }
 
-    const { nodeType } = typeAndPathFromInternalId(parentInternalId);
-
     try {
       const client = await getMicrosoftClient(connector.connectionId);
+
+      if (requestedParentInternalId) {
+        const unselectableInternalIds = await getUnselectableInternalIds({
+          connector,
+          client,
+          internalIds: [requestedParentInternalId],
+        });
+        if (unselectableInternalIds.length > 0) {
+          return new Err(
+            new ConnectorManagerError(
+              "INVALID_PARENT_INTERNAL_ID",
+              `Microsoft resource is not browsable: ${requestedParentInternalId}`
+            )
+          );
+        }
+      }
+
+      const { nodeType } = typeAndPathFromInternalId(parentInternalId);
       switch (nodeType) {
         case "sites-root": {
           const config =
@@ -540,6 +570,12 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     return new Ok([internalId]);
   }
 
+  /**
+   * @cc [owner:tdraier,label:security] reject-unselectable-roots
+   * A new `read` root MUST be rejected when `getUnselectableInternalIds` reports it. When any is
+   * rejected, `setPermissions` MUST return an `Err` before deleting or creating any root or
+   * launching any workflow.
+   */
   async setPermissions({
     permissions,
   }: {
@@ -556,6 +592,27 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       connector.id
     );
 
+    const newReadInternalIds = Object.entries(permissions)
+      .filter(
+        ([internalId, permission]) =>
+          permission === "read" &&
+          existing.every((e) => e.internalId !== internalId)
+      )
+      .map(([internalId]) => internalId);
+
+    const unselectableInternalIds = await getUnselectableInternalIds({
+      connector,
+      client: await getMicrosoftClient(connector.connectionId),
+      internalIds: newReadInternalIds,
+    });
+    if (unselectableInternalIds.length > 0) {
+      return new Err(
+        new Error(
+          `Microsoft resources are not selectable: ${unselectableInternalIds.join(", ")}`
+        )
+      );
+    }
+
     const nodeIdsToDelete = Object.keys(permissions).filter(
       (internalId) =>
         permissions[internalId] === "none" &&
@@ -569,17 +626,11 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       });
     }
 
-    const newResourcesBlobs = Object.entries(permissions)
-      .filter(
-        ([internalId, permission]) =>
-          permission === "read" &&
-          existing.every((e) => e.internalId !== internalId)
-      )
-      .map(([internalId]) => ({
-        connectorId: connector.id,
-        nodeType: typeAndPathFromInternalId(internalId).nodeType,
-        internalId,
-      }));
+    const newResourcesBlobs = newReadInternalIds.map((internalId) => ({
+      connectorId: connector.id,
+      nodeType: typeAndPathFromInternalId(internalId).nodeType,
+      internalId,
+    }));
 
     const addedResources =
       await MicrosoftRootResource.batchMakeNew(newResourcesBlobs);
@@ -966,6 +1017,171 @@ function mapResolvedSitesToMetadata(
     displayName: site.displayName ?? site.name ?? null,
     webUrl: site.webUrl ?? null,
   }));
+}
+
+const GraphSiteLocationSchema = z.object({
+  id: z.string(),
+  webUrl: z.string(),
+});
+
+const GraphDriveLocationSchema = z.object({
+  webUrl: z.string(),
+  sharePointIds: z.object({ siteId: z.string() }),
+});
+
+function getSiteCollectionId(siteId: string): string | null {
+  return siteId.split(",")[1]?.toLowerCase() ?? null;
+}
+
+function isLocatedUnderSelectedSite(
+  selectedSites: SelectedSiteMetadata[],
+  location: { siteCollectionId: string | null; webUrl: string }
+): boolean {
+  const webUrl = location.webUrl.toLowerCase();
+  return selectedSites.some((selectedSite) => {
+    if (
+      !selectedSite.webUrl ||
+      !location.siteCollectionId ||
+      getSiteCollectionId(selectedSite.siteId) !== location.siteCollectionId
+    ) {
+      return false;
+    }
+    const selectedWebUrl = selectedSite.webUrl
+      .toLowerCase()
+      .replace(/\/+$/, "");
+    return webUrl === selectedWebUrl || webUrl.startsWith(`${selectedWebUrl}/`);
+  });
+}
+
+/**
+ * @cc [owner:tdraier,label:security] container-within-selected-sites
+ * When `selectedSites` is non-null, returns `true` only if `container` belongs to one of the
+ * selected sites: `sites-root` is rejected, and a site or drive is accepted only if it is one of
+ * the selected sites, or if it belongs to the same site collection as a selected site and its Graph
+ * `webUrl` is that site's `webUrl` or a path below it. A Graph response that cannot be parsed MUST
+ * be rejected. When `selectedSites` is null, every container is accepted without calling Graph.
+ */
+async function isContainerWithinSelectedSites({
+  logger,
+  client,
+  selectedSites,
+  container,
+}: {
+  logger: LoggerInterface;
+  client: Client;
+  selectedSites: SelectedSiteMetadata[] | null;
+  container: SelectableContainer;
+}): Promise<boolean> {
+  if (!selectedSites) {
+    return true;
+  }
+
+  switch (container.type) {
+    case "sites-root":
+      return false;
+    case "site": {
+      if (selectedSites.some((s) => s.siteId === container.siteId)) {
+        return true;
+      }
+      const site = GraphSiteLocationSchema.safeParse(
+        await clientApiGet(
+          logger,
+          client,
+          `/sites/${container.siteId}?$select=id,webUrl`
+        )
+      );
+      return (
+        site.success &&
+        isLocatedUnderSelectedSite(selectedSites, {
+          siteCollectionId: getSiteCollectionId(site.data.id),
+          webUrl: site.data.webUrl,
+        })
+      );
+    }
+    case "drive": {
+      const drive = GraphDriveLocationSchema.safeParse(
+        await clientApiGet(
+          logger,
+          client,
+          `/drives/${container.driveId}?$select=webUrl,sharePointIds`
+        )
+      );
+      return (
+        drive.success &&
+        isLocatedUnderSelectedSite(selectedSites, {
+          siteCollectionId: drive.data.sharePointIds.siteId.toLowerCase(),
+          webUrl: drive.data.webUrl,
+        })
+      );
+    }
+    default:
+      assertNever(container);
+  }
+}
+
+/**
+ * @cc [owner:tdraier,label:security] unselectable-internal-ids
+ * Returns every id in `internalIds` that the connector would not offer for selection: ids rejected
+ * by `getSelectableContainer`, and ids whose container is rejected by
+ * `isContainerWithinSelectedSites` for the connector's configured `selectedSites`. Graph errors
+ * MUST propagate to the caller.
+ */
+async function getUnselectableInternalIds({
+  connector,
+  client,
+  internalIds,
+}: {
+  connector: ConnectorResource;
+  client: Client;
+  internalIds: string[];
+}): Promise<string[]> {
+  const config = await MicrosoftConfigurationResource.fetchByConnectorId(
+    connector.id
+  );
+  if (!config) {
+    throw new Error(`Connector configuration not found for ${connector.id}`);
+  }
+
+  const logger = getActivityLogger(connector);
+  const containerKeyByInternalId = new Map<string, string>();
+  const containerByKey = new Map<string, SelectableContainer>();
+  const unselectableInternalIds: string[] = [];
+  for (const internalId of internalIds) {
+    const container = getSelectableContainer(internalId);
+    if (!container) {
+      unselectableInternalIds.push(internalId);
+      continue;
+    }
+    const containerKey = JSON.stringify(container);
+    containerKeyByInternalId.set(internalId, containerKey);
+    containerByKey.set(containerKey, container);
+  }
+
+  const rejectedContainerKeys = new Set(
+    removeNulls(
+      await concurrentExecutor(
+        [...containerByKey.entries()],
+        async ([containerKey, container]) =>
+          (await isContainerWithinSelectedSites({
+            logger,
+            client,
+            selectedSites: config.selectedSites,
+            container,
+          }))
+            ? null
+            : containerKey,
+        { concurrency: 5 }
+      )
+    )
+  );
+
+  for (const [internalId, containerKey] of containerKeyByInternalId) {
+    if (rejectedContainerKeys.has(containerKey)) {
+      unselectableInternalIds.push(internalId);
+    }
+  }
+
+  return unselectableInternalIds;
 }
 
 function siteMetadataToContentNode(
