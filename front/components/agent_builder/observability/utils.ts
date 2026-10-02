@@ -110,11 +110,10 @@ export function getDayTimestamps(
   const startOfTomorrow = startOfDay(
     addDays(new Date(), 1, { in: tz(timezone) })
   );
-  const startOfTomorrowMs = startOfTomorrow.getTime();
 
   const timestamps: number[] = [];
   let cursor = subDays(startOfTomorrow, periodDays);
-  while (cursor.getTime() < startOfTomorrowMs) {
+  while (cursor.getTime() < startOfTomorrow.getTime()) {
     timestamps.push(cursor.getTime());
     cursor = addDays(cursor, 1);
   }

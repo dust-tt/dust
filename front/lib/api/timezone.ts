@@ -96,20 +96,18 @@ export function dayBoundaryInTimezone(
   if (!parsed) {
     return new Date(NaN);
   }
-  const day = parsed.day + offsetDays;
-  const zoned =
-    boundary === "end"
-      ? new TZDate(
-          parsed.year,
-          parsed.month - 1,
-          day,
-          23,
-          59,
-          59,
-          999,
-          timezone
-        )
-      : new TZDate(parsed.year, parsed.month - 1, day, timezone);
+  const [h, m, s, ms] = boundary === "end" ? [23, 59, 59, 999] : [0, 0, 0, 0];
+  const zoned = new TZDate(
+    parsed.year,
+    parsed.month - 1,
+    parsed.day + offsetDays,
+    h,
+    m,
+    s,
+    ms,
+    timezone
+  );
+  // A zoned date serializes with its own offset; keep the UTC form.
   return new Date(zoned.getTime());
 }
 
