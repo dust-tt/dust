@@ -3,24 +3,20 @@ import {
   normalizeCapInput,
   SELF_IMPROVING_SKILLS_LIST_SECTION_LABEL,
 } from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
+import { useSkillsReinforcementSettings } from "@app/hooks/useSkillsReinforcementSettings";
 import { formatCredits } from "@app/lib/client/credits";
 import { compareStrings } from "@app/lib/i18n/format";
 import type { ReinforcementBillingUnit } from "@app/lib/reinforcement/enforcement";
 import { getSkillAvatarIcon } from "@app/lib/skill";
-import {
-  useSkillsWithRelations,
-  useUpdateSkillReinforcement,
-} from "@app/lib/swr/skill_configurations";
+import { useUpdateSkillReinforcement } from "@app/lib/swr/skill_configurations";
 import {
   useReinforcementBillingUnit,
   useSkillsSelfImprovingSpend,
 } from "@app/lib/swr/useSelfImprovingSkillsSettings";
+import type { SkillReinforcementSettings } from "@app/types/api/skills";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
-import type {
-  SkillReinforcementMode,
-  SkillWithoutInstructionsAndToolsWithRelationsType,
-} from "@app/types/assistant/skill_configuration";
-import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type { SkillReinforcementMode } from "@app/types/assistant/skill_configuration";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   DataTable,
   InputWithSave,
@@ -47,8 +43,8 @@ type RowData = {
   sId: string;
   name: string;
   icon: string | null;
-  editedBy: number | null;
-  editors: UserType[] | null;
+  isDustProvided: boolean;
+  editors: SkillReinforcementSettings["editors"];
   enabled: boolean;
   pendingEnabled: boolean | null;
   isEnabledUpdating: boolean;
@@ -248,8 +244,7 @@ export function SelfImprovingSkillsListSection({
   defaultCapPerSkill,
 }: SelfImprovingSkillsListSectionProps) {
   const unit = useReinforcementBillingUnit({ owner });
-  const { skillsWithRelations, isSkillsWithRelationsLoading } =
-    useSkillsWithRelations({ owner, status: "active", onlyCustom: true });
+  const { skills, isSkillsLoading } = useSkillsReinforcementSettings({ owner });
   const { spentMicroUsdBySkillId, spentAwuCreditsBySkillId } =
     useSkillsSelfImprovingSpend({ owner });
   const { updateSkillReinforcement } = useUpdateSkillReinforcement({ owner });
@@ -381,7 +376,7 @@ export function SelfImprovingSkillsListSection({
 
   const sortedSkills = useMemo(
     () =>
-      [...skillsWithRelations].sort((a, b) => {
+      [...skills].sort((a, b) => {
         const spentA = spentBySkillId[a.sId] ?? 0;
         const spentB = spentBySkillId[b.sId] ?? 0;
         // Sort by currently spent descending, then by name ascending as tiebreaker.
@@ -390,7 +385,7 @@ export function SelfImprovingSkillsListSection({
         }
         return compareStrings(a.name, b.name);
       }),
-    [skillsWithRelations, spentBySkillId]
+    [skills, spentBySkillId]
   );
 
   const columns = useMemo(() => getColumns(unit), [unit]);
@@ -399,47 +394,45 @@ export function SelfImprovingSkillsListSection({
 
   const rows: RowData[] = useMemo(
     () =>
-      sortedSkills.map(
-        (skill: SkillWithoutInstructionsAndToolsWithRelationsType) => {
-          const enabled = isReinforcementEnabled(skill.reinforcement);
-          const lock = skill.selfImprovementLock;
-          // Saved cap in the display unit.
-          const savedCap =
-            unit === "awu_credits"
-              ? skill.selfImprovementCostsCapAwuCredits
-              : skill.selfImprovementCostsCapMicroUsd !== null
-                ? microUsdToDollars(skill.selfImprovementCostsCapMicroUsd)
-                : null;
-          const currentSpent = spentBySkillId[skill.sId] ?? 0;
+      sortedSkills.map((skill: SkillReinforcementSettings) => {
+        const enabled = isReinforcementEnabled(skill.reinforcement);
+        const lock = skill.selfImprovementLock;
+        // Saved cap in the display unit.
+        const savedCap =
+          unit === "awu_credits"
+            ? skill.selfImprovementCostsCapAwuCredits
+            : skill.selfImprovementCostsCapMicroUsd !== null
+              ? microUsdToDollars(skill.selfImprovementCostsCapMicroUsd)
+              : null;
+        const currentSpent = spentBySkillId[skill.sId] ?? 0;
 
-          return {
-            sId: skill.sId,
-            name: skill.name,
-            icon: skill.icon,
-            editedBy: skill.editedBy,
-            editors: skill.relations.editors,
-            enabled,
-            pendingEnabled: pendingEnabledBySkillId[skill.sId] ?? null,
-            isEnabledUpdating: enabledUpdatingBySkillId[skill.sId] ?? false,
-            lock,
-            pendingLock: pendingLockBySkillId[skill.sId] ?? null,
-            isLockUpdating: lockUpdatingBySkillId[skill.sId] ?? false,
-            currentSpent,
-            currentSpentFormatted: formatSpend(currentSpent, unit),
-            savedCapValue:
-              savedCap !== null ? capInputValueFromSaved(savedCap, unit) : "",
-            capPlaceholder: defaultCapPlaceholder,
-            onToggleEnabled: () => {
-              void handleToggleEnabled(skill.sId, enabled);
-            },
-            onToggleLock: () => {
-              void handleToggleLock(skill.sId, lock);
-            },
-            onCapSave: (value: string) =>
-              handleCapSave(skill.sId, savedCap, value),
-          };
-        }
-      ),
+        return {
+          sId: skill.sId,
+          name: skill.name,
+          icon: skill.icon,
+          isDustProvided: skill.isDustProvided,
+          editors: skill.editors,
+          enabled,
+          pendingEnabled: pendingEnabledBySkillId[skill.sId] ?? null,
+          isEnabledUpdating: enabledUpdatingBySkillId[skill.sId] ?? false,
+          lock,
+          pendingLock: pendingLockBySkillId[skill.sId] ?? null,
+          isLockUpdating: lockUpdatingBySkillId[skill.sId] ?? false,
+          currentSpent,
+          currentSpentFormatted: formatSpend(currentSpent, unit),
+          savedCapValue:
+            savedCap !== null ? capInputValueFromSaved(savedCap, unit) : "",
+          capPlaceholder: defaultCapPlaceholder,
+          onToggleEnabled: () => {
+            void handleToggleEnabled(skill.sId, enabled);
+          },
+          onToggleLock: () => {
+            void handleToggleLock(skill.sId, lock);
+          },
+          onCapSave: (value: string) =>
+            handleCapSave(skill.sId, savedCap, value),
+        };
+      }),
     [
       sortedSkills,
       defaultCapPlaceholder,
@@ -464,7 +457,7 @@ export function SelfImprovingSkillsListSection({
         value={filter}
         onChange={setFilter}
       />
-      {isSkillsWithRelationsLoading ? (
+      {isSkillsLoading ? (
         <div className="flex justify-center py-8">
           <Spinner />
         </div>
