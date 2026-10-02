@@ -14,7 +14,7 @@ use dfs_protocol::{
 use futures::{StreamExt, TryStreamExt, stream};
 use std::{
     cmp::Reverse,
-    collections::{BTreeSet, BinaryHeap, HashSet},
+    collections::{BTreeMap, BTreeSet, BinaryHeap, HashSet},
     ops::Bound,
     sync::Arc,
 };
@@ -27,7 +27,17 @@ pub(crate) struct View {
     pub grants: BTreeSet<String>,
     pub root: String,
     ancestry: Option<Arc<Ancestry>>,
-    prefetched: Option<(String, Result<Option<Bytes>>)>,
+    prefetched: BTreeMap<String, PrefetchedNode>,
+    prefetched_child: Option<PrefetchedChild>,
+}
+struct PrefetchedNode {
+    bytes: Result<Option<Bytes>>,
+    attached: Result<bool>,
+}
+struct PrefetchedChild {
+    parent: String,
+    name: String,
+    bytes: Result<Option<Bytes>>,
 }
 impl View {
     pub async fn new(storage: &Storage, workspace: &str, grants: BTreeSet<String>) -> Result<Self> {
@@ -52,44 +62,74 @@ impl View {
             grants,
             root: workspace.root,
             ancestry: None,
-            prefetched: None,
+            prefetched: BTreeMap::new(),
+            prefetched_child: None,
         })
     }
     /// @cc [owner:spolu,label:concurrency;security] transaction-local-prefetch
-    /// Prefetch at most one primary object alongside the live workspace record. Both reads MUST
-    /// use this same conflict-tracked transaction. Consume workspace errors first and defer object
-    /// errors until the operation requests that object, preserving validation/authorization order.
-    /// The prefetched result MUST NOT escape this view or be reused in another transaction.
+    /// Prefetch at most WINDOW object/grant results and one child entry alongside the workspace.
+    /// All reads MUST use this same conflict-tracked transaction. Consume workspace errors first;
+    /// defer speculative results/errors until needed and only use grants on the live verified chain.
+    /// Results MUST NOT escape this view or be reused in another transaction. Invalid request fields
+    /// MUST retain the operation's original error order, even when they prevent speculative reads.
     pub async fn prefetch(
         snapshot: Arc<Snapshot>,
         workspace: &str,
         grants: BTreeSet<String>,
         object_id: &str,
+        child_name: Option<&str>,
+        ancestry: Arc<Ancestry>,
     ) -> Result<Self> {
-        let (view, prefetched) = tokio::join!(
-            Self::from_snapshot(snapshot.clone(), workspace, grants),
+        let keys = Keys::new(workspace)?;
+        let primary = validate::id(object_id).ok();
+        let (view, prefetched, prefetched_child) = tokio::join!(
+            Self::from_snapshot(snapshot.clone(), workspace, grants.clone()),
             async {
-                let keys = Keys::new(workspace).ok()?;
-                let id = validate::id(object_id).ok()?;
-                let key = keys.object(&id).ok()?;
-                Some((id, measured("prefetch_object", snapshot.get(key)).await))
-            }
+                let nodes = match &primary {
+                    Some(id) => ancestry.chain(&keys, id).await,
+                    None => Vec::new(),
+                };
+                stream::iter(nodes)
+                    .map(|id| {
+                        let (snapshot, keys, grants) = (&snapshot, &keys, &grants);
+                        async move {
+                            let (bytes, attached) = tokio::join!(
+                                measured("prefetch_object", async {
+                                    snapshot.get(keys.object(&id)?).await
+                                }),
+                                Self::read_attached(snapshot, keys, grants, &id),
+                            );
+                            (id, PrefetchedNode { bytes, attached })
+                        }
+                    })
+                    .buffered(WINDOW)
+                    .collect::<BTreeMap<_, _>>()
+                    .await
+            },
+            async {
+                let parent = primary.as_ref()?;
+                let name = child_name.filter(|name| validate::name(name).is_ok())?;
+                let key = keys.child(parent, name).ok()?;
+                Some(PrefetchedChild {
+                    parent: parent.clone(),
+                    name: name.to_owned(),
+                    bytes: snapshot.get(key).await,
+                })
+            },
         );
         let mut view = view?;
         view.prefetched = prefetched;
+        view.prefetched_child = prefetched_child;
+        view.ancestry = Some(ancestry);
         Ok(view)
-    }
-    pub fn with_ancestry(mut self, ancestry: Arc<Ancestry>) -> Self {
-        self.ancestry = Some(ancestry);
-        self
     }
     pub async fn get(&self, key: &[u8]) -> Result<Option<Bytes>> {
         self.snapshot.get(key).await.map_err(failed)
     }
     pub async fn object(&self, id: &str) -> Result<Record> {
         let id = validate::id(id)?;
-        let bytes = match &self.prefetched {
-            Some((prefetched_id, value)) if prefetched_id == &id => value.clone()?,
+        let bytes = match self.prefetched.get(&id) {
+            Some(node) => node.bytes.clone()?,
             _ => self.get(&self.keys.object(&id)?).await?,
         }
         .ok_or_else(|| status(ErrorCode::NotFound))?;
@@ -97,9 +137,7 @@ impl View {
         if record.object.id != id {
             return Err(status(ErrorCode::Unavailable));
         }
-        if record.object.directory
-            && let (Some(hints), Some(parent)) = (&self.ancestry, &record.parent)
-        {
+        if let (Some(hints), Some(parent)) = (&self.ancestry, &record.parent) {
             hints.remember(&self.keys, &id, &parent.id).await;
         }
         Ok(record)
@@ -136,7 +174,11 @@ impl View {
         Ok(rows)
     }
     pub async fn child(&self, parent: &str, name: &str) -> Result<Option<Record>> {
-        let Some(value) = self.get(&self.keys.child(parent, name)?).await? else {
+        let value = match &self.prefetched_child {
+            Some(child) if child.parent == parent && child.name == name => child.bytes.clone()?,
+            _ => self.get(&self.keys.child(parent, name)?).await?,
+        };
+        let Some(value) = value else {
             return Ok(None);
         };
         let id = uuid::Uuid::from_slice(&value)
@@ -154,9 +196,20 @@ impl View {
         Ok(Some(child))
     }
     pub(crate) async fn attached(&self, id: &str) -> Result<bool> {
-        stream::iter(self.grants.clone())
+        if let Some(node) = self.prefetched.get(id) {
+            return node.attached.clone();
+        }
+        Self::read_attached(&self.snapshot, &self.keys, &self.grants, id).await
+    }
+    async fn read_attached(
+        snapshot: &Snapshot,
+        keys: &Keys,
+        grants: &BTreeSet<String>,
+        id: &str,
+    ) -> Result<bool> {
+        stream::iter(grants.clone())
             .map(|grant| async move {
-                Ok::<_, Status>(self.get(&self.keys.grant(id, &grant)?).await?.is_some())
+                Ok::<_, Status>(snapshot.get(keys.grant(id, &grant)?).await?.is_some())
             })
             .buffer_unordered(16)
             .try_any(|present| async move { present })

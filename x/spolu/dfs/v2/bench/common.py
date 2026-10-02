@@ -29,7 +29,7 @@ def metadata(binary='/target/release/dfs-server-v2'):
             'memory': Path('/proc/meminfo').read_text().splitlines()[0],
             'server_binary_sha256': hashlib.sha256(Path(binary).read_bytes()).hexdigest(),
             'fdb_version': '7.3.69', 'es_version': '8.15.3',
-            'server_cache': 'advisory directory/parent IDs only; 16384 entries / 8 MiB accounting budget',
+            'server_cache': 'advisory object/parent IDs only; 16384 entries / 8 MiB accounting budget',
             'backend_caches': 'FDB, ES, and OS caches retained across dfs-server restarts',
             'durability': 'normal FDB commits; no post-acknowledgement persistence drain'}
 

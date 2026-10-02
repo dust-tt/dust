@@ -97,10 +97,11 @@ impl Api {
                                 &session.info.workspace_id,
                                 session.grants.clone(),
                                 change.primary_id(),
+                                change.child_name(),
+                                ancestry,
                             ),
                         )
-                        .await?
-                        .with_ancestry(ancestry);
+                        .await?;
                         let (edit, response) = change.prepare(&view).await?;
                         session.active()?;
                         Ok((edit.batch, response))
@@ -109,9 +110,7 @@ impl Api {
                 .instrument(tracing::debug_span!(target: "dfs_server_v2::profile",
                     "mutation", operation = change.name()))
                 .await?;
-            if let (Some(parent), Some(object)) = (hint_parent, &response.object)
-                && object.directory
-            {
+            if let (Some(parent), Some(object)) = (hint_parent, &response.object) {
                 state
                     .ancestry
                     .remember(&Keys::new(&session.info.workspace_id)?, &object.id, &parent)
@@ -124,6 +123,7 @@ impl Api {
     async fn read_call<T, U, F, Fut>(
         &self,
         request: Request<T>,
+        target: fn(&T) -> (&str, Option<&str>),
         operation: F,
     ) -> Result<Response<U>>
     where
@@ -134,13 +134,16 @@ impl Api {
     {
         self.call(move |state| async move {
             let session = state.sessions.get(&request).await?;
-            let view = View::new(
-                &state.storage,
+            let (id, child_name) = target(request.get_ref());
+            let view = View::prefetch(
+                state.storage.snapshot().await?,
                 &session.info.workspace_id,
                 session.grants.clone(),
+                id,
+                child_name,
+                state.ancestry.clone(),
             )
-            .await?
-            .with_ancestry(state.ancestry.clone());
+            .await?;
             let response = operation(view, request.into_inner()).await?;
             session.active()?;
             Ok(response)
@@ -353,39 +356,50 @@ impl Dfs for Api {
         .await
     }
     async fn stat(&self, request: Request<ObjectRequest>) -> Result<Response<Object>> {
-        self.read_call(request, |view, request| async move {
-            view.session_stat(&request.object_id).await
-        })
+        self.read_call(
+            request,
+            |r| (&r.object_id, None),
+            |view, request| async move { view.session_stat(&request.object_id).await },
+        )
         .await
     }
     async fn lookup(&self, request: Request<LookupRequest>) -> Result<Response<Object>> {
-        self.read_call(request, |view, request| async move {
-            view.lookup(&request.parent_id, &request.name).await
-        })
+        self.read_call(
+            request,
+            |r| (&r.parent_id, Some(&r.name)),
+            |view, request| async move { view.lookup(&request.parent_id, &request.name).await },
+        )
         .await
     }
     async fn list(&self, request: Request<ListRequest>) -> Result<Response<Page>> {
-        self.read_call(request, |view, request| async move {
-            view.list(
-                &request.directory_id,
-                request.after.as_deref(),
-                request.limit,
-            )
-            .await
-        })
+        self.read_call(
+            request,
+            |r| (&r.directory_id, None),
+            |view, request| async move {
+                view.list(
+                    &request.directory_id,
+                    request.after.as_deref(),
+                    request.limit,
+                )
+                .await
+            },
+        )
         .await
     }
     async fn read(&self, request: Request<ReadRequest>) -> Result<Response<ReadResponse>> {
         self.read_call(
             request,
+            |r| (&r.object_id, None),
             |view, request| async move { view.read(request).await },
         )
         .await
     }
     async fn fsync(&self, request: Request<ObjectRequest>) -> Result<Response<Object>> {
-        self.read_call(request, |view, request| async move {
-            view.session_stat(&request.object_id).await
-        })
+        self.read_call(
+            request,
+            |r| (&r.object_id, None),
+            |view, request| async move { view.session_stat(&request.object_id).await },
+        )
         .await
     }
     async fn create(&self, request: Request<CreateRequest>) -> Result<Response<Mutation>> {
