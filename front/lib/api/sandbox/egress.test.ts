@@ -5,8 +5,8 @@ import { join } from "node:path";
 import type { RootCommand } from "@app/lib/api/sandbox/root_command";
 import { renderRootCommand } from "@app/lib/api/sandbox/root_command";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import { verifyHS256Jwt } from "@app/lib/utils/hs256_jwt";
 import { Err, Ok } from "@app/types/shared/result";
-import jwt from "jsonwebtoken";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -163,17 +163,16 @@ describe("sandbox egress helpers", () => {
     });
   }
 
-  it("mints a proxy JWT bound to the provider sandbox id and owner", () => {
-    const token = mintEgressJwt({
+  it("mints a proxy JWT bound to the provider sandbox id and owner", async () => {
+    const token = await mintEgressJwt({
       providerId: "provider-sandbox-id",
       workspaceId: "workspace-id",
       ownerId: "owner-id",
     });
-    const payload = jwt.verify(token, "egress-secret", {
-      algorithms: ["HS256"],
+    const payload = await verifyHS256Jwt(token, "egress-secret", {
       audience: "dust-egress-proxy",
       issuer: "dust-front",
-    }) as jwt.JwtPayload;
+    });
 
     expect(payload.sbId).toBe("provider-sandbox-id");
     expect(payload.wId).toBe("workspace-id");
@@ -184,18 +183,17 @@ describe("sandbox egress helpers", () => {
     expect(payload.exp).toBeGreaterThan(payload.iat ?? 0);
   });
 
-  it("mints the podId claim for conversation sandboxes inside a pod", () => {
-    const token = mintEgressJwt({
+  it("mints the podId claim for conversation sandboxes inside a pod", async () => {
+    const token = await mintEgressJwt({
       providerId: "provider-sandbox-id",
       workspaceId: "workspace-id",
       ownerId: "conversation-id",
       podId: "pod-space-id",
     });
-    const payload = jwt.verify(token, "egress-secret", {
-      algorithms: ["HS256"],
+    const payload = await verifyHS256Jwt(token, "egress-secret", {
       audience: "dust-egress-proxy",
       issuer: "dust-front",
-    }) as jwt.JwtPayload;
+    });
 
     expect(payload.ownerId).toBe("conversation-id");
     expect(payload.podId).toBe("pod-space-id");

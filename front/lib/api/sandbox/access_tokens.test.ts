@@ -12,6 +12,7 @@ import { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { signHS256Jwt } from "@app/lib/utils/hs256_jwt";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -19,7 +20,7 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { AgentMCPActionType } from "@app/types/actions";
-import jwt from "jsonwebtoken";
+import { decodeJwt } from "jose";
 import { describe, expect, it, vi } from "vitest";
 
 const TEST_SECRET = "test-sandbox-jwt-secret";
@@ -155,13 +156,10 @@ describe("sandbox access tokens", () => {
       execId: "legacy-exec-id",
       sandboxAction: mockAction,
     });
-    const decoded = jwt.decode(
-      token.slice(SANDBOX_TOKEN_PREFIX.length)
-    ) as Record<string, unknown>;
+    const decoded = decodeJwt(token.slice(SANDBOX_TOKEN_PREFIX.length));
     const { aV: _agentVersion, ...legacyClaims } = decoded;
     const legacyToken =
-      SANDBOX_TOKEN_PREFIX +
-      jwt.sign(legacyClaims, TEST_SECRET, { algorithm: "HS256" });
+      SANDBOX_TOKEN_PREFIX + (await signHS256Jwt(legacyClaims, TEST_SECRET));
 
     const payload = await verifySandboxExecToken(legacyToken);
 
@@ -325,12 +323,10 @@ describe("sandbox access tokens", () => {
 
     // Decode, modify, re-sign with a wrong secret.
     const jwtPart = token.slice(SANDBOX_TOKEN_PREFIX.length);
-    const decoded = jwt.decode(jwtPart) as Record<string, unknown>;
+    const decoded = decodeJwt(jwtPart);
     const tampered =
       SANDBOX_TOKEN_PREFIX +
-      jwt.sign({ ...decoded, wId: "hacked" }, "wrong-secret", {
-        algorithm: "HS256",
-      });
+      (await signHS256Jwt({ ...decoded, wId: "hacked" }, "wrong-secret"));
 
     const payload = await verifySandboxExecToken(tampered);
     expect(payload).toBeNull();

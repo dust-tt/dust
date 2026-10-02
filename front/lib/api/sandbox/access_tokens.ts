@@ -8,12 +8,12 @@ import {
 } from "@app/lib/models/agent/conversation";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { signHS256Jwt, verifyHS256Jwt } from "@app/lib/utils/hs256_jwt";
 import logger from "@app/logger/logger";
 import type { AgentMCPActionType } from "@app/types/actions";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import crypto from "crypto";
-import jwt from "jsonwebtoken";
 import { z } from "zod";
 
 export const SANDBOX_TOKEN_PREFIX = "sbt-";
@@ -346,11 +346,8 @@ export async function generateSandboxExecToken(
 
   await registerExecToken(payload);
 
-  const secret = config.getSandboxJwtSecret();
-
-  const token = jwt.sign(payload, secret, {
-    algorithm: "HS256",
-    expiresIn: expiryMs / 1000, // expiresIn is in seconds
+  const token = await signHS256Jwt(payload, config.getSandboxJwtSecret(), {
+    expiresInSeconds: expiryMs / 1000,
   });
 
   return `${SANDBOX_TOKEN_PREFIX}${token}`;
@@ -395,11 +392,8 @@ export async function generateSandboxFunctionInvocationToken(
 
   await registerExecToken(payload);
 
-  const secret = config.getSandboxJwtSecret();
-
-  const token = jwt.sign(payload, secret, {
-    algorithm: "HS256",
-    expiresIn: expiryMs / 1000, // expiresIn is in seconds
+  const token = await signHS256Jwt(payload, config.getSandboxJwtSecret(), {
+    expiresInSeconds: expiryMs / 1000,
   });
 
   return `${SANDBOX_TOKEN_PREFIX}${token}`;
@@ -430,9 +424,8 @@ export async function generateSandboxFileSystemToken(
 
   await registerExecToken(payload);
 
-  const token = jwt.sign(payload, config.getSandboxJwtSecret(), {
-    algorithm: "HS256",
-    expiresIn: expiryMs / 1000,
+  const token = await signHS256Jwt(payload, config.getSandboxJwtSecret(), {
+    expiresInSeconds: expiryMs / 1000,
   });
 
   return `${SANDBOX_TOKEN_PREFIX}${token}`;
@@ -449,11 +442,9 @@ export async function verifySandboxExecToken(
   }
 
   const jwtToken = token.slice(SANDBOX_TOKEN_PREFIX.length);
-  const secret = config.getSandboxJwtSecret();
-
   let rawPayload: unknown;
   try {
-    rawPayload = jwt.verify(jwtToken, secret, { algorithms: ["HS256"] });
+    rawPayload = await verifyHS256Jwt(jwtToken, config.getSandboxJwtSecret());
   } catch (error) {
     logger.error(
       { error: normalizeError(error) },

@@ -20,12 +20,12 @@ import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
 import type { Authenticator } from "@app/lib/auth";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";
+import { signHS256Jwt } from "@app/lib/utils/hs256_jwt";
 import logger from "@app/logger/logger";
 import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
@@ -112,7 +112,7 @@ async function runSuccessfulRootCommand(
 // Older proxy builds ignore unknown claims. Object params on purpose: the
 // values are look-alike sIds and transposed positional args would compile
 // fine and fail silently.
-export function mintEgressJwt({
+export async function mintEgressJwt({
   providerId,
   workspaceId,
   ownerId,
@@ -122,8 +122,8 @@ export function mintEgressJwt({
   workspaceId: string;
   ownerId: string;
   podId?: string;
-}): string {
-  return jwt.sign(
+}): Promise<string> {
+  return signHS256Jwt(
     {
       iss: "dust-front",
       aud: "dust-egress-proxy",
@@ -133,10 +133,7 @@ export function mintEgressJwt({
       ...(podId ? { podId } : {}),
     },
     config.getEgressProxyJwtSecret(),
-    {
-      algorithm: "HS256",
-      expiresIn: EGRESS_JWT_TTL_SECONDS,
-    }
+    { expiresInSeconds: EGRESS_JWT_TTL_SECONDS }
   );
 }
 
@@ -146,14 +143,14 @@ const INVALIDATION_JWT_TTL_SECONDS = 60;
 // alone evicts the workspace policy (both layouts during the migration
 // window); workspaceId + ownerId evicts the owner policy. workspaceId is
 // required so the proxy-rejected `ownerId`-only shape is unrepresentable.
-export function mintEgressInvalidationJwt({
+export async function mintEgressInvalidationJwt({
   workspaceId,
   ownerId,
 }: {
   workspaceId: string;
   ownerId?: string;
-}): string {
-  return jwt.sign(
+}): Promise<string> {
+  return signHS256Jwt(
     {
       iss: "dust-front",
       aud: "dust-egress-proxy",
@@ -162,10 +159,7 @@ export function mintEgressInvalidationJwt({
       ...(ownerId ? { ownerId } : {}),
     },
     config.getEgressProxyJwtSecret(),
-    {
-      algorithm: "HS256",
-      expiresIn: INVALIDATION_JWT_TTL_SECONDS,
-    }
+    { expiresInSeconds: INVALIDATION_JWT_TTL_SECONDS }
   );
 }
 
@@ -614,7 +608,7 @@ export async function setupEgressForwarder(
     return new Err(normalizeError(error));
   }
 
-  const token = mintEgressJwt({
+  const token = await mintEgressJwt({
     providerId: sandbox.providerId,
     workspaceId: auth.getNonNullableWorkspace().sId,
     ownerId: egressPolicyOwnerId,

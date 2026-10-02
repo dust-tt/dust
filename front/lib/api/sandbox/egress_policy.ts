@@ -613,7 +613,9 @@ async function invalidateWorkspacePolicyCache(
     }
 
     const workspace = auth.getNonNullableWorkspace();
-    const token = mintEgressInvalidationJwt({ workspaceId: workspace.sId });
+    const token = await mintEgressInvalidationJwt({
+      workspaceId: workspace.sId,
+    });
     const url = `${baseUrl.replace(/\/+$/, "")}/invalidate-policy`;
 
     const response = await fetch(url, {
@@ -650,7 +652,7 @@ async function invalidateOwnerPolicyCache(
     }
 
     // The proxy's owner cache key needs both the workspace and the owner.
-    const token = mintEgressInvalidationJwt({
+    const token = await mintEgressInvalidationJwt({
       workspaceId: auth.getNonNullableWorkspace().sId,
       ownerId,
     });

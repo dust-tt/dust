@@ -70,7 +70,7 @@ const NOT_FOUND = { code: 404 };
 function setupBucketMocks() {
   mockGetEgressPolicyBucket.mockReturnValue("egress-policy-bucket");
   mockGetEgressProxyInternalUrl.mockReturnValue("https://egress-proxy");
-  mockMintEgressInvalidationJwt.mockReturnValue("invalidation-token");
+  mockMintEgressInvalidationJwt.mockResolvedValue("invalidation-token");
   mockFetch.mockResolvedValue({ ok: true, status: 200 });
   vi.stubGlobal("fetch", mockFetch);
   mockUploadRawContentToBucket.mockResolvedValue(undefined);
