@@ -167,16 +167,15 @@ export const serializeDocumentMarkdown = (
   document: JSONContent
 ): Result<string, string> => {
   const content = withoutTrailingParagraphs(document);
-  let markdown: string;
 
+  // Serializing or re-reading an unknown node throws; either way the document is not writable.
   try {
-    markdown = documentMarkdown.serialize(content);
+    const markdown = documentMarkdown.serialize(content);
+    return hasSupportedMarkdown(markdown) &&
+      canRoundTripMarkdown(content, markdown)
+      ? new Ok(markdown)
+      : new Err("The document would not read back the same as Markdown.");
   } catch {
     return new Err("The document could not be written as Markdown.");
   }
-
-  return hasSupportedMarkdown(markdown) &&
-    canRoundTripMarkdown(content, markdown)
-    ? new Ok(markdown)
-    : new Err("The document would not read back the same as Markdown.");
 };

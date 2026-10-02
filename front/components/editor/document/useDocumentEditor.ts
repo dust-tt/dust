@@ -1,14 +1,15 @@
 import {
-  parseDocumentContent,
-  serializeDocumentMarkdown,
-} from "@app/components/editor/document/content";
+  loadDfm,
+  saveDfm,
+} from "@app/components/editor/document/dfm_persistence";
 import { documentExtensions } from "@app/components/editor/document/extensions";
 import type {
   DocumentProps,
   DocumentSaveResult,
 } from "@app/components/editor/document/types";
-import { Err, Ok } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
 import { cn } from "@dust-tt/sparkle";
+import type { JSONContent } from "@tiptap/core";
 import { useEditor } from "@tiptap/react";
 import {
   useCallback,
@@ -20,11 +21,9 @@ import {
 
 const SAVE_ERROR_MESSAGE =
   "Could not save. Your changes are still here. Try again.";
-const MARKDOWN_SAVE_ERROR_MESSAGE =
-  "This formatting cannot be saved as Markdown yet. Your changes are still here. Undo the last edit to try again.";
 
 /**
- * @cc [owner:flvndvd,label:error-handling] document-save-callback-errors
+ * @cc [owner:PopDaph,label:error-handling] document-save-callback-errors
  * Host save callbacks MAY reject. This boundary MUST convert their rejections into failed
  * save results so the editor can retain the draft and leave the saving state.
  */
@@ -41,62 +40,55 @@ const persistDocument = async (
 
 interface UseDocumentEditorProps {
   initialContent: string;
-  contentType: "markdown" | "json";
-  saveFormat?: DocumentProps["saveFormat"];
   readOnly: boolean;
   autosaveDebounceMs: number;
   onSave: DocumentProps["onSave"];
 }
 
 /**
- * @cc [owner:flvndvd,label:product] document-draft-preservation
+ * @cc [owner:PopDaph,label:product] document-draft-preservation
  * Failed saves, including host callback rejections, MUST preserve the draft. Successful saves
  * MUST acknowledge only the submitted content, leaving later edits unsaved. Prop changes MUST
- * NOT replace an open draft. Invalid stored content MUST disable editing and saving.
+ * NOT replace an open draft. A file the editor cannot open MUST disable editing and saving.
  * Returning to the saved content MUST clear save errors without making another save request.
+ * Unmounting with unsaved, editable content MUST attempt one final save of that content,
+ * after any save still in flight.
  */
 /**
- * @cc [owner:flvndvd,label:product] document-autosave
- * Dirty, editable content MUST autosave after autosaveDebounceMs without edits (three seconds by default),
- * with at most one save in flight.
- * Failure MUST suspend automatic retries until the user explicitly retries or returns to saved
- * content. Unchanged content MUST NOT trigger saves. Cmd/Ctrl+S MUST allow an immediate save.
- * Parent renders and callback identity changes MUST NOT restart the debounce. Saves MUST use
- * the latest committed callback.
- */
-/**
- * @cc [owner:flvndvd,label:product] document-save-format
- * Saves MUST default to JSON regardless of the input format. Markdown saves MUST use the
- * committed saveFormat. Opening a document or changing its output format MUST NOT write it.
+ * @cc [owner:PopDaph,label:product] document-autosave
+ * Dirty, editable content MUST autosave after autosaveDebounceMs without edits (three seconds
+ * by default), with at most one save in flight. Failure MUST suspend automatic retries until
+ * the user explicitly retries or returns to saved content. Unchanged content MUST NOT trigger
+ * saves. Cmd/Ctrl+S MUST allow an immediate save. Parent renders and callback identity changes
+ * MUST NOT restart the debounce. Saves MUST use the latest committed callback.
  */
 export const useDocumentEditor = ({
   initialContent,
-  contentType,
-  saveFormat = "json",
   readOnly,
   autosaveDebounceMs,
   onSave,
 }: UseDocumentEditorProps) => {
-  const [initial] = useState(() => ({
-    parsed: parseDocumentContent(initialContent, contentType),
-    contentType,
-    source: initialContent,
-  }));
+  const [initial] = useState(() => loadDfm(initialContent));
   const [baseline, setBaseline] = useState<string | null>(null);
   const [draft, setDraft] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const savingRef = useRef(false);
-  const editable = !readOnly && onSave !== undefined && initial.parsed.isOk();
-  const persistenceRef = useRef({ onSave, editable, baseline, saveFormat });
+  const editable = !readOnly && onSave !== undefined && initial.isOk();
+  const persistenceRef = useRef({ onSave, editable, baseline });
+  const latestRef = useRef<{ document: JSONContent; content: string } | null>(
+    null
+  );
+  const persistedRef = useRef<string | null>(null);
+  const inflightRef = useRef<Promise<DocumentSaveResult> | null>(null);
 
   useLayoutEffect(() => {
-    persistenceRef.current = { onSave, editable, baseline, saveFormat };
-  }, [onSave, editable, baseline, saveFormat]);
+    persistenceRef.current = { onSave, editable, baseline };
+  }, [onSave, editable, baseline]);
 
   const editor = useEditor({
     extensions: documentExtensions,
-    content: initial.parsed.isOk() ? initial.parsed.value : "",
+    content: initial.isOk() ? initial.value.content : "",
     contentType: "json",
     immediatelyRender: false,
     editable,
@@ -116,12 +108,17 @@ export const useDocumentEditor = ({
     onCreate: ({ editor }) => {
       // Normalize TipTap's trailing paragraph before capturing saved content.
       editor.view.dispatch(editor.state.tr);
-      const content = JSON.stringify(editor.getJSON());
+      const document = editor.getJSON();
+      const content = JSON.stringify(document);
+      latestRef.current = { document, content };
+      persistedRef.current = content;
       setBaseline(content);
       setDraft(content);
     },
     onUpdate: ({ editor }) => {
-      const content = JSON.stringify(editor.getJSON());
+      const document = editor.getJSON();
+      const content = JSON.stringify(document);
+      latestRef.current = { document, content };
       setDraft(content);
 
       if (content === baseline) {
@@ -139,18 +136,44 @@ export const useDocumentEditor = ({
 
   const dirty = baseline !== null && draft !== baseline;
 
+  // Unmounting inside the autosave delay must not drop the edit. The editor is gone by then,
+  // so this last attempt cannot report a failure; hosts hold close and navigation while dirty.
+  // It waits for any save in flight, so an older write can never land after a newer one.
+  useEffect(
+    () => () => {
+      const latest = latestRef.current;
+      const { onSave: persist, editable: canSave } = persistenceRef.current;
+      if (!persist || !canSave || !initial.isOk() || latest === null) {
+        return;
+      }
+      const envelope = initial.value.envelope;
+      const flush = async () => {
+        await inflightRef.current;
+        if (latest.content === persistedRef.current) {
+          return;
+        }
+        const serialized = saveDfm(envelope, latest.document);
+        if (serialized.isOk()) {
+          await persistDocument(persist, serialized.value);
+        }
+      };
+      void flush();
+    },
+    [initial]
+  );
+
   const save = useCallback(async () => {
     const {
       onSave: persist,
       editable: canSave,
       baseline: savedContent,
-      saveFormat: format,
     } = persistenceRef.current;
 
     if (
       !editor ||
       !persist ||
       !canSave ||
+      !initial.isOk() ||
       savedContent === null ||
       savingRef.current
     ) {
@@ -164,13 +187,9 @@ export const useDocumentEditor = ({
       return;
     }
 
-    const serialized =
-      format === "markdown"
-        ? serializeDocumentMarkdown(document)
-        : new Ok(content);
-
+    const serialized = saveDfm(initial.value.envelope, document);
     if (serialized.isErr()) {
-      setError(MARKDOWN_SAVE_ERROR_MESSAGE);
+      setError(serialized.error);
       return;
     }
 
@@ -180,13 +199,16 @@ export const useDocumentEditor = ({
 
     let result: DocumentSaveResult;
     try {
-      result = await persistDocument(persist, serialized.value);
+      const inflight = persistDocument(persist, serialized.value);
+      inflightRef.current = inflight;
+      result = await inflight;
     } finally {
       savingRef.current = false;
       setSaving(false);
     }
 
     if (result.isOk()) {
+      persistedRef.current = content;
       setBaseline(content);
       return;
     }
@@ -194,7 +216,7 @@ export const useDocumentEditor = ({
     if (JSON.stringify(editor.getJSON()) !== savedContent) {
       setError(result.error || SAVE_ERROR_MESSAGE);
     }
-  }, [editor]);
+  }, [editor, initial]);
 
   useEffect(() => {
     if (draft === null || !dirty || saving || error || !editable) {
@@ -208,11 +230,10 @@ export const useDocumentEditor = ({
   return {
     editor,
     editable,
-    valid: initial.parsed.isOk(),
-    unsupportedMarkdown:
-      initial.parsed.isErr() && initial.contentType === "markdown"
-        ? initial.source
-        : null,
+    /** Why the file cannot be edited, with its source, or null when it opened. */
+    unsupported: initial.isErr()
+      ? { reason: initial.error, source: initialContent }
+      : null,
     dirty,
     saving,
     error,
