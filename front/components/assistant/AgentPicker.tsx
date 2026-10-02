@@ -80,18 +80,15 @@ export function AgentPicker({
     permissionFiltering: "strict",
     disabled: !isOpen || disabled,
   });
-  const isSearchLoading = isAgentsLoading;
-  const isSearchError = isAgentsError;
-  const searched: RichAgentMentionCandidate[] = searchResults;
   const selected =
-    searched.find((a) => a.sId === selectedAgentId) ??
+    searchResults.find((a) => a.sId === selectedAgentId) ??
     // Keep the current selection visible even if it is beyond the first search page.
     (!searchText.trim()
       ? agents.find((a) => a.sId === selectedAgentId)
       : undefined);
   const searchedAgents = selected
-    ? [selected, ...searched.filter((a) => a.sId !== selectedAgentId)]
-    : searched;
+    ? [selected, ...searchResults.filter((a) => a.sId !== selectedAgentId)]
+    : searchResults;
 
   return (
     <DropdownMenu
@@ -137,8 +134,8 @@ export function AgentPicker({
               onKeyDown={(e) => {
                 if (
                   e.key === "Enter" &&
-                  !isSearchLoading &&
-                  !isSearchError &&
+                  !isAgentsLoading &&
+                  !isAgentsError &&
                   searchedAgents.length > 0
                 ) {
                   onItemClick(searchedAgents[0]);
@@ -159,7 +156,7 @@ export function AgentPicker({
           </>
         }
       >
-        {isSearchLoading ? (
+        {isAgentsLoading ? (
           <div
             role="status"
             aria-label="Loading agents"
@@ -167,7 +164,7 @@ export function AgentPicker({
           >
             <Spinner size="sm" />
           </div>
-        ) : isSearchError ? (
+        ) : isAgentsError ? (
           <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
             Unable to load agents
           </div>
