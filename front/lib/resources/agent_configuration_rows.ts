@@ -8,6 +8,7 @@ import type {
   ModelProviderIdType,
 } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { Transaction } from "sequelize";
 import { col, fn, Op } from "sequelize";
 
@@ -27,19 +28,18 @@ const activeAgentInclude = {
 
 const currentVersionWhere = { version: { [Op.col]: "agent.currentVersion" } };
 
-// The names of every active agent of the workspace, from their current configuration row.
+// The names of every active agent of the workspace.
 export async function listActiveAgentNames(
   auth: Authenticator
 ): Promise<string[]> {
-  const configurations = await AgentConfigurationModel.findAll({
+  const agents = await AgentModel.findAll({
     attributes: ["name"],
     where: {
       workspaceId: auth.getNonNullableWorkspace().id,
-      ...currentVersionWhere,
+      status: "active",
     },
-    include: [activeAgentInclude],
   });
-  return configurations.map((configuration) => configuration.name);
+  return removeNulls(agents.map((agent) => agent.name));
 }
 
 // The model of every active agent of the workspace.
