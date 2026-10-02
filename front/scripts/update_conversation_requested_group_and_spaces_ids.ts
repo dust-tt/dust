@@ -1,11 +1,11 @@
-import { enrichAgentConfigurations } from "@app/lib/api/assistant/configuration/helpers";
 import { Authenticator } from "@app/lib/auth";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
   AgentMessageModel,
   ConversationModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { Logger } from "@app/logger/logger";
@@ -145,22 +145,19 @@ async function updateConversationRequestedSpaceIds(
         continue;
       }
 
-      // Get the exact agent versions that were used in the conversation
-      // Fetch directly from DB to get specific versions (not just latest)
-      const agentConfigs = await AgentConfigurationModel.findAll({
-        where: {
-          workspaceId: workspace.id,
-          [Op.or]: Array.from(agentVersionPairs.values()).map((v) => ({
-            sId: v.sId,
-            version: v.version,
+      // Get the exact agent versions that were used in the conversation (not just latest)
+      const agents = await toLightAgentConfigurations(
+        auth,
+        await AgentResource.fetchByIdsAndVersions(
+          auth,
+          Array.from(agentVersionPairs.values()).map((v) => ({
+            agentId: v.sId,
+            agentVersion: v.version,
           })),
-        },
-      });
-
-      // Enrich with actions if needed (uses auth with dangerouslyRequestAllGroups)
-      const agents = await enrichAgentConfigurations(auth, agentConfigs, {
-        variant: "light",
-      });
+          { dangerouslySkipFetchCheck: true }
+        ),
+        { withFavorites: false, withTags: false }
+      );
 
       logger.info(
         {

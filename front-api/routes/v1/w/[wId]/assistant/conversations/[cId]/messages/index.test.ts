@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -7,6 +8,11 @@ import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { CLAUDE_OPUS_4_8_MODEL_ID } from "@app/types/assistant/models/anthropic";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/temporal/agent_loop/client", () => ({
+  launchAgentLoopWorkflow: vi.fn(),
+  launchCompactionWorkflow: vi.fn(),
+}));
 
 vi.mock("@app/lib/api/programmatic_usage/tracking", () => ({
   isProgrammaticUsage: () => false,
@@ -314,5 +320,58 @@ describe("POST /api/v1/w/[wId]/assistant/conversations/[cId]/messages", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.message.user).toBeNull();
+  });
+});
+
+describe("POST /api/v1/w/[wId]/assistant/conversations/[cId]/messages, hidden agents", () => {
+  async function setupHiddenAgent() {
+    const { workspace, key } = await createPublicApiMockRequest({
+      method: "POST",
+      systemKey: true,
+    });
+    const editor = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, editor, { role: "user" });
+    const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      editor.sId,
+      workspace.sId
+    );
+    const hiddenAgent = await AgentConfigurationFactory.createTestAgent(
+      editorAuth,
+      { name: "Hidden helper", scope: "hidden" }
+    );
+    // No prior exchange, so no agent message is still running when the hidden agent is mentioned.
+    const conversation = await ConversationFactory.create(editorAuth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [],
+    });
+
+    const mentionHiddenAgent = (extraHeaders: Record<string, string> = {}) =>
+      postMessage(
+        workspace,
+        conversation.sId,
+        key,
+        {
+          content: `:mention[Hidden helper]{sId=${hiddenAgent.sId}} hello`,
+          mentions: [{ configurationId: hiddenAgent.sId }],
+          context: {
+            username: "slack-bot",
+            timezone: "Europe/Paris",
+            origin: "api",
+          },
+        },
+        extraHeaders
+      );
+
+    return { editor, mentionHiddenAgent };
+  }
+
+  it("lets the agent's editor mention it through x-api-user-email", async () => {
+    const { editor, mentionHiddenAgent } = await setupHiddenAgent();
+
+    const response = await mentionHiddenAgent({
+      "x-api-user-email": editor.email,
+    });
+
+    expect(response.status).toBe(200);
   });
 });
