@@ -2,7 +2,6 @@ import { fetchRevokedWorkspace } from "@app/lib/api/user";
 import type { GetWorkspaceLookupResponseBody } from "@app/lib/api/workspace";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { sessionApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -15,6 +14,12 @@ const GetWorkspaceLookupQuerySchema = z.object({
   flow: z.enum(["no-auto-join", "revoked"]),
 });
 
+/**
+ * @cc [owner:tdraier,label:security] non-member-workspace-name-only
+ * The caller is not necessarily a member of the looked-up workspace (`no-auto-join` resolves it from
+ * the caller's e-mail domain alone). The response MUST NOT expose any workspace field other than its
+ * `name`: no identifiers (sId, WorkOS organization, Metronome customer), metadata, plan or settings.
+ */
 export const workspaceLookupApp = sessionApp();
 
 workspaceLookupApp.use("*", sessionAuth);
@@ -53,7 +58,7 @@ workspaceLookupApp.get(
       }
 
       return ctx.json({
-        workspace: renderLightWorkspaceType({ workspace }),
+        workspace: { name: workspace.name },
         status: "auto-join-disabled" as const,
         workspaceVerifiedDomain,
       });
@@ -71,7 +76,7 @@ workspaceLookupApp.get(
     }
 
     return ctx.json({
-      workspace: renderLightWorkspaceType({ workspace: result.value }),
+      workspace: { name: result.value.name },
       status: "revoked" as const,
       workspaceVerifiedDomain: null,
     });

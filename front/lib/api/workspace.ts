@@ -818,7 +818,7 @@ export async function findWorkspaceByWorkOSOrganizationId(
 }
 
 export type GetWorkspaceLookupResponseBody = {
-  workspace: LightWorkspaceType;
+  workspace: { name: string };
   status: "auto-join-disabled" | "revoked";
   workspaceVerifiedDomain: string | null;
 };

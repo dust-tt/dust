@@ -17,7 +17,7 @@ import {
 
 interface WorkspacePickerRadioGroupProps {
   user: UserTypeWithWorkspaces;
-  workspace: LightWorkspaceType;
+  workspace: LightWorkspaceType | null;
   onSelectOrganization?: (organizationId: string) => void;
   onSelectWorkspace?: (workspaceId: string) => void;
 }
@@ -34,7 +34,7 @@ export const WorkspacePickerRadioGroup = ({
   const hasOrganizations = organizations && organizations.length > 0;
 
   return (
-    <DropdownMenuRadioGroup value={workspace.sId}>
+    <DropdownMenuRadioGroup value={workspace?.sId}>
       {hasOrganizations
         ? organizations.map((org) => {
             return (
@@ -43,7 +43,7 @@ export const WorkspacePickerRadioGroup = ({
                 // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 value={org.externalId || ""}
                 onClick={async () => {
-                  if (org.externalId && org.externalId !== workspace.sId) {
+                  if (org.externalId && org.externalId !== workspace?.sId) {
                     if (onSelectOrganization) {
                       onSelectOrganization(org.id);
                     } else {
@@ -65,7 +65,7 @@ export const WorkspacePickerRadioGroup = ({
                   key={ws.sId}
                   value={ws.sId}
                   onClick={async () => {
-                    if (ws.sId !== workspace.sId) {
+                    if (ws.sId !== workspace?.sId) {
                       if (onSelectWorkspace) {
                         onSelectWorkspace(ws.sId);
                       } else {
@@ -84,7 +84,7 @@ export const WorkspacePickerRadioGroup = ({
 };
 interface WorkspacePickerProps {
   user: UserTypeWithWorkspaces;
-  workspace: LightWorkspaceType;
+  workspace: LightWorkspaceType | null;
 }
 
 export default function WorkspacePicker({
