@@ -3,7 +3,7 @@ import type {
   ScheduleConfig,
 } from "@app/types/assistant/triggers";
 import { isCronScheduleConfig } from "@app/types/assistant/triggers";
-import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
+import { resolveCalendarDate } from "@app/types/shared/utils/date_utils";
 import { tzOffset } from "@date-fns/tz";
 import { CronExpressionParser } from "cron-parser";
 
@@ -57,22 +57,7 @@ function getNextIntervalOccurrences(
   calendarDate.setUTCHours(config.hour, config.minute, 0, 0);
 
   function resolveCandidate(): Date {
-    const calendarTimeMs = calendarDate.getTime();
-    // Check both sides of a transition: the larger offset gives the earlier
-    // occurrence in an overlap; the smaller offset moves a DST gap forward.
-    const offsetsMinutes = [-ONE_DAY_MS, ONE_DAY_MS].map((deltaMs) =>
-      tzOffset(config.timezone, new Date(calendarTimeMs + deltaMs))
-    );
-    const earlier = new Date(
-      calendarTimeMs - Math.max(...offsetsMinutes) * ONE_MINUTE_MS
-    );
-    const candidate =
-      earlier.getTime() + tzOffset(config.timezone, earlier) * ONE_MINUTE_MS ===
-      calendarTimeMs
-        ? earlier
-        : new Date(
-            calendarTimeMs - Math.min(...offsetsMinutes) * ONE_MINUTE_MS
-          );
+    const candidate = resolveCalendarDate(calendarDate, config.timezone);
     // Preserve any forward adjustment through a gap for subsequent occurrences.
     calendarDate.setTime(
       candidate.getTime() + tzOffset(config.timezone, candidate) * ONE_MINUTE_MS
