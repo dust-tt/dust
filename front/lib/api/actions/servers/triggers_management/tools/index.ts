@@ -4,7 +4,10 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import type { ToolContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { TRIGGERS_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/triggers_management/metadata";
-import { getAccessibleWebhookSourceViews } from "@app/lib/api/agent_triggers";
+import {
+  createAgentTrigger,
+  getAccessibleWebhookSourceViews,
+} from "@app/lib/api/agent_triggers";
 import {
   generateScheduleRule,
   getConversationUserTimezone,
@@ -34,7 +37,6 @@ import {
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
-import { UniqueConstraintError } from "sequelize";
 
 function renderSchedule(
   schedule: ScheduleTriggerType,
@@ -145,7 +147,6 @@ export function createTriggersManagementTools(
       );
 
       const owner = auth.getNonNullableWorkspace();
-      const user = auth.getNonNullableUser();
 
       const { agentConfiguration } = toolContext.runContext;
 
@@ -188,35 +189,23 @@ export function createTriggersManagementTools(
         return new Err(new MCPError("Agent not found."));
       }
 
-      let result;
-      try {
-        result = await TriggerResource.makeNew(auth, {
-          workspaceId: owner.id,
-          agent,
+      const result = await createAgentTrigger(auth, {
+        agent,
+        trigger: {
           name,
           kind: "schedule",
           status: "enabled",
           configuration: scheduleConfig,
           naturalLanguageDescription: schedule,
-          customPrompt: prompt,
-          editor: user.id,
-          webhookSourceViewId: null,
-          executionPerDayLimitOverride: null,
-          origin: "agent",
-          spaceId,
-        });
-
-        if (result.isErr()) {
-          logger.error(result.error.message);
-          return new Err(
-            new MCPError(`Failed to enable schedule: ${result.error.message}`)
-          );
-        }
-      } catch (err) {
-        if (err instanceof UniqueConstraintError) {
-          return new Err(new MCPError("Schedule uniqueness constraint error"));
-        }
-        throw err;
+          customPrompt: prompt ?? "",
+          spaceId: podId,
+        },
+        origin: "agent",
+      });
+      if (result.isErr()) {
+        return new Err(
+          new MCPError(`Failed to enable schedule: ${result.error.message}`)
+        );
       }
 
       statsDMetrics.increment("tools.triggers_management.created", 1, [
@@ -464,7 +453,6 @@ export function createTriggersManagementTools(
       );
 
       const owner = auth.getNonNullableWorkspace();
-      const user = auth.getNonNullableUser();
 
       const { agentConfiguration } = toolContext.runContext;
 
@@ -559,22 +547,14 @@ export function createTriggersManagementTools(
         filter = filterResult.value;
       }
 
-      const spaceIdRes = await resolveTriggerSpaceId(auth, podId);
-      if (spaceIdRes.isErr()) {
-        return new Err(new MCPError(spaceIdRes.error));
-      }
-      const spaceId = spaceIdRes.value;
-
       const agent = await AgentResource.fetchById(auth, agentConfiguration.sId);
       if (!agent) {
         return new Err(new MCPError("Agent not found."));
       }
 
-      let result;
-      try {
-        result = await TriggerResource.makeNew(auth, {
-          workspaceId: owner.id,
-          agent,
+      const result = await createAgentTrigger(auth, {
+        agent,
+        trigger: {
           name,
           kind: "webhook",
           status: "enabled",
@@ -584,33 +564,22 @@ export function createTriggersManagementTools(
             ...(filter ? { filter } : {}),
           },
           naturalLanguageDescription: filterDescription ?? null,
-          customPrompt: prompt ?? null,
-          editor: user.id,
-          webhookSourceViewId: view.id,
+          customPrompt: prompt ?? "",
+          webhookSourceViewId: view.sId,
           executionPerDayLimitOverride:
             DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT,
-          origin: "agent",
-          spaceId,
-        });
-
-        if (result.isErr()) {
-          logger.error(result.error.message);
-          return new Err(
-            new MCPError(
-              `Failed to create event trigger: ${result.error.message}`
-            )
-          );
-        }
-      } catch (err) {
-        if (err instanceof UniqueConstraintError) {
-          return new Err(
-            new MCPError(
-              "A trigger with this name already exists for this agent."
-            )
-          );
-        }
-        throw err;
+          spaceId: podId,
+        },
+        origin: "agent",
+      });
+      if (result.isErr()) {
+        return new Err(
+          new MCPError(
+            `Failed to create event trigger: ${result.error.message}`
+          )
+        );
       }
+      const spaceId = result.value.spaceId;
 
       statsDMetrics.increment(
         "tools.triggers_management.event_trigger_created",
