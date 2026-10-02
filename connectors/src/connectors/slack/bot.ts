@@ -673,23 +673,23 @@ export async function botAnswerUserQuestion({
       ? slackChatBotMessage.slackEmail
       : undefined;
 
+  const slackClient = await getSlackClient(connector.id);
+
+  const requestedGroupsRes = await getInteractingSlackUserGroups(
+    connector,
+    slackConfig,
+    slackClient,
+    { slackUserId, slackChannel, slackTeamId, slackMessageTs: slackThreadTs }
+  );
+  if (requestedGroupsRes.isErr()) {
+    return requestedGroupsRes;
+  }
+  const requestedGroups = requestedGroupsRes.value;
+  if (!requestedGroups) {
+    return new Ok(undefined);
+  }
+
   try {
-    const slackClient = await getSlackClient(connector.id);
-
-    const requestedGroupsRes = await getInteractingSlackUserGroups(
-      connector,
-      slackConfig,
-      slackClient,
-      { slackUserId, slackChannel, slackTeamId, slackMessageTs: slackThreadTs }
-    );
-    if (requestedGroupsRes.isErr()) {
-      return requestedGroupsRes;
-    }
-    const requestedGroups = requestedGroupsRes.value;
-    if (!requestedGroups) {
-      return new Ok(undefined);
-    }
-
     const dustAPI = new DustAPI(
       { url: apiConfig.getDustFrontAPIUrl() },
       {
