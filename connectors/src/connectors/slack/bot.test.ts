@@ -21,6 +21,19 @@ vi.mock(
   async (importOriginal) => ({
     ...(await importOriginal()),
     getSlackClient: vi.fn(async () => ({ chat: { postEphemeral } })),
+    getSlackUserInfoMemoized: vi.fn(async () => ({ is_bot: false })),
+  })
+);
+
+const { notifyIfSlackUserIsNotAllowed } = vi.hoisted(() => ({
+  notifyIfSlackUserIsNotAllowed: vi.fn(),
+}));
+
+vi.mock(
+  "@connectors/connectors/slack/lib/workspace_limits",
+  async (importOriginal) => ({
+    ...(await importOriginal()),
+    notifyIfSlackUserIsNotAllowed,
   })
 );
 
@@ -57,6 +70,14 @@ async function makeSlackChatBotMessage(connector: ConnectorResource) {
   });
 }
 
+function sentExtraHeaders(): Record<string, string> | undefined {
+  const [dustAPI] = vi.mocked(DustAPI.prototype.answerUserQuestion).mock
+    .contexts as unknown as {
+    _credentials: { extraHeaders?: Record<string, string> };
+  }[];
+  return dustAPI?._credentials.extraHeaders;
+}
+
 function answerParams(slackTeamId: string, slackChatBotMessageId: number) {
   return {
     actionId: "action_1",
@@ -67,6 +88,7 @@ function answerParams(slackTeamId: string, slackChatBotMessageId: number) {
     slackTeamId,
     slackChannel: "C123",
     slackThreadTs: "1700000000.000001",
+    slackUserId: "U123",
     responseUrl: undefined,
   };
 }
@@ -75,6 +97,9 @@ describe("botAnswerUserQuestion", () => {
   beforeEach(() => {
     vi.spyOn(DustAPI.prototype, "answerUserQuestion").mockResolvedValue(
       new Ok({ success: true })
+    );
+    notifyIfSlackUserIsNotAllowed.mockResolvedValue(
+      new Ok({ authorized: true, groupIds: [] })
     );
   });
 
@@ -100,5 +125,36 @@ describe("botAnswerUserQuestion", () => {
     expect(res.isErr()).toBe(true);
     expect(DustAPI.prototype.answerUserQuestion).not.toHaveBeenCalled();
     expect(postEphemeral).not.toHaveBeenCalled();
+  });
+
+  it("sends the whitelisted groups of an external user along with their email", async () => {
+    notifyIfSlackUserIsNotAllowed.mockResolvedValue(
+      new Ok({ authorized: true, groupIds: ["grp_guests"] })
+    );
+    const connector = await makeSlackConnector("T_OWN");
+    const message = await makeSlackChatBotMessage(connector);
+
+    const res = await botAnswerUserQuestion(answerParams("T_OWN", message.id));
+
+    expect(res.isOk()).toBe(true);
+    expect(sentExtraHeaders()).toEqual(
+      expect.objectContaining({
+        "X-Dust-Group-Ids": "grp_guests",
+        "x-api-user-email": "user@example.com",
+      })
+    );
+  });
+
+  it("does not answer for a user who is not allowed", async () => {
+    notifyIfSlackUserIsNotAllowed.mockResolvedValue(
+      new Ok({ authorized: false, groupIds: [] })
+    );
+    const connector = await makeSlackConnector("T_OWN");
+    const message = await makeSlackChatBotMessage(connector);
+
+    const res = await botAnswerUserQuestion(answerParams("T_OWN", message.id));
+
+    expect(res.isErr()).toBe(true);
+    expect(DustAPI.prototype.answerUserQuestion).not.toHaveBeenCalled();
   });
 });

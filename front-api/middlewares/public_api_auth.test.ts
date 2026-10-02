@@ -251,6 +251,20 @@ describe("publicApiAuth — x-api-user-email impersonation", () => {
     expect(response.status).toBe(401);
   });
 
+  it("rejects an empty email instead of keeping the system key defaults", async () => {
+    const { workspace, key: systemKey } = await createPublicApiMockRequest({
+      systemKey: true,
+    });
+
+    const response = await get(appReportingAuth(), {
+      wId: workspace.sId,
+      secret: systemKey.secret,
+      extraHeaders: { "x-api-user-email": "" },
+    });
+
+    expect(response.status).toBe(401);
+  });
+
   it("rejects an email whose user is not a member of the workspace", async () => {
     const { workspace, key: systemKey } = await createPublicApiMockRequest({
       systemKey: true,
