@@ -28,7 +28,7 @@ import {
 
 interface CellProps extends React.HTMLAttributes<HTMLTableCellElement> {
   children: ReactNode;
-  column: Column<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  column: Column<any>;
 }
 
 /** Body cell (td, or th scope="row" with meta.rowHeader) with truncation, density height and column meta styling. */

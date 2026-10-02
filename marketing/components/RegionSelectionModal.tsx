@@ -72,7 +72,6 @@ export function RegionSelectionModal() {
   const [region, setRegion] = useState<Region>("us");
 
   const handleSave = () => {
-    // eslint-disable-next-line react-hooks/immutability
     window.location.href = appendUTMParams(REGIONS[region].href);
   };
 

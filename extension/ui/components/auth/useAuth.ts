@@ -129,7 +129,6 @@ export const useAuthHook = () => {
       }, delayMs);
     },
     // handleRefreshToken is stable (useCallback with []), safe to reference.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 

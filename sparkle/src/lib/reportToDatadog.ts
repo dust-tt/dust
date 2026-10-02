@@ -1,4 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DDRum = { addError?: (error: unknown, context?: any) => void };
 type DDLogs = {
   logger?: {

@@ -47,7 +47,6 @@ export function OpenDustButton({
       label="Open Dust"
       icon={ArrowRight}
       onClick={withTracking(trackingArea, trackingObject, () => {
-        // eslint-disable-next-line react-hooks/immutability
         window.location.href = target;
       })}
     />

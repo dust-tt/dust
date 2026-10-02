@@ -13,7 +13,6 @@ import type { ZodTypeAny } from "zod";
 import * as allExports from "./types";
 import { ModelIdSchema } from "./types";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Zod internals
 type ZodDef = any;
 
 const MODEL_ID_REF: ZodTypeAny = ModelIdSchema;

@@ -336,7 +336,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       replace,
       shallow,
       "aria-label": ariaLabel,
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       hasLighterFont: _hasLighterFont,
       ...props
     },

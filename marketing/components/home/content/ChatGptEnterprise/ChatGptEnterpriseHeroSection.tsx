@@ -196,7 +196,6 @@ export function ChatGptEnterpriseHeroSection({
                   TRACKING_AREAS.COMPETITIVE,
                   "chatgpt_enterprise_hero_expert",
                   () => {
-                    // eslint-disable-next-line react-hooks/immutability
                     window.location.href = appendUTMParams(secondaryButtonLink);
                   }
                 )}

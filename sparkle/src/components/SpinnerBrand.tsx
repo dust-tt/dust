@@ -46,14 +46,12 @@ const isColorArray = (arr: unknown): arr is LottieColorType => {
   );
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const replaceColors = (obj: any, newColor: LottieColorType): any => {
   if (Array.isArray(obj)) {
     return obj.map((item) => replaceColors(item, newColor));
   } else if (obj !== null && typeof obj === "object") {
     for (const key in obj) {
       if (isColorArray(obj[key])) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         obj[key] =
           (obj[key] as any[]).length === 3 ? newColor.slice(0, 3) : newColor;
       } else {

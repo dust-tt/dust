@@ -41,9 +41,7 @@ if (DATADOG_CLIENT_TOKEN) {
   initDatadogLogs({
     clientToken: DATADOG_CLIENT_TOKEN,
     env: NODE_ENV === "production" ? "prod" : "dev",
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     service: `${DATADOG_SERVICE || "front"}-browser`,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     version: COMMIT_HASH || "",
   });
 }

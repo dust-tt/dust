@@ -9,7 +9,6 @@ class MyDocument extends Document {
       <Html>
         <Head>
           {NODE_ENV === "development" && REACT_SCAN === "true" && (
-            // eslint-disable-next-line @next/next/no-sync-scripts
             <script src="https://unpkg.com/react-scan/dist/auto.global.js" />
           )}
           {process.env.NEXT_PUBLIC_ENABLE_BOT_CRAWLING !== "true" && (
@@ -38,7 +37,6 @@ class MyDocument extends Document {
                n=o.getElementsByTagName(u)[0];n.parentNode.insertBefore(d,n)
              })(window,document,'script','https://www.datadoghq-browser-agent.com/eu1/v6/datadog-rum.js','DD_RUM')
              '${
-               // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN || ""
 }' && window.DD_RUM.onReady(function() {
                window.DD_RUM.init({
@@ -46,14 +44,10 @@ class MyDocument extends Document {
                  applicationId: '5e9735e7-87c8-4093-b09f-49d708816bfd',
                  site: 'datadoghq.eu',
                  service: '${
-                   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                    process.env.NEXT_PUBLIC_DATADOG_SERVICE || "front"
 }-browser',
                  env: '${process.env.NODE_ENV === "production" ? "prod" : "dev"}',
-                 version: '${
-                   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                   process.env.NEXT_PUBLIC_COMMIT_HASH || ""
-}',
+                 version: '${process.env.NEXT_PUBLIC_COMMIT_HASH || ""}',
                  allowedTracingUrls: [
                    "https://dust.tt",
                    "https://eu.dust.tt",

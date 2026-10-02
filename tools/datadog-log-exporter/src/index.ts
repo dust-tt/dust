@@ -70,7 +70,7 @@ function csvEscape(val: unknown): string {
 function get(obj: unknown, pathStr: string): unknown {
   if (obj == null) return undefined;
   const parts = pathStr.split(".");
-  let cur: any = obj as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  let cur: any = obj as any;
   for (const p of parts) {
     if (cur == null) return undefined;
     cur = cur[p];
@@ -116,7 +116,7 @@ function resolveColumn(e: LogEvent, col: string): unknown {
   if (col === "id") return e.id;
   if (col === "timestamp") return e.attributes?.timestamp;
   const attrs = e.attributes || {};
-  const nested = (attrs as any).attributes || {}; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const nested = (attrs as any).attributes || {};
   let v = get(nested, col);
   if (v === undefined) v = get(attrs, col);
   return v;
@@ -218,7 +218,7 @@ async function queryLogs(params: {
     page: { limit: Math.min(1000, pageLimit) },
     sort: "desc",
   };
-  if (cursor) (body.page as any).cursor = cursor; // eslint-disable-line @typescript-eslint/no-explicit-any
+  if (cursor) (body.page as any).cursor = cursor;
 
   const res = await fetchWithBackoff(url, {
     method: "POST",
