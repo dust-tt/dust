@@ -2,6 +2,7 @@ import { isUploadSupportedForContentType } from "@app/lib/api/files/processing";
 import { buildEffectiveUseCaseMetadata } from "@app/lib/api/files/upload_metadata";
 import { getFeatureFlags } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import {
   AUDIO_TRANSCRIPTION_UNAVAILABLE_MESSAGE,
@@ -178,6 +179,28 @@ app.post("/", validate("json", FileUploadUrlRequestSchema), async (ctx) => {
 
   const { contentType, fileName, fileSize, useCase, useCaseMetadata } =
     ctx.req.valid("json");
+
+  if (useCase === "project_context") {
+    const space = await SpaceResource.fetchById(auth, useCaseMetadata.spaceId);
+    if (!space) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "space_not_found",
+          message: "The Pod was not found.",
+        },
+      });
+    }
+    if (!auth.can("write", space)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "You cannot edit files in that pod.",
+        },
+      });
+    }
+  }
 
   if (!isSupportedFileContentType(contentType)) {
     return apiError(ctx, {
