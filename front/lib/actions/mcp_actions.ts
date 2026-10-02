@@ -62,7 +62,6 @@ import {
 } from "@app/lib/actions/mcp_metadata";
 import { MCPOAuthProviderError } from "@app/lib/actions/mcp_oauth_provider";
 import {
-  classifyToolAbortReason,
   classifyToolAbortSignal,
   isToolInterruptionError,
   makeToolInterruptionError,
@@ -133,7 +132,6 @@ import {
   ProgressNotificationSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { Context } from "@temporalio/activity";
-import { CancelledFailure } from "@temporalio/common";
 import assert from "assert";
 import tracer from "dd-trace";
 import EventEmitter from "events";
@@ -549,7 +547,7 @@ export async function* tryCallMCPTool(
       mcpClient = connectionResult.value;
     }
 
-    await heartbeat();
+    heartbeat();
 
     const emitter = new EventEmitter();
 
@@ -635,6 +633,8 @@ export async function* tryCallMCPTool(
     const createHeartbeatPromise = (): Promise<void> =>
       new Promise((resolve) => {
         heartbeatTimer = setTimeout(() => {
+          logger.info(toolLogContext, "MCP tool heartbeat");
+          heartbeat();
           resolve();
           // Reasonable delay to react to cancellation under 10s.
         }, 10_000);
@@ -642,44 +642,40 @@ export async function* tryCallMCPTool(
 
     let heartbeatPromise = createHeartbeatPromise();
 
-    try {
-      logger.info(toolLogContext, "Starting MCP tool notification loop");
-      while (!toolDone) {
-        const notificationOrDone = await Promise.race([
-          notificationPromise,
-          toolPromise
-            .then(() => MCP_TOOL_DONE_EVENT_NAME)
-            .catch(() => MCP_TOOL_ERROR_EVENT_NAME), // Or tool rejects (abort or error).
-          heartbeatPromise.then(() => MCP_TOOL_HEARTBEAT_EVENT_NAME),
-        ]);
+    logger.info(toolLogContext, "Starting MCP tool notification loop");
+    while (!toolDone) {
+      const notificationOrDone = await Promise.race([
+        notificationPromise,
+        toolPromise
+          .then(() => MCP_TOOL_DONE_EVENT_NAME)
+          .catch(() => MCP_TOOL_ERROR_EVENT_NAME), // Or tool rejects (abort or error).
+        heartbeatPromise.then(() => MCP_TOOL_HEARTBEAT_EVENT_NAME),
+      ]);
 
-        // If the tool completed or errored, break from the loop and stop reading notifications.
-        if (
-          notificationOrDone === MCP_TOOL_DONE_EVENT_NAME ||
-          notificationOrDone === MCP_TOOL_ERROR_EVENT_NAME
-        ) {
-          toolDone = true;
-        } else if (notificationOrDone === MCP_TOOL_HEARTBEAT_EVENT_NAME) {
-          logger.info(toolLogContext, "MCP tool heartbeat");
-          await heartbeat();
-          // Renew the heartbeat promise for the next interval.
-          heartbeatPromise = createHeartbeatPromise();
-        } else {
-          const iteratorResult = notificationOrDone;
-          if (iteratorResult.done) {
-            // The notifications ended prematurely.
-            break;
-          }
-          notificationPromise = notificationStream.next();
-          yield makeToolNotificationEvent(iteratorResult.value);
+      // If the tool completed or errored, break from the loop and stop reading notifications.
+      if (
+        notificationOrDone === MCP_TOOL_DONE_EVENT_NAME ||
+        notificationOrDone === MCP_TOOL_ERROR_EVENT_NAME
+      ) {
+        toolDone = true;
+      } else if (notificationOrDone === MCP_TOOL_HEARTBEAT_EVENT_NAME) {
+        // Renew the heartbeat promise for the next interval.
+        heartbeatPromise = createHeartbeatPromise();
+      } else {
+        const iteratorResult = notificationOrDone;
+        if (iteratorResult.done) {
+          // The notifications ended prematurely.
+          break;
         }
+        notificationPromise = notificationStream.next();
+        yield makeToolNotificationEvent(iteratorResult.value);
       }
-    } finally {
-      // Remove timers and notification listeners even when a heartbeat rejects or the
-      // consumer stops reading the stream.
-      clearTimeout(heartbeatTimer);
-      await notificationStream.return();
     }
+
+    // Clean up: cancel pending heartbeat timer and close the notification stream
+    // to remove the EventEmitter listener and release pending promises.
+    clearTimeout(heartbeatTimer);
+    await notificationStream.return();
 
     let toolCallResult: Awaited<typeof toolPromise>;
     try {
@@ -711,13 +707,6 @@ export async function* tryCallMCPTool(
 
     return postProcessMCPToolResult(toolCallResult, toolConfiguration);
   } catch (error) {
-    if (error instanceof CancelledFailure) {
-      if (classifyToolAbortReason(error) !== "deploy_interruption") {
-        throw error;
-      }
-      // Preserve the existing retry policy for cancellation caused by worker shutdown.
-      error = makeToolInterruptionError();
-    }
     const isWorkerShutdownInterruptionError = isToolInterruptionError(error);
     const isMCPTimeoutError = isMcpTimeoutError(error);
     const isInterruptError =
