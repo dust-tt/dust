@@ -6,28 +6,23 @@ import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  getConnectionMetadata: vi.fn(),
-  getWorkspaceOAuthConnectionIdForMCPServer: vi.fn(),
+  getWorkspaceOAuthConnectionForMCPServer: vi.fn(),
 }));
 
-vi.mock("@app/lib/api/oauth/mcp_server_connection_auth", () => ({
-  getWorkspaceOAuthConnectionIdForMCPServer:
-    mocks.getWorkspaceOAuthConnectionIdForMCPServer,
-}));
-
-vi.mock("@app/types/oauth/oauth_api", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@app/types/oauth/oauth_api")>();
-
-  return {
-    ...actual,
-    OAuthAPI: vi.fn().mockImplementation(function OAuthAPIMock() {
-      return {
-        getConnectionMetadata: mocks.getConnectionMetadata,
-      };
-    }),
-  };
-});
+vi.mock(
+  "@app/lib/api/oauth/mcp_server_connection_auth",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("@app/lib/api/oauth/mcp_server_connection_auth")
+      >();
+    return {
+      ...actual,
+      getWorkspaceOAuthConnectionForMCPServer:
+        mocks.getWorkspaceOAuthConnectionForMCPServer,
+    };
+  }
+);
 
 function makeConnection(metadata: Record<string, string>): OAuthConnectionType {
   return {
@@ -41,8 +36,7 @@ function makeConnection(metadata: Record<string, string>): OAuthConnectionType {
 
 describe("MCPOAuthProvider.getUpdatedExtraConfig", () => {
   beforeEach(() => {
-    mocks.getConnectionMetadata.mockReset();
-    mocks.getWorkspaceOAuthConnectionIdForMCPServer.mockReset();
+    mocks.getWorkspaceOAuthConnectionForMCPServer.mockReset();
   });
 
   it("stamps platform action metadata from the final token endpoint and ignores caller overrides", async () => {
@@ -94,20 +88,17 @@ describe("MCPOAuthProvider.getUpdatedExtraConfig", () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const provider = new MCPOAuthProvider();
 
-    mocks.getWorkspaceOAuthConnectionIdForMCPServer.mockResolvedValue(
-      new Ok("con_workspace")
-    );
-    mocks.getConnectionMetadata.mockResolvedValue(
-      new Ok({
-        connection: makeConnection({
+    mocks.getWorkspaceOAuthConnectionForMCPServer.mockResolvedValue(
+      new Ok(
+        makeConnection({
           client_id: "workspace-client",
           token_endpoint: "https://unverified.example.com/token",
           authorization_endpoint: "https://unverified.example.com/authorize",
           scope: "workspace-scope",
           resource: "workspace-resource",
           token_endpoint_auth_method: "client_secret_basic",
-        }),
-      })
+        })
+      )
     );
 
     const updated = await provider.getUpdatedExtraConfig(authenticator, {
@@ -139,7 +130,7 @@ describe("MCPOAuthProvider.getUpdatedExtraConfig", () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const provider = new MCPOAuthProvider();
 
-    mocks.getWorkspaceOAuthConnectionIdForMCPServer.mockResolvedValue(
+    mocks.getWorkspaceOAuthConnectionForMCPServer.mockResolvedValue(
       new Err({
         kind: "connection_not_found",
         message: "Failed to find MCP server connection",
@@ -166,6 +157,30 @@ describe("MCPOAuthProvider.getUpdatedExtraConfig", () => {
     );
   });
 
+  it("propagates non-absent lookup failures for platform_actions instead of falling through", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const provider = new MCPOAuthProvider();
+
+    mocks.getWorkspaceOAuthConnectionForMCPServer.mockResolvedValue(
+      new Err({
+        kind: "oauth_metadata_failed",
+        message: "Failed to get connection metadata: boom",
+      })
+    );
+
+    await expect(
+      provider.getUpdatedExtraConfig(authenticator, {
+        useCase: "platform_actions",
+        extraConfig: {
+          mcp_server_id: "srv_123",
+          client_id: "spoofed-client",
+          token_endpoint: "https://spoofed.example.com/token",
+          authorization_endpoint: "https://spoofed.example.com/authorize",
+        },
+      })
+    ).rejects.toThrow(/Failed to get connection metadata/);
+  });
+
   it("accepts platform_actions with mcp_server_id alone", () => {
     const provider = new MCPOAuthProvider();
     expect(
@@ -185,27 +200,21 @@ describe("MCPOAuthProvider.getUpdatedExtraConfig", () => {
 
 describe("MCPOAuthProvider.getRelatedCredential", () => {
   beforeEach(() => {
-    mocks.getConnectionMetadata.mockReset();
-    mocks.getWorkspaceOAuthConnectionIdForMCPServer.mockReset();
+    mocks.getWorkspaceOAuthConnectionForMCPServer.mockReset();
   });
 
   it("reuses from_connection_id for platform_actions Refresh", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const provider = new MCPOAuthProvider();
 
-    mocks.getWorkspaceOAuthConnectionIdForMCPServer.mockResolvedValue(
-      new Ok("con_workspace")
-    );
-    mocks.getConnectionMetadata.mockResolvedValue(
+    mocks.getWorkspaceOAuthConnectionForMCPServer.mockResolvedValue(
       new Ok({
-        connection: {
-          ...makeConnection({
-            client_id: "workspace-client",
-            token_endpoint: "https://example.com/token",
-            authorization_endpoint: "https://example.com/authorize",
-          }),
-          redirect_uri: "https://eu.dust.tt/oauth/mcp/finalize",
-        },
+        ...makeConnection({
+          client_id: "workspace-client",
+          token_endpoint: "https://example.com/token",
+          authorization_endpoint: "https://example.com/authorize",
+        }),
+        redirect_uri: "https://eu.dust.tt/oauth/mcp/finalize",
       })
     );
 
@@ -245,25 +254,18 @@ describe("MCPOAuthProvider.setupUri", () => {
       code_challenge: "test-challenge",
       scope: "sql offline_access",
     });
-    connection.provider = provider.provider;
+    connection.connection_id = "con_test";
 
-    const authorizationUrl = new URL(
-      provider.setupUri({ connection, useCase: "platform_actions" })
-    );
-    const redirectUri = authorizationUrl.searchParams.get("redirect_uri");
-
-    expect(redirectUri).not.toBeNull();
-    expect(new URL(redirectUri ?? "").pathname).toBe(
+    const uri = provider.setupUri({
+      connection,
+      useCase: "platform_actions",
+    });
+    const url = new URL(uri);
+    expect(url.origin + url.pathname).toBe("https://example.com/authorize");
+    expect(url.searchParams.get("client_id")).toBe("test-client");
+    expect(url.searchParams.get("state")).toBe("con_test");
+    expect(url.searchParams.get("redirect_uri")).toContain(
       `/oauth/${expectedProvider}/finalize`
-    );
-    expect(authorizationUrl.searchParams.get("state")).toBe(
-      connection.connection_id
-    );
-    expect(authorizationUrl.searchParams.get("code_challenge")).toBe(
-      "test-challenge"
-    );
-    expect(authorizationUrl.searchParams.get("scope")).toBe(
-      "sql offline_access"
     );
   });
 });

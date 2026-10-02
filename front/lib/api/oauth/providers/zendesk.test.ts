@@ -8,10 +8,20 @@ const mocks = vi.hoisted(() => ({
   getWorkspaceOAuthConnectionForMCPServer: vi.fn(),
 }));
 
-vi.mock("@app/lib/api/oauth/mcp_server_connection_auth", () => ({
-  getWorkspaceOAuthConnectionForMCPServer:
-    mocks.getWorkspaceOAuthConnectionForMCPServer,
-}));
+vi.mock(
+  "@app/lib/api/oauth/mcp_server_connection_auth",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("@app/lib/api/oauth/mcp_server_connection_auth")
+      >();
+    return {
+      ...actual,
+      getWorkspaceOAuthConnectionForMCPServer:
+        mocks.getWorkspaceOAuthConnectionForMCPServer,
+    };
+  }
+);
 
 function makeConnection(metadata: Record<string, string>): OAuthConnectionType {
   return {
@@ -142,7 +152,7 @@ describe("ZendeskOAuthProvider.getUpdatedExtraConfig", () => {
 
     mocks.getWorkspaceOAuthConnectionForMCPServer.mockResolvedValue(
       new Err({
-        code: "credential_retrieval_failed",
+        kind: "connection_not_found",
         message: "Failed to find MCP server connection",
       })
     );

@@ -1,6 +1,9 @@
-import config from "@app/lib/api/config";
 import type { OAuthError } from "@app/lib/api/oauth";
-import { getWorkspaceOAuthConnectionIdForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
+import type { WorkspaceOAuthConnectionLookupError } from "@app/lib/api/oauth/mcp_server_connection_auth";
+import {
+  getWorkspaceOAuthConnectionForMCPServer,
+  shouldFallThroughPlatformWorkspaceReuse,
+} from "@app/lib/api/oauth/mcp_server_connection_auth";
 import type {
   BaseOAuthStrategyProvider,
   RelatedCredential,
@@ -12,7 +15,6 @@ import {
 import { shouldUseStaticIpProxy } from "@app/lib/api/workspace_has_domains";
 import type { Authenticator } from "@app/lib/auth";
 import { getPKCEConfig } from "@app/lib/utils/pkce";
-import logger from "@app/logger/logger";
 import type { MCPOAuthConnectionMetadataType } from "@app/types/api/oauth/providers/mcp";
 import {
   BaseMCPMetadataSchema,
@@ -24,7 +26,6 @@ import type {
   OAuthProvider,
   OAuthUseCase,
 } from "@app/types/oauth/lib";
-import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { ParsedUrlQuery } from "querystring";
@@ -160,11 +161,22 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
         if (reused.isOk()) {
           return reused;
         }
-        // Personal inherit requires a workspace connection. Platform Refresh/Connect
-        // may pass mcp_server_id before one exists (first connect) — fall through.
-        if (useCase === "personal_actions") {
-          return reused;
+        if (
+          !shouldFallThroughPlatformWorkspaceReuse({
+            useCase,
+            error: reused.error,
+          })
+        ) {
+          return new Err({
+            code: "credential_retrieval_failed",
+            message: reused.error.message,
+            ...(reused.error.kind === "oauth_metadata_failed" &&
+            reused.error.oAuthAPIError
+              ? { oAuthAPIError: reused.error.oAuthAPIError }
+              : {}),
+          });
         }
+        // platform_actions first connect only: no workspace connection yet.
       }
     }
 
@@ -222,11 +234,15 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
         if (reused.isOk()) {
           return reused.value;
         }
-        // Personal inherit requires a workspace connection.
-        if (useCase === "personal_actions") {
-          throw new Error(reused.error);
+        if (
+          !shouldFallThroughPlatformWorkspaceReuse({
+            useCase,
+            error: reused.error,
+          })
+        ) {
+          throw new Error(reused.error.message);
         }
-        // platform_actions first connect: fall through with caller credentials.
+        // platform_actions first connect only: no workspace connection yet.
       }
 
       if (useCase === "platform_actions") {
@@ -265,29 +281,15 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
       workspaceId: string;
       userId: string;
     }
-  ): Promise<Result<RelatedCredential, OAuthError>> {
-    const oauthConnectionIdRes =
-      await getWorkspaceOAuthConnectionIdForMCPServer(auth, mcpServerId);
-    if (oauthConnectionIdRes.isErr()) {
-      return new Err({
-        code: "credential_retrieval_failed",
-        message: oauthConnectionIdRes.error.message,
-      });
-    }
-
-    const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-    const connectionRes = await oauthApi.getConnectionMetadata({
-      connectionId: oauthConnectionIdRes.value,
-    });
+  ): Promise<Result<RelatedCredential, WorkspaceOAuthConnectionLookupError>> {
+    const connectionRes = await getWorkspaceOAuthConnectionForMCPServer(
+      auth,
+      mcpServerId
+    );
     if (connectionRes.isErr()) {
-      return new Err({
-        code: "credential_retrieval_failed",
-        message:
-          "Failed to get connection metadata: " + connectionRes.error.message,
-        oAuthAPIError: connectionRes.error,
-      });
+      return connectionRes;
     }
-    const connection = connectionRes.value.connection;
+    const connection = connectionRes.value;
 
     return new Ok({
       content: {
@@ -307,23 +309,15 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
       mcpServerId: string;
       restConfig: ExtraConfigType;
     }
-  ): Promise<Result<ExtraConfigType, string>> {
-    const oauthConnectionIdRes =
-      await getWorkspaceOAuthConnectionIdForMCPServer(auth, mcpServerId);
-    if (oauthConnectionIdRes.isErr()) {
-      return new Err(oauthConnectionIdRes.error.message);
-    }
-
-    const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-    const connectionRes = await oauthApi.getConnectionMetadata({
-      connectionId: oauthConnectionIdRes.value,
-    });
+  ): Promise<Result<ExtraConfigType, WorkspaceOAuthConnectionLookupError>> {
+    const connectionRes = await getWorkspaceOAuthConnectionForMCPServer(
+      auth,
+      mcpServerId
+    );
     if (connectionRes.isErr()) {
-      return new Err(
-        "Failed to get connection metadata: " + connectionRes.error.message
-      );
+      return connectionRes;
     }
-    const connection = connectionRes.value.connection;
+    const connection = connectionRes.value;
 
     const { code_verifier, code_challenge } = await getPKCEConfig();
     const tokenEndpoint = connection.metadata.token_endpoint;

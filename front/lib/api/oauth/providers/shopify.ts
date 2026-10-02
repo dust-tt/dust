@@ -1,6 +1,9 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import config from "@app/lib/api/config";
-import { getWorkspaceOAuthConnectionForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
+import {
+  getWorkspaceOAuthConnectionForMCPServer,
+  shouldFallThroughPlatformWorkspaceReuse,
+} from "@app/lib/api/oauth/mcp_server_connection_auth";
 import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import {
   finalizeUriForProvider,
@@ -104,6 +107,7 @@ export class ShopifyOAuthProvider implements BaseOAuthStrategyProvider {
     auth: Authenticator,
     {
       extraConfig,
+      useCase,
     }: {
       extraConfig: ExtraConfigType;
       useCase: OAuthUseCase;
@@ -122,8 +126,20 @@ export class ShopifyOAuthProvider implements BaseOAuthStrategyProvider {
         if (storeDomain) {
           return { shopify_store_domain: storeDomain };
         }
+        throw new Error(
+          "Shopify workspace connection is missing a store domain; " +
+            "cannot set up a connection from it."
+        );
       }
-      // First connect: fall through to caller-supplied domain.
+      if (
+        !shouldFallThroughPlatformWorkspaceReuse({
+          useCase,
+          error: connectionRes.error,
+        })
+      ) {
+        throw new Error(connectionRes.error.message);
+      }
+      // First connect only: no workspace connection yet.
     }
 
     const storeDomain = normalizeShopifyStoreDomain(

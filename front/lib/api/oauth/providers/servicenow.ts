@@ -1,5 +1,8 @@
 import type { OAuthError } from "@app/lib/api/oauth";
-import { getWorkspaceOAuthConnectionForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
+import {
+  getWorkspaceOAuthConnectionForMCPServer,
+  shouldFallThroughPlatformWorkspaceReuse,
+} from "@app/lib/api/oauth/mcp_server_connection_auth";
 import type {
   BaseOAuthStrategyProvider,
   RelatedCredential,
@@ -118,10 +121,22 @@ export class ServiceNowOAuthProvider implements BaseOAuthStrategyProvider {
             redirectUri: connection.redirect_uri,
           });
         }
-        if (useCase === "personal_actions") {
-          return connectionRes;
+        if (
+          !shouldFallThroughPlatformWorkspaceReuse({
+            useCase,
+            error: connectionRes.error,
+          })
+        ) {
+          return new Err({
+            code: "credential_retrieval_failed",
+            message: connectionRes.error.message,
+            ...(connectionRes.error.kind === "oauth_metadata_failed" &&
+            connectionRes.error.oAuthAPIError
+              ? { oAuthAPIError: connectionRes.error.oAuthAPIError }
+              : {}),
+          });
         }
-        // platform_actions first connect: fall through to caller credentials.
+        // platform_actions first connect only: no workspace connection yet.
       }
     }
 
@@ -177,10 +192,15 @@ export class ServiceNowOAuthProvider implements BaseOAuthStrategyProvider {
               connection.metadata.servicenow_instance_url,
           };
         }
-        if (useCase === "personal_actions") {
+        if (
+          !shouldFallThroughPlatformWorkspaceReuse({
+            useCase,
+            error: connectionRes.error,
+          })
+        ) {
           throw new Error(connectionRes.error.message);
         }
-        // platform_actions first connect: fall through.
+        // platform_actions first connect only: no workspace connection yet.
       }
     }
 

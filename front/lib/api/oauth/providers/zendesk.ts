@@ -1,6 +1,9 @@
 import { isValidZendeskSubdomain } from "@app/lib/api/actions/servers/zendesk/types";
 import config from "@app/lib/api/config";
-import { getWorkspaceOAuthConnectionForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
+import {
+  getWorkspaceOAuthConnectionForMCPServer,
+  shouldFallThroughPlatformWorkspaceReuse,
+} from "@app/lib/api/oauth/mcp_server_connection_auth";
 import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import {
   finalizeUriForProvider,
@@ -111,11 +114,16 @@ export class ZendeskOAuthProvider implements BaseOAuthStrategyProvider {
           mcp_server_id
         );
         if (connectionRes.isErr()) {
-          if (useCase === "personal_actions") {
-            throw new Error(connectionRes.error.message);
+          if (
+            shouldFallThroughPlatformWorkspaceReuse({
+              useCase,
+              error: connectionRes.error,
+            })
+          ) {
+            // First connect only: no workspace connection yet.
+            return extraConfig;
           }
-          // platform_actions first connect: fall through with caller config.
-          return extraConfig;
+          throw new Error(connectionRes.error.message);
         }
         const connection = connectionRes.value;
         const { zendesk_subdomain } = connection.metadata;

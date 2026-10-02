@@ -1,15 +1,15 @@
 import config from "@app/lib/api/config";
-import type { OAuthError } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
-import type { OAuthConnectionType } from "@app/types/oauth/lib";
+import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
+import type { OAuthAPIError } from "@app/types/oauth/oauth_api";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
 
-type WorkspaceMCPServerAuthRefError =
+export type WorkspaceMCPServerAuthRefError =
   | {
       kind: "connection_not_found";
       message: string;
@@ -21,6 +21,14 @@ type WorkspaceMCPServerAuthRefError =
   | {
       kind: "invalid_connection";
       message: string;
+    };
+
+export type WorkspaceOAuthConnectionLookupError =
+  | WorkspaceMCPServerAuthRefError
+  | {
+      kind: "oauth_metadata_failed";
+      message: string;
+      oAuthAPIError?: OAuthAPIError;
     };
 
 export async function getWorkspaceOAuthConnectionIdForMCPServer(
@@ -76,16 +84,13 @@ export async function getWorkspaceOAuthConnectionIdForMCPServer(
 export async function getWorkspaceOAuthConnectionForMCPServer(
   auth: Authenticator,
   mcpServerId: string
-): Promise<Result<OAuthConnectionType, OAuthError>> {
+): Promise<Result<OAuthConnectionType, WorkspaceOAuthConnectionLookupError>> {
   const oauthConnectionIdRes = await getWorkspaceOAuthConnectionIdForMCPServer(
     auth,
     mcpServerId
   );
   if (oauthConnectionIdRes.isErr()) {
-    return new Err({
-      code: "credential_retrieval_failed",
-      message: oauthConnectionIdRes.error.message,
-    });
+    return new Err(oauthConnectionIdRes.error);
   }
 
   const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
@@ -94,7 +99,7 @@ export async function getWorkspaceOAuthConnectionForMCPServer(
   });
   if (connectionRes.isErr()) {
     return new Err({
-      code: "credential_retrieval_failed",
+      kind: "oauth_metadata_failed",
       message:
         "Failed to get connection metadata: " + connectionRes.error.message,
       oAuthAPIError: connectionRes.error,
@@ -102,6 +107,24 @@ export async function getWorkspaceOAuthConnectionForMCPServer(
   }
 
   return new Ok(connectionRes.value.connection);
+}
+
+/**
+ * Platform Connect may pass mcp_server_id before a workspace connection exists
+ * (first connect). Only that absence is safe to fall through to caller
+ * credentials — Refresh and other lookup failures must not silently use a
+ * caller-supplied client_id with reused workspace secrets.
+ */
+export function shouldFallThroughPlatformWorkspaceReuse({
+  useCase,
+  error,
+}: {
+  useCase: OAuthUseCase;
+  error: WorkspaceOAuthConnectionLookupError;
+}): boolean {
+  return (
+    useCase === "platform_actions" && error.kind === "connection_not_found"
+  );
 }
 
 // Verify that the workspace-level OAuth connection for this MCP server exists and still
