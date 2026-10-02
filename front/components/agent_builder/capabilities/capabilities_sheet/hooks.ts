@@ -13,15 +13,11 @@ import { getDefaultMCPAction } from "@app/components/shared/tools_picker/formDef
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
-import { useSendNotification } from "@app/hooks/useNotification";
 import { nameToStorageFormat } from "@app/lib/actions/default_mcp_action";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import {
-  useSearchSkillsInfinite,
-  useSkillWithRelations,
-} from "@app/lib/swr/skill_configurations";
-import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
+import { useSearchSkillsInfinite } from "@app/lib/swr/skill_configurations";
+import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useMemo, useState } from "react";
 
@@ -48,7 +44,6 @@ export const useSkillSelection = ({
     setLocalSelectedSkills([]);
   }, []);
 
-  const sendNotification = useSendNotification();
   const {
     skills: searchSkills,
     resolvedSearchTerm,
@@ -78,10 +73,14 @@ export const useSkillSelection = ({
     );
   }, []);
 
-  const addSkill = useCallback(
-    (skill: SkillWithoutInstructionsAndToolsType) => {
+  const handleSkillToggle = (skill: SkillListItemType) => {
+    if (selectedSkillIds.has(skill.sId)) {
+      setLocalSelectedSkills((prev) =>
+        prev.filter((selected) => selected.sId !== skill.sId)
+      );
+    } else {
       setLocalSelectedSkills((prev) => [
-        ...prev.filter((selected) => selected.sId !== skill.sId),
+        ...prev,
         {
           sId: skill.sId,
           name: skill.name,
@@ -91,35 +90,6 @@ export const useSkillSelection = ({
           canWrite: skill.canWrite,
         },
       ]);
-    },
-    []
-  );
-  const { fetchSkillWithRelations, isLoading: isSelectingSkill } =
-    useSkillWithRelations(owner, {
-      onSuccess: ({ skill }) => {
-        if (!disabled) {
-          addSkill(skill);
-        }
-      },
-      onError: () =>
-        sendNotification({
-          type: "error",
-          title: "Could not load skill",
-          description: "Please try again.",
-        }),
-    });
-
-  const handleSkillToggle = (skillId: string) => {
-    if (isSelectingSkill) {
-      return;
-    }
-    if (selectedSkillIds.has(skillId)) {
-      setLocalSelectedSkills((previous) =>
-        previous.filter((skill) => skill.sId !== skillId)
-      );
-    } else {
-      // The form needs the skill's current edit permission, not just listing metadata.
-      void fetchSkillWithRelations(skillId, { throwOnError: false });
     }
   };
 
@@ -129,7 +99,6 @@ export const useSkillSelection = ({
     handleSkillToggle,
     filteredSkills,
     isSkillsLoading,
-    isSelectingSkill,
     resolvedSearchQuery: resolvedSearchTerm ?? "",
     skillPagination: {
       hasMore,

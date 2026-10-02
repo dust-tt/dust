@@ -13,9 +13,8 @@ import { useMemo, useState } from "react";
 
 interface CapabilitiesSelectionPageProps {
   onStateChange: (state: SheetState) => void;
-  handleSkillToggle: (skillId: string) => void;
+  handleSkillToggle: (skill: SkillListItemType) => void;
   filteredSkills: SkillListItemType[];
-  isSelectingSkill: boolean;
   skillPagination: {
     hasMore: boolean;
     loadMore: () => void;
@@ -43,7 +42,6 @@ export function CapabilitiesSelectionPageContent({
   selectedSkillIds,
   setSearchQuery,
   isCapabilitiesLoading,
-  isSelectingSkill,
   skillPagination,
   filteredMCPServerViews,
   selectedMCPServerViewIds,
@@ -94,8 +92,6 @@ export function CapabilitiesSelectionPageContent({
 
       <CapabilityFilterButtons filter={filter} setFilter={setFilter} />
 
-      {isSelectingSkill && <Spinner size="sm" />}
-
       {/* Keep the displayed results while the next search is loading. */}
       {isCapabilitiesLoading && !hasAnyResults ? (
         <div className="flex h-40 items-center justify-center">
@@ -133,7 +129,7 @@ export function CapabilitiesSelectionPageContent({
                     key={skill.sId}
                     skill={skill}
                     isSelected={selectedSkillIds.has(skill.sId)}
-                    onClick={() => handleSkillToggle(skill.sId)}
+                    onClick={() => handleSkillToggle(skill)}
                     onMoreInfoClick={() => fetchSkillWithRelations(skill.sId)}
                   />
                 ))}

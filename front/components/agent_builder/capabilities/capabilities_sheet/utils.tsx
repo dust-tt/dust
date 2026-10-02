@@ -185,8 +185,7 @@ export function useCapabilitiesPageAndFooter({
             selectedCapabilitiesCount > 0
               ? `Add ${selectedCapabilitiesCount} ${selectedCapabilitiesCount === 1 ? "capability" : "capabilities"}`
               : "Add capabilities",
-          disabled:
-            selectedCapabilitiesCount === 0 || skillSelection.isSelectingSkill,
+          disabled: selectedCapabilitiesCount === 0,
           onClick: handleCapabilitiesSelectionSave,
           variant: "primary",
         },

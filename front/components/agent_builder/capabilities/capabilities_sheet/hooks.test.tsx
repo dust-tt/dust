@@ -9,18 +9,11 @@ import { describe, expect, it, vi } from "vitest";
 
 const owner = LightWorkspaceFactory.build();
 
-function renderSelection(alreadyAddedSkillIds = new Set<string>()) {
-  const fetcher = vi.fn(async () => ({
-    skill: {
-      sId: "first",
-      name: "First skill",
-      userFacingDescription: "",
-      icon: null,
-      availability: "workspace_users",
-      editedBy: 1,
-      canWrite: false,
-    },
-  }));
+function renderSelection(
+  alreadyAddedSkillIds = new Set<string>(),
+  canWrite = false
+) {
+  const fetcher = vi.fn(async () => ({}));
   const fetcherWithBody = vi.fn<FetcherWithBodyFn>(async ([, body]) => {
     const offset = "offset" in body ? body.offset : 0;
     const query = "query" in body ? body.query : "";
@@ -37,6 +30,7 @@ function renderSelection(alreadyAddedSkillIds = new Set<string>()) {
           userFacingDescription: "",
           icon: null,
           availability: "workspace_users",
+          canWrite,
         },
       ],
       hasMore: !query && !offset,
@@ -68,8 +62,14 @@ function renderSelection(alreadyAddedSkillIds = new Set<string>()) {
 }
 
 describe("useSkillSelection", () => {
-  it("appends pages, keeps selected skills, and reads their current edit permission", async () => {
-    const { result, fetcher, fetcherWithBody } = renderSelection();
+  it.each([
+    true,
+    false,
+  ])("appends pages and selects using canWrite=%s without fetching details", async (canWrite) => {
+    const { result, fetcher, fetcherWithBody } = renderSelection(
+      new Set(),
+      canWrite
+    );
     await waitFor(() =>
       expect(result.current.filteredSkills.map((skill) => skill.sId)).toEqual([
         "first",
@@ -77,15 +77,12 @@ describe("useSkillSelection", () => {
     );
     expect(fetcher).not.toHaveBeenCalled();
 
-    act(() => result.current.handleSkillToggle("first"));
-    await waitFor(() =>
-      expect(result.current.localSelectedSkills).toEqual([
-        expect.objectContaining({ sId: "first", canWrite: false }),
-      ])
-    );
-    expect(fetcher).toHaveBeenCalledWith(
-      `/api/w/${owner.sId}/skills/first?withRelations=true`
-    );
+    const [first] = result.current.filteredSkills;
+    act(() => result.current.handleSkillToggle(first));
+    expect(result.current.localSelectedSkills).toEqual([
+      expect.objectContaining({ sId: "first", canWrite }),
+    ]);
+    expect(fetcher).not.toHaveBeenCalled();
 
     act(() => result.current.skillPagination.loadMore());
     await waitFor(() =>
@@ -100,7 +97,7 @@ describe("useSkillSelection", () => {
       expect.objectContaining({ offset: 100, limit: 100 }),
       "POST",
     ]);
-    act(() => result.current.handleSkillToggle("first"));
+    act(() => result.current.handleSkillToggle(first));
     expect(result.current.localSelectedSkills).toEqual([]);
     act(() => result.current.skillPagination.loadMore());
     expect(fetcherWithBody).toHaveBeenCalledTimes(2);
