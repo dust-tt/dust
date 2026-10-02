@@ -16,6 +16,11 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/notion/webhook_config.
 const app = workspaceApp();
 
+/**
+ * @cc [owner:davidebbo,label:security;api] webhook-config-admin-only
+ * The response holds the Notion webhook signing secret and the Notion workspace id. Callers
+ * without the `admin` verb on the data source MUST receive a 403 before connectors is queried.
+ */
 /** @ignoreswagger */
 app.get(
   "/",
@@ -31,6 +36,17 @@ app.get(
         api_error: {
           type: "data_source_not_found",
           message: "The data source you requested was not found.",
+        },
+      });
+    }
+
+    if (!auth.can("admin", dataSource)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message:
+            "Only workspace admins can access the Notion webhook configuration.",
         },
       });
     }
