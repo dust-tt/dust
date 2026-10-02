@@ -1,4 +1,4 @@
-import { ManageAgentsPage } from "@app/components/pages/builder/agents/SearchAgentsPage";
+import { ManageAgentsPage } from "@app/components/pages/builder/agents/ManageAgentsPage";
 import {
   makeColumnsForAssistants,
   PokeAgentActions,

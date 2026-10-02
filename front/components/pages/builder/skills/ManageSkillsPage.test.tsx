@@ -1,4 +1,4 @@
-import { ManageSkillsPage } from "@app/components/pages/builder/skills/SearchSkillsPage";
+import { ManageSkillsPage } from "@app/components/pages/builder/skills/ManageSkillsPage";
 import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { AuthContext } from "@app/lib/auth/AuthContext";

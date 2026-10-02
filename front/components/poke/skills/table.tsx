@@ -1,4 +1,4 @@
-import { ManageSkillsPage } from "@app/components/pages/builder/skills/SearchSkillsPage";
+import { ManageSkillsPage } from "@app/components/pages/builder/skills/ManageSkillsPage";
 import { CreateSkillSuggestionSheet } from "@app/components/poke/skills/CreateSkillSuggestionSheet";
 import { useAppRouter } from "@app/lib/platform";
 import type { LightWorkspaceType } from "@app/types/user";
