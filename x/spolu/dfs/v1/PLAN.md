@@ -32,7 +32,7 @@
 - [x] Run updated two-mount Linux tests: cached access after edits/revocation, authorized misses,
   remote unlink/deferred failure, local invalidations, conflicts across handles, partial-page writes,
   append, truncate, and fsync/close error propagation. Linux tests and the full native suite pass.
-- [ ] Run jd's benchmark as **dfs v1 [client optimization]** and publish results in `bench/RESULTS.md`.
+- [x] Run jd's benchmark as **dfs v1 [client optimization]** and publish results in `bench/RESULTS.md`.
   Start with fresh server/client caches, then warm repeats; record cache settings and FUSE/RPC counts.
   Measure foreground latency, client writeback to server visibility, and remaining SlateDB drain
   separately. Finish client writeback before measuring persistence drain.

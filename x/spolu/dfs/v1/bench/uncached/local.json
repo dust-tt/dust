@@ -3,168 +3,168 @@
     "metadata",
     "scandir + stat (100 dirs, 10,000 files)",
     "first",
-    "152.32",
+    "153.14",
     "OK"
   ],
   [
     "metadata",
     "scandir + stat (100 dirs, 10,000 files)",
     "warm",
-    "155.75",
+    "143.07",
     "OK"
   ],
   [
     "metadata",
     "rg --files (10,000 files)",
     "first",
-    "7.14",
+    "5.95",
     "OK"
   ],
   [
     "metadata",
     "rg --files (10,000 files)",
     "warm",
-    "6.98",
+    "7.00",
     "OK"
   ],
   [
     "metadata",
     "open + fstat + close (10,000 files)",
     "first",
-    "51.91",
+    "48.63",
     "OK"
   ],
   [
     "metadata",
     "open + fstat + close (10,000 files)",
     "warm",
-    "55.09",
+    "49.08",
     "OK"
   ],
   [
     "metadata",
     "stat missing (256 paths)",
     "first",
-    "2.73",
+    "2.41",
     "OK"
   ],
   [
     "metadata",
     "stat missing (256 paths)",
     "warm",
-    "1.95",
+    "1.89",
     "OK"
   ],
   [
     "page cache",
     "rg no-match scan (10,000 files, 177.5 MB)",
     "first",
-    "25.92",
+    "18.97",
     "OK"
   ],
   [
     "page cache",
     "rg no-match scan (10,000 files, 177.5 MB)",
     "warm",
-    "20.23",
+    "17.70",
     "OK"
   ],
   [
     "search",
     "rg rare literal (10,000 files, 4 matches)",
     "first",
-    "23.17",
+    "18.33",
     "OK"
   ],
   [
     "search",
     "rg rare literal (10,000 files, 4 matches)",
     "warm",
-    "20.40",
+    "18.33",
     "OK"
   ],
   [
     "path pruning",
     "rg branch glob (981 candidate files)",
     "first",
-    "13.62",
+    "12.50",
     "OK"
   ],
   [
     "path pruning",
     "rg branch glob (981 candidate files)",
     "warm",
-    "13.18",
+    "11.68",
     "OK"
   ],
   [
     "path pruning",
     "rg depth-10 subtree (136 files)",
     "first",
-    "7.13",
+    "6.72",
     "OK"
   ],
   [
     "path pruning",
     "rg depth-10 subtree (136 files)",
     "warm",
-    "6.68",
+    "4.43",
     "OK"
   ],
   [
     "page cache",
     "open + read + SHA-256 (10,000 files, 177.5 MB)",
     "first",
-    "158.67",
+    "173.22",
     "OK"
   ],
   [
     "page cache",
     "open + read + SHA-256 (10,000 files, 177.5 MB)",
     "warm",
-    "154.81",
+    "169.13",
     "OK"
   ],
   [
     "random I/O",
     "open + pread tail (256 files x 4 KiB)",
     "first",
-    "1.87",
+    "1.96",
     "OK"
   ],
   [
     "random I/O",
     "open + pread tail (256 files x 4 KiB)",
     "warm",
-    "1.61",
+    "1.56",
     "OK"
   ],
   [
     "write",
     "create + write (32 x 32 KiB files)",
     "once",
-    "0.73",
+    "0.63",
     "OK"
   ],
   [
     "file sync",
     "fsync (32 files)",
     "once",
-    "19.72",
+    "19.43",
     "OK"
   ],
   [
     "write",
     "close (32 files)",
     "once",
-    "0.03",
+    "0.04",
     "OK"
   ],
   [
     "write",
     "unlink (32 files)",
     "once",
-    "0.23",
+    "0.24",
     "OK"
   ]
 ]
