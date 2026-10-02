@@ -176,13 +176,11 @@ const SkillBuilderSlashCommandDropdownInner = forwardRef<
           ref={subMenuRef}
           activeFrame={activeFrame}
           clientRect={clientRect}
-          editor={editor}
           onBack={() => pop(range)}
           onClose={onClose}
           onSelect={handleAttachContextSelect}
           owner={owner}
           query={query}
-          range={range}
           useCase="skill-builder"
         />
       );

@@ -254,13 +254,11 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
           ref={subMenuRef}
           clientRect={clientRect}
           conversationId={conversationIdRef?.current ?? null}
-          editor={editor}
           onClose={onClose}
           onRootSectionSelect={command}
           onSelect={handleAttachContextSelect}
           owner={owner}
           query={query}
-          range={range}
           rootSection={
             uploadItems.length > 0
               ? { label: ATTACH_ONLY_FILES_SECTION_LABEL, items: uploadItems }
@@ -279,13 +277,11 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
           activeFrame={activeFrame}
           clientRect={clientRect}
           conversationId={conversationIdRef?.current ?? null}
-          editor={editor}
           onBack={() => pop(range)}
           onClose={onClose}
           onSelect={handleAttachContextSelect}
           owner={owner}
           query={subMenuQuery}
-          range={range}
           spaceId={spaceIdRef.current ?? null}
           useCase="conversation-input"
         />
@@ -298,13 +294,11 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
           ref={subMenuRef}
           activeFrame={activeFrame}
           clientRect={clientRect}
-          editor={editor}
           onBack={() => pop(range)}
           onClose={onClose}
           onSelect={handleModelSelect}
           owner={owner}
           query={subMenuQuery}
-          range={range}
         />
       );
     }

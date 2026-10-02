@@ -4,6 +4,8 @@ import {
   CapabilitySetupDialog,
 } from "@app/components/assistant/CapabilitiesPicker";
 import { InputBarModelPicker } from "@app/components/assistant/conversation/input_bar/InputBarModelPicker";
+import type { InputBarPlusMenuSlashMenu } from "@app/components/assistant/conversation/input_bar/InputBarPlusMenu";
+import { InputBarPlusMenu } from "@app/components/assistant/conversation/input_bar/InputBarPlusMenu";
 import type { InputBarAction } from "@app/components/assistant/conversation/input_bar/inputBarActions";
 import {
   INPUT_BAR_PILL_HOVER_CLASSNAME,
@@ -35,7 +37,6 @@ import {
   cn,
   Icon,
   InfoCircle,
-  Plus,
   Robot,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -78,6 +79,8 @@ interface InputBarButtonsProps {
   user: UserType | null;
   onAgentPickerOpenChange?: (open: boolean) => void;
   onCapabilitiesPickerOpenChange?: (open: boolean) => void;
+  onPlusMenuOpenChange?: (open: boolean) => void;
+  slashMenu: InputBarPlusMenuSlashMenu;
 }
 
 // The pill for the selected agent, with a notice when the default agent had to be replaced.
@@ -295,7 +298,7 @@ function InputBarHiddenFileInput({
   );
 }
 
-export const InputBarButtons = React.memo(function InputBarButtons({
+export function InputBarButtons({
   actions,
   allAgents,
   buttonSize,
@@ -321,11 +324,11 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   user,
   onAgentPickerOpenChange,
   onCapabilitiesPickerOpenChange,
+  onPlusMenuOpenChange,
+  slashMenu,
 }: InputBarButtonsProps) {
   const isExtension = clientType === "extension";
-  // The "+" opens the slash menu wherever the composer has one. Without capabilities or
-  // attachments there is no "+" at all; the extension composer's own "+" lives in the container.
-  const shouldPlusOpenSlashCommand = getInputBarSlashMenuMode(actions) !== null;
+  const shouldShowPlusMenu = getInputBarSlashMenuMode(actions) !== null;
 
   const agentButton = (actions.includes("agents-list") ||
     actions.includes("agents-list-with-actions")) && (
@@ -391,22 +394,16 @@ export const InputBarButtons = React.memo(function InputBarButtons({
           )}
         </>
       ) : (
-        shouldPlusOpenSlashCommand && (
-          <Button
-            variant="ghost-secondary"
-            icon={Plus}
-            size={buttonSize}
+        shouldShowPlusMenu && (
+          <InputBarPlusMenu
+            buttonSize={buttonSize}
             disabled={isInputDisabled}
-            isRounded
-            tooltip="More"
-            className={cn(
-              INPUT_BAR_PILL_SURFACE_CLASSNAME,
-              INPUT_BAR_PILL_HOVER_CLASSNAME
-            )}
-            onClick={() => editorService.openSlashCommand()}
+            onOpenChange={onPlusMenuOpenChange}
+            owner={owner}
+            slashMenu={slashMenu}
           />
         )
       )}
     </>
   );
-});
+}

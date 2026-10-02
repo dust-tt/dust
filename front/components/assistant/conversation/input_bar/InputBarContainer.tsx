@@ -981,7 +981,9 @@ const InputBarContainer = ({
     },
     [setOverlayOpen]
   );
-
+  const handlePlusMenuOpenChange = (open: boolean) => {
+    setOverlayOpen("plus-menu", open);
+  };
   useEffect(() => {
     // If an attachment disappears from the uploader, remove its chip from the editor
     const currentPastedIds = new Set(
@@ -1809,6 +1811,21 @@ const InputBarContainer = ({
                       onCapabilitiesPickerOpenChange={
                         handleCapabilitiesPickerOpenChange
                       }
+                      onPlusMenuOpenChange={handlePlusMenuOpenChange}
+                      slashMenu={{
+                        conversationIdRef,
+                        editorRef,
+                        includeAttachKnowledgeRef,
+                        includePickModelRef,
+                        includeSelectSpacesRef,
+                        onDetailsRef,
+                        onModelSelectRef,
+                        onNodeSelectRef,
+                        onSelectRef,
+                        slashCommandsRef,
+                        slashMenuModeRef,
+                        spaceIdRef,
+                      }}
                     />
                   </div>
                 )}
