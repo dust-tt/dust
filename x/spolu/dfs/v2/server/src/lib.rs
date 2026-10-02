@@ -10,6 +10,7 @@ pub mod network;
 mod read;
 pub mod search;
 pub mod storage;
+pub mod transport;
 
 pub struct State {
     pub storage: storage::Storage,

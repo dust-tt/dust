@@ -24,11 +24,12 @@ def identity(work, kind='test'):
     return prefix, key, key_path
 
 
-def start(work, phase, prefix, key_path):
+def start(work, phase, prefix, key_path, es_url=None):
     path = work / f'{phase}-server.log'
     with path.open('w') as log:
         process = subprocess.Popen(['/target/release/dfs-server-v2', '--listen', '127.0.0.1:0',
-            '--server-key-file', str(key_path), '--fdb-prefix', prefix, '--es-index', prefix],
+            '--server-key-file', str(key_path), '--fdb-prefix', prefix, '--es-index', prefix,
+            *(['--es-url', es_url] if es_url else [])],
             stdout=log, stderr=log)
     deadline = time.monotonic() + 30
     while time.monotonic() < deadline:

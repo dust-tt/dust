@@ -44,6 +44,7 @@ services:
       CARGO_PROFILE_DEV_DEBUG: "0"
     volumes:
       - ../..:/dfs
+      - ../../../../jd/filesystem-benchmark:/benchmark:ro
       - fdb-data:/var/fdb:ro
       - target:/target
       - cargo:/usr/local/cargo/registry
