@@ -68,7 +68,7 @@ export interface DataTableProps<TData extends TBaseData> {
   /** Displays the row count as a capped value (e.g. "1000+") in the pagination. */
   rowCountIsCapped?: boolean;
   /** TanStack Table column definitions. */
-  columns: ColumnDef<TData, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
+  columns: ColumnDef<TData, any>[];
   className?: string;
   widthClassName?: string;
   /** Text filter value applied to filterColumn. */
@@ -222,7 +222,7 @@ function useControlledUpdater<T>(
 
 interface DataTableInstanceOptions<TData extends TBaseData> {
   data: TData[];
-  columns: ColumnDef<TData, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
+  columns: ColumnDef<TData, any>[];
   totalRowCount?: number;
   filter?: string;
   filterColumn?: string;

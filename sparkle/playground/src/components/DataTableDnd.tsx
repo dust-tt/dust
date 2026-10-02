@@ -56,7 +56,6 @@ import { breakpoints, useWindowSize } from "@sparkle/components/WindowUtility";
 const cellHeight = "h-12";
 
 declare module "@tanstack/react-table" {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData, TValue> {
     className?: string;
     tooltip?: string;
@@ -97,7 +96,7 @@ interface DataTableProps<TData extends TBaseData> {
   data: TData[];
   totalRowCount?: number;
   rowCountIsCapped?: boolean;
-  columns: ColumnDef<TData, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
+  columns: ColumnDef<TData, any>[];
   className?: string;
   widthClassName?: string;
   filter?: string;
@@ -777,7 +776,7 @@ DataTable.Header = function Header({
 
 interface HeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
   children?: ReactNode;
-  column: Column<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  column: Column<any>;
 }
 
 DataTable.Head = function Head({
@@ -966,7 +965,6 @@ const renderRegularItem = (
   index: number,
   onItemClick?: () => void
 ) => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { kind, ...itemProps } = item;
   return (
     <DropdownMenuItem
@@ -1042,7 +1040,7 @@ DataTable.MoreButton = function MoreButton({
 
 interface CellProps extends React.HTMLAttributes<HTMLTableCellElement> {
   children: ReactNode;
-  column: Column<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  column: Column<any>;
 }
 
 DataTable.Cell = function Cell({

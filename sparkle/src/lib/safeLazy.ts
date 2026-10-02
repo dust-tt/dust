@@ -77,7 +77,6 @@ interface SafeLazyOptions {
   canReload?: () => boolean;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function safeLazy<T extends ComponentType<any>>(
   factory: () => Promise<{ default: T }>,
   options?: SafeLazyOptions

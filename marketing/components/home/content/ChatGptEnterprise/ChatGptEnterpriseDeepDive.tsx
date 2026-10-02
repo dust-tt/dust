@@ -236,7 +236,6 @@ export function ChatGptEnterpriseDeepDive({
                       TRACKING_AREAS.COMPETITIVE,
                       "chatgpt_enterprise_deep_dive_demo",
                       () => {
-                        // eslint-disable-next-line react-hooks/immutability
                         window.location.href = appendUTMParams("/home/contact");
                       }
                     )}

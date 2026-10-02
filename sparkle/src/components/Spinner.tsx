@@ -213,7 +213,6 @@ const isColorArray = (arr: unknown): arr is LottieColorType => {
 };
 
 // Recursively replace color arrays within a (freshly cloned) Lottie object.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const replaceColors = (obj: any, newColor: LottieColorType): any => {
   if (Array.isArray(obj)) {
     return obj.map((item) => replaceColors(item, newColor));

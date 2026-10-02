@@ -110,7 +110,7 @@ export function useMcpServer() {
       setServerId(undefined);
       setIsConnected(false);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- workspace object excluded; workspaceId triggers re-runs.
+    // workspace object excluded; workspaceId triggers re-runs.
   }, [platform.mcp, workspaceId]);
 
   return {

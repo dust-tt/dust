@@ -68,7 +68,6 @@ export const CookieBanner = ({
       aria-labelledby="cookie-banner-heading"
       className={cn(
         "fixed bottom-0 left-0 z-30 max-h-[90vh] w-full overflow-y-auto border-t border-slate-700 bg-slate-900/95 px-4 py-4 shadow-2xl backdrop-blur-sm md:px-8 md:py-5",
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         className || ""
       )}
     >
