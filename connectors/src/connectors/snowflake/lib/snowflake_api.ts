@@ -49,15 +49,12 @@ function quoteSnowflakeIdentifier(identifier: string): string {
   return `"${identifier.replace(/"/g, '""')}"`;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SnowflakeRow = Record<string, any>;
 type SnowflakeRows = Array<SnowflakeRow>;
 
 class InvalidPrivateKeyError extends Error {
   // Keep original error context for logging and debugging
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   cause?: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   constructor(message: string, cause?: any) {
     super(message);
     this.name = "InvalidPrivateKeyError";

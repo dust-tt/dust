@@ -653,9 +653,7 @@ export const getBlockParentMemoized = cacheWithRedis(
   (
     notionAccessToken: string,
     blockId: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
     localLogger: Logger,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
     onProgress?: () => Promise<void>
   ) => {
     return blockId;

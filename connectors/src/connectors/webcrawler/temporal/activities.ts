@@ -204,7 +204,6 @@ function getFirecrawlScrapeOptions<
   ActionSchema extends Action[] | undefined = undefined,
 >(
   webCrawlerConfig: WebCrawlerConfigurationResource
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): ScrapeParams<any, ActionSchema> {
   return {
     onlyMainContent: true,

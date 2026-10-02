@@ -37,11 +37,9 @@ export const MAX_EXCLUDE_KEYWORD_LENGTH = 100;
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface GongConfigurationResource
   extends ReadonlyAttributesType<GongConfigurationModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class GongConfigurationResource extends BaseResource<GongConfigurationModel> {
   static model: ModelStatic<GongConfigurationModel> = GongConfigurationModel;
 
@@ -229,11 +227,9 @@ export type GongUserBlob = Omit<
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface GongUserResource
   extends ReadonlyAttributesType<GongUserModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class GongUserResource extends BaseResource<GongUserModel> {
   static model: ModelStatic<GongUserModel> = GongUserModel;
 
@@ -331,11 +327,9 @@ export class GongUserResource extends BaseResource<GongUserModel> {
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface GongTranscriptResource
   extends ReadonlyAttributesType<GongTranscriptModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
   static model: ModelStatic<GongTranscriptModel> = GongTranscriptModel;
 
