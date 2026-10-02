@@ -13,6 +13,7 @@ import {
 import {
   connectToMCPServer,
   fetchRemoteServerMetaDataByServerId,
+  listAllMCPTools,
 } from "@app/lib/actions/mcp_metadata";
 import { getMCPConnectionAccessToken } from "@app/lib/actions/mcp_oauth_access_token";
 import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
@@ -630,7 +631,18 @@ async function runConnectListToolsCheck(
   const client = connectRes.value;
 
   try {
-    const toolsResult = await client.listTools();
+    const toolsResult = await listAllMCPTools(client);
+    if (toolsResult.isErr()) {
+      return {
+        check: "connect_list_tools",
+        status: "error",
+        duration_ms: Date.now() - startedAt,
+        connection_type: connectionType,
+        oAuthUseCase,
+        error: serializeConnectError(toolsResult.error),
+      };
+    }
+    const tools = toolsResult.value;
     const serverVersion = client.getServerVersion();
 
     return {
@@ -640,9 +652,9 @@ async function runConnectListToolsCheck(
       connection_type: connectionType,
       oAuthUseCase,
       details: {
-        tools_count: toolsResult.tools.length,
+        tools_count: tools.length,
         server_version: serverVersion ?? null,
-        tool_names: toolsResult.tools.map((t) => t.name).slice(0, 20),
+        tool_names: tools.map((t) => t.name).slice(0, 20),
       },
     };
   } catch (error) {

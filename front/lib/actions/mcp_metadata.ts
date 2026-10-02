@@ -4,6 +4,7 @@ import {
   DEFAULT_MCP_ACTION_NAME,
   DEFAULT_MCP_ACTION_VERSION,
   DEFAULT_MCP_SERVER_ICON,
+  MCP_LIST_TOOLS_MAX_PAGES,
   MCP_TOOL_STAKE_LEVELS,
 } from "@app/lib/actions/constants";
 import {
@@ -68,6 +69,7 @@ import type { StreamableHTTPClientTransportOptions } from "@modelcontextprotocol
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
+import type { RequestOptions } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import { McpError } from "@modelcontextprotocol/sdk/types.js";
@@ -927,6 +929,50 @@ export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {
   });
 }
 
+/**
+ * @cc [owner:zmarouf,label:mcp] list-all-tools-follows-cursor
+ * Every `tools/list` request after the first MUST send the previous page's `nextCursor` as
+ * `params.cursor`, and the returned tools MUST be all pages concatenated in server order. Listing
+ * stops when a page has no `nextCursor`.
+ */
+/**
+ * @cc [owner:zmarouf,label:mcp;performance] list-all-tools-bounded
+ * Fetching MUST stop after `MCP_LIST_TOOLS_MAX_PAGES` requests, or as soon as a server returns the
+ * cursor it was just sent, and return an `Err` in both cases. A partial tool list MUST NOT be
+ * returned as `Ok`. Errors thrown by `Client.listTools` propagate unchanged.
+ */
+export async function listAllMCPTools(
+  mcpClient: Client,
+  options?: RequestOptions
+): Promise<Result<Tool[], Error>> {
+  const tools: Tool[] = [];
+  let cursor: string | undefined;
+
+  for (let page = 0; page < MCP_LIST_TOOLS_MAX_PAGES; page++) {
+    const result = await mcpClient.listTools(
+      cursor ? { cursor } : undefined,
+      options
+    );
+    tools.push(...result.tools);
+
+    if (!result.nextCursor) {
+      return new Ok(tools);
+    }
+    if (result.nextCursor === cursor) {
+      return new Err(
+        new Error("MCP server returned the same tools/list cursor twice.")
+      );
+    }
+    cursor = result.nextCursor;
+  }
+
+  return new Err(
+    new Error(
+      `MCP server tools/list exceeded ${MCP_LIST_TOOLS_MAX_PAGES} pages.`
+    )
+  );
+}
+
 export async function fetchRemoteServerMetaDataByURL(
   auth: Authenticator,
   url: string,
@@ -978,8 +1024,11 @@ async function fetchRemoteServerMetaData(
   try {
     const serverVersion = mcpClient.getServerVersion();
 
-    const toolsResult = await mcpClient.listTools();
-    const serverTools = extractMetadataFromTools(toolsResult.tools);
+    const toolsResult = await listAllMCPTools(mcpClient);
+    if (toolsResult.isErr()) {
+      return toolsResult;
+    }
+    const serverTools = extractMetadataFromTools(toolsResult.value);
 
     return new Ok({
       name: serverVersion?.name ?? DEFAULT_MCP_ACTION_NAME,

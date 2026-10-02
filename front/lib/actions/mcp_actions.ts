@@ -59,6 +59,7 @@ import {
   getDustToolMeta,
   isConnectViaClientSideMCPServer,
   isConnectViaMCPServerId,
+  listAllMCPTools,
 } from "@app/lib/actions/mcp_metadata";
 import { MCPOAuthProviderError } from "@app/lib/actions/mcp_oauth_provider";
 import {
@@ -1400,34 +1401,28 @@ async function listToolsForClientSideMCPServer(
   mcpClient: Client,
   config: ClientSideMCPServerConfigurationType
 ): Promise<Result<MCPToolConfigurationType[], Error>> {
-  let allTools: ClientSideMCPToolTypeWithStakeLevel[] = [];
-  let nextPageCursor;
+  const toolsResult = await listAllMCPTools(mcpClient, {
+    timeout: MCP_LIST_TOOLS_TIMEOUT_MS,
+  });
+  if (toolsResult.isErr()) {
+    return toolsResult;
+  }
+  const tools = toolsResult.value;
 
-  // Fetch all tools, handling pagination if supported by the MCP server.
-  do {
-    const { tools, nextCursor } = await mcpClient.listTools(undefined, {
-      timeout: MCP_LIST_TOOLS_TIMEOUT_MS,
+  const dustMetaByTool = new Map(
+    tools.map((t) => [t.name, getDustToolMeta(t._meta)])
+  );
+  const allTools: ClientSideMCPToolTypeWithStakeLevel[] =
+    extractMetadataFromTools(tools).map((tool) => {
+      const dustMeta = dustMetaByTool.get(tool.name);
+      return {
+        ...tool,
+        availability: "manual" as const,
+        stakeLevel: dustMeta?.stake ?? DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL,
+        argumentsRequiringApproval: dustMeta?.argumentsRequiringApproval,
+        ...(dustMeta?.timeoutMs && { timeoutMs: dustMeta.timeoutMs }),
+      };
     });
-
-    nextPageCursor = nextCursor;
-    const dustMetaByTool = new Map(
-      tools.map((t) => [t.name, getDustToolMeta(t._meta)])
-    );
-    allTools = [
-      ...allTools,
-      ...extractMetadataFromTools(tools).map((tool) => {
-        const dustMeta = dustMetaByTool.get(tool.name);
-        return {
-          ...tool,
-          availability: "manual" as const,
-          stakeLevel:
-            dustMeta?.stake ?? DEFAULT_CLIENT_SIDE_MCP_TOOL_STAKE_LEVEL,
-          argumentsRequiringApproval: dustMeta?.argumentsRequiringApproval,
-          ...(dustMeta?.timeoutMs && { timeoutMs: dustMeta.timeoutMs }),
-        };
-      }),
-    ];
-  } while (nextPageCursor);
 
   // Create the configurations directly here.
   const clientSideToolConfigs = makeClientSideMCPToolConfigurations(
@@ -1444,22 +1439,15 @@ export async function listToolsForServerSideMCPServer(
   mcpClient: Client,
   config: ServerSideMCPServerConfigurationType
 ): Promise<Result<MCPToolConfigurationType[], Error>> {
-  let allToolsRaw: MCPToolType[] = [];
-  let nextPageCursor;
-
-  // Fetch all tools, handling pagination if supported by the MCP server.
-  do {
-    const { tools, nextCursor } = await mcpClient.listTools(undefined, {
-      timeout: MCP_LIST_TOOLS_TIMEOUT_MS,
-    });
-    nextPageCursor = nextCursor;
-    allToolsRaw = [
-      ...allToolsRaw,
-      ...extractMetadataFromTools(tools).map((tool) => ({
-        ...tool,
-      })),
-    ];
-  } while (nextPageCursor);
+  const toolsResult = await listAllMCPTools(mcpClient, {
+    timeout: MCP_LIST_TOOLS_TIMEOUT_MS,
+  });
+  if (toolsResult.isErr()) {
+    return toolsResult;
+  }
+  const allToolsRaw: MCPToolType[] = extractMetadataFromTools(
+    toolsResult.value
+  );
 
   if (!isConnectViaMCPServerId(connectionParams)) {
     const rawTools = allToolsRaw.map((tool) => ({
