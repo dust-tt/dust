@@ -29,6 +29,7 @@ export const DEVELOPERS_SEARCH_ENTRIES: AdminSettingEntry[] = [
       ["API key list", "name scope key spaces credits last used status"],
       ["Revoke API key", "revoke"],
       ["Edit monthly cap", "per key credits cap"],
+      ["API Reference", "docs documentation api reference"],
     ],
     "keys"
   ),
@@ -38,6 +39,7 @@ export const DEVELOPERS_SEARCH_ENTRIES: AdminSettingEntry[] = [
     [
       [DEVELOPER_SECRETS_PAGE_TITLE, "env.secrets dust apps mcp servers"],
       [CREATE_SECRET_LABEL, "secret name value"],
+      ["API Reference", "docs documentation secrets api reference"],
     ],
     "secrets"
   ),

@@ -17,6 +17,7 @@ import { VOICE_TRANSCRIPTION_LABEL } from "@app/components/workspace/settings/Vo
 import { WORKSPACE_ANALYTICS_LABEL } from "@app/components/workspace/settings/WorkspaceAnalyticsToggle";
 import { WORKSPACE_DEFAULT_AGENT_LABEL } from "@app/components/workspace/settings/WorkspaceDefaultAgentPicker";
 import { WORKSPACE_LOCALE_LABEL } from "@app/components/workspace/settings/WorkspaceLocalePicker";
+import { WORKSPACE_NAME_LABEL } from "@app/components/workspace/settings/WorkspaceNameEditor";
 import type { AdminSettingEntry } from "@app/lib/admin/adminSearchTypes";
 import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
 import type { AdminSectionId } from "@app/lib/admin/adminSectionIds";
@@ -76,6 +77,10 @@ function capabilityEntries(): AdminSettingEntry[] {
  * live under Integrations; roles under Members; audit emit under Security.
  */
 export const GOVERNANCE_SEARCH_ENTRIES: AdminSettingEntry[] = [
+  // Always mounted above the tabs (no `?tab=`).
+  ...adminSearchEntries(PAGE, G.workspaceName, [
+    [WORKSPACE_NAME_LABEL, "rename workspace organization name"],
+  ]),
   ...capabilityEntries(),
   ...adminSearchEntries(
     PAGE,

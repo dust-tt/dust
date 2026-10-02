@@ -174,6 +174,8 @@ export const adminRoutes: RouteObject[] = [
       },
       { path: "integrations", element: <IntegrationsPage /> },
       { path: "branding", element: <WorkspaceBrandingPage /> },
+      // Legacy short URL → Branding.
+      { path: "brand", element: <WorkspaceRedirect to="branding" /> },
       { path: "developers", element: <DevelopersPage /> },
       // Legacy developer URLs → new tabbed pages.
       {

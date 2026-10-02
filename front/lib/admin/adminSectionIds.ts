@@ -19,6 +19,8 @@ export const ADMIN_SECTION_IDS = {
     pods: "pods",
     features: "features",
     audit: "audit",
+    // Rendered above the Governance tabs (always mounted).
+    workspaceName: "workspace-name",
   },
   identity: {
     domain: "domain",
@@ -33,6 +35,8 @@ export const ADMIN_SECTION_IDS = {
     members: "usage-members",
     groups: "usage-groups",
     topUps: "usage-top-ups",
+    // Header CTA / credit pool purchase surface (always mounted on Credits).
+    addCredits: "usage-add-credits",
     spendingPolicies: "usage-spending-policies",
     costManagement: "usage-cost-management",
     programmatic: "usage-programmatic",
@@ -50,6 +54,7 @@ export const ADMIN_SECTION_IDS = {
   },
   analytics: {
     consumption: "analytics-consumption",
+    export: "analytics-export",
   },
   billing: {
     information: "billing-information",
@@ -61,9 +66,6 @@ export const ADMIN_SECTION_IDS = {
   },
   apiKeys: {
     keys: "api-keys",
-  },
-  creditsUsage: {
-    credits: "credits-usage",
   },
   automations: {
     triggers: "automations-triggers",
@@ -120,9 +122,6 @@ export type SubscriptionSectionId =
 export type ApiKeysSectionId =
   (typeof ADMIN_SECTION_IDS.apiKeys)[keyof typeof ADMIN_SECTION_IDS.apiKeys];
 
-export type CreditsUsageSectionId =
-  (typeof ADMIN_SECTION_IDS.creditsUsage)[keyof typeof ADMIN_SECTION_IDS.creditsUsage];
-
 export type AutomationsSectionId =
   (typeof ADMIN_SECTION_IDS.automations)[keyof typeof ADMIN_SECTION_IDS.automations];
 
@@ -150,7 +149,6 @@ export type AdminSectionId =
   | BillingSectionId
   | SubscriptionSectionId
   | ApiKeysSectionId
-  | CreditsUsageSectionId
   | AutomationsSectionId
   | AppCredentialsSectionId
   | SecretsSectionId
@@ -171,7 +169,6 @@ export function allAdminSectionIds(): AdminSectionId[] {
     ...Object.values(ADMIN_SECTION_IDS.billing),
     ...Object.values(ADMIN_SECTION_IDS.subscription),
     ...Object.values(ADMIN_SECTION_IDS.apiKeys),
-    ...Object.values(ADMIN_SECTION_IDS.creditsUsage),
     ...Object.values(ADMIN_SECTION_IDS.automations),
     ...Object.values(ADMIN_SECTION_IDS.appCredentials),
     ...Object.values(ADMIN_SECTION_IDS.secrets),

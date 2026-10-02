@@ -263,7 +263,9 @@ export function AnalyticsConsumptionPage() {
           </AdminSectionAnchor>
         </TabsContent>
         <TabsContent value="export" className="flex flex-col gap-4">
-          <AnalyticsExportPanel workspaceId={owner.sId} />
+          <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.analytics.export}>
+            <AnalyticsExportPanel workspaceId={owner.sId} />
+          </AdminSectionAnchor>
         </TabsContent>
       </Tabs>
     </AdminPageContainer>

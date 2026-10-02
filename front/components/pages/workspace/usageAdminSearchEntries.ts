@@ -28,16 +28,21 @@ const SETTINGS_TAB = "settings";
  * Models › Access tiers. Self-improving spend caps sit in programmatic settings.
  */
 export const USAGE_SEARCH_ENTRIES: AdminSettingEntry[] = [
-  ...adminSearchEntries(PAGE, U.members, [
-    ["Members usage", "seats spend limit upgrade requests"],
+  ...adminSearchEntries(
+    PAGE,
+    U.members,
     [
-      "Members model tiers",
-      "model tiers member access tier per user standard advanced frontier",
+      ["Members usage", "seats spend limit upgrade requests"],
+      [
+        "Members model tiers",
+        "model tiers member access tier per user standard advanced frontier",
+      ],
+      ["Upgrade requests", "review member requests deny"],
+      ["Change seat type", "upgrade seat assign seat remove seat"],
+      ["Edit spend limit", "override member limit"],
     ],
-    ["Upgrade requests", "review member requests deny"],
-    ["Change seat type", "upgrade seat assign seat remove seat"],
-    ["Edit spend limit", "override member limit"],
-  ]),
+    "members"
+  ),
   ...adminSearchEntries(
     PAGE,
     U.groups,
@@ -62,6 +67,11 @@ export const USAGE_SEARCH_ENTRIES: AdminSettingEntry[] = [
     ],
     "top-ups"
   ),
+  // Always mounted above the Credits tabs (no `?tab=`).
+  ...adminSearchEntries(PAGE, U.addCredits, [
+    ["Add credits", "buy top-up purchase additional credits"],
+    ["Purchase additional credits", "buy top-up programmatic"],
+  ]),
   ...adminSearchEntries(
     PAGE,
     U.spendingPolicies,
@@ -83,6 +93,8 @@ export const USAGE_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     U.programmatic,
     [
+      // Legacy Programmatic Usage page keywords, retargeted here.
+      ["Programmatic Usage", "credits usage api keys triggers"],
       [
         PROGRAMMATIC_MONTHLY_LIMIT_LABEL,
         "api keys triggers block programmatic access",

@@ -72,12 +72,18 @@ export const PEOPLE_SEARCH_ENTRIES: AdminSettingEntry[] = [
   ...adminSearchEntries(
     PAGE,
     G.roles,
-    GROUP_GRANTABLE_ROLES.map((role) => [
-      displayRoleCapitalized(role),
-      role === "admin"
-        ? "full administrative control role groups"
-        : "members groups roles analytics",
-    ]),
+    [
+      ["Roles", "role provisioning grantable roles groups"],
+      ...GROUP_GRANTABLE_ROLES.map(
+        (role) =>
+          [
+            displayRoleCapitalized(role),
+            role === "admin"
+              ? "full administrative control role groups"
+              : "members groups roles analytics",
+          ] as [string, string]
+      ),
+    ],
     "roles"
   ),
   ...billingAndSecurityEntries(),

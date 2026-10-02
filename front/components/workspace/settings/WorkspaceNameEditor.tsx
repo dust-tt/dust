@@ -1,3 +1,5 @@
+import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { clientFetch } from "@app/lib/egress/client";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -14,6 +16,8 @@ import {
   SheetTrigger,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
+
+export const WORKSPACE_NAME_LABEL = "Workspace Name";
 
 export function WorkspaceNameEditor({ owner }: { owner: WorkspaceType }) {
   const [disable, setDisabled] = useState(true);
@@ -77,49 +81,51 @@ export function WorkspaceNameEditor({ owner }: { owner: WorkspaceType }) {
   };
 
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex-1">
-        <Page.H variant="h5">Workspace Name</Page.H>
-        <Page.P variant="secondary">{owner.name}</Page.P>
+    <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.governance.workspaceName}>
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <Page.H variant="h5">{WORKSPACE_NAME_LABEL}</Page.H>
+          <Page.P variant="secondary">{owner.name}</Page.P>
+        </div>
+        <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+          <SheetTrigger asChild>
+            <Button variant="outline" label="Edit" icon={Edit04} />
+          </SheetTrigger>
+          <SheetContent>
+            <SheetHeader>
+              <SheetTitle>Edit Workspace Name</SheetTitle>
+            </SheetHeader>
+            <SheetContainer>
+              <div className="mt-6 flex flex-col gap-4">
+                <Page.P>
+                  Think GitHub repository names, short and memorable.
+                </Page.P>
+                <Input
+                  name="name"
+                  placeholder="Workspace name"
+                  value={workspaceName}
+                  onChange={(e) => setWorkspaceName(e.target.value)}
+                  message={workspaceNameError}
+                  messageStatus="error"
+                />
+              </div>
+            </SheetContainer>
+            <SheetFooter
+              leftButtonProps={{
+                onClick: handleCancel,
+                variant: "outline",
+                label: "Cancel",
+              }}
+              rightButtonProps={{
+                onClick: handleUpdateWorkspace,
+                variant: "primary",
+                label: updating ? "Saving..." : "Save",
+                disabled: disable || updating,
+              }}
+            />
+          </SheetContent>
+        </Sheet>
       </div>
-      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-        <SheetTrigger asChild>
-          <Button variant="outline" label="Edit" icon={Edit04} />
-        </SheetTrigger>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>Edit Workspace Name</SheetTitle>
-          </SheetHeader>
-          <SheetContainer>
-            <div className="mt-6 flex flex-col gap-4">
-              <Page.P>
-                Think GitHub repository names, short and memorable.
-              </Page.P>
-              <Input
-                name="name"
-                placeholder="Workspace name"
-                value={workspaceName}
-                onChange={(e) => setWorkspaceName(e.target.value)}
-                message={workspaceNameError}
-                messageStatus="error"
-              />
-            </div>
-          </SheetContainer>
-          <SheetFooter
-            leftButtonProps={{
-              onClick: handleCancel,
-              variant: "outline",
-              label: "Cancel",
-            }}
-            rightButtonProps={{
-              onClick: handleUpdateWorkspace,
-              variant: "primary",
-              label: updating ? "Saving..." : "Save",
-              disabled: disable || updating,
-            }}
-          />
-        </SheetContent>
-      </Sheet>
-    </div>
+    </AdminSectionAnchor>
   );
 }

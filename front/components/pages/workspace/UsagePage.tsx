@@ -1141,9 +1141,23 @@ export function UsagePage() {
 
           {isCreditPriced ? (
             <div className="flex flex-col items-stretch gap-4">
-              <div className="flex justify-end">{topUpButton}</div>
+              <AdminSectionAnchor
+                sectionId={ADMIN_SECTION_IDS.usage.addCredits}
+              >
+                <div className="flex justify-end">{topUpButton}</div>
+              </AdminSectionAnchor>
               <CreditPoolCards owner={owner} disabled={!isCreditPriced} />
             </div>
+          ) : isWorkspaceAdmin ? (
+            // Search deep-link target for Add / Purchase credits. The buy CTA
+            // for non–credit-priced plans still lives on the legacy
+            // developers/credits-usage page.
+            <AdminSectionAnchor
+              sectionId={ADMIN_SECTION_IDS.usage.addCredits}
+              className="hidden"
+            >
+              <span />
+            </AdminSectionAnchor>
           ) : null}
 
           <Tabs
