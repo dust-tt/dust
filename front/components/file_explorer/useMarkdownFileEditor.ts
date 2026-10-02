@@ -8,6 +8,7 @@ import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { writeFileContentByPath } from "@app/lib/swr/files";
 import type { FilePreviewCategory } from "@app/types/file_preview";
 import { parseCanonicalScopedPath } from "@app/types/mount_path";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useEffect, useRef, useState } from "react";
@@ -127,7 +128,7 @@ export function useMarkdownFileEditor({
 
   const writeFile = async (content: string): Promise<DocumentSaveResult> => {
     if (!owner || !editablePath) {
-      return { ok: false, error: "This file cannot be edited." };
+      return new Err("This file cannot be edited.");
     }
     try {
       await writeFileContentByPath({
@@ -136,9 +137,9 @@ export function useMarkdownFileEditor({
         content,
         contentType: "text/markdown",
       });
-      return { ok: true };
+      return new Ok(undefined);
     } catch (e) {
-      return { ok: false, error: normalizeError(e).message };
+      return new Err(normalizeError(e).message);
     }
   };
 
@@ -163,7 +164,7 @@ export function useMarkdownFileEditor({
     setIsSaving(true);
     try {
       const result = await writeFile(draft);
-      if (result.ok) {
+      if (result.isOk()) {
         await adoptWritten(draft);
         sendNotification({ type: "success", title: "File saved" });
       } else {
