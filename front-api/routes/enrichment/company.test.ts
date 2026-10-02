@@ -94,10 +94,13 @@ describe("POST /api/enrichment/company", () => {
     }
   });
 
-  it("rejects emails that could inject Slack markup", async () => {
-    const response = await submit("<https://evil.com|click>@acme.com");
+  it("routes emails that could inject Slack markup without notifying Slack", async () => {
+    const email = "<https://evil.com|click>@acme.com";
 
-    expect(response.status).toBe(400);
+    const response = await submit(email);
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).redirectUrl).toBe(signUpUrl(email));
     expect(sendUserOperationMessage).not.toHaveBeenCalled();
   });
 

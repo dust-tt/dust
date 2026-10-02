@@ -44,7 +44,14 @@ function escapeSlackText(text: string): string {
  * @cc [owner:tdraier,label:security;performance] rate-limited-enrichment
  * Requests MUST be rate limited per client IP before any third-party call (DNS, Apollo) or Slack
  * notification. Once over the limit, the route MUST return the generic sign-up redirect without
- * enrichment or notification, so legitimate visitors are never blocked from signing up.
+ * enrichment or notification, so legitimate visitors are never blocked from signing up. When the
+ * limiter itself errors (e.g. Redis unavailable), it fails open like every `rateLimiter` caller.
+ */
+/**
+ * @cc [owner:tdraier,label:security] escaped-slack-lead-notification
+ * The submitted email is attacker-controlled. The GTM Slack notification MUST only be sent for
+ * emails passing `isEmailValid`, and every interpolated email or enrichment value MUST be
+ * Slack-escaped (`&`, `<`, `>`). Invalid emails are still routed, never rejected for that reason.
  */
 const app = createHono();
 
@@ -66,7 +73,7 @@ app.post("/", async (ctx): HandlerResult<EnrichmentResponse> => {
 
   const domain = extractDomain(email);
 
-  if (!domain || !isEmailValid(email)) {
+  if (!domain) {
     return ctx.json(
       {
         success: false,
@@ -155,11 +162,13 @@ app.post("/", async (ctx): HandlerResult<EnrichmentResponse> => {
     `*Routed to:* ${destinationLabel}`,
   ].join("\n");
 
-  void sendUserOperationMessage({
-    message: `:email: New homepage email submission\n${enrichmentDetails}`,
-    logger,
-    channel: GTM_LEADS_SLACK_CHANNEL_ID,
-  });
+  if (isEmailValid(email)) {
+    void sendUserOperationMessage({
+      message: `:email: New homepage email submission\n${enrichmentDetails}`,
+      logger,
+      channel: GTM_LEADS_SLACK_CHANNEL_ID,
+    });
+  }
 
   return ctx.json({
     success: true,
