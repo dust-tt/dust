@@ -60,11 +60,16 @@ const mcpServer: RemoteMCPServerType = {
 function TestWrapper() {
   const form = useForm<MCPServerFormValues>({
     defaultValues: {
+      name: mcpServer.name,
+      description: mcpServer.description,
+      isRestrictedToSkills: false,
       icon: "ToolsIcon",
       customHeaders: [],
       metaFields: [],
       sharedSecret: "",
-    } as MCPServerFormValues,
+      toolSettings: {},
+      sharingSettings: {},
+    },
   });
 
   return (
