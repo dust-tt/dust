@@ -4,7 +4,11 @@ import {
   requiredString,
 } from "@app/lib/markdown/dfm/grammar";
 import type { Range } from "@app/lib/markdown/dfm/parser";
-import { codeRanges, isEscaped } from "@app/lib/markdown/dfm/parser";
+import {
+  checkInputBounds,
+  codeRanges,
+  isEscaped,
+} from "@app/lib/markdown/dfm/parser";
 import type { DfmAnchor, DfmError } from "@app/lib/markdown/dfm/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -114,6 +118,15 @@ export function scanAnchors(
   let text = "";
   let last = 0;
   let line = lineOffset + 1;
+
+  const bounds = checkInputBounds(body);
+  if (bounds) {
+    return new Err(
+      bounds.line === undefined
+        ? bounds
+        : { ...bounds, line: bounds.line + lineOffset }
+    );
+  }
 
   for (const { index, attributes: raw, kind, length } of anchorMatches(body)) {
     const gap = body.slice(last, index);

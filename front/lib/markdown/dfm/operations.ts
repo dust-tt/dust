@@ -39,10 +39,11 @@ function codeRangesInText(body: string, markers: AnchorMarker[]): Range[] {
   }));
 }
 
+/** Index of the nth occurrence of `quote`, occurrences not overlapping, so one pass over the text. */
 function nthIndexOf(text: string, quote: string, nth: number): number {
-  let index = -1;
+  let index = -quote.length;
   for (let i = 0; i < nth; i++) {
-    index = text.indexOf(quote, index + 1);
+    index = text.indexOf(quote, index + quote.length);
     if (index === -1) {
       return -1;
     }
@@ -52,7 +53,8 @@ function nthIndexOf(text: string, quote: string, nth: number): number {
 
 /**
  * @cc [owner:PopDaph,label:product] dfm-anchor-by-quote
- * anchorComment MUST wrap exactly the nth occurrence of `quote` in the body's anchor-free text
+ * anchorComment MUST wrap exactly the nth non-overlapping occurrence of `quote` in the body's
+ * anchor-free text
  * with a start and an end anchor for `id`, and MUST NOT change any other character, which text
  * is code, any other anchor, or the body's Markdown structure (its parse tree, text nodes
  * aside). It MUST fail when the quote is empty, `nth` is not a positive integer, the quote

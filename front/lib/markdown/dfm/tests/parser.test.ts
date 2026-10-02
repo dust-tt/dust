@@ -1,5 +1,7 @@
 import {
+  checkInputBounds,
   endsInsideFence,
+  INPUT_LIMITS,
   isEscaped,
   structure,
 } from "@app/lib/markdown/dfm/parser";
@@ -54,5 +56,40 @@ describe("structure", () => {
     expect(siblings).not.toEqual(
       structure("*:comment-start{id=c1}a:comment-end{id=c1}*b*c*")
     );
+  });
+});
+
+describe("checkInputBounds", () => {
+  it("accepts a large plain document", () => {
+    const prose = "lorem ipsum dolor sit amet, ".repeat(9000);
+
+    expect(prose.length).toBeGreaterThan(200_000);
+    expect(checkInputBounds(prose)).toBeNull();
+  });
+
+  it.each([
+    [
+      "text over the length limit",
+      "x".repeat(INPUT_LIMITS.length + 1),
+      `exceeds ${INPUT_LIMITS.length} characters`,
+      undefined,
+    ],
+    [
+      "a line nested deeper than the parser handles quickly",
+      `fine\n${">".repeat(INPUT_LIMITS.linePrefix + 1)} deep`,
+      "nests deeper than",
+      2,
+    ],
+    [
+      "more inline delimiters than the parser resolves quickly",
+      "*a_b*c_".repeat(INPUT_LIMITS.delimiters / 4 + 1),
+      "emphasis, link or code delimiters",
+      undefined,
+    ],
+  ])("refuses %s", (_, text, message, line) => {
+    const error = checkInputBounds(text);
+
+    expect(error?.message).toContain(message);
+    expect(error?.line).toBe(line);
   });
 });

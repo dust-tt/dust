@@ -1,3 +1,4 @@
+import type { DfmError } from "@app/lib/markdown/dfm/types";
 import type { Nodes } from "mdast";
 import { fromMarkdown } from "mdast-util-from-markdown";
 
@@ -10,6 +11,60 @@ import { fromMarkdown } from "mdast-util-from-markdown";
 export interface Range {
   start: number;
   end: number;
+}
+
+/**
+ * Bounds checked before any text reaches the parser. micromark is superlinear on three shapes:
+ * a single line of nested containers, and documents made of emphasis delimiters or unclosed
+ * link openers, both quadratic in their count. Within these bounds one parse stays around a
+ * second on a laptop; beyond them it reaches minutes. Callers on a request path still own
+ * their latency: these bounds make the worst case finite, not small.
+ */
+export const INPUT_LIMITS = {
+  /** UTF-16 code units of a body or whole source: half the file write limit. */
+  length: 256 * 1024,
+  /** Leading spaces, tabs and `>` on one line: the nesting depth of blockquotes and lists. */
+  linePrefix: 256,
+  /** `*`, `_`, `[` and backtick characters in the text, which drive emphasis and link resolution. */
+  delimiters: 15_000,
+} as const;
+
+const LINE_PREFIX_PATTERN = /^[ \t>]*/;
+
+/** The reason `text` is out of bounds for the parser, or null. Linear in the text. */
+export function checkInputBounds(text: string): DfmError | null {
+  if (text.length > INPUT_LIMITS.length) {
+    return {
+      message: `Text exceeds ${INPUT_LIMITS.length} characters.`,
+    };
+  }
+  let delimiters = 0;
+  for (const character of text) {
+    if (
+      character === "*" ||
+      character === "_" ||
+      character === "[" ||
+      character === "`"
+    ) {
+      delimiters++;
+    }
+  }
+  if (delimiters > INPUT_LIMITS.delimiters) {
+    return {
+      message: `Text has more than ${INPUT_LIMITS.delimiters} emphasis, link or code delimiters.`,
+    };
+  }
+  const lines = text.split("\n");
+  for (const [index, line] of lines.entries()) {
+    const prefix = LINE_PREFIX_PATTERN.exec(line);
+    if (prefix !== null && prefix[0].length > INPUT_LIMITS.linePrefix) {
+      return {
+        message: `Line nests deeper than ${INPUT_LIMITS.linePrefix} characters of quotes or indentation.`,
+        line: index + 1,
+      };
+    }
+  }
+  return null;
 }
 
 interface Visit {
