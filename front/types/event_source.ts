@@ -20,10 +20,12 @@ export type EventSourceFactory = (
   signal: AbortSignal
 ) => Promise<EventSourceLike>;
 
+export type LongPollBatch = { events: string[]; lastEventId?: string | null };
+
 export type LongPollFactory = (
   url: string,
   options: { headers?: Record<string, string>; signal: AbortSignal }
-) => Promise<string[]>;
+) => Promise<LongPollBatch>;
 
 export type EventSourceManagerOptions = {
   handshakeTimeoutMs?: number;
@@ -56,7 +58,7 @@ export type ConnectionConfig = {
   isTerminalEvent?: (event: string) => boolean;
   longPollActivation?: LongPollActivation;
   replayBufferedEventsOnSubscribe: boolean;
-  restartKey: string;
+  restartKey?: string;
   telemetryContext?: DatadogLogContext;
   workspaceId: string;
 };

@@ -102,7 +102,7 @@ function profile(name, overrides = {}) {
             {
               longPollFactory: async (url, { signal }) => {
                 pollRequests++;
-                return (await (await fetch(url, { signal })).json()).events;
+                return (await fetch(url, { signal })).json();
               },
             },
           );

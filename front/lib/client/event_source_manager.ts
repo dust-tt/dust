@@ -10,9 +10,12 @@ import type {
   EventSourceFactory,
   EventSourceLike,
   EventSourceManagerOptions,
+  LongPollBatch,
   LongPollFactory,
   Subscriber,
 } from "@app/types/event_source";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { MANAGED_SSE_HANDSHAKE_EVENT } from "@app/types/sse";
 import type {
   Event as PolyfillEvent,
@@ -37,6 +40,7 @@ const IDLE_CONNECTION_STATE = { kind: "idle" } as const;
 
 const LongPollResponseSchema = z.object({
   events: z.array(z.string()),
+  lastEventId: z.string().nullable().optional(),
 });
 
 type KeepAliveState = "inactive" | "active" | "paused";
@@ -71,6 +75,19 @@ type ConnectionEntry = {
   transport: ActiveTransport | null;
 };
 
+// Restarts reuse an entry; destroying and recreating a stream replaces it.
+// Both identity and generation must match before old work can continue.
+type StreamSnapshot = {
+  readonly streamId: string;
+  readonly entry: ConnectionEntry;
+  readonly generation: number;
+};
+
+type SubscriberNotification =
+  | { kind: "event"; event: string }
+  | { kind: "state"; state: EventSourceConnectionState }
+  | { kind: "terminal_error"; error: Error };
+
 function getClientPath(url: string): string {
   const urlWithCommitHash = new URL(url, document.baseURI);
   urlWithCommitHash.searchParams.append("commitHash", COMMIT_HASH);
@@ -100,7 +117,7 @@ async function createEventSource(
 async function createLongPoll(
   url: string,
   { headers, signal }: { headers?: Record<string, string>; signal: AbortSignal }
-): Promise<string[]> {
+): Promise<LongPollBatch> {
   const response = await clientFetch(getClientPath(url), {
     cache: "no-store",
     headers,
@@ -109,7 +126,7 @@ async function createLongPoll(
   if (!response.ok) {
     throw new Error(`Long poll failed with status ${response.status}.`);
   }
-  return LongPollResponseSchema.parse(await response.json()).events;
+  return LongPollResponseSchema.parse(await response.json());
 }
 
 /**
@@ -181,35 +198,37 @@ export class EventSourceManager {
   }): () => void {
     this.installPageWakeRecovery();
 
-    let entry = this.connections.get(streamId);
+    const entry = this.prepareSubscriptionEntry(
+      streamId,
+      config,
+      keepAliveWithoutSubscribers
+    );
     if (!entry) {
-      entry = this.createEntry(config, keepAliveWithoutSubscribers);
-      this.connections.set(streamId, entry);
-    } else if (entry.config.restartKey !== config.restartKey) {
-      this.restart(streamId, config, keepAliveWithoutSubscribers);
-      entry = this.connections.get(streamId);
-      if (!entry) {
-        return () => undefined;
-      }
-    } else {
-      entry.config = config;
-      if (
-        entry.keepAliveState === "inactive" &&
-        keepAliveWithoutSubscribers &&
-        entry.state.kind !== "failed" &&
-        entry.state.kind !== "terminal"
-      ) {
-        entry.keepAliveState = "active";
-      }
+      return () => undefined;
     }
 
     entry.subscribers.add(subscriber);
     this.logVerbose(streamId, "subscriber_added");
-    subscriber.onStateChange(entry.state);
-    if (entry.config.replayBufferedEventsOnSubscribe) {
-      for (const event of entry.events) {
-        this.notifyEventSubscriber(subscriber, event);
-      }
+
+    // Subscriber callbacks can synchronously restart or destroy this stream.
+    this.notifySubscriber(subscriber, { kind: "state", state: entry.state });
+    // Restarts keep this subscriber attached; a replaced entry makes this subscription obsolete.
+    if (!this.isRegisteredConnection(streamId, entry)) {
+      return () => undefined;
+    }
+
+    this.replayBufferedEvents(streamId, entry, subscriber);
+    if (!this.isRegisteredConnection(streamId, entry)) {
+      return () => undefined;
+    }
+
+    if (
+      entry.config.buildLongPollURL &&
+      entry.config.longPollActivation === "immediate" &&
+      (entry.transport?.kind === "sse" || entry.state.kind === "connecting")
+    ) {
+      this.resetTransport(streamId);
+      this.transition(streamId, { kind: "idle" });
     }
     this.ensureConnected(streamId);
 
@@ -331,7 +350,7 @@ export class EventSourceManager {
     if (entry.keepAliveState === "inactive") {
       entry.keepAliveState = "active";
     }
-    this.restartFailedConnection(streamId);
+    this.retryFailedConnection(streamId);
   }
 
   reconnect(streamId: string): void {
@@ -341,10 +360,10 @@ export class EventSourceManager {
     }
     entry.lastResumeAtMs = null;
     entry.unsuccessfulResumes = 0;
-    this.restartFailedConnection(streamId);
+    this.retryFailedConnection(streamId);
   }
 
-  private restartFailedConnection(streamId: string): void {
+  private retryFailedConnection(streamId: string): void {
     const entry = this.connections.get(streamId);
     if (!entry) {
       return;
@@ -352,6 +371,62 @@ export class EventSourceManager {
     entry.reconnectAttempts = 0;
     this.logVerbose(streamId, "resume");
     this.recoverConnection(streamId);
+  }
+
+  private prepareSubscriptionEntry(
+    streamId: string,
+    config: ConnectionConfig,
+    keepAliveWithoutSubscribers: boolean
+  ): ConnectionEntry | undefined {
+    const entry = this.connections.get(streamId);
+    if (!entry) {
+      const newEntry = this.createEntry(config, keepAliveWithoutSubscribers);
+      this.connections.set(streamId, newEntry);
+      return newEntry;
+    }
+    if (
+      config.restartKey !== undefined &&
+      entry.config.restartKey !== undefined &&
+      entry.config.restartKey !== config.restartKey
+    ) {
+      this.restartForConfigChange(
+        streamId,
+        config,
+        keepAliveWithoutSubscribers
+      );
+      return this.connections.get(streamId);
+    }
+
+    entry.config = {
+      ...config,
+      restartKey: config.restartKey ?? entry.config.restartKey,
+    };
+    if (
+      entry.keepAliveState === "inactive" &&
+      keepAliveWithoutSubscribers &&
+      entry.state.kind !== "failed" &&
+      entry.state.kind !== "terminal"
+    ) {
+      entry.keepAliveState = "active";
+    }
+    return entry;
+  }
+
+  private replayBufferedEvents(
+    streamId: string,
+    entry: ConnectionEntry,
+    subscriber: Subscriber
+  ): void {
+    if (!entry.config.replayBufferedEventsOnSubscribe) {
+      return;
+    }
+    const snapshot = this.captureStreamSnapshot(streamId, entry);
+    for (const event of [...entry.events]) {
+      if (!this.isStreamSnapshotCurrent(snapshot)) {
+        return;
+      }
+      this.notifySubscriber(subscriber, { kind: "event", event });
+    }
   }
 
   private createEntry(
@@ -379,7 +454,7 @@ export class EventSourceManager {
     };
   }
 
-  private restart(
+  private restartForConfigChange(
     streamId: string,
     config: ConnectionConfig,
     keepAliveWithoutSubscribers: boolean
@@ -459,7 +534,8 @@ export class EventSourceManager {
     }
     entry.lastURL = url;
 
-    const generation = ++entry.generation;
+    entry.generation++;
+    const snapshot = this.captureStreamSnapshot(streamId, entry);
     const controller = new AbortController();
     entry.pendingSseController = controller;
     this.logVerbose(streamId, "sse_connect");
@@ -473,8 +549,7 @@ export class EventSourceManager {
     }
     entry.pendingSseHandshakeTimeout = setTimeout(() => {
       if (
-        this.connections.get(streamId) === entry &&
-        entry.generation === generation &&
+        this.isStreamSnapshotCurrent(snapshot) &&
         entry.state.kind === "connecting"
       ) {
         this.handleSseDisconnect(streamId, {
@@ -495,11 +570,7 @@ export class EventSourceManager {
       if (entry.pendingSseController === controller) {
         entry.pendingSseController = null;
       }
-      const current = this.connections.get(streamId);
-      if (!current) {
-        return;
-      }
-      if (current === entry && generation === current.generation) {
+      if (this.isStreamSnapshotCurrent(snapshot)) {
         this.handleSseDisconnect(streamId, {
           kind: "failure",
           failure: error,
@@ -511,16 +582,7 @@ export class EventSourceManager {
     if (entry.pendingSseController === controller) {
       entry.pendingSseController = null;
     }
-    const current = this.connections.get(streamId);
-    if (!current) {
-      source.close();
-      return;
-    }
-    if (
-      current !== entry ||
-      generation !== current.generation ||
-      controller.signal.aborted
-    ) {
+    if (!this.isStreamSnapshotCurrent(snapshot) || controller.signal.aborted) {
       source.close();
       return;
     }
@@ -529,20 +591,17 @@ export class EventSourceManager {
       kind: "sse",
       source,
     };
-    current.transport = transport;
+    entry.transport = transport;
     source.addEventListener(MANAGED_SSE_HANDSHAKE_EVENT, () => {
-      if (
-        current.transport !== transport ||
-        current.state.kind !== "connecting"
-      ) {
+      if (entry.transport !== transport || entry.state.kind !== "connecting") {
         return;
       }
-      if (current.pendingSseHandshakeTimeout) {
-        clearTimeout(current.pendingSseHandshakeTimeout);
-        current.pendingSseHandshakeTimeout = null;
+      if (entry.pendingSseHandshakeTimeout) {
+        clearTimeout(entry.pendingSseHandshakeTimeout);
+        entry.pendingSseHandshakeTimeout = null;
       }
       const openedAt = Date.now();
-      const handshakeLatencyMs = openedAt - current.state.startedAt;
+      const handshakeLatencyMs = openedAt - entry.state.startedAt;
       this.consecutivePreHandshakeFailures = 0;
       if (this.sseHealth !== "degraded") {
         this.sseHealth = "healthy";
@@ -700,15 +759,23 @@ export class EventSourceManager {
       });
     }
 
+    if (entry.transport !== transport || controller.signal.aborted) {
+      return;
+    }
+
     void this.longPollFactory(url, {
       headers: entry.config.headers,
       signal: controller.signal,
     })
-      .then((events) => {
+      .then(({ events, lastEventId }) => {
         if (entry.transport !== transport) {
           return;
         }
+        entry.reconnectAttempts = 0;
         if (events.length === 0) {
+          if (lastEventId) {
+            entry.lastEvent = JSON.stringify({ eventId: lastEventId });
+          }
           this.stopTransport(streamId);
           this.scheduleReconnect(
             streamId,
@@ -718,12 +785,14 @@ export class EventSourceManager {
           );
           return;
         }
-        entry.reconnectAttempts = 0;
         for (const event of events) {
           this.acceptEvent(streamId, event);
           if (entry.transport !== transport) {
             return;
           }
+        }
+        if (lastEventId) {
+          entry.lastEvent = JSON.stringify({ eventId: lastEventId });
         }
         this.startLongPolling(streamId);
       })
@@ -770,12 +839,16 @@ export class EventSourceManager {
     if (!entry) {
       return;
     }
+    const snapshot = this.captureStreamSnapshot(streamId, entry);
     this.logVerbose(streamId, logEvent, { delayMs });
     this.transition(streamId, {
       kind: "reconnecting",
       attempt: entry.reconnectAttempts,
       reconnectAt: Date.now() + delayMs,
     });
+    if (!this.isStreamSnapshotCurrent(snapshot)) {
+      return;
+    }
     const reconnectTimeout = setTimeout(() => {
       const current = this.connections.get(streamId);
       if (!current || current.reconnectTimeout !== reconnectTimeout) {
@@ -800,16 +873,20 @@ export class EventSourceManager {
     if (entry.keepAliveState !== "paused") {
       entry.keepAliveState = "inactive";
     }
+    const snapshot = this.captureStreamSnapshot(streamId, entry);
     this.transition(streamId, {
       kind: "failed",
       attempt: entry.reconnectAttempts,
       error,
     });
     datadogLogger.error({ ...context, retryBudgetExhausted: true }, message);
-    for (const subscriber of entry.subscribers) {
-      subscriber.onTerminalError?.(error);
-    }
-    if (entry.subscribers.size === 0) {
+    if (
+      this.dispatchToSubscribers(snapshot, {
+        kind: "terminal_error",
+        error,
+      }) === "delivered" &&
+      entry.subscribers.size === 0
+    ) {
       this.destroy(streamId);
     }
   }
@@ -884,8 +961,92 @@ export class EventSourceManager {
     }
   }
 
-  private notifyEventSubscriber(subscriber: Subscriber, event: string): void {
-    subscriber.onEvent(event);
+  /**
+   * @cc [owner:id13,label:concurrency;error-handling] stream-callback-isolation
+   * Exceptions from event, state, and terminal-error callbacks MUST be logged without interrupting
+   * delivery to other subscribers or transport cleanup.
+   */
+  private runSubscriberCallback(callback: () => void): void {
+    try {
+      callback();
+    } catch (error) {
+      datadogLogger.error(
+        { err: normalizeError(error) },
+        "Stream subscriber callback failed."
+      );
+    }
+  }
+
+  private isRegisteredConnection(
+    streamId: string,
+    entry: ConnectionEntry
+  ): boolean {
+    return this.connections.get(streamId) === entry;
+  }
+
+  private captureStreamSnapshot(
+    streamId: string,
+    entry: ConnectionEntry
+  ): StreamSnapshot {
+    return { streamId, entry, generation: entry.generation };
+  }
+
+  private isStreamSnapshotCurrent(snapshot: StreamSnapshot): boolean {
+    return (
+      this.isRegisteredConnection(snapshot.streamId, snapshot.entry) &&
+      snapshot.entry.generation === snapshot.generation
+    );
+  }
+
+  private notifySubscriber(
+    subscriber: Subscriber,
+    notification: SubscriberNotification
+  ): void {
+    this.runSubscriberCallback(() => {
+      switch (notification.kind) {
+        case "event":
+          subscriber.onEvent(notification.event);
+          break;
+        case "state":
+          subscriber.onStateChange(notification.state);
+          break;
+        case "terminal_error":
+          subscriber.onTerminalError?.(notification.error);
+          break;
+        default:
+          assertNever(notification);
+      }
+    });
+  }
+
+  /**
+   * @cc [owner:id13,label:concurrency] subscriber-dispatch-validity
+   * Delivery MUST stop if a callback replaces or resets the stream. State notifications MUST also
+   * stop if a callback changes the current state. Subscribers removed during delivery MUST be skipped.
+   */
+  private dispatchToSubscribers(
+    snapshot: StreamSnapshot,
+    notification: SubscriberNotification
+  ): "delivered" | "superseded" {
+    const { entry } = snapshot;
+    const isNotificationCurrent = () =>
+      this.isStreamSnapshotCurrent(snapshot) &&
+      (notification.kind !== "state" || entry.state === notification.state);
+
+    // Callbacks may subscribe, unsubscribe, or restart synchronously. New subscribers
+    // receive their initial state and replay through subscribe(), outside this dispatch.
+    for (const subscriber of [...entry.subscribers]) {
+      if (!isNotificationCurrent()) {
+        return "superseded";
+      }
+      if (entry.subscribers.has(subscriber)) {
+        this.notifySubscriber(subscriber, notification);
+      }
+    }
+
+    // The last callback can also restart the stream. Its caller must not apply
+    // the old event's terminal state or cleanup to the replacement stream.
+    return isNotificationCurrent() ? "delivered" : "superseded";
   }
 
   /**
@@ -894,11 +1055,18 @@ export class EventSourceManager {
    * close when its last subscriber leaves, MUST NOT rearm on subscribe, and MUST rearm on the next
    * accepted nonblocking event.
    */
+  /**
+   * @cc [owner:id13,label:concurrency] stream-event-fanout-isolation
+   * A failing subscriber MUST NOT prevent delivery to other subscribers. Restarting or destroying
+   * a stream during delivery MUST stop the old dispatch without terminating the replacement stream.
+   */
   private acceptEvent(streamId: string, event: string): void {
     const entry = this.connections.get(streamId);
     if (!entry) {
       return;
     }
+    const snapshot = this.captureStreamSnapshot(streamId, entry);
+    const isTerminalEvent = entry.config.isTerminalEvent?.(event) ?? false;
     const pausesKeepAlive = entry.config.isPauseEvent?.(event) ?? false;
     if (entry.keepAliveState === "paused" && !pausesKeepAlive) {
       entry.keepAliveState = "active";
@@ -911,13 +1079,13 @@ export class EventSourceManager {
     if (entry.config.replayBufferedEventsOnSubscribe) {
       entry.events.push(event);
     }
-    for (const subscriber of entry.subscribers) {
-      this.notifyEventSubscriber(subscriber, event);
-    }
-    if (this.connections.get(streamId) !== entry) {
+    if (
+      this.dispatchToSubscribers(snapshot, { kind: "event", event }) ===
+      "superseded"
+    ) {
       return;
     }
-    if (entry.config.isTerminalEvent?.(event)) {
+    if (isTerminalEvent) {
       this.markTerminal(streamId);
     } else if (pausesKeepAlive) {
       entry.keepAliveState = "paused";
@@ -988,8 +1156,13 @@ export class EventSourceManager {
     }
     this.resetTransport(streamId);
     entry.keepAliveState = "inactive";
+    const snapshot = this.captureStreamSnapshot(streamId, entry);
     this.transition(streamId, { kind: "terminal" });
-    if (entry.subscribers.size === 0) {
+    if (
+      this.isStreamSnapshotCurrent(snapshot) &&
+      entry.state.kind === "terminal" &&
+      entry.subscribers.size === 0
+    ) {
       this.destroy(streamId);
     }
   }
@@ -1008,10 +1181,13 @@ export class EventSourceManager {
       previousState,
       nextState: state.kind,
     });
-    for (const subscriber of entry.subscribers) {
-      subscriber.onStateChange(state);
+    const snapshot = this.captureStreamSnapshot(streamId, entry);
+    if (
+      this.dispatchToSubscribers(snapshot, { kind: "state", state }) ===
+      "delivered"
+    ) {
+      this.notifyStateListeners(streamId);
     }
-    this.notifyStateListeners(streamId);
   }
 
   private logVerbose(
@@ -1068,8 +1244,8 @@ export class EventSourceManager {
   }
 
   private notifyStateListeners(streamId: string): void {
-    for (const listener of this.stateListeners.get(streamId) ?? []) {
-      listener();
+    for (const listener of [...(this.stateListeners.get(streamId) ?? [])]) {
+      this.runSubscriberCallback(listener);
     }
   }
 
