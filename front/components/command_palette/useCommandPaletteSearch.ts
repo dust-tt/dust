@@ -1,3 +1,6 @@
+import type { CommandPaletteSetting } from "@app/components/command_palette/CommandPaletteSearchPhase";
+import type { SubNavigationAdminId } from "@app/components/navigation/config";
+import { subNavigationAdmin } from "@app/components/navigation/config";
 import {
   useConversations,
   usePodConversationsSummary,
@@ -6,12 +9,20 @@ import {
 } from "@app/hooks/conversations";
 import { useSearchAgents } from "@app/hooks/useSearchAgents";
 import { useSearchPods } from "@app/hooks/useSearchPods";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { accessibleAdminMenus } from "@app/lib/admin/accessibleAdminMenus";
+import { searchAdminSettingsIndex } from "@app/lib/admin/adminSearchIndex";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useSearchMembers } from "@app/lib/swr/memberships";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useSearchSkills, useSkills } from "@app/lib/swr/skill_configurations";
 import { filterAndSortAgents, subFilter } from "@app/lib/utils";
 import type { AgentSearchListItemType } from "@app/types/agent_search/agent_search";
+import { hasGroupManagementScope } from "@app/types/api/auth_context";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
 import type { ConversationListItemType } from "@app/types/assistant/conversation";
@@ -31,6 +42,7 @@ const MAX_DISPLAYED_CONVERSATIONS = 5;
 const MAX_DISPLAYED_MEMBERS = 5;
 const MAX_DISPLAYED_PODS = 5;
 const MAX_DISPLAYED_SKILLS = 5;
+const MAX_DISPLAYED_SETTINGS = 5;
 
 type CommandPaletteSkill =
   | SkillListItemType
@@ -403,6 +415,87 @@ function useCommandPaletteConversations({
   };
 }
 
+function useCommandPaletteSettings({
+  isOpen,
+  trimmedQuery,
+}: {
+  isOpen: boolean;
+  trimmedQuery: string;
+}): {
+  settings: CommandPaletteSetting[];
+  hasMoreSettings: boolean;
+  canSearchSettings: boolean;
+} {
+  const owner = useWorkspace();
+  const {
+    subscription,
+    groupManagement,
+    featureFlags,
+    isAdmin: isAdminUser,
+  } = useAuth();
+  const { hasFeature } = useFeatureFlags();
+  const { hasPermission } = useWorkspacePermissions();
+  const canSearchSettings = isAdminUser;
+
+  const menusByPageId = useMemo(() => {
+    if (!canSearchSettings || !isOpen) {
+      return new Map();
+    }
+    const subNavigation = subNavigationAdmin({
+      owner,
+      currentRoute: "",
+      featureFlags,
+      subscription,
+      hasPermission,
+      hasManagedGroups:
+        featureFlags.includes("group_management") &&
+        hasGroupManagementScope(groupManagement?.read_usage),
+    });
+    return accessibleAdminMenus(subNavigation, hasFeature);
+  }, [
+    canSearchSettings,
+    isOpen,
+    owner,
+    featureFlags,
+    subscription,
+    hasPermission,
+    groupManagement,
+    hasFeature,
+  ]);
+
+  const { settings, hasMoreSettings } = useMemo(() => {
+    if (!canSearchSettings || !trimmedQuery) {
+      return { settings: [], hasMoreSettings: false };
+    }
+    const labelFor = (pageId: string) =>
+      menusByPageId.get(pageId as SubNavigationAdminId)?.label ?? pageId;
+    const matches = searchAdminSettingsIndex(trimmedQuery, labelFor).filter(
+      (entry) => menusByPageId.has(entry.pageId)
+    );
+    return {
+      settings: matches.slice(0, MAX_DISPLAYED_SETTINGS).flatMap((entry) => {
+        const menu = menusByPageId.get(entry.pageId);
+        if (!menu?.href) {
+          return [];
+        }
+        return [
+          {
+            label: entry.label,
+            pageLabel: menu.label,
+            pageHref: menu.href,
+            sectionId: entry.sectionId,
+            tab: entry.tab,
+            icon: menu.icon,
+          } satisfies CommandPaletteSetting,
+        ];
+      }),
+      hasMoreSettings: matches.length > MAX_DISPLAYED_SETTINGS,
+    };
+  }, [canSearchSettings, trimmedQuery, menusByPageId]);
+
+  return { settings, hasMoreSettings, canSearchSettings };
+}
+
 export function useCommandPaletteSearch({
   owner,
   isOpen,
@@ -442,6 +535,7 @@ export function useCommandPaletteSearch({
     trimmedQuery,
     currentUserId,
   });
+  const settings = useCommandPaletteSettings({ isOpen, trimmedQuery });
 
   // Empty query shows frecency suggestions in the UI instead of default lists.
   if (!trimmedQuery) {
@@ -451,11 +545,14 @@ export function useCommandPaletteSearch({
       members: [],
       pods: [],
       skills: [],
+      settings: [],
       hasMoreAgents: false,
       hasMoreConversations: false,
       hasMoreMembers: false,
       hasMorePods: false,
       hasMoreSkills: false,
+      hasMoreSettings: false,
+      canSearchSettings: settings.canSearchSettings,
       isLoading: false,
     };
   }
@@ -466,11 +563,14 @@ export function useCommandPaletteSearch({
     members: members.members,
     pods: pods.pods,
     skills: skills.skills,
+    settings: settings.settings,
     hasMoreAgents: agents.hasMoreAgents,
     hasMoreConversations: conversations.hasMoreConversations,
     hasMoreMembers: members.hasMoreMembers,
     hasMorePods: pods.hasMorePods,
     hasMoreSkills: skills.hasMoreSkills,
+    hasMoreSettings: settings.hasMoreSettings,
+    canSearchSettings: settings.canSearchSettings,
     isLoading:
       agents.isLoading ||
       skills.isLoading ||

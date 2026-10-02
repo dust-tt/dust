@@ -4,6 +4,7 @@ import {
   ItemTitle,
   KeyboardHints,
 } from "@app/components/command_palette/CommandPaletteItems";
+import type { AdminSectionId } from "@app/lib/admin/adminSectionIds";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { getSpaceIcon } from "@app/lib/spaces";
 import type { AgentSearchListItemType } from "@app/types/agent_search/agent_search";
@@ -25,6 +26,7 @@ import {
   MessageCircle01,
   SearchInput,
 } from "@dust-tt/sparkle";
+import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type CommandPaletteCategory =
@@ -32,7 +34,8 @@ type CommandPaletteCategory =
   | "Pods"
   | "Agents"
   | "Members"
-  | "Skills";
+  | "Skills"
+  | "Settings";
 type CommandPaletteFilter = "All" | CommandPaletteCategory;
 
 const CATEGORY_ORDER: CommandPaletteCategory[] = [
@@ -41,6 +44,7 @@ const CATEGORY_ORDER: CommandPaletteCategory[] = [
   "Agents",
   "Members",
   "Skills",
+  "Settings",
 ];
 
 type CommandPaletteSkill =
@@ -59,11 +63,21 @@ type CommandPaletteConversation = ConversationListItemType & {
 
 export type CommandPaletteMember = LightUserTypeWithWorkspace;
 
+export type CommandPaletteSetting = {
+  label: string;
+  pageLabel: string;
+  pageHref: string;
+  sectionId: AdminSectionId;
+  tab?: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
+
 export type CommandPaletteItem =
   | { kind: "agent"; agent: CommandPaletteAgent }
   | { kind: "conversation"; conversation: CommandPaletteConversation }
   | { kind: "member"; member: CommandPaletteMember }
   | { kind: "pod"; pod: CommandPalettePod }
+  | { kind: "setting"; setting: CommandPaletteSetting }
   | { kind: "skill"; skill: CommandPaletteSkill };
 
 export function getCommandPaletteItemKey(item: CommandPaletteItem): string {
@@ -76,6 +90,8 @@ export function getCommandPaletteItemKey(item: CommandPaletteItem): string {
       return `member:${item.member.sId}`;
     case "pod":
       return `pod:${item.pod.sId}`;
+    case "setting":
+      return `setting:${item.setting.pageHref}#${item.setting.sectionId}:${item.setting.label}`;
     case "skill":
       return `skill:${item.skill.sId}`;
   }
@@ -89,6 +105,7 @@ interface CommandPaletteSearchPhaseProps {
   members: CommandPaletteMember[];
   pods: CommandPalettePod[];
   skills: CommandPaletteSkill[];
+  settings: CommandPaletteSetting[];
   /** Top frecency-ranked items to show when the query is empty. */
   frequentItems: CommandPaletteItem[];
   hasMoreAgents: boolean;
@@ -96,6 +113,8 @@ interface CommandPaletteSearchPhaseProps {
   hasMoreMembers: boolean;
   hasMorePods: boolean;
   hasMoreSkills: boolean;
+  hasMoreSettings: boolean;
+  canSearchSettings: boolean;
   isLoading: boolean;
   selectedIndex: number;
   onSelectedIndexChange: (index: number) => void;
@@ -197,6 +216,19 @@ function CommandPaletteItemContent({ item }: { item: CommandPaletteItem }) {
         </>
       );
     }
+    case "setting":
+      return (
+        <>
+          <Icon visual={item.setting.icon} size="xs" />
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span className="shrink-0 font-medium">{item.setting.label}</span>
+            <span className="shrink-0 text-muted-foreground">-</span>
+            <span className="min-w-0 truncate text-muted-foreground">
+              {item.setting.pageLabel}
+            </span>
+          </div>
+        </>
+      );
   }
 }
 
@@ -205,7 +237,8 @@ function getFlatItems(
   pods: CommandPalettePod[],
   agents: CommandPaletteAgent[],
   members: CommandPaletteMember[],
-  skills: CommandPaletteSkill[]
+  skills: CommandPaletteSkill[],
+  settings: CommandPaletteSetting[]
 ): CommandPaletteItem[] {
   return [
     ...conversations.map(
@@ -220,6 +253,9 @@ function getFlatItems(
       (member): CommandPaletteItem => ({ kind: "member", member })
     ),
     ...skills.map((skill): CommandPaletteItem => ({ kind: "skill", skill })),
+    ...settings.map(
+      (setting): CommandPaletteItem => ({ kind: "setting", setting })
+    ),
   ];
 }
 
@@ -229,12 +265,14 @@ function getAvailableCategories({
   agents,
   members,
   skills,
+  settings,
 }: {
   conversations: CommandPaletteConversation[];
   pods: CommandPalettePod[];
   agents: CommandPaletteAgent[];
   members: CommandPaletteMember[];
   skills: CommandPaletteSkill[];
+  settings: CommandPaletteSetting[];
 }): CommandPaletteCategory[] {
   const categories: CommandPaletteCategory[] = [];
   if (conversations.length > 0) {
@@ -252,6 +290,9 @@ function getAvailableCategories({
   if (skills.length > 0) {
     categories.push("Skills");
   }
+  if (settings.length > 0) {
+    categories.push("Settings");
+  }
   return categories;
 }
 
@@ -263,12 +304,15 @@ export function CommandPaletteSearchPhase({
   members,
   pods,
   skills,
+  settings,
   frequentItems,
   hasMoreAgents,
   hasMoreConversations,
   hasMoreMembers,
   hasMorePods,
   hasMoreSkills,
+  hasMoreSettings,
+  canSearchSettings,
   isLoading,
   selectedIndex,
   onSelectedIndexChange,
@@ -284,8 +328,9 @@ export function CommandPaletteSearchPhase({
         agents,
         members,
         skills,
+        settings,
       }),
-    [conversations, pods, agents, members, skills]
+    [conversations, pods, agents, members, skills, settings]
   );
 
   const [selectedCategory, setSelectedCategory] =
@@ -316,6 +361,10 @@ export function CommandPaletteSearchPhase({
     selectedCategory === "All" || selectedCategory === "Members" ? members : [];
   const filteredSkills =
     selectedCategory === "All" || selectedCategory === "Skills" ? skills : [];
+  const filteredSettings =
+    selectedCategory === "All" || selectedCategory === "Settings"
+      ? settings
+      : [];
 
   const searchFlatItems = useMemo(
     () =>
@@ -324,7 +373,8 @@ export function CommandPaletteSearchPhase({
         filteredPods,
         filteredAgents,
         filteredMembers,
-        filteredSkills
+        filteredSkills,
+        filteredSettings
       ),
     [
       filteredConversations,
@@ -332,6 +382,7 @@ export function CommandPaletteSearchPhase({
       filteredAgents,
       filteredMembers,
       filteredSkills,
+      filteredSettings,
     ]
   );
   const flatItems = isEmptyQuery ? frequentItems : searchFlatItems;
@@ -340,7 +391,8 @@ export function CommandPaletteSearchPhase({
     pods.length > 0 ||
     agents.length > 0 ||
     members.length > 0 ||
-    skills.length > 0;
+    skills.length > 0 ||
+    settings.length > 0;
   const showCategoryFilters =
     !isEmptyQuery &&
     (selectedCategory !== "All" || availableCategories.length > 1);
@@ -399,6 +451,11 @@ export function CommandPaletteSearchPhase({
   const agentsOffset = podsOffset + filteredPods.length;
   const membersOffset = agentsOffset + filteredAgents.length;
   const skillsOffset = membersOffset + filteredMembers.length;
+  const settingsOffset = skillsOffset + filteredSkills.length;
+
+  const emptyHint = canSearchSettings
+    ? "Type to search conversations, pods, agents, members, skills, and settings. Items you open will show up here for quick access."
+    : "Type to search conversations, pods, agents, members, and skills. Items you open will show up here for quick access.";
 
   return (
     <div className="flex flex-col">
@@ -427,10 +484,7 @@ export function CommandPaletteSearchPhase({
       </div>
       <div className="flex max-h-125 flex-col gap-2 overflow-y-auto p-1.5">
         {isEmptyQuery && frequentItems.length === 0 && (
-          <ItemEmptyState>
-            Type to search conversations, pods, agents, members, and skills.
-            Items you open will show up here for quick access.
-          </ItemEmptyState>
+          <ItemEmptyState>{emptyHint}</ItemEmptyState>
         )}
 
         {isEmptyQuery && frequentItems.length > 0 && (
@@ -601,6 +655,35 @@ export function CommandPaletteSearchPhase({
             {hasMoreSkills && (
               <div className="px-3 py-2 text-xs text-muted-foreground">
                 More skills available. Type to filter.
+              </div>
+            )}
+          </div>
+        )}
+
+        {!isEmptyQuery && filteredSettings.length > 0 && (
+          <div>
+            <ItemTitle>Settings</ItemTitle>
+            {filteredSettings.map((setting, i) => {
+              const globalIndex = settingsOffset + i;
+              return (
+                <ItemRow
+                  key={`${setting.pageHref}#${setting.sectionId}:${setting.label}`}
+                  ref={(el) => {
+                    itemRefs.current[globalIndex] = el;
+                  }}
+                  isSelected={selectedIndex === globalIndex}
+                  onClick={() => onItemSelect({ kind: "setting", setting })}
+                  onMouseMove={() => onSelectedIndexChange(globalIndex)}
+                >
+                  <CommandPaletteItemContent
+                    item={{ kind: "setting", setting }}
+                  />
+                </ItemRow>
+              );
+            })}
+            {hasMoreSettings && (
+              <div className="px-3 py-2 text-xs text-muted-foreground">
+                More settings available. Type to filter.
               </div>
             )}
           </div>

@@ -9,6 +9,10 @@ const RETRY_BUDGET_MS = 3000;
  * Reads `#sectionId` from the URL and scrolls that `[data-admin-section]` into
  * view with a brief highlight. Retries briefly so late-mounted sections (after
  * skeletons) are still found.
+ *
+ * Same-page search jumps must set `window.location.hash` (see
+ * `navigateToAdminSetting`) so this `hashchange` listener re-runs — React Router
+ * hash updates use pushState and do not fire `hashchange`.
  */
 export function useAdminSectionHighlight() {
   useEffect(() => {
@@ -59,6 +63,11 @@ export function useAdminSectionHighlight() {
     const run = () => {
       clearRetryTimer();
       clearHighlightTimer();
+      document
+        .querySelectorAll<HTMLElement>(
+          `.${HIGHLIGHT_CLASS}[data-admin-section]`
+        )
+        .forEach((el) => el.classList.remove(HIGHLIGHT_CLASS));
 
       const sectionId = sectionIdFromHash();
       if (!sectionId || cancelled) {
