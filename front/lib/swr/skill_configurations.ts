@@ -697,6 +697,11 @@ type SkillReinforcementUpdate = {
   selfImprovementCostsCapAwuCredits?: number | null;
 };
 
+/**
+ * @cc [owner:aubin-tchoi,label:react] reinforcement-settings-invalidation
+ * Successful reinforcement updates revalidate only the workspace's settings
+ * list. Search results do not contain reinforcement settings.
+ */
 export function useUpdateSkillReinforcement({
   owner,
 }: {
@@ -704,7 +709,7 @@ export function useUpdateSkillReinforcement({
 }) {
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
-  const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
+  const { mutate } = useSWRConfig();
 
   const updateSkillReinforcement = useCallback(
     async (skillId: string, update: SkillReinforcementUpdate) => {
@@ -714,7 +719,7 @@ export function useUpdateSkillReinforcement({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(update),
         });
-        void invalidateSkills();
+        void mutate(`/api/w/${owner.sId}/skills/reinforcement_settings`);
         return true;
       } catch (err) {
         sendNotification({
@@ -727,7 +732,7 @@ export function useUpdateSkillReinforcement({
         return false;
       }
     },
-    [owner.sId, fetcher, invalidateSkills, sendNotification]
+    [owner.sId, fetcher, mutate, sendNotification]
   );
 
   return { updateSkillReinforcement };
