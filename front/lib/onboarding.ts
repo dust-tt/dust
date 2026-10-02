@@ -5,19 +5,16 @@ import type { Authenticator } from "@app/lib/auth";
 export const ONBOARDING_CONVERSATION_ENABLED = true;
 
 /**
- * @cc [owner:avervaet,label:security] server-owned-metadata-prefix
- * User metadata keys starting with this prefix are written server-side only: any user metadata
- * write driven by client input MUST reject such keys without writing anything.
+ * @cc [owner:avervaet,label:security] onboarding-metadata-server-owned
+ * User metadata keys starting with this prefix are server-owned, and onboarding ownership checks
+ * trust their values: a client MUST never choose a key with this prefix, and a value written under
+ * such a key from client input MUST be validated against a fixed allowlist before writing.
  */
-export const SERVER_OWNED_USER_METADATA_PREFIX = "onboarding:";
+export const ONBOARDING_METADATA_PREFIX = "onboarding:";
 
-/**
- * @cc [owner:avervaet,label:security;product] onboarding-conversation-ownership
- * Returns true only when `conversationId` is the conversation the server recorded as the auth
- * user's onboarding conversation in the auth workspace, and false when there is no user or no
- * such record. Gating onboarding-only behavior on this is sound only while clients cannot write
- * `onboarding:*` user metadata.
- */
+// Returns true only when `conversationId` is the conversation the server recorded as the auth
+// user's onboarding conversation in the auth workspace, and false when there is no user or no such
+// record.
 export async function isUserOnboardingConversation(
   auth: Authenticator,
   conversationId: string

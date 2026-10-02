@@ -11,6 +11,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
+import { isEmailProviderType } from "@app/lib/utils/email_provider_detection";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { UserMessageContext } from "@app/types/assistant/conversation";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
@@ -529,15 +530,12 @@ export async function createOnboardingConversationIfNeeded(
   const emailProviderMetadata = await user.getMetadata(
     "onboarding:email_provider"
   );
-  let emailProvider: EmailProviderType = "other";
-  if (
-    emailProviderMetadata?.value &&
-    (emailProviderMetadata.value === "google" ||
-      emailProviderMetadata.value === "microsoft" ||
-      emailProviderMetadata.value === "other")
-  ) {
-    emailProvider = emailProviderMetadata.value;
-  }
+  const storedEmailProvider = emailProviderMetadata?.value;
+  const emailProvider: EmailProviderType = isEmailProviderType(
+    storedEmailProvider
+  )
+    ? storedEmailProvider
+    : "other";
 
   // Job type is user-scoped (not workspace-specific).
   const jobTypeMetadata = await user.getMetadata("job_type");

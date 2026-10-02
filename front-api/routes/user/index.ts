@@ -2,6 +2,7 @@ import { getUserFromSession } from "@app/lib/iam/session";
 import { getSubscriberHash } from "@app/lib/notifications";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
+import { isEmailProviderType } from "@app/lib/utils/email_provider_detection";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type {
@@ -250,6 +251,16 @@ app.patch(
           });
         }
       }
+    }
+
+    if (emailProvider !== undefined && !isEmailProviderType(emailProvider)) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Email provider is invalid.",
+        },
+      });
     }
 
     const userMetadata: Record<string, string | undefined> = {
