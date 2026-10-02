@@ -4,6 +4,7 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";
@@ -11,7 +12,11 @@ import type { WorkspaceType } from "@app/types/user";
 import assert from "assert";
 import { describe, expect, it } from "vitest";
 
-import { deleteAgentTriggers, getWebhookSourcesUsage } from "./agent_triggers";
+import {
+  createAgentTrigger,
+  deleteAgentTriggers,
+  getWebhookSourcesUsage,
+} from "./agent_triggers";
 
 const CRON_CONFIGURATION = {
   type: "cron" as const,
@@ -162,6 +167,79 @@ describe("getWebhookSourcesUsage", () => {
         },
       ],
     });
+  });
+});
+
+describe("createAgentTrigger", () => {
+  it("makes the caller the editor, whatever the input says", async () => {
+    const { workspace, authenticator } = await createResourceTest({
+      role: "user",
+      plan: "creditPriced",
+    });
+    const otherAuth = await createMemberAuth(workspace, "user");
+    const agentConfiguration =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    const agent = await AgentResource.fetchById(
+      authenticator,
+      agentConfiguration.sId
+    );
+    assert(agent, "Agent not found");
+
+    const res = await createAgentTrigger(authenticator, {
+      agent,
+      trigger: {
+        name: "Daily digest",
+        kind: "schedule",
+        status: "disabled",
+        customPrompt: "Send the digest.",
+        naturalLanguageDescription: "every day at 9am",
+        configuration: CRON_CONFIGURATION,
+        editor: otherAuth.getNonNullableUser().id,
+      },
+      origin: "agent",
+    });
+
+    assert(res.isOk(), "Trigger creation failed");
+    expect(res.value.editor).toBe(authenticator.getNonNullableUser().id);
+    expect(res.value.origin).toBe("agent");
+  });
+
+  it("rejects a webhook source view in a space the caller cannot access", async () => {
+    const { workspace, authenticator } = await createResourceTest({
+      role: "user",
+      plan: "creditPriced",
+    });
+    const agentConfiguration =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+    const agent = await AgentResource.fetchById(
+      authenticator,
+      agentConfiguration.sId
+    );
+    assert(agent, "Agent not found");
+    const view = await new WebhookSourceViewFactory(workspace).create(
+      await SpaceFactory.regular(workspace)
+    );
+
+    const res = await createAgentTrigger(authenticator, {
+      agent,
+      trigger: {
+        name: "On event",
+        kind: "webhook",
+        status: "disabled",
+        customPrompt: "",
+        naturalLanguageDescription: null,
+        configuration: { includePayload: true },
+        webhookSourceViewId: view.sId,
+        executionPerDayLimitOverride: 42,
+      },
+      origin: "user",
+    });
+
+    assert(res.isErr(), "Trigger creation should fail");
+    expect(res.error.code).toBe("webhook_source_not_found");
+    expect(
+      await TriggerResource.listByAgentConfigurationId(authenticator, agent.sId)
+    ).toEqual([]);
   });
 });
 

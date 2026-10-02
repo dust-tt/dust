@@ -1,9 +1,19 @@
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { listActiveConfigurationIdentities } from "@app/lib/resources/agent_configuration_rows";
-import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import {
+  resolveTriggerSpaceId,
+  TriggerAgentNotReadableError,
+  TriggerExecutionModeForbiddenError,
+  TriggerResource,
+} from "@app/lib/resources/trigger_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import logger from "@app/logger/logger";
+import type {
+  TriggerInputType,
+  TriggerOrigin,
+} from "@app/types/assistant/triggers";
 import type { AgentsUsageType } from "@app/types/data_source";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -188,6 +198,100 @@ export async function getAccessibleWebhookSourceViews(
   return [...bySourceId.values()].sort((a, b) =>
     a.createdAt >= b.createdAt ? -1 : 1
   );
+}
+
+export type CreateAgentTriggerError = DustError<
+  | "invalid_request_error"
+  | "webhook_source_not_found"
+  | "unauthorized"
+  | "internal_error"
+>;
+
+/**
+ * @cc [owner:fabiencelier,label:security;product] trigger-owned-by-creator
+ * The created trigger MUST have the caller as `editor`: runs execute as them and use their
+ * credits. Any `editor` carried by `trigger` is ignored.
+ */
+/**
+ * @cc [owner:fabiencelier,label:security] trigger-references-accessible
+ * A trigger MUST NOT be created with a Pod or a webhook source view the caller cannot access:
+ * the creation fails with `invalid_request_error` (Pod) or `webhook_source_not_found`
+ * (webhook source view) and nothing is persisted.
+ */
+export async function createAgentTrigger(
+  auth: Authenticator,
+  {
+    agent,
+    trigger,
+    origin,
+  }: {
+    agent: AgentResource;
+    trigger: TriggerInputType;
+    origin: TriggerOrigin;
+  }
+): Promise<Result<TriggerResource, CreateAgentTriggerError>> {
+  const user = auth.getNonNullableUser();
+
+  const spaceIdRes = await resolveTriggerSpaceId(auth, trigger.spaceId);
+  if (spaceIdRes.isErr()) {
+    return new Err(new DustError("invalid_request_error", spaceIdRes.error));
+  }
+
+  let webhookSourceViewId: ModelId | null = null;
+  if (trigger.kind === "webhook") {
+    const view = await WebhookSourcesViewResource.fetchById(
+      auth,
+      trigger.webhookSourceViewId
+    );
+    if (!view) {
+      return new Err(
+        new DustError(
+          "webhook_source_not_found",
+          "Webhook source view not found."
+        )
+      );
+    }
+    webhookSourceViewId = view.id;
+  }
+
+  const res = await TriggerResource.makeNew(auth, {
+    workspaceId: auth.getNonNullableWorkspace().id,
+    agent,
+    name: trigger.name,
+    kind: trigger.kind,
+    status: trigger.status ?? "enabled",
+    configuration: trigger.configuration,
+    naturalLanguageDescription: trigger.naturalLanguageDescription,
+    customPrompt: trigger.customPrompt,
+    editor: user.id,
+    webhookSourceViewId,
+    executionPerDayLimitOverride:
+      trigger.kind === "webhook" ? trigger.executionPerDayLimitOverride : null,
+    executionMode: trigger.executionMode,
+    origin,
+    spaceId: spaceIdRes.value,
+  });
+  if (res.isErr()) {
+    if (
+      res.error instanceof TriggerExecutionModeForbiddenError ||
+      res.error instanceof TriggerAgentNotReadableError
+    ) {
+      return new Err(new DustError("unauthorized", res.error.message));
+    }
+
+    logger.error(
+      {
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        agentConfigurationId: agent.sId,
+        triggerName: trigger.name,
+        error: res.error,
+      },
+      "Failed to create trigger"
+    );
+    return new Err(new DustError("internal_error", res.error.message));
+  }
+
+  return res;
 }
 
 /**

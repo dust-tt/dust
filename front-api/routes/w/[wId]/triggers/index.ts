@@ -1,4 +1,7 @@
-import { deleteAgentTriggers } from "@app/lib/api/agent_triggers";
+import {
+  createAgentTrigger,
+  deleteAgentTriggers,
+} from "@app/lib/api/agent_triggers";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -15,6 +18,7 @@ import { TriggerSchema } from "@app/types/assistant/triggers";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -386,102 +390,42 @@ app.post(
     }
 
     const { triggers } = ctx.req.valid("json");
-    const workspace = auth.getNonNullableWorkspace();
-    const readableWebhookSourceViewModelIds =
-      await fetchReadableWebhookSourceViewModelIds(auth, triggers);
 
-    for (const triggerData of triggers) {
-      const triggerValidation = TriggerSchema.safeParse({
-        ...triggerData,
-        editor: auth.getNonNullableUser().id,
-      });
-      if (!triggerValidation.success) {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: `Invalid trigger data: ${triggerValidation.error.message}`,
-          },
-        });
-      }
-
-      const validatedTrigger = triggerValidation.data;
-      const webhookSourceViewModelIdRes = resolveWebhookSourceViewModelId(
-        validatedTrigger,
-        readableWebhookSourceViewModelIds
-      );
-      if (webhookSourceViewModelIdRes.isErr()) {
-        return apiError(ctx, {
-          status_code: 404,
-          api_error: {
-            type: "webhook_source_view_not_found",
-            message: webhookSourceViewModelIdRes.error,
-          },
-        });
-      }
-      const webhookSourceViewModelId = webhookSourceViewModelIdRes.value;
-      const executionPerDay = isWebhookTriggerData(validatedTrigger)
-        ? validatedTrigger.executionPerDayLimitOverride
-        : null;
-
-      const spaceIdRes = await resolveTriggerSpaceId(
-        auth,
-        validatedTrigger.spaceId
-      );
-      if (spaceIdRes.isErr()) {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: spaceIdRes.error,
-          },
-        });
-      }
-
-      const newTrigger = await TriggerResource.makeNew(auth, {
-        workspaceId: workspace.id,
+    for (const trigger of triggers) {
+      const createResult = await createAgentTrigger(auth, {
         agent,
-        name: validatedTrigger.name,
-        kind: validatedTrigger.kind,
-        status: validatedTrigger.status ?? "enabled",
-        configuration: validatedTrigger.configuration,
-        naturalLanguageDescription: validatedTrigger.naturalLanguageDescription,
-        customPrompt: validatedTrigger.customPrompt,
-        editor: auth.getNonNullableUser().id,
-        webhookSourceViewId: webhookSourceViewModelId,
-        executionPerDayLimitOverride: executionPerDay,
-        executionMode: validatedTrigger.executionMode,
+        trigger,
         origin: "user",
-        spaceId: spaceIdRes.value,
       });
-
-      if (newTrigger.isErr()) {
-        if (newTrigger.error instanceof TriggerExecutionModeForbiddenError) {
-          return apiError(ctx, {
-            status_code: 403,
-            api_error: {
-              type: "workspace_auth_error",
-              message: newTrigger.error.message,
-            },
-          });
+      if (createResult.isErr()) {
+        const { code, message } = createResult.error;
+        switch (code) {
+          case "invalid_request_error":
+            return apiError(ctx, {
+              status_code: 400,
+              api_error: { type: "invalid_request_error", message },
+            });
+          case "webhook_source_not_found":
+            return apiError(ctx, {
+              status_code: 404,
+              api_error: { type: "webhook_source_view_not_found", message },
+            });
+          case "unauthorized":
+            return apiError(ctx, {
+              status_code: 403,
+              api_error: { type: "workspace_auth_error", message },
+            });
+          case "internal_error":
+            return apiError(ctx, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: `Failed to create trigger ${trigger.name}.`,
+              },
+            });
+          default:
+            return assertNever(code);
         }
-
-        logger.error(
-          {
-            workspaceId: workspace.sId,
-            agentConfigurationId: aId,
-            triggerName: validatedTrigger.name,
-            error: newTrigger.error,
-          },
-          "Failed to create trigger"
-        );
-        return apiError(ctx, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: `Failed to create trigger ${validatedTrigger.name}.`,
-          },
-        });
       }
     }
 

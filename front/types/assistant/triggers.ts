@@ -202,6 +202,9 @@ export const TriggerSchema = z.discriminatedUnion("kind", [
   }),
 ]);
 
+// A trigger as sent to be created or updated.
+export type TriggerInputType = z.infer<typeof TriggerSchema>;
+
 const TriggerBaseSchema = z.object({
   id: z.number(),
   sId: z.string(),
