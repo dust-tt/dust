@@ -46,14 +46,12 @@ app.get("/", async (ctx): HandlerResult<GetUserApprovalsResponseBody> => {
           validation.mcpServerId,
           { includeRestricted: true }
         );
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         serverName = server?.toJSON().name || "Unknown Internal Server";
       } else if (serverType === "remote") {
         const server = await RemoteMCPServerResource.fetchById(
           auth,
           validation.mcpServerId
         );
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         serverName = server?.cachedName || "Unknown Remote Server";
       }
     } catch {

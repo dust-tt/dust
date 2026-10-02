@@ -1,4 +1,3 @@
-/* eslint-disable dust/enforce-client-types-in-public-api */
 // Pass through to workOS, do not enforce return types.
 
 import config from "@app/lib/api/config";
@@ -119,7 +118,6 @@ async function handleAuthenticate(ctx: Context) {
   try {
     const body = await ctx.req.parseBody();
 
-    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(`https://${workosConfig.authenticateUri}`, {
       method: "POST",
       headers: {

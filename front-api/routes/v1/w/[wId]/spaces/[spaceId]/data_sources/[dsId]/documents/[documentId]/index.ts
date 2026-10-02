@@ -453,8 +453,7 @@ app.post(
             content: body.text,
             sections: [],
           }
-        : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          body.section || null;
+        : body.section || null;
 
     if (!section) {
       return apiError(ctx, {
@@ -596,7 +595,6 @@ app.post(
 
     const mimeType = body.mime_type ?? "application/octet-stream";
 
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const tags = body.tags || [];
     const titleInTags = tags
       .find((t) => t.startsWith("title:"))
@@ -604,7 +602,6 @@ app.post(
       ?.trim();
 
     // Use titleInTags if no title is provided, then documentId as last resort (same behavior as uploading in the web app).
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const title = body.title?.trim() || titleInTags || documentId;
 
     if (!titleInTags) {
@@ -627,14 +624,11 @@ app.post(
           dataSourceId: dataSource.sId,
           documentId,
           tags,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           parentId: body.parent_id || null,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           parents: body.parents || [documentId],
           timestamp: cleanTimestamp(body.timestamp),
           sourceUrl,
           section,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           upsertContext: body.upsert_context || null,
           title,
           mimeType,
@@ -682,11 +676,8 @@ app.post(
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
         documentId,
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         tags: (body.tags || []).map((tag) => safeSubstring(tag, 0)),
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         parentId: body.parent_id || null,
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         parents: body.parents || [documentId],
         sourceUrl,
         timestamp: cleanTimestamp(body.timestamp),

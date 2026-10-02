@@ -1,4 +1,3 @@
-/* eslint-disable dust/enforce-client-types-in-public-api */
 // Disabling because POKE but should probably be refactored to use internal types.
 
 import { handleDataSourceSearch } from "@app/lib/api/data_sources";

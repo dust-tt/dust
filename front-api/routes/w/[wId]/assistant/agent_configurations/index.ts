@@ -197,7 +197,6 @@ app.get("/", async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
     withEditors,
     sort,
   } = queryValidation.data;
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   let viewParam = view ? view : "all";
   // @ts-expect-error: added for backwards compatibility
   viewParam = viewParam === "assistant-search" ? "list" : viewParam;

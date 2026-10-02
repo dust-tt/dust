@@ -1,4 +1,3 @@
-/* eslint-disable dust/enforce-client-types-in-public-api */
 // This endpoint only returns void as it is used only for deletion, so no need to use @dust-tt/client types.
 
 import { SpaceResource } from "@app/lib/resources/space_resource";
