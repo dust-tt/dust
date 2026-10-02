@@ -392,7 +392,7 @@ function ToolRow({
 }
 
 /**
- * The description a server declares for one of its tools, kept to two lines.
+ * A description a server declares, for itself or a tool, kept to two lines.
  * These run to a paragraph in the wild, and thirty paragraphs would bury the
  * list they are meant to explain.
  */
@@ -401,7 +401,7 @@ interface ClampedDescriptionProps {
   className?: string;
 }
 
-function ClampedDescription({
+export function ClampedDescription({
   description,
   className,
 }: ClampedDescriptionProps) {
