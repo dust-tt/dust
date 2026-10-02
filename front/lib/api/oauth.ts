@@ -236,11 +236,15 @@ export async function createConnectionAndGetSetupUrl(
 
   const clientId: string | undefined = extraConfig.client_id as string;
 
+  // mcp_server_id is only a lookup key for inheriting workspace connection config;
+  // never persist it on the OAuth connection metadata.
+  const { mcp_server_id: _mcpServerId, ...connectionExtraConfig } = extraConfig;
+
   const metadata: Record<string, unknown> = {
     use_case: useCase,
     workspace_id: auth.getNonNullableWorkspace().sId,
     user_id: auth.getNonNullableUser().sId,
-    ...extraConfig,
+    ...connectionExtraConfig,
     // Store opener origin for postMessage after OAuth finalize (cross-origin popup communication)
     ...(openerOrigin && { opener_origin: openerOrigin }),
   };

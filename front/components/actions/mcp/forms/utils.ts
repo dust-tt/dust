@@ -161,6 +161,15 @@ export function canRefreshMCPAuthWithoutDialog({
     return false;
   }
 
+  // mcp / mcp_static Refresh reuses stored workspace OAuth metadata via
+  // mcp_server_id (discovery endpoints or static client credentials). No dialog.
+  if (
+    authorization.provider === "mcp" ||
+    authorization.provider === "mcp_static"
+  ) {
+    return true;
+  }
+
   const inputs = getProviderRequiredOAuthCredentialInputs({
     provider: authorization.provider,
     useCase,

@@ -33,7 +33,7 @@ describe("canRefreshMCPAuthWithoutDialog", () => {
     ).toBe(false);
   });
 
-  it("returns false when the provider needs admin-entered credentials", () => {
+  it("returns true for mcp_static — Refresh reuses stored client credentials", () => {
     expect(
       canRefreshMCPAuthWithoutDialog({
         authorization: {
@@ -42,7 +42,7 @@ describe("canRefreshMCPAuthWithoutDialog", () => {
         },
         useCase: "platform_actions",
       })
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("returns false for snowflake shared static credential form", () => {

@@ -2,7 +2,7 @@ import { MCPOAuthProvider } from "@app/lib/api/oauth/providers/mcp";
 import { MCPOAuthStaticOAuthProvider } from "@app/lib/api/oauth/providers/mcp_static";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { OAuthConnectionType } from "@app/types/oauth/lib";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -87,7 +87,10 @@ describe("MCPOAuthProvider.getUpdatedExtraConfig", () => {
     expect(updated.use_static_ip_proxy).toBe("true");
   });
 
-  it("keeps workspace connection metadata authoritative for personal actions", async () => {
+  it.each([
+    "personal_actions",
+    "platform_actions",
+  ] as const)("keeps workspace connection metadata authoritative for %s with mcp_server_id", async (useCase) => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const provider = new MCPOAuthProvider();
 
@@ -108,7 +111,7 @@ describe("MCPOAuthProvider.getUpdatedExtraConfig", () => {
     );
 
     const updated = await provider.getUpdatedExtraConfig(authenticator, {
-      useCase: "personal_actions",
+      useCase,
       extraConfig: {
         mcp_server_id: "srv_123",
         client_id: "spoofed-client",
@@ -125,10 +128,103 @@ describe("MCPOAuthProvider.getUpdatedExtraConfig", () => {
       "https://unverified.example.com/authorize"
     );
     expect(updated.scope).toBe("workspace-scope");
+    expect(updated.mcp_server_id).toBeUndefined();
     expect(updated.use_static_ip_proxy).toBe("false");
     expect(provider.isExtraConfigValidPostRelatedCredential(updated)).toBe(
       true
     );
+  });
+
+  it("falls through to caller credentials for platform_actions when workspace connection is missing", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const provider = new MCPOAuthProvider();
+
+    mocks.getWorkspaceOAuthConnectionIdForMCPServer.mockResolvedValue(
+      new Err({
+        kind: "connection_not_found",
+        message: "Failed to find MCP server connection",
+      })
+    );
+
+    const updated = await provider.getUpdatedExtraConfig(authenticator, {
+      useCase: "platform_actions",
+      extraConfig: {
+        mcp_server_id: "srv_missing",
+        client_id: "discovered-client",
+        client_secret: "secret",
+        token_endpoint: "https://discovered.example.com/token",
+        authorization_endpoint: "https://discovered.example.com/authorize",
+      },
+    });
+
+    expect(updated.client_id).toBe("discovered-client");
+    expect(updated.client_secret).toBeUndefined();
+    expect(updated.mcp_server_id).toBeUndefined();
+    expect(updated.token_endpoint).toBe("https://discovered.example.com/token");
+    expect(provider.isExtraConfigValidPostRelatedCredential(updated)).toBe(
+      true
+    );
+  });
+
+  it("accepts platform_actions with mcp_server_id alone", () => {
+    const provider = new MCPOAuthProvider();
+    expect(
+      provider.isExtraConfigValid(
+        { mcp_server_id: "srv_123" },
+        "platform_actions"
+      )
+    ).toBe(true);
+    expect(
+      new MCPOAuthStaticOAuthProvider().isExtraConfigValid(
+        { mcp_server_id: "srv_123" },
+        "platform_actions"
+      )
+    ).toBe(true);
+  });
+});
+
+describe("MCPOAuthProvider.getRelatedCredential", () => {
+  beforeEach(() => {
+    mocks.getConnectionMetadata.mockReset();
+    mocks.getWorkspaceOAuthConnectionIdForMCPServer.mockReset();
+  });
+
+  it("reuses from_connection_id for platform_actions Refresh", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const provider = new MCPOAuthProvider();
+
+    mocks.getWorkspaceOAuthConnectionIdForMCPServer.mockResolvedValue(
+      new Ok("con_workspace")
+    );
+    mocks.getConnectionMetadata.mockResolvedValue(
+      new Ok({
+        connection: {
+          ...makeConnection({
+            client_id: "workspace-client",
+            token_endpoint: "https://example.com/token",
+            authorization_endpoint: "https://example.com/authorize",
+          }),
+          redirect_uri: "https://eu.dust.tt/oauth/mcp/finalize",
+        },
+      })
+    );
+
+    const related = await provider.getRelatedCredential(authenticator, {
+      useCase: "platform_actions",
+      workspaceId: "w_123",
+      userId: "u_123",
+      extraConfig: { mcp_server_id: "srv_123" },
+    });
+
+    expect(related.isOk()).toBe(true);
+    if (related.isOk()) {
+      expect(related.value.content).toEqual({
+        from_connection_id: "con_workspace",
+      });
+      expect(related.value.redirectUri).toBe(
+        "https://eu.dust.tt/oauth/mcp/finalize"
+      );
+    }
   });
 });
 

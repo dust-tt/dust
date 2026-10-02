@@ -59,12 +59,16 @@ export async function submitConnectMCPServerDialogForm({
   const scope = authorization.scope;
 
   // Step 1: Setup OAuth connection
+  // Pass mcp_server_id so providers (mcp, mcp_static, …) can reuse the workspace
+  // connection's stored OAuth metadata/credentials from first connect — Refresh
+  // does not rediscover endpoints or re-ask for static client secrets.
   const connectionResult = await setupOAuthConnection({
     owner,
     provider: authorization.provider,
     // During setup, the use case is always "platform_actions".
     useCase: "platform_actions",
     extraConfig: {
+      mcp_server_id: mcpServerView.server.sId,
       ...(values.authCredentials ?? {}),
       ...(scope ? { scope } : {}),
     },
