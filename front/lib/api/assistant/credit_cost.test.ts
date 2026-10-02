@@ -377,7 +377,15 @@ describe("computeAndStoreAgentMessageCredits", () => {
     vi.clearAllMocks();
   });
 
-  async function finalizeMessageFromMember(origin: UserMessageOrigin) {
+  async function finalizeMessage({
+    origin,
+    authorless = false,
+    authMethod = null,
+  }: {
+    origin: UserMessageOrigin;
+    authorless?: boolean;
+    authMethod?: string | null;
+  }) {
     const { authenticator: auth, workspace } = await createResourceTest({});
     const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
     const createdConversation = await ConversationFactory.create(auth, {
@@ -398,6 +406,8 @@ describe("computeAndStoreAgentMessageCredits", () => {
         conversation,
         content: "Hello",
         origin,
+        authorless,
+        authMethod,
       });
     const { run } = await RunFactory.createWithUsage(auth);
     const { agentMessage } = await ConversationFactory.createAgentMessage(
@@ -424,7 +434,7 @@ describe("computeAndStoreAgentMessageCredits", () => {
   }
 
   it("records a member's Slack workflow usage against the programmatic counter only", async () => {
-    await finalizeMessageFromMember("slack_workflow");
+    await finalizeMessage({ origin: "slack_workflow" });
 
     expect(recordProgrammaticSpendLimitUsage).toHaveBeenCalledTimes(1);
     expect(recordUserSpendLimitUsage).not.toHaveBeenCalled();
@@ -432,9 +442,20 @@ describe("computeAndStoreAgentMessageCredits", () => {
   });
 
   it("records a member's Slack usage against their own counter only", async () => {
-    await finalizeMessageFromMember("slack");
+    await finalizeMessage({ origin: "slack" });
 
     expect(recordUserSpendLimitUsage).toHaveBeenCalledTimes(1);
     expect(recordProgrammaticSpendLimitUsage).not.toHaveBeenCalled();
+  });
+
+  it("records Slack usage the connector couldn't attribute to a member against the programmatic counter", async () => {
+    await finalizeMessage({
+      origin: "slack",
+      authorless: true,
+      authMethod: "system_api_key",
+    });
+
+    expect(recordProgrammaticSpendLimitUsage).toHaveBeenCalledTimes(1);
+    expect(recordUserSpendLimitUsage).not.toHaveBeenCalled();
   });
 });

@@ -96,10 +96,10 @@ export function computeAgentMessageCredits({
  */
 /**
  * @cc [owner:tdraier,label:product] programmatic-usage-not-user-attributed
- * When the triggering message is programmatic (`isProgrammaticUsage` on its origin), its cost MUST
- * NOT be recorded in the user's fair-use AWU counter, per-user spend-cap counter or free-seat
- * lifetime counter, even when `auth` carries a user. It is recorded in the programmatic counters
- * only.
+ * When the triggering message is programmatic (`isProgrammaticUsage` on its origin, user and auth
+ * method, the same classification as its run usage type), its cost MUST NOT be recorded in the
+ * user's fair-use AWU counter, per-user spend-cap counter or free-seat lifetime counter, even when
+ * `auth` carries a user. It is recorded in the programmatic counters only.
  */
 export async function computeAndStoreAgentMessageCredits(
   auth: Authenticator,
@@ -154,16 +154,14 @@ export async function computeAndStoreAgentMessageCredits(
   // Repair legacy run usages that predate creation-time classification. New
   // rows are already classified and this fallback never overwrites them.
   const messageOrigin = triggeringUserMessageOrigin ?? "web";
+  const isProgrammatic = isProgrammaticUsage(auth, {
+    userMessageOrigin: messageOrigin,
+    userId: triggeringUserId,
+    messageAuthMethod: triggeringUserMessageAuthMethod,
+  });
   await RunResource.setUsageTypeForRunsIfMissing(auth, {
     runs,
-    usageType: getUsageType(
-      isProgrammaticUsage(auth, {
-        userMessageOrigin: messageOrigin,
-        userId: triggeringUserId,
-        messageAuthMethod: triggeringUserMessageAuthMethod,
-      }),
-      messageOrigin
-    ),
+    usageType: getUsageType(isProgrammatic, messageOrigin),
   });
 
   const [runUsages, actions] = await Promise.all([
@@ -197,9 +195,6 @@ export async function computeAndStoreAgentMessageCredits(
   const recordedCostDelta =
     costCredits !== null ? costCredits - (previousCostCredits ?? 0) : 0;
 
-  const isProgrammatic = isProgrammaticUsage(auth, {
-    userMessageOrigin: messageOrigin,
-  });
   const user = isProgrammatic ? null : auth.user();
   const plan = auth.plan();
   const assistantLimits = plan?.limits.assistant;

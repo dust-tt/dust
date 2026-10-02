@@ -268,6 +268,7 @@ export class ConversationFactory {
     agenticMessageType,
     agenticOriginMessageId,
     authorless = false,
+    authMethod = null,
     clientSideMCPServerIds = [],
     requestedModel = null,
   }: {
@@ -280,6 +281,7 @@ export class ConversationFactory {
     createdAt?: Date;
     // Posted by Dust on the user's behalf, so no author on the row.
     authorless?: boolean;
+    authMethod?: string | null;
     agenticMessageType?: "run_agent" | "agent_handover";
     agenticOriginMessageId?: string;
     clientSideMCPServerIds?: string[];
@@ -296,6 +298,7 @@ export class ConversationFactory {
       userContextEmail: "test@example.com",
       userContextProfilePictureUrl: null,
       userContextOrigin: origin,
+      userContextAuthMethod: authMethod,
       clientSideMCPServerIds,
       agenticMessageType: agenticMessageType ?? null,
       agenticOriginMessageId: agenticOriginMessageId ?? null,
