@@ -178,7 +178,7 @@ export function WebhookSourceDetailsInfo({
         <div>
           <Page.H variant="h6">Webhook URL</Page.H>
           <div className="flex items-center space-x-2">
-            <p className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
+            <p className="dd-privacy-mask min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
               {webhookUrl}
             </p>
             <IconButton
@@ -231,7 +231,7 @@ export function WebhookSourceDetailsInfo({
             <div className="flex items-center space-x-2">
               <p
                 className={cn(
-                  "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-mono",
+                  "dd-privacy-mask min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-mono",
                   {
                     "select-none blur-sm": !isSecretVisible,
                   }
