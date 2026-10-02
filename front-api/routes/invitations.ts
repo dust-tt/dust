@@ -1,6 +1,7 @@
 import { fetchInvitationsInOtherCells } from "@app/lib/api/cells/lookup";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getMembershipInvitationToken } from "@app/lib/utils/invitation_token";
 import logger from "@app/logger/logger";
 import type { GetPendingInvitationsLookupResponseBody } from "@app/types/api/invitation";
@@ -32,18 +33,21 @@ invitationsApp.get(
         email: user.email,
       });
 
-    const localInvitations: PendingInvitationOption[] = invitationResources.map(
-      (invitation) => {
-        const workspace = invitation.workspace;
-        return {
-          workspaceName: workspace.name,
-          initialRole: invitation.initialRole,
-          createdAt: invitation.createdAt.getTime(),
-          token: getMembershipInvitationToken(invitation.toJSON()),
-          isExpired: invitation.isExpired(),
-        };
-      }
-    );
+    const localInvitations: PendingInvitationOption[] =
+      await concurrentExecutor(
+        invitationResources,
+        async (invitation) => {
+          const workspace = invitation.workspace;
+          return {
+            workspaceName: workspace.name,
+            initialRole: invitation.initialRole,
+            createdAt: invitation.createdAt.getTime(),
+            token: await getMembershipInvitationToken(invitation.toJSON()),
+            isExpired: invitation.isExpired(),
+          };
+        },
+        { concurrency: 8 }
+      );
 
     const crossRegionRes = await fetchInvitationsInOtherCells(user.email);
     let pendingInvitations = localInvitations;

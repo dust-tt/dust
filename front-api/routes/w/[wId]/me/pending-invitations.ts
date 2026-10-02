@@ -1,4 +1,5 @@
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getMembershipInvitationToken } from "@app/lib/utils/invitation_token";
 import type { GetPendingInvitationsResponseBody } from "@app/types/api/invitation";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
@@ -18,18 +19,21 @@ app.get("/", async (ctx): HandlerResult<GetPendingInvitationsResponseBody> => {
       email: user.email,
     });
 
-  const pendingInvitations: PendingInvitationOption[] = invitationResources.map(
-    (invitation) => {
-      const workspace = invitation.workspace;
-      return {
-        workspaceName: workspace.name,
-        initialRole: invitation.initialRole,
-        createdAt: invitation.createdAt.getTime(),
-        token: getMembershipInvitationToken(invitation.toJSON()),
-        isExpired: invitation.isExpired(),
-      };
-    }
-  );
+  const pendingInvitations: PendingInvitationOption[] =
+    await concurrentExecutor(
+      invitationResources,
+      async (invitation) => {
+        const workspace = invitation.workspace;
+        return {
+          workspaceName: workspace.name,
+          initialRole: invitation.initialRole,
+          createdAt: invitation.createdAt.getTime(),
+          token: await getMembershipInvitationToken(invitation.toJSON()),
+          isExpired: invitation.isExpired(),
+        };
+      },
+      { concurrency: 8 }
+    );
 
   return ctx.json({ pendingInvitations });
 });

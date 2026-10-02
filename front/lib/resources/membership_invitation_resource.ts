@@ -11,6 +11,7 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { verifyHS256Jwt } from "@app/lib/utils/hs256_jwt";
 import { getInvitationTokenStartMs } from "@app/lib/utils/invitation_token";
 import logger from "@app/logger/logger";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
@@ -21,7 +22,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { ActiveRoleType, LightWorkspaceType } from "@app/types/user";
 import { isActiveRoleType } from "@app/types/user";
 import assert from "assert";
-import { verify } from "jsonwebtoken";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -427,10 +427,10 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     if (inviteToken && typeof inviteToken === "string") {
       let decodedToken: { membershipInvitationId: number } | null = null;
       try {
-        decodedToken = verify(
+        decodedToken = (await verifyHS256Jwt(
           inviteToken,
           config.getDustInviteTokenSecret()
-        ) as {
+        )) as {
           membershipInvitationId: number;
         };
       } catch (e) {

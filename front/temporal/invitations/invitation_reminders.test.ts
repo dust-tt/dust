@@ -4,24 +4,20 @@ import {
 } from "@app/lib/constants/invitation";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
+import { verifyHS256Jwt } from "@app/lib/utils/hs256_jwt";
 import {
   getInvitationTokenStartMs,
   getMembershipInvitationToken,
 } from "@app/lib/utils/invitation_token";
-import { verify } from "jsonwebtoken";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
 const TEST_SECRET = "test-invite-secret";
 
-function decodeToken(
+async function decodeToken(
   token: string,
   secret: string
-): { iat: number; exp: number } {
-  const decoded = verify(token, secret);
-  if (typeof decoded === "string" || !decoded) {
-    throw new Error("unexpected token shape");
-  }
-  return decoded as { iat: number; exp: number };
+): Promise<{ iat: number; exp: number }> {
+  return (await verifyHS256Jwt(token, secret)) as { iat: number; exp: number };
 }
 
 beforeAll(() => {
@@ -74,11 +70,11 @@ describe("getInvitationTokenStartMs", () => {
 describe("getMembershipInvitationToken", () => {
   const secret = TEST_SECRET;
 
-  it("anchors token on createdAt when no reminder has been sent", () => {
+  it("anchors token on createdAt when no reminder has been sent", async () => {
     const createdAt = Date.now() - 1000;
     const invitation = makeInvitation(createdAt);
-    const token = getMembershipInvitationToken(invitation);
-    const decoded = decodeToken(token, secret);
+    const token = await getMembershipInvitationToken(invitation);
+    const decoded = await decodeToken(token, secret);
 
     expect(decoded.iat).toBe(Math.floor(createdAt / 1000));
     expect(decoded.exp).toBe(
@@ -86,12 +82,12 @@ describe("getMembershipInvitationToken", () => {
     );
   });
 
-  it("anchors token on reminderSentAt after reminder is sent", () => {
+  it("anchors token on reminderSentAt after reminder is sent", async () => {
     const createdAt = Date.now() - 8 * 24 * 60 * 60 * 1000;
     const reminderSentAt = Date.now() - 1000;
     const invitation = makeInvitation(createdAt, reminderSentAt);
-    const token = getMembershipInvitationToken(invitation);
-    const decoded = decodeToken(token, secret);
+    const token = await getMembershipInvitationToken(invitation);
+    const decoded = await decodeToken(token, secret);
 
     expect(decoded.iat).toBe(Math.floor(reminderSentAt / 1000));
     expect(decoded.exp).toBe(
@@ -99,25 +95,29 @@ describe("getMembershipInvitationToken", () => {
     );
   });
 
-  it("old token generated before reminder remains expired after reminderSentAt is set", () => {
+  it("old token generated before reminder remains expired after reminderSentAt is set", async () => {
     const createdAt = Date.now() - 8 * 24 * 60 * 60 * 1000;
     const invitationBeforeReminder = makeInvitation(createdAt, null);
-    const oldToken = getMembershipInvitationToken(invitationBeforeReminder);
+    const oldToken = await getMembershipInvitationToken(
+      invitationBeforeReminder
+    );
 
     const reminderSentAt = Date.now() - 1000;
     const invitationAfterReminder = makeInvitation(createdAt, reminderSentAt);
-    const newToken = getMembershipInvitationToken(invitationAfterReminder);
+    const newToken = await getMembershipInvitationToken(
+      invitationAfterReminder
+    );
 
-    expect(() => verify(oldToken, secret)).toThrow();
-    expect(() => verify(newToken, secret)).not.toThrow();
+    await expect(verifyHS256Jwt(oldToken, secret)).rejects.toThrow();
+    await expect(verifyHS256Jwt(newToken, secret)).resolves.toBeDefined();
   });
 
-  it("new token expires 7 days after reminderSentAt", () => {
+  it("new token expires 7 days after reminderSentAt", async () => {
     const createdAt = Date.now() - 8 * 24 * 60 * 60 * 1000;
     const reminderSentAt = Date.now() - 1000;
     const invitation = makeInvitation(createdAt, reminderSentAt);
-    const token = getMembershipInvitationToken(invitation);
-    const decoded = decodeToken(token, secret);
+    const token = await getMembershipInvitationToken(invitation);
+    const decoded = await decodeToken(token, secret);
 
     expect(decoded.exp).toBe(
       Math.floor(reminderSentAt / 1000) + INVITATION_EXPIRATION_TIME_SEC
@@ -161,8 +161,8 @@ describe("claimReminderSlot", () => {
     expect(claimed).toBe(true);
     expect(resource.reminderSentAt).toEqual(new Date(now));
     expect(resource.toJSON().reminderSentAt).toBe(now);
-    const token = getMembershipInvitationToken(resource.toJSON());
-    const decoded = decodeToken(token, TEST_SECRET);
+    const token = await getMembershipInvitationToken(resource.toJSON());
+    const decoded = await decodeToken(token, TEST_SECRET);
     expect(decoded.iat).toBe(Math.floor(now / 1000));
 
     vi.useRealTimers();

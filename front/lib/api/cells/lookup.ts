@@ -4,6 +4,7 @@ import { isWorkspaceRelocationDone } from "@app/lib/api/workspace";
 import { findWorkspaceWithVerifiedDomain } from "@app/lib/iam/workspaces";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import { getMembershipInvitationToken } from "@app/lib/utils/invitation_token";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -310,15 +311,18 @@ export async function handleLookupInvitations(
   const invitationResources =
     await MembershipInvitationResource.listPendingForEmail({ email });
 
-  const pendingInvitations: PendingInvitationOption[] = invitationResources.map(
-    (invitation) => ({
-      workspaceName: invitation.workspace.name,
-      initialRole: invitation.initialRole,
-      createdAt: invitation.createdAt.getTime(),
-      token: getMembershipInvitationToken(invitation.toJSON()),
-      isExpired: invitation.isExpired(),
-    })
-  );
+  const pendingInvitations: PendingInvitationOption[] =
+    await concurrentExecutor(
+      invitationResources,
+      async (invitation) => ({
+        workspaceName: invitation.workspace.name,
+        initialRole: invitation.initialRole,
+        createdAt: invitation.createdAt.getTime(),
+        token: await getMembershipInvitationToken(invitation.toJSON()),
+        isExpired: invitation.isExpired(),
+      }),
+      { concurrency: 8 }
+    );
 
   return { pendingInvitations };
 }

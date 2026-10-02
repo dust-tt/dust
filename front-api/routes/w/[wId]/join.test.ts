@@ -53,7 +53,7 @@ describe("GET /api/w/:wId/join", () => {
       inviteEmail: "test@example.com",
     });
 
-    const token = getMembershipInvitationToken(invitation.toJSON());
+    const token = await getMembershipInvitationToken(invitation.toJSON());
 
     const response = await joinRequest(workspace.sId, { t: token });
 
@@ -99,7 +99,7 @@ describe("GET /api/w/:wId/join", () => {
     const now = Date.now();
     const tokenPayload = invitation.toJSON();
     tokenPayload.createdAt = now;
-    const token = getMembershipInvitationToken(tokenPayload);
+    const token = await getMembershipInvitationToken(tokenPayload);
 
     const response = await joinRequest(workspace.sId, { t: token });
 

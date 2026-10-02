@@ -6,6 +6,7 @@ import { getMembers } from "@app/lib/api/workspace";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getMembershipInvitationUrl } from "@app/lib/utils/invitation_token";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { pokeApp } from "@front-api/middlewares/ctx";
@@ -134,13 +135,17 @@ app.get("/", async (ctx): HandlerResult<PokeGetMemberships> => {
         scheduledSeatChangeAt: scheduled?.at ?? null,
       };
     }),
-    pendingInvitations: pendingInvitations.map((invite) => {
-      const i = invite.toJSON();
-      return {
-        ...i,
-        inviteLink: getMembershipInvitationUrl(owner, i),
-      };
-    }),
+    pendingInvitations: await concurrentExecutor(
+      pendingInvitations,
+      async (invite) => {
+        const i = invite.toJSON();
+        return {
+          ...i,
+          inviteLink: await getMembershipInvitationUrl(owner, i),
+        };
+      },
+      { concurrency: 8 }
+    ),
   });
 });
 

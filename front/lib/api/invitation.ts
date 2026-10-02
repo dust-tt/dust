@@ -49,7 +49,7 @@ async function sendWorkspaceInvitationEmail(
     from: config.getSupportEmailAddress(),
     templateId: config.getInvitationEmailTemplate(),
     dynamic_template_data: {
-      inviteLink: getMembershipInvitationUrl(owner, invitation),
+      inviteLink: await getMembershipInvitationUrl(owner, invitation),
       // Escape the name to prevent XSS attacks via injected script elements.
       inviterName: escape(user.fullName),
       workspaceName: owner.name,
@@ -69,7 +69,7 @@ export async function sendWorkspaceInvitationReminderEmail(
     from: config.getSupportEmailAddress(),
     templateId: config.getInvitationReminderEmailTemplate(),
     dynamic_template_data: {
-      inviteLink: getMembershipInvitationUrl(owner, invitation),
+      inviteLink: await getMembershipInvitationUrl(owner, invitation),
       workspaceName: owner.name,
     },
   };
