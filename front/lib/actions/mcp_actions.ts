@@ -1549,9 +1549,7 @@ export async function buildToolConfigurationsFromRawTools(
         toolServerId: mcpServerId,
         ...(serverTimeoutMs && { timeoutMs: serverTimeoutMs }),
         retryPolicy:
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           toolsRetryPolicies?.[tool.name] ||
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           toolsRetryPolicies?.["default"] ||
           DEFAULT_MCP_TOOL_RETRY_POLICY,
       };

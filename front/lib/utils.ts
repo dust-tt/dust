@@ -22,7 +22,6 @@ export function classNames(...classes: (string | null | boolean)[]) {
 export const shallowBlockClone = (block: any) => {
   const b = Object.assign({}, block);
   b.spec = Object.assign({}, block.spec);
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   b.config = Object.assign({}, block.config || {});
   return b;
 };
@@ -296,7 +295,6 @@ export function compareAgentsWithFavorites(
 
 export function sanitizeJSONOutput(obj: unknown): unknown {
   if (typeof obj === "string") {
-    // eslint-disable-next-line no-control-regex
     return obj.replace(/\x00/g, "");
   } else if (Array.isArray(obj)) {
     return obj.map((item) => sanitizeJSONOutput(item));

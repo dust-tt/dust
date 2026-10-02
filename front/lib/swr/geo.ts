@@ -79,7 +79,6 @@ export function useGeolocation({ disabled }: { disabled?: boolean } = {}) {
   );
 
   return {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     geoData: cachedData || data,
     isGeoDataLoading: !error && !cachedData && !data && !disabled,
     isGeoDataError: error,

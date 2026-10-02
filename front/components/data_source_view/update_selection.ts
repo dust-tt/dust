@@ -147,7 +147,6 @@ export function updateSelection({
           {
             ...item,
             dataSourceView: dsv,
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             parentInternalIds: item.parentInternalIds || [],
           },
         ],
@@ -165,7 +164,6 @@ export function updateSelection({
         {
           ...item,
           dataSourceView: dsv,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           parentInternalIds: item.parentInternalIds || [],
         },
       ];

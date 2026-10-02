@@ -61,10 +61,14 @@ export type SearchResultItem = {
 };
 export type SearchResponse = SearchResultItem[];
 
-const serpapiSearch = async (
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  { provider, query, page, ...options }: BaseWebSearchParams & SerpapiParams
-): Promise<Result<SearchResponse, Error>> => {
+const serpapiSearch = async ({
+  provider,
+  query,
+  page,
+  ...options
+}: BaseWebSearchParams & SerpapiParams): Promise<
+  Result<SearchResponse, Error>
+> => {
   if (options.api_key == null) {
     return new Err(
       new Error("utils/websearch: a DUST_MANAGED_SERP_API_KEY is required")
@@ -89,7 +93,6 @@ const serpapiSearch = async (
 
   logger.debug({ prm }, "URL params");
 
-  // eslint-disable-next-line no-restricted-globals
   const res = await fetch(
     `${SERPAPI_BASE_URL}/search?${urlParams.toString()}`,
     {
@@ -139,7 +142,6 @@ const serperSearch = async (
     return new Err(new Error("DUST_MANAGED_SERP_API_KEY is missing"));
   }
 
-  // eslint-disable-next-line no-restricted-globals
   const res = await fetch(`${SERPER_BASE_URL}/search`, {
     method: "POST",
     headers: {

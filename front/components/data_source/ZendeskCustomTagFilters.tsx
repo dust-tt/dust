@@ -52,7 +52,6 @@ export function ZendeskCustomFieldFilters({
     if (parsingResult.isErr()) {
       return [];
     }
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     return (parsingResult.value || []) as CustomField[];
   }, [customFieldsConfigValue]);
 
@@ -115,7 +114,6 @@ export function ZendeskCustomFieldFilters({
           type: "error",
           title: "Failed to add custom field",
           description:
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             err.error?.connectors_error?.message || "An unknown error occurred",
         });
       }
@@ -167,7 +165,6 @@ export function ZendeskCustomFieldFilters({
           type: "error",
           title: "Failed to remove custom field",
           description:
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             err.error?.connectors_error?.message || "An unknown error occurred",
         });
       }

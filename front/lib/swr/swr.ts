@@ -186,7 +186,6 @@ export async function getErrorFromResponse(response: Response) {
   const errorData = await response.json();
 
   if (isAPIErrorResponse(errorData)) {
-    /* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */
     return errorData.error.connectors_error
       ? errorData.error.connectors_error
       : errorData.error;

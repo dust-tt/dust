@@ -8,7 +8,6 @@ const WORKOS_API_TIMEOUT_MS = 10_000;
 let workos: WorkOS | null = null;
 
 export function getWorkOS() {
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!workos) {
     workos = new WorkOS(config.getWorkOSApiKey(), {
       clientId: config.getWorkOSClientId(),
@@ -28,7 +27,6 @@ const SESSION_AUTH_TIMEOUT_MS = 5_000;
 let workosForSessionAuth: WorkOS | null = null;
 
 export function getWorkOSForSessionAuth() {
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!workosForSessionAuth) {
     workosForSessionAuth = new WorkOS(config.getWorkOSApiKey(), {
       clientId: config.getWorkOSClientId(),

@@ -80,7 +80,6 @@ export default function DataSourcePicker({
         onDataSourcesUpdate([]);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     hasDataSourceView,
     selectedDataSourceView,

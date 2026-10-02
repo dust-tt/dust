@@ -101,7 +101,6 @@ export const isSupportedContentNodeFragmentContentType = (
   ).includes(contentType);
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const ContentFragmentInputWithContentSchema = ContentFragmentBaseSchema.extend({
   content: z.string(),
   contentType: getSupportedInlinedContentType(),

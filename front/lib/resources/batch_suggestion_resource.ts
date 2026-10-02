@@ -20,7 +20,6 @@ import type {
 import groupBy from "lodash/groupBy";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface BatchSuggestionResource
   extends ReadonlyAttributesType<BatchSuggestionModel> {}
 
@@ -28,7 +27,6 @@ export interface BatchSuggestionResource
  * A batch groups agent and skill suggestions that are reviewed together. The batch carries no
  * permission of its own: access derives from its members, see `fetchByIds`.
  */
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class BatchSuggestionResource extends BaseResource<BatchSuggestionModel> {
   static model: ModelStaticWorkspaceAware<BatchSuggestionModel> =
     BatchSuggestionModel;

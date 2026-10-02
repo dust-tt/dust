@@ -190,7 +190,6 @@ export default function DatasetView({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const sendNotification = useSendNotification();
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!dataset) {
     dataset = {
       name: "",
@@ -204,7 +203,6 @@ export default function DatasetView({
   const [datasetDescription, setDatasetDescription] = useState(
     dataset.description
   );
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const [datasetData, setDatasetData] = useState(dataset.data || []);
   const [datasetKeys, setDatasetKeys] = useState(
     checkDatasetData({ data: datasetData })
@@ -212,7 +210,6 @@ export default function DatasetView({
   const [datasetKeyDescriptions, setDatasetKeyDescriptions] = useState<
     string[]
   >(
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     datasetKeys.map((k) => schema?.find((s) => s.key === k)?.description || "")
   );
 
@@ -234,7 +231,6 @@ export default function DatasetView({
     } else if (datasetName.length == 0) {
       setDatasetNameError("");
       valid = false;
-      // eslint-disable-next-line no-useless-escape
     } else if (!datasetName.match(/^[a-zA-Z0-9\._\-]+$/)) {
       setDatasetNameError(
         "Dataset name must only contain letters, numbers, and the characters `._-`"
@@ -487,7 +483,6 @@ export default function DatasetView({
       datasetTypesValidation(),
       {
         name: datasetName.slice(0, MODELS_STRING_MAX_LENGTH),
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         description: (datasetDescription || "").slice(
           0,
           MODELS_STRING_MAX_LENGTH
@@ -520,7 +515,6 @@ export default function DatasetView({
         valid,
         {
           name: datasetName.slice(0, MODELS_STRING_MAX_LENGTH),
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           description: (datasetDescription || "").slice(
             0,
             MODELS_STRING_MAX_LENGTH
@@ -530,7 +524,6 @@ export default function DatasetView({
         inferSchema()
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     datasetName,
     datasetDescription,
@@ -569,7 +562,6 @@ export default function DatasetView({
                 name="description"
                 id="datasetDescription"
                 className="w-full"
-                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 value={datasetDescription || ""}
                 onChange={(e) => setDatasetDescription(e.target.value)}
                 message="Optional"

@@ -139,7 +139,6 @@ vi.mock("@dust-tt/sparkle", () => ({
   ),
   InfoCircle: () => null,
   Label: ({ children, isMuted: _isMuted, ...rest }: LabelStubProps) => (
-    // eslint-disable-next-line jsx-a11y/label-has-associated-control
     <label {...rest}>{children}</label>
   ),
   ListGroup: ({ children }: ChildrenStubProps) => <ul>{children}</ul>,

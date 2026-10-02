@@ -66,11 +66,9 @@ export type UpdateBlob = Partial<
 >;
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ProjectTaskResource
   extends ReadonlyAttributesType<ProjectTaskModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
   static model: ModelStaticWorkspaceAware<ProjectTaskModel> = ProjectTaskModel;
   private readonly assignee: PodTaskAssigneeType | null;

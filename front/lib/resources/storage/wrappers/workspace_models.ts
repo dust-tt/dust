@@ -316,7 +316,6 @@ export class SoftDeletableWorkspaceAwareModel<
     const updateOptions: UpdateOptions<Attributes<M>> = {
       ...options,
       fields: ["deletedAt"],
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       where: options?.where || {},
     };
 

@@ -29,7 +29,6 @@ export async function isInClusterMCPUrlAllowed(
   } else {
     try {
       parsed = new URL(url);
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (_) {
       return false;
     }

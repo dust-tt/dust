@@ -290,12 +290,9 @@ function processInfiniteContentNodesData({
     isNodesFetched: data !== undefined,
     nodesError: error,
     nodes,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     nextPageCursor: lastPage?.nextPageCursor || null,
     hasNextPage,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     totalNodesCount: lastPage?.total || 0,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     totalNodesCountIsAccurate: lastPage?.totalIsAccurate || true,
     isLoadingMore:
       isLoading || (size > 0 && data && typeof data[size - 1] === "undefined"),
@@ -388,7 +385,6 @@ export function useDataSourceViewContentNodes({
     nodes: data?.nodes ?? emptyArray(),
     totalNodesCount: data ? data.total : 0,
     totalNodesCountIsAccurate: data ? data.totalIsAccurate : true,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     nextPageCursor: data?.nextPageCursor || null,
   };
 }

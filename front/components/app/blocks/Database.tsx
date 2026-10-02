@@ -38,7 +38,6 @@ export function TablesManager({
 }>) {
   const addNewTable = useCallback(() => {
     const b = shallowBlockClone(block);
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!b.config.tables) {
       b.config.tables = [];
     }
@@ -54,7 +53,6 @@ export function TablesManager({
 
   const updateTableConfig = (index: number, updates: Partial<TableConfig>) => {
     const b = shallowBlockClone(block);
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!b.config.tables) {
       b.config.tables = [];
     }
@@ -73,7 +71,6 @@ export function TablesManager({
       block.config.tables?.map((t: TableConfig) => ({
         dataSourceId: t.data_source_id,
         tableId: t.table_id,
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       })) || []
     );
   };

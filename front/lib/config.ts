@@ -11,8 +11,7 @@ export function extractConfig(spec: SpecificationType): BlockRunConfig {
           provider_id: spec[i].config ? spec[i].config.provider_id : "",
           model_id: spec[i].config ? spec[i].config.model_id : "",
           use_cache: spec[i].config
-            ? // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              spec[i].config.use_cache
+            ? spec[i].config.use_cache
               ? spec[i].config.use_cache
               : false
             : false,
@@ -24,20 +23,17 @@ export function extractConfig(spec: SpecificationType): BlockRunConfig {
           provider_id: spec[i].config ? spec[i].config.provider_id : "",
           model_id: spec[i].config ? spec[i].config.model_id : "",
           function_call: spec[i].config
-            ? // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              spec[i].config.function_call
+            ? spec[i].config.function_call
               ? spec[i].config.function_call
               : null
             : null,
           use_cache: spec[i].config
-            ? // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              spec[i].config.use_cache
+            ? spec[i].config.use_cache
               ? spec[i].config.use_cache
               : false
             : false,
           response_format: spec[i].config
-            ? // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              spec[i].config.response_format
+            ? spec[i].config.response_format
               ? spec[i].config.response_format
               : null
             : null,
@@ -57,8 +53,7 @@ export function extractConfig(spec: SpecificationType): BlockRunConfig {
           top_k: isNaN(top_k) ? 8 : top_k,
           filter: spec[i].config ? spec[i].config.filter : null,
           use_cache: spec[i].config
-            ? // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              spec[i].config.use_cache
+            ? spec[i].config.use_cache
               ? spec[i].config.use_cache
               : false
             : false,
@@ -69,8 +64,7 @@ export function extractConfig(spec: SpecificationType): BlockRunConfig {
           type: "search",
           provider_id: spec[i].config ? spec[i].config.provider_id : "",
           use_cache: spec[i].config
-            ? // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              spec[i].config.use_cache
+            ? spec[i].config.use_cache
               ? spec[i].config.use_cache
               : false
             : false,
@@ -80,8 +74,7 @@ export function extractConfig(spec: SpecificationType): BlockRunConfig {
         c[spec[i].name] = {
           type: "curl",
           use_cache: spec[i].config
-            ? // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              spec[i].config.use_cache
+            ? spec[i].config.use_cache
               ? spec[i].config.use_cache
               : false
             : false,
@@ -92,14 +85,12 @@ export function extractConfig(spec: SpecificationType): BlockRunConfig {
           type: "browser",
           provider_id: spec[i].config ? spec[i].config.provider_id : "",
           use_cache: spec[i].config
-            ? // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              spec[i].config.use_cache
+            ? spec[i].config.use_cache
               ? spec[i].config.use_cache
               : false
             : false,
           error_as_output: spec[i].config
-            ? // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              spec[i].config.error_as_output
+            ? spec[i].config.error_as_output
               ? spec[i].config.error_as_output
               : false
             : false,

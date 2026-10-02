@@ -37,7 +37,6 @@ export class MicrosoftToolsOAuthProvider implements BaseOAuthStrategyProvider {
 
     const qs = querystring.stringify({
       response_type: "code",
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       client_id: clientId || config.getOAuthMicrosoftToolsClientId(),
       state: connection.connection_id,
       redirect_uri: finalizeUriForProvider({

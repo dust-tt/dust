@@ -31,7 +31,6 @@ function isValidExternalDomain(domain: string): boolean {
   }
 
   // Reject control characters, whitespace, or any non-ASCII (including punycode bypass attempts).
-  // eslint-disable-next-line no-control-regex
   if (/[\x00-\x1f\x7f-\xff\s]/.test(domain)) {
     return false;
   }

@@ -78,10 +78,8 @@ function isWakeUpCronTooFrequent(cron: string): boolean {
   return true;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface WakeUpResource extends ReadonlyAttributesType<WakeUpModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class WakeUpResource extends BaseResource<WakeUpModel> {
   static model: ModelStaticWorkspaceAware<WakeUpModel> = WakeUpModel;
   user: UserResource;

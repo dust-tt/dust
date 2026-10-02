@@ -85,7 +85,6 @@ export function usePokeAssistantTemplate({
   );
 
   return {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     assistantTemplate: useMemo(() => (data ? data : null), [data]),
     isAssistantTemplateLoading: !error && !data,
     isAssistantTemplateError: error,

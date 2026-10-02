@@ -131,7 +131,6 @@ export function FrameRenderer({
   // (a conversation can belong to a project space even before the frame is saved there).
   const frameSpaceId = projectId ?? conversation?.spaceId ?? null;
 
-  // eslint-disable-next-line react-hooks/refs
   const panel = panelRef?.current;
 
   const [fullScreenHash, setFullScreenHash] = useHashParam(
@@ -306,7 +305,6 @@ export function FrameRenderer({
         restoreLayout();
       }
     }
-    // eslint-disable-next-line react-hooks/refs
   }, [
     panel,
     isFullScreen,

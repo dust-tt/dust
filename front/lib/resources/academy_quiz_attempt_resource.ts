@@ -13,11 +13,9 @@ import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AcademyQuizAttemptResource
   extends ReadonlyAttributesType<AcademyQuizAttemptModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AcademyQuizAttemptResource extends BaseResource<AcademyQuizAttemptModel> {
   static model: ModelStatic<AcademyQuizAttemptModel> = AcademyQuizAttemptModel;
 

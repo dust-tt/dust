@@ -493,7 +493,6 @@ const getTableColumns = ({
           className="font-mono"
           tooltip={assistantUsageMessage({
             assistantName: info.row.original.name,
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             usage: info.row.original.usage || null,
             isLoading: false,
             isError: false,
@@ -781,7 +780,7 @@ export function AssistantsTable({
               : [],
         };
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleToggleAgentStatus & router are not stable, mutating the agents list which prevent pagination to work
+    // handleToggleAgentStatus & router are not stable, mutating the agents list which prevent pagination to work
     [
       agents,
       owner,

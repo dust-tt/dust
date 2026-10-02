@@ -186,7 +186,6 @@ export function SkillDetailsHeader({
     <div className="flex flex-col items-center gap-4 pt-4">
       <div className="relative flex items-center justify-center">
         <div className="relative flex flex-col items-center gap-2">
-          {/* eslint-disable-next-line react-hooks/static-components */}
           <SkillAvatar name="Skill avatar" size="xl" />
           {skill.status === "active" && (
             <div className="absolute -bottom-3 flex items-center gap-1">

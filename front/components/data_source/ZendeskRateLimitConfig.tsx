@@ -68,7 +68,6 @@ export function ZendeskRateLimitConfig({
         type: "info",
         title: "Failed to edit Zendesk configuration",
         description:
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           err.error?.connectors_error.message || "An unknown error occurred",
       });
     }

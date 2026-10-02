@@ -271,7 +271,6 @@ export class CustomerioServerSideTracking {
         : null;
     }
 
-    // eslint-disable-next-line no-restricted-globals
     const r = await fetch(`${CUSTOMERIO_HOST}/v2/entity`, {
       method: "POST",
       headers: CustomerioServerSideTracking._headers(),
@@ -359,7 +358,6 @@ export class CustomerioServerSideTracking {
       });
     }
 
-    // eslint-disable-next-line no-restricted-globals
     const r = await fetch(`${CUSTOMERIO_HOST}/v2/entity`, {
       method: "POST",
       headers: CustomerioServerSideTracking._headers(),
@@ -379,7 +377,6 @@ export class CustomerioServerSideTracking {
       return new Ok(undefined);
     }
 
-    // eslint-disable-next-line no-restricted-globals
     const r = await fetch(`${CUSTOMERIO_HOST}/v2/entity`, {
       method: "POST",
       headers: CustomerioServerSideTracking._headers(),
@@ -409,7 +406,6 @@ export class CustomerioServerSideTracking {
       return;
     }
 
-    // eslint-disable-next-line no-restricted-globals
     const r = await fetch(`${CUSTOMERIO_HOST}/v2/entity`, {
       method: "POST",
       headers: CustomerioServerSideTracking._headers(),
@@ -455,7 +451,6 @@ export class CustomerioServerSideTracking {
       data: eventData,
     };
 
-    // eslint-disable-next-line no-restricted-globals
     const r = await fetch(
       `${CUSTOMERIO_HOST}/v1/customers/${encodeURIComponent(
         user.email

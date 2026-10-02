@@ -43,7 +43,6 @@ export default function SpaceFolderModal({
     useSpaceDataSourceView({
       owner,
       spaceId: space.sId,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       dataSourceViewId: dataSourceViewId || null,
       disabled: !dataSourceViewId,
     });

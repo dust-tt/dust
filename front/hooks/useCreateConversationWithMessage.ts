@@ -432,8 +432,7 @@ function toConversationCreationError(
               : "message_send_error",
     title: "Your message could not be sent.",
     message: isApiError
-      ? // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        e.error.message || "Please try again or contact us."
+      ? e.error.message || "Please try again or contact us."
       : "Please try again or contact us.",
   });
 }

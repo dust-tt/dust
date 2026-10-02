@@ -59,10 +59,8 @@ function trimPluginRunResultOrError(result: PluginResponse | string): string {
   return stringResult.slice(0, POKE_PLUGIN_RUN_MAX_RESULT_AND_ERROR_LENGTH);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface PluginRunResource
   extends ReadonlyAttributesType<PluginRunModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class PluginRunResource extends BaseResource<PluginRunModel> {
   static model: ModelStatic<PluginRunModel> = PluginRunModel;
 

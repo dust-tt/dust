@@ -48,9 +48,7 @@ if (isDevelopment()) {
 } else {
   // Side-effect import ensures dd-trace/init is available at runtime.
   // See: https://github.com/DataDog/dd-trace-js/issues/4003
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   require("dd-trace");
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   tracer = require("dd-trace").default as TracerLike;
 }
 

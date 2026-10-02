@@ -192,9 +192,7 @@ function isSleepingOnOutdatedImage(
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SandboxResource extends ReadonlyAttributesType<SandboxModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SandboxResource extends BaseResource<SandboxModel> {
   static model: ModelStaticWorkspaceAware<SandboxModel> = SandboxModel;
 

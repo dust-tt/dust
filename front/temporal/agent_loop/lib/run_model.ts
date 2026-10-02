@@ -1302,7 +1302,6 @@ export async function runModel(
   );
 
   if (chainOfThought.length) {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!agentMessage.chainOfThought) {
       agentMessage.chainOfThought = "";
     }

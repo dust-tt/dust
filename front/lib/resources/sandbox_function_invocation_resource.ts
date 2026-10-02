@@ -259,11 +259,9 @@ function getSandboxFunctionUserIdentity(
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SandboxFunctionInvocationResource
   extends ReadonlyAttributesType<SandboxFunctionInvocationModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunctionInvocationModel> {
   static model: ModelStaticWorkspaceAware<SandboxFunctionInvocationModel> =
     SandboxFunctionInvocationModel;

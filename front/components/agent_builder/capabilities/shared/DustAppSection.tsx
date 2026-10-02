@@ -136,7 +136,6 @@ export function DustAppSection() {
           <div className="flex flex-col">
             <div className="heading-sm truncate">{row.original.name}</div>
             <div className="truncate text-xs text-muted-foreground">
-              {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
               {row.original.description || "No description available"}
             </div>
           </div>
@@ -204,7 +203,6 @@ export function DustAppSection() {
                   <div className="text-md font-medium">{field.value.name}</div>
                 </div>
                 <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground">
-                  {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
                   {field.value.description || "No description available"}
                 </div>
               </div>

@@ -362,7 +362,6 @@ class RedisHybridManager {
           const historyResult = await this.getHistory(
             streamClient,
             this.getStreamName(channelName),
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             lastEventId || "0-0"
           );
           if (signal?.aborted) {

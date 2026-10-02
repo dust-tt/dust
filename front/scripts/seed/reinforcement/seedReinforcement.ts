@@ -63,10 +63,8 @@ function loadAssets(): Assets {
     fs.readFileSync(path.join(assetsDir, "data_sources.json"), "utf-8")
   );
   // Resolve file references: documents can use { file: "filename" } instead of inline content.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw JSON with optional file field
   const dataSources: DataSourceAsset[] = rawDataSources.map((ds: any) => ({
     ...ds,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     documents: ds.documents.map((doc: any) => ({
       ...doc,
       content: doc.file

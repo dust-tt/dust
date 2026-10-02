@@ -68,7 +68,6 @@ export const makeFrontAPIRequest = async (
     "Content-Type": "application/json",
   };
 
-  // eslint-disable-next-line no-restricted-globals
   const response = await fetch(url.toString(), {
     method,
     headers,

@@ -299,7 +299,6 @@ function ContentNodeTreeChildren({
               (n.preventSelection !== true || checkedState === "partial") &&
               selectedNodes
                 ? {
-                    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                     disabled: parentIsSelected || !setSelectedNodes,
                     checked: checkedState,
                     onCheckedChange: (v) => {

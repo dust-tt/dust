@@ -615,7 +615,6 @@ const InputBarContainer = ({
           editorInstance
             .chain()
             .focus()
-            // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
             .deleteRange({ from: nodePos, to: nodePos + node.nodeSize })
             .insertContentAt(nodePos, textContent)
             .run();

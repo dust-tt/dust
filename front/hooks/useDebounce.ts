@@ -19,7 +19,6 @@ export function useDebounce(
   const [isDebouncing, setIsDebouncing] = useState(false);
 
   // Create debounced function
-  // eslint-disable-next-line react-hooks/refs
   const debouncedUpdate = useRef(
     debounce((value: string) => {
       setDebouncedValue(value);
@@ -58,15 +57,12 @@ export function useDebounce(
     };
   }, [debouncedUpdate]);
 
-  // eslint-disable-next-line react-hooks/refs
   return {
     inputValue,
     debouncedValue,
     isDebouncing,
     setValue,
-    // eslint-disable-next-line react-hooks/refs
     flush: debouncedUpdate.flush,
-    // eslint-disable-next-line react-hooks/refs
     cancel: debouncedUpdate.cancel,
   };
 }

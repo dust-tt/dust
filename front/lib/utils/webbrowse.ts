@@ -605,7 +605,6 @@ const browseUrlSpider = async (
  */
 const browseUrlExa = async (
   url: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   format: "markdown" | "html" = "markdown",
   options?: {
     screenshotMode?: "none" | "viewport" | "fullPage";

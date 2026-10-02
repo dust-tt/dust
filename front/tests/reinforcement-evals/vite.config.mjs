@@ -38,7 +38,6 @@ export default defineConfig(() => {
 
   // Merge with base config and override globalSetup.
   const merged = mergeConfig(baseConfig, testConfig);
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
   merged.test.globalSetup = [];
   return merged;
 });
