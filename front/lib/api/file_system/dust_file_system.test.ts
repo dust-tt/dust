@@ -1144,10 +1144,11 @@ describe("DustFileSystem.normalizeScopedPath", () => {
     expect(DustFileSystem.normalizeScopedPath("/etc/passwd")).toBeNull();
   });
 
-  it("returns null when .. escapes a subdirectory but leaves the mount", () => {
-    // conversation-abc/../pod-xyz/file.txt normalises to pod-xyz/file.txt,
-    // which does not start with .. so normalizeScopedPath returns it.
-    // The mount check then rejects it as not belonging to any mount.
+  it("does not confine .. to the starting mount (only to the mount namespace)", () => {
+    // conversation-abc/../pod-xyz/file.txt normalises to pod-xyz/file.txt, which does not start
+    // with .. so normalizeScopedPath returns it. It is only rejected later if pod-xyz is not
+    // mounted; when it is, the path is valid. Callers confining to a subdirectory must check it
+    // themselves.
     expect(
       DustFileSystem.normalizeScopedPath("conversation-abc/../pod-xyz/file.txt")
     ).toBe("pod-xyz/file.txt");

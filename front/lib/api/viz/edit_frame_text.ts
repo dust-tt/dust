@@ -8,6 +8,7 @@ import {
 import { publishFrame } from "@app/lib/api/viz/publish_frame";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
+import { isSafeFrameRelativePath } from "@app/types/api/frame_manifest";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -85,7 +86,7 @@ export async function editFrameTextsAtSource(
     >();
     for (const edit of edits) {
       const location = parseSourceLocation(edit.source);
-      if (!location) {
+      if (!location || !isSafeFrameRelativePath(location.relPath)) {
         return new Err(
           new EditFrameTextError(
             "invalid_source",
