@@ -2,7 +2,7 @@ use crate::{
     keys::Keys,
     model::{self, Parent, Record},
     read::View,
-    storage::{WriteBatch, encode, failed},
+    storage::{WriteBatch, encode, failed, measured},
 };
 use dfs_protocol::{BLOCK_SIZE, MAX_GRANTS, MAX_IO, error::status, rpc::*, validate};
 use futures::{StreamExt, TryStreamExt, stream};
@@ -86,6 +86,24 @@ pub(crate) enum Change {
     Write(WriteRequest),
 }
 impl Change {
+    pub fn primary_id(&self) -> &str {
+        match self {
+            Self::Create(r) => &r.parent_id,
+            Self::Update(r) => &r.object_id,
+            Self::Rename(r) => &r.object_id,
+            Self::Remove(r) => &r.object_id,
+            Self::Write(r) => &r.object_id,
+        }
+    }
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::Create(_) => "create",
+            Self::Update(_) => "update",
+            Self::Rename(_) => "rename",
+            Self::Remove(_) => "remove",
+            Self::Write(_) => "write",
+        }
+    }
     pub fn file(&self) -> Result<Option<String>> {
         match self {
             Self::Update(r) => Ok(Some(validate::id(&r.object_id)?)),
@@ -104,25 +122,35 @@ impl Change {
     }
 }
 impl View {
+    /// @cc [owner:spolu,label:concurrency;security] parallel-create-preconditions
+    /// Concurrent reads MUST share the committing transaction and retain conflict tracking.
+    /// Consume errors in the existing order: parent authority/version, existing child, attributes,
+    /// then UUID collision. Speculative child/collision reads MUST NOT expose unauthorized state.
     pub async fn create(&self, request: CreateRequest) -> Result<(Edit, Mutation)> {
         validate::name(&request.name)?;
-        let mut parent = self.directory(&request.parent_id).await?;
+        let parent_id = validate::id(&request.parent_id)?;
+        let object = model::new_object(request.directory, request.mode);
+        let (parent, child, collision) = tokio::join!(
+            self.directory(&parent_id),
+            measured("child", self.child(&parent_id, &request.name)),
+            measured("collision", async {
+                let object = object.as_ref().map_err(Clone::clone)?;
+                self.get(&self.keys.object(&object.id)?).await
+            }),
+        );
+        let mut parent = parent?;
         model::check(&parent.object, request.expected_parent_version)?;
-        if self
-            .child(&parent.object.id, &request.name)
-            .await?
-            .is_some()
-        {
+        if child?.is_some() {
             return Err(status(ErrorCode::AlreadyExists));
         }
-        let mut object = model::new_object(request.directory, request.mode)?;
+        let mut object = object?;
         if let Some(mime) = request.mime_type {
             object.mime_type = mime;
         }
         object.xattrs = request.xattrs;
         validate::attributes(&object.mime_type, &object.xattrs, object.mode)?;
         // UUID collisions never replace an existing object, even in the astronomically unlikely case.
-        if self.get(&self.keys.object(&object.id)?).await?.is_some() {
+        if collision?.is_some() {
             return Err(status(ErrorCode::AlreadyExists));
         }
         let child = Record {
@@ -190,7 +218,7 @@ impl View {
         })
     }
     async fn block(&self, id: &str, index: u64) -> Result<Vec<u8>> {
-        let value = self.get(&self.keys.block(id, index)?).await?;
+        let value = measured("block_read", self.get(&self.keys.block(id, index)?)).await?;
         if value.as_ref().is_some_and(|v| v.len() > BLOCK_SIZE) {
             return Err(status(ErrorCode::Unavailable));
         }
@@ -224,18 +252,13 @@ impl View {
                 },
             ));
         }
-        for index in offset / BLOCK_SIZE as u64..end.div_ceil(BLOCK_SIZE as u64) {
-            let start = index * BLOCK_SIZE as u64;
-            let from = offset.max(start);
-            let to = end.min(start + BLOCK_SIZE as u64);
-            let mut block = if from == start && to - start == BLOCK_SIZE as u64 {
-                vec![0; BLOCK_SIZE]
-            } else {
-                self.block(&record.object.id, index).await?
-            };
-            block.resize(block.len().max((to - start) as usize), 0);
-            block[(from - start) as usize..(to - start) as usize]
-                .copy_from_slice(&request.data[(from - offset) as usize..(to - offset) as usize]);
+        let patches: Vec<_> =
+            stream::iter(offset / BLOCK_SIZE as u64..end.div_ceil(BLOCK_SIZE as u64))
+                .map(|index| self.patch(&record.object, index, offset, &request.data))
+                .buffered(16)
+                .try_collect()
+                .await?;
+        for (index, block) in patches {
             edit.put(self.keys.block(&record.object.id, index)?, block)?;
         }
         record.object.size = record.object.size.max(end);
@@ -248,6 +271,32 @@ impl View {
                 related: vec![],
             },
         ))
+    }
+    /// @cc [owner:spolu,label:concurrency;backend] preserve-unwritten-block-bytes
+    /// Omit an old-block read only when the transaction's live object size proves the block is
+    /// beyond EOF, or the patch replaces all existing logical bytes in that block. Partial patches
+    /// MUST preserve other bytes and zero-fill holes. The object read MUST remain conflict-tracked
+    /// so concurrent writes/truncation cannot invalidate that proof before commit.
+    async fn patch(
+        &self,
+        object: &Object,
+        index: u64,
+        offset: u64,
+        data: &[u8],
+    ) -> Result<(u64, Vec<u8>)> {
+        let start = index * BLOCK_SIZE as u64;
+        let from = offset.max(start);
+        let to = (offset + data.len() as u64).min(start + BLOCK_SIZE as u64);
+        let existing_end = object.size.min(start + BLOCK_SIZE as u64);
+        let mut block = if start >= object.size || (from == start && to >= existing_end) {
+            Vec::new()
+        } else {
+            self.block(&object.id, index).await?
+        };
+        block.resize(block.len().max((to - start) as usize), 0);
+        block[(from - start) as usize..(to - start) as usize]
+            .copy_from_slice(&data[(from - offset) as usize..(to - offset) as usize]);
+        Ok((index, block))
     }
     pub async fn update(&self, request: UpdateRequest) -> Result<(Edit, Mutation)> {
         let mut record = self.stat(&request.object_id).await?;

@@ -97,7 +97,7 @@ pub(crate) mod tests {
         Ok(())
     }
 
-    pub(crate) async fn concurrent_authority_changes_abort_hinted_writes() -> anyhow::Result<()> {
+    pub(crate) async fn concurrent_changes_abort_prefetched_writes() -> anyhow::Result<()> {
         use crate::{
             model::{self, Parent, Record, WorkspaceRecord},
             mutation::Edit,
@@ -148,7 +148,8 @@ pub(crate) mod tests {
             }),
         };
         let hints = Arc::new(Ancestry::default());
-        for move_folder in [false, true] {
+        // Change a grant, an ancestor link, or the prefetched object after preparation.
+        for change_kind in 0..3 {
             store
                 .transact(|_| async {
                     let mut edit = Edit::new();
@@ -175,9 +176,14 @@ pub(crate) mod tests {
             let changed = Notify::new();
             let first = AtomicBool::new(true);
             let write = store.transact(|snapshot| async {
-                let view = View::from_snapshot(snapshot, "test", BTreeSet::from(["reader".into()]))
-                    .await?
-                    .with_ancestry(hints.clone());
+                let view = View::prefetch(
+                    snapshot,
+                    "test",
+                    BTreeSet::from(["reader".into()]),
+                    &file.object.id,
+                )
+                .await?
+                .with_ancestry(hints.clone());
                 let (edit, response) = view
                     .write(WriteRequest {
                         object_id: file.object.id.clone(),
@@ -198,7 +204,7 @@ pub(crate) mod tests {
                 let result = store
                     .transact(|_| async {
                         let mut edit = Edit::new();
-                        if move_folder {
+                        if change_kind == 1 {
                             let mut moved = moved.clone();
                             moved.parent = Some(Parent {
                                 id: forbidden.object.id.clone(),
@@ -206,8 +212,14 @@ pub(crate) mod tests {
                             });
                             moved.object = model::bumped(moved.object, false)?;
                             edit.record(&keys, &moved)?;
-                        } else {
+                        } else if change_kind == 0 {
                             edit.grant(&keys, &allowed.object.id, "reader", false)?;
+                        } else {
+                            let mut file = file.clone();
+                            file.object = model::bumped(file.object, true)?;
+                            file.object.size = 4;
+                            edit.record(&keys, &file)?;
+                            edit.put(keys.block(&file.object.id, 0)?, b"kept".to_vec())?;
                         }
                         Ok((edit.batch, ()))
                     })
@@ -226,9 +238,17 @@ pub(crate) mod tests {
                         .err()
                         .context("concurrent authority change was ignored")?
                 ),
-                ErrorCode::NotFound
+                if change_kind == 2 {
+                    ErrorCode::VersionConflict
+                } else {
+                    ErrorCode::NotFound
+                }
             );
-            assert!(store.get(keys.block(&file.object.id, 0)?).await?.is_none());
+            let data = store.get(keys.block(&file.object.id, 0)?).await?;
+            assert_eq!(
+                data.as_deref(),
+                (change_kind == 2).then_some(b"kept".as_slice())
+            );
         }
         store
             .transact(|_| async {

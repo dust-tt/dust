@@ -512,12 +512,28 @@ async fn rename_preserves_identity_and_rejects_cycles_and_stale_parents() -> Res
 
 async fn competing_writers_publish_once_and_independent_files_keep_parent_version() -> Result<()> {
     let f = Fixture::new().await?;
+    let other = Api(State::new(Storage::open(&f.config).await?, SERVER_KEY)?);
+    let session = other
+        .create_session(request(
+            &f.workspace.workspace_key,
+            CreateSessionRequest {
+                workspace_id: f.workspace.workspace_id.clone(),
+                grants: vec!["owner".into()],
+            },
+        )?)
+        .await?
+        .into_inner();
+    let servers = [
+        (&f.api, &f.session.session_key),
+        (&other, &session.session_key),
+    ];
     let file = f.create(&f.workspace.root_id, "contended", false).await?;
     let mut tasks = tokio::task::JoinSet::new();
     for value in 0..32u8 {
-        let api = f.api.clone();
+        let (api, key) = servers[value as usize % servers.len()];
+        let api = api.clone();
         let request = request(
-            &f.session.session_key,
+            key,
             WriteRequest {
                 object_id: file.id.clone(),
                 expected_version: file.version,
@@ -543,10 +559,11 @@ async fn competing_writers_publish_once_and_independent_files_keep_parent_versio
         );
     }
     let parent = f.stat(&f.workspace.root_id).await?;
-    for file in files {
-        let api = f.api.clone();
+    for (index, file) in files.into_iter().enumerate() {
+        let (api, key) = servers[index % servers.len()];
+        let api = api.clone();
         let request = request(
-            &f.session.session_key,
+            key,
             WriteRequest {
                 object_id: file.id,
                 expected_version: file.version,
@@ -560,6 +577,102 @@ async fn competing_writers_publish_once_and_independent_files_keep_parent_versio
         result??;
     }
     assert_eq!(f.stat(&parent.id).await?.version, parent.version);
+    f.cleanup().await
+}
+
+async fn parallel_patches_preserve_existing_bytes_and_zero_fill() -> Result<()> {
+    let f = Fixture::new().await?;
+    let mut file = f.create(&f.workspace.root_id, "patches", false).await?;
+    let mut expected = Vec::new();
+    for (offset, data) in [
+        (31, vec![1; 11]),
+        (0, vec![2; 17]),
+        (0, vec![3; 42]),
+        (0, vec![4; BLOCK_SIZE * 2 + 57]),
+        (BLOCK_SIZE - 7, vec![5; BLOCK_SIZE + 18]),
+        (BLOCK_SIZE * 5 + 13, vec![6; 8]),
+    ] {
+        expected.resize(expected.len().max(offset + data.len()), 0);
+        expected[offset..offset + data.len()].copy_from_slice(&data);
+        let previous = file.version;
+        file = f.write(&file, offset as u64, &data).await?;
+        assert_eq!(file.version, previous + 1);
+        assert_eq!(f.read(&file, 0, expected.len() as u32).await?, expected);
+    }
+    file = f.resize(&file, BLOCK_SIZE as u64 + 19).await?;
+    expected.truncate(BLOCK_SIZE + 19);
+    file = f.resize(&file, BLOCK_SIZE as u64 * 4).await?;
+    expected.resize(BLOCK_SIZE * 4, 0);
+    file = f.write(&file, BLOCK_SIZE as u64 * 3 + 1, b"hole").await?;
+    expected[BLOCK_SIZE * 3 + 1..BLOCK_SIZE * 3 + 5].copy_from_slice(b"hole");
+    assert_eq!(f.read(&file, 0, expected.len() as u32).await?, expected);
+    f.cleanup().await
+}
+
+async fn speculative_create_and_lookup_preserve_error_precedence() -> Result<()> {
+    let f = Fixture::new().await?;
+    let parent = f.create(&f.workspace.root_id, "private", true).await?;
+    f.create(&parent.id, "existing", false).await?;
+    let hidden = f.session(&[]).await?;
+    let create = CreateRequest {
+        parent_id: parent.id.clone(),
+        expected_parent_version: parent.version,
+        name: "existing".into(),
+        mode: u32::MAX,
+        ..Default::default()
+    };
+    for (session, version, expected) in [
+        (&hidden.session_key, parent.version, ErrorCode::NotFound),
+        (
+            &f.session.session_key,
+            parent.version,
+            ErrorCode::VersionConflict,
+        ),
+        (
+            &f.session.session_key,
+            f.stat(&parent.id).await?.version,
+            ErrorCode::AlreadyExists,
+        ),
+    ] {
+        let result = f
+            .api
+            .create(request(
+                session,
+                CreateRequest {
+                    expected_parent_version: version,
+                    ..create.clone()
+                },
+            )?)
+            .await;
+        assert_eq!(
+            code(&result.err().context("invalid create accepted")?),
+            expected
+        );
+    }
+    let result = f
+        .api
+        .lookup(request(
+            &hidden.session_key,
+            LookupRequest {
+                parent_id: parent.id.clone(),
+                name: "existing".into(),
+            },
+        )?)
+        .await;
+    assert_eq!(
+        code(&result.err().context("hidden child exposed")?),
+        ErrorCode::NotFound
+    );
+    let canonical = format!("dfs://renamed--{}", parent.id);
+    f.api
+        .lookup(request(
+            &f.session.session_key,
+            LookupRequest {
+                parent_id: canonical,
+                name: "existing".into(),
+            },
+        )?)
+        .await?;
     f.cleanup().await
 }
 
@@ -785,6 +898,8 @@ async fn deep_hints_follow_moves_and_grants_from_another_server() -> Result<()> 
 #[test]
 fn real_fdb_filesystem_contracts() -> Result<()> {
     dfs_server_v2::network::run(async {
+        parallel_patches_preserve_existing_bytes_and_zero_fill().await?;
+        speculative_create_and_lookup_preserve_error_precedence().await?;
         deep_hints_follow_moves_and_grants_from_another_server().await?;
         maximum_binary_xattrs_roundtrip().await?;
         blocks_sparse_truncate_append_and_stale_writes().await?;

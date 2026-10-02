@@ -120,6 +120,18 @@ Stale hints and hints learned during aborted attempts are harmless: moves and gr
 no invalidation or expiry delay. The same algorithm applies at every depth. Search keeps its existing
 per-request cache; the client and API are unchanged.
 
+### Transaction read scheduling
+
+Mutations read the workspace and primary object concurrently, retaining at most one prefetched
+object result within that transaction. Create overlaps parent authorization, name lookup, and UUID
+collision checks; ordinary lookup overlaps parent authorization and child lookup. Results/errors
+are consumed in their original validation order, so speculative reads cannot expose hidden objects.
+
+Block patches read up to 16 blocks concurrently. Skip the old-block read only when live object size
+proves the block is beyond EOF or the patch replaces every existing logical byte in it. Other bytes
+are preserved and holes remain zero-filled. The object read stays conflict-tracked, including when
+the block read is omitted. Version increments, pending search work, and commit boundaries stay intact.
+
 ## Shared Elasticsearch index
 
 Use one application index with explicit mappings and one live document per file. Document identity

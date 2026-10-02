@@ -4,7 +4,7 @@ use crate::{
     model::{self, Record, WorkspaceRecord},
     mutation::{Change, Edit},
     read::View,
-    storage::{encode, failed},
+    storage::{encode, failed, measured},
 };
 use dfs_protocol::{
     MAX_GRANTS,
@@ -14,6 +14,7 @@ use dfs_protocol::{
 };
 use std::{collections::BTreeSet, future::Future, sync::Arc};
 use tonic::{Request, Response, Status};
+use tracing::Instrument;
 
 type Result<T> = std::result::Result<T, Status>;
 #[derive(Clone)]
@@ -49,6 +50,7 @@ impl Api {
         change: impl FnOnce(T) -> Change + Send + 'static,
     ) -> Result<Response<Mutation>> {
         self.call(move |state| async move {
+            let waiting = std::time::Instant::now();
             let session = state.sessions.get(&request).await?;
             let _session_guard = session.gate.read().await;
             let change = change(request.into_inner());
@@ -77,6 +79,9 @@ impl Api {
                 Some(lock) => Some(lock.lock().await),
                 None => None,
             };
+            tracing::debug!(target: "dfs_server_v2::profile", operation = change.name(),
+                elapsed_us = waiting.elapsed().as_micros() as u64, phase = "locks",
+                "filesystem phase");
             let response = state
                 .storage
                 .transact(|snapshot| {
@@ -85,10 +90,14 @@ impl Api {
                     let ancestry = state.ancestry.clone();
                     async move {
                         session.active()?;
-                        let view = View::from_snapshot(
-                            snapshot,
-                            &session.info.workspace_id,
-                            session.grants.clone(),
+                        let view = measured(
+                            "workspace",
+                            View::prefetch(
+                                snapshot,
+                                &session.info.workspace_id,
+                                session.grants.clone(),
+                                change.primary_id(),
+                            ),
                         )
                         .await?
                         .with_ancestry(ancestry);
@@ -97,6 +106,8 @@ impl Api {
                         Ok((edit.batch, response))
                     }
                 })
+                .instrument(tracing::debug_span!(target: "dfs_server_v2::profile",
+                    "mutation", operation = change.name()))
                 .await?;
             if let (Some(parent), Some(object)) = (hint_parent, &response.object)
                 && object.directory

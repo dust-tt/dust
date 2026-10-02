@@ -105,15 +105,15 @@ deferred publication are out of scope. See [design constraints](DESIGN.md#non-ne
 
 ## 9. Write performance with the exact existing API
 
-- [ ] Profile untar transaction phases: read-version acquisition, authorization/precondition reads,
+- [x] Profile untar transaction phases: read-version acquisition, authorization/precondition reads,
       block preparation, commit, retries, and local lock waits; measure background indexing impact.
-- [ ] Parallelize independent create checks and other independent reads within each transaction,
+- [x] Parallelize independent create checks and other independent reads within each transaction,
       retaining conflict tracking and existing error behavior.
-- [ ] Skip old-block reads only when live metadata proves no existing bytes need preservation;
+- [x] Skip old-block reads only when live metadata proves no existing bytes need preservation;
       parallelize partial-block reads with bounded concurrency.
-- [ ] Use the profile to remove redundant server work without changing object-version increments,
+- [x] Use the profile to remove redundant server work without changing object-version increments,
       publication boundaries, or public semantics; avoid root-specific optimizations.
-- [ ] Verify changes against independent server writers, including concurrent moves/grant changes,
+- [x] Verify changes against independent server writers, including concurrent moves/grant changes,
       conflicting writes, sparse writes, and truncate/re-extension.
 - [ ] Rerun untar and the unchanged filesystem workloads; retain prior results and document gains
       with the same client, API, and durable acknowledgment boundary.
