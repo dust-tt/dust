@@ -1,4 +1,5 @@
 import { useMarkdownFileEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
+import { writeFileContentByPath } from "@app/lib/swr/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -133,6 +134,13 @@ describe("useMarkdownFileEditor", () => {
 
   it("lifts the conflict once its own racing save has landed", async () => {
     flags.add("co_edition");
+    let finishWrite: () => void = () => undefined;
+    vi.mocked(writeFileContentByPath).mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishWrite = resolve;
+        })
+    );
     const { result, rerender } = renderHook(
       (props) => useMarkdownFileEditor(props),
       { initialProps: params }
@@ -144,11 +152,18 @@ describe("useMarkdownFileEditor", () => {
         error: null,
       });
     });
-    // A foreign version arrives while our save of "mine" is in flight.
-    rerender(revised);
-    await act(async () => {
-      await result.current.richEditor?.onSave("# Notes, mine\n");
+
+    // Our save of "mine" is in flight when a foreign version arrives.
+    let pending: Promise<unknown> | undefined;
+    act(() => {
+      pending = result.current.richEditor?.onSave("# Notes, mine\n");
     });
+    rerender(revised);
+    finishWrite();
+    await act(async () => {
+      await pending;
+    });
+    // The cache catches up with our write and the editor reports clean.
     rerender({ ...params, rawContent: "# Notes, mine\n" });
     act(() => {
       result.current.richEditor?.onStateChange({
