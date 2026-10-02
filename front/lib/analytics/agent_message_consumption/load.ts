@@ -177,12 +177,6 @@ async function loadAnalyticsUser({
   };
 }
 
-/**
- * @cc [owner:sfriquet,label:product] tracked-non-terminal-messages
- * A message in a tracked status MUST be loaded even when it can still resume (e.g. `created` while
- * paused on a user question or a tool approval), since it is already billed. Its `completedAt` is
- * the message `completedAt` when terminal, and its `updatedAt` otherwise.
- */
 export async function loadAgentMessageConsumptionAnalyticsInput(
   auth: Authenticator,
   {
