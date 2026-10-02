@@ -30,26 +30,25 @@ interface SkillAvatarIconProps {
 type SkillAvatarIconInput =
   | string
   | null
+  | { icon: string | null; isDustProvided: boolean }
   | Pick<
       SkillListItemType | SkillWithoutInstructionsAndToolsType,
       "editedBy" | "icon"
     >;
 
 export function isDustProvidedSkill(
-  skill: Pick<
-    SkillListItemType | SkillWithoutInstructionsAndToolsType,
-    "editedBy"
-  >
+  skill:
+    | { isDustProvided: boolean }
+    | Pick<SkillListItemType | SkillWithoutInstructionsAndToolsType, "editedBy">
 ) {
-  return skill.editedBy === null;
+  return "isDustProvided" in skill
+    ? skill.isDustProvided
+    : skill.editedBy === null;
 }
 
 function isSkillAvatarIconSkill(
   input: SkillAvatarIconInput
-): input is Pick<
-  SkillListItemType | SkillWithoutInstructionsAndToolsType,
-  "editedBy" | "icon"
-> {
+): input is Exclude<SkillAvatarIconInput, string | null> {
   return input !== null && typeof input === "object";
 }
 

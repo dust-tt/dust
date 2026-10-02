@@ -18,6 +18,24 @@ export type GetSkillsResponseBody = {
   })[];
 };
 
+export type SkillReinforcementSettings = Pick<
+  SkillWithoutInstructionsAndToolsType,
+  | "sId"
+  | "name"
+  | "icon"
+  | "reinforcement"
+  | "selfImprovementLock"
+  | "selfImprovementCostsCapMicroUsd"
+  | "selfImprovementCostsCapAwuCredits"
+> & {
+  isDustProvided: boolean;
+  editors: SkillListItemType["editors"] | null;
+};
+
+export type GetSkillsReinforcementSettingsResponseBody = {
+  skills: SkillReinforcementSettings[];
+};
+
 export type SkillSearchPermissionFiltering = Exclude<
   SkillPermissionFilteringMode,
   "dangerously_skip"
