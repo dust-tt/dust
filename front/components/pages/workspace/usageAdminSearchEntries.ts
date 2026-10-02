@@ -23,12 +23,17 @@ const PAGE = "credits" as const;
 const SETTINGS_TAB = "settings";
 
 /**
- * Search entries for Credits (formerly Usage). Model tiers live under Models;
- * self-improving spend caps sit in the programmatic settings section.
+ * Search entries for Credits (formerly Usage). Per-member and per-group model
+ * tiers are edited on the Members / Groups tabs; workspace defaults live under
+ * Models › Access tiers. Self-improving spend caps sit in programmatic settings.
  */
 export const USAGE_SEARCH_ENTRIES: AdminSettingEntry[] = [
   ...adminSearchEntries(PAGE, U.members, [
     ["Members usage", "seats spend limit upgrade requests"],
+    [
+      "Members model tiers",
+      "model tiers member access tier per user standard advanced frontier",
+    ],
     ["Upgrade requests", "review member requests deny"],
     ["Change seat type", "upgrade seat assign seat remove seat"],
     ["Edit spend limit", "override member limit"],
@@ -38,6 +43,10 @@ export const USAGE_SEARCH_ENTRIES: AdminSettingEntry[] = [
     U.groups,
     [
       ["Groups usage", "group spend limit seat"],
+      [
+        "Group model tiers",
+        "model tiers group access tier per group standard advanced frontier",
+      ],
       ["Group monthly spend limit", "per group limit"],
     ],
     "groups"
