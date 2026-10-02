@@ -29,6 +29,8 @@ interface UseMarkdownFileEditorParams {
 
 /** The rich Document editor takes over the file; the host hides its own edit controls. */
 export interface MarkdownRichEditor {
+  /** Changes when the editor must reopen on new content; use it as the component key. */
+  mountKey: string;
   initialContent: string;
   onSave: (content: string) => Promise<DocumentSaveResult>;
   onStateChange: (state: DocumentDraftState) => void;
@@ -51,6 +53,9 @@ export interface MarkdownFileEditor {
 
 const IDLE_DRAFT: DocumentDraftState = { dirty: false, saving: false };
 
+const CONFLICT_MESSAGE =
+  "This file changed while you were editing. Copy your changes, then reopen the file.";
+
 export function useMarkdownFileEditor({
   category,
   entryPath,
@@ -69,6 +74,10 @@ export function useMarkdownFileEditor({
   const [sourcePath, setSourcePath] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [richDraft, setRichDraft] = useState<DocumentDraftState>(IDLE_DRAFT);
+  // The content the rich editor opened on or last saved, and how many times it reopened.
+  const [richBase, setRichBase] = useState<string | null>(null);
+  const [richVersion, setRichVersion] = useState(0);
+  const [richConflict, setRichConflict] = useState(false);
   const [resetKey, setResetKey] = useState({ isActive, path: entryPath });
   const initKeyRef = useRef<string | null>(null);
 
@@ -89,6 +98,9 @@ export function useMarkdownFileEditor({
     setDraft("");
     setSavedContent("");
     setRichDraft(IDLE_DRAFT);
+    setRichBase(null);
+    setRichVersion(0);
+    setRichConflict(false);
     initKeyRef.current = null;
   }
 
@@ -154,6 +166,7 @@ export function useMarkdownFileEditor({
     );
     setDraft(content);
     setSavedContent(content);
+    setRichBase(content);
     initKeyRef.current = `${entryPath}:${content}`;
     return { ok: true };
   };
@@ -181,11 +194,39 @@ export function useMarkdownFileEditor({
   // cannot open is shown by it as read-only source, with the reason.
   const opensRich = hasFeature("co_edition") && canEdit && !isTruncated;
   const richSource = processedContent?.text;
+
+  // The file changed under the editor, by another writer or an agent. A clean editor reopens on
+  // the new content; a dirty one keeps its draft and refuses to save over the newer version
+  // until the file is reopened. The revision check on save will narrow the remaining race.
+  useEffect(() => {
+    if (!opensRich || richSource === undefined || richSource === richBase) {
+      return;
+    }
+    if (richBase === null) {
+      setRichBase(richSource);
+    } else if (!richDraft.dirty && !richDraft.saving) {
+      setRichBase(richSource);
+      setRichVersion((version) => version + 1);
+    } else {
+      setRichConflict(true);
+    }
+  }, [opensRich, richSource, richBase, richDraft]);
+
+  const saveRichSource = async (
+    content: string
+  ): Promise<DocumentSaveResult> => {
+    if (richConflict) {
+      return { ok: false, error: CONFLICT_MESSAGE };
+    }
+    return persist(content);
+  };
+
   const richEditor =
     opensRich && richSource !== undefined
       ? {
-          initialContent: richSource,
-          onSave: persist,
+          mountKey: `${entryPath}:${richVersion}`,
+          initialContent: richBase ?? richSource,
+          onSave: saveRichSource,
           onStateChange: setRichDraft,
         }
       : null;

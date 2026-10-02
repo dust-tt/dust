@@ -1,6 +1,6 @@
 import { useMarkdownFileEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import type { LightWorkspaceType } from "@app/types/user";
-import { renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const flags = new Set<string>();
@@ -69,6 +69,49 @@ describe("useMarkdownFileEditor", () => {
     );
 
     expect(result.current.richEditor).toBeNull();
+  });
+
+  it("reopens a clean editor on content written by someone else", () => {
+    flags.add("co_edition");
+    const { result, rerender } = renderHook(
+      (props) => useMarkdownFileEditor(props),
+      { initialProps: params }
+    );
+    const firstKey = result.current.richEditor?.mountKey;
+
+    rerender({
+      ...params,
+      processedContent: { text: "# Notes, revised", format: "markdown" },
+    });
+
+    expect(result.current.richEditor?.mountKey).not.toBe(firstKey);
+    expect(result.current.richEditor?.initialContent).toBe("# Notes, revised");
+  });
+
+  it("keeps a dirty editor on its draft and refuses to save over the new content", async () => {
+    flags.add("co_edition");
+    const { result, rerender } = renderHook(
+      (props) => useMarkdownFileEditor(props),
+      { initialProps: params }
+    );
+    const firstKey = result.current.richEditor?.mountKey;
+    act(() => {
+      result.current.richEditor?.onStateChange({ dirty: true, saving: false });
+    });
+
+    rerender({
+      ...params,
+      processedContent: { text: "# Notes, revised", format: "markdown" },
+    });
+
+    expect(result.current.richEditor?.mountKey).toBe(firstKey);
+    expect(result.current.richEditor?.initialContent).toBe("# Notes");
+    expect(result.current.isDirty).toBe(true);
+    const saved = await result.current.richEditor?.onSave("# Notes, mine");
+    expect(saved).toEqual({
+      ok: false,
+      error: expect.stringContaining("changed while you were editing"),
+    });
   });
 
   it("does not let the file content decide which editor opens", () => {

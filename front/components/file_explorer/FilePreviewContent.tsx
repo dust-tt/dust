@@ -388,7 +388,7 @@ export function FilePreviewContent({
               />
             </div>
             <Document
-              key={entry.path}
+              key={markdownRichEditor.mountKey}
               initialContent={markdownRichEditor.initialContent}
               onSave={markdownRichEditor.onSave}
               onStateChange={markdownRichEditor.onStateChange}
