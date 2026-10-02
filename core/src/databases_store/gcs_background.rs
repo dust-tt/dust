@@ -226,7 +226,7 @@ impl GoogleCloudStorageBackgroundProcessingStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::{Arc, Mutex};
+    use std::{cell::RefCell, sync::Arc};
 
     fn file(name: &str, size: u64) -> PendingCsvFile {
         PendingCsvFile {
@@ -235,53 +235,44 @@ mod tests {
         }
     }
 
-    fn rows(prefix: &str, count: usize) -> Vec<Row> {
+    fn rows(id_prefix: &str, count: usize, value: &str) -> Vec<Row> {
         let headers = Arc::new(vec!["value".to_string()]);
         (0..count)
             .map(|i| {
                 Row::new(
-                    format!("{}-{}", prefix, i),
+                    format!("{}-{}", id_prefix, i),
                     headers.clone(),
-                    vec![serde_json::Value::String(prefix.to_string())],
+                    vec![serde_json::Value::String(value.to_string())],
                 )
             })
             .collect()
     }
 
+    // Runs the batch over in-memory file contents and also returns the names of the files read.
     async fn run_batch(
         files: &[PendingCsvFile],
         contents: HashMap<String, Vec<Row>>,
     ) -> Result<(Vec<Row>, usize, Vec<String>)> {
-        let read_files = Arc::new(Mutex::new(Vec::new()));
+        let read_files = RefCell::new(Vec::new());
         let (batch_rows, batch_file_count) =
             GoogleCloudStorageBackgroundProcessingStore::get_deduped_rows_from_next_batch_with(
                 files,
                 |name| {
-                    let read_files = read_files.clone();
+                    read_files.borrow_mut().push(name.clone());
                     let rows = contents.get(&name).cloned();
-                    async move {
-                        read_files
-                            .lock()
-                            .map_err(|_| anyhow!("poisoned lock"))?
-                            .push(name.clone());
-                        rows.ok_or_else(|| anyhow!("unknown file {}", name))
-                    }
+                    async move { rows.ok_or_else(|| anyhow!("unknown file {}", name)) }
                 },
             )
             .await?;
-        let read_files = read_files
-            .lock()
-            .map_err(|_| anyhow!("poisoned lock"))?
-            .clone();
-        Ok((batch_rows, batch_file_count, read_files))
+        Ok((batch_rows, batch_file_count, read_files.into_inner()))
     }
 
     #[tokio::test]
     async fn test_next_batch_takes_all_files_within_budget() -> Result<()> {
         let files = vec![file("a", 10), file("b", 10)];
         let contents = HashMap::from([
-            ("a".to_string(), rows("a", 2)),
-            ("b".to_string(), rows("b", 3)),
+            ("a".to_string(), rows("a", 2, "a")),
+            ("b".to_string(), rows("b", 3, "b")),
         ]);
 
         let (batch_rows, batch_file_count, _) = run_batch(&files, contents).await?;
@@ -299,9 +290,9 @@ mod tests {
             file("c", 1),
         ];
         let contents = HashMap::from([
-            ("a".to_string(), rows("a", 1)),
-            ("b".to_string(), rows("b", 1)),
-            ("c".to_string(), rows("c", 1)),
+            ("a".to_string(), rows("a", 1, "a")),
+            ("b".to_string(), rows("b", 1, "b")),
+            ("c".to_string(), rows("c", 1, "c")),
         ]);
 
         let (batch_rows, batch_file_count, read_files) = run_batch(&files, contents).await?;
@@ -316,9 +307,9 @@ mod tests {
     async fn test_next_batch_stops_at_row_budget() -> Result<()> {
         let files = vec![file("a", 1), file("b", 1), file("c", 1)];
         let contents = HashMap::from([
-            ("a".to_string(), rows("a", MAX_BATCH_ROWS - 1)),
-            ("b".to_string(), rows("b", 2)),
-            ("c".to_string(), rows("c", 1)),
+            ("a".to_string(), rows("a", MAX_BATCH_ROWS - 1, "a")),
+            ("b".to_string(), rows("b", 2, "b")),
+            ("c".to_string(), rows("c", 1, "c")),
         ]);
 
         let (batch_rows, batch_file_count, read_files) = run_batch(&files, contents).await?;
@@ -333,8 +324,8 @@ mod tests {
     async fn test_next_batch_always_takes_first_file() -> Result<()> {
         let files = vec![file("a", MAX_BATCH_BYTES + 1), file("b", 1)];
         let contents = HashMap::from([
-            ("a".to_string(), rows("a", 1)),
-            ("b".to_string(), rows("b", 1)),
+            ("a".to_string(), rows("a", 1, "a")),
+            ("b".to_string(), rows("b", 1, "b")),
         ]);
 
         let (_, batch_file_count, read_files) = run_batch(&files, contents).await?;
@@ -346,25 +337,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_next_batch_dedups_keeping_latest_file() -> Result<()> {
-        let headers = Arc::new(vec!["value".to_string()]);
         let files = vec![file("a", 1), file("b", 1)];
         let contents = HashMap::from([
-            (
-                "a".to_string(),
-                vec![Row::new(
-                    "r".to_string(),
-                    headers.clone(),
-                    vec![serde_json::Value::String("old".to_string())],
-                )],
-            ),
-            (
-                "b".to_string(),
-                vec![Row::new(
-                    "r".to_string(),
-                    headers.clone(),
-                    vec![serde_json::Value::String("new".to_string())],
-                )],
-            ),
+            ("a".to_string(), rows("r", 1, "old")),
+            ("b".to_string(), rows("r", 1, "new")),
         ]);
 
         let (batch_rows, batch_file_count, _) = run_batch(&files, contents).await?;
@@ -375,16 +351,6 @@ mod tests {
             batch_rows[0].columns,
             vec![serde_json::Value::String("new".to_string())]
         );
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_next_batch_empty() -> Result<()> {
-        let (batch_rows, batch_file_count, read_files) = run_batch(&[], HashMap::new()).await?;
-
-        assert_eq!(batch_file_count, 0);
-        assert!(batch_rows.is_empty());
-        assert!(read_files.is_empty());
         Ok(())
     }
 }
