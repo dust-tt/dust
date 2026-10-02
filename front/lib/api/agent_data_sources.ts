@@ -3,7 +3,10 @@ import { isManagedConnectorProvider } from "@app/lib/data_sources";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import {
+  AgentConfigurationModel,
+  AgentModel,
+} from "@app/lib/models/agent/agent";
 import { listActiveConfigurationIdentities } from "@app/lib/resources/agent_configuration_rows";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -56,6 +59,18 @@ const agentAggregates: ProjectionAlias[] = (
   ),
   alias,
 ]);
+
+function currentActiveAgentInclude(configurationPath: string) {
+  return {
+    model: AgentModel,
+    attributes: [],
+    required: true,
+    where: {
+      status: "active",
+      currentVersion: { [Op.col]: `${configurationPath}.version` },
+    },
+  };
+}
 
 // Usage only needs each skill's identity, so skip the rest of the hydration.
 const SKILL_USAGE_HYDRATION = {
@@ -440,9 +455,9 @@ export async function getDataSourcesUsageByCategory({
                 attributes: [],
                 required: true,
                 where: {
-                  status: "active",
                   workspaceId: owner.id,
                 },
+                include: [currentActiveAgentInclude(AGENT_CONFIG_PATH)],
               },
             ],
           },
@@ -480,9 +495,9 @@ export async function getDataSourcesUsageByCategory({
                 attributes: [],
                 required: true,
                 where: {
-                  status: "active",
                   workspaceId: owner.id,
                 },
+                include: [currentActiveAgentInclude(AGENT_CONFIG_PATH)],
               },
             ],
           },
@@ -581,9 +596,9 @@ export async function getDataSourceUsage({
                 attributes: [],
                 required: true,
                 where: {
-                  status: "active",
                   workspaceId: owner.id,
                 },
+                include: [currentActiveAgentInclude(AGENT_CONFIG_PATH)],
               },
             ],
           },
@@ -609,9 +624,9 @@ export async function getDataSourceUsage({
                 attributes: [],
                 required: true,
                 where: {
-                  status: "active",
                   workspaceId: owner.id,
                 },
+                include: [currentActiveAgentInclude(AGENT_CONFIG_PATH)],
               },
             ],
           },
@@ -697,9 +712,9 @@ export async function getDataSourceViewUsage({
                 attributes: [],
                 required: true,
                 where: {
-                  status: "active",
                   workspaceId: owner.id,
                 },
+                include: [currentActiveAgentInclude(AGENT_CONFIG_PATH)],
               },
             ],
           },
@@ -725,9 +740,9 @@ export async function getDataSourceViewUsage({
                 attributes: [],
                 required: true,
                 where: {
-                  status: "active",
                   workspaceId: owner.id,
                 },
+                include: [currentActiveAgentInclude(AGENT_CONFIG_PATH)],
               },
             ],
           },
