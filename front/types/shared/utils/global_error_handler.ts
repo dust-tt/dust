@@ -1,4 +1,3 @@
-import { CancelledFailure } from "@temporalio/common";
 import { v4 as uuidv4 } from "uuid";
 
 import type { LoggerInterface } from "../logger";
@@ -38,15 +37,6 @@ export function setupGlobalErrorHandler(logger: LoggerInterface) {
   }
   once = true;
   process.on("unhandledRejection", (reason, promise) => {
-    if (reason instanceof CancelledFailure) {
-      promise.catch(() => undefined);
-      logger.info(
-        { error: reason, panic: false },
-        "Ignoring Temporal cancellation rejection"
-      );
-      return;
-    }
-
     if (isTeenyRequestUnableToPipeError(reason)) {
       promise.catch(() => undefined);
       logger.warn(

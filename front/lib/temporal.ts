@@ -1,3 +1,4 @@
+import logger from "@app/logger/logger";
 import { Context } from "@temporalio/activity";
 import type {
   ConnectionOptions,
@@ -5,6 +6,7 @@ import type {
   WorkflowExecutionDescription,
 } from "@temporalio/client";
 import { Client, Connection, WorkflowNotFoundError } from "@temporalio/client";
+import { CancelledFailure } from "@temporalio/common";
 import { OpenTelemetryWorkflowClientInterceptor } from "@temporalio/interceptors-opentelemetry";
 import fs from "fs-extra";
 
@@ -147,15 +149,27 @@ export async function checkRunningUpsertWorkflows({
 
 // This function allows to heartbeat back to the temporal workflow, but also
 // awaits a temporal sleep(0), which allows to throw an exception if the activity should be cancelled.
-export async function heartbeat() {
-  try {
-    Context.current();
-  } catch (_error) {
-    // If we're not in a temporal context, Context.current() will throw
-    // In this case, we just return without doing anything
-    // This allows the function to be called safely outside of temporal activities
-    return;
-  }
-  Context.current().heartbeat();
-  await Context.current().sleep(0);
+export function heartbeat(): Promise<void> {
+  const heartbeatPromise = (async () => {
+    try {
+      Context.current();
+    } catch (_error) {
+      // If we're not in a temporal context, Context.current() will throw
+      // In this case, we just return without doing anything
+      // This allows the function to be called safely outside of temporal activities
+      return;
+    }
+    Context.current().heartbeat();
+    await Context.current().sleep(0);
+  })();
+
+  // Observe failures for callers that discard the promise, but return the original promise
+  // so callers that await it still receive cancellation and other failures.
+  void heartbeatPromise.catch((error: unknown) => {
+    if (!(error instanceof CancelledFailure)) {
+      logger.error({ error, panic: true }, "Heartbeat failed");
+    }
+  });
+
+  return heartbeatPromise;
 }
