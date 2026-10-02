@@ -12,9 +12,6 @@ export const ONBOARDING_CONVERSATION_ENABLED = true;
  */
 export const ONBOARDING_METADATA_PREFIX = "onboarding:";
 
-// Returns true only when `conversationId` is the conversation the server recorded as the auth
-// user's onboarding conversation in the auth workspace, and false when there is no user or no such
-// record.
 export async function isUserOnboardingConversation(
   auth: Authenticator,
   conversationId: string
