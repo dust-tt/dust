@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Run jd's unchanged workloads with a fresh dfs v1 server and no client caches."""
+"""Run jd's unchanged workloads with a fresh server and kernel caching/writeback."""
 import argparse
+import ctypes
 import hashlib
 import json
+import os
 from pathlib import Path
 import secrets
 import shutil
@@ -16,6 +18,7 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = Path('/benchmark') if ROOT == Path('/dfs') else ROOT.parents[2] / 'jd/filesystem-benchmark'
 MANIFEST_SHA256 = '67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1'
+LABEL = 'dfs v1 [client optimization]'
 sys.path.insert(0, str(ROOT / 'tests'))
 from support import docker, drain, mounted, rpc, secret_file, session, start_server
 
@@ -54,19 +57,36 @@ def inside(args):
     workspace = json.loads((work / 'workspace.json').read_text())
     owner = session(args.endpoint, workspace, ['owner'])
     with tempfile.TemporaryDirectory(prefix='dfs-v1-bench-') as temporary:
-        with mounted(args.endpoint, owner['session_key'], Path(temporary) / 'dfs') as mount:
+        with mounted(args.endpoint, owner['session_key'], Path(temporary) / 'dfs',
+                     threads=args.threads, metrics_path=work / f'{args.phase}-client-metrics.json') as mount:
             corpus = mount / 'work'
-            if args.phase == 'populate':
+            # Open before work so syncfs observes writeback errors from this entire phase.
+            mount_fd = os.open(corpus, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                if args.phase == 'populate':
+                    started = time.monotonic()
+                    subprocess.run(['/usr/bin/tar', '--no-same-owner', '-xf', str(work / 'corpus.tar'),
+                                    '-C', str(corpus)], check=True)
+                    seconds = time.monotonic() - started
+                    print(f'Untar: {seconds:.3f}s', flush=True)
+                else:
+                    if hashlib.sha256((corpus / 'manifest.json').read_bytes()).hexdigest() != MANIFEST_SHA256:
+                        raise RuntimeError('mounted corpus differs from reference')
+                    benchmark(corpus, work, 'dfs')
                 started = time.monotonic()
-                subprocess.run(['/usr/bin/tar', '--no-same-owner', '-xf', str(work / 'corpus.tar'),
-                                '-C', str(corpus)], check=True)
-                seconds = time.monotonic() - started
-                (work / 'populate.json').write_text(json.dumps({'untar_seconds': seconds}, indent=2) + '\n')
-                print(f'Untar: {seconds:.3f}s', flush=True)
-            else:
-                if hashlib.sha256((corpus / 'manifest.json').read_bytes()).hexdigest() != MANIFEST_SHA256:
-                    raise RuntimeError('mounted corpus differs from reference')
-                benchmark(corpus, work, 'dfs')
+                libc = ctypes.CDLL(None, use_errno=True)
+                libc.syncfs.argtypes = [ctypes.c_int]
+                libc.syncfs.restype = ctypes.c_int
+                if libc.syncfs(mount_fd) != 0:
+                    raise OSError(ctypes.get_errno(), 'client writeback failed')
+                client_seconds = time.monotonic() - started
+                report = {'client_writeback_seconds': client_seconds, 'barrier': 'Linux syncfs'}
+                if args.phase == 'populate':
+                    report['untar_seconds'] = seconds
+                (work / f'{args.phase}.json').write_text(json.dumps(report, indent=2) + '\n')
+                print(f'Client writeback drain: {client_seconds:.3f}s', flush=True)
+            finally:
+                os.close(mount_fd)
 
 
 def gcs(work, arguments):
@@ -83,7 +103,8 @@ def gcs(work, arguments):
 def host(args):
     """@cc [owner:spolu,label:testing;security] isolated-cold-benchmark
     Every run MUST own a fresh storage prefix. Restart the server and discard disk caches before
-    measuring DFS. Record foreground population and remaining shutdown drain separately. Cleanup MUST
+    measuring DFS. Record foreground population, client writeback, and remaining shutdown drain
+    separately. Client writeback MUST complete before server shutdown. Cleanup MUST
     target only this successful run's generated prefix and remove credentials from retained reports.
     """
     work = args.work or Path(tempfile.mkdtemp(prefix='dfs-v1-vfs-'))
@@ -103,16 +124,18 @@ def host(args):
     key_path = secret_file(work / 'server.key', server_key)
     backend = ['--local-store', str(work / 'remote')] if args.local_store else ['--bucket', args.bucket]
     arguments = [*backend, '--prefix', prefix]
-    run = {'bucket': None if args.local_store else args.bucket, 'prefix': prefix,
+    run = {'label': LABEL, 'bucket': None if args.local_store else args.bucket, 'prefix': prefix,
            'manifest_sha256': MANIFEST_SHA256, 'profile': 'release', 'warm_runs': 1,
            'cache_memory_mib': 1024, 'cache_disk_gib': 16, 'max_unflushed_mib': 512,
-           'fuse_threads': 8, 'client_data_cache': False, 'kernel_metadata_ttl_seconds': 0,
+           'fuse_threads': args.threads, 'client_data_cache': 'kernel', 'kernel_writeback': True,
+           'kernel_metadata_ttl_seconds': 4294967295, 'freshness_deadline': None,
+           'read_ahead_requested_kib': 1024, 'max_background': 32,
            'server_restarted_before_suite': True, 'server_restarted_before_each_row': False,
            'old_disk_cache_reused': False}
     def save():
         (work / 'run.json').write_text(json.dumps(run, indent=2) + '\n')
     def phase(name, endpoint=None):
-        arguments = ['--phase', name, '--work', '/run/dfs']
+        arguments = ['--phase', name, '--work', '/run/dfs', '--threads', str(args.threads)]
         if endpoint:
             arguments += ['--endpoint', endpoint]
         docker(work, 'bench/vfs.py', arguments, extra_mounts=[(SOURCE, '/benchmark')])
@@ -129,10 +152,12 @@ def host(args):
             'expected_parent_version': 1, 'name': 'work', 'directory': True, 'mode': 493})
         secret_file(work / 'workspace.json', json.dumps(workspace))
         phase('populate', docker_endpoint)
+        run['populate_client_writeback_seconds'] = json.loads((work / 'populate.json').read_text())['client_writeback_seconds']
         run['populate_drain_seconds'] = drain(server)
         save()
         server, endpoint, docker_endpoint = start_server(work, 'benchmark', arguments, key_path)
         phase('benchmark', docker_endpoint)
+        run['benchmark_client_writeback_seconds'] = json.loads((work / 'benchmark.json').read_text())['client_writeback_seconds']
         run['benchmark_drain_seconds'] = drain(server)
         if args.local_store:
             run['retained_remote_bytes'] = sum(p.stat().st_size for p in (work / 'remote').rglob('*') if p.is_file())
@@ -159,5 +184,6 @@ if __name__ == '__main__':
     parser.add_argument('--local-store', action='store_true')
     parser.add_argument('--phase', choices=['local', 'populate', 'benchmark'])
     parser.add_argument('--endpoint')
+    parser.add_argument('--threads', type=int, choices=range(1, 33), default=8)
     args = parser.parse_args()
     inside(args) if args.phase else host(args)

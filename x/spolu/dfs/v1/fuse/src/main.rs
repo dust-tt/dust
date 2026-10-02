@@ -25,6 +25,12 @@ struct Config {
     /// Number of blocking kernel/gRPC workers; bounds concurrent request buffers.
     #[arg(long, default_value = "8", value_parser = clap::value_parser!(u16).range(1..=32))]
     threads: u16,
+    /// Requested kernel read-ahead, capped by the kernel's negotiated limit.
+    #[arg(long, default_value = "1024", value_parser = clap::value_parser!(u32).range(4..=1024))]
+    read_ahead_kib: u32,
+    /// Maximum kernel background requests in flight.
+    #[arg(long, default_value = "32", value_parser = clap::value_parser!(u16).range(1..=64))]
+    max_background: u16,
 }
 
 fn main() -> Result<()> {
@@ -62,8 +68,18 @@ fn run(config: Config) -> Result<()> {
         std::fs::read_dir(&config.mountpoint)?.next().is_none(),
         "mountpoint must be empty"
     );
-    let filesystem = dfs_fuse::linux::Filesystem::new(client, config.read_only)?;
     let stopped = Arc::new(AtomicBool::new(false));
+    let notifications = Arc::new(parking_lot::Mutex::new(None));
+    let filesystem = dfs_fuse::linux::Filesystem::new(
+        client.clone(),
+        config.read_only,
+        notifications.clone(),
+        stopped.clone(),
+        dfs_fuse::linux::IoConfig {
+            read_ahead_bytes: config.read_ahead_kib * 1024,
+            max_background: config.max_background,
+        },
+    )?;
     signal_hook::flag::register(SIGINT, stopped.clone())?;
     signal_hook::flag::register(SIGTERM, stopped.clone())?;
     let mut options = fuser::Config::default();
@@ -81,15 +97,22 @@ fn run(config: Config) -> Result<()> {
     ];
     options.n_threads = Some(usize::from(config.threads));
     options.clone_fd = true;
-    let session = Session::new(filesystem, &config.mountpoint, &options)?.spawn()?;
+    let session = Session::new(filesystem, &config.mountpoint, &options)?;
+    *notifications.lock() = Some(dfs_fuse::linux::Notifications::start(
+        session.notifier(),
+        stopped.clone(),
+    ));
+    let session = session.spawn()?;
     eprintln!("dfs-fuse: mounted; interrupt to unmount");
     while !stopped.load(Ordering::Relaxed) && !session.guard.is_finished() {
         std::thread::sleep(Duration::from_millis(100));
     }
-    if session.guard.is_finished() {
-        session.join()?;
+    let result = if session.guard.is_finished() {
+        session.join()
     } else {
-        session.umount_and_join()?;
-    }
+        session.umount_and_join()
+    };
+    eprintln!("{}", client.metrics());
+    result?;
     Ok(())
 }

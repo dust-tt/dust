@@ -3,7 +3,12 @@ use dfs_protocol::{
     MAX_MESSAGE,
     rpc::{dfs_client::DfsClient, *},
 };
-use std::{sync::Arc, time::Duration};
+use parking_lot::Mutex;
+use std::{
+    collections::BTreeMap,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 use tokio::runtime::Runtime;
 use tonic::{
     Request, Status,
@@ -18,6 +23,13 @@ use tonic::{
 pub struct Client {
     rpc: DfsClient<Channel>,
     authorization: MetadataValue<Ascii>,
+    metrics: Arc<Mutex<BTreeMap<&'static str, Metric>>>,
+}
+#[derive(Default)]
+struct Metric {
+    calls: u64,
+    errors: u64,
+    elapsed_ns: u128,
 }
 impl Client {
     pub async fn connect(endpoint: &str, key: &str) -> Result<Self> {
@@ -46,7 +58,11 @@ impl Client {
             .max_decoding_message_size(MAX_MESSAGE);
         let mut authorization = format!("Bearer {key}").parse::<MetadataValue<Ascii>>()?;
         authorization.set_sensitive(true);
-        Ok(Self { rpc, authorization })
+        Ok(Self {
+            rpc,
+            authorization,
+            metrics: Default::default(),
+        })
     }
     fn request<T>(&self, value: T) -> Request<T> {
         let mut request = Request::new(value);
@@ -54,6 +70,13 @@ impl Client {
             .metadata_mut()
             .insert("authorization", self.authorization.clone());
         request
+    }
+    fn record(&self, name: &'static str, elapsed: Duration, failed: bool) {
+        let mut metrics = self.metrics.lock();
+        let metric = metrics.entry(name).or_default();
+        metric.calls += 1;
+        metric.errors += u64::from(failed);
+        metric.elapsed_ns += elapsed.as_nanos();
     }
 }
 #[derive(Clone)]
@@ -72,11 +95,34 @@ impl BlockingClient {
         let client = runtime.block_on(Client::connect(endpoint, key))?;
         Ok(Self { runtime, client })
     }
+    pub fn record_fuse_call(&self, name: &'static str) {
+        self.client.record(name, Duration::ZERO, false);
+    }
+    /// Only operation names, counts, and durations are recorded; no credentials, paths, or payloads.
+    pub fn metrics(&self) -> serde_json::Value {
+        let metrics = self.client.metrics.lock();
+        let values: BTreeMap<_, _> = metrics
+            .iter()
+            .map(|(name, metric)| {
+                (
+                    *name,
+                    serde_json::json!({
+                        "calls": metric.calls, "errors": metric.errors,
+                        "elapsed_ms": metric.elapsed_ns as f64 / 1_000_000.0,
+                    }),
+                )
+            })
+            .collect();
+        serde_json::json!({"dfs_client_metrics": values})
+    }
 }
 macro_rules! methods {
     ($($method:ident: $request:ty => $response:ty),* $(,)?) => {
         impl Client { $(pub async fn $method(&self, value: $request) -> Result<$response, Status> {
-            self.rpc.clone().$method(self.request(value)).await.map(tonic::Response::into_inner)
+            let start = Instant::now();
+            let result = self.rpc.clone().$method(self.request(value)).await.map(tonic::Response::into_inner);
+            self.record(concat!("rpc.", stringify!($method)), start.elapsed(), result.is_err());
+            result
         })* }
         impl BlockingClient { $(pub fn $method(&self, value: $request) -> Result<$response, Status> {
             self.runtime.block_on(self.client.$method(value))
@@ -105,21 +151,29 @@ impl Client {
         if value.length as usize > dfs_protocol::MAX_IO {
             return Err(dfs_protocol::error::status(ErrorCode::InvalidInput));
         }
-        self.rpc
+        let start = Instant::now();
+        let result = self
+            .rpc
             .clone()
             .read(self.request(value))
             .await
-            .map(tonic::Response::into_inner)
+            .map(tonic::Response::into_inner);
+        self.record("rpc.read", start.elapsed(), result.is_err());
+        result
     }
     pub async fn write(&self, value: WriteRequest) -> Result<Mutation, Status> {
         if value.data.len() > dfs_protocol::MAX_IO {
             return Err(dfs_protocol::error::status(ErrorCode::InvalidInput));
         }
-        self.rpc
+        let start = Instant::now();
+        let result = self
+            .rpc
             .clone()
             .write(self.request(value))
             .await
-            .map(tonic::Response::into_inner)
+            .map(tonic::Response::into_inner);
+        self.record("rpc.write", start.elapsed(), result.is_err());
+        result
     }
 }
 impl BlockingClient {

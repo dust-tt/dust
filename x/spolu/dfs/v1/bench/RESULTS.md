@@ -1,4 +1,12 @@
-# dfs v1 — 2026-10-01
+# dfs v1 [client optimization]
+
+Pending measurement: kernel metadata/directory/page caching and writeback, eight FUSE workers,
+1 MiB requested read-ahead, and 32 background requests. Server and SlateDB settings are unchanged.
+The harness records foreground latency, client writeback drain, remaining SlateDB persistence drain,
+and FUSE/RPC counts separately. Linux mount tests and this benchmark are blocked by Docker socket
+access in the current execution sandbox; no new timings are claimed.
+
+## dfs v1 — 2026-10-01 (uncached baseline)
 
 Unchanged jd corpus/workloads: 10,000 files, 177.5 MB. Release Rust server on macOS 27.0;
 Linux Docker FUSE client, eight workers, gRPC, direct I/O, zero metadata TTL, no client data cache.

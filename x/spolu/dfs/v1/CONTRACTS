@@ -3,14 +3,15 @@ Every filesystem operation MUST derive its workspace and grants from its authent
 Neither matching grants nor knowledge of an object ID MUST permit cross-workspace access.
 
 @cc [owner:spolu,label:security] live-authorization
-Every read MUST authorize and return data from one consistent SlateDB snapshot. Every mutation MUST
+Every server read MUST authorize and return data from one consistent SlateDB snapshot. Every server mutation MUST
 validate current authorization through publication. Effective grants are explicit grants on the
 object and its ancestors. Workspace keys alone authorize grant administration and session creation;
 the server key alone authorizes workspace creation. Sessions MUST reject more than 512 distinct grants.
 Expired, closed, and previous-process sessions MUST fail authorization.
 
 @cc [owner:spolu,label:security] private-projections
-Root and /shared MUST expose only authorized entries. Shared entries MUST use basename--object-id.
+Server-rendered root and /shared MUST expose only authorized entries; cached listings follow
+kernel-owned-cache. Shared entries MUST use basename--object-id.
 Synthetic entries MUST NOT be mutated. Inode parents MUST follow the visible projection, never expose
 hidden canonical ancestry. Missing and inaccessible objects MUST produce indistinguishable errors.
 
@@ -26,7 +27,8 @@ advance its version once; new objects start at 1. Unrelated files MUST have inde
 
 @cc [owner:spolu,label:performance;backend] memory-acknowledgement
 Successful filesystem/workspace mutation RPCs MUST await SlateDB memory publication but MUST NOT
-await remote durability. Fsync MUST wait for preceding client writes and propagate errors without
+await remote durability. Buffered FUSE writes MAY acknowledge client RAM. Fsync MUST wait for preceding
+kernel writeback and client write RPCs and propagate deferred errors without
 flushing SlateDB. SlateDB's internal WAL
 MUST remain enabled. Recovery MUST retain complete batches only; losing recent acknowledgements is
 allowed. An application WAL, overlay, or persistence worker MUST NOT be introduced.
@@ -39,9 +41,26 @@ Every restart MUST discard local caches and recover only from remote durable sta
 
 @cc [owner:spolu,label:security;error-handling] transport-boundary
 Credentials MUST appear only in RPC metadata or protected credential files, never URLs or logs.
-Errors MUST NOT expose hidden names, grants, or backend details. FUSE MUST use direct I/O, no kernel
-writeback, no data cache, and zero metadata TTL. Version conflicts MUST reach the caller as EAGAIN;
-ambiguous writes MUST return an error and MUST NOT be automatically replayed.
+Errors MUST NOT expose hidden names, grants, or backend details. Server version conflicts MUST remain
+distinguishable from other RPC errors. Kernel writeback failures MUST reach fsync/close even if the
+original write succeeded; the kernel may translate their errno. Ambiguous writes MUST return an error
+and MUST NOT be automatically replayed.
+
+@cc [owner:spolu,label:performance;security] kernel-owned-cache
+FUSE MUST prioritize kernel metadata, directory, and content caching without a duplicate userspace
+content cache. Cached data MAY remain accessible after remote changes or revocation, without a
+freshness deadline. Every RPC MUST still use current server authorization. Observed session loss MUST
+stop the mount, and reconnecting MUST NOT reuse cached state. Local mutations MUST maintain cache
+coherence across aliases; no workspace-wide revision or periodic authorization polling.
+
+@cc [owner:spolu,label:concurrency;error-handling] failed-writeback-stays-failed
+Cached file data and queued writes MUST retain their base object version, advancing only for this
+client's successful mutations. A failure MUST NOT refresh the version of pending dirty data. Retain
+the first writeback error, conflict, or ambiguous file mutation across handles and reject subsequent
+mutations while that state lives. Known metadata precondition errors need not poison cached state.
+Recovery requires discarding the failed kernel state, by inode reclamation or remount. Regular-file
+aliases MUST share one kernel inode. Unlink MUST remove the server object immediately; cached state
+MUST NOT recreate it, and deferred writes MUST report the server's rejection.
 
 @cc [owner:spolu,label:rust] fallible-rust
 Rust code MUST propagate or explicitly handle fallible operations; unwrap() and expect() are forbidden.

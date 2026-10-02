@@ -71,13 +71,13 @@ def drain(process):
 
 
 @contextlib.contextmanager
-def mounted(endpoint, key, directory):
+def mounted(endpoint, key, directory, threads=8, metrics_path=None):
     directory.mkdir()
     key_file = secret_file(directory.parent / (directory.name + '.key'), key)
     log_path = directory.parent / (directory.name + '.log')
     with log_path.open('w') as log:
         process = subprocess.Popen([str(BINARY / 'dfs-fuse'), '--endpoint', endpoint,
-            '--session-key-file', str(key_file), str(directory)], stdout=log, stderr=log)
+            '--session-key-file', str(key_file), '--threads', str(threads), str(directory)], stdout=log, stderr=log)
     try:
         deadline = time.monotonic() + 30
         while not os.path.ismount(directory):
@@ -95,6 +95,12 @@ def mounted(endpoint, key, directory):
                 process.kill()
                 process.wait(timeout=10)
         key_file.unlink(missing_ok=True)
+        if metrics_path is not None:
+            for line in log_path.read_text().splitlines():
+                if line.startswith('{'):
+                    record = json.loads(line)
+                    if 'dfs_client_metrics' in record:
+                        metrics_path.write_text(json.dumps(record, indent=2) + '\n')
         if process.returncode != 0:
             raise RuntimeError(f'mount failed: {log_path.read_text()}')
 

@@ -77,14 +77,23 @@ ls /mnt/dfs/work
 ```
 
 The synthetic root and `/shared` cannot be mutated; create a real folder such as `work` through the
-API first. Files use direct I/O, zero metadata TTLs, and eight FUSE workers (configurable with
-`--threads`, maximum 32). No client content cache. Handles are local and capped at 256 files plus
-256 directory handles. Inode numbers and pins track visible parents and references only.
+API first. Files use kernel page caching and writeback, with pages retained across opens. Attributes,
+positive/negative lookups, and directories use long kernel TTLs without a freshness deadline. No
+userspace content cache, authorization timer, polling, or cross-client invalidation. Cached data can
+remain available after remote changes or permission revocation; every RPC still checks authorization.
+
+Defaults: eight FUSE workers (`--threads`, maximum 32), 1 MiB requested read-ahead
+(`--read-ahead-kib`, capped by the kernel), and 32 background requests (`--max-background`, maximum 64).
+Handles are local and capped at 256 files plus 256 directory handles. Up to 100,000 inode records
+retain metadata, expected versions, and visible parents; aliases of a regular file share one inode.
+Local namespace changes invalidate affected kernel entries and directory caches.
 
 `user.*` xattrs, modes, and timestamps are supported. MIME types and arbitrary xattr names are
 available through the API. Symlinks, hard links, locks, ownership changes, and open-after-unlink
-semantics are deferred. Concurrent write conflicts surface as `EAGAIN`; retry is the application's
-choice, never automatic. Errors from a handle's writes also reach its next flush/fsync.
+semantics are deferred. Unlink deletes server state immediately: subsequent RPCs return `ENOENT`,
+including writes through existing handles. Buffered writes may fail later at fsync/close. Conflicts
+return `EAGAIN` (the kernel can translate writeback errors). A failed file remains failed across
+handles until inode reclamation or remount; reopening alone does not recover it. No automatic retries.
 
 Run the two-mount integration test from the host after building both platforms:
 
@@ -95,7 +104,9 @@ python3 tests/crash.py
 
 ## Guarantees and limits
 
-Writes and `fsync` acknowledge server visibility, not GCS durability. `SIGINT`/`SIGTERM` drain accepted
+Buffered filesystem writes can acknowledge client RAM. Successful `fsync` confirms server visibility
+and reports deferred write errors; it does not promise GCS durability. Direct write RPCs acknowledge
+server memory. `SIGINT`/`SIGTERM` drain accepted
 requests and SlateDB, then log `drain_ms`; shutdown times out after 300 seconds by default. A forced
 kill can lose recent acknowledged writes. Never automatically retry an ambiguous mutation.
 
@@ -113,6 +124,8 @@ cargo fmt --all -- --check
 ```
 
 Tests use real SlateDB with memory/local object-store backends; the transport test runs real gRPC.
+The FUSE adapter also compiles and runs unit tests on macOS using fuser's no-mount backend; real
+mount tests still require Linux and `/dev/fuse` (no macFUSE).
 
 ## Performance benchmark
 
@@ -125,9 +138,12 @@ python3 bench/vfs.py
 ```
 
 This runs jd's unchanged 10,000-file corpus and 24 workload measurements on local Linux storage,
-then dfs backed by a fresh GCS prefix. It measures untar and remaining persistence drain separately,
+then dfs backed by a fresh GCS prefix. It measures foreground work, client writeback via Linux
+`syncfs`, and remaining SlateDB persistence drain separately. Writeback completes before server shutdown. It records FUSE callback and RPC
+counts/timings,
 restarts the server with discarded local caches, and mounts a fresh session before the DFS suite.
 The server restarts once before the suite, not between rows; later rows benefit from prior reads.
 Successful runs remove their own GCS fixture. Reports contain timings and logs, with credentials
 removed. `--local-store` runs the same harness with a local object-store backend for offline checks.
+The run label is **dfs v1 [client optimization]**. `--threads` selects the FUSE worker count.
 Retained remote bytes measure the final object-store footprint, not cumulative upload amplification.

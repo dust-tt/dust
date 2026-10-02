@@ -18,5 +18,10 @@ fuser = { version = "0.18", default-features = false }
 nix = { version = "0.30", features = ["user"] }
 signal-hook = "0.3"
 
+# Compile and test adapter logic natively without mounting or linking macFUSE.
+[target.'cfg(target_os = "macos")'.dependencies]
+fuser = { version = "0.18", default-features = false, features = ["macos-no-mount"] }
+nix = { version = "0.30", features = ["user"] }
+
 [lints]
 workspace = true

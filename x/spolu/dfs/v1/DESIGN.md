@@ -15,7 +15,8 @@ SlateDB storage, and a thin gRPC FUSE client. Subscriptions and search are futur
 - Write directly to SlateDB. Its memtables hold visible pending writes, its caches serve reads, and
   its background tasks persist to GCS. Keep SlateDB's internal WAL enabled.
 - No application WAL, overlay, persistence worker, or separate server content cache.
-- Successful writes and `fsync` promise server visibility, not durability. A crash may lose a recent
+- Successful server write RPCs and `fsync` promise server visibility, not durability. With client
+  writeback, `write(2)` may acknowledge only kernel-cached bytes. A server crash may lose a recent
   acknowledged suffix, but must never recover partial operations or inconsistent indexes/content.
 - Every restart is cold from GCS. Discard previous local caches, RAM state, and sessions.
 
@@ -126,7 +127,8 @@ remote durability for a write; `Db::flush()` explicitly waits for a flush. See t
 [write API](https://docs.rs/slatedb/0.17.0/slatedb/struct.Db.html#method.write) and
 [cache architecture](https://slatedb.io/docs/design/caching/).
 
-Before `fsync`, the client waits for its preceding handle write RPCs and reports outstanding errors.
+Before `fsync` succeeds, preceding buffered writes must reach the server and outstanding write errors
+must be reported. Linux drains writeback before the FUSE fsync callback.
 The server rechecks session/object access; successful writes are already visible. `fsync` does not
 call `flush()` or `await_durable()`. Workspace creation follows the same RAM acknowledgement rule;
 an undurable new workspace/key may therefore disappear on crash.
@@ -150,35 +152,54 @@ without publication and return `version_conflict` with current authorized versio
 insertion, rename, and removal also validate entry existence and identity atomically. Recheck current
 ancestor grants at publication even when the target object's version is unchanged.
 
-The FUSE client serializes its own mutations per object and advances its expected version from
-successful responses. A conflict reaches the filesystem caller as **`EAGAIN`**. Invalidate and refresh
-that object's state before later operations; never silently retry the rejected write with a newer
-version. Two writes to different blocks of the same file can still conflict by design.
+The FUSE client serializes its own mutations per object. Cached file pages retain their base version
+across opens; only this client's successful mutations advance it. Read fills request that version.
+Conflicts return **`EAGAIN`**; kernel writeback can defer or translate the error to `fsync`/close.
+Retain the first writeback error, version conflict, or ambiguous file mutation across all handles and
+reject subsequent mutations. Never refresh and replay stale dirty pages. Recovery requires inode
+reclamation or remount; reopening alone does not reset the failure. Directory conflicts can refresh
+before a later caller-initiated mutation because directories have no dirty file pages.
 
-A timeout has an unknown outcome: the client reports an I/O error and refreshes rather than
-automatically replaying the mutation. Initial scope has no retry receipts or exactly-once retry
-protocol. Restart invalidates sessions and all client version state, preventing reuse after version
-rollback.
+A timeout has an unknown outcome and returns an I/O error without automatic replay. Atomicity is per
+server operation, not per fsync: an error does not roll back earlier successful RPCs. Two edits to
+different blocks of the same file can still conflict. No retry receipts or exactly-once protocol.
+Restart invalidates sessions; observed session loss stops the mount and requires a fresh mount.
 
 ## FUSE and transport
 
-Start with a thin Linux FUSE client: direct I/O, no kernel writeback, zero kernel metadata TTLs, and
-no client data cache. Keep only inode/handle bookkeeping and expected versions; mutations reach the
-server before success. Keep memory and concurrency bounded and pipeline unrelated objects. `fsync`
-is a server publication barrier. Session loss fails the mount; reconnecting a new session requires
-fresh state. Cached reads and fine-grained invalidation can follow after measuring this baseline;
-any later cached authorization must remain stale for at most one second.
+Use native Linux kernel caching, with no userspace content cache or freshness deadline:
+
+- Cache attributes, positive/negative lookups, and directories using long kernel TTLs (the protocol
+  requires a finite value: `u32::MAX` seconds). No configurable expiry or periodic refresh.
+- `readdirplus` reuses attributes from `List`. Keep one bounded RPC page per open directory.
+- Enable file page caching, `FOPEN_KEEP_CACHE`, directory caching, and `FUSE_WRITEBACK_CACHE`.
+  Buffered `write(2)` can acknowledge client RAM; `fsync` drains writes to server visibility and
+  reports deferred errors. Close also reports available write errors; it does not need a separate
+  synchronization RPC. Explicit fsync still checks current server authorization.
+- Share one kernel inode per regular file across aliases. Directory inodes retain visible parents.
+  Reuse small metadata/version records across handles; bound inodes and handles. Update or invalidate
+  affected local entries and directory caches after namespace mutations. Serialize these changes
+  against in-flight lookups/listing; send kernel notifications outside callbacks and locks.
+- Permit kernel reads on write-only handles for partial-page writes. The kernel owns append offsets
+  and orders truncate against writeback; send positioned writes. Never replay failed queued writes.
+- Request 1 MiB read-ahead, capped by the kernel, with asynchronous reads, 32 background requests,
+  and eight FUSE workers. `--read-ahead-kib`, `--max-background`, and `--threads` configure these bounds.
+
+Cached data can remain accessible after remote edits, unlink, grant revocation, or session expiry
+until an RPC observes it or the cache is discarded. Reopening does not guarantee freshness. Every
+server RPC still checks current authorization. Cache misses use the retained base version and may
+fail on concurrent edits; they cannot silently mix content versions. No timers, polling, global
+revision, subscriptions, or remote invalidation protocol.
 
 **Transport: gRPC with Protobuf over persistent HTTP/2 channels, using Rust `tonic`.** Use unary
 metadata and bounded read/write RPCs. Return attributes with directory entries and transfer several
 64 KiB blocks per request to avoid a round trip per block. Keep raw bytes binary and disable
-automatic mutation retries; application acknowledgement means SlateDB memory publication.
+automatic mutation retries; successful write RPC acknowledgement means SlateDB memory publication.
 
 RPCs cover workspace/session lifecycle, grant listing/updates, stat/lookup/list, create/mkdir,
 rename/unlink/rmdir, read/write/append/truncate, attributes/xattrs, and `fsync`. FUSE handles are local
-bookkeeping over stable object IDs; avoid remote handle reservations and upload slots. Product edits
-are visible on the next filesystem read, and agent edits on the next Product read. There is no push
-notification or client invalidation protocol in this iteration.
+bookkeeping over stable object IDs; avoid remote handle reservations and upload slots. Product
+reads see published agent writes; cached FUSE reads have no bounded freshness guarantee.
 
 gRPC still uses HTTP. Its practical benefits here are typed binary messages and multiplexing,
 not a guaranteed speedup over HTTP. Start with standard RPCs instead of a custom TCP
@@ -192,6 +213,8 @@ queues as well as transport buffers. See
 Use a fresh SlateDB prefix and format marker; migration from v0 is outside this iteration.
 
 One owner per shard; multi-server ownership/fencing, transparent failover, macOS mounts, custom
-session mounts, cross-client locks, and full POSIX semantics remain deferred. Open handles fail after
-unlink. Large truncation/deletion batches need measurement and may need a more scalable format.
-Subscriptions, change indexes, search, client caching, and retry receipts remain out of scope.
+session mounts, cross-client locks, and full POSIX semantics remain deferred. After successful unlink,
+server reads and writes through existing client handles return `ENOENT`; cached bytes may remain
+readable. Keep this behavior without server-side handle retention or deferred deletion.
+Large truncation/deletion batches need measurement and may need a more scalable format.
+Subscriptions, change indexes, search, and retry receipts remain out of scope.
