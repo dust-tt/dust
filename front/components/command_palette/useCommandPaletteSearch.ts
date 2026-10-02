@@ -99,6 +99,7 @@ function useCommandPalettePods({
     pods: searchablePods,
     isSearching: isSearchingPods,
     hasMore: hasMoreSearchPods,
+    searchQuery,
   } = useSearchPods({
     workspaceId: owner.sId,
     query: trimmedQuery,
@@ -106,9 +107,11 @@ function useCommandPalettePods({
     limit: MAX_DISPLAYED_PODS,
   });
 
+  const hasCurrentResults = isSearchActive && searchQuery === trimmedQuery;
+
   return {
-    pods: isSearchActive ? (searchablePods as CommandPalettePod[]) : [],
-    hasMorePods: isSearchActive ? hasMoreSearchPods : false,
+    pods: hasCurrentResults ? (searchablePods as CommandPalettePod[]) : [],
+    hasMorePods: hasCurrentResults ? hasMoreSearchPods : false,
     isLoading: isSearchingPods,
   };
 }
@@ -130,6 +133,7 @@ function useCommandPaletteMembers({
     members: searchMembers,
     totalMembersCount,
     isLoading: isSearchingMembers,
+    searchQuery,
   } = useSearchMembers({
     workspaceId: owner.sId,
     searchTerm: trimmedQuery,
@@ -140,7 +144,7 @@ function useCommandPaletteMembers({
   });
 
   const members = useMemo(() => {
-    if (!isSearchActive) {
+    if (!isSearchActive || searchQuery !== trimmedQuery) {
       return [];
     }
     const withoutSelf = searchMembers.filter(
@@ -150,16 +154,18 @@ function useCommandPaletteMembers({
       0,
       MAX_DISPLAYED_MEMBERS
     ) as LightUserTypeWithWorkspace[];
-  }, [isSearchActive, searchMembers, currentUserId]);
+  }, [isSearchActive, searchQuery, trimmedQuery, searchMembers, currentUserId]);
 
   return {
     members,
     hasMoreMembers:
       isSearchActive &&
+      searchQuery === trimmedQuery &&
       (totalMembersCount > MAX_DISPLAYED_MEMBERS ||
         searchMembers.filter((member) => member.sId !== currentUserId).length >
           MAX_DISPLAYED_MEMBERS),
-    isLoading: isSearchingMembers,
+    isLoading:
+      isSearchingMembers || (isSearchActive && searchQuery !== trimmedQuery),
   };
 }
 
@@ -179,6 +185,7 @@ function useCommandPaletteConversations({
     conversations: privateConversationResults,
     isSearching: isSearchingPrivateConversations,
     hasMore: hasMorePrivateConversations,
+    searchQuery: privateSearchQuery,
   } = useSearchPrivateConversations({
     workspaceId: owner.sId,
     query: trimmedQuery,
@@ -188,6 +195,7 @@ function useCommandPaletteConversations({
   const {
     conversations: podConversationResults,
     isSearching: isSearchingPodConversations,
+    searchQuery: podSearchQuery,
   } = useSearchPodConversations({
     workspaceId: owner.sId,
     query: trimmedQuery,
@@ -196,7 +204,11 @@ function useCommandPaletteConversations({
   });
 
   const { conversations, hasMoreConversations } = useMemo(() => {
-    if (!isSearchActive) {
+    if (
+      !isSearchActive ||
+      privateSearchQuery !== trimmedQuery ||
+      podSearchQuery !== trimmedQuery
+    ) {
       return { conversations: [], hasMoreConversations: false };
     }
 
@@ -225,6 +237,9 @@ function useCommandPaletteConversations({
     };
   }, [
     isSearchActive,
+    trimmedQuery,
+    privateSearchQuery,
+    podSearchQuery,
     privateConversationResults,
     podConversationResults,
     hasMorePrivateConversations,
@@ -318,6 +333,11 @@ function useCommandPaletteSettings({
   return { settings, hasMoreSettings, canSearchSettings };
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] current-query-results
+ * Pods, conversations, and members from a previous search query MUST NOT be exposed
+ * as selectable results while the current trimmed query is debouncing.
+ */
 export function useCommandPaletteSearch({
   owner,
   isOpen,
