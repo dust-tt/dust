@@ -96,7 +96,7 @@ benchmarks are complete; see [bench/RESULTS.md](bench/RESULTS.md). Cloud work re
       same FDB transaction; preserve fallback, conflict detection, and expected versions.
 - [x] Test deep paths, cache bounds/isolation, and moves/revocations from another server, including
       changes between a write's authorization reads and its commit.
-- [ ] Rerun unchanged Linux FUSE/filesystem workloads; retain baseline tables and record comparisons.
+- [x] Rerun unchanged Linux FUSE/filesystem workloads; retain baseline tables and record comparisons.
 
 ## Future work: after the local benchmark
 
