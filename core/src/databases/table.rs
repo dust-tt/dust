@@ -40,8 +40,8 @@ pub enum TableType {
 }
 
 // Maximum number of pending (not-yet-processed) CSV files allowed for a single table.
-// Beyond this, the producer (API) rejects new upserts/deletes so files don't accumulate
-// into a merge the background worker cannot handle (which would OOM-crash the worker).
+// Beyond this, the producer (API) rejects new upserts/deletes so files don't accumulate faster than
+// the background worker drains them (it merges a bounded batch of files per pass).
 const MAX_PENDING_UPSERT_FILES: usize = 200;
 
 // Errors from table upserts that callers (e.g. the HTTP API) may want to handle specially
@@ -636,10 +636,8 @@ impl LocalTable {
         // not affected (they don't go through this path) and reset the pending files, so they
         // remain a way to recover a wedged table.
         let pending_files =
-            GoogleCloudStorageBackgroundProcessingStore::get_gcs_csv_file_names_for_table(
-                &self.table,
-            )
-            .await?;
+            GoogleCloudStorageBackgroundProcessingStore::get_gcs_csv_files_for_table(&self.table)
+                .await?;
         if pending_files.len() >= MAX_PENDING_UPSERT_FILES {
             return Err(TableUpsertError::TooManyPendingUpserts {
                 max: MAX_PENDING_UPSERT_FILES,

@@ -20,7 +20,7 @@ pub struct GoogleCloudStorageCSVContent {
 
 pub const MAX_TABLE_COLUMNS: usize = 512;
 pub const MAX_COLUMN_NAME_LENGTH: usize = 1024;
-const MAX_TABLE_ROWS: usize = 500_000;
+pub const MAX_TABLE_ROWS: usize = 500_000;
 // Every cell is materialized as a `serde_json::Value`, so the parsed table's memory footprint
 // follows the cell count rather than the file size.
 const MAX_TABLE_CELLS: usize = 10_000_000;
