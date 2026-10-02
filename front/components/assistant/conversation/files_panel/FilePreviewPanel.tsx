@@ -131,6 +131,7 @@ export function FilePreviewPanel({
     isActive: !!entry,
     isContentLoading: preview.isContentLoading,
     isTooLarge: preview.isTooLarge,
+    isTruncated: preview.isTruncated,
     owner,
     processedContent: preview.processedContent,
   });

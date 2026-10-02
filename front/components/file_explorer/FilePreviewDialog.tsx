@@ -61,11 +61,37 @@ export function FilePreviewDialog({
     }
   };
 
+  const preview = useFilePreviewContent({ entry, fileUrl, enabled: isOpen });
+  const { category, recordCounts } = preview;
+
+  const FileIcon = entry
+    ? getFileTypeIcon(entry.contentType, entry.fileName)
+    : null;
+
+  const markdown = useMarkdownFileEditor({
+    category,
+    entryPath: entry?.path,
+    fileUrl,
+    isActive: isOpen,
+    isContentLoading: preview.isContentLoading,
+    isTooLarge: preview.isTooLarge,
+    isTruncated: preview.isTruncated,
+    owner,
+    processedContent: preview.processedContent,
+  });
+
+  // The rich editor autosaves after a delay; leaving the file before that would drop the edit.
+  const holdsNavigation =
+    markdown.richEditor !== null && (markdown.isDirty || markdown.isSaving);
+
   useEffect(() => {
     if (!isOpen) {
       return;
     }
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (holdsNavigation) {
+        return;
+      }
       const target = e.target as HTMLElement | null;
       if (
         target?.tagName === "INPUT" ||
@@ -84,25 +110,7 @@ export function FilePreviewDialog({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onPrev, onNext]);
-
-  const preview = useFilePreviewContent({ entry, fileUrl, enabled: isOpen });
-  const { category, recordCounts } = preview;
-
-  const FileIcon = entry
-    ? getFileTypeIcon(entry.contentType, entry.fileName)
-    : null;
-
-  const markdown = useMarkdownFileEditor({
-    category,
-    entryPath: entry?.path,
-    fileUrl,
-    isActive: isOpen,
-    isContentLoading: preview.isContentLoading,
-    isTooLarge: preview.isTooLarge,
-    owner,
-    processedContent: preview.processedContent,
-  });
+  }, [isOpen, onPrev, onNext, holdsNavigation]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -173,7 +181,7 @@ export function FilePreviewDialog({
                 size="sm"
                 icon={ChevronLeft}
                 onClick={onPrev}
-                disabled={!onPrev}
+                disabled={!onPrev || holdsNavigation}
                 tooltip="Previous"
               />
               <Button
@@ -181,7 +189,7 @@ export function FilePreviewDialog({
                 size="sm"
                 icon={ChevronRight}
                 onClick={onNext}
-                disabled={!onNext}
+                disabled={!onNext || holdsNavigation}
                 tooltip="Next"
               />
             </div>

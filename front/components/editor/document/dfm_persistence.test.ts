@@ -2,7 +2,8 @@ import {
   loadDfm,
   saveDfm,
 } from "@app/components/editor/document/dfm_persistence";
-import { parseDfm } from "@app/lib/markdown/dfm";
+import { extractAnchors, parseDfm, serializeDfm } from "@app/lib/markdown/dfm";
+import { FIXTURE } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
 import { describe, expect, it } from "vitest";
 
 const AT = "2026-09-25T14:16:32.380Z";
@@ -73,6 +74,79 @@ describe("saveDfm", () => {
     if (saved.isOk()) {
       expect(saved.value).toBe(source);
       expect(parseDfm(saved.value).isOk()).toBe(true);
+    }
+  });
+
+  it("round-trips the codec fixture once its anchors are removed", () => {
+    const parsed = parseDfm(FIXTURE);
+    expect(parsed.isOk()).toBe(true);
+    if (!parsed.isOk()) {
+      return;
+    }
+    const text = extractAnchors(parsed.value.body);
+    expect(text.isOk()).toBe(true);
+    if (!text.isOk()) {
+      return;
+    }
+    const source = serializeDfm({ ...parsed.value, body: text.value.text });
+    expect(source.isOk()).toBe(true);
+    if (!source.isOk()) {
+      return;
+    }
+
+    const loaded = loadDfm(source.value);
+    expect(loaded.isOk()).toBe(true);
+    if (!loaded.isOk()) {
+      return;
+    }
+    const saved = saveDfm(loaded.value.envelope, loaded.value.content);
+
+    expect(saved.isOk()).toBe(true);
+    if (saved.isOk()) {
+      expect(saved.value).toBe(source.value);
+    }
+  });
+
+  it("keeps front matter when the body is empty", () => {
+    const source = "---\ntitle: x\n---\n";
+    const loaded = loadDfm(source);
+    expect(loaded.isOk()).toBe(true);
+    if (!loaded.isOk()) {
+      return;
+    }
+
+    const saved = saveDfm(loaded.value.envelope, loaded.value.content);
+
+    expect(saved.isOk()).toBe(true);
+    if (saved.isOk()) {
+      expect(saved.value).toBe(source);
+    }
+  });
+
+  it("writes LF line endings for a CRLF file", () => {
+    const loaded = loadDfm("# Title\r\n\r\nText\r\n");
+    expect(loaded.isOk()).toBe(true);
+    if (!loaded.isOk()) {
+      return;
+    }
+
+    const saved = saveDfm(loaded.value.envelope, loaded.value.content);
+
+    expect(saved.isOk()).toBe(true);
+    if (saved.isOk()) {
+      expect(saved.value).toBe("# Title\n\nText\n");
+    }
+  });
+
+  it("refuses content the editor cannot write as Markdown", () => {
+    const saved = saveDfm(
+      { frontMatter: null, comments: [] },
+      { type: "doc", content: [{ type: "table" }] }
+    );
+
+    expect(saved.isErr()).toBe(true);
+    if (saved.isErr()) {
+      expect(saved.error).toContain("cannot be saved as Markdown");
     }
   });
 

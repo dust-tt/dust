@@ -26,11 +26,12 @@ to the saved content clears the error without a request.
 
 ## What opens
 
-`loadDfm` in `dfm_persistence.ts` decides, and is exported so a host can decide before
-mounting and fall back to a plain text editor. A file opens when it is valid DFM, its body has
-no comment anchors, and its body is Markdown the editor reproduces. Tables, images, task lists,
-HTML, reference links and tilde fences are refused for now, since the TipTap Markdown parser
-cannot preserve them. A refused file is shown as read-only source with the reason.
+`loadDfm` in `dfm_persistence.ts` decides. Hosts mount the editor for every Markdown file
+they hand it; a file opens for editing when it is valid DFM, its body has no comment anchors,
+and its body is Markdown the editor reproduces. Tables, images, task lists, HTML, reference
+links and tilde fences are refused for now, since the TipTap Markdown parser cannot preserve
+them. A refused file is shown as read-only source with the reason. Line endings are not
+preserved: a CRLF file opens and is written back with LF.
 
 Front matter and comment threads already in the file are kept in an envelope and written back
 unchanged on save. The editor only rewrites the body, and only when the codec confirms the

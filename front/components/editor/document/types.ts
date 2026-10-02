@@ -13,4 +13,11 @@ export interface DocumentProps {
   autosaveDebounceMs?: number;
   /** Enables editing. Receives the DFM source to persist; resolve { ok: true } once stored. */
   onSave?: (content: string) => Promise<DocumentSaveResult>;
+  /** Reports the draft state, so the host can hold navigation while edits are unsaved. */
+  onStateChange?: (state: DocumentDraftState) => void;
+}
+
+export interface DocumentDraftState {
+  dirty: boolean;
+  saving: boolean;
 }

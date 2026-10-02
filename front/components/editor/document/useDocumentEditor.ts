@@ -8,6 +8,7 @@ import type {
   DocumentSaveResult,
 } from "@app/components/editor/document/types";
 import { cn } from "@dust-tt/sparkle";
+import type { JSONContent } from "@tiptap/core";
 import { useEditor } from "@tiptap/react";
 import {
   useCallback,
@@ -49,6 +50,7 @@ interface UseDocumentEditorProps {
  * MUST acknowledge only the submitted content, leaving later edits unsaved. Prop changes MUST
  * NOT replace an open draft. A file the editor cannot open MUST disable editing and saving.
  * Returning to the saved content MUST clear save errors without making another save request.
+ * Unmounting with unsaved, editable content MUST attempt one final save of that content.
  */
 /**
  * @cc [owner:PopDaph,label:product] document-autosave
@@ -72,6 +74,9 @@ export const useDocumentEditor = ({
   const savingRef = useRef(false);
   const editable = !readOnly && onSave !== undefined && initial.isOk();
   const persistenceRef = useRef({ onSave, editable, baseline });
+  const latestRef = useRef<{ document: JSONContent; content: string } | null>(
+    null
+  );
 
   useLayoutEffect(() => {
     persistenceRef.current = { onSave, editable, baseline };
@@ -99,12 +104,16 @@ export const useDocumentEditor = ({
     onCreate: ({ editor }) => {
       // Normalize TipTap's trailing paragraph before capturing saved content.
       editor.view.dispatch(editor.state.tr);
-      const content = JSON.stringify(editor.getJSON());
+      const document = editor.getJSON();
+      const content = JSON.stringify(document);
+      latestRef.current = { document, content };
       setBaseline(content);
       setDraft(content);
     },
     onUpdate: ({ editor }) => {
-      const content = JSON.stringify(editor.getJSON());
+      const document = editor.getJSON();
+      const content = JSON.stringify(document);
+      latestRef.current = { document, content };
       setDraft(content);
 
       if (content === baseline) {
@@ -121,6 +130,33 @@ export const useDocumentEditor = ({
   }, [editor, editable]);
 
   const dirty = baseline !== null && draft !== baseline;
+
+  // Closing the host inside the autosave delay must not drop the edit. The editor is gone by
+  // then, so this last attempt cannot report a failure; hosts hold navigation while dirty.
+  useEffect(
+    () => () => {
+      const latest = latestRef.current;
+      const {
+        onSave: persist,
+        editable: canSave,
+        baseline: savedContent,
+      } = persistenceRef.current;
+      if (
+        !persist ||
+        !canSave ||
+        !initial.isOk() ||
+        latest === null ||
+        latest.content === savedContent
+      ) {
+        return;
+      }
+      const serialized = saveDfm(initial.value.envelope, latest.document);
+      if (serialized.isOk()) {
+        void persistDocument(persist, serialized.value);
+      }
+    },
+    [initial]
+  );
 
   const save = useCallback(async () => {
     const {

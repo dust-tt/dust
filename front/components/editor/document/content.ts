@@ -1,3 +1,4 @@
+import { documentExtensions } from "@app/components/editor/document/extensions";
 import type {
   ExtendableConfig,
   JSONContent,
@@ -8,7 +9,6 @@ import { MarkdownManager } from "@tiptap/markdown";
 import type { Node } from "@tiptap/pm/model";
 import { Fragment } from "@tiptap/pm/model";
 import { z } from "zod";
-import { documentExtensions } from "./extensions";
 
 const documentSchema = getSchema(documentExtensions);
 const documentMarkdown = new MarkdownManager({
@@ -163,16 +163,15 @@ export const serializeDocumentMarkdown = (
   document: JSONContent
 ): string | null => {
   const content = withoutTrailingParagraphs(document);
-  let markdown: string;
 
+  // Serializing or re-reading an unknown node throws; either way the document is not writable.
   try {
-    markdown = documentMarkdown.serialize(content);
+    const markdown = documentMarkdown.serialize(content);
+    return hasSupportedMarkdown(markdown) &&
+      canRoundTripMarkdown(content, markdown)
+      ? markdown
+      : null;
   } catch {
     return null;
   }
-
-  return hasSupportedMarkdown(markdown) &&
-    canRoundTripMarkdown(content, markdown)
-    ? markdown
-    : null;
 };

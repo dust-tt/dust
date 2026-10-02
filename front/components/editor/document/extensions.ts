@@ -1,9 +1,8 @@
+import { DocumentAnchors } from "@app/components/editor/document/DocumentAnchors";
 import { cn } from "@dust-tt/sparkle";
 import { Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
 import { StarterKit } from "@tiptap/starter-kit";
-
-import { DocumentAnchors } from "./DocumentAnchors";
 
 export const documentExtensions = [
   DocumentAnchors,

@@ -1,5 +1,3 @@
-"use client";
-
 import {
   DocumentBlockMenu,
   useDocumentBlockMenu,
@@ -12,9 +10,10 @@ import { useDocumentEditor } from "@app/components/editor/document/useDocumentEd
 import { cn } from "@dust-tt/sparkle";
 import { EditorContent } from "@tiptap/react";
 import type React from "react";
+import { useEffect } from "react";
 
-export { loadDfm } from "@app/components/editor/document/dfm_persistence";
 export type {
+  DocumentDraftState,
   DocumentProps,
   DocumentSaveResult,
 } from "@app/components/editor/document/types";
@@ -42,6 +41,7 @@ export const Document = ({
   readOnly = false,
   autosaveDebounceMs = DEFAULT_AUTOSAVE_DEBOUNCE_MS,
   onSave,
+  onStateChange,
 }: DocumentProps) => {
   const { editor, editable, unsupported, dirty, saving, error, save } =
     useDocumentEditor({
@@ -51,6 +51,10 @@ export const Document = ({
       onSave,
     });
   const blockMenu = useDocumentBlockMenu(editor, editable);
+
+  useEffect(() => {
+    onStateChange?.({ dirty, saving });
+  }, [dirty, saving, onStateChange]);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
     if (

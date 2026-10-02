@@ -27,7 +27,7 @@ export interface LoadedDfm {
  * @cc [owner:PopDaph,label:product] document-dfm-load
  * A file MUST open for editing only when it is valid DFM, its body carries no comment anchor,
  * and its body is Markdown the editor can reproduce. Any other file MUST be refused with a
- * reason, so the host can fall back to a plain editor instead of risking the content.
+ * reason, so the editor shows it read-only with that reason instead of risking the content.
  */
 export function loadDfm(source: string): Result<LoadedDfm, string> {
   const parsed = parseDfm(source);

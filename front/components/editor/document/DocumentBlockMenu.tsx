@@ -1,10 +1,10 @@
+import { BLOCKS, getBlockQuery } from "@app/components/editor/document/blocks";
 import { cn, Icon } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import type React from "react";
 import { useId, useState } from "react";
-import { BLOCKS, getBlockQuery } from "./blocks";
 
 export const useDocumentBlockMenu = (
   editor: Editor | null,
