@@ -675,7 +675,7 @@ async fn maximum_xattrs_timestamps_and_many_grants() -> Result<()> {
     let f = Fixture::new().await?;
     let file = f.create(&f.workspace.root_id, "maximum", false).await?;
     let file = f
-        .write(&file, b"The RUNNING quokka Unicode caf\xc3\xa9")
+        .write(&file, b"The RUNNING quokka BENCH_RARE_NEEDLE caf\xc3\xa9")
         .await?;
     let value = vec![255; dfs_protocol::MAX_XATTRS - 1];
     f.api
@@ -745,6 +745,20 @@ async fn maximum_xattrs_timestamps_and_many_grants() -> Result<()> {
             .await?
             .hits
             .is_empty()
+    );
+    assert_eq!(
+        f.find(&reader.session_key, "needle", Some(filter.clone()))
+            .await?
+            .hits
+            .len(),
+        1
+    );
+    assert_eq!(
+        f.find(&reader.session_key, "cafe", Some(filter.clone()))
+            .await?
+            .hits
+            .len(),
+        1
     );
     let mut later = filter;
     later.modified_before = None;

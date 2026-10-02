@@ -6,7 +6,6 @@ use ::dfs_server_v2::{
 };
 use anyhow::{Context, Result};
 use dfs_protocol::{MAX_MESSAGE, error::code, rpc::*};
-use tokio_stream::wrappers::TcpListenerStream;
 
 #[test]
 fn grpc_binary_io_authentication_and_conflict_details() -> Result<()> {
@@ -40,9 +39,12 @@ fn grpc_binary_io_authentication_and_conflict_details() -> Result<()> {
         let server = tokio::spawn(
             tonic::transport::Server::builder()
                 .add_service(service)
-                .serve_with_incoming_shutdown(TcpListenerStream::new(listener), async {
-                    let _ = stopped.await;
-                }),
+                .serve_with_incoming_shutdown(
+                    dfs_server_v2::transport::incoming(listener),
+                    async {
+                        let _ = stopped.await;
+                    },
+                ),
         );
         let admin = Client::connect(&endpoint, &server_key).await?;
         let workspace = admin

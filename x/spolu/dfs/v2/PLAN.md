@@ -2,7 +2,8 @@
 
 Implement [DESIGN.md](DESIGN.md) in small, tested milestones; commit and push each completed group.
 Keep v1 and its results intact. Local FDB/ES, the filesystem API, and background search are
-implemented. Additional failure/restart coverage and benchmarks remain in progress; Linux FUSE validation passes.
+implemented. Failure injection, additional multi-workspace checks, and local benchmarks are in progress;
+Linux FUSE validation passes.
 
 ## 0. Scope and contracts
 
@@ -57,8 +58,9 @@ implemented. Additional failure/restart coverage and benchmarks remain in progre
 - [x] Preserve bounded parallel extraction, skips, and count/serialized-byte bulk budgets.
 - [x] Add ordered conditional ES writes, tombstones, per-item handling, and refresh-before-completion.
 - [x] Complete only matching FDB job tokens; retain failures with backoff and fair workspace scheduling.
-- [ ] Test edits/unlink during extraction, old completions, delayed/ambiguous bulk requests, partial bulk
-      failures, crashes between ES and FDB, ES downtime, and rebuild without duplicate backfill work.
+- [x] Test old completions, delayed/ambiguous bulk results, partial bulk failures, crashes between ES
+      and FDB, ES downtime, and rebuild without duplicate backfill work.
+- [ ] Exercise content edits/unlink during multi-chunk extraction.
 - [x] Record extraction, ES commit/refresh, retry, queue lag, and completion timings; bound shutdown.
 
 ## 6. Search API and live grants
@@ -67,7 +69,7 @@ implemented. Additional failure/restart coverage and benchmarks remain in progre
 - [x] Implement bounded PIT/search-after candidate expansion, deterministic tie-breaking, and PIT cleanup.
 - [x] Authorize/version-check candidates in FDB with per-search memoization; verify xattr predicates.
 - [x] Handle expired FDB views without mixing snapshots; retain partial/error and session-check semantics.
-- [ ] Exercise FDB view expiry during candidate expansion and partial ES shard/bulk failures.
+- [x] Exercise FDB view expiry during candidate expansion and partial ES shard/bulk failures.
 - [x] Serve unchanged SearchFiles/GetIndexStatus responses and test through the existing CLI/client.
 - [x] Port search regressions: live ancestor grants, moves, stale/deleted files, selective permissions,
       512 grants, metadata/MIME/xattrs, budget exhaustion, index unavailability, and workspace isolation.
@@ -78,7 +80,7 @@ implemented. Additional failure/restart coverage and benchmarks remain in progre
 - [x] Run Linux two-mount tests with the unchanged v1 client, including kernel caching/writeback,
       aliases, revocation, conflicts, fsync errors, unlink, and server restart/session loss.
 - [ ] Test FDB/ES process restarts and interrupted commits/indexing; preserve acknowledged FDB data.
-- [ ] Adapt jd's unchanged filesystem workload and 10,000-file search harness to v2 configuration.
+- [x] Adapt jd's unchanged filesystem workload and 10,000-file search harness to v2 configuration.
 - [ ] Measure cold/warm filesystem/search performance, client drain, FDB commits/retries, index drain,
       grants, `/shared`, and simultaneous/idle workspaces; verify results before recording timings.
 - [ ] Document cache state separately for dfs-server, FDB, ES, and OS. Restart before each cold case;

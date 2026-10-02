@@ -56,3 +56,21 @@ local/run exec python3 /dfs/v2/tests/fuse_e2e.py
 
 This runs v1's two-mount workload, checks duplicate main-tree/shared aliases, then kills and restarts
 dfs-server to verify durable file recovery and session loss. Successful runs clean their own fixtures.
+
+Inject transport failures around the real ES node (no database mocks):
+
+```sh
+local/run exec python3 /dfs/v2/tests/search_failures.py
+```
+
+Run benchmarks sequentially, with no tests or other workloads running:
+
+```sh
+local/run exec python3 /dfs/v2/bench/search.py
+local/run exec python3 /dfs/v2/bench/vfs.py
+```
+
+Both print the report directory. The search runner reuses v1's Rust population/query helper and all
+eight query cases. The filesystem runner imports jd's unmodified benchmark and validates its fixed
+manifest; it restarts dfs-server and remounts before each `first` read case. FDB, ES, and OS caches
+stay warm across these restarts. Native FDB commit durability is included in foreground writes.

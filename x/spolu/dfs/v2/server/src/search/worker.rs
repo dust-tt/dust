@@ -89,7 +89,9 @@ impl Search {
             Keys::workspace_from_key(&row.key)?
         };
         *cursor = Keys::new(&workspace)?.end();
-        self.process(state, &workspace).await
+        self.process(state, &workspace).await?;
+        // Sleep on an exhausted sweep, not once per idle workspace.
+        Ok(true)
     }
     /// @cc [owner:spolu,label:performance;backend] resumable-index-backfill
     /// A changed ES index generation MUST reset the workspace backfill in FDB. Backfill MUST enqueue

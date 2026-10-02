@@ -97,7 +97,8 @@ and searches, plus an explicit workspace filter on **every search**. Routing sel
 not filter their other workspaces. See [ES routing](https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/mapping-routing-field).
 
 Store v1's indexed metadata, object version, extracted text, excerpt, and extraction status. Use BM25
-with lowercase token matching, OR semantics, and no stemming or stop-word removal. Preserve exact
+with v1 Unicode alphanumeric token boundaries, its 40-byte exclusion limit, lowercase/ASCII folding,
+OR semantics, and no stemming or stop-word removal. Preserve exact
 metadata predicates and timestamp precision. Test analyzer behavior for code and Unicode; backend
 ranking may differ. Dynamic per-xattr fields are forbidden.
 

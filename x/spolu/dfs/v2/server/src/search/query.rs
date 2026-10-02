@@ -177,7 +177,7 @@ impl Search {
         let text = if request.query.trim().is_empty() {
             json!({"match_all": {}})
         } else {
-            json!({"match": {"text": {"query": request.query, "operator": "or"}}})
+            json!({"match": {"text": {"query": index::tokens(&request.query), "operator": "or"}}})
         };
         let mut response = SearchFilesResponse::default();
         let mut candidates = Vec::<Value>::new();

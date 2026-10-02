@@ -22,12 +22,28 @@ pub(super) fn label(key: &str, value: &[u8]) -> String {
     hash.update(value);
     hex::encode(hash.finalize())
 }
+/// @cc [owner:spolu,label:api] v1-keyword-tokens
+/// Index and query text MUST use v1's Unicode alphanumeric boundaries, discard tokens of 40 UTF-8
+/// bytes or more, and lowercase them. ES MUST only whitespace-tokenize and ASCII-fold this output.
+pub(super) fn tokens(text: &str) -> String {
+    let mut normalized = String::with_capacity(text.len());
+    for token in text.split(|c: char| !c.is_alphanumeric()) {
+        if !token.is_empty() && token.len() < 40 {
+            if !normalized.is_empty() {
+                normalized.push(' ');
+            }
+            normalized.push_str(&token.to_lowercase());
+        }
+    }
+    normalized
+}
+
 pub(super) fn schema() -> Value {
     let keyword = json!({"type": "keyword"});
     json!({
         "settings": {"number_of_shards": 1, "number_of_replicas": 0,
             "analysis": {"analyzer": {"dfs_text": {"type": "custom",
-                "tokenizer": "standard", "filter": ["lowercase"]}}}},
+                "tokenizer": "whitespace", "filter": ["asciifolding"]}}}},
         "mappings": {"dynamic": "strict", "_routing": {"required": true},
             "_meta": {"dfs_format": "dfs-v2-es-1"},
             "properties": {
@@ -155,6 +171,7 @@ pub(super) async fn extract(
         }
     };
     let excerpt: String = text.chars().take(512).collect();
+    let text = tokens(&text);
     let name = record
         .parent
         .as_ref()

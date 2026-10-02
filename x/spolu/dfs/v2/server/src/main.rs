@@ -16,7 +16,6 @@ use tokio::{
     net::TcpListener,
     signal::unix::{SignalKind, signal},
 };
-use tokio_stream::wrappers::TcpListenerStream;
 use tonic::transport::{Identity, Server, ServerTlsConfig};
 use tracing::info;
 
@@ -87,7 +86,7 @@ async fn run() -> Result<()> {
             .concurrency_limit_per_connection(64)
             .max_concurrent_streams(64)
             .add_service(service)
-            .serve_with_incoming_shutdown(TcpListenerStream::new(listener), async {
+            .serve_with_incoming_shutdown(dfs_server_v2::transport::incoming(listener), async {
                 let _ = stopped.await;
             }),
     );
