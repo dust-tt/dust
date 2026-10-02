@@ -131,10 +131,10 @@ export function FilePreviewPanel({
     isActive: !!entry,
     isContentLoading: preview.isContentLoading,
     isTooLarge: preview.isTooLarge,
-    isTruncated: preview.isTruncated,
-    canWrite: preview.canWrite,
+    exceedsWriteLimit: preview.exceedsWriteLimit,
+    revision: preview.revision,
     owner,
-    rawContent: preview.truncatedContent,
+    rawContent: preview.rawContent,
     processedContent: preview.processedContent,
   });
 

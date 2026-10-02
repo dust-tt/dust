@@ -1,7 +1,9 @@
-import type { DocumentSaveResult } from "@app/components/editor/document";
 import { CUT_TEXT_SAVE_REFUSED } from "@app/components/file_explorer/FilePreviewContent";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
-import type { MarkdownRichEditor } from "@app/components/file_explorer/useRichMarkdownEditor";
+import type {
+  FileWriteResult,
+  MarkdownRichEditor,
+} from "@app/components/file_explorer/useRichMarkdownEditor";
 import { useRichMarkdownEditor } from "@app/components/file_explorer/useRichMarkdownEditor";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -9,7 +11,7 @@ import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { writeFileContentByPath } from "@app/lib/swr/files";
 import type { FilePreviewCategory } from "@app/types/file_preview";
 import { parseCanonicalScopedPath } from "@app/types/mount_path";
-import { Err, Ok } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useEffect, useRef, useState } from "react";
 import { useSWRConfig } from "swr";
@@ -23,13 +25,13 @@ interface UseMarkdownFileEditorParams {
   isActive: boolean;
   isContentLoading: boolean;
   isTooLarge: boolean;
-  /** The preview text was cut; an editor fed with it would save a truncated file. */
-  isTruncated: boolean;
-  /** The mount accepts writes from this user; no editor opens otherwise. */
-  canWrite: boolean;
+  /** The file is larger than a save may write; no editor opens it for writing. */
+  exceedsWriteLimit: boolean;
   owner: LightWorkspaceType | undefined;
-  /** The file text as fetched, for the rich editor. The processed text is trimmed. */
+  /** The whole file text as fetched, for the rich editor. The processed text is trimmed and cut. */
   rawContent: string | null;
+  /** The stored revision of `rawContent`, when the backend reports one. */
+  revision: string | null;
   processedContent: ProcessedContent | null;
 }
 
@@ -57,10 +59,10 @@ export function useMarkdownFileEditor({
   isActive,
   isContentLoading,
   isTooLarge,
-  isTruncated,
-  canWrite,
+  exceedsWriteLimit,
   owner,
   rawContent,
+  revision,
   processedContent,
 }: UseMarkdownFileEditorParams): MarkdownFileEditor {
   const [viewMode, setViewMode] =
@@ -132,33 +134,47 @@ export function useMarkdownFileEditor({
     processedContent,
   ]);
 
-  const writeFile = async (content: string): Promise<DocumentSaveResult> => {
+  /** Writes the file, only if its stored revision is still `expectedRevision` when given. */
+  const writeFile = async (
+    content: string,
+    expectedRevision: string | null
+  ): Promise<FileWriteResult> => {
     if (!owner || !editablePath) {
-      return new Err("This file cannot be edited.");
+      return new Err({
+        code: "failed",
+        message: "This file cannot be edited.",
+      });
     }
-    const result = await writeFileContentByPath({
+    return putFileContentByPath({
       owner,
       canonicalPath: editablePath,
       content,
       contentType: "text/markdown",
+      revision: expectedRevision,
     });
-    return result.isOk() ? new Ok(undefined) : new Err(result.error.message);
   };
 
   /**
    * Makes written content the one the preview shows and the plain editor's saved baseline. The
    * plain draft is left alone: whatever was typed or undone during the save is still the draft.
    */
-  const adoptWritten = async (content: string) => {
+  const adoptWritten = async (
+    content: string,
+    storedRevision: string | null
+  ) => {
     await mutate(
       fileUrl,
-      { kind: "loaded", content },
+      { kind: "loaded", content, revision: storedRevision },
       {
         revalidate: false,
       }
     );
     setSavedContent(content);
     initKeyRef.current = `${entryPath}:${content}`;
+  };
+
+  const refetch = async () => {
+    await mutate(fileUrl);
   };
 
   const save = async () => {
@@ -171,15 +187,22 @@ export function useMarkdownFileEditor({
     }
     setIsSaving(true);
     try {
-      const result = await writeFile(draft);
+      const result = await writeFile(draft, revision);
       if (result.isOk()) {
-        await adoptWritten(draft);
+        await adoptWritten(draft, result.value.revision);
         sendNotification({ type: "success", title: "File saved" });
+      } else if (result.error.code === "conflict") {
+        void refetch();
+        sendNotification({
+          type: "error",
+          title: "File changed since it was loaded",
+          description: "Reload it before saving.",
+        });
       } else {
         sendNotification({
           type: "error",
           title: "Failed to save file",
-          description: result.error,
+          description: result.error.message,
         });
       }
     } finally {
@@ -193,13 +216,15 @@ export function useMarkdownFileEditor({
     entryPath,
     isActive,
     rawContent,
-    isTruncated,
+    revision,
+    exceedsWriteLimit,
     writeFile,
     // The plain editor is not shown while the rich one is open, so its draft follows the file.
-    adoptWritten: async (content) => {
-      await adoptWritten(content);
+    adoptWritten: async (content, storedRevision) => {
+      await adoptWritten(content, storedRevision);
       setDraft(content);
     },
+    refetch,
   });
 
   return {

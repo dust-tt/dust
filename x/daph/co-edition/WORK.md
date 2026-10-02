@@ -25,8 +25,10 @@ Update this file in the same PR as the work it describes. Dates are absolute.
   save on unmount, files above the preview limit stay in the plain editor, the dialog holds
   close, Prev and Next while edits are unsaved (lifted once a save has failed), a clean editor
   reopens on content written by someone else while a dirty one keeps its draft and refuses to
-  save over it, an unmount save queues behind the save in flight. Still to do from M1: raw bytes, revision-aware save,
-  Source toggle, Pod tab parity, Storybook tests ported, rename the copied "block" files
+  save over it, an unmount save queues behind the save in flight. Stacked on #34040, #34041:
+  the rich editor gets the whole fetched text, saves carry the stored revision and a 412 is
+  the conflict hold. Still to do from M1: Source toggle, Pod tab parity, Storybook tests
+  ported, rename the copied "block" files
   (`blocks.ts`, `DocumentBlockMenu`) after the slash menu they are, since "block" reads as a
   block model the product doc rules out.
 - 2026-10-05 M4 editor comments (tdraier), two PRs stacked on #34029: #34126 shows comments
@@ -55,9 +57,9 @@ ship behind `co_edition` until M7. The order is the dependency order, not a spri
 
 ### M1. A human edits a `.md` in the rich editor (stream 2, single human)
 
-- Editor PRs #34027, #34038, #34029 as drafts, then hardened: load the raw file bytes, not the truncated
-  and trimmed preview text; save through the revision-aware PUT the Frames client uses and
-  keep the draft on 412; a Source toggle that also shows front matter; Pod file tab parity
+- Editor PRs #34027, #34038, #34029 as drafts, then hardened: the rich editor gets the whole
+  fetched text, not the trimmed preview text (#34041); saves carry the stored revision and keep
+  the draft on 412 (#34041); a Source toggle that also shows front matter; Pod file tab parity
   (`PodFileTabPreview.tsx` is a third Markdown editor copy); Storybook tests ported to vitest.
 - `.txt` keeps the plain editor. `.md` detection relies on the `text/markdown` content type;
   check what files created by agents and by upload actually carry.

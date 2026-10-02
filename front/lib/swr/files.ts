@@ -235,8 +235,8 @@ type FileContentByUrlData =
   | {
       kind: "loaded";
       content: string;
-      /** False when the mount refuses writes for this user; absent when the route says nothing. */
-      canWrite?: boolean;
+      /** The stored revision when the backend reports one, for conditional writes. */
+      revision?: string | null;
     }
   | { kind: "not_found" };
 
@@ -263,10 +263,13 @@ export function useFileContentByUrl({
         const errorData = await getErrorFromResponse(response);
         throw new Error(errorData.message);
       }
+      const revision = FileRevisionSchema.safeParse(
+        response.headers.get(DUST_FILE_REVISION_HEADER)
+      );
       return {
         kind: "loaded",
         content: await response.text(),
-        canWrite: response.headers.get(DUST_FILE_CAN_WRITE_HEADER) !== "false",
+        revision: revision.success ? revision.data : null,
       };
     },
     { disabled: isDisabled }
@@ -276,8 +279,7 @@ export function useFileContentByUrl({
 
   return {
     fileContent: data?.kind === "loaded" ? data.content : null,
-    /** Whether the mount accepts writes from this user; true until the file is loaded. */
-    fileCanWrite: data?.kind === "loaded" ? (data.canWrite ?? true) : true,
+    fileRevision: data?.kind === "loaded" ? (data.revision ?? null) : null,
     isNotFound,
     isFileContentLoading: !error && data === undefined && !isDisabled,
     fileContentError: error ? normalizeError(error) : null,
@@ -312,6 +314,33 @@ export async function writeFileContentByPath({
     return new Err(new Error(errorData.message));
   }
   return new Ok(undefined);
+}
+
+export async function writeFileContentByPath({
+  owner,
+  canonicalPath,
+  content,
+  contentType = "text/plain",
+  revision = null,
+}: {
+  owner: LightWorkspaceType;
+  canonicalPath: string;
+  content: string;
+  contentType?: string;
+}): Promise<void> {
+  const result = await putFileContentByPath({
+    owner,
+    canonicalPath,
+    content,
+    contentType,
+  });
+  if (result.isErr()) {
+    throw new Error(result.error.message);
+  }
+  const stored = FileRevisionSchema.safeParse(
+    response.headers.get(DUST_FILE_REVISION_HEADER)
+  );
+  return new Ok({ revision: stored.success ? stored.data : null });
 }
 
 /** Delete the file or folder at `canonicalPath`; Frame manifests run the package-aware deletion. */

@@ -23,6 +23,9 @@ export const DUST_FILE_CONTENT_TYPE_HEADER = "X-Dust-File-Content-Type";
  */
 export const FileRevisionSchema = z.string().regex(/^[1-9][0-9]*$/);
 
+/** The largest content the file path write route accepts, shared with the clients that gate on it. */
+export const FILE_CONTENT_WRITE_MAX_BYTES = 512 * 1024;
+
 export type FileStatus = "created" | "failed" | "ready";
 
 export type FileUseCase =

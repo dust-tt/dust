@@ -10,7 +10,10 @@ import { processFileContent } from "@app/lib/file_content_utils";
 import { getFileProcessedUrl, useFileContentByUrl } from "@app/lib/swr/files";
 import type { FilePreviewCategory } from "@app/types/file_preview";
 import { getFilePreviewConfig } from "@app/types/file_preview";
-import { stripMimeParameters } from "@app/types/files";
+import {
+  FILE_CONTENT_WRITE_MAX_BYTES,
+  stripMimeParameters,
+} from "@app/types/files";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -22,6 +25,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
+import { useMemo } from "react";
 
 const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
@@ -209,8 +213,12 @@ export interface FilePreviewContentData {
   isTooLarge: boolean;
   /** The text was cut at MAX_TEXT_CHARS, so an editor fed with it would save a truncated file. */
   isTruncated: boolean;
-  /** The mount accepts writes from this user, per the content route. */
-  canWrite: boolean;
+  /** The whole text as fetched, untrimmed and uncut, for the rich editor. */
+  rawContent: string | null;
+  /** The stored revision of `rawContent`, when the backend reports one. */
+  revision: string | null;
+  /** The file is larger than a save may write, so no editor should open it for writing. */
+  exceedsWriteLimit: boolean;
   sizeBytes: number;
 }
 
@@ -244,7 +252,7 @@ export function useFilePreviewContent({
 
   const {
     fileContent,
-    fileCanWrite,
+    fileRevision,
     isNotFound,
     isFileContentLoading,
     fileContentError,
@@ -259,6 +267,13 @@ export function useFilePreviewContent({
 
   const truncatedContent = fileContent?.slice(0, MAX_TEXT_CHARS) ?? null;
   const isTruncated = (fileContent?.length ?? 0) > MAX_TEXT_CHARS;
+  const exceedsWriteLimit = useMemo(
+    () =>
+      fileContent !== null &&
+      new TextEncoder().encode(fileContent).length >
+        FILE_CONTENT_WRITE_MAX_BYTES,
+    [fileContent]
+  );
 
   const processedContent =
     category === "markdown" && truncatedContent
@@ -280,7 +295,9 @@ export function useFilePreviewContent({
     isContentLoading,
     isTooLarge,
     isTruncated,
-    canWrite: fileCanWrite,
+    rawContent: fileContent,
+    revision: fileRevision,
+    exceedsWriteLimit,
     sizeBytes,
   };
 }
