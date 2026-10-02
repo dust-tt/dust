@@ -1,6 +1,7 @@
 import { isInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
 import { buildOnboardingFollowUpPrompt } from "@app/lib/api/assistant/onboarding";
+import { isUserOnboardingConversation } from "@app/lib/onboarding";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
@@ -41,6 +42,16 @@ app.post(
           type: "invalid_request_error",
           message:
             "Invalid request body, `toolId` (valid tool id) is required.",
+        },
+      });
+    }
+
+    if (!(await isUserOnboardingConversation(auth, conversationId))) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "conversation_not_found",
+          message: "Conversation not found",
         },
       });
     }

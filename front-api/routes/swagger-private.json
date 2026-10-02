@@ -205,7 +205,12 @@
                     }
                   },
                   "emailProvider": {
-                    "type": "string"
+                    "type": "string",
+                    "enum": [
+                      "google",
+                      "microsoft",
+                      "other"
+                    ]
                   },
                   "workspaceId": {
                     "type": "string"

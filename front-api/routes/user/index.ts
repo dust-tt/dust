@@ -2,6 +2,7 @@ import { getUserFromSession } from "@app/lib/iam/session";
 import { getSubscriberHash } from "@app/lib/notifications";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
+import { EMAIL_PROVIDER_TYPES } from "@app/lib/utils/email_provider_detection";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type {
@@ -27,7 +28,7 @@ const PatchUserBodySchema = z.object({
   jobType: z.string().optional(),
   imageUrl: z.string().nullish(),
   favoritePlatforms: z.array(z.string()).optional(),
-  emailProvider: z.string().optional(),
+  emailProvider: z.enum(EMAIL_PROVIDER_TYPES).optional(),
   workspaceId: z.string().optional(),
 });
 
@@ -88,6 +89,7 @@ const app = sessionApp();
  *                   type: string
  *               emailProvider:
  *                 type: string
+ *                 enum: [google, microsoft, other]
  *               workspaceId:
  *                 type: string
  *     responses:
