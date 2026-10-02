@@ -243,18 +243,18 @@ export async function getAgentUsageData(
     `
       SELECT COUNT(a."id") AS "messages"
       FROM "agent_messages" a
-             JOIN "agent_configurations" ac ON a."agentConfigurationId" = ac."sId"
+             JOIN "agents" ag ON a."agentConfigurationId" = ag."sId"
       WHERE a."createdAt" BETWEEN :startDate AND :endDate
-        AND ac."workspaceId" = :wId
-        AND ac."status" = 'active'
-        AND ac."sId" = :agentConfigurationId
+        AND ag."workspaceId" = :wId
+        AND ag."status" = 'active'
+        AND ag."sId" = :agentId
     `,
     {
       type: QueryTypes.SELECT,
       replacements: {
         startDate: format(startDate, "yyyy-MM-dd'T'00:00:00"),
         endDate: format(endDate, "yyyy-MM-dd'T'23:59:59"),
-        agentConfigurationId: agent.sId,
+        agentId: agent.sId,
         wId,
       },
     }
