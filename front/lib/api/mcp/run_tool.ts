@@ -37,8 +37,8 @@ import assert from "assert";
 /**
  * Runs a tool with streaming for the given tool context.
  *
- * All errors within this function must be handled through `handleMCPActionError`
- * to ensure consistent error reporting and proper conversation flow control.
+ * Tool errors are surfaced through `handleMCPActionError`. Cancellation and
+ * processing failures propagate to the activity.
  */
 export async function* runToolWithStreaming(
   auth: Authenticator,
@@ -147,12 +147,23 @@ export async function* runToolWithStreaming(
         }),
       {
         intervalMs: TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS,
-        heartbeatFn: () => {
-          heartbeat();
+        heartbeatFn: async () => {
+          await heartbeat();
           localLogger.info("MCP tool result processing heartbeat");
         },
       }
-    );
+    ).catch(async (error) => {
+      // Processing may have started a deferred GCS write before cancellation.
+      // withPeriodicHeartbeat joins processing; finish its write before exiting.
+      const persistResult = await action.awaitDeferredOutputPersist();
+      if (persistResult.isErr()) {
+        localLogger.error(
+          { err: persistResult.error },
+          "Failed to durably persist MCP tool output after processing failure"
+        );
+      }
+      throw error;
+    });
 
   // Parse the output resources to check if we find special events that require the agent loop to pause.
   // This could be an authentication, validation, or unconditional exit from the action.
