@@ -9,9 +9,8 @@ import {
   generateScheduleRule,
   getConversationUserTimezone,
 } from "@app/lib/api/assistant/configuration/triggers";
-import { getWebhookFilterGeneration } from "@app/lib/api/assistant/configuration/triggers/webhook_filter";
+import { generateWebhookTriggerFilter } from "@app/lib/api/assistant/configuration/triggers/webhook_filter";
 import type { Authenticator } from "@app/lib/auth";
-import { parseMatcherExpression } from "@app/lib/matcher/parser";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
@@ -33,6 +32,7 @@ import {
   isWebhookTrigger,
 } from "@app/types/assistant/triggers";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
 import { UniqueConstraintError } from "sequelize";
 
@@ -521,42 +521,42 @@ export function createTriggersManagementTools(
 
       let filter: string | undefined;
       if (filterDescription) {
-        const preset = provider ? WEBHOOK_PRESETS[provider] : null;
-        const presetEvent = preset?.events.find((e) => e.value === event);
-        if (!presetEvent) {
-          return new Err(
-            new MCPError(
-              `Cannot generate a filter for event "${event}" on this source. ` +
-                "Retry without filterDescription to trigger on every event of this type."
-            )
-          );
-        }
-        const filterResult = await getWebhookFilterGeneration(auth, {
-          naturalDescription: filterDescription,
-          event: presetEvent,
-          providerSpecificInstructions:
-            preset?.filterGenerationInstructions ?? null,
+        const filterResult = await generateWebhookTriggerFilter(auth, {
+          provider,
+          event,
+          filterDescription,
         });
         if (filterResult.isErr()) {
-          logger.error(
-            { error: filterResult.error, workspaceId: owner.id, event },
-            "Error generating webhook filter"
-          );
-          return new Err(
-            new MCPError(
-              `Unable to build a filter from "${filterDescription}": ${filterResult.error.message}`
-            )
-          );
+          const { code, message } = filterResult.error;
+          switch (code) {
+            case "invalid_request_error":
+              return new Err(
+                new MCPError(
+                  `Cannot generate a filter for event "${event}" on this source. ` +
+                    "Retry without filterDescription to trigger on every event of this type."
+                )
+              );
+            case "generation_failed":
+              logger.error(
+                { error: message, workspaceId: owner.id, event },
+                "Error generating webhook filter"
+              );
+              return new Err(
+                new MCPError(
+                  `Unable to build a filter from "${filterDescription}": ${message}`
+                )
+              );
+            case "invalid_content_error":
+              return new Err(
+                new MCPError(
+                  "Generated an invalid filter. Please rephrase the filter description."
+                )
+              );
+            default:
+              assertNever(code);
+          }
         }
-        const parseResult = parseMatcherExpression(filterResult.value.filter);
-        if (parseResult.isErr()) {
-          return new Err(
-            new MCPError(
-              "Generated an invalid filter. Please rephrase the filter description."
-            )
-          );
-        }
-        filter = filterResult.value.filter;
+        filter = filterResult.value;
       }
 
       const spaceIdRes = await resolveTriggerSpaceId(auth, podId);

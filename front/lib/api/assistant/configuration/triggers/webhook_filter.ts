@@ -3,10 +3,14 @@ import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { validateWebhookFilter } from "@app/lib/api/assistant/configuration/triggers/webhook_filter_validation";
 import { getLargeWhitelistedModel } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
+import { parseMatcherExpression } from "@app/lib/matcher/parser";
+import { WEBHOOK_PRESETS } from "@app/lib/triggers/webhook_presets";
 import logger from "@app/logger/logger";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import type { WebhookEvent } from "@app/types/triggers/webhooks_source_preset";
 
 const SET_FILTER_FUNCTION_NAME = "set_filter";
@@ -427,4 +431,64 @@ The previous filter is invalid. Generate a corrected filter that resolves the va
   }
 
   return new Ok({ filter: repairResult.value });
+}
+
+/**
+ * Generates the filter of a trigger on `event` of a `provider` webhook source from a natural
+ * language description, and checks that it parses. Fails with `invalid_request_error` when the
+ * event has no preset to generate a filter from, `generation_failed` when the generation fails,
+ * and `invalid_content_error` when the generated filter does not parse.
+ */
+export async function generateWebhookTriggerFilter(
+  auth: Authenticator,
+  {
+    provider,
+    event,
+    filterDescription,
+  }: {
+    provider: WebhookProvider | null;
+    event: string;
+    filterDescription: string;
+  }
+): Promise<
+  Result<
+    string,
+    DustError<
+      "invalid_request_error" | "generation_failed" | "invalid_content_error"
+    >
+  >
+> {
+  const preset = provider ? WEBHOOK_PRESETS[provider] : null;
+  const presetEvent = preset?.events.find((e) => e.value === event);
+  if (!preset || !presetEvent) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        `No filter can be generated for event "${event}".`
+      )
+    );
+  }
+
+  const filterResult = await getWebhookFilterGeneration(auth, {
+    naturalDescription: filterDescription,
+    event: presetEvent,
+    providerSpecificInstructions: preset.filterGenerationInstructions ?? null,
+  });
+  if (filterResult.isErr()) {
+    return new Err(
+      new DustError("generation_failed", filterResult.error.message)
+    );
+  }
+
+  const parseResult = parseMatcherExpression(filterResult.value.filter);
+  if (parseResult.isErr()) {
+    return new Err(
+      new DustError(
+        "invalid_content_error",
+        "The generated filter is invalid."
+      )
+    );
+  }
+
+  return new Ok(filterResult.value.filter);
 }
