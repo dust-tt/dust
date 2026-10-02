@@ -1,7 +1,12 @@
-import { toAgentConfigurationsWithSkills } from "@app/lib/api/assistant/configuration/helpers";
+import { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toAgentConfigurationsWithSkills } from "@app/lib/resources/agent_resource_serialization";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { describe, expect, it } from "vitest";
 
@@ -26,10 +31,13 @@ describe("toAgentConfigurationsWithSkills", () => {
     });
 
     const [serializedWithSkill, serializedWithoutSkill] =
-      await toAgentConfigurationsWithSkills(authenticator, [
-        withSkill,
-        withoutSkill,
-      ]);
+      await toAgentConfigurationsWithSkills(
+        authenticator,
+        await AgentResource.fetchByIds(authenticator, [
+          withSkill.sId,
+          withoutSkill.sId,
+        ])
+      );
 
     expect(serializedWithSkill.skills).toEqual([
       { sId: skill.sId, name: "Support Playbook" },
@@ -38,35 +46,28 @@ describe("toAgentConfigurationsWithSkills", () => {
     expect(serializedWithoutSkill.skills).toEqual([]);
   });
 
-  it("serializes the code-defined skills a global agent declares", async () => {
+  it("serializes the code-defined skills a global agent declares, not their raw ids", async () => {
     const { authenticator } = await createResourceTest({ role: "manager" });
 
-    // Global agents hold no agent-skill row: they name their skills in code, and carry those
-    // ids on every variant of their configuration.
-    const agent = await AgentConfigurationFactory.createTestAgent(
+    const [serialized] = await toAgentConfigurationsWithSkills(
       authenticator,
-      { name: "Stands in for a global agent" }
+      await AgentResource.fetchByIds(authenticator, [GLOBAL_AGENTS_SID.HELPER]),
+      { variant: "full" }
     );
 
-    const [serialized] = await toAgentConfigurationsWithSkills(authenticator, [
-      {
-        ...agent,
-        sId: GLOBAL_AGENTS_SID.DUST,
-        codeDefinedSkillIds: ["frames"],
-      },
-    ]);
-
     expect(serialized.skills.map((skill) => skill.sId)).toEqual(["frames"]);
-    // The raw ids are an internal detail, superseded by `skills`.
     expect("codeDefinedSkillIds" in serialized).toBe(false);
   });
 
-  it("serializes no skills for an agent whose details were redacted", async () => {
-    const { authenticator } = await createResourceTest({ role: "manager" });
+  it("serializes no skills for an agent the caller cannot read", async () => {
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
 
+    const restrictedSpace = await SpaceFactory.regular(workspace);
     const agent = await AgentConfigurationFactory.createTestAgent(
       authenticator,
-      { name: "Redacted" }
+      { name: "Restricted", requestedSpaceIds: [restrictedSpace.id] }
     );
     const skill = await SkillFactory.create(authenticator);
     await SkillFactory.linkToAgent(authenticator, {
@@ -74,9 +75,20 @@ describe("toAgentConfigurationsWithSkills", () => {
       agentConfigurationId: agent.id,
     });
 
-    const [serialized] = await toAgentConfigurationsWithSkills(authenticator, [
-      { ...agent, canRead: false },
-    ]);
+    const adminUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, adminUser, { role: "admin" });
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminUser.sId,
+      workspace.sId
+    );
+    const resources = await AgentResource.fetchByIds(adminAuth, [agent.sId]);
+    expect(resources).toHaveLength(1);
+    expect(adminAuth.can("read", resources[0])).toBe(false);
+
+    const [serialized] = await toAgentConfigurationsWithSkills(
+      adminAuth,
+      resources
+    );
 
     expect(serialized.skills).toEqual([]);
   });

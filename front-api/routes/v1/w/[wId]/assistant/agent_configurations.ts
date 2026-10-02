@@ -1,11 +1,12 @@
 import { listAgentsForView } from "@app/lib/api/assistant/agent_views";
-import { toAgentConfigurationsWithSkills } from "@app/lib/api/assistant/configuration/helpers";
-import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import {
   addLegacyLightAgentConfigurationFields,
   normalizeAgentView,
 } from "@app/lib/api/v1/backward_compatibility";
-import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
+import {
+  enrichWithRecentAuthors,
+  toAgentConfigurationsWithSkills,
+} from "@app/lib/resources/agent_resource_serialization";
 import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -144,39 +145,18 @@ app.get(
       auth,
       isUnrestricted ? "admin_internal" : normalizeAgentView(agentsGetView)
     );
-    let agentConfigurations = await toLightAgentConfigurations(auth, agents);
-    const codeDefinedSkillIdsByAgentId = new Map(
-      agents.map((agent) => [agent.sId, agent.codeDefinedSkillIds])
-    );
-
-    if (withAuthors) {
-      const recentAuthors = await getAgentsRecentAuthors({
-        auth,
-        agents: agentConfigurations,
-      });
-      agentConfigurations = agentConfigurations.map(
-        (agentConfiguration, index) => {
-          return {
-            ...agentConfiguration,
-            lastAuthors: recentAuthors[index],
-          };
-        }
-      );
-    }
+    const [agentConfigurations, recentAuthors] = await Promise.all([
+      toAgentConfigurationsWithSkills(auth, agents),
+      withAuthors ? enrichWithRecentAuthors(auth, agents) : null,
+    ]);
 
     return ctx.json({
-      // Global agents' skills are code-defined: the light shape does not carry them.
-      agentConfigurations: (
-        await toAgentConfigurationsWithSkills(
-          auth,
-          agentConfigurations.map((agentConfiguration) => ({
-            ...agentConfiguration,
-            codeDefinedSkillIds: codeDefinedSkillIdsByAgentId.get(
-              agentConfiguration.sId
-            ),
-          }))
-        )
-      ).map(addLegacyLightAgentConfigurationFields),
+      agentConfigurations: agentConfigurations.map((agentConfiguration) =>
+        addLegacyLightAgentConfigurationFields({
+          ...agentConfiguration,
+          ...recentAuthors?.get(agentConfiguration.sId),
+        })
+      ),
     });
   }
 );

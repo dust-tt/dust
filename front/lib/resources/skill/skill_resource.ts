@@ -1794,13 +1794,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  /**
-   * Batched version of listByAgentConfigurationModelId: the skills of each non-global agent
-   * configuration, keyed by its `agent_configurations` row model id. Performs 2 SQL queries.
-   * Global agents hold no `AgentSkillModel` row (their skills are code-defined, resolve them with
-   * `fetchByIds` on the ids their configuration declares), so they get no entry.
-   */
-  static async listByAgentConfigurationModelIds(
+  // The skills of each non-global agent configuration, keyed by its `agent_configurations` row
+  // model id, in 2 SQL queries. Global agents hold no `AgentSkillModel` row, see `listByAgents`.
+  private static async listByAgentConfigurationModelIds(
     auth: Authenticator,
     agentConfigurationModelIds: ModelId[],
     fetchOptions?: SkillFetchContext & SkillHydrationOptions
