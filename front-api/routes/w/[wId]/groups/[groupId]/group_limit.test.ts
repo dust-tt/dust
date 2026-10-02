@@ -1,21 +1,51 @@
-import { areGroupLimitsEnabled } from "@app/lib/api/groups/group_limit_eligibility";
 import { Authenticator } from "@app/lib/auth";
+import type * as planType from "@app/lib/metronome/plan_type";
+import type * as seatTypes from "@app/lib/metronome/seat_types";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import {
+  mockActiveContract,
+  POOL_ONLY_SEATS,
+} from "@app/tests/utils/metronome_contracts";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@app/lib/api/groups/group_limit_eligibility", () => ({
-  areGroupLimitsEnabled: vi.fn(),
-}));
+vi.mock("@app/lib/metronome/plan_type", async () => {
+  const actual = await vi.importActual<typeof planType>(
+    "@app/lib/metronome/plan_type"
+  );
+  return { ...actual, getActiveContract: vi.fn() };
+});
+
+vi.mock("@app/lib/metronome/seat_types", async () => {
+  const actual = await vi.importActual<typeof seatTypes>(
+    "@app/lib/metronome/seat_types"
+  );
+  return { ...actual, getProductSeatTypes: vi.fn() };
+});
 
 beforeEach(() => {
-  vi.mocked(areGroupLimitsEnabled).mockResolvedValue(true);
+  mockActiveContract(POOL_ONLY_SEATS);
 });
+
+async function groupLimitsWorkspace({
+  withFlag = true,
+}: {
+  withFlag?: boolean;
+} = {}) {
+  const workspace = await WorkspaceFactory.creditPriced();
+  if (withFlag) {
+    await FeatureFlagFactory.basic(
+      await Authenticator.internalAdminForWorkspace(workspace.sId),
+      "group_limits"
+    );
+  }
+  return workspace;
+}
 
 function putGroupLimit(
   wId: string,
@@ -31,7 +61,7 @@ function putGroupLimit(
 
 describe("PUT /api/w/[wId]/groups/[groupId]/group_limit", () => {
   it("lets an admin set a group limit", async () => {
-    const workspace = await WorkspaceFactory.creditPriced();
+    const workspace = await groupLimitsWorkspace();
     const group = await GroupFactory.regularManual(workspace, "Engineering");
     const { auth } = await createPrivateApiMockRequest({
       method: "PUT",
@@ -57,7 +87,7 @@ describe("PUT /api/w/[wId]/groups/[groupId]/group_limit", () => {
   });
 
   it("refuses a workspace manager", async () => {
-    const workspace = await WorkspaceFactory.creditPriced();
+    const workspace = await groupLimitsWorkspace();
     const group = await GroupFactory.regularManual(workspace, "Engineering");
     await createPrivateApiMockRequest({
       method: "PUT",
@@ -74,7 +104,7 @@ describe("PUT /api/w/[wId]/groups/[groupId]/group_limit", () => {
   });
 
   it("refuses a group manager of that group", async () => {
-    const workspace = await WorkspaceFactory.creditPriced();
+    const workspace = await groupLimitsWorkspace();
     const group = await GroupFactory.regularManual(workspace, "Engineering");
     const { user: delegate } = await createPrivateApiMockRequest({
       method: "PUT",
@@ -102,7 +132,7 @@ describe("PUT /api/w/[wId]/groups/[groupId]/group_limit", () => {
   });
 
   it("returns 400 on an invalid amount", async () => {
-    const workspace = await WorkspaceFactory.creditPriced();
+    const workspace = await groupLimitsWorkspace();
     const group = await GroupFactory.regularManual(workspace, "Engineering");
     await createPrivateApiMockRequest({
       method: "PUT",
@@ -119,7 +149,7 @@ describe("PUT /api/w/[wId]/groups/[groupId]/group_limit", () => {
   });
 
   it("returns 404 when the group does not exist", async () => {
-    const workspace = await WorkspaceFactory.creditPriced();
+    const workspace = await groupLimitsWorkspace();
     await createPrivateApiMockRequest({
       method: "PUT",
       role: "admin",
@@ -136,8 +166,7 @@ describe("PUT /api/w/[wId]/groups/[groupId]/group_limit", () => {
   });
 
   it("returns 403 when group limits are not enabled", async () => {
-    vi.mocked(areGroupLimitsEnabled).mockResolvedValue(false);
-    const workspace = await WorkspaceFactory.creditPriced();
+    const workspace = await groupLimitsWorkspace({ withFlag: false });
     const group = await GroupFactory.regularManual(workspace, "Engineering");
     await createPrivateApiMockRequest({
       method: "PUT",
