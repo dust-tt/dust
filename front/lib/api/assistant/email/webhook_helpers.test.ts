@@ -60,6 +60,11 @@ describe("parseSendgridWebhookContent", () => {
       "payload.exe"
     );
     form.set("attachment3", new Blob([], { type: "text/plain" }), "empty.txt");
+    form.set(
+      "attachment4",
+      new Blob([unsupportedPayload], { type: "constructor" }),
+      "prototype-key.bin"
+    );
 
     const { rawBody, headers } = await encodeSendgridForm(form);
     const result = await parseSendgridWebhookContent(rawBody, headers);
