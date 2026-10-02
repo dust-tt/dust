@@ -264,6 +264,21 @@ app.patch(
       availabilityChange = availabilityValidation.value;
     }
 
+    if (
+      body.reinforcement !== undefined &&
+      body.reinforcement !== skill.reinforcement &&
+      !skill.canChangeReinforcement(auth)
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message:
+            "This skill's self-improvement is locked; only admins can change it.",
+        },
+      });
+    }
+
     const nameValidation = await validateSkillNameChange(auth, skill, {
       name: body.name,
     });
