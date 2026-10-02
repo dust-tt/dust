@@ -1,7 +1,9 @@
 import { ConfirmContext } from "@app/components/Confirm";
-import { useInvalidateSkills } from "@app/hooks/useInvalidateSkills";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { useSkill } from "@app/lib/swr/skill_configurations";
+import {
+  useInvalidateSkills,
+  useSkill,
+} from "@app/lib/swr/skill_configurations";
 import {
   REQUESTABLE_SPACE_KINDS,
   useAddSpaceMembers,

@@ -1,6 +1,5 @@
 import type { ImportFormValues } from "@app/components/skills/import/formSchema";
 import { useDebounce, useDebounceWithAbort } from "@app/hooks/useDebounce";
-import { useInvalidateSkills } from "@app/hooks/useInvalidateSkills";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAppRouter } from "@app/lib/platform";
 import type {
@@ -43,6 +42,7 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import { isAPIErrorResponse } from "@app/types/error";
 import { Ok } from "@app/types/shared/result";
+import { isString } from "@app/types/shared/utils/general";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useEffect, useState } from "react";
@@ -444,6 +444,28 @@ export function useSkillsWithRelations({
     mutateSkillsWithRelationsRegardlessOfQueryParams:
       mutateRegardlessOfQueryParams,
   };
+}
+
+/**
+ * @cc [owner:aubin-tchoi,label:react] invalidate-workspace-skill-lists
+ * Revalidate string-keyed skill lists and array-keyed skill searches for the
+ * given workspace, regardless of query parameters or search body. Do not
+ * revalidate other workspaces or individual skill detail endpoints.
+ */
+export function useInvalidateSkills({ workspaceId }: { workspaceId: string }) {
+  const { mutate } = useSWRConfig();
+  const skillsUrl = `/api/w/${workspaceId}/skills`;
+  const searchUrl = `${skillsUrl}/search`;
+
+  return useCallback(
+    () =>
+      mutate((key) =>
+        isString(key)
+          ? key.split("?")[0] === skillsUrl
+          : Array.isArray(key) && key[0] === searchUrl
+      ),
+    [mutate, skillsUrl, searchUrl]
+  );
 }
 
 export function useUpdateSkillsAvailability({

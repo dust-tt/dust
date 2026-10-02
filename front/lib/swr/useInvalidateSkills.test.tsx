@@ -1,4 +1,4 @@
-import { useInvalidateSkills } from "@app/hooks/useInvalidateSkills";
+import { useInvalidateSkills } from "@app/lib/swr/skill_configurations";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 import useSWR, { SWRConfig } from "swr";
