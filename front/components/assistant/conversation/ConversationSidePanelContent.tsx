@@ -28,7 +28,19 @@ interface ConversationSidePanelContentProps {
   currentPanel: ConversationSidePanelType;
 }
 
-export default function ConversationSidePanelContent({
+// Side panels surface conversation data (tool I/O, files, plans), so the whole
+// panel is masked from session replay rather than each panel opting in.
+export default function ConversationSidePanelContent(
+  props: ConversationSidePanelContentProps
+) {
+  return (
+    <div className="dd-privacy-mask contents">
+      <SidePanelContent {...props} />
+    </div>
+  );
+}
+
+function SidePanelContent({
   conversation,
   owner,
   currentPanel,
