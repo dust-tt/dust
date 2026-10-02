@@ -1,4 +1,4 @@
-import { ManageAgentsPage } from "@app/components/pages/builder/agents/ManageAgentsPage";
+import { SearchAgentsPage } from "@app/components/pages/builder/agents/SearchAgentsPage";
 import {
   makeColumnsForAssistants,
   PokeAgentActions,
@@ -119,7 +119,7 @@ export function AssistantsDataTable({
         agentsRetention={agentsRetention}
         owner={owner}
       />
-      <ManageAgentsPage
+      <SearchAgentsPage
         showHeader={false}
         readOnly
         searchEndpoint={`/api/poke/workspaces/${owner.sId}/agent_configurations/search`}
