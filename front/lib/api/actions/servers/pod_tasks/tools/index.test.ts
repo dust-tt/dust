@@ -1,5 +1,9 @@
+import { makePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/pod_configuration_uri";
+import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { UPDATE_TASKS_TOOL_NAME } from "@app/lib/api/actions/servers/pod_tasks/metadata";
 import {
   buildTaskUpdatePayload,
+  createProjectTasksTools,
   doneAttribution,
   rationaleUpdate,
   statusTransitionUpdates,
@@ -14,6 +18,8 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightWorkspaceType } from "@app/types/user";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import assert from "assert";
 import type { CreationAttributes } from "sequelize";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -402,5 +408,108 @@ describe("buildTaskUpdatePayload", () => {
       return;
     }
     expect(result.error.message).toContain(outsider.sId);
+  });
+});
+
+describe("update_tasks", () => {
+  function getUpdateTasksTool(auth: Authenticator) {
+    const tool = createProjectTasksTools(auth).find(
+      (candidate) => candidate.name === UPDATE_TASKS_TOOL_NAME
+    );
+    assert(tool);
+    return tool;
+  }
+
+  // update_tasks resolves the Pod via dustPod and does not read runContext; cast through
+  // unknown like other tool-handler fixtures that omit it.
+  function makeExtra(auth: Authenticator): ToolHandlerExtra {
+    return {
+      auth,
+      requestId: "pod-tasks-update-test",
+      sendNotification: async () => {},
+      sendRequest: async () => {
+        throw new Error("Unexpected MCP request");
+      },
+      signal: new AbortController().signal,
+    } as unknown as ToolHandlerExtra;
+  }
+
+  it("updates a task that belongs to the resolved Pod", async () => {
+    const {
+      workspace,
+      user,
+      authenticator: auth,
+    } = await createResourceTest({
+      role: "user",
+    });
+    const pod = await SpaceFactory.project(workspace, user.id);
+    await auth.refresh();
+
+    const row = await ProjectTaskResource.makeNew(
+      auth,
+      makeTodoBlob(pod.id, user.id, { text: "Pod task" })
+    );
+
+    const result = await getUpdateTasksTool(auth).handler(
+      {
+        tasks: [{ taskId: row.sId, text: "Updated pod task" }],
+        dustPod: {
+          uri: makePodConfigurationURI(workspace.sId, pod.sId),
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD,
+        },
+      },
+      makeExtra(auth)
+    );
+
+    assert(result.isOk());
+    const content = result.value[0];
+    assert(content?.type === "text");
+    expect(content.text).toContain("Updated 1 task(s)");
+
+    const refreshed = await ProjectTaskResource.fetchBySId(auth, row.sId);
+    expect(refreshed?.text).toBe("Updated pod task");
+  });
+
+  it("rejects a task from another Pod without leaking or modifying it", async () => {
+    const {
+      workspace,
+      user,
+      authenticator: auth,
+    } = await createResourceTest({
+      role: "user",
+    });
+    const callerPod = await SpaceFactory.project(workspace, user.id);
+    const otherPod = await SpaceFactory.project(workspace);
+    await auth.refresh();
+
+    const foreignRow = await ProjectTaskResource.makeNew(
+      auth,
+      makeTodoBlob(otherPod.id, user.id, { text: "Secret foreign task" })
+    );
+
+    const result = await getUpdateTasksTool(auth).handler(
+      {
+        tasks: [{ taskId: foreignRow.sId, text: "Hijacked", status: "done" }],
+        dustPod: {
+          uri: makePodConfigurationURI(workspace.sId, callerPod.sId),
+          mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD,
+        },
+      },
+      makeExtra(auth)
+    );
+
+    assert(result.isOk());
+    const content = result.value[0];
+    assert(content?.type === "text");
+    expect(content.text).toContain("Updated 0 task(s)");
+    expect(content.text).toContain(`Task not found: ${foreignRow.sId}`);
+    expect(content.text).not.toContain("Secret foreign task");
+
+    const refreshed = await ProjectTaskResource.fetchBySId(
+      auth,
+      foreignRow.sId
+    );
+    expect(refreshed?.text).toBe("Secret foreign task");
+    expect(refreshed?.status).toBe("todo");
   });
 });

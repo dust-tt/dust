@@ -420,7 +420,7 @@ export function createProjectTasksTools(
         for (const item of tasks) {
           const row = await ProjectTaskResource.fetchBySId(auth, item.taskId);
 
-          if (!row) {
+          if (!row || row.spaceId !== pod.id) {
             errors.push(`Task not found: ${item.taskId}`);
             continue;
           }
