@@ -76,4 +76,18 @@ describe("GET /api/sse/v1/w/[wId]/mcp/requests", () => {
 
     await expectEmptySseStream(response, { expectDoneSentinel: true });
   });
+
+  it("keeps the public endpoint on SSE when a browser transport parameter is supplied", async () => {
+    const { workspace, key } = await createPublicApiMockRequest();
+    vi.mocked(validateMCPServerAccess).mockResolvedValue(true);
+    vi.mocked(getMCPEventsForServer).mockImplementation(emptyAsyncIterator);
+
+    const response = await getRequests(
+      workspace.sId,
+      key.secret,
+      "?serverId=srv_ok&transport=poll"
+    );
+
+    await expectEmptySseStream(response, { expectDoneSentinel: true });
+  });
 });

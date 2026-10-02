@@ -2,7 +2,9 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
 import { registerGetAgentConfigTool } from "@app/components/agent_builder/sidekick/tools/getAgentConfig";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { BrowserMCPTransport } from "@app/lib/client/BrowserMCPTransport";
+import datadogLogger from "@app/logger/datadogLogger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -34,15 +36,12 @@ export function useSidekickMCPServer({
   const { getValues } = useFormContext<AgentBuilderFormData>();
   const suggestionsContext = useSidekickSuggestions();
 
+  const { hasFeature } = useFeatureFlags();
+  const forcePolling = hasFeature("agent_stream_long_polling");
   const [serverId, setServerId] = useState<string | undefined>(undefined);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-
-  // Use refs to store the MCP server and transport instances
-  // to ensure cleanup happens correctly and to avoid re-creating on every render.
-  const mcpServerRef = useRef<McpServer | null>(null);
-  const transportRef = useRef<BrowserMCPTransport | null>(null);
 
   // Store context in a ref for use in callbacks.
   const suggestionsContextRef = useRef(suggestionsContext);
@@ -63,19 +62,27 @@ export function useSidekickMCPServer({
     }
 
     let isMounted = true;
+    let mcpServer: McpServer | null = null;
+    let transport: BrowserMCPTransport | null = null;
+
+    const closeServer = () => {
+      void Promise.all([mcpServer?.close(), transport?.close()]).catch(
+        (error: unknown) => {
+          datadogLogger.error(
+            { err: normalizeError(error), workspaceId: owner.sId },
+            "Failed to close sidekick MCP server."
+          );
+        }
+      );
+    };
 
     const initializeMCPServer = async () => {
-      if (mcpServerRef.current) {
-        // Already initialized.
-        return;
-      }
-
       setIsConnecting(true);
       setError(null);
 
       try {
         // Create the MCP server.
-        const mcpServer = new McpServer({
+        mcpServer = new McpServer({
           name: SERVER_NAME,
           version: "1.0.0",
         });
@@ -93,19 +100,23 @@ export function useSidekickMCPServer({
         });
 
         // Create the browser transport.
-        const transport = new BrowserMCPTransport(
+        transport = new BrowserMCPTransport(
           owner.sId,
           SERVER_NAME,
           (newServerId) => {
             if (isMounted) {
               setServerId(newServerId);
             }
-          }
+          },
+          forcePolling ? "immediate" : "fallback"
         );
 
         // Set up transport error handling.
         transport.onerror = (err) => {
-          console.error("[useSidekickMCPServer] Transport error:", err);
+          datadogLogger.error(
+            { err: normalizeError(err) },
+            "[useSidekickMCPServer] Transport error:"
+          );
           if (isMounted) {
             setError(err);
           }
@@ -121,13 +132,15 @@ export function useSidekickMCPServer({
         await mcpServer.connect(transport);
 
         if (isMounted) {
-          mcpServerRef.current = mcpServer;
-          transportRef.current = transport;
           setIsConnected(true);
           setIsConnecting(false);
         }
       } catch (err) {
-        console.error("[useSidekickMCPServer] Failed to initialize:", err);
+        datadogLogger.error(
+          { err: normalizeError(err) },
+          "[useSidekickMCPServer] Failed to initialize:"
+        );
+        closeServer();
         if (isMounted) {
           setError(normalizeError(err));
           setIsConnecting(false);
@@ -141,21 +154,12 @@ export function useSidekickMCPServer({
     return () => {
       isMounted = false;
 
-      // Close the MCP server and transport.
-      if (mcpServerRef.current) {
-        void mcpServerRef.current.close();
-        mcpServerRef.current = null;
-      }
-
-      if (transportRef.current) {
-        void transportRef.current.close();
-        transportRef.current = null;
-      }
+      closeServer();
 
       setServerId(undefined);
       setIsConnected(false);
     };
-  }, [enabled, owner.sId, getFormValues]);
+  }, [enabled, owner.sId, getFormValues, forcePolling]);
 
   return {
     serverId,
