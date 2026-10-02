@@ -127,6 +127,7 @@ describe("POST /api/w/:wId/skills/search", () => {
         skills: [
           {
             status: "active",
+            canWrite: false,
             canAdministrate: false,
             availability: "workspace_users",
             mcpServerViewIds: [],
@@ -179,6 +180,7 @@ describe("POST /api/w/:wId/skills/search", () => {
       skills: [
         {
           status: "active",
+          canWrite: false,
           canAdministrate: false,
           availability: "workspace_users",
           mcpServerViewIds: [],

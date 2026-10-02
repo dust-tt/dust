@@ -2640,6 +2640,21 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
+   * @cc [owner:aubin-tchoi,label:security] canWriteCustomSkillId-matches-canWrite
+   * For a custom skill, MUST match `auth.can("write", skill)` without fetching the resource.
+   */
+  static canWriteCustomSkillId(
+    auth: Authenticator,
+    { id, workspaceId }: { id: ModelId; workspaceId: ModelId }
+  ): boolean {
+    if (auth.isKey() && auth.isAdmin()) {
+      return true;
+    }
+
+    return this.customSkillAllowedVerbs(auth, { id, workspaceId }).has("write");
+  }
+
+  /**
    * @cc [owner:achilleburah,label:security] canAdministrateCustomSkillId-matches-canAdministrate
    * For a custom (never code-defined) skill, MUST return the same verdict as
    * `auth.can("admin", skill)` would for the fetched `SkillResource` with this id, without fetching

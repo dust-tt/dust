@@ -16,6 +16,12 @@ export function toSkillListItem(
 
   return {
     sId: document.skill_id,
+    canWrite:
+      skillModelId !== null &&
+      SkillResource.canWriteCustomSkillId(auth, {
+        id: skillModelId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      }),
     canAdministrate:
       skillModelId !== null &&
       SkillResource.canAdministrateCustomSkillId(auth, {
