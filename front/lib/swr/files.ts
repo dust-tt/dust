@@ -18,6 +18,9 @@ import type { FileShareScope, FileTypeWithMetadata } from "@app/types/files";
 import {
   DUST_FILE_CONTENT_TYPE_HEADER,
   DUST_FILE_ID_HEADER,
+  DUST_FILE_REVISION_HEADER,
+  DUST_IF_REVISION_MATCH_HEADER,
+  FileRevisionSchema,
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -231,7 +234,12 @@ export function useFileMetadataFromPath({
 }
 
 type FileContentByUrlData =
-  | { kind: "loaded"; content: string }
+  | {
+      kind: "loaded";
+      content: string;
+      /** The stored revision when the backend reports one, for conditional writes. */
+      revision?: string | null;
+    }
   | { kind: "not_found" };
 
 export function useFileContentByUrl({
@@ -257,7 +265,14 @@ export function useFileContentByUrl({
         const errorData = await getErrorFromResponse(response);
         throw new Error(errorData.message);
       }
-      return { kind: "loaded", content: await response.text() };
+      const revision = FileRevisionSchema.safeParse(
+        response.headers.get(DUST_FILE_REVISION_HEADER)
+      );
+      return {
+        kind: "loaded",
+        content: await response.text(),
+        revision: revision.success ? revision.data : null,
+      };
     },
     { disabled: isDisabled }
   );
@@ -266,10 +281,65 @@ export function useFileContentByUrl({
 
   return {
     fileContent: data?.kind === "loaded" ? data.content : null,
+    fileRevision: data?.kind === "loaded" ? (data.revision ?? null) : null,
     isNotFound,
     isFileContentLoading: !error && data === undefined && !isDisabled,
     fileContentError: error ? normalizeError(error) : null,
   };
+}
+
+export type PutFileContentError =
+  /** The file changed since `revision` was read; nothing was written. */
+  { code: "conflict"; message: string } | { code: "failed"; message: string };
+
+/**
+ * Writes `content` at `canonicalPath`. With `revision`, the write is conditional: the server
+ * refuses it when the stored revision moved, and the caller gets `conflict` instead of
+ * overwriting. The returned revision is the one just stored, when the backend reports one.
+ */
+export async function putFileContentByPath({
+  owner,
+  canonicalPath,
+  content,
+  contentType = "text/plain",
+  revision = null,
+}: {
+  owner: LightWorkspaceType;
+  canonicalPath: string;
+  content: string;
+  contentType?: string;
+  revision?: string | null;
+}): Promise<Result<{ revision: string | null }, PutFileContentError>> {
+  const url = getFilePathContentApiPath(owner, canonicalPath);
+  const headers: Record<string, string> = { "Content-Type": contentType };
+  if (revision !== null) {
+    headers[DUST_IF_REVISION_MATCH_HEADER] = revision;
+  }
+  let response: Response;
+  try {
+    response = await clientFetch(url, {
+      method: "PUT",
+      headers,
+      body: content,
+    });
+  } catch (e) {
+    return new Err({ code: "failed", message: normalizeError(e).message });
+  }
+
+  if (response.status === 412) {
+    return new Err({
+      code: "conflict",
+      message: "This file changed since it was loaded.",
+    });
+  }
+  if (!response.ok) {
+    const errorData = await getErrorFromResponse(response);
+    return new Err({ code: "failed", message: errorData.message });
+  }
+  const stored = FileRevisionSchema.safeParse(
+    response.headers.get(DUST_FILE_REVISION_HEADER)
+  );
+  return new Ok({ revision: stored.success ? stored.data : null });
 }
 
 export async function writeFileContentByPath({
@@ -283,16 +353,14 @@ export async function writeFileContentByPath({
   content: string;
   contentType?: string;
 }): Promise<void> {
-  const url = getFilePathContentApiPath(owner, canonicalPath);
-  const response = await clientFetch(url, {
-    method: "PUT",
-    headers: { "Content-Type": contentType },
-    body: content,
+  const result = await putFileContentByPath({
+    owner,
+    canonicalPath,
+    content,
+    contentType,
   });
-
-  if (!response.ok) {
-    const errorData = await getErrorFromResponse(response);
-    throw new Error(errorData.message);
+  if (result.isErr()) {
+    throw new Error(result.error.message);
   }
 }
 
