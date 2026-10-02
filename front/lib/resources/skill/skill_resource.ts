@@ -40,7 +40,7 @@ import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorit
 import { updateAgentRequestedSpaceIdsInPlace } from "@app/lib/resources/agent_requested_spaces";
 import type { AgentResource } from "@app/lib/resources/agent_resource";
 import {
-  destroyAgentSkillLinksForCustomSkill,
+  destroyAgentSkillLinksForCustomSkills,
   onCustomSkillStatusChanged,
 } from "@app/lib/resources/agent_skills";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -4432,27 +4432,42 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   async delete(auth: Authenticator): Promise<Result<number, Error>> {
-    if (!auth.can("admin", this)) {
-      return new Err(
-        new Error("User does not have permission to delete this skill.")
-      );
+    return SkillResource.batchDelete(auth, [this]);
+  }
+
+  static async batchDelete(
+    auth: Authenticator,
+    skills: SkillResource[]
+  ): Promise<Result<number, Error>> {
+    if (skills.length === 0) {
+      return new Ok(0);
+    }
+
+    for (const skill of skills) {
+      if (!auth.can("admin", skill)) {
+        return new Err(
+          new Error("User does not have permission to delete this skill.")
+        );
+      }
     }
 
     const workspace = auth.getNonNullableWorkspace();
+    const skillModelIds = skills.map((skill) => skill.id);
+    const skillIds = skills.map((skill) => skill.sId);
 
-    const whereWorkspaceIdAndSkillId = {
-      skillConfigurationId: this.id,
+    const whereWorkspaceIdAndSkillIds = {
+      skillConfigurationId: { [Op.in]: skillModelIds },
       workspaceId: workspace.id,
     };
 
     // Collect file IDs from current attachments and all version snapshots.
     const fileAttachmentRows = await SkillFileAttachmentModel.findAll({
-      where: whereWorkspaceIdAndSkillId,
+      where: whereWorkspaceIdAndSkillIds,
     });
     const currentFileIds = fileAttachmentRows.map((a) => a.fileId);
 
     const versionRows = await SkillVersionModel.findAll({
-      where: whereWorkspaceIdAndSkillId,
+      where: whereWorkspaceIdAndSkillIds,
       attributes: ["fileAttachmentIds"],
     });
     const versionFileIds = versionRows.flatMap((v) => v.fileAttachmentIds);
@@ -4465,81 +4480,109 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const { affectedCount, referencingSkillIds } = await withTransaction(
       async (transaction) => {
-        const referencingSkillIds =
-          await this.propagateReferenceUpdatesToParentSkills(
-            auth,
-            {
-              icon: this.icon,
-              name: this.name,
-              requestedSpaceIds: this.requestedSpaceIds,
-              status: "archived",
-            },
-            { transaction }
-          );
+        // Only skills referenced by another skill need their parents rewritten.
+        const references = await SkillReferenceModel.findAll({
+          attributes: ["childCustomSkillId"],
+          where: {
+            workspaceId: workspace.id,
+            childCustomSkillId: { [Op.in]: skillModelIds },
+          },
+          transaction,
+        });
+        const referencedSkillModelIds = new Set(
+          references.map((reference) => reference.childCustomSkillId)
+        );
 
-        await destroyAgentSkillLinksForCustomSkill(auth, {
-          customSkillModelId: this.id,
+        const referencingSkillIds: string[] = [];
+        for (const skill of skills) {
+          if (!referencedSkillModelIds.has(skill.id)) {
+            continue;
+          }
+          referencingSkillIds.push(
+            ...(await skill.propagateReferenceUpdatesToParentSkills(
+              auth,
+              {
+                icon: skill.icon,
+                name: skill.name,
+                requestedSpaceIds: skill.requestedSpaceIds,
+                status: "archived",
+              },
+              { transaction }
+            ))
+          );
+        }
+
+        await destroyAgentSkillLinksForCustomSkills(auth, {
+          customSkillModelIds: skillModelIds,
           transaction,
         });
 
         await ProjectMetadataResource.removeSkillsFromAllDefaultSkills(
           auth,
-          [this.sId],
+          skillIds,
           transaction
         );
 
-        // The per-user grant groups (see `writeEditorUserGrants`) exist only to hold this skill's
-        // grants, so they go with the skill. Listed by resource rather than by grant so a skill
+        // The per-user grant groups (see `writeEditorUserGrants`) exist only to hold the skills'
+        // grants, so they go with the skills. Listed by resource rather than by grant so a skill
         // never leaves a grant group behind, and fetched before the grants are dropped, since the
         // grants are what identifies them.
         const grantGroups =
-          await GroupPermissionResource.listRegularAutoGroupsForResource(auth, {
-            resourceType: "skill",
-            resourceId: this.id,
-            transaction,
-          });
+          await GroupPermissionResource.listRegularAutoGroupsForResources(
+            auth,
+            {
+              resourceType: "skill",
+              resourceIds: skillModelIds,
+              transaction,
+            }
+          );
 
-        // Drop the skill's instance grants before the groups go away: group_permissions rows are
+        // Drop the skills' instance grants before the groups go away: group_permissions rows are
         // keyed by both, and this also covers grants held by any other group.
-        await GroupPermissionResource.deleteAllForResource(auth, {
+        await GroupPermissionResource.deleteAllForResources(auth, {
           resourceType: "skill",
-          resourceId: this.id,
+          resourceIds: skillModelIds,
           transaction,
         });
 
-        for (const grantGroup of grantGroups) {
-          await grantGroup.delete(auth, { transaction });
+        const deleteGroupsRes = await GroupResource.batchDelete(
+          auth,
+          grantGroups,
+          { transaction }
+        );
+        if (deleteGroupsRes.isErr()) {
+          throw deleteGroupsRes.error;
         }
 
         await SkillFileAttachmentModel.destroy({
-          where: whereWorkspaceIdAndSkillId,
+          where: whereWorkspaceIdAndSkillIds,
           transaction,
         });
 
         await SkillDataSourceConfigurationModel.destroy({
-          where: whereWorkspaceIdAndSkillId,
+          where: whereWorkspaceIdAndSkillIds,
           transaction,
         });
 
         await SkillMCPServerConfigurationModel.destroy({
-          where: whereWorkspaceIdAndSkillId,
+          where: whereWorkspaceIdAndSkillIds,
           transaction,
         });
 
         await SkillSuggestionModel.destroy({
-          where: whereWorkspaceIdAndSkillId,
+          where: whereWorkspaceIdAndSkillIds,
           transaction,
         });
 
         await SkillVersionModel.destroy({
-          where: whereWorkspaceIdAndSkillId,
+          where: whereWorkspaceIdAndSkillIds,
           transaction,
         });
 
         await SkillReferenceModel.destroy({
           where: {
             workspaceId: workspace.id,
-            parentSkillId: this.id,
+            parentSkillId: { [Op.in]: skillModelIds },
           },
           transaction,
         });
@@ -4547,7 +4590,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         await SkillReferenceModel.destroy({
           where: {
             workspaceId: workspace.id,
-            childCustomSkillId: this.id,
+            childCustomSkillId: { [Op.in]: skillModelIds },
           },
           transaction,
         });
@@ -4556,33 +4599,45 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           where: {
             workspaceId: workspace.id,
             type: "skill",
-            itemId: this.sId,
+            itemId: { [Op.in]: skillIds },
           },
           transaction,
         });
 
         const affectedCount = await this.model.destroy({
           where: {
-            id: this.id,
+            id: { [Op.in]: skillModelIds },
             workspaceId: workspace.id,
           },
           transaction,
         });
         return {
           affectedCount,
-          referencingSkillIds,
+          referencingSkillIds: uniq(referencingSkillIds),
         };
       }
     );
 
-    const deleteSearchResult = await launchDeleteSkillSearchWorkflow({
-      workspaceId: workspace.sId,
-      skillId: this.sId,
-    });
-    if (deleteSearchResult.isErr()) {
-      return deleteSearchResult;
+    // Pending skills are never indexed (see `pending-skill-unlisted`), so the purge of pending
+    // skills launches no search workflow.
+    for (const skill of skills) {
+      if (skill.status === "pending") {
+        continue;
+      }
+      const deleteSearchResult = await launchDeleteSkillSearchWorkflow({
+        workspaceId: workspace.sId,
+        skillId: skill.sId,
+      });
+      if (deleteSearchResult.isErr()) {
+        return deleteSearchResult;
+      }
     }
-    await SkillResource.launchSearchIndexation(auth, referencingSkillIds);
+    // Skills deleted in this batch are gone: only surviving parents need reindexing.
+    const deletedSkillIds = new Set(skillIds);
+    await SkillResource.launchSearchIndexation(
+      auth,
+      referencingSkillIds.filter((sId) => !deletedSkillIds.has(sId))
+    );
 
     // Delete files from cloud storage outside the transaction (I/O with GCS).
     for (const file of filesToDelete) {
