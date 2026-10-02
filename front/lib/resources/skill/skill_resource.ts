@@ -3713,6 +3713,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
     }
 
+    if (reinforcement !== undefined && reinforcement !== this.reinforcement) {
+      assert(
+        this.canChangeReinforcement(auth),
+        "User is not authorized to update this skill's self-improvement"
+      );
+    }
+
     // Snapshot the previous name and icon before updating to detect changes below.
     const previousName = this.name;
     const previousIcon = this.icon;
@@ -4028,6 +4035,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
     }
     return changedSkillIds;
+  }
+
+  canChangeReinforcement(auth: Authenticator): boolean {
+    return !this.selfImprovementLock || auth.isAdmin();
   }
 
   async updateReinforcement(

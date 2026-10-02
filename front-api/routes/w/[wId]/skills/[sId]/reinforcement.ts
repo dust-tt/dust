@@ -110,7 +110,7 @@ app.patch(
           },
         });
       }
-      if (skill.selfImprovementLock && !auth.isAdmin()) {
+      if (!skill.canChangeReinforcement(auth)) {
         return apiError(ctx, {
           status_code: 403,
           api_error: {
