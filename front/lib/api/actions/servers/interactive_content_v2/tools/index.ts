@@ -8,7 +8,9 @@ import { createInteractiveContentTools } from "@app/lib/api/actions/servers/inte
 import type { Authenticator } from "@app/lib/auth";
 import { z } from "zod";
 
+// The create tool is exposed in its template-only variant, see `makeTemplateOnlyCreateTool`.
 const ALLOWED_TOOL_NAMES = new Set<string>([
+  CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   EXPORT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
 ]);
 
@@ -47,9 +49,9 @@ function makeTemplateOnlyCreateTool(
 
 /**
  * @cc [owner:flvndvd,label:product] frames-v2-tool-allowlist
- * Frames v2 MUST expose only explicitly allowlisted supplemental tools, plus
- * `create_interactive_content_file` restricted to template mode. Inline Frame creation, editing,
- * and publishing MUST remain unavailable through this MCP server.
+ * Frames v2 MUST expose only explicitly allowlisted tools, with `create_interactive_content_file`
+ * restricted to template mode. Inline Frame creation, editing, and publishing MUST remain
+ * unavailable through this MCP server.
  */
 export async function createInteractiveContentV2Tools(
   auth: Authenticator,
@@ -57,11 +59,11 @@ export async function createInteractiveContentV2Tools(
 ): Promise<ToolDefinition[]> {
   const legacyTools = await createInteractiveContentTools(auth, toolContext);
 
-  return legacyTools.flatMap((tool) => {
-    if (tool.name === CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME) {
-      return [makeTemplateOnlyCreateTool(tool)];
-    }
-
-    return ALLOWED_TOOL_NAMES.has(tool.name) ? [tool] : [];
-  });
+  return legacyTools
+    .filter((tool) => ALLOWED_TOOL_NAMES.has(tool.name))
+    .map((tool) =>
+      tool.name === CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME
+        ? makeTemplateOnlyCreateTool(tool)
+        : tool
+    );
 }
