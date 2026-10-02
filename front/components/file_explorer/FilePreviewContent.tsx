@@ -1,7 +1,9 @@
+import { Document } from "@app/components/editor/document";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import { MarkdownFilePreview } from "@app/components/file_explorer/MarkdownFilePreview";
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
 import type { FileEntry } from "@app/components/file_explorer/types";
+import type { MarkdownRichEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
 import { getFileProcessedUrl, useFileContentByUrl } from "@app/lib/swr/files";
@@ -11,12 +13,14 @@ import { stripMimeParameters } from "@app/types/files";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
+  Chip,
   CodeBlock,
   cn,
   DataTable,
   Markdown,
   ScrollableDataTable,
   Spinner,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 
@@ -198,6 +202,8 @@ export interface FilePreviewContentData {
   hasError: boolean;
   isContentLoading: boolean;
   isTooLarge: boolean;
+  /** The text was cut at MAX_TEXT_CHARS, so an editor fed with it would save a truncated file. */
+  isTruncated: boolean;
   sizeBytes: number;
 }
 
@@ -240,6 +246,7 @@ export function useFilePreviewContent({
     enabled && !!entry && !hasError && needsTextContent && isFileContentLoading;
 
   const truncatedContent = fileContent?.slice(0, MAX_TEXT_CHARS) ?? null;
+  const isTruncated = (fileContent?.length ?? 0) > MAX_TEXT_CHARS;
 
   const processedContent =
     category === "markdown" && truncatedContent
@@ -260,6 +267,7 @@ export function useFilePreviewContent({
     hasError,
     isContentLoading,
     isTooLarge,
+    isTruncated,
     sizeBytes,
   };
 }
@@ -275,6 +283,8 @@ interface FilePreviewContentProps {
   isFullWidth?: boolean;
   markdownCanEdit?: boolean;
   markdownContent?: string;
+  /** Behind the co_edition flag: the rich editor replaces the preview and the raw editor. */
+  markdownRichEditor?: MarkdownRichEditor | null;
   markdownViewMode?: MarkdownFilePreviewViewMode;
   onMarkdownContentChange?: (content: string) => void;
   onMarkdownViewModeChange?: (mode: MarkdownFilePreviewViewMode) => void;
@@ -291,6 +301,7 @@ export function FilePreviewContent({
   isFullWidth = false,
   markdownCanEdit,
   markdownContent,
+  markdownRichEditor,
   markdownViewMode,
   onMarkdownContentChange,
   onMarkdownViewModeChange,
@@ -358,6 +369,33 @@ export function FilePreviewContent({
       return null;
 
     case "markdown":
+      if (markdownRichEditor) {
+        return (
+          <div className="@container min-h-0 flex-1 overflow-y-auto">
+            <div className="mx-auto flex max-w-[50rem] justify-end px-5 pt-3 @sm:px-12">
+              <Tooltip
+                tooltipTriggerAsChild
+                label="This editor for Markdown files is work in progress from the Co-edition initiative. It is only enabled on the Dust workspace while we build it."
+                trigger={
+                  <span>
+                    <Chip
+                      size="mini"
+                      color="info"
+                      label="Co-edition · WIP · Dust only"
+                    />
+                  </span>
+                }
+              />
+            </div>
+            <Document
+              key={markdownRichEditor.mountKey}
+              initialContent={markdownRichEditor.initialContent}
+              onSave={markdownRichEditor.onSave}
+              onStateChange={markdownRichEditor.onStateChange}
+            />
+          </div>
+        );
+      }
       if (
         processedContent &&
         markdownContent !== undefined &&

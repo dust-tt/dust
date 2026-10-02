@@ -85,6 +85,7 @@ export function FilePreviewBody({
       isFullWidth={isFullWidth}
       markdownCanEdit={markdown.canEdit}
       markdownContent={markdown.content}
+      markdownRichEditor={markdown.richEditor}
       markdownViewMode={markdown.viewMode}
       onMarkdownContentChange={markdown.canEdit ? markdown.setDraft : undefined}
       onMarkdownViewModeChange={onMarkdownViewModeChange}
