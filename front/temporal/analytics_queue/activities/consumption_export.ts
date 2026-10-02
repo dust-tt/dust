@@ -14,7 +14,7 @@ import {
   GCS_COMPOSE_MAX_SOURCES,
   getTmpWorkloadsBucket,
 } from "@app/lib/file_storage";
-import { notifyConsumptionExportReady } from "@app/lib/notifications/workflows/consumption-export-ready";
+import { notifyConsumptionExportReady } from "@app/lib/notifications/triggers/consumption-export-ready";
 import logger from "@app/logger/logger";
 import { createHash } from "crypto";
 
