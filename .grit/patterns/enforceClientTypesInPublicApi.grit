@@ -30,10 +30,15 @@ pattern client_import_source() {
     }
 }
 
-client_import_source() as $source where {
-    register_diagnostic(
-        span = $source,
-        message = "Files outside front/api/v1/, front-api/routes/v1/, front/lib/actions/mcp_internal_actions/ or front/lib/api/actions/servers/ cannot import from '@dust-tt/client'.",
-        severity = "error"
-    )
+// Skip structural matching when the source cannot contain this rule's target.
+// Keep backslashes as candidates so escaped spellings are still checked.
+file(body = $body) where {
+    $body <: or { includes "@dust-tt/client", includes "\\" },
+    $body <: contains bubble client_import_source() as $source where {
+        register_diagnostic(
+            span = $source,
+            message = "Files outside front/api/v1/, front-api/routes/v1/, front/lib/actions/mcp_internal_actions/ or front/lib/api/actions/servers/ cannot import from '@dust-tt/client'.",
+            severity = "error"
+        )
+    }
 }
