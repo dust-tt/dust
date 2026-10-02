@@ -7,9 +7,7 @@ import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
-import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_request";
 import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
-import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
 import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -616,63 +614,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return TriggerResource.deleteMany(auth, [this], { transaction });
   }
 
-  private static async deleteWebhookRequestsForSourceViews(
-    auth: Authenticator,
-    webhookSourceViewIds: ModelId[],
-    transaction?: Transaction
-  ): Promise<Result<undefined, Error>> {
-    if (webhookSourceViewIds.length === 0) {
-      return new Ok(undefined);
-    }
-
-    const workspaceId = auth.getNonNullableWorkspace().id;
-    const webhookSourceViews = await WebhookSourcesViewModel.findAll({
-      attributes: ["id", "webhookSourceId"],
-      where: {
-        id: { [Op.in]: webhookSourceViewIds },
-        workspaceId,
-      },
-      transaction,
-    });
-
-    if (webhookSourceViews.length !== webhookSourceViewIds.length) {
-      return new Err(new Error("Webhook source view not found"));
-    }
-
-    const webhookRequests = await WebhookRequestModel.findAll({
-      attributes: ["id"],
-      where: {
-        workspaceId,
-        webhookSourceId: {
-          [Op.in]: webhookSourceViews.map((view) => view.webhookSourceId),
-        },
-      },
-      transaction,
-    });
-
-    if (webhookRequests.length === 0) {
-      return new Ok(undefined);
-    }
-
-    const webhookRequestIds = webhookRequests.map((request) => request.id);
-    await WebhookRequestTriggerModel.destroy({
-      where: {
-        workspaceId,
-        webhookRequestId: { [Op.in]: webhookRequestIds },
-      },
-      transaction,
-    });
-    await WebhookRequestModel.destroy({
-      where: {
-        workspaceId,
-        id: { [Op.in]: webhookRequestIds },
-      },
-      transaction,
-    });
-
-    return new Ok(undefined);
-  }
-
   static async deleteMany(
     auth: Authenticator,
     triggers: TriggerResource[],
@@ -691,26 +632,16 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       }
     }
 
-    const webhookSourceViewIds = [
-      ...new Set(
-        triggers.flatMap((trigger) =>
-          trigger.kind === "webhook" && trigger.webhookSourceViewId
-            ? [trigger.webhookSourceViewId]
-            : []
-        )
-      ),
-    ];
-    const webhookRequestsDeletion =
-      await this.deleteWebhookRequestsForSourceViews(
-        auth,
-        webhookSourceViewIds,
-        transaction
-      );
-    if (webhookRequestsDeletion.isErr()) {
-      return webhookRequestsDeletion;
-    }
-
     const triggerIds = triggers.map((trigger) => trigger.id);
+    // Webhook requests are shared by every trigger of a webhook source: only remove the outcome
+    // rows of the deleted triggers. Requests themselves are purged by webhook source deletion.
+    await WebhookRequestTriggerModel.destroy({
+      where: {
+        workspaceId: owner.id,
+        triggerId: { [Op.in]: triggerIds },
+      },
+      transaction,
+    });
     await TriggerModel.destroy({
       where: {
         id: { [Op.in]: triggerIds },
