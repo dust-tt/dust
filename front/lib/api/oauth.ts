@@ -302,8 +302,9 @@ export async function createConnectionAndGetSetupUrl(
 /**
  * @cc [owner:flvndvd,label:backend] tolerate-missing-workspace
  * `auth` MAY be null or carry no workspace: the callback session can reference a workspace
- * unknown to this region. Finalization MUST proceed without a workspace and MUST skip the
- * audit event in that case.
+ * unknown to this region. Finalization MUST NOT fail or call workspace-requiring accessors
+ * before the connection is finalized. The `oauth.authorized` audit event is emitted when a
+ * workspace is present; otherwise a warning is logged since no audit target exists.
  */
 export async function finalizeConnection(
   auth: Authenticator | null,
