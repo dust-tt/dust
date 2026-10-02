@@ -1,5 +1,6 @@
 import { useMarkdownFileEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
-import { writeFileContentByPath } from "@app/lib/swr/files";
+import { putFileContentByPath } from "@app/lib/swr/files";
+import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -17,7 +18,7 @@ vi.mock("@app/hooks/useNotification", () => ({
 }));
 
 vi.mock("@app/lib/swr/files", () => ({
-  writeFileContentByPath: vi.fn().mockResolvedValue(undefined),
+  putFileContentByPath: vi.fn(),
 }));
 
 const owner: LightWorkspaceType = {
@@ -41,9 +42,10 @@ const params = {
   isActive: true,
   isContentLoading: false,
   isTooLarge: false,
-  isTruncated: false,
+  exceedsWriteLimit: false,
   owner,
   rawContent: "# Notes\n",
+  revision: "1",
   processedContent: { text: "# Notes", format: "markdown" as const },
 };
 
@@ -56,6 +58,10 @@ const revised = {
 describe("useMarkdownFileEditor", () => {
   beforeEach(() => {
     flags.clear();
+    vi.mocked(putFileContentByPath).mockReset();
+    vi.mocked(putFileContentByPath).mockResolvedValue(
+      new Ok({ revision: "2" })
+    );
   });
 
   it("keeps the plain editor when co_edition is off", () => {
@@ -73,11 +79,11 @@ describe("useMarkdownFileEditor", () => {
     expect(result.current.richEditor?.initialContent).toBe("# Notes\n");
   });
 
-  it("keeps the plain editor when the preview text was truncated", () => {
+  it("keeps the plain editor when the file exceeds the write limit", () => {
     flags.add("co_edition");
 
     const { result } = renderHook(() =>
-      useMarkdownFileEditor({ ...params, isTruncated: true })
+      useMarkdownFileEditor({ ...params, exceedsWriteLimit: true })
     );
 
     expect(result.current.richEditor).toBeNull();
@@ -135,10 +141,10 @@ describe("useMarkdownFileEditor", () => {
   it("lifts the conflict once its own racing save has landed", async () => {
     flags.add("co_edition");
     let finishWrite: () => void = () => undefined;
-    vi.mocked(writeFileContentByPath).mockImplementationOnce(
+    vi.mocked(putFileContentByPath).mockImplementationOnce(
       () =>
-        new Promise<void>((resolve) => {
-          finishWrite = resolve;
+        new Promise((resolve) => {
+          finishWrite = () => resolve(new Ok({ revision: "2" }));
         })
     );
     const { result, rerender } = renderHook(
@@ -191,7 +197,7 @@ describe("useMarkdownFileEditor", () => {
       });
     });
 
-    rerender({ ...revised, isTruncated: true });
+    rerender({ ...revised, exceedsWriteLimit: true });
 
     expect(result.current.richEditor).not.toBeNull();
     const refused = await result.current.richEditor?.onSave("# Notes, mine\n");
@@ -205,7 +211,7 @@ describe("useMarkdownFileEditor", () => {
       { initialProps: params }
     );
 
-    rerender({ ...revised, isTruncated: true });
+    rerender({ ...revised, exceedsWriteLimit: true });
 
     expect(result.current.richEditor).toBeNull();
   });
@@ -285,6 +291,53 @@ describe("useMarkdownFileEditor", () => {
     expect(result.current.richEditor?.initialContent).toBe("# Notes\n");
     expect(result.current.isDirty).toBe(true);
     const saved = await result.current.richEditor?.onSave("# Notes, mine");
+    expect(saved?.isErr() && saved.error).toContain(
+      "changed while you were editing"
+    );
+  });
+
+  it("saves against the revision the editor opened on and adopts the stored one", async () => {
+    flags.add("co_edition");
+    const { result, rerender } = renderHook(
+      (props) => useMarkdownFileEditor(props),
+      { initialProps: params }
+    );
+
+    await act(async () => {
+      await result.current.richEditor?.onSave("# Notes, mine\n");
+    });
+
+    expect(vi.mocked(putFileContentByPath)).toHaveBeenCalledWith(
+      expect.objectContaining({ content: "# Notes, mine\n", revision: "1" })
+    );
+    rerender({ ...params, rawContent: "# Notes, mine\n", revision: "2" });
+    await act(async () => {
+      await result.current.richEditor?.onSave("# Notes, more\n");
+    });
+    expect(vi.mocked(putFileContentByPath)).toHaveBeenLastCalledWith(
+      expect.objectContaining({ content: "# Notes, more\n", revision: "2" })
+    );
+  });
+
+  it("refuses to save when the server reports a newer revision", async () => {
+    flags.add("co_edition");
+    vi.mocked(putFileContentByPath).mockResolvedValueOnce(
+      new Err({
+        code: "conflict",
+        message: "This file changed since it was loaded.",
+      })
+    );
+    const { result } = renderHook(() => useMarkdownFileEditor(params));
+
+    let saved:
+      | Awaited<
+          ReturnType<NonNullable<typeof result.current.richEditor>["onSave"]>
+        >
+      | undefined;
+    await act(async () => {
+      saved = await result.current.richEditor?.onSave("# Notes, mine\n");
+    });
+
     expect(saved?.isErr() && saved.error).toContain(
       "changed while you were editing"
     );

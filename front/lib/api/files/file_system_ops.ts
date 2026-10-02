@@ -29,6 +29,7 @@ import {
 import type { FileUseCase, FileUseCaseMetadata } from "@app/types/files";
 import {
   contentTypeFromFileName,
+  FILE_CONTENT_WRITE_MAX_BYTES,
   isSupportedFileContentType,
   isSupportedImageContentType,
   resolveFileContentType,
@@ -643,7 +644,8 @@ export async function readCanonicalFileContent(
 // Content write
 // ---------------------------------------------------------------------------
 
-export const WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES = 512 * 1024;
+export const WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES =
+  FILE_CONTENT_WRITE_MAX_BYTES;
 
 type WriteCanonicalFileContentErrorCode =
   | "too_large"

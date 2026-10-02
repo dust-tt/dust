@@ -2,7 +2,9 @@ import type {
   DocumentDraftState,
   DocumentSaveResult,
 } from "@app/components/editor/document";
-import { Err } from "@app/types/shared/result";
+import type { PutFileContentError } from "@app/lib/swr/files";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { useEffect, useRef, useState } from "react";
 
 /** The rich Document editor takes over the file; the host hides its own edit controls. */
@@ -14,19 +16,32 @@ export interface MarkdownRichEditor {
   onStateChange: (state: DocumentDraftState) => void;
 }
 
+/** The outcome of a conditional file write: the stored revision, or why nothing was written. */
+export type FileWriteResult = Result<
+  { revision: string | null },
+  PutFileContentError
+>;
+
 interface UseRichMarkdownEditorParams {
   /** The rich editor is wanted for this file: the flag is on and the file is editable. */
   enabled: boolean;
   entryPath: string | undefined;
   isActive: boolean;
-  /** The file text as fetched, or null while it loads. */
+  /** The whole file text as fetched, or null while it loads. */
   rawContent: string | null;
-  /** The fetched text was cut; an editor fed with it would save a truncated file. */
-  isTruncated: boolean;
-  /** Writes the file; resolves once stored, or with the reason it was not. */
-  writeFile: (content: string) => Promise<DocumentSaveResult>;
-  /** Makes written content the one the preview shows. */
-  adoptWritten: (content: string) => Promise<void>;
+  /** The stored revision of `rawContent`, when the backend reports one. */
+  revision: string | null;
+  /** The file is larger than a save may write; the plain editor keeps it. */
+  exceedsWriteLimit: boolean;
+  /** Writes the file only if its stored revision is still `revision`; null skips the check. */
+  writeFile: (
+    content: string,
+    revision: string | null
+  ) => Promise<FileWriteResult>;
+  /** Makes written content and its revision the ones the preview shows. */
+  adoptWritten: (content: string, revision: string | null) => Promise<void>;
+  /** Fetches the file again, so a version the server refused to overwrite reaches the editor. */
+  refetch: () => Promise<void>;
 }
 
 export interface RichMarkdownEditorState {
@@ -40,13 +55,15 @@ export interface RichMarkdownEditorState {
 /** What the editor opened on, or last saved. Latched: later fetches do not rewrite it. */
 interface Opened {
   content: string;
-  /** The file was over the preview limit at that moment; the plain editor keeps it. */
-  truncated: boolean;
+  revision: string | null;
+  /** The file grew past the write limit while open; the plain editor takes over once clean. */
+  overLimit: boolean;
 }
 
 interface Written {
   path: string | undefined;
   content: string;
+  revision: string | null;
 }
 
 const IDLE_DRAFT: DocumentDraftState = {
@@ -72,15 +89,19 @@ function isOwnWrite(
  * Which content the rich editor is open on, and what happens when the file changes under it.
  * The decision to open depends only on the flag and the file as it was when it opened, never
  * on later content, so a change written by someone else cannot swap editors under a draft.
+ * Saves are conditional on the revision the editor opened on or last saved, so two writers
+ * racing between two fetches cannot overwrite each other either.
  */
 export function useRichMarkdownEditor({
   enabled,
   entryPath,
   isActive,
   rawContent,
-  isTruncated,
+  revision,
+  exceedsWriteLimit,
   writeFile,
   adoptWritten,
+  refetch,
 }: UseRichMarkdownEditorParams): RichMarkdownEditorState {
   const [draft, setDraft] = useState<DocumentDraftState>(IDLE_DRAFT);
   const [opened, setOpened] = useState<Opened | null>(null);
@@ -97,33 +118,46 @@ export function useRichMarkdownEditor({
     setVersion(0);
   }
 
-  const opens = enabled && !(opened?.truncated ?? isTruncated);
+  const opens = enabled && !(opened?.overLimit ?? exceedsWriteLimit);
   const source = rawContent ?? undefined;
   const base = opened?.content ?? null;
 
   // The file changed under the editor, by another writer or an agent. A clean editor reopens on
   // the new content; a dirty one keeps its draft, and `save` refuses to write over the newer
-  // version until the editor is clean or the file reopened. The revision check on save will
-  // narrow the remaining race.
+  // version until the editor is clean or the file reopened.
   useEffect(() => {
     if (!opens || source === undefined || source === base) {
       return;
     }
+    const written = writtenRef.current;
     if (base === null) {
-      setOpened({ content: source, truncated: isTruncated });
-    } else if (isOwnWrite(writtenRef.current, entryPath, source)) {
+      setOpened({ content: source, revision, overLimit: false });
+    } else if (isOwnWrite(written, entryPath, source)) {
       // Our own write came back from the cache; the version it raced is overwritten anyway.
-      setOpened({ content: source, truncated: false });
+      setOpened({
+        content: source,
+        revision: written?.revision ?? revision,
+        overLimit: false,
+      });
     } else if (draft.dirty || draft.saving) {
       return;
-    } else if (isTruncated) {
-      // Reopening on cut text would save a cut file; the plain editor takes over.
-      setOpened({ content: base, truncated: true });
+    } else if (exceedsWriteLimit) {
+      // Reopening on content a save could not write back would strand the next edit.
+      setOpened((current) => current && { ...current, overLimit: true });
     } else {
-      setOpened({ content: source, truncated: false });
+      setOpened({ content: source, revision, overLimit: false });
       setVersion((current) => current + 1);
     }
-  }, [opens, source, base, draft.dirty, draft.saving, isTruncated, entryPath]);
+  }, [
+    opens,
+    source,
+    base,
+    revision,
+    draft.dirty,
+    draft.saving,
+    exceedsWriteLimit,
+    entryPath,
+  ]);
 
   const save = async (content: string): Promise<DocumentSaveResult> => {
     // A foreign version arrived while the editor was dirty: the fetched content moved away from
@@ -136,14 +170,23 @@ export function useRichMarkdownEditor({
     if (conflict) {
       return new Err(CONFLICT_MESSAGE);
     }
-    const result = await writeFile(content);
+    const result = await writeFile(content, opened?.revision ?? null);
     if (result.isErr()) {
-      return result;
+      if (result.error.code === "conflict") {
+        // The server saw a newer revision than ours; fetch it so the editor learns of it.
+        void refetch();
+        return new Err(CONFLICT_MESSAGE);
+      }
+      return new Err(result.error.message);
     }
     // Recorded before the cache changes, so the refetch it triggers reads as our own write.
-    writtenRef.current = { path: entryPath, content };
-    await adoptWritten(content);
-    return result;
+    writtenRef.current = {
+      path: entryPath,
+      content,
+      revision: result.value.revision,
+    };
+    await adoptWritten(content, result.value.revision);
+    return new Ok(undefined);
   };
 
   const richEditor =
