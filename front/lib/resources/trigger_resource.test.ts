@@ -1,11 +1,13 @@
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import {
   TriggerAgentNotReadableError,
   TriggerResource,
 } from "@app/lib/resources/trigger_resource";
+import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import * as temporalClient from "@app/temporal/triggers/schedule_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -13,6 +15,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";
 import { Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { describe, expect, it, vi } from "vitest";
@@ -549,6 +552,61 @@ describe("TriggerResource", () => {
 
       mockCreateOrUpdateWorkflow.mockRestore();
       mockDeleteWorkflow.mockRestore();
+    });
+  });
+
+  describe("delete", () => {
+    it("only removes the deleted trigger's webhook request outcomes", async () => {
+      vi.spyOn(temporalClient, "deleteTriggerSchedule").mockResolvedValue(
+        new Ok(undefined)
+      );
+      const { authenticator, workspace, globalSpace } =
+        await createResourceTest({ role: "admin" });
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Test Agent" }
+      );
+      const webhookSourceView = await new WebhookSourceViewFactory(
+        workspace
+      ).create(globalSpace);
+      const deletedTrigger = await TriggerFactory.webhook(authenticator, {
+        agentConfigurationId: agentConfig.sId,
+        webhookSourceViewId: webhookSourceView.id,
+      });
+      const otherTrigger = await TriggerFactory.webhook(authenticator, {
+        agentConfigurationId: agentConfig.sId,
+        webhookSourceViewId: webhookSourceView.id,
+      });
+      const webhookRequest = await WebhookRequestResource.makeNew({
+        workspaceId: workspace.id,
+        webhookSourceId: webhookSourceView.webhookSourceId,
+        status: "processed",
+      });
+      for (const trigger of [deletedTrigger, otherTrigger]) {
+        await webhookRequest.markRelatedTrigger({
+          trigger: trigger.toJSON(),
+          status: "workflow_start_succeeded",
+        });
+      }
+
+      const result = await deletedTrigger.delete(authenticator);
+
+      expect(result.isOk()).toBe(true);
+      await expect(
+        WebhookRequestResource.fetchByModelIdWithAuth(
+          authenticator,
+          webhookRequest.id
+        )
+      ).resolves.not.toBeNull();
+      const remainingOutcomes = await WebhookRequestTriggerModel.findAll({
+        where: {
+          workspaceId: workspace.id,
+          webhookRequestId: webhookRequest.id,
+        },
+      });
+      expect(remainingOutcomes.map((r) => r.triggerId)).toEqual([
+        otherTrigger.id,
+      ]);
     });
   });
 
