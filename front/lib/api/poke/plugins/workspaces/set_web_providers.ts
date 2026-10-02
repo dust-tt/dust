@@ -21,6 +21,7 @@ export const setWebProvidersPlugin = createPlugin({
         values: [
           { label: "Firecrawl", value: "firecrawl" },
           { label: "Exa", value: "exa" },
+          { label: "You.com", value: "you_com" },
         ],
         multiple: false,
       },

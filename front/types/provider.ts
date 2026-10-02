@@ -13,6 +13,7 @@ export type DustManagedCredentialsType = {
   SPIDER_API_KEY?: string;
   SERPER_API_KEY?: string;
   EXA_API_KEY?: string;
+  YDC_API_KEY?: string;
 };
 
 export type CredentialsType = DustManagedCredentialsType & LLMCredentialsType;
