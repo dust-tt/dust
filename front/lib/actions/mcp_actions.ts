@@ -444,6 +444,7 @@ export async function* tryCallMCPTool(
   }
 
   let mcpClient;
+  let toolPromise: ReturnType<Client["callTool"]> | undefined;
   try {
     if (isServerSideMCPToolConfiguration(toolConfiguration)) {
       const connectStarted = performance.now();
@@ -559,10 +560,7 @@ export async function* tryCallMCPTool(
       MCP_NOTIFICATION_EVENT_NAME
     );
 
-    const toolCallController = new AbortController();
-    const abortSignal = signal
-      ? AbortSignal.any([signal, toolCallController.signal])
-      : toolCallController.signal;
+    const abortSignal = signal;
 
     // Subscribe to notifications before calling the tool.
     // Longer term we should use the `onprogress` callback of the `callTool` method. Right now,
@@ -601,7 +599,7 @@ export async function* tryCallMCPTool(
     const callStarted = performance.now();
 
     // Start the tool call in parallel.
-    const toolPromise = tracer.trace(
+    toolPromise = tracer.trace(
       "mcp.tool.call",
       { resource: toolConfiguration.originalName },
       async () =>
@@ -669,8 +667,8 @@ export async function* tryCallMCPTool(
           heartbeatPromise = createHeartbeatPromise();
         } else {
           const iteratorResult = notificationOrDone;
-          if (iteratorResult.done || abortSignal.aborted) {
-            // Notifications ended or the request was cancelled.
+          if (iteratorResult.done) {
+            // The notifications ended prematurely.
             break;
           }
           notificationPromise = notificationStream.next();
@@ -680,12 +678,6 @@ export async function* tryCallMCPTool(
     } finally {
       clearTimeout(heartbeatTimer);
       await notificationStream.return();
-      if (!toolDone) {
-        // Stop the request and join it before propagating a heartbeat failure or
-        // closing the generator. The activity must not leave a tool call running.
-        toolCallController.abort();
-        await Promise.allSettled([toolPromise]);
-      }
     }
 
     let toolCallResult: Awaited<typeof toolPromise>;
@@ -835,6 +827,8 @@ export async function* tryCallMCPTool(
     };
   } finally {
     await mcpClient?.close();
+    // Closing the client rejects a pending request. Join it before leaving the activity.
+    await Promise.allSettled([toolPromise]);
   }
 }
 

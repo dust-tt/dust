@@ -223,7 +223,6 @@ export async function processToolResults(
     toolCallResultContent,
     toolCallResultStructuredContent,
     toolContext,
-    signal,
   }: {
     localLogger: Logger;
     toolCallResultContent: CallToolResult["content"];
@@ -231,7 +230,6 @@ export async function processToolResults(
     // function actions; agent-loop actions only persist the model-facing content blocks.
     toolCallResultStructuredContent?: CallToolResult["structuredContent"];
     toolContext: ToolContext;
-    signal?: AbortSignal;
   }
 ): Promise<{
   outputItems: ToolOutputItemType[];
@@ -242,28 +240,19 @@ export async function processToolResults(
   const { runContext } = toolContext;
   assert(runContext, "processToolResults requires a tool run context.");
   const { toolConfiguration } = runContext;
-  signal?.throwIfAborted();
 
   const timestamp = Date.now();
   const processBlocksStarted = performance.now();
-  const processedContent: ({
+  const cleanContent: {
     content: CallToolResult["content"][number];
     file: FileResource | null;
-  } | null)[] = await concurrentExecutor(
+  }[] = await concurrentExecutor(
     toolCallResultContent,
     async (block, idx) => {
-      // Skip queued blocks, then let the executor join the blocks already in flight
-      // before propagating cancellation below.
-      if (signal?.aborted) {
-        return null;
-      }
       const res = await persistToolOutput(auth, runContext, block, {
         toolName: toolConfiguration.name,
         serverName: toolConfiguration.mcpServerName,
       });
-      if (signal?.aborted) {
-        return null;
-      }
       if (res.isErr()) {
         return {
           content: {
@@ -341,9 +330,6 @@ export async function processToolResults(
               auth,
               block.resource.fileId
             );
-            if (signal?.aborted) {
-              return null;
-            }
             const conversation = isAgentLoopRunContext(runContext)
               ? runContext.conversation
               : null;
@@ -523,8 +509,6 @@ export async function processToolResults(
       concurrency: 10,
     }
   );
-  signal?.throwIfAborted();
-  const cleanContent = removeNulls(processedContent);
   recordMcpProcessBlocksMs(roundMs(processBlocksStarted));
 
   const generatedFiles: ActionGeneratedFileType[] = removeNulls(

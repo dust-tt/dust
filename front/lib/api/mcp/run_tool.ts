@@ -18,7 +18,6 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/events";
 import { getExitOrPauseEvents } from "@app/lib/actions/mcp_internal_actions/exit_events";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
-import { classifyToolAbortSignal } from "@app/lib/actions/tool_interruptions";
 import type { ToolContext, ToolOutputItemType } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { handleMCPActionError } from "@app/lib/api/mcp/error";
@@ -121,10 +120,6 @@ export async function* runToolWithStreaming(
     signal,
   });
 
-  if (classifyToolAbortSignal(signal) === "user_cancellation") {
-    signal?.throwIfAborted();
-  }
-
   // Err here means an exception ahead of calling the tool, like a connection error, an input
   // validation error, or any other kind of error from MCP, but not a tool error, which are returned
   // as content.
@@ -142,27 +137,23 @@ export async function* runToolWithStreaming(
   // Tool result processing can legitimately take up to 5 minutes when processing files,
   // so heartbeat while this scoped post-processing phase is running.
   try {
-    signal?.throwIfAborted();
     const { outputItems, generatedFiles, awaitDurablePersist } =
       await withPeriodicHeartbeat(
-        (processingSignal) =>
+        () =>
           processToolResults(auth, {
             localLogger,
             toolCallResultContent: toolCallResult.content,
             toolCallResultStructuredContent: toolCallResult.structuredContent,
             toolContext,
-            signal: processingSignal,
           }),
         {
           intervalMs: TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS,
-          signal,
           heartbeatFn: async () => {
             await heartbeat();
             localLogger.info("MCP tool result processing heartbeat");
           },
         }
       );
-    signal?.throwIfAborted();
 
     // Parse the output resources to check if we find special events that require the agent loop to pause.
     // This could be an authentication, validation, or unconditional exit from the action.
@@ -172,7 +163,6 @@ export async function* runToolWithStreaming(
       toolContext,
     });
     recordMcpPauseEventsMs(roundMs(pauseEventsStarted));
-    signal?.throwIfAborted();
 
     if (agentPauseEvents.length > 0) {
       // Durable GCS may still be in flight from createOutputItems; finish before exiting.
@@ -184,7 +174,6 @@ export async function* runToolWithStreaming(
         );
       }
       for (const event of agentPauseEvents) {
-        signal?.throwIfAborted();
         yield event;
       }
       return;
@@ -194,7 +183,6 @@ export async function* runToolWithStreaming(
     const markSucceededStarted = performance.now();
     await action.markAsSucceeded({ executionDurationMs: endDate - startDate });
     recordMcpMarkSucceededMs(roundMs(markSucceededStarted));
-    signal?.throwIfAborted();
 
     yield {
       type: "tool_success",

@@ -101,51 +101,33 @@ export async function withRetry<T>(
 }
 
 export async function withPeriodicHeartbeat<T>(
-  fn: (signal: AbortSignal) => Promise<T>,
+  fn: () => Promise<T>,
   {
     intervalMs,
     heartbeatFn,
-    signal,
   }: {
     intervalMs: number;
     heartbeatFn: () => void | Promise<void>;
-    signal?: AbortSignal;
   }
 ): Promise<T> {
-  const heartbeatController = new AbortController();
-  const workSignal = signal
-    ? AbortSignal.any([signal, heartbeatController.signal])
-    : heartbeatController.signal;
   let pendingHeartbeat: Promise<void> | undefined;
-  let interval: NodeJS.Timeout | undefined;
-  const heartbeatFailure = new Promise<never>((_, reject) => {
-    interval = setInterval(() => {
-      if (pendingHeartbeat) {
-        return;
-      }
-      pendingHeartbeat = Promise.resolve().then(heartbeatFn);
-      pendingHeartbeat.then(
-        () => {
-          pendingHeartbeat = undefined;
-        },
-        (error) => {
-          heartbeatController.abort(error);
-          reject(error);
-        }
-      );
-    }, intervalMs);
-  });
-  const work = Promise.resolve().then(() => {
-    workSignal.throwIfAborted();
-    return fn(workSignal);
-  });
+  const heartbeatFailure = Promise.withResolvers<never>();
+  const interval = setInterval(() => {
+    if (pendingHeartbeat) {
+      return;
+    }
+    pendingHeartbeat = Promise.resolve().then(heartbeatFn);
+    pendingHeartbeat.then(() => {
+      pendingHeartbeat = undefined;
+    }, heartbeatFailure.reject);
+  }, intervalMs);
+  const work = Promise.resolve().then(fn);
 
   try {
-    const result = await Promise.race([work, heartbeatFailure]);
+    const result = await Promise.race([work, heartbeatFailure.promise]);
     clearInterval(interval);
     // A heartbeat already in flight must also succeed before we return.
     await pendingHeartbeat;
-    workSignal.throwIfAborted();
     return result;
   } finally {
     clearInterval(interval);
