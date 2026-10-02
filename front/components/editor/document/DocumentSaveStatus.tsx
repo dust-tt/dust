@@ -7,7 +7,12 @@ interface DocumentSaveStatusProps {
   error: string | null;
   autosaveDebounceMs: number;
   onRetry?: () => Promise<void>;
+  /** Rendered at the left of the row, the status staying at the right. */
+  badge?: ReactNode;
 }
+
+export const STATUS_ROW_CLASS_NAME =
+  "mb-6 flex min-h-6 items-center justify-end gap-2.5 text-muted-foreground copy-xs data-[state=error]:text-foreground print:hidden";
 
 type SaveState = "error" | "saving" | "pending" | "saved";
 
@@ -47,16 +52,15 @@ export const DocumentSaveStatus = ({
   error,
   autosaveDebounceMs,
   onRetry,
+  badge,
 }: DocumentSaveStatusProps) => {
   const state = saveState({ dirty, saving, error });
   const { icon, label } = SAVE_STATES[state];
 
   return (
     <>
-      <div
-        className="mb-6 flex min-h-6 items-center justify-end gap-2.5 text-muted-foreground copy-xs data-[state=error]:text-foreground print:hidden"
-        data-state={state}
-      >
+      <div className={STATUS_ROW_CLASS_NAME} data-state={state}>
+        {badge && <span className="mr-auto">{badge}</span>}
         <span
           role="status"
           className="inline-flex items-center gap-1.5"
