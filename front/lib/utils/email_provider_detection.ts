@@ -57,7 +57,7 @@ function isValidExternalDomain(domain: string): boolean {
   return true;
 }
 
-const EMAIL_PROVIDER_TYPES = ["google", "microsoft", "other"] as const;
+export const EMAIL_PROVIDER_TYPES = ["google", "microsoft", "other"] as const;
 export type EmailProviderType = (typeof EMAIL_PROVIDER_TYPES)[number];
 
 export function isEmailProviderType(
