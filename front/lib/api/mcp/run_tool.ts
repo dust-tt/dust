@@ -147,12 +147,15 @@ export async function* runToolWithStreaming(
         }),
       {
         intervalMs: TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS,
-        heartbeatFn: () => {
-          heartbeat({ ignoreCancellations: true });
+        heartbeatFn: async () => {
+          await heartbeat();
           localLogger.info("MCP tool result processing heartbeat");
         },
       }
     );
+
+  // Catch cancellation that arrived between the last periodic heartbeat and processing completion.
+  await heartbeat();
 
   // Parse the output resources to check if we find special events that require the agent loop to pause.
   // This could be an authentication, validation, or unconditional exit from the action.

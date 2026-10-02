@@ -107,15 +107,18 @@ export async function withPeriodicHeartbeat<T>(
     heartbeatFn,
   }: {
     intervalMs: number;
-    heartbeatFn: () => void;
+    heartbeatFn: () => void | Promise<void>;
   }
 ): Promise<T> {
-  const interval = setInterval(() => {
-    heartbeatFn();
-  }, intervalMs);
+  let interval: NodeJS.Timeout | undefined;
+  const heartbeatFailure = new Promise<never>((_resolve, reject) => {
+    interval = setInterval(() => {
+      Promise.resolve().then(heartbeatFn).catch(reject);
+    }, intervalMs);
+  });
 
   try {
-    return await fn();
+    return await Promise.race([fn(), heartbeatFailure]);
   } finally {
     clearInterval(interval);
   }

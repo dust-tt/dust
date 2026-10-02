@@ -146,12 +146,8 @@ export async function checkRunningUpsertWorkflows({
 }
 
 // This function allows to heartbeat back to the temporal workflow, but also
-// awaits a temporal sleep(0) to check cancellation unless the caller handles it separately.
-export async function heartbeat({
-  ignoreCancellations = false,
-}: {
-  ignoreCancellations?: boolean;
-} = {}) {
+// awaits a temporal sleep(0), which allows to throw an exception if the activity should be cancelled.
+export async function heartbeat() {
   try {
     Context.current();
   } catch (_error) {
@@ -161,7 +157,5 @@ export async function heartbeat({
     return;
   }
   Context.current().heartbeat();
-  if (!ignoreCancellations) {
-    await Context.current().sleep(0);
-  }
+  await Context.current().sleep(0);
 }
