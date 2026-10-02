@@ -669,8 +669,8 @@ export async function* tryCallMCPTool(
           heartbeatPromise = createHeartbeatPromise();
         } else {
           const iteratorResult = notificationOrDone;
-          if (iteratorResult.done) {
-            // The notifications ended prematurely.
+          if (iteratorResult.done || abortSignal.aborted) {
+            // Notifications ended or the request was cancelled.
             break;
           }
           notificationPromise = notificationStream.next();
