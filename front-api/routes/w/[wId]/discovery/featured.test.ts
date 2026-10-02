@@ -1,6 +1,7 @@
 import { DiscoveryItemResource } from "@app/lib/resources/discovery_item_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
@@ -38,6 +39,58 @@ describe("GET /api/w/:wId/discovery/featured", () => {
             name: "Featured agent",
             description: expect.any(String),
             pictureUrl: expect.any(String),
+          },
+        },
+      ],
+    });
+  });
+  it("returns skill authors and omits unpublished skills outside the viewer's editor group", async () => {
+    const { auth, workspace, globalGroup } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const published = await SkillFactory.create(auth, {
+      name: "Featured skill",
+      addCurrentUserAsEditor: true,
+    });
+    const unpublished = await SkillFactory.create(auth, {
+      name: "Unpublished skill",
+      availability: "editors",
+      addCurrentUserAsEditor: false,
+    });
+    expect(auth.can("read", unpublished)).toBe(true);
+    expect(auth.can("write", unpublished)).toBe(false);
+    const publishedPin = await DiscoveryItemResource.setPinnedForGroup(auth, {
+      groupModelId: globalGroup.id,
+      item: { type: "skill", itemId: published.sId, position: 0 },
+    });
+    const unpublishedPin = await DiscoveryItemResource.setPinnedForGroup(auth, {
+      groupModelId: globalGroup.id,
+      item: { type: "skill", itemId: unpublished.sId, position: 1 },
+    });
+    if (publishedPin.isErr()) {
+      throw publishedPin.error;
+    }
+    if (unpublishedPin.isErr()) {
+      throw unpublishedPin.error;
+    }
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/discovery/featured`
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      items: [
+        {
+          type: "skill",
+          pin: { groupId: globalGroup.sId, position: 0 },
+          target: {
+            sId: published.sId,
+            name: published.name,
+            description: published.userFacingDescription,
+            icon: published.icon,
+            authors: [auth.getNonNullableUser().fullName()],
+            isDustProvided: false,
           },
         },
       ],
