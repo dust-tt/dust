@@ -2529,7 +2529,11 @@ export async function checkMessagesLimit(
         });
       }
     }
-  } else if (user && !isFreeOrigin(context.origin)) {
+  } else if (
+    user &&
+    !isFreeOrigin(context.origin) &&
+    !isProgrammaticUsage(auth, { userMessageOrigin: context.origin })
+  ) {
     // Non-credit-priced plans: no workspace pool and no Metronome per-user cap,
     // so the per-user credit limit is enforced solely from the Redis fixed-window
     // counter, bucketed on the UTC calendar month. Admin-set (poke) workspace

@@ -94,6 +94,13 @@ export function computeAgentMessageCredits({
  * Metronome events. Tagging is idempotent (same runIds → same runKey), so it stays overwrite-safe
  * across Temporal retries.
  */
+/**
+ * @cc [owner:tdraier,label:product] programmatic-usage-not-user-attributed
+ * When the triggering message is programmatic (`isProgrammaticUsage` on its origin), its cost MUST
+ * NOT be recorded in the user's fair-use AWU counter, per-user spend-cap counter or free-seat
+ * lifetime counter, even when `auth` carries a user. It is recorded in the programmatic counters
+ * only.
+ */
 export async function computeAndStoreAgentMessageCredits(
   auth: Authenticator,
   {
@@ -190,7 +197,10 @@ export async function computeAndStoreAgentMessageCredits(
   const recordedCostDelta =
     costCredits !== null ? costCredits - (previousCostCredits ?? 0) : 0;
 
-  const user = auth.user();
+  const isProgrammatic = isProgrammaticUsage(auth, {
+    userMessageOrigin: messageOrigin,
+  });
+  const user = isProgrammatic ? null : auth.user();
   const plan = auth.plan();
   const assistantLimits = plan?.limits.assistant;
 
@@ -336,7 +346,7 @@ export async function computeAndStoreAgentMessageCredits(
     }
 
     // Workspace programmatic cap, for programmatic calls.
-    if (isProgrammaticUsage(auth, { userMessageOrigin: messageOrigin })) {
+    if (isProgrammatic) {
       await recordProgrammaticSpendLimitUsage(auth, {
         incrementBy: recordedCostDelta,
       });
