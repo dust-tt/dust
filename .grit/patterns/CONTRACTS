@@ -1,0 +1,4 @@
+@cc [owner:aubin-tchoi,label:performance] prefilters-preserve-diagnostics
+Source-text prefilters MUST retain every file that can match the structural pattern,
+including escaped spellings. They MUST preserve diagnostics for multiple violations
+in one file and existing Biome suppressions.

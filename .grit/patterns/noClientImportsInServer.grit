@@ -37,10 +37,14 @@ pattern no_client_import_in_server() {
     }
 }
 
-no_client_import_in_server() as $import where {
-    register_diagnostic(
-        span = $import,
-        message = "This server-side module value-imports client-only code. Move the shared runtime value to a server-safe `@app/lib/...` module, or use `import type` when importing only a type.",
-        severity = "error"
-    )
+// Skip structural matching when the source cannot contain this rule's target.
+file(body = $body) where {
+    $body <: includes "import",
+    $body <: contains bubble no_client_import_in_server() as $import where {
+        register_diagnostic(
+            span = $import,
+            message = "This server-side module value-imports client-only code. Move the shared runtime value to a server-safe `@app/lib/...` module, or use `import type` when importing only a type.",
+            severity = "error"
+        )
+    }
 }

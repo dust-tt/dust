@@ -18,10 +18,17 @@ pattern css_important_string() {
     r"(?:\"[^\"]*(?:!important|[a-z0-9]-[a-z0-9!-]*!)[^\"]*\"|'[^']*(?:!important|[a-z0-9]-[a-z0-9!-]*!)[^']*'|`[^`]*(?:!important|[a-z0-9]-[a-z0-9!-]*!)[^`]*`)"
 }
 
-css_important_string() as $val where {
-    register_diagnostic(
-        span = $val,
-        message = "Avoid `!important` in CSS (CONTRACTS [no-css-important]). Fix the specificity issue instead. Narrow exceptions (third-party overrides, dev tooling) require a justifying comment and a biome.json scoping override.",
-        severity = "error"
-    )
+// Skip structural matching when the source cannot contain this rule's target.
+file(body = $body) where {
+    $body <: includes "!",
+    $body <: contains bubble and {
+        includes "!",
+        css_important_string()
+    } as $val where {
+        register_diagnostic(
+            span = $val,
+            message = "Avoid `!important` in CSS (CONTRACTS [no-css-important]). Fix the specificity issue instead. Narrow exceptions (third-party overrides, dev tooling) require a justifying comment and a biome.json scoping override.",
+            severity = "error"
+        )
+    }
 }

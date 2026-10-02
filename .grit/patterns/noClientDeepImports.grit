@@ -13,10 +13,15 @@ pattern client_deep_import() {
     }
 }
 
-client_deep_import() as $source where {
-    register_diagnostic(
-        span = $source,
-        message = "Deep imports from '@dust-tt/client/*' are not allowed. Import from '@dust-tt/client' instead.",
-        severity = "error"
-    )
+// Skip structural matching when the source cannot contain this rule's target.
+// Keep backslashes as candidates so escaped spellings are still checked.
+file(body = $body) where {
+    $body <: or { includes "@dust-tt/client/", includes "\\" },
+    $body <: contains bubble client_deep_import() as $source where {
+        register_diagnostic(
+            span = $source,
+            message = "Deep imports from '@dust-tt/client/*' are not allowed. Import from '@dust-tt/client' instead.",
+            severity = "error"
+        )
+    }
 }
