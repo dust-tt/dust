@@ -371,27 +371,27 @@ export function FilePreviewContent({
     case "markdown":
       if (markdownRichEditor) {
         return (
-          <div className="@container min-h-0 flex-1 overflow-y-auto">
-            <div className="mx-auto flex max-w-[50rem] justify-end px-5 pt-3 @sm:px-12">
-              <Tooltip
-                tooltipTriggerAsChild
-                label="This editor for Markdown files is work in progress from the Co-edition initiative. It is only enabled on the Dust workspace while we build it."
-                trigger={
-                  <span>
-                    <Chip
-                      size="mini"
-                      color="info"
-                      label="Co-edition · WIP · Dust only"
-                    />
-                  </span>
-                }
-              />
-            </div>
+          <div className="min-h-0 flex-1 overflow-y-auto">
             <Document
               key={markdownRichEditor.mountKey}
               initialContent={markdownRichEditor.initialContent}
               onSave={markdownRichEditor.onSave}
               onStateChange={markdownRichEditor.onStateChange}
+              badge={
+                <Tooltip
+                  tooltipTriggerAsChild
+                  label="This editor for Markdown files is work in progress from the Co-edition initiative. It is only enabled on the Dust workspace while we build it."
+                  trigger={
+                    <span>
+                      <Chip
+                        size="mini"
+                        color="info"
+                        label="Co-edition · WIP · Dust only"
+                      />
+                    </span>
+                  }
+                />
+              }
             />
           </div>
         );
