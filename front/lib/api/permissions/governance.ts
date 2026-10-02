@@ -16,44 +16,13 @@ import type {
 } from "@app/types/group_permissions";
 import {
   capabilityKey,
-  GOVERNANCE_CAPABILITIES,
+  governanceCapabilitiesForRole,
 } from "@app/types/group_permissions";
 import { isManageableGroupKind } from "@app/types/groups";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
-
-// Capabilities every manager (and admin) can manage.
-const MANAGER_CAPABILITIES: CapabilitySpec[] = [
-  ...GOVERNANCE_CAPABILITIES.agent,
-  ...GOVERNANCE_CAPABILITIES.skill,
-  ...GOVERNANCE_CAPABILITIES.frame,
-  ...GOVERNANCE_CAPABILITIES.trigger,
-];
-
-// Capabilities every admin can manage.
-const ADMIN_CAPABILITIES: CapabilitySpec[] = [
-  ...MANAGER_CAPABILITIES,
-  ...GOVERNANCE_CAPABILITIES.billingAndSecurity,
-];
-
-// The capabilities the caller's role is allowed to see and manage. Admins get everything; business
-// admins get every domain except billing/identity; no other role manages any governance capability.
-function capabilitiesForRole(auth: Authenticator): CapabilitySpec[] {
-  const role = auth.role();
-  switch (role) {
-    case "admin":
-      return ADMIN_CAPABILITIES;
-    case "manager":
-      return MANAGER_CAPABILITIES;
-    case "user":
-    case "none":
-      return [];
-    default:
-      return assertNever(role);
-  }
-}
 
 function toConfiguration(
   state: CapabilityState
@@ -75,7 +44,7 @@ function toConfiguration(
 export async function getWorkspaceGovernancePermissions(
   auth: Authenticator
 ): Promise<GovernancePermissionsByKey> {
-  const capabilities = capabilitiesForRole(auth);
+  const capabilities = governanceCapabilitiesForRole(auth.role());
 
   const stateByKey = await GroupPermissionResource.getCapabilitiesState(
     auth,
@@ -111,7 +80,7 @@ export async function setWorkspaceGovernancePermission(
 > {
   const capability: CapabilitySpec = { grantType, resourceType };
 
-  const canManage = capabilitiesForRole(auth).some(
+  const canManage = governanceCapabilitiesForRole(auth.role()).some(
     (c) => c.grantType === grantType && c.resourceType === resourceType
   );
   if (!canManage) {

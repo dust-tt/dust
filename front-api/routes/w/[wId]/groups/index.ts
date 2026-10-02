@@ -1,5 +1,5 @@
 import { emitGroupMemberAuditLogs } from "@app/lib/api/groups/audit";
-import { getGroupAllowedActions } from "@app/lib/api/groups/management_actions";
+import { getGroupsAllowedActions } from "@app/lib/api/groups/management_actions";
 import { getGroupManagersForGroups } from "@app/lib/api/groups/manager_assignments";
 import {
   hasAnyGroupPermission,
@@ -92,11 +92,15 @@ app.get(
       withManagers === "true" && isGroupManagementEnabled
         ? await getGroupManagersForGroups(auth, groups)
         : null;
-    const groupsById = new Map(groups.map((group) => [group.sId, group]));
+    const allowedActionsByGroup = await getGroupsAllowedActions(
+      auth,
+      groups,
+      isGroupManagementEnabled
+    );
     return ctx.json({
       groups: serializedGroups.map((serialized) => {
-        const group = groupsById.get(serialized.sId);
-        assert(group);
+        const allowedActions = allowedActionsByGroup.get(serialized.sId);
+        assert(allowedActions);
         return {
           ...serialized,
           ...(managersByGroup && {
@@ -104,11 +108,7 @@ app.get(
               ({ sId, fullName, image }) => ({ sId, fullName, image })
             ),
           }),
-          allowedActions: getGroupAllowedActions(
-            auth,
-            group,
-            isGroupManagementEnabled
-          ),
+          allowedActions,
         };
       }),
     });
