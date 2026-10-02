@@ -144,9 +144,11 @@ struct Directory {
 /// @cc [owner:spolu,label:concurrency;security] local-version-state
 /// All aliases and handles for one object MUST serialize mutations and share its expected version.
 /// Cached file pages MUST keep their base version across opens and cache fills. Only this client's
-/// successful mutations may advance it. Writeback errors, conflicts, and ambiguous file mutations
-/// MUST remain sticky across handles until inode reclamation or remount. Queued writes MUST NOT adopt
-/// a new version. Known metadata precondition errors need not poison the file.
+/// successful mutations may advance it. Writeback errors, regular-file mutation conflicts, and
+/// ambiguous file mutations MUST remain sticky across handles until inode reclamation or remount.
+/// Read conflicts MUST fail the read without changing the base version or shared failure state.
+/// Queued writes MUST NOT adopt a new version. Known metadata precondition errors need not poison
+/// the file.
 pub struct Filesystem {
     client: BlockingClient,
     inodes: Mutex<Inodes<SharedObject>>,

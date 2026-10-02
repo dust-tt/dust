@@ -3,11 +3,14 @@ Every filesystem operation MUST derive its workspace and grants from its authent
 Neither matching grants nor knowledge of an object ID MUST permit cross-workspace access.
 
 @cc [owner:spolu,label:security] live-authorization
-Every server read MUST authorize and return data from one consistent SlateDB snapshot. Every server mutation MUST
-validate current authorization through publication. Effective grants are explicit grants on the
-object and its ancestors. Workspace keys alone authorize grant administration and session creation;
-the server key alone authorizes workspace creation. Sessions MUST reject more than 512 distinct grants.
-Expired, closed, and previous-process sessions MUST fail authorization.
+Every server read MUST authorize and return data from one consistent SlateDB snapshot. Every server
+mutation MUST validate current authorization and preserve it against grant changes and session
+closure through publication. Session-authorized mutations MUST recheck session activity immediately
+before invoking SlateDB publication. If that check succeeds, the mutation MAY publish and succeed even
+if the session expires while SlateDB publication waits or executes. Effective grants are
+explicit grants on the object and its ancestors. Workspace keys alone authorize grant administration
+and session creation; the server key alone authorizes workspace creation. Sessions MUST reject more
+than 512 distinct grants. Expired, closed, and previous-process sessions MUST fail authorization checks.
 
 @cc [owner:spolu,label:security] private-projections
 Server-rendered root and /shared MUST expose only authorized entries; cached listings follow
@@ -58,9 +61,10 @@ coherence across aliases; no workspace-wide revision or periodic authorization p
 @cc [owner:spolu,label:concurrency;error-handling] failed-writeback-stays-failed
 Cached file data and queued writes MUST retain their base object version, advancing only for this
 client's successful mutations. A failure MUST NOT refresh the version of pending dirty data. Retain
-the first writeback error, conflict, or ambiguous file mutation across handles and reject subsequent
-mutations while that state lives. Known metadata precondition errors need not poison cached state.
-Recovery requires discarding the failed kernel state, by inode reclamation or remount. Regular-file
+the first writeback error, regular-file mutation conflict, or ambiguous file mutation across handles.
+Reject subsequent mutations while that state lives. Known metadata precondition errors need not poison
+cached state. Read conflicts MUST fail the read without changing the base version or shared failure
+state. Recovery from sticky failures requires inode reclamation or remount. Regular-file
 aliases MUST share one kernel inode. Unlink MUST remove the server object immediately; cached state
 MUST NOT recreate it, and deferred writes MUST report the server's rejection.
 

@@ -38,9 +38,11 @@ python3 -c 'import json; w=json.load(open("workspace.json")); print(json.dumps({
 ```
 
 Set `umask 077` in both terminals. Key files must have mode `0600`. Keep server/workspace keys out
-of sandboxes; give a sandbox only its session key. Session grants are fixed, expire after one hour,
-and are lost on restart. Create a fresh session after restart; workspace keys persist when durable.
-Do not repeat workspace creation for an existing workspace.
+of sandboxes; give a sandbox only its session key. Sessions have fixed grants, expire after one hour,
+and are lost on restart. A mutation that passes its final session check before invoking SlateDB may
+finish successfully even if the session expires while publication waits or executes. Create a fresh
+session after restart; workspace keys persist when durable. Do not repeat workspace creation for an
+existing workspace.
 
 The `dfs` CLI accepts a JSON request on stdin or `--input file`; field names match
 [the protobuf schema](protocol/proto/dfs.proto). Omitted fields take protobuf defaults. Methods
@@ -92,8 +94,10 @@ Local namespace changes invalidate affected kernel entries and directory caches.
 available through the API. Symlinks, hard links, locks, ownership changes, and open-after-unlink
 semantics are deferred. Unlink deletes server state immediately: subsequent RPCs return `ENOENT`,
 including writes through existing handles. Buffered writes may fail later at fsync/close. Conflicts
-return `EAGAIN` (the kernel can translate writeback errors). A failed file remains failed across
-handles until inode reclamation or remount; reopening alone does not recover it. No automatic retries.
+return `EAGAIN` (the kernel can translate writeback errors). Read conflicts fail the read without
+changing the base version or shared failure state. Writeback errors, regular-file mutation conflicts,
+and ambiguous file mutations remain sticky across handles until inode reclamation or remount;
+reopening alone does not recover those failures. No automatic retries.
 
 Run the two-mount integration test from the host after building both platforms:
 

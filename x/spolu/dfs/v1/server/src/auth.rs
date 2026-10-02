@@ -22,6 +22,8 @@ use subtle::ConstantTimeEq;
 use tokio::sync::{Mutex, RwLock};
 use tonic::{Request, Status};
 
+const WORKSPACE_LOCK_PURGE_THRESHOLD: usize = 1024;
+
 pub(crate) fn hash(value: &str) -> [u8; 32] {
     Sha256::digest(value.as_bytes()).into()
 }
@@ -152,12 +154,64 @@ impl State {
         }
         Ok(value)
     }
+    /// @cc [owner:spolu,label:concurrency;performance] workspace-gate-retention
+    /// At 1024 registry entries, lookups MUST prune entries held only by the registry. Callers MUST
+    /// retain the returned Arc while waiting for or holding workspace/file gates. Pruning MUST NOT
+    /// replace a lock set still held by a caller.
     pub(crate) async fn locks(&self, workspace: &str) -> Arc<WorkspaceLocks> {
-        self.locks
-            .lock()
-            .await
-            .entry(workspace.into())
-            .or_default()
-            .clone()
+        let mut locks = self.locks.lock().await;
+        if locks.len() >= WORKSPACE_LOCK_PURGE_THRESHOLD {
+            locks.retain(|_, entry| Arc::strong_count(entry) > 1);
+        }
+        locks.entry(workspace.into()).or_default().clone()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::storage::{CacheConfig, Storage};
+    use slatedb::object_store::memory::InMemory;
+
+    #[tokio::test]
+    async fn workspace_lock_pruning_preserves_active_gates_and_bounds_idle_entries()
+    -> anyhow::Result<()> {
+        let cache = tempfile::tempdir()?;
+        let storage = Storage::open(
+            Arc::new(InMemory::new()),
+            "locks",
+            "test",
+            &CacheConfig {
+                cache_dir: cache.path().to_owned(),
+                cache_memory_mib: 16,
+                cache_disk_gib: 0,
+                max_unflushed_mib: 16,
+            },
+        )
+        .await?;
+        let state = State::new(storage, &"ab".repeat(32))?;
+        let active = state.locks("active").await;
+        let guard = active.topology.write().await;
+        let file_lock = active.file("file").await;
+        let idle = Arc::downgrade(&state.locks("idle").await);
+        assert!(idle.upgrade().is_some());
+
+        let waiting = state.locks("active").await;
+        let mut waiter = std::pin::pin!(waiting.topology.read());
+        assert!(futures::poll!(&mut waiter).is_pending());
+
+        for index in 0..2 * WORKSPACE_LOCK_PURGE_THRESHOLD {
+            drop(state.locks(&format!("workspace-{index}")).await);
+            assert!(state.locks.lock().await.len() <= WORKSPACE_LOCK_PURGE_THRESHOLD);
+        }
+
+        assert!(idle.upgrade().is_none());
+        let retained = state.locks("active").await;
+        assert!(Arc::ptr_eq(&active, &retained));
+        assert!(retained.topology.try_read().is_err());
+        assert!(Arc::ptr_eq(&file_lock, &retained.file("file").await));
+        drop(guard);
+        drop(waiter.await);
+        state.storage.close().await
     }
 }

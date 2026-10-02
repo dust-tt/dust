@@ -95,7 +95,11 @@ WAL/compaction amplification. Measure foreground latency, persistence lag, and t
 2. Authorize and prepare from a SlateDB snapshot while holding those gates through publication.
    Atomic batches alone do not protect a preceding read/version check.
 3. Build one `WriteBatch` containing all changed blocks, metadata, indexes, and object versions.
-4. Await `db.write(batch)`, then return the new object versions. The complete operation is now
+4. Recheck session activity immediately before calling `db.write(batch)`. If this check succeeds,
+   the mutation may finish successfully even if the session expires while SlateDB waits under
+   backpressure or publishes the batch. Session closure and grant changes remain serialized with
+   publication by the held gates.
+5. Await `db.write(batch)`, then return the new object versions. The complete operation is now
    visible in SlateDB memory.
 
 Use `DurabilityLevel::Memory` for live reads through the owner's shared `Db`, including authorization
@@ -155,8 +159,12 @@ ancestor grants at publication even when the target object's version is unchange
 The FUSE client serializes its own mutations per object. Cached file pages retain their base version
 across opens; only this client's successful mutations advance it. Read fills request that version.
 Conflicts return **`EAGAIN`**; kernel writeback can defer or translate the error to `fsync`/close.
-Retain the first writeback error, version conflict, or ambiguous file mutation across all handles and
-reject subsequent mutations. Never refresh and replay stale dirty pages. Recovery requires inode
+Read conflicts fail the read without changing the base version or shared failure state. Later opens
+and fsync may succeed; subsequent mutations still use the retained base version and must pass the
+server's version check.
+Retain the first writeback error, regular-file mutation conflict, or ambiguous file mutation across
+all handles and reject subsequent mutations. Never refresh and replay stale dirty pages.
+Recovery from these sticky failures requires inode
 reclamation or remount; reopening alone does not reset the failure. Directory conflicts can refresh
 before a later caller-initiated mutation because directories have no dirty file pages.
 
