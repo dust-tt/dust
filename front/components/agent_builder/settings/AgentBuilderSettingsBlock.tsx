@@ -11,6 +11,7 @@ interface AgentBuilderSettingsBlockProps {
   initialRequestedSpaceIds?: string[];
   isEditorGateVisible: boolean;
   isAddingSelfAsEditor: boolean;
+  isEditorsListUnavailable: boolean;
   onAddSelfAsEditor: () => void;
 }
 
@@ -19,6 +20,7 @@ export function AgentBuilderSettingsBlock({
   initialRequestedSpaceIds,
   isEditorGateVisible,
   isAddingSelfAsEditor,
+  isEditorsListUnavailable,
   onAddSelfAsEditor,
 }: AgentBuilderSettingsBlockProps) {
   const isCreatingNew = !agentConfigurationId;
@@ -36,6 +38,7 @@ export function AgentBuilderSettingsBlock({
           initialRequestedSpaceIds={initialRequestedSpaceIds}
           isEditorGateVisible={isEditorGateVisible}
           isAddingSelfAsEditor={isAddingSelfAsEditor}
+          isEditorsListUnavailable={isEditorsListUnavailable}
           onAddSelfAsEditor={onAddSelfAsEditor}
         />
         <TagsSection />
