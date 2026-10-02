@@ -9,7 +9,6 @@ import type {
   ConfigurationState,
   SheetState,
 } from "@app/components/agent_builder/skills/types";
-import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { getDefaultMCPAction } from "@app/components/shared/tools_picker/formDefaults";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
@@ -18,7 +17,6 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { nameToStorageFormat } from "@app/lib/actions/default_mcp_action";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   useSearchSkillsInfinite,
   useSkillWithRelations,
@@ -50,21 +48,18 @@ export const useSkillSelection = ({
     setLocalSelectedSkills([]);
   }, []);
 
-  const { skills, isSkillsLoading: isListedSkillsLoading } = useSkillsContext();
-  const { hasFeature } = useFeatureFlags();
-  const useSkillSearch = hasFeature("skills_search");
   const sendNotification = useSendNotification();
   const {
     skills: searchSkills,
     resolvedSearchTerm,
-    isSkillsLoading: isSearchSkillsLoading,
+    isSkillsLoading,
     hasMore,
     loadMore,
   } = useSearchSkillsInfinite({
     owner,
     searchTerm: searchQuery,
     limit: SKILL_SEARCH_PAGE_SIZE,
-    disabled: disabled || !useSkillSearch,
+    disabled,
   });
 
   const selectedSkillIds = useMemo(
@@ -72,27 +67,10 @@ export const useSkillSelection = ({
     [localSelectedSkills]
   );
 
-  const filteredSkills = useMemo(() => {
-    if (useSkillSearch) {
-      return searchSkills.filter(
-        (skill) => !alreadyAddedSkillIds.has(skill.sId)
-      );
-    }
-
-    const notAlreadyAddedSkills = skills.filter(
-      (skill) => !alreadyAddedSkillIds.has(skill.sId)
-    );
-
-    if (!searchQuery.trim()) {
-      return notAlreadyAddedSkills;
-    }
-    const query = searchQuery.toLowerCase();
-    return notAlreadyAddedSkills.filter(
-      (skill) =>
-        skill.name.toLowerCase().includes(query) ||
-        skill.userFacingDescription.toLowerCase().includes(query)
-    );
-  }, [skills, searchSkills, useSkillSearch, searchQuery, alreadyAddedSkillIds]);
+  const filteredSkills = useMemo(
+    () => searchSkills.filter((skill) => !alreadyAddedSkillIds.has(skill.sId)),
+    [searchSkills, alreadyAddedSkillIds]
+  );
 
   const unselectSkill = useCallback((skill: AgentBuilderSkillsType) => {
     setLocalSelectedSkills((prev) =>
@@ -139,14 +117,9 @@ export const useSkillSelection = ({
       setLocalSelectedSkills((previous) =>
         previous.filter((skill) => skill.sId !== skillId)
       );
-    } else if (useSkillSearch) {
+    } else {
       // The form needs the skill's current edit permission, not just listing metadata.
       void fetchSkillWithRelations(skillId, { throwOnError: false });
-    } else {
-      const skill = skills.find((skill) => skill.sId === skillId);
-      if (skill) {
-        addSkill(skill);
-      }
     }
   };
 
@@ -155,20 +128,14 @@ export const useSkillSelection = ({
     unselectSkill,
     handleSkillToggle,
     filteredSkills,
-    isSkillsLoading: useSkillSearch
-      ? isSearchSkillsLoading
-      : isListedSkillsLoading,
+    isSkillsLoading,
     isSelectingSkill,
-    resolvedSearchQuery: useSkillSearch
-      ? (resolvedSearchTerm ?? "")
-      : searchQuery,
-    skillPagination: useSkillSearch
-      ? {
-          hasMore,
-          loadMore,
-          loadedCount: searchSkills.length,
-        }
-      : null,
+    resolvedSearchQuery: resolvedSearchTerm ?? "",
+    skillPagination: {
+      hasMore,
+      loadMore,
+      loadedCount: searchSkills.length,
+    },
     selectedSkillIds,
     resetLocalState,
   };

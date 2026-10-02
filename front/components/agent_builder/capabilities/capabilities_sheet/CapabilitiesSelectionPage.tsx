@@ -7,23 +7,20 @@ import { CapabilityFilterButtons } from "@app/components/shared/tools_picker/Cap
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { CapabilityFilterType } from "@app/components/shared/tools_picker/types";
 import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
-import type {
-  SkillListItemType,
-  SkillWithoutInstructionsAndToolsType,
-} from "@app/types/assistant/skill_configuration";
+import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
 import { SearchInput, Spinner } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
 interface CapabilitiesSelectionPageProps {
   onStateChange: (state: SheetState) => void;
   handleSkillToggle: (skillId: string) => void;
-  filteredSkills: (SkillListItemType | SkillWithoutInstructionsAndToolsType)[];
+  filteredSkills: SkillListItemType[];
   isSelectingSkill: boolean;
   skillPagination: {
     hasMore: boolean;
     loadMore: () => void;
     loadedCount: number;
-  } | null;
+  };
   searchQuery: string;
   resolvedSearchQuery: string;
   selectedSkillIds: Set<string>;
@@ -104,7 +101,7 @@ export function CapabilitiesSelectionPageContent({
         <div className="flex h-40 items-center justify-center">
           <Spinner />
         </div>
-      ) : !hasAnyResults && !(showSkillsSection && skillPagination?.hasMore) ? (
+      ) : !hasAnyResults && !(showSkillsSection && skillPagination.hasMore) ? (
         <div className="flex flex-1 items-center justify-center py-12">
           <div className="px-4 text-center">
             <div className="mb-2 text-lg font-medium text-foreground">
@@ -165,7 +162,7 @@ export function CapabilitiesSelectionPageContent({
               </div>
             </>
           )}
-          {showSkillsSection && skillPagination && (
+          {showSkillsSection && (
             // Recheck after every page, even when all its skills are already added.
             <InfiniteScroll
               key={`${resolvedSearchQuery}:${skillPagination.loadedCount}`}

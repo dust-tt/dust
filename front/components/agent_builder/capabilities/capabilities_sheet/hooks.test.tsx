@@ -1,46 +1,26 @@
 import { useSkillSelection } from "@app/components/agent_builder/capabilities/capabilities_sheet/hooks";
-import { SkillsProvider } from "@app/components/shared/skills/SkillsContext";
 import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import type { FetcherWithBodyFn } from "@app/lib/swr/fetcher";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { SWRConfig } from "swr";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-const feature = vi.hoisted(() => ({ enabled: true }));
-vi.mock(import("@app/lib/auth/AuthContext"), () => ({
-  useFeatureFlags: () => ({
-    featureFlags: [],
-    hasFeature: () => feature.enabled,
-  }),
-}));
+import { describe, expect, it, vi } from "vitest";
 
 const owner = LightWorkspaceFactory.build();
-const legacySkill = {
-  sId: "legacy",
-  name: "Legacy skill",
-  userFacingDescription: "",
-  icon: null,
-  availability: "workspace_users",
-  editedBy: 1,
-  canWrite: true,
-};
 
 function renderSelection(alreadyAddedSkillIds = new Set<string>()) {
-  const fetcher = vi.fn(async (url: string) => {
-    if (url.includes("?withRelations=true")) {
-      return {
-        skill: {
-          ...legacySkill,
-          sId: "first",
-          name: "First skill",
-          canWrite: false,
-        },
-      };
-    }
-    return { skills: [legacySkill] };
-  });
+  const fetcher = vi.fn(async () => ({
+    skill: {
+      sId: "first",
+      name: "First skill",
+      userFacingDescription: "",
+      icon: null,
+      availability: "workspace_users",
+      editedBy: 1,
+      canWrite: false,
+    },
+  }));
   const fetcherWithBody = vi.fn<FetcherWithBodyFn>(async ([, body]) => {
     const offset = "offset" in body ? body.offset : 0;
     const query = "query" in body ? body.query : "";
@@ -67,7 +47,7 @@ function renderSelection(alreadyAddedSkillIds = new Set<string>()) {
   const wrapper = ({ children }: { children: ReactNode }) => (
     <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
       <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
-        <SkillsProvider owner={owner}>{children}</SkillsProvider>
+        {children}
       </FetcherProvider>
     </SWRConfig>
   );
@@ -88,10 +68,6 @@ function renderSelection(alreadyAddedSkillIds = new Set<string>()) {
 }
 
 describe("useSkillSelection", () => {
-  beforeEach(() => {
-    feature.enabled = true;
-  });
-
   it("appends pages, keeps selected skills, and reads their current edit permission", async () => {
     const { result, fetcher, fetcherWithBody } = renderSelection();
     await waitFor(() =>
@@ -99,9 +75,7 @@ describe("useSkillSelection", () => {
         "first",
       ])
     );
-    expect(fetcher).not.toHaveBeenCalledWith(
-      expect.stringContaining("withRelations")
-    );
+    expect(fetcher).not.toHaveBeenCalled();
 
     act(() => result.current.handleSkillToggle("first"));
     await waitFor(() =>
@@ -113,7 +87,7 @@ describe("useSkillSelection", () => {
       `/api/w/${owner.sId}/skills/first?withRelations=true`
     );
 
-    act(() => result.current.skillPagination?.loadMore());
+    act(() => result.current.skillPagination.loadMore());
     await waitFor(() =>
       expect(result.current.filteredSkills.map((skill) => skill.sId)).toEqual([
         "first",
@@ -128,14 +102,14 @@ describe("useSkillSelection", () => {
     ]);
     act(() => result.current.handleSkillToggle("first"));
     expect(result.current.localSelectedSkills).toEqual([]);
-    act(() => result.current.skillPagination?.loadMore());
+    act(() => result.current.skillPagination.loadMore());
     expect(fetcherWithBody).toHaveBeenCalledTimes(2);
   });
 
   it("keeps the previous results and tool query while searching, then starts at offset zero", async () => {
     const { result, rerender, fetcherWithBody } = renderSelection();
     await waitFor(() => expect(result.current.isSkillsLoading).toBe(false));
-    act(() => result.current.skillPagination?.loadMore());
+    act(() => result.current.skillPagination.loadMore());
     await waitFor(() => expect(result.current.filteredSkills).toHaveLength(2));
 
     rerender({ searchQuery: "ask", disabled: false });
@@ -145,7 +119,7 @@ describe("useSkillSelection", () => {
     ]);
     expect(result.current.resolvedSearchQuery).toBe("");
     expect(result.current.isSkillsLoading).toBe(true);
-    act(() => result.current.skillPagination?.loadMore());
+    act(() => result.current.skillPagination.loadMore());
     expect(fetcherWithBody).toHaveBeenCalledTimes(2);
 
     await waitFor(() =>
@@ -175,36 +149,17 @@ describe("useSkillSelection", () => {
     rerender({ searchQuery: "", disabled: true });
     expect(result.current.isSkillsLoading).toBe(false);
     expect(result.current.filteredSkills).toEqual([]);
-    act(() => result.current.skillPagination?.loadMore());
+    act(() => result.current.skillPagination.loadMore());
     expect(fetcherWithBody).toHaveBeenCalledTimes(1);
 
     rerender({ searchQuery: "", disabled: false });
     await waitFor(() => expect(result.current.isSkillsLoading).toBe(false));
-    act(() => result.current.skillPagination?.loadMore());
+    act(() => result.current.skillPagination.loadMore());
     await waitFor(() =>
       expect(result.current.filteredSkills.map((skill) => skill.sId)).toEqual([
         "second",
       ])
     );
-    expect(result.current.skillPagination?.loadedCount).toBe(2);
-  });
-
-  it("uses the existing context without search or detail fetches when the flag is off", async () => {
-    feature.enabled = false;
-    const { result, fetcher, fetcherWithBody } = renderSelection();
-    await waitFor(() =>
-      expect(result.current.filteredSkills.map((skill) => skill.sId)).toEqual([
-        "legacy",
-      ])
-    );
-    act(() => result.current.handleSkillToggle("legacy"));
-    expect(result.current.localSelectedSkills).toEqual([
-      expect.objectContaining({ sId: "legacy", canWrite: true }),
-    ]);
-    expect(result.current.skillPagination).toBeNull();
-    expect(fetcherWithBody).not.toHaveBeenCalled();
-    expect(fetcher).not.toHaveBeenCalledWith(
-      expect.stringContaining("withRelations")
-    );
+    expect(result.current.skillPagination.loadedCount).toBe(2);
   });
 });
