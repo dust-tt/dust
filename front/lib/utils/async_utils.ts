@@ -107,16 +107,33 @@ export async function withPeriodicHeartbeat<T>(
     heartbeatFn,
   }: {
     intervalMs: number;
-    heartbeatFn: () => void;
+    heartbeatFn: () => void | Promise<void>;
   }
 ): Promise<T> {
-  const interval = setInterval(() => {
-    heartbeatFn();
-  }, intervalMs);
+  let pendingHeartbeat: Promise<void> | undefined;
+  let interval: NodeJS.Timeout | undefined;
+  const heartbeatFailure = new Promise<never>((_, reject) => {
+    interval = setInterval(() => {
+      if (pendingHeartbeat) {
+        return;
+      }
+      pendingHeartbeat = Promise.resolve().then(heartbeatFn);
+      pendingHeartbeat.then(() => {
+        pendingHeartbeat = undefined;
+      }, reject);
+    }, intervalMs);
+  });
+  const work = Promise.resolve().then(fn);
 
   try {
-    return await fn();
+    const result = await Promise.race([work, heartbeatFailure]);
+    clearInterval(interval);
+    // A heartbeat already in flight must also succeed before we return.
+    await pendingHeartbeat;
+    return result;
   } finally {
     clearInterval(interval);
+    // Cancellation cannot stop arbitrary I/O. Join it before leaving the activity.
+    await Promise.allSettled([work, pendingHeartbeat]);
   }
 }
