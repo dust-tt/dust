@@ -1,17 +1,20 @@
 import { contextOriginFilter } from "@app/lib/api/assistant/observability/context_origin";
 import type { Authenticator } from "@app/lib/auth";
 import { FREE_ORIGINS } from "@app/lib/metronome/events";
+import { tz } from "@date-fns/tz";
 import type { estypes } from "@elastic/elasticsearch";
 import { format, startOfDay, subDays } from "date-fns";
-import { fromZonedTime, toZonedTime } from "date-fns-tz";
 
 export function daysToDateRange(
   days: number,
   timezone: string = "UTC"
 ): { startDate: string; endDate: string } {
-  const zonedNow = toZonedTime(new Date(), timezone);
-  const end = format(zonedNow, "yyyy-MM-dd");
-  const start = format(subDays(zonedNow, days - 1), "yyyy-MM-dd");
+  const now = new Date();
+  const end = format(now, "yyyy-MM-dd", { in: tz(timezone) });
+  const start = format(
+    subDays(now, days - 1, { in: tz(timezone) }),
+    "yyyy-MM-dd"
+  );
   return { startDate: start, endDate: end };
 }
 
@@ -23,9 +26,10 @@ export function daysToInstantRange(
   timezone: string = "UTC"
 ): { startDate: string; endDate: string } {
   const now = new Date();
-  const zonedStart = startOfDay(subDays(toZonedTime(now, timezone), days - 1));
+  const zonedStart = startOfDay(subDays(now, days - 1, { in: tz(timezone) }));
   return {
-    startDate: fromZonedTime(zonedStart, timezone).toISOString(),
+    // A zoned date serializes with its own offset; keep the UTC form.
+    startDate: new Date(zonedStart.getTime()).toISOString(),
     endDate: now.toISOString(),
   };
 }

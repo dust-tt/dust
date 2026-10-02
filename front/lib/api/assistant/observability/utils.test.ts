@@ -8,7 +8,6 @@ import {
   differenceInMinutes,
   format,
 } from "date-fns";
-import { toZonedTime } from "date-fns-tz";
 import { describe, expect, it } from "vitest";
 
 describe("buildAgentAnalyticsBaseQuery", () => {
@@ -120,10 +119,7 @@ describe("daysToInstantRange", () => {
       "00:00:00.000"
     );
     expect(
-      differenceInCalendarDays(
-        toZonedTime(endDate, timezone),
-        toZonedTime(startDate, timezone)
-      )
+      differenceInCalendarDays(endDate, startDate, { in: tz(timezone) })
     ).toBe(29);
   });
 

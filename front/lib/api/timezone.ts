@@ -1,9 +1,8 @@
 import logger from "@app/logger/logger";
-import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
-import { fromZonedTime } from "date-fns-tz";
+import { TZDate } from "@date-fns/tz";
 import { z } from "zod";
 
-// Intl throws on a timezone it doesn't recognize, and date-fns-tz relies on Intl
+// Intl throws on a timezone it doesn't recognize, and @date-fns/tz relies on Intl
 // for zone resolution, so a value that passes here is safe to hand to it.
 export function isValidTimezone(timezone: string): boolean {
   try {
@@ -16,10 +15,8 @@ export function isValidTimezone(timezone: string): boolean {
 
 const MINUTES_IN_A_DAY = 1440;
 
-// date-fns-tz's getTimezoneOffset resolves ambiguity by treating `date` as a local wall-clock
-// reading rather than a UTC instant, which is off by the DST delta for an instant that falls
-// in the hour surrounding a transition. Intl's "longOffset" is instant-aware, so it doesn't
-// have that failure mode.
+// Intl's "longOffset" is instant-aware, so an instant in the hour surrounding a DST transition
+// resolves to the offset actually in effect.
 function getUtcOffsetMinutes(timezone: string, instant: Date): number {
   if (!isValidTimezone(timezone)) {
     logger.warn(
@@ -99,14 +96,19 @@ export function dayBoundaryInTimezone(
   if (!parsed) {
     return new Date(NaN);
   }
-  const wallClockMs =
-    Date.UTC(parsed.year, parsed.month - 1, parsed.day + offsetDays) +
-    (boundary === "end" ? ONE_DAY_MS - 1 : 0);
-  // Dropping the trailing "Z" makes date-fns-tz read the string as local to `timezone`.
-  return fromZonedTime(
-    new Date(wallClockMs).toISOString().slice(0, -1),
+  const [h, m, s, ms] = boundary === "end" ? [23, 59, 59, 999] : [0, 0, 0, 0];
+  const zoned = new TZDate(
+    parsed.year,
+    parsed.month - 1,
+    parsed.day + offsetDays,
+    h,
+    m,
+    s,
+    ms,
     timezone
   );
+  // A zoned date serializes with its own offset; keep the UTC form.
+  return new Date(zoned.getTime());
 }
 
 export function dayRangeInTimezone(

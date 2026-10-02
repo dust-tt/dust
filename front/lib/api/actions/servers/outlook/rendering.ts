@@ -2,8 +2,7 @@ import type { OutlookEvent } from "@app/lib/api/actions/servers/outlook/outlook_
 import { isValidTimezone } from "@app/lib/api/timezone";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import { tz } from "@date-fns/tz";
-import { format } from "date-fns";
-import { toDate } from "date-fns-tz";
+import { format, parseISO } from "date-fns";
 
 // Falls back to UTC rather than throwing, so one malformed timezone from an
 // external source doesn't fail the whole event render. Outlook mailbox
@@ -74,11 +73,11 @@ function enrichEventWithDayOfWeek(
   event: OutlookEvent,
   timeZones: EventTimeZones
 ): EnrichedOutlookEvent {
-  const startInstant = toDate(event.start.dateTime, {
-    timeZone: timeZones.startSource,
+  const startInstant = parseISO(event.start.dateTime, {
+    in: tz(timeZones.startSource),
   });
-  const endInstant = toDate(event.end.dateTime, {
-    timeZone: timeZones.endSource,
+  const endInstant = parseISO(event.end.dateTime, {
+    in: tz(timeZones.endSource),
   });
   const startDayOfWeek = format(startInstant, "EEEE", {
     in: tz(timeZones.startTarget),
@@ -197,8 +196,8 @@ export function renderOutlookEvent(
   if (enrichedEvent.start) {
     const start = enrichedEvent.start;
     const targetTz = timeZones.startTarget;
-    const startInstant = toDate(start.dateTime, {
-      timeZone: timeZones.startSource,
+    const startInstant = parseISO(start.dateTime, {
+      in: tz(timeZones.startSource),
     });
 
     if (start.isAllDay) {
@@ -220,7 +219,7 @@ export function renderOutlookEvent(
   if (enrichedEvent.end && !enrichedEvent.isAllDay) {
     const end = enrichedEvent.end;
     const targetTz = timeZones.endTarget;
-    const endInstant = toDate(end.dateTime, { timeZone: timeZones.endSource });
+    const endInstant = parseISO(end.dateTime, { in: tz(timeZones.endSource) });
 
     const timeStr = format(endInstant, "h:mm a", { in: tz(targetTz) });
     const dateStr = format(endInstant, "MMMM d, yyyy", { in: tz(targetTz) });
