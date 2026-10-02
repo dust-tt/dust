@@ -75,6 +75,12 @@ function htmlToPlainText(html: string): string {
  * Converts HTML to markdown. Falls back to plain-text extraction when Turndown's
  * domino parser overflows the stack on deeply nested markup (e.g. long email reply chains).
  */
+/**
+ * @cc [owner:tdraier,label:security;performance] no-throw-on-deep-nesting
+ * MUST NOT throw on arbitrarily deeply nested HTML: a stack overflow (`RangeError`) during
+ * markdown conversion MUST fall back to plain-text extraction of the same HTML. Connectors
+ * converting third-party-authored HTML rely on this to avoid a poison document failing sync.
+ */
 export function htmlToMarkdown(html: string): string {
   try {
     return turndownService.turndown(html);
