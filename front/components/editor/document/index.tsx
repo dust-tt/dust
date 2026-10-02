@@ -21,6 +21,7 @@ export type {
 } from "@app/components/editor/document/types";
 
 const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
+const DEFAULT_EXTERNAL_CHANGE_ANIMATION_MS = 8_000;
 
 /**
  * @cc [owner:PopDaph,label:product] document-ui-fixed
@@ -37,20 +38,22 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
  * content and show that saving is unavailable, without offering a Retry action.
  */
 export const Document = ({
-  initialContent,
+  content,
   className,
   mountPortalContainer,
   readOnly = false,
   autosaveDebounceMs = DEFAULT_AUTOSAVE_DEBOUNCE_MS,
+  externalChangeAnimationMs = DEFAULT_EXTERNAL_CHANGE_ANIMATION_MS,
   onSave,
   onStateChange,
   badge,
 }: DocumentProps) => {
   const { editor, editable, unsupported, dirty, saving, error, save } =
     useDocumentEditor({
-      initialContent,
+      content,
       readOnly,
       autosaveDebounceMs,
+      externalChangeAnimationMs,
       onSave,
       onStateChange,
     });

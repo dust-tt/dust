@@ -1,4 +1,5 @@
 import { DocumentAnchors } from "@app/components/editor/document/DocumentAnchors";
+import { ExternalCursor } from "@app/components/editor/document/ExternalCursor";
 import { cn } from "@dust-tt/sparkle";
 import { Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
@@ -6,6 +7,7 @@ import { StarterKit } from "@tiptap/starter-kit";
 
 export const documentExtensions = [
   DocumentAnchors,
+  ExternalCursor,
   StarterKit.configure({
     heading: {
       HTMLAttributes: {
