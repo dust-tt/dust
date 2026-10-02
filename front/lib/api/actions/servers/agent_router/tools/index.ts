@@ -4,12 +4,14 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { AGENT_ROUTER_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_router/metadata";
 import { getSuggestedAgentsForContent } from "@app/lib/api/assistant/agent_suggestion";
 import apiConfig from "@app/lib/api/config";
-import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
+import {
+  getSystemKeyReentryHeaders,
+  prodAPICredentialsForOwner,
+} from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { Err, Ok } from "@app/types/shared/result";
-import { getHeaderFromUserEmail } from "@app/types/user";
 import { DustAPI } from "@dust-tt/client";
 
 const MAX_INSTRUCTIONS_LENGTH = 1000;
@@ -24,10 +26,7 @@ const handlers: ToolHandlers<typeof AGENT_ROUTER_TOOLS_METADATA> = {
       apiConfig.getDustAPIConfig(),
       {
         ...prodCredentials,
-        extraHeaders: {
-          ...getHeaderFromUserEmail(user?.email),
-          ...getApiKeyNameHeader(auth),
-        },
+        extraHeaders: await getSystemKeyReentryHeaders(auth),
       },
       logger
     );
@@ -70,10 +69,7 @@ const handlers: ToolHandlers<typeof AGENT_ROUTER_TOOLS_METADATA> = {
       apiConfig.getDustAPIConfig(),
       {
         ...prodCredentials,
-        extraHeaders: {
-          ...getHeaderFromUserEmail(user?.email),
-          ...getApiKeyNameHeader(auth),
-        },
+        extraHeaders: await getSystemKeyReentryHeaders(auth),
       },
       logger
     );

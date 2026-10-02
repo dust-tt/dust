@@ -22,12 +22,13 @@ import {
 } from "@app/lib/api/actions/servers/run_dust_app/helpers";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
+import {
+  getSystemKeyReentryHeaders,
+  prodAPICredentialsForOwner,
+} from "@app/lib/auth";
 import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
-import { getHeaderFromRole } from "@app/types/groups";
 import { Err, Ok } from "@app/types/shared/result";
-import { getHeaderFromUserEmail } from "@app/types/user";
 import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
@@ -147,19 +148,13 @@ export default async function createServer(
           auth
         );
 
-        const user = auth.user();
-
         const prodCredentials = await prodAPICredentialsForOwner(owner);
         const apiConfig = config.getDustAPIConfig();
         const api = new DustAPI(
           apiConfig,
           {
             ...prodCredentials,
-            extraHeaders: {
-              ...getHeaderFromUserEmail(user?.email),
-              ...getApiKeyNameHeader(auth),
-              ...getHeaderFromRole(auth.role()), // Keep the user's role for api.runApp call only
-            },
+            extraHeaders: await getSystemKeyReentryHeaders(auth),
           },
           logger,
           apiConfig.nodeEnv === "development" ? "http://localhost:3000" : null

@@ -50,19 +50,20 @@ import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/glo
 import { cancelAgentLoop } from "@app/lib/api/assistant/pubsub";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
+import {
+  getSystemKeyReentryHeaders,
+  prodAPICredentialsForOwner,
+} from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { CitationType } from "@app/types/assistant/conversation";
-import { getHeaderFromRole } from "@app/types/groups";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { getHeaderFromUserEmail } from "@app/types/user";
 import type {
   AgentMessagePublicType,
   ConversationPublicType,
@@ -90,25 +91,6 @@ function canRunChildAgent(auth: Authenticator, agent: AgentResource): boolean {
     default:
       assertNever(agent.status);
   }
-}
-
-/**
- * Headers for the public API calls that create and drive the sub-conversation.
- *
- * We use a system API key to override the user here (not the groups) so that the sub-agent can
- * access the same spaces as the user but also as the sub-agent may rely on personal actions that
- * have to be operated in the name of the user initiating the interaction.
- *
- * The role is forwarded too: the system-key exchange otherwise scopes the sub-conversation down to
- * a plain member, and a sub-agent gated on `managers`/`admins` (e.g. `@analyst`) would then be
- * invisible to it. The exchange caps the forwarded role by the user's own membership.
- */
-function subAgentApiHeaders(auth: Authenticator): Record<string, string> {
-  return {
-    ...getHeaderFromUserEmail(auth.user()?.email),
-    ...getApiKeyNameHeader(auth),
-    ...getHeaderFromRole(auth.role()),
-  };
 }
 
 function makeChildAgentUnavailableError(childAgentName: string): MCPError {
@@ -247,7 +229,10 @@ export const runAgent = async (
     config.getDustAPIConfig(),
     {
       ...prodCredentials,
-      extraHeaders: subAgentApiHeaders(auth),
+      // The sub-agent acts as the user (spaces and personal actions) or, without one, within the
+      // calling key's groups. The role is forwarded so a sub-agent gated on managers/admins stays
+      // reachable; the system-key exchange caps it by the user's own membership.
+      extraHeaders: await getSystemKeyReentryHeaders(auth),
     },
     logger
   );

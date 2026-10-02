@@ -1,3 +1,5 @@
+import { Authenticator, getSystemKeyReentryHeaders } from "@app/lib/auth";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -14,7 +16,7 @@ import { publicApiAuth } from "./public_api_auth";
 function appReportingAuth() {
   const app = createHono<PublicApiCtx>();
   app.use("/:wId", publicApiAuth);
-  app.get("/:wId", (ctx) => {
+  app.get("/:wId", async (ctx) => {
     const auth = ctx.get("auth");
     return ctx.json({
       attributionKeyName: auth.attributionKey()?.name ?? null,
@@ -24,6 +26,7 @@ function appReportingAuth() {
       keyIsSystem: auth.key()?.isSystem ?? null,
       role: auth.role(),
       userId: auth.user()?.sId ?? null,
+      principalGroupModelIds: await auth.listPrincipalGroupModelIds(),
     });
   });
   return app;
@@ -268,5 +271,57 @@ describe("publicApiAuth — x-api-user-email impersonation", () => {
     });
 
     expect(response.status).toBe(401);
+  });
+});
+
+describe("publicApiAuth — system-key re-entry headers", () => {
+  it("keeps a userless regular key's groups and role on the system-key call", async () => {
+    const {
+      workspace,
+      globalGroup,
+      key: regularKey,
+    } = await createPublicApiMockRequest();
+    const restrictedGroup = await GroupFactory.regularManual(
+      workspace,
+      "Restricted"
+    );
+    const systemKey = await KeyFactory.system(globalGroup);
+    const keyAuth = await Authenticator.fromKey(regularKey, workspace.sId);
+
+    const response = await get(appReportingAuth(), {
+      wId: workspace.sId,
+      secret: systemKey.secret,
+      headers: await getSystemKeyReentryHeaders(keyAuth),
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toEqual(
+      expect.objectContaining({ userId: null, role: regularKey.role })
+    );
+    expect(body.principalGroupModelIds).toEqual([globalGroup.id]);
+    expect(body.principalGroupModelIds).not.toContain(restrictedGroup.id);
+  });
+
+  it("acts as the user when the caller has one", async () => {
+    const { workspace, globalGroup } = await createPublicApiMockRequest();
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+    const systemKey = await KeyFactory.system(globalGroup);
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const response = await get(appReportingAuth(), {
+      wId: workspace.sId,
+      secret: systemKey.secret,
+      headers: await getSystemKeyReentryHeaders(userAuth),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(
+      expect.objectContaining({ userId: user.sId, role: "user" })
+    );
   });
 });

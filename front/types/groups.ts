@@ -161,6 +161,20 @@ export function getGroupIdsFromHeaders(
   }
 }
 
+/**
+ * @cc [owner:avervaet,label:security] group-ids-header-never-empty
+ * MUST throw on an empty list: the API reads an empty `X-Dust-Group-Ids` as no group
+ * restriction, which would widen a system-key call instead of scoping it.
+ */
+export function getHeaderFromGroupIds(groupIds: string[]) {
+  if (groupIds.length === 0) {
+    throw new Error("Refusing to send an empty group scope.");
+  }
+  return {
+    [DustGroupIdsHeader]: groupIds.join(","),
+  };
+}
+
 const DustRoleHeader = "X-Dust-Role";
 
 export function getRoleFromHeaders(

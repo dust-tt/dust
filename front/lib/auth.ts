@@ -61,6 +61,7 @@ import type {
 } from "@app/types/group_permissions";
 import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
 import type { GroupKind } from "@app/types/groups";
+import { getHeaderFromGroupIds, getHeaderFromRole } from "@app/types/groups";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
 import type { ProvidersHealth } from "@app/types/provider_credential";
 import type { WithAccessControl } from "@app/types/resource_permissions";
@@ -82,7 +83,13 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types/user";
-import { isAdmin, isManager, isUser, lowestRole } from "@app/types/user";
+import {
+  getHeaderFromUserEmail,
+  isAdmin,
+  isManager,
+  isUser,
+  lowestRole,
+} from "@app/types/user";
 import assert from "assert";
 import { TokenExpiredError } from "jsonwebtoken";
 import type { Transaction } from "sequelize";
@@ -2206,5 +2213,34 @@ export function getApiKeyNameHeader(auth: Authenticator) {
   // extra header values on the wire (see @dust-tt/client baseHeaders).
   return {
     [DustApiKeyNameHeader]: name,
+  };
+}
+
+/**
+ * @cc [owner:avervaet,label:security] system-key-reentry-keeps-caller-scope
+ * Headers for a call that re-enters the public API with the workspace system key on behalf of
+ * `auth`. When `auth` is a key without a user, they MUST carry its principal groups as
+ * `X-Dust-Group-Ids`, so the call holds no group `auth` does not hold. With a user they name the
+ * user by email instead. They always forward `auth`'s role and attribution key name.
+ */
+export async function getSystemKeyReentryHeaders(
+  auth: Authenticator
+): Promise<Record<string, string>> {
+  const user = auth.user();
+  const workspace = auth.getNonNullableWorkspace();
+  const groupScope =
+    !user && auth.isKey()
+      ? getHeaderFromGroupIds(
+          (await auth.listPrincipalGroupModelIds()).map((id) =>
+            GroupResource.modelIdToSId({ id, workspaceId: workspace.id })
+          )
+        )
+      : undefined;
+
+  return {
+    ...getHeaderFromUserEmail(user?.email),
+    ...groupScope,
+    ...getApiKeyNameHeader(auth),
+    ...getHeaderFromRole(auth.role()),
   };
 }
