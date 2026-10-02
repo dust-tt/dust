@@ -35,7 +35,7 @@ export function BillingUpgrade() {
   const buttonProps = isFreePlan
     ? {
         label: "Add seats",
-        href: `/w/${owner.sId}/usage`,
+        href: `/w/${owner.sId}/credits`,
         variant: "highlight" as const,
       }
     : {

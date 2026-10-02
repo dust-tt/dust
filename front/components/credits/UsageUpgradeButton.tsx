@@ -88,7 +88,7 @@ export function UsageUpgradeButton({
 
   function renderTrigger() {
     if (isManager) {
-      const usageHref = `/w/${owner.sId}/usage`;
+      const usageHref = `/w/${owner.sId}/credits`;
 
       if (variant === "button") {
         return (

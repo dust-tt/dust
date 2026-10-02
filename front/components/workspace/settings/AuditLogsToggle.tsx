@@ -34,7 +34,7 @@ export function AuditLogsGovernanceSection({ owner }: AuditLogsToggleProps) {
     >
       <GovernanceSettingRowLayout
         label={AUDIT_LOGS_EMIT_LABEL}
-        description="Whether audit events are emitted to WorkOS and the audit logs section is shown in IT & Security"
+        description="Whether audit events are emitted to WorkOS and the audit logs section is shown in Security"
         action={
           <SliderToggle
             selected={isEnabled}

@@ -1,29 +1,27 @@
-import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
-import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
 import { COMPUTER_NETWORK_SECTION_LABEL } from "@app/components/pages/workspace/developers/computerAdminSearchEntries";
-import { EnvironmentSection } from "@app/components/pages/workspace/developers/sections/EnvironmentSection";
-import { AgentRequestedDomainsSetting } from "@app/components/sandbox/AgentRequestedDomainsSetting";
 import { MultiPodNetworkSection } from "@app/components/sandbox/MultiPodNetworkSection";
 import type { SandboxScopeSelection } from "@app/components/sandbox/SandboxScopeSelector";
 import { SandboxScopeSelector } from "@app/components/sandbox/SandboxScopeSelector";
-import { useComputerAdminAccess } from "@app/hooks/useComputerAdminAccess";
-import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useEgressPolicyPods } from "@app/lib/swr/sandbox";
-import { ContentMessage, InfoCircle, Page } from "@dust-tt/sparkle";
+import { ContentMessage, InfoCircle } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
-export function SandboxPage() {
+interface ComputerNetworkSectionProps {
+  canAdministrateComputer: boolean;
+}
+
+// Network is scope-aware (Workspace and/or Pods), so the scope selector lives
+// with it. Shared by the Security (network tab) and legacy Computer pages.
+export function ComputerNetworkSection({
+  canAdministrateComputer,
+}: ComputerNetworkSectionProps) {
   const owner = useWorkspace();
-  const { isAdmin, isComputerEnabled, canAdministrateComputer } =
-    useComputerAdminAccess();
   const [selection, setSelection] = useState<SandboxScopeSelection>({
     includeWorkspace: true,
     podIds: [],
   });
 
-  // Only Pods with their own policy are offered; a brand-new Pod is configured
-  // from its own settings page, then appears here.
   const { pods, isEgressPolicyPodsLoading, isEgressPolicyPodsError } =
     useEgressPolicyPods({
       owner,
@@ -44,9 +42,7 @@ export function SandboxPage() {
       ? { kind: "pods" as const, podIds: selectedPods.map((pod) => pod.sId) }
       : null;
 
-  // Network is scope-aware (Workspace and/or Pods), so the scope selector lives
-  // with it. Environment variables stay workspace-scoped.
-  const renderNetwork = () => (
+  return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-4">
         <div className="heading-xl text-foreground">
@@ -78,48 +74,5 @@ export function SandboxPage() {
         />
       )}
     </div>
-  );
-
-  const renderBody = () => {
-    if (!isAdmin) {
-      return (
-        <ContentMessage variant="info" icon={InfoCircle} size="lg">
-          Only workspace admins can manage Computer settings.
-        </ContentMessage>
-      );
-    }
-    if (!isComputerEnabled) {
-      return (
-        <ContentMessage variant="info" icon={InfoCircle} size="lg">
-          Computer administration is not enabled for this workspace.
-        </ContentMessage>
-      );
-    }
-
-    return (
-      <>
-        <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.computer.agentDomains}>
-          <AgentRequestedDomainsSetting />
-        </AdminSectionAnchor>
-        <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.computer.network}>
-          {renderNetwork()}
-        </AdminSectionAnchor>
-        <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.computer.environment}>
-          <EnvironmentSection />
-        </AdminSectionAnchor>
-      </>
-    );
-  };
-
-  return (
-    <AdminPageContainer>
-      <Page.Vertical gap="xl" align="stretch">
-        <Page.Header
-          title="Computer"
-          description="Configure workspace and Pod network access and environment variables for the Computer."
-        />
-        {renderBody()}
-      </Page.Vertical>
-    </AdminPageContainer>
   );
 }

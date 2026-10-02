@@ -110,6 +110,8 @@ function DomainAutoJoinModal({
   );
 }
 
+export const AUTO_JOIN_WORKSPACE_LABEL = "Auto-join Workspace";
+
 type AutoJoinToggleProps = {
   domains: Organization["domains"];
   workspaceVerifiedDomains: WorkspaceDomain[];
@@ -168,7 +170,7 @@ export function AutoJoinToggle({
         <div className="flex w-full flex-row items-center gap-2">
           <div className="flex-1">
             <div className="flex flex-row items-center gap-2">
-              <Page.H variant="h5">Auto-join Workspace</Page.H>
+              <Page.H variant="h5">{AUTO_JOIN_WORKSPACE_LABEL}</Page.H>
             </div>
             <Page.P variant="secondary">
               Allow your team members to access your Dust workspace when they

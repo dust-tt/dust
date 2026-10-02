@@ -212,7 +212,7 @@ function getLimitPromptForCode(
     case "credits_exhausted":
     case "pool_credits_exhausted": {
       const creditsManagementHref = isCreditPricedPlan(subscription.plan)
-        ? `/w/${owner.sId}/usage`
+        ? `/w/${owner.sId}/credits`
         : `/w/${owner.sId}/developers/credits-usage`;
       return {
         title: "Workspace out of credits",
@@ -240,7 +240,7 @@ function getLimitPromptForCode(
         validateLabel: isAdmin ? "Go to usage page" : "Ok",
         onValidate: isAdmin
           ? () => {
-              void router.push(`/w/${owner.sId}/usage?openChangeMySeat`);
+              void router.push(`/w/${owner.sId}/credits?openChangeMySeat`);
             }
           : undefined,
         children: (
@@ -264,7 +264,7 @@ function getLimitPromptForCode(
         validateLabel: canManageCap ? "Go to Usage" : "Ok",
         onValidate: canManageCap
           ? () => {
-              void router.push(`/w/${owner.sId}/usage?openChangeMySeat`);
+              void router.push(`/w/${owner.sId}/credits?openChangeMySeat`);
             }
           : undefined,
         children: (

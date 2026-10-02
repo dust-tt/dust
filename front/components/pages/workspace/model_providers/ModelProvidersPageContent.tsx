@@ -93,12 +93,12 @@ export function ModelProvidersPageContent({
             allowed tier — set per workspace, group, or member.
           </div>
           <Button
-            label="Manage in Usage"
+            label="Manage in Credits"
             variant="highlight-ghost"
             size="sm"
             iconRight={ArrowRight}
             onClick={() => {
-              void router.push(`/w/${workspace.sId}/usage`);
+              void router.push(`/w/${workspace.sId}/models?tab=tiers`);
             }}
           />
         </div>

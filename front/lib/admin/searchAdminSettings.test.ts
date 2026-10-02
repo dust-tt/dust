@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 const INDEX: AdminSettingEntry[] = [
   {
     label: "Single Sign-On (SSO)",
-    pageId: "identity_and_provisioning",
+    pageId: "security",
     sectionId: "sso",
     keywords: "workos saml oidc",
   },
@@ -24,7 +24,7 @@ const INDEX: AdminSettingEntry[] = [
 ];
 
 const pageLabel = (id: string) =>
-  id === "governance" ? "Settings & Governance" : "IT & Security";
+  id === "governance" ? "Governance" : "Security";
 
 describe("searchAdminSettings", () => {
   it("returns nothing for an empty query", () => {

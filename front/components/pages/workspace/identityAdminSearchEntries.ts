@@ -1,8 +1,13 @@
 import {
+  COMPUTER_ALLOWED_DOMAINS_LABEL,
+  COMPUTER_NETWORK_SECTION_LABEL,
+} from "@app/components/pages/workspace/developers/computerAdminSearchEntries";
+import { AGENT_REQUESTED_DOMAINS_LABEL } from "@app/components/sandbox/AgentRequestedDomainsSetting";
+import {
   AUDIT_LOGS_CONFIGURE_EXPORT_LABEL,
   AUDIT_LOGS_VIEW_LABEL,
 } from "@app/components/workspace/AuditLogsSection";
-import { DIRECTORY_SYNC_LABEL } from "@app/components/workspace/DirectorySync";
+import { AUDIT_LOGS_EMIT_LABEL } from "@app/components/workspace/settings/AuditLogsToggle";
 import {
   ENFORCE_SSO_LABEL,
   SSO_HEADING_LABEL,
@@ -16,26 +21,72 @@ import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 
 const I = ADMIN_SECTION_IDS.identity;
-const PAGE = "identity_and_provisioning" as const;
+const C = ADMIN_SECTION_IDS.computer;
+const G = ADMIN_SECTION_IDS.governance;
+const PAGE = "security" as const;
 
 /**
- * Search entries for IT & Security. Labels come from the same UI constants the
- * page renders; keep this next to the identity page when moving settings.
+ * Search entries for Security. Domains & SSO, Network (from Computer), and
+ * Audit Logs. Provisioning and Auto-join live under Members.
  */
 export const IDENTITY_SEARCH_ENTRIES: AdminSettingEntry[] = [
-  ...adminSearchEntries(PAGE, I.domain, [
-    [DOMAIN_VERIFICATION_TITLE, "verified domains domain status"],
-    [ADD_DOMAIN_LABEL, "verify company domain"],
-  ]),
-  ...adminSearchEntries(PAGE, I.sso, [
-    [SSO_HEADING_LABEL, "workos google oidc saml idp configure de-activate"],
-    [ENFORCE_SSO_LABEL, "disable social logins"],
-  ]),
-  ...adminSearchEntries(PAGE, I.provisioning, [
-    [DIRECTORY_SYNC_LABEL, "gsuite google workspace scim workos provisioning"],
-  ]),
-  ...adminSearchEntries(PAGE, I.auditLogs, [
-    [AUDIT_LOGS_VIEW_LABEL, "workspace activity logs audit"],
-    [AUDIT_LOGS_CONFIGURE_EXPORT_LABEL, "siem export audit"],
-  ]),
+  ...adminSearchEntries(
+    PAGE,
+    I.domain,
+    [
+      [DOMAIN_VERIFICATION_TITLE, "verified domains domain status"],
+      [ADD_DOMAIN_LABEL, "verify company domain"],
+    ],
+    "identity"
+  ),
+  ...adminSearchEntries(
+    PAGE,
+    I.sso,
+    [
+      [SSO_HEADING_LABEL, "workos google oidc saml idp configure de-activate"],
+      [ENFORCE_SSO_LABEL, "disable social logins"],
+    ],
+    "identity"
+  ),
+  ...adminSearchEntries(
+    PAGE,
+    C.agentDomains,
+    [
+      [
+        AGENT_REQUESTED_DOMAINS_LABEL,
+        "computer sandbox approval per domain egress",
+      ],
+    ],
+    "network"
+  ),
+  ...adminSearchEntries(
+    PAGE,
+    C.network,
+    [
+      [
+        COMPUTER_NETWORK_SECTION_LABEL,
+        "network allowlist workspace pod egress computer",
+      ],
+      [
+        COMPUTER_ALLOWED_DOMAINS_LABEL,
+        "network allowlist wildcard exact domain workspace pod egress computer",
+      ],
+    ],
+    "network"
+  ),
+  ...adminSearchEntries(
+    PAGE,
+    I.auditLogs,
+    [
+      [AUDIT_LOGS_VIEW_LABEL, "workspace activity logs audit"],
+      [AUDIT_LOGS_CONFIGURE_EXPORT_LABEL, "siem export audit"],
+    ],
+    "audit"
+  ),
+  ...adminSearchEntries(
+    PAGE,
+    G.audit,
+    [[AUDIT_LOGS_EMIT_LABEL, "emit audit events workos"]],
+    "audit"
+  ),
 ];
