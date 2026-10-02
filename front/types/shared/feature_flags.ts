@@ -468,6 +468,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "adrsimon",
   },
+  legacy_api_key_email_attribution: {
+    description:
+      "Keep attributing messages posted with a regular API key to the member named in context.email (their history and spend cap). Lets any key holder post as any member: only for integrations that cannot move to per-user auth yet.",
+    stage: "ask_owner",
+    owner: "avervaet",
+  },
   message_export_from_consumption_index: {
     description:
       "Use the consumption analytics ES index instead of the message analytics index for message exports.",

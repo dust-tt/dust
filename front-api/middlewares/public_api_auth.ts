@@ -98,6 +98,12 @@ function applyClientIp(auth: Authenticator, headers: HeaderRecord): void {
  * sandbox token, OAuth bearer, or API key) and stashes the resolved
  * `Authenticator` on the Hono context under `auth`.
  */
+/**
+ * @cc [owner:avervaet,label:security;api] user-email-miss-fails-closed
+ * When a system-key request names a user in `x-api-user-email` and no single active member
+ * matches, the request MUST NOT keep the system key's default authority: with `X-Dust-Group-Ids`
+ * it continues scoped to those groups with the `user` role, without them it is rejected with 401.
+ */
 export const publicApiAuth = createMiddleware<PublicApiCtx>(
   async (ctx, next) => {
     const wId = ctx.req.param("wId");
@@ -176,11 +182,12 @@ export const publicApiAuth = createMiddleware<PublicApiCtx>(
       return apiError(ctx, keyRes.error);
     }
     const requestedRole = getRoleFromHeaders(headers);
+    const requestedGroupIds = getGroupIdsFromHeaders(headers);
 
     let workspaceAuth = await Authenticator.fromKey(
       keyRes.value,
       wId,
-      getGroupIdsFromHeaders(headers),
+      requestedGroupIds,
       requestedRole
     );
 
@@ -202,14 +209,34 @@ export const publicApiAuth = createMiddleware<PublicApiCtx>(
     // x-api-user-email: system-key-only impersonation.
     const userEmailFromHeader = getUserEmailFromHeaders(headers);
     if (userEmailFromHeader) {
-      workspaceAuth =
-        (await workspaceAuth.exchangeSystemKeyForUserAuthByEmail(
-          workspaceAuth,
-          {
-            userEmail: userEmailFromHeader,
-            requestedRole,
-          }
-        )) ?? workspaceAuth;
+      const userAuth = await workspaceAuth.exchangeSystemKeyForUserAuthByEmail(
+        workspaceAuth,
+        {
+          userEmail: userEmailFromHeader,
+          requestedRole,
+        }
+      );
+      if (userAuth) {
+        workspaceAuth = userAuth;
+      } else if (requestedGroupIds) {
+        // No member to act as (e.g. an external user on a whitelisted Slack domain): keep the
+        // requested group scope, without the system key's admin role.
+        workspaceAuth = await Authenticator.fromKey(
+          keyRes.value,
+          wId,
+          requestedGroupIds,
+          "user"
+        );
+      } else {
+        return apiError(ctx, {
+          status_code: 401,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "The requested user is not an active member of the workspace.",
+          },
+        });
+      }
     }
 
     // x-dust-api-key-name: system-key-only usage attribution, see

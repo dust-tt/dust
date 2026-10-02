@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
@@ -320,6 +321,95 @@ describe("POST /api/v1/w/[wId]/assistant/conversations/[cId]/messages", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.message.user).toBeNull();
+  });
+});
+
+describe("POST /api/v1/w/[wId]/assistant/conversations/[cId]/messages, context.email", () => {
+  async function setup({ systemKey }: { systemKey: boolean }) {
+    const { workspace, key } = await createPublicApiMockRequest({
+      method: "POST",
+      systemKey,
+    });
+    const member = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, member, { role: "admin" });
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      member.sId,
+      workspace.sId
+    );
+    const conversation = await ConversationFactory.create(memberAuth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+    return { workspace, key, member, conversation };
+  }
+
+  function messageFrom(email: string) {
+    return {
+      content: "Hello",
+      mentions: [],
+      context: {
+        username: "integration",
+        timezone: "Europe/Paris",
+        origin: "api",
+        email,
+      },
+    };
+  }
+
+  it("does not attribute a regular key's message to the member named in context.email", async () => {
+    const { workspace, key, member, conversation } = await setup({
+      systemKey: false,
+    });
+
+    const response = await postMessage(
+      workspace,
+      conversation.sId,
+      key,
+      messageFrom(member.email)
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.message.user).toBeNull();
+    expect(body.message.context.email).toBe(member.email.toLowerCase());
+  });
+
+  it("attributes a regular key's message by context.email with the legacy flag", async () => {
+    const { workspace, key, member, conversation } = await setup({
+      systemKey: false,
+    });
+    await FeatureFlagResource.enable(
+      workspace,
+      "legacy_api_key_email_attribution"
+    );
+
+    const response = await postMessage(
+      workspace,
+      conversation.sId,
+      key,
+      messageFrom(member.email)
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.message.user?.sId).toBe(member.sId);
+  });
+
+  it("keeps attributing a system key's message by context.email", async () => {
+    const { workspace, key, member, conversation } = await setup({
+      systemKey: true,
+    });
+
+    const response = await postMessage(
+      workspace,
+      conversation.sId,
+      key,
+      messageFrom(member.email)
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.message.user?.sId).toBe(member.sId);
   });
 });
 

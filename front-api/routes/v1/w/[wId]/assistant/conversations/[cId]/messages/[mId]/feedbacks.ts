@@ -2,11 +2,9 @@ import {
   deleteMessageFeedback,
   upsertMessageFeedback,
 } from "@app/lib/api/assistant/feedback";
-import { getActiveUserFromAuthOrEmail } from "@app/lib/api/user";
 import { triggerAgentMessageFeedbackNotification } from "@app/lib/notifications/workflows/agent-message-feedback";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { launchAgentMessageFeedbackWorkflow } from "@app/temporal/analytics_queue/client";
-import { getUserEmailFromHeaders } from "@app/types/user";
 import type { PostMessageFeedbackResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -147,10 +145,7 @@ app.post(
     const auth = ctx.get("auth");
     const { cId: conversationId, mId: messageId } = ctx.req.valid("param");
 
-    const user = await getActiveUserFromAuthOrEmail(
-      auth,
-      getUserEmailFromHeaders(ctx.req.header())
-    );
+    const user = auth.user()?.toJSON() ?? null;
 
     if (!user) {
       return apiError(ctx, {
@@ -241,10 +236,7 @@ app.delete(
     const auth = ctx.get("auth");
     const { cId: conversationId, mId: messageId } = ctx.req.valid("param");
 
-    const user = await getActiveUserFromAuthOrEmail(
-      auth,
-      getUserEmailFromHeaders(ctx.req.header())
-    );
+    const user = auth.user()?.toJSON() ?? null;
 
     if (!user) {
       return apiError(ctx, {

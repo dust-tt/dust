@@ -503,6 +503,14 @@ export function isUserMessageContextValid(
   }
 }
 
+/**
+ * @cc [owner:avervaet,label:security] email-attribution-not-from-regular-keys
+ * When `auth` is a regular (non-system) API key, the posted message MUST NOT be attributed to a
+ * member through `context.email`: it stays without a user (so it is not billed to a member), and
+ * the email is kept only as message context. The `legacy_api_key_email_attribution` feature flag
+ * is the only exception. System keys and authenticators that carry no key keep attributing by
+ * email.
+ */
 export async function postUserMessage(
   auth: Authenticator,
   {
@@ -786,12 +794,17 @@ export async function postUserMessage(
     }
   }
 
-  // TODO(2026-07-31 SEC): this allow spoofing as we trust blindly the user email from the metadata.
   let messageUser = doNotAssociateUser ? null : (user?.toJSON() ?? null);
-  messageUser ??= await attributeUserFromWorkspaceAndEmail(
-    owner,
-    context.email
-  );
+  if (
+    !auth.isKey() ||
+    auth.isSystemKey() ||
+    featureFlags.includes("legacy_api_key_email_attribution")
+  ) {
+    messageUser ??= await attributeUserFromWorkspaceAndEmail(
+      owner,
+      context.email
+    );
+  }
 
   const resolvedUserMentions = await resolveUserMentions(auth, {
     mentions,

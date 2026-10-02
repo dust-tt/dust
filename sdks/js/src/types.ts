@@ -879,6 +879,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "http_client_tool"
   | "index_private_slack_channel"
   | "labs_mcp_actions_dashboard"
+  | "legacy_api_key_email_attribution"
   | "legacy_dust_apps"
   | "legacy_trigger_limits"
   | "message_export_from_consumption_index"

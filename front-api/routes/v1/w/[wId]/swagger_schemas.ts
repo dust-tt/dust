@@ -123,7 +123,7 @@
  *           example: "John Doe"
  *         email:
  *           type: string
- *           description: User's email in the current context
+ *           description: User's email in the current context. Messages posted with a regular API key keep it for display only and are not attributed to the member it names.
  *           example: "john.doe@example.com"
  *         profilePictureUrl:
  *           type: string

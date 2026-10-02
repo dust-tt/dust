@@ -1222,6 +1222,12 @@ export class Authenticator {
    * @param param1
    * @returns
    */
+  /**
+   * @cc [owner:avervaet,label:security] exchange-requires-unique-member
+   * The exchange MUST return `null` unless exactly one user account matching `userEmail` has an
+   * active membership in the workspace. It MUST NOT pick one account among several that share the
+   * email.
+   */
   async exchangeSystemKeyForUserAuthByEmail(
     auth: Authenticator,
     {
@@ -1256,22 +1262,17 @@ export class Authenticator {
     }
 
     // Verify that one of the user has an active membership in the specified workspace.
-    const { memberships: activeMemberships, total } =
+    const { memberships: activeMemberships } =
       await MembershipResource.getActiveMemberships({
         users,
         workspace: owner,
       });
-    // If none of the user has an active membership in the workspace,
-    // simply ignore and return null.
-    if (total === 0) {
+    // No active member, or several accounts sharing the email: there is no single member to act as.
+    if (new Set(activeMemberships.map((m) => m.userId)).size !== 1) {
       return null;
     }
 
-    // Take the oldest active membership.
-    const [activeMembership] = activeMemberships.sort(
-      (a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
-    );
-    // Find the user associated with the active membership.
+    const [activeMembership] = activeMemberships;
     const user = users.find((u) => u.id === activeMembership.userId);
     if (!user) {
       return null;
