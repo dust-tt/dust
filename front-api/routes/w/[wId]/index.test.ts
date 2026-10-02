@@ -20,6 +20,22 @@ function post(workspace: { sId: string }, body: unknown) {
   });
 }
 
+describe("POST /api/w/:wId (WorkOS organization)", () => {
+  it("does not let workspace admins change the WorkOS organization binding", async () => {
+    const { workspace } = await setup();
+
+    const response = await post(workspace, {
+      workOSOrganizationId: "org_from_another_workspace",
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.type).toBe("invalid_request_error");
+
+    const updated = await WorkspaceResource.fetchById(workspace.sId);
+    expect(updated?.workOSOrganizationId).toBe(workspace.workOSOrganizationId);
+  });
+});
+
 describe("POST /api/w/:wId (reinforcement caps)", () => {
   it("updates reinforcementCapAwuCredits in workspace metadata", async () => {
     const { workspace } = await setup();
