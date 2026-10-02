@@ -32,6 +32,9 @@ import React from "react";
 
 import { WorkspaceSection } from "./WorkspaceSection";
 
+export const DOMAIN_VERIFICATION_TITLE = "Domain Verification";
+export const ADD_DOMAIN_LABEL = "Add Domain";
+
 interface WorkspaceAccessPanelProps {
   workspaceVerifiedDomains: WorkspaceDomain[];
   owner: LightWorkspaceType;
@@ -97,7 +100,7 @@ function DomainVerification({
   return (
     <WorkspaceSection
       icon={Globe01}
-      title="Domain Verification"
+      title={DOMAIN_VERIFICATION_TITLE}
       sectionId={ADMIN_SECTION_IDS.identity.domain}
     >
       <Page.P variant="secondary">
@@ -111,7 +114,7 @@ function DomainVerification({
         <EmptyCTA
           action={
             <Button
-              label="Add Domain"
+              label={ADD_DOMAIN_LABEL}
               variant="primary"
               icon={Plus}
               href={addDomainLink}
@@ -242,7 +245,7 @@ function DomainVerificationTable({
       {addDomainLink && (
         <div>
           <Button
-            label="Add Domain"
+            label={ADD_DOMAIN_LABEL}
             variant="primary"
             href={addDomainLink}
             icon={Plus}
