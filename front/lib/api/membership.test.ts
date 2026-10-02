@@ -1,10 +1,16 @@
 import * as workosAudit from "@app/lib/api/audit/workos_audit";
-import { createAndTrackMembership } from "@app/lib/api/membership";
+import {
+  createAndTrackMembership,
+  revokeAndTrackMembership,
+} from "@app/lib/api/membership";
+import { Authenticator } from "@app/lib/auth";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import * as planType from "@app/lib/metronome/plan_type";
 import * as seatTypes from "@app/lib/metronome/seat_types";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { MembershipSeatType } from "@app/types/memberships";
@@ -211,5 +217,55 @@ describe("createAndTrackMembership", () => {
     });
 
     expect(membership.seatType).toBe("none");
+  });
+});
+
+describe("createAndTrackMembership rejoin", () => {
+  it("restores Dust-owned group memberships but not provisioned ones", async () => {
+    setupEntitledSeats(["free", "pro"]);
+    vi.spyOn(ServerSideTracking, "trackRevokeMembership").mockResolvedValue(
+      undefined
+    );
+
+    const workspace = await WorkspaceFactory.basic();
+    const user = await UserFactory.basic();
+    await createAndTrackMembership({
+      user,
+      workspace,
+      role: "user",
+      origin: "provisioned",
+    });
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const autoGroup = await GroupFactory.regularAuto(workspace, "Agent editors");
+    const provisionedGroup = await GroupFactory.provisioned(
+      workspace,
+      "dust-admins"
+    );
+    await provisionedGroup.setGrantedRole(auth, "admin");
+    await GroupFactory.withMembers(auth, autoGroup, [user]);
+    await GroupFactory.withMembers(auth, provisionedGroup, [user]);
+
+    // SCIM deprovisioning: groups are left, then the membership is revoked.
+    await GroupFactory.withRemovedMembers(auth, autoGroup, [user]);
+    await GroupFactory.withRemovedMembers(auth, provisionedGroup, [user]);
+    const revokeResult = await revokeAndTrackMembership(auth, user, {
+      allowLastAdminRevocation: true,
+    });
+    expect(revokeResult.isOk()).toBe(true);
+
+    await createAndTrackMembership({
+      user,
+      workspace,
+      role: "user",
+      origin: "provisioned",
+    });
+
+    const groups = await GroupResource.dangerouslyListAllUserGroupsInWorkspace({
+      auth,
+      user,
+      groupKinds: ["regular_auto", "provisioned"],
+    });
+    expect(groups.map((g) => g.id)).toEqual([autoGroup.id]);
   });
 });

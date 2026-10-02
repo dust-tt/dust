@@ -84,6 +84,12 @@ import { col, fn, Op, QueryTypes } from "sequelize";
 const LAST_GROUP_MEMBER_ERROR_MESSAGE =
   "A group must always keep at least one member. To remove everyone, delete the group instead.";
 
+// Group kinds owned by Dust, whose memberships are restored when a user rejoins a workspace.
+const RESTORABLE_GROUP_KINDS_ON_REJOIN: GroupKind[] = [
+  "regular_auto",
+  "regular_manual",
+];
+
 type CachedGroup = {
   id: ModelId;
   name: string;
@@ -1931,21 +1937,25 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
+   * @cc [owner:fabiencelier,label:security] restore-dust-owned-groups-only
+   * MUST only restore memberships of `regular_auto` and `regular_manual` groups. Memberships of
+   * groups whose system of record is external (`provisioned`, owned by the SCIM directory) MUST
+   * NOT be restored: only the directory may re-grant them.
+   *
    * Restores group memberships for a user that were ended at approximately the
    * same time as a workspace membership revocation. Called when a user rejoins
    * a workspace to preserve their previously-held group memberships (e.g. agent
    * editor access).
    *
    * Only restores memberships that were active (not suspended) and whose `endAt`
-   * falls within `toleranceMs` of `revokedAt`. Skips global and system groups
-   * (membership is implicit). Skips groups that no longer exist or where the
-   * user already has an active membership.
+   * falls within `toleranceMs` of `revokedAt`. Skips groups that no longer exist
+   * or where the user already has an active membership.
    *
    * Returns the number of group memberships restored.
    *
    * Dangerous: deliberately skips the `canRead` check on the groups — it
-   * restores regular_auto memberships together with provisioned and manual
-   * ones, so no per-group check applies.
+   * restores regular_auto memberships together with manual ones, so no
+   * per-group check applies.
    */
   static async dangerouslyRestoreGroupMembershipsRevokedWith({
     user,
@@ -1982,12 +1992,13 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     const groupIds = [...new Set(revokedMemberships.map((m) => m.groupId))];
 
-    // Verify groups still exist and are not global/system (implicit membership).
+    // Verify groups still exist and are owned by Dust. Provisioned memberships are re-granted by
+    // the directory only; global/system membership is implicit.
     const groups = await GroupModel.findAll({
       where: {
         id: { [Op.in]: groupIds },
         workspaceId: workspace.id,
-        kind: { [Op.notIn]: ["global", "system"] },
+        kind: { [Op.in]: RESTORABLE_GROUP_KINDS_ON_REJOIN },
       },
       transaction,
     });
