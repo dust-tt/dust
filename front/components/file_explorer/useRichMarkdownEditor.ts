@@ -2,6 +2,7 @@ import type {
   DocumentDraftState,
   DocumentSaveResult,
 } from "@app/components/editor/document";
+import { Err } from "@app/types/shared/result";
 import { useEffect, useRef, useState } from "react";
 
 /** The rich Document editor takes over the file; the host hides its own edit controls. */
@@ -119,10 +120,10 @@ export function useRichMarkdownEditor({
 
   const save = async (content: string): Promise<DocumentSaveResult> => {
     if (conflict) {
-      return { ok: false, error: CONFLICT_MESSAGE };
+      return new Err(CONFLICT_MESSAGE);
     }
     const result = await writeFile(content);
-    if (!result.ok) {
+    if (result.isErr()) {
       return result;
     }
     // Recorded before the cache changes, so the refetch it triggers reads as our own write.

@@ -113,7 +113,7 @@ describe("useMarkdownFileEditor", () => {
     });
     rerender(revised);
     const refused = await result.current.richEditor?.onSave("# Notes, mine\n");
-    expect(refused?.ok).toBe(false);
+    expect(refused?.isErr()).toBe(true);
 
     // The user undoes the local edit: the editor reports clean and reopens on the new content.
     act(() => {
@@ -128,7 +128,7 @@ describe("useMarkdownFileEditor", () => {
       "# Notes, revised\n"
     );
     const saved = await result.current.richEditor?.onSave("# Notes, again\n");
-    expect(saved).toEqual({ ok: true });
+    expect(saved?.isOk()).toBe(true);
   });
 
   it("lifts the conflict once its own racing save has landed", async () => {
@@ -159,7 +159,7 @@ describe("useMarkdownFileEditor", () => {
     });
 
     const saved = await result.current.richEditor?.onSave("# Notes, more\n");
-    expect(saved).toEqual({ ok: true });
+    expect(saved?.isOk()).toBe(true);
   });
 
   it("keeps a dirty editor open when a foreign write grows the file past the limit", async () => {
@@ -180,7 +180,7 @@ describe("useMarkdownFileEditor", () => {
 
     expect(result.current.richEditor).not.toBeNull();
     const refused = await result.current.richEditor?.onSave("# Notes, mine\n");
-    expect(refused?.ok).toBe(false);
+    expect(refused?.isErr()).toBe(true);
   });
 
   it("hands a clean editor to the plain one when the file grows past the limit", () => {
@@ -222,7 +222,7 @@ describe("useMarkdownFileEditor", () => {
     });
 
     const again = await result.current.richEditor?.onSave("# Notes, more\n");
-    expect(again).toEqual({ ok: true });
+    expect(again?.isOk()).toBe(true);
   });
 
   it("holds navigation while unsaved, and lifts it once a save has failed", () => {
@@ -270,10 +270,9 @@ describe("useMarkdownFileEditor", () => {
     expect(result.current.richEditor?.initialContent).toBe("# Notes\n");
     expect(result.current.isDirty).toBe(true);
     const saved = await result.current.richEditor?.onSave("# Notes, mine");
-    expect(saved).toEqual({
-      ok: false,
-      error: expect.stringContaining("changed while you were editing"),
-    });
+    expect(saved?.isErr() && saved.error).toContain(
+      "changed while you were editing"
+    );
   });
 
   it("does not let the file content decide which editor opens", () => {
