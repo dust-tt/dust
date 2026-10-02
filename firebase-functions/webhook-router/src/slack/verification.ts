@@ -79,6 +79,39 @@ async function parseExpressRequestRawBody(req: Request): Promise<string> {
   return (await rawBody(req)).toString();
 }
 
+function parseSlackTeamIdFromPayload(payload: string): string | undefined {
+  const parsed: unknown = JSON.parse(payload);
+  if (
+    parsed !== null &&
+    typeof parsed === "object" &&
+    "team" in parsed &&
+    parsed.team !== null &&
+    typeof parsed.team === "object" &&
+    "id" in parsed.team &&
+    typeof parsed.team.id === "string"
+  ) {
+    return parsed.team.id;
+  }
+  return undefined;
+}
+
+/**
+ * @cc [owner:tdraier,label:security] signing-team-matches-forwarded-team
+ * The team whose signing secret verifies the request MUST be the team connectors resolves the
+ * connector from: `payload.team.id` when the body carries a `payload` field (interactions),
+ * `team_id` otherwise (events). A body carrying both fields MUST be rejected.
+ */
+function getSlackTeamId(body: Record<string, unknown>): string | undefined {
+  const { payload, team_id: teamId } = body;
+  if (payload !== undefined && teamId !== undefined) {
+    return undefined;
+  }
+  if (typeof payload === "string") {
+    return parseSlackTeamIdFromPayload(payload);
+  }
+  return typeof teamId === "string" ? teamId : undefined;
+}
+
 function isUrlVerification(body: any): boolean {
   return (
     body !== null &&
@@ -109,15 +142,21 @@ export function createSlackVerificationMiddleware(
 
       const rawBody = await parseExpressRequestRawBody(req);
 
+      const isUrlEncoded =
+        req.headers["content-type"] === "application/x-www-form-urlencoded";
+      const bodyFields: Record<string, unknown> = isUrlEncoded
+        ? Object.fromEntries(new URLSearchParams(rawBody))
+        : req.body;
+
       // Functions-framework parses body as json by default, keep raw for interactions.
-      if (req.headers["content-type"] === "application/x-www-form-urlencoded") {
+      if (isUrlEncoded) {
         req.body = rawBody;
       }
 
       let signingSecret: string;
 
       if (useClientCredentials) {
-        teamId = req.body.team_id;
+        teamId = getSlackTeamId(bodyFields);
         if (!teamId) {
           throw new ReceiverAuthenticityError(
             "Slack request signing verification failed. Some data in the payload is invalid."
