@@ -145,11 +145,6 @@ export async function checkRunningUpsertWorkflows({
   return count;
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:error-handling] heartbeat-without-cancellation
- * This function MUST emit a synchronous heartbeat without creating a cancellable promise,
- * and MUST be a no-op outside a Temporal activity.
- */
 export function heartbeatWithoutCancellation(): void {
   let context: Context;
   try {
