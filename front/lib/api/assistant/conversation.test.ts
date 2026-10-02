@@ -2956,6 +2956,90 @@ describe("postUserMessage", () => {
     });
   });
 
+  describe("steering a running agent loop", () => {
+    let runningConversationResource: ConversationResource;
+
+    beforeEach(async () => {
+      // The factory leaves the agent message of each created exchange running.
+      const runningConversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agentConfig1.sId,
+        messagesCreatedAt: [new Date()],
+      });
+      runningConversationResource = await fetchConversationResource(
+        auth,
+        runningConversation.sId
+      );
+      vi.clearAllMocks();
+    });
+
+    const postSteeringMessage = (
+      postingAuth: Authenticator,
+      email: string | null
+    ) =>
+      postUserMessage(postingAuth, {
+        conversationResource: runningConversationResource,
+        content: "Steering message",
+        mentions: [{ configurationId: agentConfig1.sId }],
+        context: {
+          username: "steering-user",
+          timezone: "UTC",
+          fullName: null,
+          email,
+          profilePictureUrl: null,
+          origin: "api",
+        },
+        skipToolsValidation: false,
+      });
+
+    it("steers the running loop with a message from the authenticated user", async () => {
+      const result = await postSteeringMessage(auth, null);
+
+      if (result.isErr()) {
+        throw new Error("Failed to post the steering message");
+      }
+      expect(result.value.userMessage.visibility).toBe("pending");
+      expect(result.value.agentMessages).toHaveLength(0);
+      expect(gracefullyStopAgentLoop).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not steer with a message an API key attributes to a member by email", async () => {
+      const member = auth.getNonNullableUser();
+      const apiKey = await KeyFactory.regular(globalGroup);
+      const apiKeyAuth = await Authenticator.fromKey(apiKey, workspace.sId);
+
+      const result = await postSteeringMessage(apiKeyAuth, member.email);
+
+      if (result.isErr()) {
+        throw new Error("Failed to post the attributed message");
+      }
+      // The message stays attributed to the member, but is answered by its own agent loop run
+      // with the API key's authority rather than promoted as the member.
+      expect(result.value.userMessage.user?.sId).toBe(member.sId);
+      expect(result.value.userMessage.visibility).toBe("visible");
+      expect(result.value.agentMessages).toHaveLength(1);
+      expect(gracefullyStopAgentLoop).not.toHaveBeenCalled();
+      expect(launchAgentLoopWorkflow).toHaveBeenCalledTimes(1);
+      expect(
+        vi.mocked(launchAgentLoopWorkflow).mock.calls[0][0].auth.user()
+      ).toBeNull();
+    });
+
+    it("does not steer with an unattributed message from an API key", async () => {
+      const apiKey = await KeyFactory.regular(globalGroup);
+      const apiKeyAuth = await Authenticator.fromKey(apiKey, workspace.sId);
+
+      const result = await postSteeringMessage(apiKeyAuth, null);
+
+      if (result.isErr()) {
+        throw new Error("Failed to post the API key message");
+      }
+      expect(result.value.userMessage.user).toBeNull();
+      expect(result.value.userMessage.visibility).toBe("visible");
+      expect(result.value.agentMessages).toHaveLength(1);
+      expect(gracefullyStopAgentLoop).not.toHaveBeenCalled();
+    });
+  });
+
   describe("restricted agent in project conversation", () => {
     let projectSpace: Awaited<ReturnType<typeof SpaceFactory.project>>;
     let anotherProjectSpace: Awaited<ReturnType<typeof SpaceFactory.project>>;
