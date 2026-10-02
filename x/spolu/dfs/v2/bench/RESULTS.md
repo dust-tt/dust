@@ -18,6 +18,59 @@ creates a new session and mount** (ten resets). Warm is one repeat on that mount
 and the Docker VM's OS cache are retained; local is the generated corpus on the container filesystem
 and is not guaranteed cold. All 24 rows passed the original workload's result checks.
 
+### dfs v2 [recent commit version]
+
+Builds on the FDB latency settings. First mutation attempts reuse a recent committed snapshot;
+all dependency reads and conflict checks remain live. Rejections and read-only results retry fresh.
+Untar measured **44.301 → 43.066 s** (**2.8% less time**), a small single-run difference.
+Measured server revision `8693ce4c73`; all 24 checks passed with the unchanged client/workload,
+normal durable FDB commits, and ten server/session/mount resets. Phase profiling was disabled.
+
+```text
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 1,792.29  | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 140.43    | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 295.45    | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 16.88     | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 6,692.50  | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 851.70    | OK     |
+| metadata     | stat missing (256 paths)                       | first | 232.40    | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 1.96      | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 5,839.51  | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 219.05    | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 5,832.38  | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 202.12    | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 815.41    | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 35.50     | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 133.59    | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 7.42      | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 14,229.07 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 1,257.12  | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 425.32    | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 16.49     | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 58.24     | OK     |
+| file sync    | fsync (32 files)                               | once  | 32.69     | OK     |
+| write        | close (32 files)                               | once  | 1.14      | OK     |
+| write        | unlink (32 files)                              | once  | 38.84     | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+```
+
+Untar: **43.066 s**. Remaining client `syncfs`: **0.000067 s**
+after untar and **0.000051 s** after the suite. Shutdown: **0.069 s**.
+These drain timings exclude writeback already completed during the workload; there is no remaining
+FDB persistence drain after acknowledgment. Backend/OS caches remain warm; these are single runs.
+
+A separate run through **two server processes in the same workspace** completed and verified
+100 writes (50 × 1 KiB per writer) in **44.08 ms**. It also checked search/workspace
+isolation and shared discovery with 1/2/512 grants. This writer setup differs from the historical
+single-server, different-workspace sample; debug commit logging was enabled only for this separate run.
+
+[Run metadata](commit-version/filesystem.json), [DFS rows](commit-version/dfs.json),
+[local rows](commit-version/local.json), [two-server results](commit-version/workspaces.json),
+[configuration](commit-version/configuration.json), and [per-case RPC counters](commit-version/).
+
 ### dfs v2 [FDB latency tuning]
 
 Read-version/commit batching and short timer waits are tuned as documented in [README](../README.md).

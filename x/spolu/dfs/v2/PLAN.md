@@ -125,7 +125,7 @@ under `bench/`, with the unchanged client/workload and normal durable commits.
 
 - [x] Tune FDB read-version/commit batching and short timer waits; validate independent writers and
       record the full filesystem benchmark, including untar.
-- [ ] Reuse a recent successful commit version for the first mutation attempt; refresh rejected,
+- [x] Reuse a recent successful commit version for the first mutation attempt; refresh rejected,
       conflicting, expired, or read-only attempts. Verify cross-server freshness and record a new run.
 - [ ] Start independent lookup/authorization reads earlier using bounded advisory hints; preserve
       snapshot checks/error ordering, verify deep moves/grants, and record a third full run.
