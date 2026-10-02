@@ -1,5 +1,5 @@
-import { tzOffset } from "@date-fns/tz";
-import { formatInTimeZone } from "date-fns-tz";
+import { tz, tzOffset } from "@date-fns/tz";
+import { format } from "date-fns";
 
 export const DAYS_PER_WEEK = 7;
 export const ONE_MINUTE_MS = 60 * 1000;
@@ -37,7 +37,7 @@ export function formatUTCDateFromMillis(ms: number): string {
  * exports.
  */
 export function formatDateFromMillis(ms: number, timezone: string): string {
-  return formatInTimeZone(ms, timezone, "yyyy-MM-dd");
+  return format(ms, "yyyy-MM-dd", { in: tz(timezone) });
 }
 
 /**

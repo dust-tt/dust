@@ -10,7 +10,8 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
-import { formatInTimeZone } from "date-fns-tz";
+import { tz } from "@date-fns/tz";
+import { format } from "date-fns";
 import { z } from "zod";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -215,14 +216,14 @@ export function resolveTimeWindow(
   const period = input.period ?? defaultPeriod;
   const now = new Date();
   // Today's calendar date as seen in `timezone`; every relative window is anchored on it.
-  const today = formatInTimeZone(now, timezone, "yyyy-MM-dd");
+  const today = format(now, "yyyy-MM-dd", { in: tz(timezone) });
   const [year, month] = today.split("-").map(Number);
   let start: Date;
   let label: string;
   switch (period) {
     case "this_month":
       start = dayBoundaryInTimezone(firstOfMonth(year, month), timezone);
-      label = formatInTimeZone(now, timezone, "MMMM yyyy");
+      label = format(now, "MMMM yyyy", { in: tz(timezone) });
       break;
     case "last_7_days":
       start = dayBoundaryInTimezone(today, timezone, { offsetDays: -6 });
@@ -241,7 +242,7 @@ export function resolveTimeWindow(
         firstOfMonth(year, month - ((month - 1) % 3)),
         timezone
       );
-      label = formatInTimeZone(now, timezone, "'Q'Q yyyy");
+      label = format(now, "'Q'Q yyyy", { in: tz(timezone) });
       break;
     default:
       return assertNever(period);
