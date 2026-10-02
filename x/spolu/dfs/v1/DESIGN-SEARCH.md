@@ -6,16 +6,16 @@ extends [DESIGN.md](DESIGN.md); filesystem writes and fsync retain their existin
 
 ## Architecture
 
-- **dfs-server:** Owns SlateDB, records pending indexing work, and serves search over existing gRPC.
-  It embeds the LanceDB OSS Rust reader and checks session grants against live SlateDB state.
-- **dfs-indexer:** One separate trusted Rust process per shard, consuming work over gRPC. It extracts
-  text and batches LanceDB upserts/deletes. Only dfs-server writes SlateDB; only the indexer writes
-  LanceDB. Initially require one active indexer, without overlapping replacement processes.
+- **One dfs-server process:** Owns SlateDB and embeds LanceDB OSS in Rust. It serves search over
+  existing gRPC and checks session grants against live SlateDB state.
+- **Background indexing task:** Reads pending SlateDB work, extracts text, and batches LanceDB
+  upserts/deletes through internal function calls. Start with one worker, sharing LanceDB table
+  handles with search. Bound its CPU, memory, and I/O independently of foreground filesystem requests.
 - **Storage:** One LanceDB table per workspace in a separate GCS prefix, opened lazily with bounded
   shared caches and table handles. No client access to tables or GCS credentials. LanceDB supports
   [object-store storage](https://docs.lancedb.com/storage); no external search cluster is required.
-- Set the search reader's [read consistency interval](https://docs.rs/lancedb/latest/lancedb/connection/struct.ConnectBuilder.html#method.read_consistency_interval)
-  explicitly, initially five seconds, so it observes commits from the indexer process.
+- Publish committed LanceDB state to subsequent searches through the shared handles; each search
+  pins its own table version. No cross-process refresh protocol or indexing transport.
 
 ## gRPC surface
 
@@ -25,14 +25,10 @@ at-most-512 grants exclusively from the session, never from request fields.
 | RPC | Authority | Request → response |
 | --- | --- | --- |
 | `SearchFiles` | Session | `query, filter, limit` → `hits[], partial` |
-| `GetIndexStatus` | Workspace key | `workspace_id` → pending/failed/skipped counts, oldest pending age, last successful commit time |
-| `ReindexFiles` | Workspace key | `workspace_id, optional object_id` → background scan job ID |
-| `StreamIndexWork` | Server key; internal | bounded batch request → server stream of job headers, content chunks, and completion markers |
-| `AckIndexWork` | Server key; internal | job tokens plus outcomes → acknowledged/superseded results |
+| `GetIndexStatus` (optional) | Workspace key | `workspace_id` → pending/failed/skipped counts, oldest pending age, last successful commit time |
 
-Only `SearchFiles` is used by filesystem clients. Stream/ack coordinate the separate indexer while
-keeping SlateDB writes in dfs-server. Status/reindex are optional operator helpers, not prerequisites
-for search; initial backfill can run automatically and progress can initially use logs/metrics.
+Only `SearchFiles` is required. Indexing, completion bookkeeping, and backfills are internal;
+progress can initially use logs/metrics. No indexing or reindexing RPCs.
 
 - `query` is plain text, not SQL: case-insensitive token search ranked by BM25, initially matching
   any query token. Empty query performs metadata-only search. No regex, vectors, or query DSL.
@@ -79,7 +75,21 @@ Progressively enlarge the ranked candidate window within a pinned LanceDB table 
 ancestor authorization within the request's SlateDB snapshot. Never just filter the first `limit`
 candidates and claim completion. Bound candidate evaluation and request time; return `partial` on
 exhaustion. Broad or metadata-only queries can violate the selectivity assumption, so measure
-candidate rejection and latency. The stream and schema need no replicated-grant maintenance.
+candidate rejection and latency. The queue and schema need no replicated-grant maintenance.
+
+### Authorization caching
+
+Use a bounded **per-search** cache of object records and resolved effective access for visited
+objects/ancestors. Its workspace, grant set, and SlateDB snapshot are fixed, so candidates can reuse
+allow/deny results without invalidation. Reuse ends with the request. No long-lived permission cache.
+
+Authorization reads only object/grant keys. SlateDB's existing RAM/disk caches provide reuse between
+searches, but scattered cold candidates can still miss. Measure unique ancestors, grant reads, cache
+misses, and authorization time. Evaluate scanning each object's explicit grant prefix and intersecting
+the session's grant set instead of up to 512 point probes; large grant sets may favor point lookups.
+Background extraction should read file blocks with `cache_blocks = false` to reduce RAM cache
+pollution while retaining normal metadata caching. This controls cache admission, not cache lookup;
+see [SlateDB caching](https://slatedb.io/docs/design/caching/).
 
 ## Pending work and publication
 
@@ -89,42 +99,41 @@ Add workspace-prefixed SlateDB keys:
 | --- | --- |
 | `(workspace, search_pending, object_id)` | random job token, upsert/delete, object version, enqueue time, retry state |
 | `(workspace, search_status, object_id)` | last indexed version or explicit extraction failure/skip |
-| `(workspace, search_scan, job_id)` | resumable backfill cursor |
+| `(workspace, search_backfill)` | resumable initial/rebuild scan cursor |
 
 1. Every file mutation atomically replaces its pending row in the existing filesystem `WriteBatch`.
    This includes rename, xattrs, MIME, direct grants, truncate, and unlink/replacement tombstones.
    Repeated writes coalesce to the latest state; there is no application WAL or global object version.
    Directory grants/moves need no descendant work because authorization uses live ancestry.
-2. The server captures a bounded batch from one SlateDB snapshot, waits **in the background** until
-   SlateDB's durable sequence reaches that snapshot's sequence, then streams that exact snapshot's
+2. The worker captures a bounded batch from one SlateDB snapshot, waits **in the background** until
+   SlateDB's durable sequence reaches that snapshot's sequence, then reads that exact snapshot's
    metadata and content. This prevents LanceDB from persisting a state that filesystem recovery can
-   lose. Never substitute newer live blocks during export. Limit snapshot lifetime and in-flight
-   bytes; timeout/disconnect leaves work pending. The internal durability sequence is not a workspace
+   lose. Never substitute newer live blocks during extraction. Limit snapshot lifetime and in-flight
+   bytes; timeout/cancellation leaves work pending. The internal durability sequence is not a workspace
    revision and does not participate in file conflicts.
-3. Stream each job as a header, bounded content chunks, and an end marker; delete jobs need no content.
-   The indexer commits only complete jobs, coalesces batches, and preserves per-object commit order.
+3. Extract text through bounded block reads; delete jobs need no content. Commit only complete jobs,
+   coalesce batches, and preserve per-object commit order.
    Use idempotent [merge/upsert](https://docs.rs/lancedb/latest/lancedb/table/merge/struct.MergeInsertBuilder.html)
    on unique object IDs and repeatable deletes. No concurrent jobs for the same file.
-4. Acknowledge only after LanceDB commits. Under the same mutation synchronization, dfs-server clears
+4. Complete work only after LanceDB commits. Under the same mutation synchronization, the worker clears
    pending work and updates status only if the token still matches. An older completion MUST NOT
-   erase a newer mutation. Crashes after commit but before acknowledgement replay harmlessly.
+   erase a newer mutation. Crashes after commit but before clearing pending work replay harmlessly.
    Transient failures back off without blocking other files; permanent extraction failures stay visible.
 
-The stream is an at-least-once work queue, not a history of every intermediate write. Reconnect scans
-pending keys again; use bounded fair scans across workspaces and files. `ReindexFiles` enqueues a file
-or a resumable workspace scan. Initial installation backfills existing files; a full rebuild starts
-from an empty LanceDB table, scans all current files, and replays pending work. All scan/ack bookkeeping
-goes through the owner.
+This is an at-least-once work queue, not a history of intermediate writes. On startup, resume pending
+keys and backfill cursors with bounded fair scans across workspaces and files. Creating an empty
+LanceDB table starts an automatic backfill of all current files; pending mutations continue to
+coalesce during that scan. The same path supports rebuilding a discarded index, without an endpoint.
 
 ## Maintenance and evaluation
 
-The indexer owns periodic index updates, compaction, and safe old-version cleanup. Native FTS can
-scan unindexed fragments; schedule `optimize` to bound that cost and leave `fast_search` disabled so
+The background task owns index updates, compaction, and safe old-version cleanup. Native FTS can scan
+unindexed fragments; schedule `optimize` to bound that cost and leave `fast_search` disabled so
 committed rows are not deliberately skipped. Pin and test the selected OSS Rust release, including
 newly introduced terms after insert/update. See the [FTS maintenance behavior](https://docs.lancedb.com/search/full-text-search#keeping-the-index-up-to-date).
 
 Measure p50/p95 search latency and candidate rejection for selective and broad queries, with up to
 512 session grants. Verify ancestor grant changes cause no descendant indexing. Include cold GCS
 tables, many idle workspaces, xattr selectivity, write coalescing, index lag, and GCS write amplification.
-Verify restart between every publication/ack step, edits during extraction, unlink, revocation, and
-cross-workspace isolation. Promote publication and authorization rules into code contracts when implementing.
+Verify restart between publication/completion steps, edits during extraction, unlink, revocation, and
+cross-workspace isolation. Promote these rules into code contracts when implementing.
