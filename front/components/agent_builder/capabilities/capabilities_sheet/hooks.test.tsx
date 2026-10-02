@@ -34,7 +34,7 @@ function renderSelection(
         },
       ],
       hasMore: !query && !offset,
-      total: 101,
+      total: 21,
       facets: {},
     };
   });
@@ -94,7 +94,7 @@ describe("useSkillSelection", () => {
     expect(result.current.selectedSkillIds.has("first")).toBe(true);
     expect(fetcherWithBody).toHaveBeenLastCalledWith([
       `/api/w/${owner.sId}/skills/search`,
-      expect.objectContaining({ offset: 100, limit: 100 }),
+      expect.objectContaining({ offset: 20, limit: 20 }),
       "POST",
     ]);
     act(() => result.current.handleSkillToggle(first));
@@ -127,7 +127,7 @@ describe("useSkillSelection", () => {
     expect(result.current.resolvedSearchQuery).toBe("ask");
     expect(fetcherWithBody).toHaveBeenLastCalledWith([
       `/api/w/${owner.sId}/skills/search`,
-      expect.objectContaining({ query: "ask", offset: 0, limit: 100 }),
+      expect.objectContaining({ query: "ask", offset: 0, limit: 20 }),
       "POST",
     ]);
   });

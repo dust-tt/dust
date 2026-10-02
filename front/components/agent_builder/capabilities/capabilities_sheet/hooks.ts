@@ -21,7 +21,7 @@ import type { SkillListItemType } from "@app/types/assistant/skill_configuration
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useMemo, useState } from "react";
 
-const SKILL_SEARCH_PAGE_SIZE = 100;
+const SKILL_SEARCH_PAGE_SIZE = 20;
 
 type UseSkillSelectionProps = {
   owner: LightWorkspaceType;
