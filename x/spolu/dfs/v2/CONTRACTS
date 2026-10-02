@@ -4,8 +4,8 @@ kernel caching/writeback, and unlink-to-ENOENT MUST retain v1 behavior. Shared l
 directly granted entries also visible in the main tree or through another granted ancestor.
 
 @cc [owner:spolu,label:security] workspace-isolation
-Session RPCs MUST derive workspace and grants from the authenticated session. Every FDB key and
-ES document MUST be workspace scoped. Every ES search MUST filter the workspace explicitly;
+Session RPCs MUST derive workspace and grants from the authenticated session. Every workspace-owned
+FDB key and ES document MUST be workspace scoped. Every file search MUST filter workspace explicitly;
 routing alone MUST NOT authorize access. Backend errors MUST NOT expose credentials or hidden data.
 
 @cc [owner:spolu,label:backend;concurrency] atomic-fdb-publication

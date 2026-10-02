@@ -13,8 +13,8 @@ COMPOSE = ['docker', 'compose', '-f', str(pathlib.Path(__file__).with_name('comp
 ES = f'http://127.0.0.1:{os.environ.get("DFS_V2_ES_PORT", "19202")}'
 
 
-def cli(command):
-    return subprocess.check_output([*COMPOSE, 'exec', '-T', 'fdb', 'fdbcli', '--timeout', '10',
+def cli(command, service='fdb'):
+    return subprocess.check_output([*COMPOSE, 'exec', '-T', service, 'fdbcli', '--timeout', '10',
                                     '--exec', command], text=True)
 
 
@@ -55,6 +55,7 @@ def main():
         subprocess.run([*COMPOSE, 'restart', 'fdb', 'es'], check=True)
         ready()
         assert '`durable\'' in cli(f'get {fixture}')
+        assert '`durable\'' in cli(f'get {fixture}', service='dev')
         result = es('POST', '/' + fixture + '/_search', {'query': {'match': {'text': 'needle'}}})
         assert result['hits']['total']['value'] == 1, result
         print('FDB commit and ES bulk/refresh survive database restarts.')

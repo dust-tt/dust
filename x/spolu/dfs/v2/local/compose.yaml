@@ -3,11 +3,9 @@ services:
   fdb:
     image: foundationdb/foundationdb:7.3.69
     environment:
-      FDB_NETWORKING_MODE: host
+      FDB_NETWORKING_MODE: container
     volumes:
       - fdb-data:/var/fdb
-    ports:
-      - "127.0.0.1:${DFS_V2_PORT:-18082}:8080"
     mem_limit: ${DFS_V2_FDB_MEMORY:-3g}
     healthcheck:
       test: ["CMD-SHELL", "fdbcli --exec 'status minimal' --timeout 5 | grep -q 'The database is available'"]
@@ -33,7 +31,8 @@ services:
   dev:
     build:
       context: .
-    network_mode: service:fdb
+    ports:
+      - "127.0.0.1:${DFS_V2_PORT:-18082}:8080"
     environment:
       FDB_CLUSTER_FILE: /var/fdb/fdb.cluster
       DFS_FDB_CLUSTER_FILE: /var/fdb/fdb.cluster
@@ -61,6 +60,7 @@ services:
         condition: service_healthy
 volumes:
   fdb-data:
+    name: dfs-v2-foundationdb
   es-data:
   target:
   cargo:
