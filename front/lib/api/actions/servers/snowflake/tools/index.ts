@@ -116,6 +116,16 @@ function buildQueryTagMetadata(
   return JSON.stringify(metadata);
 }
 
+/**
+ * @cc [owner:frankaloia,label:security;mcp] credential-id-login-stays-in-workspace
+ * A SnowflakeClient built from `authInfo.extra.credentialId` MUST use a credential whose
+ * provider is `snowflake`, whose `metadata.workspace_id` equals `auth.workspace().sId`, and
+ * whose `content` parses as `SnowflakeKeyPairCredentialsSchema`. A missing caller workspace, a
+ * different workspace id, or a non-snowflake provider MUST return the MCPError "Snowflake
+ * connection not configured. Please connect your Snowflake account." Content that is not a key
+ * pair MUST return an MCPError beginning with "Invalid Snowflake credentials". Either rejection
+ * MUST happen before a SnowflakeClient is constructed.
+ */
 async function getClientFromAuthInfo(
   authInfo:
     | {
