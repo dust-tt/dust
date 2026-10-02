@@ -59,7 +59,8 @@ function parseLoginState(state: string | undefined) {
     return {};
   }
   try {
-    return JSON.parse(Buffer.from(state, "base64").toString("utf-8"));
+    const parsed = JSON.parse(Buffer.from(state, "base64").toString("utf-8"));
+    return parsed !== null && typeof parsed === "object" ? parsed : {};
   } catch {
     return {};
   }

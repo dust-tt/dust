@@ -2,8 +2,17 @@ import { authenticateWithWorkOSCode } from "@app/lib/api/workos/authenticate";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-process.env.WORKOS_CLIENT_ID ||= "client_test";
-process.env.WORKOS_SESSION_COOKIE_DOMAIN ||= "dust.test";
+vi.mock("@app/lib/api/config", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@app/lib/api/config")>();
+  return {
+    ...actual,
+    default: {
+      ...actual.default,
+      getWorkOSClientId: () => "client_test",
+      getWorkOSSessionCookieDomain: () => "dust.test",
+    },
+  };
+});
 
 vi.mock("@app/lib/api/workos/authenticate", () => ({
   authenticateWithWorkOSCode: vi.fn(),
@@ -89,9 +98,12 @@ describe("WorkOS login nonce", () => {
     expect(authenticateWithWorkOSCode).not.toHaveBeenCalled();
   });
 
-  it("restarts the login instead of failing on a malformed state", async () => {
+  it.each([
+    "not-base64-json",
+    encodeURIComponent(Buffer.from("null").toString("base64")),
+  ])("restarts the login instead of failing on state %s", async (state) => {
     const res = await honoApp.request(
-      "/api/workos/callback?code=CODE&state=not-base64-json",
+      `/api/workos/callback?code=CODE&state=${state}`,
       { headers: { cookie: "workos_login_nonce=victim-nonce" } }
     );
 
