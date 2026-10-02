@@ -27,6 +27,7 @@ import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettings
 import { CreditPoolCards } from "@app/components/workspace/WorkspaceCreditPoolCards";
 import type { DefaultUserSpendLimitState } from "@app/components/workspace/WorkspaceDefaultLimitInput";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
+import { useQueryParams } from "@app/hooks/useQueryParams";
 import { useTableRowsSelection } from "@app/hooks/useTableRowsSelection";
 import {
   cycleElapsedPercent,
@@ -306,9 +307,23 @@ export function UsagePage() {
   const [membersTab, setMembersTab] = useState<"members" | "requests">(
     "members"
   );
-  const [usageTab, setUsageTab] = useState<
-    "members" | "groups" | "top-ups" | "settings"
-  >("members");
+  const { tab: tabParam } = useQueryParams(["tab"]);
+  const usageTab: "members" | "groups" | "top-ups" | "settings" = (() => {
+    const value = tabParam.value;
+    if (value === "groups") {
+      return "groups";
+    }
+    if (value === "top-ups" && isWorkspaceAdmin && isCreditPriced) {
+      return "top-ups";
+    }
+    if (value === "settings" && isWorkspaceAdmin) {
+      return "settings";
+    }
+    return "members";
+  })();
+  const setUsageTab = (next: "members" | "groups" | "top-ups" | "settings") => {
+    tabParam.setParam(next === "members" ? undefined : next);
+  };
   const { upgradeRequests, isUpgradeRequestsLoading, isUpgradeRequestsError } =
     useUpgradeRequests({
       workspaceId: owner.sId,

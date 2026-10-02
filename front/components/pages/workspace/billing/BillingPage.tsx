@@ -9,6 +9,7 @@ import { NextInvoiceOverview } from "@app/components/workspace/billing/NextInvoi
 import { NextInvoicePreview } from "@app/components/workspace/billing/NextInvoicePreview";
 import { RecentInvoices } from "@app/components/workspace/billing/RecentInvoices";
 import { SubscriptionProvider } from "@app/components/workspace/billing/SubscriptionContext";
+import { useQueryParams } from "@app/hooks/useQueryParams";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { isCreditPricedFreePlan } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
@@ -22,6 +23,8 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import { useEffect } from "react";
+
+type BillingTab = "billing-information" | "invoices" | "coupons";
 
 export function BillingPage() {
   const { workspace: owner, subscription } = useAuth();
@@ -43,6 +46,20 @@ export function BillingPage() {
   });
   const hasCoupons = coupons.length > 0;
 
+  const { tab: tabParam } = useQueryParams(["tab"]);
+  const billingTab: BillingTab = (() => {
+    if (tabParam.value === "invoices") {
+      return "invoices";
+    }
+    if (tabParam.value === "coupons" && hasCoupons) {
+      return "coupons";
+    }
+    return "billing-information";
+  })();
+  const setBillingTab = (next: BillingTab) => {
+    tabParam.setParam(next === "billing-information" ? undefined : next);
+  };
+
   if (!isCreditPriced) {
     return null;
   }
@@ -58,7 +75,16 @@ export function BillingPage() {
           {freePlan ? (
             <FreePlanBilling owner={owner} subscription={subscription} />
           ) : (
-            <Tabs defaultValue="billing-information">
+            <Tabs
+              value={billingTab}
+              onValueChange={(value) =>
+                setBillingTab(
+                  value === "invoices" || value === "coupons"
+                    ? value
+                    : "billing-information"
+                )
+              }
+            >
               <TabsList>
                 <TabsTrigger
                   value="billing-information"
