@@ -11,11 +11,11 @@ use anyhow::{anyhow, Result};
 use futures::future::try_join_all;
 use itertools::Itertools;
 use parking_lot::Mutex;
-use rayon::prelude::*;
 use rusqlite::{
     config::DbConfig,
     hooks::{AuthAction, AuthContext, Authorization},
     limits::Limit,
+    types::ValueRef,
     Batch, Connection, InterruptHandle,
 };
 use std::{collections::HashMap, io::Write, sync::Arc};
@@ -37,6 +37,8 @@ pub struct SqliteDatabase {
 pub enum SqliteDatabaseError {
     #[error("Query returned more than {0} rows")]
     ExceededMaxRows(usize),
+    #[error("Query result exceeded {0} bytes")]
+    ExceededMaxResultSize(usize),
     #[error("SQLite Worker Internal error: {0}")]
     InternalError(anyhow::Error),
     #[error("Query execution error: {0}")]
@@ -59,6 +61,11 @@ const MAX_ROWS: usize = 2048;
 // Upper bound on the length of any string, blob or row SQLite builds while running a user query,
 // including intermediate values that never reach the result. SQLite's default is 1 GB.
 const MAX_VALUE_LENGTH_BYTES: i32 = 10 * 1024 * 1024;
+// Upper bound on the total size of a query result (column names plus values), counted while rows
+// are streamed out of SQLite.
+const MAX_RESULT_SIZE_BYTES: usize = 64 * 1024 * 1024;
+// Size counted for SQLite INTEGER and REAL values, which are both stored on 8 bytes.
+const NUMERIC_VALUE_SIZE_BYTES: usize = 8;
 
 impl SqliteDatabase {
     pub fn new() -> Self {
@@ -113,6 +120,13 @@ impl SqliteDatabase {
         Ok(())
     }
 
+    /// @cc [owner:davidebbo,label:security;performance] bounded-result-materialization
+    /// The query MUST fail with `ExceededMaxRows` once a row beyond `MAX_ROWS` is produced, and
+    /// with `ExceededMaxResultSize` once the counted size of the result exceeds
+    /// `MAX_RESULT_SIZE_BYTES`. Both limits MUST be enforced while rows are read from the
+    /// statement, before the offending row or value is converted: collecting the result first and
+    /// checking it afterwards lets a single query exhaust the memory of a worker shared by all
+    /// workspaces.
     pub async fn query(
         &self,
         query: &str,
@@ -158,60 +172,32 @@ impl SqliteDatabase {
                 .into_iter()
                 .map(|x| x.to_string())
                 .collect::<Vec<String>>();
-            let result_rows = stmt
-                .query_and_then([], |row| {
-                    column_names
-                        .iter()
-                        .enumerate()
-                        .map(|(i, column_name)| {
-                            Ok((
-                                column_name.clone(),
-                                match row.get(i) {
-                                    Err(e) => Err(anyhow!(
-                                        "Failed to retrieve value for column {}: {}",
-                                        column_name,
-                                        e
-                                    )),
-                                    Ok(v) => match v {
-                                        rusqlite::types::Value::Integer(i) => {
-                                            Ok(serde_json::Value::Number(i.into()))
-                                        }
-                                        rusqlite::types::Value::Real(f) => {
-                                            match serde_json::Number::from_f64(f) {
-                                                Some(n) => Ok(serde_json::Value::Number(n)),
-                                                None => Err(anyhow!(
-                                                    "Invalid float value for column {}",
-                                                    column_name
-                                                )),
-                                            }
-                                        }
-                                        rusqlite::types::Value::Text(t) => {
-                                            Ok(serde_json::Value::String(t.clone()))
-                                        }
-                                        rusqlite::types::Value::Blob(b) => {
-                                            match String::from_utf8(b.clone()) {
-                                                Err(_) => Err(anyhow!(
-                                                    "Invalid UTF-8 sequence for column {}",
-                                                    column_name
-                                                )),
-                                                Ok(s) => Ok(serde_json::Value::String(s)),
-                                            }
-                                        }
-                                        rusqlite::types::Value::Null => Ok(serde_json::Value::Null),
-                                    },
-                                }?,
-                            ))
-                        })
-                        .collect::<Result<serde_json::Map<String, serde_json::Value>>>()
-                })?
-                .take(MAX_ROWS + 1)
-                .collect::<Result<Vec<_>, _>>()?
-                .into_par_iter()
-                .map(|value| QueryResult { value })
-                .collect::<Vec<_>>();
 
-            if result_rows.len() > MAX_ROWS {
-                return Err(SqliteDatabaseError::ExceededMaxRows(MAX_ROWS));
+            let mut rows = stmt.query([])?;
+            let mut result_rows: Vec<QueryResult> = Vec::new();
+            let mut result_size_bytes: usize = 0;
+
+            // Rows are converted one at a time so that the row and size limits are enforced
+            // before more data is materialized, rather than after the full result is built.
+            while let Some(row) = rows.next()? {
+                if result_rows.len() >= MAX_ROWS {
+                    return Err(SqliteDatabaseError::ExceededMaxRows(MAX_ROWS));
+                }
+
+                let mut value = serde_json::Map::new();
+                for (i, column_name) in column_names.iter().enumerate() {
+                    let cell = row.get_ref(i)?;
+
+                    result_size_bytes += column_name.len() + value_ref_size_bytes(&cell);
+                    if result_size_bytes > MAX_RESULT_SIZE_BYTES {
+                        return Err(SqliteDatabaseError::ExceededMaxResultSize(
+                            MAX_RESULT_SIZE_BYTES,
+                        ));
+                    }
+
+                    value.insert(column_name.clone(), value_ref_to_json(cell, column_name)?);
+                }
+                result_rows.push(QueryResult { value });
             }
 
             info!(
@@ -244,6 +230,38 @@ impl SqliteDatabase {
                 )))
             }
         }
+    }
+}
+
+fn value_ref_size_bytes(value: &ValueRef<'_>) -> usize {
+    match value {
+        ValueRef::Null => 0,
+        ValueRef::Integer(_) | ValueRef::Real(_) => NUMERIC_VALUE_SIZE_BYTES,
+        ValueRef::Text(bytes) | ValueRef::Blob(bytes) => bytes.len(),
+    }
+}
+
+fn value_ref_to_json(
+    value: ValueRef<'_>,
+    column_name: &str,
+) -> Result<serde_json::Value, SqliteDatabaseError> {
+    match value {
+        ValueRef::Null => Ok(serde_json::Value::Null),
+        ValueRef::Integer(i) => Ok(serde_json::Value::Number(i.into())),
+        ValueRef::Real(f) => match serde_json::Number::from_f64(f) {
+            Some(n) => Ok(serde_json::Value::Number(n)),
+            None => Err(SqliteDatabaseError::InternalError(anyhow!(
+                "Invalid float value for column {}",
+                column_name
+            ))),
+        },
+        ValueRef::Text(bytes) | ValueRef::Blob(bytes) => match std::str::from_utf8(bytes) {
+            Ok(s) => Ok(serde_json::Value::String(s.to_string())),
+            Err(_) => Err(SqliteDatabaseError::InternalError(anyhow!(
+                "Invalid UTF-8 sequence for column {}",
+                column_name
+            ))),
+        },
     }
 }
 
@@ -587,6 +605,78 @@ mod tests {
         Ok(())
     }
 
+    fn recursive_rows_query(row_count: usize, value_sql: &str) -> String {
+        format!(
+            "WITH RECURSIVE c(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM c WHERE x < {}) \
+             SELECT {} AS value FROM c",
+            row_count, value_sql
+        )
+    }
+
+    #[tokio::test]
+    async fn allows_results_up_to_max_rows() -> Result<()> {
+        let database = create_test_database()?;
+
+        let result = database
+            .query(&recursive_rows_query(MAX_ROWS, "x"), 1_000)
+            .await?;
+
+        assert_eq!(result.len(), MAX_ROWS);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn rejects_results_exceeding_max_rows() -> Result<()> {
+        let database = create_test_database()?;
+
+        let result = database
+            .query(&recursive_rows_query(MAX_ROWS + 1, "x"), 1_000)
+            .await;
+
+        assert!(matches!(
+            result,
+            Err(SqliteDatabaseError::ExceededMaxRows(MAX_ROWS))
+        ));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn rejects_results_exceeding_max_size() -> Result<()> {
+        const VALUE_SIZE_BYTES: usize = 1024 * 1024;
+        let database = create_test_database()?;
+        let row_count = MAX_RESULT_SIZE_BYTES / VALUE_SIZE_BYTES + 1;
+
+        let result = database
+            .query(
+                &recursive_rows_query(row_count, &format!("zeroblob({})", VALUE_SIZE_BYTES)),
+                5_000,
+            )
+            .await;
+
+        assert!(matches!(
+            result,
+            Err(SqliteDatabaseError::ExceededMaxResultSize(
+                MAX_RESULT_SIZE_BYTES
+            ))
+        ));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn rejects_invalid_utf8_text_values() -> Result<()> {
+        let database = create_test_database()?;
+
+        let result = database
+            .query("SELECT CAST(x'ff' AS TEXT) AS value", 1_000)
+            .await;
+
+        assert!(matches!(
+            result,
+            Err(SqliteDatabaseError::InternalError(e)) if e.to_string().contains("Invalid UTF-8")
+        ));
+        Ok(())
+    }
+
     #[tokio::test]
     async fn rejects_values_exceeding_max_length() -> Result<()> {
         let database = create_test_database()?;
@@ -604,7 +694,7 @@ mod tests {
 
         assert!(matches!(
             result,
-            Err(SqliteDatabaseError::InternalError(e)) if e.to_string().contains("too big")
+            Err(SqliteDatabaseError::QueryExecutionError(e)) if e.to_string().contains("too big")
         ));
         Ok(())
     }

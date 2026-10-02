@@ -23,6 +23,8 @@ pub struct SqliteWorker {
 pub enum SqliteWorkerError {
     #[error("SqliteWorkerError Too many result rows")]
     TooManyResultRows,
+    #[error("SqliteWorkerError Result too large: {0}")]
+    ResultTooLarge(String),
     #[error("SqliteWorkerError Query execution error: {0}")]
     QueryExecutionError(String),
     #[error("SqliteWorkerError Server error (uri={0}, code={1}, status={2}, message={3:?})")]
@@ -218,6 +220,9 @@ async fn get_response_body(req: RequestBuilder, uri: &str) -> Result<Bytes, Sqli
             match error_code {
                 Some(code) => match code.as_str() {
                     "too_many_result_rows" => Err(SqliteWorkerError::TooManyResultRows)?,
+                    "result_too_large" => Err(SqliteWorkerError::ResultTooLarge(
+                        error_message.unwrap_or("Unknown error".to_string()),
+                    ))?,
                     "query_execution_error" => Err(SqliteWorkerError::QueryExecutionError(
                         error_message.unwrap_or("Unknown error".to_string()),
                     ))?,
