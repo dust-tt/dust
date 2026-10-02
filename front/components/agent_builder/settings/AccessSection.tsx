@@ -27,6 +27,8 @@ interface AccessSectionProps {
   initialRequestedSpaceIds?: string[];
   isEditorGateVisible: boolean;
   isAddingSelfAsEditor: boolean;
+  // Editing before the list loads would overwrite it: the save sends the full editor set.
+  isEditorsListUnavailable: boolean;
   onAddSelfAsEditor: () => void;
 }
 
@@ -34,6 +36,7 @@ export function AccessSection({
   initialRequestedSpaceIds,
   isEditorGateVisible,
   isAddingSelfAsEditor,
+  isEditorsListUnavailable,
   onAddSelfAsEditor,
 }: AccessSectionProps) {
   const { field: scope } = useController<
@@ -101,6 +104,7 @@ export function AccessSection({
               label={buttonLabel}
               onClick={() => setIsEditorsOpen(true)}
               type="button"
+              disabled={isEditorsListUnavailable}
             />
             <ManageUsersPanel
               isOpen={isEditorsOpen}

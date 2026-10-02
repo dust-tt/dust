@@ -603,6 +603,7 @@ function AgentBuilderForm({
           isEditorLoadErrorVisible={isAdminExistingAgent && isEditorsError}
           isEditorGateVisible={isAdminNonEditor}
           isAddingSelfAsEditor={isAddingSelfAsEditor}
+          isEditorsListUnavailable={isEditorsLoading || isEditorsError}
           onAddSelfAsEditor={() => {
             void handleAddSelfAsEditor();
           }}
@@ -645,6 +646,7 @@ interface AgentBuilderContentProps {
   isEditorLoadErrorVisible: boolean;
   isEditorGateVisible: boolean;
   isAddingSelfAsEditor: boolean;
+  isEditorsListUnavailable: boolean;
   onAddSelfAsEditor: () => void;
   onRetryEditors: () => void;
   isTriggersLoading: boolean;
@@ -676,6 +678,7 @@ function AgentBuilderContent({
   isEditorLoadErrorVisible,
   isEditorGateVisible,
   isAddingSelfAsEditor,
+  isEditorsListUnavailable,
   onAddSelfAsEditor,
   onRetryEditors,
   isTriggersLoading,
@@ -803,6 +806,7 @@ function AgentBuilderContent({
             initialRequestedSpaceIds={agentConfiguration?.requestedSpaceIds}
             isEditorGateVisible={isEditorGateVisible}
             isAddingSelfAsEditor={isAddingSelfAsEditor}
+            isEditorsListUnavailable={isEditorsListUnavailable}
             onAddSelfAsEditor={onAddSelfAsEditor}
           />
         }
