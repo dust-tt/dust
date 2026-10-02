@@ -3,6 +3,17 @@ The server MUST accept the unchanged dfs.v1 protocol and client. Public limits, 
 kernel caching/writeback, and unlink-to-ENOENT MUST retain v1 behavior. Shared listings MAY include
 directly granted entries also visible in the main tree or through another granted ancestor.
 
+@cc [owner:spolu,label:architecture;concurrency] independent-server-writers
+Independent dfs-server processes MUST be able to mutate the same workspace correctly. Cross-server
+consistency MUST rely on FDB transactions, never an exclusive workspace owner, workspace writer lease,
+or process-local lock/cache. Authoritative RAM overlays with asynchronous FDB publication are forbidden.
+
+@cc [owner:spolu,label:api;performance] unchanged-api-optimization
+This optimization phase MUST preserve the exact existing API and unchanged v1 client. Compound/bulk
+RPCs, client-side operation batching, and additional deferred publication are out of scope. Server
+optimizations MUST preserve authorization, expected versions, visibility, errors, and durability,
+and MUST apply to deep paths and grants throughout the tree without workspace-root shortcuts.
+
 @cc [owner:spolu,label:security] workspace-isolation
 Session RPCs MUST derive workspace and grants from the authenticated session. Every workspace-owned
 FDB key and ES document MUST be workspace scoped. Every file search MUST filter workspace explicitly;

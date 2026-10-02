@@ -5,6 +5,20 @@ cluster. Preserve [v1 filesystem semantics](../v1/DESIGN.md) and
 [v1 search semantics](../v1/DESIGN-SEARCH.md), except for the explicit changes below.
 Implement locally and benchmark before moving to `dust-dev`. [PLAN.md](PLAN.md) tracks the work.
 
+## Non-negotiable constraints
+
+**The purpose of FoundationDB is to eliminate the single-writer requirement.** Independent
+dfs-server processes MUST be able to mutate the same workspace correctly through FDB transactions.
+No exclusive workspace owner, workspace writer lease, or authoritative RAM overlay with asynchronous FDB
+publication. Process-local locks/caches MUST NOT be required for correctness across server writers.
+Successful mutations continue to await normal FDB commit.
+
+**This optimization phase preserves the exact existing API and unchanged v1 client.** Compound or
+bulk RPCs, client-side operation batching, and additional deferred publication are out of scope.
+Optimize server/database work within each existing operation while preserving authorization,
+expected versions, visibility, errors, and durability. Optimizations must work for deep paths and
+grants anywhere in the tree; do not rely on workspace-root shortcuts.
+
 ## Compatibility
 
 - Reuse the **unchanged v1 protocol, Rust client, CLI, and Linux FUSE client**. Keep the `dfs.v1`
@@ -19,9 +33,11 @@ Implement locally and benchmark before moving to `dust-dev`. [PLAN.md](PLAN.md) 
 
 ## Architecture and localhost
 
-One Rust dfs-server serves many workspaces through the existing gRPC API. It owns process-local
-sessions and one background indexer. FDB stores all authoritative metadata, file contents, and
-indexing obligations; ES stores only derived search documents. Neither store is created per workspace.
+The local fixture runs one Rust dfs-server serving many workspaces through the existing gRPC API,
+with process-local sessions and one background indexer. This is a deployment convenience, not a
+single-writer guarantee: independent server instances may access the same workspace. FDB stores all
+authoritative metadata, file contents, and indexing obligations; ES stores only derived search
+documents. Neither store is created per workspace.
 
 Start with a reproducible local stack: one FDB node configured for single-node durable storage,
 one ES node with one primary shard and zero replicas, persistent data volumes, and health checks.
@@ -171,6 +187,7 @@ persistence drain. Distinguish server-only restarts from backend/OS cold tests; 
 are not equivalent to v1's cold GCS measurements.
 
 Only after the localhost setup is correct and benchmarked: `dust-dev` deployment, replicated cluster
-sizing, private networking/authentication, backups, and comparative cloud runs. Multiple dfs-server
-processes/indexer ownership, shared sessions, automated index replacement/tombstone cleanup, and
-large-workspace shard balancing are later work. No other v1 feature changes are part of v2.
+sizing, private networking/authentication, backups, and comparative cloud runs. Multi-server deployment,
+shared session routing, indexer scheduling, automated index replacement/tombstone cleanup, and
+large-workspace shard balancing are later work; correctness across independent filesystem writers
+is required now. No other v1 feature changes are part of v2.
