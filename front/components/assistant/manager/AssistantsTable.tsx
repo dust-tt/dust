@@ -694,7 +694,9 @@ export function AssistantsTable({
               <GlobalAgentAction
                 agent={agentConfiguration}
                 owner={owner}
-                handleToggleAgentStatus={handleToggleAgentStatus}
+                handleToggleAgentStatus={() =>
+                  handleToggleAgentStatus(agentConfiguration)
+                }
                 showDisabledFreeWorkspacePopup={showDisabledFreeWorkspacePopup}
                 setShowDisabledFreeWorkspacePopup={
                   setShowDisabledFreeWorkspacePopup

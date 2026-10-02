@@ -62,6 +62,11 @@ interface AgentsListProps {
 
 type AgentSearchItem = SearchAgentsResponseBody["agents"][number];
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] editable-default-list
+ * The editable Dust tab MUST include disabled default agents, using the same table
+ * as custom agents. Read-only views MUST retain their search endpoint and expose no toggles.
+ */
 function AgentsList({
   readOnly = false,
   searchEndpoint,
@@ -258,6 +263,11 @@ interface ManageAgentsPageProps {
  * In readOnly mode, built-in creation, batch-edit and detail controls MUST NOT render.
  * Table and facet requests MUST use the same searchEndpoint when supplied.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:product] default-agent-management
+ * The editable Dust tab MUST include disabled default agents and allow only workspace
+ * admins to change their status. Read-only views MUST NOT expose mutation controls.
+ */
 export function ManageAgentsPage({
   readOnly = false,
   showHeader = true,
@@ -296,7 +306,9 @@ export function ManageAgentsPage({
   const filterCategories = AGENT_FILTER_CATEGORIES.filter(
     (category) =>
       selectedTab !== "default" ||
-      (category !== "access" && category !== "usage")
+      (readOnly
+        ? category !== "access" && category !== "usage"
+        : category === "model")
   );
   const activeTab =
     AGENT_SEARCH_TABS.find((tab) => tab.id === selectedTab) ??

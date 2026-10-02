@@ -7,6 +7,8 @@ import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { SearchAgentsResponseBody } from "@app/types/agent_search/agent_search";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { MembershipRoleType } from "@app/types/memberships";
 import {
   act,
@@ -42,7 +44,15 @@ beforeEach(() => {
   }
 });
 
-const push = vi.hoisted(() => vi.fn());
+const { push, patch, notify } = vi.hoisted(() => ({
+  push: vi.fn(),
+  patch: vi.fn(),
+  notify: vi.fn(),
+}));
+vi.mock("@app/lib/egress/client", () => ({ clientFetch: patch }));
+vi.mock("@app/hooks/useNotification", () => ({
+  useSendNotification: () => notify,
+}));
 
 vi.mock("@app/lib/platform", () => ({
   useAppRouter: () => ({
@@ -92,6 +102,7 @@ vi.mock("@app/components/assistant/CreateAgentDropdown", () => ({
 }));
 
 afterEach(() => {
+  vi.clearAllMocks();
   vi.unstubAllGlobals();
   window.history.replaceState({}, "", "/");
 });
@@ -99,15 +110,25 @@ afterEach(() => {
 async function setup({
   role = "admin",
   tagsLoaded,
+  globalStatus = "disabled_by_admin",
 }: {
   role?: MembershipRoleType;
   tagsLoaded?: Promise<void>;
+  globalStatus?: LightAgentConfigurationType["status"];
 } = {}) {
   const { authenticator, user } = await createResourceTest({ role });
   const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
     authenticator,
     { name: "Weekly report" }
   );
+  const globalAgent: LightAgentConfigurationType = {
+    ...agentConfiguration,
+    sId: GLOBAL_AGENTS_SID.DUST,
+    scope: "global",
+    name: "Default Dust",
+    status: globalStatus,
+  };
+  patch.mockImplementation(async () => ({ ok: true }));
   const { sId, fullName, image } = user.toJSON();
   const agent: SearchAgentsResponseBody["agents"][number] = {
     sId: agentConfiguration.sId,
@@ -164,8 +185,24 @@ async function setup({
     },
   };
   const fetcherWithBody = vi.fn(
-    async ([, body]: [string, { limit?: number }, string]) =>
-      body.limit === 0 ? facetsResponse : search()
+    async ([, body]: [
+      string,
+      { limit?: number; scope?: string[] },
+      string,
+    ]) => {
+      if (body.limit === 0) {
+        return facetsResponse;
+      }
+      if (body.scope?.length === 1 && body.scope[0] === "global") {
+        return {
+          agents: [{ ...agent, ...globalAgent, model: agent.model }],
+          total: 1,
+          hasMore: false,
+          facets: {},
+        };
+      }
+      return search();
+    }
   );
   const fetcher = vi.fn(async (url: string) => {
     if (url.endsWith("/tags")) {
@@ -197,6 +234,7 @@ async function setup({
   return {
     agent,
     agentConfiguration,
+    globalAgent,
     context,
     editor: { sId, fullName },
     search,
@@ -218,6 +256,122 @@ function lastSearchBody(fetcherWithBody: ReturnType<typeof vi.fn>) {
 }
 
 describe("search-backed Manage Agents", () => {
+  it("lets admins enable disabled defaults and disable them again", async () => {
+    const { globalAgent, context, mount } = await setup();
+    patch.mockImplementation(async (_url: string, options: RequestInit) => {
+      globalAgent.status = JSON.parse(String(options.body)).status;
+      return { ok: true };
+    });
+    mount();
+    await userEvent.click(screen.getByRole("tab", { name: "Dust" }));
+    await screen.findByText("Default Dust");
+    const toggle = () => screen.getByRole("switch", { name: "Default Dust" });
+    expect(
+      screen.getByRole("button", { name: /Default Dust/ })
+    ).toBeInTheDocument();
+    expect(
+      screen
+        .getAllByRole("columnheader")
+        .map((header) => header.textContent?.trim())
+        .filter(Boolean)
+    ).toEqual([
+      "Name",
+      "Access",
+      "Model",
+      "Usage",
+      "Feedback",
+      "Editors",
+      "Tags",
+      "Last edited",
+    ]);
+    await userEvent.click(toggle());
+    await waitFor(() =>
+      expect(patch).toHaveBeenLastCalledWith(
+        `/api/w/${context.workspace.sId}/assistant/global_agents/${globalAgent.sId}`,
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({ status: "active" }),
+        })
+      )
+    );
+    await waitFor(() =>
+      expect(toggle()).toHaveAttribute("aria-checked", "true")
+    );
+    expect(
+      screen.queryByText(`Details of ${globalAgent.sId}`)
+    ).not.toBeInTheDocument();
+    toggle().focus();
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(patch).toHaveBeenLastCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          body: JSON.stringify({ status: "disabled_by_admin" }),
+        })
+      )
+    );
+  });
+
+  it("prevents members from changing default agents", async () => {
+    const { mount } = await setup({ role: "user" });
+    mount();
+    await userEvent.click(screen.getByRole("tab", { name: "Dust" }));
+    await screen.findByText("Default Dust");
+    const toggle = screen.getByRole("switch", { name: "Default Dust" });
+    await userEvent.click(toggle);
+    expect(patch).not.toHaveBeenCalled();
+  });
+
+  it("keeps the helper enabled and missing-data defaults disabled", async () => {
+    const { globalAgent, mount } = await setup({
+      globalStatus: "disabled_missing_datasource",
+    });
+    const { unmount } = mount();
+    await userEvent.click(screen.getByRole("tab", { name: "Dust" }));
+    const toggle = await screen.findByRole("switch", { name: "Default Dust" });
+    expect(toggle).toBeDisabled();
+    await userEvent.click(toggle);
+    expect(patch).not.toHaveBeenCalled();
+    unmount();
+    globalAgent.sId = GLOBAL_AGENTS_SID.HELPER;
+    globalAgent.status = "active";
+    mount();
+    await userEvent.click(screen.getByRole("tab", { name: "Dust" }));
+    await screen.findByRole("button", { name: /Default Dust/ });
+    await waitFor(() =>
+      expect(screen.queryByRole("switch")).not.toBeInTheDocument()
+    );
+  });
+
+  it("keeps paid defaults disabled on free plans", async () => {
+    const { mount } = await setup({
+      globalStatus: "disabled_free_workspace",
+    });
+    mount();
+    await userEvent.click(screen.getByRole("tab", { name: "Dust" }));
+    await screen.findByText("Default Dust");
+    const toggle = screen.getByRole("switch", { name: "Default Dust" });
+    await userEvent.click(toggle);
+    await screen.findByRole("dialog", { name: "Free plan" });
+    expect(patch).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  });
+
+  it("reports failed default-agent updates without changing the toggle", async () => {
+    const { mount } = await setup();
+    mount();
+    await userEvent.click(screen.getByRole("tab", { name: "Dust" }));
+    const toggle = await screen.findByRole("switch", { name: "Default Dust" });
+    patch.mockResolvedValue({ ok: false });
+    await userEvent.click(toggle);
+    await waitFor(() =>
+      expect(notify).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "error" })
+      )
+    );
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+  });
+
   it("loads custom agents by usage and opens details on click", async () => {
     const { agent, fetcherWithBody, fetcher, mount } = await setup();
     mount();
@@ -264,32 +418,29 @@ describe("search-backed Manage Agents", () => {
   });
 
   it("requests each tab with its own filters", async () => {
-    const { fetcherWithBody, mount } = await setup();
+    const { fetcherWithBody, fetcher, mount } = await setup();
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
     expect(
       screen.queryByRole("tab", { name: "Editable" })
     ).not.toBeInTheDocument();
 
-    for (const { tab, filters } of [
-      {
-        tab: "Dust",
-        filters: {
-          status: ["active"],
-          scope: ["global"],
-          permissionFiltering: "strict",
-        },
-      },
-      {
-        tab: "Archived",
-        filters: { status: ["archived"], permissionFiltering: "unrestricted" },
-      },
-    ]) {
-      await userEvent.click(screen.getByRole("tab", { name: tab }));
-      await waitFor(() =>
-        expect(lastSearchBody(fetcherWithBody)).toMatchObject(filters)
-      );
-    }
+    await userEvent.click(screen.getByRole("tab", { name: "Dust" }));
+    await screen.findByText("Default Dust");
+    expect(lastSearchBody(fetcherWithBody)).toMatchObject({
+      scope: ["global"],
+      permissionFiltering: "strict",
+    });
+    expect(fetchedUrls(fetcher)).not.toContainEqual(
+      expect.stringContaining("view=global")
+    );
+    await userEvent.click(screen.getByRole("tab", { name: "Archived" }));
+    await waitFor(() =>
+      expect(lastSearchBody(fetcherWithBody)).toMatchObject({
+        status: ["archived"],
+        permissionFiltering: "unrestricted",
+      })
+    );
   });
 
   it("lets admins show hidden agents with unrestricted search", async () => {
@@ -611,7 +762,7 @@ describe("search-backed Manage Agents", () => {
     );
   });
 
-  it("hides Access on the Dust tab", async () => {
+  it("only shows model filters on the Dust tab", async () => {
     const { mount } = await setup();
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
@@ -621,7 +772,10 @@ describe("search-backed Manage Agents", () => {
     expect(
       screen.queryByRole("tab", { name: "Access" })
     ).not.toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Editors" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("tab", { name: "Editors" })
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Models" })).toBeInTheDocument();
   });
 });
 
