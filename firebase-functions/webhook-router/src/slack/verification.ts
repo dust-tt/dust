@@ -2,6 +2,7 @@ import crypto from "crypto";
 import type { Request, RequestHandler } from "express";
 import { error, log } from "firebase-functions/logger";
 import rawBody from "raw-body";
+import { z } from "zod";
 
 import type { SecretManager } from "../secrets.js";
 import type { WebhookRouterConfigManager } from "../webhook-router-config.js";
@@ -79,20 +80,15 @@ async function parseExpressRequestRawBody(req: Request): Promise<string> {
   return (await rawBody(req)).toString();
 }
 
+const SlackInteractionPayloadTeamSchema = z.object({
+  team: z.object({ id: z.string() }),
+});
+
 function parseSlackTeamIdFromPayload(payload: string): string | undefined {
-  const parsed: unknown = JSON.parse(payload);
-  if (
-    parsed !== null &&
-    typeof parsed === "object" &&
-    "team" in parsed &&
-    parsed.team !== null &&
-    typeof parsed.team === "object" &&
-    "id" in parsed.team &&
-    typeof parsed.team.id === "string"
-  ) {
-    return parsed.team.id;
-  }
-  return undefined;
+  const parsed = SlackInteractionPayloadTeamSchema.safeParse(
+    JSON.parse(payload)
+  );
+  return parsed.success ? parsed.data.team.id : undefined;
 }
 
 /**
