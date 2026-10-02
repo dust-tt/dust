@@ -116,6 +116,7 @@ app.post(
     }
 
     const { key } = ctx.req.valid("param");
+    // Onboarding keys are server-owned and trusted by ownership checks.
     if (key.startsWith(ONBOARDING_METADATA_PREFIX)) {
       return apiError(ctx, {
         status_code: 400,
