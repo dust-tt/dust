@@ -10,6 +10,7 @@ export * from "./seedFeedbacks";
 export * from "./seedGroup";
 export * from "./seedMCPTools";
 export * from "./seedMention";
+export * from "./seedRemoteMCPSyncAuthWarning";
 export * from "./seedRemoteMCPTool";
 export * from "./seedSkill";
 export * from "./seedSkillSuggestions";
