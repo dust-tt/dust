@@ -280,6 +280,23 @@ describe("publicApiAuth — x-api-user-email impersonation", () => {
     expect(response.status).toBe(401);
   });
 
+  it("rejects an email that resolves to no member when the named groups are all blank", async () => {
+    const { workspace, key: systemKey } = await createPublicApiMockRequest({
+      systemKey: true,
+    });
+
+    const response = await get(appReportingAuth(), {
+      wId: workspace.sId,
+      secret: systemKey.secret,
+      extraHeaders: {
+        "x-api-user-email": "nobody@acme.test",
+        "x-dust-group-ids": " , ",
+      },
+    });
+
+    expect(response.status).toBe(401);
+  });
+
   it("keeps only the named groups and the user role when the email resolves to no member", async () => {
     const { workspace, key: systemKey } = await createPublicApiMockRequest({
       systemKey: true,
