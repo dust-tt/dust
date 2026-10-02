@@ -629,7 +629,7 @@ export function computeAvailability(
   if (cursor < range.end) {
     availability.push({ start: cursor, end: range.end });
   }
-  return mergeIntervals(availability);
+  return availability;
 }
 
 function formatDateTime(date: Date, timezone: string): string {
