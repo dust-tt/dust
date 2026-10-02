@@ -822,6 +822,12 @@ export async function sendFeedback({
   }
 }
 
+/**
+ * @cc [owner:tdraier,label:security] bot-message-scoped-to-connector
+ * The `MicrosoftBotMessage` row named by the card action MUST be loaded with a `connectorId`
+ * predicate equal to `connector.id`. A row belonging to another connector MUST be treated as
+ * missing.
+ */
 export async function botValidateToolExecution({
   context,
   connector,
@@ -855,7 +861,7 @@ export async function botValidateToolExecution({
 
   // Find the MicrosoftBotMessage
   const microsoftBotMessage = await MicrosoftBotMessageModel.findOne({
-    where: { id: microsoftBotMessageId },
+    where: { id: microsoftBotMessageId, connectorId: connector.id },
   });
 
   if (!microsoftBotMessage) {
