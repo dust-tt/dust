@@ -1,13 +1,46 @@
-import { computeAgentMessageCredits } from "@app/lib/api/assistant/credit_cost";
+import {
+  computeAgentMessageCredits,
+  computeAndStoreAgentMessageCredits,
+} from "@app/lib/api/assistant/credit_cost";
+import { recordProgrammaticSpendLimitUsage } from "@app/lib/api/credits/programmatic_usage_limit";
+import {
+  recordFreeSeatLifetimeUsage,
+  recordUserSpendLimitUsage,
+} from "@app/lib/api/users/spend_limit";
 import { awuFromMicroUsd } from "@app/lib/metronome/constants";
 import {
   intelligenceAwuFromRunUsages,
   intelligenceAwuFromRunUsagesGroupedByRunKey,
   toolAwuFromActions,
 } from "@app/lib/metronome/events";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { RunFactory } from "@app/tests/utils/RunFactory";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/users/spend_limit", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/lib/api/users/spend_limit")>()),
+  recordFreeSeatLifetimeUsage: vi.fn(),
+  recordUserSpendLimitUsage: vi.fn(),
+}));
+
+vi.mock(
+  "@app/lib/api/credits/programmatic_usage_limit",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@app/lib/api/credits/programmatic_usage_limit")
+    >()),
+    recordProgrammaticSpendLimitUsage: vi.fn(),
+  })
+);
+
+vi.mock("@app/lib/api/credits/auto_seat_upgrade", () => ({
+  maybeProactivelyAutoUpgradeSeatOnCapReached: vi.fn(),
+}));
 
 const TEST_CONTEXT_ORIGIN: UserMessageOrigin = "api";
 
@@ -336,5 +369,93 @@ describe("computeAgentMessageCredits", () => {
       contextOrigin: "system_activation",
     });
     expect(credits).toBe(0);
+  });
+});
+
+describe("computeAndStoreAgentMessageCredits", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  async function finalizeMessage({
+    origin,
+    authorless = false,
+    authMethod = null,
+  }: {
+    origin: UserMessageOrigin;
+    authorless?: boolean;
+    authMethod?: string | null;
+  }) {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
+    const createdConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      createdConversation.sId
+    );
+    if (!conversation) {
+      throw new Error("Just-created conversation not found.");
+    }
+    const { messageRow: userMessageRow } =
+      await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Hello",
+        origin,
+        authorless,
+        authMethod,
+      });
+    const { run } = await RunFactory.createWithUsage(auth);
+    const { agentMessage } = await ConversationFactory.createAgentMessage(
+      auth,
+      {
+        workspace,
+        conversation,
+        agentConfig,
+        parentMessageModelId: userMessageRow.id,
+        rank: 1,
+        runIds: [run.dustRunId],
+      }
+    );
+    await ConversationFactory.setAgentMessageStatus({
+      workspace,
+      agentMessageModelId: agentMessage.agentMessageId,
+      status: "succeeded",
+    });
+
+    const costCredits = await computeAndStoreAgentMessageCredits(auth, {
+      agentMessageId: agentMessage.sId,
+    });
+    expect(costCredits).toBeGreaterThan(0);
+  }
+
+  it("records a member's Slack workflow usage against the programmatic counter only", async () => {
+    await finalizeMessage({ origin: "slack_workflow" });
+
+    expect(recordProgrammaticSpendLimitUsage).toHaveBeenCalledTimes(1);
+    expect(recordUserSpendLimitUsage).not.toHaveBeenCalled();
+    expect(recordFreeSeatLifetimeUsage).not.toHaveBeenCalled();
+  });
+
+  it("records a member's Slack usage against their own counter only", async () => {
+    await finalizeMessage({ origin: "slack" });
+
+    expect(recordUserSpendLimitUsage).toHaveBeenCalledTimes(1);
+    expect(recordProgrammaticSpendLimitUsage).not.toHaveBeenCalled();
+  });
+
+  it("records Slack usage the connector couldn't attribute to a member against the programmatic counter", async () => {
+    await finalizeMessage({
+      origin: "slack",
+      authorless: true,
+      authMethod: "system_api_key",
+    });
+
+    expect(recordProgrammaticSpendLimitUsage).toHaveBeenCalledTimes(1);
+    expect(recordUserSpendLimitUsage).not.toHaveBeenCalled();
   });
 });

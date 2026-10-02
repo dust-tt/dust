@@ -53,6 +53,7 @@ import type {
   AgentMessageType,
   ConversationType,
   UserMessageNewEvent,
+  UserMessageOrigin,
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import {
@@ -96,6 +97,8 @@ vi.mock("@app/lib/api/assistant/conversation/content_fragment", () => ({
 }));
 
 import { runOnRedis } from "@app/lib/api/redis";
+// Mock rateLimiter from the utils module
+import * as spendLimitModule from "@app/lib/api/users/spend_limit";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
@@ -103,7 +106,6 @@ import { ModelDegradationResource } from "@app/lib/resources/model_degradation_r
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-// Mock rateLimiter from the utils module
 import * as rateLimiterModule from "@app/lib/utils/rate_limiter";
 
 const TEST_PROGRAMMATIC_CREDIT_AMOUNT_MICRO_USD = 100_000_000;
@@ -1670,6 +1672,41 @@ describe("postUserMessage", () => {
     );
 
     rateLimiterSpy.mockRestore();
+  });
+
+  it("applies a member's per-user cap to their messages but not to their Slack workflow messages", async () => {
+    const spendLimitSpy = vi
+      .spyOn(spendLimitModule, "isNonCreditPricedUserSpendLimitReached")
+      .mockResolvedValue(true);
+    const userJson = auth.getNonNullableUser().toJSON();
+    const post = (origin: UserMessageOrigin) =>
+      postUserMessage(auth, {
+        conversationResource,
+        content: `Hello @${agentConfig1.name}`,
+        mentions: [
+          { configurationId: agentConfig1.sId } satisfies AgentMention,
+        ],
+        context: {
+          username: userJson.username,
+          timezone: "UTC",
+          fullName: userJson.fullName,
+          email: userJson.email,
+          profilePictureUrl: userJson.image,
+          origin,
+        },
+        skipToolsValidation: false,
+      });
+
+    const webResult = await post("web");
+    expect(webResult.isErr()).toBe(true);
+    if (webResult.isErr()) {
+      expect(webResult.error.api_error.type).toBe("user_cap_reached");
+    }
+
+    const workflowResult = await post("slack_workflow");
+    expect(workflowResult.isOk()).toBe(true);
+
+    spendLimitSpy.mockRestore();
   });
 
   it("should reject mentions of a retired global agent", async () => {
