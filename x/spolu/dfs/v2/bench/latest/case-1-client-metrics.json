@@ -1,0 +1,49 @@
+{
+  "dfs_client_metrics": {
+    "fuse.getattr": {
+      "calls": 102,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.init": {
+      "calls": 1,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.lookup": {
+      "calls": 2,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.opendir": {
+      "calls": 202,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.readdirplus": {
+      "calls": 576,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.releasedir": {
+      "calls": 202,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "rpc.list": {
+      "calls": 210,
+      "elapsed_ms": 8231.754168,
+      "errors": 0
+    },
+    "rpc.lookup": {
+      "calls": 2,
+      "elapsed_ms": 12.329834,
+      "errors": 0
+    },
+    "rpc.stat": {
+      "calls": 1,
+      "elapsed_ms": 2.650792,
+      "errors": 0
+    }
+  }
+}

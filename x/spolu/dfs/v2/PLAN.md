@@ -1,9 +1,8 @@
 # v2 implementation
 
 Implement [DESIGN.md](DESIGN.md) in small, tested milestones; commit and push each completed group.
-Keep v1 and its results intact. Local FDB/ES, the filesystem API, and background search are
-implemented. Failure injection, additional multi-workspace checks, and local benchmarks are in progress;
-Linux FUSE validation passes.
+Keep v1 and its results intact. The local implementation, failure tests, Linux FUSE validation, and
+benchmarks are complete; see [bench/RESULTS.md](bench/RESULTS.md). Cloud work remains out of scope.
 
 ## 0. Scope and contracts
 
@@ -60,7 +59,7 @@ Linux FUSE validation passes.
 - [x] Complete only matching FDB job tokens; retain failures with backoff and fair workspace scheduling.
 - [x] Test old completions, delayed/ambiguous bulk results, partial bulk failures, crashes between ES
       and FDB, ES downtime, and rebuild without duplicate backfill work.
-- [ ] Exercise content edits/unlink during multi-chunk extraction.
+- [x] Exercise content edits/unlink during multi-chunk extraction.
 - [x] Record extraction, ES commit/refresh, retry, queue lag, and completion timings; bound shutdown.
 
 ## 6. Search API and live grants
@@ -79,15 +78,15 @@ Linux FUSE validation passes.
 - [x] Run Rust checks and existing transport/filesystem/search tests against real local FDB and ES.
 - [x] Run Linux two-mount tests with the unchanged v1 client, including kernel caching/writeback,
       aliases, revocation, conflicts, fsync errors, unlink, and server restart/session loss.
-- [ ] Test FDB/ES process restarts and interrupted commits/indexing; preserve acknowledged FDB data.
+- [x] Test FDB/ES process restarts and interrupted commits/indexing; preserve acknowledged FDB data.
 - [x] Adapt jd's unchanged filesystem workload and 10,000-file search harness to v2 configuration.
-- [ ] Measure cold/warm filesystem/search performance, client drain, FDB commits/retries, index drain,
+- [x] Measure cold/warm filesystem/search performance, client drain, FDB commits/retries, index drain,
       grants, `/shared`, and simultaneous/idle workspaces; verify results before recording timings.
-- [ ] Document cache state separately for dfs-server, FDB, ES, and OS. Restart before each cold case;
+- [x] Document cache state separately for dfs-server, FDB, ES, and OS. Restart before each cold case;
       label backend-warm tests honestly and record any inability to clear backend/OS caches.
-- [ ] Publish v2 benchmark tables/raw results, versions, hardware/resources, setup/reproduction commands,
+- [x] Publish v2 benchmark tables/raw results, versions, hardware/resources, setup/reproduction commands,
       and limitations. Keep original v1 measurements and distinguish their GCS topology/durability.
-- [ ] Audit API/client compatibility and contracts; complete local setup, tests, and benchmarks before
+- [x] Audit API/client compatibility and contracts; complete local setup, tests, and benchmarks before
       starting the cloud phase.
 
 ## Future work: after the local benchmark

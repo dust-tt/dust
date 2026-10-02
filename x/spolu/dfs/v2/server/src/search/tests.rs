@@ -654,6 +654,7 @@ async fn backfill_does_not_requeue_completed_files_and_full_batch_is_maintained(
 }
 
 pub(crate) async fn run() -> Result<()> {
+    concurrent_chunk_writes_and_unlink_do_not_mix_indexed_versions().await?;
     maximum_xattrs_timestamps_and_many_grants()
         .await
         .context("max xattrs, timestamps, and grants")?;
@@ -768,6 +769,158 @@ async fn maximum_xattrs_timestamps_and_many_grants() -> Result<()> {
     });
     assert!(
         f.find(&reader.session_key, "", Some(later))
+            .await?
+            .hits
+            .is_empty()
+    );
+    f.cleanup().await
+}
+
+async fn concurrent_chunk_writes_and_unlink_do_not_mix_indexed_versions() -> Result<()> {
+    let f = Fixture::new().await?;
+    let mut file = f.create(&f.workspace.root_id, "chunks", false).await?;
+    f.search.ensure_index().await?;
+    let (response_code, _) = Search::response(f.search.request(
+        reqwest::Method::GET,
+        &format!(
+            "/{}/_doc/{}?routing={}",
+            f.search.config.es_index,
+            index::document_id("test", &file.id),
+            index::routing("test")
+        ),
+    ))
+    .await?;
+    assert_eq!(response_code, 404);
+    let original: Vec<u8> = b"a "
+        .iter()
+        .copied()
+        .cycle()
+        .take(dfs_protocol::MAX_IO)
+        .collect();
+    for chunk in 0..2 {
+        file = f
+            .api
+            .write(request(
+                &f.session.session_key,
+                WriteRequest {
+                    object_id: file.id.clone(),
+                    expected_version: file.version,
+                    offset: chunk * dfs_protocol::MAX_IO as u64,
+                    data: original.clone(),
+                    append: false,
+                },
+            )?)
+            .await?
+            .into_inner()
+            .object
+            .context("written")?;
+    }
+    let view = f.view().await?;
+    let pending: queue::Pending = decode(
+        &view
+            .get(&view.keys.pending_file(&file.id)?)
+            .await?
+            .context("pending")?,
+    )?;
+    drop(view);
+    let replacement: Vec<u8> = b"b "
+        .iter()
+        .copied()
+        .cycle()
+        .take(dfs_protocol::MAX_IO)
+        .collect();
+    let edited = async {
+        let mut current = file.clone();
+        for chunk in 0..2 {
+            current = f
+                .api
+                .write(request(
+                    &f.session.session_key,
+                    WriteRequest {
+                        object_id: current.id.clone(),
+                        expected_version: current.version,
+                        offset: chunk * dfs_protocol::MAX_IO as u64,
+                        data: replacement.clone(),
+                        append: false,
+                    },
+                )?)
+                .await?
+                .into_inner()
+                .object
+                .context("written")?;
+        }
+        Ok::<_, anyhow::Error>(current)
+    };
+    let (extracted, changed) =
+        tokio::join!(index::extract(&f.api.0, "test", &file.id, &pending), edited);
+    let changed = changed?;
+    match extracted {
+        Ok(document) => {
+            // Completing before the edit is legal; returning bytes from its newer version is not.
+            assert_eq!(document.version, file.version);
+            assert!(
+                document.body["text"]
+                    .as_str()
+                    .context("text")?
+                    .chars()
+                    .all(|c| c == 'a' || c == ' ')
+            );
+        }
+        Err(error) => assert!(matches!(
+            code(&error),
+            ErrorCode::Unavailable | ErrorCode::NotFound
+        )),
+    }
+    let view = f.view().await?;
+    let pending: queue::Pending = decode(
+        &view
+            .get(&view.keys.pending_file(&file.id)?)
+            .await?
+            .context("pending")?,
+    )?;
+    drop(view);
+    let parent = f.stat(&f.workspace.root_id).await?;
+    let removed = f.api.remove(request(
+        &f.session.session_key,
+        RemoveRequest {
+            object_id: changed.id.clone(),
+            directory: false,
+            expected: vec![
+                Expected {
+                    id: changed.id.clone(),
+                    version: changed.version,
+                },
+                Expected {
+                    id: parent.id,
+                    version: parent.version,
+                },
+            ],
+        },
+    )?);
+    let (extracted, deleted) = tokio::join!(
+        index::extract(&f.api.0, "test", &changed.id, &pending),
+        removed
+    );
+    deleted?;
+    match extracted {
+        Ok(document) => {
+            assert_eq!(document.version, changed.version);
+            assert!(
+                document.body["text"]
+                    .as_str()
+                    .context("text")?
+                    .chars()
+                    .all(|c| c == 'b' || c == ' ')
+            );
+        }
+        Err(error) => assert!(matches!(
+            code(&error),
+            ErrorCode::Unavailable | ErrorCode::NotFound
+        )),
+    }
+    f.index().await?;
+    assert!(
+        f.find(&f.session.session_key, "", None)
             .await?
             .hits
             .is_empty()
