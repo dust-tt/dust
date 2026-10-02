@@ -265,6 +265,7 @@ export function buildLatestAvailableMessageConsumptionDetails({
     actions,
     billedCredits,
     dustRunIds,
+    hasUnbilledExecution: false,
     items,
     runs,
     usages,
