@@ -1,3 +1,4 @@
+import { CreatePodModal } from "@app/components/assistant/conversation/CreatePodModal";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { MemberDetails } from "@app/components/assistant/details/MemberDetails";
 import type {
@@ -16,15 +17,17 @@ import {
 } from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { useCommandPaletteSearch } from "@app/components/command_palette/useCommandPaletteSearch";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
+import { useActivePodId } from "@app/hooks/useActivePodId";
 import { useFrecencySorting } from "@app/hooks/useFrerencySorting";
 import { navigateToAdminSetting } from "@app/lib/admin/buildAdminSettingHref";
 import { useAppRouter } from "@app/lib/platform";
 import {
   getAgentBuilderRoute,
   getConversationRoute,
-  getPodRoute,
   getSkillBuilderRoute,
+  navigateToPod,
 } from "@app/lib/utils/router";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { Dialog, DialogContent } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -53,6 +56,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
   const [agentDetailsId, setAgentDetailsId] = useState<string | null>(null);
   const [skillDetailsId, setSkillDetailsId] = useState<string | null>(null);
   const [memberDetailsId, setMemberDetailsId] = useState<string | null>(null);
+  const [isCreatePodModalOpen, setIsCreatePodModalOpen] = useState(false);
 
   const {
     agents,
@@ -75,6 +79,8 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     searchQuery,
     currentUserId: user.sId,
   });
+
+  const podId = useActivePodId();
 
   const { visitedItems, visitItem } = useFrecencySorting<CommandPaletteItem>(
     undefined,
@@ -104,6 +110,29 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
       close();
 
       switch (action) {
+        case "chat_with_in_pod":
+          if (item.kind === "agent") {
+            navigateToPod(
+              (href) => {
+                void router.push(href);
+              },
+              owner.sId,
+              podId ?? "",
+              "conversations",
+              `agent=${item.agent.sId}`
+            );
+          } else if (item.kind === "member") {
+            navigateToPod(
+              (href) => {
+                void router.push(href);
+              },
+              owner.sId,
+              podId ?? "",
+              "conversations",
+              `user=${item.member.sId}`
+            );
+          }
+          break;
         case "chat_with":
           if (item.kind === "agent") {
             void router.push(
@@ -133,16 +162,49 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
           break;
       }
     },
-    [close, router, owner.sId]
+    [close, router, owner.sId, podId]
   );
 
   const handleItemSelect = useCallback(
     (item: CommandPaletteItem) => {
+      if (item.kind === "action") {
+        close();
+        switch (item.action) {
+          case "new_conversation_in_pod":
+            if (podId) {
+              navigateToPod(
+                (href) => {
+                  void router.push(href);
+                },
+                owner.sId,
+                podId,
+                "conversations"
+              );
+            }
+            break;
+          case "new_conversation":
+            void router.push(getConversationRoute(owner.sId, "new"));
+            break;
+          case "new_pod":
+            setIsCreatePodModalOpen(true);
+            break;
+          default:
+            assertNever(item.action);
+        }
+        return;
+      }
+
       void visitItem(item);
 
       if (item.kind === "pod") {
         close();
-        void router.push(getPodRoute(owner.sId, item.pod.sId));
+        navigateToPod(
+          (href) => {
+            void router.push(href);
+          },
+          owner.sId,
+          item.pod.sId
+        );
         return;
       }
       if (item.kind === "conversation") {
@@ -171,7 +233,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
         setPhase("action");
       }
     },
-    [close, executeAction, owner.sId, router, visitItem]
+    [close, executeAction, owner.sId, podId, router, visitItem]
   );
 
   const handleBack = useCallback(() => {
@@ -212,7 +274,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     <>
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogContent
-          size="lg"
+          size="xl"
           variant="command"
           trapFocusScope
           onEscapeKeyDown={handleEscapeKeyDown}
@@ -228,6 +290,7 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
               skills={skills}
               settings={settings}
               frequentItems={frequentItems}
+              activePodId={podId ?? null}
               hasMoreAgents={hasMoreAgents}
               hasMoreConversations={hasMoreConversations}
               hasMoreMembers={hasMoreMembers}
@@ -253,6 +316,22 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
           ) : null}
         </DialogContent>
       </Dialog>
+
+      <CreatePodModal
+        isOpen={isCreatePodModalOpen}
+        onClose={() => setIsCreatePodModalOpen(false)}
+        onCreated={(pod) => {
+          setIsCreatePodModalOpen(false);
+          navigateToPod(
+            (href) => {
+              void router.push(href);
+            },
+            owner.sId,
+            pod.sId
+          );
+        }}
+        owner={owner}
+      />
 
       <AgentDetailsSheet
         owner={owner}

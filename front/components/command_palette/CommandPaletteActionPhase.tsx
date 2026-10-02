@@ -1,7 +1,9 @@
 import { KeyboardHints } from "@app/components/command_palette/CommandPaletteItems";
 import type { CommandPaletteItem } from "@app/components/command_palette/CommandPaletteSearchPhase";
+import { useActivePodId } from "@app/hooks/useActivePodId";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   ArrowLeft,
   Avatar,
@@ -13,7 +15,11 @@ import {
 } from "@dust-tt/sparkle";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
-export type CommandPaletteAction = "view_details" | "edit" | "chat_with";
+export type CommandPaletteAction =
+  | "view_details"
+  | "edit"
+  | "chat_with"
+  | "chat_with_in_pod";
 
 // Pods and conversations navigate directly and never enter the action phase.
 export type ActionPhaseItem = Extract<
@@ -44,6 +50,43 @@ function canEdit(item: ActionPhaseItem, canEditAgent: boolean): boolean {
       return item.skill.canAdministrate;
     case "member":
       return false;
+    default:
+      assertNever(item);
+  }
+}
+
+function getItemName(item: ActionPhaseItem): string {
+  switch (item.kind) {
+    case "agent":
+      return item.agent.name;
+    case "member":
+      return item.member.fullName;
+    case "skill":
+      return item.skill.name;
+    default:
+      assertNever(item);
+  }
+}
+
+function getItemAvatar(item: ActionPhaseItem): React.ReactNode {
+  switch (item.kind) {
+    case "agent":
+      return <Avatar visual={item.agent.pictureUrl} size="xs" />;
+    case "member":
+      return (
+        <Avatar
+          name={item.member.fullName}
+          visual={item.member.image ?? undefined}
+          size="xs"
+          isRounded
+        />
+      );
+    case "skill":
+      return React.createElement(getSkillAvatarIcon(item.skill), {
+        size: "xs",
+      });
+    default:
+      assertNever(item);
   }
 }
 
@@ -54,6 +97,7 @@ export function CommandPaletteActionPhase({
   onBack,
   onClose,
 }: CommandPaletteActionPhaseProps) {
+  const podId = useActivePodId();
   const agentId =
     item.kind === "agent" &&
     !("canEdit" in item.agent) &&
@@ -69,16 +113,28 @@ export function CommandPaletteActionPhase({
 
   const actions = useMemo(() => {
     const result: ActionDefinition[] = [];
-    if (item.kind === "agent" || item.kind === "member") {
-      result.push({
-        action: "chat_with",
-        label: "New conversation",
-        description:
-          item.kind === "member"
-            ? "Open a new conversation mentioning this member"
-            : "Open a new conversation",
-        icon: MessageCircle01,
-      });
+    switch (item.kind) {
+      case "agent":
+      case "member":
+        if (podId) {
+          result.push({
+            action: "chat_with_in_pod",
+            label: "New conversation in pod",
+            description: "Open a new conversation in the active pod",
+            icon: MessageCircle01,
+          });
+        }
+        result.push({
+          action: "chat_with",
+          label: "New conversation",
+          description: "Open a new conversation",
+          icon: MessageCircle01,
+        });
+        break;
+      case "skill":
+        break;
+      default:
+        assertNever(item);
     }
     result.push({
       action: "view_details",
@@ -98,7 +154,7 @@ export function CommandPaletteActionPhase({
       });
     }
     return result;
-  }, [item, canEditAgent]);
+  }, [item, canEditAgent, podId]);
 
   const [selectedIndex, setSelectedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -140,28 +196,8 @@ export function CommandPaletteActionPhase({
     }
   }
 
-  const itemName =
-    item.kind === "agent"
-      ? item.agent.name
-      : item.kind === "member"
-        ? item.member.fullName
-        : item.skill.name;
-
-  const itemAvatar =
-    item.kind === "agent" ? (
-      <Avatar visual={item.agent.pictureUrl} size="xs" />
-    ) : item.kind === "member" ? (
-      <Avatar
-        name={item.member.fullName}
-        visual={item.member.image ?? undefined}
-        size="xs"
-        isRounded
-      />
-    ) : (
-      React.createElement(getSkillAvatarIcon(item.skill), {
-        size: "xs",
-      })
-    );
+  const itemName = getItemName(item);
+  const itemAvatar = getItemAvatar(item);
 
   return (
     <div

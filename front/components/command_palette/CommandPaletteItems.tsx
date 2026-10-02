@@ -1,4 +1,4 @@
-import { cn } from "@dust-tt/sparkle";
+import { cn, KeyboardShortcut } from "@dust-tt/sparkle";
 import React from "react";
 
 interface ItemRowProps {
@@ -70,16 +70,15 @@ export function KeyboardHints({ hints }: { hints: KeyboardHint[] }) {
       {hints.map((hint) => (
         <div key={hint.label} className="flex items-center gap-1.5">
           {hint.keys.map((key) => (
-            <kbd
+            <KeyboardShortcut
               key={key}
+              shortcut={key}
               className={cn(
                 "inline-flex h-6 min-w-6 items-center justify-center rounded border px-1",
-                "border-separator",
+                "border-separator shadow-xs",
                 hint.textSize ?? "text-xs"
               )}
-            >
-              {key}
-            </kbd>
+            />
           ))}
           <span>{hint.label}</span>
         </div>

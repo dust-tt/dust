@@ -38,10 +38,17 @@ export function useDebounce(
         debouncedUpdate.cancel();
         return;
       }
+      // delay <= 0: apply immediately (caller already debounced, or wants sync).
+      if (delay <= 0) {
+        setDebouncedValue(value);
+        setIsDebouncing(false);
+        debouncedUpdate.cancel();
+        return;
+      }
       setIsDebouncing(true);
       debouncedUpdate(value);
     },
-    [debouncedUpdate, minLength]
+    [debouncedUpdate, delay, minLength]
   );
 
   // Cleanup on unmount.
