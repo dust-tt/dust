@@ -4922,4 +4922,54 @@ describe("updateAgentMessageWithFinalStatus", () => {
     expect(pendingMessageRow?.visibility).toBe("pending");
     expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
   });
+
+  async function promoteSteeringMessageFrom(steeringAuth: Authenticator) {
+    const { messageRow } = await ConversationFactory.createUserMessage({
+      auth: steeringAuth,
+      workspace,
+      conversation,
+      content: "steering message",
+      rank: 2,
+    });
+    await MessageModel.update(
+      { visibility: "pending" },
+      {
+        where: { id: messageRow.id, workspaceId: workspace.id },
+        validate: false,
+      }
+    );
+
+    // The finished run was posted with an approval waiver.
+    await updateAgentMessageWithFinalStatus(auth, {
+      conversation,
+      agentMessage: { ...agentMessage, skipToolsValidation: true },
+      status: "succeeded",
+    });
+
+    return AgentMessageModel.findOne({
+      where: { workspaceId: workspace.id },
+      order: [["id", "DESC"]],
+    });
+  }
+
+  it("keeps the approval waiver when the run's own user steers it", async () => {
+    const promoted = await promoteSteeringMessageFrom(auth);
+
+    expect(promoted?.id).not.toBe(agentMessage.agentMessageId);
+    expect(promoted?.skipToolsValidation).toBe(true);
+  });
+
+  it("drops the approval waiver when another member steers the run", async () => {
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+    const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      otherUser.sId,
+      workspace.sId
+    );
+
+    const promoted = await promoteSteeringMessageFrom(otherAuth);
+
+    expect(promoted?.id).not.toBe(agentMessage.agentMessageId);
+    expect(promoted?.skipToolsValidation).toBe(false);
+  });
 });

@@ -3085,6 +3085,12 @@ export async function isConversationEventAllowedForAuth(
  * This ensures the status transition is serialized against other conversation operations (e.g.
  * postUserMessage's pending path).
  */
+/**
+ * @cc [owner:avervaet,label:security] promoted-run-keeps-own-approval-waiver
+ * The agent message created for a promoted steering message MUST NOT skip tool validation unless
+ * the finished run skipped it and the promoted message was posted by the same principal (same
+ * user, or none, and same API key, or none) as that run.
+ */
 export async function updateAgentMessageWithFinalStatus(
   auth: Authenticator,
   {
@@ -3341,13 +3347,24 @@ export async function updateAgentMessageWithFinalStatus(
       }
     }
 
+    // The approval waiver was granted by whoever posted the finished run's message: it only carries
+    // over when the promoted message comes from that same principal (user and key).
+    const promotedMessageRow = pendingMessages.find(
+      (m) => m.sId === promotedUserMessage.sId
+    );
+    const isSamePrincipal =
+      (promotedUser?.sId ?? null) === (auth.user()?.sId ?? null) &&
+      (promotedMessageRow?.userMessage?.userContextApiKeyId ?? null) ===
+        (auth.keyForUsageAttribution()?.id ?? null);
+
     // Create a new agent message using the last promoted user message.
     const { agentMessages } = await createAgentMessages(promotedAuth, {
       conversation,
       metadata: {
         type: "create",
         agentConfiguration: agentMessage.configuration,
-        skipToolsValidation: agentMessage.skipToolsValidation,
+        skipToolsValidation:
+          agentMessage.skipToolsValidation && isSamePrincipal,
         nextMessageRank,
         userMessage: promotedUserMessages[promotedUserMessages.length - 1],
         modelResolution,
