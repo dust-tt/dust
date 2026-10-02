@@ -1,0 +1,5 @@
+@cc [owner:davidebbo,label:security;api] pod-task-mutations-require-write
+Every handler under this directory that changes a Pod's tasks or their linked conversations MUST
+authorize with `withSpace({ requireCanWrite: true })`. On an open Pod, read is held by every
+workspace member, while write is held only by Pod members. Read-only handlers and handlers that
+only write the caller's own per-user state (e.g. `mark_read`) MAY use `requireCanRead`.

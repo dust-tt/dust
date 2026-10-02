@@ -92,6 +92,12 @@ export async function buildProjectRetrieveDataSources(
  * If dustPod is provided, uses that to fetch all spaces. Otherwise, gets from conversation.
  * The conversation must be in a project (space) if dustPod is not provided.
  */
+/**
+ * @cc [owner:davidebbo,label:security;mcp] read-only-pod-resolution
+ * The returned Pod is only guaranteed to be readable by the caller, which on an open Pod is every
+ * workspace member. Tools that mutate Pod state (tasks, context, files, settings) MUST resolve the
+ * Pod through `getWritablePodContext` instead.
+ */
 export async function getPod(
   auth: Authenticator,
   from: { toolContext?: ToolContext } | { dustPod?: DustPodConfigurationType }
