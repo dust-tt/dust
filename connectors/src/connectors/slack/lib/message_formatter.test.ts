@@ -86,7 +86,7 @@ describe("formatSlackMessageForLLM", () => {
     expect(result.blocks).toContain("Service B healthy");
   });
 
-  it("renders rich_text blocks including links and mentions", () => {
+  it("renders rich_text blocks, leaving mention tokens intact for downstream resolution", () => {
     const result = formatSlackMessageForLLM({
       text: "",
       blocks: [
@@ -125,8 +125,10 @@ describe("formatSlackMessageForLLM", () => {
       ],
     });
 
+    // The user mention is emitted as a `<@U…>` token (resolved to a name later, in
+    // `messages.ts`), not as a bare `@id`.
     expect(result.blocks).toContain(
-      "See the report (https://example.com) cc @U123"
+      "See the report (https://example.com) cc <@U123>"
     );
     expect(result.blocks).toContain("- first item");
     expect(result.blocks).toContain("- second item");
@@ -156,12 +158,16 @@ describe("formatSlackMessageForLLM", () => {
     expect(result.attachments).toContain("Assignee: Jane");
   });
 
-  it("cleans Slack mrkdwn links and user mentions in plain text", () => {
+  it("cleans Slack mrkdwn links but leaves mention tokens for downstream resolution", () => {
     const result = formatSlackMessageForLLM({
       text: "Ping <@U050CALAKFD|someone> see <https://dust.tt|docs>",
     });
 
-    expect(result.text).toBe("Ping @someone see docs (https://dust.tt)");
+    // The link is rendered, but the mention token is left intact (mentions are resolved to
+    // names later, in `messages.ts`, not by the formatter).
+    expect(result.text).toBe(
+      "Ping <@U050CALAKFD|someone> see docs (https://dust.tt)"
+    );
   });
 
   it("exposes file info in the files field", () => {

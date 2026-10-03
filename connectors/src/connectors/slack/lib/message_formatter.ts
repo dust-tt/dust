@@ -139,14 +139,17 @@ function renderRichTextLeaf(element: RichTextElement): string {
         ? `${element.text} (${element.url ?? ""})`
         : (element.url ?? "");
 
+    // Emit the token form (not a bare `@id`/`#id`) so the downstream pass in `messages.ts`
+    // resolves user/channel ids to names the same way it does for the mrkdwn `<@…>`/`<#…>`.
     case "user":
-      return element.user_id ? `@${element.user_id}` : "";
+      return element.user_id ? `<@${element.user_id}>` : "";
 
+    // Usergroups are not resolved yet (missing scope); render the raw id.
     case "usergroup":
       return element.usergroup_id ? `@${element.usergroup_id}` : "";
 
     case "channel":
-      return element.channel_id ? `#${element.channel_id}` : "";
+      return element.channel_id ? `<#${element.channel_id}>` : "";
 
     case "emoji":
       return element.name ? `:${element.name}:` : "";
