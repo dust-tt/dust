@@ -410,3 +410,60 @@ describe("POST /api/w/:wId (workspace locale)", () => {
     expect(updated?.locale).toBe("en-US");
   });
 });
+
+describe("POST /api/w/:wId (whitelisted model labs)", () => {
+  it("stores the whitelisted labs", async () => {
+    const { workspace } = await setup();
+
+    const response = await post(workspace, {
+      whiteListedProviders: ["anthropic", "zai"],
+      defaultEmbeddingProvider: null,
+    });
+
+    expect(response.status).toBe(200);
+    const updated = await WorkspaceResource.fetchById(workspace.sId);
+    expect(updated?.whiteListedProviders).toEqual(["anthropic", "zai"]);
+  });
+
+  it("translates the legacy fireworks host to the labs it serves", async () => {
+    const { workspace } = await setup();
+
+    const response = await post(workspace, {
+      whiteListedProviders: ["openai", "deepseek", "fireworks"],
+      defaultEmbeddingProvider: null,
+    });
+
+    expect(response.status).toBe(200);
+    const updated = await WorkspaceResource.fetchById(workspace.sId);
+    expect(updated?.whiteListedProviders).toEqual([
+      "openai",
+      "deepseek",
+      "moonshot",
+      "minimax",
+      "zai",
+      "thinking_machines",
+    ]);
+  });
+
+  it("returns 400 for an unknown lab", async () => {
+    const { workspace } = await setup();
+
+    const response = await post(workspace, {
+      whiteListedProviders: ["not_a_lab"],
+      defaultEmbeddingProvider: null,
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("returns 403 for non-admin users", async () => {
+    const { workspace } = await setup("user");
+
+    const response = await post(workspace, {
+      whiteListedProviders: ["anthropic"],
+      defaultEmbeddingProvider: null,
+    });
+
+    expect(response.status).toBe(403);
+  });
+});

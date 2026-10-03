@@ -11378,7 +11378,7 @@
             "items": {
               "type": "string"
             },
-            "description": "Allowed model provider IDs"
+            "description": "Whitelisted model lab (maker) IDs, e.g. \"zai\" for GLM whoever hosts it. Null allows every lab."
           },
           "defaultEmbeddingProvider": {
             "type": "string",
@@ -14964,11 +14964,11 @@
             "type": "array",
             "items": {
               "type": "string",
-              "description": "List of allowed authentication providers"
+              "description": "Whitelisted model lab (maker) IDs"
             },
             "example": [
-              "google",
-              "github"
+              "openai",
+              "zai"
             ]
           },
           "defaultEmbeddingProvider": {

@@ -5,7 +5,7 @@ import { replaceStandaloneAttachmentIds } from "@app/lib/api/assistant/conversat
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationAsText } from "@app/lib/api/assistant/conversation/render_as_text";
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
-import { isProviderWhitelistedForAuth } from "@app/lib/api/assistant/models";
+import { isModelWhitelistedForAuth } from "@app/lib/api/assistant/models";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import type { Authenticator } from "@app/lib/auth";
@@ -315,7 +315,7 @@ export async function runCompaction(
     return new Err(new Error("Compaction message not found"));
   }
 
-  if (!isProviderWhitelistedForAuth(auth, model.providerId)) {
+  if (!isModelWhitelistedForAuth(auth, model)) {
     return new Err(
       new Error(
         `The model provider ${model.providerId} has been disabled by your workspace admin.`

@@ -1,12 +1,12 @@
-import { getModelProviderLogo } from "@app/components/providers/types";
+import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import { getModelMakerDisplayName } from "@app/types/assistant/models/providers";
+import type { WhitelistableModelMakerIdType } from "@app/types/assistant/models/types";
 import type { ProvidersSelection } from "@app/types/provider_selection";
-import { PRETTIFIED_PROVIDER_NAMES } from "@app/types/provider_selection";
 import { ContextItem, Icon, SliderToggle } from "@dust-tt/sparkle";
 
 interface ProviderToggleContextItemProps {
-  providerId: ModelProviderIdType;
+  providerId: WhitelistableModelMakerIdType;
   description: string;
   providersSelection: ProvidersSelection;
   handleToggleChange: () => void;
@@ -20,12 +20,12 @@ export function ProviderToggleContextItem({
   disabled,
 }: ProviderToggleContextItemProps) {
   const { isDark } = useTheme();
-  const LogoComponent = getModelProviderLogo(providerId, isDark);
+  const LogoComponent = getModelMakerLogo(providerId, isDark);
 
   return (
     <ContextItem
       key={providerId}
-      title={PRETTIFIED_PROVIDER_NAMES[providerId]}
+      title={getModelMakerDisplayName(providerId)}
       visual={<Icon visual={LogoComponent} size="lg" />}
       action={
         <SliderToggle

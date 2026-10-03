@@ -1,7 +1,7 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
-import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import { WHITELISTABLE_MODEL_MAKER_IDS } from "@app/types/assistant/models/providers";
+import type { WhitelistableModelMakerIdType } from "@app/types/assistant/models/types";
 import type { ProvidersSelection } from "@app/types/provider_selection";
 import {
   ALL_PROVIDERS_SELECTED,
@@ -19,8 +19,8 @@ export function useProvidersSelection(
     useState<ProvidersSelection>(ALL_PROVIDERS_SELECTED);
   const sendNotifications = useSendNotification();
 
-  const enabledProviders: Readonly<ModelProviderIdType[]> =
-    workspace?.whiteListedProviders ?? MODEL_PROVIDER_IDS;
+  const enabledProviders: Readonly<WhitelistableModelMakerIdType[]> =
+    workspace?.whiteListedProviders ?? WHITELISTABLE_MODEL_MAKER_IDS;
 
   const initialProvidersSelection = useMemo(
     () =>
@@ -46,7 +46,7 @@ export function useProvidersSelection(
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            whiteListedProviders: MODEL_PROVIDER_IDS.filter(
+            whiteListedProviders: WHITELISTABLE_MODEL_MAKER_IDS.filter(
               (key) => newSelection[key]
             ),
             defaultEmbeddingProvider:
@@ -83,13 +83,16 @@ export function useProvidersSelection(
   );
 
   const toggleProvider = useCallback(
-    async (provider: ModelProviderIdType) => {
+    async (provider: WhitelistableModelMakerIdType) => {
       const newSelection = {
         ...providersSelection,
         [provider]: !providersSelection[provider],
       };
 
-      if (MODEL_PROVIDER_IDS.filter((key) => newSelection[key]).length === 0) {
+      if (
+        WHITELISTABLE_MODEL_MAKER_IDS.filter((key) => newSelection[key])
+          .length === 0
+      ) {
         sendNotifications({
           type: "error",
           title: "One provider required",

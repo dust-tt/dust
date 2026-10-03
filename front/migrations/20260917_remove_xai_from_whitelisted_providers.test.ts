@@ -9,7 +9,7 @@ import {
 } from "@app/migrations/20260917_remove_xai_from_whitelisted_providers";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import type { WhitelistableModelMakerIdType } from "@app/types/assistant/models/types";
 import type { LightWorkspaceType } from "@app/types/user";
 import { describe, expect, it } from "vitest";
 
@@ -20,7 +20,7 @@ const YESTERDAY = new Date(Date.now() - 24 * 60 * 60 * 1000);
 // The migration scans every workspace, and the shared test database carries committed rows from
 // other suites. Every assertion therefore targets the workspaces this file creates.
 async function makeWorkspaceLastEditedYesterday(
-  whiteListedProviders: ModelProviderIdType[] | null
+  whiteListedProviders: WhitelistableModelMakerIdType[] | null
 ): Promise<LightWorkspaceType> {
   const workspace = await WorkspaceFactory.basic({ whiteListedProviders });
   // Raw SQL: Sequelize drops `updatedAt` from the SET clause of a bulk update, silent or not, so
