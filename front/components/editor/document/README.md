@@ -1,83 +1,61 @@
 # Document
 
-Import `Document` and its `DocumentProps` / `DocumentSaveResult` types from
-`@dust-tt/sparkle`. The component owns the editor, block menu, selection toolbar,
-typography, and debounced save lifecycle.
-It uses Tailwind utilities and Sparkle tokens through the standard Sparkle
-stylesheet, with no separate Document stylesheet.
+The rich editor for Dust Docs: `.md` files in DFM, the Dust-Flavored Markdown format defined in
+`front/lib/markdown/dfm`. The component owns the TipTap editor, the slash block menu, the
+selection toolbar, typography and the autosave lifecycle. Hosts own file access, permissions and
+synchronization with other writers.
 
-Pass `initialContent` as Markdown (the default) or serialized TipTap document JSON
-with `contentType="json"`. Supply `onSave` to enable editing. Saves return JSON by
-default, independently of the input format. Set `saveFormat="markdown"` to receive
-Markdown instead. A save resolves to `Ok` only after persistence succeeds, or to
-`Err` with a message on failure. Without a callback, or with `readOnly`,
-the document is read-only. Hosts must apply their authorization to `readOnly`.
-Changes to `readOnly` or the presence of `onSave` update editing permissions while
-preserving the current draft.
-If saving becomes unavailable while edits are pending, the draft and an unsaved warning
-remain visible, with no Retry action until the host restores editing.
+It started as a copy of Sparkle's `Document`, which Frames used with TipTap JSON files. This
+copy persists DFM only. Comments, suggestions and named visual blocks are not here yet;
+comments come in the next pull request.
 
-Changes save after three idle seconds by default. Set `autosaveDebounceMs` to
-adjust the delay, or use Cmd/Ctrl+S to save immediately. Only one request runs at
-a time. Failed saves preserve the draft and pause automatic retry until Retry or
-Cmd/Ctrl+S. Undoing back to saved content also clears the error without a request.
-Later edits are not acknowledged by an earlier save. Parent renders and changes
-to the save callback do not restart the debounce timer.
-
-`className` applies to the outer container. Typography layout and editor configuration
-remain controlled by Document. Hosts may theme fonts and colors inside `.tiptap`,
-the document content subtree. Editing controls stay outside that subtree and retain
-Sparkle's theme. Initial content is captured at mount. Remount with a new key to
-open a different document. Invalid stored JSON disables editing.
-Navigation protection and synchronization with external changes belong to the host.
-
-For a Markdown file, the host supplies persistence for the string it receives:
+## Usage
 
 ```tsx
-<Document
-  initialContent={markdown}
-  saveFormat="markdown"
-  onSave={saveMarkdown}
-/>
+<Document initialContent={dfmSource} onSave={persistDfmSource} />
 ```
 
-Opening a document does not write or normalize its stored source. After an edit,
-Markdown output preserves supported content and formatting, but may normalize
-spacing, list markers, and emphasis delimiters. Empty trailing paragraphs are
-omitted. Dirty state is tracked separately from the serialized output so a
-successful Markdown save acknowledges the same draft as a JSON save.
+`initialContent` is the file's DFM source and is captured at mount: remount with a new key to
+open another file. `onSave` receives the DFM source to persist and resolves `Ok` once
+stored, or `Err` with a message. Without `onSave`, or with `readOnly`, the document is
+read-only. Hosts apply their authorization through `readOnly`.
 
-Markdown support is derived from the configured editor extensions. Loading is
-conservative. Tables, images, task lists, HTML, reference definitions, escaped
-punctuation, and tilde code fences are shown as their original read-only source
-because the installed parser cannot reliably preserve them.
-Supported input is also checked by serializing and parsing it again. Before a
-Markdown save, the same check prevents a conversion from changing the draft's
-content or formatting. Conversion failures preserve the draft and never call
-`onSave`. These checks use the existing TipTap Markdown parser and serializer.
+Changes save after three idle seconds, or at once with Cmd/Ctrl+S. One save runs at a time.
+Failed saves keep the draft and pause automatic retries until Retry or Cmd/Ctrl+S. Undoing back
+to the saved content clears the error without a request.
 
-## Comments
+## What opens
 
-Comments live inside the document JSON. Each thread is stored under the root node's
-`attrs.comments` with its id, body, author, creation time, resolved flag and replies.
-The commented text carries a `comment` mark holding only the thread id, so several
-comments can overlap and a thread survives edits around it. Deleting a thread removes
-its marks. Resolving keeps them so the thread can be reopened in place. Documents
-whose stored comments do not match this shape do not open, like any invalid JSON.
+`loadDfm` in `dfm_persistence.ts` decides. Hosts mount the editor for every Markdown file
+they hand it; a file opens for editing when it is valid DFM, its body has no comment anchors,
+and its body is Markdown the editor reproduces. Tables, images, task lists, HTML, reference
+links and tilde fences are refused for now, since the TipTap Markdown parser cannot preserve
+them. A refused file is shown as read-only source with the reason. Line endings are not
+preserved: a CRLF file opens and is written back with LF.
 
-Pass `commentAuthor` to let the current user comment. Commenting also requires an
-editable document saved as JSON, since Markdown cannot carry comments. Selected text
-shows a Comment action after the formatting controls, also reachable with
-Cmd/Ctrl+Alt+M. A one-line composer appears under the selection: Enter posts,
-Shift+Enter adds a line, Escape or clicking away discards the draft.
+Hosts hold close and navigation while an edit is unsaved, through `onStateChange`, and lift the
+hold once a save has failed and the user has seen it. Unmounting with unsaved content, after
+a failed save included, queues one last save behind the save in flight.
 
-Unresolved comments highlight their text and, in containers at least `@sm` wide, add a
-marker in the right gutter. Markers on the same line merge and show a count. Clicking a highlight or a marker opens the
-comments panel on that thread, cycling through overlapping comments. The Comments
-button in the header opens the panel with every thread, resolved ones collapsed at the
-end. Selecting a thread scrolls to its text and, for authors, shows the reply field.
-Read-only documents and documents without `commentAuthor` keep comments browsable
-without reply, resolve or delete controls. Comment changes use the regular autosave,
-but posted comments, replies, resolution and deletion stay out of text undo history.
-Use the explicit comment actions to manage posted threads; undoing text cannot restore
-an old comments array or erase another person's reply.
+Front matter and comment threads already in the file are kept in an envelope and written back
+unchanged on save. The editor only rewrites the body, and only when the codec confirms the
+result reads back identically.
+
+## Layout
+
+| File | Owns |
+| --- | --- |
+| `index.tsx` | The component: layout, shortcuts, read-only and unsupported states. |
+| `useDocumentEditor.ts` | The TipTap editor, dirty tracking, autosave and the save lifecycle. |
+| `dfm_persistence.ts` | `loadDfm` and `saveDfm`, between DFM source and the editor's document. |
+| `content.ts` | Markdown parse and serialize for the body, with the round-trip checks. |
+| `extensions.ts` | The schema: StarterKit, Markdown, placeholders and heading anchors. |
+| `blocks.ts`, `DocumentBlockMenu.tsx` | The `/` block menu. |
+| `DocumentSelectionToolbar.tsx` | Formatting controls on a text selection. |
+| `DocumentSaveStatus.tsx` | Saved, saving, unsaved and error line with Retry. |
+| `DocumentSourcePreview.tsx` | Read-only source for a file that cannot open. |
+| `DocumentAnchors.ts` | In-document heading links. |
+
+Tests: `dfm_persistence.test.ts` for the load and save boundary, `useDocumentEditor.test.ts`
+for the save on unmount. The editor's interaction tests lived in Sparkle stories and are not
+ported yet.

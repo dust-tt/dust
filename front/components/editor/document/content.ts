@@ -10,13 +10,11 @@ import { flattenExtensions, getExtensionField, getSchema } from "@tiptap/core";
 import { MarkdownManager } from "@tiptap/markdown";
 import type { Node } from "@tiptap/pm/model";
 import { Fragment } from "@tiptap/pm/model";
-import { z } from "zod";
 
 const documentSchema = getSchema(documentExtensions);
 const documentMarkdown = new MarkdownManager({
   extensions: documentExtensions,
 });
-const documentEnvelope = z.object({ type: z.literal("doc") }).passthrough();
 
 /**
  * @cc [owner:flvndvd,label:architecture] document-markdown-capabilities
@@ -103,59 +101,29 @@ export const normalizeTextNodes = (node: Node): Node => {
  * @cc [owner:flvndvd,label:product] document-source-preservation
  * Markdown containing unsupported tokens or formatting that cannot survive serialization
  * MUST be rejected before editing. Callers MUST retain the original source for display.
- * JSON content MUST satisfy the document schema before editing.
  */
 export const parseDocumentContent = (
-  content: string,
-  contentType: "markdown" | "json"
+  content: string
 ): Result<JSONContent, string> => {
-  if (contentType === "markdown") {
-    if (!hasSupportedMarkdown(content)) {
-      return new Err("The Markdown uses formatting the editor cannot keep.");
-    }
-
-    let parsed: JSONContent;
-    let serialized: string;
-
-    try {
-      parsed = documentMarkdown.parse(content);
-      serialized = documentMarkdown.serialize(parsed);
-    } catch {
-      return new Err("The Markdown could not be parsed.");
-    }
-
-    if (!canRoundTripMarkdown(parsed, serialized)) {
-      return new Err(
-        "The Markdown would not read back the same after editing."
-      );
-    }
-
-    return new Ok(parsed);
+  if (!hasSupportedMarkdown(content)) {
+    return new Err("The Markdown uses formatting the editor cannot keep.");
   }
 
-  let json: unknown;
+  let parsed: JSONContent;
+  let serialized: string;
 
   try {
-    json = JSON.parse(content);
+    parsed = documentMarkdown.parse(content);
+    serialized = documentMarkdown.serialize(parsed);
   } catch {
-    return new Err("The content is not valid JSON.");
+    return new Err("The Markdown could not be parsed.");
   }
 
-  const parsed = documentEnvelope.safeParse(json);
-  if (!parsed.success) {
-    return new Err("The content does not match the document schema.");
+  if (!canRoundTripMarkdown(parsed, serialized)) {
+    return new Err("The Markdown would not read back the same after editing.");
   }
 
-  let node: Node;
-
-  try {
-    node = documentSchema.nodeFromJSON(parsed.data);
-    node.check();
-  } catch {
-    return new Err("The content does not match the document schema.");
-  }
-
-  return new Ok(node.toJSON());
+  return new Ok(parsed);
 };
 
 /**
@@ -167,16 +135,15 @@ export const serializeDocumentMarkdown = (
   document: JSONContent
 ): Result<string, string> => {
   const content = withoutTrailingParagraphs(document);
-  let markdown: string;
 
+  // Serializing or re-reading an unknown node throws; either way the document is not writable.
   try {
-    markdown = documentMarkdown.serialize(content);
+    const markdown = documentMarkdown.serialize(content);
+    return hasSupportedMarkdown(markdown) &&
+      canRoundTripMarkdown(content, markdown)
+      ? new Ok(markdown)
+      : new Err("The document would not read back the same as Markdown.");
   } catch {
     return new Err("The document could not be written as Markdown.");
   }
-
-  return hasSupportedMarkdown(markdown) &&
-    canRoundTripMarkdown(content, markdown)
-    ? new Ok(markdown)
-    : new Err("The document would not read back the same as Markdown.");
 };

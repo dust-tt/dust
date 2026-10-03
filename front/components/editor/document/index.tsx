@@ -12,6 +12,7 @@ import { EditorContent } from "@tiptap/react";
 import type React from "react";
 
 export type {
+  DocumentDraftState,
   DocumentProps,
   DocumentSaveResult,
 } from "@app/components/editor/document/types";
@@ -19,20 +20,14 @@ export type {
 const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
 
 /**
- * @cc [owner:flvndvd,label:product] document-ui-owned-by-sparkle
- * Typography layout and formatting controls MUST remain fixed. Hosts MAY theme content fonts
- * and colors through CSS, without restyling editing controls. Callers MUST NOT supply editor
+ * @cc [owner:PopDaph,label:product] document-ui-fixed
+ * Typography layout and formatting controls MUST remain fixed. Callers MUST NOT supply editor
  * instances, extensions, or toolbar configuration. Inline controls MUST require a nonempty
  * text selection. Block commands MUST require an editable document and a typed `/`.
  * className MUST apply only to the outer container.
  */
 /**
- * @cc [owner:flvndvd,label:product] document-content-style-boundary
- * The .tiptap subtree MUST contain document content. Editing controls and save status MUST
- * remain outside that subtree so hosts can theme content without restyling the controls.
- */
-/**
- * @cc [owner:flvndvd,label:product] document-read-only
+ * @cc [owner:PopDaph,label:product] document-read-only
  * When readOnly is true or onSave is absent, Document MUST disable editing, formatting
  * controls, and save callbacks, including when these props change after mount. Hosts MUST
  * apply their permissions through readOnly. Losing editability MUST preserve unsaved
@@ -40,31 +35,21 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
  */
 export const Document = ({
   initialContent,
-  contentType = "markdown",
-  saveFormat = "json",
   className,
   mountPortalContainer,
   readOnly = false,
   autosaveDebounceMs = DEFAULT_AUTOSAVE_DEBOUNCE_MS,
   onSave,
+  onStateChange,
 }: DocumentProps) => {
-  const {
-    editor,
-    editable,
-    valid,
-    unsupportedMarkdown,
-    dirty,
-    saving,
-    error,
-    save,
-  } = useDocumentEditor({
-    initialContent,
-    contentType,
-    saveFormat,
-    readOnly,
-    autosaveDebounceMs,
-    onSave,
-  });
+  const { editor, editable, unsupported, dirty, saving, error, save } =
+    useDocumentEditor({
+      initialContent,
+      readOnly,
+      autosaveDebounceMs,
+      onSave,
+      onStateChange,
+    });
   const blockMenu = useDocumentBlockMenu(editor, editable);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
@@ -90,23 +75,13 @@ export const Document = ({
     blockMenu.onKeyDown(event);
   };
 
-  if (unsupportedMarkdown !== null) {
+  if (unsupported !== null) {
     return (
       <DocumentSourcePreview
-        source={unsupportedMarkdown}
+        source={unsupported.source}
+        reason={unsupported.reason}
         className={className}
       />
-    );
-  }
-
-  if (!valid) {
-    return (
-      <article className={className}>
-        <p role="alert">
-          This document could not be opened. Its saved content has not been
-          changed.
-        </p>
-      </article>
     );
   }
 
