@@ -195,7 +195,14 @@ function AnchoredPopover({
   return (
     <PopoverRoot open={open} modal={false}>
       <PopoverAnchor
-        className="fixed transition-all duration-300 ease-in-out"
+        // No transition here: this element is never visible, it only feeds
+        // its rect to Radix's positioning math. Animating it meant that
+        // math could sample an in-transit rect right after opening (the
+        // anchor starts at the 50%/50%/0×0 default and tweens toward the
+        // real target), landing the popover in the wrong place until the
+        // animation settled — and nothing re-triggers that positioning in
+        // the meantime, since it's keyed off size, not position.
+        className="fixed"
         style={{
           top: position.top,
           left: position.left,

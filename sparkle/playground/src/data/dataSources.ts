@@ -168,6 +168,15 @@ const rootFolderNames = [
   "Frames",
   "Marketing",
   "Engineering",
+  "Team Weeklies",
+  "Onboarding",
+  "Legal",
+  "Finance",
+  "Product",
+  "Support",
+  "Hiring",
+  "Vendors",
+  "Roadmap",
 ];
 
 const nestedFolderNames = [
@@ -176,9 +185,15 @@ const nestedFolderNames = [
   "Shared",
   "Q1",
   "Q2",
+  "Q3",
+  "Q4",
   "Final",
   "Assets",
   "References",
+  "Meeting Notes",
+  "Templates",
+  "Old",
+  "Misc",
 ];
 
 // Generate a file name based on type and index
@@ -324,7 +339,7 @@ function generateDataSourcesForSpace(
   const dataSources: DataSource[] = [];
   let itemIndex = 0;
 
-  const rootFolderCount = Math.floor(seededRandom(spaceId, 100) * 3) + 2;
+  const rootFolderCount = Math.floor(seededRandom(spaceId, 100) * 5) + 4;
   const rootFolderIds: string[] = [];
   const allFolderIds: string[] = [];
 
@@ -346,7 +361,7 @@ function generateDataSourcesForSpace(
   }
 
   for (let f = 0; f < rootFolderIds.length; f++) {
-    if (seededRandom(spaceId, 200 + f) >= 0.3) {
+    if (seededRandom(spaceId, 200 + f) >= 0.6) {
       continue;
     }
 
@@ -365,7 +380,7 @@ function generateDataSourcesForSpace(
       updatedAt,
     });
 
-    if (seededRandom(spaceId, 300 + f) < 0.5) {
+    if (seededRandom(spaceId, 300 + f) < 0.65) {
       const deepId = `ds-${spaceId}-folder-${itemIndex++}`;
       const deepDates = generateDates(itemIndex, spaceId);
       allFolderIds.push(deepId);
@@ -405,6 +420,61 @@ function generateDataSourcesForSpace(
       createdAt,
       updatedAt,
       icon: getIconForFileType(fileType),
+    });
+  }
+
+  if (spaceId === TEAM_WEEKLY_SPACE_ID) {
+    dataSources.push(...generateTeamWeeklyDataSources(spaceId, itemIndex));
+  }
+
+  return dataSources;
+}
+
+// A single, deterministic "Team Weekly" folder (in one fixed space, unlike
+// the randomly-placed "Team Weeklies" folder name in rootFolderNames) whose
+// files are named by date alone — a realistic, easy-to-recognize example for
+// exercising search and browsing.
+const TEAM_WEEKLY_SPACE_ID = "space-1";
+const TEAM_WEEKLY_COUNT = 22;
+const TEAM_WEEKLY_ANCHOR = new Date(2026, 11, 11); // 2026-12-11
+
+function generateTeamWeeklyDataSources(
+  spaceId: string,
+  startIndex: number
+): DataSource[] {
+  const folderId = `ds-${spaceId}-team-weekly-folder`;
+  const folderDates = generateDates(startIndex, `${spaceId}-team-weekly`);
+  const dataSources: DataSource[] = [
+    {
+      id: folderId,
+      kind: "folder",
+      fileName: "Team Weekly",
+      parentId: null,
+      source: "pod",
+      createdBy: getRandomUserId(startIndex, `${spaceId}-team-weekly`),
+      createdAt: folderDates.createdAt,
+      updatedAt: folderDates.updatedAt,
+    },
+  ];
+
+  for (let i = 0; i < TEAM_WEEKLY_COUNT; i++) {
+    const date = new Date(TEAM_WEEKLY_ANCHOR);
+    date.setDate(date.getDate() - i * 7);
+    const isoDate = date.toISOString().slice(0, 10);
+    const seed = `${spaceId}-team-weekly-file`;
+    const { createdAt, updatedAt } = generateDates(startIndex + i + 1, seed);
+
+    dataSources.push({
+      id: `ds-${spaceId}-team-weekly-file-${i}`,
+      kind: "file",
+      fileName: `${isoDate}.docx`,
+      parentId: folderId,
+      source: "pod",
+      fileType: "docx",
+      createdBy: getRandomUserId(startIndex + i + 1, seed),
+      createdAt,
+      updatedAt,
+      icon: getIconForFileType("docx"),
     });
   }
 
@@ -502,7 +572,7 @@ export function getItemTypeLabel(item: DataSource): string {
   return item.fileType ? getFileTypeLabel(item.fileType) : "File";
 }
 
-export function sortDataSourcesForDisplay(items: DataSource[]): DataSource[] {
+export function sortDataSourcesForDisplay<T extends DataSource>(items: T[]): T[] {
   return [...items].sort((a, b) => {
     if (a.kind !== b.kind) {
       return a.kind === "folder" ? -1 : 1;
@@ -549,17 +619,16 @@ const dataSourceCache = new Map<string, DataSource[]>();
 export function getDataSourcesBySpaceId(spaceId: string): DataSource[] {
   if (!dataSourceCache.has(spaceId)) {
     // Use seeded random to determine file count:
-    // 20% chance of 0 files, 80% chance of 3-80 files
+    // 5% chance of 0 files, 95% chance of 20-220 files — deliberately dense,
+    // so browsing/searching feels like a real, cluttered knowledge base.
     const randomValue = seededRandom(spaceId, 0);
     let fileCount: number;
 
-    if (randomValue < 0.2) {
-      // 20% probability: 0 files
+    if (randomValue < 0.05) {
       fileCount = 0;
     } else {
-      // 80% probability: 3-80 files (inclusive)
       const countRandom = seededRandom(spaceId, 1);
-      fileCount = Math.floor(countRandom * 78) + 3; // 78 possible values (3 to 80)
+      fileCount = Math.floor(countRandom * 201) + 20; // 20 to 220
     }
 
     dataSourceCache.set(
