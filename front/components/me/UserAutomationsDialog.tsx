@@ -12,6 +12,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback } from "react";
 
 interface UserAutomationsDialogProps {
@@ -25,6 +26,7 @@ export function UserAutomationsDialog({
   onOpenChange,
   owner,
 }: UserAutomationsDialogProps) {
+  const { t } = useLingui();
   const closeDialog = useCallback(() => onOpenChange(false), [onOpenChange]);
 
   return (
@@ -33,13 +35,15 @@ export function UserAutomationsDialog({
        * closes. The tables' SWR hooks need no `disabled` gating. */}
       <DialogContent size="2xl" height="xl">
         <DialogHeader>
-          <DialogTitle>Automations</DialogTitle>
+          <DialogTitle>
+            <Trans>Automations</Trans>
+          </DialogTitle>
         </DialogHeader>
         <DialogContainer>
           <Tabs defaultValue="triggers" className="w-full">
             <TabsList className="mb-4">
-              <TabsTrigger value="triggers" label="Triggers" />
-              <TabsTrigger value="wake-ups" label="Wake-Ups" />
+              <TabsTrigger value="triggers" label={t`Triggers`} />
+              <TabsTrigger value="wake-ups" label={t`Wake-Ups`} />
             </TabsList>
             <TabsContent value="triggers">
               <UserAutomationsTable owner={owner} />

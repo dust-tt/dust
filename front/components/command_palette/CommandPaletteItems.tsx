@@ -1,4 +1,5 @@
 import { ArrowRight, Button, cn, KeyboardShortcut } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import React from "react";
 
 interface ItemRowProps {
@@ -15,6 +16,7 @@ export const ItemRow = React.forwardRef<HTMLDivElement, ItemRowProps>(
     { isSelected, onClick, onMouseMove, onOpenActions, children },
     ref
   ) {
+    const { t } = useLingui();
     return (
       <div
         ref={ref}
@@ -34,7 +36,7 @@ export const ItemRow = React.forwardRef<HTMLDivElement, ItemRowProps>(
             variant="outline"
             size="xs"
             icon={ArrowRight}
-            aria-label="More actions"
+            aria-label={t`More actions`}
             // Keep the button mounted so showing it on selection doesn't shift layout.
             className={cn(!isSelected && "invisible")}
             tabIndex={isSelected ? undefined : -1}

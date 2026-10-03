@@ -19,6 +19,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import type React from "react";
 import { useContext } from "react";
@@ -53,6 +54,7 @@ export function Navigation({
   isFullScreen,
   isMobile,
 }: NavigationProps) {
+  const { t } = useLingui();
   const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
 
   const { user } = useUser();
@@ -78,7 +80,7 @@ export function Navigation({
                 icon={Menu01}
                 className={MOBILE_NAV_MENU_BUTTON_CLASSES}
                 onClick={() => setSidebarOpen(true)}
-                aria-label="Open navigation"
+                aria-label={t`Open navigation`}
               />
             </SheetTrigger>
           </div>

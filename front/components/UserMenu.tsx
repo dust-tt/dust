@@ -90,6 +90,7 @@ import {
   User01,
   UsersCheck,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 interface UserMenuProps {
@@ -119,6 +120,7 @@ export function UserMenu({
   creditUsageState,
   showCreditUsageLearnMoreOnly = false,
 }: UserMenuProps) {
+  const { t } = useLingui();
   const router = useAppRouter();
   const { featureFlags } = useFeatureFlags();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -253,9 +255,10 @@ export function UserMenu({
     () => async (role: "user" | "admin" | "manager") => {
       const result = await forceUserRole(user, owner, role, featureFlags);
       if (result.isOk()) {
+        const value = result.value;
         sendNotification({
-          title: "Success !",
-          description: `${result.value} (reloading...)`,
+          title: t`Success !`,
+          description: t`${value} (reloading...)`,
           type: "success",
         });
         setTimeout(() => {
@@ -263,13 +266,13 @@ export function UserMenu({
         }, 2000);
       } else {
         sendNotification({
-          title: "Error !",
+          title: t`Error !`,
           description: result.error,
           type: "error",
         });
       }
     },
-    [owner, sendNotification, user, featureFlags]
+    [owner, sendNotification, user, featureFlags, t]
   );
 
   const handleSendOnboarding = useMemo(
@@ -278,8 +281,8 @@ export function UserMenu({
       if (result.isOk) {
         window.dispatchEvent(new ConversationsUpdatedEvent());
         sendNotification({
-          title: "Success !",
-          description: "Onboarding conversation created (redirecting...)",
+          title: t`Success !`,
+          description: t`Onboarding conversation created (redirecting...)`,
           type: "success",
         });
         setTimeout(() => {
@@ -289,13 +292,13 @@ export function UserMenu({
         }, 1000);
       } else {
         sendNotification({
-          title: "Error !",
+          title: t`Error !`,
           description: result.error,
           type: "error",
         });
       }
     },
-    [owner, sendNotification, featureFlags, router]
+    [owner, sendNotification, featureFlags, router, t]
   );
 
   // Check if user has multiple workspaces (from WorkOS orgs, or in dev
@@ -346,7 +349,9 @@ export function UserMenu({
       <DropdownMenu open={userMenuOpen} onOpenChange={setUserMenuOpen}>
         <DropdownMenuTrigger className="hover:bg-hover data-[state=open]:bg-selected rounded-xl p-2 m-2">
           <div className="group flex cursor-pointer items-center justify-between gap-2">
-            <span className="sr-only">Open user menu</span>
+            <span className="sr-only">
+              <Trans>Open user menu</Trans>
+            </span>
             <div className="flex gap-2 items-center">
               <Avatar
                 size="sm"
@@ -410,7 +415,7 @@ export function UserMenu({
 
           {hasMultipleWorkspaces && (
             <>
-              <DropdownMenuLabel label="Workspace" />
+              <DropdownMenuLabel label={t`Workspace`} />
               <WorkspacePickerRadioGroup user={user} workspace={owner} />
               <Separator className="my-1" />
             </>
@@ -423,12 +428,12 @@ export function UserMenu({
               }
             }}
           >
-            <DropdownMenuSubTrigger label="Help" icon={Heart} />
+            <DropdownMenuSubTrigger label={t`Help`} icon={Heart} />
             <DropdownMenuPortal>
               <DropdownMenuSubContent>
-                <DropdownMenuLabel label="Learn about Dust" />
+                <DropdownMenuLabel label={t`Learn about Dust`} />
                 <DropdownMenuItem
-                  label="Guides & Documentation"
+                  label={t`Guides & Documentation`}
                   icon={BookOpen01}
                   href="https://docs.dust.tt"
                   target="_blank"
@@ -437,15 +442,15 @@ export function UserMenu({
                   }
                 />
                 <DropdownMenuItem
-                  label="Join the Slack Community"
+                  label={t`Join the Slack Community`}
                   icon={SlackLogo}
                   href="https://dust-community.tightknit.community/join"
                   target="_blank"
                   onClick={() => trackUserMenuEvent("help_slack_community")}
                 />
-                <DropdownMenuLabel label="Ask questions" />
+                <DropdownMenuLabel label={t`Ask questions`} />
                 <DropdownMenuItem
-                  label="Ask @help"
+                  label={t`Ask @help`}
                   icon={MessageChatCircle}
                   onClick={() => {
                     trackUserMenuEvent("help_ask");
@@ -453,7 +458,7 @@ export function UserMenu({
                   }}
                 />
                 <DropdownMenuItem
-                  label="How do I invite new users?"
+                  label={t`How do I invite new users?`}
                   icon={MessageTextCircle01}
                   onClick={() => {
                     trackUserMenuEvent("help_invite_users_question");
@@ -461,7 +466,7 @@ export function UserMenu({
                   }}
                 />
                 <DropdownMenuItem
-                  label="How do I use agents in Slack workflow?"
+                  label={t`How do I use agents in Slack workflow?`}
                   icon={MessageTextCircle01}
                   onClick={() => {
                     trackUserMenuEvent("help_slack_workflow_question");
@@ -472,7 +477,7 @@ export function UserMenu({
                   }}
                 />
                 <DropdownMenuItem
-                  label="How do I manage billing?"
+                  label={t`How do I manage billing?`}
                   icon={MessageTextCircle01}
                   onClick={() => {
                     trackUserMenuEvent("help_billing_question");
@@ -493,7 +498,7 @@ export function UserMenu({
           {showExtensionMenu &&
             (isFirefox ? (
               <DropdownMenuItem
-                label="Firefox extension"
+                label={t`Firefox extension`}
                 icon={FirefoxLogo}
                 href="https://addons.mozilla.org/firefox/addon/dust/"
                 target="_blank"
@@ -501,7 +506,7 @@ export function UserMenu({
               />
             ) : (
               <DropdownMenuItem
-                label="Chrome extension"
+                label={t`Chrome extension`}
                 icon={ChromeLogo}
                 href="https://chromewebstore.google.com/detail/dust/fnkfcndbgingjcbdhaofkcnhcjpljhdn"
                 target="_blank"
@@ -510,18 +515,18 @@ export function UserMenu({
             ))}
 
           <DropdownMenuItem
-            label="Changelog"
+            label={t`Changelog`}
             icon={Announcement01}
             href="https://docs.dust.tt/docs/changelog"
             target="_blank"
             onClick={() => trackUserMenuEvent("changelog")}
           />
 
-          <DropdownMenuLabel label="Account" />
+          <DropdownMenuLabel label={t`Account`} />
           {subscription?.plan.limits.canUseProduct && (
             <>
               <DropdownMenuItem
-                label="Personal Settings"
+                label={t`Personal Settings`}
                 icon={User01}
                 onSelect={() => {
                   trackUserMenuEvent("personal_settings");
@@ -529,7 +534,7 @@ export function UserMenu({
                 }}
               />
               <DropdownMenuItem
-                label="Tools"
+                label={t`Tools`}
                 icon={ShapesPlus}
                 onSelect={() => {
                   trackUserMenuEvent("tools");
@@ -537,7 +542,7 @@ export function UserMenu({
                 }}
               />
               <DropdownMenuItem
-                label="Automations"
+                label={t`Automations`}
                 icon={Clock}
                 onSelect={() => {
                   trackUserMenuEvent("automations");
@@ -547,7 +552,7 @@ export function UserMenu({
               {/* The credit usage action is the analytics entry point when shown; keep exactly one. */}
               {!creditUsageState && !showCreditUsageLearnMoreOnly && (
                 <DropdownMenuItem
-                  label="Analytics"
+                  label={t`Analytics`}
                   icon={BarChart01}
                   onSelect={() => {
                     trackUserMenuEvent("analytics");
@@ -559,7 +564,7 @@ export function UserMenu({
           )}
 
           <DropdownMenuItem
-            label="Sign&nbsp;out"
+            label={t`Sign out`}
             icon={LogOut01}
             onClick={() => {
               trackUserMenuEvent("sign_out");
@@ -579,7 +584,7 @@ export function UserMenu({
             <>
               <Separator className="my-1" />
               <DropdownMenuSub>
-                <DropdownMenuSubTrigger label="Dev Tools" icon={Shapes} />
+                <DropdownMenuSubTrigger label={t`Dev Tools`} icon={Shapes} />
                 <DropdownMenuPortal>
                   <DropdownMenuSubContent>
                     {(router.pathname === "/w/[wId]/conversation/[cId]" ||
@@ -587,7 +592,7 @@ export function UserMenu({
                         /^\/w\/[^/]+\/conversation\/[^/]+$/
                       )) && (
                       <DropdownMenuItem
-                        label="Debug conversation"
+                        label={t`Debug conversation`}
                         onClick={() => {
                           const regexp = new RegExp(
                             `/w/([^/]+)/conversation/([^/]+)`
@@ -607,21 +612,21 @@ export function UserMenu({
                       <>
                         {!isAdmin(owner) && (
                           <DropdownMenuItem
-                            label="Become Admin"
+                            label={t`Become Admin`}
                             onClick={() => forceRoleUpdate("admin")}
                             icon={ShieldTick}
                           />
                         )}
                         {!isOnlyManager(owner) && (
                           <DropdownMenuItem
-                            label="Become Manager"
+                            label={t`Become Manager`}
                             onClick={() => forceRoleUpdate("manager")}
                             icon={UsersCheck}
                           />
                         )}
                         {!isOnlyUser(owner) && (
                           <DropdownMenuItem
-                            label="Become User"
+                            label={t`Become User`}
                             onClick={() => forceRoleUpdate("user")}
                             icon={User01}
                           />
@@ -629,18 +634,26 @@ export function UserMenu({
                       </>
                     )}
                     <DropdownMenuItem
-                      label={`${privacyMask.isEnabled ? "Disable" : "Enable"} Privacy Mask`}
+                      label={
+                        privacyMask.isEnabled
+                          ? t`Disable Privacy Mask`
+                          : t`Enable Privacy Mask`
+                      }
                       onClick={privacyMask.toggle}
                       icon={privacyMask.isEnabled ? EyeOff : Eye}
                     />
                     <DropdownMenuItem
-                      label={`${devMode.isEnabled ? "Disable" : "Enable"} Dev Console`}
+                      label={
+                        devMode.isEnabled
+                          ? t`Disable Dev Console`
+                          : t`Enable Dev Console`
+                      }
                       onClick={devMode.toggle}
                       icon={Terminal}
                     />
                     {isAdmin(owner) && (
                       <DropdownMenuItem
-                        label="Send onboarding conversation"
+                        label={t`Send onboarding conversation`}
                         onClick={handleSendOnboarding}
                         icon={MessagePlusCircle}
                       />
