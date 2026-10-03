@@ -92,6 +92,7 @@ Run benchmarks sequentially, with no tests or other workloads running:
 ```sh
 local/run exec python3 /dfs/v2/bench/search.py
 local/run exec python3 /dfs/v2/bench/vfs.py
+local/run exec python3 /dfs/v2/bench/vfs.py --files 100000
 local/run exec cargo build --release --example workspace_bench
 local/run exec python3 /dfs/v2/bench/workspaces.py
 ```
@@ -100,6 +101,10 @@ All print the report directory. The search runner reuses v1's Rust population/qu
 eight query cases. The filesystem runner imports jd's unmodified benchmark and validates its fixed
 manifest; it restarts dfs-server and remounts before each `first` read case. FDB, ES, and OS caches
 stay warm across these restarts. Native FDB commit durability is included in foreground writes.
+`vfs.py --files 100000` multiplies the standard directory allocations by ten, preserving the same
+100 directories, depth, seed, document format, and four rare matches (about 1.8 GB total). It selects
+256 tails across the larger corpus and retains every workload's validation and timing boundaries.
+The default 10,000-file corpus retains its pinned manifest; each run records its actual manifest hash.
 The small workspace runner checks shared-list pagination at 1/2/512 grants, search isolation, and
 two independent server writers in the same workspace alongside 16 idle workspaces. It enables debug
 FDB commit timing logs; both servers share the same FDB prefix and ES index.

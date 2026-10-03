@@ -22,10 +22,12 @@ KNOBS = {
 }
 
 
-def corpus(work):
+def corpus(work, files=10000):
     target = work / 'corpus'
-    subprocess.run([sys.executable, '/benchmark/generate.py', str(target), '--seed', '42'], check=True)
-    assert hashlib.sha256((target / 'manifest.json').read_bytes()).hexdigest() == MANIFEST_SHA256
+    subprocess.run([sys.executable, str(ROOT / 'bench/corpus.py'), str(target), '--files', str(files)],
+                   check=True)
+    if files == 10000:
+        assert hashlib.sha256((target / 'manifest.json').read_bytes()).hexdigest() == MANIFEST_SHA256
     return target
 
 

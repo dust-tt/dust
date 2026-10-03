@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Run jd's unchanged workloads with a new server/mount before each first read case."""
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
-import shutil
+import random
 import subprocess
 import sys
 import tarfile
@@ -16,12 +17,13 @@ from common import corpus, metadata, save, support
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--work', type=Path)
+    parser.add_argument('--files', type=int, choices=[10000, 100000], default=10000)
     args = parser.parse_args()
     work = args.work or Path(tempfile.mkdtemp(prefix='dfs-v2-vfs-bench-'))
     work.mkdir(parents=True, exist_ok=True)
     if (work / 'run.json').exists():
         raise RuntimeError('report directory already contains a run')
-    data = corpus(work)
+    data = corpus(work, args.files)
     prefix, key, key_path = support.identity(work, 'bench')
     run = metadata() | {'prefix': prefix, 'warm_runs': 1, 'server_restarted_per_first_case': True,
                        'cold_scope': 'new dfs-server/session/mount; backend caches retained',
@@ -29,14 +31,20 @@ def main():
                        'kernel_metadata_ttl_seconds': 4294967295, 'max_background': 32,
                        'read_ahead_requested_kib': 1024, 'results': []}
     run['corpus_bytes'] = sum(p.stat().st_size for p in (data / 'docs').rglob('*.txt'))
+    run['files'] = args.files
+    run['manifest_sha256'] = hashlib.sha256((data / 'manifest.json').read_bytes()).hexdigest()
+    run['corpus_directories'] = 100
     save(work, run)
     sys.path.insert(0, '/benchmark')
     import benchmark as jd
+    jd.DOCUMENTS = args.files
+    jd.SAMPLE_INDICES = frozenset(random.Random(42).sample(range(args.files), 256))
     original = jd.Benchmark
     class Measured(original):
         """@cc [owner:spolu,label:testing;performance] unchanged-measurements
-        Only setup and reporting may change. jd's actions, validation, and timed intervals MUST remain
-        unchanged; server/mount resets MUST precede timing. Retain and validate every result.
+        Corpus size and matching sample indices MAY change during setup. jd's actions, validation,
+        and timed intervals MUST remain unchanged; server/mount resets MUST precede timing.
+        Retain and validate every result, recording the actual file count and manifest hash.
         """
         def measure(self, feature, workload, phase, *args, **kwargs):
             if current[0] == 'dfs' and phase == 'first':
