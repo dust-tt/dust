@@ -169,7 +169,8 @@ export const SERVICENOW_SERVER = {
       supported_use_cases: ["platform_actions", "personal_actions"],
     },
     icon: "ActionCloudArrowLeftRightIcon",
-    documentationUrl: "https://docs.dust.tt/docs/servicenow",
+    documentationUrl:
+      "https://docs.dust.tt/docs/user-documentation/agents/tools/servicenow#overview",
   },
   tools: SERVICENOW_TOOLS_METADATA,
 } as const satisfies ServerMetadata;
