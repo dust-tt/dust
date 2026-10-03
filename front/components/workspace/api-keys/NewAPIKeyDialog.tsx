@@ -4,9 +4,9 @@ import {
   dollarsToMicroUsd,
   isKeyRole,
   KEY_ROLES,
-  monthlyCapCreditsSchema,
-  monthlyCapDollarsSchema,
   parseCreditsString,
+  useMonthlyCapCreditsSchema,
+  useMonthlyCapDollarsSchema,
 } from "@app/components/workspace/api-keys/utils";
 import { compareStrings } from "@app/lib/i18n/format";
 import type { SpaceType } from "@app/types/space";
@@ -32,21 +32,32 @@ import {
   XClose,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 import { FormProvider, useController, useForm } from "react-hook-form";
 import { z } from "zod";
 
 export const CREATE_API_KEY_LABEL = "Create API Key";
 
-const formSchema = z.object({
-  name: z.string().min(1, "API key name is required"),
-  monthlyCapDollars: monthlyCapDollarsSchema,
-  monthlyCapCredits: monthlyCapCreditsSchema,
-  selectedSpaceIds: z.array(z.string()),
-  role: z.enum(KEY_ROLES),
-});
+function useFormSchema() {
+  const { t } = useLingui();
+  const monthlyCapDollarsSchema = useMonthlyCapDollarsSchema();
+  const monthlyCapCreditsSchema = useMonthlyCapCreditsSchema();
 
-type FormValues = z.infer<typeof formSchema>;
+  return useMemo(
+    () =>
+      z.object({
+        name: z.string().min(1, t`API key name is required`),
+        monthlyCapDollars: monthlyCapDollarsSchema,
+        monthlyCapCredits: monthlyCapCreditsSchema,
+        selectedSpaceIds: z.array(z.string()),
+        role: z.enum(KEY_ROLES),
+      }),
+    [monthlyCapCreditsSchema, monthlyCapDollarsSchema, t]
+  );
+}
+
+type FormValues = z.infer<ReturnType<typeof useFormSchema>>;
 
 interface NewAPIKeyDialogProps {
   spaces: SpaceType[];
@@ -71,6 +82,8 @@ export const NewAPIKeyDialog = ({
   onCreate,
   showLegacyUsdMonthlyCap,
 }: NewAPIKeyDialogProps) => {
+  const { t } = useLingui();
+  const formSchema = useFormSchema();
   const [isOpen, setIsOpen] = useState(false);
   const [spaceSearch, setSpaceSearch] = useState("");
 
@@ -160,25 +173,27 @@ export const NewAPIKeyDialog = ({
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
         <Button
-          label={CREATE_API_KEY_LABEL}
+          label={t`Create API Key`}
           icon={Plus}
           disabled={disabled || isGenerating || isRevoking}
         />
       </SheetTrigger>
       <SheetContent size="lg">
         <SheetHeader>
-          <SheetTitle>New API Key</SheetTitle>
+          <SheetTitle>
+            <Trans>New API Key</Trans>
+          </SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <FormProvider {...form}>
             <div className="space-y-4">
-              <BaseFormFieldSection title="API Key Name" fieldName="name">
+              <BaseFormFieldSection title={t`API Key Name`} fieldName="name">
                 {({ registerRef, registerProps, onChange, errorMessage }) => (
                   <Input
                     ref={registerRef}
                     {...registerProps}
                     onChange={onChange}
-                    placeholder="Type an API key name"
+                    placeholder={t`Type an API key name`}
                     isError={!!errorMessage}
                     message={errorMessage}
                     messageStatus="error"
@@ -187,18 +202,22 @@ export const NewAPIKeyDialog = ({
               </BaseFormFieldSection>
 
               <div className="flex flex-col gap-2">
-                <Label>Spaces</Label>
+                <Label>
+                  <Trans>Spaces</Trans>
+                </Label>
                 <p className="text-sm text-muted-foreground">
-                  The key can read everything workspace members can, including
-                  open spaces and Company Data. Selecting a space grants the key
-                  read and write access to it, such as uploading files.
+                  <Trans>
+                    The key can read everything workspace members can, including
+                    open spaces and Company Data. Selecting a space grants the
+                    key read and write access to it, such as uploading files.
+                  </Trans>
                 </p>
                 <div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="outline"
-                        label="Add Spaces"
+                        label={t`Add Spaces`}
                         size="sm"
                         isSelect
                       />
@@ -209,7 +228,7 @@ export const NewAPIKeyDialog = ({
                       dropdownHeaders={
                         <DropdownMenuSearchbar
                           name="spaceSearch"
-                          placeholder="Search spaces"
+                          placeholder={t`Search spaces`}
                           value={spaceSearch}
                           onChange={setSpaceSearch}
                         />
@@ -217,7 +236,7 @@ export const NewAPIKeyDialog = ({
                     >
                       {matchingSpaces.length === 0 && (
                         <div className="flex items-center justify-center py-4 text-sm">
-                          No spaces found
+                          <Trans>No spaces found</Trans>
                         </div>
                       )}
                       {matchingSpaces.map((space) => (
@@ -257,7 +276,9 @@ export const NewAPIKeyDialog = ({
               </div>
 
               <div className="flex flex-col gap-2">
-                <Label>Access scope</Label>
+                <Label>
+                  <Trans>Access scope</Trans>
+                </Label>
                 <RadioGroup
                   value={roleValue}
                   onValueChange={(value) => {
@@ -271,20 +292,20 @@ export const NewAPIKeyDialog = ({
                     id="api-key-scope-user"
                     value="user"
                     className="gap-2"
-                    label="Can create conversations, read agents and data sources."
+                    label={t`Can create conversations, read agents and data sources.`}
                   />
                   <RadioGroupItem
                     id="api-key-scope-admin"
                     value="admin"
                     className="gap-2"
-                    label="Create and modify resources plus workspace administration (members, analytics export)"
+                    label={t`Create and modify resources plus workspace administration (members, analytics export)`}
                   />
                 </RadioGroup>
               </div>
 
               {showLegacyUsdMonthlyCap ? (
                 <BaseFormFieldSection
-                  title="Monthly cap (USD)"
+                  title={t`Monthly cap (USD)`}
                   fieldName="monthlyCapDollars"
                 >
                   {({ registerRef, registerProps, onChange, errorMessage }) => (
@@ -292,7 +313,7 @@ export const NewAPIKeyDialog = ({
                       ref={registerRef}
                       {...registerProps}
                       onChange={onChange}
-                      placeholder="Leave empty for unlimited"
+                      placeholder={t`Leave empty for unlimited`}
                       isError={!!errorMessage}
                       message={errorMessage}
                       messageStatus="error"
@@ -301,7 +322,7 @@ export const NewAPIKeyDialog = ({
                 </BaseFormFieldSection>
               ) : (
                 <BaseFormFieldSection
-                  title="Monthly credit cap"
+                  title={t`Monthly credit cap`}
                   fieldName="monthlyCapCredits"
                 >
                   {({ registerRef, registerProps, onChange, errorMessage }) => (
@@ -309,7 +330,7 @@ export const NewAPIKeyDialog = ({
                       ref={registerRef}
                       {...registerProps}
                       onChange={onChange}
-                      placeholder="Leave empty for unlimited"
+                      placeholder={t`Leave empty for unlimited`}
                       isError={!!errorMessage}
                       message={errorMessage}
                       messageStatus="error"
@@ -322,12 +343,12 @@ export const NewAPIKeyDialog = ({
         </SheetContainer>
         <SheetFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             onClick: handleClose,
           }}
           rightButtonProps={{
-            label: "Create",
+            label: t`Create`,
             variant: "primary",
             disabled: !formState.isValid,
             onClick: handleSubmit(onSubmit),

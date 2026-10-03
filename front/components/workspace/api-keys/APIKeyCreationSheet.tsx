@@ -13,6 +13,7 @@ import {
   SheetTitle,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 type APIKeyCreationSheetProps = {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export const APIKeyCreationSheet = ({
   latestKey,
   workspace,
 }: APIKeyCreationSheetProps) => {
+  const { t } = useLingui();
   const [isCopiedWorkspaceId, copyWorkspaceId] = useCopyToClipboard();
   const [isCopiedName, copyName] = useCopyToClipboard();
   const [isCopiedDomain, copyDomain] = useCopyToClipboard();
@@ -45,23 +47,29 @@ export const APIKeyCreationSheet = ({
     >
       <SheetContent>
         <SheetHeader>
-          <SheetTitle>API Key Created</SheetTitle>
+          <SheetTitle>
+            <Trans>API Key Created</Trans>
+          </SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <div className="mt-4">
             <p className="text-sm text-muted-foreground">
-              Your API key will remain visible for 10 minutes only. You can use
-              it to authenticate with the Dust API.
+              <Trans>
+                Your API key will remain visible for 10 minutes only. You can
+                use it to authenticate with the Dust API.
+              </Trans>
             </p>
             <br />
             <div className="mt-4">
-              <Page.H variant="h5">Name</Page.H>
+              <Page.H variant="h5">
+                <Trans>Name</Trans>
+              </Page.H>
               <Page.Horizontal align="center">
                 <pre className="dd-privacy-mask flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono">
                   {latestKey?.name}
                 </pre>
                 <IconButton
-                  tooltip="Copy to clipboard"
+                  tooltip={t`Copy to clipboard`}
                   icon={isCopiedName ? ClipboardCheck : Clipboard}
                   onClick={async () => {
                     if (latestKey?.name) {
@@ -72,13 +80,15 @@ export const APIKeyCreationSheet = ({
               </Page.Horizontal>
             </div>
             <div className="mt-4">
-              <Page.H variant="h5">Domain</Page.H>
+              <Page.H variant="h5">
+                <Trans>Domain</Trans>
+              </Page.H>
               <Page.Horizontal align="center">
                 <pre className="dd-privacy-mask flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono">
                   {domain}
                 </pre>
                 <IconButton
-                  tooltip="Copy to clipboard"
+                  tooltip={t`Copy to clipboard`}
                   icon={isCopiedDomain ? ClipboardCheck : Clipboard}
                   onClick={async () => {
                     await copyDomain(domain);
@@ -87,13 +97,15 @@ export const APIKeyCreationSheet = ({
               </Page.Horizontal>
             </div>
             <div className="mt-4">
-              <Page.H variant="h5">Workspace ID</Page.H>
+              <Page.H variant="h5">
+                <Trans>Workspace ID</Trans>
+              </Page.H>
               <Page.Horizontal align="center">
                 <pre className="dd-privacy-mask flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono">
                   {workspace.sId}
                 </pre>
                 <IconButton
-                  tooltip="Copy to clipboard"
+                  tooltip={t`Copy to clipboard`}
                   icon={isCopiedWorkspaceId ? ClipboardCheck : Clipboard}
                   onClick={async () => {
                     await copyWorkspaceId(workspace.sId);
@@ -102,13 +114,15 @@ export const APIKeyCreationSheet = ({
               </Page.Horizontal>
             </div>
             <div className="mt-4">
-              <Page.H variant="h5">API Key</Page.H>
+              <Page.H variant="h5">
+                <Trans>API Key</Trans>
+              </Page.H>
               <Page.Horizontal align="center">
                 <pre className="dd-privacy-mask flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono">
                   {latestKey?.secret}
                 </pre>
                 <IconButton
-                  tooltip="Copy to clipboard"
+                  tooltip={t`Copy to clipboard`}
                   icon={isCopiedApiKey ? ClipboardCheck : Clipboard}
                   onClick={async () => {
                     if (latestKey?.secret) {

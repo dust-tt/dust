@@ -3,25 +3,50 @@ import {
   seatTypeAvatarColors,
 } from "@app/components/workspace/billing/seatTypeUtils";
 import type { SeatTypeInfo } from "@app/lib/api/credits/seat_plan";
-import { compareStrings, formatNumber } from "@app/lib/i18n/format";
+import { compareStrings } from "@app/lib/i18n/format";
 import { useMembersSeats, useSeatPlan } from "@app/lib/swr/credits";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { isMembershipSeatType, SEAT_TYPE_ORDER } from "@app/types/memberships";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Avatar, Chip, Cube01, Icon, Spinner, User01 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 
-function formatAwuCreditsPeriod(period: SeatTypeInfo["awuCreditsPeriod"]) {
+function AwuCreditsLabel({
+  credits,
+  period,
+}: {
+  credits: number;
+  period: SeatTypeInfo["awuCreditsPeriod"];
+}): string {
+  const { t } = useLingui();
+
   switch (period) {
     case "weekly":
-      return "per week";
+      return t`${plural(credits, {
+        one: "# credit per week",
+        other: "# credits per week",
+      })}`;
     case "monthly":
-      return "per month";
+      return t`${plural(credits, {
+        one: "# credit per month",
+        other: "# credits per month",
+      })}`;
     case "quarterly":
-      return "per quarter";
+      return t`${plural(credits, {
+        one: "# credit per quarter",
+        other: "# credits per quarter",
+      })}`;
     case "annual":
-      return "per year";
+      return t`${plural(credits, {
+        one: "# credit per year",
+        other: "# credits per year",
+      })}`;
     case "lifetime":
-      return "lifetime";
+      return t`${plural(credits, {
+        one: "# credit lifetime",
+        other: "# credits lifetime",
+      })}`;
   }
 }
 
@@ -30,6 +55,7 @@ interface BillingSeatsOverviewProps {
 }
 
 export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
+  const { t } = useLingui();
   const { seatPlans, isSeatPlanLoading } = useSeatPlan({
     workspaceId: owner.sId,
   });
@@ -111,7 +137,10 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
                 </div>
                 {unassignedCount !== null && unassignedCount > 0 && (
                   <Chip
-                    label={`${formatNumber(unassignedCount)} available`}
+                    label={t`${plural(unassignedCount, {
+                      one: "# available",
+                      other: "# available",
+                    })}`}
                     size="mini"
                     color="highlight"
                   />
@@ -122,15 +151,19 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
                 <div className="flex items-center gap-2">
                   <Icon visual={User01} size="xs" />
                   <span>
-                    {formatNumber(membersCount)}{" "}
-                    {membersCount === 1 ? "seat assigned" : "seats assigned"}
+                    {t`${plural(membersCount, {
+                      one: "# seat assigned",
+                      other: "# seats assigned",
+                    })}`}
                   </span>
                 </div>
                 {plan.awuCredits > 0 && (
                   <div className="flex items-center gap-2">
                     <span>
-                      {formatNumber(plan.awuCredits)} credits{" "}
-                      {formatAwuCreditsPeriod(plan.awuCreditsPeriod)}
+                      <AwuCreditsLabel
+                        credits={plan.awuCredits}
+                        period={plan.awuCreditsPeriod}
+                      />
                     </span>
                   </div>
                 )}

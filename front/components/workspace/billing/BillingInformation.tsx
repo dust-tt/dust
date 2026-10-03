@@ -16,6 +16,7 @@ import {
   Spinner,
   User01,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useSubscriptionContext } from "./SubscriptionContext";
 
 function formatAddress(address: BillingAddress | null): string | null {
@@ -31,37 +32,40 @@ function formatAddress(address: BillingAddress | null): string | null {
   return [street, cityLine, address.country].filter(Boolean).join(", ") || null;
 }
 
-function formatPaymentMethod(
-  paymentMethod: BillingPaymentMethod | null
-): string {
+function PaymentMethodLabel({
+  paymentMethod,
+}: {
+  paymentMethod: BillingPaymentMethod | null;
+}): string {
+  const { t } = useLingui();
+
   if (!paymentMethod) {
-    return "No payment method on file";
+    return t`No payment method on file`;
   }
 
+  const last4 = paymentMethod.last4;
+
   if (paymentMethod.type === "card") {
-    return paymentMethod.last4
-      ? `${formatBrandName(paymentMethod.brand ?? "Unknown")} •••• ${paymentMethod.last4}`
-      : formatBrandName(paymentMethod.brand ?? "Unknown");
+    const brand =
+      paymentMethod.brand === null
+        ? t`Unknown`
+        : formatBrandName(paymentMethod.brand);
+    return last4 ? `${brand} •••• ${last4}` : brand;
   }
 
   if (paymentMethod.type === "sepa_debit") {
-    return paymentMethod.last4
-      ? `SEPA Direct Debit •••• ${paymentMethod.last4}`
-      : "IBAN";
+    return last4 ? t`SEPA Direct Debit •••• ${last4}` : t`IBAN`;
   }
 
   if (paymentMethod.type === "us_bank_account") {
-    return paymentMethod.last4
-      ? `Bank account ${paymentMethod.last4}`
-      : "Bank account";
+    return last4 ? t`Bank account ${last4}` : t`Bank account`;
   }
 
-  return paymentMethod.last4
-    ? `Payment method ${paymentMethod.last4}`
-    : "Payment method";
+  return last4 ? t`Payment method ${last4}` : t`Payment method`;
 }
 
 export function BillingInformation() {
+  const { t } = useLingui();
   const { owner } = useSubscriptionContext();
   const { billingInfo, isBillingInfoLoading } = useBillingInfo({
     workspaceId: owner.sId,
@@ -71,7 +75,7 @@ export function BillingInformation() {
     return (
       <div className="flex flex-col gap-4">
         <h2 className="text-xl font-semibold text-foreground">
-          Billing information
+          <Trans>Billing information</Trans>
         </h2>
         <div className="w-full rounded-lg bg-muted-background p-6">
           <Spinner />
@@ -93,18 +97,18 @@ export function BillingInformation() {
   return (
     <div className="flex flex-col gap-4">
       <h2 className="text-xl font-semibold text-foreground">
-        Billing information
+        <Trans>Billing information</Trans>
       </h2>
 
       <div className="relative flex flex-col gap-2 rounded-lg bg-muted-background p-4">
         <h3 className="text-base font-semibold text-foreground">
-          Billing contact
+          <Trans>Billing contact</Trans>
         </h3>
 
         {addressRows.length > 0 ? (
           <>
             <Button
-              label="Change"
+              label={t`Change`}
               variant="ghost"
               size="sm"
               href={portalHref}
@@ -126,7 +130,7 @@ export function BillingInformation() {
           </>
         ) : (
           <div className="text-xs text-muted-foreground">
-            No billing address on file.
+            <Trans>No billing address on file.</Trans>
           </div>
         )}
       </div>
@@ -141,12 +145,12 @@ export function BillingInformation() {
             />
           </div>
           <div className="truncate text-sm font-semibold text-foreground">
-            {formatPaymentMethod(paymentMethod)}
+            <PaymentMethodLabel paymentMethod={paymentMethod} />
           </div>
         </div>
         {paymentMethod && (
           <Button
-            label="Change"
+            label={t`Change`}
             variant="ghost"
             size="sm"
             href={portalHref}
