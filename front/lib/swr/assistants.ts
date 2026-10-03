@@ -33,7 +33,9 @@ import type { PostAgentUserFavoriteRequestBody } from "@app/types/api/assistant/
 import type { GetMemberResponseBody } from "@app/types/api/user";
 import type {
   AgentConfigurationType,
+  AgentLastAuthorsEnrichment,
   AgentsGetViewType,
+  DecoratedLightAgentConfigurationType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
@@ -155,7 +157,7 @@ export function useAgentConfigurations({
   return {
     agentConfigurations: data
       ? data.agentConfigurations
-      : emptyArray<LightAgentConfigurationType>(),
+      : emptyArray<DecoratedLightAgentConfigurationType>(),
     isAgentConfigurationsLoading: !error && !data && !disabled,
     isAgentConfigurationsError: error,
     mutate,
@@ -251,7 +253,7 @@ export function useAgentConfiguration({
 }) {
   const { fetcher } = useFetcher();
   const agentConfigurationFetcher: Fetcher<{
-    agentConfiguration: AgentConfigurationType;
+    agentConfiguration: AgentConfigurationType & AgentLastAuthorsEnrichment;
   }> = fetcher;
 
   const { data, error, mutate, isValidating } = useSWRWithDefaults(

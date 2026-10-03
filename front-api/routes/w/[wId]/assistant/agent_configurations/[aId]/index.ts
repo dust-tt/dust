@@ -5,7 +5,10 @@ import {
   toAgentConfigurations,
 } from "@app/lib/resources/agent_resource_serialization";
 import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/types/api/agent_configuration";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  AgentConfigurationType,
+  AgentLastAuthorsEnrichment,
+} from "@app/types/assistant/agent";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -36,11 +39,15 @@ const ParamsSchema = z.object({
 });
 
 export type GetAgentConfigurationResponseBody = {
+  agentConfiguration: AgentConfigurationType & AgentLastAuthorsEnrichment;
+};
+
+export type PatchAgentConfigurationResponseBody = {
   agentConfiguration: AgentConfigurationType;
-  // Set by the PATCH handler: whether the save persisted a change. False on a no-op (the incoming
+  // Whether the save persisted a change. False on a no-op (the incoming
   // configuration matched the current version and no scope/editor change). True for a new version
-  // AND for an in-place scope/editor change that creates no new version. Absent on GET.
-  updated?: boolean;
+  // AND for an in-place scope/editor change that creates no new version.
+  updated: boolean;
 };
 
 export type DeleteAgentConfigurationResponseBody = {
@@ -81,7 +88,7 @@ app.get(
     return ctx.json({
       agentConfiguration: {
         ...serialized,
-        ...recentAuthors.get(agent.sId),
+        lastAuthors: recentAuthors.get(agent.sId)?.lastAuthors ?? [],
       },
     });
   }
@@ -91,7 +98,7 @@ app.patch(
   "/",
   validate("param", ParamsSchema),
   validate("json", PostOrPatchAgentConfigurationRequestBodySchema),
-  async (ctx): HandlerResult<GetAgentConfigurationResponseBody> => {
+  async (ctx): HandlerResult<PatchAgentConfigurationResponseBody> => {
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
     const body = ctx.req.valid("json");

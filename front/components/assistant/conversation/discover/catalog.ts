@@ -7,7 +7,7 @@ import type {
   GetSkillsWithRelationsResponseBody,
   SkillSearchFilters,
 } from "@app/types/api/skills";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { DecoratedLightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { RichAgentMentionCandidate } from "@app/types/assistant/mentions";
 import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
 
@@ -108,7 +108,7 @@ export function getItemDescription(item: CatalogItem): string {
 }
 
 export function toHydratedAgentCatalogItem(
-  agent: LightAgentConfigurationType
+  agent: DecoratedLightAgentConfigurationType
 ): CatalogItem {
   return {
     kind: "agent",

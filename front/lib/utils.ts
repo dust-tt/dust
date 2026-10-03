@@ -3,6 +3,7 @@ import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type {
   AgentFavoriteEnrichment,
+  DecoratedLightAgentConfigurationType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
@@ -112,7 +113,7 @@ export const tagsSorter = (a: TagType, b: TagType) => {
  * Gets a string to use when filtering agents by name, description, and last authors.
  */
 export const getAgentSearchString = (
-  assistant: LightAgentConfigurationType
+  assistant: DecoratedLightAgentConfigurationType
 ) => {
   return (
     assistant.name.toLowerCase() +
