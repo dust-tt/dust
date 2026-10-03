@@ -3667,7 +3667,6 @@ const BLACKLISTED_EMAIL_DOMAINS = new Set([
   "xoxox.cc",
   "xperiae5.com",
   "xrap.de",
-  "xrho.com",
   "xvx.us",
   "xww.ro",
   "xxhamsterxx.ga",
