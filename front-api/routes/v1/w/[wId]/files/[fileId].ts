@@ -1,13 +1,9 @@
+import { canReadSourceFile } from "@app/lib/api/files/authorization";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { FileVersion } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import {
-  isConversationFileUseCase,
-  isPubliclySupportedUseCase,
-} from "@app/types/files";
+import { isPubliclySupportedUseCase } from "@app/types/files";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import { createHono } from "@front-api/lib/hono";
 import type { PublicApiCtx } from "@front-api/middlewares/ctx";
@@ -82,6 +78,11 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
+  const accessError = await checkFileAccess(ctx, auth, file);
+  if (accessError) {
+    return accessError;
+  }
+
   if (!auth.isSystemKey()) {
     // Limit use-case if not a system key.
     if (!isPubliclySupportedUseCase(file.useCase)) {
@@ -93,12 +94,6 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
         },
       });
     }
-  }
-
-  // Check if the user has access to the file based on its useCase and useCaseMetadata
-  const accessError = await checkFileAccess(ctx, auth, file);
-  if (accessError) {
-    return accessError;
   }
 
   const action = getSecureFileAction(ctx.req.query("action"), file);
@@ -138,6 +133,11 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
+  const accessError = await checkFileAccess(ctx, auth, file);
+  if (accessError) {
+    return accessError;
+  }
+
   if (!auth.isSystemKey()) {
     if (!isPubliclySupportedUseCase(file.useCase)) {
       return apiError(ctx, {
@@ -148,11 +148,6 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
         },
       });
     }
-  }
-
-  const accessError = await checkFileAccess(ctx, auth, file);
-  if (accessError) {
-    return accessError;
   }
 
   if (!auth.isManager() && file.useCase !== "conversation") {
@@ -195,6 +190,11 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
+  const accessError = await checkFileAccess(ctx, auth, file);
+  if (accessError) {
+    return accessError;
+  }
+
   if (!auth.isSystemKey()) {
     if (!isPubliclySupportedUseCase(file.useCase)) {
       return apiError(ctx, {
@@ -205,11 +205,6 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
         },
       });
     }
-  }
-
-  const accessError = await checkFileAccess(ctx, auth, file);
-  if (accessError) {
-    return accessError;
   }
 
   if (!auth.isManager() && file.useCase !== "conversation") {
@@ -259,45 +254,14 @@ async function checkFileAccess(
   auth: Authenticator,
   file: FileResource
 ): Promise<Response | null> {
-  if (
-    isConversationFileUseCase(file.useCase) &&
-    file.useCaseMetadata?.conversationId
-  ) {
-    // For conversation files, check if the user has access to the conversation
-    const conversation = await ConversationResource.fetchById(
-      auth,
-      file.useCaseMetadata.conversationId
-    );
-    if (!conversation) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "file_not_found",
-          message: "File not found.",
-        },
-      });
-    }
-  }
-
-  if (
-    (file.useCase === "folders_document" ||
-      file.useCase === "project_context") &&
-    file.useCaseMetadata?.spaceId
-  ) {
-    // For folder documents and project context, check if the user has access to the space
-    const space = await SpaceResource.fetchById(
-      auth,
-      file.useCaseMetadata.spaceId
-    );
-    if (!space || !auth.can("read", space)) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "file_not_found",
-          message: "File not found.",
-        },
-      });
-    }
+  if (!(await canReadSourceFile(auth, file))) {
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "File not found.",
+      },
+    });
   }
 
   return null;
