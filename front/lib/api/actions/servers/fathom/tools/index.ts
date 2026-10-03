@@ -3,19 +3,19 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { FathomMCPClient } from "@app/lib/api/actions/servers/fathom/client";
 import { FATHOM_TOOLS_METADATA } from "@app/lib/api/actions/servers/fathom/metadata";
+import type { EnrichedMeeting } from "@app/lib/api/actions/servers/fathom/rendering";
+import {
+  makeMeetingsListPayload,
+  makeTranscriptPayload,
+} from "@app/lib/api/actions/servers/fathom/rendering";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { Err, Ok } from "@app/types/shared/result";
 import type {
   ActionItem,
   CRMMatches,
-  Meeting,
   MeetingSummary,
   TranscriptItem,
 } from "fathom-typescript/sdk/models/shared";
-
-type EnrichedMeeting = Meeting & {
-  fetchedSummary?: MeetingSummary | null;
-};
 
 function formatMeeting(meeting: EnrichedMeeting): string {
   const lines = [
@@ -158,6 +158,14 @@ const handlers: ToolHandlers<typeof FATHOM_TOOLS_METADATA> = {
               ? `Meeting with recording ID ${recording_id} not found on this page.${nextCursor ? ` Use cursor="${nextCursor}" to check the next page.` : ""}`
               : "No meetings found for the given filters.",
         },
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            makeMeetingsListPayload({ meetings: [], nextCursor }),
+            null,
+            2
+          ),
+        },
       ]);
     }
 
@@ -188,6 +196,14 @@ const handlers: ToolHandlers<typeof FATHOM_TOOLS_METADATA> = {
         type: "text" as const,
         text: `Found ${enriched.length} meeting(s):\n\n${enriched.map(formatMeeting).join("\n\n---\n\n")}${paginationNote}`,
       },
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          makeMeetingsListPayload({ meetings: enriched, nextCursor }),
+          null,
+          2
+        ),
+      },
     ]);
   },
 
@@ -205,7 +221,20 @@ const handlers: ToolHandlers<typeof FATHOM_TOOLS_METADATA> = {
     }
 
     const fullText = formatTranscript(result.value);
-    return new Ok([{ type: "text" as const, text: fullText }]);
+    return new Ok([
+      { type: "text" as const, text: fullText },
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          makeTranscriptPayload({
+            recordingId: recording_id,
+            transcript: result.value,
+          }),
+          null,
+          2
+        ),
+      },
+    ]);
   },
 };
 
