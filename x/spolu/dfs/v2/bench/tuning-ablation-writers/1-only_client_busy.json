@@ -1,0 +1,2140 @@
+{
+  "profile": "only_client_busy",
+  "repeat": 1,
+  "server_arguments": [
+    "/usr/bin/fdbserver",
+    "--listen-address",
+    "0.0.0.0:4500",
+    "--public-address",
+    "172.19.0.3:4500",
+    "--datadir",
+    "/var/fdb/data",
+    "--logdir",
+    "/var/fdb/logs",
+    "--locality-zoneid",
+    "41b45cd1f707",
+    "--locality-machineid",
+    "41b45cd1f707",
+    "--class",
+    "unset",
+    "--knob-commit_transaction_batch_interval_min",
+    "0.001",
+    "--knob-commit_transaction_batch_interval_from_idle",
+    "0.0005",
+    "--knob-busy_wait_threshold",
+    "0.0"
+  ],
+  "fixture_wall_seconds": 2.7532852919539437,
+  "fixture_cpu_seconds": {
+    "fdb": 0.29420900000000005,
+    "dev": 0.718529999999987
+  },
+  "run": {
+    "label": "dfs v2 [FoundationDB + Elasticsearch]",
+    "files": 64,
+    "profile": "release",
+    "linux": "Linux-6.12.54-linuxkit-aarch64-with-glibc2.41",
+    "cpu_count": 16,
+    "memory": "MemTotal:        8024028 kB",
+    "server_binary_sha256": "9bf748cc2201202d976c19ab82dd3cae7a4f07ccad23fc5eb25b6a59a6303106",
+    "fdb_version": "7.3.69",
+    "es_version": "8.15.3",
+    "fdb_tuning_seconds": {
+      "grv": 0.005,
+      "client_busy": 0.0001,
+      "commit_min": 0.001,
+      "commit_idle": 0.0005,
+      "server_busy": 0.0
+    },
+    "server_cache": "advisory object/parent IDs only; 16384 entries / 8 MiB accounting budget",
+    "backend_caches": "FDB, ES, and OS caches retained across dfs-server restarts",
+    "durability": "normal FDB commits; no post-acknowledgement persistence drain",
+    "prefix": "dfs-v2-bench-ce166830c18f47d2bd2f378a91255eef",
+    "active_workspaces": 2,
+    "concurrent_wall_seconds": 0.103093708,
+    "concurrent_writes": 100,
+    "idle_workspaces": 16,
+    "search": [
+      {
+        "hits": 32,
+        "milliseconds": 34.247417,
+        "workspace": 0
+      },
+      {
+        "hits": 32,
+        "milliseconds": 32.816790999999995,
+        "workspace": 1
+      }
+    ],
+    "shared": [
+      {
+        "entries": 33,
+        "grants": 1,
+        "milliseconds": 14.463042
+      },
+      {
+        "entries": 33,
+        "grants": 2,
+        "milliseconds": 10.9855
+      },
+      {
+        "entries": 33,
+        "grants": 512,
+        "milliseconds": 851.489542
+      }
+    ],
+    "writer_seconds": [
+      0.102113917,
+      0.102088792
+    ],
+    "writer_servers": 2,
+    "writer_workspaces": 1,
+    "shutdown_seconds": 0.03606595890596509,
+    "second_shutdown_seconds": 0.03520816704258323,
+    "fdb_commits": [
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2296,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2179,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1443,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2171,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1382,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1354,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1335,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2474,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1231,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1343,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1860,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1878,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1337,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1363,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1508,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1430,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1269,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1641,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1551,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1456,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1416,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2034,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2332,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1175,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2063,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1460,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1388,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1144,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2211,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1135,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1967,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2519,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2476,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1669,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1958,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2127,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1488,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1505,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1490,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1324,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1705,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1847,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1466,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1418,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1395,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1307,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1075,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1719,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2249,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1400,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 468,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1239,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1627,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1550,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1210,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1377,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1645,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1514,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2019,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1551,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1385,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1481,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 556,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2377,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1573,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1606,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1448,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1168,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1795,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1542,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1216,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1718,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1216,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1372,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 508,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2199,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1312,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1639,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1134,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1401,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 488,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1173,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1450,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1766,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1205,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1175,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1720,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1257,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1201,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1680,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1220,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 496,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1747,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 943,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1564,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1698,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1366,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1587,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1576,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1301,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1298,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1547,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1323,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1430,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1612,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1415,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1394,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1528,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1290,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2495,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1082,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1070,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1682,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1677,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1371,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1275,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1585,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1381,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1341,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 42,
+        "retries": 7
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1520,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2051,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1409,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1851,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1011,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1228,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1390,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1340,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1381,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2042,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1247,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1184,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1605,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1316,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1269,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1558,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1519,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1337,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1503,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1155,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2011,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2207,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1860,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1479,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1504,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1317,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1327,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1574,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1357,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1280,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1523,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1512,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1367,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1488,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1320,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1402,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1445,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1378,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1411,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1429,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1533,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1369,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1443,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1360,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1304,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1973,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1802,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2014,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1305,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2054,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2511,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2287,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2391,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1682,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1307,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1319,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2529,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2362,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2005,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2239,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2435,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1936,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1552,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2653,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1348,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2615,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2178,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1885,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2122,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2395,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1963,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2407,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2366,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1976,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2193,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2139,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1875,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2216,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2387,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1852,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2133,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2372,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2404,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2331,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2461,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2543,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2537,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2197,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1549,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2649,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2362,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2404,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2467,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2510,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2189,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2341,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2087,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1739,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2864,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2252,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1764,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2163,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1350,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1365,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1397,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 512,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 594,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1503,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1246,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1463,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1104,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1809,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1963,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2192,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1091,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1315,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1443,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1518,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1611,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1531,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1253,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1443,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1471,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1485,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1271,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1318,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1232,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1406,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1545,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1787,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1829,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 40,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1662,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1307,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 30,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1311,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1586,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 30,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1260,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 477,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 501,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 692,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 32,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 504,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2036,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 36,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1163,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1599,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 36,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1647,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2249,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 30,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 989,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1293,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1566,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 28,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1506,
+        "retries": 0
+      }
+    ],
+    "second_fdb_commits": [
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 44,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1749,
+        "retries": 6
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1538,
+        "retries": 1
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 43,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1168,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2412,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1444,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1336,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1306,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1394,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2137,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1069,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1744,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1312,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1501,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1283,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1655,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1279,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1237,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1473,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1310,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 42,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 42,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1691,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 47,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 55,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 57,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 45,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 58,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 49,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 56,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 47,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 42,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 56,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 42,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 44,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 50,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 62,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 59,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 51,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 54,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 44,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2055,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 61,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 60,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 51,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 49,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 65,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 90,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 64,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 45,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 51,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 61,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 63,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 49,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 52,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 46,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 59,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 40,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 52,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 35,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2470,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2204,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 32,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1889,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2133,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 29,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1174,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1362,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 56,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1438,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 587,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 619,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 36,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1593,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 32,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1367,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1483,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 41,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1069,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1794,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 19,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2003,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2197,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 28,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1101,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1313,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 64,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1459,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1507,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 48,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1769,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1515,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 21,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1269,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1434,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 29,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1567,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1495,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 53,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1135,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1328,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 53,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1343,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1483,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 52,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1554,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1813,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 50,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1738,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1676,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 50,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1317,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1181,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1527,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1305,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 535,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 516,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 777,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 515,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2058,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1206,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1545,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1696,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 2263,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1090,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1289,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1470,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1531,
+        "retries": 0
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 1675,
+        "retries": 4
+      },
+      {
+        "message": "FDB transaction committed",
+        "commit_us": 38,
+        "retries": 0
+      }
+    ],
+    "fixture_cleaned": true
+  }
+}

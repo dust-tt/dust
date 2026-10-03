@@ -1,0 +1,238 @@
+{
+  "started_at": "2026-10-03T08:58:00.647186+00:00",
+  "revision": "f08533b5fa4ee8fa961fd66da6d8f65cfa49ef7c",
+  "workload": "workspaces",
+  "files": 64,
+  "repeats": 1,
+  "seed": 42,
+  "profiles_seconds": {
+    "defaults": {
+      "grv": 0.005,
+      "client_busy": 0.0,
+      "commit_min": 0.001,
+      "commit_idle": 0.0005,
+      "server_busy": 0.0
+    },
+    "tuned": {
+      "grv": 1e-06,
+      "client_busy": 0.0001,
+      "commit_min": 1e-05,
+      "commit_idle": 1e-05,
+      "server_busy": 0.0001
+    },
+    "only_grv": {
+      "grv": 1e-06,
+      "client_busy": 0.0,
+      "commit_min": 0.001,
+      "commit_idle": 0.0005,
+      "server_busy": 0.0
+    },
+    "without_grv": {
+      "grv": 0.005,
+      "client_busy": 0.0001,
+      "commit_min": 1e-05,
+      "commit_idle": 1e-05,
+      "server_busy": 0.0001
+    },
+    "only_client_busy": {
+      "grv": 0.005,
+      "client_busy": 0.0001,
+      "commit_min": 0.001,
+      "commit_idle": 0.0005,
+      "server_busy": 0.0
+    },
+    "without_client_busy": {
+      "grv": 1e-06,
+      "client_busy": 0.0,
+      "commit_min": 1e-05,
+      "commit_idle": 1e-05,
+      "server_busy": 0.0001
+    },
+    "only_commit_min": {
+      "grv": 0.005,
+      "client_busy": 0.0,
+      "commit_min": 1e-05,
+      "commit_idle": 0.0005,
+      "server_busy": 0.0
+    },
+    "without_commit_min": {
+      "grv": 1e-06,
+      "client_busy": 0.0001,
+      "commit_min": 0.001,
+      "commit_idle": 1e-05,
+      "server_busy": 0.0001
+    },
+    "only_commit_idle": {
+      "grv": 0.005,
+      "client_busy": 0.0,
+      "commit_min": 0.001,
+      "commit_idle": 1e-05,
+      "server_busy": 0.0
+    },
+    "without_commit_idle": {
+      "grv": 1e-06,
+      "client_busy": 0.0001,
+      "commit_min": 1e-05,
+      "commit_idle": 0.0005,
+      "server_busy": 0.0001
+    },
+    "only_server_busy": {
+      "grv": 0.005,
+      "client_busy": 0.0,
+      "commit_min": 0.001,
+      "commit_idle": 0.0005,
+      "server_busy": 0.0001
+    },
+    "without_server_busy": {
+      "grv": 1e-06,
+      "client_busy": 0.0001,
+      "commit_min": 1e-05,
+      "commit_idle": 1e-05,
+      "server_busy": 0.0
+    }
+  },
+  "original_server_seconds": {
+    "commit_min": 1e-05,
+    "commit_idle": 1e-05,
+    "server_busy": 0.0001
+  },
+  "cpu_scope": "entire fixture including generation, setup, workload, validation, and cleanup",
+  "server_restarted_each_run": true,
+  "backend_cold_scope": "FDB process restarted; OS cache retained; ES retained",
+  "runs": [
+    {
+      "file": "1-tuned.json",
+      "profile": "tuned",
+      "repeat": 1,
+      "concurrent_wall_seconds": 0.039164666,
+      "fixture_wall_seconds": 2.6443791249766946,
+      "fixture_cpu_seconds": {
+        "fdb": 0.312298,
+        "dev": 0.5900699999999688
+      }
+    },
+    {
+      "file": "1-without_commit_min.json",
+      "profile": "without_commit_min",
+      "repeat": 1,
+      "concurrent_wall_seconds": 0.076961041,
+      "fixture_wall_seconds": 2.739175708964467,
+      "fixture_cpu_seconds": {
+        "fdb": 0.331473,
+        "dev": 0.6240319999999429
+      }
+    },
+    {
+      "file": "1-without_client_busy.json",
+      "profile": "without_client_busy",
+      "repeat": 1,
+      "concurrent_wall_seconds": 0.101981875,
+      "fixture_wall_seconds": 2.808777042082511,
+      "fixture_cpu_seconds": {
+        "fdb": 0.323791,
+        "dev": 0.6976379999999835
+      }
+    },
+    {
+      "file": "1-only_grv.json",
+      "profile": "only_grv",
+      "repeat": 1,
+      "concurrent_wall_seconds": 0.15164125,
+      "fixture_wall_seconds": 2.8620021250098944,
+      "fixture_cpu_seconds": {
+        "fdb": 0.34600700000000006,
+        "dev": 0.7851699999999937
+      }
+    },
+    {
+      "file": "1-only_commit_idle.json",
+      "profile": "only_commit_idle",
+      "repeat": 1,
+      "concurrent_wall_seconds": 0.17050675,
+      "fixture_wall_seconds": 2.832063833018765,
+      "fixture_cpu_seconds": {
+        "fdb": 0.358763,
+        "dev": 0.8198459999999841
+      }
+    },
+    {
+      "file": "1-without_commit_idle.json",
+      "profile": "without_commit_idle",
+      "repeat": 1,
+      "concurrent_wall_seconds": 0.102130166,
+      "fixture_wall_seconds": 2.7578130830079317,
+      "fixture_cpu_seconds": {
+        "fdb": 0.329407,
+        "dev": 0.6752529999999979
+      }
+    },
+    {
+      "file": "1-only_commit_min.json",
+      "profile": "only_commit_min",
+      "repeat": 1,
+      "concurrent_wall_seconds": 0.19982625,
+      "fixture_wall_seconds": 3.965746916946955,
+      "fixture_cpu_seconds": {
+        "fdb": 0.43251500000000004,
+        "dev": 0.9026380000000245
+      }
+    },
+    {
+      "file": "1-without_server_busy.json",
+      "profile": "without_server_busy",
+      "repeat": 1,
+      "concurrent_wall_seconds": 0.046706167,
+      "fixture_wall_seconds": 1.7425272499676794,
+      "fixture_cpu_seconds": {
+        "fdb": 0.22228400000000004,
+        "dev": 0.5370669999999791
+      }
+    },
+    {
+      "file": "1-without_grv.json",
+      "profile": "without_grv",
+      "repeat": 1,
+      "concurrent_wall_seconds": 0.044196416,
+      "fixture_wall_seconds": 2.6672315419418737,
+      "fixture_cpu_seconds": {
+        "fdb": 0.28725100000000003,
+        "dev": 0.5982320000000527
+      }
+    },
+    {
+      "file": "1-only_client_busy.json",
+      "profile": "only_client_busy",
+      "repeat": 1,
+      "concurrent_wall_seconds": 0.103093708,
+      "fixture_wall_seconds": 2.7532852919539437,
+      "fixture_cpu_seconds": {
+        "fdb": 0.29420900000000005,
+        "dev": 0.718529999999987
+      }
+    },
+    {
+      "file": "1-defaults.json",
+      "profile": "defaults",
+      "repeat": 1,
+      "concurrent_wall_seconds": 0.190996959,
+      "fixture_wall_seconds": 3.8987269160570577,
+      "fixture_cpu_seconds": {
+        "fdb": 0.421961,
+        "dev": 0.9135069999999814
+      }
+    },
+    {
+      "file": "1-only_server_busy.json",
+      "profile": "only_server_busy",
+      "repeat": 1,
+      "concurrent_wall_seconds": 0.192452125,
+      "fixture_wall_seconds": 3.910719292005524,
+      "fixture_cpu_seconds": {
+        "fdb": 0.507002,
+        "dev": 1.044273999999973
+      }
+    }
+  ],
+  "restored": true,
+  "finished_at": "2026-10-03T08:59:21.541840+00:00"
+}

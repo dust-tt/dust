@@ -1,0 +1,501 @@
+{
+  "started_at": "2026-10-03T08:44:57.250055+00:00",
+  "revision": "c2f04430ca1dd80208e9adb82fffd9b1e03360a7",
+  "files": 1000,
+  "repeats": 3,
+  "seed": 42,
+  "profiles_seconds": {
+    "defaults": {
+      "grv": 0.005,
+      "client_busy": 0.0,
+      "commit_min": 0.001,
+      "commit_idle": 0.0005,
+      "server_busy": 0.0
+    },
+    "tuned": {
+      "grv": 1e-06,
+      "client_busy": 0.0001,
+      "commit_min": 1e-05,
+      "commit_idle": 1e-05,
+      "server_busy": 0.0001
+    },
+    "only_grv": {
+      "grv": 1e-06,
+      "client_busy": 0.0,
+      "commit_min": 0.001,
+      "commit_idle": 0.0005,
+      "server_busy": 0.0
+    },
+    "without_grv": {
+      "grv": 0.005,
+      "client_busy": 0.0001,
+      "commit_min": 1e-05,
+      "commit_idle": 1e-05,
+      "server_busy": 0.0001
+    },
+    "only_client_busy": {
+      "grv": 0.005,
+      "client_busy": 0.0001,
+      "commit_min": 0.001,
+      "commit_idle": 0.0005,
+      "server_busy": 0.0
+    },
+    "without_client_busy": {
+      "grv": 1e-06,
+      "client_busy": 0.0,
+      "commit_min": 1e-05,
+      "commit_idle": 1e-05,
+      "server_busy": 0.0001
+    },
+    "only_commit_min": {
+      "grv": 0.005,
+      "client_busy": 0.0,
+      "commit_min": 1e-05,
+      "commit_idle": 0.0005,
+      "server_busy": 0.0
+    },
+    "without_commit_min": {
+      "grv": 1e-06,
+      "client_busy": 0.0001,
+      "commit_min": 0.001,
+      "commit_idle": 1e-05,
+      "server_busy": 0.0001
+    },
+    "only_commit_idle": {
+      "grv": 0.005,
+      "client_busy": 0.0,
+      "commit_min": 0.001,
+      "commit_idle": 1e-05,
+      "server_busy": 0.0
+    },
+    "without_commit_idle": {
+      "grv": 1e-06,
+      "client_busy": 0.0001,
+      "commit_min": 1e-05,
+      "commit_idle": 0.0005,
+      "server_busy": 0.0001
+    },
+    "only_server_busy": {
+      "grv": 0.005,
+      "client_busy": 0.0,
+      "commit_min": 0.001,
+      "commit_idle": 0.0005,
+      "server_busy": 0.0001
+    },
+    "without_server_busy": {
+      "grv": 1e-06,
+      "client_busy": 0.0001,
+      "commit_min": 1e-05,
+      "commit_idle": 1e-05,
+      "server_busy": 0.0
+    }
+  },
+  "original_server_seconds": {
+    "commit_min": 1e-05,
+    "commit_idle": 1e-05,
+    "server_busy": 0.0001
+  },
+  "cpu_scope": "entire fixture: corpus generation, setup, untar, hash validation, and cleanup",
+  "server_restarted_each_run": true,
+  "backend_cold_scope": "FDB process restarted; OS cache retained; ES retained",
+  "runs": [
+    {
+      "file": "1-tuned.json",
+      "profile": "tuned",
+      "repeat": 1,
+      "untar_seconds": 4.952612168970518,
+      "fixture_wall_seconds": 7.5578705839579925,
+      "fixture_cpu_seconds": {
+        "fdb": 2.3268769999999996,
+        "dev": 5.730149000000097
+      }
+    },
+    {
+      "file": "1-without_commit_min.json",
+      "profile": "without_commit_min",
+      "repeat": 1,
+      "untar_seconds": 5.852225336013362,
+      "fixture_wall_seconds": 8.514660708024167,
+      "fixture_cpu_seconds": {
+        "fdb": 2.275331,
+        "dev": 5.234180000000038
+      }
+    },
+    {
+      "file": "1-without_client_busy.json",
+      "profile": "without_client_busy",
+      "repeat": 1,
+      "untar_seconds": 9.63253683806397,
+      "fixture_wall_seconds": 14.815047665964812,
+      "fixture_cpu_seconds": {
+        "fdb": 3.021083,
+        "dev": 6.61476499999992
+      }
+    },
+    {
+      "file": "1-only_grv.json",
+      "profile": "only_grv",
+      "repeat": 1,
+      "untar_seconds": 15.704431673977524,
+      "fixture_wall_seconds": 20.70970870903693,
+      "fixture_cpu_seconds": {
+        "fdb": 3.361479,
+        "dev": 7.380329000000074
+      }
+    },
+    {
+      "file": "1-only_commit_idle.json",
+      "profile": "only_commit_idle",
+      "repeat": 1,
+      "untar_seconds": 17.415530632948503,
+      "fixture_wall_seconds": 24.89062554202974,
+      "fixture_cpu_seconds": {
+        "fdb": 4.200414,
+        "dev": 9.30175799999995
+      }
+    },
+    {
+      "file": "1-without_commit_idle.json",
+      "profile": "without_commit_idle",
+      "repeat": 1,
+      "untar_seconds": 11.365676420973614,
+      "fixture_wall_seconds": 13.97661316592712,
+      "fixture_cpu_seconds": {
+        "fdb": 3.077514,
+        "dev": 6.397505000000024
+      }
+    },
+    {
+      "file": "1-only_commit_min.json",
+      "profile": "only_commit_min",
+      "repeat": 1,
+      "untar_seconds": 23.480332219041884,
+      "fixture_wall_seconds": 31.137965000001714,
+      "fixture_cpu_seconds": {
+        "fdb": 5.241047,
+        "dev": 10.560008999999923
+      }
+    },
+    {
+      "file": "1-without_server_busy.json",
+      "profile": "without_server_busy",
+      "repeat": 1,
+      "untar_seconds": 8.057368337991647,
+      "fixture_wall_seconds": 10.812419124995358,
+      "fixture_cpu_seconds": {
+        "fdb": 2.1750900000000004,
+        "dev": 5.605540000000019
+      }
+    },
+    {
+      "file": "1-without_grv.json",
+      "profile": "without_grv",
+      "repeat": 1,
+      "untar_seconds": 4.353126794099808,
+      "fixture_wall_seconds": 7.005837457953021,
+      "fixture_cpu_seconds": {
+        "fdb": 2.122332,
+        "dev": 5.446594000000005
+      }
+    },
+    {
+      "file": "1-only_client_busy.json",
+      "profile": "only_client_busy",
+      "repeat": 1,
+      "untar_seconds": 12.400595464045182,
+      "fixture_wall_seconds": 15.429697624989785,
+      "fixture_cpu_seconds": {
+        "fdb": 2.998277,
+        "dev": 6.921944999999937
+      }
+    },
+    {
+      "file": "1-defaults.json",
+      "profile": "defaults",
+      "repeat": 1,
+      "untar_seconds": 23.51365821994841,
+      "fixture_wall_seconds": 30.921917208004743,
+      "fixture_cpu_seconds": {
+        "fdb": 5.2053769999999995,
+        "dev": 10.517812999999933
+      }
+    },
+    {
+      "file": "1-only_server_busy.json",
+      "profile": "only_server_busy",
+      "repeat": 1,
+      "untar_seconds": 23.062767260940745,
+      "fixture_wall_seconds": 30.367266791057773,
+      "fixture_cpu_seconds": {
+        "fdb": 5.314589,
+        "dev": 10.54189000000008
+      }
+    },
+    {
+      "file": "2-without_client_busy.json",
+      "profile": "without_client_busy",
+      "repeat": 2,
+      "untar_seconds": 9.542414461961016,
+      "fixture_wall_seconds": 14.792490749969147,
+      "fixture_cpu_seconds": {
+        "fdb": 3.011235,
+        "dev": 6.510770999999977
+      }
+    },
+    {
+      "file": "2-without_commit_min.json",
+      "profile": "without_commit_min",
+      "repeat": 2,
+      "untar_seconds": 5.953744084923528,
+      "fixture_wall_seconds": 8.573010583990254,
+      "fixture_cpu_seconds": {
+        "fdb": 2.480424,
+        "dev": 5.597351000000003
+      }
+    },
+    {
+      "file": "2-only_grv.json",
+      "profile": "only_grv",
+      "repeat": 2,
+      "untar_seconds": 15.43167088192422,
+      "fixture_wall_seconds": 20.621578000020236,
+      "fixture_cpu_seconds": {
+        "fdb": 3.6512360000000004,
+        "dev": 7.876925000000028
+      }
+    },
+    {
+      "file": "2-without_commit_idle.json",
+      "profile": "without_commit_idle",
+      "repeat": 2,
+      "untar_seconds": 10.536147214006633,
+      "fixture_wall_seconds": 13.233780458103865,
+      "fixture_cpu_seconds": {
+        "fdb": 3.060914,
+        "dev": 6.3639420000000655
+      }
+    },
+    {
+      "file": "2-only_server_busy.json",
+      "profile": "only_server_busy",
+      "repeat": 2,
+      "untar_seconds": 23.32571251108311,
+      "fixture_wall_seconds": 31.286234040977433,
+      "fixture_cpu_seconds": {
+        "fdb": 5.426043,
+        "dev": 10.540706999999998
+      }
+    },
+    {
+      "file": "2-only_commit_min.json",
+      "profile": "only_commit_min",
+      "repeat": 2,
+      "untar_seconds": 24.031225719023496,
+      "fixture_wall_seconds": 31.564789541065693,
+      "fixture_cpu_seconds": {
+        "fdb": 5.3233749999999995,
+        "dev": 10.641484999999989
+      }
+    },
+    {
+      "file": "2-only_client_busy.json",
+      "profile": "only_client_busy",
+      "repeat": 2,
+      "untar_seconds": 12.184191756066866,
+      "fixture_wall_seconds": 15.086242291028611,
+      "fixture_cpu_seconds": {
+        "fdb": 2.960186,
+        "dev": 6.7072749999999814
+      }
+    },
+    {
+      "file": "2-only_commit_idle.json",
+      "profile": "only_commit_idle",
+      "repeat": 2,
+      "untar_seconds": 17.55309904902242,
+      "fixture_wall_seconds": 25.109300084062852,
+      "fixture_cpu_seconds": {
+        "fdb": 4.230529000000001,
+        "dev": 9.297236999999996
+      }
+    },
+    {
+      "file": "2-without_grv.json",
+      "profile": "without_grv",
+      "repeat": 2,
+      "untar_seconds": 4.493175502051599,
+      "fixture_wall_seconds": 7.032399332965724,
+      "fixture_cpu_seconds": {
+        "fdb": 2.1650940000000003,
+        "dev": 5.498569999999972
+      }
+    },
+    {
+      "file": "2-tuned.json",
+      "profile": "tuned",
+      "repeat": 2,
+      "untar_seconds": 4.64696029399056,
+      "fixture_wall_seconds": 7.1675853750202805,
+      "fixture_cpu_seconds": {
+        "fdb": 2.271076,
+        "dev": 5.389943000000017
+      }
+    },
+    {
+      "file": "2-without_server_busy.json",
+      "profile": "without_server_busy",
+      "repeat": 2,
+      "untar_seconds": 7.951540254056454,
+      "fixture_wall_seconds": 11.100162249989808,
+      "fixture_cpu_seconds": {
+        "fdb": 2.474975,
+        "dev": 6.142007000000035
+      }
+    },
+    {
+      "file": "2-defaults.json",
+      "profile": "defaults",
+      "repeat": 2,
+      "untar_seconds": 23.936323844012804,
+      "fixture_wall_seconds": 31.607437332975678,
+      "fixture_cpu_seconds": {
+        "fdb": 5.430299,
+        "dev": 10.736899999999991
+      }
+    },
+    {
+      "file": "3-only_commit_idle.json",
+      "profile": "only_commit_idle",
+      "repeat": 3,
+      "untar_seconds": 17.443517299951054,
+      "fixture_wall_seconds": 24.551084875012748,
+      "fixture_cpu_seconds": {
+        "fdb": 4.195565,
+        "dev": 9.150921999999923
+      }
+    },
+    {
+      "file": "3-only_server_busy.json",
+      "profile": "only_server_busy",
+      "repeat": 3,
+      "untar_seconds": 23.1041941359872,
+      "fixture_wall_seconds": 30.536530790966935,
+      "fixture_cpu_seconds": {
+        "fdb": 5.448275000000001,
+        "dev": 10.560966000000008
+      }
+    },
+    {
+      "file": "3-without_client_busy.json",
+      "profile": "without_client_busy",
+      "repeat": 3,
+      "untar_seconds": 9.353040879941545,
+      "fixture_wall_seconds": 14.626072375103831,
+      "fixture_cpu_seconds": {
+        "fdb": 2.974424,
+        "dev": 6.573796000000016
+      }
+    },
+    {
+      "file": "3-only_grv.json",
+      "profile": "only_grv",
+      "repeat": 3,
+      "untar_seconds": 15.746175340027548,
+      "fixture_wall_seconds": 21.03076570807025,
+      "fixture_cpu_seconds": {
+        "fdb": 3.700785,
+        "dev": 8.021247000000017
+      }
+    },
+    {
+      "file": "3-without_server_busy.json",
+      "profile": "without_server_busy",
+      "repeat": 3,
+      "untar_seconds": 8.10081550409086,
+      "fixture_wall_seconds": 10.915015958016738,
+      "fixture_cpu_seconds": {
+        "fdb": 2.274032,
+        "dev": 5.606083999999896
+      }
+    },
+    {
+      "file": "3-tuned.json",
+      "profile": "tuned",
+      "repeat": 3,
+      "untar_seconds": 4.343018918065354,
+      "fixture_wall_seconds": 6.858514333027415,
+      "fixture_cpu_seconds": {
+        "fdb": 2.2382,
+        "dev": 5.194952999999941
+      }
+    },
+    {
+      "file": "3-only_commit_min.json",
+      "profile": "only_commit_min",
+      "repeat": 3,
+      "untar_seconds": 23.058417009888217,
+      "fixture_wall_seconds": 30.993901249952614,
+      "fixture_cpu_seconds": {
+        "fdb": 5.304227,
+        "dev": 10.297724000000017
+      }
+    },
+    {
+      "file": "3-defaults.json",
+      "profile": "defaults",
+      "repeat": 3,
+      "untar_seconds": 23.86752784391865,
+      "fixture_wall_seconds": 31.471911292057484,
+      "fixture_cpu_seconds": {
+        "fdb": 5.471583,
+        "dev": 10.814237999999932
+      }
+    },
+    {
+      "file": "3-only_client_busy.json",
+      "profile": "only_client_busy",
+      "repeat": 3,
+      "untar_seconds": 11.265398463001475,
+      "fixture_wall_seconds": 14.099306624964811,
+      "fixture_cpu_seconds": {
+        "fdb": 2.7714570000000003,
+        "dev": 6.476697000000058
+      }
+    },
+    {
+      "file": "3-without_commit_idle.json",
+      "profile": "without_commit_idle",
+      "repeat": 3,
+      "untar_seconds": 10.244220130029134,
+      "fixture_wall_seconds": 12.974874458974227,
+      "fixture_cpu_seconds": {
+        "fdb": 2.9685479999999997,
+        "dev": 6.105985000000032
+      }
+    },
+    {
+      "file": "3-without_commit_min.json",
+      "profile": "without_commit_min",
+      "repeat": 3,
+      "untar_seconds": 5.421503919060342,
+      "fixture_wall_seconds": 8.037428166950122,
+      "fixture_cpu_seconds": {
+        "fdb": 2.545336,
+        "dev": 5.665820000000053
+      }
+    },
+    {
+      "file": "3-without_grv.json",
+      "profile": "without_grv",
+      "repeat": 3,
+      "untar_seconds": 4.701331168995239,
+      "fixture_wall_seconds": 7.251648375065997,
+      "fixture_cpu_seconds": {
+        "fdb": 2.2436000000000003,
+        "dev": 5.380106000000069
+      }
+    }
+  ],
+  "restored": true,
+  "finished_at": "2026-10-03T08:58:00.342806+00:00"
+}

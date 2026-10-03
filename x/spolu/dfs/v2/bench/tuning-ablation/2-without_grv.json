@@ -1,0 +1,171 @@
+{
+  "profile": "without_grv",
+  "repeat": 2,
+  "server_arguments": [
+    "/usr/bin/fdbserver",
+    "--listen-address",
+    "0.0.0.0:4500",
+    "--public-address",
+    "172.19.0.3:4500",
+    "--datadir",
+    "/var/fdb/data",
+    "--logdir",
+    "/var/fdb/logs",
+    "--locality-zoneid",
+    "9844e7586398",
+    "--locality-machineid",
+    "9844e7586398",
+    "--class",
+    "unset",
+    "--knob-commit_transaction_batch_interval_min",
+    "1e-05",
+    "--knob-commit_transaction_batch_interval_from_idle",
+    "1e-05",
+    "--knob-busy_wait_threshold",
+    "0.0001"
+  ],
+  "fixture_wall_seconds": 7.032399332965724,
+  "fixture_cpu_seconds": {
+    "fdb": 2.1650940000000003,
+    "dev": 5.498569999999972
+  },
+  "run": {
+    "label": "dfs v2 [FoundationDB + Elasticsearch]",
+    "manifest_sha256": "67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1",
+    "files": 1000,
+    "profile": "release",
+    "linux": "Linux-6.12.54-linuxkit-aarch64-with-glibc2.41",
+    "cpu_count": 16,
+    "memory": "MemTotal:        8024028 kB",
+    "server_binary_sha256": "9bf748cc2201202d976c19ab82dd3cae7a4f07ccad23fc5eb25b6a59a6303106",
+    "fdb_version": "7.3.69",
+    "es_version": "8.15.3",
+    "fdb_tuning_seconds": {
+      "grv": 0.005,
+      "client_busy": 0.0001,
+      "commit_min": 1e-05,
+      "commit_idle": 1e-05,
+      "server_busy": 0.0001
+    },
+    "server_cache": "advisory object/parent IDs only; 16384 entries / 8 MiB accounting budget",
+    "backend_caches": "FDB, ES, and OS caches retained across dfs-server restarts",
+    "durability": "normal FDB commits; no post-acknowledgement persistence drain",
+    "prefix": "dfs-v2-bench-c68566d390e84405bffdb0f3ab48aae5",
+    "profile_timings": false,
+    "indexer_available": true,
+    "outer_depth": 6,
+    "depth_below_grant": 6,
+    "corpus_selection": "first manifest paths",
+    "started_at": "2026-10-03T08:52:32.397296+00:00",
+    "untar_seconds": 4.493175502051599,
+    "remaining_client_writeback_seconds": 6.925000343471766e-05,
+    "finished_at": "2026-10-03T08:52:36.890563+00:00",
+    "phases": [],
+    "validated_files": 1000,
+    "fixture_cleaned": true
+  },
+  "client_metrics": {
+    "dfs_client_metrics": {
+      "fuse.create": {
+        "calls": 1000,
+        "elapsed_ms": 0.0,
+        "errors": 0
+      },
+      "fuse.flush": {
+        "calls": 2000,
+        "elapsed_ms": 0.0,
+        "errors": 0
+      },
+      "fuse.forget": {
+        "calls": 1012,
+        "elapsed_ms": 0.0,
+        "errors": 0
+      },
+      "fuse.getattr": {
+        "calls": 1021,
+        "elapsed_ms": 0.0,
+        "errors": 0
+      },
+      "fuse.init": {
+        "calls": 1,
+        "elapsed_ms": 0.0,
+        "errors": 0
+      },
+      "fuse.lookup": {
+        "calls": 2044,
+        "elapsed_ms": 0.0,
+        "errors": 0
+      },
+      "fuse.mkdir": {
+        "calls": 12,
+        "elapsed_ms": 0.0,
+        "errors": 0
+      },
+      "fuse.open": {
+        "calls": 1000,
+        "elapsed_ms": 0.0,
+        "errors": 0
+      },
+      "fuse.opendir": {
+        "calls": 2,
+        "elapsed_ms": 0.0,
+        "errors": 0
+      },
+      "fuse.read": {
+        "calls": 1000,
+        "elapsed_ms": 0.0,
+        "errors": 0
+      },
+      "fuse.release": {
+        "calls": 2000,
+        "elapsed_ms": 0.0,
+        "errors": 0
+      },
+      "fuse.releasedir": {
+        "calls": 2,
+        "elapsed_ms": 0.0,
+        "errors": 0
+      },
+      "fuse.setattr": {
+        "calls": 2025,
+        "elapsed_ms": 0.0,
+        "errors": 0
+      },
+      "fuse.write": {
+        "calls": 1013,
+        "elapsed_ms": 0.0,
+        "errors": 0
+      },
+      "rpc.create": {
+        "calls": 1012,
+        "elapsed_ms": 949.346007,
+        "errors": 0
+      },
+      "rpc.lookup": {
+        "calls": 2044,
+        "elapsed_ms": 1042.383675,
+        "errors": 1012
+      },
+      "rpc.read": {
+        "calls": 1000,
+        "elapsed_ms": 642.801358,
+        "errors": 0
+      },
+      "rpc.stat": {
+        "calls": 1,
+        "elapsed_ms": 0.336417,
+        "errors": 0
+      },
+      "rpc.update": {
+        "calls": 2025,
+        "elapsed_ms": 1930.62061,
+        "errors": 0
+      },
+      "rpc.write": {
+        "calls": 1013,
+        "elapsed_ms": 953.523923,
+        "errors": 0
+      }
+    }
+  }
+}

@@ -26,11 +26,185 @@ Sequential milestones (single runs; full tables and raw reports follow):
 | 1. FDB latency tuning | 44.301 s |
 | 2. Recent commit version reuse | 43.066 s |
 | 3. Early metadata/authorization reads | 36.421 s |
+| 4. Remove commit-version reuse | 35.563 s |
 
-The 30-second target remains unmet. The population mount recorded 40,335 mutation RPCs averaging
+The 30-second target remains unmet. Step 3's population mount recorded 40,335 mutation RPCs averaging
 about 0.752 ms each, plus 10,205 lookups averaging 0.391 ms. These are client RPC timings, not FDB
 commit-only measurements or an additive wall-time breakdown; mount counters also include setup
 and manifest reads outside timed untar. See [counters](early-reads/case-0-client-metrics.json).
+
+### FDB tuning ablation (fresh read versions)
+
+2026-10-03. **1,000 files**, selected from the same fixed corpus, extracted six directories below a
+selective grant attached six directories below the workspace root. Commit-version reuse is removed;
+early metadata/authorization reads remain. This deep-folder diagnostic differs from the full
+10,000-file benchmark below; do not extrapolate its timings directly.
+
+Each of 12 configurations ran three times in seeded shuffled order, with the same release binary
+(`c2f04430ca`), unchanged FUSE client, profiling disabled, and a new fixture. FDB restarted before
+every run; its volumes and the OS cache were retained, as was ES. All **36,000 file hashes** passed
+and every fixture was cleaned. The original node settings were restored. The five settings and their
+units are documented in [README](../README.md).
+
+First, restore one setting at a time from the fully tuned profile:
+
+| Configuration | Untar median | Min–max (3 runs) | 100 writes, two servers |
+| --- | ---: | ---: | ---: |
+| All five tuned | 4.647 s | 4.343–4.953 s | 39.16 ms |
+| Restore GRV timeout to 5 ms | 4.493 s | 4.353–4.701 s | 44.20 ms |
+| Disable client busy-wait | 9.542 s | 9.353–9.633 s | 101.98 ms |
+| Restore minimum commit interval to 1 ms | 5.852 s | 5.422–5.954 s | 76.96 ms |
+| Restore idle commit interval to 500 µs | 10.536 s | 10.244–11.366 s | 102.13 ms |
+| Disable server busy-wait | 8.057 s | 7.952–8.101 s | 46.71 ms |
+| All five at FDB defaults | 23.868 s | 23.514–23.936 s | 191.00 ms |
+
+Conversely, enable only one setting while keeping the other four at FDB defaults:
+
+| Configuration | Untar median | Min–max (3 runs) | 100 writes, two servers |
+| --- | ---: | ---: | ---: |
+| Only GRV timeout = 1 µs | 15.704 s | 15.432–15.746 s | 151.64 ms |
+| Only client busy-wait = 100 µs | 12.184 s | 11.265–12.401 s | 103.09 ms |
+| Only minimum commit interval = 10 µs | 23.480 s | 23.058–24.031 s | 199.83 ms |
+| Only idle commit interval = 10 µs | 17.444 s | 17.416–17.553 s | 170.51 ms |
+| Only server busy-wait = 100 µs | 23.104 s | 23.063–23.326 s | 192.45 ms |
+
+The idle commit interval and both busy-wait settings have the largest effects in the combined
+profile. The minimum commit interval also helps there, despite providing little improvement alone.
+Effects are not additive: server busy-wait alone changes little, but removing it from the tuned
+combination increases median untar from 4.647 to 8.057 seconds.
+
+In the 1,000-file diagnostic, the 1 µs GRV cap shows **no demonstrated benefit**: the default cap's
+4.493-second median is slightly lower than 4.647 seconds, with overlapping ranges. Three runs do not
+establish a reliable improvement. A subsequent full 10,000-file comparison gave **40.265 s with
+default GRV versus 38.346 s tuned**, using the same binary and a fresh FDB process before each run.
+The earlier tuned no-reuse run was 35.563 s. The effect is small and uncertain compared with the
+other knobs, and may depend on workload size or background load; do not conclude that the cap is
+universally unnecessary. Full tables and raw reports for both follow below.
+
+Whole-fixture median CPU time (including generation, setup, hash verification, cleanup, and background
+work) was **5.430 FDB / 10.737 dev CPU-seconds** with defaults and
+**2.271 FDB / 5.390 dev CPU-seconds** fully tuned. These are not untar-only CPU measurements;
+the dev container includes the server, FUSE, and benchmark processes. ES CPU is not included.
+
+Each configuration also passed a separate **two-server, same-workspace** run: 100 verified writes,
+shared discovery with 1/2/512 grants, and search/workspace isolation. Those columns are single runs
+with debug profiling enabled (`f08533b5fa`, same server binary), not sustained throughput tests.
+This experiment establishes local latency effects, **not production scalability**.
+
+Reproduce with `bench/ablate.py --work <new-directory> --files 1000 --repeats 3`; use
+`--workload workspaces --repeats 1` for the independent-writer checks. Run sequentially.
+[Untar run order/settings](tuning-ablation/summary.json), [statistics](tuning-ablation/statistics.json),
+[all untar reports and RPC counters](tuning-ablation/), and
+[independent-writer reports](tuning-ablation-writers/summary.json).
+
+### dfs v2 [fresh read versions, tuned control]
+
+2026-10-03. Matched control following the default-GRV diagnostic: all five knobs tuned, same server
+binary, no commit-version reuse, and an FDB process restart before the run. Untar measured
+**38.346 s**, versus **40.265 s** with default GRV (5.0% more time). The earlier tuned no-reuse run
+was **35.563 s**; retain this variation rather than attribute the entire difference to one knob.
+These full-corpus samples do not establish that the GRV cap can be removed without cost.
+Measured server revision `f08533b5fa`; all 24 checks passed with the unchanged client/workload,
+normal durable FDB commits, and ten server/session/mount resets. Phase profiling was disabled.
+
+```text
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 1,782.62  | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 140.45    | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 308.13    | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 8.57      | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 6,133.73  | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 847.16    | OK     |
+| metadata     | stat missing (256 paths)                       | first | 179.05    | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 1.92      | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 5,346.04  | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 196.91    | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 5,526.46  | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 196.79    | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 793.32    | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 30.68     | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 131.29    | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 8.74      | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 12,345.60 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 1,317.15  | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 380.61    | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 16.56     | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 56.99     | OK     |
+| file sync    | fsync (32 files)                               | once  | 17.78     | OK     |
+| write        | close (32 files)                               | once  | 0.71      | OK     |
+| write        | unlink (32 files)                              | once  | 42.87     | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+```
+
+Untar: **38.346 s**. Remaining client `syncfs`: **0.000062 s**
+after untar and **0.000049 s** after the suite. Shutdown: **0.072 s**.
+These drain timings exclude writeback already completed during the workload; there is no remaining
+FDB persistence drain after acknowledgment. Backend/OS caches remain warm; these are single runs.
+
+A separate run through **two server processes in the same workspace** completed and verified
+100 writes (50 × 1 KiB per writer) in **39.16 ms**. It also checked search/workspace
+isolation and shared discovery with 1/2/512 grants. This writer setup differs from the historical
+single-server, different-workspace sample; debug commit logging was enabled only for this separate run.
+
+[Run metadata](tuned-control/filesystem.json), [DFS rows](tuned-control/dfs.json),
+[local rows](tuned-control/local.json), [two-server results](tuned-control/workspaces.json),
+[configuration](tuned-control/configuration.json), and [per-case RPC counters](tuned-control/).
+
+### dfs v2 [fresh read versions, default GRV timeout]
+
+2026-10-03. Diagnostic override: GRV batch timeout restored to 5 ms; all four other knobs remain
+tuned. No commit-version reuse. The full 10,000-file untar measured **40.265 s**. This differs from
+the 1,000-file deep diagnostic, where restoring GRV showed no clear disadvantage. Node process
+restarted before this run; normal local knob defaults have not been changed.
+Measured server revision `f08533b5fa`; all 24 checks passed with the unchanged client/workload,
+normal durable FDB commits, and ten server/session/mount resets. Phase profiling was disabled.
+
+```text
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 1,746.61  | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 140.62    | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 286.82    | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 7.73      | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 6,166.68  | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 860.32    | OK     |
+| metadata     | stat missing (256 paths)                       | first | 184.02    | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 1.94      | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 5,625.19  | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 204.07    | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 5,651.01  | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 209.91    | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 772.44    | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 35.62     | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 139.50    | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 7.76      | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 12,217.16 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 1,118.55  | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 368.25    | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 16.71     | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 61.03     | OK     |
+| file sync    | fsync (32 files)                               | once  | 14.50     | OK     |
+| write        | close (32 files)                               | once  | 0.69      | OK     |
+| write        | unlink (32 files)                              | once  | 37.42     | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+```
+
+Untar: **40.265 s**. Remaining client `syncfs`: **0.000065 s**
+after untar and **0.000049 s** after the suite. Shutdown: **0.036 s**.
+These drain timings exclude writeback already completed during the workload; there is no remaining
+FDB persistence drain after acknowledgment. Backend/OS caches remain warm; these are single runs.
+
+A separate run through **two server processes in the same workspace** completed and verified
+100 writes (50 × 1 KiB per writer) in **44.20 ms**. It also checked search/workspace
+isolation and shared discovery with 1/2/512 grants. This writer setup differs from the historical
+single-server, different-workspace sample; debug commit logging was enabled only for this separate run.
+
+[Run metadata](default-grv/filesystem.json), [DFS rows](default-grv/dfs.json),
+[local rows](default-grv/local.json), [two-server results](default-grv/workspaces.json),
+[configuration](default-grv/configuration.json), and [per-case RPC counters](default-grv/).
 
 ### dfs v2 [fresh read versions]
 

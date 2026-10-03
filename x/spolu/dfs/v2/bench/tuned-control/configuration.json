@@ -1,0 +1,19 @@
+{
+  "server_revision": "f08533b5fa",
+  "fdb_version": "7.3.69",
+  "client_knobs": {
+    "grv_batch_timeout": 1e-06,
+    "busy_wait_threshold": 0.0001
+  },
+  "server_knobs": {
+    "commit_transaction_batch_interval_min": 1e-05,
+    "commit_transaction_batch_interval_from_idle": 1e-05,
+    "busy_wait_threshold": 0.0001
+  },
+  "knob_time_unit": "seconds",
+  "source_sha256": {
+    "v2/server/src/network.rs": "ed0f2b0979fc9b9f6b121c0d664e76e1f1a2d8de968fd657694c94d5b1ad8788",
+    "v2/local/fdb.bash": "14d6568e6160a2f2b10d998cef2a7044ad2023dd784f4adf1fadec17edf880a2",
+    "v2/local/compose.yaml": "474cff73a24f513b7d982a8f8a548b22eb9db36e73cfc077f93c49819acdb2c1"
+  }
+}
