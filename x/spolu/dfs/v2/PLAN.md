@@ -155,9 +155,9 @@ GRV-cap benefit, so that setting's effect remains workload-dependent/uncertain. 
 
 - [x] Keep commit-version reuse removed and restore FDB's default 5 ms GRV batching timeout in
       server/Compose defaults. Preserve the other four settings and overlapping metadata reads.
-- [ ] Rebuild and rerun the full filesystem benchmark, including 10,000-file untar, plus the
+- [x] Rebuild and rerun the full filesystem benchmark, including 10,000-file untar, plus the
       independent-writer checks. Record the current configuration and retain historical reports.
-- [ ] Publish a latest filesystem table at the top of `bench/RESULTS.md` with raw reports.
+- [x] Publish a latest filesystem table at the top of `bench/RESULTS.md` with raw reports.
 
 ## Future work: after the local benchmark
 
