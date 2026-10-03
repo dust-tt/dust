@@ -46,11 +46,6 @@ function buildBigQuerySyncTags({
   return tags;
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:error-handling] invalid-credentials-require-reauthorization
- * An `invalid_credentials` failure from `getConnectorAndCredentials` MUST throw
- * `ExternalOAuthTokenError` with the underlying error as its cause before synchronization starts.
- */
 export async function syncBigQueryConnection(connectorId: ModelId) {
   const getConnectorAndCredentialsRes = await getConnectorAndCredentials({
     connectorId,
