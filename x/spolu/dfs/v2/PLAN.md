@@ -138,7 +138,7 @@ Results: [full tables and raw reports](bench/RESULTS.md). Untar: **197.439 → 4
 ## 11. Simplify transactions and isolate FDB tuning effects
 
 - [x] Remove commit-version reuse and its fallback logic; obtain fresh read versions on every attempt.
-- [ ] Re-run the full filesystem suite and independent-writer benchmark; preserve previous results.
+- [x] Re-run the full filesystem suite and independent-writer benchmark; preserve previous results.
 - [ ] Compare all defaults, all tuned, each setting alone, and each setting removed from all tuned.
       Treat client/server busy-wait as separate settings; repeat deep-folder untars and record exact
       configuration, validation, CPU, and timing results. Restore the normal local configuration.
