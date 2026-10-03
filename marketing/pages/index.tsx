@@ -8,6 +8,8 @@ import {
 import { DUST_SKIP_LANDING, shouldSkipLanding } from "@marketing/lib/cookies";
 import type { NewsItem } from "@marketing/lib/homepage_news";
 import { fetchHomepageNews } from "@marketing/lib/homepage_news";
+import type { LogoListMap } from "@marketing/lib/logo_bars";
+import { fetchLogoLists } from "@marketing/lib/logo_bars_server";
 import { extractUTMParams } from "@marketing/lib/utils/utm";
 import { Landing } from "@marketing/pages/home";
 import logger from "@marketing/logger/logger";
@@ -20,6 +22,9 @@ interface HomeProps {
   news: NewsItem[];
   shape: number;
   gtmTrackingId: string | null;
+  // Read by LandingLayout, not by this component: the root renders the same
+  // `Landing` tree as /home, so its logo bar has to be fed the same way.
+  logoLists: LogoListMap;
 }
 
 /**
@@ -105,7 +110,10 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async (
     postLoginCallbackUrl += `?inviteToken=${inviteToken}`;
   }
 
-  const news = await fetchHomepageNews();
+  const [news, logoLists] = await Promise.all([
+    fetchHomepageNews(),
+    fetchLogoLists(),
+  ]);
 
   return {
     props: {
@@ -113,6 +121,7 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async (
       shape: 0,
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       news,
+      logoLists,
     },
   };
 };

@@ -1,3 +1,5 @@
+import { CONTENTFUL_REVALIDATE_SECONDS } from "@marketing/lib/contentful/client";
+import { fetchLogoLists } from "@marketing/lib/logo_bars_server";
 import { ComparisonTableSection } from "@marketing/components/home/content/Competitive/ComparisonTableSection";
 import { CompetitiveCustomersSection } from "@marketing/components/home/content/Competitive/CompetitiveCustomersSection";
 import { CompetitiveHeroSection } from "@marketing/components/home/content/Competitive/CompetitiveHeroSection";
@@ -20,7 +22,11 @@ export async function getStaticProps() {
       shape: 0,
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       hideNavigation: true,
+      logoLists: await fetchLogoLists(),
     },
+    // The logo bar is editor-managed in Contentful, so the page has to
+    // revalidate for a GTM change to go live without a deploy.
+    revalidate: CONTENTFUL_REVALIDATE_SECONDS,
   };
 }
 
