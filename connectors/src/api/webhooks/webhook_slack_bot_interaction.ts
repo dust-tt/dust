@@ -548,6 +548,7 @@ const _webhookSlackBotInteractionsAPIHandler = async (
           slackTeamId: payload.team.id,
           slackChannel: payload.channel.id,
           slackThreadTs: payload.container.thread_ts,
+          slackUserId: payload.user.id,
         });
 
         if (answerRes.isErr()) {
