@@ -26,6 +26,44 @@ import {
 } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { pluralize } from "@app/types/shared/utils/string_utils";
+import { createHash } from "crypto";
+
+interface EditSpec {
+  old_string: string;
+  new_string: string;
+  expected_replacements?: number;
+}
+
+// Batch failure messages quote the failing `old_string`; cap the quote so a large
+// mismatched block does not flood the error message.
+const BATCH_ERROR_SNIPPET_MAX_CHARS = 80;
+
+function editSnippet(oldString: string): string {
+  if (oldString.length <= BATCH_ERROR_SNIPPET_MAX_CHARS) {
+    return oldString;
+  }
+  return `${oldString.slice(0, BATCH_ERROR_SNIPPET_MAX_CHARS)}…`;
+}
+
+function countLines(content: string): number {
+  if (content.length === 0) {
+    return 0;
+  }
+  const segments = content.split("\n");
+  // A trailing newline does not start a new line.
+  return content.endsWith("\n") ? segments.length - 1 : segments.length;
+}
+
+// Short digest of the written content (line count + sha256 prefix) appended to every
+// success message, so agents can cheaply confirm the final file state without re-reading it.
+function contentDigest(content: string, buffer: Buffer): string {
+  const lineCount = countLines(content);
+  const hashPrefix = createHash("sha256")
+    .update(buffer)
+    .digest("hex")
+    .slice(0, 8);
+  return `The file is now ${lineCount} line${pluralize(lineCount)} (sha256:${hashPrefix}).`;
+}
 
 export async function editHandler(
   {
@@ -33,14 +71,51 @@ export async function editHandler(
     old_string,
     new_string,
     expected_replacements,
+    edits,
   }: {
     path: string;
-    old_string: string;
-    new_string: string;
+    old_string?: string;
+    new_string?: string;
     expected_replacements?: number;
+    edits?: EditSpec[];
   },
   { auth, runContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
+  let editSpecs: EditSpec[];
+  const isBatch = edits !== undefined;
+  if (isBatch) {
+    if (
+      old_string !== undefined ||
+      new_string !== undefined ||
+      expected_replacements !== undefined
+    ) {
+      return new Err(
+        new MCPError(
+          "Pass either `old_string`/`new_string` or `edits`, not both. The file was not modified.",
+          { tracked: false }
+        )
+      );
+    }
+    if (edits.length === 0) {
+      return new Err(
+        new MCPError("`edits` must contain at least one edit.", {
+          tracked: false,
+        })
+      );
+    }
+    editSpecs = edits;
+  } else {
+    if (old_string === undefined || new_string === undefined) {
+      return new Err(
+        new MCPError(
+          "Pass `old_string` and `new_string`, or an `edits` array.",
+          { tracked: false }
+        )
+      );
+    }
+    editSpecs = [{ old_string, new_string, expected_replacements }];
+  }
+
   const conversationRes = requireAgentLoopConversation({ runContext });
   if (conversationRes.isErr()) {
     return conversationRes;
@@ -105,33 +180,57 @@ export async function editHandler(
 
   const currentContent = readResult.value.toString("utf8");
 
-  const { updatedContent, occurrences } = getUpdatedContentAndOccurrences({
-    oldString: old_string,
-    newString: new_string,
-    currentContent,
-  });
+  // Apply every edit in memory, in order, each matching against the result of the
+  // previous ones. The file is written only if every edit matches (all-or-nothing).
+  let updatedContent = currentContent;
+  let totalReplacements = 0;
+  for (const [editIndex, edit] of editSpecs.entries()) {
+    const { updatedContent: nextContent, occurrences } =
+      getUpdatedContentAndOccurrences({
+        oldString: edit.old_string,
+        newString: edit.new_string,
+        currentContent: updatedContent,
+      });
 
-  if (occurrences === 0) {
-    return new Err(
-      new MCPError(
-        `String "${old_string}" not found in file. The file may have changed since you last ` +
-          `read it: re-read it with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME)}\` ` +
-          "and retry with the exact current text. Never resend the whole file content.",
-        {
-          tracked: false,
-        }
-      )
-    );
-  }
+    if (occurrences === 0) {
+      const catToolName = getPrefixedToolName(
+        FILES_SERVER_NAME,
+        FILES_CAT_ACTION_NAME
+      );
+      return new Err(
+        new MCPError(
+          isBatch
+            ? `Edit ${editIndex + 1} of ${editSpecs.length} failed: string "${editSnippet(edit.old_string)}" not found. ` +
+                "The batch is all-or-nothing: zero edits were applied and the file was not modified. " +
+                "Each edit matches against the file as transformed by the previous edits in the batch. " +
+                `Re-read the file with \`${catToolName}\` and retry the full batch with the exact current text.`
+            : `String "${edit.old_string}" not found in file. The file may have changed since you last ` +
+                `read it: re-read it with \`${catToolName}\` ` +
+                "and retry with the exact current text. Never resend the whole file content.",
+          {
+            tracked: false,
+          }
+        )
+      );
+    }
 
-  const expectedReplacements = expected_replacements ?? 1;
-  if (occurrences !== expectedReplacements) {
-    return new Err(
-      new MCPError(
-        `Expected ${expectedReplacements} replacements, but found ${occurrences} occurrences`,
-        { tracked: false }
-      )
-    );
+    const expectedReplacements = edit.expected_replacements ?? 1;
+    if (occurrences !== expectedReplacements) {
+      return new Err(
+        new MCPError(
+          isBatch
+            ? `Edit ${editIndex + 1} of ${editSpecs.length} failed: expected ${expectedReplacements} ` +
+                `replacement${pluralize(expectedReplacements)}, but found ${occurrences} ` +
+                `occurrence${pluralize(occurrences)}. The batch is all-or-nothing: zero edits were ` +
+                "applied and the file was not modified."
+            : `Expected ${expectedReplacements} replacements, but found ${occurrences} occurrences`,
+          { tracked: false }
+        )
+      );
+    }
+
+    updatedContent = nextContent;
+    totalReplacements += occurrences;
   }
 
   const updatedBuffer = Buffer.from(updatedContent, "utf8");
@@ -164,7 +263,12 @@ export async function editHandler(
     }
   }
 
-  let text = `Updated \`${path}\`: made ${occurrences} replacement${pluralize(occurrences)}.`;
+  const acrossEdits = isBatch
+    ? ` across ${editSpecs.length} edit${pluralize(editSpecs.length)}`
+    : "";
+  let text =
+    `Updated \`${path}\`: made ${totalReplacements} replacement${pluralize(totalReplacements)}${acrossEdits}. ` +
+    contentDigest(updatedContent, updatedBuffer);
 
   if (isFrameSource) {
     text += ` ${frameSourceUpdatedNotice()}`;
