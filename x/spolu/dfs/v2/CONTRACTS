@@ -9,9 +9,10 @@ consistency MUST rely on FDB transactions, never an exclusive workspace owner, w
 or process-local lock/cache. Authoritative RAM overlays with asynchronous FDB publication are forbidden.
 
 @cc [owner:spolu,label:api;performance] unchanged-api-optimization
-This optimization phase MUST preserve the exact existing API and unchanged v1 client. Compound/bulk
-RPCs, client-side operation batching, and additional deferred publication are out of scope. Server
-optimizations MUST preserve authorization, expected versions, visibility, errors, and durability,
+This optimization phase MUST preserve the exact existing API and v1 client, except for the approved
+FUSE inode-cap increase to 1,000,000. Compound/bulk RPCs, client-side operation batching, and additional
+deferred publication are out of scope. Server optimizations MUST preserve authorization, expected
+versions, visibility, errors, and durability,
 and MUST apply to deep paths and grants throughout the tree without workspace-root shortcuts.
 
 @cc [owner:spolu,label:security] workspace-isolation

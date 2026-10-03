@@ -3,8 +3,9 @@
 2026-10-02–03. Native Linux ARM64 in Docker Desktop on an Apple M4 Max; Rust 1.98.1 release builds.
 One FDB 7.3.69 node (single SSD storage), one ES 8.15.3 node (one primary, zero replicas).
 The Docker VM has 16 vCPUs and 7.65 GiB RAM.
-FDB/ES each have a 3 GiB container limit; ES has a 1 GiB heap. The unchanged v1 Rust client/FUSE
+FDB/ES each have a 3 GiB container limit; ES has a 1 GiB heap. The v1 Rust client/FUSE
 uses kernel metadata/directory/page caching and writeback. No v2 application content cache.
+The only approved client change is raising its inode cap to 1,000,000 for the 100,000-file rerun.
 Database data lives on persistent Docker volumes without a separate per-volume disk quota.
 
 These are **local shared-cluster measurements**. Each first search starts a new dfs-server/session
@@ -13,7 +14,7 @@ remote GCS, and discarded backend caches. No cold-disk or GCP claim is made.
 
 ## Filesystem
 
-Same jd workload, unchanged v1 Linux FUSE client. **Every first read row restarts dfs-server and
+Same jd workloads and v1 Linux FUSE client, with the inode-cap exception above. **Every first read row restarts dfs-server and
 creates a new session and mount** (ten resets). Warm is one repeat on that mount. FDB/ES caches
 and the Docker VM's OS cache are retained; local is the generated corpus on the container filesystem
 and is not guaranteed cold. All 24 rows passed the original workload's result checks.
@@ -24,10 +25,10 @@ and is not guaranteed cold. All 24 rows passed the original workload's result ch
 Untar completed in **405.282 s**, with **0.000425 s** of remaining client `syncfs`, but the first
 `scandir + stat` failed with **ENOSPC**. This is an **incomplete run**, not a successful full benchmark.
 
-The unchanged v1 FUSE client limits its live inode table to 100,000 entries, including directories
-and mount entries. Full traversal exceeds that limit even though backend disk space is available
+The v1 FUSE client used in this run limited its live inode table to 100,000 entries, including
+directories and mount entries. Full traversal exceeds that limit even though backend disk space is available
 (722 GiB free when checked). Server and tuning settings match the current 10,000-file baseline.
-All 24 local-filesystem checks passed. A full DFS table requires raising the client inode limit.
+All 24 local-filesystem checks passed. The approved rerun raises only this cap to 1,000,000.
 
 [Run metadata](current-v2-100k-inode-limit/filesystem.json),
 [failure details](current-v2-100k-inode-limit/failure.json),

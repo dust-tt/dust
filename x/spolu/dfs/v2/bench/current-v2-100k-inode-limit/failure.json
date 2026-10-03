@@ -10,7 +10,7 @@
   "harness_revision": "4730d62a48",
   "untar_seconds": 405.2816701430129,
   "full_filesystem_validation": false,
-  "fixture_cleaned": false,
+  "fixture_cleaned": true,
   "client_binary_sha256": "608cfc2f3b3ebf73ded93341afdb55236e13dca1f32d477d9584747935068c12",
   "inode_source_sha256": "9b2887382ab483ca44ee9d40be0ff8bd7fc4f820332a6163f55783adb5cd3df6"
 }
