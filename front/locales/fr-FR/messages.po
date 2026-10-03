@@ -107,6 +107,7 @@ msgstr "Automatisations"
 
 #: front/components/UserMenu.tsx
 #: front/components/navigation/config.ts
+#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
 msgid "Analytics"
 msgstr "Statistiques"
 
@@ -449,6 +450,7 @@ msgid "View description and settings"
 msgstr "Voir la description et les paramètres"
 
 #: front/components/command_palette/CommandPaletteActionPhase.tsx
+#: front/components/pages/workspace/developers/ProvidersPage.tsx
 #: front/components/workspace/settings/WorkspaceNameEditor.tsx
 msgid "Edit"
 msgstr "Modifier"
@@ -548,6 +550,9 @@ msgstr "Agents"
 #: front/components/groups/GroupsList.tsx
 #: front/components/members/WorkspaceMembersSection.tsx
 #: front/components/navigation/config.ts
+#: front/components/pages/workspace/GroupManagerUsagePage.tsx
+#: front/components/pages/workspace/MembersPage.tsx
+#: front/components/pages/workspace/UsagePage.tsx
 #: front/components/workspace/GroupsUsageTable.tsx
 #: front/components/workspace/MemberGroupLimitTable.tsx
 #: front/components/workspace/UsageMembersSection.tsx
@@ -562,6 +567,7 @@ msgstr "Compétences"
 
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
 #: front/components/navigation/config.ts
+#: front/components/pages/workspace/UsagePage.tsx
 msgid "Settings"
 msgstr "Paramètres"
 
@@ -1348,6 +1354,9 @@ msgid "Status"
 msgstr "Statut"
 
 #: front/components/members/MembersList.tsx
+#: front/components/pages/workspace/GroupManagerUsagePage.tsx
+#: front/components/pages/workspace/MembersPage.tsx
+#: front/components/pages/workspace/UsagePage.tsx
 #: front/components/workspace/analytics/usageFilterPanel/UsageFilterMemberGroupsControls.tsx
 msgid "Groups"
 msgstr "Groupes"
@@ -1583,6 +1592,7 @@ msgid "Governance"
 msgstr "Gouvernance"
 
 #: front/components/navigation/config.ts
+#: front/components/pages/workspace/WorkspaceBrandingPage.tsx
 msgid "Branding"
 msgstr "Image de marque"
 
@@ -1591,6 +1601,8 @@ msgid "Spend"
 msgstr "Dépenses"
 
 #: front/components/navigation/config.ts
+#: front/components/pages/workspace/GroupManagerUsagePage.tsx
+#: front/components/pages/workspace/UsagePage.tsx
 #: front/components/workspace/BuyCreditDialog.tsx
 #: front/components/workspace/TopUpsHistoryTable.tsx
 #: front/components/workspace/analytics/automations/AutomationsOverview.tsx
@@ -1602,6 +1614,7 @@ msgid "Credits"
 msgstr "Crédits"
 
 #: front/components/navigation/config.ts
+#: front/components/pages/workspace/billing/BillingPage.tsx
 msgid "Billing"
 msgstr "Facturation"
 
@@ -1637,9 +1650,196 @@ msgstr "Jeux de données"
 msgid "Logs"
 msgstr "Journaux"
 
+#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
+msgid "Consumption"
+msgstr "Consommation"
+
+#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
+msgid "Export"
+msgstr "Export"
+
+#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
+msgid "Ask @analyst"
+msgstr "Demander à @analyst"
+
+#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
+msgid "Explore"
+msgstr "Explorer"
+
+#: front/components/pages/workspace/GroupManagerUsagePage.tsx
+msgid "Manage credit limits for members and groups in your scope."
+msgstr "Gérez les limites de crédits des membres et des groupes de votre périmètre."
+
+#: front/components/pages/workspace/GroupManagerUsagePage.tsx
+msgid "All managed groups"
+msgstr "Tous les groupes gérés"
+
+#: front/components/pages/workspace/MembersPage.tsx
+msgid "Manage team members and their roles."
+msgstr "Gérez les membres de l’équipe et leurs rôles."
+
+#: front/components/pages/workspace/MembersPage.tsx
 #: front/components/pages/workspace/governance/RoleProvisioningSection.tsx
 msgid "Roles"
 msgstr "Rôles"
+
+#: front/components/pages/workspace/MembersPage.tsx
+msgid "Billing and security"
+msgstr "Facturation et sécurité"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Workspace credit usage"
+msgstr "Consommation de crédits du workspace"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Are you sure you want to remove {memberName}'s seat? They will immediately lose the ability to send messages, and the Free seat cannot be re-granted."
+msgstr "Voulez-vous vraiment retirer le siège de {memberName} ? Cette personne perdra immédiatement la possibilité d’envoyer des messages, et le siège Free ne pourra pas être réattribué."
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Are you sure you want to remove {memberName}'s seat? They will keep access until the end of the current billing period, then lose the ability to send messages."
+msgstr "Voulez-vous vraiment retirer le siège de {memberName} ? Cette personne conservera l’accès jusqu’à la fin de la période de facturation en cours, puis perdra la possibilité d’envoyer des messages."
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Remove seat"
+msgstr "Retirer le siège"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Add credits"
+msgstr "Ajouter des crédits"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "No seat"
+msgstr "Aucun siège"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "All seats"
+msgstr "Tous les sièges"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Breakdown in analytics"
+msgstr "Détail dans les statistiques"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Control credit consumption across your workspace."
+msgstr "Contrôlez la consommation de crédits dans votre workspace."
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Change my seat"
+msgstr "Changer mon siège"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Credit Pool"
+msgstr "Réserve de crédits"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Loading Credit Pool"
+msgstr "Chargement de la réserve de crédits"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Failed to load Workspace Credit Pool"
+msgstr "Impossible de charger la réserve de crédits du workspace"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "An error occurred while loading your Workspace Credit Pool data. Please refresh the page or contact support if the issue persists."
+msgstr "Une erreur s’est produite lors du chargement des données de la réserve de crédits de votre workspace. Veuillez actualiser la page ou contacter le support si le problème persiste."
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "/{initialTotalCreditsFormatted} credits"
+msgstr "/{initialTotalCreditsFormatted} crédits"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "On target"
+msgstr "Dans l’objectif"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Off target"
+msgstr "Hors objectif"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "{usedPercentage}% used"
+msgstr "{usedPercentage} % utilisé"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Resets {resetAtFormatted}"
+msgstr "Réinitialisation le {resetAtFormatted}"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "At your current rate, you have enough credits to finish the cycle."
+msgstr "À votre rythme actuel, vous avez assez de crédits pour terminer le cycle."
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "At this rate, you're expected to consume your full credits by <0>{resetAtFormatted}</0>."
+msgstr "À ce rythme, vous devriez avoir consommé tous vos crédits d’ici le <0>{resetAtFormatted}</0>."
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "{overageCredits, plural, one {{overageCreditsFormatted} overage credit} other {{overageCreditsFormatted} overage credits}}"
+msgstr "{overageCredits, plural, one {{overageCreditsFormatted} crédit de dépassement} other {{overageCreditsFormatted} crédits de dépassement}}"
+
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Top-ups history"
+msgstr "Historique des recharges"
+
+#: front/components/pages/workspace/WorkspaceBrandingPage.tsx
+msgid "Workspace branding"
+msgstr "Image de marque du workspace"
+
+#: front/components/pages/workspace/WorkspaceBrandingPage.tsx
+msgid "Workspace branding is not available for this workspace. Whitelabel frames must be enabled to customize your workspace logo."
+msgstr "L’image de marque n’est pas disponible pour ce workspace. Les Frames en marque blanche doivent être activés pour personnaliser le logo de votre workspace."
+
+#: front/components/pages/workspace/billing/BillingPage.tsx
+msgid "Change your subscription and edit your billing information."
+msgstr "Modifiez votre abonnement et vos informations de facturation."
+
+#: front/components/pages/workspace/billing/BillingPage.tsx
+#: front/components/workspace/billing/BillingInformation.tsx
+msgid "Billing information"
+msgstr "Informations de facturation"
+
+#: front/components/pages/workspace/billing/BillingPage.tsx
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+msgid "Invoices"
+msgstr "Factures"
+
+#: front/components/pages/workspace/billing/BillingPage.tsx
+msgid "Coupons"
+msgstr "Coupons"
+
+#: front/components/pages/workspace/developers/ConsumptionProgressBar.tsx
+msgid "Total consumed"
+msgstr "Total consommé"
+
+#: front/components/pages/workspace/developers/ProvidersPage.tsx
+msgid "Model Providers"
+msgstr "Fournisseurs de modèles"
+
+#: front/components/pages/workspace/developers/ProvidersPage.tsx
+msgid "Model providers available to your Dust apps."
+msgstr "Fournisseurs de modèles disponibles pour vos Dust Apps."
+
+#: front/components/pages/workspace/developers/ProvidersPage.tsx
+msgid "Service Providers"
+msgstr "Fournisseurs de services"
+
+#: front/components/pages/workspace/developers/ProvidersPage.tsx
+msgid "Service providers enable your Dust Apps to query external data or write to external services."
+msgstr "Les fournisseurs de services permettent à vos Dust Apps d’interroger des données externes ou d’écrire dans des services externes."
+
+#: front/components/pages/workspace/developers/ProvidersPage.tsx
+msgid "enabled"
+msgstr "activé"
+
+#: front/components/pages/workspace/developers/ProvidersPage.tsx
+msgid "disabled"
+msgstr "désactivé"
+
+#: front/components/pages/workspace/developers/ProvidersPage.tsx
+msgid "API Key:"
+msgstr "Clé API :"
+
+#: front/components/pages/workspace/developers/ProvidersPage.tsx
+msgid "Set up"
+msgstr "Configurer"
 
 #: front/components/plans/PlansTables.tsx
 #: front/components/plans/SubscriptionPlanCards.tsx
@@ -3245,10 +3445,6 @@ msgid "Payment method {last4}"
 msgstr "Moyen de paiement {last4}"
 
 #: front/components/workspace/billing/BillingInformation.tsx
-msgid "Billing information"
-msgstr "Informations de facturation"
-
-#: front/components/workspace/billing/BillingInformation.tsx
 msgid "Billing contact"
 msgstr "Contact de facturation"
 
@@ -3532,10 +3728,6 @@ msgstr "Vos données"
 #: front/components/workspace/billing/SubscriptionActionButtons.tsx
 msgid "Agents, conversations, and connected data sources are preserved for 30 days. Reactivate any time during that window."
 msgstr "Les agents, conversations et sources de données connectées sont conservés pendant 30 jours. Vous pouvez réactiver l’abonnement à tout moment pendant cette période."
-
-#: front/components/workspace/billing/SubscriptionActionButtons.tsx
-msgid "Invoices"
-msgstr "Factures"
 
 #: front/components/workspace/billing/SubscriptionActionButtons.tsx
 msgid "Past invoices remain available indefinitely from this page."
