@@ -14,10 +14,77 @@ remote GCS, and discarded backend caches. No cold-disk or GCP claim is made.
 
 ## Filesystem
 
-Same jd workloads and v1 Linux FUSE client, with the inode-cap exception above. **Every first read row restarts dfs-server and
-creates a new session and mount** (ten resets). Warm is one repeat on that mount. FDB/ES caches
+Same jd workloads and v1 Linux FUSE client, with the inode-cap exception above. **Every first read
+row restarts dfs-server and creates a new session and mount** (ten resets). Warm is one repeat on
+that mount. FDB/ES caches
 and the Docker VM's OS cache are retained; local is the generated corpus on the container filesystem
 and is not guaranteed cold. All 24 rows passed the original workload's result checks.
+
+### dfs v2 [current, 100,000 files]
+
+2026-10-03. **100,000 files / 1,775.1 MB**, with the same 100 directories and ten-level
+structure as the 10,000-file corpus. Each directory contains ten times as many files, generated with
+seed 42 and the same document format. Rare search still has four matches; random/negative-lookup
+samples remain 256 files, and the write microbenchmark remains 32 × 32 KiB.
+
+Same server binary and settings as the current 10,000-file baseline below: no commit-version reuse,
+FDB's default 5 ms GRV timeout, the other four settings tuned, and overlapping metadata reads.
+Measured revision `a37b72f6cb`. The sole client change raises the live inode cap from 100,000
+to **1,000,000**, allowing this full traversal. The API, caching, writeback, and server are unchanged.
+`--files 100000` preserves jd's timed actions and validation.
+All 24 local and 24 DFS checks passed, including SHA-256 verification of every file. Ten server/session/
+mount resets; profiling disabled. FDB restarted before this run, retaining its volumes and OS cache;
+ES was retained. Backend caches remain warm between cases.
+
+```text
++--------------+--------------------------------------------------+-------+------------+--------+
+| Feature      | Workload                                         | Phase | Time (ms)  | Result |
++--------------+--------------------------------------------------+-------+------------+--------+
+| metadata     | scandir + stat (100 dirs, 100,000 files)         | first | 17,527.11  | OK     |
+| metadata     | scandir + stat (100 dirs, 100,000 files)         | warm  | 17,261.33  | OK     |
+| metadata     | rg --files (100,000 files)                       | first | 2,702.70   | OK     |
+| metadata     | rg --files (100,000 files)                       | warm  | 25.15      | OK     |
+| metadata     | open + fstat + close (100,000 files)             | first | 60,874.40  | OK     |
+| metadata     | open + fstat + close (100,000 files)             | warm  | 8,607.08   | OK     |
+| metadata     | stat missing (256 paths)                         | first | 187.46     | OK     |
+| metadata     | stat missing (256 paths)                         | warm  | 2.00       | OK     |
+| page cache   | rg no-match scan (100,000 files, 1775.1 MB)      | first | 73,607.23  | OK     |
+| page cache   | rg no-match scan (100,000 files, 1775.1 MB)      | warm  | 68,875.88  | OK     |
+| search       | rg rare literal (100,000 files, 4 matches)       | first | 70,566.34  | OK     |
+| search       | rg rare literal (100,000 files, 4 matches)       | warm  | 68,565.77  | OK     |
+| path pruning | rg branch glob (9,810 candidate files)           | first | 9,005.42   | OK     |
+| path pruning | rg branch glob (9,810 candidate files)           | warm  | 245.98     | OK     |
+| path pruning | rg depth-10 subtree (1,360 files)                | first | 997.78     | OK     |
+| path pruning | rg depth-10 subtree (1,360 files)                | warm  | 41.48      | OK     |
+| page cache   | open + read + SHA-256 (100,000 files, 1775.1 MB) | first | 129,959.77 | OK     |
+| page cache   | open + read + SHA-256 (100,000 files, 1775.1 MB) | warm  | 127,995.24 | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)            | first | 380.87     | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)            | warm  | 15.84      | OK     |
+| write        | create + write (32 x 32 KiB files)               | once  | 47.42      | OK     |
+| file sync    | fsync (32 files)                                 | once  | 37.42      | OK     |
+| write        | close (32 files)                                 | once  | 0.70       | OK     |
+| write        | unlink (32 files)                                | once  | 40.74      | OK     |
++--------------+--------------------------------------------------+-------+------------+--------+
+```
+
+Untar: **408.921 s** (10.99× the 10,000-file run's **37.201 s**).
+Remaining client `syncfs`: **0.000097 s** after untar and
+**0.000056 s** after the suite. Shutdown: **0.070 s**.
+These drain timings exclude writeback completed during the workload; FDB has no post-acknowledgment
+persistence drain. This is a single local run; directory density and total bytes grew with file count.
+The successful run cleaned its isolated FDB/ES fixture.
+
+The warm directory-stat and full-content scan rows show little cache benefit at this size.
+[Client counters](current-v2-100k/case-9-client-metrics.json) across the two SHA-256 passes recorded
+200,000 read RPCs and 200,202 lookups. An
+[observational memory snapshot](current-v2-100k/memory-snapshot.json) during the content scans recorded
+about 4.77 GiB of VM anonymous memory and 1.45 GiB of cached pages out of 7.65 GiB RAM.
+This supplies runtime context, not an isolated measurement of the cause.
+
+Reproduce: `local/run exec python3 /dfs/v2/bench/vfs.py --files 100000`.
+[Run metadata](current-v2-100k/filesystem.json), [DFS rows](current-v2-100k/dfs.json),
+[local rows](current-v2-100k/local.json), [configuration](current-v2-100k/configuration.json),
+and [per-case RPC counters](current-v2-100k/).
 
 ### dfs v2 [100,000 files: client inode limit]
 
@@ -26,7 +93,8 @@ Untar completed in **405.282 s**, with **0.000425 s** of remaining client `syncf
 `scandir + stat` failed with **ENOSPC**. This is an **incomplete run**, not a successful full benchmark.
 
 The v1 FUSE client used in this run limited its live inode table to 100,000 entries, including
-directories and mount entries. Full traversal exceeds that limit even though backend disk space is available
+directories and mount entries. Full traversal exceeds that limit even though backend disk space
+is available
 (722 GiB free when checked). Server and tuning settings match the current 10,000-file baseline.
 All 24 local-filesystem checks passed. The approved rerun raises only this cap to 1,000,000.
 
