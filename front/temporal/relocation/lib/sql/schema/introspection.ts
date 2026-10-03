@@ -1,4 +1,5 @@
 import logger from "@app/logger/logger";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Sequelize } from "sequelize";
 import { QueryTypes } from "sequelize";
 
@@ -83,4 +84,40 @@ export async function getUserReferencingColumns(
   );
 
   return result;
+}
+
+/**
+ * Every user id the workspace's rows point at, through the columns that reference
+ * users.id, whatever the table. Members are only part of it: a superuser acting from
+ * poke, a former member whose membership row is gone, an editor from another workspace
+ * all leave references the relocation has to carry.
+ */
+export async function getWorkspaceReferencedUserIds(
+  client: Sequelize,
+  { workspaceId }: { workspaceId: ModelId }
+): Promise<ModelId[]> {
+  const [userColumnsByTable, workspaceTables] = await Promise.all([
+    getUserReferencingColumns(client),
+    getTablesWithColumn(client, { columnName: "workspaceId" }),
+  ]);
+  const workspaceTableSet = new Set(workspaceTables);
+
+  const userIds = new Set<ModelId>();
+  for (const [table, columns] of Object.entries(userColumnsByTable)) {
+    if (!workspaceTableSet.has(table)) {
+      continue;
+    }
+    for (const column of columns) {
+      // Identifiers come from information_schema, not from user input.
+      const rows = await client.query<{ id: ModelId }>(
+        `SELECT DISTINCT "${column}" AS id FROM "${table}" WHERE "workspaceId" = :workspaceId AND "${column}" IS NOT NULL`,
+        { replacements: { workspaceId }, type: QueryTypes.SELECT }
+      );
+      for (const { id } of rows) {
+        userIds.add(id);
+      }
+    }
+  }
+
+  return [...userIds];
 }
