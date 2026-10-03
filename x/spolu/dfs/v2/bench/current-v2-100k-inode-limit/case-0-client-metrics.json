@@ -1,0 +1,104 @@
+{
+  "dfs_client_metrics": {
+    "fuse.create": {
+      "calls": 100001,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.flush": {
+      "calls": 100002,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.forget": {
+      "calls": 100102,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.getattr": {
+      "calls": 100166,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.init": {
+      "calls": 1,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.lookup": {
+      "calls": 100205,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.mkdir": {
+      "calls": 101,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.open": {
+      "calls": 1,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.opendir": {
+      "calls": 2,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.read": {
+      "calls": 136,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.release": {
+      "calls": 100002,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.releasedir": {
+      "calls": 2,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.setattr": {
+      "calls": 200244,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.write": {
+      "calls": 100462,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "rpc.create": {
+      "calls": 100102,
+      "elapsed_ms": 91074.509953,
+      "errors": 0
+    },
+    "rpc.lookup": {
+      "calls": 100205,
+      "elapsed_ms": 43923.564793,
+      "errors": 100102
+    },
+    "rpc.read": {
+      "calls": 136,
+      "elapsed_ms": 80.821127,
+      "errors": 0
+    },
+    "rpc.stat": {
+      "calls": 1,
+      "elapsed_ms": 0.439125,
+      "errors": 0
+    },
+    "rpc.update": {
+      "calls": 200244,
+      "elapsed_ms": 162753.32484,
+      "errors": 0
+    },
+    "rpc.write": {
+      "calls": 100462,
+      "elapsed_ms": 85954.636695,
+      "errors": 0
+    }
+  }
+}
