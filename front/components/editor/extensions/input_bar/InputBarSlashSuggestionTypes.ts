@@ -1,6 +1,10 @@
 import type { InputBarAction } from "@app/components/assistant/conversation/input_bar/inputBarActions";
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import type { Selection } from "@app/components/model_picker/modelPickerUtils";
+import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { Minimize01, UploadCloud02 } from "@dust-tt/sparkle";
 import type React from "react";
+import type { RefObject } from "react";
 
 // What the "/" menu offers a composer: the command list with capabilities, or only the knowledge
 // browser.
@@ -19,6 +23,22 @@ export function getInputBarSlashMenuMode(
     return "commands";
   }
   return actions.includes("attachment") ? "attach-only" : null;
+}
+
+export interface InputBarSlashMenuRefs {
+  conversationIdRef?: RefObject<string | null>;
+  includeAttachKnowledgeRef: RefObject<boolean>;
+  includePickModelRef: RefObject<boolean>;
+  includeSelectSpacesRef: RefObject<boolean>;
+  onDetailsRef?: RefObject<((item: SlashCommand) => void) | undefined>;
+  onModelSelectRef: RefObject<((selection: Selection) => void) | undefined>;
+  onNodeSelectRef: RefObject<
+    ((node: DataSourceViewContentNode) => void) | undefined
+  >;
+  onSelectRef: RefObject<((item: SlashCommand) => void) | undefined>;
+  slashCommandsRef: RefObject<InputBarSlashCommand[]>;
+  slashMenuModeRef: RefObject<InputBarSlashMenuMode | null>;
+  spaceIdRef: RefObject<string | null | undefined>;
 }
 
 export type InputBarSlashCommandId =

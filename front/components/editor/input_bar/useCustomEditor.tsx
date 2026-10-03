@@ -255,11 +255,6 @@ const useEditorService = (editor: Editor | null, isMobileViewport: boolean) => {
         chainCommands?.run();
       },
 
-      // Inserts a "/" at the cursor to open the slash suggestion dropdown.
-      openSlashCommand() {
-        editor?.commands.openInputBarSlashCommand();
-      },
-
       focusEnd() {
         editor?.commands.focus("end");
       },

@@ -42,7 +42,9 @@ export function createSlashMenuNavigationStorage(): SlashMenuNavigationStorage {
   };
 }
 
-function getSlashCommandSubMenuId(item: SlashCommand): SlashSubMenuId | null {
+export function getSlashCommandSubMenuId(
+  item: SlashCommand
+): SlashSubMenuId | null {
   if (isInsertKnowledgeSlashCommand(item)) {
     return ATTACH_CONTEXT_SUB_MENU_ID;
   }
