@@ -93,6 +93,37 @@ app.get("/", async (ctx) => {
     reqQuery.limit = limitParam;
   }
 
+  ctx.header("Vary", "Accept");
+  if (ctx.req.header("Accept")?.includes("application/json")) {
+    ctx.header("Cache-Control", "no-store");
+    const searchResult = await handleSearch(reqQuery, auth, searchParams);
+    if (searchResult.isErr()) {
+      return apiError(ctx, {
+        status_code: searchResult.error.status,
+        api_error: searchResult.error.error,
+      });
+    }
+    const toolResults: ToolSearchResult[] = [];
+    if (
+      includeTools === "true" &&
+      !cursor &&
+      !ctx.req.raw.signal.aborted &&
+      isString(searchParams.query)
+    ) {
+      for await (const results of streamToolFiles({
+        auth,
+        query: searchParams.query,
+        pageSize: searchParams.limit,
+      })) {
+        if (ctx.req.raw.signal.aborted) {
+          break;
+        }
+        toolResults.push(...results);
+      }
+    }
+    return ctx.json({ knowledgeResults: searchResult.value, toolResults });
+  }
+
   setSSEHeaders(ctx);
 
   return stream(ctx, async (s) => {
