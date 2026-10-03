@@ -8,6 +8,8 @@ export * from "./agents";
 export * from "./build";
 export * from "./companySpaces";
 export * from "./conversations";
+export * from "./manageAgents";
+export * from "./manageSkills";
 export * from "./myPod";
 export * from "./podSettings";
 export * from "./requests";
