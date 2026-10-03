@@ -205,7 +205,10 @@ export function CellProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const setCellInfo = useCallback(
-    (cellInfo: CellInfo, options?: { keepInStorage?: boolean }) => {
+    (incomingCellInfo: CellInfo, options?: { keepInStorage?: boolean }) => {
+      // We only take the cell name and resolve the url from the client side env variable,
+      // this is to fix the eu front edge is returning the eu prod url instead of edge url
+      const cellInfo = getCellInfo(incomingCellInfo.name);
       currentUrlRef.current = cellInfo.url;
 
       if (options?.keepInStorage) {
