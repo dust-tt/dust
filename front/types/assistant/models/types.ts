@@ -7,7 +7,10 @@ import type { TokenizerConfig } from "../../tokenizer";
 import type { EMBEDDING_PROVIDER_IDS } from "./embedding";
 import type { SUPPORTED_MODEL_CONFIGS } from "./models";
 import { isStaticModelId, MODEL_IDS } from "./models";
-import type { BYOK_MODEL_PROVIDER_IDS } from "./providers";
+import type {
+  BYOK_MODEL_PROVIDER_IDS,
+  WhitelistableModelMakerIdSchema,
+} from "./providers";
 import { MODEL_MAKER_IDS, MODEL_PROVIDER_IDS } from "./providers";
 import {
   normalizeLegacyReasoningEffort,
@@ -19,9 +22,8 @@ export type ModelIdType = (typeof MODEL_IDS)[number];
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
 export type ByokModelProviderIdType = (typeof BYOK_MODEL_PROVIDER_IDS)[number];
 export type ModelMakerIdType = (typeof MODEL_MAKER_IDS)[number];
-export type WhitelistableModelMakerIdType = Exclude<
-  ModelMakerIdType,
-  "fireworks"
+export type WhitelistableModelMakerIdType = z.infer<
+  typeof WhitelistableModelMakerIdSchema
 >;
 
 // Raw model selection coming from the input-bar model picker: an explicit

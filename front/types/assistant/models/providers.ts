@@ -81,23 +81,12 @@ export const MODEL_MAKER_IDS = [
 
 // What a workspace whitelists: model labs, not hosts. "fireworks" only serves
 // other labs' models, so it is not whitelistable.
-export const WHITELISTABLE_MODEL_MAKER_IDS = [
-  OPENAI_PROVIDER_ID,
-  ANTHROPIC_PROVIDER_ID,
-  "mistral",
-  GOOGLE_AI_STUDIO_PROVIDER_ID,
-  "deepseek",
-  "xai",
-  "noop",
-  "auto",
-  "auto_fast",
-  "auto_complex",
-  ...MODEL_MAKER_ONLY_IDS,
-] as const satisfies readonly ModelMakerIdType[];
+export const WhitelistableModelMakerIdSchema = z
+  .enum(MODEL_MAKER_IDS)
+  .exclude(["fireworks"]);
 
-export const WhitelistableModelMakerIdSchema = z.enum(
-  WHITELISTABLE_MODEL_MAKER_IDS
-);
+export const WHITELISTABLE_MODEL_MAKER_IDS =
+  WhitelistableModelMakerIdSchema.options;
 
 export const isWhitelistableModelMakerId = (
   makerId: string
