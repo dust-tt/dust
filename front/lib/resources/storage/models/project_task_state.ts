@@ -13,7 +13,6 @@ export class ProjectTaskStateModel extends WorkspaceAwareModel<ProjectTaskStateM
   declare spaceId: ForeignKey<SpaceModel["id"]>;
   declare userId: ForeignKey<UserModel["id"]>;
   declare lastReadAt: Date;
-  declare lastCleanedAt: Date | null;
 
   declare space: NonAttribute<SpaceModel>;
   declare user: NonAttribute<UserModel>;
@@ -34,11 +33,6 @@ ProjectTaskStateModel.init(
     lastReadAt: {
       type: DataTypes.DATE,
       allowNull: false,
-    },
-    lastCleanedAt: {
-      type: DataTypes.DATE,
-      allowNull: true,
-      defaultValue: null,
     },
     spaceId: {
       type: DataTypes.BIGINT,
