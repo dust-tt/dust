@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import { checkCredentialOwnership } from "@app/lib/api/oauth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import type { GetOrPostManagedDataSourceConfigResponseBody } from "@app/types/api/data_sources/managed_config";
@@ -158,6 +159,22 @@ app.post(
     }
 
     const { configValue } = ctx.req.valid("json");
+
+    if (configKey === "privateIntegrationCredentialId") {
+      const credentialOwnershipRes = await checkCredentialOwnership(
+        auth,
+        configValue
+      );
+      if (credentialOwnershipRes.isErr()) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "data_source_auth_error",
+            message: "You do not have permission to use this credential.",
+          },
+        });
+      }
+    }
 
     const connectorsAPI = new ConnectorsAPI(
       config.getConnectorsAPIConfig(),

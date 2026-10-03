@@ -9,6 +9,7 @@ import {
   createRemoteMCPServer,
   listMCPServersWithViews,
 } from "@app/lib/api/mcp/servers";
+import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -75,6 +76,22 @@ app.get("/", async (ctx): HandlerResult<GetMCPServersResponseBody> => {
 app.post("/", validate("json", PostBodySchema), async (ctx) => {
   const auth = ctx.get("auth");
   const body = ctx.req.valid("json");
+
+  if (body.connectionId) {
+    const connectionOwnershipRes = await checkConnectionOwnership(
+      auth,
+      body.connectionId
+    );
+    if (connectionOwnershipRes.isErr()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "data_source_auth_error",
+          message: "You do not have permission to use this connection.",
+        },
+      });
+    }
+  }
 
   const result =
     body.serverType === "remote"

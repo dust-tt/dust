@@ -481,10 +481,10 @@ async function handleDataSourceWithProvider({
     if (checkConnectionOwnershipRes.isErr()) {
       await rollbackManagedDataSource();
       return apiError(ctx, {
-        status_code: 400,
+        status_code: 403,
         api_error: {
-          type: "invalid_request_error",
-          message: "Failed to get the access token for the connector.",
+          type: "data_source_auth_error",
+          message: "You do not have permission to use this connection.",
         },
       });
     }
