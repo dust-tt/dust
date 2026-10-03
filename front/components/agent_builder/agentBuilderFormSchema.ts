@@ -3,6 +3,7 @@ import {
   actionSchema,
   generationSettingsSchema,
 } from "@app/components/shared/tools_picker/types";
+import { getAgentNameFormatError } from "@app/lib/agent_builder/helpers";
 import type { ProjectConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { WEBHOOK_PROVIDERS } from "@app/lib/triggers/webhooks";
 import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration";
@@ -22,10 +23,12 @@ const tagSchema = z.object({
 });
 
 const agentSettingsSchema = z.object({
-  name: z
-    .string()
-    .min(1, "Agent name is required")
-    .refine((value) => !/\s/.test(value), "Agent name cannot contain space"),
+  name: z.string().superRefine((value, ctx) => {
+    const error = getAgentNameFormatError(value);
+    if (error) {
+      ctx.addIssue({ code: "custom", message: error });
+    }
+  }),
   description: z.string().min(1, "Agent description is required"),
   pictureUrl: z.string().optional(),
   scope: z.enum(["hidden", "visible"]),
