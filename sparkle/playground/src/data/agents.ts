@@ -142,12 +142,25 @@ export function getRandomAgents(count: number): Agent[] {
 }
 
 /**
+ * Agents a simulated workspace invented for itself, on top of the catalog
+ * above. Views look agents up by id from anywhere, so a generated agent has to
+ * be findable the same way, or a row shows a name with no face.
+ */
+const extraAgents = new Map<string, Agent>();
+
+export function registerAgents(agents: Agent[]): void {
+  for (const agent of agents) {
+    extraAgents.set(agent.id, agent);
+  }
+}
+
+/**
  * Get an agent by ID
  * @param id - Agent ID
  * @returns Agent or undefined if not found
  */
 export function getAgentById(id: string): Agent | undefined {
-  return mockAgents.find((agent) => agent.id === id);
+  return mockAgents.find((agent) => agent.id === id) ?? extraAgents.get(id);
 }
 
 /**
@@ -156,5 +169,5 @@ export function getAgentById(id: string): Agent | undefined {
  * @returns Array of agents matching the provided IDs
  */
 export function getAgentsByIds(ids: string[]): Agent[] {
-  return mockAgents.filter((agent) => ids.includes(agent.id));
+  return ids.map(getAgentById).filter((agent): agent is Agent => !!agent);
 }
