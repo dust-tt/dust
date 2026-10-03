@@ -28,14 +28,15 @@ import type {
 } from "@tanstack/react-table";
 import { useMemo } from "react";
 
-// Leave room for Select, Usage and Actions, then Editors/Last edited at @sm and Availability at @md.
 /**
  * @cc [owner:aubin-tchoi,label:product] skill-name-column-visibility
  * Secondary columns MUST hide based on available container width to keep skill names
- * visible.
+ * visible. Below 768px viewport width, names MUST fill the available column width, with
+ * Usage, Last edited and Editors appearing at table widths of 384px, 512px and 640px
+ * respectively. At 768px and above, preserve the existing container-based layout.
  */
 const SKILL_SEARCH_NAME_COLUMN_WIDTH =
-  "w-[calc(100%-12rem)] @sm:w-[calc(100%-28rem)] @md:w-[calc(100%-38rem)]";
+  "md:w-[calc(100%-12rem)] md:@sm:w-[calc(100%-28rem)] md:@md:w-[calc(100%-38rem)]";
 
 interface SkillSearchTableProps {
   owner: LightWorkspaceType;
@@ -235,7 +236,10 @@ export function SkillSearchTable({
               }
             />
           ),
-          meta: { type: "numeric", className: "w-24 font-mono" },
+          meta: {
+            type: "numeric",
+            className: "hidden w-24 font-mono @xxs:table-cell md:table-cell",
+          },
         },
         {
           id: "editors" as const,
@@ -256,7 +260,9 @@ export function SkillSearchTable({
           cell: ({ row: { original: skill } }) => (
             <SkillLastEditedCell updatedAt={skill.updatedAt} emptyLabel="-" />
           ),
-          meta: { className: "hidden w-32 @sm:table-cell" },
+          meta: {
+            className: "hidden w-32 max-md:@xs:table-cell @sm:table-cell",
+          },
         },
         {
           id: "actions" as const,
