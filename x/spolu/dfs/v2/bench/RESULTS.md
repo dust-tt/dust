@@ -18,6 +18,22 @@ creates a new session and mount** (ten resets). Warm is one repeat on that mount
 and the Docker VM's OS cache are retained; local is the generated corpus on the container filesystem
 and is not guaranteed cold. All 24 rows passed the original workload's result checks.
 
+### dfs v2 [100,000 files: client inode limit]
+
+2026-10-03. First attempt with 100,000 files / 1,775.1 MB in the same 100 directories.
+Untar completed in **405.282 s**, with **0.000425 s** of remaining client `syncfs`, but the first
+`scandir + stat` failed with **ENOSPC**. This is an **incomplete run**, not a successful full benchmark.
+
+The unchanged v1 FUSE client limits its live inode table to 100,000 entries, including directories
+and mount entries. Full traversal exceeds that limit even though backend disk space is available
+(722 GiB free when checked). Server and tuning settings match the current 10,000-file baseline.
+All 24 local-filesystem checks passed. A full DFS table requires raising the client inode limit.
+
+[Run metadata](current-v2-100k-inode-limit/filesystem.json),
+[failure details](current-v2-100k-inode-limit/failure.json),
+[full output](current-v2-100k-inode-limit/failure.txt), and
+[local results](current-v2-100k-inode-limit/local.json).
+
 ### dfs v2 [current: no commit-version reuse, default GRV]
 
 2026-10-03. Current v2 defaults: commit-version reuse removed; FDB's **5 ms GRV batching timeout**
