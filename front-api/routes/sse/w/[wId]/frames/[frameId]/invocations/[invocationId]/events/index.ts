@@ -8,6 +8,8 @@ import { streamingTag } from "@front-api/middlewares/streaming";
 import { validate } from "@front-api/middlewares/validator";
 import { withSandboxFunctionInvocationFeature } from "@front-api/middlewares/with_sandbox_functions_feature";
 
+import poll from "./poll";
+
 const app = workspaceApp();
 
 app.use("*", streamingTag);
@@ -29,5 +31,7 @@ app.get(
     });
   }
 );
+
+app.route("/poll", poll);
 
 export default app;
