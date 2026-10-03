@@ -127,12 +127,22 @@ under `bench/`, with the unchanged client/workload and normal durable commits.
       record the full filesystem benchmark, including untar.
 - [x] Reuse a recent successful commit version for the first mutation attempt; refresh rejected,
       conflicting, expired, or read-only attempts. Verify cross-server freshness and record a new run.
+      Removed in section 11: the measured benefit did not justify the extra transaction logic.
 - [x] Start independent lookup/authorization reads earlier using bounded advisory hints; preserve
       snapshot checks/error ordering, verify deep moves/grants, and record a third full run.
 
 Results: [full tables and raw reports](bench/RESULTS.md). Untar: **197.439 → 44.301 → 43.066 →
 36.421 seconds**. All three milestones retain the API/client and normal durable commits. The
 30-second untar target remains unmet; these are single-run local measurements.
+
+## 11. Simplify transactions and isolate FDB tuning effects
+
+- [x] Remove commit-version reuse and its fallback logic; obtain fresh read versions on every attempt.
+- [ ] Re-run the full filesystem suite and independent-writer benchmark; preserve previous results.
+- [ ] Compare all defaults, all tuned, each setting alone, and each setting removed from all tuned.
+      Treat client/server busy-wait as separate settings; repeat deep-folder untars and record exact
+      configuration, validation, CPU, and timing results. Restore the normal local configuration.
+- [ ] Publish the ablation results and identify interactions without claiming production scalability.
 
 ## Future work: after the local benchmark
 
