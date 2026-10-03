@@ -13,7 +13,6 @@ import {
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import { getModelMaker } from "@app/types/assistant/models/providers";
-import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import type { LightWorkspaceType } from "@app/types/user";
 import { describe, expect, it } from "vitest";
 
@@ -61,8 +60,16 @@ async function runMigration(
   };
 }
 
-function makeWorkspace(whiteListedProviders: ModelProviderIdType[] | null) {
-  return WorkspaceFactory.basic({ whiteListedProviders });
+// Raw SQL: these rows hold entries, like "fireworks", that the column validator no longer accepts.
+async function makeWorkspace(whiteListedProviders: string[] | null) {
+  const workspace = await WorkspaceFactory.basic();
+  if (whiteListedProviders) {
+    await frontSequelize.query(
+      `UPDATE workspaces SET "whiteListedProviders" = ARRAY[:whiteListedProviders]::varchar(255)[] WHERE id = :id`,
+      { replacements: { whiteListedProviders, id: workspace.id } }
+    );
+  }
+  return workspace;
 }
 
 describe("replaceFireworksWithItsLabsInWhitelistedProviders", () => {
