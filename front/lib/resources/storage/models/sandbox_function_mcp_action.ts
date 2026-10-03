@@ -32,6 +32,10 @@ export class SandboxFunctionMCPActionModel extends WorkspaceAwareModel<SandboxFu
   declare status: ToolExecutionBaseStatus;
   declare outputGcsPath: string | null;
   declare executionDurationMs: number | null;
+  // Client-provided key deduplicating replayed `sandbox/actions/call` POSTs: a replay with the
+  // same key (scoped to the invocation) returns the original action instead of creating a second
+  // one. Null when the client did not send a key.
+  declare idempotencyKey: string | null;
 
   declare sandboxFunctionInvocation: NonAttribute<SandboxFunctionInvocationModel>;
   declare mcpServerView: NonAttribute<MCPServerViewModel>;
@@ -84,6 +88,11 @@ SandboxFunctionMCPActionModel.init(
     },
     executionDurationMs: {
       type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+    },
+    idempotencyKey: {
+      type: DataTypes.STRING(255),
       allowNull: true,
       defaultValue: null,
     },
