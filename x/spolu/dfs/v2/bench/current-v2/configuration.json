@@ -1,0 +1,46 @@
+{
+  "server_revision": "2717953273433ce8b71f88ca16f9d5bba7640313",
+  "fdb_version": "7.3.69",
+  "server_binary_sha256": "2ee03a8dcae845ed9bae4a2eede1bad780e7cf08caeba5cbf39cf90eb6c3563a",
+  "commit_version_reuse": false,
+  "client_knobs": {
+    "grv_batch_timeout": 0.005,
+    "busy_wait_threshold": 0.0001
+  },
+  "server_knobs": {
+    "commit_transaction_batch_interval_min": 1e-05,
+    "commit_transaction_batch_interval_from_idle": 1e-05,
+    "busy_wait_threshold": 0.0001
+  },
+  "knob_time_unit": "seconds",
+  "fdb_arguments": [
+    "/usr/bin/fdbserver",
+    "--listen-address",
+    "0.0.0.0:4500",
+    "--public-address",
+    "172.19.0.3:4500",
+    "--datadir",
+    "/var/fdb/data",
+    "--logdir",
+    "/var/fdb/logs",
+    "--locality-zoneid",
+    "e6127e8a7c98",
+    "--locality-machineid",
+    "e6127e8a7c98",
+    "--class",
+    "unset",
+    "--knob-commit_transaction_batch_interval_min",
+    "0.00001",
+    "--knob-commit_transaction_batch_interval_from_idle",
+    "0.00001",
+    "--knob-busy_wait_threshold",
+    "0.0001"
+  ],
+  "fdb_restarted_before_run": true,
+  "source_sha256": {
+    "v2/server/src/network.rs": "247821de2aa040d923f4720c9e3cc94612211018e1fdcbb956ff597241f2695b",
+    "v2/local/fdb.bash": "14d6568e6160a2f2b10d998cef2a7044ad2023dd784f4adf1fadec17edf880a2",
+    "v2/local/compose.yaml": "483d2b71de6d842a2c81a0b9946d0ee1312b7657b00ecdcf7fda3f0cd817d166",
+    "v2/bench/common.py": "b979be31bbe1c104069d5f98bc2f5cc414b6ac6a6cb0aeb733a08582e862d9d9"
+  }
+}

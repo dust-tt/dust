@@ -18,6 +18,60 @@ creates a new session and mount** (ten resets). Warm is one repeat on that mount
 and the Docker VM's OS cache are retained; local is the generated corpus on the container filesystem
 and is not guaranteed cold. All 24 rows passed the original workload's result checks.
 
+### dfs v2 [current: no commit-version reuse, default GRV]
+
+2026-10-03. Current v2 defaults: commit-version reuse removed; FDB's **5 ms GRV batching timeout**
+restored. The other four tuning settings and overlapping metadata/authorization reads remain.
+This is a new full **10,000-file** run, not the earlier default-GRV diagnostic.
+Measured server revision `2717953273`; all 24 checks passed with the unchanged client/workload,
+normal durable FDB commits, and ten server/session/mount resets. Phase profiling was disabled.
+FDB restarted before the run; its volumes and the OS cache were retained, as was ES.
+
+```text
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 1,708.12  | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 132.45    | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 263.50    | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 5.99      | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 6,052.59  | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 851.85    | OK     |
+| metadata     | stat missing (256 paths)                       | first | 184.38    | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 1.76      | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 5,426.34  | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 188.91    | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 5,362.80  | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 189.60    | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 767.57    | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 30.67     | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 129.46    | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 6.88      | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 12,313.19 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 1,212.25  | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 359.42    | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 16.28     | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 58.70     | OK     |
+| file sync    | fsync (32 files)                               | once  | 18.74     | OK     |
+| write        | close (32 files)                               | once  | 0.69      | OK     |
+| write        | unlink (32 files)                              | once  | 35.11     | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+```
+
+Untar: **37.201 s**. Remaining client `syncfs`: **0.000079 s**
+after untar and **0.000056 s** after the suite. Shutdown: **0.036 s**.
+These drain timings exclude writeback already completed during the workload; there is no remaining
+FDB persistence drain after acknowledgment. Backend/OS caches remain warm; these are single runs.
+
+A separate run through **two server processes in the same workspace** completed and verified
+100 writes (50 × 1 KiB per writer) in **39.34 ms**. It also checked search/workspace
+isolation and shared discovery with 1/2/512 grants. Debug commit logging was enabled only for this
+separate run. Both runs verified fixture cleanup.
+
+[Run metadata](current-v2/filesystem.json), [DFS rows](current-v2/dfs.json),
+[local rows](current-v2/local.json), [two-server results](current-v2/workspaces.json),
+[configuration](current-v2/configuration.json), and [per-case RPC counters](current-v2/).
+
 Sequential milestones (single runs; full tables and raw reports follow):
 
 | Server changes | Untar |
@@ -27,6 +81,7 @@ Sequential milestones (single runs; full tables and raw reports follow):
 | 2. Recent commit version reuse | 43.066 s |
 | 3. Early metadata/authorization reads | 36.421 s |
 | 4. Remove commit-version reuse | 35.563 s |
+| 5. Restore default GRV timeout (current) | 37.201 s |
 
 The 30-second target remains unmet. Step 3's population mount recorded 40,335 mutation RPCs averaging
 about 0.752 ms each, plus 10,205 lookups averaging 0.391 ms. These are client RPC timings, not FDB
