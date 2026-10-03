@@ -1,5 +1,5 @@
 import { GroupDialog } from "@app/components/groups/GroupDialog";
-import { getGroupKindChip } from "@app/components/groups/GroupKinds";
+import { useGroupKindChip } from "@app/components/groups/GroupKinds";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import type { GroupType } from "@app/types/groups";
 import {
@@ -28,6 +28,7 @@ export const GroupSelector = ({
   disabled,
   onSelectionChange,
 }: GroupSelectorProps) => {
+  const getGroupKindChip = useGroupKindChip();
   const owner = useWorkspace();
   const [groupSearch, setGroupSearch] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);

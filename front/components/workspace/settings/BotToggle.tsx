@@ -12,6 +12,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import { Button, RefreshCw02, SliderToggle } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 export function BotToggle({
@@ -37,6 +38,7 @@ export function BotToggle({
   description: string;
   documentationUrl?: string;
 }) {
+  const { t } = useLingui();
   const { configValue } = useConnectorConfig({
     configKey: "botEnabled",
     dataSource: botDataSource ?? null,
@@ -104,10 +106,10 @@ export function BotToggle({
       } else {
         sendNotification({
           type: "error",
-          title: `Failed to enable ${name}.`,
+          title: t`Failed to enable ${name}.`,
           description:
             createRes.error?.message ??
-            `Could not create a new ${name} data source.`,
+            t`Could not create a new ${name} data source.`,
         });
       }
     }
@@ -128,8 +130,8 @@ export function BotToggle({
     if (!cRes.isOk()) {
       sendNotification({
         type: "error",
-        title: `Failed to reconnect ${name}.`,
-        description: `Could not reconnect the Dust ${name}.`,
+        title: t`Failed to reconnect ${name}.`,
+        description: t`Could not reconnect the Dust ${name}.`,
       });
     } else {
       const updateRes = await updateConnectorConnectionId(
@@ -143,14 +145,14 @@ export function BotToggle({
       if (updateRes.error) {
         sendNotification({
           type: "error",
-          title: `Failed to update the ${name} connection`,
+          title: t`Failed to update the ${name} connection`,
           description: updateRes.error,
         });
       } else {
         sendNotification({
           type: "success",
-          title: `Successfully updated ${name} connection`,
-          description: "The connection was successfully updated.",
+          title: t`Successfully updated ${name} connection`,
+          description: t`The connection was successfully updated.`,
         });
       }
     }
@@ -165,7 +167,7 @@ export function BotToggle({
           {isBotEnabled && botDataSource && (
             <Button
               variant="outline"
-              label="Reconnect"
+              label={t`Reconnect`}
               size="xs"
               icon={RefreshCw02}
               onClick={handleReconnect}

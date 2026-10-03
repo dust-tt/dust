@@ -1,6 +1,6 @@
 import {
   getGroupKindChip,
-  PROVISIONED_GROUP_TOOLTIP,
+  useProvisionedGroupTooltip,
 } from "@app/components/groups/GroupKinds";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { compareStrings } from "@app/lib/i18n/format";
@@ -43,6 +43,7 @@ export function MemberGroupsSection({
   disabled,
 }: MemberGroupsSectionProps) {
   const { isManager } = useAuth();
+  const provisionedGroupTooltip = useProvisionedGroupTooltip();
   const [groupSearch, setGroupSearch] = useState("");
   const [pendingGroupId, setPendingGroupId] = useState<string | null>(null);
 
@@ -187,7 +188,7 @@ export function MemberGroupsSection({
                     />
                   </span>
                 }
-                label={PROVISIONED_GROUP_TOOLTIP}
+                label={provisionedGroupTooltip}
               />
             ) : (
               <Chip

@@ -2,6 +2,8 @@ import { ConfirmContext } from "@app/components/Confirm";
 import type { SearchMemberType } from "@app/components/members/MemberSelectionTable";
 import type { GroupType } from "@app/types/groups";
 import { isRegularManualGroupKind } from "@app/types/groups";
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useContext } from "react";
 
 interface GroupManagerAppointmentReviewProps {
@@ -25,6 +27,7 @@ export function useGroupManagerAppointmentReview({
   initialMembers,
   selectedMemberIds,
 }: GroupManagerAppointmentReviewProps) {
+  const { t } = useLingui();
   const confirm = useContext(ConfirmContext);
 
   const managersNeedingWarning =
@@ -43,16 +46,26 @@ export function useGroupManagerAppointmentReview({
     if (!group || managersNeedingWarning.length === 0) {
       return true;
     }
-    const isSingleManager = managersNeedingWarning.length === 1;
-    const trustMessage = isSingleManager
-      ? `Continue only if you trust ${managersNeedingWarning[0].firstName} with those permissions.`
-      : "Continue only if you trust them with those permissions.";
+    const groupName = group.name;
+    const [firstManager] = managersNeedingWarning;
+    const managerCount = managersNeedingWarning.length;
+    let title: string;
+    let message: string;
+    if (managerCount === 1) {
+      const { fullName, firstName } = firstManager;
+      title = t`${fullName} isn't a member of ${groupName}`;
+      message = t`As manager, they can add anyone to the group, including themselves. Anyone they add gains the group's permissions and access to every space and data source shared with it. Continue only if you trust ${firstName} with those permissions.`;
+    } else {
+      title = t`${plural(managerCount, {
+        one: `# person you're appointing isn't a member of ${groupName}`,
+        other: `# people you're appointing aren't members of ${groupName}`,
+      })}`;
+      message = t`As managers, they can add anyone to the group, including themselves. Anyone they add gains the group's permissions and access to every space and data source shared with it. Continue only if you trust them with those permissions.`;
+    }
     return confirm({
-      title: isSingleManager
-        ? `${managersNeedingWarning[0].fullName} isn't a member of ${group.name}`
-        : `${managersNeedingWarning.length} people you're appointing aren't members of ${group.name}`,
-      message: `As ${isSingleManager ? "manager" : "managers"}, they can add anyone to the group, including themselves. Anyone they add gains the group's permissions and access to every space and data source shared with it. ${trustMessage}`,
-      validateLabel: "Appoint anyway",
+      title,
+      message,
+      validateLabel: t`Appoint anyway`,
       validateVariant: "highlight",
     });
   };

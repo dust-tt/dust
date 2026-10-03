@@ -19,41 +19,11 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
 const DEFAULT_PAGE_SIZE = 25;
-
-const columns: ColumnDef<MemberRowData>[] = [
-  {
-    id: "fullName",
-    accessorKey: "fullName",
-    header: "Name",
-    sortingFn: "text",
-    meta: { className: "w-full" },
-    cell: ({ row }) => {
-      const { fullName, email, image } = row.original;
-      return (
-        <DataTable.CellContent>
-          <div className="flex items-center gap-2">
-            <Avatar
-              name={fullName}
-              visual={image || undefined}
-              size="xs"
-              isRounded
-            />
-            <div className="flex flex-col">
-              <span className="text-sm">{fullName}</span>
-              {email && (
-                <span className="text-xs text-muted-foreground">{email}</span>
-              )}
-            </div>
-          </div>
-        </DataTable.CellContent>
-      );
-    },
-  },
-];
 
 interface ProvisionedGroupDialogProps {
   owner: LightWorkspaceType;
@@ -120,6 +90,7 @@ function ProvisionedGroupDetails({
   managers: LightUserType[];
   onClose: () => void;
 }) {
+  const { t } = useLingui();
   const { hasFeature } = useFeatureFlags();
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -131,6 +102,41 @@ function ProvisionedGroupDetails({
     owner,
     groupId: group.sId,
   });
+  const columns = useMemo<ColumnDef<MemberRowData>[]>(
+    () => [
+      {
+        id: "fullName",
+        accessorKey: "fullName",
+        header: t`Name`,
+        sortingFn: "text",
+        meta: { className: "w-full" },
+        cell: ({ row }) => {
+          const { fullName, email, image } = row.original;
+          return (
+            <DataTable.CellContent>
+              <div className="flex items-center gap-2">
+                <Avatar
+                  name={fullName}
+                  visual={image || undefined}
+                  size="xs"
+                  isRounded
+                />
+                <div className="flex flex-col">
+                  <span className="text-sm">{fullName}</span>
+                  {email && (
+                    <span className="text-xs text-muted-foreground">
+                      {email}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </DataTable.CellContent>
+          );
+        },
+      },
+    ],
+    [t]
+  );
   const rows: MemberRowData[] = useMemo(
     () =>
       members.map((member) => ({
@@ -141,6 +147,8 @@ function ProvisionedGroupDetails({
       })),
     [members]
   );
+
+  const memberCount = rows.length;
 
   const saveManagers = async () => {
     const result = await doUpdateGroup({
@@ -156,11 +164,11 @@ function ProvisionedGroupDetails({
       <DialogContainer>
         <div className="flex flex-col gap-4">
           <p className="text-sm italic text-muted-foreground">
-            {PROVISIONED_GROUP_TOOLTIP}
+            {t(PROVISIONED_GROUP_TOOLTIP)}
           </p>
           {hasFeature("group_management") && (
             <h3 className="text-sm font-semibold">
-              Group members ({rows.length})
+              <Trans>Group members ({memberCount})</Trans>
             </h3>
           )}
           {rows.length > 0 ? (
@@ -173,7 +181,7 @@ function ProvisionedGroupDetails({
             />
           ) : (
             <div className="text-sm text-muted-foreground">
-              This group has no members.
+              <Trans>This group has no members.</Trans>
             </div>
           )}
           {group.allowedActions?.canAssignManagers && (
@@ -190,9 +198,9 @@ function ProvisionedGroupDetails({
       </DialogContainer>
       {group.allowedActions?.canAssignManagers && (
         <DialogFooter
-          leftButtonProps={{ label: "Cancel", variant: "ghost" }}
+          leftButtonProps={{ label: t`Cancel`, variant: "ghost" }}
           rightButtonProps={{
-            label: "Save",
+            label: t`Save`,
             variant: "primary",
             onClick: saveManagers,
             isLoading: isUpdating,

@@ -171,6 +171,9 @@ msgid "How you appear to other members of the workspace"
 msgstr "How you appear to other members of the workspace"
 
 #: front/components/UserSettingsPopover.tsx
+#: front/components/groups/GroupDialog.tsx
+#: front/components/groups/ProvisionedGroupDialog.tsx
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
 msgid "Save"
 msgstr "Save"
 
@@ -196,6 +199,7 @@ msgstr "Last name"
 
 #: front/components/UserSettingsPopover.tsx
 #: front/components/me/NotificationPreferences.tsx
+#: front/components/members/MembersList.tsx
 msgid "Email"
 msgstr "Email"
 
@@ -328,6 +332,7 @@ msgid "Choose where else to receive notifications"
 msgstr "Choose where else to receive notifications"
 
 #: front/components/UserSettingsPopover.tsx
+#: front/components/members/WorkspaceMembersSection.tsx
 msgid "Invitations"
 msgstr "Invitations"
 
@@ -373,6 +378,7 @@ msgid "New conversation"
 msgstr "New conversation"
 
 #: front/components/assistant/conversation/sidebar/UnifiedSearchNav.tsx
+#: front/components/members/WorkspaceMembersSection.tsx
 #: front/components/navigation/AdminSettingsSearchNav.tsx
 msgid "Search"
 msgstr "Search"
@@ -398,6 +404,7 @@ msgid "View description and settings"
 msgstr "View description and settings"
 
 #: front/components/command_palette/CommandPaletteActionPhase.tsx
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
 msgid "Edit"
 msgstr "Edit"
 
@@ -484,6 +491,8 @@ msgid "Agents"
 msgstr "Agents"
 
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
+#: front/components/groups/GroupsList.tsx
+#: front/components/members/WorkspaceMembersSection.tsx
 #: front/components/navigation/config.ts
 msgid "Members"
 msgstr "Members"
@@ -580,6 +589,179 @@ msgstr "Actions"
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
 msgid "Close"
 msgstr "Close"
+
+#: front/components/groups/GroupDialog.tsx
+msgid "Edit group"
+msgstr "Edit group"
+
+#: front/components/groups/GroupDialog.tsx
+msgid "New group"
+msgstr "New group"
+
+#: front/components/groups/GroupDialog.tsx
+msgid "Managed by admins"
+msgstr "Managed by admins"
+
+#: front/components/groups/GroupDialog.tsx
+msgid "This group grants the Admin role. Only workspace admins can change its members."
+msgstr "This group grants the Admin role. Only workspace admins can change its members."
+
+#: front/components/groups/GroupDialog.tsx
+#: front/components/groups/GroupsList.tsx
+msgid "Group name"
+msgstr "Group name"
+
+#: front/components/groups/GroupDialog.tsx
+msgid "e.g. Sales"
+msgstr "e.g. Sales"
+
+#: front/components/groups/GroupDialog.tsx
+msgid "Group members ({selectedMemberCount})"
+msgstr "Group members ({selectedMemberCount})"
+
+#: front/components/groups/GroupDialog.tsx
+#: front/components/groups/ProvisionedGroupDialog.tsx
+#: front/components/me/UserAutomationsTable.tsx
+#: front/components/members/InviteEmailButtonWithModal.tsx
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+msgid "Cancel"
+msgstr "Cancel"
+
+#: front/components/groups/GroupDialog.tsx
+msgid "Create"
+msgstr "Create"
+
+#: front/components/groups/GroupKinds.ts
+msgid "Provisioned"
+msgstr "Provisioned"
+
+#: front/components/groups/GroupKinds.ts
+msgid "Manual"
+msgstr "Manual"
+
+#: front/components/groups/GroupKinds.ts
+msgid "Other"
+msgstr "Other"
+
+#: front/components/groups/GroupKinds.ts
+msgid "Synced from your identity provider. Manage membership in your IdP."
+msgstr "Synced from your identity provider. Manage membership in your IdP."
+
+#: front/components/groups/GroupManagersField.tsx
+msgid "Membership stays managed by your directory."
+msgstr "Membership stays managed by your directory."
+
+#: front/components/groups/GroupManagersField.tsx
+msgid "Only workspace admins can change this group's members."
+msgstr "Only workspace admins can change this group's members."
+
+#: front/components/groups/GroupManagersField.tsx
+msgid "Group managers can manage usage and credit limits for this group's members."
+msgstr "Group managers can manage usage and credit limits for this group's members."
+
+#: front/components/groups/GroupManagersField.tsx
+msgid "{fullName} isn't a member of {groupName} but can manage it."
+msgstr "{fullName} isn't a member of {groupName} but can manage it."
+
+#: front/components/groups/GroupManagersField.tsx
+msgid "They can grant themselves access to the group's permissions and data."
+msgstr "They can grant themselves access to the group's permissions and data."
+
+#: front/components/groups/GroupManagersField.tsx
+msgid "Not group member"
+msgstr "Not group member"
+
+#: front/components/groups/GroupManagersField.tsx
+msgid "Group managers ({managerCount})"
+msgstr "Group managers ({managerCount})"
+
+#: front/components/groups/GroupManagersField.tsx
+msgid "Group managers can add members and set their usage and credit limits."
+msgstr "Group managers can add members and set their usage and credit limits."
+
+#: front/components/groups/GroupSelectionTable.tsx
+#: front/components/groups/ProvisionedGroupDialog.tsx
+#: front/components/groups/WorkspaceGroupsList.tsx
+#: front/components/me/UserToolsTable.tsx
+#: front/components/members/MemberSelectionTable.tsx
+#: front/components/members/MembersList.tsx
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "Name"
+msgstr "Name"
+
+#: front/components/groups/GroupSelectionTable.tsx
+#: front/components/groups/WorkspaceGroupsList.tsx
+msgid "{memberCount, plural, one {# member} other {# members}}"
+msgstr "{memberCount, plural, one {# member} other {# members}}"
+
+#: front/components/groups/GroupSelectionTable.tsx
+msgid "Search groups..."
+msgstr "Search groups..."
+
+#: front/components/groups/GroupSelectionTable.tsx
+msgid "Loading groups..."
+msgstr "Loading groups..."
+
+#: front/components/groups/ProvisionedGroupDialog.tsx
+msgid "Group members ({memberCount})"
+msgstr "Group members ({memberCount})"
+
+#: front/components/groups/ProvisionedGroupDialog.tsx
+msgid "This group has no members."
+msgstr "This group has no members."
+
+#: front/components/groups/WorkspaceGroupsList.tsx
+msgid "Group Manager"
+msgstr "Group Manager"
+
+#: front/components/groups/WorkspaceGroupsList.tsx
+#: front/components/me/UserAutomationsTable.tsx
+msgid "Delete"
+msgstr "Delete"
+
+#: front/components/groups/WorkspaceGroupsList.tsx
+msgid "Delete group"
+msgstr "Delete group"
+
+#: front/components/groups/WorkspaceGroupsList.tsx
+msgid "Are you sure you want to delete {groupName}? This action cannot be undone."
+msgstr "Are you sure you want to delete {groupName}? This action cannot be undone."
+
+#: front/components/groups/WorkspaceGroupsList.tsx
+msgid "User provisioning is configured in <0>IT & Security → User provisioning</0>"
+msgstr "User provisioning is configured in <0>IT & Security → User provisioning</0>"
+
+#: front/components/groups/WorkspaceGroupsList.tsx
+msgid "Search groups"
+msgstr "Search groups"
+
+#: front/components/groups/WorkspaceGroupsList.tsx
+msgid "Create group"
+msgstr "Create group"
+
+#: front/components/groups/WorkspaceGroupsList.tsx
+msgid "You don’t have any groups yet."
+msgstr "You don’t have any groups yet."
+
+#: front/components/groups/useGroupManagerAppointmentReview.tsx
+msgid "{fullName} isn't a member of {groupName}"
+msgstr "{fullName} isn't a member of {groupName}"
+
+#: front/components/groups/useGroupManagerAppointmentReview.tsx
+msgid "As manager, they can add anyone to the group, including themselves. Anyone they add gains the group's permissions and access to every space and data source shared with it. Continue only if you trust {firstName} with those permissions."
+msgstr "As manager, they can add anyone to the group, including themselves. Anyone they add gains the group's permissions and access to every space and data source shared with it. Continue only if you trust {firstName} with those permissions."
+
+#: front/components/groups/useGroupManagerAppointmentReview.tsx
+msgid "{managerCount, plural, one {# person you're appointing isn't a member of {groupName}} other {# people you're appointing aren't members of {groupName}}}"
+msgstr "{managerCount, plural, one {# person you're appointing isn't a member of {groupName}} other {# people you're appointing aren't members of {groupName}}}"
+
+#: front/components/groups/useGroupManagerAppointmentReview.tsx
+msgid "As managers, they can add anyone to the group, including themselves. Anyone they add gains the group's permissions and access to every space and data source shared with it. Continue only if you trust them with those permissions."
+msgstr "As managers, they can add anyone to the group, including themselves. Anyone they add gains the group's permissions and access to every space and data source shared with it. Continue only if you trust them with those permissions."
+
+#: front/components/groups/useGroupManagerAppointmentReview.tsx
+msgid "Appoint anyway"
+msgstr "Appoint anyway"
 
 #: front/components/me/NotificationPreferences.tsx
 msgid "Every 5 minutes"
@@ -766,6 +948,7 @@ msgid "An error occurred while deleting the automation."
 msgstr "An error occurred while deleting the automation."
 
 #: front/components/me/UserAutomationsTable.tsx
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
 msgid "Enabled"
 msgstr "Enabled"
 
@@ -796,18 +979,6 @@ msgstr "Are you sure you want to delete \"{triggerToDeleteName}\"?"
 #: front/components/me/UserAutomationsTable.tsx
 msgid "This action cannot be undone."
 msgstr "This action cannot be undone."
-
-#: front/components/me/UserAutomationsTable.tsx
-msgid "Cancel"
-msgstr "Cancel"
-
-#: front/components/me/UserAutomationsTable.tsx
-msgid "Delete"
-msgstr "Delete"
-
-#: front/components/me/UserToolsTable.tsx
-msgid "Name"
-msgstr "Name"
 
 #: front/components/me/UserToolsTable.tsx
 msgid "Error"
@@ -888,6 +1059,212 @@ msgstr "Failed to load your wake-ups."
 #: front/components/me/UserWakeUpsTable.tsx
 msgid "None of your conversations has a scheduled wake-up. Agents schedule wake-ups to pick a conversation back up on their own."
 msgstr "None of your conversations has a scheduled wake-up. Agents schedule wake-ups to pick a conversation back up on their own."
+
+#: front/components/members/AddEditorsDropdown.tsx
+msgid "Search members"
+msgstr "Search members"
+
+#: front/components/members/AddEditorsDropdown.tsx
+msgid "No members found"
+msgstr "No members found"
+
+#: front/components/members/EditInvitationModal.tsx
+msgid "The role defines the rights of a member for the workspace."
+msgstr "The role defines the rights of a member for the workspace."
+
+#: front/components/members/EditInvitationModal.tsx
+msgid "Edit invitation"
+msgstr "Edit invitation"
+
+#: front/components/members/EditInvitationModal.tsx
+msgid "Invitation sent on {sentDate}"
+msgstr "Invitation sent on {sentDate}"
+
+#: front/components/members/EditInvitationModal.tsx
+#: front/components/members/InvitationsList.tsx
+msgid "(expired)"
+msgstr "(expired)"
+
+#: front/components/members/EditInvitationModal.tsx
+msgid "Role:"
+msgstr "Role:"
+
+#: front/components/members/EditInvitationModal.tsx
+msgid "Send invitation again"
+msgstr "Send invitation again"
+
+#: front/components/members/EditInvitationModal.tsx
+msgid "Revoke invitation"
+msgstr "Revoke invitation"
+
+#: front/components/members/EditInvitationModal.tsx
+msgid "Update role"
+msgstr "Update role"
+
+#: front/components/members/InvitationsList.tsx
+msgid "Invitation Email"
+msgstr "Invitation Email"
+
+#: front/components/members/InvitationsList.tsx
+#: front/components/members/MembersList.tsx
+msgid "Role"
+msgstr "Role"
+
+#: front/components/members/InvitationsList.tsx
+msgid "Resend"
+msgstr "Resend"
+
+#: front/components/members/InvitationsList.tsx
+msgid "No pending invitations"
+msgstr "No pending invitations"
+
+#: front/components/members/InvitationsList.tsx
+msgid "Send invitations to add new members to your workspace"
+msgstr "Send invitations to add new members to your workspace"
+
+#: front/components/members/InvitationsList.tsx
+msgid "No invitations match your search"
+msgstr "No invitations match your search"
+
+#: front/components/members/InvitationsList.tsx
+msgid "Try adjusting your search terms"
+msgstr "Try adjusting your search terms"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Invalid email addresses: {invalidEmailsList}"
+msgstr "Invalid email addresses: {invalidEmailsList}"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "{openCount, plural, one {# Available} other {# Available}}"
+msgstr "{openCount, plural, one {# Available} other {# Available}}"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "If eligible"
+msgstr "If eligible"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Too many invitations"
+msgstr "Too many invitations"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Your cannot send more than {MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY} invitations per day."
+msgstr "Your cannot send more than {MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY} invitations per day."
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "{activeDifferentRoleCount, plural, one {The user below is already in your workspace with a different role. Moving forward will change their role to <0>{newRole}</0>.} other {The users below are already in your workspace with a different role. Moving forward will change their role to <1>{newRole}</1>.}}"
+msgstr "{activeDifferentRoleCount, plural, one {The user below is already in your workspace with a different role. Moving forward will change their role to <0>{newRole}</0>.} other {The users below are already in your workspace with a different role. Moving forward will change their role to <1>{newRole}</1>.}}"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "- {fullName} (current role: {currentRole})"
+msgstr "- {fullName} (current role: {currentRole})"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Do you want to proceed?"
+msgstr "Do you want to proceed?"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Some users are already in the workspace"
+msgstr "Some users are already in the workspace"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Yes, proceed"
+msgstr "Yes, proceed"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Invite members"
+msgstr "Invite members"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Invite new users"
+msgstr "Invite new users"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Choose a new plan to continue"
+msgstr "Choose a new plan to continue"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Email addresses"
+msgstr "Email addresses"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Email addresses, comma separated"
+msgstr "Email addresses, comma separated"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Validate"
+msgstr "Validate"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Note"
+msgstr "Note"
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "New users will be charged a <0>yearly fee of {price} at the end of the trial period</0>."
+msgstr "New users will be charged a <0>yearly fee of {price} at the end of the trial period</0>."
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "New users will be charged a <0>monthly fee of {price} at the end of the trial period</0>."
+msgstr "New users will be charged a <0>monthly fee of {price} at the end of the trial period</0>."
+
+#: front/components/members/InviteEmailButtonWithModal.tsx
+msgid "Next bill will be adjusted proportionally based on the members' sign-up date."
+msgstr "Next bill will be adjusted proportionally based on the members' sign-up date."
+
+#: front/components/members/MemberSelectionTable.tsx
+msgid "Search users..."
+msgstr "Search users..."
+
+#: front/components/members/MemberSelectionTable.tsx
+msgid "Loading users..."
+msgstr "Loading users..."
+
+#: front/components/members/MembersList.tsx
+msgid "Active"
+msgstr "Active"
+
+#: front/components/members/MembersList.tsx
+msgid "Unregistered"
+msgstr "Unregistered"
+
+#: front/components/members/MembersList.tsx
+msgid "Active (Provisioned)"
+msgstr "Active (Provisioned)"
+
+#: front/components/members/MembersList.tsx
+msgid "Unregistered (Provisioned)"
+msgstr "Unregistered (Provisioned)"
+
+#: front/components/members/MembersList.tsx
+msgid "Active (Invited)"
+msgstr "Active (Invited)"
+
+#: front/components/members/MembersList.tsx
+msgid "Unregistered (Invited)"
+msgstr "Unregistered (Invited)"
+
+#: front/components/members/MembersList.tsx
+msgid "Active (Auto-joined)"
+msgstr "Active (Auto-joined)"
+
+#: front/components/members/MembersList.tsx
+msgid "Unregistered (Auto-joined)"
+msgstr "Unregistered (Auto-joined)"
+
+#: front/components/members/MembersList.tsx
+msgid "(you)"
+msgstr "(you)"
+
+#: front/components/members/MembersList.tsx
+msgid "Status"
+msgstr "Status"
+
+#: front/components/members/MembersList.tsx
+msgid "Groups"
+msgstr "Groups"
+
+#: front/components/members/WorkspaceMembersSection.tsx
+msgid "Search members (email)"
+msgstr "Search members (email)"
 
 #: front/components/navigation/AppStatusBanner.tsx
 msgid "Check our <0>status page</0> for updates."
@@ -1098,6 +1475,174 @@ msgstr "Datasets"
 msgid "Logs"
 msgstr "Logs"
 
+#: front/components/plans/PlansTables.tsx
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "From 1 user"
+msgstr "From 1 user"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Multiple private spaces"
+msgstr "Multiple private spaces"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Flexible payment options (SEPA, Credit Card)"
+msgstr "Flexible payment options (SEPA, Credit Card)"
+
+#: front/components/plans/PlansTables.tsx
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "US / EU data hosting"
+msgstr "US / EU data hosting"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Advanced models (GPT-5, Claude, Gemini, Mistral…)"
+msgstr "Advanced models (GPT-5, Claude, Gemini, Mistral…)"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Custom agents which can execute actions"
+msgstr "Custom agents which can execute actions"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Connections (GitHub, Google Drive, Notion, Slack, ...)"
+msgstr "Connections (GitHub, Google Drive, Notion, Slack, ...)"
+
+#: front/components/plans/PlansTables.tsx
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Native integrations (Zendesk, Slack, Chrome Extension)"
+msgstr "Native integrations (Zendesk, Slack, Chrome Extension)"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Privacy and Data Security (SOC2, Zero Data Retention)"
+msgstr "Privacy and Data Security (SOC2, Zero Data Retention)"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Unlimited messages (<0>Fair use limits apply*</0>)"
+msgstr "Unlimited messages (<0>Fair use limits apply*</0>)"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Free credits for programmatic usage (API, GSheet, Zapier,...) (<0>Learn more</0>)"
+msgstr "Free credits for programmatic usage (API, GSheet, Zapier,...) (<0>Learn more</0>)"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Fixed price on additional programmatic usage"
+msgstr "Fixed price on additional programmatic usage"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Up to 1GB/user of data sources"
+msgstr "Up to 1GB/user of data sources"
+
+#: front/components/plans/PlansTables.tsx
+msgid "One private space"
+msgstr "One private space"
+
+#: front/components/plans/PlansTables.tsx
+msgid "/ month / user, excl. tax."
+msgstr "/ month / user, excl. tax."
+
+#: front/components/plans/PlansTables.tsx
+msgid "Start now, 14 days free"
+msgstr "Start now, 14 days free"
+
+#: front/components/plans/PlansTables.tsx
+msgid "Start now"
+msgstr "Start now"
+
+#: front/components/plans/PlansTables.tsx
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Enterprise (Seat-based)"
+msgstr "Enterprise (Seat-based)"
+
+#: front/components/plans/ProPlansTable.tsx
+msgid "Monthly Billing"
+msgstr "Monthly Billing"
+
+#: front/components/plans/ProPlansTable.tsx
+msgid "Yearly Billing"
+msgstr "Yearly Billing"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Advanced AI models: GPT-5, Claude 4.5, Gemini, Mistral, and more"
+msgstr "Advanced AI models: GPT-5, Claude 4.5, Gemini, Mistral, and more"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Data connections: Slack, Notion, Google Drive, GitHub, and more"
+msgstr "Data connections: Slack, Notion, Google Drive, GitHub, and more"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Email support: Get help when you need it"
+msgstr "Email support: Get help when you need it"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Free credits for programmatic usage (API, GSheet, Zapier)"
+msgstr "Free credits for programmatic usage (API, GSheet, Zapier)"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Single Sign-On (SSO) (Okta, Entra ID, Jumpcloud)"
+msgstr "Single Sign-On (SSO) (Okta, Entra ID, Jumpcloud)"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Advanced connections (Salesforce, etc)"
+msgstr "Advanced connections (Salesforce, etc)"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Everything in Pro"
+msgstr "Everything in Pro"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Advanced security and controls"
+msgstr "Advanced security and controls"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Larger storage and file size limits"
+msgstr "Larger storage and file size limits"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Access to programmatic usage"
+msgstr "Access to programmatic usage"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "User provisioning (SCIM)"
+msgstr "User provisioning (SCIM)"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Flexible billing options (SEPA, Credit Card)"
+msgstr "Flexible billing options (SEPA, Credit Card)"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Priority access to new features"
+msgstr "Priority access to new features"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Priority support"
+msgstr "Priority support"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Dedicated Customer Success"
+msgstr "Dedicated Customer Success"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "per user"
+msgstr "per user"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Subscribe to Enterprise (Seat-based)"
+msgstr "Subscribe to Enterprise (Seat-based)"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Subscribe to Pro"
+msgstr "Subscribe to Pro"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Custom"
+msgstr "Custom"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "based on active users"
+msgstr "based on active users"
+
+#: front/components/plans/SubscriptionPlanCards.tsx
+msgid "Contact sales"
+msgstr "Contact sales"
+
 #: front/components/sparkle/ConversationFontContext.tsx
 msgctxt "conversation font"
 msgid "Default"
@@ -1112,6 +1657,130 @@ msgstr "Lora"
 msgctxt "font name"
 msgid "OpenDyslexic"
 msgstr "OpenDyslexic"
+
+#: front/components/workspace/settings/BotToggle.tsx
+msgid "Failed to enable {name}."
+msgstr "Failed to enable {name}."
+
+#: front/components/workspace/settings/BotToggle.tsx
+msgid "Could not create a new {name} data source."
+msgstr "Could not create a new {name} data source."
+
+#: front/components/workspace/settings/BotToggle.tsx
+msgid "Failed to reconnect {name}."
+msgstr "Failed to reconnect {name}."
+
+#: front/components/workspace/settings/BotToggle.tsx
+msgid "Could not reconnect the Dust {name}."
+msgstr "Could not reconnect the Dust {name}."
+
+#: front/components/workspace/settings/BotToggle.tsx
+msgid "Failed to update the {name} connection"
+msgstr "Failed to update the {name} connection"
+
+#: front/components/workspace/settings/BotToggle.tsx
+msgid "Successfully updated {name} connection"
+msgstr "Successfully updated {name} connection"
+
+#: front/components/workspace/settings/BotToggle.tsx
+msgid "The connection was successfully updated."
+msgstr "The connection was successfully updated."
+
+#: front/components/workspace/settings/BotToggle.tsx
+msgid "Reconnect"
+msgstr "Reconnect"
+
+#: front/components/workspace/settings/BrandingSection.tsx
+msgid "Remove"
+msgstr "Remove"
+
+#: front/components/workspace/settings/BrandingSection.tsx
+msgid "SVG, PNG, WebP or ICO — Square format"
+msgstr "SVG, PNG, WebP or ICO — Square format"
+
+#: front/components/workspace/settings/BrandingSection.tsx
+msgid "SVG, PNG or WebP — Transparent background"
+msgstr "SVG, PNG or WebP — Transparent background"
+
+#: front/components/workspace/settings/BrandingSection.tsx
+msgid "Upload"
+msgstr "Upload"
+
+#: front/components/workspace/settings/BrandingSection.tsx
+msgid "Shown in the header of every shared Frame in place of the Dust logo. Horizontal format works best."
+msgstr "Shown in the header of every shared Frame in place of the Dust logo. Horizontal format works best."
+
+#: front/components/workspace/settings/BrandingSection.tsx
+msgid "Logo"
+msgstr "Logo"
+
+#: front/components/workspace/settings/BrandingSection.tsx
+msgid "A compact version of your logo. Used as the favicon when someone opens a whitelabel Frame. Must be square (1:1 ratio)."
+msgstr "A compact version of your logo. Used as the favicon when someone opens a whitelabel Frame. Must be square (1:1 ratio)."
+
+#: front/components/workspace/settings/BrandingSection.tsx
+msgid "Icon"
+msgstr "Icon"
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "Editors"
+msgstr "Editors"
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "Currently Spent<0/>(credits)"
+msgstr "Currently Spent<0/>(credits)"
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "Currently Spent ($)"
+msgstr "Currently Spent ($)"
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "Cap<0/>(credits)"
+msgstr "Cap<0/>(credits)"
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "Cap ($)"
+msgstr "Cap ($)"
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "Lock State"
+msgstr "Lock State"
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "{defaultCapValue} (default)"
+msgstr "{defaultCapValue} (default)"
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "Search skills..."
+msgstr "Search skills..."
+
+#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
+msgid "No active skills."
+msgstr "No active skills."
+
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+msgid "Workspace name must only contain letters, numbers, and the characters `._-`"
+msgstr "Workspace name must only contain letters, numbers, and the characters `._-`"
+
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+msgid "Failed to update workspace."
+msgstr "Failed to update workspace."
+
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+msgid "Edit Workspace Name"
+msgstr "Edit Workspace Name"
+
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+msgid "Think GitHub repository names, short and memorable."
+msgstr "Think GitHub repository names, short and memorable."
+
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+msgid "Workspace name"
+msgstr "Workspace name"
+
+#: front/components/workspace/settings/WorkspaceNameEditor.tsx
+msgid "Saving..."
+msgstr "Saving..."
 
 #: front/hooks/useUserLocale.ts
 msgid "Could not save the language"

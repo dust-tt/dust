@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ReactElement } from "react";
 import { useState } from "react";
 
@@ -27,6 +28,7 @@ export function AddEditorDropdown({
   onAddEditor,
   trigger,
 }: AddEditorDropdownProps) {
+  const { t } = useLingui();
   const [isOpen, setIsOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const { members, isLoading } = useSearchMembers({
@@ -55,7 +57,7 @@ export function AddEditorDropdown({
           <>
             <DropdownMenuSearchbar
               name="search-editors"
-              placeholder="Search members"
+              placeholder={t`Search members`}
               value={searchText}
               onChange={setSearchText}
             />
@@ -89,7 +91,7 @@ export function AddEditorDropdown({
           ))
         ) : (
           <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
-            No members found
+            <Trans>No members found</Trans>
           </div>
         )}
       </DropdownMenuContent>
