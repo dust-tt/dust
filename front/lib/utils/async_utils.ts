@@ -107,16 +107,21 @@ export async function withPeriodicHeartbeat<T>(
     heartbeatFn,
   }: {
     intervalMs: number;
-    heartbeatFn: () => void;
+    heartbeatFn: () => void | Promise<void>;
   }
 ): Promise<T> {
+  let heartbeatPromise = Promise.resolve();
   const interval = setInterval(() => {
-    heartbeatFn();
+    heartbeatPromise = heartbeatPromise.then(heartbeatFn);
+    // Handle timer rejections immediately; the await below propagates the error.
+    heartbeatPromise.catch(() => clearInterval(interval));
   }, intervalMs);
 
   try {
-    return await fn();
+    const result = await fn();
+    return result;
   } finally {
     clearInterval(interval);
+    await heartbeatPromise;
   }
 }

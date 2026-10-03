@@ -62,6 +62,7 @@ import {
 } from "@app/lib/actions/mcp_metadata";
 import { MCPOAuthProviderError } from "@app/lib/actions/mcp_oauth_provider";
 import {
+  classifyToolAbortReason,
   classifyToolAbortSignal,
   isToolInterruptionError,
   makeToolInterruptionError,
@@ -132,6 +133,7 @@ import {
   ProgressNotificationSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { Context } from "@temporalio/activity";
+import { CancelledFailure } from "@temporalio/common";
 import assert from "assert";
 import tracer from "dd-trace";
 import EventEmitter from "events";
@@ -442,6 +444,11 @@ export async function* tryCallMCPTool(
   }
 
   let mcpClient;
+  let toolPromise: ReturnType<Client["callTool"]> | undefined;
+  let notificationStream:
+    | ReturnType<typeof fromEvent<MCPProgressNotificationType>>
+    | undefined;
+  let heartbeatTimer: NodeJS.Timeout | undefined;
   try {
     if (isServerSideMCPToolConfiguration(toolConfiguration)) {
       const connectStarted = performance.now();
@@ -547,12 +554,12 @@ export async function* tryCallMCPTool(
       mcpClient = connectionResult.value;
     }
 
-    heartbeat();
+    await heartbeat();
 
     const emitter = new EventEmitter();
 
     // Convert the emitter to an async generator.
-    const notificationStream = fromEvent<MCPProgressNotificationType>(
+    notificationStream = fromEvent<MCPProgressNotificationType>(
       emitter,
       MCP_NOTIFICATION_EVENT_NAME
     );
@@ -596,7 +603,7 @@ export async function* tryCallMCPTool(
     const callStarted = performance.now();
 
     // Start the tool call in parallel.
-    const toolPromise = tracer.trace(
+    toolPromise = tracer.trace(
       "mcp.tool.call",
       { resource: toolConfiguration.originalName },
       async () =>
@@ -629,12 +636,9 @@ export async function* tryCallMCPTool(
     let notificationPromise = notificationStream.next();
 
     // Frequently heartbeat to get notified of cancellation.
-    let heartbeatTimer: NodeJS.Timeout | undefined;
     const createHeartbeatPromise = (): Promise<void> =>
       new Promise((resolve) => {
         heartbeatTimer = setTimeout(() => {
-          logger.info(toolLogContext, "MCP tool heartbeat");
-          heartbeat();
           resolve();
           // Reasonable delay to react to cancellation under 10s.
         }, 10_000);
@@ -659,6 +663,8 @@ export async function* tryCallMCPTool(
       ) {
         toolDone = true;
       } else if (notificationOrDone === MCP_TOOL_HEARTBEAT_EVENT_NAME) {
+        logger.info(toolLogContext, "MCP tool heartbeat");
+        await heartbeat();
         // Renew the heartbeat promise for the next interval.
         heartbeatPromise = createHeartbeatPromise();
       } else {
@@ -671,11 +677,6 @@ export async function* tryCallMCPTool(
         yield makeToolNotificationEvent(iteratorResult.value);
       }
     }
-
-    // Clean up: cancel pending heartbeat timer and close the notification stream
-    // to remove the EventEmitter listener and release pending promises.
-    clearTimeout(heartbeatTimer);
-    await notificationStream.return();
 
     let toolCallResult: Awaited<typeof toolPromise>;
     try {
@@ -695,6 +696,10 @@ export async function* tryCallMCPTool(
           throw makeToolInterruptionError();
         }
 
+        if (abortSignal.reason instanceof CancelledFailure) {
+          throw abortSignal.reason;
+        }
+
         return makeMCPToolExit({
           message: TOOL_EXECUTION_CANCELLED_MESSAGE,
           isError: true,
@@ -707,6 +712,13 @@ export async function* tryCallMCPTool(
 
     return postProcessMCPToolResult(toolCallResult, toolConfiguration);
   } catch (error) {
+    if (error instanceof CancelledFailure) {
+      if (classifyToolAbortReason(error) !== "deploy_interruption") {
+        throw error;
+      }
+      error = makeToolInterruptionError();
+    }
+
     const isWorkerShutdownInterruptionError = isToolInterruptionError(error);
     const isMCPTimeoutError = isMcpTimeoutError(error);
     const isInterruptError =
@@ -812,7 +824,11 @@ export async function* tryCallMCPTool(
       ],
     };
   } finally {
+    clearTimeout(heartbeatTimer);
+    await notificationStream?.return();
     await mcpClient?.close();
+    // Closing the client rejects a pending request. Join it before leaving the activity.
+    await Promise.allSettled([toolPromise]);
   }
 }
 
