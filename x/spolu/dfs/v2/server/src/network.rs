@@ -12,7 +12,7 @@ pub fn run(operation: impl Future<Output = anyhow::Result<()>>) -> anyhow::Resul
         (
             "DFS_FDB_GRV_BATCH_TIMEOUT_SECONDS",
             "grv_batch_timeout",
-            0.000001,
+            0.005,
         ),
         (
             "DFS_FDB_CLIENT_BUSY_WAIT_SECONDS",

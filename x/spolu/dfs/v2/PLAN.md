@@ -151,6 +151,14 @@ full runs measured 38.346 s tuned and 40.265 s with default GRV. The short ablat
 GRV-cap benefit, so that setting's effect remains workload-dependent/uncertain. See
 [all results](bench/RESULTS.md); the other four settings have larger demonstrated effects.
 
+## 12. Current v2 baseline
+
+- [x] Keep commit-version reuse removed and restore FDB's default 5 ms GRV batching timeout in
+      server/Compose defaults. Preserve the other four settings and overlapping metadata reads.
+- [ ] Rebuild and rerun the full filesystem benchmark, including 10,000-file untar, plus the
+      independent-writer checks. Record the current configuration and retain historical reports.
+- [ ] Publish a latest filesystem table at the top of `bench/RESULTS.md` with raw reports.
+
 ## Future work: after the local benchmark
 
 - [ ] Deploy shared FDB/ES clusters and dfs-server to `dust-dev` with private access and credentials.
