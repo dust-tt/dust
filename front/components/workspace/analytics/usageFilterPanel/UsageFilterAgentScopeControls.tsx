@@ -2,6 +2,7 @@ import { FilterSection } from "@app/components/shared/filter_panel/FilterSection
 import type { UsageFilterAgentScope } from "@app/components/workspace/analytics/usageFilter";
 import { USAGE_FILTER_SCOPE_LABEL } from "@app/components/workspace/analytics/usageFilter";
 import { Button } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface UsageFilterAgentScopeControlsProps {
   scopes: readonly UsageFilterAgentScope[];
@@ -14,8 +15,9 @@ export function UsageFilterAgentScopeControls({
   activeScope,
   onScopeChange,
 }: UsageFilterAgentScopeControlsProps) {
+  const { t } = useLingui();
   return (
-    <FilterSection title="Scopes">
+    <FilterSection title={t`Scopes`}>
       <div className="flex items-center gap-1">
         {scopes.map((scope) => (
           <Button

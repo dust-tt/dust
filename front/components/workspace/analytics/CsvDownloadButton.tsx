@@ -1,5 +1,6 @@
 import type { ButtonProps } from "@dust-tt/sparkle";
 import { Button, Download01 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface CsvDownloadButtonProps {
   isDownloading: boolean;
@@ -16,6 +17,7 @@ export function CsvDownloadButton({
   label,
   size,
 }: CsvDownloadButtonProps) {
+  const { t } = useLingui();
   return (
     <Button
       icon={label ? undefined : Download01}
@@ -23,7 +25,7 @@ export function CsvDownloadButton({
       label={label}
       variant="outline"
       size={size ?? (label ? "sm" : "xs")}
-      tooltip={label ? undefined : "Download CSV"}
+      tooltip={label ? undefined : t`Download CSV`}
       onClick={handleDownload}
       disabled={disabled}
       isLoading={isDownloading}

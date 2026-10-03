@@ -7,45 +7,50 @@ import { formatCredits } from "@app/lib/client/credits";
 import { formatNumber } from "@app/lib/i18n/format";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { LoadingBlock, Tooltip } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 
-const CAPTION_TOOLTIP_LABEL: Record<AutomationsScope, string> = {
-  workspace: "Compared to the median across all triggers for this period.",
-  user: "Compared to the median across your triggers for this period.",
+const CAPTION_TOOLTIP_LABEL: Record<AutomationsScope, MessageDescriptor> = {
+  workspace: msg`Compared to the median across all triggers for this period.`,
+  user: msg`Compared to the median across your triggers for this period.`,
 };
 
 const RATIO_MORE_THRESHOLD = 1.5;
 const RATIO_LESS_THRESHOLD = 1 / RATIO_MORE_THRESHOLD;
-const CREDIT_DESTINATION_FALLBACK_LABEL = "What consumes credits";
+const CREDIT_DESTINATION_FALLBACK_LABEL = msg`What consumes credits`;
 
 function creditDestinationLabel(
   dimension: AutomationTriggerCreditDestination["dimension"]
-): string {
+): MessageDescriptor {
   switch (dimension) {
     case "tool":
-      return "What tool is used";
+      return msg`What tool is used`;
     case "model":
-      return "What model is used";
+      return msg`What model is used`;
     case "skill":
-      return "What skill is used";
+      return msg`What skill is used`;
     default:
       assertNeverAndIgnore(dimension);
       return CREDIT_DESTINATION_FALLBACK_LABEL;
   }
 }
 
-function ratioCaption(value: number, median: number): string {
+function ratioCaption(value: number, median: number): MessageDescriptor {
   if (value <= 0 || median <= 0) {
-    return "no comparison available";
+    return msg`no comparison available`;
   }
   const ratio = value / median;
   if (ratio >= RATIO_MORE_THRESHOLD) {
-    return `${Math.round(ratio)}x more than most`;
+    const multiple = Math.round(ratio);
+    return msg`${multiple}x more than most`;
   }
   if (ratio <= RATIO_LESS_THRESHOLD) {
-    return `${Math.round(1 / ratio)}x less than most`;
+    const multiple = Math.round(1 / ratio);
+    return msg`${multiple}x less than most`;
   }
-  return "about typical";
+  return msg`about typical`;
 }
 
 function StatBlock({
@@ -95,6 +100,7 @@ function CreditDestinationBlock({
   period: ConsumptionPeriodSelection;
   scope: AutomationsScope;
 }) {
+  const { t } = useLingui();
   const { creditDestination, isBreakdownLoading, isBreakdownError } =
     useAutomationsTriggerBreakdown({ workspaceId, triggerId, period, scope });
 
@@ -102,7 +108,7 @@ function CreditDestinationBlock({
     return (
       <div className="flex min-w-0 flex-col gap-2">
         <h4 className="text-xs font-semibold text-muted-foreground">
-          {CREDIT_DESTINATION_FALLBACK_LABEL}
+          {t(CREDIT_DESTINATION_FALLBACK_LABEL)}
         </h4>
         <div className="min-w-0 text-xs">
           <LoadingBlock className="h-4 w-24" />
@@ -116,12 +122,12 @@ function CreditDestinationBlock({
     return (
       <div className="flex min-w-0 flex-col gap-2">
         <h4 className="text-xs font-semibold text-muted-foreground">
-          {CREDIT_DESTINATION_FALLBACK_LABEL}
+          {t(CREDIT_DESTINATION_FALLBACK_LABEL)}
         </h4>
         <span className="text-xs text-muted-foreground">
           {isBreakdownError
-            ? "Failed to load breakdown."
-            : "No attributed consumption."}
+            ? t`Failed to load breakdown.`
+            : t`No attributed consumption.`}
         </span>
       </div>
     );
@@ -131,13 +137,13 @@ function CreditDestinationBlock({
 
   return (
     <StatBlock
-      label={creditDestinationLabel(creditDestination.dimension)}
+      label={t(creditDestinationLabel(creditDestination.dimension))}
       primaryText={
         <span className="font-semibold text-foreground">
           {creditDestination.name}
         </span>
       }
-      caption={`${percentage}% of its credits`}
+      caption={t`${percentage}% of its credits`}
     />
   );
 }
@@ -159,35 +165,36 @@ export function AutomationsTriggerBreakdown({
   medianRunCount,
   medianCostPerRun,
 }: AutomationsTriggerBreakdownProps) {
+  const { t } = useLingui();
   const costPerRun =
     trigger.runCount > 0 ? trigger.credits / trigger.runCount : 0;
+  const runCount = formatNumber(trigger.runCount);
+  const formattedCostPerRun = formatCredits(costPerRun);
 
   return (
     <div className="grid grid-cols-3 gap-16 border-b border-separator px-2 pb-6 pt-4">
       <StatBlock
-        label="How often it runs"
+        label={t`How often it runs`}
         primaryText={
-          <>
-            <span className="font-semibold text-foreground">
-              {formatNumber(trigger.runCount)}
-            </span>{" "}
+          <Trans>
+            <span className="font-semibold text-foreground">{runCount}</span>{" "}
             <span className="text-muted-foreground">times</span>
-          </>
+          </Trans>
         }
-        caption={ratioCaption(trigger.runCount, medianRunCount)}
-        captionTooltipLabel={CAPTION_TOOLTIP_LABEL[scope]}
+        caption={t(ratioCaption(trigger.runCount, medianRunCount))}
+        captionTooltipLabel={t(CAPTION_TOOLTIP_LABEL[scope])}
       />
       <StatBlock
-        label="What each run costs"
+        label={t`What each run costs`}
         primaryText={
-          <>
+          <Trans>
             <span className="font-semibold text-foreground">
-              {formatCredits(costPerRun)}
+              {formattedCostPerRun}
             </span>{" "}
             <span className="text-muted-foreground">credits</span>
-          </>
+          </Trans>
         }
-        caption={ratioCaption(costPerRun, medianCostPerRun)}
+        caption={t(ratioCaption(costPerRun, medianCostPerRun))}
       />
       <CreditDestinationBlock
         workspaceId={workspaceId}
