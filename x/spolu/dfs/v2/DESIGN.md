@@ -122,11 +122,9 @@ per-request cache; the client and API are unchanged.
 
 ### Transaction read scheduling
 
-Each storage handle retains its most recent positive FDB commit version for at most one second.
-Only the first mutation attempt may reuse it; all dependencies are still read in that snapshot with
-normal conflict tracking. Rejections, empty edits, and read-only commits are recomputed with a fresh
-read version. Conflicts/expiry also retry fresh; ambiguous commits never replay. Read-only APIs and
-search always start fresh. This FDB snapshot hint is not an object/workspace revision or value cache.
+Every transaction attempt obtains its read version normally from FDB, including mutations, read-only
+APIs, and search. Do not cache or reuse commit versions. Conflicts/expiry retry with a fresh transaction;
+ambiguous commits never replay. All dependency reads retain conflict tracking.
 
 The local FDB deployment reduces read-version/commit batching delays and busy-waits briefly for short
 timers. This trades CPU for latency while retaining normal log durability and conflict resolution;

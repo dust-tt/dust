@@ -9,10 +9,10 @@ use std::{
     future::Future,
     ops::{Bound, RangeBounds},
     sync::{
-        Arc, Mutex,
+        Arc,
         atomic::{AtomicI32, Ordering},
     },
-    time::{Duration, Instant},
+    time::Duration,
 };
 use tonic::Status;
 
@@ -28,7 +28,6 @@ pub struct StorageConfig {
 pub struct Storage {
     db: Arc<Database>,
     prefix: Arc<[u8]>,
-    recent_commit: Arc<Mutex<Option<(i64, Instant)>>>,
 }
 
 impl Storage {
@@ -46,7 +45,6 @@ impl Storage {
         let storage = Self {
             db: Arc::new(Database::from_path(&config.fdb_cluster_file)?),
             prefix: prefix.into(),
-            recent_commit: Default::default(),
         };
         storage
             .transact(|view| async move {
@@ -87,13 +85,12 @@ impl Storage {
     /// The closure MUST read all preconditions through the supplied view and MUST NOT have external
     /// side effects. Advisory ancestry hints MAY be learned because each use is revalidated in its
     /// own transaction. Only known-uncommitted attempts may repeat. Captured client versions MUST
-    /// remain unchanged. A fresh-view application error MUST NOT be retried because an unused
+    /// remain unchanged. A definitive application rejection MUST NOT be retried because an unused
     /// speculative read failed. Read views MUST NOT escape the closure's result.
-    /** @cc [owner:spolu,label:concurrency;security] reused-version-validation
-    Only the first attempt MAY reuse a recent successful commit version from this database handle.
-    All dependencies MUST still be read with conflict tracking. Rejections and read-only success
-    from that attempt MUST be recomputed with a fresh read version before returning. Conflicts or
-    expiry MUST retry fresh; ambiguous commits MUST NOT repeat. Public snapshots MUST stay fresh.
+    /** @cc [owner:spolu,label:concurrency;security] fresh-transaction-versions
+    Every attempt MUST obtain its read version normally from FDB. Commit versions MUST NOT be
+    reused as read versions. Preconditions MUST retain conflict tracking; ambiguous commits MUST
+    NOT repeat. Read-only results and application errors MUST use the same fresh transaction.
     */
     pub async fn transact<T, F, Fut>(&self, mut operation: F) -> Result<T, Status>
     where
@@ -107,18 +104,6 @@ impl Storage {
                 return Err(status(ErrorCode::Unavailable));
             }
             let snapshot = self.snapshot().await?;
-            let reused = if attempt == 0 {
-                self.recent_commit.lock().ok().and_then(|recent| {
-                    recent
-                        .filter(|(_, recorded)| recorded.elapsed() < Duration::from_secs(1))
-                        .map(|(version, _)| version)
-                })
-            } else {
-                None
-            };
-            if let Some(version) = reused {
-                snapshot.transaction.set_read_version(version);
-            }
             snapshot
                 .transaction
                 .set_option(TransactionOption::Timeout(
@@ -136,9 +121,6 @@ impl Storage {
             let prepared = async {
                 version?;
                 let (batch, result) = measured("prepare", operation(snapshot.clone())).await?;
-                if reused.is_some() && batch.is_empty() {
-                    return Ok(None);
-                }
                 batch.apply(&snapshot)?;
                 if snapshot
                     .transaction
@@ -149,30 +131,19 @@ impl Storage {
                 {
                     return Err(status(ErrorCode::Capacity));
                 }
-                Ok(Some(result))
+                Ok(result)
             }
             .await;
             let (error, status) = match prepared {
-                Ok(Some(result)) => {
+                Ok(result) => {
                     let snapshot =
                         Arc::try_unwrap(snapshot).map_err(|_| status(ErrorCode::Internal))?;
                     let started = std::time::Instant::now();
                     match measured("commit", snapshot.transaction.commit()).await {
-                        Ok(committed) => {
-                            let version = committed.committed_version().map_err(failed)?;
-                            if reused.is_some() && version == -1 {
-                                continue;
-                            }
-                            if version > 0
-                                && let Ok(mut recent) = self.recent_commit.lock()
-                                && recent.is_none_or(|(previous, _)| version > previous)
-                            {
-                                *recent = Some((version, Instant::now()));
-                            }
+                        Ok(_) => {
                             tracing::debug!(
                                 commit_us = started.elapsed().as_micros() as u64,
                                 retries = attempt,
-                                reused_read_version = reused.is_some(),
                                 "FDB transaction committed"
                             );
                             return Ok(result);
@@ -180,8 +151,6 @@ impl Storage {
                         Err(error) => (*error, failed(*error)),
                     }
                 }
-                Ok(None) => continue,
-                Err(_) if reused.is_some() => continue,
                 Err(error) if error.code() != tonic::Code::Unavailable => return Err(error),
                 Err(status) => (
                     FdbError::from_code(snapshot.error.load(Ordering::Relaxed)),
@@ -334,9 +303,6 @@ impl WriteBatch {
     pub fn new() -> Self {
         Self::default()
     }
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
     pub fn put(&mut self, key: impl AsRef<[u8]>, value: impl AsRef<[u8]>) {
         self.0.push(Mutation::Put(
             key.as_ref().to_vec(),
@@ -410,11 +376,6 @@ pub(crate) mod tests {
         let expired = FdbError::from_code(1007);
         assert!(expired.is_retryable_not_committed());
         for result in [ErrorCode::NotFound, ErrorCode::Unavailable] {
-            // This check covers definitive errors from an already fresh snapshot.
-            *store
-                .recent_commit
-                .lock()
-                .map_err(|_| anyhow::anyhow!("cache lock poisoned"))? = None;
             let attempts = AtomicUsize::new(0);
             let response = store
                 .transact(|view| {
@@ -454,14 +415,14 @@ pub(crate) mod tests {
         Ok(())
     }
 
-    pub async fn reused_versions_refresh_errors_noops_and_conflicts() -> anyhow::Result<()> {
+    pub async fn fresh_attempts_observe_other_writers() -> anyhow::Result<()> {
         let config = StorageConfig {
             fdb_cluster_file: std::env::var("DFS_FDB_CLUSTER_FILE")?,
             fdb_prefix: format!("dfs-v2-tests-{}", uuid::Uuid::new_v4().simple()),
         };
         let local = Storage::open(&config).await?;
         let other = Storage::open(&config).await?;
-        for case in 0..5 {
+        for case in 0..3 {
             local
                 .transact(|_| async {
                     let mut batch = WriteBatch::new();
@@ -477,69 +438,40 @@ pub(crate) mod tests {
                     Ok((batch, ()))
                 })
                 .await?;
-            // The normal read path must see the other server immediately.
-            assert_eq!(local.get(b"authority").await?.as_deref(), Some(&b"new"[..]));
             let attempts = AtomicUsize::new(0);
-            let first_version = std::sync::atomic::AtomicI64::new(0);
             let response = local
                 .transact(|view| {
-                    let first = attempts.fetch_add(1, Ordering::Relaxed) == 0;
-                    let first_version = &first_version;
+                    attempts.fetch_add(1, Ordering::Relaxed);
                     async move {
-                        if first {
-                            first_version.store(
-                                view.transaction.get_read_version().await.map_err(failed)?,
-                                Ordering::Relaxed,
-                            );
-                        }
                         let value = view.get(b"authority").await?;
-                        let old = value.as_deref() == Some(&b"old"[..]);
+                        assert_eq!(value.as_deref(), Some(&b"new"[..]));
                         let mut batch = WriteBatch::new();
-                        if old && case == 0 {
-                            return Err(status(ErrorCode::NotFound));
-                        }
-                        if old && case == 1 {
-                            return Ok((batch, value));
-                        }
-                        if case == 4 {
-                            // A nonempty batch can still become a read-only FDB commit.
-                            batch.clear(b"empty".to_vec(), b"empty".to_vec());
-                            return Ok((batch, value));
-                        }
                         if case == 2 {
-                            if !old {
-                                return Err(status(ErrorCode::Forbidden));
-                            }
-                            batch.put(b"result", b"must not commit");
-                        } else {
-                            batch.put(b"result", value.as_deref().unwrap_or_default());
+                            return Err(status(ErrorCode::Forbidden));
+                        }
+                        if case == 0 {
+                            batch.put(b"result", b"new");
                         }
                         Ok((batch, value))
                     }
                 })
                 .await;
-            assert_eq!(attempts.load(Ordering::Relaxed), 2);
-            assert!(first_version.load(Ordering::Relaxed) > 0);
+            assert_eq!(attempts.load(Ordering::Relaxed), 1);
             if case == 2 {
                 assert_eq!(
-                    code(&response.err().context("stale authority accepted")?),
+                    code(&response.err().context("revoked authority accepted")?),
                     ErrorCode::Forbidden
                 );
-                assert!(local.get(b"result").await?.is_none());
             } else {
                 assert_eq!(response?.as_deref(), Some(&b"new"[..]));
-                let expected = (case != 4).then_some(&b"new"[..]);
-                assert_eq!(local.get(b"result").await?.as_deref(), expected);
             }
+            assert_eq!(
+                local.get(b"result").await?.as_deref(),
+                (case == 0).then_some(&b"new"[..])
+            );
         }
-        // A version outside the retained history must fall back instead of failing the request.
-        *local
-            .recent_commit
-            .lock()
-            .map_err(|_| anyhow::anyhow!("cache lock poisoned"))? = Some((1, Instant::now()));
         local
-            .transact(|view| async move {
-                assert!(view.get(b"authority").await?.is_some());
+            .transact(|_| async {
                 let mut batch = WriteBatch::new();
                 batch.clear(Vec::new(), vec![255]);
                 Ok((batch, ()))
