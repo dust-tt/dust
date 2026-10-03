@@ -1,4 +1,5 @@
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
+import { sanitizeCsvCell } from "@app/lib/api/analytics/csv_utils";
 import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
@@ -266,6 +267,11 @@ export async function getAgentUsageData(
   return mentions[0].messages;
 }
 
+/**
+ * @cc [owner:sfriquet,label:security] sanitized-csv-cells
+ * Every string cell MUST pass through `sanitizeCsvCell` before serialization, so values starting
+ * with `=`, `+`, `-` or `@` are not interpreted as formulas by spreadsheet apps.
+ */
 function generateCsvFromQueryResult(
   rows:
     | WorkspaceUsageQueryResult[]
@@ -281,7 +287,11 @@ function generateCsvFromQueryResult(
   }
 
   const headers = Object.keys(rows[0]);
-  const data = rows.map((row) => Object.values(row));
+  const data = rows.map((row) =>
+    Object.values(row).map((value) =>
+      typeof value === "string" ? sanitizeCsvCell(value) : value
+    )
+  );
 
   return stringify([headers, ...data], {
     header: false,
