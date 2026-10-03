@@ -10,6 +10,7 @@ import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { setupProjectConversation } from "@app/tests/utils/conversation_test_factories";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -26,6 +27,7 @@ import {
   getConversationFilesBasePath,
   getPodFilesBasePath,
 } from "@app/types/mount_path";
+import { SANDBOX_POLICY_MAX_REQUESTED_DOMAINS } from "@app/types/sandbox/egress_policy";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -80,6 +82,35 @@ async function setup({
     mountFilePath: `${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`,
   });
 
+  stageFrameSource({
+    gcsSourceDirectoryPath,
+    manifestContent,
+    uiContentType,
+    extraSources,
+  });
+
+  return {
+    auth,
+    conversation,
+    frame,
+    gcsSourceDirectoryPath,
+    manifestPath,
+    workspace,
+  };
+}
+
+// Serves a Frame folder (manifest + index.tsx) from the mocked source bucket.
+function stageFrameSource({
+  gcsSourceDirectoryPath,
+  manifestContent,
+  uiContentType = "text/typescript",
+  extraSources = {},
+}: {
+  gcsSourceDirectoryPath: string;
+  manifestContent: string;
+  uiContentType?: string;
+  extraSources?: Record<string, string>;
+}) {
   const sourceByPath = new Map([
     [`${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`, manifestContent],
     [`${gcsSourceDirectoryPath}/index.tsx`, uiSource],
@@ -106,15 +137,27 @@ async function setup({
   fileStorageMock.setFileContent(
     (filePath) => sourceByPath.get(filePath) ?? null
   );
+  // Egress policy files are absent until written, so domain requests start
+  // from an empty policy instead of the mock's placeholder content.
+  fileStorageMock.setFetchFileContentNotFound(
+    (filePath) =>
+      filePath.endsWith("/sandbox-egress-policy.json") ||
+      /\/sandboxes\/[^/]+\.json$/.test(filePath)
+  );
+}
 
-  return {
-    auth,
-    conversation,
-    frame,
-    gcsSourceDirectoryPath,
-    manifestPath,
-    workspace,
-  };
+const manifestWithDomains = JSON.stringify({
+  version: 1,
+  name: "Status",
+  description: "Show the current status.",
+  domains: ["API.Stripe.COM", "*.stripe.com"],
+});
+
+function requestedDomainsAt(policyPath: string): string[] {
+  const policy = JSON.parse(fileStorageMock.getObject(policyPath) ?? "{}");
+  return (policy.requestedDomains ?? []).map(
+    (request: { domain: string }) => request.domain
+  );
 }
 
 beforeEach(() => {
@@ -263,16 +306,172 @@ describe("publishFrameFromSource", () => {
     expect(fileStorageMock.readStreamCalls).toHaveLength(0);
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
+
+  it("files declared domains as workspace requests for a Frame outside a Pod", async () => {
+    const { auth, conversation, manifestPath, workspace } = await setup({
+      manifestContent: manifestWithDomains,
+    });
+
+    const result = await publishFrameFromSource(auth, {
+      conversation,
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath: manifestPath,
+    });
+
+    assert(result.isOk());
+    assert(result.value.kind === "v2");
+    expect(result.value.egressDomains).toEqual({
+      kind: "filed",
+      scope: "workspace",
+      requested: ["api.stripe.com", "*.stripe.com"],
+      alreadyAllowed: [],
+    });
+    expect(
+      requestedDomainsAt(`w/${workspace.sId}/sandbox-egress-policy.json`)
+    ).toEqual(["api.stripe.com", "*.stripe.com"]);
+  });
+
+  it("files declared domains as Pod requests for a Frame in a Pod", async () => {
+    const { auth, conversation, projectId } = await setupProjectConversation();
+    const workspace = auth.getNonNullableWorkspace();
+    const sourceDirectoryPath = `pod-${projectId}/Status`;
+    const manifestPath = `${sourceDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    const gcsSourceDirectoryPath = `${getPodFilesBasePath({
+      workspaceId: workspace.sId,
+      podId: projectId,
+    })}Status`;
+    await FileFactory.create(auth, null, {
+      contentType: frameV2ContentType,
+      fileName: FRAME_MANIFEST_FILE,
+      fileSize: Buffer.byteLength(manifestWithDomains),
+      status: "created",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: projectId },
+      mountFilePath: `${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`,
+    });
+    stageFrameSource({
+      gcsSourceDirectoryPath,
+      manifestContent: manifestWithDomains,
+    });
+    // The workspace layer applies to Pod sandboxes too, so a domain it
+    // already allows must not become a redundant Pod request.
+    const workspacePolicyPath = `w/${workspace.sId}/sandbox-egress-policy.json`;
+    fileStorageMock.setObject(
+      workspacePolicyPath,
+      JSON.stringify({ allowedDomains: ["api.stripe.com"] })
+    );
+
+    const result = await publishFrameFromSource(auth, {
+      conversation: conversation.toJSON(),
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath: manifestPath,
+    });
+
+    assert(result.isOk());
+    assert(result.value.kind === "v2");
+    expect(result.value.egressDomains).toEqual({
+      kind: "filed",
+      scope: "pod",
+      requested: ["*.stripe.com"],
+      alreadyAllowed: ["api.stripe.com"],
+    });
+    expect(
+      requestedDomainsAt(`w/${workspace.sId}/sandboxes/${projectId}.json`)
+    ).toEqual(["*.stripe.com"]);
+    expect(requestedDomainsAt(workspacePolicyPath)).toEqual([]);
+  });
+
+  it("reports domains the workspace already allows without re-requesting them", async () => {
+    const { auth, conversation, manifestPath, workspace } = await setup({
+      manifestContent: manifestWithDomains,
+    });
+    const policyPath = `w/${workspace.sId}/sandbox-egress-policy.json`;
+    fileStorageMock.setObject(
+      policyPath,
+      JSON.stringify({ allowedDomains: ["api.stripe.com"] })
+    );
+
+    const result = await publishFrameFromSource(auth, {
+      conversation,
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath: manifestPath,
+    });
+
+    assert(result.isOk());
+    assert(result.value.kind === "v2");
+    expect(result.value.egressDomains).toEqual({
+      kind: "filed",
+      scope: "workspace",
+      requested: ["*.stripe.com"],
+      alreadyAllowed: ["api.stripe.com"],
+    });
+    expect(requestedDomainsAt(policyPath)).toEqual(["*.stripe.com"]);
+  });
+
+  it("publishes but reports the domains as failed when the scope is at its pending cap", async () => {
+    const { auth, conversation, manifestPath, workspace } = await setup({
+      manifestContent: manifestWithDomains,
+    });
+    const policyPath = `w/${workspace.sId}/sandbox-egress-policy.json`;
+    fileStorageMock.setObject(
+      policyPath,
+      JSON.stringify({
+        allowedDomains: [],
+        requestedDomains: Array.from(
+          { length: SANDBOX_POLICY_MAX_REQUESTED_DOMAINS },
+          (_, index) => ({
+            domain: `service-${index}.example.com`,
+            requestedAtMs: 1,
+          })
+        ),
+      })
+    );
+
+    const result = await publishFrameFromSource(auth, {
+      conversation,
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath: manifestPath,
+    });
+
+    assert(result.isOk());
+    assert(result.value.kind === "v2");
+    expect(result.value.egressDomains).toMatchObject({
+      kind: "failed",
+      domains: ["api.stripe.com", "*.stripe.com"],
+      message: expect.stringContaining("pending domain requests"),
+    });
+    expect(requestedDomainsAt(policyPath)).toHaveLength(
+      SANDBOX_POLICY_MAX_REQUESTED_DOMAINS
+    );
+  });
+
+  it("reports no domain requests when the manifest declares none", async () => {
+    const { auth, conversation, manifestPath } = await setup();
+
+    const result = await publishFrameFromSource(auth, {
+      conversation,
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath: manifestPath,
+    });
+
+    assert(result.isOk());
+    assert(result.value.kind === "v2");
+    expect(result.value.egressDomains).toBeNull();
+  });
 });
 
-type LegacyFrameReplacementScope = "conversation" | "pod";
+// "pod-conversation" places the legacy Frame on the conversation mount of a
+// Pod conversation — the mount agents normally author on inside a Pod.
+type LegacyFrameReplacementScope = "conversation" | "pod" | "pod-conversation";
 
 async function setupLegacyFrameReplacement({
   scope,
   replacementUiSource = uiSource,
+  manifestContent = manifest,
 }: {
   scope: LegacyFrameReplacementScope;
   replacementUiSource?: string;
+  manifestContent?: string;
 }) {
   const {
     authenticator: auth,
@@ -280,7 +479,9 @@ async function setupLegacyFrameReplacement({
     workspace,
   } = await createResourceTest({ role: "admin" });
   const pod =
-    scope === "pod" ? await SpaceFactory.project(workspace, user.id) : null;
+    scope === "conversation"
+      ? null
+      : await SpaceFactory.project(workspace, user.id);
   const podAuth = pod
     ? await Authenticator.fromUserIdAndWorkspaceId(user.sId, workspace.sId)
     : auth;
@@ -291,15 +492,17 @@ async function setupLegacyFrameReplacement({
     spaceId: pod?.id,
   });
 
-  const scopedRoot = pod
-    ? `pod-${pod.sId}`
+  const onPodMount = scope === "pod";
+  const scopedRoot = onPodMount
+    ? `pod-${pod?.sId}`
     : `conversation-${conversation.sId}`;
-  const gcsRoot = pod
-    ? getPodFilesBasePath({ workspaceId: workspace.sId, podId: pod.sId })
-    : getConversationFilesBasePath({
-        workspaceId: workspace.sId,
-        conversationId: conversation.sId,
-      });
+  const gcsRoot =
+    onPodMount && pod
+      ? getPodFilesBasePath({ workspaceId: workspace.sId, podId: pod.sId })
+      : getConversationFilesBasePath({
+          workspaceId: workspace.sId,
+          conversationId: conversation.sId,
+        });
   const legacyPath = `${scopedRoot}/dashboards/Sales.tsx`;
   const manifestPath = `${scopedRoot}/dashboards/Sales/${FRAME_MANIFEST_FILE}`;
   const gcsSourceDirectoryPath = `${gcsRoot}dashboards/Sales`;
@@ -309,10 +512,11 @@ async function setupLegacyFrameReplacement({
     fileName: "Sales.tsx",
     fileSize: Buffer.byteLength(uiSource),
     status: "created",
-    useCase: pod ? "project_context" : "conversation",
-    useCaseMetadata: pod
-      ? { spaceId: pod.sId }
-      : { conversationId: conversation.sId },
+    useCase: onPodMount ? "project_context" : "conversation",
+    useCaseMetadata:
+      onPodMount && pod
+        ? { spaceId: pod.sId }
+        : { conversationId: conversation.sId },
     mountFilePath: `${gcsRoot}dashboards/Sales.tsx`,
   });
   await legacyFrame.ensureShareableFrame(podAuth);
@@ -320,7 +524,7 @@ async function setupLegacyFrameReplacement({
   fileStorageMock.setObject(legacyGcsPath, uiSource);
 
   const sourceByPath = new Map([
-    [`${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`, manifest],
+    [`${gcsSourceDirectoryPath}/${FRAME_MANIFEST_FILE}`, manifestContent],
     [`${gcsSourceDirectoryPath}/index.tsx`, replacementUiSource],
     [`${gcsSourceDirectoryPath}/theme.ts`, "export const theme = {};"],
   ]);
@@ -340,6 +544,13 @@ async function setupLegacyFrameReplacement({
   fileStorageMock.setFileContent(
     (filePath) => sourceByPath.get(filePath) ?? null
   );
+  // Egress policy files are absent until written, so domain requests start
+  // from an empty policy instead of the mock's placeholder content.
+  fileStorageMock.setFetchFileContentNotFound(
+    (filePath) =>
+      filePath.endsWith("/sandbox-egress-policy.json") ||
+      /\/sandboxes\/[^/]+\.json$/.test(filePath)
+  );
 
   return {
     auth: podAuth,
@@ -349,6 +560,7 @@ async function setupLegacyFrameReplacement({
     legacyPath,
     manifestPath,
     pod,
+    workspace,
   };
 }
 
@@ -451,6 +663,88 @@ describe("publishFrameFromSource replacing a legacy Frame", () => {
     expect(metadata.pinnedFramePath).toBe(manifestPath);
     expect(metadata.frameTabs.map((tab) => tab.path)).toEqual([manifestPath]);
     expect(metadata.tabsOrder).toContain(manifestPath);
+  });
+
+  it("files declared domains on the Pod for a pod-mount replacement", async () => {
+    const { auth, conversation, legacyPath, manifestPath, pod, workspace } =
+      await setupLegacyFrameReplacement({
+        scope: "pod",
+        manifestContent: manifestWithDomains,
+      });
+    assert(pod, "Pod not created");
+
+    const result = await publishFrameFromSource(auth, {
+      conversation,
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath: manifestPath,
+      replacesPath: legacyPath,
+    });
+
+    assert(result.isOk(), "Replacement publish failed");
+    assert(result.value.kind === "v2");
+    expect(result.value.egressDomains).toMatchObject({
+      kind: "filed",
+      scope: "pod",
+    });
+    expect(
+      requestedDomainsAt(`w/${workspace.sId}/sandboxes/${pod.sId}.json`)
+    ).toEqual(["api.stripe.com", "*.stripe.com"]);
+  });
+
+  it("files declared domains on the Pod for a conversation-mount replacement in a Pod conversation", async () => {
+    const { auth, conversation, legacyPath, manifestPath, pod, workspace } =
+      await setupLegacyFrameReplacement({
+        scope: "pod-conversation",
+        manifestContent: manifestWithDomains,
+      });
+    assert(pod, "Pod not created");
+
+    const result = await publishFrameFromSource(auth, {
+      conversation,
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath: manifestPath,
+      replacesPath: legacyPath,
+    });
+
+    assert(result.isOk(), "Replacement publish failed");
+    assert(result.value.kind === "v2");
+    // The sandbox of a Pod conversation's Frame inherits the Pod's policy, so
+    // the request must land there, not on the workspace.
+    expect(result.value.egressDomains).toMatchObject({
+      kind: "filed",
+      scope: "pod",
+    });
+    expect(
+      requestedDomainsAt(`w/${workspace.sId}/sandboxes/${pod.sId}.json`)
+    ).toEqual(["api.stripe.com", "*.stripe.com"]);
+    expect(
+      fileStorageMock.getObject(`w/${workspace.sId}/sandbox-egress-policy.json`)
+    ).toBeUndefined();
+  });
+
+  it("files declared domains on the workspace for a plain-conversation replacement", async () => {
+    const { auth, conversation, legacyPath, manifestPath, workspace } =
+      await setupLegacyFrameReplacement({
+        scope: "conversation",
+        manifestContent: manifestWithDomains,
+      });
+
+    const result = await publishFrameFromSource(auth, {
+      conversation,
+      publishedByAgentConfigurationId: "test-agent",
+      sourcePath: manifestPath,
+      replacesPath: legacyPath,
+    });
+
+    assert(result.isOk(), "Replacement publish failed");
+    assert(result.value.kind === "v2");
+    expect(result.value.egressDomains).toMatchObject({
+      kind: "filed",
+      scope: "workspace",
+    });
+    expect(
+      requestedDomainsAt(`w/${workspace.sId}/sandbox-egress-policy.json`)
+    ).toEqual(["api.stripe.com", "*.stripe.com"]);
   });
 
   it("refuses to replace a file that is not a legacy Frame", async () => {

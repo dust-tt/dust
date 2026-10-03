@@ -79,6 +79,9 @@ pub struct FramePublishResponse {
     pub created: Option<bool>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub warnings: Vec<serde_json::Value>,
+    /// Egress requests filed for the manifest's declared domains (Frames v2 only).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub egress_domains: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
