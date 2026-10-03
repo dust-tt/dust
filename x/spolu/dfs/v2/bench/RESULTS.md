@@ -20,6 +20,44 @@ that mount. FDB/ES caches
 and the Docker VM's OS cache are retained; local is the generated corpus on the container filesystem
 and is not guaranteed cold. All 24 rows passed the original workload's result checks.
 
+### Per-file comparison: 10,000 versus 100,000 files
+
+All values are **ms/file**: elapsed wall time divided by the number of files the workload touches.
+These compare the current [10,000-file](current-v2/dfs.json) and
+[100,000-file](current-v2-100k/dfs.json) runs reported below.
+
+| Workload | 10k files | 100k files |
+| --- | ---: | ---: |
+| **Untar** | **3.7201** | **4.0892** |
+| scandir + stat — first | 0.1708 | 0.1753 |
+| scandir + stat — warm | 0.0132 | 0.1726 |
+| rg --files — first | 0.0264 | 0.0270 |
+| rg --files — warm | 0.00060 | 0.00025 |
+| open + fstat + close — first | 0.6053 | 0.6087 |
+| open + fstat + close — warm | 0.0852 | 0.0861 |
+| stat missing — first | 0.7202 | 0.7323 |
+| stat missing — warm | 0.0069 | 0.0078 |
+| rg no-match scan — first | 0.5426 | 0.7361 |
+| rg no-match scan — warm | 0.0189 | 0.6888 |
+| rg rare literal — first | 0.5363 | 0.7057 |
+| rg rare literal — warm | 0.0190 | 0.6857 |
+| rg branch glob — first | 0.7824 | 0.9180 |
+| rg branch glob — warm | 0.0313 | 0.0251 |
+| rg depth-10 subtree — first | 0.9519 | 0.7337 |
+| rg depth-10 subtree — warm | 0.0506 | 0.0305 |
+| open + read + SHA-256 — first | 1.2313 | 1.2996 |
+| open + read + SHA-256 — warm | 0.1212 | 1.2800 |
+| open + pread tail — first | 1.4040 | 1.4878 |
+| open + pread tail — warm | 0.0636 | 0.0619 |
+| create + write | 1.8344 | 1.4819 |
+| fsync | 0.5856 | 1.1694 |
+| close | 0.0216 | 0.0219 |
+| unlink | 1.0972 | 1.2731 |
+
+Subset rows use their actual file counts: **256** for missing-path/tail samples, **32** for writes,
+**981/9,810** for branch scans, and **136/1,360** for deep-subtree scans. Other rows use the full
+corpus count. Untar includes directory and manifest overhead, normalized by corpus file count.
+
 ### dfs v2 [current, 100,000 files]
 
 2026-10-03. **100,000 files / 1,775.1 MB**, with the same 100 directories and ten-level
