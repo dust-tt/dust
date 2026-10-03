@@ -5,6 +5,7 @@ import { InputBar } from "@app/components/assistant/conversation/input_bar/Input
 import { InputBarMessageNavigation } from "@app/components/assistant/conversation/input_bar/InputBarMessageNavigation";
 import { INPUT_BAR_COMPACT_NAV_ENTER_ANIMATION_CLASSES } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
 import { useInputBarCompactMode } from "@app/components/assistant/conversation/input_bar/useInputBarCompactMode";
+import { useUserAnswerCollapse } from "@app/components/assistant/conversation/input_bar/useUserAnswerCollapse";
 import type {
   VirtuosoMessage,
   VirtuosoMessageListContext,
@@ -334,6 +335,14 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
   );
   const inputBarContentKey =
     userAnswerRequiredItem?.blockedAction.actionId ?? "input-bar";
+
+  const {
+    isCollapsed: isUserAnswerCollapsed,
+    toggleCollapsed: toggleUserAnswerCollapsed,
+  } = useUserAnswerCollapse({
+    questionId: userAnswerRequiredItem?.blockedAction.actionId ?? null,
+    bottomOffset,
+  });
 
   // Keep blockedActionIndex in sync when blockedActions array changes.
   useEffect(() => {
@@ -693,6 +702,8 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
                 }
                 owner={context.owner}
                 retryHandler={retryUserAnswerRequired}
+                isCollapsed={isUserAnswerCollapsed}
+                onToggleCollapsed={toggleUserAnswerCollapsed}
               />
             ) : (
               <InputBar

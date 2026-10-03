@@ -6,7 +6,15 @@ import type { UserQuestionAnswer } from "@app/lib/actions/types";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { ArrowUp, Button, cn, OptionCard, Spinner } from "@dust-tt/sparkle";
+import {
+  ArrowUp,
+  Button,
+  ChevronDown,
+  ChevronUp,
+  cn,
+  OptionCard,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { useReducedMotion } from "framer-motion";
 import type { KeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
@@ -18,6 +26,10 @@ interface UserAnswerRequiredProps {
   triggeringUser: UserType | null;
   owner: LightWorkspaceType;
   retryHandler: () => Promise<void>;
+  // When provided, the card shows a collapse toggle in its top right corner and
+  // only renders the question text while collapsed.
+  isCollapsed?: boolean;
+  onToggleCollapsed?: () => void;
 }
 
 type SubmissionState = {
@@ -44,6 +56,8 @@ export function UserAnswerRequired({
   triggeringUser,
   owner,
   retryHandler,
+  isCollapsed = false,
+  onToggleCollapsed,
 }: UserAnswerRequiredProps) {
   const { user } = useAuth();
   const { removeCompletedAction } = useBlockedActionsContext();
@@ -71,6 +85,8 @@ export function UserAnswerRequired({
     answerDraft.answerToSubmit?.customResponse !== undefined;
 
   const isSubmitting = submission !== null;
+  const isCollapsible = onToggleCollapsed !== undefined;
+  const answerBodyId = `user-answer-body-${blockedAction.actionId}`;
 
   // Reset the keyboard cursor and focus when a new blocked action replaces the current one.
   // biome-ignore lint/correctness/useExhaustiveDependencies: blockedAction.actionId is an intentional reset trigger
@@ -201,6 +217,10 @@ export function UserAnswerRequired({
   }
 
   function handleContainerKeyDownCapture(e: KeyboardEvent<HTMLDivElement>) {
+    if (isCollapsed) {
+      return;
+    }
+
     if (e.key === "Escape") {
       e.preventDefault();
       e.stopPropagation();
@@ -222,7 +242,7 @@ export function UserAnswerRequired({
   }
 
   function handleContainerKeyDown(e: KeyboardEvent<HTMLDivElement>) {
-    if (isEditableTarget(e.target)) {
+    if (isCollapsed || isEditableTarget(e.target)) {
       return;
     }
 
@@ -288,110 +308,143 @@ export function UserAnswerRequired({
         }
       }}
       className={cn(
-        "flex flex-col gap-4 rounded-2xl border border-dark bg-background p-5 outline-hidden",
+        "flex flex-col rounded-2xl border border-dark bg-background p-5 outline-hidden",
         "ease-enter motion-reduce:animate-none",
         submission?.phase === "exiting" &&
           "animate-out fill-mode-forwards fade-out-0 duration-exit",
         isKeyboardNavigating && "cursor-none"
       )}
     >
-      <div className="text-base font-medium leading-tight text-foreground">
-        {question.question}
-      </div>
-      <div className="relative min-h-16">
+      <div className="flex items-start justify-between gap-3">
         <div
-          aria-hidden={isSubmitting}
           className={cn(
-            "flex flex-col gap-2 transition-opacity ease-enter motion-reduce:transition-none",
-            isSubmitting
-              ? "opacity-0 duration-exit"
-              : "opacity-100 duration-enter"
+            "min-w-0 text-base font-medium leading-tight text-foreground",
+            isCollapsed && "truncate"
           )}
         >
-          {question.options.map((option, index) => (
-            <OptionCard
-              key={index}
-              label={option.label}
-              description={option.description}
-              counterValue={index + 1}
-              selected={answerDraft.selectedOptions.includes(index)}
-              disableHover={isKeyboardNavigating}
-              selectionIndicator={question.multiSelect ? "checkbox" : "radio"}
-              onFocusCapture={() => activateOption(index)}
-              onMouseEnter={() => activateOption(index)}
+          {question.question}
+        </div>
+        {isCollapsible && (
+          <Button
+            icon={isCollapsed ? ChevronUp : ChevronDown}
+            variant="ghost"
+            size="xs"
+            className="-mr-1.5 -mt-1.5 shrink-0"
+            aria-label={isCollapsed ? "Expand question" : "Collapse question"}
+            aria-expanded={!isCollapsed}
+            aria-controls={answerBodyId}
+            tooltip={isCollapsed ? "Expand" : "Collapse"}
+            onClick={onToggleCollapsed}
+          />
+        )}
+      </div>
+      <div
+        id={answerBodyId}
+        className={cn(
+          "grid transition-[grid-template-rows,visibility] duration-enter ease-enter motion-reduce:transition-none",
+          isCollapsed ? "invisible grid-rows-[0fr]" : "grid-rows-[1fr]"
+        )}
+      >
+        {/* -m-1/p-1 leaves room for focus rings inside the clipping box. */}
+        <div className="-m-1 flex min-h-0 flex-col gap-4 overflow-hidden p-1 pt-5">
+          <div className="relative min-h-16">
+            <div
+              aria-hidden={isSubmitting}
               className={cn(
-                activeOptionIndex === index &&
-                  !isCustomResponseActive &&
-                  !answerDraft.selectedOptions.includes(index) &&
-                  "bg-primary-100",
-                isKeyboardNavigating && "cursor-none"
+                "flex flex-col gap-2 transition-opacity ease-enter motion-reduce:transition-none",
+                isSubmitting
+                  ? "opacity-0 duration-exit"
+                  : "opacity-100 duration-enter"
               )}
-              onClick={() => handleOptionClick(index)}
+            >
+              {question.options.map((option, index) => (
+                <OptionCard
+                  key={index}
+                  label={option.label}
+                  description={option.description}
+                  counterValue={index + 1}
+                  selected={answerDraft.selectedOptions.includes(index)}
+                  disableHover={isKeyboardNavigating}
+                  selectionIndicator={
+                    question.multiSelect ? "checkbox" : "radio"
+                  }
+                  onFocusCapture={() => activateOption(index)}
+                  onMouseEnter={() => activateOption(index)}
+                  className={cn(
+                    activeOptionIndex === index &&
+                      !isCustomResponseActive &&
+                      !answerDraft.selectedOptions.includes(index) &&
+                      "bg-primary-100",
+                    isKeyboardNavigating && "cursor-none"
+                  )}
+                  onClick={() => handleOptionClick(index)}
+                  disabled={isSubmitting}
+                />
+              ))}
+              <OptionCard
+                type="input"
+                selected={isCustomResponseActive}
+                disableHover={isKeyboardNavigating}
+                className={cn(isKeyboardNavigating && "cursor-none")}
+                inputRef={customResponseInputRef}
+                id={`custom-response-${blockedAction.actionId}`}
+                name="custom-response"
+                placeholder="Tell the agent what to do differently"
+                value={answerDraft.customResponse}
+                disabled={isSubmitting}
+                onFocus={() => {
+                  setIsCustomResponseFocused(true);
+                  answerDraft.selectCustomResponse();
+                }}
+                onBlur={() => setIsCustomResponseFocused(false)}
+                onChange={(value) => answerDraft.updateCustomResponse(value)}
+                onKeyDown={handleCustomResponseKeyDown}
+              />
+            </div>
+            <div
+              role={isSubmitting ? "status" : undefined}
+              aria-hidden={!isSubmitting}
+              className={cn(
+                "absolute inset-0 flex items-center justify-center transition-opacity ease-enter motion-reduce:transition-none",
+                isSubmitting
+                  ? "opacity-100 duration-exit"
+                  : "pointer-events-none opacity-0 duration-enter"
+              )}
+            >
+              <Spinner size="lg" />
+              <span className="sr-only">
+                {submission?.kind === "skip"
+                  ? "Skipping question"
+                  : "Submitting answer"}
+              </span>
+            </div>
+          </div>
+          {errorMessage && (
+            <div className="text-sm font-medium text-warning-800">
+              {errorMessage}
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-3">
+            <Button
+              label="Skip"
+              variant="outline"
+              size="sm"
+              onClick={handleSkip}
+              isLoading={submission?.kind === "skip"}
               disabled={isSubmitting}
             />
-          ))}
-          <OptionCard
-            type="input"
-            selected={isCustomResponseActive}
-            disableHover={isKeyboardNavigating}
-            className={cn(isKeyboardNavigating && "cursor-none")}
-            inputRef={customResponseInputRef}
-            id={`custom-response-${blockedAction.actionId}`}
-            name="custom-response"
-            placeholder="Tell the agent what to do differently"
-            value={answerDraft.customResponse}
-            disabled={isSubmitting}
-            onFocus={() => {
-              setIsCustomResponseFocused(true);
-              answerDraft.selectCustomResponse();
-            }}
-            onBlur={() => setIsCustomResponseFocused(false)}
-            onChange={(value) => answerDraft.updateCustomResponse(value)}
-            onKeyDown={handleCustomResponseKeyDown}
-          />
+            <Button
+              icon={ArrowUp}
+              variant="highlight"
+              size="sm"
+              isLoading={submission?.kind === "answer"}
+              disabled={isSubmitting || answerDraft.answerToSubmit === null}
+              onClick={handleSubmit}
+              aria-label="Send answer"
+              className="rounded-full"
+            />
+          </div>
         </div>
-        <div
-          role={isSubmitting ? "status" : undefined}
-          aria-hidden={!isSubmitting}
-          className={cn(
-            "absolute inset-0 flex items-center justify-center transition-opacity ease-enter motion-reduce:transition-none",
-            isSubmitting
-              ? "opacity-100 duration-exit"
-              : "pointer-events-none opacity-0 duration-enter"
-          )}
-        >
-          <Spinner size="lg" />
-          <span className="sr-only">
-            {submission?.kind === "skip"
-              ? "Skipping question"
-              : "Submitting answer"}
-          </span>
-        </div>
-      </div>
-      {errorMessage && (
-        <div className="text-sm font-medium text-warning-800">
-          {errorMessage}
-        </div>
-      )}
-      <div className="flex items-center justify-between gap-3">
-        <Button
-          label="Skip"
-          variant="outline"
-          size="sm"
-          onClick={handleSkip}
-          isLoading={submission?.kind === "skip"}
-          disabled={isSubmitting}
-        />
-        <Button
-          icon={ArrowUp}
-          variant="highlight"
-          size="sm"
-          isLoading={submission?.kind === "answer"}
-          disabled={isSubmitting || answerDraft.answerToSubmit === null}
-          onClick={handleSubmit}
-          aria-label="Send answer"
-          className="rounded-full"
-        />
       </div>
     </div>
   );
