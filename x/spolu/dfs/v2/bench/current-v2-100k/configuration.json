@@ -1,0 +1,60 @@
+{
+  "server_revision": "a37b72f6cb2f2cb575be747d0934eed4135297e0",
+  "fdb_version": "7.3.69",
+  "server_binary_sha256": "2ee03a8dcae845ed9bae4a2eede1bad780e7cf08caeba5cbf39cf90eb6c3563a",
+  "commit_version_reuse": false,
+  "client_knobs": {
+    "grv_batch_timeout": 0.005,
+    "busy_wait_threshold": 0.0001
+  },
+  "server_knobs": {
+    "commit_transaction_batch_interval_min": 1e-05,
+    "commit_transaction_batch_interval_from_idle": 1e-05,
+    "busy_wait_threshold": 0.0001
+  },
+  "knob_time_unit": "seconds",
+  "fdb_arguments": [
+    "/usr/bin/fdbserver",
+    "--listen-address",
+    "0.0.0.0:4500",
+    "--public-address",
+    "172.19.0.3:4500",
+    "--datadir",
+    "/var/fdb/data",
+    "--logdir",
+    "/var/fdb/logs",
+    "--locality-zoneid",
+    "f3ab08da53be",
+    "--locality-machineid",
+    "f3ab08da53be",
+    "--class",
+    "unset",
+    "--knob-commit_transaction_batch_interval_min",
+    "0.00001",
+    "--knob-commit_transaction_batch_interval_from_idle",
+    "0.00001",
+    "--knob-busy_wait_threshold",
+    "0.0001"
+  ],
+  "fdb_restarted_before_run": true,
+  "source_sha256": {
+    "v2/server/src/network.rs": "247821de2aa040d923f4720c9e3cc94612211018e1fdcbb956ff597241f2695b",
+    "v2/local/fdb.bash": "14d6568e6160a2f2b10d998cef2a7044ad2023dd784f4adf1fadec17edf880a2",
+    "v2/local/compose.yaml": "483d2b71de6d842a2c81a0b9946d0ee1312b7657b00ecdcf7fda3f0cd817d166",
+    "v2/bench/common.py": "44d21d0df1a43e9e8337f52c0b966f8a018121b149365199a95049737d69b90e",
+    "v2/bench/corpus.py": "6e5fb638f2e9437b41f99e560a82c9282c345faa290bd7137c8b96b257ebe1c5",
+    "v2/bench/vfs.py": "89336269f0140e1a2884b110d40e0cdbf3c4d021e61bef637a0b06c8b43df011",
+    "v1/fuse/src/inodes.rs": "21b9c8912eea2e2846f711f0de5c394508b327387a52a16aa68453b5d482d508",
+    "../../jd/filesystem-benchmark/generate.py": "551de9bdd39f986009bf2e3f17ea2491c6d4dee0a9f7eba67e7004bbd9900223",
+    "../../jd/filesystem-benchmark/benchmark.py": "f45e0798eef83dc3bd4fc4ee810467cc825e3e905efb56986731e6ef9cadcc48"
+  },
+  "harness_revision": "a37b72f6cb2f2cb575be747d0934eed4135297e0",
+  "files": 100000,
+  "corpus_directories": 100,
+  "directory_allocation_multiplier": 10,
+  "sampled_tails": 256,
+  "seed": 42,
+  "max_live_inodes": 1000000,
+  "client_revision": "a37b72f6cb2f2cb575be747d0934eed4135297e0",
+  "fuse_binary_sha256": "10c75e16b75994f466ea2fad23a3d6f103af8cdbf7a6bd3ff8795beb419114bd"
+}

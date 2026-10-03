@@ -1,0 +1,59 @@
+{
+  "dfs_client_metrics": {
+    "fuse.flush": {
+      "calls": 200000,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.forget": {
+      "calls": 153750,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.getattr": {
+      "calls": 1,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.init": {
+      "calls": 1,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.lookup": {
+      "calls": 200202,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.open": {
+      "calls": 200000,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.read": {
+      "calls": 200000,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.release": {
+      "calls": 200000,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "rpc.lookup": {
+      "calls": 200202,
+      "elapsed_ms": 105217.953938,
+      "errors": 0
+    },
+    "rpc.read": {
+      "calls": 200000,
+      "elapsed_ms": 115216.40839,
+      "errors": 0
+    },
+    "rpc.stat": {
+      "calls": 1,
+      "elapsed_ms": 0.4975,
+      "errors": 0
+    }
+  }
+}
