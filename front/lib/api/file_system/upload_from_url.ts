@@ -122,9 +122,7 @@ export async function uploadFileFromUrlToFileSystem(
   }
 
   const finalContentType = stripMimeParameters(
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     contentTypeOverride ||
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       response.headers.get("content-type") ||
       "application/octet-stream"
   );

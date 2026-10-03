@@ -79,9 +79,7 @@ const API_KEY_CACHE_ID = "api-key-by-secret-v2";
 // to avoid row-lock contention on hot API keys.
 export const MARK_AS_USED_MIN_INTERVAL_MS = 60 * 60 * 1000;
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface KeyResource extends ReadonlyAttributesType<KeyModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 /**
  * @cc [owner:philipperolet,label:security;backend] supported-api-key-roles
  * `KeyResource` construction MUST throw when the persisted role is not accepted by `RoleSchema`.

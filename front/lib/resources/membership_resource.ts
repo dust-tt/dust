@@ -81,10 +81,8 @@ const ACTIVE_MEMBERSHIP_ROLE_CACHE_ID = "active-membership-role-v2";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface MembershipResource
   extends ReadonlyAttributesType<MembershipModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 /**
  * @cc [owner:philipperolet,label:security;backend] supported-membership-roles
  * `MembershipResource` MUST throw whenever it reads a persisted membership role outside

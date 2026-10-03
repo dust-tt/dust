@@ -66,7 +66,6 @@ export function useDeleteAgentMemory({
         sendNotification({
           type: "error",
           title: "Failed to delete memory",
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           description: json.error?.message || "Failed to delete memory",
         });
         return false;

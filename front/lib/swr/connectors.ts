@@ -195,7 +195,6 @@ export function useConnectorConfig({
   const url = `/api/w/${owner.sId}/data_sources/${dataSource?.sId}/managed/config/${configKey}`;
 
   const { data, error, mutate } = useSWRWithDefaults(url, configFetcher, {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     disabled: disabled || !dataSource,
   });
 
@@ -223,7 +222,6 @@ export function useOAuthMetadata({
   const url = `/api/w/${owner.sId}/data_sources/${dataSource?.sId}/managed/oauth-metadata`;
 
   const { data, error } = useSWRWithDefaults(url, metadataFetcher, {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     disabled: disabled || !dataSource,
   });
 

@@ -340,7 +340,6 @@ export function AgentBuilderInstructionsEditor({
         }
       });
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor]); // Only run when editor is created, not when field.value changes
 
   useEffect(() => {
@@ -468,7 +467,6 @@ export function AgentBuilderInstructionsEditor({
         }
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInstructionDiffMode, compareVersion, editor]);
 
   const toolbarExtra =

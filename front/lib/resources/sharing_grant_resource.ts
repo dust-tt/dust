@@ -45,10 +45,8 @@ import { Op } from "sequelize";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SharingGrantResource
   extends ReadonlyAttributesType<SharingGrantModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SharingGrantResource extends BaseResource<SharingGrantModel> {
   static model: ModelStaticWorkspaceAware<SharingGrantModel> =
     SharingGrantModel;

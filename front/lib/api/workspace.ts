@@ -635,7 +635,6 @@ export async function updateWorkspaceMetadata(
   owner: LightWorkspaceType,
   metadata: WorkspaceMetadata
 ): Promise<Result<void, Error>> {
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const previousMetadata = owner.metadata || {};
   const newMetadata = { ...previousMetadata, ...metadata };
   return WorkspaceResource.updateMetadata(owner.id, newMetadata);

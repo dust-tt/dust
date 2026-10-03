@@ -165,7 +165,6 @@ export function SubscriptionPage() {
         }, 5000);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Intentionally passing an empty dependency array to execute only once
 
   const { submit: handleSubscribePlan, isSubmitting: isSubscribingPlan } =

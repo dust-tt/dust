@@ -104,7 +104,6 @@ export function AgentPicker({
       <DropdownMenuTrigger asChild>
         {/* Stable anchor across pickerButton swaps: prevents a top-left flash on close. */}
         <div className="inline-flex">
-          {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
           {pickerButton ? (
             pickerButton
           ) : (

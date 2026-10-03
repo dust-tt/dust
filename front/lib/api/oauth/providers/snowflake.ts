@@ -302,7 +302,6 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
       }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we filter out the client_secret from the extraConfig.
     const { client_secret, ...restConfig } = extraConfig;
 
     return restConfig;

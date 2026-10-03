@@ -74,7 +74,6 @@ export function Providers({ owner }: ProvidersProps) {
       : false;
 
   const configForSelected =
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (selectedProviderId && configs[selectedProviderId]) || {};
 
   return (

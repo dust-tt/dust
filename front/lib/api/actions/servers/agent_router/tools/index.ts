@@ -108,7 +108,6 @@ const handlers: ToolHandlers<typeof AGENT_ROUTER_TOOLS_METADATA> = {
     const formattedSuggestedAgents = suggestedAgentsRes.value
       .filter((agent) => agent.sId !== "dust")
       .map((agent) => {
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const instructions = agent.instructions || "";
         const truncatedInstructions =
           instructions.length > MAX_INSTRUCTIONS_LENGTH

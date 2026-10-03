@@ -148,7 +148,6 @@ describe("claimReminderSlot", () => {
         invitedUserId: null,
         seatType: null,
       },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       { workspace: {} as any }
     );
 
@@ -186,7 +185,6 @@ describe("claimReminderSlot", () => {
         invitedUserId: null,
         seatType: null,
       },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       { workspace: {} as any }
     );
 

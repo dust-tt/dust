@@ -13,7 +13,6 @@ const ABANDONED_UPLOAD_CLEANUP_DELAY_MS = 24 * 60 * 60 * 1000;
 const RETIRED_BLOB_CLEANUP_DELAY_MS =
   FILE_SYSTEM_CONTENT_URL_EXPIRATION_MS + 5 * 60 * 1000;
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface FileSystemBlobCleanupResource
   extends ReadonlyAttributesType<FileSystemBlobCleanupModel> {}
 
@@ -21,7 +20,6 @@ export interface FileSystemBlobCleanupResource
  * One durable request to delete an abandoned or replaced content blob.
  * A separate worker will claim these rows and delete the GCS objects.
  */
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class FileSystemBlobCleanupResource extends BaseResource<FileSystemBlobCleanupModel> {
   static model: ModelStaticWorkspaceAware<FileSystemBlobCleanupModel> =
     FileSystemBlobCleanupModel;

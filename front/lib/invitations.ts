@@ -131,7 +131,6 @@ export async function sendInvitations({
     }
 
     const errorMessage =
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       data?.error?.message || "Failed to invite new members to workspace";
 
     sendNotification({

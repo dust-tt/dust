@@ -241,7 +241,6 @@ export function useUnifiedSearch({
         eventSourceRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     disabled,
     excludeNonRemoteDatabaseTables,
@@ -253,7 +252,6 @@ export function useUnifiedSearch({
     query,
     searchSourceUrls,
     // Serialize spaceIds to compare by value, not reference
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     spaceIds?.join(","),
     viewType,
   ]);

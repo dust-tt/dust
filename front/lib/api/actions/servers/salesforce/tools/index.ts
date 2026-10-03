@@ -174,7 +174,6 @@ export function createSalesforceTools(auth: Authenticator): ToolDefinition[] {
             result.childRelationships.length > 0
           ) {
             result.childRelationships.forEach((rel) => {
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               summary += `- RelationshipName: ${rel.relationshipName || "(N/A - check API docs)"}`;
               summary += `, ChildObject: ${rel.childSObject}`;
               summary += `, Field on Child: ${rel.field}\n`;

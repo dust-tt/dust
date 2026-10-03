@@ -119,7 +119,6 @@ export function useSubmitMessage({
             return new Err({
               type: "attachment_upload_error",
               title: "Error uploading file.",
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               message: data.error.message || "Please try again or contact us.",
             });
           }
@@ -172,7 +171,6 @@ export function useSubmitMessage({
                     ? "no_seat_error"
                     : "message_send_error",
           title: "Your message could not be sent.",
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           message: data.error.message || "Please try again or contact us.",
         });
       }

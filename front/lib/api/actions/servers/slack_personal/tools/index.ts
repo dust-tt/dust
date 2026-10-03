@@ -89,7 +89,6 @@ export async function getSlackAIEnablementStatus({
   try {
     // Use assistant.search.info to detect if Slack AI is enabled at workspace level.
     // This endpoint requires search:read.public scope and returns is_ai_search_enabled boolean.
-    // eslint-disable-next-line no-restricted-globals
     const assistantSearchInfo = await fetch(
       "https://slack.com/api/assistant.search.info",
       {
@@ -157,7 +156,6 @@ const slackSearch = async (
     channel_types: "public_channel,private_channel,mpim,im",
   });
 
-  // eslint-disable-next-line no-restricted-globals
   const resp = await fetch(
     `https://slack.com/api/assistant.search.context?${params.toString()}`,
     {
@@ -1213,7 +1211,6 @@ export function createSlackPersonalTools(
     ? rawTools
     : rawTools.map((tool) => {
         if (tool.name === "post_message" || tool.name === "schedule_message") {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { show_sent_by_footer: _stripped, ...schemaWithoutFooter } =
             tool.schema;
           return { ...tool, schema: schemaWithoutFooter };

@@ -224,7 +224,6 @@ export function DataSourceBuilderProvider({
           in: field.value.in.map((source) => {
             if ("tagsFilter" in source) {
               // Initialize tagsFilter if null
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               const currentTagsFilter = source.tagsFilter || {
                 in: [],
                 not: [],

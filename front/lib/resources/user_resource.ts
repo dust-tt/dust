@@ -92,12 +92,10 @@ type CachedUserData = {
 };
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface UserResource extends ReadonlyAttributesType<UserModel> {}
 
 export const ANONYMIZED_USER_EMAIL_DOMAIN = "anonymized.invalid";
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class UserResource extends BaseResource<UserModel> {
   static model: ModelStatic<UserModel> = UserModel;
 

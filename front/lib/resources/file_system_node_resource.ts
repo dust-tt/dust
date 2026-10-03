@@ -96,11 +96,9 @@ type SetExecutableBitsOptions = Pick<
   "executableBits"
 >;
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface FileSystemNodeResource
   extends ReadonlyAttributesType<FileSystemNodeModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
   static model: ModelStaticWorkspaceAware<FileSystemNodeModel> =
     FileSystemNodeModel;

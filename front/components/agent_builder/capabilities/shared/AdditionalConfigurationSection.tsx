@@ -146,7 +146,6 @@ function NumberConfigurationInput({
           id={`number-${configKey}`}
           type="number"
           {...field}
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           value={field.value || null}
           placeholder={`Enter value for ${formatKeyForDisplay(configKey)}`}
           isError={!!fieldState.error}
@@ -213,7 +212,6 @@ function StringConfigurationInput({
           id={`string-${configKey}`}
           type="text"
           {...field}
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           value={field.value || null}
           placeholder={`Enter value for ${formatKeyForDisplay(configKey)}`}
           isError={!!fieldState.error}

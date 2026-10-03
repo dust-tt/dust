@@ -78,7 +78,6 @@ export function useCancelWakeUp({
         sendNotification({
           type: "error",
           title: "Failed to cancel wake-up",
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           description: json.error?.message || "Failed to cancel wake-up",
         });
         return false;

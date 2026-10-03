@@ -31,7 +31,6 @@ export function WorkspaceNameEditor({ owner }: { owner: WorkspaceType }) {
     if (workspaceName.length === 0) {
       setWorkspaceNameError("");
       valid = false;
-      // eslint-disable-next-line no-useless-escape
     } else if (!workspaceName.match(/^[a-zA-Z0-9\._\-]+$/)) {
       setWorkspaceNameError(
         "Workspace name must only contain letters, numbers, and the characters `._-`"

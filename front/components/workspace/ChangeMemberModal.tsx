@@ -148,7 +148,6 @@ export function ChangeMemberModal({
                     <div className="flex items-center gap-2">
                       <div className="heading-base text-foreground">Role:</div>
                       <RoleDropDown
-                        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                         selectedRole={selectedRole || role}
                         onChange={setSelectedRole}
                         disabled={rolesManagedByGroups}

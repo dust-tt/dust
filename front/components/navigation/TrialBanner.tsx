@@ -41,7 +41,6 @@ export function SubscriptionEndBanner({
 
   // Capture initial timestamp in a ref to avoid re-computation on re-renders.
   // This is intentionally not reactive - the banner state is stable for the session.
-  // eslint-disable-next-line react-hooks/purity
   const nowRef = useRef(Date.now());
 
   const bannerState = useMemo(() => {

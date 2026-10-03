@@ -15,10 +15,8 @@ import { Op } from "sequelize";
 
 export const PHONE_REGEXP = /^\+[1-9]\d{1,14}$/;
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface WorkspaceVerificationAttemptResource
   extends ReadonlyAttributesType<WorkspaceVerificationAttemptModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class WorkspaceVerificationAttemptResource extends BaseResource<WorkspaceVerificationAttemptModel> {
   static model: ModelStaticWorkspaceAware<WorkspaceVerificationAttemptModel> =
     WorkspaceVerificationAttemptModel;

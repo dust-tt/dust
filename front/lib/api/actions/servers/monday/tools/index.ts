@@ -395,7 +395,6 @@ const handlers: ToolHandlers<typeof MONDAY_TOOLS_METADATA> = {
     const board = await createBoard(
       accessToken,
       boardName,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       boardKind || "public",
       workspaceId,
       description

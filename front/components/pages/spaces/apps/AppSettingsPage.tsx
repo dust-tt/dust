@@ -46,7 +46,6 @@ export function AppSettingsPage() {
   useEffect(() => {
     if (app) {
       setAppName(app.name);
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       setAppDescription(app.description || "");
     }
   }, [app]);
@@ -133,8 +132,6 @@ export function AppSettingsPage() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     setDisabled(!formValidation());
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appName]);
 
   // Redirect users without app administration permission.

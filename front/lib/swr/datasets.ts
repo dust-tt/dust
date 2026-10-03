@@ -18,7 +18,6 @@ export function useDatasets({
 }) {
   const { fetcher } = useFetcher();
   const datasetsFetcher: Fetcher<GetDatasetsResponseBody> = fetcher;
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const isDisabled = disabled || !app;
 
   const { data, error } = useSWRWithDefaults(

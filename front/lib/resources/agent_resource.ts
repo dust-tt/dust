@@ -389,7 +389,6 @@ export type AgentResourceSnapshot = {
  */
 const AGENT_RESOURCE_CACHE_MODE: CachedResourceMode = "live";
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentResource
   extends Omit<
     ReadonlyAttributesType<AgentModel>,
@@ -411,7 +410,6 @@ export interface AgentResource
   readonly versionUpdatedAt: Date;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 /**
  * @cc [owner:tdraier,label:backend] agent-resource-identity
  * The authoritative resolvers `fetchByModelIdWithAuth`/`fetchByModelIds`/`fetchById(s)` MUST resolve
@@ -4142,7 +4140,6 @@ export class AgentResource
           { agentConfigurationId, authorId, owner, transaction: t }
         );
 
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const sId = agentConfigurationId || generateRandomModelSId();
         // A brand-new agent needs its identity row before the configuration that references it, and
         // carries the head fields of the version 0 row written just below. `findOrCreate` covers an

@@ -85,7 +85,6 @@ export function useSpaces({
       emptyArray<EnrichedSpaceType | PodType>()
     );
     // Serialize the kinds array to a string to avoid unnecessary re-renders
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.spaces, kinds === "all" ? kinds : kinds.toSorted().join(",")]);
 
   return {
@@ -952,9 +951,7 @@ export function useSpacesSearch({
     mutate,
     isSearchValidating: isValidating,
     warningCode: data?.warningCode,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     nextPageCursor: data?.nextPageCursor || null,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     resultsCount: data?.resultsCount || null,
   };
 }

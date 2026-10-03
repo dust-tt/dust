@@ -84,10 +84,8 @@ function isAllowedSearchColumn(column: string): column is AllowedSearchColumns {
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface DataSourceViewResource
   extends ReadonlyAttributesType<DataSourceViewModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewModel> {
   static model: ModelStatic<DataSourceViewModel> = DataSourceViewModel;
 
@@ -619,7 +617,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     parentsToAdd: string[] = [],
     parentsToRemove: string[] = []
   ): Promise<Result<undefined, Error>> {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const currentParents = this.parentsIn || [];
 
     if (this.kind === "default") {

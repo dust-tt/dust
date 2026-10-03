@@ -216,9 +216,7 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
     if (useCase === "personal_actions" || useCase === "platform_actions") {
       const {
         mcp_server_id,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- caller-controlled proxy routing is ignored.
         use_static_ip_proxy: _ignoredUseStaticIpProxy,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- never persist secrets in connection metadata.
         client_secret: _ignoredClientSecret,
         ...restConfig
       } = extraConfig;

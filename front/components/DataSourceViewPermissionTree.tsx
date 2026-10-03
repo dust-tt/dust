@@ -62,7 +62,6 @@ export function DataSourceViewPermissionTree({
         owner,
         dataSourceView,
         viewType
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       )(selectedParentId || parentId || null),
     [owner, dataSourceView, viewType, parentId]
   );

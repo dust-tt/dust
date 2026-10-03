@@ -46,7 +46,6 @@ import type { Attributes, Transaction } from "sequelize";
 import { col, fn, Op } from "sequelize";
 import { z } from "zod";
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SandboxFunctionResource
   extends ReadonlyAttributesType<SandboxFunctionModel> {}
 
@@ -113,7 +112,6 @@ function userIdentityPolicyStrength(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> {
   static model: ModelStaticWorkspaceAware<SandboxFunctionModel> =
     SandboxFunctionModel;

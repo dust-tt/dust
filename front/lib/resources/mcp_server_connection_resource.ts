@@ -42,10 +42,8 @@ type MCPServerConnectionResourceFindOptions =
   };
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface MCPServerConnectionResource
   extends ReadonlyAttributesType<MCPServerConnectionModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class MCPServerConnectionResource extends BaseResource<MCPServerConnectionModel> {
   static model: ModelStatic<MCPServerConnectionModel> =
     MCPServerConnectionModel;

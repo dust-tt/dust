@@ -529,7 +529,6 @@ const RenderToolItemMarkdown = ({
   text: string | null;
   type: "input" | "output";
 }) => {
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!text) {
     text =
       type === "input"

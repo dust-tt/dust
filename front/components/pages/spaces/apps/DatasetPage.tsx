@@ -70,7 +70,6 @@ export function DatasetPage() {
         `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets`
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFinishedEditing]);
 
   const onUpdate = (

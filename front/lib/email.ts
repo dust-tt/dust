@@ -30,7 +30,6 @@ export async function sendRequestDataSourceEmail({
 
   if (!res.ok) {
     const errorData = await res.json();
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     throw new Error(errorData.error?.message || "Failed to send email");
   }
 
@@ -61,7 +60,6 @@ export async function sendRequestActionsAccessEmail({
 
   if (!res.ok) {
     const errorData = await res.json();
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     throw new Error(errorData.error?.message || "Failed to send email");
   }
 

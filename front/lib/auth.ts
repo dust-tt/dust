@@ -205,13 +205,10 @@ export class Authenticator {
     isDustSuperUser?: boolean;
     pokePrincipal?: PokePrincipal | null;
   }) {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     this._workspace = workspace || null;
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     this._user = user || null;
     this._requestedGroupModelIds = requestedGroupModelIds;
     this._role = role;
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     this._subscription = subscription || null;
     this._authMethod = authMethod;
     this._key = key;
@@ -1458,7 +1455,6 @@ export class Authenticator {
           sId: this._workspace.sId,
           name: this._workspace.name,
           role: this._role,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           segmentation: this._workspace.segmentation || null,
           ssoEnforced: this._workspace.ssoEnforced,
           regionalModelsOnly: this._workspace.regionalModelsOnly,

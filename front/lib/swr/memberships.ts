@@ -92,7 +92,6 @@ export function useMembers({
     isMembersError: error,
     hasNextPage: !!data?.nextPageUrl,
     loadNextPage: useCallback(
-      // eslint-disable-next-line react-hooks/preserve-manual-memoization
       () => data?.nextPageUrl && setUrl(data.nextPageUrl),
       [data?.nextPageUrl]
     ),

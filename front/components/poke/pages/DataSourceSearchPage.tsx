@@ -255,7 +255,6 @@ export function DataSourceSearchPage() {
                                   <div
                                     className="ml-2 mr-4 flex-1 cursor-pointer border-l-4 border-border-dark"
                                     onClick={() => {
-                                      // eslint-disable-next-line no-unused-expressions
                                       expandedChunkId == chunkId
                                         ? setExpandedChunkId(null)
                                         : setExpandedChunkId(chunkId);

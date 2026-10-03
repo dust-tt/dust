@@ -188,7 +188,6 @@ function getTableColumns(
     cell: (ctx) => {
       const { dataSourceView, isLoading, isAdmin, buttonOnClick } =
         ctx.row.original;
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const disabled = isLoading || !isAdmin;
       const connector = dataSourceView.dataSource.connector;
       if (!connector) {
@@ -441,7 +440,7 @@ export const SpaceResourcesList = ({
           onClick: () => onSelect(dataSourceView.sId),
         };
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- onSelect is not stable, mutating the agents list which prevent pagination to work
+    // onSelect is not stable, mutating the agents list which prevent pagination to work
   }, [
     spaceDataSourceViews,
     owner.sId,

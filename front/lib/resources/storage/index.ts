@@ -8,7 +8,6 @@ import type { Sequelize } from "sequelize";
 // Directly require 'pg' here to make sure we are using the same version of the
 // package as the one used by pg package.
 // The doc recommends doing this : https://github.com/brianc/node-pg-types?tab=readme-ov-file#use
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const types = require("pg").types;
 
 const acquireAttempts = new WeakMap<object, number>();
@@ -119,7 +118,6 @@ export const frontSequelize = new SequelizeWithComments(
 let frontReplicaDbInstance: Sequelize | null = null;
 
 export function getFrontReplicaDbConnection() {
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!frontReplicaDbInstance) {
     frontReplicaDbInstance = new SequelizeWithComments(
       dbConfig.getRequiredFrontReplicaDatabaseURI() as string,

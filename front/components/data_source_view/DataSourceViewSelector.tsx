@@ -190,7 +190,6 @@ const getNodesFromConfig = (
       [r.internalId]: {
         isSelected: true,
         node: r,
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         parents: r.parentInternalIds || [],
       },
       ...acc,

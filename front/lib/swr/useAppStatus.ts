@@ -18,7 +18,6 @@ export function useAppStatus() {
   );
 
   return {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     appStatus: data ? data : null,
     isAppStatusLoading: !error && !data,
     isAppStatusError: !!error,

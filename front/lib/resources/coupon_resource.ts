@@ -39,9 +39,7 @@ const DISCOUNT_TYPE_TO_CONTEXT: Record<
   credit_pool_top_up: "credits",
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface CouponResource extends ReadonlyAttributesType<CouponModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class CouponResource extends BaseResource<CouponModel> {
   static model: ModelStatic<CouponModel> = CouponModel;
 

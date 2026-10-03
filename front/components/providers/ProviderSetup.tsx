@@ -363,7 +363,6 @@ export function ProviderSetup({
           </label>
         )}
         <Input
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           type={field.type || "text"}
           placeholder={field.placeholder}
           value={values[field.name]}
@@ -408,7 +407,6 @@ export function ProviderSetup({
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
             {instructions || (
               <p>Provide the necessary configuration for {title}.</p>
             )}
@@ -425,7 +423,6 @@ export function ProviderSetup({
                 </span>
               ) : testSuccessful ? (
                 <span className="text-green-600">
-                  {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
                   {testSuccessMessage ||
                     `Test succeeded! You can now enable ${title}.`}
                 </span>
