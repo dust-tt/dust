@@ -1,0 +1,14 @@
+@cc [owner:id13,label:architecture] mitmproxy-hook-mutation
+Mitmproxy hooks in addon.py MUST mutate the supplied HTTPFlow to configure forwarding, as required
+by mitmproxy's hook API. This is a narrow exception to no-parameter-mutation for those hooks only.
+
+@cc [owner:id13,label:security] simulator-scope
+HTTP response fault injection and hive port remapping MUST apply only to loopback destinations. The launcher MUST
+bind the proxy to loopback, use a separate Chrome profile, and leave OS proxy and trust settings alone.
+
+@cc [owner:id13,label:security] simulator-logging
+Simulator logs MUST NOT record request bodies, cookies, authorization headers, or query strings.
+
+@cc [owner:id13,label:reliability] simulator-wire-integrity
+Threshold buffering MUST preserve byte order and flush the remainder at EOF. Header stripping MUST
+preserve Content-Encoding for encoded bodies unless NS_CORRUPT_ENCODING is explicitly enabled.
