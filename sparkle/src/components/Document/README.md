@@ -73,8 +73,9 @@ Shift+Enter adds a line, Escape or clicking away discards the draft.
 
 Unresolved comments highlight their text and, in containers at least `@sm` wide, add a
 marker in the right gutter. Markers on the same line merge and show a count. Clicking a highlight or a marker opens the
-comments panel on that thread, cycling through overlapping comments. The Comments
-button in the header opens the panel with every thread, resolved ones collapsed at the
+comments panel on that thread, cycling through overlapping comments. In editable text, the
+highlight keeps the text cursor and typing caret in the document. Markers move focus to the
+comment thread. The Comments button in the header opens the panel with every thread, resolved ones collapsed at the
 end. Selecting a thread scrolls to its text and, for authors, shows the reply field.
 Read-only documents and documents without `commentAuthor` keep comments browsable
 without reply, resolve or delete controls. Comment changes use the regular autosave,

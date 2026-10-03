@@ -26,7 +26,7 @@ const commentSchema = replySchema.extend({
 const commentsSchema = z.array(commentSchema);
 
 const HIGHLIGHT_CLASS = cn(
-  "cursor-pointer border-b-2 border-golden-400/70 bg-golden-300/40 transition-colors",
+  "cursor-pointer [[contenteditable=true]_&]:cursor-text border-b-2 border-golden-400/70 bg-golden-300/40 transition-colors",
   "hover:bg-golden-300/60 dark:border-golden-500/70 dark:bg-golden-400/25 dark:hover:bg-golden-400/40",
   "motion-reduce:transition-none print:border-transparent print:bg-transparent"
 );

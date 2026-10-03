@@ -52,8 +52,9 @@ export interface PanelFocusRequest {
  */
 /**
  * @cc [owner:flvndvd,label:react] document-comment-navigation
- * Selecting a thread MUST make it active and scroll its highlight into view. Revealing a
- * comment from a highlight or marker MUST open the panel and request focus on that thread.
+ * Selecting a thread MUST make it active and scroll its highlight into view. Clicking an
+ * editable highlight MUST reveal its comment while preserving editor focus and selection.
+ * Markers and read-only highlights MUST reveal the comment and request focus on its thread.
  * Opening the panel from its toggle MUST request focus on the panel. Closing the panel while
  * focus is inside it MUST return focus to the toggle.
  */
@@ -104,7 +105,37 @@ export const useDocumentComments = ({
     }));
 
   const select = (id: string | null) => {
-    editor?.commands.setActiveComment(id);
+    if (!editor) {
+      return;
+    }
+
+    const { view } = editor;
+    const selection = view.dom.ownerDocument.getSelection();
+    const chain = editor.chain();
+
+    // Clicks update the DOM caret before ProseMirror receives selectionchange.
+    if (
+      editor.isEditable &&
+      view.hasFocus() &&
+      selection?.anchorNode &&
+      selection.focusNode &&
+      view.dom.contains(selection.anchorNode) &&
+      view.dom.contains(selection.focusNode)
+    ) {
+      const anchor = view.posAtDOM(
+        selection.anchorNode,
+        selection.anchorOffset
+      );
+      const head = view.posAtDOM(selection.focusNode, selection.focusOffset);
+      if (
+        anchor !== editor.state.selection.anchor ||
+        head !== editor.state.selection.head
+      ) {
+        chain.setTextSelection({ from: anchor, to: head });
+      }
+    }
+
+    chain.setActiveComment(id).run();
   };
 
   const now = () => new Date().toISOString();
@@ -135,10 +166,14 @@ export const useDocumentComments = ({
       setPanelOpen((open) => !open);
     },
     /** Opens the panel on a comment, from a highlight or marker. */
-    reveal: (id: string) => {
+    reveal: (id: string, { focusPanel = true } = {}) => {
       select(id);
       setPanelOpen(true);
-      requestFocus(id);
+      if (focusPanel) {
+        requestFocus(id);
+      } else {
+        setFocusRequest(null);
+      }
     },
     /** Activates a thread from the panel and scrolls to its text. */
     jumpTo: (id: string) => {
