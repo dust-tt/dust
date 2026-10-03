@@ -49,6 +49,7 @@ import {
   TabsTrigger,
   XCircle,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type PurchaseState = "idle" | "processing" | "success" | "error";
@@ -131,6 +132,7 @@ function UseCouponTab({
   onClose,
   onSuccess,
 }: UseCouponTabProps) {
+  const { t } = useLingui();
   const [couponInput, setCouponInput] = useState<string>("");
   const [checkedCoupon, setCheckedCoupon] = useState<CouponType | null>(null);
   const [couponState, setCouponState] = useState<CouponState>("idle");
@@ -141,6 +143,7 @@ function UseCouponTab({
 
   // For a "credits" coupon, `amount` is the number of bonus AWU credits granted.
   const bonusCredits = checkedCoupon?.amount ?? 0;
+  const bonusCreditsFormatted = formatCredits(bonusCredits);
 
   // "Check" button: validate the code as a "credits" coupon and surface the
   // bonus it would grant before the user commits.
@@ -202,13 +205,13 @@ function UseCouponTab({
             <div className="flex flex-col items-center justify-center gap-4 py-8">
               <Spinner size="lg" />
               <p className="text-sm text-muted-foreground">
-                Applying coupon...
+                <Trans>Applying coupon...</Trans>
               </p>
             </div>
           </DialogContainer>
           <DialogFooter
             rightButtonProps={{
-              label: "Applying...",
+              label: t`Applying...`,
               variant: "primary",
               disabled: true,
             }}
@@ -227,20 +230,22 @@ function UseCouponTab({
               />
               <div className="text-center">
                 <p className="text-lg font-medium text-foreground">
-                  Coupon applied!
+                  <Trans>Coupon applied!</Trans>
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  <span className="font-semibold">
-                    {formatCredits(bonusCredits)} credits
-                  </span>{" "}
-                  have been added to your pool.
+                  <Trans>
+                    <span className="font-semibold">
+                      {bonusCreditsFormatted} credits
+                    </span>{" "}
+                    have been added to your pool.
+                  </Trans>
                 </p>
               </div>
             </div>
           </DialogContainer>
           <DialogFooter
             rightButtonProps={{
-              label: "Close",
+              label: t`Close`,
               variant: "primary",
               onClick: onClose,
             }}
@@ -255,7 +260,7 @@ function UseCouponTab({
               <Icon visual={XCircle} size="lg" className="text-warning-500" />
               <div className="text-center">
                 <p className="text-lg font-medium text-foreground">
-                  Couldn't apply coupon
+                  <Trans>Couldn't apply coupon</Trans>
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {couponError}
@@ -265,12 +270,12 @@ function UseCouponTab({
           </DialogContainer>
           <DialogFooter
             leftButtonProps={{
-              label: "Close",
+              label: t`Close`,
               variant: "outline",
               onClick: onClose,
             }}
             rightButtonProps={{
-              label: "Try again",
+              label: t`Try again`,
               variant: "primary",
               onClick: resetCouponInput,
             }}
@@ -284,21 +289,23 @@ function UseCouponTab({
           <DialogContainer>
             <div className="flex flex-col gap-4">
               <p className="text-sm text-muted-foreground">
-                Have a coupon code? Enter it below to add free credits to your
-                Workspace Credits Pool.
+                <Trans>
+                  Have a coupon code? Enter it below to add free credits to your
+                  Workspace Credits Pool.
+                </Trans>
               </p>
               <div className="flex flex-col gap-2">
                 <label
                   htmlFor="couponCode"
                   className="text-sm font-medium text-foreground"
                 >
-                  Coupon code
+                  <Trans>Coupon code</Trans>
                 </label>
                 <div className="flex items-start gap-2">
                   <div className="flex flex-col gap-1">
                     <Input
                       id="couponCode"
-                      placeholder="Enter code"
+                      placeholder={t`Enter code`}
                       value={couponInput}
                       onChange={(e) => {
                         setCouponInput(e.target.value);
@@ -316,7 +323,7 @@ function UseCouponTab({
                     )}
                   </div>
                   <Button
-                    label="Check"
+                    label={t`Check`}
                     variant="outline"
                     size="sm"
                     onClick={handleCheckCoupon}
@@ -329,26 +336,26 @@ function UseCouponTab({
               {couponState === "checked" && checkedCoupon && (
                 <div className="flex flex-col gap-2 rounded-xl bg-muted-background p-4">
                   <SummaryRow
-                    label="Coupon"
+                    label={t`Coupon`}
                     value={checkedCoupon.code}
                     dimmed
                   />
                   {currentTotalPoolCredits !== undefined && (
                     <SummaryRow
-                      label="Current Credits Pool"
+                      label={t`Current Credits Pool`}
                       value={<CreditValue credits={currentTotalPoolCredits} />}
                       dimmed
                     />
                   )}
                   <SummaryRow
-                    label="Bonus Credits"
+                    label={t`Bonus Credits`}
                     value={<CreditValue credits={bonusCredits} />}
                     dimmed
                   />
                   <div className="py-1" />
                   {currentTotalPoolCredits !== undefined && (
                     <SummaryRow
-                      label="New Credits Pool"
+                      label={t`New Credits Pool`}
                       value={
                         <CreditValue
                           credits={currentTotalPoolCredits + bonusCredits}
@@ -361,9 +368,9 @@ function UseCouponTab({
             </div>
           </DialogContainer>
           <DialogFooter>
-            <Button label="Cancel" variant="outline" onClick={onClose} />
+            <Button label={t`Cancel`} variant="outline" onClick={onClose} />
             <Button
-              label="Apply coupon"
+              label={t`Apply coupon`}
               variant="primary"
               onClick={handleRedeemCoupon}
               disabled={couponState !== "checked"}
@@ -397,6 +404,7 @@ export function BuyAwuCreditsDialog({
   isAwuPurchaseInfoError,
   currentTotalPoolCredits,
 }: BuyAwuCreditsDialogProps) {
+  const { t } = useLingui();
   const [amountInput, setAmountInput] = useState<string>("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [acceptedNonRefundable, setAcceptedNonRefundable] = useState(false);
@@ -433,7 +441,7 @@ export function BuyAwuCreditsDialog({
         onPurchaseSuccess?.();
         break;
       case "failed":
-        setErrorMessage(attempt.errorMessage ?? "Payment failed.");
+        setErrorMessage(attempt.errorMessage ?? t`Payment failed.`);
         setPurchaseState("error");
         break;
       case "pending":
@@ -441,7 +449,7 @@ export function BuyAwuCreditsDialog({
       default:
         assertNeverAndIgnore(attempt.status);
     }
-  }, [attempt, purchaseState, purchaseStartedAtMs, onPurchaseSuccess]);
+  }, [attempt, purchaseState, purchaseStartedAtMs, onPurchaseSuccess, t]);
 
   const resetModalStateAndClose = useCallback(() => {
     setAmountInput("");
@@ -501,6 +509,7 @@ export function BuyAwuCreditsDialog({
   const addedCredits = Math.ceil(
     currencyToAwuCredits(parsedAmount, currency) / (1 - discountPercent / 100)
   );
+  const addedCreditsFormatted = formatCredits(addedCredits);
 
   // Purchased credits expire one year after purchase (see `purchaseAwuCredits`).
   const expirationDateFormatted = useMemo(
@@ -546,10 +555,10 @@ export function BuyAwuCreditsDialog({
           <div className="flex flex-col items-center justify-center gap-4 py-8">
             <Spinner size="lg" />
             <p className="text-sm text-muted-foreground">
-              Processing payment...
+              <Trans>Processing payment...</Trans>
             </p>
             <p className="text-xs text-muted-foreground">
-              This may take a few seconds.
+              <Trans>This may take a few seconds.</Trans>
             </p>
           </div>
         );
@@ -560,14 +569,14 @@ export function BuyAwuCreditsDialog({
             <Icon visual={CheckCircle} size="lg" className="text-success-500" />
             <div className="text-center">
               <p className="text-lg font-medium text-foreground">
-                Credits purchased successfully!
+                <Trans>Credits purchased successfully!</Trans>
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Your credits are now available.
+                <Trans>Your credits are now available.</Trans>
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 <span className="font-semibold">
-                  Invoice has been sent by email.
+                  <Trans>Invoice has been sent by email.</Trans>
                 </span>
               </p>
             </div>
@@ -580,13 +589,13 @@ export function BuyAwuCreditsDialog({
             <Icon visual={XCircle} size="lg" className="text-warning-500" />
             <div className="text-center">
               <p className="text-lg font-medium text-foreground">
-                Something went wrong
+                <Trans>Something went wrong</Trans>
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {errorMessage}
               </p>
               <p className="mt-2 text-xs text-muted-foreground">
-                Please contact support if the issue persists.
+                <Trans>Please contact support if the issue persists.</Trans>
               </p>
             </div>
           </div>
@@ -601,7 +610,7 @@ export function BuyAwuCreditsDialog({
                   htmlFor="amount"
                   className="text-sm font-medium text-foreground"
                 >
-                  Amount
+                  <Trans>Amount</Trans>
                 </label>
                 <div className="flex items-center gap-3">
                   <div className="relative">
@@ -624,7 +633,7 @@ export function BuyAwuCreditsDialog({
                   </div>
                   {isValidAmount && (
                     <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                      {formatCredits(addedCredits)} credits
+                      <Trans>{addedCreditsFormatted} credits</Trans>
                     </span>
                   )}
                   <div className="ml-auto flex gap-2">
@@ -641,37 +650,41 @@ export function BuyAwuCreditsDialog({
                 </div>
                 {amountExceedsMax && maxAmountFormatted && (
                   <p className="text-xs text-warning-500">
-                    Amount exceeds the {maxAmountFormatted} limit. Please{" "}
-                    <a
-                      href={`mailto:${supportEmail}?subject=Higher%20credit%20limit%20request`}
-                      className="underline"
-                    >
-                      contact support
-                    </a>
-                    .
+                    <Trans>
+                      Amount exceeds the {maxAmountFormatted} limit. Please{" "}
+                      <a
+                        href={`mailto:${supportEmail}?subject=Higher%20credit%20limit%20request`}
+                        className="underline"
+                      >
+                        contact support
+                      </a>
+                      .
+                    </Trans>
                   </p>
                 )}
               </div>
 
               {isValidAmount && !amountExceedsMax && (
                 <div className="flex flex-col gap-2 rounded-xl bg-muted-background p-4">
-                  <p className="font-semibold text-foreground">Summary</p>
+                  <p className="font-semibold text-foreground">
+                    <Trans>Summary</Trans>
+                  </p>
                   {currentTotalPoolCredits !== undefined && (
                     <SummaryRow
-                      label="Current Credits Pool"
+                      label={t`Current Credits Pool`}
                       value={<CreditValue credits={currentTotalPoolCredits} />}
                       dimmed
                     />
                   )}
                   <SummaryRow
-                    label="Added Credits"
+                    label={t`Added Credits`}
                     value={<CreditValue credits={addedCredits} />}
                     dimmed
                   />
                   <div className="py-1" />
                   {currentTotalPoolCredits !== undefined && (
                     <SummaryRow
-                      label="New Credits Pool"
+                      label={t`New Credits Pool`}
                       value={
                         <CreditValue
                           credits={currentTotalPoolCredits + addedCredits}
@@ -680,7 +693,7 @@ export function BuyAwuCreditsDialog({
                     />
                   )}
                   <SummaryRow
-                    label="Cost (excl. tax)"
+                    label={t`Cost (excl. tax)`}
                     value={`${currencySymbol}${formatCost(parsedAmount)}`}
                   />
                 </div>
@@ -690,7 +703,7 @@ export function BuyAwuCreditsDialog({
                 awuPurchaseInfo.paymentMethod && (
                   <div className="flex flex-col gap-2">
                     <p className="text-sm font-medium text-foreground">
-                      Payment method
+                      <Trans>Payment method</Trans>
                     </p>
                     <div className="flex w-full items-center justify-between rounded-lg border border-separator bg-muted px-4 py-3">
                       <div className="flex items-center gap-3">
@@ -708,7 +721,7 @@ export function BuyAwuCreditsDialog({
                         </span>
                       </div>
                       <Button
-                        label="Change"
+                        label={t`Change`}
                         variant="ghost"
                         size="sm"
                         href={`/w/${workspaceId}/subscription/manage`}
@@ -718,8 +731,10 @@ export function BuyAwuCreditsDialog({
                 )}
 
               <p className="text-xs text-muted-foreground">
-                Credits are valid for 12 months: credits purchased today expire
-                on {expirationDateFormatted}.
+                <Trans>
+                  Credits are valid for 12 months: credits purchased today
+                  expire on {expirationDateFormatted}.
+                </Trans>
               </p>
 
               <div className="flex flex-col gap-3 border-t border-border pt-4">
@@ -729,22 +744,24 @@ export function BuyAwuCreditsDialog({
                     onCheckedChange={() => setAcceptedTerms(!acceptedTerms)}
                   />
                   <span className="text-sm text-foreground">
-                    I agree to the{" "}
-                    <Hoverable
-                      href="https://dust.tt/terms"
-                      variant="highlight"
-                      target="_blank"
-                    >
-                      Terms & Conditions
-                    </Hoverable>{" "}
-                    and{" "}
-                    <Hoverable
-                      href="https://dust.tt/privacy"
-                      variant="highlight"
-                      target="_blank"
-                    >
-                      Privacy Policy
-                    </Hoverable>
+                    <Trans>
+                      I agree to the{" "}
+                      <Hoverable
+                        href="https://dust.tt/terms"
+                        variant="highlight"
+                        target="_blank"
+                      >
+                        Terms & Conditions
+                      </Hoverable>{" "}
+                      and{" "}
+                      <Hoverable
+                        href="https://dust.tt/privacy"
+                        variant="highlight"
+                        target="_blank"
+                      >
+                        Privacy Policy
+                      </Hoverable>
+                    </Trans>
                   </span>
                 </label>
 
@@ -756,7 +773,9 @@ export function BuyAwuCreditsDialog({
                     }
                   />
                   <span className="text-sm text-foreground">
-                    I understand credits are non-refundable after purchase
+                    <Trans>
+                      I understand credits are non-refundable after purchase
+                    </Trans>
                   </span>
                 </label>
               </div>
@@ -773,12 +792,12 @@ export function BuyAwuCreditsDialog({
         return (
           <DialogFooter
             leftButtonProps={{
-              label: "Cancel",
+              label: t`Cancel`,
               variant: "outline",
               disabled: true,
             }}
             rightButtonProps={{
-              label: "Processing...",
+              label: t`Processing...`,
               variant: "primary",
               disabled: true,
             }}
@@ -788,7 +807,7 @@ export function BuyAwuCreditsDialog({
         return (
           <DialogFooter
             rightButtonProps={{
-              label: "Close",
+              label: t`Close`,
               variant: "primary",
               onClick: resetModalStateAndClose,
             }}
@@ -798,12 +817,12 @@ export function BuyAwuCreditsDialog({
         return (
           <DialogFooter
             leftButtonProps={{
-              label: "Close",
+              label: t`Close`,
               variant: "outline",
               onClick: resetModalStateAndClose,
             }}
             rightButtonProps={{
-              label: "Manage invoices",
+              label: t`Manage invoices`,
               variant: "primary",
               onClick: () => {
                 window.open(`/w/${workspaceId}/subscription/manage`, "_blank");
@@ -815,12 +834,12 @@ export function BuyAwuCreditsDialog({
         return (
           <DialogFooter>
             <Button
-              label="Cancel"
+              label={t`Cancel`}
               variant="outline"
               onClick={resetModalStateAndClose}
             />
             <Button
-              label={`Add ${formatCredits(addedCredits)} credits`}
+              label={t`Add ${addedCreditsFormatted} credits`}
               variant="primary"
               onClick={handlePurchase}
               disabled={!canPurchase}
@@ -835,7 +854,9 @@ export function BuyAwuCreditsDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Top-up</DialogTitle>
+            <DialogTitle>
+              <Trans>Top-up</Trans>
+            </DialogTitle>
           </DialogHeader>
           <DialogContainer>
             <div className="flex justify-center py-8">
@@ -858,30 +879,34 @@ export function BuyAwuCreditsDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Top-up</DialogTitle>
+            <DialogTitle>
+              <Trans>Top-up</Trans>
+            </DialogTitle>
             <DialogDescription>
-              We couldn't load your purchase information.
+              <Trans>We couldn't load your purchase information.</Trans>
             </DialogDescription>
           </DialogHeader>
           <DialogContainer>
             <div className="flex flex-col items-center justify-center gap-4 py-8">
               <Icon visual={XCircle} size="lg" className="text-warning-500" />
               <p className="text-center text-sm text-muted-foreground">
-                Something went wrong while loading your top-up options. Please
-                try again in a moment, or{" "}
-                <a
-                  href={`mailto:${supportEmail}?subject=Credit%20purchase%20-%20unable%20to%20load`}
-                  className="text-action-500 hover:underline"
-                >
-                  contact support
-                </a>{" "}
-                if the issue persists.
+                <Trans>
+                  Something went wrong while loading your top-up options. Please
+                  try again in a moment, or{" "}
+                  <a
+                    href={`mailto:${supportEmail}?subject=Credit%20purchase%20-%20unable%20to%20load`}
+                    className="text-action-500 hover:underline"
+                  >
+                    contact support
+                  </a>{" "}
+                  if the issue persists.
+                </Trans>
               </p>
             </div>
           </DialogContainer>
           <DialogFooter
             leftButtonProps={{
-              label: "Close",
+              label: t`Close`,
               variant: "outline",
               onClick: onClose,
             }}
@@ -902,26 +927,32 @@ export function BuyAwuCreditsDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Top-up</DialogTitle>
+            <DialogTitle>
+              <Trans>Top-up</Trans>
+            </DialogTitle>
             <DialogDescription>
-              Credit purchases are not available for your current plan.
+              <Trans>
+                Credit purchases are not available for your current plan.
+              </Trans>
             </DialogDescription>
           </DialogHeader>
           <DialogContainer>
             <p className="text-sm text-muted-foreground">
-              Please{" "}
-              <a
-                href={`mailto:${supportEmail}?subject=Credit%20purchase`}
-                className="text-action-500 hover:underline"
-              >
-                contact support
-              </a>{" "}
-              for assistance.
+              <Trans>
+                Please{" "}
+                <a
+                  href={`mailto:${supportEmail}?subject=Credit%20purchase`}
+                  className="text-action-500 hover:underline"
+                >
+                  contact support
+                </a>{" "}
+                for assistance.
+              </Trans>
             </p>
           </DialogContainer>
           <DialogFooter
             leftButtonProps={{
-              label: "Close",
+              label: t`Close`,
               variant: "outline",
               onClick: onClose,
             }}
@@ -942,26 +973,30 @@ export function BuyAwuCreditsDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Top-up</DialogTitle>
+            <DialogTitle>
+              <Trans>Top-up</Trans>
+            </DialogTitle>
             <DialogDescription>
-              No billing configuration found for this workspace.
+              <Trans>No billing configuration found for this workspace.</Trans>
             </DialogDescription>
           </DialogHeader>
           <DialogContainer>
             <p className="text-sm text-muted-foreground">
-              Please{" "}
-              <a
-                href={`mailto:${supportEmail}?subject=Credit%20purchase%20-%20billing%20setup`}
-                className="text-action-500 hover:underline"
-              >
-                contact support
-              </a>{" "}
-              to set up billing for your workspace.
+              <Trans>
+                Please{" "}
+                <a
+                  href={`mailto:${supportEmail}?subject=Credit%20purchase%20-%20billing%20setup`}
+                  className="text-action-500 hover:underline"
+                >
+                  contact support
+                </a>{" "}
+                to set up billing for your workspace.
+              </Trans>
             </p>
           </DialogContainer>
           <DialogFooter
             leftButtonProps={{
-              label: "Close",
+              label: t`Close`,
               variant: "outline",
               onClick: onClose,
             }}
@@ -987,31 +1022,35 @@ export function BuyAwuCreditsDialog({
     if (purchaseState === "idle" && buyPendingBlock) {
       return (
         <p className="text-sm text-muted-foreground">
-          You have pending credit purchases awaiting payment. Please complete
-          your pending payment before making a new purchase or{" "}
-          <a
-            href={`mailto:${supportEmail}?subject=Cancel%20pending%20credit%20purchase`}
-            className="text-action-500 hover:underline"
-          >
-            contact support
-          </a>{" "}
-          to cancel your pending payments.
+          <Trans>
+            You have pending credit purchases awaiting payment. Please complete
+            your pending payment before making a new purchase or{" "}
+            <a
+              href={`mailto:${supportEmail}?subject=Cancel%20pending%20credit%20purchase`}
+              className="text-action-500 hover:underline"
+            >
+              contact support
+            </a>{" "}
+            to cancel your pending payments.
+          </Trans>
         </p>
       );
     }
     if (purchaseState === "idle" && buyExhaustedBlock) {
       return (
         <p className="text-sm text-muted-foreground">
-          You've reached your credit limit for this billing cycle. It resets at
-          the start of your next billing cycle. If you need additional credits
-          before then, please{" "}
-          <a
-            href={`mailto:${supportEmail}?subject=Credit%20purchase%20limit%20reached`}
-            className="text-action-500 hover:underline"
-          >
-            contact support
-          </a>
-          .
+          <Trans>
+            You've reached your credit limit for this billing cycle. It resets
+            at the start of your next billing cycle. If you need additional
+            credits before then, please{" "}
+            <a
+              href={`mailto:${supportEmail}?subject=Credit%20purchase%20limit%20reached`}
+              className="text-action-500 hover:underline"
+            >
+              contact support
+            </a>
+            .
+          </Trans>
         </p>
       );
     }
@@ -1023,12 +1062,12 @@ export function BuyAwuCreditsDialog({
       return (
         <DialogFooter
           leftButtonProps={{
-            label: "Close",
+            label: t`Close`,
             variant: "outline",
             onClick: resetModalStateAndClose,
           }}
           rightButtonProps={{
-            label: "Manage invoices",
+            label: t`Manage invoices`,
             variant: "primary",
             onClick: () => {
               window.open(`/w/${workspaceId}/subscription/manage`, "_blank");
@@ -1041,7 +1080,7 @@ export function BuyAwuCreditsDialog({
       return (
         <DialogFooter
           leftButtonProps={{
-            label: "Close",
+            label: t`Close`,
             variant: "outline",
             onClick: resetModalStateAndClose,
           }}
@@ -1060,7 +1099,9 @@ export function BuyAwuCreditsDialog({
     >
       <DialogContent size="md">
         <DialogHeader>
-          <DialogTitle>Top-up</DialogTitle>
+          <DialogTitle>
+            <Trans>Top-up</Trans>
+          </DialogTitle>
         </DialogHeader>
         {isPurchaseInFlight ? (
           <>
@@ -1070,8 +1111,8 @@ export function BuyAwuCreditsDialog({
         ) : (
           <Tabs defaultValue="buy">
             <TabsList>
-              <TabsTrigger value="buy" label="Buy credits" />
-              <TabsTrigger value="coupon" label="Use coupon" />
+              <TabsTrigger value="buy" label={t`Buy credits`} />
+              <TabsTrigger value="coupon" label={t`Use coupon`} />
             </TabsList>
             <TabsContent value="buy">
               <DialogContainer>{renderBuyTabBody()}</DialogContainer>
