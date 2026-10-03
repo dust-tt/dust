@@ -582,6 +582,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     hasMore: boolean;
     lastValue: string | null;
   }> {
+    const readableSpaces = auth.getReadableSpaceModelIds();
+    if (
+      readableSpaces.kind === "ids" &&
+      readableSpaces.resourceIds.length === 0
+    ) {
+      return { spaces: [], hasMore: false, lastValue: null };
+    }
+
     const cursorOperator = pagination.orderDirection === "desc" ? Op.lt : Op.gt;
 
     const fetchLimit = pagination.limit + 1;
@@ -591,6 +599,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     const spaces = await this.baseFetch(auth, {
       where: {
         kind: "project",
+        ...(readableSpaces.kind === "ids" && {
+          id: { [Op.in]: readableSpaces.resourceIds },
+        }),
         ...(query?.trim() && { name: { [Op.iLike]: `%${query}%` } }),
         ...(pagination.lastValue && {
           [Op.and]: [
@@ -606,17 +617,16 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       limit: fetchLimit,
     });
 
-    const hasMore = spaces.length > pagination.limit;
-    const resultSpaces = hasMore ? spaces.slice(0, pagination.limit) : spaces;
+    const readableOnPage = spaces.filter((space) => auth.can("read", space));
+    const hasMore = readableOnPage.length > pagination.limit;
+    const resultSpaces = hasMore
+      ? readableOnPage.slice(0, pagination.limit)
+      : readableOnPage;
 
     const lastSpace = resultSpaces[resultSpaces.length - 1];
     const lastValue = lastSpace?.name ?? null;
 
-    return {
-      spaces: resultSpaces.filter((space) => auth.can("read", space)),
-      hasMore,
-      lastValue,
-    };
+    return { spaces: resultSpaces, hasMore, lastValue };
   }
 
   static async listWorkspaceDefaultSpaces(

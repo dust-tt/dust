@@ -227,6 +227,52 @@ describe("GET /api/w/:wId/spaces/search_projects", () => {
       const returnedSpaceIds = data.spaces.map((s: { sId: string }) => s.sId);
       expect(returnedSpaceIds).toContain(permittedSpace.sId);
       expect(returnedSpaceIds).not.toContain(unpermittedSpace.sId);
+      expect(data.hasMore).toBe(false);
+      expect(data.lastValue).toBe(permittedSpace.name);
+    });
+
+    it("never exposes Pods the user cannot read through hasMore or lastValue", async () => {
+      const { workspace, user, auth } = await createPrivateApiMockRequest({
+        role: "user",
+      });
+
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+
+      const hiddenNames = ["0 hidden", "B hidden", "D hidden"];
+      for (const name of hiddenNames) {
+        await SpaceFactory.project(workspace, undefined, { name });
+      }
+      const readableNames = ["A readable", "C readable"];
+      for (const name of readableNames) {
+        const pod = await SpaceFactory.project(workspace, undefined, { name });
+        await pod.addMembers(adminAuth, { userIds: [user.sId] });
+      }
+
+      await auth.refresh();
+
+      const seenNames: string[] = [];
+      const cursors: (string | null)[] = [];
+      let lastValue: string | undefined;
+      for (let page = 0; page < 10; page++) {
+        const response = await searchProjects(workspace, {
+          limit: "1",
+          ...(lastValue ? { lastValue } : {}),
+        });
+
+        expect(response.status).toBe(200);
+        const data = await response.json();
+        seenNames.push(...data.spaces.map((s: { name: string }) => s.name));
+        cursors.push(data.lastValue);
+        if (!data.hasMore) {
+          break;
+        }
+        lastValue = data.lastValue;
+      }
+
+      expect(seenNames).toEqual(readableNames);
+      expect(cursors).toEqual(readableNames);
     });
   });
 });
