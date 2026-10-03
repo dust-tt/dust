@@ -13,6 +13,13 @@ spec = importlib.util.spec_from_file_location('v2_support', ROOT / 'tests/suppor
 support = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(support)
 MANIFEST_SHA256 = '67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1'
+KNOBS = {
+    'grv': ('DFS_FDB_GRV_BATCH_TIMEOUT_SECONDS', 'grv_batch_timeout', 0.005, 0.000001),
+    'client_busy': ('DFS_FDB_CLIENT_BUSY_WAIT_SECONDS', 'busy_wait_threshold', 0.0, 0.0001),
+    'commit_min': ('DFS_FDB_COMMIT_BATCH_MIN_SECONDS', 'commit_transaction_batch_interval_min', 0.001, 0.00001),
+    'commit_idle': ('DFS_FDB_COMMIT_BATCH_IDLE_SECONDS', 'commit_transaction_batch_interval_from_idle', 0.0005, 0.00001),
+    'server_busy': ('DFS_FDB_SERVER_BUSY_WAIT_SECONDS', 'busy_wait_threshold', 0.0, 0.0001),
+}
 
 
 def corpus(work):
@@ -29,6 +36,8 @@ def metadata(binary='/target/release/dfs-server-v2'):
             'memory': Path('/proc/meminfo').read_text().splitlines()[0],
             'server_binary_sha256': hashlib.sha256(Path(binary).read_bytes()).hexdigest(),
             'fdb_version': '7.3.69', 'es_version': '8.15.3',
+            'fdb_tuning_seconds': {name: float(os.environ.get(variable, tuned))
+                for name, (variable, _, _, tuned) in KNOBS.items()},
             'server_cache': 'advisory object/parent IDs only; 16384 entries / 8 MiB accounting budget',
             'backend_caches': 'FDB, ES, and OS caches retained across dfs-server restarts',
             'durability': 'normal FDB commits; no post-acknowledgement persistence drain'}

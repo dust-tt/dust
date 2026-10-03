@@ -30,6 +30,18 @@ These pinned-version settings favor latency at increased CPU cost; conflict chec
 synchronization are unchanged. `local/fdb.bash` preserves the official image's startup/volume setup.
 Run `local/run up` after changing these settings so Compose recreates the node with its data intact.
 
+The five latency overrides below are in **seconds**. Client settings apply before the native FDB
+network starts; server settings apply at node startup. They are experimental local latency defaults,
+not a validated production scaling profile.
+
+| Environment variable | Local default | FDB 7.3.69 default |
+| --- | ---: | ---: |
+| `DFS_FDB_GRV_BATCH_TIMEOUT_SECONDS` | 0.000001 | 0.005 |
+| `DFS_FDB_CLIENT_BUSY_WAIT_SECONDS` | 0.0001 | 0 |
+| `DFS_FDB_COMMIT_BATCH_MIN_SECONDS` | 0.00001 | 0.001 |
+| `DFS_FDB_COMMIT_BATCH_IDLE_SECONDS` | 0.00001 | 0.0005 |
+| `DFS_FDB_SERVER_BUSY_WAIT_SECONDS` | 0.0001 | 0 |
+
 The development container reads FDB's cluster file from a shared volume and connects over the private
 Compose network, independently of database restarts. ES is reachable as `http://es:9200`.
 Host ports are loopback-only:
@@ -108,3 +120,16 @@ isolated and cleaned after success. Run diagnostics sequentially, separately fro
 names and durations, not paths or values. Read-version acquisition is timed explicitly in this mode;
 normal benchmarks keep profiling disabled. Preparation includes its nested workspace/object,
 authorization, and block-read phases, so phase totals must not be summed together indiscriminately.
+
+To isolate each tuning setting, run from the host with no other local tests or benchmarks running:
+
+```sh
+python3 bench/ablate.py --work /tmp/dfs-v2-ablation --files 1000 --repeats 3
+```
+
+This restarts the local FDB node before every case, preserves its volumes, and restores its original
+settings on exit. It compares all defaults, all tuned, each setting alone, and each setting removed
+from all tuned, with a seeded shuffled order and profiling disabled. Each run uses a new DFS fixture
+and verifies every file hash. Records include the exact server arguments, client/server knob values,
+binary hash, timings, and CPU counters. CPU covers the whole fixture including generation/setup/hash
+verification/cleanup, not only timed untar. FDB process caches restart; OS caches and ES remain warm.
