@@ -316,6 +316,46 @@ describe("SkillResource", () => {
     });
   });
 
+  describe("listExpiredPending", () => {
+    it("lists only pending skills created before the cutoff, oldest first", async () => {
+      const { authenticator: auth } = testContext;
+      const first = await SkillFactory.create(auth, {
+        name: "Pending 1",
+        status: "pending",
+      });
+      const second = await SkillFactory.create(auth, {
+        name: "Pending 2",
+        status: "pending",
+      });
+      await SkillFactory.create(auth, { name: "Active skill" });
+
+      const inOneMinute = new Date(Date.now() + 60 * 1000);
+      const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+
+      const expired = await SkillResource.listExpiredPending(auth, {
+        createdBefore: inOneMinute,
+        limit: 10,
+      });
+      expect(expired.map((skill) => skill.sId)).toEqual([
+        first.sId,
+        second.sId,
+      ]);
+
+      const limited = await SkillResource.listExpiredPending(auth, {
+        createdBefore: inOneMinute,
+        limit: 1,
+      });
+      expect(limited.map((skill) => skill.sId)).toEqual([first.sId]);
+
+      expect(
+        await SkillResource.listExpiredPending(auth, {
+          createdBefore: oneMinuteAgo,
+          limit: 10,
+        })
+      ).toEqual([]);
+    });
+  });
+
   describe("editor grants", () => {
     // The per-user grants on a skill, straight from the table.
     async function fetchSkillGrants(skillModelId: ModelId) {
