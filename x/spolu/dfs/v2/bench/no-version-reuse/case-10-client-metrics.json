@@ -1,0 +1,144 @@
+{
+  "dfs_client_metrics": {
+    "fuse.create": {
+      "calls": 32,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.flush": {
+      "calls": 576,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.forget": {
+      "calls": 66,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.fsync": {
+      "calls": 32,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.getattr": {
+      "calls": 127,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.init": {
+      "calls": 1,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.lookup": {
+      "calls": 455,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.mkdir": {
+      "calls": 1,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.open": {
+      "calls": 544,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.opendir": {
+      "calls": 2,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.read": {
+      "calls": 288,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.readdir": {
+      "calls": 1,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.readdirplus": {
+      "calls": 1,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.release": {
+      "calls": 576,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.releasedir": {
+      "calls": 2,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.rmdir": {
+      "calls": 1,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.setattr": {
+      "calls": 64,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.unlink": {
+      "calls": 32,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "fuse.write": {
+      "calls": 32,
+      "elapsed_ms": 0.0,
+      "errors": 0
+    },
+    "rpc.create": {
+      "calls": 33,
+      "elapsed_ms": 25.745124,
+      "errors": 0
+    },
+    "rpc.fsync": {
+      "calls": 32,
+      "elapsed_ms": 10.793708,
+      "errors": 0
+    },
+    "rpc.list": {
+      "calls": 1,
+      "elapsed_ms": 0.387459,
+      "errors": 0
+    },
+    "rpc.lookup": {
+      "calls": 488,
+      "elapsed_ms": 224.917917,
+      "errors": 65
+    },
+    "rpc.read": {
+      "calls": 288,
+      "elapsed_ms": 148.059169,
+      "errors": 0
+    },
+    "rpc.remove": {
+      "calls": 33,
+      "elapsed_ms": 21.929251,
+      "errors": 0
+    },
+    "rpc.stat": {
+      "calls": 1,
+      "elapsed_ms": 0.505333,
+      "errors": 0
+    },
+    "rpc.update": {
+      "calls": 32,
+      "elapsed_ms": 25.525039,
+      "errors": 0
+    },
+    "rpc.write": {
+      "calls": 32,
+      "elapsed_ms": 29.451876,
+      "errors": 0
+    }
+  }
+}

@@ -1,6 +1,6 @@
 # Benchmark results — dfs v2 localhost
 
-2026-10-02. Native Linux ARM64 in Docker Desktop on an Apple M4 Max; Rust 1.98.1 release builds.
+2026-10-02–03. Native Linux ARM64 in Docker Desktop on an Apple M4 Max; Rust 1.98.1 release builds.
 One FDB 7.3.69 node (single SSD storage), one ES 8.15.3 node (one primary, zero replicas).
 The Docker VM has 16 vCPUs and 7.65 GiB RAM.
 FDB/ES each have a 3 GiB container limit; ES has a 1 GiB heap. The unchanged v1 Rust client/FUSE
@@ -31,6 +31,60 @@ The 30-second target remains unmet. The population mount recorded 40,335 mutatio
 about 0.752 ms each, plus 10,205 lookups averaging 0.391 ms. These are client RPC timings, not FDB
 commit-only measurements or an additive wall-time breakdown; mount counters also include setup
 and manifest reads outside timed untar. See [counters](early-reads/case-0-client-metrics.json).
+
+### dfs v2 [fresh read versions]
+
+2026-10-03. Removed commit-version reuse and its speculative fallback paths. All attempts now obtain
+fresh read versions from FDB. Early metadata/authorization reads and the five tuned settings remain.
+Untar measured **35.563 s**, compared with the previous **36.421 s** with reuse. This is a single-run
+comparison across runs, not evidence that removing reuse itself improves performance.
+Measured server revision `0502f90865`; all 24 checks passed with the unchanged client/workload,
+normal durable FDB commits, and ten server/session/mount resets. Phase profiling was disabled.
+
+```text
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 1,705.91  | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 134.00    | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 275.65    | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 8.84      | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 5,883.14  | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 874.47    | OK     |
+| metadata     | stat missing (256 paths)                       | first | 171.37    | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 1.76      | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 5,134.33  | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 202.83    | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 5,146.33  | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 194.60    | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 755.48    | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 29.83     | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 130.56    | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 8.76      | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 11,483.78 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 1,089.46  | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 355.12    | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 16.00     | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 62.21     | OK     |
+| file sync    | fsync (32 files)                               | once  | 22.32     | OK     |
+| write        | close (32 files)                               | once  | 0.68      | OK     |
+| write        | unlink (32 files)                              | once  | 35.43     | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+```
+
+Untar: **35.563 s**. Remaining client `syncfs`: **0.000064 s**
+after untar and **0.000058 s** after the suite. Shutdown: **0.070 s**.
+These drain timings exclude writeback already completed during the workload; there is no remaining
+FDB persistence drain after acknowledgment. Backend/OS caches remain warm; these are single runs.
+
+A separate run through **two server processes in the same workspace** completed and verified
+100 writes (50 × 1 KiB per writer) in **35.21 ms**. It also checked search/workspace
+isolation and shared discovery with 1/2/512 grants. This writer setup differs from the historical
+single-server, different-workspace sample; debug commit logging was enabled only for this separate run.
+
+[Run metadata](no-version-reuse/filesystem.json), [DFS rows](no-version-reuse/dfs.json),
+[local rows](no-version-reuse/local.json), [two-server results](no-version-reuse/workspaces.json),
+[configuration](no-version-reuse/configuration.json), and [per-case RPC counters](no-version-reuse/).
 
 ### dfs v2 [early metadata and authorization reads]
 
