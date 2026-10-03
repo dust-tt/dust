@@ -47,6 +47,19 @@ poll. A 200 SSE response alone does not prove streaming works: inspect delivered
 content. The handshake deadline is 2.5 seconds per attempt; retries add delay.
 Concurrent streams can reach the shared failure threshold sooner.
 
+For child-agent tests in a local workspace, set `DUST_PROD_API` to the hive API
+URL (for example, `http://localhost:11000`) in the hive's `env.sh`, then restart
+`front-api` and `front-workers`. Otherwise, the default development configuration
+creates children in the development production workspace, and their local event
+requests return 404.
+
+For Frame function tests, run Viz and configure the sandbox callback tunnel to
+reach the same hive. `SBX_DEV_FRONT_URL` must reach the API and `SBX_DEV_VIZ_URL`
+must reach Viz. Enable `frames_v2` and `frames_v2_functions` in the local workspace.
+Use a durable function that runs longer than 10 seconds: faster functions can
+return their outcome inline without opening an event stream. Check both success
+and error results in the iframe and in the event response.
+
 Restarting the proxy disconnects active requests. Reload after changing scenarios:
 the manager retains degraded SSE health for the page session. Do not run the
 browser sweep during a manual comparison; it switches the same proxy's profile.
@@ -141,7 +154,9 @@ forced polling or requiring authentication. It opens temporary tabs and restores
 an authenticated conversation end to end.
 
 A proxy that releases the handshake and then buffers later events needs separate
-testing: the SSE heartbeat watchdog can take five minutes to detect that stall.
+testing. An agent loop still reported as ongoing switches to polling after 30
+seconds without an event, checked on the 10-second ongoing-loop refresh. Other
+streams rely on the SSE transport's heartbeat timeout, which can take five minutes.
 
 ## Stop
 
