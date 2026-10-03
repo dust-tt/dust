@@ -752,21 +752,16 @@ describe("processToolResults", () => {
       },
     };
 
-    const { outputItems, awaitDurablePersist } = await processToolResults(
-      auth,
-      {
-        localLogger: logger.child({ test: true }),
-        toolContext,
-        toolCallResultContent: [
-          {
-            type: "resource",
-            resource: dataSourceNodeResult,
-          },
-        ],
-      }
-    );
-    const persistResult = await awaitDurablePersist();
-    expect(persistResult.isOk()).toBe(true);
+    const { outputItems } = await processToolResults(auth, {
+      localLogger: logger.child({ test: true }),
+      toolContext,
+      toolCallResultContent: [
+        {
+          type: "resource",
+          resource: dataSourceNodeResult,
+        },
+      ],
+    });
 
     // Frame sandboxes do not mount /files/pod-*, so offloading would leave dsbx unable to
     // rehydrate. Keep the full resource inline on the action output / poll path.
@@ -792,14 +787,11 @@ describe("processToolResults", () => {
       { type: "text", text: "second block" },
     ];
 
-    const { outputItems, generatedFiles, awaitDurablePersist } =
-      await processToolResults(auth, {
-        localLogger: logger.child({ test: true }),
-        toolContext,
-        toolCallResultContent,
-      });
-    const persistResult = await awaitDurablePersist();
-    expect(persistResult.isOk()).toBe(true);
+    const { outputItems, generatedFiles } = await processToolResults(auth, {
+      localLogger: logger.child({ test: true }),
+      toolContext,
+      toolCallResultContent,
+    });
 
     // Sandbox actions persist the whole content array as a single GCS object, but
     // createOutputItems still returns the generic per-content items.
@@ -832,16 +824,11 @@ describe("processToolResults", () => {
       data: "x".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES),
     });
 
-    const { outputItems, awaitDurablePersist } = await processToolResults(
-      auth,
-      {
-        localLogger: logger.child({ test: true }),
-        toolContext,
-        toolCallResultContent: [{ type: "text", text: largeJson }],
-      }
-    );
-    const persistResult = await awaitDurablePersist();
-    expect(persistResult.isOk()).toBe(true);
+    const { outputItems } = await processToolResults(auth, {
+      localLogger: logger.child({ test: true }),
+      toolContext,
+      toolCallResultContent: [{ type: "text", text: largeJson }],
+    });
 
     expect(outputItems).toHaveLength(1);
     const stored = outputItems[0].content;
@@ -866,16 +853,11 @@ describe("processToolResults", () => {
 
     const largeText = "x".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES + 1);
 
-    const { outputItems, awaitDurablePersist } = await processToolResults(
-      auth,
-      {
-        localLogger: logger.child({ test: true }),
-        toolContext,
-        toolCallResultContent: [{ type: "text", text: largeText }],
-      }
-    );
-    const persistResult = await awaitDurablePersist();
-    expect(persistResult.isOk()).toBe(true);
+    const { outputItems } = await processToolResults(auth, {
+      localLogger: logger.child({ test: true }),
+      toolContext,
+      toolCallResultContent: [{ type: "text", text: largeText }],
+    });
 
     expect(outputItems).toHaveLength(1);
     expect(outputItems[0].content).toEqual({ type: "text", text: largeText });
@@ -960,16 +942,12 @@ describe("processToolResults", () => {
     ];
     const structuredContent = { items: [{ id: 1 }], nextCursor: "abc" };
 
-    const { outputItems, awaitDurablePersist } = await processToolResults(
-      auth,
-      {
-        localLogger: logger.child({ test: true }),
-        toolContext,
-        toolCallResultContent,
-        toolCallResultStructuredContent: structuredContent,
-      }
-    );
-    expect((await awaitDurablePersist()).isOk()).toBe(true);
+    const { outputItems } = await processToolResults(auth, {
+      localLogger: logger.child({ test: true }),
+      toolContext,
+      toolCallResultContent,
+      toolCallResultStructuredContent: structuredContent,
+    });
 
     expect(outputItems).toHaveLength(1);
 
@@ -984,20 +962,20 @@ describe("processToolResults", () => {
     });
   });
 
-  it("should leave the action without an output path when the deferred sandbox output write fails", async () => {
+  it("should fail output processing when the sandbox output write fails", async () => {
     const { auth, action, toolContext } = await setupSandboxFunctionTest();
 
     fileStorageMock.setFileSaveFails((filePath) =>
       filePath.endsWith(`mcp_output_items/${action.sId}/output.json`)
     );
 
-    const { awaitDurablePersist } = await processToolResults(auth, {
-      localLogger: logger.child({ test: true }),
-      toolContext,
-      toolCallResultContent: [{ type: "text", text: "some output" }],
-    });
-    const persistResult = await awaitDurablePersist();
-    expect(persistResult.isErr()).toBe(true);
+    await expect(
+      processToolResults(auth, {
+        localLogger: logger.child({ test: true }),
+        toolContext,
+        toolCallResultContent: [{ type: "text", text: "some output" }],
+      })
+    ).rejects.toThrow();
 
     // No acceptable degraded state: the row must not point at an object that was never written.
     const refetched =

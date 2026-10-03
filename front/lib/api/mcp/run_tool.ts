@@ -136,23 +136,22 @@ export async function* runToolWithStreaming(
 
   // Tool result processing can legitimately take up to 5 minutes when processing files,
   // so heartbeat while this scoped post-processing phase is running.
-  const { outputItems, generatedFiles, awaitDurablePersist } =
-    await withPeriodicHeartbeat(
-      () =>
-        processToolResults(auth, {
-          localLogger,
-          toolCallResultContent: toolCallResult.content,
-          toolCallResultStructuredContent: toolCallResult.structuredContent,
-          toolContext,
-        }),
-      {
-        intervalMs: TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS,
-        heartbeatFn: () => {
-          heartbeat();
-          localLogger.info("MCP tool result processing heartbeat");
-        },
-      }
-    );
+  const { outputItems, generatedFiles } = await withPeriodicHeartbeat(
+    () =>
+      processToolResults(auth, {
+        localLogger,
+        toolCallResultContent: toolCallResult.content,
+        toolCallResultStructuredContent: toolCallResult.structuredContent,
+        toolContext,
+      }),
+    {
+      intervalMs: TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS,
+      heartbeatFn: () => {
+        heartbeat();
+        localLogger.info("MCP tool result processing heartbeat");
+      },
+    }
+  );
 
   // Parse the output resources to check if we find special events that require the agent loop to pause.
   // This could be an authentication, validation, or unconditional exit from the action.
@@ -164,14 +163,6 @@ export async function* runToolWithStreaming(
   recordMcpPauseEventsMs(roundMs(pauseEventsStarted));
 
   if (agentPauseEvents.length > 0) {
-    // Durable GCS may still be in flight from createOutputItems; finish before exiting.
-    const persistResult = await awaitDurablePersist();
-    if (persistResult.isErr()) {
-      localLogger.error(
-        { err: persistResult.error },
-        "Failed to durably persist MCP tool output after pause event"
-      );
-    }
     for (const event of agentPauseEvents) {
       yield event;
     }
@@ -191,13 +182,4 @@ export async function* runToolWithStreaming(
     ),
     generatedFiles,
   };
-
-  // Write-behind GCS: poll/agent already unblocked via Redis stage + succeeded status.
-  const persistResult = await awaitDurablePersist();
-  if (persistResult.isErr()) {
-    localLogger.error(
-      { err: persistResult.error },
-      "Failed to durably persist MCP tool output after success"
-    );
-  }
 }

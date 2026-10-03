@@ -160,17 +160,11 @@ const stageOneGcsContent = warmCacheWithRedis(
   { ttlMs: GCS_CONTENT_CACHE_TTL_MS }
 );
 
-/**
- * Stages MCP output item content in Redis under the same keys readers use
- * (`fetchGcsContentCached`). Call before returning from createOutputItems so
- * consumers can read without waiting on GCS. Replaces post-GCS cache warming.
- */
 export async function stageMcpOutputContentCache(
   auth: Authenticator,
   items: Array<{
     itemId: ModelId;
     content: OutputContent;
-    /** Unused for the key; pass the eventual GCS path when known, else "". */
     gcsPath?: string;
   }>
 ): Promise<void> {

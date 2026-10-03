@@ -40,8 +40,6 @@ export async function toSandboxFunctionMCPActionHttpResponse(
         return new Err(new Error("Failed to read the action output."));
       }
       const output = outputResult.value;
-      // Succeeded while GCS write-behind is still in flight and the Redis stage
-      // was missed: keep the sandbox polling rather than returning empty output.
       if (
         output === null &&
         !action.outputGcsPath &&
