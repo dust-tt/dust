@@ -12,6 +12,13 @@ export type ModelIdentifier = Pick<
   "providerId" | "modelId"
 >;
 
+const modelKey = ({ providerId, modelId }: ModelIdentifier) =>
+  `${providerId}/${modelId}`;
+
+const SUPPORTED_MODEL_CONFIGS_BY_KEY = new Map(
+  SUPPORTED_MODEL_CONFIGS.map((config) => [modelKey(config), config])
+);
+
 // Canonical way to check if a lab is whitelisted.
 // Handle the special case of the routing sentinels (auto, auto_fast, auto_complex),
 // which route to a concrete (whitelisted) model at message-send time.
@@ -33,9 +40,7 @@ export function isModelWhitelisted(
   whitelistedProviders: ReadonlySet<ModelMakerIdType>,
   model: ModelIdentifier
 ): boolean {
-  const config = SUPPORTED_MODEL_CONFIGS.find(
-    (c) => c.providerId === model.providerId && c.modelId === model.modelId
-  );
+  const config = SUPPORTED_MODEL_CONFIGS_BY_KEY.get(modelKey(model));
   const maker = config ? getModelMaker(config) : model.providerId;
   return isModelStreamId(maker) || whitelistedProviders.has(maker);
 }
