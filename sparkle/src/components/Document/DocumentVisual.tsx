@@ -56,8 +56,23 @@ export const DocumentVisual = Node.create({
   }),
   parseHTML: () => [{ tag: "div[data-document-visual]" }],
   renderHTML: ({ HTMLAttributes }) => ["div", HTMLAttributes],
-  addNodeView: () =>
-    ReactNodeViewRenderer(DocumentVisualView, {
-      stopEvent: () => true,
-    }),
+  addNodeView() {
+    const editor = this.editor;
+
+    return ReactNodeViewRenderer(DocumentVisualView, {
+      stopEvent: ({ event }) => {
+        switch (event.type) {
+          case "mousemove":
+          case "mouseleave":
+            return false;
+          case "dragover":
+          case "dragenter":
+          case "drop":
+            return editor.view.dragging === null;
+          default:
+            return true;
+        }
+      },
+    });
+  },
 });
