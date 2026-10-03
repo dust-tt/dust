@@ -49,19 +49,15 @@ async function runMigration(
   backupFile?: string,
   keepFireworks = false
 ) {
-  const { updated, deepseekWithoutFireworks } =
-    await replaceFireworksWithItsLabsInWhitelistedProviders({
-      execute,
-      logger,
-      keepFireworks,
-      backupFile: backupFile ?? (await makeBackupFile()),
-    });
+  const { updated } = await replaceFireworksWithItsLabsInWhitelistedProviders({
+    execute,
+    logger,
+    keepFireworks,
+    backupFile: backupFile ?? (await makeBackupFile()),
+  });
   const change = updated.find((c) => c.workspaceId === workspace.sId);
   return {
     change: change && { before: change.before, after: change.after },
-    reportedDeepseekWithoutFireworks: deepseekWithoutFireworks.includes(
-      workspace.sId
-    ),
   };
 }
 
@@ -157,16 +153,33 @@ describe("replaceFireworksWithItsLabsInWhitelistedProviders", () => {
     ]);
   });
 
-  it("reports a workspace whitelisting deepseek without fireworks, without rewriting it", async () => {
+  it("drops deepseek without fireworks with keepFireworks", async () => {
     const workspace = await makeWorkspace(["openai", "deepseek"]);
 
-    const { change, reportedDeepseekWithoutFireworks } = await runMigration(
-      true,
-      workspace
-    );
+    await runMigration(true, workspace, undefined, true);
+
+    expect(await readStoredWhitelist(workspace)).toEqual(["openai"]);
+  });
+
+  it("keeps the deepseek lab without fireworks without keepFireworks", async () => {
+    const workspace = await makeWorkspace(["openai", "deepseek"]);
+
+    const { change } = await runMigration(true, workspace);
 
     expect(change).toBeUndefined();
-    expect(reportedDeepseekWithoutFireworks).toBe(true);
+    expect(await readStoredWhitelist(workspace)).toEqual([
+      "openai",
+      "deepseek",
+    ]);
+  });
+
+  it("restores deepseek from the backup file", async () => {
+    const workspace = await makeWorkspace(["openai", "deepseek"]);
+    const backupFile = await makeBackupFile();
+
+    await runMigration(true, workspace, backupFile, true);
+    await restoreWhitelistsFromBackup({ execute: true, logger, backupFile });
+
     expect(await readStoredWhitelist(workspace)).toEqual([
       "openai",
       "deepseek",

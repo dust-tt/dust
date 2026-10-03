@@ -33,10 +33,18 @@ type WhitelistChange = z.infer<typeof WhitelistChangeSchema>;
 
 // With `keepFireworks`, only adds the labs: lets this run before whitelisting switches to labs,
 // with a second run without it removing fireworks once the switch is deployed.
+// That first run also drops "deepseek" where fireworks is absent: no DeepSeek-hosted model is
+// reachable, so the entry grants nothing, but as a lab it would grant the Fireworks-served ones.
+// Not on the second run, where "deepseek" without fireworks is the lab, added or admin-chosen.
 export function replaceFireworksWithItsLabs(
   before: string[],
   keepFireworks: boolean
 ): string[] {
+  if (!before.includes(HOST_TO_REPLACE)) {
+    return keepFireworks
+      ? before.filter((entry) => entry !== DEEPSEEK_LAB)
+      : before;
+  }
   const kept = keepFireworks
     ? before
     : before.filter((entry) => entry !== HOST_TO_REPLACE);
@@ -106,7 +114,6 @@ export async function replaceFireworksWithItsLabsInWhitelistedProviders({
   backupFile,
 }: ReplaceFireworksWithItsLabsParams): Promise<{
   updated: WhitelistChange[];
-  deepseekWithoutFireworks: string[];
 }> {
   // Raw rows, not WorkspaceResource: materialization overlays provider kill switches onto
   // whiteListedProviders, and persisting that overlay would make a temporary kill switch permanent.
@@ -122,15 +129,10 @@ export async function replaceFireworksWithItsLabsInWhitelistedProviders({
   });
 
   const updated: WhitelistChange[] = [];
-  const deepseekWithoutFireworks: string[] = [];
   for (const { sId, whiteListedProviders } of rows) {
     const before: string[] = whiteListedProviders ?? [];
-    if (!before.includes(HOST_TO_REPLACE)) {
-      deepseekWithoutFireworks.push(sId);
-      continue;
-    }
     const after = replaceFireworksWithItsLabs(before, keepFireworks);
-    // Only with `keepFireworks`: every lab is already there.
+    // Already migrated, or no fireworks and nothing to drop.
     if (isEqual(after, before)) {
       continue;
     }
@@ -146,26 +148,17 @@ export async function replaceFireworksWithItsLabsInWhitelistedProviders({
       `${execute ? "Will" : "[DRY RUN] Would"} ${action} in workspace ${change.workspaceId}.`
     );
   }
-  // Not rewritten: whitelisting the DeepSeek lab will also grant DeepSeek models served by
-  // Fireworks, which these workspaces cannot reach today.
-  for (const workspaceId of deepseekWithoutFireworks) {
-    logger.warn(
-      { workspaceId },
-      `Workspace ${workspaceId} whitelists ${DEEPSEEK_LAB} without ${HOST_TO_REPLACE}: it will gain Fireworks-served DeepSeek models.`
-    );
-  }
   logger.info(
     {
       fireworksLabs: FIREWORKS_SERVED_LABS,
       keepFireworks,
       updatedCount: updated.length,
-      deepseekWithoutFireworksCount: deepseekWithoutFireworks.length,
     },
     execute ? "Writing changes." : "Dry run complete (use --execute to write)."
   );
 
   if (!execute) {
-    return { updated, deepseekWithoutFireworks };
+    return { updated };
   }
 
   if (!backupFile) {
@@ -184,7 +177,7 @@ export async function replaceFireworksWithItsLabsInWhitelistedProviders({
   );
   logger.info({ writtenCount }, "Migration complete.");
 
-  return { updated, deepseekWithoutFireworks };
+  return { updated };
 }
 
 type RestoreWhitelistsFromBackupParams = {
