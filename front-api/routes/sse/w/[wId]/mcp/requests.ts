@@ -5,15 +5,23 @@ import {
   PostMCPRequestsRequestQuerySchema,
   streamMcpRequests,
 } from "@front-api/routes/sse/v1/w/[wId]/mcp/requests";
+import { z } from "zod";
 
 // Mounted at /api/sse/w/:wId/mcp/requests. Handler logic lives in the
 // v1 sibling file.
+const BrowserMCPRequestsQuerySchema = PostMCPRequestsRequestQuerySchema.extend({
+  transport: z.enum(["sse", "poll"]).default("sse"),
+});
+
 const app = workspaceApp();
 
 app.use("*", streamingTag);
-/** @ignoreswagger */
-app.get("/", validate("query", PostMCPRequestsRequestQuerySchema), (ctx) =>
-  streamMcpRequests(ctx, ctx.var.auth, ctx.req.valid("query"))
-);
+/**
+ * @ignoreswagger Internal browser endpoint: SSE by default; transport=poll returns JSON event batches.
+ */
+app.get("/", validate("query", BrowserMCPRequestsQuerySchema), (ctx) => {
+  const query = ctx.req.valid("query");
+  return streamMcpRequests(ctx, ctx.var.auth, query, query.transport);
+});
 
 export default app;

@@ -4,11 +4,13 @@ import {
   isMCPEventResult,
 } from "@app/lib/api/actions/mcp_client_side";
 import { publishEvent } from "@app/lib/api/assistant/streaming/events";
+import { getRedisEventsBatch } from "@app/lib/api/redis_events_batch";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 import { createCallbackReader } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 
 interface GetMCPEventsForServerOptions {
   mcpServerId: string;
@@ -32,7 +34,7 @@ export async function* getMCPEventsForServer(
     channelId,
     callbackReader.callback,
     "mcp_events",
-    { lastEventId }
+    { lastEventId, signal }
   );
 
   // Unsubscribe if the signal is aborted, to unblock the callbackReader.next() await below.
@@ -88,6 +90,23 @@ export async function* getMCPEventsForServer(
     signal.removeEventListener("abort", unsubscribe);
     unsubscribe();
   }
+}
+
+export async function getMCPEventsBatch(
+  auth: Authenticator,
+  { mcpServerId, lastEventId }: GetMCPEventsForServerOptions,
+  signal: AbortSignal
+): Promise<{ eventId: string; data: JSONRPCMessage }[]> {
+  const events = await getRedisEventsBatch({
+    channel: getMCPServerChannelId(auth, { mcpServerId }),
+    origin: "mcp_events_long_poll",
+    lastEventId: lastEventId ?? null,
+    signal,
+  });
+  return events.map((event) => ({
+    eventId: event.id,
+    data: JSON.parse(event.message.payload),
+  }));
 }
 
 export async function publishMCPResults(
