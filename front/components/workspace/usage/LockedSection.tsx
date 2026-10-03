@@ -5,6 +5,7 @@ import {
   TooltipRoot,
   TooltipTrigger,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface LockedSectionProps {
   locked: boolean;
@@ -17,8 +18,9 @@ export function LockedSection({
   locked,
   children,
   className,
-  tooltipContent = "Top up your credit pool to enable these settings",
+  tooltipContent,
 }: LockedSectionProps) {
+  const { t } = useLingui();
   if (!locked) {
     return <>{children}</>;
   }
@@ -38,7 +40,10 @@ export function LockedSection({
             <div className="absolute inset-0 cursor-not-allowed" />
           </TooltipTrigger>
         </div>
-        <TooltipContent>{tooltipContent}</TooltipContent>
+        <TooltipContent>
+          {tooltipContent ??
+            t`Top up your credit pool to enable these settings`}
+        </TooltipContent>
       </TooltipRoot>
     </TooltipProvider>
   );

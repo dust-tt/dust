@@ -11,6 +11,7 @@ import {
   DataTableSkeleton,
   TextCellSkeleton,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 
@@ -26,7 +27,7 @@ type TopUpRowData = {
   onClick?: () => void;
 };
 
-type TopUpColumnId = (typeof COLUMNS)[number]["id"];
+type TopUpColumnId = "date" | "name" | "credits" | "expiration";
 
 function TopUpHistorySkeletonCell({
   columnId,
@@ -46,73 +47,95 @@ function TopUpHistorySkeletonCell({
   }
 }
 
-const COLUMNS = [
-  {
-    id: "date" as const,
-    accessorKey: "date",
-    header: "Date",
-    enableSorting: false,
-    meta: { className: "w-[18%]" },
-    cell: ({ row }) => <span className="text-sm">{row.original.date}</span>,
-  },
-  {
-    id: "name" as const,
-    accessorKey: "name",
-    header: "Top-up",
-    enableSorting: false,
-    meta: { className: "w-[44%]" },
-    cell: ({ row }) => <span className="text-sm">{row.original.name}</span>,
-  },
-  {
-    id: "credits" as const,
-    accessorKey: "credits",
-    header: "Credits",
-    enableSorting: false,
-    meta: { headerAlign: "right", className: "w-[18%]" },
-    cell: ({ row }) => (
-      <span className="block text-right text-sm">{row.original.credits}</span>
-    ),
-  },
-  {
-    id: "expiration" as const,
-    accessorKey: "expiration",
-    header: "Expiration",
-    enableSorting: false,
-    meta: { headerAlign: "right", className: "w-[20%]" },
-    cell: ({ row }) => (
-      <span className="block text-right text-sm text-muted-foreground">
-        {row.original.expiration}
-      </span>
-    ),
-  },
-] satisfies ColumnDef<TopUpRowData, string>[];
-
 export function TopUpsHistoryTable({ owner }: TopUpsHistoryTableProps) {
+  const { t } = useLingui();
+  const columns = useMemo(
+    () =>
+      [
+        {
+          id: "date" as const,
+          accessorKey: "date",
+          header: t`Date`,
+          enableSorting: false,
+          meta: { className: "w-[18%]" },
+          cell: ({ row }) => (
+            <span className="text-sm">{row.original.date}</span>
+          ),
+        },
+        {
+          id: "name" as const,
+          accessorKey: "name",
+          header: t`Top-up`,
+          enableSorting: false,
+          meta: { className: "w-[44%]" },
+          cell: ({ row }) => (
+            <span className="text-sm">{row.original.name}</span>
+          ),
+        },
+        {
+          id: "credits" as const,
+          accessorKey: "credits",
+          header: t`Credits`,
+          enableSorting: false,
+          meta: { headerAlign: "right", className: "w-[18%]" },
+          cell: ({ row }) => (
+            <span className="block text-right text-sm">
+              {row.original.credits}
+            </span>
+          ),
+        },
+        {
+          id: "expiration" as const,
+          accessorKey: "expiration",
+          header: t`Expiration`,
+          enableSorting: false,
+          meta: { headerAlign: "right", className: "w-[20%]" },
+          cell: ({ row }) => (
+            <span className="block text-right text-sm text-muted-foreground">
+              {row.original.expiration}
+            </span>
+          ),
+        },
+      ] satisfies ColumnDef<TopUpRowData, string>[],
+    [t]
+  );
+
   const { topUps, isTopUpsHistoryLoading, isTopUpsHistoryError } =
     useAwuTopUpsHistory({ workspaceId: owner.sId });
 
   const rows: TopUpRowData[] = useMemo(() => {
     const nowMs = Date.now();
-    return topUps.map((topUp) => ({
-      date: formatTimestampToFriendlyDate(topUp.grantedAtMs, "compactWithDay"),
-      name: topUp.name,
-      credits: formatCredits(topUp.amountCredits),
-      expiration:
-        topUp.expiresAtMs <= nowMs
-          ? `Expired ${formatTimestampToFriendlyDate(topUp.expiresAtMs, "compactWithDay")}`
-          : formatTimestampToFriendlyDate(topUp.expiresAtMs, "compactWithDay"),
-    }));
-  }, [topUps]);
+    return topUps.map((topUp) => {
+      const expirationDate = formatTimestampToFriendlyDate(
+        topUp.expiresAtMs,
+        "compactWithDay"
+      );
+      return {
+        date: formatTimestampToFriendlyDate(
+          topUp.grantedAtMs,
+          "compactWithDay"
+        ),
+        name: topUp.name,
+        credits: formatCredits(topUp.amountCredits),
+        expiration:
+          topUp.expiresAtMs <= nowMs
+            ? t`Expired ${expirationDate}`
+            : expirationDate,
+      };
+    });
+  }, [topUps, t]);
 
   if (isTopUpsHistoryError) {
     return (
       <ContentMessage
-        title="Failed to load top-ups history"
+        title={t`Failed to load top-ups history`}
         icon={AlertCircle}
         variant="warning"
       >
-        An error occurred while loading the top-ups history. Please refresh the
-        page or contact support if the issue persists.
+        <Trans>
+          An error occurred while loading the top-ups history. Please refresh
+          the page or contact support if the issue persists.
+        </Trans>
       </ContentMessage>
     );
   }
@@ -120,7 +143,7 @@ export function TopUpsHistoryTable({ owner }: TopUpsHistoryTableProps) {
   if (isTopUpsHistoryLoading) {
     return (
       <DataTableSkeleton
-        columns={COLUMNS}
+        columns={columns}
         SkeletonCell={TopUpHistorySkeletonCell}
       />
     );
@@ -129,11 +152,13 @@ export function TopUpsHistoryTable({ owner }: TopUpsHistoryTableProps) {
   if (rows.length === 0) {
     return (
       <span className="copy-sm text-muted-foreground">
-        No top-ups yet: credits you buy, free credits and coupon credits will
-        appear here.
+        <Trans>
+          No top-ups yet: credits you buy, free credits and coupon credits will
+          appear here.
+        </Trans>
       </span>
     );
   }
 
-  return <DataTable data={rows} columns={COLUMNS} hideRowDivider={false} />;
+  return <DataTable data={rows} columns={columns} hideRowDivider={false} />;
 }
