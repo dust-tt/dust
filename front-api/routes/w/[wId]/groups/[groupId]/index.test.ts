@@ -85,6 +85,57 @@ describe("GET /api/w/:wId/groups/:groupId", () => {
 });
 
 describe("PATCH /api/w/:wId/groups/:groupId", () => {
+  it("applies memberChanges without touching unlisted members and ignores no-ops", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const [alice, bob, carol, dave, erin] = await Promise.all(
+      Array.from({ length: 5 }, () => UserFactory.basic())
+    );
+    for (const u of [alice, bob, carol, dave, erin]) {
+      await MembershipFactory.associate(workspace, u, { role: "user" });
+    }
+    const sales = await GroupFactory.regularManual(workspace, "Sales");
+    await GroupFactory.withMembers(adminAuth, sales, [alice, bob, carol]);
+
+    // `bob` is already a member and `erin` is not one: both are no-ops. `carol` is not listed.
+    const response = await patchGroupRequest(workspace.sId, sales.sId, {
+      memberChanges: {
+        addMemberIds: [dave.sId, bob.sId],
+        removeMemberIds: [alice.sId, erin.sId],
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.members.map((m: { sId: string }) => m.sId).toSorted()).toEqual(
+      [bob.sId, carol.sId, dave.sId].toSorted()
+    );
+  });
+
+  it("rejects memberIds combined with memberChanges", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const sales = await GroupFactory.regularManual(workspace, "Sales");
+    await GroupFactory.withMembers(adminAuth, sales, [user]);
+
+    const response = await patchGroupRequest(workspace.sId, sales.sId, {
+      memberIds: [user.sId],
+      memberChanges: { addMemberIds: [], removeMemberIds: [] },
+    });
+
+    expect(response.status).toBe(400);
+  });
+
   it("returns 404 when editing a provisioned group", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "PATCH",

@@ -2143,12 +2143,26 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   /**
    * @cc [owner:fabiencelier,label:product] manual-group-never-emptied
-   * A `regular_manual` group MUST keep at least one active member: an empty `memberIds` list
-   * MUST fail with `last_group_member`.
+   * A `regular_manual` group MUST keep at least one active member: an empty `memberIds` list, or
+   * `memberChanges` that would leave no active member, MUST fail with `last_group_member`.
+   */
+  /**
+   * @cc [owner:fabiencelier,label:product] member-changes-only-touch-listed-members
+   * With `memberChanges`, only the listed users' memberships MAY change: members absent from both
+   * lists MUST be kept. Adding a current member or removing a non-member MUST be a no-op, not an
+   * error, so changes computed from a stale member list still apply.
    */
   async updateRegularManualGroup(
     auth: Authenticator,
-    { name, memberIds }: { name?: string; memberIds?: string[] }
+    {
+      name,
+      memberIds,
+      memberChanges,
+    }: {
+      name?: string;
+      memberIds?: string[];
+      memberChanges?: { addUserIds: string[]; removeUserIds: string[] };
+    }
   ): Promise<
     Result<
       { addedUsers: UserType[]; removedUsers: UserType[] },
@@ -2183,7 +2197,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     // Changing the members of an admin-granting group escalates/de-escalates
     // admins, so it is restricted to workspace admins.
     if (
-      memberIds !== undefined &&
+      (memberIds !== undefined || memberChanges !== undefined) &&
       !this.canManageMembersGivenGrantedRole(auth)
     ) {
       return new Err(
@@ -2239,6 +2253,20 @@ export class GroupResource extends BaseResource<GroupModel> {
       }
 
       return new Ok(setResult.value);
+    }
+
+    if (memberChanges !== undefined) {
+      const currentMemberIds = new Set(
+        (await this.getActiveMembers(auth)).map((m) => m.sId)
+      );
+      return this.updateRegularManualGroupMembers(auth, {
+        addUserIds: memberChanges.addUserIds.filter(
+          (userId) => !currentMemberIds.has(userId)
+        ),
+        removeUserIds: memberChanges.removeUserIds.filter((userId) =>
+          currentMemberIds.has(userId)
+        ),
+      });
     }
 
     return new Ok({ addedUsers: [], removedUsers: [] });

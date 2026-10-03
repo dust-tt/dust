@@ -24,7 +24,16 @@ export type GetGroupResponseBody = {
 
 export const PatchGroupBodySchema = z.object({
   name: z.string().min(1).optional(),
+  // Absolute member list: anyone missing from it is removed. Kept for clients that predate
+  // `memberChanges`.
   memberIds: z.array(z.string()).optional(),
+  // Members to add and remove, leaving every other member untouched.
+  memberChanges: z
+    .object({
+      addMemberIds: z.array(z.string()),
+      removeMemberIds: z.array(z.string()),
+    })
+    .optional(),
   managerIds: z.array(z.string()).optional(),
 });
 
