@@ -222,3 +222,9 @@ export const EMOJI_AVATAR_BASE_URL = buildAvatarUrl(
   EMOJI_AVATARS_BASE_PATH,
   ""
 );
+
+export function pickRandomDroidAvatarUrl(): string {
+  return DROID_AVATAR_URLS[
+    Math.floor(Math.random() * DROID_AVATAR_URLS.length)
+  ];
+}
