@@ -160,6 +160,8 @@ GRV-cap benefit, so that setting's effect remains workload-dependent/uncertain. 
 - [x] Publish a latest filesystem table at the top of `bench/RESULTS.md` with raw reports.
 - [ ] Run the current server against 100,000 files with the same directory topology and file sizes;
       preserve the 10,000-file baseline and publish the full validated table and untar timing.
+      Raise only the FUSE live inode cap to 1,000,000; the first traversal exhausted the former
+      100,000-entry limit because it also counts directories and mount entries.
 
 ## Future work: after the local benchmark
 

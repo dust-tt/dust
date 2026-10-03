@@ -1,7 +1,7 @@
 use std::collections::{BTreeSet, HashMap};
 
 pub const ROOT: u64 = 1;
-const MAX_INODES: usize = 100_000;
+const MAX_INODES: usize = 1_000_000;
 
 #[derive(Clone)]
 pub struct Node<T = ()> {

@@ -2,7 +2,8 @@
 
 The local server serves the filesystem and keyword search through shared FoundationDB and
 Elasticsearch; see [benchmark results](bench/RESULTS.md) and [PLAN.md](PLAN.md) for future work.
-The v1 protocol/client/FUSE sources remain unchanged. Start with local Docker; no GCS credentials.
+Reuse v1's protocol/client/FUSE, with only the live inode cap raised to 1,000,000 for larger corpora.
+Start with local Docker; no GCS credentials.
 
 From `v2/`:
 
@@ -106,8 +107,8 @@ included in foreground writes.
 100 directories, depth, seed, document format, and four rare matches (about 1.8 GB total). It selects
 256 tails across the larger corpus and retains every workload's validation and timing boundaries.
 The default 10,000-file corpus retains its pinned manifest; each run records its actual manifest hash.
-The current 100,000-inode client limit prevents a complete 100,000-file traversal; see the recorded
-failure in [RESULTS.md](bench/RESULTS.md) before running that size with the unchanged client.
+The FUSE client allows 1,000,000 live inodes, including directories. Rebuild it before a large run;
+the former 100,000-inode limit prevented traversal of 100,000 files plus their directories.
 The small workspace runner checks shared-list pagination at 1/2/512 grants, search isolation, and
 two independent server writers in the same workspace alongside 16 idle workspaces. It enables debug
 FDB commit timing logs; both servers share the same FDB prefix and ES index.

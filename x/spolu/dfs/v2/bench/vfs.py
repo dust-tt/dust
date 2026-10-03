@@ -34,6 +34,7 @@ def main():
     run['files'] = args.files
     run['manifest_sha256'] = hashlib.sha256((data / 'manifest.json').read_bytes()).hexdigest()
     run['corpus_directories'] = 100
+    run['fuse_binary_sha256'] = hashlib.sha256(Path('/target/release/dfs-fuse').read_bytes()).hexdigest()
     save(work, run)
     sys.path.insert(0, '/benchmark')
     import benchmark as jd
