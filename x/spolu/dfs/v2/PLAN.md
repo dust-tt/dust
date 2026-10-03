@@ -139,10 +139,17 @@ Results: [full tables and raw reports](bench/RESULTS.md). Untar: **197.439 → 4
 
 - [x] Remove commit-version reuse and its fallback logic; obtain fresh read versions on every attempt.
 - [x] Re-run the full filesystem suite and independent-writer benchmark; preserve previous results.
-- [ ] Compare all defaults, all tuned, each setting alone, and each setting removed from all tuned.
+- [x] Compare all defaults, all tuned, each setting alone, and each setting removed from all tuned.
       Treat client/server busy-wait as separate settings; repeat deep-folder untars and record exact
       configuration, validation, CPU, and timing results. Restore the normal local configuration.
-- [ ] Publish the ablation results and identify interactions without claiming production scalability.
+- [x] Publish the ablation results and identify interactions without claiming production scalability.
+
+Recorded 36 deep-folder untars (12 configurations × 3 repeats), 12 independent-writer checks,
+and full 10,000-file suites after removing reuse and for the GRV/default versus tuned comparison.
+All passed; original local FDB settings restored. The first no-reuse untar was 35.563 s; later
+full runs measured 38.346 s tuned and 40.265 s with default GRV. The short ablation showed no clear
+GRV-cap benefit, so that setting's effect remains workload-dependent/uncertain. See
+[all results](bench/RESULTS.md); the other four settings have larger demonstrated effects.
 
 ## Future work: after the local benchmark
 
