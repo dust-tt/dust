@@ -114,9 +114,10 @@ const listAttachmentsHandler: ToolHandlers<
   const allAttachments = await listAttachments(auth, { conversation });
 
   // When the conversation uses the new file system, regular files are surfaced via the `files`
-  // server, so only content nodes remain listable here.
+  // server, so only content nodes remain listable here - plus out-of-mount files (e.g. files
+  // returned by run_agent), which stay readable through `conversation_files__cat`.
   const attachments = capabilities.isNewFileExplorer
-    ? allAttachments.filter(isContentNodeAttachmentType)
+    ? allAttachments.filter((a) => isContentNodeAttachmentType(a) || a.isIncludable)
     : allAttachments;
 
   if (attachments.length === 0) {

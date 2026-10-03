@@ -73,6 +73,8 @@ export async function listAttachments(
         isInProjectContext: f.isInProjectContext ?? false,
         hideFromUser: f.hidden ?? false,
         creator: f.creator,
+        isInCurrentConversationMount:
+          f.fileConversationId == null || f.fileConversationId === conversation.sId,
         capabilities,
       })
     );
