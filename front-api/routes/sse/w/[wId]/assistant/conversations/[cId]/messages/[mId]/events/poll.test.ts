@@ -41,11 +41,13 @@ async function getMessageIdByRank(
 }
 
 function pollMessageEvents({
+  apiPrefix,
   workspaceId,
   conversationId,
   messageId,
   lastEventId,
 }: {
+  apiPrefix: string;
   workspaceId: string;
   conversationId: string;
   messageId: string;
@@ -53,11 +55,14 @@ function pollMessageEvents({
 }) {
   const query = lastEventId ? `?lastEventId=${lastEventId}` : "";
   return honoApp.request(
-    `/api/sse/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/events/poll${query}`
+    `${apiPrefix}/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/events/poll${query}`
   );
 }
 
-describe("GET /api/sse/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events/poll", () => {
+describe.each([
+  "/api/sse/w",
+  "/api/w",
+])("GET %s/[wId]/assistant/conversations/[cId]/messages/[mId]/events/poll", (apiPrefix) => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -66,6 +71,7 @@ describe("GET /api/sse/w/[wId]/assistant/conversations/[cId]/messages/[mId]/even
     const { workspace } = await createPrivateApiMockRequest();
 
     const response = await pollMessageEvents({
+      apiPrefix,
       workspaceId: workspace.sId,
       conversationId: "conv_unknown",
       messageId: "msg_unknown",
@@ -98,6 +104,7 @@ describe("GET /api/sse/w/[wId]/assistant/conversations/[cId]/messages/[mId]/even
     vi.mocked(getMessagesEventsBatch).mockResolvedValue(events);
 
     const response = await pollMessageEvents({
+      apiPrefix,
       workspaceId: workspace.sId,
       conversationId: conversation.sId,
       messageId,
@@ -133,6 +140,7 @@ describe("GET /api/sse/w/[wId]/assistant/conversations/[cId]/messages/[mId]/even
     vi.mocked(getMessagesEventsBatch).mockResolvedValue([]);
 
     const activeResponse = await pollMessageEvents({
+      apiPrefix,
       workspaceId: workspace.sId,
       conversationId: conversation.sId,
       messageId,
@@ -147,6 +155,7 @@ describe("GET /api/sse/w/[wId]/assistant/conversations/[cId]/messages/[mId]/even
     });
 
     const response = await pollMessageEvents({
+      apiPrefix,
       workspaceId: workspace.sId,
       conversationId: conversation.sId,
       messageId,
