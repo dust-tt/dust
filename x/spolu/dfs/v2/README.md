@@ -125,6 +125,7 @@ To isolate each tuning setting, run from the host with no other local tests or b
 
 ```sh
 python3 bench/ablate.py --work /tmp/dfs-v2-ablation --files 1000 --repeats 3
+python3 bench/ablate.py --work /tmp/dfs-v2-ablation-writers --workload workspaces --repeats 1
 ```
 
 This restarts the local FDB node before every case, preserves its volumes, and restores its original
@@ -133,3 +134,5 @@ from all tuned, with a seeded shuffled order and profiling disabled. Each run us
 and verifies every file hash. Records include the exact server arguments, client/server knob values,
 binary hash, timings, and CPU counters. CPU covers the whole fixture including generation/setup/hash
 verification/cleanup, not only timed untar. FDB process caches restart; OS caches and ES remain warm.
+The `workspaces` mode instead runs the two-server, same-workspace checks for each configuration,
+including 100 verified writes and 1/2/512-grant discovery. It retains that runner's debug commit logs.
