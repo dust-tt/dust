@@ -82,6 +82,7 @@ describe("GET /api/user", () => {
     const response = await getUser();
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     expect(await response.json()).toEqual({
       user: {
         id: user.id,

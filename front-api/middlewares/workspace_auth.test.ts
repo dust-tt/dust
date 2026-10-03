@@ -18,6 +18,7 @@ describe("workspaceAuth factory — default options", () => {
     const response = await request(`/w/${workspace.sId}/groups`);
 
     expect(response.status).toBe(403);
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     expect(await response.json()).toEqual({
       error: {
         type: "workspace_can_use_product_required_error",
@@ -33,6 +34,7 @@ describe("workspaceAuth factory — default options", () => {
     const response = await request(`/w/${workspace.sId}/groups`);
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
   });
 });
 
