@@ -11,7 +11,9 @@ import {
   makeAndFinalizeCreditsPAYGInvoice,
   makeCreditPurchaseOneOffInvoiceForSubscription,
   payInvoice,
+  refundYearlyMigrationProration,
   voidInvoiceWithReason,
+  YEARLY_MIGRATION_REFUND_METADATA_KEY,
 } from "@app/lib/plans/stripe";
 import type { Stripe } from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -22,6 +24,9 @@ const {
   mockSubscriptions,
   mockInvoiceItems,
   mockPrices,
+  mockCharges,
+  mockRefunds,
+  mockCustomers,
 } = vi.hoisted(() => {
   const mockInvoices = {
     list: vi.fn(),
@@ -53,12 +58,28 @@ const {
     retrieve: vi.fn(),
   };
 
+  const mockCharges = {
+    retrieve: vi.fn(),
+  };
+
+  const mockRefunds = {
+    create: vi.fn(),
+  };
+
+  const mockCustomers = {
+    retrieve: vi.fn(),
+    createBalanceTransaction: vi.fn(),
+  };
+
   return {
     mockInvoices,
     mockCoupons,
     mockSubscriptions,
     mockInvoiceItems,
     mockPrices,
+    mockCharges,
+    mockRefunds,
+    mockCustomers,
   };
 });
 
@@ -94,6 +115,9 @@ vi.mock("stripe", () => {
     coupons: mockCoupons,
     subscriptions: mockSubscriptions,
     prices: mockPrices,
+    charges: mockCharges,
+    refunds: mockRefunds,
+    customers: mockCustomers,
   };
 
   return {
@@ -1177,5 +1201,235 @@ describe("cleanAndFinalizeMetronomeDraftInvoice", () => {
     expect(result.isOk()).toBe(true);
     expect(mockInvoiceItems.del).toHaveBeenCalledWith("ii_l1");
     expect(mockInvoiceItems.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("refundYearlyMigrationProration", () => {
+  const CUSTOMER_ID = "cus_test";
+  const CHARGE_ID = "ch_test";
+  const INVOICE_ID = "in_test";
+
+  // A 400-second "paid year"; the subscription is canceled with 100 seconds
+  // still prepaid, i.e. exactly a quarter of the paid period remaining.
+  const PAID_PERIOD_START = NOV_2024_START_SECONDS;
+  const PAID_PERIOD_END = NOV_2024_START_SECONDS + 400;
+  const CANCELED_AT = PAID_PERIOD_END - 100;
+
+  function makeMarkedYearlySubscription(): Stripe.Subscription {
+    return {
+      id: "sub_test",
+      customer: CUSTOMER_ID,
+      status: "canceled",
+      canceled_at: CANCELED_AT,
+      ended_at: null,
+      current_period_start: PAID_PERIOD_START,
+      current_period_end: PAID_PERIOD_END,
+      latest_invoice: INVOICE_ID,
+      metadata: { [YEARLY_MIGRATION_REFUND_METADATA_KEY]: "true" },
+      items: {
+        data: [{ price: { recurring: { interval: "year" } } }],
+        has_more: false,
+        object: "list",
+        url: "/v1/subscription_items",
+      },
+    } as unknown as Stripe.Subscription;
+  }
+
+  function primeStripe({
+    amount,
+    amountRefunded,
+    balance = 0,
+    linePeriodStart = PAID_PERIOD_START,
+    linePeriodEnd = PAID_PERIOD_END,
+  }: {
+    amount: number;
+    amountRefunded: number;
+    // A negative Stripe balance is store credit owed to the customer; the
+    // function reverses part of it after a card refund to avoid a double refund.
+    balance?: number;
+    // The paid coverage window as reported by the invoice's yearly line item(s),
+    // which the function anchors on instead of the (post-cancellation clamped)
+    // subscription period.
+    linePeriodStart?: number;
+    linePeriodEnd?: number;
+  }): void {
+    mockInvoices.retrieve.mockResolvedValue({
+      id: INVOICE_ID,
+      charge: CHARGE_ID,
+      lines: {
+        data: [
+          {
+            price: { recurring: { interval: "year" } },
+            period: { start: linePeriodStart, end: linePeriodEnd },
+          },
+        ],
+      },
+    } as unknown as Stripe.Invoice);
+    mockCharges.retrieve.mockResolvedValue({
+      id: CHARGE_ID,
+      paid: true,
+      status: "succeeded",
+      amount,
+      amount_refunded: amountRefunded,
+      currency: "usd",
+    } as unknown as Stripe.Charge);
+    mockRefunds.create.mockResolvedValue({ id: "re_test" } as Stripe.Refund);
+    mockCustomers.retrieve.mockResolvedValue({
+      id: CUSTOMER_ID,
+      deleted: false,
+      balance,
+    } as unknown as Stripe.Customer);
+    mockCustomers.createBalanceTransaction.mockResolvedValue(
+      {} as unknown as Stripe.CustomerBalanceTransaction
+    );
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("refunds the prorated share of the paid charge (a quarter of the paid year left)", async () => {
+    // 12000 paid, a quarter of the period unused -> 3000 owed back.
+    // Catches an inverted proration ratio: (amount * period / remaining) would
+    // be 48000, not 3000.
+    primeStripe({ amount: 12000, amountRefunded: 0 });
+
+    const result = await refundYearlyMigrationProration({
+      stripeSubscription: makeMarkedYearlySubscription(),
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.refundedCents).toBe(3000);
+    }
+    expect(mockRefunds.create).toHaveBeenCalledTimes(1);
+    expect(mockRefunds.create).toHaveBeenCalledWith({
+      charge: CHARGE_ID,
+      amount: 3000,
+    });
+    // No store credit on the customer, so nothing to reverse.
+    expect(mockCustomers.createBalanceTransaction).not.toHaveBeenCalled();
+  });
+
+  it("anchors the proration on the invoice line, not the clamped subscription period", async () => {
+    // After a scheduled cancellation, Stripe clamps current_period_end to the
+    // cancel date, so reading it would make `remaining` 0 and refund nothing.
+    // The paid window must come from the invoice's yearly line instead.
+    const trueStart = NOV_2024_START_SECONDS;
+    const trueEnd = NOV_2024_START_SECONDS + 500;
+    const canceledAt = trueEnd - 100; // 100s / 500s still prepaid
+
+    primeStripe({
+      amount: 10000,
+      amountRefunded: 0,
+      linePeriodStart: trueStart,
+      linePeriodEnd: trueEnd,
+    });
+    const sub = makeMarkedYearlySubscription();
+    sub.canceled_at = canceledAt;
+    // Clamped to the cancel date, exactly as Stripe does it. If the function
+    // read this instead of the invoice line, remaining would be 0.
+    sub.current_period_start = trueStart;
+    sub.current_period_end = canceledAt;
+
+    const result = await refundYearlyMigrationProration({
+      stripeSubscription: sub,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      // 10000 * 100 / 500 = 2000. Would be 0 if anchored on current_period_end.
+      expect(result.value.refundedCents).toBe(2000);
+    }
+    expect(mockRefunds.create).toHaveBeenCalledWith({
+      charge: CHARGE_ID,
+      amount: 2000,
+    });
+  });
+
+  it("reverses the unused-time store credit so the customer is not refunded twice", async () => {
+    // Prorated card refund is 3000. Stripe auto-created 1000 of unused-time
+    // store credit on cancellation (balance -1000). We must claw back the
+    // overlapping credit, clamped to what actually exists (1000, not 3000).
+    primeStripe({ amount: 12000, amountRefunded: 0, balance: -1000 });
+
+    const result = await refundYearlyMigrationProration({
+      stripeSubscription: makeMarkedYearlySubscription(),
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.refundedCents).toBe(3000);
+    }
+    expect(mockCustomers.createBalanceTransaction).toHaveBeenCalledTimes(1);
+    expect(mockCustomers.createBalanceTransaction).toHaveBeenCalledWith(
+      CUSTOMER_ID,
+      expect.objectContaining({ amount: 1000, currency: "usd" })
+    );
+  });
+
+  it("issues no refund (and reverses no credit) when nothing is left to refund", async () => {
+    // The whole charge is already refunded, so refundableCents is 0 and the
+    // prorated amount clamps to 0: no card refund, no credit reversal.
+    primeStripe({ amount: 12000, amountRefunded: 12000, balance: -5000 });
+
+    const result = await refundYearlyMigrationProration({
+      stripeSubscription: makeMarkedYearlySubscription(),
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.refundedCents).toBe(0);
+    }
+    expect(mockRefunds.create).not.toHaveBeenCalled();
+    expect(mockCustomers.createBalanceTransaction).not.toHaveBeenCalled();
+  });
+
+  it("returns an error when a Stripe call throws, without issuing a refund", async () => {
+    primeStripe({ amount: 12000, amountRefunded: 0 });
+    mockCharges.retrieve.mockRejectedValue(new Error("Stripe API error"));
+
+    const result = await refundYearlyMigrationProration({
+      stripeSubscription: makeMarkedYearlySubscription(),
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(mockRefunds.create).not.toHaveBeenCalled();
+  });
+
+  it("never refunds more than what is still refundable on the charge (clamp)", async () => {
+    // Prorated share is 3000, but only 2000 is still refundable (10000 of the
+    // 12000 already refunded). Catches removal of the Math.min clamp, which
+    // would refund the full 3000 and over-refund the customer.
+    primeStripe({ amount: 12000, amountRefunded: 10000 });
+
+    const result = await refundYearlyMigrationProration({
+      stripeSubscription: makeMarkedYearlySubscription(),
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.refundedCents).toBe(2000);
+    }
+    expect(mockRefunds.create).toHaveBeenCalledWith({
+      charge: CHARGE_ID,
+      amount: 2000,
+    });
+  });
+
+  it("issues no refund for a subscription not marked by the migration", async () => {
+    primeStripe({ amount: 12000, amountRefunded: 0 });
+    const sub = makeMarkedYearlySubscription();
+    sub.metadata = {};
+
+    const result = await refundYearlyMigrationProration({
+      stripeSubscription: sub,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.refundedCents).toBe(0);
+    }
+    expect(mockRefunds.create).not.toHaveBeenCalled();
   });
 });
