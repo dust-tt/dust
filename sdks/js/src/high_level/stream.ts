@@ -515,25 +515,31 @@ export class MessageStreamImpl implements MessageStream {
             if (!this._conversationId) {
               throw new DustAgentError("No conversation ID available");
             }
-            await this._client.validateAction({
+            const result = await this._client.validateAction({
               conversationId: this._conversationId,
               messageId,
               actionId,
               approved: "approved",
               signal: this._signal,
             });
+            if (result.isErr()) {
+              throw apiErrorToDustError(result.error);
+            }
           },
           reject: async () => {
             if (!this._conversationId) {
               throw new DustAgentError("No conversation ID available");
             }
-            await this._client.validateAction({
+            const result = await this._client.validateAction({
               conversationId: this._conversationId,
               messageId,
               actionId,
               approved: "rejected",
               signal: this._signal,
             });
+            if (result.isErr()) {
+              throw apiErrorToDustError(result.error);
+            }
           },
         };
         return { type: "toolApprovalRequired", approval };
