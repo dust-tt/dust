@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 import { useFileSystemServer } from "../../mcp/servers/fsServer.js";
 import { getDustClient } from "../../utils/dustClient.js";
 import { normalizeError } from "../../utils/errors.js";
+import { getMe } from "../../utils/me.js";
 import {
   fetchAgentMessageFromConversation,
   sendNonInteractiveMessage,
@@ -83,8 +84,8 @@ const NonInteractiveChat: FC<NonInteractiveChatProps> = ({
           return;
         }
 
-        // Get current user info
-        const meRes = await dustClient.me();
+        // Get current user info (handles API key auth transparently).
+        const meRes = await getMe(dustClient);
         if (meRes.isErr()) {
           setError(`Authentication error: ${meRes.error.message}`);
           return;
