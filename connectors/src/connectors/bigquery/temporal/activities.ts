@@ -2,6 +2,7 @@ import {
   fetchTree,
   isConnectionReadonly,
 } from "@connectors/connectors/bigquery/lib/bigquery_api";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { BigQueryConfigurationModel } from "@connectors/lib/models/bigquery";
 import {
   hasSelectedRemoteDatabasePermissions,
@@ -16,6 +17,7 @@ import {
   INTERNAL_MIME_TYPES,
   isBigQueryWithLocationCredentials,
 } from "@connectors/types";
+import { assertNever } from "@dust-tt/client";
 
 // Must be kept in sync with the tags in core.
 const USE_METADATA_FOR_DBML_TAG = "bigquery:useMetadataForDBML";
@@ -51,7 +53,15 @@ export async function syncBigQueryConnection(connectorId: ModelId) {
     logger,
   });
   if (getConnectorAndCredentialsRes.isErr()) {
-    throw getConnectorAndCredentialsRes.error;
+    const { code, error } = getConnectorAndCredentialsRes.error;
+    switch (code) {
+      case "invalid_credentials":
+        throw new ExternalOAuthTokenError(error);
+      case "connector_not_found":
+        throw error;
+      default:
+        assertNever(code);
+    }
   }
 
   await syncStarted(connectorId);
