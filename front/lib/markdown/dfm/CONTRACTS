@@ -17,3 +17,10 @@ Every file in `tests/fixtures/` MUST be reproduced byte for byte by `serializeDf
 `parseDfm`, and `tests/document.test.ts` MUST check every file in that directory. A change
 to the grammar MUST update the fixtures and the format section of README.md in the same change.
 A new directive gets its own fixture file rather than extending an existing one.
+
+@cc [owner:PopDaph,label:performance] dfm-bounded-input
+Every public function MUST refuse text outside `INPUT_LIMITS` (length, leading container run
+per line, inline delimiter count) with a located error before handing it to the Markdown
+parser, so no input can hold the parser for more than about a second per parse. Callers on a
+request path MUST NOT rely on these bounds for latency and SHOULD isolate the codec (a worker
+or a timeout) once it is reachable from untrusted input.

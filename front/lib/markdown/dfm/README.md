@@ -149,3 +149,11 @@ Suggestions are the next one. The steps are the same for any directive:
   raw HTML and autolinks where CommonMark would not. An escaped anchor whose pair is live is
   an error.
 - A leading UTF-8 byte order mark is dropped on parse and never written back.
+- Input is bounded before parsing (`INPUT_LIMITS` in `parser.ts`): 256k characters, 256
+  leading quote or indentation characters per line, 15k emphasis, link and code delimiters.
+  The Markdown parser is quadratic on the shapes these bound; within them a parse takes about
+  a second at worst. A server calling the codec on untrusted input still needs its own
+  isolation, since a second of blocked event loop per call is not free.
+- The codec does not authenticate authors. `author=user:<id>` is data; any file writer can put
+  any id there. Whoever stores a file decides what to trust; see the design notes in
+  `x/daph/co-edition/README.md`.

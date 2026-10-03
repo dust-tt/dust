@@ -1,4 +1,5 @@
 import { extractAnchors, parseDfm, serializeDfm } from "@app/lib/markdown/dfm";
+import { INPUT_LIMITS } from "@app/lib/markdown/dfm/parser";
 import {
   expectError,
   MESSAGE,
@@ -206,8 +207,9 @@ describe("extractAnchors", () => {
     expect(anchors).toEqual([{ id: "c1", start: 2, end: 3 }]);
   });
 
-  it("scans a body nested thousands of levels deep", () => {
-    const deep = `${">".repeat(10_000)} :comment-start{id=c1}deep:comment-end{id=c1}`;
+  it("scans a body nested as deep as the input bounds allow", () => {
+    // The space after the quotes counts in the leading run.
+    const deep = `${">".repeat(INPUT_LIMITS.linePrefix - 1)} :comment-start{id=c1}deep:comment-end{id=c1}`;
 
     expect(unwrap(extractAnchors(deep)).anchors).toHaveLength(1);
   });

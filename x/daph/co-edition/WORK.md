@@ -29,9 +29,11 @@ ship behind `co_edition` until M7. The order is the dependency order, not a spri
 
 ### M0. Foundations (stream 1: the document). Done, one follow-up
 
-- Codec merged. Follow-up from the security review, before any server-side caller: bound
-  input size and nesting before the parser, bound the arguments of `anchorComment`, and one
-  README sentence saying the codec does not authenticate authors.
+- Codec merged. Follow-up from the security review in #34042, before any server-side caller:
+  input bounds (length, leading container run per line, inline delimiter count) checked
+  before parsing, non-overlapping occurrence search in `anchorComment`, and a README sentence
+  saying the codec does not authenticate authors. Server callers still own their latency and
+  should isolate the codec once untrusted input reaches it.
 - Outcome: an adversarial file fails fast with a clear error instead of tying up a process.
 
 ### M1. A human edits a `.md` in the rich editor (stream 2, single human)

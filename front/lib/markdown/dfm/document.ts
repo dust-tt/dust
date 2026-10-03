@@ -9,7 +9,11 @@ import {
   ANNOTATIONS_OPEN_PATTERN,
   FRONT_MATTER_FENCE,
 } from "@app/lib/markdown/dfm/grammar";
-import { codeLines, endsInsideFence } from "@app/lib/markdown/dfm/parser";
+import {
+  checkInputBounds,
+  codeLines,
+  endsInsideFence,
+} from "@app/lib/markdown/dfm/parser";
 import type { DfmDocument, DfmError } from "@app/lib/markdown/dfm/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -81,6 +85,10 @@ function frontMatterClose(lines: string[]): number {
  * comment thread without an anchor is valid. An anchor without a comment thread is not.
  */
 export function parseDfm(source: string): Result<DfmDocument, DfmError> {
+  const bounds = checkInputBounds(source);
+  if (bounds) {
+    return new Err(bounds);
+  }
   const lines = source
     .replace(/^\uFEFF/, "")
     .replace(/\r\n/g, "\n")
@@ -205,6 +213,10 @@ function validateForSerialization(document: DfmDocument): DfmError | null {
   }
   if (body.includes("\r")) {
     return { message: "Body cannot contain a carriage return." };
+  }
+  const bounds = checkInputBounds(body);
+  if (bounds) {
+    return bounds;
   }
   const bodyLines = body.split("\n");
   if (annotationOpeners(bodyLines, codeLines(bodyLines)).length > 0) {
