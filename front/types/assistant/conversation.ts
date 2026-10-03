@@ -162,6 +162,7 @@ export type UserMessageContext = {
   selectedSpaceIds?: string[];
   apiKeyId?: number | null;
   authMethod?: string | null;
+  excludedRetrievalTags?: string[] | null;
 };
 
 export type AgenticMessageData = {
