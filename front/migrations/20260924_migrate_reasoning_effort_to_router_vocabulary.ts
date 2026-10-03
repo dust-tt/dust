@@ -613,7 +613,9 @@ export async function migrateReasoningEfforts({
   // One batched UPDATE per target effort and page of ids.
   const idsByEffort = new Map<ReasoningEffort, number[]>();
   for (const { id, to } of agentChanges) {
-    idsByEffort.set(to, [...(idsByEffort.get(to) ?? []), id]);
+    const ids = idsByEffort.get(to) ?? [];
+    ids.push(id);
+    idsByEffort.set(to, ids);
   }
   const agentUpdates = [...idsByEffort].flatMap(([reasoningEffort, ids]) =>
     chunk(ids, PAGE_SIZE).map((pageIds) => ({ reasoningEffort, ids: pageIds }))
@@ -623,7 +625,8 @@ export async function migrateReasoningEfforts({
     ({ reasoningEffort, ids }) =>
       AgentConfigurationModelWithBypass.update(
         { reasoningEffort },
-        { where: { id: ids } }
+        // `silent` keeps `updatedAt`: rewriting the effort is not an edit of the agent.
+        { where: { id: ids }, silent: true }
       ),
     { concurrency: UPDATE_CONCURRENCY }
   );
@@ -633,7 +636,7 @@ export async function migrateReasoningEfforts({
     ({ id, suggestion, to }) =>
       AgentSuggestionModelWithBypass.update(
         { suggestion: { ...suggestion, reasoningEffort: to } },
-        { where: { id } }
+        { where: { id }, silent: true }
       ),
     { concurrency: UPDATE_CONCURRENCY }
   );
