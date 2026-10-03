@@ -8,22 +8,13 @@ import type { ModelId } from "@app/types/shared/model_id";
 export type GroupManagementVerb = "write" | "read_usage" | "set_usage_limits";
 export type GroupMemberVerb = Exclude<GroupManagementVerb, "write">;
 
-function canUseGroupVerb(
-  auth: Authenticator,
-  group: GroupResource,
-  verb: GroupManagementVerb
-): boolean {
-  return (
-    auth.can(verb, group) &&
-    (verb !== "write" || group.canManageMembersGivenGrantedRole(auth))
-  );
-}
-
 /**
- * @cc [owner:philipperolet,label:security;backend] managed-group-scope
+ * @cc [owner:philipperolet;rfrenoy,label:security;backend] managed-group-scope
  * Results MUST be in the caller's workspace, be manual or provisioned groups, and grant the
- * requested verb. `write` MUST exclude provisioned groups and admin-granting groups for
- * non-admins. A type-wide group grant MUST be checked against each eligible group.
+ * requested verb. `write` MUST exclude provisioned groups and, for non-admins, admin-only
+ * membership groups (admin-granting or holding an admin-only governance capability, see
+ * `GroupResource.listAdminOnlyMembershipGroupModelIds`). A type-wide group grant MUST be checked
+ * against each eligible group.
  * Use when a page or API needs the actual groups to show or edit: for example, Usage group
  * allowances or the People membership controls. This loads all eligible groups for workspace
  * managers/admins. For member queries, use `getMemberScopeWithGroupVerb`; for one group, check
@@ -44,7 +35,13 @@ export async function listGroupsWithVerb(
           { groupKinds }
         );
 
-  return groups.filter((group) => canUseGroupVerb(auth, group, verb));
+  const allowed = groups.filter((group) => auth.can(verb, group));
+  if (verb !== "write") {
+    return allowed;
+  }
+  const adminOnlyGroupModelIds =
+    await GroupResource.listAdminOnlyMembershipGroupModelIds(auth, allowed);
+  return allowed.filter((group) => !adminOnlyGroupModelIds.has(group.id));
 }
 
 export async function hasAnyGroupPermission(
@@ -137,7 +134,7 @@ export async function getMemberVerbAuthority(
     user: member,
     groupKinds: [...MANAGEABLE_GROUP_KINDS],
   });
-  const group = groups.find((group) => canUseGroupVerb(auth, group, verb));
+  const group = groups.find((group) => auth.can(verb, group));
   return group ? { kind: "group", group } : { kind: "none" };
 }
 

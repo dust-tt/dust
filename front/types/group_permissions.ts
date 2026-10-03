@@ -1,3 +1,6 @@
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { RoleType } from "@app/types/user";
+
 /**
  * Vocabulary for the `group_permissions` table (Admin Governance §1A).
  *
@@ -219,3 +222,56 @@ export const GOVERNANCE_CAPABILITIES = {
   ],
   trigger: [{ grantType: "use_workspace_pool", resourceType: "trigger" }],
 } satisfies Record<string, CapabilitySpec[]>;
+
+/**
+ * @cc [owner:rfrenoy,label:security] admin-only-governance-capabilities
+ * A governance capability whose holders gain admin-reserved access (today `admin` on `billing`
+ * and `admin` on `security`) MUST be listed in `ADMIN_ONLY_GOVERNANCE_CAPABILITIES`. The
+ * Governance page delegation gate (`governanceCapabilitiesForRole`) and the group membership
+ * guard (`GroupResource.listAdminOnlyMembershipGroupModelIds`) MUST both derive the set of
+ * capabilities non-admins may not hand out from this list, so the two gates cannot drift.
+ */
+export const ADMIN_ONLY_GOVERNANCE_CAPABILITIES: CapabilitySpec[] =
+  GOVERNANCE_CAPABILITIES.billingAndSecurity;
+
+export function isAdminOnlyGovernanceCapability({
+  grantType,
+  resourceType,
+}: CapabilitySpec): boolean {
+  return ADMIN_ONLY_GOVERNANCE_CAPABILITIES.some(
+    (c) => c.grantType === grantType && c.resourceType === resourceType
+  );
+}
+
+const MANAGER_GOVERNANCE_CAPABILITIES: CapabilitySpec[] = Object.values(
+  GOVERNANCE_CAPABILITIES
+)
+  .flat()
+  .filter((c) => !isAdminOnlyGovernanceCapability(c));
+
+const ADMIN_GOVERNANCE_CAPABILITIES: CapabilitySpec[] = [
+  ...MANAGER_GOVERNANCE_CAPABILITIES,
+  ...ADMIN_ONLY_GOVERNANCE_CAPABILITIES,
+];
+
+/**
+ * @cc [owner:rfrenoy,label:security] governance-capabilities-by-role
+ * The capabilities a role may see and delegate on the Governance page MUST be: every governance
+ * capability for `admin`, every governance capability except the admin-only ones for `manager`,
+ * and none for `user` and `none`.
+ */
+export function governanceCapabilitiesForRole(
+  role: RoleType
+): CapabilitySpec[] {
+  switch (role) {
+    case "admin":
+      return ADMIN_GOVERNANCE_CAPABILITIES;
+    case "manager":
+      return MANAGER_GOVERNANCE_CAPABILITIES;
+    case "user":
+    case "none":
+      return [];
+    default:
+      return assertNever(role);
+  }
+}
