@@ -147,6 +147,8 @@ interface GroupConversationViewProps {
    * set; pass the workspace's own so the Pod and the file system agree.
    */
   initialDataSources?: DataSource[];
+  /** Replaces the local Files browser when the workspace owns its data and navigation. */
+  filesContent?: ReactNode;
   /** When set, opening a file calls this instead of the built-in sheet. */
   onFileOpen?: (dataSource: DataSource) => void;
   onFileDragChange?: (fileId: string | null, fileName?: string | null) => void;
@@ -1371,6 +1373,7 @@ export function GroupConversationView({
   dynamicFileTabIds = [],
   onAddFileToTopbar,
   initialDataSources,
+  filesContent,
   onFileOpen,
   onFileDragChange,
   fileToRevealInKnowledge = null,
@@ -3864,36 +3867,38 @@ export function GroupConversationView({
 
         {/* Files Tab */}
         <GroupConversationTabContent value="knowledge" contentClassName="gap-3">
-          <FilesBrowser
-            dataSources={dataSources}
-            searchText={knowledgeSearchText}
-            onSearchTextChange={setKnowledgeSearchText}
-            currentFolderId={currentFolderId}
-            onCurrentFolderIdChange={setCurrentFolderId}
-            revealedFileId={revealedFileIdInKnowledge}
-            onClearRevealedFile={() => setRevealedFileIdInKnowledge(null)}
-            emptyMessage="No files in this room yet."
-            onAddFileToTopbar={onAddFileToTopbar}
-            onFileOpen={(dataSource) => {
-              if (onFileOpen) {
-                onFileOpen(dataSource);
-              } else {
-                setSelectedDataSource(dataSource);
-                setIsDocumentSheetOpen(true);
+          {filesContent ?? (
+            <FilesBrowser
+              dataSources={dataSources}
+              searchText={knowledgeSearchText}
+              onSearchTextChange={setKnowledgeSearchText}
+              currentFolderId={currentFolderId}
+              onCurrentFolderIdChange={setCurrentFolderId}
+              revealedFileId={revealedFileIdInKnowledge}
+              onClearRevealedFile={() => setRevealedFileIdInKnowledge(null)}
+              emptyMessage="No files in this room yet."
+              onAddFileToTopbar={onAddFileToTopbar}
+              onFileOpen={(dataSource) => {
+                if (onFileOpen) {
+                  onFileOpen(dataSource);
+                } else {
+                  setSelectedDataSource(dataSource);
+                  setIsDocumentSheetOpen(true);
+                }
+              }}
+              onDeleteFile={(fileId) =>
+                setDataSources((prev) => prev.filter((ds) => ds.id !== fileId))
               }
-            }}
-            onDeleteFile={(fileId) =>
-              setDataSources((prev) => prev.filter((ds) => ds.id !== fileId))
-            }
-            dnd={{
-              draggingFileId,
-              dropHoverTargetId,
-              onDragOverTarget: handleDragOverTarget,
-              onDropOnTarget: handleDropOnTarget,
-              onFileDragStart: handleFileDragStart,
-              onFileDragEnd: handleFileDragEnd,
-            }}
-          />
+              dnd={{
+                draggingFileId,
+                dropHoverTargetId,
+                onDragOverTarget: handleDragOverTarget,
+                onDropOnTarget: handleDropOnTarget,
+                onFileDragStart: handleFileDragStart,
+                onFileDragEnd: handleFileDragEnd,
+              }}
+            />
+          )}
         </GroupConversationTabContent>
 
         {dynamicFileTabIds.map((dataSourceId) => {

@@ -49,6 +49,7 @@ const config: StorybookConfig = {
         ...(viteConfig.resolve ?? {}),
         alias: {
           ...(viteConfig.resolve?.alias ?? {}),
+          "@dust-tt/sparkle": path.resolve(__dirname, "../src/"),
           "@sparkle": path.resolve(__dirname, "../src/"),
         },
       },

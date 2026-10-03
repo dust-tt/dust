@@ -192,6 +192,7 @@ export type DataSourceFileType =
   | "md"
   | "png"
   | "frame"
+  | "pod"
   | "agent"
   | "skill";
 

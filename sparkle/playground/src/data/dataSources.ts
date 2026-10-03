@@ -309,6 +309,8 @@ export function getIconForFileType(
       return Image01;
     case "agent":
       return Robot;
+    case "pod":
+      return Cube01;
     case "skill":
       return PuzzlePiece01;
     default:
@@ -556,6 +558,7 @@ export function getDataSourceIcon(
 }
 
 const NAMED_FILE_TYPE_LABELS: Partial<Record<DataSourceFileType, string>> = {
+  pod: "Pod",
   frame: "Frame",
   agent: "Agent",
   skill: "Skill",

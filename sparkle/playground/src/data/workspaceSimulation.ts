@@ -1,5 +1,3 @@
-import { MessageChatSquare, PuzzlePiece01, Robot } from "@dust-tt/sparkle";
-
 import { registerAgents } from "./agents";
 import {
   AGENT_INSTRUCTIONS,
@@ -21,8 +19,7 @@ import {
   generateFilesInFolder,
   getIconForFileType,
 } from "./dataSources";
-import { indexFilesByParentId } from "./fileMoves";
-import { MY_POD_SPACE } from "./myPod";
+import { derivePodFiles, indexFilesByParentId, isPodFile } from "./fileMoves";
 import { createMockRequests } from "./requests";
 import { mockSpaces } from "./spaces";
 import { createMockTriggers, createTriggeredConversations } from "./triggers";
@@ -69,8 +66,7 @@ export interface WorkspaceModel {
   files: DataSource[];
   filesByParentId: Map<string | null, DataSource[]>;
   /**
-   * A Pod's own files, rooted at `null` the way a Pod's Files tab expects —
-   * the same items the tree shows under that Pod's folder.
+   * The containing folder's files for each Pod, rooted at `null`.
    */
   podFilesBySpaceId: Map<string, DataSource[]>;
   conversationFilesByConversationId: Map<string, DataSource[]>;
@@ -297,7 +293,7 @@ const POD_EXTRA_FOLDERS: FolderSpec[] = [
 /**
  * The file system has no Spaces: what a Company Space held is filed in a plain
  * department folder instead. Company Data has none — its folders, and the
- * workspace-wide agents and skills, sit at the top level.
+ * workspace-wide documents sit at the top level.
  */
 const DEPARTMENT_FOLDER_NAMES: Record<string, string> = {
   "company-space-2": "Engineering",
@@ -404,7 +400,7 @@ function addFolderTree(
   });
 }
 
-function addPodFolder(
+function addPodFile(
   builder: Builder,
   pod: Space,
   parentId: string | null
@@ -412,11 +408,11 @@ function addPodFolder(
   const id = `fs-pod-${pod.id}`;
   builder.push({
     id,
-    kind: "folder",
+    kind: "file",
     fileName: pod.name,
     parentId,
     source: "pod",
-    folderType: "pod",
+    fileType: "pod",
     refId: pod.id,
     createdBy: pickOne(mockUsers, pod.id, 0).id,
     createdAt: seededDate(pod.id, 1, 500),
@@ -442,30 +438,6 @@ function addNamedFolder(
     createdBy: pickOne(mockUsers, id, 0).id,
     createdAt: seededDate(id, 1, 500),
     updatedAt: seededDate(id, 4, 30),
-  });
-  return id;
-}
-
-/** A Dust-owned folder such as `Agents`, `Skills` or `Conversations`. */
-function addSystemFolder(
-  builder: Builder,
-  name: string,
-  parentId: string | null,
-  source: DataSource["source"],
-  icon: DataSource["icon"]
-): string {
-  const id = `fs-system-${parentId ?? "root"}-${name}`;
-  builder.push({
-    id,
-    kind: "folder",
-    fileName: name,
-    parentId,
-    source,
-    folderType: "system",
-    icon,
-    createdBy: pickOne(mockUsers, id, 0).id,
-    createdAt: seededDate(id, 1, 400),
-    updatedAt: seededDate(id, 4, 20),
   });
   return id;
 }
@@ -518,7 +490,6 @@ function buildCleanWorkspace(currentUserId: string): WorkspaceModel {
     wakeUps: [],
     requests: [],
     files: builder.files,
-    podFilesBySpaceId: new Map(),
     conversationFilesByConversationId: new Map(),
   });
 }
@@ -537,16 +508,7 @@ function buildMatureWorkspace(currentUserId: string): WorkspaceModel {
   const agents = assignAgents(pods, skills, companyDataId);
   registerAgents(agents);
 
-  const agentsByOwner = groupBy(
-    agents.filter((agent) => agent.status === "active"),
-    (agent) => ownerSpaceIdOf(agent.spaceIds, companyDataId)
-  );
-  const skillsByOwner = groupBy(
-    skills.filter((skill) => skill.status === "active"),
-    (skill) => ownerSpaceIdOf(skill.spaceIds, companyDataId)
-  );
-  // The file tree writes an agent once, under its owner; a conversation can
-  // use any agent the Pod reaches, hence the second index.
+  // Conversations use the agents available in their Pod.
   const agentsByPod = new Map<string, ManagedAgent[]>();
   for (const agent of agents) {
     if (agent.status !== "active") {
@@ -577,11 +539,9 @@ function buildMatureWorkspace(currentUserId: string): WorkspaceModel {
   const wakeUps = createMockWakeUps(conversations, currentUserId);
 
   // ── Files ────────────────────────────────────────────────────────────────
-  const podFilesBySpaceId = new Map<string, DataSource[]>();
   const conversationFilesByConversationId = new Map<string, DataSource[]>();
 
-  // Company Data's folders and the workspace's own agents and skills are the
-  // top level of the tree; every other Space becomes a department folder.
+  // Company Data sits at the top level; every other Space becomes a department folder.
   addFolderTree(
     builder,
     COMPANY_SPACE_TREES[companyDataId] ?? [],
@@ -589,13 +549,6 @@ function buildMatureWorkspace(currentUserId: string): WorkspaceModel {
     "company",
     `space/${companyDataId}`
   );
-  addOwnedItems(builder, {
-    parentId: null,
-    source: "company",
-    agents: agentsByOwner.get(companyDataId) ?? [],
-    skills: skillsByOwner.get(companyDataId) ?? [],
-  });
-
   const departmentIds = companySpaces
     .filter((space) => space.id !== companyDataId)
     .map((space) => {
@@ -631,9 +584,8 @@ function buildMatureWorkspace(currentUserId: string): WorkspaceModel {
   let topTurn = 0;
   let nestedTurn = 0;
   const podParentFor = (pod: Space): string | null => {
-    // My Pod is the user's own, so it stays at the top level, with the odd
-    // Pod nobody has filed yet.
-    if (pod.id === MY_POD_SPACE.id || rand(pod.id, 95) >= POD_FILED_ODDS) {
+    // Some Pods have not been filed yet and remain at the workspace root.
+    if (rand(pod.id, 95) >= POD_FILED_ODDS) {
       return null;
     }
     if (rand(pod.id, 97) < POD_NESTED_ODDS) {
@@ -642,88 +594,60 @@ function buildMatureWorkspace(currentUserId: string): WorkspaceModel {
     return topPodParents[topTurn++ % topPodParents.length];
   };
 
-  const allPods = [MY_POD_SPACE, ...pods];
-  allPods.forEach((pod) => {
-    const rootId = addPodFolder(builder, pod, podParentFor(pod));
-    const isEmpty =
-      pod.id !== MY_POD_SPACE.id && rand(pod.id, 90) < EMPTY_POD_ODDS;
-
-    if (!isEmpty && pod.id !== MY_POD_SPACE.id) {
+  pods.forEach((pod) => {
+    const parentId = podParentFor(pod);
+    addPodFile(builder, pod, parentId);
+    if (rand(pod.id, 90) >= EMPTY_POD_ODDS) {
       const extras = createBuilder(builder.nextFolderId);
       addFolderTree(extras, POD_EXTRA_FOLDERS, null, "pod", `pod/${pod.id}`);
       const podFiles = [
         ...generateDataSourcesForSpace(pod.id, randInt(pod.id, 91, 8, 60)),
         ...extras.files,
       ];
-      podFilesBySpaceId.set(pod.id, podFiles);
-      // The Pod's Files tab roots these at `null`; under the tree they hang
-      // off the Pod's folder, so both show the very same items.
+      // Documents sit beside the Pod, never beneath its file.
       podFiles.forEach((file) =>
-        builder.push({ ...file, parentId: file.parentId ?? rootId })
+        builder.push({ ...file, parentId: file.parentId ?? parentId })
       );
-    }
-
-    const podConversationList =
-      pod.id === MY_POD_SPACE.id
-        ? freeConversations
-        : [
-            ...conversations.filter(
-              (conversation) => conversation.spaceId === pod.id
-            ),
-            ...triggeredConversations.filter(
-              (conversation) => conversation.spaceId === pod.id
-            ),
-          ];
-
-    if (podConversationList.length > 0) {
-      const conversationsFolderId = addSystemFolder(
-        builder,
-        "Conversations",
-        rootId,
-        "pod",
-        MessageChatSquare
-      );
-      podConversationList.forEach((conversation) => {
-        const folderId = `fs-conv-${conversation.id}`;
-        builder.push({
-          id: folderId,
-          kind: "folder",
-          fileName: conversation.title,
-          parentId: conversationsFolderId,
-          source: "pod",
-          folderType: "conversation",
-          refId: conversation.id,
-          createdBy: conversation.userParticipants[0] ?? currentUserId,
-          createdAt: conversation.createdAt,
-          updatedAt: conversation.updatedAt,
-        });
-        // Rooted at `null` for the conversation's own Files panel, and under
-        // the conversation's folder in the tree: the same items, read twice.
-        const conversationFiles = generateFilesInFolder({
-          seed: `conv/${conversation.id}`,
-          count: randInt(conversation.id, 3, 0, 5),
-          parentId: null,
-          source: "pod",
-        });
-        conversationFiles.forEach((file) =>
-          builder.push({ ...file, parentId: folderId })
-        );
-        conversationFilesByConversationId.set(
-          conversation.id,
-          conversationFiles
-        );
-      });
-    }
-
-    if (!isEmpty) {
-      addOwnedItems(builder, {
-        parentId: rootId,
-        source: "pod",
-        agents: agentsByOwner.get(pod.id) ?? [],
-        skills: skillsByOwner.get(pod.id) ?? [],
-      });
     }
   });
+
+  // Conversation attachments stay in the conversation UI, outside the file tree.
+  for (const conversation of [...conversations, ...triggeredConversations]) {
+    conversationFilesByConversationId.set(
+      conversation.id,
+      generateFilesInFolder({
+        seed: `conv/${conversation.id}`,
+        count: randInt(conversation.id, 3, 0, 5),
+        parentId: null,
+        source: "pod",
+      })
+    );
+  }
+
+  // Skills are ordinary files distributed across the workspace, including its root.
+  const skillParents = [
+    null,
+    ...builder.files
+      .filter((file) => file.kind === "folder")
+      .map((file) => file.id),
+  ];
+  skills
+    .filter((skill) => skill.status === "active")
+    .forEach((skill, index) => {
+      builder.push({
+        id: `fs-skill-${skill.id}`,
+        kind: "file",
+        fileName: `${skill.name}.skill.md`,
+        parentId: index === 0 ? null : pickOne(skillParents, skill.id, 0),
+        source: "company",
+        fileType: "skill",
+        refId: skill.id,
+        createdBy: skill.editorIds[0] ?? mockUsers[0].id,
+        createdAt: seededDate(skill.id, 1, 300),
+        updatedAt: skill.updatedAt,
+        icon: getIconForFileType("skill"),
+      });
+    });
 
   return finalize({
     profile: "mature",
@@ -737,83 +661,11 @@ function buildMatureWorkspace(currentUserId: string): WorkspaceModel {
     wakeUps,
     requests: createMockRequests(),
     files: builder.files,
-    podFilesBySpaceId,
     conversationFilesByConversationId,
   });
 }
 
-/** Agents and skills, as files in the `Agents` / `Skills` folders of a space. */
-function addOwnedItems(
-  builder: Builder,
-  {
-    parentId,
-    source,
-    agents,
-    skills,
-  }: {
-    parentId: string | null;
-    source: DataSource["source"];
-    agents: ManagedAgent[];
-    skills: ManagedSkill[];
-  }
-): void {
-  if (agents.length > 0) {
-    const folderId = addSystemFolder(
-      builder,
-      "Agents",
-      parentId,
-      source,
-      Robot
-    );
-    agents.forEach((agent) =>
-      builder.push({
-        id: `fs-agent-${agent.id}`,
-        kind: "file",
-        fileName: `${agent.name}.agent.md`,
-        parentId: folderId,
-        source,
-        fileType: "agent",
-        refId: agent.id,
-        createdBy: agent.editorIds[0] ?? mockUsers[0].id,
-        createdAt: seededDate(agent.id, 1, 300),
-        updatedAt: agent.updatedAt,
-        icon: getIconForFileType("agent"),
-      })
-    );
-  }
-
-  if (skills.length > 0) {
-    const folderId = addSystemFolder(
-      builder,
-      "Skills",
-      parentId,
-      source,
-      PuzzlePiece01
-    );
-    skills.forEach((skill) =>
-      builder.push({
-        id: `fs-skill-${skill.id}`,
-        kind: "file",
-        fileName: `${skill.name}.skill.md`,
-        parentId: folderId,
-        source,
-        fileType: "skill",
-        refId: skill.id,
-        createdBy: skill.editorIds[0] ?? mockUsers[0].id,
-        createdAt: seededDate(skill.id, 1, 300),
-        updatedAt: skill.updatedAt,
-        icon: getIconForFileType("skill"),
-      })
-    );
-  }
-}
-
 // ── Ownership ────────────────────────────────────────────────────────────────
-
-/** Where an item's file lives: its first space, or the workspace shelf. */
-function ownerSpaceIdOf(spaceIds: string[], companyDataId: string): string {
-  return spaceIds[0] ?? companyDataId;
-}
 
 function groupBy<T>(items: T[], keyOf: (item: T) => string): Map<string, T[]> {
   const groups = new Map<string, T[]>();
@@ -829,10 +681,6 @@ function groupBy<T>(items: T[], keyOf: (item: T) => string): Map<string, T[]> {
   return groups;
 }
 
-/**
- * Skills belong to a Pod, except the ones Dust ships: those are available
- * workspace-wide and sit on the Company Data shelf.
- */
 function assignSkills(pods: Space[]): ManagedSkill[] {
   return mockManagedSkills.map((skill) => {
     if (skill.isDustProvided || pods.length === 0) {
@@ -1024,11 +872,25 @@ function retargetTriggers(
 // ── Assembly ─────────────────────────────────────────────────────────────────
 
 function finalize(
-  model: Omit<WorkspaceModel, "filesByParentId">
+  model: Omit<WorkspaceModel, "filesByParentId" | "podFilesBySpaceId">
 ): WorkspaceModel {
-  return { ...model, filesByParentId: indexFilesByParentId(model.files) };
+  const filesByParentId = indexFilesByParentId(model.files);
+  return {
+    ...model,
+    filesByParentId,
+    podFilesBySpaceId: derivePodFiles(
+      filesByParentId,
+      model.files.filter(isPodFile)
+    ),
+  };
 }
 
+/**
+ * @cc [owner:spolu,label:product] workspace-visible-files
+ * The filesystem MUST contain Pods as leaf files and freely placed skill files.
+ * Agents, conversations, and their internal directories MUST NOT appear in the filesystem.
+ * Conversations and their attachments MUST remain available outside that filesystem.
+ */
 export function buildWorkspace(
   profile: WorkspaceProfile,
   currentUserId: string

@@ -464,7 +464,9 @@ export function FilesBrowser({
         cell: (info) => {
           const dataSource = info.row.original;
           const menuItems = [
-            ...(onAddFileToTopbar && dataSource.kind === "file"
+            ...(onAddFileToTopbar &&
+            dataSource.kind === "file" &&
+            dataSource.fileType !== "pod"
               ? [
                   {
                     kind: "item" as const,

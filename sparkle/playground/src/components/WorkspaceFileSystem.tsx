@@ -32,8 +32,7 @@ import { TreeDnd } from "./TreeDnd";
 
 // The workspace file system as a single panel split in two: a folder tree on
 // the left, the files browser on the right, both looking at the same current
-// folder. Everything the workspace holds — Company Spaces, Pods, their
-// conversations, agents and skills — is in the one tree.
+// folder. Pods and skills are files; conversations and agents live outside this tree.
 //
 // Items are moved by dragging them, in the tree, in the table, or onto a
 // breadcrumb. What may be picked up and where it may land is decided in
@@ -55,6 +54,13 @@ interface WorkspaceFileSystemProps {
   onMoveFile: (draggedId: string, targetFolderId: string | null) => void;
   /** Opens the Pod creation dialog on the given folder. */
   onCreatePod: (parentId: string | null) => void;
+  initialFolderId?: string | null;
+  showTree?: boolean;
+  onOpenInFiles?: (folderId: string | null) => void;
+  onAddFileToTopbar?: (fileId: string) => void;
+  onFileDragChange?: (fileId: string | null) => void;
+  revealedFileId?: string | null;
+  onClearRevealedFile?: () => void;
 }
 
 export function WorkspaceFileSystem({
@@ -64,11 +70,21 @@ export function WorkspaceFileSystem({
   onFileOpen,
   onMoveFile,
   onCreatePod,
+  initialFolderId = null,
+  showTree = true,
+  onOpenInFiles,
+  onAddFileToTopbar,
+  onFileDragChange,
+  revealedFileId,
+  onClearRevealedFile,
 }: WorkspaceFileSystemProps) {
   const [currentFolderId, setCurrentFolderIdState] = useState<string | null>(
-    null
+    initialFolderId
   );
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(
+    () =>
+      new Set(getFolderPath(files, initialFolderId).map((folder) => folder.id))
+  );
   const [isTreeMenuOpen, setIsTreeMenuOpen] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
@@ -142,12 +158,14 @@ export function WorkspaceFileSystem({
     event.dataTransfer.setData("text/plain", item.fileName);
     draggingIdRef.current = item.id;
     setDraggingId(item.id);
+    onFileDragChange?.(item.id);
   };
 
   const endDrag = () => {
     draggingIdRef.current = null;
     setDraggingId(null);
     setDropTargetId(null);
+    onFileDragChange?.(null);
   };
 
   const dragOverTarget = (
@@ -267,13 +285,24 @@ export function WorkspaceFileSystem({
 
   return (
     <div ref={containerRef} className="flex h-full min-h-0 w-full">
-      {!isCompact && (
+      {showTree && !isCompact && (
         <aside className="flex w-64 flex-none flex-col overflow-y-auto border-r border-separator p-2">
           {tree}
         </aside>
       )}
       <div className="flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
-        {isCompact && (
+        {onOpenInFiles && (
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              icon={Folder}
+              label="Open in Files"
+              onClick={() => onOpenInFiles(currentFolderId)}
+            />
+          </div>
+        )}
+        {showTree && isCompact && (
           <PopoverRoot open={isTreeMenuOpen} onOpenChange={setIsTreeMenuOpen}>
             <PopoverTrigger asChild>
               <Button
@@ -302,6 +331,9 @@ export function WorkspaceFileSystem({
           onFileOpen={onFileOpen}
           onDeleteFile={() => {}}
           onCreatePod={() => onCreatePod(currentFolderId)}
+          onAddFileToTopbar={onAddFileToTopbar}
+          revealedFileId={revealedFileId}
+          onClearRevealedFile={onClearRevealedFile}
           dnd={browserDnd}
           emptyMessage="No files in this workspace yet."
         />

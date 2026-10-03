@@ -6,7 +6,7 @@ import type { DataSource } from "./types";
 
 /** A plain file or folder being dragged; the value is the item's id. */
 export const WORKSPACE_FILE_DRAG_MIME = "application/x-dust-workspace-file";
-/** A Pod folder being dragged; the value is the item's id. */
+/** A Pod file being dragged; the value is the item's id. */
 export const WORKSPACE_POD_DRAG_MIME = "application/x-dust-workspace-pod";
 
 export function indexFilesByParentId(
@@ -24,21 +24,20 @@ export function indexFilesByParentId(
   return index;
 }
 
-export function isPodFolder(item: DataSource): boolean {
-  return item.kind === "folder" && item.folderType === "pod";
+export function isPodFile(item: DataSource): boolean {
+  return item.kind === "file" && item.fileType === "pod";
 }
 
 /**
- * Plain files, plain folders and Pods can be picked up. Company Spaces,
- * conversations and the Dust-owned `Agents` / `Skills` / `Conversations`
- * folders are structural, and an `.agent.md` only exists where its agent
- * lives, so none of them move.
+ * @cc [owner:spolu,label:product] movable-pods-and-skills
+ * Pod and skill files MUST be movable to the workspace root or any ordinary folder.
+ * Pods MUST NOT accept children or act as drop targets.
  */
 export function isDraggableItem(item: DataSource): boolean {
   if (item.kind === "folder") {
-    return item.folderType === undefined || item.folderType === "pod";
+    return item.folderType === undefined;
   }
-  return item.fileType !== "agent" && item.fileType !== "skill";
+  return item.fileType !== "agent";
 }
 
 /** The workspace root and any folder that is not a conversation or system one. */
@@ -51,7 +50,7 @@ export function isDropTargetFolder(item: DataSource): boolean {
 }
 
 export function dragMimeFor(item: DataSource): string {
-  return isPodFolder(item) ? WORKSPACE_POD_DRAG_MIME : WORKSPACE_FILE_DRAG_MIME;
+  return isPodFile(item) ? WORKSPACE_POD_DRAG_MIME : WORKSPACE_FILE_DRAG_MIME;
 }
 
 /** The dragged item's id, whichever of the two kinds the drag carries. */
@@ -116,44 +115,38 @@ export function canDropInto(
   if (targetChain.some((folder) => folder.id === draggedId)) {
     return false;
   }
-  // A Pod never nests in another Pod, however deep the target sits.
-  if (isPodFolder(dragged) && targetChain.some(isPodFolder)) {
-    return false;
-  }
   return true;
 }
 
 /**
- * The contents of each given folder, rooted at `null` the way a Pod's or a
- * conversation's own Files panel expects them. Reading these off the live file
- * list is what makes a move in the Files view show up in the Pod that owns it.
- *
- * Keyed by `refId`, the Pod or conversation the folder stands for. Pass
- * `skipSystemFolders` to leave out the Dust-owned `Conversations`, `Agents`
- * and `Skills` branches, which a Pod's Files tab does not list.
+ * @cc [owner:spolu,label:product] pod-files-follow-containing-folder
+ * A Pod's Files view MUST show its containing folder's live contents, rooted at null.
+ * Moving the Pod MUST change that view without moving its former folder's other files.
  */
-export function deriveFolderFiles(
+export function derivePodFiles(
   byParentId: Map<string | null, DataSource[]>,
-  roots: DataSource[],
-  { skipSystemFolders = false }: { skipSystemFolders?: boolean } = {}
+  pods: DataSource[]
 ): Map<string, DataSource[]> {
   const result = new Map<string, DataSource[]>();
+  const contentsByFolderId = new Map<string | null, DataSource[]>();
 
-  for (const root of roots) {
-    if (!root.refId) {
+  for (const pod of pods) {
+    if (!isPodFile(pod) || !pod.refId) {
+      continue;
+    }
+    const cached = contentsByFolderId.get(pod.parentId);
+    if (cached) {
+      result.set(pod.refId, cached);
       continue;
     }
     const collected: DataSource[] = [];
-    const queue: { id: string; isRoot: boolean }[] = [
-      { id: root.id, isRoot: true },
+    const queue: { id: string | null; isRoot: boolean }[] = [
+      { id: pod.parentId, isRoot: true },
     ];
 
-    while (queue.length > 0) {
-      const { id, isRoot } = queue.shift() as { id: string; isRoot: boolean };
+    for (let index = 0; index < queue.length; index++) {
+      const { id, isRoot } = queue[index];
       for (const child of byParentId.get(id) ?? []) {
-        if (skipSystemFolders && child.folderType === "system") {
-          continue;
-        }
         collected.push(isRoot ? { ...child, parentId: null } : child);
         if (child.kind === "folder") {
           queue.push({ id: child.id, isRoot: false });
@@ -161,7 +154,8 @@ export function deriveFolderFiles(
       }
     }
 
-    result.set(root.refId, collected);
+    contentsByFolderId.set(pod.parentId, collected);
+    result.set(pod.refId, collected);
   }
 
   return result;

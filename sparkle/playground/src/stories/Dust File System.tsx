@@ -122,7 +122,7 @@ import {
   type DataSource,
   type DataSourceFileType,
   DEFAULT_POD_NOTIFICATION_CONDITION,
-  deriveFolderFiles,
+  derivePodFiles,
   getMembersBySpaceId,
   getRandomUsers,
   getUserById,
@@ -130,7 +130,7 @@ import {
   indexFilesById,
   indexFilesByParentId,
   isDropTargetFolder,
-  isPodFolder,
+  isPodFile,
   isTriggeredConversation,
   mockAgents,
   moveDataSource,
@@ -212,7 +212,11 @@ interface WorkspaceViewProps {
   onProfileChange: (profile: WorkspaceProfile) => void;
 }
 
-function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
+export function WorkspaceView({
+  model,
+  user,
+  onProfileChange,
+}: WorkspaceViewProps) {
   // ── Bootstrap state ───────────────────────────────────────────────────────
   // Everything below starts from the workspace model. The story is remounted
   // when the simulated workspace changes, so these only need an initial value.
@@ -230,7 +234,7 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
   type P2View =
     | { kind: "welcome" }
     | { kind: "inboxAlt" }
-    | { kind: "files" }
+    | { kind: "files"; folderId?: string | null }
     | { kind: "requests" }
     | { kind: "conversations" }
     | { kind: "automations" }
@@ -390,24 +394,13 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
   const filesById = useMemo(() => indexFilesById(files), [files]);
   const filesByParentId = useMemo(() => indexFilesByParentId(files), [files]);
 
+  const podFiles = useMemo(() => files.filter(isPodFile), [files]);
   const podFilesBySpaceId = useMemo(
-    () =>
-      deriveFolderFiles(
-        filesByParentId,
-        files.filter((file) => file.folderType === "pod"),
-        { skipSystemFolders: true }
-      ),
-    [files, filesByParentId]
+    () => derivePodFiles(filesByParentId, podFiles),
+    [filesByParentId, podFiles]
   );
-
-  const conversationFilesByConversationId = useMemo(
-    () =>
-      deriveFolderFiles(
-        filesByParentId,
-        files.filter((file) => file.folderType === "conversation")
-      ),
-    [files, filesByParentId]
-  );
+  const conversationFilesByConversationId =
+    model.conversationFilesByConversationId;
 
   // A Pod's files come from the workspace, so its Files tab and the file
   // system's tree are looking at the very same items.
@@ -617,6 +610,12 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
     () => resolvePodContext(p2View, spaces, allConversations),
     [p2View, spaces, allConversations]
   );
+  const podParentId =
+    podFiles.find((file) => file.refId === podContext?.spaceId)?.parentId ??
+    null;
+  const podFolderId = fileToRevealInKnowledge
+    ? (filesById.get(fileToRevealInKnowledge)?.parentId ?? null)
+    : podParentId;
 
   const activePodTab = spaceActiveTab;
   const setActivePodTab = setSpaceActiveTab;
@@ -700,7 +699,7 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
       const file = podFilesFor(podContext.spaceId).find(
         (dataSource) => dataSource.id === fileId
       );
-      if (!file || file.kind === "folder") {
+      if (!file || file.kind === "folder" || isPodFile(file)) {
         return;
       }
 
@@ -907,7 +906,8 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
 
     const pinnedIds = new Set(dynamicFileTabIds);
     return podFilesFor(podContext.spaceId).filter(
-      (item) => item.kind === "file" && !pinnedIds.has(item.id)
+      (item) =>
+        item.kind === "file" && !isPodFile(item) && !pinnedIds.has(item.id)
     );
   }, [dynamicFileTabIds, podContext, podFilesFor]);
 
@@ -945,19 +945,38 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
     : undefined;
 
   // ── Handlers ──────────────────────────────────────────────────────────────
+  /**
+   * @cc [owner:spolu,label:product] open-pod-files-as-pods
+   * Opening a Pod file from the workspace or a Pod's Files view MUST open that Pod's
+   * conversations, rather than a document preview or a directory listing.
+   */
+  const openWorkspaceFile = (dataSource: DataSource) => {
+    if (isPodFile(dataSource) && dataSource.refId) {
+      setP2View({ kind: "space", spaceId: dataSource.refId });
+      setActivePodTab("conversations");
+      setP3View(null);
+    } else {
+      setP3View({ kind: "file", dataSource });
+    }
+    setP4View(null);
+  };
+
+  const openWorkspaceFolder = (folderId: string | null) => {
+    setP2View({ kind: "files", folderId });
+    setP3View(null);
+    setP4View(null);
+  };
+
   /** Every folder a Pod may be created in, as its full path. */
   const podDestinations = useMemo(() => {
     const options: { id: string | null; label: string }[] = [
       { id: null, label: "Files" },
     ];
     for (const file of files) {
-      if (!isDropTargetFolder(file) || isPodFolder(file)) {
+      if (!isDropTargetFolder(file)) {
         continue;
       }
       const path = getFolderPath(files, file.id);
-      if (path.some(isPodFolder)) {
-        continue;
-      }
       options.push({
         id: file.id,
         label: path.map((folder) => folder.fileName).join(" / "),
@@ -998,11 +1017,11 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
       ...prev,
       {
         id: `fs-pod-${newSpace.id}`,
-        kind: "folder",
+        kind: "file",
         fileName: name,
         parentId,
         source: "pod",
-        folderType: "pod",
+        fileType: "pod",
         refId: newSpace.id,
         createdBy: user.id,
         createdAt: new Date(),
@@ -1039,6 +1058,13 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
   const handleUpdateSpaceName = (spaceId: string, newName: string) => {
     setSpaces((prev) =>
       prev.map((s) => (s.id === spaceId ? { ...s, name: newName } : s))
+    );
+    setFiles((prev) =>
+      prev.map((file) =>
+        isPodFile(file) && file.refId === spaceId
+          ? { ...file, fileName: newName }
+          : file
+      )
     );
   };
 
@@ -1279,15 +1305,14 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
     if (p2View.kind === "files")
       return (
         <WorkspaceFileSystem
+          key={p2View.folderId ?? "root"}
+          initialFolderId={p2View.folderId}
           files={files}
           filesByParentId={filesByParentId}
           filesById={filesById}
           onMoveFile={handleMoveFile}
           onCreatePod={handleCreatePodIn}
-          onFileOpen={(dataSource) => {
-            setP3View({ kind: "file", dataSource });
-            setP4View(null);
-          }}
+          onFileOpen={openWorkspaceFile}
         />
       );
     if (p2View.kind === "requests")
@@ -1439,16 +1464,27 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
           dynamicFileTabIds={dynamicFileTabIds}
           onAddFileToTopbar={handlePodFileDrop}
           initialDataSources={podFilesFor(podContext.spaceId)}
-          // Pod files open in a panel (frames take focus, others share).
-          onFileOpen={(dataSource) => {
-            setP3View({ kind: "file", dataSource });
-            setP4View(null);
-          }}
-          onFileDragChange={handlePodFileDragChange}
-          fileToRevealInKnowledge={fileToRevealInKnowledge}
-          onFileToRevealInKnowledgeHandled={() =>
-            setFileToRevealInKnowledge(null)
+          filesContent={
+            <WorkspaceFileSystem
+              key={`${podContext.spaceId}:${podParentId}:${fileToRevealInKnowledge ?? ""}`}
+              initialFolderId={podFolderId}
+              showTree={false}
+              files={files}
+              filesByParentId={filesByParentId}
+              filesById={filesById}
+              onFileOpen={openWorkspaceFile}
+              onMoveFile={handleMoveFile}
+              onCreatePod={handleCreatePodIn}
+              onOpenInFiles={openWorkspaceFolder}
+              onAddFileToTopbar={handlePodFileDrop}
+              onFileDragChange={handlePodFileDragChange}
+              revealedFileId={fileToRevealInKnowledge}
+              onClearRevealedFile={() => setFileToRevealInKnowledge(null)}
+            />
           }
+          // Pod files open in a panel (frames take focus, others share).
+          onFileOpen={openWorkspaceFile}
+          onFileDragChange={handlePodFileDragChange}
           podVariant={podContext.variant}
           showComposer={false}
           onNewConversation={() => openNewConversation(podContext.space.name)}
@@ -2389,6 +2425,11 @@ function readStoredProfile(): WorkspaceProfile {
     : "mature";
 }
 
+/**
+ * @cc [owner:spolu,label:product] workspace-profile-reset
+ * Switching profiles MUST rebuild the selected workspace from buildWorkspace and reset
+ * navigation and edits from the previous session. Clean MUST start from its pristine seed.
+ */
 function DustFileSystem() {
   const [profile, setProfile] = useState<WorkspaceProfile>(readStoredProfile);
   const [user] = useState<User>(() => getRandomUsers(1)[0]);

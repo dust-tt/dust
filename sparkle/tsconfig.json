@@ -24,5 +24,6 @@
     "declarationMap": true
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["node_modules", "dist"]
+  // This story imports the playground outside rootDir and is checked with its tsconfig.
+  "exclude": ["node_modules", "dist", "src/stories/PlaygroundFileSystem.stories.tsx"]
 }
