@@ -9,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 
 interface EmbeddingModelSelectProps {
@@ -18,6 +19,7 @@ interface EmbeddingModelSelectProps {
 const DEFAULT_EMBEDDING_PROVIDER: ModelProviderIdType = "openai";
 
 export function EmbeddingModelSelect({ workspace }: EmbeddingModelSelectProps) {
+  const { t } = useLingui();
   const [embeddingProvider, setEmbeddingProvider] =
     useState<ModelProviderIdType>(DEFAULT_EMBEDDING_PROVIDER);
 
@@ -30,12 +32,14 @@ export function EmbeddingModelSelect({ workspace }: EmbeddingModelSelectProps) {
   return (
     <div className="flex flex-col gap-2 p-3">
       <div className="flex items-center justify-between">
-        <div className="font-semibold">Embedding Provider:</div>
+        <div className="font-semibold">
+          <Trans>Embedding provider:</Trans>
+        </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild disabled>
             <Button
               disabled
-              tooltip="Please contact us if you want to change this setting."
+              tooltip={t`Please contact us if you want to change this setting.`}
               isSelect
               label={PRETTIFIED_PROVIDER_NAMES[embeddingProvider]}
               variant="outline"
@@ -56,8 +60,10 @@ export function EmbeddingModelSelect({ workspace }: EmbeddingModelSelectProps) {
         </DropdownMenu>
       </div>
       <div className="text-sm text-muted-foreground">
-        Embedding models are used to create numerical representations of your
-        data powering the semantic search capabilities of your agents.
+        <Trans>
+          Embedding models are used to create numerical representations of your
+          data powering the semantic search capabilities of your agents.
+        </Trans>
       </div>
     </div>
   );

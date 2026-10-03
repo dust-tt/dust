@@ -21,6 +21,7 @@ import type {
 import type { ProvidersSelection } from "@app/types/provider_selection";
 import type { WorkspaceType } from "@app/types/user";
 import { ArrowRight, Button } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import groupBy from "lodash/groupBy";
 import mapValues from "lodash/mapValues";
 import pickBy from "lodash/pickBy";
@@ -41,6 +42,7 @@ export function ModelProvidersPageContent({
   onToggleProvider,
   onSelectAllProviders,
 }: ModelProvidersPageContentProps) {
+  const { t } = useLingui();
   const { subscription } = useAuth();
   const { plan } = subscription;
   const { featureFlags } = useFeatureFlags();
@@ -100,14 +102,18 @@ export function ModelProvidersPageContent({
       )}
       <EmbeddingModelSelect workspace={workspace} />
       <div className="flex flex-col gap-2 p-3">
-        <div className="font-semibold">Model access tiers</div>
+        <div className="font-semibold">
+          <Trans>Model access tiers</Trans>
+        </div>
         <div className="flex items-center justify-between gap-4">
           <div className="text-sm text-muted-foreground">
-            Model access tiers let members use models up to their highest
-            allowed tier — set per workspace, group, or member.
+            <Trans>
+              Model access tiers let members use models up to their highest
+              allowed tier — set per workspace, group, or member.
+            </Trans>
           </div>
           <Button
-            label="Manage in Credits"
+            label={t`Manage in Credits`}
             variant="highlight-ghost"
             size="sm"
             iconRight={ArrowRight}
