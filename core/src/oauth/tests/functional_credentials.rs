@@ -301,3 +301,71 @@ async fn test_oauth_credentials_bigquery_invalid_content() {
 
     do_failing_api_call(create_url, HttpMethod::POST, &create_body).await;
 }
+
+#[tokio::test]
+async fn test_oauth_credentials_databricks_flow_ok() {
+    let create_url = "/credentials".to_string();
+    let create_body = json!({
+        "provider": "databricks",
+        "metadata": {
+            "workspace_id": "PjlCyKnRu2",
+            "user_id": "5dz5IMaoLW"
+        },
+        "content": {
+            "host": "dbc-example.cloud.databricks.com",
+            "http_path": "/sql/1.0/warehouses/warehouse-id",
+            "access_token": "dapiXXXXXXXX"
+        }
+    });
+
+    let api_response = do_api_call(create_url, HttpMethod::POST, &create_body).await;
+
+    assert_eq!(api_response.error.is_none(), true);
+
+    let credential: CredentialExpectedResponse = serde_json::from_value(
+        api_response
+            .response
+            .unwrap()
+            .get("credential")
+            .unwrap()
+            .clone(),
+    )
+    .unwrap();
+
+    assert!(credential.created > (utils::now() - 2000) && credential.created < utils::now());
+    assert!(credential.credential_id.starts_with("cred_"));
+    assert_eq!(credential.credential_id.len(), 80);
+
+    let get_url = format!("/credentials/{}", credential.credential_id);
+    let get_body = json!({});
+    let api_response = do_api_call(get_url, HttpMethod::GET, &get_body).await;
+    assert_eq!(api_response.error.is_none(), true);
+    let retrieved_credential: CredentialExpectedResponse = serde_json::from_value(
+        api_response
+            .response
+            .unwrap()
+            .get("credential")
+            .unwrap()
+            .clone(),
+    )
+    .unwrap();
+
+    assert_eq!(retrieved_credential.credential_id, credential.credential_id);
+    assert_eq!(retrieved_credential.created, credential.created);
+    assert_eq!(retrieved_credential.provider.unwrap(), "databricks");
+
+    let metadata = retrieved_credential.metadata.unwrap();
+    assert_eq!(metadata.get("user_id").unwrap(), "5dz5IMaoLW");
+    assert_eq!(metadata.get("workspace_id").unwrap(), "PjlCyKnRu2");
+
+    let content = retrieved_credential.content.unwrap();
+    assert_eq!(
+        content.get("host").unwrap(),
+        "dbc-example.cloud.databricks.com"
+    );
+    assert_eq!(
+        content.get("http_path").unwrap(),
+        "/sql/1.0/warehouses/warehouse-id"
+    );
+    assert_eq!(content.get("access_token").unwrap(), "dapiXXXXXXXX");
+}
