@@ -7,6 +7,7 @@ import { FakeEventSource } from "@app/tests/utils/FakeEventSource";
 import type {
   EventSourceConnectionState,
   EventSourceManagerOptions,
+  LongPollBatch,
 } from "@app/types/event_source";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -18,7 +19,7 @@ const datadogLogger = vi.hoisted(() => ({
 
 vi.mock("@app/logger/datadogLogger", () => ({ default: datadogLogger }));
 
-import { EventSourceManager } from "./event_source_manager";
+import { EventSourceManager } from "@app/lib/client/event_source_manager";
 
 const blockingEvent = JSON.stringify({
   eventId: "blocking-event",
@@ -590,7 +591,7 @@ describe("EventSourceManager", () => {
     const sources: FakeEventSource[] = [];
     const polls: Array<{
       signal: AbortSignal;
-      resolve: (events: string[]) => void;
+      resolve: (events: LongPollBatch) => void;
       url: string;
     }> = [];
     const manager = new EventSourceManager(
@@ -607,7 +608,7 @@ describe("EventSourceManager", () => {
         longPollFactory: (url, { signal }) =>
           new Promise((resolve) => {
             polls.push({ signal, resolve, url });
-            signal.addEventListener("abort", () => resolve([]), {
+            signal.addEventListener("abort", () => resolve({ events: [] }), {
               once: true,
             });
           }),
@@ -655,7 +656,7 @@ describe("EventSourceManager", () => {
     expect(states.at(-1)?.kind).toBe("long_polling");
 
     const event = JSON.stringify({ eventId: "evt_1", data: { type: "test" } });
-    polls[1].resolve([event]);
+    polls[1].resolve({ events: [event] });
     await vi.waitFor(() => expect(events).toEqual([event]));
     await vi.waitFor(() => expect(polls).toHaveLength(3));
     expect(polls[2].url).toBe("/api/events/msg_5/poll?lastEventId=evt_1");
@@ -675,7 +676,9 @@ describe("EventSourceManager", () => {
           resolveSources.push(resolve);
         })
     );
-    const longPollFactory = vi.fn(() => new Promise<string[]>(() => undefined));
+    const longPollFactory = vi.fn(
+      () => new Promise<LongPollBatch>(() => undefined)
+    );
     const manager = new EventSourceManager(sourceFactory, () => 0, {
       handshakeTimeoutMs: 100,
       reconnectDelayBaseMs: 1,
@@ -716,7 +719,9 @@ describe("EventSourceManager", () => {
 
   it("moves existing fallback-capable streams to long polling", async () => {
     const sources: FakeEventSource[] = [];
-    const longPollFactory = vi.fn(() => new Promise<string[]>(() => undefined));
+    const longPollFactory = vi.fn(
+      () => new Promise<LongPollBatch>(() => undefined)
+    );
     const manager = new EventSourceManager(
       async (url) => {
         const source = new FakeEventSource(url);
@@ -786,7 +791,9 @@ describe("EventSourceManager", () => {
         return Promise.resolve(source);
       }
     );
-    const longPollFactory = vi.fn(() => new Promise<string[]>(() => undefined));
+    const longPollFactory = vi.fn(
+      () => new Promise<LongPollBatch>(() => undefined)
+    );
     const manager = new EventSourceManager(sourceFactory, () => 0, {
       longPollFactory,
       reconnectDelayBaseMs: 0,
@@ -835,7 +842,9 @@ describe("EventSourceManager", () => {
 
   it("starts fallback-capable streams with SSE while browser health is unknown or healthy", async () => {
     const sources: FakeEventSource[] = [];
-    const longPollFactory = vi.fn(() => new Promise<string[]>(() => undefined));
+    const longPollFactory = vi.fn(
+      () => new Promise<LongPollBatch>(() => undefined)
+    );
     const manager = new EventSourceManager(
       async (url) => {
         const source = new FakeEventSource(url);
@@ -885,7 +894,9 @@ describe("EventSourceManager", () => {
     const sourceFactory = vi.fn(
       async (url: string) => new FakeEventSource(url)
     );
-    const longPollFactory = vi.fn(() => new Promise<string[]>(() => undefined));
+    const longPollFactory = vi.fn(
+      () => new Promise<LongPollBatch>(() => undefined)
+    );
     const manager = new EventSourceManager(sourceFactory, () => 0, {
       longPollFactory,
     });
@@ -911,7 +922,9 @@ describe("EventSourceManager", () => {
 
   it("falls back after two post-handshake SSE failures", async () => {
     const sources: FakeEventSource[] = [];
-    const longPollFactory = vi.fn(() => new Promise<string[]>(() => undefined));
+    const longPollFactory = vi.fn(
+      () => new Promise<LongPollBatch>(() => undefined)
+    );
     const manager = new EventSourceManager(
       async (url) => {
         const source = new FakeEventSource(url);
@@ -1006,7 +1019,7 @@ describe("EventSourceManager", () => {
   it("retries empty polls without spending the failure budget", async () => {
     vi.useFakeTimers();
     const sources: FakeEventSource[] = [];
-    const longPollFactory = vi.fn(async () => []);
+    const longPollFactory = vi.fn(async () => ({ events: [] }));
     const manager = new EventSourceManager(
       async (url) => {
         const source = new FakeEventSource(url);
@@ -1371,7 +1384,9 @@ describe("EventSourceManager", () => {
           resolveSources.push(resolve);
         })
     );
-    const longPollFactory = vi.fn(() => new Promise<string[]>(() => undefined));
+    const longPollFactory = vi.fn(
+      () => new Promise<LongPollBatch>(() => undefined)
+    );
     const manager = new EventSourceManager(sourceFactory, () => 0, {
       longPollFactory,
     });
@@ -1409,7 +1424,7 @@ describe("EventSourceManager", () => {
     const sources: FakeEventSource[] = [];
     const longPollFactory = vi.fn(
       (_url: string, _options: { signal: AbortSignal }) =>
-        new Promise<string[]>(() => undefined)
+        new Promise<LongPollBatch>(() => undefined)
     );
     const manager = new EventSourceManager(
       async (url) => {
@@ -1576,7 +1591,9 @@ describe("EventSourceManager", () => {
 
   it("keeps browser-session SSE degradation after another stream handshakes", async () => {
     const sources: FakeEventSource[] = [];
-    const longPollFactory = vi.fn(() => new Promise<string[]>(() => undefined));
+    const longPollFactory = vi.fn(
+      () => new Promise<LongPollBatch>(() => undefined)
+    );
     const manager = new EventSourceManager(
       async (url) => {
         const source = new FakeEventSource(url);
@@ -1701,5 +1718,436 @@ describe("EventSourceManager", () => {
     unsubscribe();
     expect(sources[1].close).toHaveBeenCalledOnce();
     manager.releaseWorkspace("w_1");
+  });
+  it("advances a filtered poll cursor without delivering a synthetic event", async () => {
+    vi.useFakeTimers();
+    const onEvent = vi.fn();
+    const poll = vi.fn(async () => ({ events: [], lastEventId: "12-0" }));
+    const manager = new EventSourceManager(vi.fn(), () => 0, {
+      longPollFactory: poll,
+    });
+    manager.subscribe({
+      streamId: "conversation-filtered",
+      config: {
+        workspaceId: "w_1",
+        restartKey: "filtered",
+        replayBufferedEventsOnSubscribe: false,
+        buildURL: () => "/events",
+        buildLongPollURL: (lastEvent) =>
+          `/poll?lastEventId=${getAgentLoopEventId(lastEvent)}`,
+        longPollActivation: "immediate",
+      },
+      subscriber: { onEvent, onStateChange: vi.fn() },
+      keepAliveWithoutSubscribers: false,
+    });
+    await vi.advanceTimersByTimeAsync(251);
+    expect(poll).toHaveBeenLastCalledWith(
+      "/poll?lastEventId=12-0",
+      expect.anything()
+    );
+    expect(onEvent).not.toHaveBeenCalled();
+    manager.releaseWorkspace("w_1");
+  });
+
+  it("isolates subscriber failures and does not terminate a replacement stream", async () => {
+    const sources: FakeEventSource[] = [];
+    const manager = new EventSourceManager(async (url) => {
+      const source = new FakeEventSource(url);
+      sources.push(source);
+      return source;
+    });
+    const config = {
+      workspaceId: "w_1",
+      restartKey: "first",
+      replayBufferedEventsOnSubscribe: false,
+      buildURL: () => "/events",
+      isTerminalEvent: () => true,
+    };
+    manager.subscribe({
+      streamId: "conversation-reentrant",
+      config,
+      subscriber: {
+        onEvent: () => {
+          throw new Error("consumer failed");
+        },
+        onStateChange: vi.fn(),
+      },
+      keepAliveWithoutSubscribers: false,
+    });
+    const onEvent = vi.fn(() => {
+      manager.subscribe({
+        streamId: "conversation-reentrant",
+        config: { ...config, restartKey: "replacement" },
+        subscriber: { onEvent: vi.fn(), onStateChange: vi.fn() },
+        keepAliveWithoutSubscribers: false,
+      });
+    });
+    manager.subscribe({
+      streamId: "conversation-reentrant",
+      config,
+      subscriber: { onEvent, onStateChange: vi.fn() },
+      keepAliveWithoutSubscribers: false,
+    });
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
+    sources[0].emitHandshake();
+    sources[0].emitMessage("terminal");
+    expect(onEvent).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(sources).toHaveLength(2));
+    expect(manager.getConnectionState("conversation-reentrant").kind).toBe(
+      "connecting"
+    );
+    expect(sources[0].close).toHaveBeenCalledOnce();
+    manager.releaseWorkspace("w_1");
+  });
+
+  it("skips a subscriber removed by an earlier event callback", async () => {
+    const { manager, sources, subscribe } = createBlockedStreamManager();
+    const onEvent = vi.fn();
+    subscribe(() => unsubscribeSecond());
+    const unsubscribeSecond = subscribe(onEvent);
+    await vi.waitFor(() => expect(sources[0]?.onmessage).not.toBeNull());
+    sources[0].emitHandshake();
+
+    sources[0].emitMessage(resumedEvent);
+
+    expect(onEvent).not.toHaveBeenCalled();
+    expect(sources[0].close).not.toHaveBeenCalled();
+    manager.releaseWorkspace("w_1");
+  });
+
+  it("stops broadcasting an old state when a callback restarts the stream", async () => {
+    const sources: FakeEventSource[] = [];
+    const manager = new EventSourceManager(async (url) => {
+      const source = new FakeEventSource(url);
+      sources.push(source);
+      return source;
+    });
+    const config = {
+      workspaceId: "w_1",
+      restartKey: "initial",
+      replayBufferedEventsOnSubscribe: false,
+      buildURL: () => "/events",
+    };
+    manager.subscribe({
+      streamId: "state-restart",
+      config,
+      subscriber: {
+        onEvent: vi.fn(),
+        onStateChange: (state) => {
+          if (state.kind === "open") {
+            manager.subscribe({
+              streamId: "state-restart",
+              config: { ...config, restartKey: "replacement" },
+              subscriber: { onEvent: vi.fn(), onStateChange: vi.fn() },
+              keepAliveWithoutSubscribers: false,
+            });
+          }
+        },
+      },
+      keepAliveWithoutSubscribers: false,
+    });
+    const onStateChange = vi.fn();
+    manager.subscribe({
+      streamId: "state-restart",
+      config,
+      subscriber: { onEvent: vi.fn(), onStateChange },
+      keepAliveWithoutSubscribers: false,
+    });
+    await vi.waitFor(() => expect(sources[0]?.onmessage).not.toBeNull());
+
+    sources[0].emitHandshake();
+
+    await vi.waitFor(() => expect(sources).toHaveLength(2));
+    expect(onStateChange).not.toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "open" })
+    );
+    expect(onStateChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: "connecting" })
+    );
+    expect(sources[0].close).toHaveBeenCalledOnce();
+    manager.releaseWorkspace("w_1");
+  });
+
+  it("does not issue a poll if a state listener unsubscribes synchronously", () => {
+    const poll = vi.fn(async () => ({ events: [] }));
+    const manager = new EventSourceManager(vi.fn(), () => 0, {
+      longPollFactory: poll,
+    });
+    manager.subscribe({
+      streamId: "conversation-release",
+      config: {
+        workspaceId: "w_1",
+        restartKey: "release",
+        replayBufferedEventsOnSubscribe: false,
+        buildURL: () => "/events",
+        buildLongPollURL: () => "/poll",
+        longPollActivation: "immediate",
+      },
+      subscriber: {
+        onEvent: vi.fn(),
+        onStateChange: (state) => {
+          if (state.kind === "long_polling") {
+            manager.releaseWorkspace("w_1");
+          }
+        },
+      },
+      keepAliveWithoutSubscribers: false,
+    });
+    expect(poll).not.toHaveBeenCalled();
+  });
+  it("switches a retained SSE connection to polling when activation changes", async () => {
+    const sources: FakeEventSource[] = [];
+    const poll = vi.fn(() => new Promise<LongPollBatch>(() => undefined));
+    const manager = new EventSourceManager(
+      async (url) => {
+        const source = new FakeEventSource(url);
+        sources.push(source);
+        return source;
+      },
+      () => 0,
+      { longPollFactory: poll }
+    );
+    const config = {
+      workspaceId: "w_1",
+      buildURL: () => "/events",
+      buildLongPollURL: () => "/poll",
+      replayBufferedEventsOnSubscribe: false,
+    };
+    const unsubscribe = manager.subscribe({
+      streamId: "retained",
+      config,
+      subscriber: { onEvent: vi.fn(), onStateChange: vi.fn() },
+      keepAliveWithoutSubscribers: true,
+    });
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
+    sources[0].emitHandshake();
+    unsubscribe();
+    manager.subscribe({
+      streamId: "retained",
+      config: { ...config, longPollActivation: "immediate" },
+      subscriber: { onEvent: vi.fn(), onStateChange: vi.fn() },
+      keepAliveWithoutSubscribers: true,
+    });
+    expect(sources[0].close).toHaveBeenCalledOnce();
+    expect(poll).toHaveBeenCalledOnce();
+    expect(manager.getConnectionState("retained").kind).toBe("long_polling");
+    manager.releaseWorkspace("w_1");
+  });
+
+  it("does not let an observer subscription undo an explicit message restart", async () => {
+    const sources: FakeEventSource[] = [];
+    const manager = new EventSourceManager(async (url) => {
+      const source = new FakeEventSource(url);
+      sources.push(source);
+      return source;
+    });
+    const config = {
+      workspaceId: "w_1",
+      buildURL: () => "/events",
+      replayBufferedEventsOnSubscribe: true,
+    };
+    const subscribe = (restartKey?: string) =>
+      manager.subscribe({
+        streamId: "message-restarted",
+        config: { ...config, restartKey },
+        subscriber: { onEvent: vi.fn(), onStateChange: vi.fn() },
+        keepAliveWithoutSubscribers: true,
+      });
+    subscribe("initial");
+    await vi.waitFor(() => expect(sources).toHaveLength(1));
+    subscribe("retry");
+    await vi.waitFor(() => expect(sources).toHaveLength(2));
+    subscribe();
+    subscribe("retry");
+    await Promise.resolve();
+    expect(sources).toHaveLength(2);
+    expect(sources[1].close).not.toHaveBeenCalled();
+    manager.releaseWorkspace("w_1");
+  });
+  it("isolates state and terminal-error callbacks from other subscribers", async () => {
+    const source = new FakeEventSource("/events");
+    const manager = new EventSourceManager(
+      async () => source,
+      () => 0,
+      {
+        maxReconnectAttempts: 1,
+      }
+    );
+    const config = {
+      workspaceId: "w_1",
+      buildURL: () => "/events",
+      replayBufferedEventsOnSubscribe: false,
+    };
+    const fail = () => {
+      throw new Error("subscriber failed");
+    };
+    manager.subscribeToConnectionState("callbacks", fail);
+    manager.subscribe({
+      streamId: "callbacks",
+      config,
+      subscriber: {
+        onEvent: vi.fn(),
+        onStateChange: fail,
+        onTerminalError: fail,
+      },
+      keepAliveWithoutSubscribers: false,
+    });
+    const onStateChange = vi.fn();
+    const onTerminalError = vi.fn();
+    manager.subscribe({
+      streamId: "callbacks",
+      config,
+      subscriber: { onEvent: vi.fn(), onStateChange, onTerminalError },
+      keepAliveWithoutSubscribers: false,
+    });
+    await vi.waitFor(() => expect(source.onerror).not.toBeNull());
+    source.onerror?.({ type: "error", target: source });
+    expect(onStateChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: "failed" })
+    );
+    expect(onTerminalError).toHaveBeenCalledOnce();
+    expect(source.close).toHaveBeenCalledOnce();
+    manager.releaseWorkspace("w_1");
+  });
+
+  it("does not allocate a retry timer after synchronous teardown", async () => {
+    vi.useFakeTimers();
+    const source = new FakeEventSource("/events");
+    const manager = new EventSourceManager(async () => source);
+    manager.subscribe({
+      streamId: "retry-teardown",
+      config: {
+        workspaceId: "w_1",
+        buildURL: () => "/events",
+        replayBufferedEventsOnSubscribe: false,
+      },
+      subscriber: {
+        onEvent: vi.fn(),
+        onStateChange: (state) => {
+          if (state.kind === "reconnecting") {
+            manager.releaseWorkspace("w_1");
+          }
+        },
+      },
+      keepAliveWithoutSubscribers: false,
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    source.onerror?.({ type: "error", target: source });
+    expect(manager.getConnectionState("retry-teardown").kind).toBe("idle");
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("stops replaying an old buffer after a subscriber restarts the stream", async () => {
+    const sources: FakeEventSource[] = [];
+    const manager = new EventSourceManager(async () => {
+      const source = new FakeEventSource("/events");
+      sources.push(source);
+      return source;
+    });
+    const config = {
+      workspaceId: "w_1",
+      buildURL: () => "/events",
+      replayBufferedEventsOnSubscribe: true,
+      restartKey: "initial",
+    };
+    manager.subscribe({
+      streamId: "replay",
+      config,
+      subscriber: { onEvent: vi.fn(), onStateChange: vi.fn() },
+      keepAliveWithoutSubscribers: true,
+    });
+    await vi.waitFor(() => expect(sources[0]?.onmessage).not.toBeNull());
+    sources[0].emitHandshake();
+    sources[0].emitMessage("first");
+    sources[0].emitMessage("stale");
+    const onEvent = vi.fn(() =>
+      manager.subscribe({
+        streamId: "replay",
+        config: { ...config, restartKey: "replacement" },
+        subscriber: { onEvent: vi.fn(), onStateChange: vi.fn() },
+        keepAliveWithoutSubscribers: true,
+      })
+    );
+    manager.subscribe({
+      streamId: "replay",
+      config,
+      subscriber: { onEvent, onStateChange: vi.fn() },
+      keepAliveWithoutSubscribers: true,
+    });
+    expect(onEvent).toHaveBeenCalledTimes(1);
+    expect(onEvent).toHaveBeenCalledWith("first");
+    manager.releaseWorkspace("w_1");
+  });
+
+  it("preserves the cursor across fallback and ignores late SSE and aborted poll events", async () => {
+    const sources: FakeEventSource[] = [];
+    const polls: Array<{
+      url: string;
+      signal: AbortSignal;
+      resolve: (batch: LongPollBatch) => void;
+    }> = [];
+    const event = (id: string) =>
+      JSON.stringify({ eventId: id, data: { type: "tokens", text: id } });
+    const manager = new EventSourceManager(
+      async (url) => {
+        const source = new FakeEventSource(url);
+        sources.push(source);
+        return source;
+      },
+      () => 0,
+      {
+        reconnectDelayBaseMs: 0,
+        reconnectDelayJitterMs: 0,
+        longPollFactory: (url, { signal }) =>
+          new Promise((resolve) => polls.push({ url, signal, resolve })),
+      }
+    );
+    const received: string[] = [];
+    manager.subscribe({
+      streamId: "handoff",
+      config: {
+        workspaceId: "handoff-workspace",
+        buildURL: (last) => `/events?cursor=${getAgentLoopEventId(last)}`,
+        buildLongPollURL: (last) => `/poll?cursor=${getAgentLoopEventId(last)}`,
+        replayBufferedEventsOnSubscribe: true,
+        isTerminalEvent: (data) => getAgentLoopEventId(data) === "3-0",
+      },
+      subscriber: {
+        onEvent: (data) => received.push(data),
+        onStateChange: vi.fn(),
+      },
+      keepAliveWithoutSubscribers: true,
+    });
+    try {
+      await vi.waitFor(() => expect(sources).toHaveLength(1));
+      sources[0].emitHandshake();
+      sources[0].emitMessage(event("1-0"));
+      sources[0].onerror?.({ type: "error", target: sources[0] });
+      await vi.waitFor(() => expect(sources).toHaveLength(2));
+      expect(sources[1].url).toBe("/events?cursor=1-0");
+      sources[1].emitHandshake();
+      sources[1].onerror?.({ type: "error", target: sources[1] });
+      await vi.waitFor(() => expect(polls).toHaveLength(1));
+      expect(polls[0].url).toBe("/poll?cursor=1-0");
+      sources[0].emitMessage(event("stale-sse"));
+      sources[1].emitMessage(event("stale-retry"));
+      polls[0].resolve({ events: [event("2-0")] });
+      await vi.waitFor(() => expect(polls).toHaveLength(2));
+      expect(polls[1].url).toBe("/poll?cursor=2-0");
+      window.dispatchEvent(new Event("blur"));
+      window.dispatchEvent(new Event("focus"));
+      await vi.waitFor(() => expect(polls).toHaveLength(3));
+      expect(polls[1].signal.aborted).toBe(true);
+      expect(polls[2].url).toBe("/poll?cursor=2-0");
+      polls[1].resolve({ events: [event("stale-poll")] });
+      polls[2].resolve({ events: [event("3-0")] });
+      await vi.waitFor(() =>
+        expect(manager.getConnectionState("handoff").kind).toBe("terminal")
+      );
+      expect(received).toEqual([event("1-0"), event("2-0"), event("3-0")]);
+      expect(sources).toHaveLength(2);
+    } finally {
+      manager.releaseWorkspace("handoff-workspace");
+    }
   });
 });
