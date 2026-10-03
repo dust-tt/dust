@@ -1,5 +1,6 @@
 import { getDefaultMCPActionPayload } from "@app/lib/actions/default_mcp_action";
-import { DROID_AVATAR_URLS } from "@app/lib/agent_builder/avatars";
+import { pickRandomDroidAvatarUrl } from "@app/lib/agent_builder/avatars";
+import { getNewAgentModelDefaults } from "@app/lib/agent_builder/helpers";
 import { validateAgentEditorsChange } from "@app/lib/api/assistant/agent_editors_change";
 import type { AgentTagsChange } from "@app/lib/api/assistant/agent_tags_change";
 import { validateAgentTagsChange } from "@app/lib/api/assistant/agent_tags_change";
@@ -100,12 +101,6 @@ export type BatchCreations = {
   agentsById: Map<string, AgentResource>;
 };
 
-function pickDefaultAvatar(): string {
-  return DROID_AVATAR_URLS[
-    Math.floor(Math.random() * DROID_AVATAR_URLS.length)
-  ];
-}
-
 /**
  * @cc [owner:fabiencelier,label:product] create-activates-placeholder-only
  * A `create` suggestion MUST only be applied to the `pending` placeholder agent it targets: it
@@ -198,15 +193,10 @@ async function resolveCreateSuggestion(
       description,
       instructions: converted.value.instructions,
       instructionsHtml: converted.value.instructionsHtml,
-      pictureUrl: pickDefaultAvatar(),
+      pictureUrl: pickRandomDroidAvatarUrl(),
       status: "active",
       scope: "hidden",
-      model: {
-        providerId: defaultModel.providerId,
-        modelId: defaultModel.modelId,
-        temperature: 0.7,
-        reasoningEffort: defaultModel.defaultReasoningEffort,
-      },
+      model: getNewAgentModelDefaults(defaultModel),
       actions: resolvedSubAgents.value.actions,
       skills: resolvedSkills.value.skillIds.map((sId) => ({ sId })),
       tags: [],
