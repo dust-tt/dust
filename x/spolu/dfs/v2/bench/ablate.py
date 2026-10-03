@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run on the host: repeat isolated FDB tuning comparisons using the deep-folder untar fixture."""
+"""Run on the host: repeat isolated FDB tuning comparisons with unchanged local workloads."""
 import argparse
 from datetime import datetime, timezone
 import json
@@ -56,13 +56,14 @@ def write(path, value):
 def main():
     """@cc [owner:spolu,label:testing;performance] isolated-tuning-ablation
     Change only the five documented FDB knobs between comparisons. Run cases sequentially with the
-    same binary/client/corpus and validate every file. Record every run and actual server arguments;
-    restore the original server knobs on exit. CPU counters cover the whole fixture, not just untar.
+    same binary/client/workload and validate every result. Record every run and actual server
+    arguments; restore the original server knobs on exit. CPU counters cover the whole fixture.
     """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--work', type=Path, required=True)
     parser.add_argument('--files', type=int, default=1000)
     parser.add_argument('--repeats', type=int, default=3)
+    parser.add_argument('--workload', choices=['untar', 'workspaces'], default='untar')
     args = parser.parse_args()
     if not 1 <= args.files <= 10000 or args.repeats < 1:
         parser.error('files must be 1..10000 and repeats must be positive')
@@ -76,9 +77,10 @@ def main():
     original = server_values(server_arguments())
     report = {'started_at': datetime.now(timezone.utc).isoformat(),
         'revision': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
-        'files': args.files, 'repeats': args.repeats, 'seed': 42,
+        'workload': args.workload, 'files': args.files if args.workload == 'untar' else 64,
+        'repeats': args.repeats, 'seed': 42,
         'profiles_seconds': profiles, 'original_server_seconds': original,
-        'cpu_scope': 'entire fixture: corpus generation, setup, untar, hash validation, and cleanup',
+        'cpu_scope': 'entire fixture including generation, setup, workload, validation, and cleanup',
         'server_restarted_each_run': True, 'backend_cold_scope': 'FDB process restarted; OS cache retained; ES retained',
         'runs': [], 'restored': False}
     write(args.work / 'summary.json', report)
@@ -103,27 +105,35 @@ def main():
                     started = time.monotonic()
                     compose('exec', '-T', 'dev', 'env', 'RUST_LOG=info',
                         *[f'{KNOBS[key][0]}={value}' for key, value in values.items()],
-                        'python3', '/dfs/v2/bench/untar.py', '--files', str(args.files),
+                        'python3', f'/dfs/v2/bench/{args.workload}.py',
+                        *(['--files', str(args.files)] if args.workload == 'untar' else []),
                         '--work', work, stdout=log, stderr=subprocess.STDOUT)
                     wall_seconds = time.monotonic() - started
                     cpu = {service: cpu_seconds(service) - before[service] for service in before}
                 run = json.loads(compose('exec', '-T', 'dev', 'cat', work + '/run.json',
                                          capture_output=True).stdout)
-                counters = json.loads(compose('exec', '-T', 'dev', 'cat', work + '/client-metrics.json',
-                                              capture_output=True).stdout)
-                assert run['fixture_cleaned'] and run['validated_files'] == args.files
-                assert run['fdb_tuning_seconds'] == values and not run['profile_timings']
+                assert run['fixture_cleaned'] and run['fdb_tuning_seconds'] == values
+                if args.workload == 'untar':
+                    assert run['validated_files'] == args.files and not run['profile_timings']
+                    metric = 'untar_seconds'
+                else:
+                    assert run['writer_servers'] == 2 and run['writer_workspaces'] == 1
+                    assert run['concurrent_writes'] == 100
+                    metric = 'concurrent_wall_seconds'
                 expected_binary = expected_binary or run['server_binary_sha256']
                 assert run['server_binary_sha256'] == expected_binary
                 result = {'profile': profile, 'repeat': repeat + 1, 'server_arguments': arguments,
                     'fixture_wall_seconds': wall_seconds, 'fixture_cpu_seconds': cpu,
-                    'run': run, 'client_metrics': counters}
+                    'run': run}
+                if args.workload == 'untar':
+                    result['client_metrics'] = json.loads(compose('exec', '-T', 'dev', 'cat',
+                        work + '/client-metrics.json', capture_output=True).stdout)
                 write(args.work / f'{name}.json', result)
                 report['runs'].append({'file': f'{name}.json', 'profile': profile,
-                    'repeat': repeat + 1, 'untar_seconds': run['untar_seconds'],
+                    'repeat': repeat + 1, metric: run[metric],
                     'fixture_wall_seconds': wall_seconds, 'fixture_cpu_seconds': cpu})
                 write(args.work / 'summary.json', report)
-                print(f"Completed {name}: {run['untar_seconds']:.3f}s; fixture CPU {cpu}", flush=True)
+                print(f'Completed {name}: {run[metric]:.3f}s; fixture CPU {cpu}', flush=True)
     finally:
         with (args.work / 'restore.log').open('w') as log:
             restart(original, log)
