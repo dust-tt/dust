@@ -197,6 +197,18 @@ enum APIClient {
         }
     }
 
+    static func authenticatedGetRawFile(
+        _ endpoint: String,
+        tokenProvider: TokenProvider
+    ) async throws -> RawFile {
+        try await withAuthRetry(tokenProvider: tokenProvider) { token in
+            var request = try buildRequest(endpoint: endpoint, accessToken: token)
+            request.httpMethod = "GET"
+            let (data, response) = try await performRequestWithResponse(request)
+            return RawFile(data: data, contentType: response.mimeType)
+        }
+    }
+
     /// Executes a closure with a valid access token, retrying once on 401 after refreshing.
     static func withAuthRetry<T>(
         tokenProvider: TokenProvider,
@@ -225,6 +237,12 @@ enum APIClient {
 
     /// Executes the request and validates the HTTP response, returning the raw data.
     private static func performRequest(_ request: URLRequest) async throws -> Data {
+        try await performRequestWithResponse(request).data
+    }
+
+    private static func performRequestWithResponse(
+        _ request: URLRequest
+    ) async throws -> (data: Data, response: HTTPURLResponse) {
         let data: Data
         let response: URLResponse
         do {
@@ -242,7 +260,7 @@ enum APIClient {
             throw APIError.httpError(statusCode: httpResponse.statusCode, body: body)
         }
 
-        return data
+        return (data, httpResponse)
     }
 
     private static func execute<T: Decodable>(
@@ -261,6 +279,11 @@ enum APIClient {
             throw APIError.decodingError(error)
         }
     }
+}
+
+struct RawFile {
+    let data: Data
+    let contentType: String?
 }
 
 extension URLRequest {

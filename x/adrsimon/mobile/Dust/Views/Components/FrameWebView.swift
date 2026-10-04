@@ -8,6 +8,7 @@ struct FrameWebView: UIViewRepresentable {
     }
 
     let source: Source
+    var messageHandlers: [String: WKScriptMessageHandlerWithReply] = [:]
     @Binding var isLoading: Bool
     @Binding var pageTitle: String
 
@@ -19,8 +20,15 @@ struct FrameWebView: UIViewRepresentable {
     }
 
     /// Init for loading raw HTML content (e.g. frames fetched by fileId).
-    init(htmlString: String, baseURL: URL? = nil, isLoading: Binding<Bool>, pageTitle: Binding<String>) {
+    init(
+        htmlString: String,
+        baseURL: URL? = nil,
+        messageHandlers: [String: WKScriptMessageHandlerWithReply] = [:],
+        isLoading: Binding<Bool>,
+        pageTitle: Binding<String>
+    ) {
         self.source = .htmlString(htmlString, baseURL: baseURL)
+        self.messageHandlers = messageHandlers
         self._isLoading = isLoading
         self._pageTitle = pageTitle
     }
@@ -32,6 +40,9 @@ struct FrameWebView: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.mediaTypesRequiringUserActionForPlayback = []
+        for (name, handler) in messageHandlers {
+            config.userContentController.addScriptMessageHandler(handler, contentWorld: .page, name: name)
+        }
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
@@ -50,6 +61,10 @@ struct FrameWebView: UIViewRepresentable {
 
     func updateUIView(_ webView: WKWebView, context: Context) {
         context.coordinator.parent = self
+    }
+
+    static func dismantleUIView(_ webView: WKWebView, coordinator: Coordinator) {
+        webView.configuration.userContentController.removeAllScriptMessageHandlers()
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate {

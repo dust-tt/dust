@@ -57,7 +57,7 @@ struct ConversationFilesSheet: View {
                 AttachmentViewerView(
                     title: attachment.title,
                     contentType: attachment.contentType,
-                    fileId: fileId,
+                    file: .id(fileId),
                     workspaceId: workspaceId,
                     tokenProvider: tokenProvider,
                     sourceUrl: attachment.sourceUrl

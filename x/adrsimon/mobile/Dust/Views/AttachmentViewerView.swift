@@ -4,11 +4,12 @@ import SwiftUI
 struct AttachmentViewerView: View {
     let title: String
     let contentType: String
-    let fileId: String
+    let file: FileReference
     let workspaceId: String
     let tokenProvider: TokenProvider
     let sourceUrl: String?
 
+    @State private var frameHost: FrameHostBridge
     @Environment(\.dismiss) private var dismiss
     @State private var fileData: Data?
     @State private var isLoading = true
@@ -18,8 +19,37 @@ struct AttachmentViewerView: View {
     @State private var frameIsLoading = true
     @State private var framePageTitle = ""
 
+    init(
+        title: String,
+        contentType: String,
+        file: FileReference,
+        workspaceId: String,
+        tokenProvider: TokenProvider,
+        sourceUrl: String?
+    ) {
+        self.title = title
+        self.contentType = contentType
+        self.file = file
+        self.workspaceId = workspaceId
+        self.tokenProvider = tokenProvider
+        self.sourceUrl = sourceUrl
+        _frameHost = State(initialValue: FrameHostBridge(
+            workspaceId: workspaceId,
+            file: file,
+            contentType: contentType,
+            tokenProvider: tokenProvider
+        ))
+    }
+
     private var isFrame: Bool {
         Attachment.isFrame(contentType)
+    }
+
+    private var vizFileKey: String {
+        switch file {
+        case let .id(fileId): fileId
+        case let .path(path): path
+        }
     }
 
     var body: some View {
@@ -92,6 +122,7 @@ struct AttachmentViewerView: View {
             FrameWebView(
                 htmlString: buildFrameWrapperHTML(code: code),
                 baseURL: URL(string: AppConfig.appURL),
+                messageHandlers: [FrameHostBridge.handlerName: frameHost],
                 isLoading: $frameIsLoading,
                 pageTitle: $framePageTitle
             )
@@ -108,7 +139,7 @@ struct AttachmentViewerView: View {
             .replacingOccurrences(of: "$", with: "\\$")
             .replacingOccurrences(of: "</", with: "<\\/")
 
-        let vizIdentifier = "viz-\(fileId)"
+        let vizIdentifier = "viz-\(vizFileKey)"
         let vizURL = "\(AppConfig.vizURL)/content?identifier=\(vizIdentifier)&fullHeight=true"
 
         return """
@@ -126,29 +157,68 @@ struct AttachmentViewerView: View {
         <script>
         const FRAME_CODE = `\(escapedCode)`;
         const IDENTIFIER = '\(vizIdentifier)';
+        const READ_ONLY_MESSAGE = 'Frames are read-only in the Dust iOS app.';
+        const FUNCTIONS_UNSUPPORTED_MESSAGE = 'Frame functions are not available in the Dust iOS app yet.';
+        const host = window.webkit.messageHandlers.\(FrameHostBridge.handlerName);
 
-        window.addEventListener('message', function(event) {
+        async function askHost(request) {
+          const reply = await host.postMessage(JSON.stringify(request));
+          return reply ? JSON.parse(reply) : null;
+        }
+
+        function blobFromPayload(payload) {
+          if (!payload || payload.base64 === null) return null;
+          const binary = atob(payload.base64);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          return new Blob([bytes], { type: payload.contentType || '' });
+        }
+
+        window.addEventListener('message', async function(event) {
           const data = event.data;
           if (!data || !data.command || data.identifier !== IDENTIFIER) return;
 
-          if (data.command === 'getCodeToExecute') {
-            event.source.postMessage({
-              command: 'answer',
-              messageUniqueId: data.messageUniqueId,
-              identifier: IDENTIFIER,
-              result: { code: FRAME_CODE }
-            }, '*');
-          }
-          else if (data.command === 'getFile') {
-            window.webkit.messageHandlers.fileRequest.postMessage({
-              messageUniqueId: data.messageUniqueId,
-              fileId: data.params.fileId
-            });
-          }
-          else if (data.command === 'setErrorMessage') {
-            if (data.params && data.params.errorMessage) {
-              window.webkit.messageHandlers.frameError.postMessage(data.params.errorMessage);
-            }
+          const reply = function(body) {
+            event.source.postMessage(
+              Object.assign(
+                { command: 'answer', messageUniqueId: data.messageUniqueId, identifier: IDENTIFIER },
+                body
+              ),
+              '*'
+            );
+          };
+
+          switch (data.command) {
+            case 'getCodeToExecute':
+              reply({ result: { code: FRAME_CODE } });
+              break;
+            case 'getFile':
+              try {
+                const payload = await askHost({ command: 'getFile', fileId: data.params.fileId });
+                reply({ result: { fileBlob: blobFromPayload(payload) } });
+              } catch (error) {
+                reply({ result: { fileBlob: null } });
+              }
+              break;
+            case 'getUserIdentity':
+              try {
+                reply({ result: await askHost({ command: 'getUserIdentity' }) });
+              } catch (error) {
+                reply({ error: { message: String(error) } });
+              }
+              break;
+            case 'writeFile':
+              reply({ result: { success: false, error: { code: 'read_only', message: READ_ONLY_MESSAGE } } });
+              break;
+            case 'editText':
+              reply({ result: { success: false, error: READ_ONLY_MESSAGE } });
+              break;
+            case 'callFunction':
+              reply({ error: { code: 'not_supported', message: FUNCTIONS_UNSUPPORTED_MESSAGE } });
+              break;
+            case 'setErrorMessage':
+              askHost({ command: 'setErrorMessage', errorMessage: data.params && data.params.errorMessage });
+              break;
           }
         });
         </script>
@@ -204,7 +274,7 @@ struct AttachmentViewerView: View {
         do {
             fileData = try await FileContentService.fetchFileData(
                 workspaceId: workspaceId,
-                fileId: fileId,
+                file: file,
                 tokenProvider: tokenProvider
             )
             isLoading = false
