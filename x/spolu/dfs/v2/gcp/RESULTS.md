@@ -83,6 +83,33 @@ workspace key and saved it privately. File contents, object IDs, grants, and ver
 The read suite is rerun from the retained corpus; its import timing remains the original measurement.
 The harness now saves private fixture credentials and supports explicit retention/resumption.
 
+## Initial latency observations
+
+The first untar's **513.701 s** includes all current v2 tuning; it is **13.81×** the current localhost
+10k result of **37.201 s**. The resumed cold read/hash row took **123.027 s**. Client counters for
+that mount recorded 10,102 lookup RPCs totaling **61.005 s** and 10,000 read RPCs totaling **56.222 s**
+(about **6.04 / 5.62 ms per call**). The open/stat mount recorded 10,102 lookups totaling **65.343 s**
+within a **68.391 s** first pass. Counters cover both first/warm rows and setup on each mount;
+they measure complete RPC latency, not FDB-only time. These sequential per-file round trips account
+for most of those read workloads. Separating GRV, authorization, data reads, and commit costs needs
+a further profile; these results do not isolate that breakdown.
+
+The original population mount recorded **77,862 RPCs**, approximately **7.8 per corpus file**,
+including directory/manifest/setup work. The main calls were:
+
+| RPC | Calls | Cumulative client RPC time (s) | Mean (ms/call) |
+| --- | ---: | ---: | ---: |
+| Create | 10,102 | 89.781 | 8.89 |
+| Lookup | 10,205 | 43.791 | 4.29 |
+| Stat | 27,324 | 116.710 | 4.27 |
+| Metadata update | 20,204 | 167.904 | 8.31 |
+| Write | 10,003 | 85.919 | 8.59 |
+
+The remaining 24 reads fetched the manifest. The 10,102 failed lookups are expected missing-name
+checks before creates; mutations reported no RPC errors. Metadata calls materially outweigh content
+writes in this untar. Cumulative RPC times can overlap and are not a partition of wall time.
+
+
 
 ## Filesystem benchmarks
 
@@ -109,6 +136,7 @@ These are single runs, not statistical estimates.
 | Run | Untar (s) | Untar (ms/file) | Remaining client writeback after untar (s) | After suite (s) | Server shutdown (s) |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Initially empty | 513.701 | 51.3701 | 0.000258 | 0.000162 | 0.032 |
+| Existing 10k retained | 529.947 | 52.9947 | 0.000213 | 0.000131 | 0.032 |
 
 Writeback values exclude work already completed during untar/the workload; do not add it twice.
 
@@ -152,6 +180,79 @@ interruption described above. The corpus was not re-imported.
 
 Corpus manifest SHA256: `67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1`.
 
-### dfs v2 [dust-dev, another 10,000 files with the first corpus retained]
+### dfs v2 [dust-dev, 10,000 files — existing 10k retained]
 
-Run in progress; results will be added after validation.
+Validated report: `/var/log/dfs-bench/vfs-10k-2`.
+
+```text
++--------------+------------------------------------------------+-------+------------+--------+
+| Feature      | Workload                                       | Phase | Time (ms)  | Result |
++--------------+------------------------------------------------+-------+------------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 6,255.35   | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 368.07     | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 1,270.30   | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 9.39       | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 49,955.25  | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 782.08     | OK     |
+| metadata     | stat missing (256 paths)                       | first | 1,848.95   | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 4.83       | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 17,954.03  | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 117.99     | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 18,124.35  | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 118.73     | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 2,548.10   | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 26.15      | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 390.83     | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 7.01       | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 117,896.11 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 1,719.31   | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 3,472.12   | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 15.91      | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 610.58     | OK     |
+| file sync    | fsync (32 files)                               | once  | 715.93     | OK     |
+| write        | close (32 files)                               | once  | 1.02       | OK     |
+| write        | unlink (32 files)                              | once  | 456.81     | OK     |
++--------------+------------------------------------------------+-------+------------+--------+
+```
+
+Corpus manifest SHA256: `67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1`.
+
+### Per-file comparison
+
+Wall time divided by files touched, in **ms/file**. Both workloads touch 10k files;
+the second leaves the first 10k present in the same backend.
+
+| Workload | Initially empty | Existing 10k retained |
+| --- | ---: | ---: |
+| **Untar** | **51.3701** | **52.9947** |
+| scandir + stat — first | 1.08662 | 0.62554 |
+| scandir + stat — warm | 0.03680 | 0.03681 |
+| rg --files — first | 0.21413 | 0.12703 |
+| rg --files — warm | 0.00083 | 0.00094 |
+| open + fstat + close — first | 6.83909 | 4.99552 |
+| open + fstat + close — warm | 0.09510 | 0.07821 |
+| stat missing — first | 7.26273 | 7.22246 |
+| stat missing — warm | 0.01840 | 0.01887 |
+| rg no-match scan — first | 1.72200 | 1.79540 |
+| rg no-match scan — warm | 0.01205 | 0.01180 |
+| rg rare literal — first | 1.70333 | 1.81243 |
+| rg rare literal — warm | 0.01207 | 0.01187 |
+| rg branch glob — first | 3.23668 | 2.59745 |
+| rg branch glob — warm | 0.02437 | 0.02666 |
+| rg depth-10 subtree — first | 3.44360 | 2.87375 |
+| rg depth-10 subtree — warm | 0.05176 | 0.05154 |
+| open + read + SHA-256 — first | 12.30275 | 11.78961 |
+| open + read + SHA-256 — warm | 0.15862 | 0.17193 |
+| open + pread tail — first | 12.54426 | 13.56297 |
+| open + pread tail — warm | 0.07199 | 0.06215 |
+| create + write | 18.20031 | 19.08063 |
+| fsync | 21.34688 | 22.37281 |
+| close | 0.03031 | 0.03188 |
+| unlink | 14.49563 | 14.27531 |
+
+Subset denominators: 256 missing paths/tails, 32 writes/fsyncs/closes/unlinks, 981 branch files,
+and 136 deep-subtree files. Other rows use 10,000 files. Untar includes directory/manifest overhead
+normalized by the document count.
+
+Untar changed by **+3.16%** with the first corpus retained.
+This single comparison does not establish statistical significance.

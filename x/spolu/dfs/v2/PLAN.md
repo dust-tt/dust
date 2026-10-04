@@ -174,9 +174,11 @@ GRV-cap benefit, so that setting's effect remains workload-dependent/uncertain. 
 - [x] Install the Linux FUSE development container and single-node ES on the workload host.
 - [x] Run Rust/filesystem/search tests and independent-server writer checks against networked FDB.
 - [x] Verify acknowledged data and new commits with each FDB host stopped in turn; restore health.
-- [ ] Run 10,000 files, retain the corpus, then repeat with another 10,000 files in a separate
+- [x] Run 10,000 files, retain the corpus, then repeat with another 10,000 files in a separate
       workspace on the same cluster. Publish both full tables, untar/writeback, normalized comparison,
       and topology/cache-aware findings in `gcp/RESULTS.md`.
+- [ ] Restart the three FDB services without latency tuning and repeat the 10,000-file suite with
+      client defaults, retaining existing corpora. Record cache/data differences and restore tuning.
 - [ ] Run 100,000 files on the live cluster (deferred at user request).
 
 ## Future work: after the networked experiment
