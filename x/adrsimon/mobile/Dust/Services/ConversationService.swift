@@ -20,7 +20,7 @@ enum ConversationService {
         spaceId: String,
         tokenProvider: TokenProvider,
         limit: Int = defaultLimit
-    ) async throws -> ConversationsResponse {
+    ) async throws -> PodConversationsResponse {
         let endpoint = AppConfig.Endpoints.spaceConversations(workspaceId: workspaceId, spaceId: spaceId)
         let query = buildQuery(endpoint: endpoint, params: [
             "limit": "\(limit)",

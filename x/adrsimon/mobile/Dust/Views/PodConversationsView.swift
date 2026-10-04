@@ -3,10 +3,13 @@ import SwiftUI
 
 struct PodConversationsView: View {
     let space: Space
+    let workspaceId: String
+    let tokenProvider: TokenProvider
     let onSelectConversation: (Conversation) -> Void
     let onNewConversation: () -> Void
 
     @StateObject private var viewModel: PodConversationsViewModel
+    @State private var showFilesSheet = false
 
     init(
         space: Space,
@@ -16,6 +19,8 @@ struct PodConversationsView: View {
         onNewConversation: @escaping () -> Void
     ) {
         self.space = space
+        self.workspaceId = workspaceId
+        self.tokenProvider = tokenProvider
         self.onSelectConversation = onSelectConversation
         self.onNewConversation = onNewConversation
         _viewModel = StateObject(
@@ -45,9 +50,24 @@ struct PodConversationsView: View {
                     .sparkleLabelSm()
                     .foregroundStyle(Color.dustForeground)
             }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { showFilesSheet = true } label: {
+                    Image(systemName: "folder")
+                        .font(.system(size: 16))
+                        .foregroundStyle(Color.dustForeground)
+                }
+            }
         }
         .task {
             await viewModel.load()
+        }
+        .sheet(isPresented: $showFilesSheet) {
+            PodFilesSheet(
+                workspaceId: workspaceId,
+                spaceId: space.sId,
+                tokenProvider: tokenProvider
+            )
+            .presentationDetents([.medium, .large])
         }
     }
 
@@ -77,15 +97,22 @@ struct PodConversationsView: View {
                                 Button {
                                     onSelectConversation(conversation)
                                 } label: {
-                                    ConversationRowView(conversation: conversation)
+                                    PodConversationRowView(
+                                        title: conversation.title ?? "New conversation",
+                                        snippet: conversation.preview?.snippet,
+                                        avatarUrls: conversation.preview?.participantAvatarUrls ?? [],
+                                        isUnread: conversation.unread
+                                    )
+                                    .contentShape(Rectangle())
                                 }
+                                .buttonStyle(.plain)
                             }
                         } header: {
                             Text(group)
                                 .sparkleLabelXs()
                                 .textCase(.uppercase)
                                 .foregroundStyle(Color.dustFaint)
-                                .padding(.horizontal, 12)
+                                .padding(.horizontal, 16)
                                 .padding(.top, 16)
                                 .padding(.bottom, 4)
                         }
