@@ -69,10 +69,6 @@
       "files": [
         "**/*.{jsx,tsx}"
       ],
-      "excludeFiles": [
-        "cli/dust-cli/**",
-        "sparkle/**"
-      ],
       "rules": {
         "dust/noUnusedReactImport": "error"
       }

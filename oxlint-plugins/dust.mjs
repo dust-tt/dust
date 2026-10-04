@@ -490,8 +490,18 @@ const nextjsPageComponentNaming = {
   },
 };
 
+// Packages on the classic JSX runtime, where `React` must stay imported.
+// Matched here rather than in an override: oxlint ignores `excludeFiles`
+// of an extended config, which is how react-doctor loads ours.
+const CLASSIC_JSX_RUNTIME_PATHS = /(^|\/)(sparkle|cli\/dust-cli)\//;
+
 const noUnusedReactImport = {
   create(context) {
+    if (
+      CLASSIC_JSX_RUNTIME_PATHS.test(context.filename.replaceAll("\\", "/"))
+    ) {
+      return {};
+    }
     return {
       ImportDeclaration(node) {
         if (node.source.value !== "react" || node.importKind === "type") {

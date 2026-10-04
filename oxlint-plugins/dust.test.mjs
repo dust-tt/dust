@@ -32,6 +32,18 @@ const CASES = [
     `import { useState } from "react";\nexport const a = useState;`,
     0,
   ],
+  [
+    "noUnusedReactImport",
+    "sparkle/d.tsx",
+    `import React from "react";\nexport const a = <div />;`,
+    0,
+  ],
+  [
+    "noUnusedReactImport",
+    "cli/dust-cli/e.tsx",
+    `import React from "react";\nexport const a = <div />;`,
+    0,
+  ],
   ["noRawSql", "a.ts", "frontSequelize.query(sql);", 1],
   ["noRawSql", "b.ts", "getFrontReplicaDbConnection().query<Row>(sql);", 1],
   ["noRawSql", "c.ts", "connectorsDb.query(sql);", 1],
