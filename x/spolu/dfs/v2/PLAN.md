@@ -89,7 +89,7 @@ deferred publication are out of scope. See [design constraints](DESIGN.md#non-ne
       grants, `/shared`, and simultaneous/idle workspaces; verify results before recording timings.
 - [x] Document cache state separately for dfs-server, FDB, ES, and OS. Restart before each cold case;
       label backend-warm tests honestly and record any inability to clear backend/OS caches.
-- [x] Publish v2 benchmark tables/raw results, versions, hardware/resources, setup/reproduction commands,
+- [x] Publish v2 benchmark tables, versions, hardware/resources, setup/reproduction commands,
       and limitations. Keep original v1 measurements and distinguish their GCS topology/durability.
 - [x] Audit API/client compatibility and contracts; complete local setup, tests, and benchmarks before
       starting the cloud phase.
@@ -120,8 +120,9 @@ deferred publication are out of scope. See [design constraints](DESIGN.md#non-ne
 
 ## 10. Sequential latency milestones
 
-Implement and benchmark each group before starting the next. Preserve full tables and raw reports
-under `bench/`, with the unchanged client/workload and normal durable commits.
+Implement and benchmark each group before starting the next. Preserve full tables in `bench/RESULTS.md`,
+with the unchanged client/workload and normal durable commits. Keep generated JSON reports local;
+retain text reports.
 
 - [x] Tune FDB read-version/commit batching and short timer waits; validate independent writers and
       record the full filesystem benchmark, including untar.
@@ -131,7 +132,7 @@ under `bench/`, with the unchanged client/workload and normal durable commits.
 - [x] Start independent lookup/authorization reads earlier using bounded advisory hints; preserve
       snapshot checks/error ordering, verify deep moves/grants, and record a third full run.
 
-Results: [full tables and raw reports](bench/RESULTS.md). Untar: **197.439 → 44.301 → 43.066 →
+Results: [full tables](bench/RESULTS.md). Untar: **197.439 → 44.301 → 43.066 →
 36.421 seconds**. All three milestones retain the API/client and normal durable commits. The
 30-second untar target remains unmet; these are single-run local measurements.
 
@@ -156,8 +157,8 @@ GRV-cap benefit, so that setting's effect remains workload-dependent/uncertain. 
 - [x] Keep commit-version reuse removed and restore FDB's default 5 ms GRV batching timeout in
       server/Compose defaults. Preserve the other four settings and overlapping metadata reads.
 - [x] Rebuild and rerun the full filesystem benchmark, including 10,000-file untar, plus the
-      independent-writer checks. Record the current configuration and retain historical reports.
-- [x] Publish a latest filesystem table at the top of `bench/RESULTS.md` with raw reports.
+      independent-writer checks. Record the current configuration and retain historical tables.
+- [x] Publish a latest filesystem table at the top of `bench/RESULTS.md`.
 - [x] Run the current server against 100,000 files with the same directory topology and file sizes;
       preserve the 10,000-file baseline and publish the full validated table and untar timing.
       Raise only the FUSE live inode cap to 1,000,000; the first traversal exhausted the former

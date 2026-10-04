@@ -2,3 +2,4 @@
 /local/state/
 __pycache__/
 *.key
+/bench/**/*.json

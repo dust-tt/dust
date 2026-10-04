@@ -12,6 +12,9 @@ These are **local shared-cluster measurements**. Each first search starts a new 
 and connection; FDB, ES, and OS caches remain warm. This differs from v1's native macOS server,
 remote GCS, and discarded backend caches. No cold-disk or GCP claim is made.
 
+Generated JSON reports and counters are kept outside Git; text reports and these benchmark tables
+are retained. Revision IDs identify measured builds before branch history cleanup.
+
 ## Filesystem
 
 Same jd workloads and v1 Linux FUSE client, with the inode-cap exception above. **Every first read
@@ -23,8 +26,7 @@ and is not guaranteed cold. All 24 rows passed the original workload's result ch
 ### Per-file comparison: 10,000 versus 100,000 files
 
 All values are **ms/file**: elapsed wall time divided by the number of files the workload touches.
-These compare the current [10,000-file](current-v2/dfs.json) and
-[100,000-file](current-v2-100k/dfs.json) runs reported below.
+These compare the current 10,000-file and 100,000-file runs reported below.
 
 | Workload | 10k files | 100k files |
 | --- | ---: | ---: |
@@ -113,16 +115,13 @@ persistence drain. This is a single local run; directory density and total bytes
 The successful run cleaned its isolated FDB/ES fixture.
 
 The warm directory-stat and full-content scan rows show little cache benefit at this size.
-[Client counters](current-v2-100k/case-9-client-metrics.json) across the two SHA-256 passes recorded
+Client counters across the two SHA-256 passes recorded
 200,000 read RPCs and 200,202 lookups. An
-[observational memory snapshot](current-v2-100k/memory-snapshot.json) during the content scans recorded
+observational memory snapshot during the content scans recorded
 about 4.77 GiB of VM anonymous memory and 1.45 GiB of cached pages out of 7.65 GiB RAM.
 This supplies runtime context, not an isolated measurement of the cause.
 
 Reproduce: `local/run exec python3 /dfs/v2/bench/vfs.py --files 100000`.
-[Run metadata](current-v2-100k/filesystem.json), [DFS rows](current-v2-100k/dfs.json),
-[local rows](current-v2-100k/local.json), [configuration](current-v2-100k/configuration.json),
-and [per-case RPC counters](current-v2-100k/).
 
 ### dfs v2 [100,000 files: client inode limit]
 
@@ -136,10 +135,7 @@ is available
 (722 GiB free when checked). Server and tuning settings match the current 10,000-file baseline.
 All 24 local-filesystem checks passed. The approved rerun raises only this cap to 1,000,000.
 
-[Run metadata](current-v2-100k-inode-limit/filesystem.json),
-[failure details](current-v2-100k-inode-limit/failure.json),
-[full output](current-v2-100k-inode-limit/failure.txt), and
-[local results](current-v2-100k-inode-limit/local.json).
+[Full failure output](current-v2-100k-inode-limit/failure.txt).
 
 ### dfs v2 [current: no commit-version reuse, default GRV]
 
@@ -191,11 +187,7 @@ A separate run through **two server processes in the same workspace** completed 
 isolation and shared discovery with 1/2/512 grants. Debug commit logging was enabled only for this
 separate run. Both runs verified fixture cleanup.
 
-[Run metadata](current-v2/filesystem.json), [DFS rows](current-v2/dfs.json),
-[local rows](current-v2/local.json), [two-server results](current-v2/workspaces.json),
-[configuration](current-v2/configuration.json), and [per-case RPC counters](current-v2/).
-
-Sequential milestones (single runs; full tables and raw reports follow):
+Sequential milestones (single runs; full tables follow):
 
 | Server changes | Untar |
 | --- | ---: |
@@ -209,7 +201,7 @@ Sequential milestones (single runs; full tables and raw reports follow):
 The 30-second target remains unmet. Step 3's population mount recorded 40,335 mutation RPCs averaging
 about 0.752 ms each, plus 10,205 lookups averaging 0.391 ms. These are client RPC timings, not FDB
 commit-only measurements or an additive wall-time breakdown; mount counters also include setup
-and manifest reads outside timed untar. See [counters](early-reads/case-0-client-metrics.json).
+and manifest reads outside timed untar.
 
 ### FDB tuning ablation (fresh read versions)
 
@@ -257,7 +249,7 @@ establish a reliable improvement. A subsequent full 10,000-file comparison gave 
 default GRV versus 38.346 s tuned**, using the same binary and a fresh FDB process before each run.
 The earlier tuned no-reuse run was 35.563 s. The effect is small and uncertain compared with the
 other knobs, and may depend on workload size or background load; do not conclude that the cap is
-universally unnecessary. Full tables and raw reports for both follow below.
+universally unnecessary. Full tables for both follow below.
 
 Whole-fixture median CPU time (including generation, setup, hash verification, cleanup, and background
 work) was **5.430 FDB / 10.737 dev CPU-seconds** with defaults and
@@ -271,9 +263,6 @@ This experiment establishes local latency effects, **not production scalability*
 
 Reproduce with `bench/ablate.py --work <new-directory> --files 1000 --repeats 3`; use
 `--workload workspaces --repeats 1` for the independent-writer checks. Run sequentially.
-[Untar run order/settings](tuning-ablation/summary.json), [statistics](tuning-ablation/statistics.json),
-[all untar reports and RPC counters](tuning-ablation/), and
-[independent-writer reports](tuning-ablation-writers/summary.json).
 
 ### dfs v2 [fresh read versions, tuned control]
 
@@ -326,10 +315,6 @@ A separate run through **two server processes in the same workspace** completed 
 isolation and shared discovery with 1/2/512 grants. This writer setup differs from the historical
 single-server, different-workspace sample; debug commit logging was enabled only for this separate run.
 
-[Run metadata](tuned-control/filesystem.json), [DFS rows](tuned-control/dfs.json),
-[local rows](tuned-control/local.json), [two-server results](tuned-control/workspaces.json),
-[configuration](tuned-control/configuration.json), and [per-case RPC counters](tuned-control/).
-
 ### dfs v2 [fresh read versions, default GRV timeout]
 
 2026-10-03. Diagnostic override: GRV batch timeout restored to 5 ms; all four other knobs remain
@@ -379,10 +364,6 @@ A separate run through **two server processes in the same workspace** completed 
 100 writes (50 × 1 KiB per writer) in **44.20 ms**. It also checked search/workspace
 isolation and shared discovery with 1/2/512 grants. This writer setup differs from the historical
 single-server, different-workspace sample; debug commit logging was enabled only for this separate run.
-
-[Run metadata](default-grv/filesystem.json), [DFS rows](default-grv/dfs.json),
-[local rows](default-grv/local.json), [two-server results](default-grv/workspaces.json),
-[configuration](default-grv/configuration.json), and [per-case RPC counters](default-grv/).
 
 ### dfs v2 [fresh read versions]
 
@@ -434,10 +415,6 @@ A separate run through **two server processes in the same workspace** completed 
 isolation and shared discovery with 1/2/512 grants. This writer setup differs from the historical
 single-server, different-workspace sample; debug commit logging was enabled only for this separate run.
 
-[Run metadata](no-version-reuse/filesystem.json), [DFS rows](no-version-reuse/dfs.json),
-[local rows](no-version-reuse/local.json), [two-server results](no-version-reuse/workspaces.json),
-[configuration](no-version-reuse/configuration.json), and [per-case RPC counters](no-version-reuse/).
-
 ### dfs v2 [early metadata and authorization reads]
 
 Builds on both previous steps. Workspace, primary object, hinted ancestors/grants, and child-name
@@ -488,10 +465,6 @@ A separate run through **two server processes in the same workspace** completed 
 isolation and shared discovery with 1/2/512 grants. This writer setup differs from the historical
 single-server, different-workspace sample; debug commit logging was enabled only for this separate run.
 
-[Run metadata](early-reads/filesystem.json), [DFS rows](early-reads/dfs.json),
-[local rows](early-reads/local.json), [two-server results](early-reads/workspaces.json),
-[configuration](early-reads/configuration.json), and [per-case RPC counters](early-reads/).
-
 ### dfs v2 [recent commit version]
 
 Builds on the FDB latency settings. First mutation attempts reuse a recent committed snapshot;
@@ -541,10 +514,6 @@ A separate run through **two server processes in the same workspace** completed 
 isolation and shared discovery with 1/2/512 grants. This writer setup differs from the historical
 single-server, different-workspace sample; debug commit logging was enabled only for this separate run.
 
-[Run metadata](commit-version/filesystem.json), [DFS rows](commit-version/dfs.json),
-[local rows](commit-version/local.json), [two-server results](commit-version/workspaces.json),
-[configuration](commit-version/configuration.json), and [per-case RPC counters](commit-version/).
-
 ### dfs v2 [FDB latency tuning]
 
 Read-version/commit batching and short timer waits are tuned as documented in [README](../README.md).
@@ -593,10 +562,6 @@ A separate run through **two server processes in the same workspace** completed 
 100 writes (50 × 1 KiB per writer) in **42.75 ms**. It also checked search/workspace
 isolation and shared discovery with 1/2/512 grants. This writer setup differs from the historical
 single-server, different-workspace sample; debug commit logging was enabled only for this separate run.
-
-[Run metadata](latency-tuning/filesystem.json), [DFS rows](latency-tuning/dfs.json),
-[local rows](latency-tuning/local.json), [two-server results](latency-tuning/workspaces.json),
-[configuration](latency-tuning/configuration.json), and [per-case RPC counters](latency-tuning/).
 
 ### dfs v2 [transaction read optimization]
 
@@ -651,8 +616,6 @@ Untar remains far slower than [v1 with client optimization](../../v1/bench/RESUL
 plus **5.570 s** remaining SlateDB persistence. v1 acknowledges in RAM; v2 requires durable FDB commits.
 The measurements use different backend topology and do not isolate durability's contribution.
 
-[Run metadata](transaction-reads/filesystem.json), [DFS rows](transaction-reads/dfs.json),
-[local rows](transaction-reads/local.json), and [per-case RPC counters](transaction-reads/).
 The measured revision precedes a follow-up error-ordering guard: a definitive application rejection
 wins over a failed speculative read instead of retrying it. That guard changes only failure handling.
 Previous filesystem tables and search results are retained below.
@@ -662,8 +625,8 @@ Previous filesystem tables and search results are retained below.
 Separate, profiled 1,000-file samples use a grant below six outer directories, six more directories
 below that grant, then the corpus tree. The mount has only that selective grant. These diagnose the
 same general path; there is no root-specific optimization. Every file's SHA-256 was verified.
-The before binary is the ancestry-hints implementation plus the same phase instrumentation; raw
-reports retain all binary hashes. These smaller instrumented timings are separate from the full run.
+The before binary is the ancestry-hints implementation plus the same phase instrumentation.
+These smaller instrumented timings are separate from the full run.
 
 | Measurement | Before | After |
 | --- | ---: | ---: |
@@ -685,9 +648,7 @@ With ES deliberately unreachable, the before run took **27.694 s**, versus **27.
 running. Pending jobs were still written to FDB. Indexing did not explain the foreground cost in this
 small sample; this does not establish its impact under heavier concurrent load.
 
-[Before profile](transaction-reads/profile-before.json),
-[before with ES unavailable](transaction-reads/profile-before-no-indexer.json),
-[after profile](transaction-reads/profile-after.json). Reproduce with [bench/untar.py](untar.py);
+Reproduce with [bench/untar.py](untar.py);
 see [README](../README.md) for commands and profiling caveats.
 
 ### dfs v2 [ancestry hints]
@@ -744,8 +705,6 @@ settings. The remaining foreground cost still includes per-file RPCs, live FDB r
 commits. In the sequential full-read case, cumulative lookup RPC time is **33.295 s** and read RPC
 time **29.991 s** out of **67.302 s** elapsed.
 
-[Run metadata](ancestry-hints/filesystem.json), [DFS rows](ancestry-hints/dfs.json),
-[local rows](ancestry-hints/local.json), and [per-case RPC counters](ancestry-hints/).
 The original filesystem and search results below are retained. Deep-path tests also verify grants
 below the workspace root and moves/revocations from another server, including FDB write conflicts;
 this algorithm has no root-specific shortcut.
@@ -789,9 +748,8 @@ during the timed workload. They are not total client writeback time. Server shut
 There is no remaining authoritative persistence drain: each accepted mutation already awaited FDB.
 
 The client uses eight FUSE workers, `max_background=32`, 1 MiB requested readahead, kernel writeback,
-and effectively unbounded metadata TTL (4,294,967,295 s). See [run metadata](latest/filesystem.json),
-[DFS rows](latest/dfs.json), [local rows](latest/local.json), and per-case client RPC counters in
-[latest/](latest/). The measured server revision is `ab61baf616`; raw reports include its binary hash.
+and effectively unbounded metadata TTL (4,294,967,295 s). The measured server revision is
+`ab61baf616`.
 
 These measurements expose substantial latency in first-touch per-file operations. Kernel-warm
 reads benefit strongly from the unchanged v1 cache behavior. The ripgrep workloads parallelize reads;
@@ -857,9 +815,8 @@ there is no SlateDB-style persistence drain after acknowledgement.
 
 The recurring Linux socket delay was removed by enabling `TCP_NODELAY` on accepted connections.
 For example, rare-keyword warm p50 fell from 67.56 to 31.34 ms. The remaining query cost
-is mostly live metadata/authorization reads in FDB, rather than ES query execution. Inspect the
-per-request phase timings in [raw results](latest/search.json); the earlier run is retained in
-[initial results](initial/search.json). Backend topology and write durability differ substantially
+is mostly live metadata/authorization reads in FDB, rather than ES query execution.
+Backend topology and write durability differ substantially
 from [v1](../../v1/bench/SEARCH-RESULTS.md), so these are not an isolated ES-versus-LanceDB comparison.
 
 ## Multiple workspaces and grants
@@ -883,7 +840,6 @@ commit wait was **1.718 ms p50**, **3.096 ms p95**, and **8.334 ms maximum**;
 there were **11** aborted attempts retried before successful commits. This includes filesystem,
 indexer, and empty commits; it excludes transaction preparation/read time and is not per-RPC latency.
 Both writers completed in approximately 0.296 s. Grant scans still grow with session grant count.
-See [raw multi-workspace results](latest/workspaces.json).
 
 ## Validation and limits
 

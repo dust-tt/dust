@@ -98,7 +98,9 @@ local/run exec cargo build --release --example workspace_bench
 local/run exec python3 /dfs/v2/bench/workspaces.py
 ```
 
-All print the report directory. The search runner reuses v1's Rust population/query helper and all
+All print the report directory. Generated JSON reports and counters stay local and are ignored
+by Git; retain text reports and publish summary tables in [bench/RESULTS.md](bench/RESULTS.md).
+The search runner reuses v1's Rust population/query helper and all
 eight query cases. The filesystem runner imports jd's unmodified benchmark and checks the pinned
 manifest for the standard 10,000-file corpus. It restarts dfs-server and remounts before each `first`
 read case. FDB, ES, and OS caches stay warm across these restarts. Native FDB commit durability is
