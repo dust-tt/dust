@@ -596,7 +596,7 @@ async fn parallel_patches_preserve_existing_bytes_and_zero_fill() -> Result<()> 
         expected[offset..offset + data.len()].copy_from_slice(&data);
         let previous = file.version;
         file = f.write(&file, offset as u64, &data).await?;
-        assert_eq!(file.version, previous + 1);
+        assert_ne!(file.version, previous);
         assert_eq!(f.read(&file, 0, expected.len() as u32).await?, expected);
     }
     file = f.resize(&file, BLOCK_SIZE as u64 + 19).await?;

@@ -555,9 +555,9 @@ pub(crate) mod tests {
         let revoke = request(
             &workspace.workspace_key,
             UpdateGrantsRequest {
-                workspace_id: workspace.workspace_id,
+                workspace_id: workspace.workspace_id.clone(),
                 object_id: file.id.clone(),
-                expected_version: file.version + 1,
+                expected_version: file.version,
                 changes: vec![GrantChange {
                     grant: "writer".into(),
                     attached: false,
@@ -570,7 +570,39 @@ pub(crate) mod tests {
         assert!(!revoking.is_finished());
         drop(blocked_file);
         tokio::time::timeout(Duration::from_secs(2), closing).await???;
-        tokio::time::timeout(Duration::from_secs(2), revoking).await???;
+        let revoked = tokio::time::timeout(Duration::from_secs(2), revoking)
+            .await??
+            .err()
+            .context("stale revocation accepted")?;
+        assert_eq!(
+            dfs_protocol::error::code(&revoked),
+            ErrorCode::VersionConflict
+        );
+        let published = api
+            .stat(request(
+                &owner.session_key,
+                ObjectRequest {
+                    object_id: file.id.clone(),
+                },
+            )?)
+            .await?
+            .into_inner();
+        assert_ne!(published.version, file.version);
+        let revoked = api
+            .update_grants(request(
+                &workspace.workspace_key,
+                UpdateGrantsRequest {
+                    workspace_id: workspace.workspace_id,
+                    object_id: file.id.clone(),
+                    expected_version: published.version,
+                    changes: vec![GrantChange {
+                        grant: "writer".into(),
+                        attached: false,
+                    }],
+                },
+            )?)
+            .await?
+            .into_inner();
         let data = Dfs::read(
             &api,
             request(
@@ -585,7 +617,7 @@ pub(crate) mod tests {
         .await?
         .into_inner();
         assert_eq!(data.data, b"committed");
-        assert_eq!(data.version, file.version + 2);
+        assert_eq!(data.version, revoked.version);
         let closed = api
             .stat(request(
                 &writer.session_key,

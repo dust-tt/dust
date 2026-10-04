@@ -30,12 +30,20 @@ grants anywhere in the tree; do not rely on workspace-root shortcuts.
   protobuf package, RPCs, messages, errors, authentication, limits, and client cache/writeback behavior.
 - Preserve UUIDs/URIs, per-object versions, metadata/MIME/binary xattrs, sparse 64 KiB blocks,
   inherited grants, dual grant indexes, sessions with at most 512 grants, and unlink-to-`ENOENT`.
+- Versions are opaque equality tokens in the existing `uint64` field, not numeric increments.
+  New objects start at 1; every changed existing object receives a never-reused token. Servers
+  durably reserve disjoint ranges of 1,048,576 tokens in FDB and consume them from RAM. This counter
+  allocates identities only: it is not a workspace revision, cache invalidation signal, or commit
+  order. Crashes can waste reserved tokens. The unchanged client uses equality comparisons.
 - Preserve search filters, extraction limits, excerpts, status, bounded candidate expansion, and
   per-search authorization caches. No subscriptions, global permission cache, or replicated grants.
 - Changes: `/shared` stops suppressing reachable entries; successful mutations await FDB commit;
   ES supplies relevance ranking, so exact LanceDB scores/order are not a compatibility promise.
 - Keep v1 intact except for those client changes. Use a fresh v2 FDB subspace and ES index; data migration
   is outside this iteration.
+
+The server-writeback foundation uses FDB format `dfs-v2-fdb-2` to prevent old binaries from mixing
+numeric increments with reserved tokens. Use a fresh prefix; existing benchmark data remains intact.
 
 ## Architecture and localhost
 

@@ -237,7 +237,7 @@ xattr caching; do not attribute their timing difference to caching. All corpora 
 and comparison limits are in [GCP results](gcp/RESULTS.md#xattrs-client-filtering-and-caching).
 See [reproduction](gcp/README.md#xattrs-project).
 
-## Project: server writeback (pending)
+## Project: server writeback (in progress)
 
 Writes acknowledge server-memory acceptance. Debounce background persistence to coalesce writes
 into bounded FDB transactions. Explicit fsync bypasses the debounce and waits for all preceding
@@ -256,9 +256,12 @@ Independent server writers remain required; no exclusive workspace owner.
       fresh existence/authorization checks on foreground requests and in committing transactions.
 - [ ] Reconcile durable-ack/no-RAM-overlay and strict mutation-version contracts with the approved
       overwrite semantics. Keep the wire API and shared FUSE client unchanged.
-- [ ] Define collision-free object version tokens for provisional states from independent servers.
+- [x] Define collision-free object version tokens for provisional states from independent servers.
       Read-version equality MUST still distinguish different states, including rebased writes;
       there is no workspace-wide coherence version.
+      Storage-issued tokens replace numeric increments; independent allocators reserve disjoint
+      ranges durably. The format-2 foundation passes Rust/backend tests, Clippy, and Linux two-mount
+      FUSE/restart validation. Acknowledgments remain durable until the buffer/barrier milestone.
 
 ### 2. Bounded memory acceptance and reads
 

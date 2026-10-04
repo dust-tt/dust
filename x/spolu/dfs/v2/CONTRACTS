@@ -1,7 +1,13 @@
 @cc [owner:spolu,label:api] v1-client-compatibility
-The server MUST accept the unchanged dfs.v1 protocol and client. Public limits, version conflicts,
+The server MUST accept the unchanged dfs.v1 protocol and client. Public limits, version equality,
 kernel caching/writeback, and unlink-to-ENOENT MUST retain v1 behavior. Shared listings MAY include
 directly granted entries also visible in the main tree or through another granted ancestor.
+
+@cc [owner:spolu,label:concurrency] distinct-object-states
+New objects start at version 1. Every changed existing object MUST receive a never-reused storage
+token in the existing uint64 field. Clients MUST compare tokens only for equality; tokens need not
+increase in commit order. Each object's token MUST change independently of unrelated files.
+Independent servers and restarts MUST NOT assign the same token to different existing-object states.
 
 @cc [owner:spolu,label:architecture;concurrency] independent-server-writers
 Independent dfs-server processes MUST be able to mutate the same workspace correctly. Cross-server

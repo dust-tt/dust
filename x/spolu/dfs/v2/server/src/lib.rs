@@ -57,6 +57,7 @@ fn local_backend_contracts() -> anyhow::Result<()> {
     network::run(async {
         storage::tests::speculative_failure_preserves_application_errors().await?;
         storage::tests::fresh_attempts_observe_other_writers().await?;
+        storage::tests::version_tokens_survive_independent_writers_and_reopen().await?;
         ancestry::tests::concurrent_changes_abort_prefetched_writes().await?;
         mutation::tests::unused_block_errors_do_not_override_read_checks().await?;
         auth::tests::workspace_lock_pruning_preserves_active_gates_and_bounds_idle_entries()

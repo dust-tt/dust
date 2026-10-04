@@ -7,13 +7,14 @@ use serde::{Serialize, de::DeserializeOwned};
 use std::{
     collections::VecDeque,
     future::Future,
-    ops::{Bound, RangeBounds},
+    ops::{Bound, Range, RangeBounds},
     sync::{
         Arc,
         atomic::{AtomicI32, Ordering},
     },
     time::Duration,
 };
+use tokio::sync::Mutex;
 use tonic::Status;
 
 #[derive(Args, Clone, Debug)]
@@ -28,6 +29,7 @@ pub struct StorageConfig {
 pub struct Storage {
     db: Arc<Database>,
     prefix: Arc<[u8]>,
+    versions: Arc<Mutex<Range<u64>>>,
 }
 
 impl Storage {
@@ -45,24 +47,53 @@ impl Storage {
         let storage = Self {
             db: Arc::new(Database::from_path(&config.fdb_cluster_file)?),
             prefix: prefix.into(),
+            versions: Arc::new(Mutex::new(0..0)),
         };
         storage
             .transact(|view| async move {
                 let mut batch = WriteBatch::new();
                 match view.get(b"\0format").await? {
-                    Some(value) if value.as_ref() == b"dfs-v2-fdb-1" => {}
+                    Some(value) if value.as_ref() == b"dfs-v2-fdb-2" => {}
                     Some(_) => return Err(status(ErrorCode::Unavailable)),
                     None => {
                         if view.scan(..).await?.next().await?.is_some() {
                             return Err(status(ErrorCode::Unavailable));
                         }
-                        batch.put(b"\0format", b"dfs-v2-fdb-1");
+                        batch.put(b"\0format", b"dfs-v2-fdb-2");
                     }
                 }
                 Ok((batch, ()))
             })
             .await?;
         Ok(storage)
+    }
+
+    /// @cc [owner:spolu,label:backend;concurrency] distinct-state-tokens
+    /// Issued tokens MUST never repeat within this application subspace, including across server
+    /// restarts and independent processes. Reserve ranges durably before using them; ambiguous
+    /// reservations MUST issue no tokens. Tokens are equality identifiers, not commit ordering or
+    /// workspace coherence versions. Unused tokens MAY be abandoned on crashes or failed attempts.
+    pub(crate) async fn version(&self) -> Result<u64, Status> {
+        let mut available = self.versions.lock().await;
+        if let Some(version) = available.next() {
+            return Ok(version);
+        }
+        let range = self
+            .transact(|snapshot| async move {
+                let start = match snapshot.get(b"\0versions").await? {
+                    Some(bytes) => decode::<u64>(&bytes)?,
+                    None => 2,
+                };
+                let end = start
+                    .checked_add(1_048_576)
+                    .ok_or_else(|| status(ErrorCode::Capacity))?;
+                let mut batch = WriteBatch::new();
+                batch.put(b"\0versions", encode(&end)?);
+                Ok((batch, start..end))
+            })
+            .await?;
+        *available = range;
+        available.next().ok_or_else(|| status(ErrorCode::Internal))
     }
 
     pub async fn snapshot(&self) -> Result<Arc<Snapshot>, Status> {
@@ -78,13 +109,15 @@ impl Storage {
             prefix: self.prefix.clone(),
             error: AtomicI32::new(0),
             started: std::time::Instant::now(),
+            storage: self.clone(),
         }))
     }
 
     /// @cc [owner:spolu,label:concurrency;error-handling] fdb-transaction-replay
     /// The closure MUST read all preconditions through the supplied view and MUST NOT have external
-    /// side effects. Advisory ancestry hints MAY be learned because each use is revalidated in its
-    /// own transaction. Only known-uncommitted attempts may repeat. Captured client versions MUST
+    /// side effects except reserving never-reused version tokens. Advisory ancestry hints MAY be
+    /// learned because each use is revalidated in its own transaction. Only known-uncommitted
+    /// attempts may repeat. Captured client versions MUST
     /// remain unchanged. A definitive application rejection MUST NOT be retried because an unused
     /// speculative read failed. Read views MUST NOT escape the closure's result.
     /** @cc [owner:spolu,label:concurrency;security] fresh-transaction-versions
@@ -195,8 +228,12 @@ pub struct Snapshot {
     prefix: Arc<[u8]>,
     error: AtomicI32,
     started: std::time::Instant,
+    storage: Storage,
 }
 impl Snapshot {
+    pub(crate) async fn version(&self) -> Result<u64, Status> {
+        self.storage.version().await
+    }
     pub(crate) fn expiring(&self) -> bool {
         self.started.elapsed() >= Duration::from_millis(3500)
             || matches!(self.error.load(Ordering::Relaxed), 1007 | 1031)
@@ -366,6 +403,49 @@ pub(crate) mod tests {
     use anyhow::Context;
     use dfs_protocol::error::code;
     use std::sync::atomic::AtomicUsize;
+
+    pub async fn version_tokens_survive_independent_writers_and_reopen() -> anyhow::Result<()> {
+        let config = StorageConfig {
+            fdb_cluster_file: std::env::var("DFS_FDB_CLUSTER_FILE")?,
+            fdb_prefix: format!("dfs-v2-versions-{}", uuid::Uuid::new_v4().simple()),
+        };
+        let first = Storage::open(&config).await?;
+        let second = Storage::open(&config).await?;
+        let collect = |storage: Storage| async move {
+            let mut tokens = Vec::new();
+            for _ in 0..128 {
+                tokens.push(storage.version().await?);
+            }
+            Ok::<_, Status>(tokens)
+        };
+        let (a, b, clone) = tokio::try_join!(
+            collect(first.clone()),
+            collect(second.clone()),
+            collect(first.clone()),
+        )?;
+        drop(second);
+        let reopened = Storage::open(&config).await?;
+        let reopened_token = reopened.version().await?;
+        let still_running_token = first.version().await?;
+        let tokens: std::collections::BTreeSet<_> = a
+            .into_iter()
+            .chain(b)
+            .chain(clone)
+            .chain([reopened_token, still_running_token])
+            .collect();
+        assert_eq!(tokens.len(), 386);
+        assert!(tokens.first().is_some_and(|v| *v >= 2));
+        // A live older allocator can issue a smaller token than a restarted writer.
+        assert!(still_running_token < reopened_token);
+        first
+            .transact(|_| async {
+                let mut batch = WriteBatch::new();
+                batch.clear(Vec::new(), vec![255]);
+                Ok((batch, ()))
+            })
+            .await?;
+        Ok(())
+    }
 
     pub async fn speculative_failure_preserves_application_errors() -> anyhow::Result<()> {
         let store = Storage::open(&StorageConfig {

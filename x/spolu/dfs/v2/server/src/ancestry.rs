@@ -250,26 +250,32 @@ pub(crate) mod tests {
                 prepared.notified().await;
                 // A different transaction changes a dependency without touching this hints cache.
                 let result = store
-                    .transact(|_| async {
-                        let mut edit = Edit::new();
-                        if change_kind == 1 {
-                            let mut moved = moved.clone();
-                            moved.parent = Some(Parent {
-                                id: forbidden.object.id.clone(),
-                                name: "moved".into(),
-                            });
-                            moved.object = model::bumped(moved.object, false)?;
-                            edit.record(&keys, &moved)?;
-                        } else if change_kind == 0 {
-                            edit.grant(&keys, &allowed.object.id, "reader", false)?;
-                        } else {
-                            let mut file = file.clone();
-                            file.object = model::bumped(file.object, true)?;
-                            file.object.size = 4;
-                            edit.record(&keys, &file)?;
-                            edit.put(keys.block(&file.object.id, 0)?, b"kept".to_vec())?;
+                    .transact(|snapshot| {
+                        let (keys, moved, forbidden, allowed, file) =
+                            (&keys, &moved, &forbidden, &allowed, &file);
+                        async move {
+                            let mut edit = Edit::new();
+                            if change_kind == 1 {
+                                let mut moved = moved.clone();
+                                moved.parent = Some(Parent {
+                                    id: forbidden.object.id.clone(),
+                                    name: "moved".into(),
+                                });
+                                moved.object =
+                                    model::bumped(moved.object, false, snapshot.version().await?)?;
+                                edit.record(keys, &moved)?;
+                            } else if change_kind == 0 {
+                                edit.grant(keys, &allowed.object.id, "reader", false)?;
+                            } else {
+                                let mut file = file.clone();
+                                file.object =
+                                    model::bumped(file.object, true, snapshot.version().await?)?;
+                                file.object.size = 4;
+                                edit.record(keys, &file)?;
+                                edit.put(keys.block(&file.object.id, 0)?, b"kept".to_vec())?;
+                            }
+                            Ok((edit.batch, ()))
                         }
-                        Ok((edit.batch, ()))
                     })
                     .await;
                 changed.notify_one();

@@ -232,7 +232,7 @@ impl View {
                 name: request.name.clone(),
             }),
         };
-        parent.object = model::bumped(parent.object, true)?;
+        parent.object = model::bumped(parent.object, true, self.snapshot.version().await?)?;
         let mut edit = Edit::new();
         edit.record(&self.keys, &parent)?;
         edit.record(&self.keys, &child)?;
@@ -345,7 +345,7 @@ impl View {
             edit.put(self.keys.block(&record.object.id, index)?, block)?;
         }
         record.object.size = record.object.size.max(end);
-        record.object = model::bumped(record.object, true)?;
+        record.object = model::bumped(record.object, true, self.snapshot.version().await?)?;
         edit.record(&self.keys, &record)?;
         Ok((
             edit,
@@ -414,7 +414,11 @@ impl View {
             }
             record.object.size = size;
         }
-        record.object = model::bumped(record.object, request.size.is_some())?;
+        record.object = model::bumped(
+            record.object,
+            request.size.is_some(),
+            self.snapshot.version().await?,
+        )?;
         if let Some(mime) = request.mime_type {
             record.object.mime_type = mime;
         }
@@ -510,7 +514,7 @@ impl View {
             }));
         }
         let mut edit = self.erase(&record).await?;
-        parent.object = model::bumped(parent.object, true)?;
+        parent.object = model::bumped(parent.object, true, self.snapshot.version().await?)?;
         edit.record(&self.keys, &parent)?;
         Ok((
             edit,
@@ -593,7 +597,7 @@ impl View {
             id: destination_parent.object.id.clone(),
             name: request.name,
         });
-        record.object = model::bumped(record.object, false)?;
+        record.object = model::bumped(record.object, false, self.snapshot.version().await?)?;
         edit.record(&self.keys, &record)?;
         let parents = BTreeMap::from([
             (source_parent.object.id.clone(), source_parent),
@@ -601,7 +605,7 @@ impl View {
         ]);
         let mut related = Vec::new();
         for (_, mut parent) in parents {
-            parent.object = model::bumped(parent.object, true)?;
+            parent.object = model::bumped(parent.object, true, self.snapshot.version().await?)?;
             edit.record(&self.keys, &parent)?;
             related.push(parent.object);
         }
@@ -633,7 +637,7 @@ impl View {
                 change.attached,
             )?;
         }
-        record.object = model::bumped(record.object, false)?;
+        record.object = model::bumped(record.object, false, self.snapshot.version().await?)?;
         edit.record(&self.keys, &record)?;
         Ok((edit, record.object))
     }

@@ -31,13 +31,13 @@ def main():
         version = file['version']
         acks, failures = [], 0
         deadline = time.monotonic() + 90
-        for _ in range(100):
+        for sequence in range(1, 101):
             try:
                 value = rpc('write', {'object_id': file['id'], 'expected_version': version,
-                    'data': [((version + 1) % 251)] * (2 * 65536 + 17)})['object']
-                assert value['version'] == version + 1
+                    'data': [sequence] * (2 * 65536 + 17)})['object']
+                assert value['version'] != version
                 version = value['version']
-                acks.append(version)
+                acks.append({'sequence': sequence, 'version': version})
                 (work / 'acks.json').write_text(json.dumps(acks))
             except subprocess.CalledProcessError:
                 failures += 1
@@ -51,10 +51,15 @@ def main():
         (work / 'writes.json').write_text(json.dumps({'acknowledged': acks, 'errors': failures}))
         assert len(acks) >= 90
         current = rpc('stat', {'object_id': file['id']})
-        assert current['version'] >= max(acks)
         read = rpc('read', {'object_id': current['id'], 'version': current['version'], 'length': 2 * 65536 + 17})
         assert read['version'] == current['version']
-        assert bytes(read['data']) == bytes([current['version'] % 251]) * (2 * 65536 + 17), 'mixed metadata/blocks'
+        content = bytes(read['data'])
+        assert len(content) == 2 * 65536 + 17
+        assert acks[-1]['sequence'] <= content[0] <= 100, 'lost acknowledged write'
+        assert content == bytes([content[0]]) * len(content), 'mixed metadata/blocks'
+        acknowledged = next((ack for ack in acks if ack['sequence'] == content[0]), None)
+        if acknowledged is not None:
+            assert current['version'] == acknowledged['version'], 'mixed metadata/content identity'
         deadline = time.monotonic() + 90
         while True:
             status = support.rpc(endpoint, workspace['workspace_key'], 'get-index-status', {'workspace_id': 'restarts'})
