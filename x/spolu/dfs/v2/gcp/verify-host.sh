@@ -15,6 +15,7 @@ case "$DFS_NODE:$DFS_ZONE:$DFS_IP" in
   dfs-v2-spolu-fdb-a:us-central1-a:10.84.0.11 | \
   dfs-v2-spolu-fdb-b:us-central1-b:10.84.0.12 | \
   dfs-v2-spolu-fdb-f:us-central1-f:10.84.0.13 | \
+  dfs-v2-spolu-tx-a:us-central1-a:10.84.0.21 | \
   dfs-v2-spolu-workload:us-central1-a:10.84.0.20) ;;
   *) echo 'Refusing setup outside the provisioned dust-dev fixture.' >&2; exit 1 ;;
 esac

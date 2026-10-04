@@ -1,7 +1,7 @@
 # dust-dev FoundationDB experiment
 
-The VMs and network were created manually in `dust-dev`. These scripts install software on that
-fixed fixture; they never create or delete cloud resources. Run commands below from `x/spolu/dfs`.
+The VMs and network are created manually in `dust-dev`. Setup scripts only install software on the
+allowlisted fixture; resource creation scripts are explicitly user-run. Run commands from `x/spolu/dfs`.
 Setup findings, validation, and retained-corpus benchmarks are recorded in [RESULTS.md](RESULTS.md).
 
 ## Topology
@@ -109,6 +109,12 @@ v2/gcp/run exec python3 /dfs/v2/tests/search_failures.py
 v2/gcp/run exec python3 /dfs/v2/bench/workspaces.py --work /reports/workspaces-1
 ```
 
+To benchmark a separately built server without replacing the interactive server executable, build
+with `CARGO_TARGET_DIR=/target/step2` and set
+`DFS_BENCH_SERVER_BINARY=/target/step2/release/dfs-server-v2` for tests/benchmarks. Reports hash the
+selected executable; explicit test binary arguments take precedence. Client/workload binaries stay
+unchanged. If the interactive service remains active, record that background activity in the results.
+
 With no other workloads running, stop all four FDB processes on each host in turn, verify earlier
 commits and new writes with that host absent, restart it, and wait for full replication before the
 next case:
@@ -172,3 +178,44 @@ arguments after changing server configs. Use a new report directory when repeati
 For a temporary tuning experiment, restore the saved native-default configs afterward, restart
 services, and verify health, including on failure. This restarts FDB processes, not VMs, ES, or
 host OS caches. Retained corpora are preserved.
+
+## Preferred transaction node experiment
+
+First benchmark the overlapping-read implementation on the original topology. Resource creation
+remains manual; this command creates an idle VM and expands the private FDB firewall, without
+installing or starting FDB:
+
+```sh
+bash v2/gcp/create-transaction-node.sh --create
+```
+
+The additional `dfs-v2-spolu-tx-a` VM uses `us-central1-a`, `10.84.0.21`, `n2-standard-8`, and a
+50 GB balanced persistent boot disk. It has no local SSD, external IP, or service account. After
+the first benchmark, copy `setup-transaction-node.sh`, `verify-host.sh`, and `fdb.cluster` together
+to that VM and run the setup script with sudo. It verifies identity, installs FDB 7.3.69, and joins
+the existing cluster without initialization or coordinator changes.
+
+| Transaction-node port | Preferred process class |
+| --- | --- |
+| 4500 | `grv_proxy` |
+| 4501–4503 | `commit_proxy` |
+| 4504 | `master` |
+| 4505 | `resolution` |
+
+The three existing durable hosts retain storage, logs, coordinators, and generic stateless fallback
+processes. The intended layout has 18 FDB processes across four machines in three zones. Process
+classes express preferences: record actual recruitment, including proxy counts, before timing.
+These preferred classes cannot acquire storage/log roles. Native latency defaults and double
+replication remain unchanged; commits still wait for replicated logs across zones.
+
+Verify the new node and complete zone-a loss, restoring services after each case:
+
+```sh
+v2/gcp/run ssh tx sudo systemctl status dfs-fdb --no-pager
+python3 v2/gcp/failover.py --transaction-node
+```
+
+The failure script tests each durable host, the transaction host, and `fdb-a` plus `tx-a` together.
+This exercises FDB recovery using service stops; it does not test workload-VM failure or lost disks.
+Wait for healthy replication and verify preferred recruitment again before repeating the same 10k
+benchmark with the same binaries and `--backend-from` pointing at the retained first run.

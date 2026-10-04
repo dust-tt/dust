@@ -8,6 +8,7 @@ NODES = {
     'a': ('dfs-v2-spolu-fdb-a', 'us-central1-a'),
     'b': ('dfs-v2-spolu-fdb-b', 'us-central1-b'),
     'f': ('dfs-v2-spolu-fdb-f', 'us-central1-f'),
+    'tx': ('dfs-v2-spolu-tx-a', 'us-central1-a'),
     'workload': ('dfs-v2-spolu-workload', 'us-central1-a'),
 }
 COMPOSE = ['sudo', 'docker', 'compose', '-f', '/opt/dfs/v2/gcp/compose.yaml']
@@ -32,7 +33,7 @@ def main():
     elif args and args[0] == 'ssh' and len(args) > 2 and args[1] in NODES:
         ssh(args[1], args[2:])
     else:
-        raise SystemExit('Usage: gcp/run exec COMMAND ... | fdb "COMMAND" | ssh a|b|f|workload COMMAND ...')
+        raise SystemExit('Usage: gcp/run exec COMMAND ... | fdb "COMMAND" | ssh a|b|f|tx|workload COMMAND ...')
 
 
 if __name__ == '__main__':
