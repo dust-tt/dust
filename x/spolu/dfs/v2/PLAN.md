@@ -7,7 +7,8 @@ provisioned `dust-dev` fixture in [gcp/README.md](gcp/README.md).
 
 **Constraints:** FDB must remove the single-writer requirement, including within one workspace.
 Exclusive workspace owners and RAM acknowledgment with asynchronous FDB publication are rejected.
-Keep the exact API and unchanged v1 client: compound/bulk RPCs, client batching, and additional
+Keep the exact API; the approved xattrs project may change the shared v1 FUSE client. Compound/bulk
+RPCs, client batching, and additional
 deferred publication are out of scope. See [design constraints](DESIGN.md#non-negotiable-constraints).
 
 ## 0. Scope and contracts
@@ -206,6 +207,57 @@ GRV-cap benefit, so that setting's effect remains workload-dependent/uncertain. 
       Untar 593.898 → 416.984 s; full read/hash 104.227 → 76.366 s. Both runs passed all 24
       DFS/local checks. The new VM also increases actual commit proxies from two to three;
       this single comparison does not isolate locality from resources, caches, or retained data.
+
+## Project: xattrs (implemented; benchmarks in progress)
+
+The latest 10k population produced 27,323 FUSE `getxattr` callbacks and 27,324 server `Stat`
+RPCs (93.8 s cumulative RPC time). Requested names and their callers have not yet been traced.
+
+- [ ] Trace xattr names during a small untar to distinguish tar requests from kernel probes.
+- [x] Reject unsupported xattr namespaces before fetching metadata from the server.
+- [x] Add a bounded, mount-scoped cache for supported xattrs, including absent attributes and
+      listings. Use the same timeout as the inode attribute cache, sourced from the same setting,
+      for all three. Keep aliases coherent after local mutations; follow the existing policy
+      allowing cached reads after remote edits/revocation. Never advance dirty-file base versions
+      on a fill.
+- [x] Update client caching contracts and native tests for filtering, expiry, bounds, cached absence,
+      invalidation, and error propagation. Nine native FUSE tests and Clippy pass.
+- [x] Run Linux regressions (`tests/xattrs.py` with cache budgets 0 and 16 MiB, plus `fuse_e2e.py`)
+      for alias coherence, rename/unlink, and retained write versions after xattr fills.
+- [ ] Benchmark filtering alone and filtering plus caching. Retain existing result tables and
+      identify these runs as client changes with the same API; record FUSE hashes/cache budgets.
+
+Native/Linux Rust tests, Clippy, the dedicated xattr regressions, and the full two-mount FUSE suite
+pass. The 200-round xattr read test used 2 Stat RPCs / 0.045 s with caching versus 801 / 2.190 s with
+filtering only. Live untar tracing and the full benchmarks are in progress on the existing GCP fixture.
+See [reproduction](gcp/README.md#xattrs-project).
+
+## Project: server writeback (pending)
+
+Writes acknowledge server-memory acceptance. Debounce background persistence to coalesce writes
+into bounded FDB transactions. Explicit fsync bypasses the debounce and waits for all preceding
+writes in its scope, including dependent metadata, to commit durably; deferred errors must surface.
+Ordinary close does not impose this durability barrier. A server crash may lose acknowledged writes
+that have not persisted, but never leave inconsistent persisted state or lose a successful fsync.
+Allow concurrent content/metadata overwrites instead of rejecting every stale object version.
+Independent server writers remain required; no exclusive workspace owner.
+
+- [ ] Define read-your-writes, visibility through other servers before persistence, version
+      semantics, and deferred-error reporting. Reconcile the current durable-ack/no-RAM-overlay
+      and expected-version contracts before implementation.
+- [ ] Implement the fsync barrier over queued and in-flight writes, including their metadata
+      dependencies; concurrent later writes must not postpone completion indefinitely.
+- [ ] Define overwrite granularity/order for byte ranges, truncation, and individual metadata
+      fields. Reapply operations against current FDB state; preserve unrelated fields, grants,
+      namespace indexes, and deletion semantics instead of publishing stale whole-object records.
+- [ ] Design bounded per-server queues, debounce plus maximum dirty age, byte/count flush
+      thresholds, backpressure, and concurrent FDB batches within transaction limits. Preserve
+      ordering for dependent edits.
+- [ ] Decide which create/namespace and metadata operations can participate: content writes account
+      for only 70.7 s of cumulative RPC time in the 417 s untar. Keep authoritative authorization
+      and structural checks transactional, with atomic data/metadata/search-outbox publication.
+- [ ] Test independent writers, moves/unlink/truncation, grant changes, crashes, and ambiguous
+      commits; benchmark foreground untar separately from buffer drain and durable completion.
 
 ## Future work: after the networked experiment
 

@@ -15,8 +15,9 @@ No exclusive workspace owner, workspace writer lease, or authoritative RAM overl
 publication. Process-local locks/caches MUST NOT be required for correctness across server writers.
 Successful mutations continue to await normal FDB commit.
 
-**This optimization phase preserves the exact existing API and v1 client behavior.** The sole client
-change is raising the live inode cap from 100,000 to 1,000,000 for larger filesystem benchmarks.
+**This optimization phase preserves the exact existing API.** Approved client changes are raising
+the live inode cap from 100,000 to 1,000,000 and the xattr filtering/cache described in
+[v1's FUSE design](../v1/DESIGN.md#fuse-and-transport). Benchmark these client changes explicitly.
 Compound or bulk RPCs, client-side operation batching, and additional deferred publication are out of scope.
 Optimize server/database work within each existing operation while preserving authorization,
 expected versions, visibility, errors, and durability. Optimizations must work for deep paths and
@@ -24,7 +25,7 @@ grants anywhere in the tree; do not rely on workspace-root shortcuts.
 
 ## Compatibility
 
-- Reuse the **v1 protocol, Rust client, CLI, and Linux FUSE client**, with only the inode-cap change
+- Reuse the **v1 protocol, Rust client, CLI, and Linux FUSE client**, with the approved client changes
   above. Keep the `dfs.v1`
   protobuf package, RPCs, messages, errors, authentication, limits, and client cache/writeback behavior.
 - Preserve UUIDs/URIs, per-object versions, metadata/MIME/binary xattrs, sparse 64 KiB blocks,
@@ -33,7 +34,7 @@ grants anywhere in the tree; do not rely on workspace-root shortcuts.
   per-search authorization caches. No subscriptions, global permission cache, or replicated grants.
 - Changes: `/shared` stops suppressing reachable entries; successful mutations await FDB commit;
   ES supplies relevance ranking, so exact LanceDB scores/order are not a compatibility promise.
-- Keep v1 intact except for that inode cap. Use a fresh v2 FDB subspace and ES index; data migration
+- Keep v1 intact except for those client changes. Use a fresh v2 FDB subspace and ES index; data migration
   is outside this iteration.
 
 ## Architecture and localhost

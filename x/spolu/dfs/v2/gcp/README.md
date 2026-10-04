@@ -225,3 +225,48 @@ writes during each failure. All 18 processes recovered, with the six preferred r
 healthy double replication, one-zone fault tolerance, and the original three coordinators.
 Two independent servers then completed 100 verified same-workspace writes in 0.352 s. This tests
 recovery correctness; it does not establish recovery latency under load.
+
+## Xattrs project
+
+The server/API remain unchanged. Build the modified FUSE binary separately, preserving the previous
+client and server for comparisons. After syncing the source files to `/opt/dfs`:
+
+```sh
+v2/gcp/run exec env CARGO_TARGET_DIR=/target/xattrs cargo build --release \
+  --manifest-path /dfs/v1/Cargo.toml -p dfs-fuse --bin dfs-fuse
+v2/gcp/run exec env DFS_BENCH_FUSE_BINARY=/target/xattrs/release/dfs-fuse \
+  DFS_BENCH_SERVER_BINARY=/target/step2/release/dfs-server-v2 \
+  python3 /dfs/v2/tests/xattrs.py
+v2/gcp/run exec env DFS_BENCH_FUSE_BINARY=/target/xattrs/release/dfs-fuse \
+  DFS_BENCH_SERVER_BINARY=/target/step2/release/dfs-server-v2 DFS_XATTR_CACHE_MIB=0 \
+  python3 /dfs/v2/tests/xattrs.py
+v2/gcp/run exec env DFS_BENCH_FUSE_BINARY=/target/xattrs/release/dfs-fuse \
+  DFS_BENCH_SERVER_BINARY=/target/step2/release/dfs-server-v2 \
+  python3 /dfs/v2/tests/fuse_e2e.py
+```
+
+`DFS_XATTR_CACHE_MIB=0` keeps early namespace filtering but disables caching. The default cache is
+16 MiB / 16,384 objects, with the same TTL constant as inode attributes. Fixed-category counters in
+mount metrics distinguish `security.capability`, POSIX ACL probes, `user.*`, and other names.
+
+For caller attribution, run a small diagnostic with `bench/untar.py --files 100 --trace-xattrs`
+(`strace` must be installed). Pass `--server /target/step2/release/dfs-server-v2` and the selected
+FUSE binary environment variable. The trace records tar's xattr syscalls; compare it with mount
+counters to distinguish explicit requests from kernel probes. Do not use traced timing as a benchmark.
+
+With other workloads stopped and the preferred topology verified, run the complete 10k suite twice
+in order, with identical server/FUSE binaries and fresh work directories:
+
+```sh
+v2/gcp/run exec env DFS_BENCH_FUSE_BINARY=/target/xattrs/release/dfs-fuse \
+  DFS_BENCH_SERVER_BINARY=/target/step2/release/dfs-server-v2 DFS_XATTR_CACHE_MIB=0 \
+  python3 /dfs/v2/bench/vfs.py --keep-fixture \
+  --backend-from /reports/vfs-10k-step2-transaction-node --work /reports/vfs-10k-xattrs-filter
+v2/gcp/run exec env DFS_BENCH_FUSE_BINARY=/target/xattrs/release/dfs-fuse \
+  DFS_BENCH_SERVER_BINARY=/target/step2/release/dfs-server-v2 DFS_XATTR_CACHE_MIB=16 \
+  python3 /dfs/v2/bench/vfs.py --keep-fixture \
+  --backend-from /reports/vfs-10k-xattrs-filter --work /reports/vfs-10k-xattrs-cache
+```
+
+Preserve the old 416.984 s untar and full tables. Report backend/OS caches and retained-data differences,
+all validation results, untar/drain timings, and xattr/Stat RPC counts. These runs are pending.

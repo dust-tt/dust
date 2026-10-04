@@ -21,6 +21,8 @@ def main():
     parser.add_argument('--server', default='/target/release/dfs-server-v2')
     parser.add_argument('--profile', action='store_true')
     parser.add_argument('--indexer-unavailable', action='store_true')
+    parser.add_argument('--trace-xattrs', action='store_true',
+                        help='Trace tar xattr syscalls with strace; diagnostic timing only')
     args = parser.parse_args()
     if not 1 <= args.files <= 10000:
         parser.error('--files must be 1..10000')
@@ -38,6 +40,7 @@ def main():
     prefix, key, key_path = support.identity(work, 'bench')
     run = metadata(args.server) | {'files': args.files, 'prefix': prefix,
         'profile_timings': args.profile, 'indexer_available': not args.indexer_unavailable,
+        'trace_xattrs': args.trace_xattrs,
         'outer_depth': 6, 'depth_below_grant': 6, 'corpus_selection': 'first manifest paths'}
     if args.profile:
         os.environ['RUST_LOG'] = 'info,dfs_server_v2::profile=debug'
@@ -69,7 +72,10 @@ def main():
             try:
                 run['started_at'] = datetime.now(timezone.utc).isoformat()
                 started = time.monotonic()
-                subprocess.run(['/usr/bin/tar', '--no-same-owner', '-xf', str(work / 'corpus.tar'),
+                trace = ['strace', '-f', '-e',
+                         'trace=getxattr,lgetxattr,fgetxattr,listxattr,llistxattr,flistxattr',
+                         '-o', str(work / 'tar-xattrs.trace')] if args.trace_xattrs else []
+                subprocess.run([*trace, '/usr/bin/tar', '--no-same-owner', '-xf', str(work / 'corpus.tar'),
                     '-C', str(target)], check=True)
                 run['untar_seconds'] = time.monotonic() - started
                 started = time.monotonic()

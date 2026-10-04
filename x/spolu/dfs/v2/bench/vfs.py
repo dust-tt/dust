@@ -42,6 +42,7 @@ def main():
         raise ValueError('--backend-from requires --keep-fixture and cannot be combined with --resume')
     if (work / 'run.json').exists() and not args.resume:
         raise RuntimeError('report directory already contains a run')
+    configuration = metadata()
     if args.resume:
         run = json.loads((work / 'run.json').read_text())
         data = work / 'corpus'
@@ -52,8 +53,9 @@ def main():
             raise ValueError('resume requires an isolated benchmark prefix')
         workspace = json.loads((work / 'workspace.json').read_text())
         if (run['files'] != args.files or 'untar_seconds' not in run
-                or run['server_binary_sha256'] != metadata()['server_binary_sha256']
-                or run['fuse_binary_sha256'] != hashlib.sha256(Path('/target/release/dfs-fuse').read_bytes()).hexdigest()
+                or run['server_binary_sha256'] != configuration['server_binary_sha256']
+                or run['fuse_binary_sha256'] != configuration['fuse_binary_sha256']
+                or run.get('xattr_cache_mib', 'binary default') != configuration['xattr_cache_mib']
                 or run['manifest_sha256'] != hashlib.sha256((data / 'manifest.json').read_bytes()).hexdigest()):
             raise ValueError('resume corpus or binary identity mismatch')
         previous = Path(tempfile.mkdtemp(prefix='previous-', dir=work))
@@ -76,7 +78,7 @@ def main():
         else:
             prefix, key, key_path = support.identity(work, 'bench')
         workspace = None
-        run = metadata() | {'prefix': prefix, 'warm_runs': 1, 'server_restarted_per_first_case': True,
+        run = configuration | {'prefix': prefix, 'warm_runs': 1, 'server_restarted_per_first_case': True,
                        'cold_scope': 'new dfs-server/session/mount; backend caches retained',
                        'fuse_threads': 8, 'kernel_writeback': True, 'client_data_cache': 'kernel',
                        'kernel_metadata_ttl_seconds': 4294967295, 'max_background': 32,
@@ -85,7 +87,6 @@ def main():
     run['files'] = args.files
     run['manifest_sha256'] = hashlib.sha256((data / 'manifest.json').read_bytes()).hexdigest()
     run['corpus_directories'] = 100
-    run['fuse_binary_sha256'] = hashlib.sha256(Path('/target/release/dfs-fuse').read_bytes()).hexdigest()
     if args.backend_from:
         run['existing_fixture'] = str(args.backend_from)
         run['existing_files'] = previous_run['files']

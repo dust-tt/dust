@@ -38,6 +38,8 @@ def metadata(binary=None):
             'linux': platform.platform(), 'cpu_count': os.cpu_count(),
             'memory': Path('/proc/meminfo').read_text().splitlines()[0],
             'server_binary_sha256': hashlib.sha256(Path(selected_binary).read_bytes()).hexdigest(),
+            'fuse_binary_sha256': hashlib.sha256(support.v1.fuse_binary().read_bytes()).hexdigest(),
+            'xattr_cache_mib': os.environ.get('DFS_XATTR_CACHE_MIB', 'binary default'),
             'fdb_version': '7.3.69', 'es_version': '8.15.3',
             'fdb_tuning_seconds': {name: float(os.environ.get(variable, default))
                 for name, (variable, _, default, _) in KNOBS.items()},
