@@ -1,3 +1,4 @@
+import { useAttachContextSlashMenuItems } from "@app/components/editor/extensions/shared/slash_suggestion/useAttachContextSlashMenuItems";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
 import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import { fetcher, fetcherWithBody } from "@app/lib/swr/fetcher";
@@ -8,7 +9,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { createElement, StrictMode, useMemo } from "react";
 import { SWRConfig } from "swr";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { clientFetch } = vi.hoisted(() => ({ clientFetch: vi.fn() }));
 vi.mock("@app/lib/egress/client", () => ({ clientFetch }));
@@ -58,6 +59,8 @@ beforeEach(() => {
   clientFetch.mockReset();
   cache = new Map();
 });
+
+afterEach(() => vi.useRealTimers());
 
 describe("conversation search requests", () => {
   it("ignores a late response from the previous query and aborts it", async () => {
@@ -307,5 +310,53 @@ describe("conversation search requests", () => {
       )
     ).toEqual(["current"]);
     expect(result.current.withoutTools.isSearchError).toBeNull();
+  });
+});
+
+describe("slash-menu search", () => {
+  it("waits for typing to settle and cancels immediately when the query is cleared", async () => {
+    const pending = Promise.withResolvers<Response>();
+    const searches: { query: string | null; signal: RequestInit["signal"] }[] =
+      [];
+    clientFetch.mockImplementation((url: string, init: RequestInit) => {
+      const parsed = new URL(url, "https://dust.tt");
+      if (parsed.pathname.endsWith("/spaces")) {
+        return Promise.resolve(Response.json({ spaces: [] }));
+      }
+      searches.push({
+        query: parsed.searchParams.get("query"),
+        signal: init.signal,
+      });
+      return pending.promise;
+    });
+    const { result, rerender, unmount } = renderHook(
+      ({ query }) =>
+        useAttachContextSlashMenuItems({
+          owner,
+          query,
+          useCase: "conversation-input",
+        }),
+      { wrapper: Wrapper, initialProps: { query: "" } }
+    );
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    vi.useFakeTimers();
+    rerender({ query: "se" });
+    await act(async () => vi.advanceTimersByTimeAsync(100));
+    rerender({ query: "search" });
+    expect(result.current.isLoading).toBe(true);
+    await act(async () => vi.advanceTimersByTimeAsync(299));
+    expect(searches).toHaveLength(0);
+    await act(async () => vi.advanceTimersByTimeAsync(1));
+    expect(searches).toHaveLength(1);
+    expect(searches[0].query).toBe("search");
+    rerender({ query: "" });
+    await act(async () => vi.advanceTimersByTimeAsync(0));
+    expect(searches[0].signal?.aborted).toBe(true);
+    expect(result.current.isLoading).toBe(false);
+    await act(async () => vi.advanceTimersByTimeAsync(300));
+    expect(searches).toHaveLength(1);
+    await act(async () => pending.resolve(response(null)));
+    expect(result.current.items).toEqual([]);
+    unmount();
   });
 });
