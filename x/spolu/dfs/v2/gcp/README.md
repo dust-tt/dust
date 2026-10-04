@@ -219,3 +219,9 @@ The failure script tests each durable host, the transaction host, and `fdb-a` pl
 This exercises FDB recovery using service stops; it does not test workload-VM failure or lost disks.
 Wait for healthy replication and verify preferred recruitment again before repeating the same 10k
 benchmark with the same binaries and `--backend-from` pointing at the retained first run.
+
+Validated on 2026-10-04: all five service-failure cases passed, including committed reads and new
+writes during each failure. All 18 processes recovered, with the six preferred roles on `tx-a`,
+healthy double replication, one-zone fault tolerance, and the original three coordinators.
+Two independent servers then completed 100 verified same-workspace writes in 0.352 s. This tests
+recovery correctness; it does not establish recovery latency under load.

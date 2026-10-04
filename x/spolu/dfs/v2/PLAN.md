@@ -197,8 +197,10 @@ GRV-cap benefit, so that setting's effect remains workload-dependent/uncertain. 
 - [x] Manually provision the preferred transaction VM in zone `a`, leaving FDB uninstalled.
 - [x] After the first benchmark, join six preferred GRV/commit/master/resolver processes to the
       existing replicated cluster.
-- [ ] Verify actual recruitment, durable commits, independent writers, transaction-node loss, and
+- [x] Verify actual recruitment, durable commits, independent writers, transaction-node loss, and
       whole-zone loss; keep the three durable nodes/coordinators and native latency defaults.
+      All five service-failure cases passed; all preferred roles returned to the new node.
+      Two independent servers completed 100 verified same-workspace writes in 0.352 s.
 - [ ] Rerun the identical 10k suite with the same binaries, retain both corpora and prior results,
       and publish complete tables, topology/cache context, and RPC comparisons in `gcp/RESULTS.md`.
 
