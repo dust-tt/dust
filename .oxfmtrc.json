@@ -1,0 +1,53 @@
+{
+  "useTabs": false,
+  "tabWidth": 2,
+  "printWidth": 80,
+  "endOfLine": "lf",
+  "singleQuote": false,
+  "jsxSingleQuote": false,
+  "quoteProps": "as-needed",
+  "trailingComma": "es5",
+  "semi": true,
+  "arrowParens": "always",
+  "bracketSameLine": false,
+  "bracketSpacing": true,
+  "objectWrap": "preserve",
+  "sortImports": {
+    "groups": [
+      [
+        "side_effect",
+        "type",
+        "builtin",
+        "external",
+        "internal",
+        "subpath",
+        "unknown"
+      ],
+      [
+        "parent",
+        "sibling",
+        "index",
+        "style"
+      ]
+    ],
+    "newlinesBetween": false,
+    "ignoreCase": false,
+    "partitionByNewline": true
+  },
+  "sortPackageJson": false,
+  "ignorePatterns": [
+    "**/.next/**",
+    "**/node_modules/**",
+    "**/workers-build/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/coverage/**",
+    "**/x/**",
+    "**/__snapshots__/**",
+    "**/.yalc/**",
+    "**/package-lock.json",
+    "extension/shared/lib/swr.ts",
+    "extension/packages/**",
+    "cli/dust-sandbox/functions-runner/runner.js"
+  ]
+}
