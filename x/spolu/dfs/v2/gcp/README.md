@@ -114,3 +114,29 @@ To repeat checks after an interruption without importing again, use `--resume --
 the original `--work`; prior reports are archived before rerunning checks. Avoid entering the active
 benchmark mount during a run: it is repeatedly unmounted. The 100,000-file run is currently deferred;
 it remains available with `--files 100000` and a new report directory.
+
+## Compare FDB latency defaults
+
+With benchmarks stopped, save each host's exact `foundationdb.conf`, stop the three FDB services,
+remove only `knob-commit_transaction_batch_interval_min`,
+`knob-commit_transaction_batch_interval_from_idle`, and `knob-busy_wait_threshold`, then start all
+three services. Verify twelve processes, healthy replication, and one-zone fault tolerance before
+timing. Retain disks, datasets, memory/cache limits, and ES. Record proxy placement: restarting FDB
+can move transaction roles between zones and change network paths.
+
+```sh
+v2/gcp/run exec env \
+  DFS_FDB_GRV_BATCH_TIMEOUT_SECONDS=0.005 \
+  DFS_FDB_CLIENT_BUSY_WAIT_SECONDS=0 \
+  DFS_FDB_COMMIT_BATCH_MIN_SECONDS=0.001 \
+  DFS_FDB_COMMIT_BATCH_IDLE_SECONDS=0.0005 \
+  DFS_FDB_SERVER_BUSY_WAIT_SECONDS=0 \
+  python3 /dfs/v2/bench/vfs.py --keep-fixture \
+  --backend-from /reports/vfs-10k-1 --work /reports/vfs-10k-defaults-1
+```
+
+The first two variables configure the native FDB client. The last three describe server settings
+in benchmark reports; they **do not reconfigure the remote FDB processes**. Verify actual process
+arguments after changing server configs. Use a new report directory when repeating a run.
+Always restore the saved configs, restart the services, and verify health afterward, including on
+failure. This restarts FDB processes, not VMs, ES, or host OS caches. Retained corpora are preserved.

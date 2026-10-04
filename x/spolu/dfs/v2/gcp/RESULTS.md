@@ -3,6 +3,10 @@
 2026-10-04. Live GCP nodes; unchanged v2 server/API and v1 FUSE/client, built from `34ef74fc263a`.
 See [setup and reproduction](README.md) and the [localhost results](../bench/RESULTS.md).
 
+Latest: [FDB latency defaults](#fdb-latency-tuning-disabled) completed 10k untar in **505.715 s**,
+versus **529.947 s** tuned. All checks passed; original tuning is restored and all three corpora
+remain. The restart changed proxy placement, so the comparison does not isolate tuning alone.
+
 ## Setup findings
 
 - Three FDB 7.3.69 hosts in `us-central1-a`, `b`, and `f`; workload host in `a`. All are
@@ -16,8 +20,9 @@ See [setup and reproduction](README.md) and the [localhost results](../bench/RES
 - FDB process memory limit 8 GiB, storage cache 2 GiB. Workload ES 8.15.3: single node,
   2 GiB heap / 4 GiB limit, SSD persistent disk. FUSE and dfs-server run together on the workload VM;
   FDB traffic crosses the private VPC. ES replication is outside this experiment.
-- Native durable FDB commits, default 5 ms GRV batching, 100 µs client/server busy waits, and
-  10 µs minimum/idle commit batching. No commit-version reuse or deferred FDB publication.
+- All runs use native durable FDB commits. The first two used default 5 ms GRV batching,
+  100 µs client/server busy waits, and 10 µs minimum/idle commit batching.
+  No commit-version reuse or deferred FDB publication.
 - Rust 1.98.1 release builds. Server SHA256:
   `164ac590378e30f1bb3b7ba8309f6d78d30be69aceb4fbe392caab0703cfa2e0`.
   FUSE SHA256: `7d4647047b5c03f801b87ac84c45563ce5bfd2bc0135d415257a4084b322f89c`.
@@ -80,7 +85,7 @@ with `EBUSY` during interactive inspection. The specific holder was not establis
 FUSE mount was unmounted and the orphan server stopped; the corpus and original reports were kept.
 The original harness had not saved the workspace credential, so recovery rotated only that fixture's
 workspace key and saved it privately. File contents, object IDs, grants, and versions were unchanged.
-The read suite is rerun from the retained corpus; its import timing remains the original measurement.
+The read suite was rerun from the retained corpus; its import timing remains the original measurement.
 The harness now saves private fixture credentials and supports explicit retention/resumption.
 
 ## Initial latency observations
@@ -256,3 +261,108 @@ normalized by the document count.
 
 Untar changed by **+3.16%** with the first corpus retained.
 This single comparison does not establish statistical significance.
+
+## FDB latency tuning disabled
+
+A third 10,000-file run removed the three FDB server latency overrides and restarted all twelve
+FDB processes across the three hosts. The benchmark client used native latency defaults too.
+The API, application optimizations, binaries, workload, memory/cache limits, replication, and durable
+commit boundary were unchanged. Full replication health was checked before timing.
+
+| Setting | Current v2 tuning | Defaults run |
+| --- | ---: | ---: |
+| Client GRV batch timeout | 5 ms | 5 ms |
+| Client busy-wait threshold | 100 µs | 0 |
+| Server minimum commit batch interval | 10 µs | 1 ms |
+| Server idle commit batch interval | 10 µs | 500 µs |
+| Server busy-wait threshold | 100 µs | 0 |
+
+The table compares the most recent tuned run with defaults. The tuned run started with **10k**
+existing corpus files; the defaults run retained **both corpora (20k)**. Defaults started with
+fresh FDB process caches; **VMs, host OS caches, and ES were not restarted**. Subsequent first-read
+rows restart only dfs-server/session/mount, as before. This is a single sequential comparison with
+those cache/data differences, not an isolated repeated ablation. Automatic role placement also
+changed: the GRV proxy moved from zone `b` to `a`; commit proxies moved from `a`/`f` to `b`/`f`.
+Storage and log processes remained on all three hosts. The comparison therefore also changes
+network paths and cannot assign the complete timing difference to the knobs alone.
+
+| Workload | Tuned (s) | Defaults (s) | Defaults / tuned |
+| --- | ---: | ---: | ---: |
+| **Untar, 10k files** | **529.947** | **505.715** | **0.95×** |
+| scandir + stat — first | 6.255 | 5.491 | 0.88× |
+| rg --files — first | 1.270 | 1.155 | 0.91× |
+| open + fstat + close — first | 49.955 | 37.803 | 0.76× |
+| rg no-match scan — first | 17.954 | 14.708 | 0.82× |
+| open + read + SHA-256 — first | 117.896 | 84.903 | 0.72× |
+| create + write | 0.611 | 0.545 | 0.89× |
+| fsync | 0.716 | 0.709 | 0.99× |
+| unlink | 0.457 | 0.420 | 0.92× |
+
+Defaults untar: **50.5715 ms/file**. Remaining client writeback was
+0.000175 s after untar and 0.000140 s after
+the suite; server shutdown took 0.031 s. There is no extra FDB durability drain.
+
+The defaults run passed all 24 DFS and local-disk checks, including full-corpus hashes. An
+independent two-server writer check also passed: 100 writes to one workspace in
+0.411 s. Exact original server configs were restored afterward;
+all twelve tuned processes recovered healthy replication and one-zone fault tolerance.
+
+After restoration, all three retained workspaces were mounted again: each contained 10,000 corpus
+files and matched the first/middle/last expected hashes. Configs, process arguments, cluster status,
+comparison context, and controller logs are retained under
+`/var/log/dfs-bench/dfs-v2-defaults-20261004`, outside Git. The third run's `existing_files` field
+describes its `--backend-from` source (10k); the context records the actual 20k preexisting total.
+
+Untar's population mounts made the same **77,862 RPCs**. Mean complete client RPC latency:
+
+| RPC | Calls | Tuned (ms/call) | Defaults (ms/call) | Change |
+| --- | ---: | ---: | ---: | ---: |
+| create | 10,102 | 8.942 | 9.512 | +6.38% |
+| lookup | 10,205 | 4.598 | 3.304 | -28.13% |
+| stat | 27,324 | 4.573 | 3.250 | -28.94% |
+| update | 20,204 | 8.473 | 9.095 | +7.34% |
+| write | 10,003 | 8.683 | 9.402 | +8.28% |
+
+**Interpretation:** untar was 4.57% faster with defaults (1.55% faster than the first tuned
+run), so this comparison does not reproduce the large localhost tuning benefit. It also does not
+prove that tuning has no benefit: mutation RPCs were 6–8% slower with defaults, while lookup/stat
+RPCs were 28–29% faster. The closer GRV proxy is consistent with faster reads, but was not isolated
+experimentally. Read improvements offset slower mutations in the mixed untar workload. A causal
+tuning comparison would need repeated runs controlling proxy placement and restart/cache state.
+RPC counters include directory/manifest/setup work and can overlap; they are not exclusive FDB
+phase timings. The only population RPC errors were the same 10,102 expected missing-name lookups.
+
+### dfs v2 [dust-dev, 10,000 files — FDB latency defaults]
+
+Validated report: `/var/log/dfs-bench/vfs-10k-defaults-1`.
+
+```text
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 5,490.57  | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 355.29    | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 1,155.29  | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 8.59      | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 37,803.01 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 842.46    | OK     |
+| metadata     | stat missing (256 paths)                       | first | 1,254.21  | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 4.90      | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 14,707.89 | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 119.31    | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 12,702.54 | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 117.01    | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 2,039.56  | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 24.51     | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 345.35    | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 7.95      | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 84,902.88 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 1,521.73  | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 2,746.36  | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 13.93     | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 545.24    | OK     |
+| file sync    | fsync (32 files)                               | once  | 709.15    | OK     |
+| write        | close (32 files)                               | once  | 0.99      | OK     |
+| write        | unlink (32 files)                              | once  | 420.49    | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+```

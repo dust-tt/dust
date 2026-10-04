@@ -177,8 +177,10 @@ GRV-cap benefit, so that setting's effect remains workload-dependent/uncertain. 
 - [x] Run 10,000 files, retain the corpus, then repeat with another 10,000 files in a separate
       workspace on the same cluster. Publish both full tables, untar/writeback, normalized comparison,
       and topology/cache-aware findings in `gcp/RESULTS.md`.
-- [ ] Restart the three FDB services without latency tuning and repeat the 10,000-file suite with
+- [x] Restart the three FDB services without latency tuning and repeat the 10,000-file suite with
       client defaults, retaining existing corpora. Record cache/data differences and restore tuning.
+      Untar: 505.715 s versus 529.947 s tuned; all checks passed, original settings restored.
+      Proxy placement also changed, so this does not isolate the knobs' causal effect.
 - [ ] Run 100,000 files on the live cluster (deferred at user request).
 
 ## Future work: after the networked experiment
