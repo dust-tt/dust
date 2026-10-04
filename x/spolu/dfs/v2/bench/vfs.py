@@ -14,7 +14,7 @@ import tarfile
 import tempfile
 import time
 import uuid
-from common import corpus, metadata, save, support
+from common import corpus, metadata, persistence, save, support
 
 
 def main():
@@ -56,6 +56,7 @@ def main():
                 or run['server_binary_sha256'] != configuration['server_binary_sha256']
                 or run['fuse_binary_sha256'] != configuration['fuse_binary_sha256']
                 or run.get('xattr_cache_mib', 'binary default') != configuration['xattr_cache_mib']
+                or run.get('writeback', {'DFS_WRITEBACK_MIB': 0}) != configuration['writeback']
                 or run['manifest_sha256'] != hashlib.sha256((data / 'manifest.json').read_bytes()).hexdigest()):
             raise ValueError('resume corpus or binary identity mismatch')
         previous = Path(tempfile.mkdtemp(prefix='previous-', dir=work))
@@ -116,6 +117,8 @@ def main():
     mount_context = None
     mount_path = work / 'mount'
     resets = 0
+    phase = 'resume' if args.resume else 'populate'
+    run['server_lifetimes'] = []
     success = False
     def unmount():
         nonlocal mount_context
@@ -131,12 +134,22 @@ def main():
             metrics_path=work / f'case-{resets}-client-metrics.json')
         mount_context.__enter__()
     def reset():
-        nonlocal server, endpoint, resets
+        nonlocal server, endpoint, resets, phase
         unmount()
-        support.stop(server)
+        if server is not None:
+            stop_server()
         resets += 1
-        server, endpoint = support.start(work, f'case-{resets}', prefix, key_path)
+        phase = f'case-{resets}'
+        server, endpoint = support.start(work, phase, prefix, key_path)
         mount()
+    def stop_server():
+        nonlocal server
+        shutdown_seconds = support.stop(server)
+        server = None
+        summary = persistence(work / f'{phase}-server.log')
+        run['server_lifetimes'].append({'phase': phase, 'shutdown_seconds': shutdown_seconds,
+                                        **summary})
+        return shutdown_seconds
     def measure(path):
         sys.argv = ['benchmark.py', str(path), '--warm-runs', '1']
         if jd.main() != 0:
@@ -145,7 +158,7 @@ def main():
     try:
         measure(data)
         current[0] = 'dfs'
-        server, endpoint = support.start(work, 'resume' if args.resume else 'populate', prefix, key_path)
+        server, endpoint = support.start(work, phase, prefix, key_path)
         if not args.resume:
             with tarfile.open(work / 'corpus.tar', 'w') as archive:
                 archive.add(data / 'docs', arcname='docs')
@@ -170,6 +183,12 @@ def main():
                 run['population_client_writeback_seconds'] = time.monotonic() - started
             finally:
                 os.close(fd)
+            # Stop before unmount/validation so the drain measures remaining server work immediately.
+            run['population_shutdown_seconds'] = stop_server()
+            drain = run['server_lifetimes'][-1]['writeback_drain']
+            run['population_server_drain_seconds'] = drain['drain_us'] / 1e6 if drain else None
+            reset()
+            run['population_drain_restart'] = True
         print(f"Untar: {run['untar_seconds']:.3f}s", flush=True)
         save(work, run)
         measure(mount_path / 'work')
@@ -181,8 +200,7 @@ def main():
         finally:
             os.close(fd)
         unmount()
-        run['shutdown_seconds'] = support.stop(server)
-        server = None
+        run['shutdown_seconds'] = stop_server()
         run['results'] = json.loads((work / 'dfs.json').read_text())
         run['resets'] = resets
         success = True

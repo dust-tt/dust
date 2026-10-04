@@ -269,4 +269,39 @@ v2/gcp/run exec env DFS_BENCH_FUSE_BINARY=/target/xattrs/release/dfs-fuse \
 ```
 
 Preserve the old 416.984 s untar and full tables. Report backend/OS caches and retained-data differences,
-all validation results, untar/drain timings, and xattr/Stat RPC counts. These runs are pending.
+all validation results, untar/drain timings, and xattr/Stat RPC counts. Both runs passed; see the retained tables in RESULTS.md.
+
+
+## Server writeback project
+
+Build the current server into `/target/writeback` and retain the xattrs FUSE binary. The default
+server acknowledges file writes/updates in RAM; explicit file fsync still waits for durable FDB.
+Use fresh prefixes: format 2 rejects the older numeric-version format. Keep all prior corpora.
+
+```sh
+v2/gcp/run exec env CARGO_TARGET_DIR=/target/writeback cargo build --release \
+  --manifest-path /dfs/v2/Cargo.toml --bins
+v2/gcp/run exec env DFS_BENCH_FUSE_BINARY=/target/xattrs/release/dfs-fuse \
+  DFS_BENCH_SERVER_BINARY=/target/writeback/release/dfs-server-v2 \
+  python3 /dfs/v2/tests/writeback.py
+v2/gcp/run exec env DFS_BENCH_FUSE_BINARY=/target/xattrs/release/dfs-fuse \
+  DFS_BENCH_SERVER_BINARY=/target/writeback/release/dfs-server-v2 DFS_XATTR_CACHE_MIB=16 \
+  python3 /dfs/v2/bench/vfs.py --keep-fixture --work /reports/vfs-10k-writeback
+v2/gcp/run exec env DFS_BENCH_FUSE_BINARY=/target/xattrs/release/dfs-fuse \
+  DFS_XATTR_CACHE_MIB=16 python3 /dfs/v2/bench/untar.py --files 10000 --keep-fixture \
+  --server /target/writeback/release/dfs-server-v2 --work /reports/deep-10k-writeback
+```
+
+Stop the interactive mount/server for timing and restore them afterward. Keep FDB native defaults
+and verify topology before/after. Run the two benchmarks sequentially, without builds or tests.
+The deep import uses six levels below a selectively granted ancestor; validate hashes after restart.
+
+Reports separate untar, remaining kernel writeback, server persistence drain, and total shutdown.
+A shutdown drain includes already-running publication; it does not wait for ES indexing to catch up.
+The full suite adds one population-drain restart before its ten usual first-case resets. jd's timed
+workloads are unchanged. Backend/OS caches remain warm across dfs-server restarts.
+
+Server summaries record peak queue accounting, accepted/committed operations, batch files/bytes,
+and failures. FDB counters cover all transactions in that server lifetime, including search and token
+reservations; they are not filesystem-only counts. Publication bytes are conservative queue charges,
+not physical FDB/log bytes. Raw JSON and credentials stay outside Git.
