@@ -66,6 +66,33 @@ nodes are not. Elasticsearch is deliberately not replicated in this FDB-focused 
 
 ## Operate and validate
 
+### Interactive host mount
+
+The workload VM has a native FUSE mount at `/mnt/dfs`, owned by its SSH user `spolu`:
+
+```sh
+gcloud compute ssh dfs-v2-spolu-workload --project=dust-dev \
+  --zone=us-central1-a --tunnel-through-iap
+cd /mnt/dfs/work/play
+```
+
+The first retained 10k corpus is at `/mnt/dfs/work/docs`. Use `work/play` for scratch files;
+the mount's top level is virtual and read-only. No Docker shell is needed. Server and mount run as
+`dfs-play-server.service` and `dfs-play-mount.service`; the API listens only on `127.0.0.1:18082`.
+They survive SSH disconnects but are not enabled at boot.
+
+Sessions expire after one hour. Close open files and leave the mount, then refresh with:
+
+```sh
+cd ~
+sudo systemctl restart dfs-play-mount
+```
+
+Each mount start creates a fresh private session key. The workspace key remains root-only.
+Stop both services before a timed benchmark: `sudo systemctl stop dfs-play-mount dfs-play-server`.
+
+### Commands
+
 The `run` helper always uses explicit `--project=dust-dev`, an allowlisted VM, and IAP SSH. It forwards
 arguments literally; use an explicit `bash -c` only when shell syntax is needed.
 
