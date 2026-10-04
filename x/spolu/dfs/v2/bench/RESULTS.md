@@ -1,5 +1,7 @@
 # Benchmark results — dfs v2 localhost
 
+Live three-zone `dust-dev` setup and measurements: [GCP results](../gcp/RESULTS.md).
+
 2026-10-02–03. Native Linux ARM64 in Docker Desktop on an Apple M4 Max; Rust 1.98.1 release builds.
 One FDB 7.3.69 node (single SSD storage), one ES 8.15.3 node (one primary, zero replicas).
 The Docker VM has 16 vCPUs and 7.65 GiB RAM.

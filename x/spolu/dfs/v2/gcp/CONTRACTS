@@ -1,0 +1,18 @@
+@cc [owner:spolu,label:security;operations] dust-dev-only
+Cloud commands MUST explicitly target dust-dev. Host setup MUST verify the GCE metadata project and
+allowlisted dfs-v2-spolu instance identity before mutations. Cloud resource creation and deletion
+MUST remain manual user actions; setup scripts MUST NOT provision or delete cloud resources.
+
+@cc [owner:spolu,label:backend;operations] preserve-fdb-disks
+Setup MAY format only the verified blank 375 GiB local NVMe on an allowlisted FDB node. Existing
+filesystems MUST have the managed marker before reuse; unknown disks MUST fail closed. FDB MUST
+require the NVMe mount and MUST NOT silently use the boot disk when that mount is absent.
+
+@cc [owner:spolu,label:backend;testing] networked-fdb-validation
+The fixture MUST use three distinct GCP zones as FDB replication failure domains, double redundancy,
+and one coordinator per zone. Tests MUST use isolated prefixes and retain normal durable commits.
+Failure tests MUST restore stopped processes and MUST NOT create or delete cloud resources.
+
+@cc [owner:spolu,label:security;testing] local-generated-reports
+Generated JSON reports, traces, credentials, and build outputs MUST remain outside version control.
+Text summaries MUST distinguish client/server restarts from database or OS cache resets.

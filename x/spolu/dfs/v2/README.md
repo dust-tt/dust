@@ -5,6 +5,8 @@ Elasticsearch; see [benchmark results](bench/RESULTS.md) and [PLAN.md](PLAN.md) 
 Reuse v1's protocol/client/FUSE, with only the live inode cap raised to 1,000,000 for larger corpora.
 Start with local Docker; no GCS credentials.
 
+For the manually provisioned three-zone `dust-dev` FDB fixture, see [gcp/README.md](gcp/README.md).
+
 From `v2/`:
 
 ```sh

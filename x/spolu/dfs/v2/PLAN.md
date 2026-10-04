@@ -2,7 +2,8 @@
 
 Implement [DESIGN.md](DESIGN.md) in small, tested milestones; commit and push each completed group.
 Keep v1 and its results intact. The local implementation, failure tests, Linux FUSE validation, and
-benchmarks are complete; see [bench/RESULTS.md](bench/RESULTS.md). Cloud work remains out of scope.
+benchmarks are complete; see [bench/RESULTS.md](bench/RESULTS.md). The next phase uses the manually
+provisioned `dust-dev` fixture in [gcp/README.md](gcp/README.md).
 
 **Constraints:** FDB must remove the single-writer requirement, including within one workspace.
 Exclusive workspace owners and RAM acknowledgment with asynchronous FDB publication are rejected.
@@ -164,10 +165,22 @@ GRV-cap benefit, so that setting's effect remains workload-dependent/uncertain. 
       Raise only the FUSE live inode cap to 1,000,000; the first traversal exhausted the former
       100,000-entry limit because it also counts directories and mount entries.
 
-## Future work: after the local benchmark
+## 13. Networked dust-dev validation
 
-- [ ] Deploy shared FDB/ES clusters and dfs-server to `dust-dev` with private access and credentials.
-- [ ] Configure replication, storage, backups/recovery, observability, and resource budgets.
+- [x] Manually provision isolated private networking, three FDB hosts in distinct zones, and a
+      workload VM. Scripts must not create or delete cloud resources; always target `dust-dev`.
+- [x] Install pinned FDB 7.3.69 with double replication, three coordinators, local SSDs, and GCP-zone
+      failure domains. Verify healthy replication and expanded boot filesystems.
+- [x] Install the Linux FUSE development container and single-node ES on the workload host.
+- [ ] Run Rust/filesystem/search tests and independent-server writer checks against networked FDB.
+- [x] Verify acknowledged data and new commits with each FDB host stopped in turn; restore health.
+- [ ] Run the unchanged 10,000-file and 100,000-file workloads; publish full tables, untar/writeback,
+      normalized comparisons, and topology/cache-aware findings in `gcp/RESULTS.md`.
+
+## Future work: after the networked experiment
+
+- [ ] Add replicated ES and production authentication/TLS beyond the isolated private fixture.
+- [ ] Configure backups/recovery, observability, and production resource budgets.
 - [ ] Repeat workloads in GCP and evaluate contention, cost, and scaling across many workspaces.
 - [ ] Add multi-server deployment/shared session routing, indexer scheduling, online index replacement,
       tombstone cleanup, and large-workspace shard distribution when needed. Independent-writer

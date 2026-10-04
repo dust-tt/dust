@@ -4,6 +4,8 @@ Replace SlateDB/GCS with a shared FoundationDB cluster and LanceDB with a shared
 cluster. Preserve [v1 filesystem semantics](../v1/DESIGN.md) and
 [v1 search semantics](../v1/DESIGN-SEARCH.md), except for the explicit changes below.
 Implement locally and benchmark before moving to `dust-dev`. [PLAN.md](PLAN.md) tracks the work.
+The local milestone is complete; [gcp/README.md](gcp/README.md) describes the next three-zone FDB
+experiment, using manually provisioned private VMs and the unchanged API/client.
 
 ## Non-negotiable constraints
 
