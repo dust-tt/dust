@@ -38,9 +38,8 @@ def metadata(binary='/target/release/dfs-server-v2'):
             'memory': Path('/proc/meminfo').read_text().splitlines()[0],
             'server_binary_sha256': hashlib.sha256(Path(binary).read_bytes()).hexdigest(),
             'fdb_version': '7.3.69', 'es_version': '8.15.3',
-            'fdb_tuning_seconds': {name: float(os.environ.get(variable,
-                default if name == 'grv' else tuned))
-                for name, (variable, _, default, tuned) in KNOBS.items()},
+            'fdb_tuning_seconds': {name: float(os.environ.get(variable, default))
+                for name, (variable, _, default, _) in KNOBS.items()},
             'server_cache': 'advisory object/parent IDs only; 16384 entries / 8 MiB accounting budget',
             'backend_caches': 'FDB, ES, and OS caches retained across dfs-server restarts',
             'durability': 'normal FDB commits; no post-acknowledgement persistence drain'}

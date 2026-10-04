@@ -27,24 +27,23 @@ The images support native Linux ARM64 on this Mac. FDB uses single-node SSD stor
 primary and no replicas for application/test indexes. Defaults: 3 GiB container memory each, with
 1 GiB ES heap. Configure `DFS_V2_FDB_MEMORY`, `DFS_V2_ES_MEMORY`, and `DFS_V2_ES_JAVA_OPTS` before `up`.
 
-The server's FDB client uses FDB's default 5 ms read-version batching timeout and busy-waits for
-timers up to 100 µs. The earlier 1 µs GRV cap is disabled after the tuning ablation.
-The FDB node uses 10 µs minimum/idle commit batch intervals and the same busy-wait threshold.
-These pinned-version settings favor latency at increased CPU cost; conflict checks and normal log
-synchronization are unchanged. `local/fdb.bash` preserves the official image's startup/volume setup.
+Client and server latency settings use FDB's native defaults: 5 ms read-version batching,
+1 ms / 500 µs minimum/idle commit batching, and no busy-waiting. The networked comparison did not
+reproduce the large localhost tuning benefit; see [results](gcp/RESULTS.md#fdb-latency-tuning-disabled).
+Conflict checks and normal log synchronization are unchanged. `local/fdb.bash` preserves the
+official image's startup/volume setup; nondefault settings remain available for explicit experiments.
 Run `local/run up` after changing these settings so Compose recreates the node with its data intact.
 
 The five settings below are in **seconds**. Client settings apply before the native FDB
-network starts; server settings apply at node startup. They are experimental local latency defaults,
-not a validated production scaling profile.
+network starts; server settings apply at node startup. Defaults match the pinned FDB release.
 
-| Environment variable | Local default | FDB 7.3.69 default |
-| --- | ---: | ---: |
-| `DFS_FDB_GRV_BATCH_TIMEOUT_SECONDS` | 0.005 | 0.005 |
-| `DFS_FDB_CLIENT_BUSY_WAIT_SECONDS` | 0.0001 | 0 |
-| `DFS_FDB_COMMIT_BATCH_MIN_SECONDS` | 0.00001 | 0.001 |
-| `DFS_FDB_COMMIT_BATCH_IDLE_SECONDS` | 0.00001 | 0.0005 |
-| `DFS_FDB_SERVER_BUSY_WAIT_SECONDS` | 0.0001 | 0 |
+| Environment variable | Default (FDB 7.3.69) |
+| --- | ---: |
+| `DFS_FDB_GRV_BATCH_TIMEOUT_SECONDS` | 0.005 |
+| `DFS_FDB_CLIENT_BUSY_WAIT_SECONDS` | 0 |
+| `DFS_FDB_COMMIT_BATCH_MIN_SECONDS` | 0.001 |
+| `DFS_FDB_COMMIT_BATCH_IDLE_SECONDS` | 0.0005 |
+| `DFS_FDB_SERVER_BUSY_WAIT_SECONDS` | 0 |
 
 The development container reads FDB's cluster file from a shared volume and connects over the private
 Compose network, independently of database restarts. ES is reachable as `http://es:9200`.

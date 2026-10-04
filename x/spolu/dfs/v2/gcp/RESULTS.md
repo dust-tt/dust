@@ -4,8 +4,16 @@
 See [setup and reproduction](README.md) and the [localhost results](../bench/RESULTS.md).
 
 Latest: [FDB latency defaults](#fdb-latency-tuning-disabled) completed 10k untar in **505.715 s**,
-versus **529.947 s** tuned. All checks passed; original tuning is restored and all three corpora
-remain. The restart changed proxy placement, so the comparison does not isolate tuning alone.
+versus **529.947 s** tuned. All checks passed and all three corpora remain. Native FDB latency
+defaults are now the selected configuration; the benchmark's temporary restoration of tuning was
+subsequently removed. The restart changed proxy placement, so the comparison does not isolate tuning
+alone.
+
+Follow-up: native defaults were applied permanently to all twelve live FDB processes and the
+development container. The rebuilt server passed `cargo test --workspace` with client overrides
+unset, the independent-server writer check, and a fresh mount/count/sample-hash check of all three
+retained corpora. Replication remains healthy. Historical benchmark timings and binary hashes below
+are unchanged.
 
 ## Setup findings
 
@@ -269,7 +277,7 @@ FDB processes across the three hosts. The benchmark client used native latency d
 The API, application optimizations, binaries, workload, memory/cache limits, replication, and durable
 commit boundary were unchanged. Full replication health was checked before timing.
 
-| Setting | Current v2 tuning | Defaults run |
+| Setting | Previous v2 tuning | Defaults run / current configuration |
 | --- | ---: | ---: |
 | Client GRV batch timeout | 5 ms | 5 ms |
 | Client busy-wait threshold | 100 µs | 0 |

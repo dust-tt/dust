@@ -153,7 +153,7 @@ full runs measured 38.346 s tuned and 40.265 s with default GRV. The short ablat
 GRV-cap benefit, so that setting's effect remains workload-dependent/uncertain. See
 [all results](bench/RESULTS.md); the other four settings have larger demonstrated effects.
 
-## 12. Current v2 baseline
+## 12. Local v2 baseline before the networked experiment
 
 - [x] Keep commit-version reuse removed and restore FDB's default 5 ms GRV batching timeout in
       server/Compose defaults. Preserve the other four settings and overlapping metadata reads.
@@ -181,6 +181,8 @@ GRV-cap benefit, so that setting's effect remains workload-dependent/uncertain. 
       client defaults, retaining existing corpora. Record cache/data differences and restore tuning.
       Untar: 505.715 s versus 529.947 s tuned; all checks passed, original settings restored.
       Proxy placement also changed, so this does not isolate the knobs' causal effect.
+- [x] Adopt native FDB latency defaults for the server, local/GCP launch configuration, and benchmark
+      metadata; keep historical results and explicit ablation profiles. Apply to the live cluster.
 - [ ] Run 100,000 files on the live cluster (deferred at user request).
 
 ## Future work: after the networked experiment

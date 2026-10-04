@@ -34,8 +34,9 @@ Each FDB host runs four processes under `dfs-fdb.service`:
 FDB 7.3.69 uses **double** redundancy, SSD storage, three coordinators, and GCP zone IDs as replication
 failure domains. Healthy configuration reports 12 processes, 3 machines/zones, and tolerance of one
 zone failure. Acknowledgment retains normal replicated, synchronized log commits. Each process has an
-8 GiB memory limit; storage cache is 2 GiB. The current v2 latency knobs are unchanged: default 5 ms
-client GRV batching, 100 µs client/server busy waits, and 10 µs minimum/idle commit batching.
+8 GiB memory limit; storage cache is 2 GiB. Client/server latency settings use native FDB defaults:
+5 ms client GRV batching, no busy-waiting, and 1 ms / 500 µs minimum/idle commit batching.
+The setup installs no server latency overrides.
 
 The workload host runs Elasticsearch 8.15.3 (one node, 2 GiB heap, 4 GiB container limit) and a Linux
 development container, reusing `../local/Dockerfile` and the unchanged v1 FUSE/client. Test dfs-server
@@ -117,6 +118,9 @@ it remains available with `--files 100000` and a new report directory.
 
 ## Compare FDB latency defaults
 
+Native defaults are now the normal configuration. These steps document the comparison against the
+previously tuned setup; no config edit/restart is needed when already using defaults.
+
 With benchmarks stopped, save each host's exact `foundationdb.conf`, stop the three FDB services,
 remove only `knob-commit_transaction_batch_interval_min`,
 `knob-commit_transaction_batch_interval_from_idle`, and `knob-busy_wait_threshold`, then start all
@@ -138,5 +142,6 @@ v2/gcp/run exec env \
 The first two variables configure the native FDB client. The last three describe server settings
 in benchmark reports; they **do not reconfigure the remote FDB processes**. Verify actual process
 arguments after changing server configs. Use a new report directory when repeating a run.
-Always restore the saved configs, restart the services, and verify health afterward, including on
-failure. This restarts FDB processes, not VMs, ES, or host OS caches. Retained corpora are preserved.
+For a temporary tuning experiment, restore the saved native-default configs afterward, restart
+services, and verify health, including on failure. This restarts FDB processes, not VMs, ES, or
+host OS caches. Retained corpora are preserved.

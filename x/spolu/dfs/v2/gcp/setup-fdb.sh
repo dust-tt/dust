@@ -88,9 +88,6 @@ cache-memory = 2GiB
 locality-machineid = $DFS_NODE
 locality-zoneid = $DFS_ZONE
 locality-dcid = us-central1
-knob-commit_transaction_batch_interval_min = 0.00001
-knob-commit_transaction_batch_interval_from_idle = 0.00001
-knob-busy_wait_threshold = 0.0001
 
 [fdbserver.4500]
 class = storage

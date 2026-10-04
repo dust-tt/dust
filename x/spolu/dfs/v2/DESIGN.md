@@ -131,10 +131,10 @@ Every transaction attempt obtains its read version normally from FDB, including 
 APIs, and search. Do not cache or reuse commit versions. Conflicts/expiry retry with a fresh transaction;
 ambiguous commits never replay. All dependency reads retain conflict tracking.
 
-The local FDB deployment retains FDB's default 5 ms read-version batching timeout, reduces commit
-batching delays, and busy-waits briefly for short timers. The earlier 1 µs GRV cap is disabled.
-This trades CPU for latency while retaining normal log durability and conflict resolution; validate
-filesystem latency and independent writers after tuning. See [settings](README.md).
+Client and server latency settings use native FDB defaults in local and networked deployments.
+The networked benchmark did not reproduce the large localhost tuning benefit. Nondefault settings
+require an explicit experiment; retain normal log durability and conflict resolution and validate
+filesystem latency and independent writers. See [settings](README.md).
 
 Filesystem requests start workspace, primary object, hinted ancestor/grant reads, and optional
 child-name lookup concurrently. Retain at most 16 object/grant results and one child entry, only

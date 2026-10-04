@@ -28,9 +28,10 @@ Acknowledgement MUST await normal FDB commit. Fsync MUST propagate client writeb
 current server authority without waiting for ES.
 
 @cc [owner:spolu,label:backend;performance] fdb-latency-tuning
-FDB latency settings MAY reduce batching delays and increase CPU use for short timer waits. They
-MUST retain normal conflict resolution and log synchronization before successful acknowledgment.
-Changes MUST be benchmarked with the unchanged filesystem workload and independent writers.
+Default client/server latency settings MUST match the pinned FDB native defaults. Nondefault latency
+settings MUST require an explicit experimental override and MUST retain normal conflict resolution
+and log synchronization before successful acknowledgment. Changes MUST be benchmarked with the
+unchanged filesystem workload and independent writers.
 
 @cc [owner:spolu,label:error-handling;concurrency] bounded-fdb-retries
 Only FDB attempts known not to have committed MAY be retried automatically, within a bounded deadline.
