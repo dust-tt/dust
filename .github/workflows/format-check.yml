@@ -1,4 +1,4 @@
-name: Format/lint checks (Biome)
+name: Format/lint checks (oxc)
 
 on:
   push:
@@ -13,10 +13,9 @@ on:
       - "**/*.md"
       - "**/*.yml"
       - "**/*.yaml"
-      - biome.json
-      - "**/biome.json"
-      - "biome-plugins/**"
-      - ".grit/**"
+      - .oxlintrc.json
+      - .oxfmtrc.json
+      - "oxlint-plugins/**"
       - package.json
       - package-lock.json
       - .github/workflows/format-check.yml
@@ -31,9 +30,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
-      - name: Install Grit CLI
-        run: npm install --location=global @getgrit/cli
       - name: Format Check
         run: npm run format:ci
-      - name: GritQL Plugin Tests
-        run: npm run test:grit
+      - name: Lint Plugin Tests
+        run: npm run test:oxlint-plugin
