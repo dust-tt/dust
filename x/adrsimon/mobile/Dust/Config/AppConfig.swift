@@ -127,6 +127,26 @@ enum AppConfig {
             "/api/w/\(workspaceId)/spaces"
         }
 
+        static func searchPods(workspaceId: String, query: String, lastValue: String?, limit: Int) -> String {
+            var components = URLComponents()
+            components.path = "/api/w/\(workspaceId)/spaces/search_projects"
+            components.percentEncodedQueryItems = [
+                ("limit", String(limit)),
+                ("query", query),
+                ("lastValue", lastValue),
+            ].compactMap { name, value in
+                value.map { URLQueryItem(
+                    name: name,
+                    value: $0.addingPercentEncoding(withAllowedCharacters: .queryValueAllowed)
+                ) }
+            }
+            return components.string ?? components.path
+        }
+
+        static func joinPod(workspaceId: String, spaceId: String) -> String {
+            "/api/w/\(workspaceId)/spaces/\(spaceId)/join"
+        }
+
         static func spacesSummary(workspaceId: String) -> String {
             "/api/w/\(workspaceId)/assistant/conversations/spaces"
         }
@@ -135,4 +155,8 @@ enum AppConfig {
             "/api/w/\(workspaceId)/assistant/conversations/spaces/\(spaceId)"
         }
     }
+}
+
+private extension CharacterSet {
+    static let queryValueAllowed = CharacterSet.urlQueryAllowed.subtracting(CharacterSet(charactersIn: "&+=?#"))
 }

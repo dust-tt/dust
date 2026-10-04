@@ -80,7 +80,7 @@ final class ConversationListViewModel: ObservableObject {
     @Published var workspace: Workspace?
     @Published var workspaces: [Workspace] = []
     @Published var pods: [Space] = []
-    @Published var isPodsExpanded: Bool = true
+    @Published var showsAllPods = false
     /// Dust sId of the signed-in user, used to scope tool-approval prompts to their own turns.
     @Published var currentUserSId: String?
 
@@ -247,22 +247,15 @@ final class ConversationListViewModel: ObservableObject {
         ConversationGrouping.filtered(conversations, by: searchText)
     }
 
+    var inboxConversations: [Conversation] {
+        filteredConversations.filter { $0.unread || $0.actionRequired }
+    }
+
     var groupedConversations: [(String, [Conversation])] {
-        let filtered = filteredConversations
-        let dateGroups = ConversationGrouping.groupedByDate(filtered)
+        ConversationGrouping.groupedByDate(filteredConversations.filter { !$0.unread && !$0.actionRequired })
+    }
 
-        // Prepend Inbox section: unread or actionRequired conversations.
-        let inboxIds = Set(unreadConversations.map(\.sId))
-        let inboxConversations = filtered.filter { inboxIds.contains($0.sId) }
-        guard !inboxConversations.isEmpty else { return dateGroups }
-
-        var result: [(String, [Conversation])] = [("Inbox (\(inboxConversations.count))", inboxConversations)]
-        for (label, convos) in dateGroups {
-            let nonInbox = convos.filter { !inboxIds.contains($0.sId) }
-            if !nonInbox.isEmpty {
-                result.append((label, nonInbox))
-            }
-        }
-        return result
+    func podJoined() async {
+        await loadPods()
     }
 }
