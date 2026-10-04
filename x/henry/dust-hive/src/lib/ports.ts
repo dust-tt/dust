@@ -136,6 +136,7 @@ async function getAllocatedBasePorts(): Promise<number[]> {
   return bases;
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: lock acquisition with retry logic
 async function acquirePortLock(): Promise<() => Promise<void>> {
   await mkdir(DUST_HIVE_HOME, { recursive: true });
   const start = Date.now();
