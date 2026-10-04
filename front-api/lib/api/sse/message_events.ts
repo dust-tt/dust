@@ -121,6 +121,11 @@ export async function streamMessageEventsForRoute(
  * MUST contain one end-of-stream event. Under the same empty-batch condition, a message still in
  * `created` status MUST return an empty batch.
  */
+/**
+ * @cc [owner:id13,label:api;error-handling] terminal-message-poll-cursor
+ * After validating conversation access and message type, polling with the synthetic
+ * `end-of-stream` cursor MUST return the end-of-stream event without reading Redis.
+ */
 export async function pollMessageEventsForRoute(
   ctx: Context,
   auth: Authenticator,
@@ -139,6 +144,12 @@ export async function pollMessageEventsForRoute(
   }
 
   return pollEvents(ctx, async (signal) => {
+    if (lastEventId === MESSAGE_STREAM_END_EVENT.eventId) {
+      return {
+        events: [JSON.stringify(MESSAGE_STREAM_END_EVENT)],
+      };
+    }
+
     const events = await getMessagesEventsBatch({
       messageId,
       lastEventId,

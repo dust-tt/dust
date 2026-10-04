@@ -41,11 +41,13 @@ async function getMessageIdByRank(
 }
 
 function pollMessageEvents({
+  prefix,
   workspaceId,
   conversationId,
   messageId,
   lastEventId,
 }: {
+  prefix: string;
   workspaceId: string;
   conversationId: string;
   messageId: string;
@@ -53,11 +55,14 @@ function pollMessageEvents({
 }) {
   const query = lastEventId ? `?lastEventId=${lastEventId}` : "";
   return honoApp.request(
-    `/api/sse/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/events/poll${query}`
+    `${prefix}/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/events/poll${query}`
   );
 }
 
-describe("GET /api/sse/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events/poll", () => {
+describe.each([
+  "/api/sse",
+  "/api",
+])("GET %s/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events/poll", (prefix) => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -66,12 +71,64 @@ describe("GET /api/sse/w/[wId]/assistant/conversations/[cId]/messages/[mId]/even
     const { workspace } = await createPrivateApiMockRequest();
 
     const response = await pollMessageEvents({
+      prefix,
       workspaceId: workspace.sId,
       conversationId: "conv_unknown",
       messageId: "msg_unknown",
+      lastEventId: "end-of-stream",
     });
 
     expect(response.status).toBe(404);
+    expect(getMessagesEventsBatch).not.toHaveBeenCalled();
+  });
+
+  it("returns end-of-stream without reading Redis when polling after completion", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest();
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+    const messageId = await getMessageIdByRank(auth, conversation.sId, 1);
+
+    const response = await pollMessageEvents({
+      prefix,
+      workspaceId: workspace.sId,
+      conversationId: conversation.sId,
+      messageId,
+      lastEventId: "end-of-stream",
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(await response.json()).toEqual({
+      events: [
+        JSON.stringify({
+          eventId: "end-of-stream",
+          data: { type: "end-of-stream" },
+        }),
+      ],
+    });
+    expect(getMessagesEventsBatch).not.toHaveBeenCalled();
+  });
+
+  it("still rejects user messages with an end-of-stream cursor", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest();
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+    const messageId = await getMessageIdByRank(auth, conversation.sId, 0);
+
+    const response = await pollMessageEvents({
+      prefix,
+      workspaceId: workspace.sId,
+      conversationId: conversation.sId,
+      messageId,
+      lastEventId: "end-of-stream",
+    });
+
+    expect(response.status).toBe(400);
+    expect(getMessagesEventsBatch).not.toHaveBeenCalled();
   });
 
   it("returns serialized events after the requested event ID", async () => {
@@ -83,7 +140,7 @@ describe("GET /api/sse/w/[wId]/assistant/conversations/[cId]/messages/[mId]/even
     const messageId = await getMessageIdByRank(auth, conversation.sId, 1);
     const events: MessageStreamBatchEvent[] = [
       {
-        eventId: "evt_2",
+        eventId: "2-0",
         data: {
           type: "generation_tokens",
           created: 0,
@@ -98,10 +155,11 @@ describe("GET /api/sse/w/[wId]/assistant/conversations/[cId]/messages/[mId]/even
     vi.mocked(getMessagesEventsBatch).mockResolvedValue(events);
 
     const response = await pollMessageEvents({
+      prefix,
       workspaceId: workspace.sId,
       conversationId: conversation.sId,
       messageId,
-      lastEventId: "evt_1",
+      lastEventId: "1-0",
     });
 
     expect(response.status).toBe(200);
@@ -110,7 +168,7 @@ describe("GET /api/sse/w/[wId]/assistant/conversations/[cId]/messages/[mId]/even
     });
     expect(getMessagesEventsBatch).toHaveBeenCalledWith({
       messageId,
-      lastEventId: "evt_1",
+      lastEventId: "1-0",
       signal: expect.any(AbortSignal),
     });
   });
@@ -133,6 +191,7 @@ describe("GET /api/sse/w/[wId]/assistant/conversations/[cId]/messages/[mId]/even
     vi.mocked(getMessagesEventsBatch).mockResolvedValue([]);
 
     const activeResponse = await pollMessageEvents({
+      prefix,
       workspaceId: workspace.sId,
       conversationId: conversation.sId,
       messageId,
@@ -147,6 +206,7 @@ describe("GET /api/sse/w/[wId]/assistant/conversations/[cId]/messages/[mId]/even
     });
 
     const response = await pollMessageEvents({
+      prefix,
       workspaceId: workspace.sId,
       conversationId: conversation.sId,
       messageId,
