@@ -2,7 +2,7 @@
 
 The VMs and network were created manually in `dust-dev`. These scripts install software on that
 fixed fixture; they never create or delete cloud resources. Run commands below from `x/spolu/dfs`.
-Setup findings, validation, and both corpus benchmarks are recorded in [RESULTS.md](RESULTS.md).
+Setup findings, validation, and retained-corpus benchmarks are recorded in [RESULTS.md](RESULTS.md).
 
 ## Topology
 
@@ -96,8 +96,8 @@ continuing. Test data uses unique keys/prefixes; successful tests remove only th
 Run benchmarks sequentially, outside compilation/tests/failure injection:
 
 ```sh
-v2/gcp/run exec python3 /dfs/v2/bench/vfs.py --work /reports/vfs-10k-1
-v2/gcp/run exec python3 /dfs/v2/bench/vfs.py --files 100000 --work /reports/vfs-100k-1
+v2/gcp/run exec python3 /dfs/v2/bench/vfs.py --keep-fixture --work /reports/vfs-10k-1
+v2/gcp/run exec python3 /dfs/v2/bench/vfs.py --keep-fixture --backend-from /reports/vfs-10k-1 --work /reports/vfs-10k-2
 v2/gcp/run exec python3 /dfs/v2/bench/search.py --work /reports/search-1
 ```
 
@@ -106,3 +106,11 @@ caches remain warm**. Native FDB durability is included in writes; post-untar cl
 reported separately. Record network topology with results: this is neither localhost FDB nor a
 production scaling test. Database-shard distribution, load, backups, and replicated ES remain future
 work.
+
+`--keep-fixture` keeps the first corpus in FDB/ES; `--backend-from` makes the second populate a separate
+workspace in the same application prefix and ES index. It requires retention to protect both corpora.
+Reports, local corpora, and private fixture credentials are retained on the VM.
+To repeat checks after an interruption without importing again, use `--resume --keep-fixture` with
+the original `--work`; prior reports are archived before rerunning checks. Avoid entering the active
+benchmark mount during a run: it is repeatedly unmounted. The 100,000-file run is currently deferred;
+it remains available with `--files 100000` and a new report directory.

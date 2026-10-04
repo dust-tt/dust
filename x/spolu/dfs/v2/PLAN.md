@@ -172,10 +172,12 @@ GRV-cap benefit, so that setting's effect remains workload-dependent/uncertain. 
 - [x] Install pinned FDB 7.3.69 with double replication, three coordinators, local SSDs, and GCP-zone
       failure domains. Verify healthy replication and expanded boot filesystems.
 - [x] Install the Linux FUSE development container and single-node ES on the workload host.
-- [ ] Run Rust/filesystem/search tests and independent-server writer checks against networked FDB.
+- [x] Run Rust/filesystem/search tests and independent-server writer checks against networked FDB.
 - [x] Verify acknowledged data and new commits with each FDB host stopped in turn; restore health.
-- [ ] Run the unchanged 10,000-file and 100,000-file workloads; publish full tables, untar/writeback,
-      normalized comparisons, and topology/cache-aware findings in `gcp/RESULTS.md`.
+- [ ] Run 10,000 files, retain the corpus, then repeat with another 10,000 files in a separate
+      workspace on the same cluster. Publish both full tables, untar/writeback, normalized comparison,
+      and topology/cache-aware findings in `gcp/RESULTS.md`.
+- [ ] Run 100,000 files on the live cluster (deferred at user request).
 
 ## Future work: after the networked experiment
 
