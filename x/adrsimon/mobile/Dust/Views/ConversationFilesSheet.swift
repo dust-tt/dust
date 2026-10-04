@@ -41,7 +41,7 @@ struct ConversationFilesSheet: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button { dismiss() } label: {
-                        SparkleIcon.xMark.image
+                        SparkleIcon.xClose.image
                             .resizable()
                             .frame(width: 16, height: 16)
                             .foregroundStyle(Color.dustForeground)

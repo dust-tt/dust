@@ -30,7 +30,7 @@ struct FrameVisualizerView: View {
                     Button {
                         dismiss()
                     } label: {
-                        SparkleIcon.xMark.image
+                        SparkleIcon.xClose.image
                             .resizable()
                             .frame(width: 20, height: 20)
                             .foregroundStyle(Color.dustForeground)
@@ -46,7 +46,7 @@ struct FrameVisualizerView: View {
 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     ShareLink(item: frameURL) {
-                        SparkleIcon.arrowUpOnSquare.image
+                        SparkleIcon.upload01.image
                             .resizable()
                             .frame(width: 20, height: 20)
                             .foregroundStyle(Color.dustForeground)

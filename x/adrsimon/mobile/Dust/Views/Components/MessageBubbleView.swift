@@ -431,7 +431,7 @@ struct CitationCard: View {
                 Spacer()
 
                 if entry.citation.href != nil {
-                    SparkleIcon.externalLink.image
+                    SparkleIcon.linkExternal01.image
                         .resizable()
                         .scaledToFit()
                         .frame(width: 12, height: 12)
@@ -868,7 +868,7 @@ struct ToolApprovalIconView: View {
                 .resizable()
                 .scaledToFit()
         } else {
-            SparkleIcon.cog6Tooth.image
+            SparkleIcon.settings01.image
                 .resizable()
                 .scaledToFit()
                 .foregroundStyle(Color.dustFaint)
@@ -944,7 +944,7 @@ struct AuthRequiredView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                SparkleIcon.lock.image
+                SparkleIcon.lock01.image
                     .resizable()
                     .scaledToFit()
                     .frame(width: 16, height: 16)
@@ -962,7 +962,7 @@ struct AuthRequiredView: View {
             if let onOpenInBrowser {
                 Button(action: onOpenInBrowser) {
                     HStack(spacing: 4) {
-                        SparkleIcon.externalLink.image
+                        SparkleIcon.linkExternal01.image
                             .resizable()
                             .scaledToFit()
                             .frame(width: 12, height: 12)
@@ -1122,7 +1122,7 @@ struct ErrorCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
-                SparkleIcon.exclamationCircle.image
+                SparkleIcon.alertCircle.image
                     .resizable()
                     .scaledToFit()
                     .frame(width: 14, height: 14)
@@ -1140,7 +1140,7 @@ struct ErrorCardView: View {
             if error.isRetryable, let onRetry {
                 Button(action: onRetry) {
                     HStack(spacing: 4) {
-                        SparkleIcon.arrowPath.image
+                        SparkleIcon.refreshCw01.image
                             .resizable()
                             .scaledToFit()
                             .frame(width: 12, height: 12)

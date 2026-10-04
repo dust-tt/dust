@@ -56,7 +56,7 @@ struct ConversationListView: View {
             if let onCatchUp {
                 Button(action: onCatchUp) {
                     HStack(spacing: 6) {
-                        SparkleIcon.inbox.image
+                        SparkleIcon.inbox01.image
                             .resizable()
                             .frame(width: 14, height: 14)
                         Text("Catch Up")
@@ -231,7 +231,7 @@ struct ConversationListView: View {
                                 if conversation.unread || conversation.actionRequired {
                                     SparkleIcon.eye.image
                                 } else {
-                                    SparkleIcon.inbox.image
+                                    SparkleIcon.inbox01.image
                                 }
                             }
                             .tint(.blue)
@@ -243,7 +243,7 @@ struct ConversationListView: View {
                             Button(role: .destructive) {
                                 conversationToDelete = conversation
                             } label: {
-                                SparkleIcon.trash.image
+                                SparkleIcon.trash01.image
                             }
                             .accessibilityLabel("Delete")
                         }
