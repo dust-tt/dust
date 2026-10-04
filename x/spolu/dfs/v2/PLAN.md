@@ -201,8 +201,11 @@ GRV-cap benefit, so that setting's effect remains workload-dependent/uncertain. 
       whole-zone loss; keep the three durable nodes/coordinators and native latency defaults.
       All five service-failure cases passed; all preferred roles returned to the new node.
       Two independent servers completed 100 verified same-workspace writes in 0.352 s.
-- [ ] Rerun the identical 10k suite with the same binaries, retain both corpora and prior results,
+- [x] Rerun the identical 10k suite with the same binaries, retain both corpora and prior results,
       and publish complete tables, topology/cache context, and RPC comparisons in `gcp/RESULTS.md`.
+      Untar 593.898 → 416.984 s; full read/hash 104.227 → 76.366 s. Both runs passed all 24
+      DFS/local checks. The new VM also increases actual commit proxies from two to three;
+      this single comparison does not isolate locality from resources, caches, or retained data.
 
 ## Future work: after the networked experiment
 

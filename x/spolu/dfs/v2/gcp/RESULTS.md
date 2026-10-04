@@ -4,9 +4,9 @@
 `34ef74fc263a`; subsequent server revisions are recorded with each run.
 See [setup and reproduction](README.md) and the [localhost results](../bench/RESULTS.md).
 
-Latest: [overlapping the remaining transaction reads](#remaining-transaction-reads-overlapped)
-completed 10k untar in **593.898 s** on the original three-zone topology. All checks passed;
-the earlier 30k files and this new 10k corpus remain.
+Latest: [the preferred FDB transaction node](#preferred-fdb-transaction-node) completed 10k untar
+in **416.984 s**, versus **593.898 s** with the same binaries on the original topology.
+All checks passed; all five 10k corpora remain.
 
 Native-default comparison: [FDB latency defaults](#fdb-latency-tuning-disabled) completed 10k untar in **505.715 s**,
 versus **529.947 s** tuned. All checks passed and all three corpora remain. Native FDB latency
@@ -457,3 +457,100 @@ The population mount again made **77,862 RPCs**. Mean complete client RPC latenc
 The remaining 24 read RPCs fetched the manifest. Only the expected 10,102 missing-name lookups
 returned errors; mutations succeeded. Counters include directory/manifest/setup work and can
 overlap, so their cumulative times are not an exclusive breakdown of wall time or FDB phases.
+
+## Preferred FDB transaction node
+
+The same server build (`cb6af8b5e5`) and unchanged v1 FUSE/client were rerun after adding the
+user-created `dfs-v2-spolu-tx-a` VM in `us-central1-a`, beside the workload host. This adds 8 vCPU /
+32 GiB and six FDB processes: GRV proxy on port 4500, three commit proxies on 4501–4503, master on
+4504, and resolver on 4505. Storage, replicated logs, and the three coordinators remain on the
+original `a`/`b`/`f` hosts. FDB 7.3.69 retains native latency defaults, double replication, normal
+durable acknowledgments, and independent DFS server writers.
+
+Before timing, all five service-failure checks passed: each original FDB host, the transaction host,
+and both FDB hosts in zone `a` stopped together. Previously committed data remained readable and
+new commits succeeded; services recovered fully after each case. The independent-server check
+committed 100 writes to one workspace in **0.352 s**. The cluster reported 18 processes, healthy
+two-replica data, and tolerance of one zone failure before and after the benchmark. All observed
+roles matched between the pre-run and post-run status captures.
+
+**Comparison limits:** this is one full run per configuration. Actual commit proxies increased
+from **two to three**, CPU/RAM capacity increased, and the failure checks restarted FDB services,
+changing backend cache state. The second import retained 40k existing corpus files, versus 30k for
+the first. It reused the first run's FDB prefix/ES index in a new workspace; all prior corpora remain.
+The idle interactive server/mount remained running in both runs. These results measure the combined
+topology/capacity change; they do not isolate placement alone or establish statistical significance.
+
+The unchanged jd suite passed **24 DFS and 24 local-disk checks**, including full-corpus hashes.
+Ten first-read resets recreated only dfs-server/session/mount; FDB, ES, and OS caches were not reset
+between those cases. The server, FUSE, and corpus hashes match the previous section exactly.
+
+| Workload | Original topology (s) | Preferred transaction node (s) | New / original |
+| --- | ---: | ---: | ---: |
+| **Untar, 10k files** | 593.898 | 416.984 | 0.70× |
+| scandir + stat (100 dirs, 10,000 files) — first | 6.002 | 5.684 | 0.95× |
+| rg --files (10,000 files) — first | 1.315 | 1.291 | 0.98× |
+| open + fstat + close (10,000 files) — first | 56.151 | 52.337 | 0.93× |
+| stat missing (256 paths) — first | 1.655 | 1.273 | 0.77× |
+| rg no-match scan (10,000 files, 177.5 MB) — first | 13.881 | 13.001 | 0.94× |
+| rg rare literal (10,000 files, 4 matches) — first | 15.417 | 13.909 | 0.90× |
+| rg branch glob (981 candidate files) — first | 2.386 | 2.067 | 0.87× |
+| rg depth-10 subtree (136 files) — first | 0.379 | 0.313 | 0.83× |
+| open + read + SHA-256 (10,000 files, 177.5 MB) — first | 104.227 | 76.366 | 0.73× |
+| open + pread tail (256 files x 4 KiB) — first | 2.980 | 2.563 | 0.86× |
+| create + write (32 x 32 KiB files) | 0.578 | 0.483 | 0.84× |
+| fsync (32 files) | 0.733 | 0.583 | 0.79× |
+| unlink (32 files) | 0.452 | 0.375 | 0.83× |
+
+Untar was **29.79% faster** in this comparison: **416.984 s**, or **41.6984 ms/file**. Remaining client
+writeback was **0.000305 s** after untar and **0.000125 s** after the suite; shutdown took **0.032 s**.
+FDB durability is included in foreground writes; there is no additional persistence drain.
+
+### dfs v2 [dust-dev, 10,000 files — preferred transaction node]
+
+Validated report: `/var/log/dfs-bench/vfs-10k-step2-transaction-node`. Raw JSON/logs remain outside Git.
+
+```text
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 5,684.22  | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 373.63    | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 1,290.76  | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 9.33      | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 52,337.35 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 892.46    | OK     |
+| metadata     | stat missing (256 paths)                       | first | 1,272.89  | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 4.79      | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 13,000.96 | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 122.29    | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 13,908.89 | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 119.92    | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 2,066.86  | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 26.08     | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 313.23    | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 8.45      | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 76,366.36 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 1,737.96  | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 2,562.86  | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 18.13     | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 483.13    | OK     |
+| file sync    | fsync (32 files)                               | once  | 582.88    | OK     |
+| write        | close (32 files)                               | once  | 1.02      | OK     |
+| write        | unlink (32 files)                              | once  | 374.78    | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+```
+
+Both population mounts made **77,862 RPCs**. Mean complete client RPC latency:
+
+| RPC | Calls | Original topology (ms/call) | Preferred transaction node (ms/call) |
+| --- | ---: | ---: | ---: |
+| create | 10,102 | 9.925 | 6.821 |
+| lookup | 10,205 | 4.876 | 3.460 |
+| stat | 27,324 | 4.862 | 3.432 |
+| update | 20,204 | 9.881 | 6.849 |
+| write | 10,003 | 10.103 | 7.068 |
+
+The remaining 24 read RPCs fetched the manifest. Both runs had only the expected 10,102 missing-name
+lookup errors; mutations succeeded. Counters include setup and can overlap; they are not exclusive
+wall-time components or direct measurements of FDB phases.
