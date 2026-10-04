@@ -247,22 +247,67 @@ that have not persisted, but never leave inconsistent persisted state or lose a 
 Allow concurrent content/metadata overwrites instead of rejecting every stale object version.
 Independent server writers remain required; no exclusive workspace owner.
 
-- [ ] Define read-your-writes, visibility through other servers before persistence, version
-      semantics, and deferred-error reporting. Reconcile the current durable-ack/no-RAM-overlay
-      and expected-version contracts before implementation.
-- [ ] Implement the fsync barrier over queued and in-flight writes, including their metadata
-      dependencies; concurrent later writes must not postpone completion indefinitely.
-- [ ] Define overwrite granularity/order for byte ranges, truncation, and individual metadata
-      fields. Reapply operations against current FDB state; preserve unrelated fields, grants,
-      namespace indexes, and deletion semantics instead of publishing stale whole-object records.
-- [ ] Design bounded per-server queues, debounce plus maximum dirty age, byte/count flush
-      thresholds, backpressure, and concurrent FDB batches within transaction limits. Preserve
-      ordering for dependent edits.
-- [ ] Decide which create/namespace and metadata operations can participate: content writes account
-      for only 70.7 s of cumulative RPC time in the 417 s untar. Keep authoritative authorization
-      and structural checks transactional, with atomic data/metadata/search-outbox publication.
-- [ ] Test independent writers, moves/unlink/truncation, grant changes, crashes, and ambiguous
-      commits; benchmark foreground untar separately from buffer drain and durable completion.
+### 1. Scope and contracts
+
+- [ ] Buffer positioned file writes and file metadata updates, including truncation and xattrs.
+      Keep create/mkdir, rename/remove, grants, directory updates, and append synchronous initially.
+      The unchanged client's directory fsync sends no RPC, so namespace publication stays durable.
+- [ ] Define accepting-server visibility versus committed visibility through other servers. Retain
+      fresh existence/authorization checks on foreground requests and in committing transactions.
+- [ ] Reconcile durable-ack/no-RAM-overlay and strict mutation-version contracts with the approved
+      overwrite semantics. Keep the wire API and shared FUSE client unchanged.
+- [ ] Define collision-free object version tokens for provisional states from independent servers.
+      Read-version equality MUST still distinguish different states, including rebased writes;
+      there is no workspace-wide coherence version.
+
+### 2. Bounded memory acceptance and reads
+
+- [ ] Retain ordered byte-range writes, truncations, and field/xattr changes per workspace/object.
+      Store semantic operations instead of stale whole-object replacements; never buffer an entire
+      large file as a prerequisite for accepting a bounded write.
+- [ ] Make stat/lookup/list/read through the accepting server reflect pending edits while preserving
+      authorization and read-version checks. Keep independent servers free to commit concurrently.
+- [ ] Bound queued bytes, objects, operations, and retained errors; apply backpressure at capacity.
+      Preserve accepted work after RPC cancellation and order local edits to one object.
+
+### 3. Debounced FDB persistence
+
+- [ ] Add configurable debounce, maximum dirty age, byte/count flush thresholds, and worker
+      concurrency. Batch independent files while keeping transactions within FDB limits.
+- [ ] Reapply ordered operations against current FDB records with normal conflict tracking.
+      Commit order resolves concurrent overlapping writes/fields; preserve untouched bytes/fields,
+      current parents/grants, and truncation zero-fill semantics. Never resurrect an unlinked file.
+- [ ] Atomically commit final blocks, metadata, and coalesced search work. Search continues to index
+      committed FDB state; index status must account for local pending publication.
+- [ ] Order synchronous operations against affected local pending writes without draining unrelated
+      files. Retry only known-uncommitted attempts; never replay an ambiguous commit automatically.
+
+### 4. Durability barriers and deferred errors
+
+- [ ] Have file fsync capture a fixed acceptance-sequence prefix and flush/wait for queued and
+      in-flight operations, including their metadata. Later writes must not indefinitely extend it.
+- [ ] Retain deferred failures until they can be reported to the originating session's fsync or
+      subsequent operations. Do not report success after silently dropping accepted writes.
+- [ ] Drain accepted work on graceful session/server shutdown. A crash before fsync may lose RAM
+      edits; successful fsync must survive restart. Do not wait for ES indexing at this boundary.
+
+### 5. Correctness and resource validation
+
+- [ ] Test independent servers with disjoint/overlapping writes, partial blocks, truncation and
+      re-extension, metadata updates, append, moves/unlink, and grant changes.
+- [ ] Test fixed-prefix fsync during continued writes, deferred/ambiguous failures, queue pressure,
+      cancellation, graceful shutdown, and crash/restart durability through the unchanged client.
+- [ ] Verify search outbox atomicity, workspace isolation, and bounded memory for large files.
+
+### 6. Benchmark
+
+- [ ] Rerun the same deep-path 10k untar and full filesystem suite on the existing GCP fixture.
+      Record foreground time separately from remaining client writeback and server durable drain.
+- [ ] Report FDB transaction count, operations/bytes per batch, retries, and peak queued memory.
+      Keep previous tables and corpora. Compare against the completed xattrs baseline.
+
+Fresh FDB reads and synchronous namespace commits remain on the foreground path. The project removes
+commit waits for file writes/updates, not all network latency; speedup must be measured.
 
 ## Future work: after the networked experiment
 
