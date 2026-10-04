@@ -44,8 +44,9 @@
       {
         "varsIgnorePattern": "^_",
         "args": "none",
-        "caughtErrors": "none",
-        "ignoreRestSiblings": true
+        "caughtErrors": "all",
+        "ignoreRestSiblings": true,
+        "caughtErrorsIgnorePattern": "^_"
       }
     ],
     "curly": [
@@ -60,7 +61,8 @@
         "fixStyle": "separate-type-imports"
       }
     ],
-    "import/no-cycle": "error"
+    "import/no-cycle": "error",
+    "typescript/no-import-type-side-effects": "error"
   },
   "overrides": [
     {
@@ -349,8 +351,9 @@
           {
             "varsIgnorePattern": "^(_|React$)",
             "args": "none",
-            "caughtErrors": "none",
-            "ignoreRestSiblings": true
+            "caughtErrors": "all",
+            "ignoreRestSiblings": true,
+            "caughtErrorsIgnorePattern": "^_"
           }
         ]
       }
