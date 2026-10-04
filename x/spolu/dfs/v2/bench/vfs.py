@@ -183,7 +183,7 @@ def main():
                 run['population_client_writeback_seconds'] = time.monotonic() - started
             finally:
                 os.close(fd)
-            # Stop before unmount/validation so the drain measures remaining server work immediately.
+            # Measure the remaining server drain before unmount and validation.
             run['population_shutdown_seconds'] = stop_server()
             drain = run['server_lifetimes'][-1]['writeback_drain']
             run['population_server_drain_seconds'] = drain['drain_us'] / 1e6 if drain else None

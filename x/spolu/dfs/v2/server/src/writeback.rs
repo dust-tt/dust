@@ -264,7 +264,7 @@ impl Writeback {
     /// @cc [owner:spolu,label:backend;security] file-memory-acceptance
     /// Validate live existence, authority, and the resulting metadata before acknowledging RAM.
     /// Positioned file writes/updates MAY overwrite stale expected versions. A capacity rejection
-    /// MUST NOT accept the operation; pressure flushing MUST happen after releasing read/file gates.
+    /// MUST NOT accept the operation. Pressure flushing MUST happen after releasing read/file gates.
     pub async fn accept(
         &self,
         state: &State,

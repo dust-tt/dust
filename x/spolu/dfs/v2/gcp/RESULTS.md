@@ -4,7 +4,11 @@
 server/client revisions are recorded with each run. The xattrs runs change the shared FUSE client.
 See [setup and reproduction](README.md) and the [localhost results](../bench/RESULTS.md).
 
-Latest: [xattr filtering and caching](#xattrs-client-filtering-and-caching) completed 10k untar in
+Latest: [server writeback](#server-writeback) completed the full 10k untar in **309.769 s**, plus
+**0.058 s** of remaining persistence. This is **12.4% slower** than the previous xattrs run.
+The full filesystem suite and the separate deep-grant 10k import passed; all corpora remain.
+
+Previous: [xattr filtering and caching](#xattrs-client-filtering-and-caching) completed 10k untar in
 **304.889 s** with filtering only and **275.600 s** with filtering plus caching; the previous client
 took **416.984 s**. Both full suites passed; all seven 10k corpora remain. The difference between
 the two new untars cannot be attributed to caching: neither exercised the supported-xattr cache.
@@ -688,5 +692,122 @@ Validated report: `/var/log/dfs-bench/vfs-10k-xattrs-cache`.
 | file sync    | fsync (32 files)                               | once  | 502.79    | OK     |
 | write        | close (32 files)                               | once  | 1.03      | OK     |
 | write        | unlink (32 files)                              | once  | 308.24    | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+```
+
+## Server writeback
+
+The server now acknowledges positioned writes and file metadata updates in bounded RAM; file fsync
+waits for durable FDB publication. Create/mkdir, rename/remove, grants, directory metadata, and append
+remain synchronous. The API and xattrs FUSE binary are unchanged. Implementation: `45f407b732`;
+measurement harness: `0beca296fe`. Rust/backend, Linux two-server/crash, and ES fault tests passed.
+
+**No untar speedup in this run:** 309.769 s versus 275.600 s with xattrs,
+**12.4% slower**, despite fewer file publication commits. All 24 DFS and
+24 local checks passed. The separate deep import validated all 10,000 hashes after server restart.
+
+| Population | Untar (s) | ms/file | Remaining kernel writeback (s) | Remaining server persistence (s) | Total shutdown (s) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Previous xattrs + cache | 275.600 | 27.5600 | 0.000234 | None: commits awaited in RPCs | — |
+| Server writeback, full-suite corpus | 309.769 | 30.9769 | 0.000233 | 0.058452 | 0.114040 |
+| Server writeback, deep granted subtree | 384.546 | 38.4546 | 0.000176 | 0.027768 | 0.063824 |
+
+Persistence is measured immediately after kernel writeback, before validation/unmount; it includes
+in-flight publication. Total shutdown also includes server/indexer teardown and contains the
+persistence interval. Do not add those two intervals. The old server awaited durability before
+acknowledging writes; these are different acknowledgment guarantees. Explicit file fsync stays durable.
+
+The deep run grants `dir-6` beneath six ancestor directories and extracts six more levels below
+that grant. It omits the manifest from the mounted archive and verifies hashes from the local
+manifest after restart. It is an additional depth/grant check, not a directly matched historical run.
+
+### Batching and request costs
+
+| Population | Buffered operations | Publication commits | Files/batch | Ops/batch | Accounted KiB/batch | All FDB commits/attempts | Retries | Peak queue MiB |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Full-suite population | 30,005 | 10,000 | 1.000 | 3.001 | 25.78 | 20,917 / 20,918 | 1 | 2.927 |
+| Deep granted subtree | 30,000 | 10,000 | 1.000 | 3.000 | 25.53 | 21,091 / 21,092 | 1 | 0.100 |
+
+Both populations had zero publication failures. All-FDB counters include setup, synchronous namespace
+operations, search maintenance, and token reservations in that server lifetime. Queue bytes are
+conservative accounting, not RSS or physical FDB/log bytes. Defaults: 256 MiB, 50 ms debounce,
+500 ms dirty age, 4 MiB / 64-file batches, eight workers across workspaces.
+
+| RPC | New population calls | Previous xattrs (ms/call) | Server writeback (ms/call) |
+| --- | ---: | ---: | ---: |
+| create | 10,102 | 5.808 | 8.549 |
+| lookup | 10,204 | 3.014 | 5.337 |
+| stat | 1 | 3.051 | 3.767 |
+| update | 20,204 | 5.797 | 5.125 |
+| write | 10,003 | 6.080 | 5.688 |
+
+Only expected missing-name lookups failed; mutations succeeded. The new population capture ends
+before manifest validation, moving 24 reads and one lookup into the following server lifetime.
+RPC totals overlap and are not an exclusive wall-time breakdown.
+
+Three edits per file generally coalesced into one publication, but almost no cross-file batching
+occurred. Fresh existence/authorization reads still happen on acceptance and publication. Publication
+holds the local workspace write gate: its cumulative transaction time during the full import was
+96.638 s, blocking unrelated local operations while held. Create/lookup slowed enough to
+outweigh faster file edits. This supports investigating narrower local coordination and larger
+batches; neither further optimization is included here. Independent server writers remain supported.
+
+First-touch read rows also regressed with no buffered edits in those server lifetimes; publication
+blocking alone cannot explain them. Same RPC counts were observed for open/fstat, with mean lookup
+latency 5.468 ms versus 3.408 ms previously. This is a single-run comparison using a new data prefix,
+not a controlled writeback ablation; backend placement/cache state and run-to-run variation remain
+confounders. Warm reads remain predominantly kernel-cache work.
+
+### Reproduction and full filesystem table
+
+Same preferred transaction-node topology, native FDB latency defaults, and xattr cache 16 MiB.
+Before/after status reports confirm 18 processes, unchanged transaction roles on `10.84.0.21`,
+healthy two-replica data, and tolerance of one zone failure.
+The interactive mount/server were stopped for both new benchmarks and restored afterward. All old
+corpora remain. New format-2 prefixes preserve the old format-1 datasets; the full run starts with
+the previous seven 10k corpora elsewhere in the shared cluster, and the deep run retains the new
+full corpus too. FDB/ES/OS caches remain across server restarts.
+
+The full suite has ten usual first-case resets plus one extra population-drain restart. Timed jd
+workloads are unchanged. Final kernel writeback was 0.000117 s; final shutdown
+was 0.031636 s. Search indexing need not be caught up when filesystem durability completes.
+
+Corpus: 10,000 files, 100 directories, 177,499,149 bytes; manifest SHA-256
+`67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1`. Server SHA-256
+`ee7e30b9bd871d0fb9855c111d7ee9733362f50ac8a6c7edb89b608f6de72dce`; FUSE SHA-256
+`c901df927194b8f87b8e651b3d2187b3c4561c75819862e727c25839182e253e`.
+Reports: `/var/log/dfs-bench/vfs-10k-writeback` and
+`/var/log/dfs-bench/deep-10k-writeback`. Raw JSON/logs/credentials remain outside Git.
+
+### dfs v2 [dust-dev, 10,000 files — server writeback]
+
+```text
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 10,948.44 | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 362.12    | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 2,800.65  | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 8.80      | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 58,834.86 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 931.58    | OK     |
+| metadata     | stat missing (256 paths)                       | first | 1,374.22  | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 4.65      | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 13,111.30 | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 120.56    | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 13,003.10 | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 121.18    | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 2,615.15  | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 24.64     | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 375.81    | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 7.68      | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 92,121.27 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 1,894.26  | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 2,749.76  | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 20.12     | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 346.39    | OK     |
+| file sync    | fsync (32 files)                               | once  | 1,367.45  | OK     |
+| write        | close (32 files)                               | once  | 1.09      | OK     |
+| write        | unlink (32 files)                              | once  | 466.01    | OK     |
 +--------------+------------------------------------------------+-------+-----------+--------+
 ```

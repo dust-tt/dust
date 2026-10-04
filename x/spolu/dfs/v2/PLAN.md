@@ -238,7 +238,7 @@ xattr caching; do not attribute their timing difference to caching. All corpora 
 and comparison limits are in [GCP results](gcp/RESULTS.md#xattrs-client-filtering-and-caching).
 See [reproduction](gcp/README.md#xattrs-project).
 
-## Project: server writeback (in progress)
+## Project: server writeback (completed)
 
 Writes acknowledge server-memory acceptance. Debounce background persistence to coalesce writes
 into bounded FDB transactions. Explicit fsync bypasses the debounce and waits for all preceding
@@ -309,10 +309,15 @@ error without replay. The shared client/protocol is unchanged.
 
 ### 6. Benchmark
 
-- [ ] Rerun the same deep-path 10k untar and full filesystem suite on the existing GCP fixture.
+- [x] Rerun the same deep-path 10k untar and full filesystem suite on the existing GCP fixture.
       Record foreground time separately from remaining client writeback and server durable drain.
-- [ ] Report FDB transaction count, operations/bytes per batch, retries, and peak queued memory.
+- [x] Report FDB transaction count, operations/bytes per batch, retries, and peak queued memory.
       Keep previous tables and corpora. Compare against the completed xattrs baseline.
+
+The full 10k suite passed: untar 309.769 s + 0.058 s remaining persistence versus the previous
+275.600 s. The deep granted-subtree import took 384.546 s + 0.028 s; all hashes passed after restart.
+No publication failures; both corpora remain. This iteration did not improve untar performance.
+See [GCP results](gcp/RESULTS.md#server-writeback) for full tables, batch counters, and comparison limits.
 
 Fresh FDB reads and synchronous namespace commits remain on the foreground path. The project removes
 commit waits for file writes/updates, not all network latency; speedup must be measured.

@@ -39,8 +39,9 @@ routing alone MUST NOT authorize access. Backend errors MUST NOT expose credenti
 @cc [owner:spolu,label:backend;concurrency] atomic-fdb-publication
 Every filesystem publication MUST read live authorization and applicable namespace/version
 preconditions in its committing FDB transaction with conflict tracking. Buffered file edits MUST
-reapply their operations to current state rather than compare stale mutation versions. Each accepted operation MUST atomically change all
-affected blocks, metadata, grants, and pending search jobs. Related reads MUST use one transaction read version.
+reapply their operations to current state rather than compare stale mutation versions. Each accepted
+operation MUST atomically change all affected blocks, metadata, grants, and pending search jobs.
+Related reads MUST use one transaction read version.
 Synchronous operations and fsync MUST await normal FDB commit. Fsync MUST propagate deferred errors
 and check current server authority without waiting for ES.
 
