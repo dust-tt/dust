@@ -51,7 +51,7 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "biomejs.biome",
+        "oxc.oxc-vscode",
         "rust-lang.rust-analyzer",
         "typescriptteam.native-preview",
         "dbaeumer.vscode-eslint",
