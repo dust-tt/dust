@@ -218,18 +218,20 @@ export function useChildAgentStream({
     (
       previous: { streamKey: string; state: ChildAgentStreamReducerState },
       event: { streamKey: string; data: ChildAgentStreamEvent }
-    ) => ({
-      streamKey: event.streamKey,
-      state: childAgentStreamReducer(
-        previous.streamKey === event.streamKey ? previous.state : initialState,
-        event.data
-      ),
-    }),
+    ) => {
+      const isEventForStoredStream = previous.streamKey === event.streamKey;
+      const state = isEventForStoredStream ? previous.state : initialState;
+
+      return {
+        streamKey: event.streamKey,
+        state: childAgentStreamReducer(state, event.data),
+      };
+    },
     { streamKey, state: initialState }
   );
-  const state =
-    streamState.streamKey === streamKey ? streamState.state : initialState;
-  if (streamState.streamKey !== streamKey) {
+  const hasStreamChanged = streamState.streamKey !== streamKey;
+  const state = hasStreamChanged ? initialState : streamState.state;
+  if (hasStreamChanged) {
     dispatch({ streamKey, data: { type: "reset" } });
   }
 
