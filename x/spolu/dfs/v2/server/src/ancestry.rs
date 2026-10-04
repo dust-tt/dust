@@ -8,7 +8,7 @@ const MAX_ENTRIES: usize = 16_384;
 const MAX_BYTES: usize = 8 * 1024 * 1024;
 
 /// @cc [owner:spolu,label:security;performance] advisory-parent-edges
-/// Store only workspace-scoped object/parent IDs, never grants or authorization decisions.
+/// Store only workspace-scoped parent edges and name-to-object IDs, never grants or authorization.
 /// Hints MAY be stale or originate from aborted transactions. Consumers MUST read and validate all
 /// used parent links and grants in their current FDB transaction. Cache misses MUST preserve access.
 /// The cache MUST bound total entries/bytes across workspaces and each returned chain's length.
@@ -17,7 +17,7 @@ pub(crate) struct Ancestry(Mutex<Edges>);
 
 #[derive(Default)]
 struct Edges {
-    parents: HashMap<Vec<u8>, String>,
+    targets: HashMap<Vec<u8>, String>,
     order: VecDeque<Vec<u8>>,
     bytes: usize,
 }
@@ -27,6 +27,22 @@ impl Ancestry {
             return;
         };
         self.0.lock().await.insert(key, parent);
+    }
+
+    pub async fn remember_child(&self, keys: &Keys, parent: &str, name: &str, object: &str) {
+        let (Ok(key), Ok(()), Ok(object)) = (
+            keys.child(parent, name),
+            validate::name(name),
+            validate::id(object),
+        ) else {
+            return;
+        };
+        self.0.lock().await.insert(key, object);
+    }
+
+    pub async fn child(&self, keys: &Keys, parent: &str, name: &str) -> Option<String> {
+        let key = keys.child(parent, name).ok()?;
+        self.0.lock().await.targets.get(&key).cloned()
     }
 
     pub async fn chain(&self, keys: &Keys, first: &str) -> Vec<String> {
@@ -39,7 +55,7 @@ impl Ancestry {
                 break;
             };
             chain.push(next);
-            let Some(parent) = edges.parents.get(&key) else {
+            let Some(parent) = edges.targets.get(&key) else {
                 break;
             };
             next = parent.clone();
@@ -48,27 +64,27 @@ impl Ancestry {
     }
 }
 impl Edges {
-    fn charge(key: &[u8], parent: &str) -> usize {
-        // Include both key copies, the parent, and conservative container/allocation overhead.
-        2 * key.len() + parent.len() + 128
+    fn charge(key: &[u8], target: &str) -> usize {
+        // Include both key copies, the target, and conservative container/allocation overhead.
+        2 * key.len() + target.len() + 128
     }
-    fn insert(&mut self, key: Vec<u8>, parent: String) {
-        if let Some(previous) = self.parents.get_mut(&key) {
-            *previous = parent;
+    fn insert(&mut self, key: Vec<u8>, target: String) {
+        if let Some(previous) = self.targets.get_mut(&key) {
+            *previous = target;
             return;
         }
-        let charge = Self::charge(&key, &parent);
-        while self.parents.len() >= MAX_ENTRIES || self.bytes + charge > MAX_BYTES {
+        let charge = Self::charge(&key, &target);
+        while self.targets.len() >= MAX_ENTRIES || self.bytes + charge > MAX_BYTES {
             let Some(oldest) = self.order.pop_front() else {
                 return;
             };
-            if let Some(previous) = self.parents.remove(&oldest) {
+            if let Some(previous) = self.targets.remove(&oldest) {
                 self.bytes -= Self::charge(&oldest, &previous);
             }
         }
         self.bytes += charge;
         self.order.push_back(key.clone());
-        self.parents.insert(key, parent);
+        self.targets.insert(key, target);
     }
 }
 
@@ -86,13 +102,23 @@ pub(crate) mod tests {
         hints.remember(&keys, &a, &b).await;
         hints.remember(&keys, &b, &a).await;
         assert_eq!(hints.chain(&keys, &a).await, [a.clone(), b.clone()]);
-        assert_eq!(hints.chain(&other, &a).await, [a]);
+        assert_eq!(hints.chain(&other, &a).await, std::slice::from_ref(&a));
+        hints.remember_child(&keys, &a, "file", &b).await;
+        assert_eq!(hints.child(&keys, &a, "file").await, Some(b.clone()));
+        assert_eq!(hints.child(&other, &a, "file").await, None);
+        assert_eq!(hints.child(&keys, &b, "file").await, None);
+        assert_eq!(hints.child(&keys, &a, "other").await, None);
+        hints.remember_child(&keys, &a, "file", &a).await;
+        assert_eq!(hints.child(&keys, &a, "file").await, Some(a.clone()));
         for i in 0..MAX_ENTRIES + 1 {
             hints.remember(&keys, &format!("{i:032x}"), &b).await;
+            hints
+                .remember_child(&keys, &a, &format!("file-{i}"), &b)
+                .await;
         }
         let edges = hints.0.lock().await;
-        assert!(edges.parents.len() <= MAX_ENTRIES);
-        assert_eq!(edges.parents.len(), edges.order.len());
+        assert!(edges.targets.len() <= MAX_ENTRIES);
+        assert_eq!(edges.targets.len(), edges.order.len());
         assert!(edges.bytes <= MAX_BYTES);
         Ok(())
     }
@@ -123,6 +149,7 @@ pub(crate) mod tests {
             fdb_prefix: format!("dfs-v2-hints-{}", uuid::Uuid::new_v4().simple()),
         })
         .await?;
+        child_hints_follow_live_index(&store).await?;
         let keys = Keys::new("test")?;
         let root = Record {
             object: model::new_object(true, 0o755)?,
@@ -278,6 +305,147 @@ pub(crate) mod tests {
                 Ok((batch, ()))
             })
             .await?;
+        Ok(())
+    }
+
+    async fn child_hints_follow_live_index(store: &crate::storage::Storage) -> anyhow::Result<()> {
+        use crate::{
+            model::{self, Parent, Record, WorkspaceRecord},
+            mutation::Edit,
+            read::View,
+            storage::encode,
+        };
+        use anyhow::Context;
+        use dfs_protocol::{error::code, rpc::ErrorCode};
+        use std::{collections::BTreeSet, sync::Arc};
+
+        let keys = Keys::new("child-hints")?;
+        let root = Record {
+            object: model::new_object(true, 0o755)?,
+            parent: None,
+        };
+        let child = |name: &str| -> anyhow::Result<Record> {
+            Ok(Record {
+                object: model::new_object(false, 0o600)?,
+                parent: Some(Parent {
+                    id: root.object.id.clone(),
+                    name: name.into(),
+                }),
+            })
+        };
+        let original = child("file")?;
+        let replacement = child("file")?;
+        let malformed = uuid::Uuid::new_v4().simple().to_string();
+        let hints = Arc::new(Ancestry::default());
+        store
+            .transact(|_| async {
+                let mut edit = Edit::new();
+                edit.put(
+                    keys.workspace(),
+                    encode(&WorkspaceRecord {
+                        root: root.object.id.clone(),
+                        key_hash: [0; 32],
+                    })?,
+                )?;
+                for record in [&root, &original, &replacement] {
+                    edit.record(&keys, record)?;
+                }
+                edit.grant(&keys, &root.object.id, "reader", true)?;
+                edit.put(keys.object(&malformed)?, b"invalid metadata".to_vec())?;
+                edit.put(
+                    keys.child(&root.object.id, "file")?,
+                    uuid::Uuid::parse_str(&original.object.id)
+                        .map_err(crate::storage::failed)?
+                        .as_bytes()
+                        .to_vec(),
+                )?;
+                Ok((edit.batch, ()))
+            })
+            .await?;
+
+        // Unrelated corrupt objects and missing names must ignore speculative metadata.
+        for name in ["file", "missing"] {
+            hints
+                .remember_child(&keys, &root.object.id, name, &malformed)
+                .await;
+            let view = View::prefetch(
+                store.snapshot().await?,
+                "child-hints",
+                BTreeSet::from(["reader".into()]),
+                &root.object.id,
+                Some(name),
+                hints.clone(),
+            )
+            .await?;
+            let result = view.lookup(&root.object.id, name).await;
+            if name == "file" {
+                assert_eq!(result?.id, original.object.id);
+                assert_eq!(
+                    hints.child(&keys, &root.object.id, name).await,
+                    Some(original.object.id.clone())
+                );
+            } else {
+                assert_eq!(
+                    code(&result.err().context("hint resurrected a missing name")?),
+                    ErrorCode::NotFound
+                );
+            }
+        }
+
+        // Fresh reads must detect replacement, removal, inconsistent metadata, and revoked grants.
+        for change in 0..4 {
+            store
+                .transact(|_| async {
+                    let mut edit = Edit::new();
+                    let entry = keys.child(&root.object.id, "file")?;
+                    if change == 1 {
+                        edit.delete(entry)?;
+                    } else {
+                        let mut current = replacement.clone();
+                        if change == 2 {
+                            current.parent = Some(Parent {
+                                id: root.object.id.clone(),
+                                name: "moved".into(),
+                            });
+                        }
+                        edit.record(&keys, &current)?;
+                        edit.put(
+                            entry,
+                            uuid::Uuid::parse_str(&current.object.id)
+                                .map_err(crate::storage::failed)?
+                                .as_bytes()
+                                .to_vec(),
+                        )?;
+                    }
+                    if change == 3 {
+                        edit.grant(&keys, &root.object.id, "reader", false)?;
+                    }
+                    Ok((edit.batch, ()))
+                })
+                .await?;
+            let view = View::prefetch(
+                store.snapshot().await?,
+                "child-hints",
+                BTreeSet::from(["reader".into()]),
+                &root.object.id,
+                Some("file"),
+                hints.clone(),
+            )
+            .await?;
+            let result = view.lookup(&root.object.id, "file").await;
+            if change == 0 {
+                assert_eq!(result?.id, replacement.object.id);
+            } else {
+                assert_eq!(
+                    code(&result.err().context("stale child hint was trusted")?),
+                    if change == 2 {
+                        ErrorCode::Unavailable
+                    } else {
+                        ErrorCode::NotFound
+                    }
+                );
+            }
+        }
         Ok(())
     }
 }

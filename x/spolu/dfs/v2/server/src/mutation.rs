@@ -2,7 +2,7 @@ use crate::{
     keys::Keys,
     model::{self, Parent, Record},
     read::View,
-    storage::{WriteBatch, encode, failed, measured},
+    storage::{Snapshot, WriteBatch, encode, failed, measured},
 };
 use dfs_protocol::{BLOCK_SIZE, MAX_GRANTS, MAX_IO, error::status, rpc::*, validate};
 use futures::{StreamExt, TryStreamExt, stream};
@@ -12,6 +12,44 @@ use tonic::Status;
 type Result<T> = std::result::Result<T, Status>;
 const MAX_BATCH_BYTES: usize = 8 * 1024 * 1024;
 const MAX_BATCH_KEYS: usize = 65_536;
+
+pub(crate) struct CreateCandidate {
+    object: Result<Object>,
+    collision: Result<bool>,
+}
+
+pub(crate) struct ReadAhead {
+    index: u64,
+    block: Result<Vec<u8>>,
+}
+
+/// @cc [owner:spolu,label:concurrency;security] speculative-content-read
+/// Read at most one requested block in the caller's transaction. Its data/errors MUST only be
+/// consumed after live authorization, type, version, and size checks establish that it is needed.
+pub(crate) async fn prefetch_read(
+    snapshot: &Snapshot,
+    workspace: &str,
+    request: &ReadRequest,
+) -> Option<ReadAhead> {
+    if request.length == 0 || request.length as usize > MAX_IO {
+        return None;
+    }
+    let id = validate::id(&request.object_id).ok()?;
+    let keys = Keys::new(workspace).ok()?;
+    let index = request.offset / BLOCK_SIZE as u64;
+    Some(ReadAhead {
+        index,
+        block: read_block(snapshot, &keys, &id, index).await,
+    })
+}
+
+async fn read_block(snapshot: &Snapshot, keys: &Keys, id: &str, index: u64) -> Result<Vec<u8>> {
+    let value = measured("block_read", snapshot.get(keys.block(id, index)?)).await?;
+    if value.as_ref().is_some_and(|v| v.len() > BLOCK_SIZE) {
+        return Err(status(ErrorCode::Unavailable));
+    }
+    Ok(value.map_or_else(Vec::new, |v| v.to_vec()))
+}
 
 pub(crate) struct Edit {
     pub batch: WriteBatch,
@@ -86,6 +124,24 @@ pub(crate) enum Change {
     Write(WriteRequest),
 }
 impl Change {
+    /// @cc [owner:spolu,label:concurrency;security] speculative-create-collision
+    /// Generate and check one candidate in this attempt's committing transaction. Candidate and
+    /// collision errors MUST remain deferred until the original create preconditions pass.
+    pub async fn prefetch(&self, snapshot: &Snapshot, workspace: &str) -> Option<CreateCandidate> {
+        let Self::Create(request) = self else {
+            return None;
+        };
+        let object = model::new_object(request.directory, request.mode);
+        let collision = measured("collision", async {
+            let object = object.as_ref().map_err(Clone::clone)?;
+            Ok(snapshot
+                .get(Keys::new(workspace)?.object(&object.id)?)
+                .await?
+                .is_some())
+        })
+        .await;
+        Some(CreateCandidate { object, collision })
+    }
     pub fn child_name(&self) -> Option<&str> {
         match self {
             Self::Create(r) => Some(&r.name),
@@ -117,9 +173,19 @@ impl Change {
             _ => Ok(None),
         }
     }
-    pub async fn prepare(self, view: &View) -> Result<(Edit, Mutation)> {
+    /// @cc [owner:spolu,label:concurrency] create-candidate-scope
+    /// Create MUST receive the candidate prefetched for this request and this view's transaction.
+    /// Every retry MUST generate and check its own candidate; results MUST NOT cross transactions.
+    pub async fn prepare(
+        self,
+        view: &View,
+        candidate: Option<CreateCandidate>,
+    ) -> Result<(Edit, Mutation)> {
         match self {
-            Self::Create(r) => view.create(r).await,
+            Self::Create(r) => {
+                view.create(r, candidate.ok_or_else(|| status(ErrorCode::Internal))?)
+                    .await
+            }
             Self::Update(r) => view.update(r).await,
             Self::Rename(r) => view.rename(r).await,
             Self::Remove(r) => view.remove(r).await,
@@ -132,17 +198,17 @@ impl View {
     /// Concurrent reads MUST share the committing transaction and retain conflict tracking.
     /// Consume errors in the existing order: parent authority/version, existing child, attributes,
     /// then UUID collision. Speculative child/collision reads MUST NOT expose unauthorized state.
-    pub async fn create(&self, request: CreateRequest) -> Result<(Edit, Mutation)> {
+    pub async fn create(
+        &self,
+        request: CreateRequest,
+        candidate: CreateCandidate,
+    ) -> Result<(Edit, Mutation)> {
         validate::name(&request.name)?;
         let parent_id = validate::id(&request.parent_id)?;
-        let object = model::new_object(request.directory, request.mode);
-        let (parent, child, collision) = tokio::join!(
+        let CreateCandidate { object, collision } = candidate;
+        let (parent, child) = tokio::join!(
             self.directory(&parent_id),
             measured("child", self.child(&parent_id, &request.name)),
-            measured("collision", async {
-                let object = object.as_ref().map_err(Clone::clone)?;
-                self.get(&self.keys.object(&object.id)?).await
-            }),
         );
         let mut parent = parent?;
         model::check(&parent.object, request.expected_parent_version)?;
@@ -156,7 +222,7 @@ impl View {
         object.xattrs = request.xattrs;
         validate::attributes(&object.mime_type, &object.xattrs, object.mode)?;
         // UUID collisions never replace an existing object, even in the astronomically unlikely case.
-        if collision?.is_some() {
+        if collision? {
             return Err(status(ErrorCode::AlreadyExists));
         }
         let child = Record {
@@ -182,7 +248,14 @@ impl View {
             },
         ))
     }
-    pub async fn read(&self, request: ReadRequest) -> Result<ReadResponse> {
+    /// @cc [owner:spolu,label:concurrency;security] content-prefetch-scope
+    /// Any read-ahead result MUST belong to this request's object/offset and this view's transaction.
+    /// Consume its bytes/errors only when live authorization, version, and size checks require them.
+    pub async fn read(
+        &self,
+        request: ReadRequest,
+        read_ahead: Option<ReadAhead>,
+    ) -> Result<ReadResponse> {
         if request.length as usize > MAX_IO {
             return Err(status(ErrorCode::InvalidInput));
         }
@@ -200,13 +273,21 @@ impl View {
         if length > 0 {
             let end = request.offset + length as u64;
             let id = &object.id;
-            let blocks: Vec<_> = stream::iter(
-                request.offset / BLOCK_SIZE as u64..end.div_ceil(BLOCK_SIZE as u64),
-            )
-            .map(|index| async move { Ok::<_, Status>((index, self.block(id, index).await?)) })
-            .buffered(16)
-            .try_collect()
-            .await?;
+            let blocks: Vec<_> =
+                stream::iter(request.offset / BLOCK_SIZE as u64..end.div_ceil(BLOCK_SIZE as u64))
+                    .map(|index| {
+                        let read_ahead = &read_ahead;
+                        async move {
+                            let block = match read_ahead {
+                                Some(ahead) if ahead.index == index => ahead.block.clone()?,
+                                _ => self.block(id, index).await?,
+                            };
+                            Ok::<_, Status>((index, block))
+                        }
+                    })
+                    .buffered(16)
+                    .try_collect()
+                    .await?;
             for (index, block) in blocks {
                 let start = index * BLOCK_SIZE as u64;
                 let from = request.offset.max(start);
@@ -224,11 +305,7 @@ impl View {
         })
     }
     async fn block(&self, id: &str, index: u64) -> Result<Vec<u8>> {
-        let value = measured("block_read", self.get(&self.keys.block(id, index)?)).await?;
-        if value.as_ref().is_some_and(|v| v.len() > BLOCK_SIZE) {
-            return Err(status(ErrorCode::Unavailable));
-        }
-        Ok(value.map_or_else(Vec::new, |v| v.to_vec()))
+        read_block(&self.snapshot, &self.keys, id, index).await
     }
     pub async fn write(&self, request: WriteRequest) -> Result<(Edit, Mutation)> {
         if request.data.len() > MAX_IO {
@@ -566,4 +643,113 @@ fn raw_id(id: &str) -> Result<Vec<u8>> {
         .map_err(failed)?
         .as_bytes()
         .to_vec())
+}
+
+#[cfg(test)]
+pub(crate) mod tests {
+    use super::*;
+    use crate::{
+        ancestry::Ancestry,
+        model::WorkspaceRecord,
+        storage::{Storage, StorageConfig},
+    };
+    use anyhow::Context;
+    use dfs_protocol::error::code;
+    use std::sync::Arc;
+
+    pub(crate) async fn unused_block_errors_do_not_override_read_checks() -> anyhow::Result<()> {
+        let storage = Storage::open(&StorageConfig {
+            fdb_cluster_file: std::env::var("DFS_FDB_CLUSTER_FILE")?,
+            fdb_prefix: format!("dfs-v2-read-ahead-{}", uuid::Uuid::new_v4().simple()),
+        })
+        .await?;
+        let keys = Keys::new("test")?;
+        let root = Record {
+            object: model::new_object(true, 0o755)?,
+            parent: None,
+        };
+        let mut file = Record {
+            object: model::new_object(false, 0o600)?,
+            parent: Some(Parent {
+                id: root.object.id.clone(),
+                name: "file".into(),
+            }),
+        };
+        file.object.size = 1;
+        storage
+            .transact(|_| async {
+                let mut edit = Edit::new();
+                edit.put(
+                    keys.workspace(),
+                    encode(&WorkspaceRecord {
+                        root: root.object.id.clone(),
+                        key_hash: [0; 32],
+                    })?,
+                )?;
+                edit.record(&keys, &root)?;
+                edit.record(&keys, &file)?;
+                edit.grant(&keys, &root.object.id, "owner", true)?;
+                // Valid FDB values but invalid DFS blocks exercise deferred content errors.
+                for id in [&root.object.id, &file.object.id] {
+                    edit.put(keys.block(id, 0)?, vec![0; BLOCK_SIZE + 1])?;
+                }
+                Ok((edit.batch, ()))
+            })
+            .await?;
+        for (authorized, object, offset, length, version, expected) in [
+            (false, &file.object, 0, 1, 1, Some(ErrorCode::NotFound)),
+            (true, &root.object, 0, 1, 1, Some(ErrorCode::IsDirectory)),
+            (
+                true,
+                &file.object,
+                0,
+                1,
+                2,
+                Some(ErrorCode::VersionConflict),
+            ),
+            (true, &file.object, 0, 1, 1, Some(ErrorCode::Unavailable)),
+            (true, &file.object, 0, 0, 1, None),
+            (true, &file.object, 1, 1, 1, None),
+            (true, &file.object, u64::MAX, 1, 1, None),
+        ] {
+            let request = ReadRequest {
+                object_id: format!("dfs://name--{}", object.id),
+                offset,
+                length,
+                version: Some(version),
+            };
+            let grants = if authorized {
+                BTreeSet::from(["owner".into()])
+            } else {
+                BTreeSet::new()
+            };
+            let snapshot = storage.snapshot().await?;
+            let (view, ahead) = tokio::join!(
+                View::prefetch(
+                    snapshot.clone(),
+                    "test",
+                    grants,
+                    &request.object_id,
+                    None,
+                    Arc::new(Ancestry::default()),
+                ),
+                prefetch_read(&snapshot, "test", &request),
+            );
+            let result = view?.read(request, ahead).await;
+            match expected {
+                Some(expected) => {
+                    assert_eq!(code(&result.err().context("read accepted")?), expected)
+                }
+                None => assert!(result?.data.is_empty()),
+            }
+        }
+        storage
+            .transact(|_| async {
+                let mut batch = WriteBatch::new();
+                batch.clear(Vec::new(), vec![255]);
+                Ok((batch, ()))
+            })
+            .await?;
+        Ok(())
+    }
 }

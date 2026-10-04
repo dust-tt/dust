@@ -31,12 +31,13 @@ def corpus(work, files=10000):
     return target
 
 
-def metadata(binary='/target/release/dfs-server-v2'):
+def metadata(binary=None):
+    selected_binary = support.server_binary(binary)
     return {'label': 'dfs v2 [FoundationDB + Elasticsearch]', 'manifest_sha256': MANIFEST_SHA256,
             'files': 10000, 'profile': 'release',
             'linux': platform.platform(), 'cpu_count': os.cpu_count(),
             'memory': Path('/proc/meminfo').read_text().splitlines()[0],
-            'server_binary_sha256': hashlib.sha256(Path(binary).read_bytes()).hexdigest(),
+            'server_binary_sha256': hashlib.sha256(Path(selected_binary).read_bytes()).hexdigest(),
             'fdb_version': '7.3.69', 'es_version': '8.15.3',
             'fdb_tuning_seconds': {name: float(os.environ.get(variable, default))
                 for name, (variable, _, default, _) in KNOBS.items()},

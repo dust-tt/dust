@@ -185,6 +185,22 @@ GRV-cap benefit, so that setting's effect remains workload-dependent/uncertain. 
       metadata; keep historical results and explicit ablation profiles. Apply to the live cluster.
 - [ ] Run 100,000 files on the live cluster (deferred at user request).
 
+## 14. Networked read scheduling and transaction-role locality
+
+- [x] Overlap create UUID collision checks with the first metadata/authorization wave; prefetch one
+      requested content block in that same transaction and preserve validation/error ordering.
+- [x] Add bounded, workspace-scoped name-to-ID hints; overlap hinted child reads with the live index
+      and reject stale hints on moves, replacement, deletion, or revoked access.
+- [x] Validate contracts, Rust regressions, Linux FUSE behavior, and independent writers.
+- [ ] Run the unchanged 10k untar and full filesystem suite before changing FDB topology.
+- [x] Manually provision the preferred transaction VM in zone `a`, leaving FDB uninstalled.
+- [ ] After the first benchmark, join six preferred GRV/commit/master/resolver processes to the
+      existing replicated cluster.
+- [ ] Verify actual recruitment, durable commits, independent writers, transaction-node loss, and
+      whole-zone loss; keep the three durable nodes/coordinators and native latency defaults.
+- [ ] Rerun the identical 10k suite with the same binaries, retain both corpora and prior results,
+      and publish complete tables, topology/cache context, and RPC comparisons in `gcp/RESULTS.md`.
+
 ## Future work: after the networked experiment
 
 - [ ] Add replicated ES and production authentication/TLS beyond the isolated private fixture.

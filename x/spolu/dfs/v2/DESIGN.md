@@ -113,10 +113,10 @@ See [FDB commit path](https://github.com/apple/foundationdb/wiki/Transaction-Com
 
 ### Ancestry read hints
 
-Filesystem authorization retains workspace-scoped object-to-parent ID hints, bounded to 16,384
-entries and an 8 MiB accounting budget per server. Object reads and successful creates/moves
-populate them, including newly extracted files and directories. They contain no grants,
-authorization decisions, or authoritative metadata.
+Filesystem reads retain workspace-scoped object-to-parent and `(parent, name)`-to-object ID hints,
+sharing a bound of 16,384 entries and an 8 MiB accounting budget per server. Object/child reads and
+successful creates/moves populate them, including newly extracted files and directories. They contain
+no grants, authorization decisions, or authoritative metadata.
 
 Hints schedule live object/grant reads for up to 16 nodes concurrently in the current transaction.
 Follow only the parent chain verified by those live records; discard off-chain results/errors and
@@ -124,6 +124,10 @@ fall back to the actual parent after a move or cache miss. All used reads retain
 Stale hints and hints learned during aborted attempts are harmless: moves and grant changes require
 no invalidation or expiry delay. The same algorithm applies at every depth. Search keeps its existing
 per-request cache; the client and API are unchanged.
+
+A name hint schedules the child record alongside its live name-index lookup. Consume that record
+only if the current index still names the hinted ID and the record's parent/name match. Missing or
+changed entries discard the speculative result, including errors; no invalidation messages are needed.
 
 ### Transaction read scheduling
 
@@ -137,10 +141,14 @@ require an explicit experiment; retain normal log durability and conflict resolu
 filesystem latency and independent writers. See [settings](README.md).
 
 Filesystem requests start workspace, primary object, hinted ancestor/grant reads, and optional
-child-name lookup concurrently. Retain at most 16 object/grant results and one child entry, only
-within the current transaction. Create also overlaps authorization with UUID collision checks.
+child-name lookup concurrently. Retain at most 16 object/grant results and one child entry/object, only
+within the current transaction. Create checks its candidate UUID alongside this entire first wave.
 Consume results/errors in the original validation order and use only the verified live parent chain;
 speculative reads cannot expose hidden objects or authorize through a stale parent hint.
+
+Content reads prefetch at most the first requested block alongside the same metadata/authorization
+wave. Consume its bytes or error only after live authorization, type/version checks, and size establish
+that the block is needed; empty/beyond-EOF reads ignore it. Additional blocks remain bounded and parallel.
 
 Block patches read up to 16 blocks concurrently. Skip the old-block read only when live object size
 proves the block is beyond EOF or the patch replaces every existing logical byte in it. Other bytes

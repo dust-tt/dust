@@ -2,7 +2,7 @@ use crate::{
     State, auth,
     keys::Keys,
     model::{self, Record, WorkspaceRecord},
-    mutation::{Change, Edit},
+    mutation::{Change, Edit, prefetch_read},
     read::View,
     storage::{encode, failed, measured},
 };
@@ -55,8 +55,8 @@ impl Api {
             let _session_guard = session.gate.read().await;
             let change = change(request.into_inner());
             let hint_parent = match &change {
-                Change::Create(r) => Some(r.parent_id.clone()),
-                Change::Rename(r) => Some(r.parent_id.clone()),
+                Change::Create(r) => Some((r.parent_id.clone(), r.name.clone())),
+                Change::Rename(r) => Some((r.parent_id.clone(), r.name.clone())),
                 _ => None,
             };
             let locks = state.locks(&session.info.workspace_id).await;
@@ -90,19 +90,21 @@ impl Api {
                     let ancestry = state.ancestry.clone();
                     async move {
                         session.active()?;
-                        let view = measured(
-                            "workspace",
-                            View::prefetch(
-                                snapshot,
-                                &session.info.workspace_id,
-                                session.grants.clone(),
-                                change.primary_id(),
-                                change.child_name(),
-                                ancestry,
+                        let (view, candidate) = tokio::join!(
+                            measured(
+                                "workspace",
+                                View::prefetch(
+                                    snapshot.clone(),
+                                    &session.info.workspace_id,
+                                    session.grants.clone(),
+                                    change.primary_id(),
+                                    change.child_name(),
+                                    ancestry,
+                                ),
                             ),
-                        )
-                        .await?;
-                        let (edit, response) = change.prepare(&view).await?;
+                            change.prefetch(&snapshot, &session.info.workspace_id),
+                        );
+                        let (edit, response) = change.prepare(&view?, candidate).await?;
                         session.active()?;
                         Ok((edit.batch, response))
                     }
@@ -110,10 +112,12 @@ impl Api {
                 .instrument(tracing::debug_span!(target: "dfs_server_v2::profile",
                     "mutation", operation = change.name()))
                 .await?;
-            if let (Some(parent), Some(object)) = (hint_parent, &response.object) {
+            if let (Some((parent, name)), Some(object)) = (hint_parent, &response.object) {
+                let keys = Keys::new(&session.info.workspace_id)?;
+                state.ancestry.remember(&keys, &object.id, &parent).await;
                 state
                     .ancestry
-                    .remember(&Keys::new(&session.info.workspace_id)?, &object.id, &parent)
+                    .remember_child(&keys, &parent, &name, &object.id)
                     .await;
             }
             Ok(response)
@@ -387,11 +391,25 @@ impl Dfs for Api {
         .await
     }
     async fn read(&self, request: Request<ReadRequest>) -> Result<Response<ReadResponse>> {
-        self.read_call(
-            request,
-            |r| (&r.object_id, None),
-            |view, request| async move { view.read(request).await },
-        )
+        self.call(move |state| async move {
+            let session = state.sessions.get(&request).await?;
+            let request = request.into_inner();
+            let snapshot = state.storage.snapshot().await?;
+            let (view, read_ahead) = tokio::join!(
+                View::prefetch(
+                    snapshot.clone(),
+                    &session.info.workspace_id,
+                    session.grants.clone(),
+                    &request.object_id,
+                    None,
+                    state.ancestry.clone(),
+                ),
+                prefetch_read(&snapshot, &session.info.workspace_id, &request),
+            );
+            let response = view?.read(request, read_ahead).await?;
+            session.active()?;
+            Ok(response)
+        })
         .await
     }
     async fn fsync(&self, request: Request<ObjectRequest>) -> Result<Response<Object>> {
