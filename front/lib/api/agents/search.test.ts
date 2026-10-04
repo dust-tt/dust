@@ -213,12 +213,13 @@ describe("searchAgents", () => {
           ],
         },
         models: { buckets: [{ key: "claude-sonnet-5", doc_count: 2 }] },
+        mcpServerViews: { buckets: [{ key: "tool-view", doc_count: 2 }] },
       },
     });
     const result = await searchAgents(auth, {
       searchTerm: "",
       limit: 0,
-      facets: ["editors", "models"],
+      facets: ["editors", "models", "mcpServerViews"],
     });
     assert(result.isOk());
     expect(result.value.facets).toEqual({
@@ -227,12 +228,14 @@ describe("searchAgents", () => {
         { value: "bob", count: 1 },
       ],
       models: [{ value: "claude-sonnet-5", count: 2 }],
+      mcpServerViews: [{ value: "tool-view", count: 2 }],
     });
     expect(mockSearch.mock.lastCall?.[0]).toMatchObject({
       size: 0,
       aggs: {
         editors: { terms: { field: "editor_ids" } },
         models: { terms: { field: "model.model_id" } },
+        mcpServerViews: { terms: { field: "mcp_server_view_ids" } },
       },
     });
     expect(mockSearch.mock.lastCall?.[0].aggs).not.toHaveProperty("tags");

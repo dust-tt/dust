@@ -1,6 +1,8 @@
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TagFactory } from "@app/tests/utils/TagFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
@@ -265,6 +267,17 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
   it("returns facet values with counts and editor and tag names", async () => {
     const { workspace, user, globalSpace } = await setup();
     const tag = await TagFactory.create(workspace, { name: "Sales" });
+    const view = await MCPServerViewFactory.internal(
+      workspace,
+      "web_search_&_browse",
+      globalSpace
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const hiddenView = await MCPServerViewFactory.create(
+      workspace,
+      view.mcpServerId,
+      restrictedSpace
+    );
     searchAgents.mockResolvedValue(
       new Ok({
         agents: [],
@@ -279,6 +292,11 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
           tags: [{ value: tag.sId, count: 2 }],
           skills: [{ value: "missing-skill", count: 1 }],
           spaces: [{ value: globalSpace.sId, count: 5 }],
+          mcpServerViews: [
+            { value: view.sId, count: 2 },
+            { value: hiddenView.sId, count: 1 },
+            { value: "missing-view", count: 1 },
+          ],
           usage: { min: 0, max: 12 },
         },
       })
@@ -286,7 +304,15 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
 
     const response = await searchRequest(workspace.sId, {
       limit: 0,
-      facets: ["editors", "models", "tags", "skills", "spaces", "usage"],
+      facets: [
+        "editors",
+        "models",
+        "tags",
+        "skills",
+        "spaces",
+        "mcpServerViews",
+        "usage",
+      ],
     });
 
     expect(response.status).toBe(200);
@@ -294,7 +320,15 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
       expect.anything(),
       expect.objectContaining({
         limit: 0,
-        facets: ["editors", "models", "tags", "skills", "spaces", "usage"],
+        facets: [
+          "editors",
+          "models",
+          "tags",
+          "skills",
+          "spaces",
+          "mcpServerViews",
+          "usage",
+        ],
       })
     );
     expect((await response.json()).facets).toEqual({
@@ -317,6 +351,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
           count: 5,
         },
       ],
+      mcpServerViews: [view.toSearchFacetJSON(2)],
       usage: { min: 0, max: 12 },
     });
   });

@@ -35,6 +35,7 @@ const AGENT_SEARCH_TERMS_FACET_FIELDS: Record<AgentSearchTermsFacet, string> = {
   models: "model.model_id",
   tags: "tag_ids",
   skills: "skill_ids",
+  mcpServerViews: "mcp_server_view_ids",
   spaces: "requested_space_ids",
 };
 
