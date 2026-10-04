@@ -1,7 +1,10 @@
-import { clientFetch } from "@app/lib/egress/client";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
 import { usePodFiles } from "@app/lib/swr/pods";
-import { emptyArray } from "@app/lib/swr/swr";
+import {
+  emptyArray,
+  useFetcher,
+  useSWRInfiniteWithDefaults,
+} from "@app/lib/swr/swr";
 import type { ContentNodeWithParent } from "@app/types/connectors/connectors_api";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { DataSourceType } from "@app/types/data_source";
@@ -9,7 +12,8 @@ import type { DataSourceViewType } from "@app/types/data_source_view";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef } from "react";
+import { useSWRConfig } from "swr";
 
 export type DataSourceViewContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;
@@ -32,10 +36,31 @@ interface UnifiedSearchResponse {
   toolResults?: ToolSearchResult[];
 }
 
+type SearchPageKey = [url: string, generation: number, searchUrl: string];
+
+interface SearchRequestScope {
+  generation: number;
+  consumers: number;
+  controllers: Set<AbortController>;
+}
+
+const searchRequestScopes = new WeakMap<
+  object,
+  Map<string, SearchRequestScope>
+>();
+
 /**
  * @cc [owner:id13,label:react;concurrency] latest-search-request-wins
- * Query changes, disabling, and unmounting MUST cancel pending requests. Late responses MUST NOT
- * replace newer results. Pagination MUST have at most one pending request per hook instance.
+ * Late responses MUST NOT replace results for a newer query or a restarted request.
+ */
+/**
+ * @cc [owner:id13,label:react;concurrency] search-request-cancellation
+ * Query changes, disabling, and unmounting MUST abort pending requests when no consumer in the
+ * same SWR cache still needs them. Removing one consumer MUST NOT abort another's shared request.
+ */
+/**
+ * @cc [owner:id13,label:react;concurrency] search-pagination-serialization
+ * Pagination MUST have at most one pending request per hook instance.
  */
 export function useUnifiedSearch({
   owner,
@@ -64,17 +89,155 @@ export function useUnifiedSearch({
   includeTools?: boolean;
   prioritizeSpaceAccess?: boolean;
 }) {
-  const [rawKnowledgeResults, setRawKnowledgeResults] = useState<
-    DataSourceViewContentNode[]
-  >([]);
-  const [toolResults, setToolResults] = useState<ToolSearchResult[]>([]);
-  const [isSearchLoading, setIsSearchLoading] = useState(false);
-  const [isLoadingNextPage, setIsLoadingNextPage] = useState(false);
-  const [isSearchValidating, setIsSearchValidating] = useState(false);
-  const [isSearchError, setIsSearchError] = useState<Error | null>(null);
-  const [nextPageCursor, setNextPageCursor] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(false);
-  const requestRef = useRef<AbortController | null>(null);
+  const { fetcher } = useFetcher();
+  const { cache } = useSWRConfig();
+  const paginationRef = useRef<Promise<unknown> | null>(null);
+  const params = new URLSearchParams({
+    query,
+    limit: pageSize.toString(),
+    viewType,
+    includeDataSources: includeDataSources.toString(),
+    searchSourceUrls: searchSourceUrls.toString(),
+    prioritizeSpaceAccess: prioritizeSpaceAccess.toString(),
+    includeTools: includeTools.toString(),
+  });
+  if (spaceIds && spaceIds.length > 0) {
+    params.set("spaceIds", spaceIds.join(","));
+  }
+  if (excludeNonRemoteDatabaseTables) {
+    params.set("excludeNonRemoteDatabaseTables", "true");
+  }
+  const searchPath = `/api/w/${owner.sId}/search`;
+  const searchParams = params.toString();
+  const searchUrl = `${searchPath}?${searchParams}`;
+
+  const requestScope = useMemo(() => {
+    let scopes = searchRequestScopes.get(cache);
+    if (!scopes) {
+      scopes = new Map();
+      searchRequestScopes.set(cache, scopes);
+    }
+    let scope = scopes.get(searchUrl);
+    if (!scope) {
+      scope = { generation: 0, consumers: 0, controllers: new Set() };
+      scopes.set(searchUrl, scope);
+    }
+    return scope;
+  }, [cache, searchUrl]);
+  const generation = requestScope.generation;
+
+  useLayoutEffect(() => {
+    if (disabled) {
+      return;
+    }
+    requestScope.consumers++;
+    return () => {
+      paginationRef.current = null;
+      requestScope.consumers--;
+      queueMicrotask(() => {
+        if (requestScope.consumers > 0 || requestScope.controllers.size === 0) {
+          return;
+        }
+        requestScope.generation++;
+        for (const controller of requestScope.controllers) {
+          controller.abort();
+        }
+        requestScope.controllers.clear();
+      });
+    };
+  }, [disabled, requestScope]);
+
+  const getKey = useCallback(
+    (
+      pageIndex: number,
+      previousPage: UnifiedSearchResponse | null
+    ): SearchPageKey | null => {
+      if (disabled) {
+        return null;
+      }
+      if (pageIndex === 0) {
+        return [searchUrl, generation, searchUrl];
+      }
+      const cursor = previousPage?.knowledgeResults?.nextPageCursor;
+      if (!cursor) {
+        return null;
+      }
+      const pageParams = new URLSearchParams(searchParams);
+      pageParams.set("cursor", cursor);
+      pageParams.set("includeTools", "false");
+      return [`${searchPath}?${pageParams.toString()}`, generation, searchUrl];
+    },
+    [disabled, generation, searchParams, searchPath, searchUrl]
+  );
+
+  const fetchPage = useCallback(
+    async ([
+      url,
+      requestGeneration,
+    ]: SearchPageKey): Promise<UnifiedSearchResponse> => {
+      const controller = new AbortController();
+      const isRequestCurrent =
+        requestScope.consumers > 0 &&
+        requestScope.generation === requestGeneration;
+      if (isRequestCurrent) {
+        requestScope.controllers.add(controller);
+      } else {
+        controller.abort();
+      }
+      try {
+        const result: UnifiedSearchResponse = await fetcher(url, {
+          headers: { Accept: "application/json" },
+          signal: controller.signal,
+        });
+        controller.signal.throwIfAborted();
+        return result;
+      } finally {
+        requestScope.controllers.delete(controller);
+      }
+    },
+    [fetcher, requestScope]
+  );
+
+  const { data, error, isLoading, isValidating, size, setSize } =
+    useSWRInfiniteWithDefaults(getKey, fetchPage, {
+      disabled,
+      revalidateFirstPage: false,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      shouldRetryOnError: false,
+    });
+
+  const rawKnowledgeResults = useMemo(
+    () =>
+      disabled
+        ? emptyArray<DataSourceViewContentNode>()
+        : (data?.flatMap((page) => page.knowledgeResults?.nodes ?? []) ??
+          emptyArray<DataSourceViewContentNode>()),
+    [data, disabled]
+  );
+  const toolResults = disabled
+    ? emptyArray<ToolSearchResult>()
+    : (data?.[0]?.toolResults ?? emptyArray<ToolSearchResult>());
+  const hasMore = !disabled && !!data?.at(-1)?.knowledgeResults?.nextPageCursor;
+  const isSearchError = useMemo(
+    () => (!disabled && error ? normalizeError(error) : null),
+    [disabled, error]
+  );
+
+  const nextPage = useCallback(async () => {
+    if (!hasMore || isValidating || paginationRef.current) {
+      return;
+    }
+    const pending = setSize(size + 1);
+    paginationRef.current = pending;
+    try {
+      await pending;
+    } finally {
+      if (paginationRef.current === pending) {
+        paginationRef.current = null;
+      }
+    }
+  }, [hasMore, isValidating, setSize, size]);
 
   const { files: projectFiles, isPodFilesLoading: isProjectFilesLoading } =
     usePodFiles({
@@ -117,151 +280,6 @@ export function useUnifiedSearch({
     });
   }, [projectId, projectContextFileIds, rawKnowledgeResults]);
 
-  const loadPage = useCallback(
-    async (cursor?: string | null, appendResults = false) => {
-      if (disabled) {
-        setIsSearchLoading(false);
-        setIsLoadingNextPage(false);
-        setIsSearchValidating(false);
-        return;
-      }
-
-      if (appendResults && requestRef.current) {
-        return;
-      }
-      setIsSearchError(null);
-      setIsSearchValidating(true);
-      if (appendResults) {
-        setIsLoadingNextPage(true);
-      } else {
-        setIsSearchLoading(true);
-      }
-
-      requestRef.current?.abort();
-      const controller = new AbortController();
-      requestRef.current = controller;
-
-      const params = new URLSearchParams();
-      params.append("query", query);
-      params.append("limit", pageSize.toString());
-      params.append("viewType", viewType);
-      params.append("includeDataSources", includeDataSources.toString());
-      params.append("searchSourceUrls", searchSourceUrls.toString());
-      params.append("prioritizeSpaceAccess", prioritizeSpaceAccess.toString());
-      // Only include tools on first page
-      params.append(
-        "includeTools",
-        (!appendResults && includeTools).toString()
-      );
-
-      if (spaceIds && spaceIds.length > 0) {
-        params.append("spaceIds", spaceIds.join(","));
-      }
-
-      if (excludeNonRemoteDatabaseTables) {
-        params.append("excludeNonRemoteDatabaseTables", "true");
-      }
-
-      if (cursor) {
-        params.append("cursor", cursor);
-      }
-
-      const url = `/api/w/${owner.sId}/search?${params.toString()}`;
-      try {
-        const response = await clientFetch(url, {
-          headers: { Accept: "application/json" },
-          signal: controller.signal,
-        });
-        if (!response.ok) {
-          throw new Error("Failed to fetch search results");
-        }
-        const chunk: UnifiedSearchResponse = await response.json();
-        if (requestRef.current !== controller || controller.signal.aborted) {
-          return;
-        }
-        if (chunk.knowledgeResults) {
-          const { knowledgeResults } = chunk;
-          setRawKnowledgeResults((previous) =>
-            appendResults
-              ? [...previous, ...knowledgeResults.nodes]
-              : knowledgeResults.nodes
-          );
-          setNextPageCursor(knowledgeResults.nextPageCursor);
-          setHasMore(!!knowledgeResults.nextPageCursor);
-        }
-        const results = chunk.toolResults;
-        if (results) {
-          setToolResults((previous) =>
-            appendResults ? [...previous, ...results] : results
-          );
-        }
-      } catch (error) {
-        if (requestRef.current === controller && !controller.signal.aborted) {
-          setIsSearchError(normalizeError(error));
-        }
-      } finally {
-        if (requestRef.current === controller) {
-          requestRef.current = null;
-          setIsSearchLoading(false);
-          setIsLoadingNextPage(false);
-          setIsSearchValidating(false);
-        }
-      }
-    },
-    [
-      disabled,
-      excludeNonRemoteDatabaseTables,
-      includeDataSources,
-      includeTools,
-      owner.sId,
-      pageSize,
-      prioritizeSpaceAccess,
-      query,
-      searchSourceUrls,
-      spaceIds,
-      viewType,
-    ]
-  );
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
-  useLayoutEffect(() => {
-    setRawKnowledgeResults([]);
-    setToolResults([]);
-    setNextPageCursor(null);
-    setHasMore(false);
-    setIsSearchError(null);
-
-    requestRef.current?.abort();
-    requestRef.current = null;
-    void loadPage();
-
-    return () => {
-      requestRef.current?.abort();
-      requestRef.current = null;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    disabled,
-    excludeNonRemoteDatabaseTables,
-    includeDataSources,
-    includeTools,
-    owner.sId,
-    pageSize,
-    prioritizeSpaceAccess,
-    query,
-    searchSourceUrls,
-    // Serialize spaceIds to compare by value, not reference
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    spaceIds?.join(","),
-    viewType,
-  ]);
-
-  const nextPage = useCallback(async () => {
-    if (nextPageCursor && !isLoadingNextPage) {
-      await loadPage(nextPageCursor, true);
-    }
-  }, [nextPageCursor, isLoadingNextPage, loadPage]);
-
   return {
     knowledgeResults:
       knowledgeResults.length > 0
@@ -274,9 +292,10 @@ export function useUnifiedSearch({
         ? projectContextFiles
         : emptyArray<ProjectFileSearchResult>(),
     isProjectContextFilesLoading: !!projectId && isProjectFilesLoading,
-    isSearchLoading,
-    isLoadingNextPage,
-    isSearchValidating,
+    isSearchLoading: !disabled && isLoading,
+    isLoadingNextPage:
+      !disabled && !error && size > 1 && size > (data?.length ?? 0),
+    isSearchValidating: !disabled && isValidating,
     isSearchError,
     hasMore,
     nextPage,
