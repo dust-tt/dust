@@ -30,10 +30,10 @@ import { useMemo } from "react";
 
 /**
  * @cc [owner:aubin-tchoi,label:product] skill-name-column-visibility
- * Secondary columns MUST hide based on available container width to keep skill names
- * visible. Below 768px viewport width, names MUST fill the available column width, with
- * Usage, Last edited and Editors appearing at table widths of 384px, 512px and 640px
- * respectively. At 768px and above, preserve the existing container-based layout.
+ * Below 768px viewport width, Usage MUST remain visible unless sorting by Last edited,
+ * which MUST then remain visible instead. Names MUST truncate to leave room for that
+ * column and row actions. Other columns appear as table space allows. At 768px and above,
+ * preserve the existing container-based layout. Sorting MUST NOT replace cell renderers.
  */
 const SKILL_SEARCH_NAME_COLUMN_WIDTH =
   "md:w-[calc(100%-12rem)] md:@sm:w-[calc(100%-28rem)] md:@md:w-[calc(100%-38rem)]";
@@ -57,8 +57,8 @@ interface SkillSearchTableProps {
 
 type SkillSearchRow = SkillListItemType & { onClick: () => void };
 
-// Cells render as components, so a new `columns` identity remounts every cell: an open menu
-// closes and an in-flight checkbox click is lost.
+// Cells render as components, so recreating their renderer functions remounts them:
+// an open menu closes and an in-flight checkbox click is lost.
 /**
  * @cc [owner:tdraier,label:react;performance] stable-columns
  * `columns` MUST only be rebuilt when `onSelect`, `onRefresh`, `owner` or `readOnly` change, never
@@ -238,7 +238,7 @@ export function SkillSearchTable({
           ),
           meta: {
             type: "numeric",
-            className: "hidden w-24 font-mono @xxs:table-cell md:table-cell",
+            className: "w-24 font-mono",
           },
         },
         {
@@ -283,12 +283,39 @@ export function SkillSearchTable({
   );
 
   const hasSelectableRows = !readOnly && skills.some(canSelect);
+  const isSortedByLastEdited = sorting[0]?.id === "updatedAt";
   const visibleColumns = useMemo(
     () =>
-      hasSelectableRows
-        ? columns
-        : columns.filter((column) => column.id !== "select"),
-    [columns, hasSelectableRows]
+      columns
+        .filter((column) => hasSelectableRows || column.id !== "select")
+        .map((column) => {
+          if (!isSortedByLastEdited) {
+            return column;
+          }
+          // Keep cell renderers stable when prioritizing the sorted column.
+          switch (column.id) {
+            case "usage":
+              return {
+                ...column,
+                meta: {
+                  ...column.meta,
+                  className:
+                    "hidden w-24 font-mono @xs:table-cell md:table-cell",
+                },
+              };
+            case "updatedAt":
+              return {
+                ...column,
+                meta: {
+                  ...column.meta,
+                  className: "hidden w-32 max-md:table-cell @sm:table-cell",
+                },
+              };
+            default:
+              return column;
+          }
+        }),
+    [columns, hasSelectableRows, isSortedByLastEdited]
   );
 
   // Show skeletons only when no rows are available; keep previous results during refreshes.

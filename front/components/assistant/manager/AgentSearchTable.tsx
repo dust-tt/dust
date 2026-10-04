@@ -145,13 +145,14 @@ function AgentSearchTagSelector({
   );
 }
 
-// Cells render as components, so a new `columns` identity remounts every cell: an open menu
-// closes and an in-flight checkbox click is lost.
+// Cells render as components, so recreating their renderer functions remounts them:
+// an open menu closes and an in-flight checkbox click is lost.
 /**
  * @cc [owner:aubin-tchoi,label:product] mobile-table-layout
- * Below 768px viewport width, names MUST fill the available column width and row actions
- * MUST remain visible. Usage, Model and Last edited MUST appear as the table reaches
- * 384px, 512px and 640px respectively. At 768px and above, preserve the existing layout.
+ * Below 768px viewport width, Usage MUST remain visible unless sorting by Last edited,
+ * which MUST then remain visible instead. Names MUST truncate to leave room for that
+ * column and row actions. Other columns appear as table space allows. At 768px and above,
+ * preserve the existing layout. Sorting MUST NOT replace cell renderers.
  */
 /**
  * @cc [owner:tdraier,label:react;performance] stable-columns
@@ -358,7 +359,7 @@ export function AgentSearchTable({
           ),
           meta: {
             type: "numeric",
-            className: "hidden w-24 max-md:@xxs:table-cell @sm:table-cell",
+            className: "hidden w-24 max-md:table-cell @sm:table-cell",
           },
         },
         {
@@ -456,12 +457,46 @@ export function AgentSearchTable({
   );
 
   const hasSelectableRows = !readOnly && agents.some(canSelect);
+  const isSortedByLastEdited = sorting[0]?.id === "updatedAt";
   const visibleColumns = useMemo(
     () =>
-      hasSelectableRows
-        ? columns
-        : columns.filter((column) => column.id !== "select"),
-    [columns, hasSelectableRows]
+      columns
+        .filter((column) => hasSelectableRows || column.id !== "select")
+        .map((column) => {
+          if (!isSortedByLastEdited) {
+            return column;
+          }
+          // Keep cell renderers stable when prioritizing the sorted column.
+          switch (column.id) {
+            case "usage":
+              return {
+                ...column,
+                meta: {
+                  ...column.meta,
+                  className: "hidden w-24 max-md:@xs:table-cell @sm:table-cell",
+                },
+              };
+            case "model":
+              return {
+                ...column,
+                meta: {
+                  ...column.meta,
+                  className: "hidden w-28 @sm:table-cell @xl:w-32",
+                },
+              };
+            case "updatedAt":
+              return {
+                ...column,
+                meta: {
+                  ...column.meta,
+                  className: "hidden w-32 max-md:table-cell @sm:table-cell",
+                },
+              };
+            default:
+              return column;
+          }
+        }),
+    [columns, hasSelectableRows, isSortedByLastEdited]
   );
 
   // Show skeletons only when no rows are available; keep previous results during refreshes.
