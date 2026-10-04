@@ -161,6 +161,13 @@ async function setup({
       ],
       models: [{ modelId: "claude-sonnet-5", count: 1 }],
       tags: [],
+      mcpServerViews: ["slack-view-1", "slack-view-2"].map((sId) => ({
+        sId,
+        mcpServerId: "slack",
+        name: "Slack",
+        icon: "SlackLogo",
+        count: 1,
+      })),
     },
   };
   const fetcherWithBody = vi.fn(
@@ -599,13 +606,25 @@ describe("search-backed Manage Agents", () => {
       editorIds: [editor.sId],
     });
 
+    await userEvent.click(screen.getByRole("tab", { name: "Tools" }));
+    const toolCheckbox = await screen.findByRole("checkbox", { name: "Slack" });
+    await userEvent.click(toolCheckbox);
+    const toolFacetBody = fetcherWithBody.mock.calls
+      .map(([[, body]]) => body)
+      .filter((body) => body.limit === 0)
+      .at(-1);
+    expect(toolFacetBody).toMatchObject({ facets: ["mcpServerViews"] });
+    expect(toolFacetBody).not.toHaveProperty("mcpServerViewIds");
+
     await userEvent.click(screen.getByRole("button", { name: "Apply" }));
     expect(screen.getByText(`${editor.fullName} (You)`)).toBeInTheDocument();
+    expect(screen.getByText("Slack")).toBeInTheDocument();
     await waitFor(() =>
       expect(lastSearchBody(fetcherWithBody)).toMatchObject({
         scope: ["hidden"],
         editorIds: [editor.sId],
         modelIds: ["claude-sonnet-5"],
+        mcpServerViewIds: ["slack-view-1", "slack-view-2"],
         offset: 0,
       })
     );

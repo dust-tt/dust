@@ -2,6 +2,7 @@ import type { SearchFilter } from "@app/components/shared/filter_panel/searchFil
 import {
   getSearchFilterActiveUsersCount,
   getSearchFilterIds,
+  getSearchFilterMcpServerViewIds,
 } from "@app/components/shared/filter_panel/searchFilter";
 import type {
   AgentSearchFacet,
@@ -14,6 +15,7 @@ export const AGENT_FILTER_CATEGORIES = [
   "editor",
   "model",
   "skill",
+  "tool",
   "tag",
   "space",
   "usage",
@@ -30,6 +32,7 @@ export const AGENT_FILTER_CATEGORY_FACET: Partial<
   editor: "editors",
   model: "models",
   skill: "skills",
+  tool: "mcpServerViews",
   tag: "tags",
   space: "spaces",
   usage: "usage",
@@ -53,6 +56,7 @@ export function toAgentSearchFilters(
   const editorIds = getSearchFilterIds(filter, "editor");
   const modelIds = getSearchFilterIds(filter, "model");
   const skillIds = getSearchFilterIds(filter, "skill");
+  const mcpServerViewIds = getSearchFilterMcpServerViewIds(filter);
   const tagIds = getSearchFilterIds(filter, "tag");
   const spaceIds = getSearchFilterIds(filter, "space");
   // Default agents have no usage, so Usage is ignored on the Dust tab too.
@@ -68,6 +72,7 @@ export function toAgentSearchFilters(
     ...(editorIds.length > 0 ? { editorIds } : {}),
     ...(modelIds.length > 0 ? { modelIds } : {}),
     ...(skillIds.length > 0 ? { skillIds } : {}),
+    ...(mcpServerViewIds.length > 0 ? { mcpServerViewIds } : {}),
     ...(tagIds.length > 0 ? { tagIds } : {}),
     ...(spaceIds.length > 0 ? { spaceIds } : {}),
     ...(activeUsersCount ? { activeUsersCount } : {}),

@@ -9,8 +9,14 @@ import {
 import { clearFilterCategory } from "@app/components/shared/filter_panel/filterState";
 import { SearchFilterPanel } from "@app/components/shared/filter_panel/SearchFilterPanel";
 import type { SearchFilterOption } from "@app/components/shared/filter_panel/searchFilter";
+import { getSearchFilterMcpServerViewIds } from "@app/components/shared/filter_panel/searchFilter";
 import { useFilterPanel } from "@app/components/shared/filter_panel/useFilterPanel";
 import { useSearchAgents } from "@app/hooks/useSearchAgents";
+import {
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  trackEvent,
+} from "@app/lib/tracking";
 import type {
   AgentSearchFilters,
   AgentSearchPermissionFiltering,
@@ -18,6 +24,9 @@ import type {
 import type { LightWorkspaceType } from "@app/types/user";
 import { Checkbox, InfoCircle, Label, Tooltip } from "@dust-tt/sparkle";
 import { useState } from "react";
+
+// The agent search endpoint accepts at most 100 MCP server view IDs.
+const MAX_MCP_SERVER_VIEW_IDS = 100;
 
 interface AgentFilterPanelProps {
   owner: LightWorkspaceType;
@@ -77,6 +86,9 @@ export function AgentFilterPanel({
     facets: facet ? [facet] : [],
     disabled: !isOpen || !facet,
   });
+  const hasTooManyTools =
+    getSearchFilterMcpServerViewIds(draftFilter).length >
+    MAX_MCP_SERVER_VIEW_IDS;
 
   return (
     <SearchFilterPanel
@@ -86,6 +98,15 @@ export function AgentFilterPanel({
       onFilterChange={(nextFilter) => {
         onFilterChange(nextFilter);
         hiddenAgents?.onChange(draftShowHiddenAgents);
+        const mcpServerViewIds = getSearchFilterMcpServerViewIds(nextFilter);
+        if (mcpServerViewIds.length > 0) {
+          trackEvent({
+            area: TRACKING_AREAS.BUILDER,
+            object: "agent_tool_filter",
+            action: TRACKING_ACTIONS.SELECT,
+            extra: { mcp_server_view_ids: mcpServerViewIds.join(",") },
+          });
+        }
       }}
       onOpen={() => setDraftShowHiddenAgents(hiddenAgents?.isShown ?? false)}
       onClearAll={() => setDraftShowHiddenAgents(false)}
@@ -93,6 +114,8 @@ export function AgentFilterPanel({
       isLoading={!!facet && isAgentsLoading}
       isError={!!facet && isAgentsError}
       idPrefix="agent-filter"
+      warning={hasTooManyTools ? "Too many tools selected." : undefined}
+      applyDisabled={hasTooManyTools}
       categoryNavFooter={
         hiddenAgents && (
           <div className="flex items-center gap-2 p-2 pr-0">
