@@ -1,9 +1,14 @@
 # Benchmark results — dfs v2 on dust-dev
 
-2026-10-04. Live GCP nodes; unchanged v2 server/API and v1 FUSE/client, built from `34ef74fc263a`.
+2026-10-04. Live GCP nodes; unchanged v1 API and FUSE/client. Initial server build
+`34ef74fc263a`; subsequent server revisions are recorded with each run.
 See [setup and reproduction](README.md) and the [localhost results](../bench/RESULTS.md).
 
-Latest: [FDB latency defaults](#fdb-latency-tuning-disabled) completed 10k untar in **505.715 s**,
+Latest: [overlapping the remaining transaction reads](#remaining-transaction-reads-overlapped)
+completed 10k untar in **593.898 s** on the original three-zone topology. All checks passed;
+the earlier 30k files and this new 10k corpus remain.
+
+Native-default comparison: [FDB latency defaults](#fdb-latency-tuning-disabled) completed 10k untar in **505.715 s**,
 versus **529.947 s** tuned. All checks passed and all three corpora remain. Native FDB latency
 defaults are now the selected configuration; the benchmark's temporary restoration of tuning was
 subsequently removed. The restart changed proxy placement, so the comparison does not isolate tuning
@@ -374,3 +379,81 @@ Validated report: `/var/log/dfs-bench/vfs-10k-defaults-1`.
 | write        | unlink (32 files)                              | once  | 420.49    | OK     |
 +--------------+------------------------------------------------+-------+-----------+--------+
 ```
+
+## Remaining transaction reads overlapped
+
+Source `cb6af8b5e5`, native FDB latency defaults, unchanged v1 API and FUSE/client. Create UUID checks,
+verified child-ID hints, and the first requested content block now overlap the initial metadata and
+authorization reads. Fresh FDB read versions, conflict checks, durable commits, and error semantics
+are retained; no authoritative metadata or permission cache was introduced.
+
+This run kept the original three-zone topology throughout: GRV proxy in `b`, master in `f`, resolver
+in `b`, and **two actual commit proxies in `a`/`f`**. Configured commit-proxy count was three; the
+observed count was two. The original 30k files remained in their prior prefix; this 10k import used a
+new retained prefix in the same FDB cluster. The idle interactive server and `/mnt/dfs` mount stayed
+running, including that server's indexer on the old prefix.
+
+Each first read case restarts dfs-server and creates a fresh session/mount, ten times in total.
+**FDB, ES, and host OS caches were not restarted.** The unchanged jd workload passed all 24 DFS and
+24 local-disk checks, including complete corpus hashes. Corpus: 10,000 files / 177.5 MB / 100
+directories, manifest `67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1`.
+
+| Run | Untar (s) | Untar (ms/file) | Remaining writeback after untar (s) | After suite (s) | Server shutdown (s) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Read overlap, original topology | 593.898 | 59.3898 | 0.000199 | 0.000135 | 0.032 |
+
+Untar was **17.44% slower** than the earlier 505.715 s defaults run. This is **not an isolated code
+comparison**: that earlier run had its GRV proxy in `a`, different retained data/cache state, and no
+interactive server. The figures do not establish a causal gain or regression from read overlap.
+Normal FDB durability is already included; there is no additional persistence drain.
+
+### dfs v2 [dust-dev, 10,000 files — read overlap, original topology]
+
+Validated report: `/var/log/dfs-bench/vfs-10k-step2`. All raw JSON/logs remain outside Git.
+Server SHA256: `f3fe173f1d3b1a1a84342a040f784291ca711ea9ed49b06d3bad9ca4bf30bd06`.
+FUSE SHA256: `7d4647047b5c03f801b87ac84c45563ce5bfd2bc0135d415257a4084b322f89c`.
+
+```text
++--------------+------------------------------------------------+-------+------------+--------+
+| Feature      | Workload                                       | Phase | Time (ms)  | Result |
++--------------+------------------------------------------------+-------+------------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 6,002.27   | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 367.28     | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 1,314.70   | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 9.36       | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 56,151.33  | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 845.08     | OK     |
+| metadata     | stat missing (256 paths)                       | first | 1,655.10   | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 4.71       | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 13,881.07  | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 119.59     | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 15,416.76  | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 122.16     | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 2,385.52   | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 25.75      | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 378.62     | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 7.33       | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 104,226.64 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 1,949.04   | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 2,980.03   | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 17.33      | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 577.95     | OK     |
+| file sync    | fsync (32 files)                               | once  | 733.43     | OK     |
+| write        | close (32 files)                               | once  | 1.05       | OK     |
+| write        | unlink (32 files)                              | once  | 452.39     | OK     |
++--------------+------------------------------------------------+-------+------------+--------+
+```
+
+The population mount again made **77,862 RPCs**. Mean complete client RPC latency:
+
+| RPC | Calls | Mean (ms/call) |
+| --- | ---: | ---: |
+| create | 10,102 | 9.925 |
+| lookup | 10,205 | 4.876 |
+| stat | 27,324 | 4.862 |
+| update | 20,204 | 9.881 |
+| write | 10,003 | 10.103 |
+
+The remaining 24 read RPCs fetched the manifest. Only the expected 10,102 missing-name lookups
+returned errors; mutations succeeded. Counters include directory/manifest/setup work and can
+overlap, so their cumulative times are not an exclusive breakdown of wall time or FDB phases.

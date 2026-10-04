@@ -192,9 +192,10 @@ GRV-cap benefit, so that setting's effect remains workload-dependent/uncertain. 
 - [x] Add bounded, workspace-scoped name-to-ID hints; overlap hinted child reads with the live index
       and reject stale hints on moves, replacement, deletion, or revoked access.
 - [x] Validate contracts, Rust regressions, Linux FUSE behavior, and independent writers.
-- [ ] Run the unchanged 10k untar and full filesystem suite before changing FDB topology.
+- [x] Run the unchanged 10k untar and full filesystem suite before changing FDB topology.
+      Untar 593.898 s; all 24 DFS/local checks passed, with unchanged proxy placement during the run.
 - [x] Manually provision the preferred transaction VM in zone `a`, leaving FDB uninstalled.
-- [ ] After the first benchmark, join six preferred GRV/commit/master/resolver processes to the
+- [x] After the first benchmark, join six preferred GRV/commit/master/resolver processes to the
       existing replicated cluster.
 - [ ] Verify actual recruitment, durable commits, independent writers, transaction-node loss, and
       whole-zone loss; keep the three durable nodes/coordinators and native latency defaults.
