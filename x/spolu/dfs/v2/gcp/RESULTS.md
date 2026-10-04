@@ -1,12 +1,13 @@
 # Benchmark results — dfs v2 on dust-dev
 
-2026-10-04. Live GCP nodes; unchanged v1 API and FUSE/client. Initial server build
-`34ef74fc263a`; subsequent server revisions are recorded with each run.
+2026-10-04. Live GCP nodes; unchanged v1 API. Initial server build `34ef74fc263a`; subsequent
+server/client revisions are recorded with each run. The xattrs runs change the shared FUSE client.
 See [setup and reproduction](README.md) and the [localhost results](../bench/RESULTS.md).
 
-Latest: [the preferred FDB transaction node](#preferred-fdb-transaction-node) completed 10k untar
-in **416.984 s**, versus **593.898 s** with the same binaries on the original topology.
-All checks passed; all five 10k corpora remain.
+Latest: [xattr filtering and caching](#xattrs-client-filtering-and-caching) completed 10k untar in
+**304.889 s** with filtering only and **275.600 s** with filtering plus caching; the previous client
+took **416.984 s**. Both full suites passed; all seven 10k corpora remain. The difference between
+the two new untars cannot be attributed to caching: neither exercised the supported-xattr cache.
 
 Native-default comparison: [FDB latency defaults](#fdb-latency-tuning-disabled) completed 10k untar in **505.715 s**,
 versus **529.947 s** tuned. All checks passed and all three corpora remain. Native FDB latency
@@ -554,3 +555,138 @@ Both population mounts made **77,862 RPCs**. Mean complete client RPC latency:
 The remaining 24 read RPCs fetched the manifest. Both runs had only the expected 10,102 missing-name
 lookup errors; mutations succeeded. Counters include setup and can overlap; they are not exclusive
 wall-time components or direct measurements of FDB phases.
+
+## Xattrs: client filtering and caching
+
+2026-10-04. Client implementation `df778739c3`; unchanged server/API and preferred transaction-node
+topology. Linux Rust tests/Clippy, the xattr regressions in both modes, and the full two-mount FUSE
+suite passed, including alias coherence, rename/unlink, and retained write versions after cache fills.
+
+The 100-file diagnostic untar recorded **270 FUSE `security.capability` probes** and **no tar xattr
+syscalls** under `strace -f`. These are kernel probes. Early namespace filtering left just **one Stat
+RPC**, for mount startup. Diagnostic report: `/var/log/dfs-bench/xattrs-trace-100`; its traced timing
+is not a performance comparison.
+
+The separate xattr regression measures 200 rounds of value/empty-value reads, absent-name probes,
+listings, and unsupported-namespace probes, including a `/shared` alias of the same file:
+
+| Client mode | Time (s) | Stat RPCs, including mount startup |
+| --- | ---: | ---: |
+| Filtering only (`DFS_XATTR_CACHE_MIB=0`) | 2.189738 | 801 |
+| Filtering + cache (16 MiB) | 0.045233 | 2 |
+
+Reports inside the workload container: `/tmp/dfs-v2-xattrs-m37r682c` (filtering) and
+`/tmp/dfs-v2-xattrs-qbtikceq` (cache). The untar improvement is expected primarily from filtering;
+caching targets repeated supported xattr reads.
+
+Both full 10k runs passed **24 DFS and 24 local-disk checks**, including corpus hashes. Each first-read
+case restarted dfs-server/session/mount (ten resets per run); FDB, ES, and OS caches remained warm.
+The cluster retained its preferred transaction roles, 18 processes, healthy two-replica data, and
+one-zone fault tolerance before and after the runs. The interactive server/mount were stopped during
+these runs and restored afterward; they had remained idle but running in the previous baseline.
+
+| Client | Untar (s) | Untar (ms/file) | Remaining client writeback (s) | Population RPCs |
+| --- | ---: | ---: | ---: | ---: |
+| Previous client | 416.984 | 41.6984 | 0.000305 | 77,862 |
+| Filtering only (0 MiB) | 304.889 | 30.4889 | 0.000215 | 50,539 |
+| Filtering + cache (16 MiB) | 275.600 | 27.5600 | 0.000234 | 50,539 |
+
+Each new population made **27,323 `security.capability` probes**, all rejected locally, and only one
+Stat RPC for mount startup. The previous client made 27,324 Stat RPCs. Neither new untar used the
+supported-xattr cache, so the 304.889-to-275.600 s difference **is not evidence of a caching gain**.
+This is one run per mode, in sequence, with different backend cache/load state. Filtering removes
+27,323 network calls; the focused regression above demonstrates the supported-xattr cache benefit.
+
+The filtering run retained 50k previous corpus files, and the cache run retained 60k. Both imported
+into new workspaces within the existing FDB prefix/ES index; all seven 10k corpora remain. Native FDB
+latency defaults and normal durable acknowledgments were unchanged: durability is included in
+foreground RPCs, with **no additional persistence drain**. Remaining client writeback after the full
+suites was 0.000114 / 0.000137 s; shutdown took 0.016 / 0.032 s, respectively.
+
+| RPC | Calls per population | Filtering (ms/call) | Filtering + cache (ms/call) |
+| --- | ---: | ---: | ---: |
+| create | 10,102 | 6.424 | 5.808 |
+| lookup | 10,205 | 3.437 | 3.014 |
+| stat | 1 | 3.507 | 3.051 |
+| update | 20,204 | 6.397 | 5.797 |
+| write | 10,003 | 6.722 | 6.080 |
+
+The remaining 24 RPCs read the manifest. Only the expected 10,102 missing-name lookups failed;
+all mutations succeeded. Counters include setup and may overlap; they are not exclusive wall time.
+
+Reproducibility: 10,000 files, 100 directories, 177,499,149 bytes; manifest SHA-256
+`67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1`. Server SHA-256
+`f3fe173f1d3b1a1a84342a040f784291ca711ea9ed49b06d3bad9ca4bf30bd06`; new FUSE SHA-256
+`c901df927194b8f87b8e651b3d2187b3c4561c75819862e727c25839182e253e` in both modes.
+Client kernel caching/writeback settings are unchanged; supported xattrs share the inode TTL.
+Raw JSON/logs remain outside Git.
+
+### dfs v2 [dust-dev, 10,000 files — xattr filtering]
+
+Validated report: `/var/log/dfs-bench/vfs-10k-xattrs-filter`.
+
+```text
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 5,611.50  | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 375.36    | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 1,259.89  | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 8.59      | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 42,204.70 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 861.33    | OK     |
+| metadata     | stat missing (256 paths)                       | first | 1,306.91  | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 4.89      | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 10,907.13 | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 122.41    | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 10,734.60 | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 123.27    | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 1,865.34  | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 26.21     | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 257.15    | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 7.16      | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 74,761.72 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 2,007.23  | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 2,122.79  | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 18.02     | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 289.25    | OK     |
+| file sync    | fsync (32 files)                               | once  | 480.77    | OK     |
+| write        | close (32 files)                               | once  | 0.90      | OK     |
+| write        | unlink (32 files)                              | once  | 295.04    | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+```
+
+### dfs v2 [dust-dev, 10,000 files — xattr filtering + cache]
+
+Validated report: `/var/log/dfs-bench/vfs-10k-xattrs-cache`.
+
+```text
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 5,877.87  | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 370.87    | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 1,201.35  | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 8.91      | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 37,269.54 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 903.93    | OK     |
+| metadata     | stat missing (256 paths)                       | first | 1,116.93  | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 4.88      | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 11,227.77 | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 122.94    | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 10,846.76 | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 124.01    | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 1,852.27  | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 25.08     | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 284.19    | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 7.41      | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 76,197.73 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 1,942.31  | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 2,113.35  | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 15.43     | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 299.45    | OK     |
+| file sync    | fsync (32 files)                               | once  | 502.79    | OK     |
+| write        | close (32 files)                               | once  | 1.03      | OK     |
+| write        | unlink (32 files)                              | once  | 308.24    | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+```

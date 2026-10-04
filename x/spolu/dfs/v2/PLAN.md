@@ -208,12 +208,14 @@ GRV-cap benefit, so that setting's effect remains workload-dependent/uncertain. 
       DFS/local checks. The new VM also increases actual commit proxies from two to three;
       this single comparison does not isolate locality from resources, caches, or retained data.
 
-## Project: xattrs (implemented; benchmarks in progress)
+## Project: xattrs (complete)
 
-The latest 10k population produced 27,323 FUSE `getxattr` callbacks and 27,324 server `Stat`
-RPCs (93.8 s cumulative RPC time). Requested names and their callers have not yet been traced.
+The previous 10k population produced 27,323 FUSE `getxattr` callbacks and 27,324 server `Stat`
+RPCs (93.8 s cumulative RPC time). All probes were unsupported `security.capability` requests.
 
-- [ ] Trace xattr names during a small untar to distinguish tar requests from kernel probes.
+- [x] Trace xattr names during a small untar to distinguish tar requests from kernel probes.
+      The 100-file untar made no xattr syscalls; all 270 FUSE probes were `security.capability`.
+      Early filtering left only the mount-start Stat RPC.
 - [x] Reject unsupported xattr namespaces before fetching metadata from the server.
 - [x] Add a bounded, mount-scoped cache for supported xattrs, including absent attributes and
       listings. Use the same timeout as the inode attribute cache, sourced from the same setting,
@@ -224,12 +226,15 @@ RPCs (93.8 s cumulative RPC time). Requested names and their callers have not ye
       invalidation, and error propagation. Nine native FUSE tests and Clippy pass.
 - [x] Run Linux regressions (`tests/xattrs.py` with cache budgets 0 and 16 MiB, plus `fuse_e2e.py`)
       for alias coherence, rename/unlink, and retained write versions after xattr fills.
-- [ ] Benchmark filtering alone and filtering plus caching. Retain existing result tables and
+- [x] Benchmark filtering alone and filtering plus caching. Retain existing result tables and
       identify these runs as client changes with the same API; record FUSE hashes/cache budgets.
 
 Native/Linux Rust tests, Clippy, the dedicated xattr regressions, and the full two-mount FUSE suite
 pass. The 200-round xattr read test used 2 Stat RPCs / 0.045 s with caching versus 801 / 2.190 s with
-filtering only. Live untar tracing and the full benchmarks are in progress on the existing GCP fixture.
+filtering only. Full 10k suites passed in both modes: untar 304.889 s / 275.600 s versus the previous
+416.984 s. Both new untars made 50,539 RPCs, including just one Stat. Neither exercised supported
+xattr caching; do not attribute their timing difference to caching. All corpora remain; full tables
+and comparison limits are in [GCP results](gcp/RESULTS.md#xattrs-client-filtering-and-caching).
 See [reproduction](gcp/README.md#xattrs-project).
 
 ## Project: server writeback (pending)
