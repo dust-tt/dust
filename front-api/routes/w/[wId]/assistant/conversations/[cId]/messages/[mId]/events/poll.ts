@@ -38,7 +38,7 @@ const app = workspaceApp();
  *       - in: query
  *         name: lastEventId
  *         required: false
- *         description: Redis stream ID of the last received message event. Omit or pass an empty value to start from the available history.
+ *         description: Redis stream ID of the last received message event. Omit or pass an empty value to start from the available history. Passing the synthetic end-of-stream ID returns the end-of-stream event immediately.
  *         schema:
  *           type: string
  *     security:
