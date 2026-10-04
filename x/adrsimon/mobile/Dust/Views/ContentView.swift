@@ -23,7 +23,7 @@ struct ContentView: View {
             )
 
         case let .error(message):
-            ErrorView(message: message, onRetry: { authViewModel.logout() })
+            ErrorView(message: message, onRetry: { authViewModel.retry() })
         }
     }
 }
