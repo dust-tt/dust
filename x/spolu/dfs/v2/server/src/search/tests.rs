@@ -38,7 +38,7 @@ impl Fixture {
             fdb_prefix: format!("dfs-v2-search-{suffix}"),
         })
         .await?;
-        let api = Api(State::new(storage, KEY)?);
+        let api = Api(State::new_durable(storage, KEY)?);
         let search = Search::open(SearchConfig {
             es_url: std::env::var("DFS_ES_URL")?,
             es_index: format!("dfs-v2-search-{suffix}"),

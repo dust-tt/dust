@@ -10,7 +10,7 @@ use std::{
     ops::{Bound, Range, RangeBounds},
     sync::{
         Arc,
-        atomic::{AtomicI32, Ordering},
+        atomic::{AtomicI32, AtomicU64, Ordering},
     },
     time::Duration,
 };
@@ -30,6 +30,16 @@ pub struct Storage {
     db: Arc<Database>,
     prefix: Arc<[u8]>,
     versions: Arc<Mutex<Range<u64>>>,
+    counters: Arc<Counters>,
+    #[cfg(test)]
+    unknown_commit_once: Arc<std::sync::atomic::AtomicBool>,
+}
+
+#[derive(Default)]
+struct Counters {
+    commit_attempts: AtomicU64,
+    commits: AtomicU64,
+    retries: AtomicU64,
 }
 
 impl Storage {
@@ -48,6 +58,9 @@ impl Storage {
             db: Arc::new(Database::from_path(&config.fdb_cluster_file)?),
             prefix: prefix.into(),
             versions: Arc::new(Mutex::new(0..0)),
+            counters: Arc::new(Counters::default()),
+            #[cfg(test)]
+            unknown_commit_once: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         };
         storage
             .transact(|view| async move {
@@ -66,6 +79,16 @@ impl Storage {
             })
             .await?;
         Ok(storage)
+    }
+
+    /// Counts cover this process's filesystem, search, and version-reservation transactions.
+    pub(crate) fn log_counters(&self) {
+        tracing::info!(
+            commit_attempts = self.counters.commit_attempts.load(Ordering::Relaxed),
+            commits = self.counters.commits.load(Ordering::Relaxed),
+            retries = self.counters.retries.load(Ordering::Relaxed),
+            "FDB transaction totals"
+        );
     }
 
     /// @cc [owner:spolu,label:backend;concurrency] distinct-state-tokens
@@ -96,6 +119,11 @@ impl Storage {
         available.next().ok_or_else(|| status(ErrorCode::Internal))
     }
 
+    #[cfg(test)]
+    pub(crate) fn lose_next_commit_reply(&self) {
+        self.unknown_commit_once.store(true, Ordering::Relaxed);
+    }
+
     pub async fn snapshot(&self) -> Result<Arc<Snapshot>, Status> {
         let transaction = self.db.create_trx().map_err(failed)?;
         transaction
@@ -117,9 +145,9 @@ impl Storage {
     /// The closure MUST read all preconditions through the supplied view and MUST NOT have external
     /// side effects except reserving never-reused version tokens. Advisory ancestry hints MAY be
     /// learned because each use is revalidated in its own transaction. Only known-uncommitted
-    /// attempts may repeat. Captured client versions MUST
-    /// remain unchanged. A definitive application rejection MUST NOT be retried because an unused
-    /// speculative read failed. Read views MUST NOT escape the closure's result.
+    /// attempts may repeat. Strict operations MUST retain captured client versions; buffered file
+    /// edits MAY reapply semantic changes to current state. A definitive application rejection MUST
+    /// NOT be retried because an unused speculative read failed. Read views MUST NOT escape the closure's result.
     /** @cc [owner:spolu,label:concurrency;security] fresh-transaction-versions
     Every attempt MUST obtain its read version normally from FDB. Commit versions MUST NOT be
     reused as read versions. Preconditions MUST retain conflict tracking; ambiguous commits MUST
@@ -172,14 +200,28 @@ impl Storage {
                     let snapshot =
                         Arc::try_unwrap(snapshot).map_err(|_| status(ErrorCode::Internal))?;
                     let started = std::time::Instant::now();
+                    self.counters
+                        .commit_attempts
+                        .fetch_add(1, Ordering::Relaxed);
                     match measured("commit", snapshot.transaction.commit()).await {
                         Ok(_) => {
-                            tracing::debug!(
-                                commit_us = started.elapsed().as_micros() as u64,
-                                retries = attempt,
-                                "FDB transaction committed"
-                            );
-                            return Ok(result);
+                            self.counters.commits.fetch_add(1, Ordering::Relaxed);
+                            // Tests can lose a real commit's reply and exercise normal retry policy.
+                            #[cfg(test)]
+                            let lost = self.unknown_commit_once.swap(false, Ordering::Relaxed);
+                            #[cfg(not(test))]
+                            let lost = false;
+                            if lost {
+                                let error = FdbError::from_code(1021);
+                                (error, failed(error))
+                            } else {
+                                tracing::debug!(
+                                    commit_us = started.elapsed().as_micros() as u64,
+                                    retries = attempt,
+                                    "FDB transaction committed"
+                                );
+                                return Ok(result);
+                            }
                         }
                         Err(error) => (*error, failed(*error)),
                     }
@@ -201,6 +243,7 @@ impl Storage {
                 attempt,
                 "retrying aborted FDB transaction"
             );
+            self.counters.retries.fetch_add(1, Ordering::Relaxed);
             tokio::time::sleep(Duration::from_millis(1 << attempt)).await;
         }
         Err(status(ErrorCode::Unavailable))
@@ -352,7 +395,7 @@ impl WriteBatch {
     pub fn clear(&mut self, start: Vec<u8>, end: Vec<u8>) {
         self.0.push(Mutation::Clear(start, end));
     }
-    fn apply(self, view: &Snapshot) -> Result<(), Status> {
+    pub(crate) fn apply(self, view: &Snapshot) -> Result<(), Status> {
         for mutation in self.0 {
             match mutation {
                 Mutation::Put(key, value) => {

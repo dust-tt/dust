@@ -19,6 +19,54 @@ use tracing::Instrument;
 type Result<T> = std::result::Result<T, Status>;
 #[derive(Clone)]
 pub struct Api(pub Arc<State>);
+trait Visible: Sized {
+    fn overlay(
+        self,
+        state: &State,
+        workspace: &str,
+        shared: bool,
+    ) -> impl Future<Output = Result<Self>> + Send;
+}
+impl Visible for Object {
+    async fn overlay(self, state: &State, workspace: &str, _shared: bool) -> Result<Self> {
+        state.writeback.project(state, workspace, self).await
+    }
+}
+impl Visible for Page {
+    /// @cc [owner:spolu,label:performance;api] pending-metadata-page-budget
+    /// Pending metadata MUST retain the response-byte budget. A truncated page MUST return its last
+    /// emitted name cursor, or object-ID cursor for shared, without skipping entries.
+    async fn overlay(self, state: &State, workspace: &str, shared: bool) -> Result<Self> {
+        let mut page = Page {
+            entries: Vec::new(),
+            next_after: self.next_after,
+        };
+        let mut bytes = 0;
+        for mut entry in self.entries {
+            if let Some(object) = entry.object.take() {
+                entry.object = Some(state.writeback.project(state, workspace, object).await?);
+            }
+            bytes += crate::read::entry_size(&entry);
+            if bytes > dfs_protocol::MAX_IO {
+                let last = page
+                    .entries
+                    .last()
+                    .ok_or_else(|| status(ErrorCode::Capacity))?;
+                page.next_after = Some(if shared {
+                    last.object
+                        .as_ref()
+                        .map(|o| o.id.clone())
+                        .ok_or_else(|| status(ErrorCode::Internal))?
+                } else {
+                    last.name.clone()
+                });
+                return Ok(page);
+            }
+            page.entries.push(entry);
+        }
+        Ok(page)
+    }
+}
 impl Api {
     /// @cc [owner:spolu,label:concurrency] cancellation-keeps-publication-guards
     /// Accepted RPC work MUST retain its admission permit and publication guards even if its caller
@@ -54,13 +102,20 @@ impl Api {
             let session = state.sessions.get(&request).await?;
             let _session_guard = session.gate.read().await;
             let change = change(request.into_inner());
+            if let Some(response) = state.writeback.accept(&state, &session, &change).await? {
+                return Ok(response);
+            }
             let hint_parent = match &change {
                 Change::Create(r) => Some((r.parent_id.clone(), r.name.clone())),
                 Change::Rename(r) => Some((r.parent_id.clone(), r.name.clone())),
                 _ => None,
             };
             let locks = state.locks(&session.info.workspace_id).await;
-            let file = change.file()?;
+            let file = if state.writeback.enabled() {
+                None
+            } else {
+                change.file()?
+            };
             let _topology_write = if file.is_none() {
                 Some(locks.topology.write().await)
             } else {
@@ -79,6 +134,35 @@ impl Api {
                 Some(lock) => Some(lock.lock().await),
                 None => None,
             };
+            if state.writeback.enabled() && !matches!(&change, Change::Create(_)) {
+                let view = View::prefetch(
+                    state.storage.snapshot().await?,
+                    &session.info.workspace_id,
+                    session.grants.clone(),
+                    change.primary_id(),
+                    None,
+                    state.ancestry.clone(),
+                )
+                .await?;
+                view.stat(change.primary_id()).await?;
+                let mut ids = BTreeSet::new();
+                if let Ok(id) = validate::id(change.primary_id()) {
+                    ids.insert(id);
+                }
+                let expected = match &change {
+                    Change::Rename(r) => r.expected.as_slice(),
+                    Change::Remove(r) => r.expected.as_slice(),
+                    _ => &[],
+                };
+                ids.extend(expected.iter().filter_map(|e| validate::id(&e.id).ok()));
+                state
+                    .writeback
+                    .flush_locked(&state, &session.info.workspace_id, Some(&ids), true)
+                    .await;
+                for id in ids {
+                    state.writeback.error(&session, &id).await?;
+                }
+            }
             tracing::debug!(target: "dfs_server_v2::profile", operation = change.name(),
                 elapsed_us = waiting.elapsed().as_micros() as u64, phase = "locks",
                 "filesystem phase");
@@ -132,13 +216,17 @@ impl Api {
     ) -> Result<Response<U>>
     where
         T: Send + Sync + 'static,
-        U: Send + 'static,
+        U: Visible + Send + 'static,
         F: FnOnce(View, T) -> Fut + Send + 'static,
         Fut: Future<Output = Result<U>> + Send + 'static,
     {
         self.call(move |state| async move {
             let session = state.sessions.get(&request).await?;
+            let _session_guard = session.gate.read().await;
+            let locks = state.locks(&session.info.workspace_id).await;
+            let _gate = locks.topology.read().await;
             let (id, child_name) = target(request.get_ref());
+            let shared = id == "shared";
             let view = View::prefetch(
                 state.storage.snapshot().await?,
                 &session.info.workspace_id,
@@ -148,7 +236,10 @@ impl Api {
                 state.ancestry.clone(),
             )
             .await?;
-            let response = operation(view, request.into_inner()).await?;
+            let response = operation(view, request.into_inner())
+                .await?
+                .overlay(&state, &session.info.workspace_id, shared)
+                .await?;
             session.active()?;
             Ok(response)
         })
@@ -281,7 +372,18 @@ impl Dfs for Api {
     }
     async fn close_session(&self, request: Request<Empty>) -> Result<Response<Empty>> {
         self.call(move |state| async move {
-            state.sessions.close(&request).await?;
+            let session = state.sessions.get(&request).await?;
+            let _session_guard = session.gate.write().await;
+            let locks = state.locks(&session.info.workspace_id).await;
+            let _gate = locks.topology.write().await;
+            let ids = state.writeback.session_ids(&session).await;
+            state
+                .writeback
+                .flush_locked(&state, &session.info.workspace_id, Some(&ids), true)
+                .await;
+            let result = state.writeback.forget_session(&session).await;
+            state.sessions.close(&request, &session).await?;
+            result?;
             Ok(Empty {})
         })
         .await
@@ -301,6 +403,8 @@ impl Dfs for Api {
             if let Some(after) = &request.after {
                 validate::grant(after)?;
             }
+            let locks = state.locks(&request.workspace_id).await;
+            let _guard = locks.topology.read().await;
             let view = View::new(&state.storage, &request.workspace_id, BTreeSet::new()).await?;
             let record = view.object(&request.object_id).await?;
             let prefix = view.keys.grants(&record.object.id)?;
@@ -324,7 +428,11 @@ impl Dfs for Api {
             Ok(GrantPage {
                 grants,
                 next_after,
-                version: record.object.version,
+                version: state
+                    .writeback
+                    .project(&state, &request.workspace_id, record.object)
+                    .await?
+                    .version,
             })
         })
         .await
@@ -343,6 +451,17 @@ impl Dfs for Api {
             }
             let locks = state.locks(&request.workspace_id).await;
             let _guard = locks.topology.write().await;
+            if let Ok(id) = validate::id(&request.object_id) {
+                state
+                    .writeback
+                    .flush_locked(
+                        &state,
+                        &request.workspace_id,
+                        Some(&BTreeSet::from([id])),
+                        true,
+                    )
+                    .await;
+            }
             state
                 .storage
                 .transact(|snapshot| {
@@ -393,7 +512,15 @@ impl Dfs for Api {
     async fn read(&self, request: Request<ReadRequest>) -> Result<Response<ReadResponse>> {
         self.call(move |state| async move {
             let session = state.sessions.get(&request).await?;
+            let _session_guard = session.gate.read().await;
             let request = request.into_inner();
+            if state.writeback.enabled() {
+                let locks = state.locks(&session.info.workspace_id).await;
+                let _guard = locks.topology.read().await;
+                let response = state.writeback.read(&state, &session, request).await?;
+                session.active()?;
+                return Ok(response);
+            }
             let snapshot = state.storage.snapshot().await?;
             let (view, read_ahead) = tokio::join!(
                 View::prefetch(
@@ -413,11 +540,45 @@ impl Dfs for Api {
         .await
     }
     async fn fsync(&self, request: Request<ObjectRequest>) -> Result<Response<Object>> {
-        self.read_call(
-            request,
-            |r| (&r.object_id, None),
-            |view, request| async move { view.session_stat(&request.object_id).await },
-        )
+        self.call(move |state| async move {
+            let session = state.sessions.get(&request).await?;
+            let _session_guard = session.gate.read().await;
+            let id = request.into_inner().object_id;
+            let id = if matches!(id.as_str(), "root" | "shared") {
+                id
+            } else {
+                validate::id(&id)?
+            };
+            let locks = state.locks(&session.info.workspace_id).await;
+            // This fair write gate freezes a finite prefix, including publication already in flight.
+            let _guard = locks.topology.write().await;
+            let view = View::new(
+                &state.storage,
+                &session.info.workspace_id,
+                session.grants.clone(),
+            )
+            .await?;
+            view.session_stat(&id).await?;
+            state
+                .writeback
+                .flush_locked(
+                    &state,
+                    &session.info.workspace_id,
+                    Some(&BTreeSet::from([id.clone()])),
+                    true,
+                )
+                .await;
+            state.writeback.error(&session, &id).await?;
+            let view = View::new(
+                &state.storage,
+                &session.info.workspace_id,
+                session.grants.clone(),
+            )
+            .await?;
+            let object = view.session_stat(&id).await?;
+            session.active()?;
+            Ok(object)
+        })
         .await
     }
     async fn create(&self, request: Request<CreateRequest>) -> Result<Response<Mutation>> {
@@ -454,13 +615,23 @@ pub(crate) mod tests {
 
     pub(crate) async fn cancelled_write_keeps_guards_until_publication_before_close_and_revocation()
     -> anyhow::Result<()> {
+        cancellation_case(crate::writeback::WritebackConfig::disabled()).await?;
+        cancellation_case(crate::writeback::WritebackConfig {
+            writeback_debounce_ms: 60_000,
+            writeback_max_age_ms: 60_000,
+            ..Default::default()
+        })
+        .await
+    }
+
+    async fn cancellation_case(config: crate::writeback::WritebackConfig) -> anyhow::Result<()> {
         let storage = Storage::open(&StorageConfig {
             fdb_cluster_file: std::env::var("DFS_FDB_CLUSTER_FILE")?,
             fdb_prefix: format!("dfs-v2-cancellation-{}", uuid::Uuid::new_v4().simple()),
         })
         .await?;
         let key = "ab".repeat(32);
-        let api = Api(State::new(storage, &key)?);
+        let api = Api(State::with_writeback(storage, &key, config)?);
         let workspace = api
             .create_workspace(request(
                 &key,
@@ -630,6 +801,7 @@ pub(crate) mod tests {
             dfs_protocol::error::code(&closed),
             ErrorCode::Unauthenticated
         );
+        api.0.drain().await?;
         api.0
             .storage
             .transact(|_| async {

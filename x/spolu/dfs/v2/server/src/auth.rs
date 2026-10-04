@@ -95,9 +95,8 @@ impl Sessions {
         state.active()?;
         Ok(state)
     }
-    pub async fn close<T>(&self, request: &Request<T>) -> Result<(), Status> {
-        let state = self.get(request).await?;
-        let _guard = state.gate.write().await;
+    /// Caller MUST hold the session write gate and finish its accepted publication before closing.
+    pub async fn close<T>(&self, request: &Request<T>, state: &SessionState) -> Result<(), Status> {
         state.closed.store(true, Ordering::Release);
         self.entries.lock().await.remove(&hash(bearer(request)?));
         Ok(())
@@ -105,8 +104,9 @@ impl Sessions {
 }
 
 /// @cc [owner:spolu,label:concurrency] topology-and-file-gates
-/// Namespace and grant mutations MUST hold the topology write gate through publication. File edits
-/// MUST hold its read gate and their object's exclusive gate. Independent file edits may overlap.
+/// Namespace/grant changes and buffered publication MUST hold the topology write gate through commit.
+/// File RAM acceptance MUST hold its read gate and the object's exclusive gate. Synchronous mode MAY
+/// publish independent file edits under those read/file gates. These gates coordinate one process only.
 #[derive(Default)]
 pub(crate) struct WorkspaceLocks {
     pub topology: RwLock<()>,
@@ -178,7 +178,7 @@ pub(crate) mod tests {
             fdb_prefix: format!("dfs-v2-locks-{}", uuid::Uuid::new_v4().simple()),
         })
         .await?;
-        let state = State::new(storage, &"ab".repeat(32))?;
+        let state = State::new_durable(storage, &"ab".repeat(32))?;
         let active = state.locks("active").await;
         let guard = active.topology.write().await;
         let file_lock = active.file("file").await;

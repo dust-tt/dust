@@ -3,6 +3,7 @@
 import argparse
 import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
 import time
@@ -13,6 +14,8 @@ spec.loader.exec_module(support)
 
 
 def main():
+    # This compatibility fixture checks the original strict durable-acknowledgment mode.
+    os.environ['DFS_WRITEBACK_MIB'] = '0'
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('work', type=Path)
     args = parser.parse_args()

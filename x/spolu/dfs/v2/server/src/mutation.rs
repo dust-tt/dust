@@ -344,8 +344,12 @@ impl View {
         for (index, block) in patches {
             edit.put(self.keys.block(&record.object.id, index)?, block)?;
         }
-        record.object.size = record.object.size.max(end);
-        record.object = model::bumped(record.object, true, self.snapshot.version().await?)?;
+        record.object = crate::patch::write(
+            record.object,
+            &request,
+            model::now()?,
+            self.snapshot.version().await?,
+        )?;
         edit.record(&self.keys, &record)?;
         Ok((
             edit,
@@ -414,47 +418,11 @@ impl View {
             }
             record.object.size = size;
         }
-        record.object = model::bumped(
+        record.object = crate::patch::update(
             record.object,
-            request.size.is_some(),
+            &request,
+            model::now()?,
             self.snapshot.version().await?,
-        )?;
-        if let Some(mime) = request.mime_type {
-            record.object.mime_type = mime;
-        }
-        if let Some(mode) = request.mode {
-            record.object.mode = mode;
-        }
-        if let Some(atime) = request.atime {
-            validate::timestamp(&atime)?;
-            record.object.atime = Some(atime);
-        }
-        if let Some(mtime) = request.mtime {
-            validate::timestamp(&mtime)?;
-            record.object.mtime = Some(mtime);
-        }
-        let mut changed = BTreeSet::new();
-        for change in request.xattrs {
-            if change.name.is_empty()
-                || change.name.len() > 255
-                || change.name.contains('\0')
-                || !changed.insert(change.name.clone())
-            {
-                return Err(status(ErrorCode::InvalidInput));
-            }
-            match change.value {
-                Some(value) => {
-                    record.object.xattrs.insert(change.name, value);
-                }
-                None => {
-                    record.object.xattrs.remove(&change.name);
-                }
-            }
-        }
-        validate::attributes(
-            &record.object.mime_type,
-            &record.object.xattrs,
-            record.object.mode,
         )?;
         edit.record(&self.keys, &record)?;
         Ok((

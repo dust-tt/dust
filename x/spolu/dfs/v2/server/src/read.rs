@@ -546,7 +546,7 @@ fn shared_name(record: &Record) -> Result<String> {
     }
     Ok(format!("{}--{}", &name[..end], record.object.id))
 }
-fn entry_size(entry: &Entry) -> usize {
+pub(crate) fn entry_size(entry: &Entry) -> usize {
     entry.name.len()
         + entry.object.as_ref().map_or(0, |o| {
             o.mime_type.len()

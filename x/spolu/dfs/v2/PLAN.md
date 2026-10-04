@@ -6,10 +6,11 @@ benchmarks are complete; see [bench/RESULTS.md](bench/RESULTS.md). The next phas
 provisioned `dust-dev` fixture in [gcp/README.md](gcp/README.md).
 
 **Constraints:** FDB must remove the single-writer requirement, including within one workspace.
-Exclusive workspace owners and RAM acknowledgment with asynchronous FDB publication are rejected.
+Exclusive workspace owners are rejected. The server-writeback project permits bounded RAM
+acknowledgment, with normal transactional persistence and durable file fsync.
 Keep the exact API; the approved xattrs project may change the shared v1 FUSE client. Compound/bulk
-RPCs, client batching, and additional
-deferred publication are out of scope. See [design constraints](DESIGN.md#non-negotiable-constraints).
+RPCs and new client batching are out of scope. File RAM acknowledgment is explicitly scoped in the
+server-writeback project; namespace operations retain synchronous durability. See [design constraints](DESIGN.md#non-negotiable-constraints).
 
 ## 0. Scope and contracts
 
@@ -249,58 +250,62 @@ Independent server writers remain required; no exclusive workspace owner.
 
 ### 1. Scope and contracts
 
-- [ ] Buffer positioned file writes and file metadata updates, including truncation and xattrs.
+- [x] Buffer positioned file writes and file metadata updates, including truncation and xattrs.
       Keep create/mkdir, rename/remove, grants, directory updates, and append synchronous initially.
       The unchanged client's directory fsync sends no RPC, so namespace publication stays durable.
-- [ ] Define accepting-server visibility versus committed visibility through other servers. Retain
+- [x] Define accepting-server visibility versus committed visibility through other servers. Retain
       fresh existence/authorization checks on foreground requests and in committing transactions.
-- [ ] Reconcile durable-ack/no-RAM-overlay and strict mutation-version contracts with the approved
+- [x] Reconcile durable-ack/no-RAM-overlay and strict mutation-version contracts with the approved
       overwrite semantics. Keep the wire API and shared FUSE client unchanged.
 - [x] Define collision-free object version tokens for provisional states from independent servers.
       Read-version equality MUST still distinguish different states, including rebased writes;
       there is no workspace-wide coherence version.
       Storage-issued tokens replace numeric increments; independent allocators reserve disjoint
       ranges durably. The format-2 foundation passes Rust/backend tests, Clippy, and Linux two-mount
-      FUSE/restart validation. Acknowledgments remain durable until the buffer/barrier milestone.
+      FUSE/restart validation. The bounded buffer and durable fsync barrier are implemented.
 
 ### 2. Bounded memory acceptance and reads
 
-- [ ] Retain ordered byte-range writes, truncations, and field/xattr changes per workspace/object.
+- [x] Retain ordered byte-range writes, truncations, and field/xattr changes per workspace/object.
       Store semantic operations instead of stale whole-object replacements; never buffer an entire
       large file as a prerequisite for accepting a bounded write.
-- [ ] Make stat/lookup/list/read through the accepting server reflect pending edits while preserving
+- [x] Make stat/lookup/list/read through the accepting server reflect pending edits while preserving
       authorization and read-version checks. Keep independent servers free to commit concurrently.
-- [ ] Bound queued bytes, objects, operations, and retained errors; apply backpressure at capacity.
+- [x] Bound queued bytes, objects, operations, and retained errors; apply backpressure at capacity.
       Preserve accepted work after RPC cancellation and order local edits to one object.
 
 ### 3. Debounced FDB persistence
 
-- [ ] Add configurable debounce, maximum dirty age, byte/count flush thresholds, and worker
+- [x] Add configurable debounce, maximum dirty age, byte/count flush thresholds, and worker
       concurrency. Batch independent files while keeping transactions within FDB limits.
-- [ ] Reapply ordered operations against current FDB records with normal conflict tracking.
+- [x] Reapply ordered operations against current FDB records with normal conflict tracking.
       Commit order resolves concurrent overlapping writes/fields; preserve untouched bytes/fields,
       current parents/grants, and truncation zero-fill semantics. Never resurrect an unlinked file.
-- [ ] Atomically commit final blocks, metadata, and coalesced search work. Search continues to index
+- [x] Atomically commit final blocks, metadata, and coalesced search work. Search continues to index
       committed FDB state; index status must account for local pending publication.
-- [ ] Order synchronous operations against affected local pending writes without draining unrelated
+- [x] Order synchronous operations against affected local pending writes without draining unrelated
       files. Retry only known-uncommitted attempts; never replay an ambiguous commit automatically.
 
 ### 4. Durability barriers and deferred errors
 
-- [ ] Have file fsync capture a fixed acceptance-sequence prefix and flush/wait for queued and
-      in-flight operations, including their metadata. Later writes must not indefinitely extend it.
-- [ ] Retain deferred failures until they can be reported to the originating session's fsync or
+- [x] Have file fsync freeze a finite preceding prefix through the fair publication gate and
+      flush/wait for queued and in-flight operations, including metadata. Later writes cannot extend it.
+- [x] Retain deferred failures until they can be reported to the originating session's fsync or
       subsequent operations. Do not report success after silently dropping accepted writes.
-- [ ] Drain accepted work on graceful session/server shutdown. A crash before fsync may lose RAM
+- [x] Drain accepted work on graceful session/server shutdown. A crash before fsync may lose RAM
       edits; successful fsync must survive restart. Do not wait for ES indexing at this boundary.
 
 ### 5. Correctness and resource validation
 
-- [ ] Test independent servers with disjoint/overlapping writes, partial blocks, truncation and
+- [x] Test independent servers with disjoint/overlapping writes, partial blocks, truncation and
       re-extension, metadata updates, append, moves/unlink, and grant changes.
-- [ ] Test fixed-prefix fsync during continued writes, deferred/ambiguous failures, queue pressure,
+- [x] Test fixed-prefix fsync during continued writes, deferred/ambiguous failures, queue pressure,
       cancellation, graceful shutdown, and crash/restart durability through the unchanged client.
-- [ ] Verify search outbox atomicity, workspace isolation, and bounded memory for large files.
+- [x] Verify search outbox atomicity, workspace isolation, and bounded memory for large files.
+
+Rust/backend tests, Clippy, Linux FUSE crash/two-server tests, and ES fault regressions pass.
+The lost-reply test commits to real FDB before injecting the ambiguous response; fsync reports the
+error without replay. The shared client/protocol is unchanged.
 
 ### 6. Benchmark
 

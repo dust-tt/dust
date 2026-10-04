@@ -23,6 +23,8 @@ def fails(codes, operation):
 
 
 def main():
+    # This compatibility fixture checks the original strict durable-acknowledgment mode.
+    os.environ['DFS_WRITEBACK_MIB'] = '0'
     work = Path(tempfile.mkdtemp(prefix='dfs-v2-xattrs-'))
     prefix, key, key_path = support.identity(work)
     server, endpoint = support.start(work, 'xattrs', prefix, key_path)

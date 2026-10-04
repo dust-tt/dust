@@ -136,7 +136,7 @@ v2/gcp/run exec python3 /dfs/v2/bench/search.py --work /reports/search-1
 ```
 
 The same harness restarts dfs-server/session/mount before each first read case. **FDB, ES, and OS
-caches remain warm**. Native FDB durability is included in writes; post-untar client writeback is
+caches remain warm**. In the historical synchronous runs, FDB durability is included in writes; post-untar client writeback is
 reported separately. Record network topology with results: this is neither localhost FDB nor a
 production scaling test. Database-shard distribution, load, backups, and replicated ES remain future
 work.
