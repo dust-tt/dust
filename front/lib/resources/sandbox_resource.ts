@@ -347,7 +347,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     after?: SandboxTimestampCursor;
   }): Promise<SandboxResource[]> {
     const rows = await this.model.findAll({
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       where: {
         status: opts.status,
@@ -1351,7 +1351,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         : {};
 
     const candidates = await this.model.findAll({
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       attributes: ["id"],
       where: {
@@ -1401,7 +1401,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   }): Promise<SandboxResource[]> {
     const order = opts.order ?? "killRequestedAtAsc";
     const rows = await this.model.findAll({
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       where: {
         killRequestedAt: { [Op.ne]: null },

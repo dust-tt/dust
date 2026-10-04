@@ -51,7 +51,7 @@ const GRID_SECTION_CLASSES = classNames(
   "2xl:col-start-1"
 );
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function Knowledge() {
   const router = useRouter();
 

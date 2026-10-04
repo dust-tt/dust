@@ -102,7 +102,7 @@ export async function unsafeGetUsageData(
 
   const readReplica = getFrontReplicaDbConnection();
 
-  // biome-ignore lint/plugin/noRawSql: Leggit
+  // oxlint-disable-next-line dust/noRawSql -- Leggit
   const results = await readReplica.query<WorkspaceUsageQueryResult>(
     `
       SELECT TO_CHAR(m."createdAt"::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS "createdAt",
@@ -240,7 +240,7 @@ export async function getAgentUsageData(
 ): Promise<number> {
   const wId = workspace.id;
   const readReplica = getFrontReplicaDbConnection();
-  // biome-ignore lint/plugin/noRawSql: Leggit
+  // oxlint-disable-next-line dust/noRawSql -- Leggit
   const mentions = await readReplica.query<{ messages: number }>(
     `
       SELECT COUNT(a."id") AS "messages"

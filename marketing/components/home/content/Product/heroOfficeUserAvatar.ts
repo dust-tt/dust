@@ -3,7 +3,7 @@
 // and reads ad-hoc fields (_planX, _person, etc.) off it as the conductor
 // runs.
 
-// biome-ignore-all lint/suspicious/noExplicitAny: ad-hoc fields are stored
+// ad-hoc fields are stored
 // directly on the SVG <g> (e.g. _planX, _person) and read by the scene
 // engine. Typing them properly would require a parallel WeakMap and gain
 // little — they are scoped to this scene.

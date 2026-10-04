@@ -187,7 +187,6 @@ export const ButtonsSwitchList = React.forwardRef<
     const [indicator, setIndicator] = React.useState<IndicatorRect | null>(
       null
     );
-    // biome-ignore lint/correctness/useExhaustiveDependencies: children drives re-measurement.
     React.useLayoutEffect(() => {
       const list = listRef.current;
       const active =

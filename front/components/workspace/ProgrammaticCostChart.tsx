@@ -441,6 +441,7 @@ export function BaseProgrammaticCostChart({
       (point) =>
         point.totalRemainingCreditsMicroUsd > 4 * (maxCumulatedCost ?? 0)
     );
+  // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, [points, maxCumulatedCost, now, hasFilters, displayMode]);
 
   // Add Total Credits to legend (not clickable)
@@ -503,6 +504,7 @@ export function BaseProgrammaticCostChart({
     return Array.from(dailyMap.values()).sort(
       (a, b) => a.timestamp - b.timestamp
     );
+  // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, [points, displayMode, maxCumulatedCost]);
 
   // Daily mode uses BarChart, cumulative mode uses AreaChart (grouped) or LineChart (global)

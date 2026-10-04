@@ -90,7 +90,7 @@ async function setFeedbackCreatedAt(
   feedbackId: number,
   date: Date
 ): Promise<void> {
-  // biome-ignore lint/plugin/noRawSql: updating createdAt for test setup requires raw SQL because Sequelize excludes it from Model.update by default.
+  // oxlint-disable-next-line dust/noRawSql -- updating createdAt for test setup requires raw SQL because Sequelize excludes it from Model.update by default.
   await frontSequelize.query(
     `UPDATE agent_message_feedbacks SET "createdAt" = :date WHERE id = :id`,
     {

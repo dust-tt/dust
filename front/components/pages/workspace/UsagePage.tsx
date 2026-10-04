@@ -559,6 +559,7 @@ export function UsagePage() {
     return selectedOnPage.length === selection.selectedCount
       ? selectedOnPage
       : [];
+  // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, [
     loadedMembersById,
     membersUsage,

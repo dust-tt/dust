@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { contentfulImageLoader } from "@marketing/lib/contentful/imageLoader";
 import type { LogoBarLogo } from "@marketing/lib/logo_bars";
 import { cn } from "@dust-tt/sparkle";

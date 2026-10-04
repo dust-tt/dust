@@ -123,7 +123,7 @@ export class FileSystemMutationResource extends BaseResource<FileSystemMutationM
       mode === "shared"
         ? "SELECT pg_advisory_xact_lock_shared(hashtextextended(:key, 0))"
         : "SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))";
-    // biome-ignore lint/plugin/noRawSql: PostgreSQL advisory locks have no Sequelize equivalent.
+    // oxlint-disable-next-line dust/noRawSql -- PostgreSQL advisory locks have no Sequelize equivalent.
     await frontSequelize.query(query, {
       replacements: { key },
       transaction,

@@ -807,7 +807,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     // WORKSPACE_ISOLATION_BYPASS: The sandbox reaper operates across
     // workspaces. The ids come from workspace-scoped sandbox ownership rows.
     const spaces = await this.model.findAll({
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       where: {
         id: {
@@ -1036,7 +1036,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   // just removed. Mirrors the grant-tuple lock in `GroupPermissionResource`.
   private async getMembershipLock(transaction: Transaction): Promise<void> {
     const key = `space_membership:${this.workspaceId}:${this.id}`;
-    // biome-ignore lint/plugin/noRawSql: advisory lock requires raw SQL
+    // oxlint-disable-next-line dust/noRawSql -- advisory lock requires raw SQL
     await frontSequelize.query("SELECT pg_advisory_xact_lock(hashtext(:key))", {
       replacements: { key },
       transaction,

@@ -30,7 +30,7 @@ const LEARNING_POINTS = [
   'The metrics that matter beyond "time saved": adoption, prep time, and pipeline impact.',
 ];
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function EbookGtmLandingPage() {
   return (
     <>

@@ -62,7 +62,7 @@ makeScript(
     const auth = await Authenticator.fromDustSuperUser({ wId: workspaceId });
 
     const [conversationRes, agent] = await Promise.all([
-      // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
+      // oxlint-disable-next-line dust/noExpensiveConversationFetch -- intentional full conversation load
       getConversation(auth, conversationId, true),
       AgentResource.fetchById(auth, agentId),
     ]);

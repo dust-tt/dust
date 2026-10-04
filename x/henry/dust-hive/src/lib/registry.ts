@@ -308,7 +308,6 @@ async function waitForHttpReady(
 }
 
 // Wait for file-based service (like SDK build) to be ready
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complex build wait with error detection
 async function waitForFileReady(
   service: ServiceName,
   env: Environment,

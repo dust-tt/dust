@@ -117,7 +117,7 @@ export async function ensureConversationTitle(
     return conversation.title;
   }
 
-  // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
+  // oxlint-disable-next-line dust/noExpensiveConversationFetch -- intentional full conversation load
   const conversationLightRes = await getLightConversation(
     auth,
     conversation.sId

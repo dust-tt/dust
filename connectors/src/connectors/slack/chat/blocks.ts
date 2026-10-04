@@ -1,4 +1,4 @@
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+// oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 import type { RequestToolPermissionActionValueParsed } from "@connectors/api/webhooks/webhook_slack_bot_interaction";
 import {
   ANSWER_USER_QUESTION_SKIP,
@@ -13,7 +13,6 @@ import {
   USER_QUESTION_OPTIONS_BLOCK_ID,
   USER_QUESTION_TEXT_ACTION_ID,
   USER_QUESTION_TEXT_BLOCK_ID,
-  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/api/webhooks/webhook_slack_bot_interaction";
 import type { MessageFootnotes } from "@connectors/lib/bot/citations";
 import { truncate } from "@connectors/types";

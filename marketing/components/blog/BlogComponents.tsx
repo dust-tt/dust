@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { Grid, H1, P } from "@marketing/components/home/ContentComponents";
 import { contentfulImageLoader } from "@marketing/lib/contentful/imageLoader";
 import type { BlogPostSummary } from "@marketing/lib/contentful/types";

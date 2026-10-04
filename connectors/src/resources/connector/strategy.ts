@@ -26,7 +26,7 @@ import { NotionConnectorStrategy } from "@connectors/resources/connector/notion"
 import { SalesforceConnectorStrategy } from "@connectors/resources/connector/salesforce";
 import { SlackConnectorStrategy } from "@connectors/resources/connector/slack";
 import { SnowflakeConnectorStrategy } from "@connectors/resources/connector/snowflake";
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+// oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 import { WebCrawlerStrategy } from "@connectors/resources/connector/webcrawler";
 import { ZendeskConnectorStrategy } from "@connectors/resources/connector/zendesk";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";

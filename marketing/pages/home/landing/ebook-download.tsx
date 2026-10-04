@@ -14,7 +14,7 @@ const BOOK_DEMO_URL = "/home/contact";
 
 // Standalone page: rendered bare, without LandingLayout, so there is no nav,
 // footer, or cookie/promo banner — just the Dust logo and the ebook hero.
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function EbookDownload() {
   return (
     <>

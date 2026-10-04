@@ -211,7 +211,7 @@ export class CouponRedemptionResource extends BaseResource<CouponRedemptionModel
     // WORKSPACE_ISOLATION_BYPASS: Poke global view — listing all redemptions
     // across workspaces for a single coupon for admin visibility.
     const rows = await this.model.findAll({
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       where: { couponId: coupon.id },
       include: [{ model: UserModel, as: "redeemedByUser", required: false }],

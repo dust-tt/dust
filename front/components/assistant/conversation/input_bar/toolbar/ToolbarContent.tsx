@@ -72,7 +72,6 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
     openLinkDialog(editor);
   }
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     function handleOpenDialog(event: Event): void {
       // Prevent other toolbar instances from handling the same event.

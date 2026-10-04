@@ -43,7 +43,6 @@ export function usePokeFeatureFlagWorkspacesAllCells({
     setRefreshKey((key) => key + 1);
   }, []);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey is an intentional refetch trigger via mutate()
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);

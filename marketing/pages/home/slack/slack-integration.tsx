@@ -256,7 +256,7 @@ function InstallationSection() {
   );
 }
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function SlackIntegration() {
   const router = useRouter();
 

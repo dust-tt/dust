@@ -158,6 +158,7 @@
         "front/temporal/**/*.ts"
       ],
       "excludeFiles": [
+        "front-api/esbuild*.ts",
         "**/*.{test,spec}.{ts,tsx}"
       ],
       "rules": {
@@ -315,6 +316,13 @@
                   "date-fns-tz/format*"
                 ],
                 "message": "Format dates with the functions of @app/lib/i18n/format instead of date-fns."
+              },
+              {
+                "group": [
+                  "@tiptap/react"
+                ],
+                "importNamePattern": "EditorContent",
+                "message": "Import EditorContent from @app/components/editor/EditorContent so the editor is masked from session replay."
               },
               {
                 "group": [

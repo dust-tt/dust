@@ -6,7 +6,7 @@ import type {
   WithCreationAttributes,
 } from "@connectors/resources/connector/strategy";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+// oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
 import type { ModelId, WebCrawlerConfiguration } from "@connectors/types";
 import type { Transaction } from "sequelize";

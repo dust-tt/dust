@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 
 import { FinalCTASection } from "@marketing/components/home/content/Competitor/FinalCTASection";
 import { FAQ } from "@marketing/components/home/FAQ";

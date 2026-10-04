@@ -1,4 +1,4 @@
-// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+// oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- existing usage
 import { INTERNAL_MIME_TYPES_VALUES } from "@dust-tt/client";
 import { z } from "zod";
 import { CLIENT_MESSAGE_ORIGINS } from "../assistant/conversation";

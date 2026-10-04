@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { H1, P } from "@marketing/components/home/ContentComponents";
 import {
   HomeReveal,

@@ -51,7 +51,6 @@ export const BlockInsertDropdown = ({
     }
   }, [triggerRect]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     updateTriggerPosition();
   }, [triggerRect, updateTriggerPosition]);

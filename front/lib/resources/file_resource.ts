@@ -278,7 +278,7 @@ export class FileResource extends BaseResource<FileModel> {
     const frames = await this.model.findAll({
       // WORKSPACE_ISOLATION_BYPASS: The sandbox reaper operates across workspaces; these IDs come
       // from workspace-scoped sandbox ownership rows.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       where: {
         contentType: frameV2ContentType,
@@ -303,7 +303,7 @@ export class FileResource extends BaseResource<FileModel> {
     batchSize: number;
   }): Promise<FileResource[]> {
     const frames = await this.model.findAll({
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       where: {
         contentType: frameV2ContentType,
@@ -459,7 +459,7 @@ export class FileResource extends BaseResource<FileModel> {
       where: { token },
       // WORKSPACE_ISOLATION_BYPASS: Used when a frame is accessed through a public token, at this
       // point we don't know the workspaceId.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     if (!shareableFile) {

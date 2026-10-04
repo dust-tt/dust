@@ -1,5 +1,5 @@
 import { cn } from "@dust-tt/sparkle";
-// biome-ignore lint/style/noRestrictedImports: this wrapper is the single sanctioned import site.
+// oxlint-disable-next-line no-restricted-imports -- this wrapper is the single sanctioned import site.
 import { EditorContent as TiptapEditorContent } from "@tiptap/react";
 import type { ComponentProps } from "react";
 

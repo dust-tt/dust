@@ -106,7 +106,7 @@ function getContentTypeLabel(
   return lessonLabel;
 }
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function LessonPage({
   lesson,
   searchableItems,

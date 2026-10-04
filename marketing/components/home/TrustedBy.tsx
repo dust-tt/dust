@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { H4 } from "@marketing/components/home/ContentComponents";
 import { LogoBarImage } from "@marketing/components/home/LogoBarImage";
 import { useLogoBar } from "@marketing/components/home/LogoListsContext";

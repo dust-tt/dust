@@ -627,7 +627,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
     const replicaDb = getFrontReplicaDbConnection();
 
-    // biome-ignore lint/plugin/noRawSql: Aggregation query with GROUP BY day
+    // oxlint-disable-next-line dust/noRawSql -- Aggregation query with GROUP BY day
     const rows = await replicaDb.query<{
       day: string;
       positive: string;

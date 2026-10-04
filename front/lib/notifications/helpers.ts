@@ -401,7 +401,7 @@ const generateUnreadMessagesSummary = async ({
     );
   }
 
-  // biome-ignore lint/plugin/noExpensiveConversationFetch: message content is needed to compute unread messages.
+  // oxlint-disable-next-line dust/noExpensiveConversationFetch -- message content is needed to compute unread messages.
   const conversationRes = await getLightConversation(
     auth,
     payload.conversationId

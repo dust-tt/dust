@@ -166,7 +166,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
       order: [["createdAt", "DESC"]],
       include: [WorkspaceModel],
       // WORKSPACE_ISOLATION_BYPASS: Invitations can span multiple workspaces prior to login.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -456,7 +456,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
         },
         include: [WorkspaceModel],
         // WORKSPACE_ISOLATION_BYPASS: We don't know the workspace yet, the user is not authed
-        // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+        // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
         dangerouslyBypassWorkspaceIsolationSecurity: true,
       });
       if (!membershipInvite) {
@@ -538,7 +538,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
       limit,
       include: [WorkspaceModel],
       // WORKSPACE_ISOLATION_BYPASS: Reminder job scans across all workspaces.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 

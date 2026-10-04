@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { P } from "@marketing/components/home/ContentComponents";
 import { LandingEmailSignup } from "@marketing/components/home/content/Landing/LandingEmailSignup";
 import { TRACKING_AREAS } from "@marketing/lib/tracking";

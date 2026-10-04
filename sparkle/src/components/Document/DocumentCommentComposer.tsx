@@ -43,7 +43,6 @@ export const DocumentCommentComposer = ({
   const layoutVersion = useEditorLayoutVersion(editor, containerRef);
   const { cancelDraft, submitDraft } = comments;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: layoutVersion re-measures after document changes and resizes
   useLayoutEffect(() => {
     const container = containerRef.current;
     const highlights = editor.view.dom.querySelectorAll<HTMLElement>(

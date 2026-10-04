@@ -257,7 +257,6 @@ export function CommandPaletteActionPhase({
   }, []);
 
   // Reset selection when the available actions change (e.g., switching between items).
-  // biome-ignore lint/correctness/useExhaustiveDependencies: actions is an intentional trigger
   useEffect(() => {
     setSelectedIndex(0);
   }, [actions]);

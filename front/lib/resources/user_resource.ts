@@ -844,7 +844,7 @@ export class UserResource extends BaseResource<UserModel> {
     const encodedValue = value.replaceAll(",", USER_METADATA_COMMA_REPLACEMENT);
 
     await withTransaction(async (transaction) => {
-      // biome-ignore lint/plugin/noRawSql: advisory lock requires raw SQL
+      // oxlint-disable-next-line dust/noRawSql -- advisory lock requires raw SQL
       await frontSequelize.query(
         "SELECT pg_advisory_xact_lock(hashtext(:lockKey))",
         {

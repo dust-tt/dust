@@ -5,9 +5,8 @@ import type {
   ConnectorProviderModelMapping,
   ConnectorProviderModelResourceMapping,
   ConnectorProviderStrategy,
-  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+  // oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 } from "@connectors/resources/connector/strategy";
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { getConnectorProviderStrategy } from "@connectors/resources/connector/strategy";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";

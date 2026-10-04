@@ -183,7 +183,6 @@ export function BlockedActionsProvider({
   >(new Set());
 
   // Reset ephemeral approvals whenever the conversation changes.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: conversationId is an intentional reset trigger, not read in the body
   useEffect(() => {
     setConversationApprovedTools(new Set());
   }, [conversationId]);
@@ -478,7 +477,9 @@ export function BlockedActionsProvider({
   // Cleanup all timers on unmount
   useEffect(() => {
     return () => {
+      // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
       pulseTimersRef.current.forEach((timer) => clearTimeout(timer));
+      // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
       pulseTimersRef.current.clear();
     };
   }, []);

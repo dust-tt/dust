@@ -60,7 +60,7 @@ const disableAnimation = () => {
   const css = document.createElement("style");
   css.appendChild(
     document.createTextNode(
-      // biome-ignore lint/plugin/noCssImportant: theme changes intentionally disable transitions for one frame.
+      // oxlint-disable-next-line dust/noCssImportant -- theme changes intentionally disable transitions for one frame.
       `*,*::before,*::after{-webkit-transition:none!important;-moz-transition:none!important;-o-transition:none!important;-ms-transition:none!important;transition:none!important}`
     )
   );
@@ -118,7 +118,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, [theme, updateTheme]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const handleThemeChange = useCallback(
     (newTheme: Theme) => {
       setTheme(newTheme);
@@ -140,7 +139,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [handleSystemChange]);
 
   // localStorage event handling
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
       if (e.key !== "theme") {

@@ -1,4 +1,4 @@
-// biome-ignore-all lint/plugin/noRawSql: test file uses raw SQL for setup and verification
+/* oxlint-disable dust/noRawSql -- test file uses raw SQL for setup and verification */
 import { loadAllModels } from "@app/admin/db";
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { Authenticator } from "@app/lib/auth";

@@ -50,7 +50,6 @@ export function ManagePodGroupsPanel({
   // The Pod's current groups are the starting point every time the panel opens, so a cancelled
   // edit leaves nothing behind. Keyed on `isOpen` only: `pod.groups` is a new array on every SWR
   // revalidation, and re-running then would wipe the selection being edited.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reset state when the panel opens
   useEffect(() => {
     if (isOpen) {
       setSelectedGroupIds(new Set(pod.groups.map((group) => group.sId)));
@@ -62,6 +61,7 @@ export function ManagePodGroupsPanel({
         )
       );
     }
+  // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, [isOpen]);
 
   const handleSelectionChange = useCallback(

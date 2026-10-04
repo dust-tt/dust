@@ -364,7 +364,6 @@ export const SpaceResourcesList = ({
   const { setIsSearchDisabled, setTargetDataSourceViews } =
     useContext(SpaceSearchContext);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const rows: RowData[] = useMemo(() => {
     if (!spaceDataSourceViews) {
       return [];

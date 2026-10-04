@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { Grid, H1, H3, P } from "@marketing/components/home/ContentComponents";
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
 import {

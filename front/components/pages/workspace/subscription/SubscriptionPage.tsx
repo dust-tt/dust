@@ -140,7 +140,6 @@ export function SubscriptionPage() {
     }
   }, [isCreditPriced, owner.sId, router]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (type === "succeeded") {
       if (subscription.plan.code === planCode) {

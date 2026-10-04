@@ -217,7 +217,6 @@ function AgentBuilderForm({
     },
   });
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the loading flags re-run the reset when a revalidation settles, as they did before the hydration moved out.
   useEffect(() => {
     const currentValues = form.getValues();
 

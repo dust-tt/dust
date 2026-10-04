@@ -122,6 +122,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
     return () => {
       descriptionField.ref(null);
     };
+  // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, [descriptionField.ref, editor]);
 
   useEffect(() => {

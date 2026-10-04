@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { LessonLink } from "@marketing/components/academy/LessonLink";
 import {
   A,

@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { H2 } from "@marketing/components/home/ContentComponents";
 import { LegacyButton as Button } from "@dust-tt/sparkle";
 import Link from "next/link";

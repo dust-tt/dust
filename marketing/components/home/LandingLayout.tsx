@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import type { CookieConsentChoices } from "@marketing/components/home/CookieBanner";
 import { CookieBanner } from "@marketing/components/home/CookieBanner";
 import { LogoListsProvider } from "@marketing/components/home/LogoListsContext";

@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { HomeAIOperatorsCTASection } from "@marketing/components/home/content/Product/HomeAIOperatorsCTASection";
 import { FAQ, type FAQItem } from "@marketing/components/home/FAQ";
 import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
@@ -988,7 +987,7 @@ function FAQSection() {
 
 // ---------- Page ----------
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function Pricing() {
   const router = useRouter();
   const [billing, setBilling] = useState<Billing>("yearly");

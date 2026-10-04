@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
 import LandingLayout from "@marketing/components/home/LandingLayout";
 import { PageMetadata } from "@marketing/components/home/PageMetadata";
@@ -242,7 +241,7 @@ function ModelCreditsTable({ providerSections }: ModelCreditsTableProps) {
 
 // ---------- Page ----------
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: matches pricing page pattern
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- matches pricing page pattern
 export default function Credits({ providerSections }: CreditsPageProps) {
   const router = useRouter();
 

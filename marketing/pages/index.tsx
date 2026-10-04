@@ -117,7 +117,7 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async (
   };
 };
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function Home({ news }: HomeProps) {
   return <Landing news={news} />;
 }

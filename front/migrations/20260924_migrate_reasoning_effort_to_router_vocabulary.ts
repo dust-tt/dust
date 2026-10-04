@@ -513,7 +513,7 @@ async function findAgentConfigurationChanges(
         limit: PAGE_SIZE,
         raw: true,
         // WORKSPACE_ISOLATION_BYPASS: Migration runs across all workspaces.
-        // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+        // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
         dangerouslyBypassWorkspaceIsolationSecurity: true,
       });
     const lastRow = rows.at(-1);
@@ -556,7 +556,7 @@ async function findPendingSuggestionChanges(
     where: { kind: "model", state: "pending", createdAt: { [Op.lt]: cutoff } },
     raw: true,
     // WORKSPACE_ISOLATION_BYPASS: Migration runs across all workspaces.
-    // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+    // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
     dangerouslyBypassWorkspaceIsolationSecurity: true,
   });
 

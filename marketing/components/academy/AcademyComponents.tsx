@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 "use client";
 
 import { Grid, H2, P } from "@marketing/components/home/ContentComponents";

@@ -1,8 +1,9 @@
 // @ts-nocheck
-// biome-ignore-all: imperative DOM/SVG scene ported from the
+// Imperative DOM/SVG scene ported from the
 // landing-gather-remix design prototype. The animation and SVG foreignObject
 // chat cards rely on per-frame DOM mutation — rewriting as React idioms
 // would lose visual fidelity. Keep this file self-contained.
+/* oxlint-disable */
 
 import { buildAgent } from "@marketing/components/home/content/Product/heroOfficeAgentAvatar";
 import { createChatCard } from "@marketing/components/home/content/Product/heroOfficeChatCard";

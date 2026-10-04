@@ -444,7 +444,6 @@ export const SlashCommandDropdown = forwardRef<
     );
 
     // Reset selected index when the visible item list changes, not on every render.
-    // biome-ignore lint/correctness/useExhaustiveDependencies: itemIdsKey is intentional trigger
     useEffect(() => {
       setSelectedIndex(
         getDefaultSelectedIndex(
@@ -453,6 +452,7 @@ export const SlashCommandDropdown = forwardRef<
           defaultSelectedItemId
         )
       );
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
     }, [itemIdsKey]);
 
     // Update virtual trigger position.

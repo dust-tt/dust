@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 
 import { H2 } from "@marketing/components/home/ContentComponents";
 import { ResourceAvatar } from "@marketing/components/resources/resources_icons";

@@ -293,7 +293,7 @@ export function PodMenu({
                         isRounded
                       />
                     }
-                    // biome-ignore lint/plugin/noCssImportant: legacy [no-css-important]
+                    // oxlint-disable-next-line dust/noCssImportant -- legacy [no-css-important]
                     className="text-foreground!"
                   />
                 ))}

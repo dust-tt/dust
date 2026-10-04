@@ -571,7 +571,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     }
 
     // `unnest` pairs both arrays by position into rows of item ID and reconciled amount.
-    // biome-ignore lint/plugin/noRawSql: Sequelize cannot bulk-update each row with a distinct value.
+    // oxlint-disable-next-line dust/noRawSql -- Sequelize cannot bulk-update each row with a distinct value.
     await frontSequelize.query(
       `
         UPDATE agent_message_consumption_items AS item

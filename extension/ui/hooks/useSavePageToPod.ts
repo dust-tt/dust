@@ -1,6 +1,6 @@
 import { useFileUploaderService as useFrontFileUploaderService } from "@app/hooks/useFileUploaderService";
 import type { LightWorkspaceType } from "@app/types/user";
-// biome-ignore lint/plugin/noDirectSparkleNotification: extension notification provider setup follows this pattern.
+// oxlint-disable-next-line dust/noDirectSparkleNotification -- extension notification provider setup follows this pattern.
 import { useSendNotification } from "@dust-tt/sparkle";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import { useCallback, useMemo, useState } from "react";

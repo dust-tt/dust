@@ -42,7 +42,6 @@ export function usePokeProductionChecksAllCells() {
     setRefreshKey((key) => key + 1);
   }, []);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey is an intentional refetch trigger via mutateProductionChecks()
   useEffect(() => {
     let cancelled = false;
     let intervalId: ReturnType<typeof setInterval> | undefined;

@@ -231,7 +231,6 @@ export function SkillBuilderInstructionsReferenceSummary({
     }
   }, []);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: referenceItems.length triggers re-measurement
   useEffect(() => {
     if (contentRef.current) {
       setIsOverflow(contentRef.current.scrollHeight > overflowThresholdHeight);

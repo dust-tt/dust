@@ -1256,7 +1256,7 @@ function ReadyToMoveSection() {
 // Page
 // ---------------------------------------------------------------------------
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function Enterprise() {
   const router = useRouter();
 

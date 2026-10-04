@@ -472,7 +472,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       order: [["id", "ASC"]],
       // WORKSPACE_ISOLATION_BYPASS: daily sync job iterates over all remote MCP servers across
       // workspaces (see front/temporal/remote_tools/activities.ts).
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -486,7 +486,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     const blob = await this.model.findByPk(id, {
       // WORKSPACE_ISOLATION_BYPASS: daily sync job resolves each server listed by
       // dangerouslyListAllServersIds before building an Authenticator for its workspace.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     if (!blob) {

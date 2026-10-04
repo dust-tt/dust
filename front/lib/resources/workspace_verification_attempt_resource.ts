@@ -50,7 +50,7 @@ export class WorkspaceVerificationAttemptResource extends BaseResource<Workspace
     const existing = await this.model.findOne({
       where: { phoneNumberHash, verifiedAt: { [Op.ne]: null } },
       // WORKSPACE_ISOLATION_BYPASS: Global uniqueness check - a verified phone can only be used by one workspace.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     return existing !== null;
@@ -63,7 +63,7 @@ export class WorkspaceVerificationAttemptResource extends BaseResource<Workspace
     const existing = await this.model.findOne({
       where: { phoneNumberHash, verifiedAt: { [Op.ne]: null } },
       // WORKSPACE_ISOLATION_BYPASS: Poke search needs to find workspace across all workspaces by phone hash.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     return existing?.workspaceId ?? null;
@@ -211,7 +211,7 @@ export class WorkspaceVerificationAttemptResource extends BaseResource<Workspace
       where: { phoneNumberHash, verifiedAt: { [Op.ne]: null } },
       // WORKSPACE_ISOLATION_BYPASS: A verified phone is globally unique across workspaces;
       // resetting it for reuse must clear rows in any workspace that previously claimed it.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 

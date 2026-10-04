@@ -1,4 +1,4 @@
-// biome-ignore-all lint/plugin/noRawSql: relocation SQL file requires raw SQL
+/* oxlint-disable dust/noRawSql -- relocation SQL file requires raw SQL */
 
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";

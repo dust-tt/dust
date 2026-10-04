@@ -78,7 +78,6 @@ export function useSpaces({
     { ...swrOptions, disabled }
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const spaces = useMemo(() => {
     return (
       data?.spaces?.filter((s) => kinds === "all" || kinds.includes(s.kind)) ??

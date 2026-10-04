@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 
 // Import all enrichment configs
 import { integrationEnrichments } from "@marketing/components/home/content/Integration/configs";

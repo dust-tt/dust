@@ -151,7 +151,7 @@ async function loadFullConversationForStep(
   agentLoopArgs: AgentLoopArgs,
   step: number
 ): Promise<Result<ConversationType, Error>> {
-  // biome-ignore lint/plugin/noExpensiveConversationFetch: checkpoint rejection requires the authoritative context
+  // oxlint-disable-next-line dust/noExpensiveConversationFetch -- checkpoint rejection requires the authoritative context
   const result = await getConversation(
     auth,
     agentLoopArgs.conversationId,

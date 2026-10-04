@@ -415,7 +415,7 @@ export class AgentSuggestionFactory {
     suggestion: AgentSuggestionResource,
     createdAt: Date
   ): Promise<void> {
-    // biome-ignore lint/plugin/noRawSql: Raw SQL is the only reliable way to backdate timestamps in tests
+    // oxlint-disable-next-line dust/noRawSql -- Raw SQL is the only reliable way to backdate timestamps in tests
     await frontSequelize.query(
       `UPDATE agent_suggestions SET "createdAt" = :createdAt, "updatedAt" = :createdAt WHERE id = :id`,
       {

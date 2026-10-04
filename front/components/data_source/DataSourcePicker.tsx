@@ -67,7 +67,6 @@ export default function DataSourcePicker({
       )
     : undefined;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (
       !isSpaceDataSourceViewsLoading &&

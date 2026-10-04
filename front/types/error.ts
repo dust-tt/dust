@@ -2,7 +2,7 @@
 
 import { CONVERSATION_ERROR_TYPES } from "@app/types/assistant/conversation";
 import type { CoreAPIError } from "@app/types/core/core_api";
-// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+// oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- existing usage
 import type { ConnectorsAPIError } from "@dust-tt/client";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { CellInfo } from "./cell";

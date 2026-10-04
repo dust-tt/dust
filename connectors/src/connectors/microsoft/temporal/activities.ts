@@ -1,4 +1,4 @@
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+// oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import {
   clientApiPost,
@@ -38,7 +38,7 @@ import {
   isMalformedDriveError,
   isSiteNotFoundError,
 } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+// oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 import { launchMicrosoftFullSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
 import {
   computeDisallowedLabels,
@@ -50,7 +50,7 @@ import {
   shouldSyncFileBasedOnSensitivityLabels,
   syncOneFile,
   updateDescendantsParentsInCore,
-  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+  // oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 } from "@connectors/connectors/microsoft/temporal/file";
 import { syncOneList } from "@connectors/connectors/microsoft/temporal/lists";
 import {

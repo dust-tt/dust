@@ -32,7 +32,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+// oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- existing usage
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 /**

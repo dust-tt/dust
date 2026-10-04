@@ -238,7 +238,6 @@ export function InputBarContextProvider({
     });
   }, []);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const setSelectedAgentOuter = useCallback(
     (agentMention: RichAgentMention | null) => {
       if (agentMention) {
@@ -252,7 +251,6 @@ export function InputBarContextProvider({
   );
 
   // Immediately clear the selected agent and return the previous selected agent to avoid sticky agent mentions.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const getAndClearSelectedAgent = useCallback(() => {
     const previousSelectedAgent = selectedAgent;
     setSelectedAgent(null);

@@ -327,6 +327,7 @@ export function SkillBuilderInstructionsEditor({
         toAttachedKnowledge(collectKnowledgeItems(editor))
       );
     },
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
     [attachedKnowledgeField.onChange]
   );
 
@@ -433,6 +434,7 @@ export function SkillBuilderInstructionsEditor({
       );
       syncAttachedKnowledgeFromEditor(editor);
     },
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
     [
       instructionsField.onChange,
       instructionsHtmlField.onChange,
@@ -562,6 +564,7 @@ export function SkillBuilderInstructionsEditor({
       instructionsField.ref(null);
       attachedKnowledgeField.ref(null);
     };
+  // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, [attachedKnowledgeField.ref, editor, instructionsField.ref]);
 
   const handleOpenInsertMenu = useCallback(() => {

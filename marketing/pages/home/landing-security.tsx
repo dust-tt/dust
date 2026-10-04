@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js page file
 import { H2, P } from "@marketing/components/home/ContentComponents";
 import { HomeEyebrow } from "@marketing/components/home/content/Product/HomeEyebrow";
 import {
@@ -221,7 +220,7 @@ function DotList({ items }: { items: DotItem[] }) {
   );
 }
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: matches sibling landing pages
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- matches sibling landing pages
 export default function LandingSecurity() {
   const router = useRouter();
 

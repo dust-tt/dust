@@ -30,7 +30,7 @@ const LEARNING_POINTS = [
   'The metrics that prove transformation, beyond "time saved": Operator density, capability gain, and the "remove AI tomorrow" test.',
 ];
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function EbookLandingPage() {
   return (
     <>

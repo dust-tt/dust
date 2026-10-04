@@ -192,7 +192,6 @@ export function useSkillInstructionsEditor({
   onSkillDetailsRef.current = onSkillDetails;
   onToolDetailsRef.current = onToolDetails;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: we want to re-run this memo when the skill references change
   const editableExtensions = useMemo(
     () =>
       buildSkillInstructionsEditableExtensions({
@@ -203,6 +202,7 @@ export function useSkillInstructionsEditor({
         onToolDetailsRef,
         owner,
       }),
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
     [currentSkillId, enableSlashCommands, owner]
   );
 

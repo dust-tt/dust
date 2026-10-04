@@ -83,7 +83,6 @@ export const DocumentCommentMarkers = ({
     unresolved.map((comment) => [comment.id, comment.messages[0].author.name])
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: layoutVersion re-measures after document changes and resizes
   useLayoutEffect(() => {
     const container = containerRef.current;
     setClusters(

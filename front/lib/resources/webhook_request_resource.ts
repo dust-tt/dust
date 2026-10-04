@@ -231,7 +231,7 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     webhookRequestTtl = WEBHOOK_REQUEST_TTL,
     maxWebhookRequestsToKeep = MAX_WEBHOOK_REQUESTS_TO_KEEP,
   }: Partial<CleanUpWorkspaceOptions> = {}): Promise<WorkspaceResource[]> {
-    // biome-ignore lint/plugin/noRawSql: automatic suppress
+    // oxlint-disable-next-line dust/noRawSql -- automatic suppress
     const rows = await frontSequelize.query<{
       workspaceId: ModelId;
       total_entries: number;

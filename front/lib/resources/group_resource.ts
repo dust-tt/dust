@@ -967,7 +967,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     // Single combined query to fetch both the global group (implicit membership for all workspace members)
     // and groups the user explicitly belongs to via group_memberships.
-    // biome-ignore lint/plugin: Raw query to optimize memory usage as people may have a lot of groups.
+    // oxlint-disable-next-line dust/noRawSql -- Raw query to optimize memory usage as people may have a lot of groups.
     const groups = await frontSequelize.query<{ id: ModelId; kind: string }>(
       `
       SELECT id, kind FROM groups

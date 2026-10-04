@@ -203,7 +203,7 @@ export class ActivationPodResource extends BaseResource<ActivationPodModel> {
       // WORKSPACE_ISOLATION_BYPASS: nightly reconcile scan across all workspaces
       // to find which ones have a live activation pod (see
       // front/temporal/activation_scheduler/client.ts).
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 

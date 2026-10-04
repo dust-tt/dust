@@ -67,6 +67,7 @@ export function useRemoveSkillSpace() {
       areSpaceRequirementsReady,
       confirmBlockedSpaceRemoval,
       knowledgeBySpaceId,
+      // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
       selectedAdditionalSpaces,
       skillsBySpaceId,
       spaceIdsUsedBySkill,

@@ -109,7 +109,7 @@ export const getStaticProps: GetStaticProps<IndustryDynamicPageProps> = async ({
   };
 };
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function IndustryDynamicPage({
   customerStories,
   industryKey,

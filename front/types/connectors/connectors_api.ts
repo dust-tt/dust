@@ -1,6 +1,6 @@
-// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+// oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- existing usage
 import type { ConnectorsAPIError } from "@dust-tt/client";
-// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+// oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- existing usage
 import { isConnectorsAPIError } from "@dust-tt/client";
 import { z } from "zod";
 import type { ContentNodeType } from "../core/content_node";

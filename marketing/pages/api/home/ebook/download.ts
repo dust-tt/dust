@@ -37,7 +37,7 @@ function isValidToken(token: string): boolean {
   return signature === expectedSignature;
 }
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: API route
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- API route
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });

@@ -114,7 +114,7 @@ const VideoPlayer = () => {
   );
 };
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function About() {
   const router = useRouter();
 

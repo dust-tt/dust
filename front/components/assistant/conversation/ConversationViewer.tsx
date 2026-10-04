@@ -443,7 +443,6 @@ export const ConversationViewer = ({
   );
 
   // Setup the initial list data when the conversation is loaded.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     // We also wait in case of revalidation because otherwise we might use stale data from the swr cache.
     // Consider this scenario:

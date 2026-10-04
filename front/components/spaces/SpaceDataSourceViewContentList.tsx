@@ -296,7 +296,6 @@ export const SpaceDataSourceViewContentList = ({
   const sortingAsString = useMemo(() => JSON.stringify(sorting), [sorting]);
 
   // Reset pagination when sorting changes
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     resetPagination();
   }, [sortingAsString, resetPagination]);

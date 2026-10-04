@@ -97,13 +97,11 @@ export const MentionDropdown = forwardRef<
     }));
 
     // Reset the selected index when items change (e.g., when query changes).
-    // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
     useEffect(() => {
       setSelectedIndex(0);
     }, [suggestions]);
 
     // Scroll selected item into view when selection changes.
-    // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
     useEffect(() => {
       if (selectedItemRef.current) {
         selectedItemRef.current.scrollIntoView({

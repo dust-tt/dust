@@ -470,7 +470,6 @@ const InputBarContainer = ({
     [selectableSpacesById, selectedSpaceIds]
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const removePastedAttachmentChip = useCallback(
     (fileId: string) => {
       const editorInstance = editorRef.current;
@@ -502,7 +501,6 @@ const InputBarContainer = ({
     [editorRef]
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const insertPastedAttachmentChip = useCallback(
     ({
       fileId,
@@ -583,7 +581,6 @@ const InputBarContainer = ({
     conversationId: conversation?.sId,
   });
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const handleInlineText = useCallback(
     async (fileId: string, textContent: string) => {
       const editorInstance = editorRef.current;
@@ -1186,7 +1183,6 @@ const InputBarContainer = ({
         }
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (!nodeOrUrlCandidate || isSearchLoading || isSpacesLoading) {
       return;
@@ -1430,7 +1426,6 @@ const InputBarContainer = ({
 
   // Restore draft text when switching conversations (including new conversations).
   // Agent selection is handled by useHandleMention.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     hasCompletedInitialContentRestoreRef.current = false;
 
