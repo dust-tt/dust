@@ -246,8 +246,7 @@
         "marketing/pages/**/*.{js,jsx,ts,tsx}"
       ],
       "rules": {
-        "dust/nextjsPageComponentNaming": "error",
-        "dust/nextjsNoDataFetchingInGetssp": "error"
+        "dust/nextjsPageComponentNaming": "error"
       }
     },
     {

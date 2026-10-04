@@ -221,18 +221,6 @@ const CASES = [
     "export default function Home() { return null; }",
     0,
   ],
-  [
-    "nextjsNoDataFetchingInGetssp",
-    "pages/a.tsx",
-    "export const getServerSideProps = async () => ({});",
-    1,
-  ],
-  [
-    "nextjsNoDataFetchingInGetssp",
-    "pages/b.tsx",
-    "export const other = async () => ({});",
-    0,
-  ],
 ];
 
 const root = mkdtempSync(join(tmpdir(), "dust-oxlint-plugin-"));

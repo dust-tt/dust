@@ -490,34 +490,6 @@ const nextjsPageComponentNaming = {
   },
 };
 
-const nextjsNoDataFetchingInGetssp = {
-  create(context) {
-    if (!/\/pages\//.test(context.filename.replaceAll("\\", "/"))) {
-      return {};
-    }
-    return {
-      VariableDeclaration(node) {
-        if (
-          node.kind === "const" &&
-          node.declarations.some(
-            (d) =>
-              d.id.type === "Identifier" &&
-              d.id.name === "getServerSideProps" &&
-              !d.id.typeAnnotation &&
-              d.init
-          )
-        ) {
-          report(
-            context,
-            node,
-            "getServerSideProps should only return 'owner' and params from context.params. Fetch data client-side using SWR hooks instead."
-          );
-        }
-      },
-    };
-  },
-};
-
 const noUnusedReactImport = {
   create(context) {
     return {
@@ -572,6 +544,5 @@ export default {
     noInlineSuccessResponseBody,
     noDirectRoleCheck,
     nextjsPageComponentNaming,
-    nextjsNoDataFetchingInGetssp,
   },
 };
