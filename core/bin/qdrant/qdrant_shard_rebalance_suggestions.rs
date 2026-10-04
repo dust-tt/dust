@@ -292,9 +292,6 @@ async fn get_cluster_uris(seed_uri: &str, api_key: &str) -> Result<HashMap<u64, 
         .collect::<Result<HashMap<_, _>>>()
 }
 
-/// @cc [owner:aubin-tchoi,label:backend] settled-complete-placement
-/// Collect every discovered peer, including empty peers. Reject mismatched peer identities or
-/// collection/replica inventories, duplicate replicas, non-active replicas, transfers, and resharding.
 async fn gather_cluster_data(
     peer_uris: &HashMap<u64, String>,
     api_key: &str,
@@ -512,18 +509,6 @@ fn analyze_cluster_distribution(
     (total_points, peer_count, ideal_points_per_peer)
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:backend] admissible-greedy-moves
- * In point mode, select the largest variance improvement among all single-replica moves. Both modes
- * exclude existing destination replicas and break ties by collection, shard, source, destination.
- * Preserve point and replica totals. Stop after ten point moves or when no improving move remains.
- */
-/**
- * @cc [owner:aubin-tchoi,label:backend] explicit-memory-estimate
- * With memory enabled, require nonzero allocator telemetry for every peer. Estimate each replica
- * from its fraction of source points, prefer the most loaded eligible source, and suggest only one
- * move before requiring fresh state. These estimates do not establish physical capacity or headroom.
- */
 fn calculate_suggested_moves(
     mut peers: Vec<PeerLoad>,
     all_shards: &[ShardInfo],
