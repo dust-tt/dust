@@ -1,5 +1,6 @@
-import type { Logger } from "@app/logger/logger";
 // @ts-nocheck - Legacy migration kept for reference; it uses removed agent editor group APIs.
+
+import type { Logger } from "@app/logger/logger";
 import _ from "lodash";
 import { Op } from "sequelize";
 

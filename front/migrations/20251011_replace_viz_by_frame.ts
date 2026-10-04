@@ -1,5 +1,6 @@
-import type { Logger } from "@app/logger/logger";
 // @ts-nocheck
+
+import type { Logger } from "@app/logger/logger";
 import assert from "assert";
 import chunk from "lodash/chunk";
 

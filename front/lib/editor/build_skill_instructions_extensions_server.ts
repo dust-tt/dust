@@ -1,11 +1,12 @@
-import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
-import { LinkExtension } from "@app/components/editor/extensions/LinkExtension";
-import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 // Server-side variant of buildSkillInstructionsExtensions. Mirrors the editor
 // builder but uses schema-only TipTap extensions and avoids React/sparkle
 // imports, so it can be loaded by server and worker code (e.g.
 // skill_instructions_html) without dragging the editor's React NodeView chain
 // or @dust-tt/sparkle into the import graph (the worker bundle forbids sparkle).
+
+import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
+import { LinkExtension } from "@app/components/editor/extensions/LinkExtension";
+import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { BlockIdExtension } from "@app/components/editor/extensions/instructions/BlockIdExtension";
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/instructions/InstructionsDocumentExtension";

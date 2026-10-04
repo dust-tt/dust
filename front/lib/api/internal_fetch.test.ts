@@ -1,5 +1,6 @@
-import { internalFetch } from "@app/lib/api/internal_fetch";
 // @vitest-environment node
+
+import { internalFetch } from "@app/lib/api/internal_fetch";
 import http from "node:http";
 import { afterEach, describe, expect, it, vi } from "vitest";
 

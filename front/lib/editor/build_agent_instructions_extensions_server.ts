@@ -1,11 +1,12 @@
-import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
-import { LinkExtension } from "@app/components/editor/extensions/LinkExtension";
-import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 // Server-side variant of the agent builder's editor extensions
 // (`buildAgentInstructionsReadOnlyExtensions`): the same schema, with schema-only nodes and no
 // React or sparkle imports, so server code can convert agent instructions between markdown and
 // block HTML. Agent instructions differ from skill ones by the `instructionBlock` sections
 // (`<role>…</role>`), which the skill schema treats as plain text.
+
+import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
+import { LinkExtension } from "@app/components/editor/extensions/LinkExtension";
+import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { InstructionBlockNode } from "@app/components/editor/extensions/agent_builder/InstructionBlockNode";
 import { BlockIdExtension } from "@app/components/editor/extensions/instructions/BlockIdExtension";
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/instructions/InstructionsDocumentExtension";
