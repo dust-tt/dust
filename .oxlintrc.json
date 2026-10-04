@@ -1,0 +1,351 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "typescript",
+    "react",
+    "import"
+  ],
+  "categories": {
+    "correctness": "off"
+  },
+  "jsPlugins": [
+    "./oxlint-plugins/dust.mjs"
+  ],
+  "ignorePatterns": [
+    "**/.next/**",
+    "**/node_modules/**",
+    "**/workers-build/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/coverage/**",
+    "**/x/**",
+    "**/__snapshots__/**",
+    "**/.yalc/**",
+    "extension/shared/lib/swr.ts",
+    "extension/packages/**",
+    "cli/dust-sandbox/functions-runner/runner.js",
+    "front/migrations/**",
+    "front/mailing/**",
+    "connectors/migrations/**",
+    "sparkle/**/*.stories.tsx",
+    "sparkle/.storybook/**",
+    "sparkle/playground/**",
+    "sparkle/scripts/**",
+    "sparkle/rollup.config.js",
+    "sparkle/svgr.config.js",
+    "sparkle/postcss.config.js",
+    "sparkle/tailwind.config.js",
+    "sparkle/svgr-*-template.js",
+    "**/*.{mjs,cjs,mts,cts}"
+  ],
+  "rules": {
+    "no-unused-vars": [
+      "error",
+      {
+        "varsIgnorePattern": "^_",
+        "args": "none",
+        "caughtErrors": "none",
+        "ignoreRestSiblings": true
+      }
+    ],
+    "curly": [
+      "error",
+      "all"
+    ],
+    "typescript/consistent-type-imports": [
+      "error",
+      {
+        "prefer": "type-imports",
+        "disallowTypeAnnotations": false,
+        "fixStyle": "separate-type-imports"
+      }
+    ],
+    "import/no-cycle": "error"
+  },
+  "overrides": [
+    {
+      "files": [
+        "front/**/*.{js,jsx,ts,tsx}",
+        "front-api/**/*.{js,jsx,ts,tsx}",
+        "connectors/src/**/*.{js,jsx,ts,tsx}",
+        "cli/dust-cli/**/*.{js,jsx,ts,tsx}",
+        "extension/**/*.{js,jsx,ts,tsx}"
+      ],
+      "rules": {
+        "dust/noBulkLodash": "error",
+        "dust/noDirectSparkleNotification": "error"
+      }
+    },
+    {
+      "files": [
+        "front/**/*.{js,jsx,ts,tsx}",
+        "front-api/**/*.{js,jsx,ts,tsx}"
+      ],
+      "rules": {
+        "dust/enforceClientTypesInPublicApi": "error",
+        "dust/noClientDeepImports": "error"
+      }
+    },
+    {
+      "files": [
+        "front/**/*.{js,jsx,ts,tsx}",
+        "front-api/**/*.{js,jsx,ts,tsx}"
+      ],
+      "excludeFiles": [
+        "front/lib/api/assistant/conversation/fetch.ts",
+        "**/*.{test,spec}.{js,jsx,ts,tsx}",
+        "front/tests/**"
+      ],
+      "rules": {
+        "dust/noExpensiveConversationFetch": "error"
+      }
+    },
+    {
+      "files": [
+        "front/**/*.{js,jsx,ts,tsx}"
+      ],
+      "excludeFiles": [
+        "**/*.{test,spec}.{js,jsx,ts,tsx}"
+      ],
+      "rules": {
+        "dust/noLocaleLessDateTimeFormat": "error",
+        "dust/noLocaleLessToLocaleString": "error"
+      }
+    },
+    {
+      "files": [
+        "front/components/**/*.{js,jsx,ts,tsx}",
+        "front/hooks/**/*.{js,jsx,ts,tsx}",
+        "front/lib/swr/**/*.{js,jsx,ts,tsx}"
+      ],
+      "excludeFiles": [
+        "**/*.{test,spec}.{js,jsx,ts,tsx}"
+      ],
+      "rules": {
+        "dust/noBareLocaleCompare": "error"
+      }
+    },
+    {
+      "files": [
+        "front/components/**/*.{js,jsx,ts,tsx}",
+        "front/hooks/**/*.{js,jsx,ts,tsx}",
+        "front/lib/client/**/*.{js,jsx,ts,tsx}",
+        "front/lib/swr/**/*.{js,jsx,ts,tsx}"
+      ],
+      "excludeFiles": [
+        "**/*.{test,spec}.{js,jsx,ts,tsx}"
+      ],
+      "rules": {
+        "dust/noHardcodedEnUsLocale": "error"
+      }
+    },
+    {
+      "files": [
+        "front-api/**/*.ts"
+      ],
+      "excludeFiles": [
+        "front-api/routes/types.ts"
+      ],
+      "rules": {
+        "dust/noInlineSuccessResponseBody": "error"
+      }
+    },
+    {
+      "files": [
+        "front-api/**/*.ts",
+        "front/lib/api/**/*.ts",
+        "front/types/**/*.ts",
+        "front/temporal/**/*.ts"
+      ],
+      "excludeFiles": [
+        "**/*.{test,spec}.{ts,tsx}"
+      ],
+      "rules": {
+        "dust/noClientImportsInServer": "error"
+      }
+    },
+    {
+      "files": [
+        "front/components/**/*.{js,jsx,ts,tsx}",
+        "front/lib/**/*.tsx",
+        "front-spa/**/*.{js,jsx,ts,tsx}",
+        "sparkle/src/**/*.{js,jsx,ts,tsx}",
+        "viz/**/*.{js,jsx,ts,tsx}"
+      ],
+      "excludeFiles": [
+        "**/*.stories.{js,jsx,ts,tsx}",
+        "sparkle/src/lottie/**",
+        "sparkle/playground/**"
+      ],
+      "rules": {
+        "dust/noCssImportant": "error"
+      }
+    },
+    {
+      "files": [
+        "front/**/*.{js,jsx,ts,tsx}",
+        "front-api/**/*.{js,jsx,ts,tsx}",
+        "connectors/src/**/*.{js,jsx,ts,tsx}"
+      ],
+      "rules": {
+        "dust/noRawSql": "error",
+        "dust/noUnverifiedWorkspaceBypass": "error"
+      }
+    },
+    {
+      "files": [
+        "extension/**/*.{js,jsx,ts,tsx}",
+        "front-spa/**/*.{js,jsx,ts,tsx}",
+        "front/**/*.{js,jsx,ts,tsx}",
+        "front-api/**/*.{js,jsx,ts,tsx}",
+        "sparkle/**/*.{js,jsx,ts,tsx}"
+      ],
+      "excludeFiles": [
+        "front-api/server.ts",
+        "sparkle/.storybook/**",
+        "sparkle/playground/**"
+      ],
+      "rules": {
+        "dust/noNextImports": "error"
+      }
+    },
+    {
+      "files": [
+        "front/**/*.tsx",
+        "front-spa/**/*.tsx"
+      ],
+      "rules": {
+        "dust/noSparkleClassInFront": "error"
+      }
+    },
+    {
+      "files": [
+        "front/**/*.tsx"
+      ],
+      "rules": {
+        "dust/noStringConcatInJsx": "error"
+      }
+    },
+    {
+      "files": [
+        "marketing/pages/**/*.{js,jsx,ts,tsx}"
+      ],
+      "rules": {
+        "dust/nextjsPageComponentNaming": "error",
+        "dust/nextjsNoDataFetchingInGetssp": "error"
+      }
+    },
+    {
+      "files": [
+        "front-api/routes/**/*.ts"
+      ],
+      "rules": {
+        "dust/noDirectRoleCheck": "error"
+      }
+    },
+    {
+      "files": [
+        "connectors/src/lib/models/**/*.ts",
+        "connectors/src/resources/storage/models/**/*.ts",
+        "front/lib/models/**/*.ts",
+        "front/lib/resources/storage/models/**/*.ts",
+        "front/lib/resources/storage/wrappers/**/*.ts"
+      ],
+      "excludeFiles": [
+        "front/lib/resources/storage/data_types.ts",
+        "connectors/src/resources/storage/data_types.ts"
+      ],
+      "rules": {
+        "dust/tooLongIndexName": "warn",
+        "dust/noSequelizeDataTypesImport": "error"
+      }
+    },
+    {
+      "files": [
+        "front-spa/**",
+        "front/**",
+        "sparkle/**"
+      ],
+      "rules": {
+        "react/rules-of-hooks": "error",
+        "react/exhaustive-deps": "error"
+      }
+    },
+    {
+      "files": [
+        "front/**/*.{js,jsx,ts,tsx}"
+      ],
+      "rules": {
+        "import/consistent-type-specifier-style": [
+          "error",
+          "prefer-top-level"
+        ]
+      }
+    },
+    {
+      "files": [
+        "front/components/**/*.{js,jsx,ts,tsx}",
+        "front/hooks/**/*.{js,jsx,ts,tsx}"
+      ],
+      "rules": {
+        "no-restricted-globals": [
+          "error",
+          {
+            "name": "Intl",
+            "message": "Format with the functions of @app/lib/i18n/format instead of Intl."
+          }
+        ],
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "date-fns",
+                  "date-fns-tz"
+                ],
+                "importNamePattern": "(format|intlFormat|lightFormat).*",
+                "message": "Format dates with the functions of @app/lib/i18n/format instead of date-fns."
+              },
+              {
+                "group": [
+                  "date-fns/format*",
+                  "date-fns/intlFormat*",
+                  "date-fns/lightFormat",
+                  "date-fns-tz/format*"
+                ],
+                "message": "Format dates with the functions of @app/lib/i18n/format instead of date-fns."
+              },
+              {
+                "group": [
+                  "dayjs",
+                  "dayjs/**",
+                  "luxon",
+                  "luxon/**"
+                ],
+                "message": "Format dates with the functions of @app/lib/i18n/format instead of dayjs or luxon."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "cli/dust-cli/**",
+        "sparkle/**"
+      ],
+      "rules": {
+        "no-unused-vars": [
+          "error",
+          {
+            "varsIgnorePattern": "^(_|React$)",
+            "args": "none",
+            "caughtErrors": "none",
+            "ignoreRestSiblings": true
+          }
+        ]
+      }
+    }
+  ]
+}
