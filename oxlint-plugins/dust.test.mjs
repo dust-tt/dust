@@ -14,6 +14,24 @@ const BYPASS = "dangerouslyBypassWorkspaceIsolationSecurity";
 
 // [rule, file, code, expected diagnostics]
 const CASES = [
+  [
+    "noUnusedReactImport",
+    "a.tsx",
+    `import React from "react";\nexport const a = <div />;`,
+    1,
+  ],
+  [
+    "noUnusedReactImport",
+    "b.tsx",
+    `import React from "react";\nexport const a = React.createElement("div");`,
+    0,
+  ],
+  [
+    "noUnusedReactImport",
+    "c.tsx",
+    `import { useState } from "react";\nexport const a = useState;`,
+    0,
+  ],
   ["noRawSql", "a.ts", "frontSequelize.query(sql);", 1],
   ["noRawSql", "b.ts", "getFrontReplicaDbConnection().query<Row>(sql);", 1],
   ["noRawSql", "c.ts", "connectorsDb.query(sql);", 1],

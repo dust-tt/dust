@@ -67,6 +67,18 @@
   "overrides": [
     {
       "files": [
+        "**/*.{jsx,tsx}"
+      ],
+      "excludeFiles": [
+        "cli/dust-cli/**",
+        "sparkle/**"
+      ],
+      "rules": {
+        "dust/noUnusedReactImport": "error"
+      }
+    },
+    {
+      "files": [
         "front/**/*.{js,jsx,ts,tsx}",
         "front-api/**/*.{js,jsx,ts,tsx}",
         "connectors/src/**/*.{js,jsx,ts,tsx}",

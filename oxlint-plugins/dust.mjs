@@ -518,10 +518,40 @@ const nextjsNoDataFetchingInGetssp = {
   },
 };
 
+const noUnusedReactImport = {
+  create(context) {
+    return {
+      ImportDeclaration(node) {
+        if (node.source.value !== "react" || node.importKind === "type") {
+          return;
+        }
+        for (const spec of node.specifiers) {
+          if (spec.type === "ImportSpecifier" || spec.local.name !== "React") {
+            continue;
+          }
+          const [variable] = context.sourceCode.getDeclaredVariables(spec);
+          // oxlint adds a synthetic reference at the import for implicit JSX uses.
+          const uses = variable?.references.filter(
+            (r) => r.identifier.range[0] !== spec.local.range[0]
+          );
+          if (uses?.length === 0) {
+            report(
+              context,
+              spec,
+              "Unused `React` import: the automatic JSX runtime does not need it."
+            );
+          }
+        }
+      },
+    };
+  },
+};
+
 export default {
   meta: { name: "dust" },
   rules: {
     noRawSql,
+    noUnusedReactImport,
     noUnverifiedWorkspaceBypass,
     noExpensiveConversationFetch,
     enforceClientTypesInPublicApi,
