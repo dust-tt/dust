@@ -74,6 +74,12 @@ Override the simulator with `SIMULATOR`:
 make run SIMULATOR='iPhone 16 Pro'
 ```
 
+Open a conversation in the running simulator app:
+
+```bash
+xcrun simctl openurl booted dust://conversation/<conversationId>
+```
+
 ## Releasing to TestFlight
 
 The app is signed with automatic signing against the Dust Apple Developer team

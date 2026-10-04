@@ -17,6 +17,7 @@ private let logger = Logger(subsystem: AppConfig.bundleId, category: "Auth")
 final class AuthViewModel: NSObject, ObservableObject, ASWebAuthenticationPresentationContextProviding {
     @Published var state: AuthState = .loading
     @Published var pendingFrameToken: String?
+    @Published var pendingConversationId: String?
 
     private var pkcePair: AuthService.PKCEPair?
     private var webAuthSession: ASWebAuthenticationSession?
@@ -107,6 +108,8 @@ final class AuthViewModel: NSObject, ObservableObject, ASWebAuthenticationPresen
             Task { await exchangeCode(code) }
         case let .frame(token):
             pendingFrameToken = token
+        case let .conversation(id):
+            pendingConversationId = id
         }
     }
 

@@ -1,17 +1,15 @@
 import Foundation
 
 enum ConversationService {
-    private static let defaultLimit = 100
+    private static let pageSize = 50
 
     static func fetchConversations(
         workspaceId: String,
         tokenProvider: TokenProvider,
-        limit: Int = defaultLimit
+        lastValue: String? = nil
     ) async throws -> ConversationsResponse {
         let endpoint = AppConfig.Endpoints.conversations(workspaceId: workspaceId)
-        let query = buildQuery(endpoint: endpoint, params: [
-            "limit": "\(limit)",
-        ])
+        let query = buildQuery(endpoint: endpoint, params: pageParams(lastValue: lastValue))
         return try await APIClient.authenticatedGet(query, tokenProvider: tokenProvider, snakeCase: false)
     }
 
@@ -19,13 +17,43 @@ enum ConversationService {
         workspaceId: String,
         spaceId: String,
         tokenProvider: TokenProvider,
-        limit: Int = defaultLimit
+        lastValue: String? = nil
     ) async throws -> PodConversationsResponse {
         let endpoint = AppConfig.Endpoints.spaceConversations(workspaceId: workspaceId, spaceId: spaceId)
-        let query = buildQuery(endpoint: endpoint, params: [
-            "limit": "\(limit)",
-        ])
+        let query = buildQuery(endpoint: endpoint, params: pageParams(lastValue: lastValue))
         return try await APIClient.authenticatedGet(query, tokenProvider: tokenProvider, snakeCase: false)
+    }
+
+    static func searchConversations(
+        workspaceId: String,
+        query: String,
+        tokenProvider: TokenProvider,
+        lastValue: String? = nil
+    ) async throws -> ConversationsResponse {
+        let endpoint = AppConfig.Endpoints.searchConversations(workspaceId: workspaceId)
+        var params = pageParams(lastValue: lastValue)
+        params["query"] = query
+        return try await APIClient.authenticatedGet(
+            buildQuery(endpoint: endpoint, params: params),
+            tokenProvider: tokenProvider,
+            snakeCase: false
+        )
+    }
+
+    static func searchSpaceConversations(
+        workspaceId: String,
+        spaceId: String,
+        query: String,
+        tokenProvider: TokenProvider
+    ) async throws -> [Conversation] {
+        let endpoint = AppConfig.Endpoints.searchSpaceConversations(workspaceId: workspaceId, spaceId: spaceId)
+        let query = buildQuery(endpoint: endpoint, params: ["query": query, "limit": "\(pageSize)"])
+        let response: SpaceConversationSearchResponse = try await APIClient.authenticatedGet(
+            query,
+            tokenProvider: tokenProvider,
+            snakeCase: false
+        )
+        return response.conversations
     }
 
     static func fetchMessages(
@@ -71,13 +99,27 @@ enum ConversationService {
         return response.message
     }
 
+    static func fetchConversation(
+        workspaceId: String,
+        conversationId: String,
+        tokenProvider: TokenProvider
+    ) async throws -> Conversation {
+        let endpoint = AppConfig.Endpoints.conversation(workspaceId: workspaceId, conversationId: conversationId)
+        let response: ConversationResponse = try await APIClient.authenticatedGet(
+            endpoint,
+            tokenProvider: tokenProvider,
+            snakeCase: false
+        )
+        return response.conversation
+    }
+
     static func createConversation(
         workspaceId: String,
         request: CreateConversationRequest,
         tokenProvider: TokenProvider
     ) async throws -> Conversation {
         let endpoint = AppConfig.Endpoints.conversations(workspaceId: workspaceId)
-        let response: CreateConversationResponse = try await APIClient.authenticatedPost(
+        let response: ConversationResponse = try await APIClient.authenticatedPost(
             endpoint,
             body: request,
             tokenProvider: tokenProvider,
@@ -277,10 +319,17 @@ enum ConversationService {
         let message: ConversationMessage
     }
 
+    private static func pageParams(lastValue: String?) -> [String: String] {
+        var params = ["limit": "\(pageSize)"]
+        params["lastValue"] = lastValue
+        return params
+    }
+
     private static func buildQuery(endpoint: String, params: [String: String]) -> String {
         var components = URLComponents()
         components.path = endpoint
         components.queryItems = params.map { URLQueryItem(name: $0.key, value: $0.value) }
+        components.percentEncodedQuery = components.percentEncodedQuery?.replacingOccurrences(of: "+", with: "%2B")
         return components.string ?? endpoint
     }
 }

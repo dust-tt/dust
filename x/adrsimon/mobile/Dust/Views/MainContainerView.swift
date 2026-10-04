@@ -1,5 +1,8 @@
+import os
 import SparkleTokens
 import SwiftUI
+
+private let logger = Logger(subsystem: AppConfig.bundleId, category: "MainContainer")
 
 enum ConversationDestination: Hashable {
     case compose
@@ -88,11 +91,31 @@ struct MainContainerView: View {
                 FrameVisualizerView(frameToken: token)
             }
         }
+        .task(id: authViewModel.pendingConversationId) {
+            await openPendingConversation()
+        }
         .onChange(of: scenePhase) {
             if scenePhase == .active {
                 Task { await viewModel.refresh() }
             }
         }
+    }
+
+    private func openPendingConversation() async {
+        guard let conversationId = authViewModel.pendingConversationId,
+              let workspaceId = viewModel.workspace?.sId
+        else { return }
+        do {
+            let conversation = try await ConversationService.fetchConversation(
+                workspaceId: workspaceId,
+                conversationId: conversationId,
+                tokenProvider: tokenProvider
+            )
+            navigationPath = NavigationPath([ConversationDestination.conversation(conversation)])
+        } catch {
+            logger.error("Failed to open conversation \(conversationId): \(error)")
+        }
+        authViewModel.pendingConversationId = nil
     }
 
     // MARK: - Root: conversation list
@@ -108,6 +131,8 @@ struct MainContainerView: View {
             currentWorkspace: viewModel.workspace,
             workspaces: viewModel.workspaces,
             isLoading: isLoading,
+            isSearching: viewModel.isSearching,
+            hasMoreConversations: viewModel.hasMoreConversations,
             onNewConversation: {
                 navigationPath.append(ConversationDestination.compose)
             },
@@ -134,10 +159,16 @@ struct MainContainerView: View {
             onCatchUp: {
                 showCatchUp = true
             },
+            onLoadMoreConversations: {
+                await viewModel.loadMoreConversations()
+            },
             onRefresh: {
                 await viewModel.refresh()
             }
         )
+        .task(id: viewModel.searchText) {
+            await viewModel.search()
+        }
     }
 
     // MARK: - Pushed destinations

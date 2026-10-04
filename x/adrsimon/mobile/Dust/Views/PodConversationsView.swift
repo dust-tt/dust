@@ -75,7 +75,7 @@ struct PodConversationsView: View {
 
     private var conversationListSection: some View {
         ScrollView {
-            if isLoading {
+            if isLoading || viewModel.isSearching {
                 ProgressView()
                     .padding(.top, 32)
             } else if viewModel.groupedConversations.isEmpty {
@@ -117,11 +117,21 @@ struct PodConversationsView: View {
                                 .padding(.bottom, 4)
                         }
                     }
+
+                    if viewModel.hasMore {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .task(id: viewModel.conversations.count) { await viewModel.loadMore() }
+                    }
                 }
             }
         }
         .refreshable {
             await viewModel.refresh()
+        }
+        .task(id: viewModel.searchText) {
+            await viewModel.search()
         }
     }
 

@@ -50,7 +50,7 @@ struct MessageContext: Encodable {
     }
 }
 
-struct CreateConversationResponse: Decodable {
+struct ConversationResponse: Decodable {
     let conversation: Conversation
 }
 

@@ -16,6 +16,8 @@ struct ConversationListView: View {
     let currentWorkspace: Workspace?
     let workspaces: [Workspace]
     let isLoading: Bool
+    let isSearching: Bool
+    let hasMoreConversations: Bool
     let onNewConversation: () -> Void
     let onSelectConversation: (Conversation) -> Void
     let onSelectPod: (Space) -> Void
@@ -25,6 +27,7 @@ struct ConversationListView: View {
     let onDelete: (Conversation) -> Void
     let onLogout: () -> Void
     let onCatchUp: () -> Void
+    let onLoadMoreConversations: () async -> Void
     var onRefresh: (() async -> Void)?
 
     @State private var conversationToDelete: Conversation?
@@ -121,7 +124,7 @@ struct ConversationListView: View {
 
     @ViewBuilder
     private var content: some View {
-        if isLoading {
+        if isLoading || isSearching {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if !searchText.isEmpty, inboxConversations.isEmpty, groupedConversations.isEmpty {
@@ -300,6 +303,18 @@ struct ConversationListView: View {
                     .plainRow()
             }
         }
+
+        if hasMoreConversations {
+            ProgressView()
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .plainRow()
+                .task(id: loadedConversationCount) { await onLoadMoreConversations() }
+        }
+    }
+
+    private var loadedConversationCount: Int {
+        inboxConversations.count + groupedConversations.reduce(0) { $0 + $1.1.count }
     }
 
     private func sectionTitle(_ title: String) -> some View {
