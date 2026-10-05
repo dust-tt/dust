@@ -54,7 +54,7 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { assert, describe, expect, it, vi } from "vitest";
 
-// Mock Temporal activity context and heartbeat
+// Mock Temporal activity context
 vi.mock("@temporalio/activity", () => ({
   Context: {
     current: vi.fn(() => ({
@@ -62,7 +62,6 @@ vi.mock("@temporalio/activity", () => ({
       cancellationSignal: { aborted: false },
     })),
   },
-  heartbeat: vi.fn(),
 }));
 
 // Mock the searchFunction to return extra properties

@@ -1,6 +1,6 @@
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
-import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
+import { triggerConversationUnreadNotifications } from "@app/lib/notifications/triggers/conversation-unread";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";

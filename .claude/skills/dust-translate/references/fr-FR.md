@@ -37,3 +37,6 @@
 | settings | paramètres | |
 | sign in | se connecter | |
 | favorite, starred | favori | Never « étoile », even for starred items |
+| programmatic usage | utilisation via l’API | Never "programmatique": reword around "via l’API" |
+| programmatic credits | crédits API | |
+| programmatic API | API | "programmatic" adds nothing in French |

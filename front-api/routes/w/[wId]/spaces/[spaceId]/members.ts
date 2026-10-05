@@ -8,7 +8,7 @@ import {
   PostSpaceMembersRequestBodySchema,
 } from "@app/lib/api/spaces/members";
 import type { Authenticator } from "@app/lib/auth";
-import { notifyPodMembersAdded } from "@app/lib/notifications/workflows/pod-added-as-member";
+import { notifyPodMembersAdded } from "@app/lib/notifications/triggers/pod-added-as-member";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";

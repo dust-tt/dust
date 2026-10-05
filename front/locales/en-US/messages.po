@@ -18,8 +18,8 @@ msgid "Success !"
 msgstr "Success !"
 
 #: front/components/UserMenu.tsx
-msgid "{value} (reloading...)"
-msgstr "{value} (reloading...)"
+msgid "Role updated to {role} (reloading...)"
+msgstr "Role updated to {role} (reloading...)"
 
 #: front/components/UserMenu.tsx
 msgid "Error !"

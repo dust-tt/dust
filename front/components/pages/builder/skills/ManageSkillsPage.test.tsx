@@ -33,10 +33,6 @@ vi.mock("@app/lib/platform", () => {
   return { useAppRouter: () => router };
 });
 
-vi.mock("@app/components/assistant/details/AgentDetailsSheet", () => ({
-  AgentDetailsSheet: () => null,
-}));
-
 afterEach(() => {
   window.history.replaceState({}, "", "/");
 });

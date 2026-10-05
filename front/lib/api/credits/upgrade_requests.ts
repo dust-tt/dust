@@ -6,7 +6,7 @@ import { isEligibleForAutoSeatUpgrade } from "@app/lib/api/credits/auto_seat_upg
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { notifyUpgradeRequested } from "@app/lib/notifications/workflows/upgrade-request-created";
+import { notifyUpgradeRequested } from "@app/lib/notifications/triggers/upgrade-request-created";
 import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { hasAnyGroupPermission } from "@app/lib/resources/group_management_access";

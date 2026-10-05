@@ -8,9 +8,10 @@ import {
   getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd,
 } from "@app/lib/reinforcement/consumption";
 import type { ReinforcementBillingUnit } from "@app/lib/reinforcement/enforcement";
-import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   GetReinforcementDailySpendResponseBody,
+  GetSkillsReinforcementSettingsResponseBody,
   GetSkillsSpendResponseBody,
 } from "@app/types/api/skills";
 import { isCreditPricedPlan } from "@app/types/plan";
@@ -187,6 +188,30 @@ export function useSelfImprovingCapSetting({
     cap,
     isSaving,
     saveCap,
+  };
+}
+
+export function useSkillsReinforcementSettings({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const { fetcher } = useFetcher();
+  const settingsFetcher: Fetcher<GetSkillsReinforcementSettingsResponseBody> =
+    fetcher;
+  const { data, isLoading, error } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/skills/reinforcement_settings`,
+    settingsFetcher
+  );
+
+  return {
+    skills:
+      data?.skills ??
+      emptyArray<
+        GetSkillsReinforcementSettingsResponseBody["skills"][number]
+      >(),
+    isSkillsLoading: isLoading,
+    isSkillsError: error,
   };
 }
 

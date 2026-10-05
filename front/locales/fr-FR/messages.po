@@ -18,8 +18,8 @@ msgid "Success !"
 msgstr "Succès !"
 
 #: front/components/UserMenu.tsx
-msgid "{value} (reloading...)"
-msgstr "{value} (rechargement…)"
+msgid "Role updated to {role} (reloading...)"
+msgstr "Rôle changé en {role} (rechargement…)"
 
 #: front/components/UserMenu.tsx
 msgid "Error !"
@@ -951,19 +951,19 @@ msgstr "Votre workspace a utilisé tous ses crédits inclus et est désormais fa
 
 #: front/components/navigation/AppStatusBanner.tsx
 msgid "Programmatic API cap reached"
-msgstr "Plafond de l’API programmatique atteint"
+msgstr "Plafond de l’API atteint"
 
 #: front/components/navigation/AppStatusBanner.tsx
 msgid "Programmatic API cap at 80%"
-msgstr "Plafond de l’API programmatique à 80 %"
+msgstr "Plafond de l’API à 80 %"
 
 #: front/components/navigation/AppStatusBanner.tsx
 msgid "Your workspace has exhausted its monthly programmatic API credit cap. Programmatic API calls are blocked until the billing cycle resets or the cap is raised."
-msgstr "Votre workspace a épuisé son plafond mensuel de crédits pour l’API programmatique. Les appels programmatiques à l’API sont bloqués jusqu’au prochain cycle de facturation ou au relèvement du plafond."
+msgstr "Votre workspace a épuisé son plafond mensuel de crédits API. Les appels à l’API sont bloqués jusqu’au prochain cycle de facturation ou au relèvement du plafond."
 
 #: front/components/navigation/AppStatusBanner.tsx
 msgid "Your workspace has used 80% of its monthly programmatic API credit cap. Consider raising the cap to avoid interruptions."
-msgstr "Votre workspace a utilisé 80 % de son plafond mensuel de crédits pour l’API programmatique. Pensez à relever le plafond pour éviter les interruptions."
+msgstr "Votre workspace a utilisé 80 % de son plafond mensuel de crédits API. Pensez à relever le plafond pour éviter les interruptions."
 
 #: front/components/navigation/AppStatusBanner.tsx
 msgid "Manage usage"

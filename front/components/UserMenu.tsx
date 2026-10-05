@@ -255,10 +255,9 @@ export function UserMenu({
     () => async (role: "user" | "admin" | "manager") => {
       const result = await forceUserRole(user, owner, role, featureFlags);
       if (result.isOk()) {
-        const value = result.value;
         sendNotification({
           title: t`Success !`,
-          description: t`${value} (reloading...)`,
+          description: t`Role updated to ${role} (reloading...)`,
           type: "success",
         });
         setTimeout(() => {
