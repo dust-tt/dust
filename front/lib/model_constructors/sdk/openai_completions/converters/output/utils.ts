@@ -23,13 +23,17 @@ function parseToolArguments(argumentsJson: string): Record<string, unknown> {
   return parsed.value;
 }
 
-// `reasoning_content` is a Fireworks/open-model extension absent from the OpenAI
-// chat-completions types, so read it defensively off the delta.
+// Reasoning is an open-model extension absent from the OpenAI chat-completions
+// types, so read it defensively off the delta: Fireworks names it
+// `reasoning_content`, Blackfuel `reasoning`.
 function deltaReasoningContent(delta: object): string | undefined {
-  if (isRecord(delta) && isString(delta.reasoning_content)) {
+  if (!isRecord(delta)) {
+    return undefined;
+  }
+  if (isString(delta.reasoning_content)) {
     return delta.reasoning_content;
   }
-  return undefined;
+  return isString(delta.reasoning) ? delta.reasoning : undefined;
 }
 
 function usageToTokenUsageEvent(
