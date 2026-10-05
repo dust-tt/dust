@@ -108,12 +108,6 @@ export async function getAgentFeedbackToolResult(
   ]);
 }
 
-/**
- * @cc [owner:avervaet,label:mcp;security] agent-insights-require-read
- * The agent id is caller-supplied: MUST fail with a not-found error, returning no figures, unless
- * the caller holds `read` on the agent or is a workspace admin. Fetchability of the agent alone
- * MUST NOT grant access.
- */
 export async function getAgentInsightsToolResult(
   auth: Authenticator,
   {
