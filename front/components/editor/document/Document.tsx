@@ -53,9 +53,10 @@ const getClickedCommentIds = (target: EventTarget | null, root: Element) => {
 /**
  * @cc [owner:flvndvd;tdraier,label:product] document-comments-availability
  * Existing comments MUST remain visible and browsable, through highlights, markers and the
- * panel, whether the document is editable or read-only. Clicking a highlight MUST reveal its
- * comment. Overlapping comments MUST reveal the one covering the least text first, then cycle
- * outward on repeated clicks.
+ * panel, whether the document is editable or read-only. Clicking a highlight without selecting
+ * text MUST reveal its comment; a click that ends a text selection MUST NOT, so the selection
+ * keeps the editor's focus and its controls. Overlapping comments MUST reveal the one covering
+ * the least text first, then cycle outward on repeated clicks.
  */
 export const Document = ({
   initialContent,
@@ -105,7 +106,8 @@ export const Document = ({
   };
 
   const handleEditorClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (!editor) {
+    // A drag or double click on commented text selects it; revealing would steal its focus.
+    if (!editor || !editor.state.selection.empty) {
       return;
     }
 
