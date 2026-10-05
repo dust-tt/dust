@@ -133,16 +133,19 @@ export function useRichMarkdownEditor({
     if (source === base) {
       // Same text, newer revision: another writer saved identical content. Nothing to reopen,
       // but the next save must name the revision now stored.
-      if (opened !== null && revision !== opened.revision) {
-        setOpened({ ...opened, revision });
-      }
+      setOpened((current) =>
+        current && current.revision !== revision
+          ? { ...current, revision }
+          : current
+      );
       return;
     }
     const written = writtenRef.current;
     if (base === null) {
       setOpened({ content: source, revision, overLimit: false });
     } else if (isOwnWrite(written, entryPath, source)) {
-      // Our own write came back from the cache; the version it raced is overwritten anyway.
+      // Our own write came back from the cache after a foreign version slipped in between;
+      // that version is overwritten anyway. A plain echo equals `base` and never gets here.
       setOpened({
         content: source,
         revision: written?.revision ?? revision,
@@ -159,7 +162,6 @@ export function useRichMarkdownEditor({
     }
   }, [
     opens,
-    opened,
     source,
     base,
     revision,

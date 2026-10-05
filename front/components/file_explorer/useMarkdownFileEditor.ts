@@ -141,7 +141,8 @@ export function useMarkdownFileEditor({
   ]);
 
   // The stored revision moved while the text did not: another writer saved the same content.
-  // The baseline is still the file, so it follows the revision, dirty or not.
+  // The baseline is still the file, so it follows the revision, dirty or not. Right after the
+  // init above this sets the value it just set, which React ignores.
   useEffect(() => {
     if (processedContent && processedContent.text === savedContent) {
       setSavedRevision(revision);
