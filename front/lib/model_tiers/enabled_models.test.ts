@@ -14,7 +14,7 @@ import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import {
   CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
-  CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
+  CLAUDE_OPUS_5_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
@@ -260,9 +260,9 @@ describe("resolveStreamModel", () => {
 
     expect(resolved.fromPool).toBe(true);
     expect(resolved.model.modelId).toBe(
-      CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG.modelId
+      CLAUDE_OPUS_5_5_DEFAULT_MODEL_CONFIG.modelId
     );
-    expect(resolved.reasoningEffort).toBe("high");
+    expect(resolved.reasoningEffort).toBe("medium");
   });
 
   it("keeps a Basic-tier candidate in the Premium stream for cost_efficient-capped users", async () => {
