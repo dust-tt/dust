@@ -65,6 +65,35 @@ describe("useMarkdownFileEditor", () => {
     expect(result.current.canEdit).toBe(true);
   });
 
+  it("keeps what was typed in the plain editor while its save was pending", async () => {
+    let finishWrite: () => void = () => undefined;
+    vi.mocked(writeFileContentByPath).mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishWrite = resolve;
+        })
+    );
+    const { result } = renderHook(() => useMarkdownFileEditor(params));
+    act(() => {
+      result.current.setDraft("# Notes\n\nFirst");
+    });
+
+    let pending: Promise<void> | undefined;
+    act(() => {
+      pending = result.current.save();
+    });
+    act(() => {
+      result.current.setDraft("# Notes\n\nFirst, then more");
+    });
+    finishWrite();
+    await act(async () => {
+      await pending;
+    });
+
+    expect(result.current.content).toBe("# Notes\n\nFirst, then more");
+    expect(result.current.isDirty).toBe(true);
+  });
+
   it("opens the rich editor for an editable Markdown file when co_edition is on", () => {
     flags.add("co_edition");
 

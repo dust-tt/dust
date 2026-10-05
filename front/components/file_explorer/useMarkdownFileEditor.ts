@@ -143,7 +143,7 @@ export function useMarkdownFileEditor({
     }
   };
 
-  /** Makes written content the one the preview and the plain editor show. */
+  /** Makes written content the one the preview shows and the plain editor's saved baseline. */
   const adoptWritten = async (content: string) => {
     await mutate(
       fileUrl,
@@ -152,8 +152,9 @@ export function useMarkdownFileEditor({
         revalidate: false,
       }
     );
-    setDraft(content);
     setSavedContent(content);
+    // A plain draft typed while the save was pending stays; a clean one follows the saved content.
+    setDraft((current) => (current === savedContent ? content : current));
     initKeyRef.current = `${entryPath}:${content}`;
   };
 
