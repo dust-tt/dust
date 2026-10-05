@@ -10,7 +10,8 @@ const fallbackI18n = setupI18n({
   messages: { [SPARKLE_SOURCE_LOCALE]: sourceLocaleMessages },
 });
 
-const FALLBACK_CONTEXT: I18nContext = {
+// Also rendered by `Trans` when there is no provider.
+export const FALLBACK_CONTEXT: I18nContext = {
   i18n: fallbackI18n,
   _: fallbackI18n.t.bind(fallbackI18n),
 };
