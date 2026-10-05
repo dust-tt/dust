@@ -59,14 +59,8 @@ vi.mock("@app/lib/api/assistant/call_llm", () => ({
   runMultiActionsAgent: vi.fn(),
 }));
 
-// Mock renderConversationForModel to avoid tokenization issues in tests
-vi.mock("@app/lib/api/assistant/conversation_rendering", () => ({
-  renderConversationForModel: vi.fn(),
-}));
-
 // Import the mocked functions
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
-import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -1503,25 +1497,6 @@ describe("getEmailSummary", () => {
         lastReadAt: new Date(new Date().getTime() - 100 * 24 * 60 * 60 * 1000), // Set lastReadAt to 100 days ago to ensure messages are unread
       });
     }
-
-    // Set up consistent mock for renderConversationForModel
-    vi.mocked(renderConversationForModel).mockResolvedValue(
-      new Ok({
-        modelConversation: {
-          messages: [
-            {
-              role: "user",
-              name: "Test User",
-              content: [
-                { type: "text", text: "This is an unread message for testing" },
-              ],
-            },
-          ],
-        },
-        tokensUsed: 100,
-        prunedContext: false,
-      })
-    );
 
     vi.clearAllMocks();
   });

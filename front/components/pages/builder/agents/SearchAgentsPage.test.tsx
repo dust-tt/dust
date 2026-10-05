@@ -86,14 +86,6 @@ vi.mock("@app/components/sparkle/ThemeContext", () => ({
   useTheme: () => ({ isDark: false }),
 }));
 
-vi.mock("@app/components/assistant/ModelsFilterMenu", () => ({
-  ModelsFilterMenu: () => null,
-}));
-
-vi.mock("@app/components/assistant/TagsFilterMenu", () => ({
-  TagsFilterMenu: () => null,
-}));
-
 vi.mock("@app/components/assistant/SetModelAssistantsDialog", () => ({
   SetModelAssistantsDialog: () => <button type="button">Set model</button>,
 }));

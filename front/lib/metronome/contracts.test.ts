@@ -13,48 +13,32 @@ const {
   mockFindMetronomeCustomerByAlias,
   mockGetMetronomeContractById,
   mockGetMetronomeCustomerStripeCustomerId,
-  mockHasContractSeatSubscription,
   mockGetStripeCustomer,
   mockGetStripeSubscription,
-  mockHasMauSubscriptionInContract,
   mockListMetronomeContracts,
-  mockPrices,
   mockScheduleMetronomeContractEnd,
-  mockSyncMauCount,
   mockSyncSeatCount,
   mockRemapMembershipSeatTypesForContract,
-  mockBuildSeatDataByUserId,
-} = vi.hoisted(() => {
-  const mockPrices = { retrieve: vi.fn() };
-
-  return {
-    mockCreateMetronomeContract: vi.fn(),
-    mockCreateMetronomeCustomer: vi.fn(),
-    mockFindMetronomeCustomerByAlias: vi.fn(),
-    mockGetMetronomeContractById: vi.fn(),
-    mockGetMetronomeCustomerStripeCustomerId: vi.fn(),
-    mockHasContractSeatSubscription: vi.fn(),
-    mockGetStripeCustomer: vi.fn(),
-    mockGetStripeSubscription: vi.fn(),
-    mockHasMauSubscriptionInContract: vi.fn(),
-    mockListMetronomeContracts: vi.fn(),
-    mockPrices,
-    mockScheduleMetronomeContractEnd: vi.fn(),
-    mockSyncMauCount: vi.fn(),
-    mockSyncSeatCount: vi.fn(),
-    mockRemapMembershipSeatTypesForContract: vi.fn(),
-    mockBuildSeatDataByUserId: vi.fn(),
-  };
-});
+} = vi.hoisted(() => ({
+  mockCreateMetronomeContract: vi.fn(),
+  mockCreateMetronomeCustomer: vi.fn(),
+  mockFindMetronomeCustomerByAlias: vi.fn(),
+  mockGetMetronomeContractById: vi.fn(),
+  mockGetMetronomeCustomerStripeCustomerId: vi.fn(),
+  mockGetStripeCustomer: vi.fn(),
+  mockGetStripeSubscription: vi.fn(),
+  mockListMetronomeContracts: vi.fn(),
+  mockScheduleMetronomeContractEnd: vi.fn(),
+  mockSyncSeatCount: vi.fn(),
+  mockRemapMembershipSeatTypesForContract: vi.fn(),
+}));
 
 vi.mock("@app/lib/metronome/client", () => ({
   ceilToHourISO: (date: Date) => date.toISOString(),
   floorToHourISO: (date: Date) => date.toISOString(),
   createMetronomeContract: mockCreateMetronomeContract,
   createMetronomeCustomer: mockCreateMetronomeCustomer,
-  epochSecondsToFloorHourISO: vi.fn(),
   findMetronomeCustomerByAlias: mockFindMetronomeCustomerByAlias,
-  getMetronomeClient: vi.fn(),
   getMetronomeContractById: mockGetMetronomeContractById,
   getMetronomeCustomerStripeCustomerId:
     mockGetMetronomeCustomerStripeCustomerId,
@@ -63,14 +47,8 @@ vi.mock("@app/lib/metronome/client", () => ({
 }));
 
 vi.mock("@app/lib/metronome/seats", () => ({
-  hasContractSeatSubscription: mockHasContractSeatSubscription,
   syncSeatCount: mockSyncSeatCount,
   remapMembershipSeatTypesForContract: mockRemapMembershipSeatTypesForContract,
-  buildSeatDataByUserId: mockBuildSeatDataByUserId,
-}));
-
-vi.mock("@app/lib/api/metronome/credit_state_dispatcher", () => ({
-  syncPoolCreditStateFromBalance: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@app/lib/resources/workspace_resource", () => ({
@@ -80,16 +58,8 @@ vi.mock("@app/lib/resources/workspace_resource", () => ({
 }));
 
 vi.mock("@app/lib/plans/stripe", () => ({
-  getStripeClient: () => ({ prices: mockPrices }),
   getStripeCustomer: mockGetStripeCustomer,
   getStripeSubscription: mockGetStripeSubscription,
-}));
-
-vi.mock("@app/lib/metronome/constants", () => ({
-  CURRENCY_TO_CREDIT_TYPE_ID: {
-    usd: "usd-credit-type",
-    eur: "eur-credit-type",
-  },
 }));
 
 const WORKSPACE = {
@@ -106,8 +76,6 @@ const CONTRACT = {
 beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date(START_DATE));
-
-  mockPrices.retrieve.mockReset();
 
   mockFindMetronomeCustomerByAlias.mockReset();
   mockFindMetronomeCustomerByAlias.mockResolvedValue(new Ok("m-customer"));
@@ -131,23 +99,11 @@ beforeEach(() => {
   mockGetMetronomeContractById.mockReset();
   mockGetMetronomeContractById.mockResolvedValue(new Ok(CONTRACT));
 
-  mockHasContractSeatSubscription.mockReset();
-  mockHasContractSeatSubscription.mockResolvedValue(true);
-
-  mockHasMauSubscriptionInContract.mockReset();
-  mockHasMauSubscriptionInContract.mockReturnValue(true);
-
   mockSyncSeatCount.mockReset();
   mockSyncSeatCount.mockResolvedValue(new Ok(undefined));
 
-  mockSyncMauCount.mockReset();
-  mockSyncMauCount.mockResolvedValue(new Ok(undefined));
-
   mockRemapMembershipSeatTypesForContract.mockReset();
   mockRemapMembershipSeatTypesForContract.mockResolvedValue(new Ok(undefined));
-
-  mockBuildSeatDataByUserId.mockReset();
-  mockBuildSeatDataByUserId.mockResolvedValue(new Ok(new Map()));
 });
 
 const START_DATE = "2026-04-01T00:00:00.000Z";
@@ -381,7 +337,6 @@ describe("provisionPaymentGatedActivationContract", () => {
     });
 
     expect(mockSyncSeatCount).not.toHaveBeenCalled();
-    expect(mockSyncMauCount).not.toHaveBeenCalled();
     expect(mockRemapMembershipSeatTypesForContract).not.toHaveBeenCalled();
   });
 });
