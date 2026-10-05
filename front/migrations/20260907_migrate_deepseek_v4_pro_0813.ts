@@ -51,7 +51,7 @@
 //       modelId: FROM_MODEL_ID,
 //     },
 //     // WORKSPACE_ISOLATION_BYPASS: Migration runs across all workspaces.
-//     // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+//     // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
 //     dangerouslyBypassWorkspaceIsolationSecurity: true,
 //   });
 //

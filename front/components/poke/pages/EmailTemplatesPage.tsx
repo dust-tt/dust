@@ -373,7 +373,6 @@ export function EmailTemplatesPage() {
   });
 
   // Reset form when template changes
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (jsonSchema) {
       const defaults = getDefaultValuesFromJsonSchema(jsonSchema);
@@ -384,7 +383,6 @@ export function EmailTemplatesPage() {
   // Watch all form values
   const formValues = form.watch();
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     const renderPreview = async () => {
       if (!selectedTemplate) {

@@ -101,8 +101,7 @@ const normalizeKey = (rawKey: string) => {
     : trimmed;
 };
 
-export interface KeyboardShortcutProps
-  extends React.HTMLAttributes<HTMLSpanElement> {
+export interface KeyboardShortcutProps extends React.HTMLAttributes<HTMLSpanElement> {
   /** Shortcut with parts joined by `+` (e.g. "Cmd+K"); modifier and arrow names are normalized to platform symbols. */
   shortcut: string;
 }

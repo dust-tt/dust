@@ -8,7 +8,7 @@ type GoResolveResponse =
   | { destination: string }
   | { error: "template_not_found" | "invalid_slug" | "internal_server_error" };
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<GoResolveResponse>

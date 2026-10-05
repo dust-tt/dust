@@ -47,7 +47,6 @@ export function WorkspaceNameEditor({ owner }: { owner: WorkspaceType }) {
     return valid;
   }, [owner.name, workspaceName]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     setDisabled(!formValidation());
   }, [workspaceName, formValidation]);

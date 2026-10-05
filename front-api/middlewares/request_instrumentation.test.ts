@@ -69,7 +69,7 @@ describe("requestInstrumentation", () => {
     app.use(contextStorage());
     app.use("*", requestInstrumentation);
     app.get("/workspaces/:workspaceId", async (c) => {
-      // biome-ignore lint/plugin/noRawSql: current_query() verifies the comment received by PostgreSQL
+      // oxlint-disable-next-line dust/noRawSql -- current_query() verifies the comment received by PostgreSQL
       const [result] = await frontSequelize.query<{ query: string }>(
         'SELECT current_query() AS "query"',
         { type: QueryTypes.SELECT }
@@ -102,9 +102,9 @@ describe("requestInstrumentation", () => {
     app.use("*", requestInstrumentation);
     app.get("/", async (c) => {
       await Promise.all([
-        // biome-ignore lint/plugin/noRawSql: exercises query concurrency instrumentation
+        // oxlint-disable-next-line dust/noRawSql -- exercises query concurrency instrumentation
         frontSequelize.query("SELECT 1"),
-        // biome-ignore lint/plugin/noRawSql: exercises query concurrency instrumentation
+        // oxlint-disable-next-line dust/noRawSql -- exercises query concurrency instrumentation
         frontSequelize.query("SELECT 1"),
       ]);
 

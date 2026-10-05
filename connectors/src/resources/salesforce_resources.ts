@@ -18,8 +18,7 @@ import type {
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
-export interface SalesforceConfigurationResource
-  extends ReadonlyAttributesType<SalesforceConfigurationModel> {}
+export interface SalesforceConfigurationResource extends ReadonlyAttributesType<SalesforceConfigurationModel> {}
 
 export class SalesforceConfigurationResource extends BaseResource<SalesforceConfigurationModel> {
   static model: ModelStatic<SalesforceConfigurationModel> =
@@ -104,8 +103,7 @@ export class SalesforceConfigurationResource extends BaseResource<SalesforceConf
   }
 }
 
-export interface SalesforceSyncedQueryResource
-  extends ReadonlyAttributesType<SalesforceSyncedQueryModel> {}
+export interface SalesforceSyncedQueryResource extends ReadonlyAttributesType<SalesforceSyncedQueryModel> {}
 
 export class SalesforceSyncedQueryResource extends BaseResource<SalesforceSyncedQueryModel> {
   static model: ModelStatic<SalesforceSyncedQueryModel> =

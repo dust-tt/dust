@@ -13,9 +13,7 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 import type { ModelId } from "@connectors/types";
 import type { Transaction } from "sequelize";
 
-export class GongConnectorStrategy
-  implements ConnectorProviderStrategy<"gong">
-{
+export class GongConnectorStrategy implements ConnectorProviderStrategy<"gong"> {
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<GongConfigurationModel>,

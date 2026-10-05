@@ -1,14 +1,14 @@
 // @ts-nocheck - Legacy migration kept for reference; it uses removed agent editor group APIs.
 import { matchesInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
+import { getMarkdownPipeline } from "@app/lib/editor/server_markdown_pipeline";
+import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
-import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
-import { getMarkdownPipeline } from "@app/lib/editor/server_markdown_pipeline";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";

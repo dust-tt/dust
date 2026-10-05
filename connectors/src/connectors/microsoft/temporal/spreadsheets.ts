@@ -1,4 +1,4 @@
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+// oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import {
   getAllPaginatedEntities,
@@ -14,7 +14,7 @@ import {
   getColumnsFromListItem,
   markInternalIdAsSkipped,
 } from "@connectors/connectors/microsoft/lib/utils";
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+// oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 import { getParents } from "@connectors/connectors/microsoft/temporal/file";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";

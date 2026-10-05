@@ -83,8 +83,7 @@ function isAllowedSearchColumn(column: string): column is AllowedSearchColumns {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-export interface DataSourceViewResource
-  extends ReadonlyAttributesType<DataSourceViewModel> {}
+export interface DataSourceViewResource extends ReadonlyAttributesType<DataSourceViewModel> {}
 export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewModel> {
   static model: ModelStatic<DataSourceViewModel> = DataSourceViewModel;
 

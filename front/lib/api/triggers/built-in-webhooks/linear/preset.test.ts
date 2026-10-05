@@ -12,22 +12,22 @@ function getEvent(value: string) {
 }
 
 describe("Linear webhook preset schema", () => {
-  it.each([
-    "Issue",
-    "Project",
-  ])("nests the %s entity under `data` with action/type envelope", (value) => {
-    const schema = getEvent(value).schema as JSONSchema;
-    const properties = schema.properties ?? {};
+  it.each(["Issue", "Project"])(
+    "nests the %s entity under `data` with action/type envelope",
+    (value) => {
+      const schema = getEvent(value).schema as JSONSchema;
+      const properties = schema.properties ?? {};
 
-    expect(properties).toHaveProperty("action");
-    expect(properties).toHaveProperty("type");
-    expect(properties).toHaveProperty("data");
+      expect(properties).toHaveProperty("action");
+      expect(properties).toHaveProperty("type");
+      expect(properties).toHaveProperty("data");
 
-    // The entity fields live under `data`, not at the top level.
-    const dataSchema = properties.data as JSONSchema;
-    expect(dataSchema.properties).toHaveProperty("labelIds");
-    expect(properties).not.toHaveProperty("labelIds");
-  });
+      // The entity fields live under `data`, not at the top level.
+      const dataSchema = properties.data as JSONSchema;
+      expect(dataSchema.properties).toHaveProperty("labelIds");
+      expect(properties).not.toHaveProperty("labelIds");
+    }
+  );
 });
 
 describe("Linear webhook filters against delivered payload", () => {

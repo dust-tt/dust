@@ -19,8 +19,7 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-export interface ActivationRecommendationResource
-  extends ReadonlyAttributesType<ActivationRecommendationModel> {}
+export interface ActivationRecommendationResource extends ReadonlyAttributesType<ActivationRecommendationModel> {}
 export class ActivationRecommendationResource extends BaseResource<ActivationRecommendationModel> {
   static model: ModelStatic<ActivationRecommendationModel> =
     ActivationRecommendationModel;

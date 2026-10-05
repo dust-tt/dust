@@ -1,12 +1,24 @@
+import {
+  Button,
+  Clipboard,
+  ClipboardCheck,
+  cn,
+  useCopyToClipboard,
+} from "@dust-tt/sparkle";
 import { LocaleToggle } from "@marketing/components/academy/AcademyComponents";
 import { AcademyQuiz } from "@marketing/components/academy/AcademyQuiz";
 import {
   ChapterMobileMenuButton,
   ChapterSidebar,
 } from "@marketing/components/academy/ChapterSidebar";
+import {
+  renderRichTextFromContentful,
+  richTextToMarkdown,
+} from "@marketing/components/contentful/richTextRenderer";
 import { Grid, H1, P } from "@marketing/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
 import LandingLayout from "@marketing/components/home/LandingLayout";
+import config from "@marketing/lib/api/config";
 import {
   buildPreviewQueryString,
   getAcademyLocaleFromCookies,
@@ -17,12 +29,7 @@ import {
   getQuizSettings,
   getSearchableItems,
 } from "@marketing/lib/contentful/client";
-import config from "@marketing/lib/api/config";
 import { contentfulImageLoader } from "@marketing/lib/contentful/imageLoader";
-import {
-  renderRichTextFromContentful,
-  richTextToMarkdown,
-} from "@marketing/components/contentful/richTextRenderer";
 import { extractTableOfContents } from "@marketing/lib/contentful/tableOfContents";
 import type { ChapterPageProps } from "@marketing/lib/contentful/types";
 import { clientFetch } from "@marketing/lib/egress/client";
@@ -32,13 +39,6 @@ import {
 } from "@marketing/lib/swr/academy";
 import logger from "@marketing/logger/logger";
 import { isString } from "@marketing/types/shared/utils/general";
-import {
-  Button,
-  Clipboard,
-  ClipboardCheck,
-  cn,
-  useCopyToClipboard,
-} from "@dust-tt/sparkle";
 import type { GetServerSideProps } from "next";
 import Head from "next/head";
 import Image from "next/image";
@@ -131,7 +131,7 @@ export const getServerSideProps: GetServerSideProps<ChapterPageProps> = async (
 
 const WIDE_CLASSES = cn("col-span-12", "lg:col-span-10 lg:col-start-2");
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function ChapterPage({
   chapter,
   chapters,

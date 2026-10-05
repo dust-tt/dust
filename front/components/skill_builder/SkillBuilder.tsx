@@ -5,6 +5,8 @@ import {
 import { SkillBuilderAgentFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderAgentFacingDescriptionSection";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import { SkillBuilderFilesSection } from "@app/components/skill_builder/SkillBuilderFilesSection";
+import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
+import { skillBuilderFormSchema } from "@app/components/skill_builder/skillBuilderFormSchema";
 import { SkillBuilderInstructionsSection } from "@app/components/skill_builder/SkillBuilderInstructionsSection";
 import { SkillBuilderRequestedSpacesSection } from "@app/components/skill_builder/SkillBuilderRequestedSpacesSection";
 import { SkillBuilderSettingsSection } from "@app/components/skill_builder/SkillBuilderSettingsSection";
@@ -17,15 +19,13 @@ import {
 } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { SkillCreatedDialog } from "@app/components/skill_builder/SkillCreatedDialog";
 import {
-  SkillSpaceRestrictionsProvider,
-  useSkillSpaceRestrictionsContext,
-} from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
-import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
-import { skillBuilderFormSchema } from "@app/components/skill_builder/skillBuilderFormSchema";
-import {
   getDefaultSkillFormData,
   transformSkillTypeToFormData,
 } from "@app/components/skill_builder/skillFormData";
+import {
+  SkillSpaceRestrictionsProvider,
+  useSkillSpaceRestrictionsContext,
+} from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
 import { submitSkillBuilderForm } from "@app/components/skill_builder/submitSkillBuilderForm";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useBuilderTracking } from "@app/hooks/useBuilderTracking";

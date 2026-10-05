@@ -83,7 +83,7 @@ app.get(
     // Any workspace member can read the editors of an agent.
     const memberUsers = editors.map((member) => member.toJSON());
 
-    // biome-ignore lint/plugin/noDirectRoleCheck: non-admins receive only minimal essential user data (LightUserType)
+    // oxlint-disable-next-line dust/noDirectRoleCheck -- non-admins receive only minimal essential user data (LightUserType)
     if (auth.isAdmin()) {
       return ctx.json({ editors: memberUsers });
     }
@@ -213,7 +213,7 @@ app.patch(
     const updatedMembers = (await updateRes.value.listEditors(auth)) ?? [];
     const updatedEditors = updatedMembers.map((m) => m.toJSON());
 
-    // biome-ignore lint/plugin/noDirectRoleCheck: non-admins receive only minimal essential user data (LightUserType)
+    // oxlint-disable-next-line dust/noDirectRoleCheck -- non-admins receive only minimal essential user data (LightUserType)
     if (auth.isAdmin()) {
       return ctx.json({ editors: updatedEditors });
     }

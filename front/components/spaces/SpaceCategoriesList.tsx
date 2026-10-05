@@ -1,7 +1,7 @@
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
-import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
+import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils_ui";

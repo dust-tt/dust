@@ -1,6 +1,7 @@
 // @ts-nocheck - Legacy migration kept for reference; it uses removed agent editor group APIs.
-import _ from "lodash";
+
 import type { Logger } from "@app/logger/logger";
+import _ from "lodash";
 import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";

@@ -49,8 +49,7 @@ function matchingActivationWorkAreaStatuses(
   }
 }
 
-export interface ActivationWorkAreaResource
-  extends ReadonlyAttributesType<ActivationWorkAreaModel> {}
+export interface ActivationWorkAreaResource extends ReadonlyAttributesType<ActivationWorkAreaModel> {}
 export class ActivationWorkAreaResource extends BaseResource<ActivationWorkAreaModel> {
   static model: ModelStaticWorkspaceAware<ActivationWorkAreaModel> =
     ActivationWorkAreaModel;

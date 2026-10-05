@@ -8,7 +8,7 @@ import {
 import {
   makePlanMessage,
   type TaskCardState,
-  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+  // oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 } from "@connectors/connectors/slack/chat/blocks";
 import logger from "@connectors/logger/logger";
 import type {

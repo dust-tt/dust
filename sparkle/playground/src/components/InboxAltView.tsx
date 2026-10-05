@@ -38,6 +38,13 @@ import {
   useState,
 } from "react";
 
+import type {
+  AdminRequest,
+  Conversation,
+  ConversationWorkState,
+  Space,
+  Trigger,
+} from "../data/types";
 import { type AgentAction, getPendingAction } from "../data/agentActions";
 import { getAgentById } from "../data/agents";
 import { getLastSpeaker } from "../data/conversations";
@@ -57,15 +64,11 @@ import {
   READ_DWELL_MS,
 } from "../data/time";
 import { getTriggerById } from "../data/triggers";
-import type {
-  AdminRequest,
-  Conversation,
-  ConversationWorkState,
-  Space,
-  Trigger,
-} from "../data/types";
 import { getUserById } from "../data/users";
-import { buildConversationRowMenuItems } from "./conversationRowMenu";
+import {
+  ConversationListItem,
+  type ConversationListItemProps,
+} from "./ConversationListItem";
 import { Counter } from "./Counter";
 import { EmptyState } from "./EmptyState";
 import {
@@ -77,10 +80,7 @@ import {
 } from "./FilterMenu";
 import { RequestListItem } from "./RequestListItem";
 import { TriggerRunAvatar } from "./TriggerRunAvatar";
-import {
-  ConversationListItem,
-  type ConversationListItemProps,
-} from "./ConversationListItem";
+import { buildConversationRowMenuItems } from "./conversationRowMenu";
 
 /** How far back the feed reaches. */
 const ROW_WINDOW_DAYS = 7;

@@ -109,7 +109,7 @@ export abstract class ResourceWithSpace<
       // may span multiple workspaces when the blob query ran with the bypass (e.g.
       // unsafeFetchByDustAPIProjectId); the static check only accepts a single workspaceId.
       // Permissions are enforced by canFetch below.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 

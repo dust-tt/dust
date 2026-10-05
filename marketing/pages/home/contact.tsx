@@ -20,7 +20,7 @@ export const getStaticProps: GetStaticProps = async () => {
   };
 };
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function Contact() {
   const router = useRouter();
   const { company, email, company_headcount_form, headquarters_region } =

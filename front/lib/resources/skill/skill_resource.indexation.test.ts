@@ -67,54 +67,56 @@ describe("resource-owned skill search indexation", () => {
     }
   });
 
-  it.each([
-    "addEditors",
-    "removeEditors",
-  ] as const)("refreshes indexed editor IDs after %s with a non-member", async (method) => {
-    const {
-      authenticator: auth,
-      workspace,
-      user,
-    } = await createResourceTest({
-      role: "admin",
-    });
-    const skill = await SkillFactory.create(auth);
-    const editor = await UserFactory.basic();
-    const nonMember = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, editor, { role: "user" });
-
-    if (method === "removeEditors") {
-      await MembershipFactory.associate(workspace, nonMember, {
-        role: "user",
-      });
-      const addResult = await skill.addEditors(auth, [editor, nonMember]);
-      expect(addResult.isOk()).toBe(true);
-      const revokeResult = await MembershipResource.revokeMembership({
-        user: nonMember,
+  it.each(["addEditors", "removeEditors"] as const)(
+    "refreshes indexed editor IDs after %s with a non-member",
+    async (method) => {
+      const {
+        authenticator: auth,
         workspace,
+        user,
+      } = await createResourceTest({
+        role: "admin",
       });
-      expect(revokeResult.isOk()).toBe(true);
+      const skill = await SkillFactory.create(auth);
+      const editor = await UserFactory.basic();
+      const nonMember = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, editor, { role: "user" });
+
+      if (method === "removeEditors") {
+        await MembershipFactory.associate(workspace, nonMember, {
+          role: "user",
+        });
+        const addResult = await skill.addEditors(auth, [editor, nonMember]);
+        expect(addResult.isOk()).toBe(true);
+        const revokeResult = await MembershipResource.revokeMembership({
+          user: nonMember,
+          workspace,
+        });
+        expect(revokeResult.isOk()).toBe(true);
+      }
+
+      const indexDocument = vi
+        .spyOn(skillIndex, "indexSkillDocument")
+        .mockResolvedValue(new Ok(undefined));
+      const target = { workspaceId: workspace.sId, skillId: skill.sId };
+      vi.mocked(launchIndexSkillSearchWorkflow).mockClear();
+      const result = await skill[method](auth, [editor, nonMember]);
+
+      expect(result.isErr()).toBe(method === "addEditors");
+      expect(launchIndexSkillSearchWorkflow).toHaveBeenCalledExactlyOnceWith(
+        target
+      );
+      await indexSkillSearchActivity(target);
+      expect(indexDocument).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          editor_ids:
+            method === "addEditors"
+              ? [user.sId, editor.sId].sort()
+              : [user.sId],
+        })
+      );
     }
-
-    const indexDocument = vi
-      .spyOn(skillIndex, "indexSkillDocument")
-      .mockResolvedValue(new Ok(undefined));
-    const target = { workspaceId: workspace.sId, skillId: skill.sId };
-    vi.mocked(launchIndexSkillSearchWorkflow).mockClear();
-    const result = await skill[method](auth, [editor, nonMember]);
-
-    expect(result.isErr()).toBe(method === "addEditors");
-    expect(launchIndexSkillSearchWorkflow).toHaveBeenCalledExactlyOnceWith(
-      target
-    );
-    await indexSkillSearchActivity(target);
-    expect(indexDocument).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({
-        editor_ids:
-          method === "addEditors" ? [user.sId, editor.sId].sort() : [user.sId],
-      })
-    );
-  });
+  );
 
   it("refreshes an older archived skill renamed to avoid a name collision", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "admin" });

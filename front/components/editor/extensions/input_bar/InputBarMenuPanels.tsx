@@ -19,8 +19,10 @@ import type { SuggestionProps } from "@tiptap/suggestion";
 import type React from "react";
 import type { RefObject } from "react";
 
-interface InputBarMenuPanelsProps
-  extends Pick<SuggestionProps<SlashCommand>, "clientRect"> {
+interface InputBarMenuPanelsProps extends Pick<
+  SuggestionProps<SlashCommand>,
+  "clientRect"
+> {
   // The open sub-menu, if any. Ignored in `attach-only` mode where the browser is the whole menu.
   activeFrame: SlashMenuStackFrame | null;
   attachOnlyRootSection: InputBarSlashMenuRootSection | undefined;

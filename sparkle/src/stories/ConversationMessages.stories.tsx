@@ -2,6 +2,12 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import {
+  ConversationMessageAvatar,
+  ConversationMessageContainer,
+  ConversationMessageContent,
+  ConversationMessageTitle,
+} from "../components/ConversationMessages";
+import {
   ActionCardBlock,
   AttachmentChip,
   Avatar,
@@ -17,12 +23,6 @@ import {
   SlackLogo,
   Table,
 } from "../index_with_tw_base";
-import {
-  ConversationMessageAvatar,
-  ConversationMessageContainer,
-  ConversationMessageContent,
-  ConversationMessageTitle,
-} from "../components/ConversationMessages";
 
 const meta = {
   title: "Product/Conversation/ConversationMessages",

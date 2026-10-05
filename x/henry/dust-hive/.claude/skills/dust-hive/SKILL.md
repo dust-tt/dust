@@ -70,7 +70,7 @@ bun run check
 
 # Individual checks
 bun run typecheck    # TypeScript strict checks
-bun run lint         # Biome linting
+bun run lint         # oxlint + oxfmt check
 bun run lint:fix     # Auto-fix lint issues
 bun run format       # Code formatting
 bun run test         # All tests

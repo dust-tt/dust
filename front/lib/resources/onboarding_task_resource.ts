@@ -32,8 +32,7 @@ type OnboardingTaskType = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-export interface OnboardingTaskResource
-  extends ReadonlyAttributesType<OnboardingTaskModel> {}
+export interface OnboardingTaskResource extends ReadonlyAttributesType<OnboardingTaskModel> {}
 export class OnboardingTaskResource extends BaseResource<OnboardingTaskModel> {
   static model: ModelStaticWorkspaceAware<OnboardingTaskModel> =
     OnboardingTaskModel;

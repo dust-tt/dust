@@ -45,8 +45,7 @@ export type AgentFeedbackDayPoint = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-export interface AgentMessageFeedbackResource
-  extends ReadonlyAttributesType<AgentMessageFeedbackModel> {}
+export interface AgentMessageFeedbackResource extends ReadonlyAttributesType<AgentMessageFeedbackModel> {}
 export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedbackModel> {
   static model: ModelStatic<AgentMessageFeedbackModel> =
     AgentMessageFeedbackModel;
@@ -627,7 +626,7 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
 
     const replicaDb = getFrontReplicaDbConnection();
 
-    // biome-ignore lint/plugin/noRawSql: Aggregation query with GROUP BY day
+    // oxlint-disable-next-line dust/noRawSql -- Aggregation query with GROUP BY day
     const rows = await replicaDb.query<{
       day: string;
       positive: string;

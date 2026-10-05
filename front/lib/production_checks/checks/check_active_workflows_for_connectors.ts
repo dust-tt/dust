@@ -89,7 +89,7 @@ const providersToCheck: Partial<Record<ConnectorProvider, ProviderCheck>> = {
 
 async function listAllConnectorsForProvider(provider: ConnectorProvider) {
   const connectors: ConnectorBlob[] =
-    // biome-ignore lint/plugin/noRawSql: production check uses read replica
+    // oxlint-disable-next-line dust/noRawSql -- production check uses read replica
     await getConnectorsPrimaryDbConnection().query(
       `SELECT id, "dataSourceId", "workspaceId", "pausedAt" FROM connectors WHERE "type" = :provider and  "errorType" IS NULL`,
       {

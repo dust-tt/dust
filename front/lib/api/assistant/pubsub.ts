@@ -1,9 +1,9 @@
 import type { AgentActionRunningEvents } from "@app/lib/actions/mcp";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
-import { getRedisEventsBatch } from "@app/lib/api/redis_events_batch";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
+import { getRedisEventsBatch } from "@app/lib/api/redis_events_batch";
 import type { Authenticator } from "@app/lib/auth";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import { createCallbackReader } from "@app/lib/utils";

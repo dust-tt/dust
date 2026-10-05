@@ -1,6 +1,6 @@
 import { useCommandPaletteSearch } from "@app/components/command_palette/useCommandPaletteSearch";
-import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import type { FetcherFn } from "@app/lib/swr/fetcher";
+import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";

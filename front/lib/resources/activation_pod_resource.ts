@@ -15,8 +15,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { col, fn } from "sequelize";
 
-export interface ActivationPodResource
-  extends ReadonlyAttributesType<ActivationPodModel> {}
+export interface ActivationPodResource extends ReadonlyAttributesType<ActivationPodModel> {}
 export class ActivationPodResource extends BaseResource<ActivationPodModel> {
   static model: ModelStaticWorkspaceAware<ActivationPodModel> =
     ActivationPodModel;
@@ -203,7 +202,7 @@ export class ActivationPodResource extends BaseResource<ActivationPodModel> {
       // WORKSPACE_ISOLATION_BYPASS: nightly reconcile scan across all workspaces
       // to find which ones have a live activation pod (see
       // front/temporal/activation_scheduler/client.ts).
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 

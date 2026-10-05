@@ -407,26 +407,25 @@ describe("storeFramePublication", () => {
       sourceFiles: sourceFilesWithFunction,
       functionArtifacts: [...functionArtifacts, ...functionArtifacts],
     },
-  ])("rejects $name function artifacts before writing", async ({
-    manifest,
-    sourceFiles,
-    functionArtifacts,
-  }) => {
-    const { auth, frame } = await setupFrame();
+  ])(
+    "rejects $name function artifacts before writing",
+    async ({ manifest, sourceFiles, functionArtifacts }) => {
+      const { auth, frame } = await setupFrame();
 
-    const result = await storeFramePublication(auth, {
-      frame,
-      functionArtifacts,
-      manifest,
-      sourceFiles,
-      uiBundleCode,
-    });
+      const result = await storeFramePublication(auth, {
+        frame,
+        functionArtifacts,
+        manifest,
+        sourceFiles,
+        uiBundleCode,
+      });
 
-    expect(result.isErr() && result.error.code).toBe(
-      "invalid_function_artifact"
-    );
-    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
-  });
+      expect(result.isErr() && result.error.code).toBe(
+        "invalid_function_artifact"
+      );
+      expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+    }
+  );
 
   it.each([
     ["an invalid path", [{ ...sourceFiles[0], relativePath: "../index.tsx" }]],

@@ -161,7 +161,7 @@ export class MentionResource extends BaseResource<MentionModel> {
     { notMentionedSince }: { notMentionedSince: Date }
   ): Promise<AgentIdleRow[]> {
     // Driven by the agents, of which there are far fewer than mentions.
-    // biome-ignore lint/plugin/noRawSql: needs a LATERAL, which the query builder cannot express.
+    // oxlint-disable-next-line dust/noRawSql -- needs a LATERAL, which the query builder cannot express.
     const rows: unknown[] = await frontSequelize.query(
       `
         SELECT

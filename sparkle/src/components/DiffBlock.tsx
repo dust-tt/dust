@@ -74,7 +74,6 @@ function useClampedHeight({
   const [collapsedHeight, setCollapsedHeight] = useState<number>();
   const [expandedHeight, setExpandedHeight] = useState<number>();
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the refs only attach once there is content to render
   useLayoutEffect(() => {
     const element = contentRef.current;
     const container = containerRef.current;

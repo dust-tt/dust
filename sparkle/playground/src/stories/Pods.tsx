@@ -116,6 +116,7 @@ import {
   getDataSourcesBySpaceId,
 } from "../data/dataSources";
 import { getRandomGreetingForName } from "../data/greetings";
+import TemplateSelection, { type Template } from "./TemplateSelection";
 import {
   buildPodTabOptions,
   type DynamicFileTab,
@@ -127,7 +128,6 @@ import {
   resolvePodContext,
   shouldShowMemberChrome,
 } from "./podPanelConfig";
-import TemplateSelection, { type Template } from "./TemplateSelection";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

@@ -1,8 +1,8 @@
-import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
 import { DocumentUploadOrEditModal } from "@app/components/data_source/DocumentUploadOrEditModal";
 import { MultipleFilesUpload } from "@app/components/data_source/MultipleFilesUpload";
 import { TableUploadOrEditModal } from "@app/components/data_source/TableUploadOrEditModal";
+import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import {
   getDisplayNameForDataSource,
   isFolder,

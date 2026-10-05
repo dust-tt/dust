@@ -4,9 +4,9 @@ import {
   githubUpsertIssuesFolderActivity,
   githubUpsertRepositoryFolderActivity,
 } from "@connectors/connectors/github/temporal/activities";
+import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
-import type { Logger } from "@connectors/logger/logger";
 import { makeScript } from "scripts/helpers";
 
 makeScript(

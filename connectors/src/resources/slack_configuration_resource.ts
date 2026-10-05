@@ -81,8 +81,7 @@ export type WhitelistedBotType = {
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
-export interface SlackConfigurationResource
-  extends ReadonlyAttributesType<SlackConfigurationModel> {}
+export interface SlackConfigurationResource extends ReadonlyAttributesType<SlackConfigurationModel> {}
 export class SlackConfigurationResource extends BaseResource<SlackConfigurationModel> {
   static model: ModelStatic<SlackConfigurationModel> = SlackConfigurationModel;
 

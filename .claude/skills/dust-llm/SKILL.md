@@ -495,7 +495,7 @@ on `makeScript`. Template: `front/migrations/20260608_migrate_deepseek_r1_models
 - Scan with `AgentConfigurationModel.findAll({ where: { modelId, status: "active" } })`
   through a `ModelStaticWorkspaceAware` alias, with
   `dangerouslyBypassWorkspaceIsolationSecurity: true` plus the `WORKSPACE_ISOLATION_BYPASS`
-  comment and `biome-ignore lint/plugin/noUnverifiedWorkspaceBypass` the linter requires —
+  comment and `oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass` the linter requires —
   migrations run across all workspaces.
 - Log every matched agent (`sId`, `version`, `workspaceId`, from → to) on the dry run, and
   gate all writes on `execute`.

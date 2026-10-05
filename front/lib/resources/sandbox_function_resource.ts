@@ -46,8 +46,7 @@ import type { Attributes, Transaction } from "sequelize";
 import { col, fn, Op } from "sequelize";
 import { z } from "zod";
 
-export interface SandboxFunctionResource
-  extends ReadonlyAttributesType<SandboxFunctionModel> {}
+export interface SandboxFunctionResource extends ReadonlyAttributesType<SandboxFunctionModel> {}
 
 export interface FramePublicationFunctionDefinition {
   name: string;

@@ -2,16 +2,16 @@ import {
   botAnswerUserQuestion,
   botReplaceMention,
   botValidateToolExecution,
-  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+  // oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 } from "@connectors/connectors/slack/bot";
 import {
   getAuthResponseUrlRedisKey,
   SlackBlockIdStaticAgentConfigSchema,
   SlackBlockIdToolValidationSchema,
   SlackUserQuestionActionValueSchema,
-  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+  // oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 } from "@connectors/connectors/slack/chat/stream_conversation_handler";
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+// oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 import { submitFeedbackToAPI } from "@connectors/connectors/slack/feedback_api";
 import {
   getSlackClientForTeam,

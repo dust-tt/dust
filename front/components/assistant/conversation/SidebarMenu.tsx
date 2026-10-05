@@ -1,4 +1,3 @@
-import { CreateAgentDropdownContent } from "@app/components/assistant/CreateAgentDropdown";
 import { useIsAgentLoopStreaming } from "@app/components/assistant/conversation/AgentLoopStreamContext";
 import {
   ConversationMenu,
@@ -18,6 +17,7 @@ import {
   getGroupConversationsByUnreadAndActionRequired,
   groupUnreadConversations,
 } from "@app/components/assistant/conversation/utils";
+import { CreateAgentDropdownContent } from "@app/components/assistant/CreateAgentDropdown";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
@@ -533,13 +533,11 @@ export function AgentSidebarMenu({
 
   const sendNotification = useSendNotification();
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const toggleMultiSelect = useCallback(() => {
     setIsMultiSelect((prev) => !prev);
     setSelectedConversations([]);
   }, [setIsMultiSelect, setSelectedConversations]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const toggleConversationSelection = useCallback(
     (c: ConversationListItemType) => {
       if (selectedConversations.includes(c)) {
@@ -753,7 +751,6 @@ export function AgentSidebarMenu({
     setStarredPodsSectionCollapsed,
   ]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const podsSection = useMemo(() => {
     const nonStarredSummary = summary.filter((pod) => !pod.space.isStarred);
 
@@ -829,6 +826,7 @@ export function AgentSidebarMenu({
         </NavigationListCollapsibleSection>
       </NavigationList>
     );
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, [
     owner,
     summary,
@@ -977,7 +975,6 @@ export function AgentSidebarMenu({
     </NavigationList>
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const conversationsList = useMemo(() => {
     return (
       <NavigationListWithInbox
@@ -1003,6 +1000,7 @@ export function AgentSidebarMenu({
         isLoadingMore={isLoadingMore}
       />
     );
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, [
     filteredConversations,
     sidebarTitleFilter,
@@ -1011,6 +1009,7 @@ export function AgentSidebarMenu({
     toggleConversationSelection,
     activeConversationId,
     owner,
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
     navItemsSection,
     starredSection,
     podsSection,

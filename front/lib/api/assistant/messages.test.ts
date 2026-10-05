@@ -422,9 +422,9 @@ describe("batchRenderMessages", () => {
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
-        const rendered = result.value.find((m) => m.type === "agent_message") as
-          | AgentMessageType
-          | undefined;
+        const rendered = result.value.find(
+          (m) => m.type === "agent_message"
+        ) as AgentMessageType | undefined;
         expect(rendered).toBeDefined();
         expect(rendered?.parentAgentMessageId).toBe(originAgentMessage!.sId);
       }

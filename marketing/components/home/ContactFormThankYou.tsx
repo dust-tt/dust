@@ -1,9 +1,9 @@
+import { CheckCircle } from "@dust-tt/sparkle";
 import type { ContactFormData } from "@marketing/lib/api/hubspot/contactFormSchema";
 import { FIELD_DEFINITIONS } from "@marketing/lib/api/hubspot/contactFormSchema";
 import { TRACKING_AREAS, trackEvent } from "@marketing/lib/tracking";
 import { getStoredUTMParams } from "@marketing/lib/utils/utm";
 import logger from "@marketing/logger/logger";
-import { CheckCircle } from "@dust-tt/sparkle";
 import { useEffect, useRef } from "react";
 import { useFormContext } from "react-hook-form";
 

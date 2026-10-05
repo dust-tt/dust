@@ -42,8 +42,7 @@ const HIDDEN_BY_DEFAULT_SOURCES: SkillSuggestionSource[] = [
   "conversational",
 ];
 
-export interface SkillSuggestionResource
-  extends ReadonlyAttributesType<SkillSuggestionModel> {}
+export interface SkillSuggestionResource extends ReadonlyAttributesType<SkillSuggestionModel> {}
 
 /**
  * Resource for managing skill suggestions.

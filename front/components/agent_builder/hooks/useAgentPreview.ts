@@ -191,7 +191,6 @@ export function useDraftConversation({
     ]
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const resetConversation = useCallback(() => {
     setConversation(undefined);
   }, [setConversation]);

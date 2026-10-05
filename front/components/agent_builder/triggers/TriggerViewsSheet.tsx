@@ -3,19 +3,19 @@ import type {
   AgentBuilderTriggerType,
   AgentBuilderWebhookTriggerType,
 } from "@app/components/agent_builder/agentBuilderFormSchema";
-import { ScheduleEditionSheetContent } from "@app/components/agent_builder/triggers/schedule/ScheduleEditionSheet";
 import {
   formValuesToScheduleTriggerData,
   getScheduleFormDefaultValues,
 } from "@app/components/agent_builder/triggers/schedule/scheduleEditionFormSchema";
+import { ScheduleEditionSheetContent } from "@app/components/agent_builder/triggers/schedule/ScheduleEditionSheet";
 import { TriggerSelectionPageContent } from "@app/components/agent_builder/triggers/TriggerSelectionPage";
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { TriggerViewsSheetFormSchema } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
-import { WebhookEditionSheetContent } from "@app/components/agent_builder/triggers/webhook/WebhookEditionSheet";
 import {
   formValuesToWebhookTriggerData,
   getWebhookFormDefaultValues,
 } from "@app/components/agent_builder/triggers/webhook/webhookEditionFormSchema";
+import { WebhookEditionSheetContent } from "@app/components/agent_builder/triggers/webhook/WebhookEditionSheet";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useCanUseSelectedExecutionMode } from "@app/hooks/useTriggerExecutionModes";

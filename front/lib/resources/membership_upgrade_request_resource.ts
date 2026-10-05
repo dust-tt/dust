@@ -26,8 +26,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { UniqueConstraintError } from "sequelize";
 
-export interface MembershipUpgradeRequestResource
-  extends ReadonlyAttributesType<MembershipUpgradeRequestModel> {}
+export interface MembershipUpgradeRequestResource extends ReadonlyAttributesType<MembershipUpgradeRequestModel> {}
 
 export class UpgradeRequestReasonRequiredError extends Error {}
 

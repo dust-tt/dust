@@ -27,10 +27,7 @@ export {
   ScrollableDataTable,
   type ScrollableDataTableProps,
 } from "./ScrollableDataTable";
-export {
-  createRadioSelectionColumn,
-  createSelectionColumn,
-} from "./selection";
+export { createRadioSelectionColumn, createSelectionColumn } from "./selection";
 
 export const DataTable = Object.assign(DataTableBase, {
   Root,

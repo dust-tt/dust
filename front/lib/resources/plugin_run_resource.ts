@@ -58,8 +58,7 @@ function trimPluginRunResultOrError(result: PluginResponse | string): string {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-export interface PluginRunResource
-  extends ReadonlyAttributesType<PluginRunModel> {}
+export interface PluginRunResource extends ReadonlyAttributesType<PluginRunModel> {}
 export class PluginRunResource extends BaseResource<PluginRunModel> {
   static model: ModelStatic<PluginRunModel> = PluginRunModel;
 

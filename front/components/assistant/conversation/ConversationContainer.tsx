@@ -539,7 +539,7 @@ export function ConversationContainerVirtuoso({
     <ScrollArea
       className="px-4 md:px-8"
       hideScrollBar={isScrollLocked}
-      // biome-ignore lint/plugin/noCssImportant: Radix's inline overflow must not re-enable scrolling on Home.
+      // oxlint-disable-next-line dust/noCssImportant -- Radix's inline overflow must not re-enable scrolling on Home.
       viewportClassName={isScrollLocked ? "overflow-y-hidden!" : undefined}
       viewportRef={scrollerRef}
     >

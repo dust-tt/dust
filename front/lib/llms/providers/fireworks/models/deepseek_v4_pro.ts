@@ -1,9 +1,7 @@
 import { FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG } from "@app/types/assistant/models/fireworks";
 
 export function WithDustDeepSeekDeepSeekV4ProConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class DustDeepSeekDeepSeekV4Pro extends Base {
     static readonly displayName = "DeepSeek V4 Pro";

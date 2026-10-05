@@ -14,12 +14,10 @@ import type { SuccessResponseBody } from "@front-api/routes/types";
 const app = pokeApp();
 
 /** @ignoreswagger */
-app.get(
-  "/",
-  async (ctx): HandlerResult<GetDegradedModelsResponseBody> =>
-    ctx.json({
-      endpoints: await listDegradableEndpointsWithStatus(),
-    })
+app.get("/", async (ctx): HandlerResult<GetDegradedModelsResponseBody> =>
+  ctx.json({
+    endpoints: await listDegradableEndpointsWithStatus(),
+  })
 );
 
 /** @ignoreswagger */

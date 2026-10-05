@@ -390,11 +390,10 @@ export type AgentResourceSnapshot = {
  */
 const AGENT_RESOURCE_CACHE_MODE: CachedResourceMode = "live";
 
-export interface AgentResource
-  extends Omit<
-    ReadonlyAttributesType<AgentModel>,
-    "name" | "status" | "scope" | "reinforcement"
-  > {
+export interface AgentResource extends Omit<
+  ReadonlyAttributesType<AgentModel>,
+  "name" | "status" | "scope" | "reinforcement"
+> {
   readonly agentConfigurationModelId: ModelId;
   readonly scope: AgentConfigurationScope;
   readonly name: string;

@@ -1,3 +1,13 @@
+import {
+  Button,
+  Hoverable,
+  PriceTable,
+  Rocket02,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@dust-tt/sparkle";
 import { FairUsageModal } from "@marketing/components/FairUsageModal";
 import {
   BUSINESS_PLAN_COST_MONTHLY,
@@ -14,16 +24,6 @@ import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
 import { classNames } from "@marketing/lib/utils";
 import type { BillingPeriod, PlanType } from "@marketing/types/plan";
 import type { WorkspaceType } from "@marketing/types/user";
-import {
-  Button,
-  Hoverable,
-  PriceTable,
-  Rocket02,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import { useState } from "react";
 

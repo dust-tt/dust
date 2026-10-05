@@ -38,6 +38,16 @@ import {
 } from "@dust-tt/sparkle";
 import { ActionCardState, BreadcrumbsItem } from "@dust-tt/sparkle";
 import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import type { Components } from "react-markdown";
+import { NewCitation } from "./NewCitation";
+import {
   NewConversationActiveIndicator,
   NewConversationAgentMessage,
   NewConversationContainer,
@@ -46,16 +56,6 @@ import {
   NewConversationSectionHeading,
   NewConversationUserMessage,
 } from "./NewConversationMessages";
-import { NewCitation } from "./NewCitation";
-import type { Components } from "react-markdown";
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
 
 import {
   FileChip,
@@ -65,7 +65,6 @@ import {
 } from "./InlineFileChip";
 import { fileChipDirective } from "./fileChipDirective";
 
-import { getAgentById } from "../data/agents";
 import type {
   Agent,
   Conversation,
@@ -78,6 +77,7 @@ import type {
   MessageReactionData,
   User,
 } from "../data/types";
+import { getAgentById } from "../data/agents";
 import { getUserById } from "../data/users";
 import { InputBar } from "./InputBar";
 import { SuggestionBox } from "./SuggestionBox";

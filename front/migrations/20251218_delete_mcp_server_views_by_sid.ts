@@ -11,12 +11,12 @@ import {
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
-import { dangerouslyMakeSIdWithCustomFirstPrefix } from "@app/lib/resources/string_ids";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type {
   ModelStaticWorkspaceAware,
   SoftDeletableWorkspaceAwareModel,
 } from "@app/lib/resources/storage/wrappers/workspace_models";
+import { dangerouslyMakeSIdWithCustomFirstPrefix } from "@app/lib/resources/string_ids";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";

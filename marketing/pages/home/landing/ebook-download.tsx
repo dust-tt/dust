@@ -1,7 +1,7 @@
-import { HomeTrustedMarqueeCompact } from "@marketing/components/home/content/Product/HomeTrustedSection";
+import { Button, Download01 } from "@dust-tt/sparkle";
 import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import { PublicWebsiteLogo } from "@marketing/components/home/PublicWebsiteLogo";
-import { Button, Download01 } from "@dust-tt/sparkle";
+import { HomeTrustedMarqueeCompact } from "@marketing/components/home/content/Product/HomeTrustedSection";
 import Image from "next/image";
 
 // Ungated public endpoint that streams the canonical PDF as an attachment (see
@@ -14,7 +14,7 @@ const BOOK_DEMO_URL = "/home/contact";
 
 // Standalone page: rendered bare, without LandingLayout, so there is no nav,
 // footer, or cookie/promo banner — just the Dust logo and the ebook hero.
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function EbookDownload() {
   return (
     <>

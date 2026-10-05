@@ -302,7 +302,7 @@ export function CreateWebhookSourceFormContent({
                           <Button
                             label={field.value}
                             variant="outline"
-                            // biome-ignore lint/plugin/noCssImportant: legacy [no-css-important]
+                            // oxlint-disable-next-line dust/noCssImportant -- legacy [no-css-important]
                             className="mt-0!"
                             icon={ChevronDown}
                           />

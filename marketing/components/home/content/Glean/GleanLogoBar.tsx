@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import Image from "next/image";
 
 interface GleanLogoBarProps {

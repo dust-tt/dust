@@ -1,8 +1,6 @@
 import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
 import { CreateAgentDropdown } from "@app/components/assistant/CreateAgentDropdown";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
-import { AgentFilterPanel } from "@app/components/assistant/manager/AgentFilterPanel";
-import { AgentSearchTable } from "@app/components/assistant/manager/AgentSearchTable";
 import type { AgentFilter } from "@app/components/assistant/manager/agentFilter";
 import {
   AGENT_FILTER_CATEGORIES,
@@ -11,17 +9,19 @@ import {
   AGENT_SEARCH_TABS,
   toAgentSearchFilters,
 } from "@app/components/assistant/manager/agentFilter";
+import { AgentFilterPanel } from "@app/components/assistant/manager/AgentFilterPanel";
+import { AgentSearchTable } from "@app/components/assistant/manager/AgentSearchTable";
 import {
   ManageTrackingContext,
   trackManageDetails,
   useManageTracking,
   useTrackManageResults,
 } from "@app/components/pages/builder/manageTracking";
-import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
 import {
   clearFilterCategory,
   getFilterSummaries,
 } from "@app/components/shared/filter_panel/filterState";
+import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
 import { SEARCH_FILTER_CATEGORY_SINGULAR_LABEL } from "@app/components/shared/filter_panel/searchFilter";
 import { useSearchPageHashState } from "@app/components/shared/filter_panel/searchFilterHash";
 import {

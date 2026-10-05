@@ -36,8 +36,7 @@ function applyMarkup(
   };
 }
 
-export interface SelfImprovingSkillsUsageResource
-  extends ReadonlyAttributesType<SelfImprovingSkillsUsageModel> {}
+export interface SelfImprovingSkillsUsageResource extends ReadonlyAttributesType<SelfImprovingSkillsUsageModel> {}
 
 export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImprovingSkillsUsageModel> {
   static model: ModelStaticWorkspaceAware<SelfImprovingSkillsUsageModel> =

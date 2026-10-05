@@ -22,7 +22,7 @@ export async function getConversationRankVersionLock(
   // Get a lock using the unique lock key (number withing postgresql BigInt range).
   const hash = md5(`conversation_message_rank_version_${conversation.id}`);
   const lockKey = parseInt(hash, 16) % 9999999999;
-  // biome-ignore lint/plugin/noRawSql: advisory lock requires raw SQL
+  // oxlint-disable-next-line dust/noRawSql -- advisory lock requires raw SQL
   await frontSequelize.query("SELECT pg_advisory_xact_lock(:key)", {
     transaction: t,
     replacements: { key: lockKey },

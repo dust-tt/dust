@@ -1,7 +1,4 @@
-import {
-  HomeReveal,
-  HomeRevealStyles,
-} from "@marketing/components/home/content/Product/HomeReveal";
+import { LegacyButton as Button } from "@dust-tt/sparkle";
 import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
 import LandingLayout from "@marketing/components/home/LandingLayout";
 import { PageMetadata } from "@marketing/components/home/PageMetadata";
@@ -11,7 +8,10 @@ import {
   PartnerIdealPartners,
   PartnerSocialProof,
 } from "@marketing/components/home/PartnerHero";
-import { LegacyButton as Button } from "@dust-tt/sparkle";
+import {
+  HomeReveal,
+  HomeRevealStyles,
+} from "@marketing/components/home/content/Product/HomeReveal";
 import type { GetStaticProps } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
@@ -31,7 +31,7 @@ export const getStaticProps: GetStaticProps = async () => {
   };
 };
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function Partner() {
   const router = useRouter();
 

@@ -2,9 +2,7 @@ import { dropTemperature } from "@app/lib/llms/stream/types/configuration";
 import { GPT_5_NANO_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 
 export function WithDustGptFiveNanoConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class DustGptFiveNano extends Base {
     static readonly displayName = "GPT-5 Nano";

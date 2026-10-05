@@ -210,7 +210,7 @@ describe("fetchFeedbackExportRows", () => {
     // Simulate the ON DELETE SET NULL that fires when the author's user row
     // is deleted: the model's TS type doesn't allow a null userId (it
     // predates the SET NULL constraint), so go through raw SQL instead.
-    // biome-ignore lint/plugin/noRawSql: simulating a DB-level FK nullification not representable via the typed model API.
+    // oxlint-disable-next-line dust/noRawSql -- simulating a DB-level FK nullification not representable via the typed model API.
     await frontSequelize.query(
       'UPDATE "agent_message_feedbacks" SET "userId" = NULL WHERE id = :id',
       { replacements: { id: feedback.id } }

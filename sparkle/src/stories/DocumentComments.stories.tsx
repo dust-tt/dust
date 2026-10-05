@@ -441,32 +441,30 @@ export const ManageThreads: Story = {
 /** @summary Concurrent replies survive conflict recovery and subsequent text undo. */
 export const ConcurrentReplies: Story = {
   args: {
-    onSave: fn(
-      async (): Promise<DocumentSaveResult> => ({
-        ok: false,
-        error: "Another reviewer saved first.",
-        conflict: {
-          content: commentedDocument([
-            {
-              ...COMMENTS[0],
-              replies: [
-                ...COMMENTS[0].replies,
-                {
-                  id: "remote-reply",
-                  body: "The latest rollout numbers are confirmed.",
-                  author: LIAM,
-                  createdAt: agoIso(0),
-                },
-              ],
-            },
-            ...COMMENTS.slice(1),
-          ]),
-          adoptAndSave: fn(
-            async (): Promise<DocumentSaveOutcome> => ({ ok: true })
-          ),
-        },
-      })
-    ),
+    onSave: fn(async (): Promise<DocumentSaveResult> => ({
+      ok: false,
+      error: "Another reviewer saved first.",
+      conflict: {
+        content: commentedDocument([
+          {
+            ...COMMENTS[0],
+            replies: [
+              ...COMMENTS[0].replies,
+              {
+                id: "remote-reply",
+                body: "The latest rollout numbers are confirmed.",
+                author: LIAM,
+                createdAt: agoIso(0),
+              },
+            ],
+          },
+          ...COMMENTS.slice(1),
+        ]),
+        adoptAndSave: fn(async (): Promise<DocumentSaveOutcome> => ({
+          ok: true,
+        })),
+      },
+    })),
   },
   play: async ({ canvas, args }) => {
     const editor = await canvas.findByRole("textbox", {

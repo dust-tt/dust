@@ -295,7 +295,6 @@ export const MultipleFilesUpload = ({
   }, [handleFileInputBlur]);
 
   // Effect: open file input when the dialog is opened
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     if (isOpen && !wasOpened) {
       const ref = fileInputRef.current;

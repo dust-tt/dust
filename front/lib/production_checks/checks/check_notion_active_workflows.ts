@@ -63,7 +63,7 @@ interface StalledWorkflowsEntry {
 async function listAllNotionConnectors() {
   const connectorsDb = getConnectorsPrimaryDbConnection();
 
-  // biome-ignore lint/plugin/noRawSql: production check uses read replica
+  // oxlint-disable-next-line dust/noRawSql -- production check uses read replica
   return connectorsDb.query<NotionConnector>(
     `SELECT id, "dataSourceId", "workspaceId", "pausedAt" FROM connectors WHERE "type" = 'notion' and  "errorType" IS NULL`,
     {

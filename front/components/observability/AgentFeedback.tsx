@@ -15,11 +15,11 @@ import {
 
 const FeedbackDistributionChart = safeLazy(
   () =>
-    import(
-      "@app/components/agent_builder/observability/charts/FeedbackDistributionChart"
-    ).then((mod) => ({
-      default: mod.FeedbackDistributionChart,
-    })),
+    import("@app/components/agent_builder/observability/charts/FeedbackDistributionChart").then(
+      (mod) => ({
+        default: mod.FeedbackDistributionChart,
+      })
+    ),
   { canReload: () => !isNavigationLocked() }
 );
 

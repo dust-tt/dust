@@ -32,40 +32,41 @@ describe("inferenceRegionForEndpointRegion", () => {
       expectedInferenceRegion: "global",
     },
     { endpointRegion: "us" as const, expectedInferenceRegion: "global" },
-  ])("maps $endpointRegion endpoints to $expectedInferenceRegion pricing", ({
-    endpointRegion,
-    expectedInferenceRegion,
-  }) => {
-    expect(inferenceRegionForEndpointRegion(endpointRegion)).toBe(
-      expectedInferenceRegion
-    );
-  });
+  ])(
+    "maps $endpointRegion endpoints to $expectedInferenceRegion pricing",
+    ({ endpointRegion, expectedInferenceRegion }) => {
+      expect(inferenceRegionForEndpointRegion(endpointRegion)).toBe(
+        expectedInferenceRegion
+      );
+    }
+  );
 });
 
 describe("computeTokensCostForUsageInMicroUsd", () => {
-  it.each(
-    EU_UPLIFT_MODEL_IDS
-  )("applies the EU uplift to every token rate for %s", (modelId) => {
-    const usage = {
-      modelId,
-      promptTokens: 4_000_000,
-      completionTokens: 1_000_000,
-      cachedTokens: 1_000_000,
-      cacheCreationTokens: 2_000_000,
-      longCacheCreationTokens: 1_000_000,
-    };
+  it.each(EU_UPLIFT_MODEL_IDS)(
+    "applies the EU uplift to every token rate for %s",
+    (modelId) => {
+      const usage = {
+        modelId,
+        promptTokens: 4_000_000,
+        completionTokens: 1_000_000,
+        cachedTokens: 1_000_000,
+        cacheCreationTokens: 2_000_000,
+        longCacheCreationTokens: 1_000_000,
+      };
 
-    const globalCostMicroUsd = computeTokensCostForUsageInMicroUsd({
-      ...usage,
-      inferenceRegion: "global",
-    });
-    const euCostMicroUsd = computeTokensCostForUsageInMicroUsd({
-      ...usage,
-      inferenceRegion: "eu",
-    });
+      const globalCostMicroUsd = computeTokensCostForUsageInMicroUsd({
+        ...usage,
+        inferenceRegion: "global",
+      });
+      const euCostMicroUsd = computeTokensCostForUsageInMicroUsd({
+        ...usage,
+        inferenceRegion: "eu",
+      });
 
-    expect(euCostMicroUsd).toBeCloseTo(globalCostMicroUsd * 1.1, 6);
-  });
+      expect(euCostMicroUsd).toBeCloseTo(globalCostMicroUsd * 1.1, 6);
+    }
+  );
 
   it("combines the OpenAI EU uplift with the batch discount", () => {
     const usage = {

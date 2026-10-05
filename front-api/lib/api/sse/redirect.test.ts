@@ -38,16 +38,15 @@ describe("redirectToSse", () => {
       expected:
         "/api/sse/w/w1/sandbox-functions/sfn_1/invocations/sfi_1/events",
     },
-  ])("rewrites the leading /api/ segment to /api/sse/ for the $name path", async ({
-    routePattern,
-    path,
-    expected,
-  }) => {
-    const res = await requestSseRedirect(routePattern, path);
+  ])(
+    "rewrites the leading /api/ segment to /api/sse/ for the $name path",
+    async ({ routePattern, path, expected }) => {
+      const res = await requestSseRedirect(routePattern, path);
 
-    expect(res.status).toBe(307);
-    expect(res.headers.get("location")).toBe(expected);
-  });
+      expect(res.status).toBe(307);
+      expect(res.headers.get("location")).toBe(expected);
+    }
+  );
 
   // The Location must stay relative so the client resolves it against the
   // original https request, preserving the Authorization header (an absolute

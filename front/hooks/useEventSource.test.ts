@@ -22,30 +22,30 @@ describe("useEventSource", () => {
   it.each([
     { enabled: true, expected: "immediate" },
     { enabled: false, expected: "fallback" },
-  ] as const)("uses $expected long-poll activation when the workspace flag is $enabled", ({
-    enabled,
-    expected,
-  }) => {
-    mockHasFeature.mockReturnValue(enabled);
-    const buildLongPollURL = vi.fn();
-    const { unmount } = renderHook(() =>
-      useEventSource(vi.fn(), vi.fn(), "message-msg_1", {
-        workspaceId: "w_1",
-        buildLongPollURL,
-      })
-    );
-
-    expect(eventSourceManager.subscribe).toHaveBeenCalledWith(
-      expect.objectContaining({
-        config: expect.objectContaining({
+  ] as const)(
+    "uses $expected long-poll activation when the workspace flag is $enabled",
+    ({ enabled, expected }) => {
+      mockHasFeature.mockReturnValue(enabled);
+      const buildLongPollURL = vi.fn();
+      const { unmount } = renderHook(() =>
+        useEventSource(vi.fn(), vi.fn(), "message-msg_1", {
           workspaceId: "w_1",
-          buildLongPollURL: expect.any(Function),
-          longPollActivation: expected,
-        }),
-      })
-    );
-    unmount();
-  });
+          buildLongPollURL,
+        })
+      );
+
+      expect(eventSourceManager.subscribe).toHaveBeenCalledWith(
+        expect.objectContaining({
+          config: expect.objectContaining({
+            workspaceId: "w_1",
+            buildLongPollURL: expect.any(Function),
+            longPollActivation: expected,
+          }),
+        })
+      );
+      unmount();
+    }
+  );
 
   it("keeps SSE for streams without a long-poll endpoint", () => {
     mockHasFeature.mockReturnValue(true);

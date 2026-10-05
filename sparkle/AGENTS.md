@@ -82,7 +82,7 @@ exception lives in `svgr-v2-stroke-icon-template.js`.
 
 `./build_icons.sh` deletes `src/icons/v2-stroke` and `src/logo/dust` outright, clears the
 generated files in `src/logo/platforms` individually so hand-authored `registry.ts` survives,
-then regenerates each from its SVG source directory and runs `biome check --write`. Any generated
+then regenerates each from its SVG source directory and runs `oxlint --fix` and `oxfmt` on them. Any generated
 module without a matching SVG source is therefore destroyed by a build. Before running it, confirm
 every export in `src/icons/v2-stroke/index.ts` has a source file — several icons have historically
 been hand-written TSX with no SVG, and they must be exported from Figma first.

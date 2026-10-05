@@ -269,7 +269,6 @@ export const DocumentUploadOrEditModal = ({
     await handleUpload();
   }, [isValidDocument, handleUpload, documentState, sendNotification]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       // Enforce single file upload

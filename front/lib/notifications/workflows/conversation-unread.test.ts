@@ -104,13 +104,14 @@ describe("conversation-unread workflow business logic", () => {
     system_activation: false,
   };
   describe("shouldSendNotificationForAgentAnswer", () => {
-    it.each(
-      Object.entries(userMessageOriginRecord)
-    )('should for origin "%s" return %s', (origin, expected) => {
-      expect(
-        shouldSendNotificationForAgentAnswer(origin as UserMessageOrigin)
-      ).toBe(expected);
-    });
+    it.each(Object.entries(userMessageOriginRecord))(
+      'should for origin "%s" return %s',
+      (origin, expected) => {
+        expect(
+          shouldSendNotificationForAgentAnswer(origin as UserMessageOrigin)
+        ).toBe(expected);
+      }
+    );
   });
 
   describe("getUserNotificationDelay", () => {
@@ -625,9 +626,8 @@ describe("conversation-unread workflow business logic", () => {
 
     it("should return false when action is required from user", async () => {
       // First ensure the participant record exists, then set actionRequired=true
-      const { ConversationParticipantModel } = await import(
-        "@app/lib/models/agent/conversation"
-      );
+      const { ConversationParticipantModel } =
+        await import("@app/lib/models/agent/conversation");
 
       const conversation = await ConversationResource.fetchById(
         auth,
@@ -753,9 +753,8 @@ describe("conversation-unread workflow business logic", () => {
       }
 
       // Add user as participant
-      const { ConversationParticipantModel } = await import(
-        "@app/lib/models/agent/conversation"
-      );
+      const { ConversationParticipantModel } =
+        await import("@app/lib/models/agent/conversation");
       await ConversationParticipantModel.create({
         conversationId: conversationResource.id,
         userId: user.id,
@@ -896,9 +895,8 @@ describe("conversation-unread workflow business logic", () => {
 
     it("should call getNovuClient when there are unread participants", async () => {
       // Make sure participants exist and have unread messages
-      const { ConversationParticipantModel } = await import(
-        "@app/lib/models/agent/conversation"
-      );
+      const { ConversationParticipantModel } =
+        await import("@app/lib/models/agent/conversation");
       const conversation = await ConversationResource.fetchById(
         auth,
         conversationId
@@ -975,9 +973,8 @@ describe("conversation-unread workflow business logic", () => {
       );
 
       // Make sure participants exist and have unread messages
-      const { ConversationParticipantModel } = await import(
-        "@app/lib/models/agent/conversation"
-      );
+      const { ConversationParticipantModel } =
+        await import("@app/lib/models/agent/conversation");
       const conversation = await ConversationResource.fetchById(
         auth,
         conversationId
@@ -1015,9 +1012,8 @@ describe("conversation-unread workflow business logic", () => {
     });
 
     it("should skip notifications for email-origin user messages", async () => {
-      const { ConversationParticipantModel } = await import(
-        "@app/lib/models/agent/conversation"
-      );
+      const { ConversationParticipantModel } =
+        await import("@app/lib/models/agent/conversation");
       const agent = await AgentConfigurationFactory.createTestAgent(auth, {
         name: "Email Agent",
         description: "Test",
@@ -1060,9 +1056,8 @@ describe("conversation-unread workflow business logic", () => {
     });
 
     it("should skip notifications for agent replies to email-origin user messages", async () => {
-      const { ConversationParticipantModel } = await import(
-        "@app/lib/models/agent/conversation"
-      );
+      const { ConversationParticipantModel } =
+        await import("@app/lib/models/agent/conversation");
       const agent = await AgentConfigurationFactory.createTestAgent(auth, {
         name: "Email Agent",
         description: "Test",

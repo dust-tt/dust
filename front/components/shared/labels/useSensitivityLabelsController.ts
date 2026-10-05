@@ -37,6 +37,7 @@ export function useSensitivityLabelsController({
     dataClassificationLabels?.allowedLabels ?? [];
   const savedAllowedLabelsKey = useMemo(
     () => labelsKey(savedAllowedLabels),
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
     [savedAllowedLabels]
   );
   const stableSavedAllowedLabels = useMemo(

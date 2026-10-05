@@ -1,4 +1,4 @@
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+// oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 import { makeFeedbackSubmittedBlock } from "@connectors/connectors/slack/chat/blocks";
 import {
   getSlackClient,

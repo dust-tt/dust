@@ -18,9 +18,7 @@ export const configSchema = googleAiStudioConfigSchema.extend({
 });
 
 export function WithGoogleGeminiThreeDotEightFlashConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class GoogleGeminiThreeDotEightFlash extends Base {
     static readonly model = GEMINI_3_8_FLASH;

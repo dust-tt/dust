@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 

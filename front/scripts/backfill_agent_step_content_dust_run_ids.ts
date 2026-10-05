@@ -174,7 +174,7 @@ export async function listStepContentBatch({
   // index, so PostgreSQL could scan an unbounded number of rows to produce one batch. This query
   // deliberately scans a bounded page through the existing workspace/order index and filters it
   // below instead.
-  // biome-ignore lint/plugin/noRawSql: tuple comparison guarantees index-backed keyset pagination.
+  // oxlint-disable-next-line dust/noRawSql -- tuple comparison guarantees index-backed keyset pagination.
   const scannedRows = await frontSequelize.query<StepContentScanRow>(
     `
       SELECT
@@ -349,7 +349,7 @@ async function applyStepContentUpdates({
     return `($stepContentModelId${index}::bigint, $dustRunId${index}::text)`;
   });
 
-  // biome-ignore lint/plugin/noRawSql: one bound VALUES query avoids an update query per run.
+  // oxlint-disable-next-line dust/noRawSql -- one bound VALUES query avoids an update query per run.
   const updatedRows = await frontSequelize.query<{ id: string }>(
     `
       WITH mapping("stepContentModelId", "dustRunId") AS (

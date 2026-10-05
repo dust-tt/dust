@@ -10,8 +10,7 @@ import { Ok } from "@app/types/shared/result";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-export interface ProjectTaskStateResource
-  extends ReadonlyAttributesType<ProjectTaskStateModel> {}
+export interface ProjectTaskStateResource extends ReadonlyAttributesType<ProjectTaskStateModel> {}
 
 export class ProjectTaskStateResource extends BaseResource<ProjectTaskStateModel> {
   static model: ModelStaticWorkspaceAware<ProjectTaskStateModel> =

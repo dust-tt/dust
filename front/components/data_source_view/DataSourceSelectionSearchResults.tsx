@@ -212,7 +212,6 @@ export function DataSourceSelectionSearchResults({
     tablePagination,
   } = useCursorPaginationForDataTable(PAGE_SIZE);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reset pagination when search query changes
   useEffect(() => {
     resetPagination();
     setAccumulatedResults([]);

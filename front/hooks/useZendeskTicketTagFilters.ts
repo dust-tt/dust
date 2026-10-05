@@ -38,7 +38,6 @@ export function useZendeskTicketTagFilters({
   const includedTags = includedTagsConfig ? JSON.parse(includedTagsConfig) : [];
   const excludedTags = excludedTagsConfig ? JSON.parse(excludedTagsConfig) : [];
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const addTicketTag = useCallback(
     async (tag: string, type: "include" | "exclude") => {
       try {
@@ -101,14 +100,15 @@ export function useZendeskTicketTagFilters({
     [
       owner.sId,
       dataSource.sId,
+      // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
       includedTags,
+      // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
       excludedTags,
       mutateIncludedTags,
       mutateExcludedTags,
     ]
   );
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const removeTicketTag = useCallback(
     async (tag: string, type: "include" | "exclude") => {
       try {
@@ -171,7 +171,9 @@ export function useZendeskTicketTagFilters({
     [
       owner.sId,
       dataSource.sId,
+      // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
       includedTags,
+      // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
       excludedTags,
       mutateIncludedTags,
       mutateExcludedTags,

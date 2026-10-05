@@ -79,8 +79,7 @@ type WorkspaceModelIdBatchRow = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-export interface WorkspaceResource
-  extends ReadonlyAttributesType<WorkspaceModel> {}
+export interface WorkspaceResource extends ReadonlyAttributesType<WorkspaceModel> {}
 
 export const WORKSPACE_CONVERSATION_KILL_SWITCH_OPERATIONS = [
   "block",
@@ -360,7 +359,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     const workspaceDomain = await this.workspaceDomainModel.findOne({
       where: { domain },
       // WORKSPACE_ISOLATION_BYPASS: Looking up which workspace owns a domain requires cross-workspace query.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -493,7 +492,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       },
       // WORKSPACE_ISOLATION_BYPASS: cross-workspace listing of workspaces with a given feature flag enabled.
       // @ts-expect-error -- Cross-workspace query by design.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     const workspaceModelIds = Array.from(
@@ -614,7 +613,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       await WorkspaceResource.workspaceDomainModel.findOne({
         where: { domain },
         // WORKSPACE_ISOLATION_BYPASS: Need to check domain across all workspaces.
-        // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+        // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
         dangerouslyBypassWorkspaceIsolationSecurity: true,
       });
 
@@ -1012,7 +1011,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       // WORKSPACE_ISOLATION_BYPASS: Plans are resolved for several workspaces at
       // once (`SubscriptionResource.fetchActiveByWorkspacesModelId`); the query
       // is scoped to exactly the requested workspaces.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 

@@ -28,8 +28,7 @@ type CachedGlobalFeatureFlagData = {
 };
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-export interface GlobalFeatureFlagResource
-  extends ReadonlyAttributesType<GlobalFeatureFlagModel> {}
+export interface GlobalFeatureFlagResource extends ReadonlyAttributesType<GlobalFeatureFlagModel> {}
 export class GlobalFeatureFlagResource extends BaseResource<GlobalFeatureFlagModel> {
   static model: ModelStatic<GlobalFeatureFlagModel> = GlobalFeatureFlagModel;
 

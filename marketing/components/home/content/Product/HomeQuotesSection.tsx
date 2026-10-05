@@ -1,4 +1,3 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { HomeQuoteMark } from "@marketing/components/home/content/Product/HomeQuoteMark";
 import { HomeReveal } from "@marketing/components/home/content/Product/HomeReveal";
 import Image from "next/image";

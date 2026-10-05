@@ -1,5 +1,5 @@
-import { H2 } from "@marketing/components/home/ContentComponents";
 import { cn } from "@dust-tt/sparkle";
+import { H2 } from "@marketing/components/home/ContentComponents";
 import type { FC } from "react";
 
 export interface DemoVideoProps {

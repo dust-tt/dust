@@ -316,7 +316,7 @@ export async function sendBatchCallToLlm(
     const conversationResource = writeBatchResult.value;
 
     // Reconstruct the full conversation from DB.
-    // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
+    // oxlint-disable-next-line dust/noExpensiveConversationFetch -- intentional full conversation load
     const conversationRes = await getConversation(
       auth,
       conversationResource.sId

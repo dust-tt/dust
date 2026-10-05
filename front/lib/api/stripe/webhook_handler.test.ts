@@ -147,64 +147,62 @@ const BILLING_RAILS: BillingRail[] = [
   },
 ];
 
-describe.each(
-  BILLING_RAILS
-)("processStripeWebhookEvent invoice.payment_failed ($name)", ({
-  setupWorkspace,
-  invoiceRail,
-}) => {
-  beforeEach(() => {
-    vi.mocked(getStripeSubscription).mockResolvedValue(null);
-  });
+describe.each(BILLING_RAILS)(
+  "processStripeWebhookEvent invoice.payment_failed ($name)",
+  ({ setupWorkspace, invoiceRail }) => {
+    beforeEach(() => {
+      vi.mocked(getStripeSubscription).mockResolvedValue(null);
+    });
 
-  async function processPaymentFailed(customerEmail: string | null) {
-    return processStripeWebhookEvent({
-      event: makePaymentFailedEvent(customerEmail, invoiceRail),
-      stripe,
-      now: new Date(),
+    async function processPaymentFailed(customerEmail: string | null) {
+      return processStripeWebhookEvent({
+        event: makePaymentFailedEvent(customerEmail, invoiceRail),
+        stripe,
+        now: new Date(),
+      });
+    }
+
+    it("emails only the active admins when customer_email is a revoked admin", async () => {
+      const workspace = await setupWorkspace();
+      const { activeAdmin, formerAdmin } = await addMembers(workspace);
+
+      const result = await processPaymentFailed(formerAdmin.email);
+
+      expect(result.isOk()).toBe(true);
+      expect(sendAdminSubscriptionPaymentFailedEmail).toHaveBeenCalledTimes(1);
+      expect(sendAdminSubscriptionPaymentFailedEmail).toHaveBeenCalledWith(
+        activeAdmin.email,
+        `http://fake-url/w/${workspace.sId}/subscription/manage`
+      );
+    });
+
+    it("does not email an outsider customer_email", async () => {
+      const workspace = await setupWorkspace();
+      const { activeAdmin } = await addMembers(workspace);
+
+      const result = await processPaymentFailed("outsider@example.com");
+
+      expect(result.isOk()).toBe(true);
+      const recipients = vi
+        .mocked(sendAdminSubscriptionPaymentFailedEmail)
+        .mock.calls.map(([email]) => email);
+      expect(recipients).toEqual([activeAdmin.email]);
+    });
+
+    it("never mints a billing-portal session and links to the manage page", async () => {
+      const workspace = await setupWorkspace();
+      await addMembers(workspace);
+
+      const result = await processPaymentFailed(null);
+
+      expect(result.isOk()).toBe(true);
+      expect(createCustomerPortalSession).not.toHaveBeenCalled();
+      const urls = vi
+        .mocked(sendAdminSubscriptionPaymentFailedEmail)
+        .mock.calls.map(([, url]) => url);
+      expect(urls).toEqual([
+        `http://fake-url/w/${workspace.sId}/subscription/manage`,
+      ]);
     });
   }
-
-  it("emails only the active admins when customer_email is a revoked admin", async () => {
-    const workspace = await setupWorkspace();
-    const { activeAdmin, formerAdmin } = await addMembers(workspace);
-
-    const result = await processPaymentFailed(formerAdmin.email);
-
-    expect(result.isOk()).toBe(true);
-    expect(sendAdminSubscriptionPaymentFailedEmail).toHaveBeenCalledTimes(1);
-    expect(sendAdminSubscriptionPaymentFailedEmail).toHaveBeenCalledWith(
-      activeAdmin.email,
-      `http://fake-url/w/${workspace.sId}/subscription/manage`
-    );
-  });
-
-  it("does not email an outsider customer_email", async () => {
-    const workspace = await setupWorkspace();
-    const { activeAdmin } = await addMembers(workspace);
-
-    const result = await processPaymentFailed("outsider@example.com");
-
-    expect(result.isOk()).toBe(true);
-    const recipients = vi
-      .mocked(sendAdminSubscriptionPaymentFailedEmail)
-      .mock.calls.map(([email]) => email);
-    expect(recipients).toEqual([activeAdmin.email]);
-  });
-
-  it("never mints a billing-portal session and links to the manage page", async () => {
-    const workspace = await setupWorkspace();
-    await addMembers(workspace);
-
-    const result = await processPaymentFailed(null);
-
-    expect(result.isOk()).toBe(true);
-    expect(createCustomerPortalSession).not.toHaveBeenCalled();
-    const urls = vi
-      .mocked(sendAdminSubscriptionPaymentFailedEmail)
-      .mock.calls.map(([, url]) => url);
-    expect(urls).toEqual([
-      `http://fake-url/w/${workspace.sId}/subscription/manage`,
-    ]);
-  });
-});
+);

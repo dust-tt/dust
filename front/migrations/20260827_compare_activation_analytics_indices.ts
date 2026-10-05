@@ -12,14 +12,14 @@ import { isFreeOrigin } from "@app/lib/credits/agent_message_billing";
 import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import { TOOL_COST_CATEGORY_AWU_WEIGHTS } from "@app/lib/metronome/events";
 import { makeScript } from "@app/scripts/helpers";
-import {
-  AGENT_MESSAGE_STATUSES_TO_TRACK,
-  isTerminalAgentMessageStatus,
-} from "@app/types/assistant/conversation";
 import type {
   AgentMessageAnalyticsData,
   AgentMessageConsumptionAnalyticsData,
 } from "@app/types/assistant/analytics";
+import {
+  AGENT_MESSAGE_STATUSES_TO_TRACK,
+  isTerminalAgentMessageStatus,
+} from "@app/types/assistant/conversation";
 import type { estypes } from "@elastic/elasticsearch";
 import { subDays } from "date-fns";
 

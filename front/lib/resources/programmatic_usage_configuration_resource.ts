@@ -11,8 +11,7 @@ import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 
-export interface ProgrammaticUsageConfigurationResource
-  extends ReadonlyAttributesType<ProgrammaticUsageConfigurationModel> {}
+export interface ProgrammaticUsageConfigurationResource extends ReadonlyAttributesType<ProgrammaticUsageConfigurationModel> {}
 
 export class ProgrammaticUsageConfigurationResource extends BaseResource<ProgrammaticUsageConfigurationModel> {
   static model: ModelStaticWorkspaceAware<ProgrammaticUsageConfigurationModel> =

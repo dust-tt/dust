@@ -5,12 +5,12 @@ import {
   navigateToKnowledgeBrowserItem,
   useKnowledgeBrowserNavigation,
 } from "@app/components/data_source_view/browser/useKnowledgeBrowserNavigation";
-import { AttachContextSlashMenuItemIcon } from "@app/components/editor/extensions/shared/slash_suggestion/AttachContextSlashMenuItemIcon";
 import type { AttachContextSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/attachContextSlashCommand";
 import {
   isAttachContextSlashCommand,
   SELECT_ATTACH_CONTEXT_SLASH_COMMAND_ACTION,
 } from "@app/components/editor/extensions/shared/slash_suggestion/attachContextSlashCommand";
+import { AttachContextSlashMenuItemIcon } from "@app/components/editor/extensions/shared/slash_suggestion/AttachContextSlashMenuItemIcon";
 import type { SlashCommandSection } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
 import type {
   ContextSlashSearchSelection,
@@ -118,8 +118,10 @@ function getSubMenuListProps({
   }
 }
 
-interface AttachContextSubMenuDropdownProps
-  extends Pick<SuggestionProps<SlashCommand>, "clientRect" | "query"> {
+interface AttachContextSubMenuDropdownProps extends Pick<
+  SuggestionProps<SlashCommand>,
+  "clientRect" | "query"
+> {
   // The sub-menu command the user came from, and how to return to it. Absent when the browser is
   // the whole menu: no Back row, Escape closes.
   activeFrame?: SlashMenuStackFrame;

@@ -125,8 +125,7 @@ function resolvedDiscoveryItem(
   }
 }
 
-export interface DiscoveryItemResource
-  extends ReadonlyAttributesType<GroupPinnedItemModel> {}
+export interface DiscoveryItemResource extends ReadonlyAttributesType<GroupPinnedItemModel> {}
 
 export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
   static model: ModelStaticWorkspaceAware<GroupPinnedItemModel> =

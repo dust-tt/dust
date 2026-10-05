@@ -89,88 +89,93 @@ describe("comment addition recovery", () => {
     ]);
   });
 
-  it.each([
-    "text",
-    "formatting",
-    "anchor",
-    "resolved",
-    "deleted",
-  ] as const)("rejects a latest snapshot with changed %s", (change) => {
-    const base = withComment(document(), comment("thread"));
-    const local = withReplies(base, [reply("local")]);
-    const tr = new Transform(base);
-    switch (change) {
-      case "text":
-        tr.insert(1, schema.text("Remote edit"));
-        break;
-      case "formatting":
-        tr.addMark(1, 5, schema.marks.bold.create());
-        break;
-      case "anchor":
-        tr.removeMark(1, 3, schema.marks.comment);
-        break;
-      case "resolved":
-        tr.setDocAttribute("comments", [
+  it.each(["text", "formatting", "anchor", "resolved", "deleted"] as const)(
+    "rejects a latest snapshot with changed %s",
+    (change) => {
+      const base = withComment(document(), comment("thread"));
+      const local = withReplies(base, [reply("local")]);
+      const tr = new Transform(base);
+      switch (change) {
+        case "text":
+          tr.insert(1, schema.text("Remote edit"));
+          break;
+        case "formatting":
+          tr.addMark(1, 5, schema.marks.bold.create());
+          break;
+        case "anchor":
+          tr.removeMark(1, 3, schema.marks.comment);
+          break;
+        case "resolved":
+          tr.setDocAttribute("comments", [
+            { ...comment("thread"), resolved: true },
+          ]);
+          break;
+        case "deleted":
+          tr.setDocAttribute("comments", []).removeMark(
+            0,
+            tr.doc.content.size,
+            schema.marks.comment
+          );
+          break;
+      }
+      expect(
+        recoverCommentAdditions(
+          EditorState.create({ doc: local }),
+          base,
+          tr.doc
+        )
+      ).toBeNull();
+    }
+  );
+
+  it.each(["payload", "anchor"] as const)(
+    "rejects a reused comment id with a different %s",
+    (difference) => {
+      const base = document();
+      const local = withComment(base, comment("shared"));
+      const latest = withComment(
+        base,
+        {
+          ...comment("shared"),
+          body:
+            difference === "payload"
+              ? "A different comment"
+              : comment("shared").body,
+        },
+        difference === "anchor" ? 3 : 1
+      );
+      expect(
+        recoverCommentAdditions(
+          EditorState.create({ doc: local }),
+          base,
+          latest
+        )
+      ).toBeNull();
+    }
+  );
+
+  it.each(["resolve", "delete"] as const)(
+    "does not replay a local %s over a remote reply",
+    (action) => {
+      const base = withComment(document(), comment("thread"));
+      const latest = withReplies(base, [reply("remote")]);
+      const local = new Transform(base);
+      if (action === "resolve") {
+        local.setDocAttribute("comments", [
           { ...comment("thread"), resolved: true },
         ]);
-        break;
-      case "deleted":
-        tr.setDocAttribute("comments", []).removeMark(
-          0,
-          tr.doc.content.size,
-          schema.marks.comment
-        );
-        break;
+      } else {
+        local
+          .setDocAttribute("comments", [])
+          .removeMark(0, local.doc.content.size, schema.marks.comment);
+      }
+      expect(
+        recoverCommentAdditions(
+          EditorState.create({ doc: local.doc }),
+          base,
+          latest
+        )
+      ).toBeNull();
     }
-    expect(
-      recoverCommentAdditions(EditorState.create({ doc: local }), base, tr.doc)
-    ).toBeNull();
-  });
-
-  it.each([
-    "payload",
-    "anchor",
-  ] as const)("rejects a reused comment id with a different %s", (difference) => {
-    const base = document();
-    const local = withComment(base, comment("shared"));
-    const latest = withComment(
-      base,
-      {
-        ...comment("shared"),
-        body:
-          difference === "payload"
-            ? "A different comment"
-            : comment("shared").body,
-      },
-      difference === "anchor" ? 3 : 1
-    );
-    expect(
-      recoverCommentAdditions(EditorState.create({ doc: local }), base, latest)
-    ).toBeNull();
-  });
-
-  it.each([
-    "resolve",
-    "delete",
-  ] as const)("does not replay a local %s over a remote reply", (action) => {
-    const base = withComment(document(), comment("thread"));
-    const latest = withReplies(base, [reply("remote")]);
-    const local = new Transform(base);
-    if (action === "resolve") {
-      local.setDocAttribute("comments", [
-        { ...comment("thread"), resolved: true },
-      ]);
-    } else {
-      local
-        .setDocAttribute("comments", [])
-        .removeMark(0, local.doc.content.size, schema.marks.comment);
-    }
-    expect(
-      recoverCommentAdditions(
-        EditorState.create({ doc: local.doc }),
-        base,
-        latest
-      )
-    ).toBeNull();
-  });
+  );
 });

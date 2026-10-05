@@ -13,7 +13,7 @@
 #   LEFTHOOK_EXCLUDE=ggshield-scan,package-lock-check git commit -m "message"
 #
 # Skip only linting/type-checking (front and connectors):
-#   LEFTHOOK_EXCLUDE=front-typecheck,front-circular,front-api-docs-check,biome,connectors-typecheck git commit -m "message"
+#   LEFTHOOK_EXCLUDE=front-typecheck,front-circular,front-api-docs-check,oxlint,oxfmt,connectors-typecheck git commit -m "message"
 #
 # Skip only a project:
 #   LEFTHOOK_EXCLUDE=front git commit -m "message"
@@ -179,11 +179,16 @@ pre-commit:
         exit 1
       priority: 1
 
-    # Biome checks (all JS/TS files in monorepo)
-    biome:
+    # Formatting (all JS/TS files in monorepo)
+    oxfmt:
       glob: "*.{js,jsx,ts,tsx,css,scss}"
       run: npm run format:lefthook -- {staged_files}
       stage_fixed: true
+
+    # Linting (packages covered by .oxlintrc.json)
+    oxlint:
+      glob: "{sdks/js,viz,extension,cli/dust-cli,firebase-functions,sparkle,connectors,front-spa,front,front-api,marketing,cli/dust-sandbox/functions-runner,cli/dust-sandbox/pod}/*.{js,jsx,ts,tsx}"
+      run: npx oxlint {staged_files}
 
     # Optional: lossless image optimization (skip with e.g. LEFTHOOK_EXCLUDE=optimize-png,optimize-jpeg,optimize-svg,optimize-gif)
     # Install: brew install oxipng jpegoptim gifsicle svgo

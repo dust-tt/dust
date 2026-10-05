@@ -76,9 +76,8 @@ describe("getRedisCacheClient", () => {
   });
 
   it("returns different client than stream client", async () => {
-    const { getRedisStreamClient, getRedisCacheClient } = await import(
-      "./redis"
-    );
+    const { getRedisStreamClient, getRedisCacheClient } =
+      await import("./redis");
     const streamClient = await getRedisStreamClient({ origin: "lock" });
     const cacheClient = await getRedisCacheClient({
       origin: "cache_with_redis",

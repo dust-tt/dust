@@ -50,8 +50,7 @@ const METADATA_ATTRIBUTES = [
 ] as const;
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-export interface AgentStepContentResource
-  extends ReadonlyAttributesType<AgentStepContentModel> {}
+export interface AgentStepContentResource extends ReadonlyAttributesType<AgentStepContentModel> {}
 
 export class AgentStepContentResource extends BaseResource<AgentStepContentModel> {
   static model: ModelStaticWorkspaceAware<AgentStepContentModel> =

@@ -42,8 +42,7 @@ type MCPServerConnectionResourceFindOptions =
   };
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-export interface MCPServerConnectionResource
-  extends ReadonlyAttributesType<MCPServerConnectionModel> {}
+export interface MCPServerConnectionResource extends ReadonlyAttributesType<MCPServerConnectionModel> {}
 export class MCPServerConnectionResource extends BaseResource<MCPServerConnectionModel> {
   static model: ModelStatic<MCPServerConnectionModel> =
     MCPServerConnectionModel;

@@ -445,7 +445,6 @@ export function TemplateDetailPage() {
     sId: templateId === "new" ? undefined : templateId,
   });
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const onSubmit = useCallback(
     (values: CreateTemplateFormType) => {
       const cleanedValues = Object.fromEntries(

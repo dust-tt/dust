@@ -161,51 +161,52 @@ describe("AgentLoopStreamProvider", () => {
     expect(screen.getByText("active")).toBeInTheDocument();
   });
 
-  it.each([
-    "terminal",
-    "failed",
-  ] as const)("keeps the sidebar streaming across navigation until the manager reports %s", (stoppedState) => {
-    mockUseOngoingAgentLoops.mockReturnValue({
-      ongoingAgentLoops: [],
-      refreshOngoingAgentLoops: mockRefreshOngoingAgentLoops,
-    });
-    let connectionState: "open" | "terminal" | "failed" = "open";
-    let notifyStateChange: (() => void) | undefined;
-    vi.spyOn(eventSourceManager, "getConnectionState").mockImplementation(() =>
-      connectionState === "open"
-        ? { kind: "open", openedAt: 1 }
-        : connectionState === "failed"
-          ? { kind: "failed", attempt: 1, error: new Error("disconnected") }
-          : { kind: "terminal" }
-    );
-    vi.spyOn(
-      eventSourceManager,
-      "subscribeToConnectionState"
-    ).mockImplementation((_streamId, listener) => {
-      notifyStateChange = listener;
-      return () => {
-        if (notifyStateChange === listener) {
-          notifyStateChange = undefined;
-        }
-      };
-    });
+  it.each(["terminal", "failed"] as const)(
+    "keeps the sidebar streaming across navigation until the manager reports %s",
+    (stoppedState) => {
+      mockUseOngoingAgentLoops.mockReturnValue({
+        ongoingAgentLoops: [],
+        refreshOngoingAgentLoops: mockRefreshOngoingAgentLoops,
+      });
+      let connectionState: "open" | "terminal" | "failed" = "open";
+      let notifyStateChange: (() => void) | undefined;
+      vi.spyOn(eventSourceManager, "getConnectionState").mockImplementation(
+        () =>
+          connectionState === "open"
+            ? { kind: "open", openedAt: 1 }
+            : connectionState === "failed"
+              ? { kind: "failed", attempt: 1, error: new Error("disconnected") }
+              : { kind: "terminal" }
+      );
+      vi.spyOn(
+        eventSourceManager,
+        "subscribeToConnectionState"
+      ).mockImplementation((_streamId, listener) => {
+        notifyStateChange = listener;
+        return () => {
+          if (notifyStateChange === listener) {
+            notifyStateChange = undefined;
+          }
+        };
+      });
 
-    const renderProvider = (showMessage: boolean) => (
-      <AgentLoopStreamProvider owner={owner}>
-        <StreamIndicator />
-        {showMessage && <MountedMessageStream />}
-      </AgentLoopStreamProvider>
-    );
-    const view = render(renderProvider(true));
-    expect(screen.getByText("active")).toBeInTheDocument();
+      const renderProvider = (showMessage: boolean) => (
+        <AgentLoopStreamProvider owner={owner}>
+          <StreamIndicator />
+          {showMessage && <MountedMessageStream />}
+        </AgentLoopStreamProvider>
+      );
+      const view = render(renderProvider(true));
+      expect(screen.getByText("active")).toBeInTheDocument();
 
-    view.rerender(renderProvider(false));
-    expect(screen.getByText("active")).toBeInTheDocument();
+      view.rerender(renderProvider(false));
+      expect(screen.getByText("active")).toBeInTheDocument();
 
-    act(() => {
-      connectionState = stoppedState;
-      notifyStateChange?.();
-    });
-    expect(screen.getByText("inactive")).toBeInTheDocument();
-  });
+      act(() => {
+        connectionState = stoppedState;
+        notifyStateChange?.();
+      });
+      expect(screen.getByText("inactive")).toBeInTheDocument();
+    }
+  );
 });

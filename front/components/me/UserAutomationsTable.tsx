@@ -1,7 +1,5 @@
 import { AutomationsFilterPanel } from "@app/components/workspace/analytics/automations/AutomationsFilterPanel";
 import { AutomationsFilterSummary } from "@app/components/workspace/analytics/automations/AutomationsFilterSummary";
-import type { TriggerRowData as BaseTriggerRowData } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
-import { AutomationsTriggersRowsTable } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
 import type { PoolRowFields } from "@app/components/workspace/analytics/automations/automationsTriggerColumns";
 import {
   agentColumn,
@@ -11,6 +9,8 @@ import {
   poolColumn,
   typeColumn,
 } from "@app/components/workspace/analytics/automations/automationsTriggerColumns";
+import type { TriggerRowData as BaseTriggerRowData } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
+import { AutomationsTriggersRowsTable } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
 import type { AutomationsFilter } from "@app/components/workspace/analytics/automationsFilter";
 import {
   toUserAutomationsTriggersFilter,

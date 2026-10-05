@@ -160,7 +160,6 @@ export function useAutoOpenSidePanel({
     );
 
   // Reset interactive tracking when the message changes.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   React.useEffect(() => {
     lastOpenedFileIdRef.current = null;
   }, [agentMessage.sId]);

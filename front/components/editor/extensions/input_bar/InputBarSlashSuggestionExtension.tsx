@@ -1,7 +1,6 @@
 import { InputBarSlashSuggestionDropdown } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionDropdown";
 import type { InputBarSlashMenuRefs } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
-import { createSlashSuggestionExtension } from "@app/components/editor/extensions/shared/slash_suggestion/SlashSuggestionExtension";
 import {
   clearSlashSubMenuStack,
   createSlashMenuNavigationStorage,
@@ -11,6 +10,7 @@ import {
   SLASH_MENU_QUERY_PLACEHOLDER_CLASS_NAME,
   SLASH_MENU_TRIGGER_CLASS_NAME,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
+import { createSlashSuggestionExtension } from "@app/components/editor/extensions/shared/slash_suggestion/SlashSuggestionExtension";
 import { isAllowedSlashQuery } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import type { WorkspaceType } from "@app/types/user";
 import { PluginKey } from "@tiptap/pm/state";

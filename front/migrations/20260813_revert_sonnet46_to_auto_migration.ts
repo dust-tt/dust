@@ -124,7 +124,7 @@ export async function revertSonnet46AutoSwitch({
       createdAt: { [Op.lte]: MIGRATION_WINDOW_END },
     },
     // WORKSPACE_ISOLATION_BYPASS: Migration runs across all workspaces.
-    // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+    // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
     dangerouslyBypassWorkspaceIsolationSecurity: true,
   });
 
@@ -166,7 +166,7 @@ export async function revertSonnet46AutoSwitch({
       where: { sId: { [Op.in]: agentIds } },
       order: [["version", "ASC"]],
       // WORKSPACE_ISOLATION_BYPASS: Migration runs across all workspaces.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 

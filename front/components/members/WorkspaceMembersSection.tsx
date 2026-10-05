@@ -205,7 +205,6 @@ function WorkspaceMembersList({
     setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
   }
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const resetSelectedMember = useCallback(() => {
     setSelectedMember(null);
   }, [setSelectedMember]);

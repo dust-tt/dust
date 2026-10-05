@@ -9,6 +9,8 @@ import { AnalyticsExportPanel } from "@app/components/workspace/analytics/Analyt
 import type { ConsumptionAttributionTableProps } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import type { ConsumptionChartProps } from "@app/components/workspace/analytics/consumption/ConsumptionChart";
+import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
+import { consumptionDimensionFromQueryParam } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import type { ConsumptionOverviewProps } from "@app/components/workspace/analytics/consumption/ConsumptionOverview";
 import { ConsumptionOverview } from "@app/components/workspace/analytics/consumption/ConsumptionOverview";
 import {
@@ -17,11 +19,6 @@ import {
 } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
 import type { ConsumptionSummaryProps } from "@app/components/workspace/analytics/consumption/ConsumptionSummary";
 import { ConsumptionSummary } from "@app/components/workspace/analytics/consumption/ConsumptionSummary";
-import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import { consumptionDimensionFromQueryParam } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import type { UsageFilterPanelProps } from "@app/components/workspace/analytics/UsageFilterPanel";
-import { UsageFilterPanel } from "@app/components/workspace/analytics/UsageFilterPanel";
-import { UsageFilterSummary } from "@app/components/workspace/analytics/UsageFilterSummary";
 import type { UsageFilter } from "@app/components/workspace/analytics/usageFilter";
 import {
   addUsageFilterFromAttributionRow,
@@ -29,6 +26,9 @@ import {
   setUsageFilterFromAttributionRow,
   toConsumptionScopeFilter,
 } from "@app/components/workspace/analytics/usageFilter";
+import type { UsageFilterPanelProps } from "@app/components/workspace/analytics/UsageFilterPanel";
+import { UsageFilterPanel } from "@app/components/workspace/analytics/UsageFilterPanel";
+import { UsageFilterSummary } from "@app/components/workspace/analytics/UsageFilterSummary";
 
 import { useAdminPageTab } from "@app/hooks/useAdminPageTab";
 import { useAnalyticsViewState } from "@app/hooks/useAnalyticsViewState";
@@ -78,9 +78,9 @@ const MIN_CONTENT_WIDTH_WITH_PANEL_PX = 720;
 
 const LazyConsumptionChart = safeLazy(
   () =>
-    import(
-      "@app/components/workspace/analytics/consumption/ConsumptionChart"
-    ).then((mod) => ({ default: mod.ConsumptionChart })),
+    import("@app/components/workspace/analytics/consumption/ConsumptionChart").then(
+      (mod) => ({ default: mod.ConsumptionChart })
+    ),
   { canReload }
 );
 

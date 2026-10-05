@@ -8,7 +8,7 @@ import {
   confluenceCheckAndUpsertSingleFolder,
   confluenceRemoveAllFoldersInSpace,
   confluenceRemoveUnvisitedFolders,
-  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+  // oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 } from "@connectors/connectors/confluence/lib/content/folders";
 import {
   confluenceCheckAndUpsertSinglePage,

@@ -1,9 +1,9 @@
 import { ToolGeneratedFileDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
+import { InlineActivitySteps } from "@app/components/assistant/conversation/actions/inline/InlineActivitySteps";
 import { AgentHandle } from "@app/components/assistant/conversation/AgentHandle";
 import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
-import { InlineActivitySteps } from "@app/components/assistant/conversation/actions/inline/InlineActivitySteps";
 import { getAgentMessageHeaderTimestampMs } from "@app/components/assistant/conversation/agentMessageTiming";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
@@ -39,8 +39,8 @@ import {
 } from "@app/components/markdown/CiteBlock";
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
 import { getQuickReplyPlugin } from "@app/components/markdown/QuickReplyBlock";
-import { ConversationSuggestionPile } from "@app/components/markdown/suggestion/SuggestionPile";
 import { extractSuggestionPile } from "@app/components/markdown/suggestion/suggestion_directives";
+import { ConversationSuggestionPile } from "@app/components/markdown/suggestion/SuggestionPile";
 import { getToolSetupPlugin } from "@app/components/markdown/tool/tool";
 import {
   getVisualizationPlugin,

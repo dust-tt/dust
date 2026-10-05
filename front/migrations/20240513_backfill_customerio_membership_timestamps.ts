@@ -8,12 +8,12 @@ import {
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { removeNulls } from "@app/types/shared/utils/general";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 const backfillCustomerIo = async (execute: boolean) => {
   const allActiveSubscriptions = await SubscriptionModel.findAll({

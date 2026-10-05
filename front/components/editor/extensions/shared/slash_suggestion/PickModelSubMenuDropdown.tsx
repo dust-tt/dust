@@ -16,8 +16,10 @@ import type { LightWorkspaceType } from "@app/types/user";
 import type { SuggestionProps } from "@tiptap/suggestion";
 import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
 
-interface PickModelSubMenuDropdownProps
-  extends Pick<SuggestionProps<SlashCommand>, "clientRect" | "query"> {
+interface PickModelSubMenuDropdownProps extends Pick<
+  SuggestionProps<SlashCommand>,
+  "clientRect" | "query"
+> {
   activeFrame: SlashMenuStackFrame;
   dropdownHeaders?: React.ReactNode;
   onBack: () => void;

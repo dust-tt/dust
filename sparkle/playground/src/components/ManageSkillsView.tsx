@@ -38,8 +38,9 @@ import {
   withCurrentUserAsEditor,
 } from "../data/build";
 import { getUserById } from "../data/users";
-import { BulkSelectionBar } from "./BulkSelectionBar";
 import { SkillDetailsSheet } from "./BuildDetailSheets";
+import { BulkSelectionBar } from "./BulkSelectionBar";
+import { EmptyState } from "./EmptyState";
 import {
   type BatchConfirmCopy,
   BatchConfirmDialog,
@@ -47,7 +48,6 @@ import {
   FilterMenu,
   UsedByCell,
 } from "./buildTableShared";
-import { EmptyState } from "./EmptyState";
 
 // The product's Skills table. Same shape as the Agents one, with availability
 // standing in for access and a shorter batch bar: a skill's availability and

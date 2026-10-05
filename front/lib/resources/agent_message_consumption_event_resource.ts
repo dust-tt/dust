@@ -45,8 +45,7 @@ type ConsumptionEventAppendArgs = {
   transaction: Transaction;
 };
 
-export interface AgentMessageConsumptionEventResource
-  extends ReadonlyAttributesType<AgentMessageConsumptionEventModel> {}
+export interface AgentMessageConsumptionEventResource extends ReadonlyAttributesType<AgentMessageConsumptionEventModel> {}
 
 export class AgentMessageConsumptionEventResource extends BaseResource<AgentMessageConsumptionEventModel> {
   static model: ModelStaticWorkspaceAware<AgentMessageConsumptionEventModel> =

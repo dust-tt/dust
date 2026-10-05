@@ -87,57 +87,57 @@ describe("skill search indexing activity", () => {
     );
   });
 
-  it.each([
-    "regular",
-    "project",
-  ] as const)("indexes metadata for a restricted %s space without read access", async (kind) => {
-    const {
-      authenticator: auth,
-      workspace,
-      user,
-    } = await createResourceTest({ role: "admin" });
-    const space = await SpaceFactory[kind](workspace);
-    const server = await RemoteMCPServerFactory.create(workspace);
-    const serverView = await MCPServerViewFactory.create(
-      workspace,
-      server.sId,
-      space
-    );
-    const childSkill = await SkillFactory.create(auth, {
-      name: "Restricted child",
-      requestedSpaceIds: [space.id],
-    });
-    const skill = await SkillFactory.create(auth, {
-      instructions: `Use ${SkillFactory.serializeSkillReferenceTag(childSkill)}.`,
-      availability: "editors",
-      requestedSpaceIds: [space.id],
-      mcpServerViews: [serverView],
-    });
-    const internalAuth = await Authenticator.internalAdminForWorkspace(
-      workspace.sId
-    );
-    expect(await SkillResource.fetchById(internalAuth, skill.sId)).toBeNull();
-    expect(
-      await SkillResource.fetchById(internalAuth, childSkill.sId)
-    ).toBeNull();
-    const target = { workspaceId: workspace.sId, skillId: skill.sId };
-
-    await indexSkillSearchActivity(target);
-    expect(skillIndex.indexSkillDocument).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({
-        skill_id: skill.sId,
-        workspace_id: workspace.sId,
-        name: skill.name,
-        description: skill.userFacingDescription,
+  it.each(["regular", "project"] as const)(
+    "indexes metadata for a restricted %s space without read access",
+    async (kind) => {
+      const {
+        authenticator: auth,
+        workspace,
+        user,
+      } = await createResourceTest({ role: "admin" });
+      const space = await SpaceFactory[kind](workspace);
+      const server = await RemoteMCPServerFactory.create(workspace);
+      const serverView = await MCPServerViewFactory.create(
+        workspace,
+        server.sId,
+        space
+      );
+      const childSkill = await SkillFactory.create(auth, {
+        name: "Restricted child",
+        requestedSpaceIds: [space.id],
+      });
+      const skill = await SkillFactory.create(auth, {
+        instructions: `Use ${SkillFactory.serializeSkillReferenceTag(childSkill)}.`,
         availability: "editors",
-        requested_space_ids: [space.sId],
-        editor_ids: [user.sId],
-        last_edited_by_user_id: user.sId,
-        mcp_server_view_ids: [serverView.sId],
-        child_skill_ids: [childSkill.sId],
-      })
-    );
-  });
+        requestedSpaceIds: [space.id],
+        mcpServerViews: [serverView],
+      });
+      const internalAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      expect(await SkillResource.fetchById(internalAuth, skill.sId)).toBeNull();
+      expect(
+        await SkillResource.fetchById(internalAuth, childSkill.sId)
+      ).toBeNull();
+      const target = { workspaceId: workspace.sId, skillId: skill.sId };
+
+      await indexSkillSearchActivity(target);
+      expect(skillIndex.indexSkillDocument).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          skill_id: skill.sId,
+          workspace_id: workspace.sId,
+          name: skill.name,
+          description: skill.userFacingDescription,
+          availability: "editors",
+          requested_space_ids: [space.sId],
+          editor_ids: [user.sId],
+          last_edited_by_user_id: user.sId,
+          mcp_server_view_ids: [serverView.sId],
+          child_skill_ids: [childSkill.sId],
+        })
+      );
+    }
+  );
 
   it("does not index a skill from another workspace", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({

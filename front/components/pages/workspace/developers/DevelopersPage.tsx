@@ -1,7 +1,7 @@
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
 import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
-import { APIKeysPageContent } from "@app/components/pages/workspace/developers/APIKeysPage";
 import { API_KEYS_PAGE_TITLE } from "@app/components/pages/workspace/developers/apiKeysAdminSearchEntries";
+import { APIKeysPageContent } from "@app/components/pages/workspace/developers/APIKeysPage";
 import { SecretsPageContent } from "@app/components/pages/workspace/developers/SecretsPage";
 import { EnvironmentSection } from "@app/components/pages/workspace/developers/sections/EnvironmentSection";
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";

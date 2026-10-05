@@ -26,7 +26,6 @@ export function ObservabilityProvider({ children }: { children: ReactNode }) {
   const [selectedVersion, setSelectedVersion] =
     useState<AgentVersionMarker | null>(null);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const value = useMemo(
     () => ({
       mode,

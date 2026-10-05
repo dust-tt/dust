@@ -9,8 +9,9 @@ const PopoverTrigger = PopoverPrimitive.Trigger;
 const PopoverPortal = PopoverPrimitive.Portal;
 const PopoverAnchor = PopoverPrimitive.Anchor;
 
-export interface PopoverContentProps
-  extends React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> {
+export interface PopoverContentProps extends React.ComponentPropsWithoutRef<
+  typeof PopoverPrimitive.Content
+> {
   /** Let the content grow with its container instead of the default fixed width and padding. */
   fullWidth?: boolean;
   /** Render the content through a portal (default true); disable to keep it in place in the DOM. */

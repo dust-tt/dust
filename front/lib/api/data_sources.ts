@@ -69,7 +69,7 @@ import type {
   DataSourceFolderSpreadsheetMimeType,
   DataSourceSearchQuery,
   DataSourceSearchResponseType,
-  // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+  // oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- existing usage
 } from "@dust-tt/client";
 import assert from "assert";
 import type { Transaction } from "sequelize";

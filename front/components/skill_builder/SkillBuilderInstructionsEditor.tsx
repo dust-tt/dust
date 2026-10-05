@@ -13,13 +13,13 @@ import { getDefaultMCPAction } from "@app/components/shared/tools_picker/formDef
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT } from "@app/components/skill_builder/events";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
-import type { ReferenceSummaryItem } from "@app/components/skill_builder/SkillBuilderInstructionsReferenceSummary";
-import { SkillBuilderInstructionsReferenceSummary } from "@app/components/skill_builder/SkillBuilderInstructionsReferenceSummary";
-import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import type {
   ReferencedSkillFormData,
   SkillBuilderFormData,
 } from "@app/components/skill_builder/skillBuilderFormSchema";
+import type { ReferenceSummaryItem } from "@app/components/skill_builder/SkillBuilderInstructionsReferenceSummary";
+import { SkillBuilderInstructionsReferenceSummary } from "@app/components/skill_builder/SkillBuilderInstructionsReferenceSummary";
+import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import {
   useAreSkillSuggestionsEnabled,
   useSkillSuggestions,
@@ -327,6 +327,7 @@ export function SkillBuilderInstructionsEditor({
         toAttachedKnowledge(collectKnowledgeItems(editor))
       );
     },
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
     [attachedKnowledgeField.onChange]
   );
 
@@ -433,6 +434,7 @@ export function SkillBuilderInstructionsEditor({
       );
       syncAttachedKnowledgeFromEditor(editor);
     },
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
     [
       instructionsField.onChange,
       instructionsHtmlField.onChange,
@@ -562,6 +564,7 @@ export function SkillBuilderInstructionsEditor({
       instructionsField.ref(null);
       attachedKnowledgeField.ref(null);
     };
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, [attachedKnowledgeField.ref, editor, instructionsField.ref]);
 
   const handleOpenInsertMenu = useCallback(() => {

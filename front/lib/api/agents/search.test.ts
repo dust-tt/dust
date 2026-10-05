@@ -29,11 +29,11 @@ import {
   buildNameAutocompleteQuery,
   buildNameSearchQuery,
 } from "@app/lib/search/agent_and_skill_queries";
+import { matchesAgentSearchFilters } from "@app/tests/utils/agent_search";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
-import { matchesAgentSearchFilters } from "@app/tests/utils/agent_search";
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { AgentSearchDocument } from "@app/types/agent_search/agent_search";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -417,20 +417,20 @@ describe("searchAgents", () => {
     expect(mockSearch).not.toHaveBeenCalled();
   });
 
-  it.each([
-    "user",
-    "manager",
-  ] as const)("rejects unrestricted search for a %s without querying", async (role) => {
-    const { authenticator: auth } = await createResourceTest({ role });
+  it.each(["user", "manager"] as const)(
+    "rejects unrestricted search for a %s without querying",
+    async (role) => {
+      const { authenticator: auth } = await createResourceTest({ role });
 
-    const result = await searchAgents(auth, {
-      searchTerm: "",
-      permissionFiltering: "unrestricted",
-    });
-    assert(result.isErr());
-    expect(result.error).toBe("unrestricted_requires_admin");
-    expect(mockSearch).not.toHaveBeenCalled();
-  });
+      const result = await searchAgents(auth, {
+        searchTerm: "",
+        permissionFiltering: "unrestricted",
+      });
+      assert(result.isErr());
+      expect(result.error).toBe("unrestricted_requires_admin");
+      expect(mockSearch).not.toHaveBeenCalled();
+    }
+  );
 
   it("lets admins list every workspace agent in unrestricted mode", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({
@@ -464,78 +464,80 @@ describe("searchAgents", () => {
     expect(await searchAgentIds(auth)).toEqual(["visible"]);
   });
 
-  it.each([
-    "user",
-    "admin",
-  ] as const)("applies scope, editor, space and workspace access for a %s", async (role) => {
-    const {
-      authenticator: auth,
-      workspace,
-      user,
-      globalSpace,
-    } = await createResourceTest({ role });
-    const readableSpace = await SpaceFactory.regular(workspace);
-    const members = await readableSpace.fetchManualMemberGroup(auth);
-    assert(members);
-    await GroupFactory.withMembers(auth, members, [user]);
-    const deniedSpace = await SpaceFactory.regular(workspace);
-    await auth.refresh();
+  it.each(["user", "admin"] as const)(
+    "applies scope, editor, space and workspace access for a %s",
+    async (role) => {
+      const {
+        authenticator: auth,
+        workspace,
+        user,
+        globalSpace,
+      } = await createResourceTest({ role });
+      const readableSpace = await SpaceFactory.regular(workspace);
+      const members = await readableSpace.fetchManualMemberGroup(auth);
+      assert(members);
+      await GroupFactory.withMembers(auth, members, [user]);
+      const deniedSpace = await SpaceFactory.regular(workspace);
+      await auth.refresh();
 
-    const inWorkspace = (
-      agentId: string,
-      overrides: Partial<AgentSearchDocument> = {}
-    ) =>
-      makeDocument({
-        workspace_id: workspace.sId,
-        agent_id: agentId,
-        ...overrides,
-      });
-    mockHits([
-      inWorkspace("visible"),
-      inWorkspace("hidden", { scope: "hidden" }),
-      inWorkspace("hidden-editor", {
-        scope: "hidden",
-        editor_ids: [user.sId],
-      }),
-      inWorkspace("readable-spaces", {
-        requested_space_ids: [globalSpace.sId, readableSpace.sId],
-      }),
-      inWorkspace("denied-space", {
-        requested_space_ids: [readableSpace.sId, deniedSpace.sId],
-      }),
-      inWorkspace("archived", { status: "archived" }),
-      makeDocument({ workspace_id: "other-workspace", agent_id: "foreign" }),
-      makeDocument({
-        workspace_id: GLOBAL_AGENTS_WORKSPACE_ID,
-        agent_id: GLOBAL_AGENTS_SID.HELPER,
-        scope: "global",
-      }),
-      makeDocument({
-        workspace_id: GLOBAL_AGENTS_WORKSPACE_ID,
-        agent_id: "not-a-global-agent",
-        scope: "global",
-      }),
-    ]);
+      const inWorkspace = (
+        agentId: string,
+        overrides: Partial<AgentSearchDocument> = {}
+      ) =>
+        makeDocument({
+          workspace_id: workspace.sId,
+          agent_id: agentId,
+          ...overrides,
+        });
+      mockHits([
+        inWorkspace("visible"),
+        inWorkspace("hidden", { scope: "hidden" }),
+        inWorkspace("hidden-editor", {
+          scope: "hidden",
+          editor_ids: [user.sId],
+        }),
+        inWorkspace("readable-spaces", {
+          requested_space_ids: [globalSpace.sId, readableSpace.sId],
+        }),
+        inWorkspace("denied-space", {
+          requested_space_ids: [readableSpace.sId, deniedSpace.sId],
+        }),
+        inWorkspace("archived", { status: "archived" }),
+        makeDocument({ workspace_id: "other-workspace", agent_id: "foreign" }),
+        makeDocument({
+          workspace_id: GLOBAL_AGENTS_WORKSPACE_ID,
+          agent_id: GLOBAL_AGENTS_SID.HELPER,
+          scope: "global",
+        }),
+        makeDocument({
+          workspace_id: GLOBAL_AGENTS_WORKSPACE_ID,
+          agent_id: "not-a-global-agent",
+          scope: "global",
+        }),
+      ]);
 
-    expect(await searchAgentIds(auth)).toEqual([
-      "visible",
-      "hidden-editor",
-      "readable-spaces",
-      GLOBAL_AGENTS_SID.HELPER,
-    ]);
-    expect(
-      await searchAgentIds(auth, { filters: { status: ["archived"] } })
-    ).toEqual(["archived"]);
-    expect(
-      await searchAgentIds(auth, { filters: { editedByMe: true } })
-    ).toEqual(["hidden-editor"]);
-    expect(
-      await searchAgentIds(auth, { filters: { scope: ["global"] } })
-    ).toEqual([GLOBAL_AGENTS_SID.HELPER]);
-    expect(
-      await searchAgentIds(auth, { filters: { scope: ["visible", "hidden"] } })
-    ).toEqual(["visible", "hidden-editor", "readable-spaces"]);
-  });
+      expect(await searchAgentIds(auth)).toEqual([
+        "visible",
+        "hidden-editor",
+        "readable-spaces",
+        GLOBAL_AGENTS_SID.HELPER,
+      ]);
+      expect(
+        await searchAgentIds(auth, { filters: { status: ["archived"] } })
+      ).toEqual(["archived"]);
+      expect(
+        await searchAgentIds(auth, { filters: { editedByMe: true } })
+      ).toEqual(["hidden-editor"]);
+      expect(
+        await searchAgentIds(auth, { filters: { scope: ["global"] } })
+      ).toEqual([GLOBAL_AGENTS_SID.HELPER]);
+      expect(
+        await searchAgentIds(auth, {
+          filters: { scope: ["visible", "hidden"] },
+        })
+      ).toEqual(["visible", "hidden-editor", "readable-spaces"]);
+    }
+  );
 });
 
 describe("resolveAgentIdByName", () => {

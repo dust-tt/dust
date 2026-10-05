@@ -902,9 +902,8 @@ describe("retryAgentMessage", () => {
 
       // Update the agent to use the other project space
       // Manually update the requestedSpaceIds in the database (using model IDs)
-      const { AgentConfigurationModel } = await import(
-        "@app/lib/models/agent/agent"
-      );
+      const { AgentConfigurationModel } =
+        await import("@app/lib/models/agent/agent");
       await AgentConfigurationModel.update(
         { requestedSpaceIds: [anotherProjectSpace.id] },
         {
@@ -984,9 +983,8 @@ describe("retryAgentMessage", () => {
         });
 
       // Update the agent to use the same project space
-      const { AgentConfigurationModel } = await import(
-        "@app/lib/models/agent/agent"
-      );
+      const { AgentConfigurationModel } =
+        await import("@app/lib/models/agent/agent");
       await AgentConfigurationModel.update(
         { requestedSpaceIds: [projectSpace.id] },
         {
@@ -1055,9 +1053,8 @@ describe("retryAgentMessage", () => {
         });
 
       // Update the agent to use empty requestedSpaceIds (which means global)
-      const { AgentConfigurationModel } = await import(
-        "@app/lib/models/agent/agent"
-      );
+      const { AgentConfigurationModel } =
+        await import("@app/lib/models/agent/agent");
       await AgentConfigurationModel.update(
         { requestedSpaceIds: [] },
         {
@@ -3153,9 +3150,8 @@ describe("postUserMessage", () => {
         }
       );
 
-      const { AgentConfigurationModel } = await import(
-        "@app/lib/models/agent/agent"
-      );
+      const { AgentConfigurationModel } =
+        await import("@app/lib/models/agent/agent");
       await AgentConfigurationModel.update(
         { requestedSpaceIds: [anotherProjectSpace.id] },
         {

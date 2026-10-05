@@ -1,6 +1,6 @@
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
-import { SkillSuggestionCard } from "@app/components/skill_builder/SkillSuggestionCard";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
+import { SkillSuggestionCard } from "@app/components/skill_builder/SkillSuggestionCard";
 import {
   usePatchSkillSuggestions,
   useSkillSuggestions,

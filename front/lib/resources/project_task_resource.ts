@@ -66,8 +66,7 @@ export type UpdateBlob = Partial<
 >;
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-export interface ProjectTaskResource
-  extends ReadonlyAttributesType<ProjectTaskModel> {}
+export interface ProjectTaskResource extends ReadonlyAttributesType<ProjectTaskModel> {}
 
 export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
   static model: ModelStaticWorkspaceAware<ProjectTaskModel> = ProjectTaskModel;

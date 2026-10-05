@@ -49,8 +49,7 @@ export type AgentMemoryWriteResult = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-export interface AgentMemoryResource
-  extends ReadonlyAttributesType<AgentMemoryModel> {}
+export interface AgentMemoryResource extends ReadonlyAttributesType<AgentMemoryModel> {}
 export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
   static model: ModelStaticWorkspaceAware<AgentMemoryModel> = AgentMemoryModel;
 

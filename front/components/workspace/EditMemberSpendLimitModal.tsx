@@ -1,10 +1,10 @@
 import { PersonalLimitInput } from "@app/components/workspace/CreditLimitInput";
-import { MemberGroupLimitTable } from "@app/components/workspace/MemberGroupLimitTable";
 import {
   groupRowsForMember,
   parseCreditsInput,
   toSpendLimit,
 } from "@app/components/workspace/member_spend_limit_helpers";
+import { MemberGroupLimitTable } from "@app/components/workspace/MemberGroupLimitTable";
 import type { DefaultUserSpendLimitState } from "@app/components/workspace/WorkspaceDefaultLimitInput";
 import {
   useWorkspaceDefaultLimitField,

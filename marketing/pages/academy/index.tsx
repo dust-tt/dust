@@ -75,7 +75,7 @@ export const getServerSideProps: GetServerSideProps<
   };
 };
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function AcademyListing({
   courses,
   searchableItems,

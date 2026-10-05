@@ -26,9 +26,7 @@ const configSchema = mistralConfigSchema.extend({
 });
 
 export function WithZAiGlm53MistralConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class ZAiGlm53Mistral extends Base {
     static readonly model = GLM_5P3;

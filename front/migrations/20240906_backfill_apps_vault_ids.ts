@@ -3,8 +3,8 @@ import assert from "assert";
 import { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
-import { makeScript } from "@app/scripts/helpers";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { makeScript } from "@app/scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {
   const apps = await AppModel.findAll();

@@ -11,8 +11,7 @@ import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-export interface AcademyChapterVisitResource
-  extends ReadonlyAttributesType<AcademyChapterVisitModel> {}
+export interface AcademyChapterVisitResource extends ReadonlyAttributesType<AcademyChapterVisitModel> {}
 
 export class AcademyChapterVisitResource extends BaseResource<AcademyChapterVisitModel> {
   static model: ModelStatic<AcademyChapterVisitModel> =

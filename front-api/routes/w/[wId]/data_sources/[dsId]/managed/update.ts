@@ -16,7 +16,7 @@ import {
 } from "@app/types/connectors/connectors_api";
 import { isAPIError } from "@app/types/error";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
-// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+// oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- existing usage
 import { isConnectorsAPIError } from "@dust-tt/client";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";

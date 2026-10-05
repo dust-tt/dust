@@ -7,9 +7,7 @@ import type {
   Next,
 } from "@temporalio/worker";
 
-export class ConfluenceCastKnownErrorsInterceptor
-  implements ActivityInboundCallsInterceptor
-{
+export class ConfluenceCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">

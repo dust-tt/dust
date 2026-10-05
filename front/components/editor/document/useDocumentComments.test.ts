@@ -344,21 +344,24 @@ describe("useDocumentComments", () => {
       ["its last word", 12, 17],
       ["its first word", 4, 7],
       ["all of it", 4, 17],
-    ])("is refused over %s, which would shrink the comment", async (_, from, to) => {
-      const { result } = await renderCommentedEditor(TAGGED);
-      const editor = result.current.document.editor;
-      if (!editor) {
-        throw new Error("Editor did not mount.");
+    ])(
+      "is refused over %s, which would shrink the comment",
+      async (_, from, to) => {
+        const { result } = await renderCommentedEditor(TAGGED);
+        const editor = result.current.document.editor;
+        if (!editor) {
+          throw new Error("Editor did not mount.");
+        }
+        const before = editor.state.doc;
+
+        act(() => {
+          editor.chain().setTextSelection({ from, to }).toggleCode().run();
+        });
+
+        expect(editor.state.doc.eq(before)).toBe(true);
+        expect(result.current.comments.quotes.get("c1")).toBe("run all tests");
       }
-      const before = editor.state.doc;
-
-      act(() => {
-        editor.chain().setTextSelection({ from, to }).toggleCode().run();
-      });
-
-      expect(editor.state.doc.eq(before)).toBe(true);
-      expect(result.current.comments.quotes.get("c1")).toBe("run all tests");
-    });
+    );
 
     it("is refused as a code block over a comment", async () => {
       const { result } = await renderCommentedEditor(TAGGED);

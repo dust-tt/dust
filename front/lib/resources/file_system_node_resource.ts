@@ -96,8 +96,7 @@ type SetExecutableBitsOptions = Pick<
   "executableBits"
 >;
 
-export interface FileSystemNodeResource
-  extends ReadonlyAttributesType<FileSystemNodeModel> {}
+export interface FileSystemNodeResource extends ReadonlyAttributesType<FileSystemNodeModel> {}
 
 export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
   static model: ModelStaticWorkspaceAware<FileSystemNodeModel> =
@@ -502,7 +501,7 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
     // inside itself, this query follows parentId until it reaches a root. Its
     // work grows with the number of parent directories, not the number of
     // children. Keep recursive SQL out of normal reads.
-    // biome-ignore lint/plugin/noRawSql: Sequelize cannot follow parentId until the root.
+    // oxlint-disable-next-line dust/noRawSql -- Sequelize cannot follow parentId until the root.
     const rows = await frontSequelize.query<{ found: number }>(
       `
         WITH RECURSIVE ancestors AS (
@@ -636,7 +635,7 @@ export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
     // until this finishes. If large moves become slow, reconsider copying the
     // root onto every row instead of adding more recursive SQL.
     // Do not change updatedAt: moving a parent did not change a child's bytes.
-    // biome-ignore lint/plugin/noRawSql: Sequelize cannot update a whole directory tree.
+    // oxlint-disable-next-line dust/noRawSql -- Sequelize cannot update a whole directory tree.
     await frontSequelize.query(
       `
         WITH RECURSIVE subtree AS (

@@ -30,9 +30,7 @@ const configSchema = fireworksConfigSchema.extend({
 
 // Mixin carrying shared config; runtime base differs per surface.
 export function WithZAiGlm53Config<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class ZAiGlm53 extends Base {
     static readonly model = GLM_5P3;

@@ -25,136 +25,136 @@ import {
   getSandboxFunctionInvocationEventsBatch,
 } from "@app/lib/api/sandbox_functions/events";
 
-describe.each([
-  "",
-  "/poll",
-])("GET /api/sse/w/[wId]/sandbox-functions/[functionId]/invocations/[invocationId]/events%s", (suffix) => {
-  function getEvents({
-    workspaceId,
-    functionId,
-    invocationId,
-  }: {
-    workspaceId: string;
-    functionId: string;
-    invocationId: string;
-  }) {
-    return honoApp.request(
-      `/api/sse/w/${workspaceId}/sandbox-functions/${functionId}/invocations/${invocationId}/events${suffix}`
-    );
-  }
+describe.each(["", "/poll"])(
+  "GET /api/sse/w/[wId]/sandbox-functions/[functionId]/invocations/[invocationId]/events%s",
+  (suffix) => {
+    function getEvents({
+      workspaceId,
+      functionId,
+      invocationId,
+    }: {
+      workspaceId: string;
+      functionId: string;
+      invocationId: string;
+    }) {
+      return honoApp.request(
+        `/api/sse/w/${workspaceId}/sandbox-functions/${functionId}/invocations/${invocationId}/events${suffix}`
+      );
+    }
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
 
-  it("streams sandbox function invocation events to the client", async () => {
-    const { workspace, sandboxFunction, invocation } =
-      await makeTestFrameInvocation();
-    const resultEvent: {
-      eventId: string;
-      data: SandboxFunctionInvocationEvent;
-    } = {
-      eventId: "result",
-      data: {
-        type: "sandbox_function_invocation_result",
-        created: Date.now(),
-        invocationId: invocation.sId,
+    it("streams sandbox function invocation events to the client", async () => {
+      const { workspace, sandboxFunction, invocation } =
+        await makeTestFrameInvocation();
+      const resultEvent: {
+        eventId: string;
+        data: SandboxFunctionInvocationEvent;
+      } = {
+        eventId: "result",
+        data: {
+          type: "sandbox_function_invocation_result",
+          created: Date.now(),
+          invocationId: invocation.sId,
+          functionId: sandboxFunction.sId,
+          result: { hello: "world" },
+        },
+      };
+      vi.mocked(getSandboxFunctionInvocationEvents).mockImplementation(
+        asyncIteratorFrom([resultEvent])
+      );
+
+      vi.mocked(getSandboxFunctionInvocationEventsBatch).mockResolvedValue([
+        resultEvent,
+      ]);
+
+      const response = await getEvents({
+        workspaceId: workspace.sId,
         functionId: sandboxFunction.sId,
-        result: { hello: "world" },
-      },
-    };
-    vi.mocked(getSandboxFunctionInvocationEvents).mockImplementation(
-      asyncIteratorFrom([resultEvent])
-    );
+        invocationId: invocation.sId,
+      });
 
-    vi.mocked(getSandboxFunctionInvocationEventsBatch).mockResolvedValue([
-      resultEvent,
-    ]);
-
-    const response = await getEvents({
-      workspaceId: workspace.sId,
-      functionId: sandboxFunction.sId,
-      invocationId: invocation.sId,
+      expect(response.status).toBe(200);
+      const payloads: string[] = suffix
+        ? (await response.json()).events
+        : parseSseDataPayloads(await response.text());
+      expect(payloads.map((p) => JSON.parse(p).data.result)).toEqual([
+        { hello: "world" },
+      ]);
+      expect(
+        suffix
+          ? getSandboxFunctionInvocationEventsBatch
+          : getSandboxFunctionInvocationEvents
+      ).toHaveBeenCalledWith({
+        invocationId: invocation.sId,
+        lastEventId: null,
+        signal: expect.any(AbortSignal),
+      });
     });
 
-    expect(response.status).toBe(200);
-    const payloads: string[] = suffix
-      ? (await response.json()).events
-      : parseSseDataPayloads(await response.text());
-    expect(payloads.map((p) => JSON.parse(p).data.result)).toEqual([
-      { hello: "world" },
-    ]);
-    expect(
-      suffix
-        ? getSandboxFunctionInvocationEventsBatch
-        : getSandboxFunctionInvocationEvents
-    ).toHaveBeenCalledWith({
-      invocationId: invocation.sId,
-      lastEventId: null,
-      signal: expect.any(AbortSignal),
-    });
-  });
+    it("returns 404 when the invocation does not exist", async () => {
+      const { workspace, sandboxFunction } = await makeTestFrameInvocation();
 
-  it("returns 404 when the invocation does not exist", async () => {
-    const { workspace, sandboxFunction } = await makeTestFrameInvocation();
+      const response = await getEvents({
+        workspaceId: workspace.sId,
+        functionId: sandboxFunction.sId,
+        invocationId: "sfi_unknown",
+      });
 
-    const response = await getEvents({
-      workspaceId: workspace.sId,
-      functionId: sandboxFunction.sId,
-      invocationId: "sfi_unknown",
+      expect(response.status).toBe(404);
+      expect(
+        suffix
+          ? getSandboxFunctionInvocationEventsBatch
+          : getSandboxFunctionInvocationEvents
+      ).not.toHaveBeenCalled();
     });
 
-    expect(response.status).toBe(404);
-    expect(
-      suffix
-        ? getSandboxFunctionInvocationEventsBatch
-        : getSandboxFunctionInvocationEvents
-    ).not.toHaveBeenCalled();
-  });
+    it("hides another member's invocation from a Frame reader without use rights", async () => {
+      const { workspace, sandboxFunction, invocation } =
+        await makeTestFrameInvocation({ shareScope: "emails_only" });
+      await createPrivateApiMockRequest({
+        role: "user",
+        workspace,
+      });
 
-  it("hides another member's invocation from a Frame reader without use rights", async () => {
-    const { workspace, sandboxFunction, invocation } =
-      await makeTestFrameInvocation({ shareScope: "emails_only" });
-    await createPrivateApiMockRequest({
-      role: "user",
-      workspace,
+      const response = await getEvents({
+        workspaceId: workspace.sId,
+        functionId: sandboxFunction.sId,
+        invocationId: invocation.sId,
+      });
+
+      expect(response.status).toBe(404);
+      expect(
+        suffix
+          ? getSandboxFunctionInvocationEventsBatch
+          : getSandboxFunctionInvocationEvents
+      ).not.toHaveBeenCalled();
     });
 
-    const response = await getEvents({
-      workspaceId: workspace.sId,
-      functionId: sandboxFunction.sId,
-      invocationId: invocation.sId,
+    it("requires Frames v2 to be enabled", async () => {
+      const { workspace, sandboxFunction, invocation } =
+        await makeTestFrameInvocation({ enableFramesV2: false });
+
+      const response = await getEvents({
+        workspaceId: workspace.sId,
+        functionId: sandboxFunction.sId,
+        invocationId: invocation.sId,
+      });
+
+      expect(response.status).toBe(403);
+      expect(await response.json()).toMatchObject({
+        error: {
+          type: "feature_flag_not_found",
+          message: "Frame functions are not enabled for this workspace.",
+        },
+      });
+      expect(
+        suffix
+          ? getSandboxFunctionInvocationEventsBatch
+          : getSandboxFunctionInvocationEvents
+      ).not.toHaveBeenCalled();
     });
-
-    expect(response.status).toBe(404);
-    expect(
-      suffix
-        ? getSandboxFunctionInvocationEventsBatch
-        : getSandboxFunctionInvocationEvents
-    ).not.toHaveBeenCalled();
-  });
-
-  it("requires Frames v2 to be enabled", async () => {
-    const { workspace, sandboxFunction, invocation } =
-      await makeTestFrameInvocation({ enableFramesV2: false });
-
-    const response = await getEvents({
-      workspaceId: workspace.sId,
-      functionId: sandboxFunction.sId,
-      invocationId: invocation.sId,
-    });
-
-    expect(response.status).toBe(403);
-    expect(await response.json()).toMatchObject({
-      error: {
-        type: "feature_flag_not_found",
-        message: "Frame functions are not enabled for this workspace.",
-      },
-    });
-    expect(
-      suffix
-        ? getSandboxFunctionInvocationEventsBatch
-        : getSandboxFunctionInvocationEvents
-    ).not.toHaveBeenCalled();
-  });
-});
+  }
+);

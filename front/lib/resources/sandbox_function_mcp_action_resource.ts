@@ -85,8 +85,7 @@ function parseOutputObject(
   );
 }
 
-export interface SandboxFunctionMCPActionResource
-  extends ReadonlyAttributesType<SandboxFunctionMCPActionModel> {}
+export interface SandboxFunctionMCPActionResource extends ReadonlyAttributesType<SandboxFunctionMCPActionModel> {}
 
 export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFunctionMCPActionModel> {
   static model: ModelStaticWorkspaceAware<SandboxFunctionMCPActionModel> =

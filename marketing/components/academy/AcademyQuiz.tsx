@@ -1,13 +1,5 @@
 "use client";
 
-import { useAcademyQuiz } from "@marketing/hooks/useAcademyQuiz";
-import type { QuizSettings } from "@marketing/lib/contentful/types";
-import { DEFAULT_QUIZ_SETTINGS } from "@marketing/lib/contentful/types";
-import {
-  useAcademyContentProgress,
-  useRecordQuizAttempt,
-} from "@marketing/lib/swr/academy";
-import { TRACKING_AREAS, trackEvent } from "@marketing/lib/tracking";
 import {
   Button,
   ConversationMessageAvatar,
@@ -17,6 +9,14 @@ import {
   Markdown,
   Spinner,
 } from "@dust-tt/sparkle";
+import { useAcademyQuiz } from "@marketing/hooks/useAcademyQuiz";
+import type { QuizSettings } from "@marketing/lib/contentful/types";
+import { DEFAULT_QUIZ_SETTINGS } from "@marketing/lib/contentful/types";
+import {
+  useAcademyContentProgress,
+  useRecordQuizAttempt,
+} from "@marketing/lib/swr/academy";
+import { TRACKING_AREAS, trackEvent } from "@marketing/lib/tracking";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 interface AcademyQuizProps {

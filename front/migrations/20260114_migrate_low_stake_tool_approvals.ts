@@ -1,10 +1,10 @@
 import { Op } from "sequelize";
 
-import { getIdsFromSId } from "@app/lib/resources/string_ids";
 import {
   UserMetadataModel,
   UserToolApprovalModel,
 } from "@app/lib/resources/storage/models/user";
+import { getIdsFromSId } from "@app/lib/resources/string_ids";
 import { makeScript } from "@app/scripts/helpers";
 
 const COMMA_SEPARATOR = ",";

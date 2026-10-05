@@ -3,9 +3,9 @@ import { format } from "date-fns";
 import fs from "fs";
 import { Op } from "sequelize";
 
+import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";

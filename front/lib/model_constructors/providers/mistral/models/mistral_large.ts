@@ -11,9 +11,7 @@ const MAX_OUTPUT_TOKENS = CONTEXT_SIZE;
 
 // Mixin carrying shared config; runtime base differs per surface.
 export function WithMistralLargeConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class MistralLarge extends Base {
     static readonly model = MISTRAL_LARGE;

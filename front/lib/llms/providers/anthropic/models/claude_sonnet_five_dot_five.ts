@@ -5,9 +5,7 @@ import {
 import { CLAUDE_SONNET_5_5_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 
 export function WithDustClaudeSonnetFiveDotFiveConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class DustClaudeSonnetFiveDotFive extends Base {
     static readonly displayName = "Claude Sonnet 5.5";

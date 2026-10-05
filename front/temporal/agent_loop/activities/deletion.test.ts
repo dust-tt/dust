@@ -59,43 +59,43 @@ async function createRunningLoop() {
 }
 
 describe("agent loop deletion cleanup", () => {
-  it.each([
-    "next step",
-    "cancellation",
-  ] as const)("finalizes the message when %s encounters a deleted conversation", async (exit) => {
-    const { auth, conversation, agentLoopArgs } = await createRunningLoop();
-    await conversation.updateVisibilityToDeleted(auth);
+  it.each(["next step", "cancellation"] as const)(
+    "finalizes the message when %s encounters a deleted conversation",
+    async (exit) => {
+      const { auth, conversation, agentLoopArgs } = await createRunningLoop();
+      await conversation.updateVisibilityToDeleted(auth);
 
-    if (exit === "next step") {
-      expect(
-        await runModelAndCreateActionsActivity({
-          authType: auth.toJSON(),
-          canInitializeConsumption: true,
-          runAgentArgs: { ...agentLoopArgs, initialStartTime: Date.now() },
-          runIds: [],
-          step: 0,
-        })
-      ).toBeNull();
-    } else {
-      await finalizeCancellation(auth.toJSON(), agentLoopArgs);
-    }
-
-    const message = await conversation.getMessageById(
-      auth,
-      agentLoopArgs.agentMessageId
-    );
-    assert(message.isOk());
-    expect(message.value.agentMessage?.status).toBe("cancelled");
-    expect(message.value.agentMessage?.completedAt).toBeInstanceOf(Date);
-    const updated = await ConversationResource.fetchById(
-      auth,
-      conversation.sId,
-      {
-        includeDeleted: true,
+      if (exit === "next step") {
+        expect(
+          await runModelAndCreateActionsActivity({
+            authType: auth.toJSON(),
+            canInitializeConsumption: true,
+            runAgentArgs: { ...agentLoopArgs, initialStartTime: Date.now() },
+            runIds: [],
+            step: 0,
+          })
+        ).toBeNull();
+      } else {
+        await finalizeCancellation(auth.toJSON(), agentLoopArgs);
       }
-    );
-    expect(updated?.isRunningAgentLoop).toBe(false);
-  });
+
+      const message = await conversation.getMessageById(
+        auth,
+        agentLoopArgs.agentMessageId
+      );
+      assert(message.isOk());
+      expect(message.value.agentMessage?.status).toBe("cancelled");
+      expect(message.value.agentMessage?.completedAt).toBeInstanceOf(Date);
+      const updated = await ConversationResource.fetchById(
+        auth,
+        conversation.sId,
+        {
+          includeDeleted: true,
+        }
+      );
+      expect(updated?.isRunningAgentLoop).toBe(false);
+    }
+  );
 
   it("preserves another running message and ignores repeated cleanup", async () => {
     const { auth, workspace, agentConfig, conversation, agentLoopArgs } =

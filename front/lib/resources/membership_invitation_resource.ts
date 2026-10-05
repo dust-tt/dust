@@ -30,8 +30,7 @@ import type { WorkspaceResource } from "./workspace_resource";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-export interface MembershipInvitationResource
-  extends ReadonlyAttributesType<MembershipInvitationModel> {}
+export interface MembershipInvitationResource extends ReadonlyAttributesType<MembershipInvitationModel> {}
 /**
  * @cc [owner:philipperolet,label:security;backend] supported-invitation-roles
  * `MembershipInvitationResource` construction MUST throw when the persisted initial role is not an
@@ -166,7 +165,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
       order: [["createdAt", "DESC"]],
       include: [WorkspaceModel],
       // WORKSPACE_ISOLATION_BYPASS: Invitations can span multiple workspaces prior to login.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -456,7 +455,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
         },
         include: [WorkspaceModel],
         // WORKSPACE_ISOLATION_BYPASS: We don't know the workspace yet, the user is not authed
-        // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+        // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
         dangerouslyBypassWorkspaceIsolationSecurity: true,
       });
       if (!membershipInvite) {
@@ -538,7 +537,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
       limit,
       include: [WorkspaceModel],
       // WORKSPACE_ISOLATION_BYPASS: Reminder job scans across all workspaces.
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      // oxlint-disable-next-line dust/noUnverifiedWorkspaceBypass -- WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 

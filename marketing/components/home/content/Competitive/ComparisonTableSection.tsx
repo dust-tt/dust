@@ -1,7 +1,6 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import { Check, Icon, XClose } from "@dust-tt/sparkle";
 import { H2 } from "@marketing/components/home/ContentComponents";
 import { cn } from "@marketing/components/poke/shadcn/lib/utils";
-import { Check, Icon, XClose } from "@dust-tt/sparkle";
 import Image from "next/image";
 import type { ReactNode } from "react";
 

@@ -60,8 +60,7 @@ function validateMaxSeats({
   return new Ok(undefined);
 }
 
-export interface WorkspaceSeatLimitResource
-  extends ReadonlyAttributesType<WorkspaceSeatLimitModel> {}
+export interface WorkspaceSeatLimitResource extends ReadonlyAttributesType<WorkspaceSeatLimitModel> {}
 export class WorkspaceSeatLimitResource extends BaseResource<WorkspaceSeatLimitModel> {
   static model: ModelStaticWorkspaceAware<WorkspaceSeatLimitModel> =
     WorkspaceSeatLimitModel;

@@ -12,9 +12,8 @@ vi.mock("@app/lib/api/assistant/template_suggestion", () => ({
 }));
 
 beforeEach(async () => {
-  const templateSuggestion = await import(
-    "@app/lib/api/assistant/template_suggestion"
-  );
+  const templateSuggestion =
+    await import("@app/lib/api/assistant/template_suggestion");
   vi.mocked(templateSuggestion.getSuggestedTemplatesForQuery).mockReset();
 });
 

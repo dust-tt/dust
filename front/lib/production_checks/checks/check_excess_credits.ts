@@ -41,7 +41,7 @@ export const checkExcessCredits: CheckFunction = async (
 
   // Query for workspaces with excess credits above the absolute threshold in the lookback period.
   const workspacesWithExcessCredits: WorkspaceExcessCredits[] =
-    // biome-ignore lint/plugin/noRawSql: Production check using read replica
+    // oxlint-disable-next-line dust/noRawSql -- Production check using read replica
     await frontDb.query(
       `
       SELECT

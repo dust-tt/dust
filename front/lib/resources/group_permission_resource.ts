@@ -181,8 +181,7 @@ function autoGroupName({
   return `Group for permission ${grantType} on ${resourceType} (${resourceId})`;
 }
 
-export interface GroupPermissionResource
-  extends ReadonlyAttributesType<GroupPermissionModel> {}
+export interface GroupPermissionResource extends ReadonlyAttributesType<GroupPermissionModel> {}
 export class GroupPermissionResource extends BaseResource<GroupPermissionModel> {
   static model: ModelStatic<GroupPermissionModel> = GroupPermissionModel;
 
@@ -1389,7 +1388,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       resourceId === WHOLE_TYPE_RESOURCE_ID
         ? `group_permissions:${workspaceId}:${resourceType}:${grantType}`
         : `group_permissions:${workspaceId}:${resourceType}:${resourceId}:${grantType}`;
-    // biome-ignore lint/plugin/noRawSql: advisory lock requires raw SQL
+    // oxlint-disable-next-line dust/noRawSql -- advisory lock requires raw SQL
     await frontSequelize.query("SELECT pg_advisory_xact_lock(hashtext(:key))", {
       replacements: { key },
       transaction,

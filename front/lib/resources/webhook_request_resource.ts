@@ -35,8 +35,7 @@ type CleanUpWorkspaceOptions = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-export interface WebhookRequestResource
-  extends ReadonlyAttributesType<WebhookRequestModel> {}
+export interface WebhookRequestResource extends ReadonlyAttributesType<WebhookRequestModel> {}
 
 export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
   static model: ModelStatic<WebhookRequestModel> = WebhookRequestModel;
@@ -231,7 +230,7 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     webhookRequestTtl = WEBHOOK_REQUEST_TTL,
     maxWebhookRequestsToKeep = MAX_WEBHOOK_REQUESTS_TO_KEEP,
   }: Partial<CleanUpWorkspaceOptions> = {}): Promise<WorkspaceResource[]> {
-    // biome-ignore lint/plugin/noRawSql: automatic suppress
+    // oxlint-disable-next-line dust/noRawSql -- automatic suppress
     const rows = await frontSequelize.query<{
       workspaceId: ModelId;
       total_entries: number;

@@ -42,7 +42,7 @@ import {
   DATA_SOURCE_FOLDER_SPREADSHEET_MIME_TYPE,
   isDustMimeType,
   isSupportedPlainTextContentType,
-  // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
+  // oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- existing usage
 } from "@dust-tt/client";
 
 // User-facing message for CSVs that core cannot decode to UTF-8 (e.g. exotic encodings that

@@ -24,7 +24,6 @@ export const usePaginationFromUrl = ({
   const pageIndex = pageIndexParam ? parseInt(pageIndexParam) : 0;
   const pageSize = pageSizeParam ? parseInt(pageSizeParam) : initialPageSize;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const res = useMemo(() => {
     const pagination: PaginationState = { pageIndex, pageSize };
 

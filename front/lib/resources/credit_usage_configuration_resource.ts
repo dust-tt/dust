@@ -11,8 +11,7 @@ import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 
-export interface CreditUsageConfigurationResource
-  extends ReadonlyAttributesType<CreditUsageConfigurationModel> {}
+export interface CreditUsageConfigurationResource extends ReadonlyAttributesType<CreditUsageConfigurationModel> {}
 
 export class CreditUsageConfigurationResource extends BaseResource<CreditUsageConfigurationModel> {
   static model: ModelStaticWorkspaceAware<CreditUsageConfigurationModel> =

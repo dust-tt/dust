@@ -7,9 +7,9 @@ import {
   toAgentSearchFilters,
 } from "@app/components/assistant/manager/agentFilter";
 import { clearFilterCategory } from "@app/components/shared/filter_panel/filterState";
-import { SearchFilterPanel } from "@app/components/shared/filter_panel/SearchFilterPanel";
 import type { SearchFilterOption } from "@app/components/shared/filter_panel/searchFilter";
 import { getSearchFilterMcpServerViewIds } from "@app/components/shared/filter_panel/searchFilter";
+import { SearchFilterPanel } from "@app/components/shared/filter_panel/SearchFilterPanel";
 import { useFilterPanel } from "@app/components/shared/filter_panel/useFilterPanel";
 import { useSearchAgents } from "@app/hooks/useSearchAgents";
 import {

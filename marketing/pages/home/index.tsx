@@ -1,7 +1,7 @@
-import { IntroSection } from "@marketing/components/home/content/Product/IntroSection";
 import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
 import LandingLayout from "@marketing/components/home/LandingLayout";
 import { PageMetadata } from "@marketing/components/home/PageMetadata";
+import { IntroSection } from "@marketing/components/home/content/Product/IntroSection";
 import type { NewsItem } from "@marketing/lib/homepage_news";
 import { fetchHomepageNews } from "@marketing/lib/homepage_news";
 import { fetchLogoLists } from "@marketing/lib/logo_bars_server";
@@ -46,7 +46,7 @@ export function Landing({ news }: HomeProps) {
   );
 }
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+// oxlint-disable-next-line dust/nextjsPageComponentNaming -- pre-existing
 export default function Home({ news }: HomeProps) {
   return <Landing news={news} />;
 }

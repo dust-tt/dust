@@ -45,8 +45,7 @@ import { Op } from "sequelize";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 
-export interface SharingGrantResource
-  extends ReadonlyAttributesType<SharingGrantModel> {}
+export interface SharingGrantResource extends ReadonlyAttributesType<SharingGrantModel> {}
 export class SharingGrantResource extends BaseResource<SharingGrantModel> {
   static model: ModelStaticWorkspaceAware<SharingGrantModel> =
     SharingGrantModel;

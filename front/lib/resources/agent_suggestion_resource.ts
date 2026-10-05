@@ -29,8 +29,7 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-export interface AgentSuggestionResource
-  extends ReadonlyAttributesType<AgentSuggestionModel> {}
+export interface AgentSuggestionResource extends ReadonlyAttributesType<AgentSuggestionModel> {}
 
 /**
  * Resource for managing agent suggestions.

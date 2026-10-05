@@ -9,8 +9,7 @@ import type { CellType } from "@app/types/cell";
 import type { RegionType } from "@app/types/region";
 import { useCallback, useEffect, useState } from "react";
 
-export interface PokeFeatureFlagWorkspaceWithCell
-  extends PokeFeatureFlagWorkspace {
+export interface PokeFeatureFlagWorkspaceWithCell extends PokeFeatureFlagWorkspace {
   cell: CellType;
   region: RegionType;
 }
@@ -28,12 +27,10 @@ export function usePokeFeatureFlagWorkspacesAllCells({
   flagName: string;
 }) {
   const { cells } = useCellContext();
-  const [workspaces, setWorkspaces] = useState<
-    PokeFeatureFlagWorkspaceWithCell[]
-  >(emptyArray());
-  const [cellRollouts, setCellRollouts] = useState<
-    PokeFeatureFlagCellRollout[]
-  >(emptyArray());
+  const [workspaces, setWorkspaces] =
+    useState<PokeFeatureFlagWorkspaceWithCell[]>(emptyArray());
+  const [cellRollouts, setCellRollouts] =
+    useState<PokeFeatureFlagCellRollout[]>(emptyArray());
   const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
@@ -43,7 +40,6 @@ export function usePokeFeatureFlagWorkspacesAllCells({
     setRefreshKey((key) => key + 1);
   }, []);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey is an intentional refetch trigger via mutate()
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);

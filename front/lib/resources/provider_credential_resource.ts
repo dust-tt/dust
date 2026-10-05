@@ -65,8 +65,7 @@ type ProviderCredential = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-export interface ProviderCredentialResource
-  extends ReadonlyAttributesType<ProviderCredentialModel> {}
+export interface ProviderCredentialResource extends ReadonlyAttributesType<ProviderCredentialModel> {}
 export class ProviderCredentialResource extends BaseResource<ProviderCredentialModel> {
   static model: ModelStaticWorkspaceAware<ProviderCredentialModel> =
     ProviderCredentialModel;

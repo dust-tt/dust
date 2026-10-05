@@ -5,8 +5,8 @@ import { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { LightWorkspaceType } from "@app/types/user";
-import { Op } from "sequelize";
 import fs from "fs";
+import { Op } from "sequelize";
 
 const WORKSPACE_CONCURRENCY = 1;
 const BATCH_SIZE = 2000;

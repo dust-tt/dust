@@ -1,11 +1,11 @@
 import {
-  getDocumentJSONComments,
-  withDocumentJSONComments,
-} from "@app/components/editor/document/DocumentComments";
-import {
   loadDfm,
   saveDfm,
 } from "@app/components/editor/document/dfm_persistence";
+import {
+  getDocumentJSONComments,
+  withDocumentJSONComments,
+} from "@app/components/editor/document/DocumentComments";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { parseDfm } from "@app/lib/markdown/dfm";
 import { FIXTURE } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
@@ -225,11 +225,14 @@ describe("saveDfm", () => {
     "*foo :comment-start{id=c1}bar:comment-end{id=c1}* end",
     "**:comment-start{id=c1}bar:comment-end{id=c1}** end",
     "[foo :comment-start{id=c1}bar:comment-end{id=c1}](https://example.com) end",
-  ])("keeps anchors inside the formatting of the text they comment: %s", (body) => {
-    const source = `${body}\n\n${OPEN_THREAD}`;
+  ])(
+    "keeps anchors inside the formatting of the text they comment: %s",
+    (body) => {
+      const source = `${body}\n\n${OPEN_THREAD}`;
 
-    expect(roundTrip(source)).toBe(source);
-  });
+      expect(roundTrip(source)).toBe(source);
+    }
+  );
 
   it("writes anchors inside formatting without splitting it", () => {
     const source = `Some **bo:comment-start{id=c1}ld** and *it:comment-end{id=c1}alic* text.\n\n${OPEN_THREAD}`;

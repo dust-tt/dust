@@ -279,38 +279,41 @@ describe("consumption top rankings", () => {
       { terms: { "agent.attributed_id": ["agent80"] } },
     ],
     ["missing", "Pagination Agent 080", { match_none: {} }],
-  ])("filters the ranking for search %s", async (search, label, expectedFilter) => {
-    const { auth } = await setup();
-    vi.mocked(listConsumptionFacetCatalogDimension).mockResolvedValue([
-      { value: "agent80", label, pictureUrl: null },
-    ]);
-    mockLabels({});
-    mockAggs({
-      buckets: [],
-      totalCount: 0,
-      totalMicro: 10_000_000,
-      filtered: true,
-    });
+  ])(
+    "filters the ranking for search %s",
+    async (search, label, expectedFilter) => {
+      const { auth } = await setup();
+      vi.mocked(listConsumptionFacetCatalogDimension).mockResolvedValue([
+        { value: "agent80", label, pictureUrl: null },
+      ]);
+      mockLabels({});
+      mockAggs({
+        buckets: [],
+        totalCount: 0,
+        totalMicro: 10_000_000,
+        filtered: true,
+      });
 
-    const result = await fetchConsumptionTopAgents(auth, {
-      period: PERIOD,
-      limit: 25,
-      search,
-    });
+      const result = await fetchConsumptionTopAgents(auth, {
+        period: PERIOD,
+        limit: 25,
+        search,
+      });
 
-    expect(result.isOk()).toBe(true);
-    if (!result.isOk()) {
-      return;
+      expect(result.isOk()).toBe(true);
+      if (!result.isOk()) {
+        return;
+      }
+      expect(result.value.totalCredits).toBe(10);
+      expect(listConsumptionFacetCatalogDimension).toHaveBeenCalledWith(
+        auth,
+        "agent"
+      );
+      expect(lastSearchCall()[1]?.aggregations?.ranking?.filter).toEqual(
+        expectedFilter
+      );
     }
-    expect(result.value.totalCredits).toBe(10);
-    expect(listConsumptionFacetCatalogDimension).toHaveBeenCalledWith(
-      auth,
-      "agent"
-    );
-    expect(lastSearchCall()[1]?.aggregations?.ranking?.filter).toEqual(
-      expectedFilter
-    );
-  });
+  );
 
   it("splits broad searches into bounded terms clauses", async () => {
     const { auth } = await setup();

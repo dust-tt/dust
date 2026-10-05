@@ -34,8 +34,7 @@ export type GetWebhookSourceViewsListResponseBody = {
 };
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-export interface WebhookSourcesViewResource
-  extends ReadonlyAttributesType<WebhookSourcesViewModel> {}
+export interface WebhookSourcesViewResource extends ReadonlyAttributesType<WebhookSourcesViewModel> {}
 export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSourcesViewModel> {
   static model: ModelStatic<WebhookSourcesViewModel> = WebhookSourcesViewModel;
   readonly editedByUser?: Attributes<UserModel>;

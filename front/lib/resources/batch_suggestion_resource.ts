@@ -20,8 +20,7 @@ import type {
 import groupBy from "lodash/groupBy";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 
-export interface BatchSuggestionResource
-  extends ReadonlyAttributesType<BatchSuggestionModel> {}
+export interface BatchSuggestionResource extends ReadonlyAttributesType<BatchSuggestionModel> {}
 
 /**
  * A batch groups agent and skill suggestions that are reviewed together. The batch carries no

@@ -10,9 +10,7 @@ import { MicrosoftConfigurationResource } from "@connectors/resources/microsoft_
 import type { ModelId } from "@connectors/types";
 import type { Transaction } from "sequelize";
 
-export class MicrosoftConnectorStrategy
-  implements ConnectorProviderStrategy<"microsoft">
-{
+export class MicrosoftConnectorStrategy implements ConnectorProviderStrategy<"microsoft"> {
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<MicrosoftConfigurationModel>,

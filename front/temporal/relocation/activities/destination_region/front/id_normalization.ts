@@ -1,4 +1,4 @@
-// biome-ignore-all lint/plugin/noRawSql: destination normalization resolves IDs from relocation SQL
+/* oxlint-disable dust/noRawSql -- destination normalization resolves IDs from relocation SQL */
 
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";

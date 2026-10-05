@@ -26,8 +26,7 @@ export type ProjectMetadataBlob = Omit<
   "workspaceId" | "spaceId"
 >;
 
-export interface ProjectMetadataResource
-  extends ReadonlyAttributesType<ProjectMetadataModel> {}
+export interface ProjectMetadataResource extends ReadonlyAttributesType<ProjectMetadataModel> {}
 
 export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> {
   static model: typeof ProjectMetadataModel = ProjectMetadataModel;

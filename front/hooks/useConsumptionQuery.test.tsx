@@ -3,8 +3,8 @@ import {
   useConsumptionQuery,
 } from "@app/hooks/useConsumptionQuery";
 import { PERSONAL_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
-import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import type { FetcherWithBodyFn } from "@app/lib/swr/fetcher";
+import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import { act, render, waitFor } from "@testing-library/react";
 import { SWRConfig } from "swr";
 import { describe, expect, it, vi } from "vitest";

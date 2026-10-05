@@ -77,6 +77,7 @@ import {
   type ComponentType,
 } from "react";
 
+import type { RequestsTab } from "../components/RequestsView";
 import { AgentBuilderView } from "../components/AgentBuilderView";
 import {
   BUILD_SECTIONS,
@@ -111,7 +112,6 @@ import {
 } from "../components/PanelLayout";
 import { ProfilePanel } from "../components/Profile";
 import { RequestDetailView } from "../components/RequestDetailView";
-import type { RequestsTab } from "../components/RequestsView";
 import { RequestsView } from "../components/RequestsView";
 import { TriggersManageView } from "../components/TriggersManageView";
 import { WakeUpsManageView } from "../components/WakeUpsManageView";
@@ -153,6 +153,7 @@ import {
   getDataSourcesBySpaceId,
 } from "../data/dataSources";
 import { getRandomGreetingForName } from "../data/greetings";
+import TemplateSelection, { type Template } from "./TemplateSelection";
 import {
   buildPodTabOptions,
   type DynamicFileTab,
@@ -164,7 +165,6 @@ import {
   resolvePodContext,
   shouldShowMemberChrome,
 } from "./podPanelConfig";
-import TemplateSelection, { type Template } from "./TemplateSelection";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

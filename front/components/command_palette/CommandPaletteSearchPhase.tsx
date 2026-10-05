@@ -335,19 +335,19 @@ function getFlatItems(
   return [
     ...agents.map((agent): CommandPaletteItem => ({ kind: "agent", agent })),
     ...skills.map((skill): CommandPaletteItem => ({ kind: "skill", skill })),
-    ...members.map(
-      (member): CommandPaletteItem => ({ kind: "member", member })
-    ),
+    ...members.map((member): CommandPaletteItem => ({
+      kind: "member",
+      member,
+    })),
     ...pods.map((pod): CommandPaletteItem => ({ kind: "pod", pod })),
-    ...conversations.map(
-      (conversation): CommandPaletteItem => ({
-        kind: "conversation",
-        conversation,
-      })
-    ),
-    ...settings.map(
-      (setting): CommandPaletteItem => ({ kind: "setting", setting })
-    ),
+    ...conversations.map((conversation): CommandPaletteItem => ({
+      kind: "conversation",
+      conversation,
+    })),
+    ...settings.map((setting): CommandPaletteItem => ({
+      kind: "setting",
+      setting,
+    })),
   ];
 }
 

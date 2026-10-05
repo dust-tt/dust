@@ -43,14 +43,14 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/messages/:mId/retry", ()
     expect(response.status).toBe(400);
   });
 
-  it.each([
-    "null",
-    JSON.stringify({ modelSelection: null }),
-  ])("rejects null JSON values", async (body) => {
-    const response = await retryRequest(body);
+  it.each(["null", JSON.stringify({ modelSelection: null })])(
+    "rejects null JSON values",
+    async (body) => {
+      const response = await retryRequest(body);
 
-    expect(response.status).toBe(400);
-  });
+      expect(response.status).toBe(400);
+    }
+  );
 
   it("rejects an invalid model selection", async () => {
     const response = await retryRequest(

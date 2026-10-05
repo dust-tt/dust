@@ -1,14 +1,3 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
-import {
-  expect,
-  fn,
-  mocked,
-  spyOn,
-  userEvent,
-  waitFor,
-  within,
-} from "storybook/test";
 import {
   Document,
   type DocumentProps,
@@ -24,7 +13,18 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@sparkle/components/Sheet";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 import { EditorContent } from "@tiptap/react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  expect,
+  fn,
+  mocked,
+  spyOn,
+  userEvent,
+  waitFor,
+  within,
+} from "storybook/test";
 
 const SEED =
   "# Team update\n\nA short document, ready to edit.\n\n- Review the proposal\n- Share feedback";
@@ -638,12 +638,10 @@ export const QueuedSaveDuringCommit: Story = {
 /** @summary Keep the draft after a failed save and allow an explicit retry. */
 export const SaveFailure: Story = {
   args: {
-    onSave: fn(
-      async (): Promise<DocumentSaveResult> => ({
-        ok: false,
-        error: "A newer version was saved elsewhere. Your draft is preserved.",
-      })
-    ),
+    onSave: fn(async (): Promise<DocumentSaveResult> => ({
+      ok: false,
+      error: "A newer version was saved elsewhere. Your draft is preserved.",
+    })),
   },
   play: async ({ canvas, args }) => {
     const editor = await canvas.findByRole("textbox", {
@@ -680,12 +678,10 @@ export const SaveFailure: Story = {
 export const UndoAfterSaveFailure: Story = {
   args: {
     initialContent: "A saved document",
-    onSave: fn(
-      async (): Promise<DocumentSaveResult> => ({
-        ok: false,
-        error: "Persistence is unavailable.",
-      })
-    ),
+    onSave: fn(async (): Promise<DocumentSaveResult> => ({
+      ok: false,
+      error: "Persistence is unavailable.",
+    })),
   },
   play: async ({ canvas, args }) => {
     const editor = await canvas.findByRole("textbox", {

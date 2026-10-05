@@ -12,8 +12,6 @@
     "build:runtime-types": "node scripts/build-frame-runtime-types.mjs",
     "start": "next start",
     "test": "vitest --run",
-    "format": "biome format --write .",
-    "format:check": "biome format .",
     "test:styles": "node scripts/check-tailwind-styles.mjs",
     "audit:tailwind": "node scripts/audit-tailwind.mjs",
     "build:sparkle-styles": "node scripts/build-sparkle-styles.mjs",

@@ -34,10 +34,10 @@
 
 import { Buffer } from "node:buffer";
 import { createHmac } from "node:crypto";
+import { promises as dns } from "node:dns";
 import { existsSync } from "node:fs";
 import { promises as fs } from "node:fs";
 import net from "node:net";
-import { promises as dns } from "node:dns";
 
 const PROXY_HOST = process.env.EGRESS_PROXY_HOST ?? "eu.sandbox-egress.dust.tt";
 const PROXY_PORT = Number(process.env.EGRESS_PROXY_PORT ?? "4443");
