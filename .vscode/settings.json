@@ -5,21 +5,12 @@
     "./connectors",
     "./xp1"
   ],
-  "rust-analyzer.linkedProjects": [
-    "./core/Cargo.toml"
-  ],
   "js/ts.preferences.importModuleSpecifier": "non-relative",
   "github-actions.workflows.pinned.workflows": [],
   "[rust]": {
-    "editor.defaultFormatter": "rust-lang.rust-analyzer",
     "editor.formatOnSave": true,
     "editor.tabSize": 4
   },
-  "rust-analyzer.inlayHints.chainingHints.enable": false,
-  "rust-analyzer.inlayHints.closingBraceHints.enable": false,
-  "rust-analyzer.inlayHints.parameterHints.enable": false,
-  "rust-analyzer.inlayHints.typeHints.enable": false,
-  "rust-analyzer.lens.implementations.enable": false,
   "git.ignoreLimitWarning": true,
   "[typescript]": {
     "editor.defaultFormatter": "oxc.oxc-vscode"
@@ -34,7 +25,6 @@
     "editor.defaultFormatter": "oxc.oxc-vscode"
   },
   "editor.formatOnSave": true,
-  "typescript.preferences.organizeImports": {},
   "editor.codeActionsOnSave": {
     "source.fixAll.oxc": "explicit"
   },
