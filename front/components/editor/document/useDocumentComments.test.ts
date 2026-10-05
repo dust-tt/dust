@@ -1,3 +1,4 @@
+import { getDocumentComments } from "@app/components/editor/document/DocumentComments";
 import { useDocumentComments } from "@app/components/editor/document/useDocumentComments";
 import { useDocumentEditor } from "@app/components/editor/document/useDocumentEditor";
 import { Ok } from "@app/types/shared/result";
@@ -83,5 +84,71 @@ describe("useDocumentComments", () => {
     expect(onSave.mock.calls[0][0]).toContain(
       "*Hi :comment-start{id=c1}there:comment-end{id=c1} friend*"
     );
+  });
+
+  it("reuses the parsed threads across cursor moves", async () => {
+    const { result } = await renderCommentedEditor(SOURCE);
+    const editor = result.current.document.editor;
+    if (!editor) {
+      throw new Error("Editor did not mount.");
+    }
+    const before = getDocumentComments(editor.state.doc);
+
+    act(() => {
+      editor.commands.setTextSelection(2);
+    });
+
+    expect(getDocumentComments(editor.state.doc)).toBe(before);
+    expect(result.current.comments.comments).toBe(before);
+  });
+
+  describe("highlights", () => {
+    const highlighted = (
+      editor: NonNullable<ReturnType<typeof useDocumentEditor>["editor"]>
+    ) =>
+      [...editor.view.dom.querySelectorAll('[data-comment-highlight="c1"]')]
+        .map((element) => element.textContent)
+        .join("");
+
+    it("follow text typed before and inside the comment", async () => {
+      const { result } = await renderCommentedEditor(SOURCE);
+      const editor = result.current.document.editor;
+      if (!editor) {
+        throw new Error("Editor did not mount.");
+      }
+
+      act(() => {
+        editor.commands.insertContentAt(1, "Well, ");
+      });
+      expect(highlighted(editor)).toBe("there");
+
+      act(() => {
+        // Inside "there", after "th".
+        editor.commands.insertContentAt(12, "XX");
+      });
+      expect(highlighted(editor)).toBe("thXXere");
+    });
+
+    it("come back when undo restores deleted commented text", async () => {
+      const { result } = await renderCommentedEditor(SOURCE);
+      const editor = result.current.document.editor;
+      if (!editor) {
+        throw new Error("Editor did not mount.");
+      }
+
+      act(() => {
+        editor
+          .chain()
+          .setTextSelection({ from: 4, to: 9 })
+          .deleteSelection()
+          .run();
+      });
+      expect(highlighted(editor)).toBe("");
+
+      act(() => {
+        editor.commands.undo();
+      });
+      expect(highlighted(editor)).toBe("there");
+    });
   });
 });

@@ -3,7 +3,14 @@ import { cn } from "@dust-tt/sparkle";
 import type { Editor, JSONContent } from "@tiptap/core";
 import { Extension, Mark } from "@tiptap/core";
 import type { Node } from "@tiptap/pm/model";
+import type { Transaction } from "@tiptap/pm/state";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
+import {
+  AddMarkStep,
+  RemoveMarkStep,
+  ReplaceAroundStep,
+  ReplaceStep,
+} from "@tiptap/pm/transform";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { z } from "zod";
 
@@ -51,12 +58,32 @@ export const documentCommentsPluginKey = new PluginKey<DocumentCommentsState>(
 );
 
 // The attribute validates against the same schema, so parsing cannot fail on a live document.
+// ProseMirror keeps an attribute's value until a transaction sets a new one, so each version
+// of the threads is parsed once, however many cursor moves and edits read it.
+const parsedThreads = new WeakMap<object, DfmComment[]>();
+
+const parseThreads = (value: unknown): DfmComment[] => {
+  if (value === undefined || value === null) {
+    return [];
+  }
+  if (typeof value !== "object") {
+    return commentsSchema.parse(value);
+  }
+  const cached = parsedThreads.get(value);
+  if (cached) {
+    return cached;
+  }
+  const parsed = commentsSchema.parse(value);
+  parsedThreads.set(value, parsed);
+  return parsed;
+};
+
 export const getDocumentComments = (doc: Node): DfmComment[] =>
-  commentsSchema.parse(doc.attrs[COMMENTS_ATTRIBUTE] ?? []);
+  parseThreads(doc.attrs[COMMENTS_ATTRIBUTE]);
 
 /** The threads a document JSON carries, as getJSON returns them. */
 export const getDocumentJSONComments = (document: JSONContent): DfmComment[] =>
-  commentsSchema.parse(document.attrs?.[COMMENTS_ATTRIBUTE] ?? []);
+  parseThreads(document.attrs?.[COMMENTS_ATTRIBUTE]);
 
 export const withDocumentJSONComments = (
   document: JSONContent,
@@ -99,8 +126,14 @@ export const scrollToCommentHighlight = (editor: Editor, id: string) => {
     });
 };
 
+const commentedTexts = new WeakMap<Node, Map<string, string>>();
+
 /** Text covered by each comment, in document order, joined across blocks. */
 export const getCommentedTexts = (doc: Node): Map<string, string> => {
+  const cached = commentedTexts.get(doc);
+  if (cached) {
+    return cached;
+  }
   const texts = new Map<string, string>();
 
   doc.descendants((node) => {
@@ -117,6 +150,7 @@ export const getCommentedTexts = (doc: Node): Map<string, string> => {
     }
   });
 
+  commentedTexts.set(doc, texts);
   return texts;
 };
 
@@ -158,6 +192,30 @@ const buildDecorations = (doc: Node, activeId: string | null) => {
 
   return DecorationSet.create(doc, decorations);
 };
+
+/**
+ * Whether a transaction may add or remove comment-marked text, which mapping the highlights
+ * cannot follow: a mark step on comments, or a replacement inserting commented content, such
+ * as undo restoring deleted commented text. Typing inside a comment counts, since the typed
+ * text carries the mark.
+ */
+const changesCommentMarks = (transaction: Transaction) =>
+  transaction.steps.some((step) => {
+    if (step instanceof AddMarkStep || step instanceof RemoveMarkStep) {
+      return step.mark.type.name === COMMENT_MARK_NAME;
+    }
+    if (step instanceof ReplaceStep || step instanceof ReplaceAroundStep) {
+      let commented = false;
+      step.slice.content.descendants((node) => {
+        commented ||= node.marks.some(
+          (mark) => mark.type.name === COMMENT_MARK_NAME
+        );
+        return !commented;
+      });
+      return commented;
+    }
+    return false;
+  });
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -243,13 +301,20 @@ export const DocumentComments = Extension.create({
           activeId: null,
           decorations: buildDecorations(state.doc, null),
         }),
-        apply: (transaction, previous, _oldState, newState) => {
+        apply: (transaction, previous, oldState, newState) => {
           const meta: DocumentCommentsMeta | undefined = transaction.getMeta(
             documentCommentsPluginKey
           );
-          let activeId = meta ? meta.id : previous.activeId;
+          if (!transaction.docChanged && meta === undefined) {
+            return previous;
+          }
 
+          const threadsChanged =
+            oldState.doc.attrs[COMMENTS_ATTRIBUTE] !==
+            newState.doc.attrs[COMMENTS_ATTRIBUTE];
+          let activeId = meta ? meta.id : previous.activeId;
           if (
+            threadsChanged &&
             activeId !== null &&
             !getDocumentComments(newState.doc).some(
               (comment) => comment.id === activeId
@@ -258,13 +323,17 @@ export const DocumentComments = Extension.create({
             activeId = null;
           }
 
-          if (!transaction.docChanged && meta === undefined) {
-            return previous;
-          }
-
           return {
             activeId,
-            decorations: buildDecorations(newState.doc, activeId),
+            decorations:
+              threadsChanged ||
+              activeId !== previous.activeId ||
+              changesCommentMarks(transaction)
+                ? buildDecorations(newState.doc, activeId)
+                : previous.decorations.map(
+                    transaction.mapping,
+                    transaction.doc
+                  ),
           };
         },
       },
