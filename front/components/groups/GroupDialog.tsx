@@ -48,7 +48,7 @@ export function GroupDialog({
 
   // Managing the membership of a group that grants the admin role is restricted
   // to admins: adding a member escalates them to admin. Managers can view but
-  // not edit such a group.
+  // not edit such a group's membership.
   const isReadOnlyForManager =
     isEdit && group?.allowedActions?.canEditMembers !== true;
 
@@ -113,7 +113,7 @@ function GroupForm({
   onClose,
 }: GroupFormProps) {
   const { hasFeature } = useFeatureFlags();
-  const { isAdmin } = useAuth();
+  const { isManager } = useAuth();
   const [name, setName] = useState(initialName);
   const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(
     () => new Set(initialMembers.map((m) => m.sId))
@@ -128,7 +128,7 @@ function GroupForm({
     !groupId || group?.allowedActions?.canEditDetails === true;
   const canAssignManagers = groupId
     ? group?.allowedActions?.canAssignManagers === true
-    : isAdmin && hasFeature("group_management");
+    : isManager && hasFeature("group_management");
   const managerGroup = group ?? {
     name: name.trim() || "this group",
     kind: "regular_manual" as const,
@@ -154,7 +154,7 @@ function GroupForm({
     (selectedManagers.length !== initialManagerIds.size ||
       selectedManagers.some((manager) => !initialManagerIds.has(manager.sId)));
   const shouldDisableButton =
-    readOnly ||
+    (readOnly && !canAssignManagers) ||
     isSubmitting ||
     name.trim().length === 0 ||
     (!groupId && selectedMemberIds.size === 0) ||

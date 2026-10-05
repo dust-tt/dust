@@ -9,8 +9,8 @@ import { Err, Ok } from "@app/types/shared/result";
 
 /**
  * @cc [owner:philipperolet,label:security;backend] create-group-managers
- * Only workspace admins may appoint managers at creation. Managers MUST be active workspace
- * members, and group creation and manager assignments MUST commit together.
+ * Only workspace admins and managers may appoint managers at creation. Managers MUST be active
+ * workspace members, and group creation and manager assignments MUST commit together.
  */
 export async function createGroup(
   auth: Authenticator,
@@ -20,11 +20,11 @@ export async function createGroup(
     managerIds = [],
   }: { name: string; memberIds: string[]; managerIds?: string[] }
 ) {
-  if (managerIds.length > 0 && !auth.isAdmin()) {
+  if (managerIds.length > 0 && !auth.isManager()) {
     return new Err(
       new DustError(
         "unauthorized",
-        "Only workspace admins can appoint group managers."
+        "Only workspace admins and managers can appoint group managers."
       )
     );
   }

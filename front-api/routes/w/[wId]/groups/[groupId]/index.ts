@@ -234,7 +234,7 @@ app.patch(
                 : "invalid_request_error",
             message:
               assignment.kind === "unauthorized"
-                ? "Only workspace admins can appoint group managers."
+                ? "Only workspace admins and managers can appoint group managers."
                 : "All group managers must be active workspace members.",
           },
         });
