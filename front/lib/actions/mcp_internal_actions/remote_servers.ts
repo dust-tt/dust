@@ -4894,7 +4894,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     },
   },
   {
-    id: 10041,
+    id: 10043,
     name: "FullEnrich",
     description:
       "FullEnrich tools for B2B contact and company search, contact enrichment (emails, phones) and CSV export.",
