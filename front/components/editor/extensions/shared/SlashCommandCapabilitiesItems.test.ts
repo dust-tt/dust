@@ -429,8 +429,8 @@ describe("buildCapabilitySlashCommandItems", () => {
       tools: [],
     });
     expect(result.map((item) => item.id)).toEqual([
-      "custom",
       "go-deep",
+      "custom",
       "unrelated",
     ]);
   });

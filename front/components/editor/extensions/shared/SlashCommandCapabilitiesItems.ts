@@ -33,7 +33,7 @@ interface CapabilityNameMatch {
   name: string;
 }
 
-function getBestMatchingName({
+export function getBestMatchingName({
   item,
   normalizedQuery,
 }: {

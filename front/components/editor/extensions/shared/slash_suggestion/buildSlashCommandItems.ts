@@ -3,6 +3,7 @@ import type {
   SlashCommandToolSuggestion,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import {
+  getBestMatchingName,
   getSkillSlashCommandItem,
   getToolSlashCommandItem,
   getToolSlashCommandLabel,
@@ -35,6 +36,12 @@ export function filterSlashCommandItems(
   );
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] slash-search-alias-ranking
+ * Search-backed skills MUST remain in the candidate list even when their names do not match
+ * locally. Exact aliases MUST rank like names, and partial aliases below matching names.
+ * Suggestions MUST display the skill's canonical name.
+ */
 export function buildCapabilitySlashCommandItems<
   V extends MCPServerViewLightType,
 >({
@@ -76,7 +83,7 @@ export function buildCapabilitySlashCommandItems<
       })),
   ];
 
-  const normalizedQuery = query.trim();
+  const normalizedQuery = query.trim().toLowerCase();
   const matches = useSearchRanking
     ? [
         ...items.filter((item) => item.kind === "skill"),
@@ -89,10 +96,19 @@ export function buildCapabilitySlashCommandItems<
           if (normalizedQuery.length === 0 && a.kind !== b.kind) {
             return a.kind === "skill" ? -1 : 1;
           }
-          return compareForAutocompleteSort(
-            normalizedQuery,
-            a.sortName,
-            b.sortName
+          const aMatch = getBestMatchingName({ item: a, normalizedQuery });
+          const bMatch = getBestMatchingName({ item: b, normalizedQuery });
+          return (
+            (aMatch && bMatch
+              ? Number(aMatch.isLowPriorityAlias) -
+                Number(bMatch.isLowPriorityAlias)
+              : 0) ||
+            compareForAutocompleteSort(
+              normalizedQuery,
+              aMatch?.name ?? a.sortName,
+              bMatch?.name ?? b.sortName
+            ) ||
+            compareForAutocompleteSort(normalizedQuery, a.sortName, b.sortName)
           );
         })
         .slice(0, MAX_RENDERED_CAPABILITY_ITEMS)
