@@ -185,7 +185,7 @@ export async function getConversationInboxes(
   try {
     data = await makeFrontAPIRequest({
       method: "GET",
-      endpoint: `conversations/${conversationId}/inboxes`,
+      endpoint: `conversations/${encodeURIComponent(conversationId)}/inboxes`,
       apiToken,
     });
   } catch (error) {
