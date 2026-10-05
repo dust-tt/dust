@@ -161,7 +161,8 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = [
   {
     name: GET_CREDIT_TIMESERIES_TOOL_NAME,
     description:
-      "Return credit consumption as a time series over a time period.",
+      "Return credit consumption and active users as a time series over a " +
+        "time period.",
     schema: getCreditTimeseriesSchema,
     stake: "never_ask",
     eager: true,

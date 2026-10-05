@@ -169,7 +169,10 @@ function formatCreditLine(
     ({ groupKey, name }) =>
       `${name}: ${(point.values[groupKey] ?? 0).toFixed(2)}`
   );
-  return `${formatDateFromMillis(point.timestamp, tz)} — ${parts.join(", ")}`;
+  return (
+    `${formatDateFromMillis(point.timestamp, tz)} — ${parts.join(", ")}, ` +
+    `${point.activeUsers} active user${pluralize(point.activeUsers)}`
+  );
 }
 
 const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
