@@ -273,7 +273,6 @@ export type UpdateSkillParams = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SkillResource
   extends ReadonlyAttributesType<SkillConfigurationModel> {}
 
@@ -340,7 +339,6 @@ const GLOBAL_SKILL_ROLE_GRANTS: RoleGrant[] = [
   { role: "user", permissions: ["read"] },
 ];
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 /**
  * @cc [owner:fabiencelier,label:security;product] skill-verbs
  * The verbs a caller holds on a skill mean:

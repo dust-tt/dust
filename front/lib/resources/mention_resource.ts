@@ -67,9 +67,7 @@ export interface DeleteMentionsByMessagesParams {
 }
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface MentionResource extends ReadonlyAttributesType<MentionModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class MentionResource extends BaseResource<MentionModel> {
   static model: ModelStatic<MentionModel> = MentionModel;
 

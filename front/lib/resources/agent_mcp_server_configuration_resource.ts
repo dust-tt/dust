@@ -10,11 +10,9 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Attributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentMCPServerConfigurationResource
   extends ReadonlyAttributesType<AgentMCPServerConfigurationModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentMCPServerConfigurationResource extends BaseResource<AgentMCPServerConfigurationModel> {
   static model: ModelStaticWorkspaceAware<AgentMCPServerConfigurationModel> =
     AgentMCPServerConfigurationModel;

@@ -60,10 +60,8 @@ function validateMaxSeats({
   return new Ok(undefined);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface WorkspaceSeatLimitResource
   extends ReadonlyAttributesType<WorkspaceSeatLimitModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class WorkspaceSeatLimitResource extends BaseResource<WorkspaceSeatLimitModel> {
   static model: ModelStaticWorkspaceAware<WorkspaceSeatLimitModel> =
     WorkspaceSeatLimitModel;

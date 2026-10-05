@@ -53,11 +53,9 @@ interface RenameNodeResult {
 
 const FILE_SYSTEM_NAMESPACE_LOCK_PREFIX = "file_system_namespace";
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface FileSystemMutationResource
   extends ReadonlyAttributesType<FileSystemMutationModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class FileSystemMutationResource extends BaseResource<FileSystemMutationModel> {
   static model: ModelStaticWorkspaceAware<FileSystemMutationModel> =
     FileSystemMutationModel;

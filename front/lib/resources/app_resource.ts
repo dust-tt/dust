@@ -26,9 +26,7 @@ import { Op } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AppResource extends ReadonlyAttributesType<AppModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 /**
  * @cc [owner:tdraier,label:security;product] dust-app-admin-capability
  * `admin` on the `dust_app` type is the developer capability for Dust apps. Creating an app in a
@@ -337,7 +335,6 @@ export class AppResource extends ResourceWithSpace<AppModel> {
   }
 
   parseSavedSpecification() {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     return JSON.parse(this.savedSpecification || "[]") as SpecificationType;
   }
 }
