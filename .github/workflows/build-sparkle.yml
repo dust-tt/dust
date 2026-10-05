@@ -22,3 +22,7 @@ jobs:
         run: npm -w sparkle run build
       - name: Build Storybook
         run: npm -w sparkle run build-storybook
+      - name: Check translations
+        run: npm -w sparkle run i18n:check
+      - name: Unit tests
+        run: npm -w sparkle run test:unit
