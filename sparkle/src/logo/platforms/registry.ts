@@ -35,6 +35,7 @@ import FrameLogo from "./Frame";
 import FreshdeskLogo from "./Freshdesk";
 import FreshserviceLogo from "./Freshservice";
 import FrontLogo from "./Front";
+import FullEnrichLogo from "./FullEnrich";
 import GammaLogo from "./Gamma";
 import GcalLogo from "./Gcal";
 import GeminiLogo from "./Gemini";
@@ -157,6 +158,7 @@ export const PLATFORM_LOGOS = {
   FreshdeskLogo,
   FreshserviceLogo,
   FrontLogo,
+  FullEnrichLogo,
   GammaLogo,
   GcalLogo,
   GeminiLogo,
