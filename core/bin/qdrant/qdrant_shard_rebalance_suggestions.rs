@@ -150,11 +150,16 @@ struct Args {
     /// Fit shared shard RAM to node totals and placement; suggest one move.
     #[arg(long)]
     estimate_memory: bool,
+
+    /// Greedily reduce maximum estimated node RAM; suggest up to ten moves.
+    #[arg(long, conflicts_with = "estimate_memory")]
+    minimize_max_memory: bool,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
+    let require_memory = args.estimate_memory || args.minimize_max_memory;
     // 1. Start from a seed peer that we know.
     //    We'll call GET /cluster, parse the JSON, discover the other peers' URIs.
     let url_var = format!(
@@ -179,8 +184,8 @@ async fn main() -> Result<()> {
     // Step 1: Gather cluster data.
     let started_at = Instant::now();
     let (peers, shards) = gather_cluster_data(&peer_uris, &api_key).await?;
-    let memory_by_peer = gather_peer_memory(&peer_uris, &api_key, args.estimate_memory).await?;
-    if args.estimate_memory {
+    let memory_by_peer = gather_peer_memory(&peer_uris, &api_key, require_memory).await?;
+    if require_memory {
         ensure!(
             started_at.elapsed() <= Duration::from_secs(300),
             "Snapshot took over five minutes; refresh before estimating memory moves"
@@ -197,7 +202,8 @@ async fn main() -> Result<()> {
     let (suggested_moves, updated_peers) = calculate_suggested_moves(
         peers,
         &shards,
-        args.estimate_memory.then_some(&memory_by_peer),
+        require_memory.then_some(&memory_by_peer),
+        args.minimize_max_memory,
     )?;
 
     // Step 4: Display move suggestions.
@@ -592,6 +598,7 @@ fn calculate_suggested_moves(
     mut peers: Vec<PeerLoad>,
     all_shards: &[ShardInfo],
     memory: Option<&HashMap<u64, Option<u64>>>,
+    minimize_max_memory: bool,
 ) -> Result<(Vec<ShardMove>, Vec<PeerLoad>)> {
     peers.sort_by_key(|p| p.peer_id);
     let mut loads = BTreeMap::new();
@@ -617,6 +624,10 @@ fn calculate_suggested_moves(
     }
     let measured_loads = loads.clone();
     let mut shard_weights = HashMap::new();
+    ensure!(
+        !minimize_max_memory || memory.is_some(),
+        "Minimax planning requires memory telemetry"
+    );
     if memory.is_some() {
         shard_weights = estimate_shard_memory(&peers, all_shards, &measured_loads);
         loads.values_mut().for_each(|load| *load = 0.0);
@@ -637,7 +648,11 @@ fn calculate_suggested_moves(
     };
     let mut shards = all_shards.to_vec();
     let mut moves = Vec::new();
-    let limit = if memory.is_some() { 1 } else { MAX_MOVES };
+    let limit = if memory.is_some() && !minimize_max_memory {
+        1
+    } else {
+        MAX_MOVES
+    };
     for _ in 0..limit {
         shards.sort_by(|a, b| {
             (&a.collection, a.shard_id, a.peer_id).cmp(&(&b.collection, b.shard_id, b.peer_id))
@@ -647,7 +662,11 @@ fn calculate_suggested_moves(
             .map(|s| (s.collection.as_str(), s.shard_id, s.peer_id))
             .collect();
         let mut best = None;
-        let mut best_score = (0.0, 0.0);
+        let mut best_score = (f64::NEG_INFINITY, f64::NEG_INFINITY);
+        // Removing the two affected peers leaves the maximum among the top three.
+        let mut highest_loads: Vec<_> = loads.iter().map(|(&peer, &load)| (peer, load)).collect();
+        highest_loads.sort_by(|a, b| b.1.total_cmp(&a.1).then(a.0.cmp(&b.0)));
+        highest_loads.truncate(3);
         // Roughly 140 replicas * 38 peers; score each candidate without cloning the placement.
         for (index, shard) in shards.iter().enumerate() {
             let source_load = loads[&shard.peer_id];
@@ -664,10 +683,22 @@ fn calculate_suggested_moves(
                 if weight <= load_tolerance || difference - weight <= load_tolerance {
                     continue;
                 }
-                let score = (
-                    if memory.is_some() { source_load } else { 0.0 },
-                    weight * (difference - weight),
-                );
+                let priority = if minimize_max_memory {
+                    let other_max = highest_loads
+                        .iter()
+                        .filter(|(peer, _)| *peer != shard.peer_id && *peer != destination)
+                        .map(|(_, load)| *load)
+                        .fold(0.0, f64::max);
+                    // Minimize the projected maximum first, then the squared-load sum.
+                    -other_max
+                        .max(source_load - weight)
+                        .max(destination_load + weight)
+                } else if memory.is_some() {
+                    source_load
+                } else {
+                    0.0
+                };
+                let score = (priority, weight * (difference - weight));
                 if score > best_score {
                     best_score = score;
                     best = Some((index, destination, weight));
@@ -715,6 +746,11 @@ fn calculate_suggested_moves(
             "Stopped: suggestion limit reached ({}). Refresh state before planning more moves.",
             limit
         );
+    }
+    if minimize_max_memory {
+        let before = initial_loads.values().copied().fold(0.0, f64::max);
+        let after = loads.values().copied().fold(0.0, f64::max);
+        println!("Greedy minimax: modeled maximum RAM {:.3} -> {:.3} GB. Global optimality is not guaranteed.", before / 1e9, after / 1e9);
     }
     if memory.is_some() {
         for peer in &peers {
