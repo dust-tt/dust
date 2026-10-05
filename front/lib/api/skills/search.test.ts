@@ -610,9 +610,28 @@ describe("code-defined skill search", () => {
     expect(page.value.hasMore).toBe(true);
     expect(page.value.skills[1]).not.toHaveProperty("score");
     expect(mockSearch.mock.calls[0][0].query.bool.must).toEqual([
-      searchType === "name"
-        ? buildNameSearchQuery("deep")
-        : buildNameAutocompleteQuery("deep"),
+      {
+        dis_max: {
+          queries: [
+            searchType === "name"
+              ? buildNameSearchQuery("deep")
+              : buildNameAutocompleteQuery("deep"),
+            {
+              constant_score: {
+                filter: {
+                  bool: {
+                    filter: [
+                      { term: { workspace_id: "global" } },
+                      { term: { skill_id: "go-deep" } },
+                    ],
+                  },
+                },
+                boost: 0.1,
+              },
+            },
+          ],
+        },
+      },
     ]);
 
     const next = await searchSkills(auth, {

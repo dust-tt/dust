@@ -5,6 +5,8 @@ import {
   buildNameSearchQuery,
 } from "@app/lib/search/agent_and_skill_queries";
 import { CODE_DEFINED_SKILLS_WORKSPACE_ID } from "@app/lib/skill_search/constants";
+import { GLOBAL_SKILL_SEARCH_ALIASES } from "@app/lib/skills/global_search_aliases";
+import { subFilter } from "@app/lib/utils";
 import type { SearchType } from "@app/types/api/search";
 import type {
   SkillSearchFilters,
@@ -118,6 +120,12 @@ function buildSelectionFilters(
  * name matching and full-text description matching without changing workspace, permission,
  * status or selection filters.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:product;security] global-skill-search-aliases
+ * Nonblank queries MUST also match configured global skill aliases, case-insensitively,
+ * without bypassing eligibility or selection filters. Exact aliases MUST score above partial
+ * alias-only matches. Empty queries MUST preserve ordinary listing behavior.
+ */
 export function buildSkillSearchQuery(
   auth: Authenticator,
   {
@@ -172,13 +180,49 @@ export function buildSkillSearchQuery(
     default:
       assertNever(searchType);
   }
+
+  const normalizedQuery = searchTerm.trim().toLowerCase();
+  const aliasQueries: estypes.QueryDslQueryContainer[] = [];
+  if (normalizedQuery.length > 0 && filters.codeDefinedOnly !== false) {
+    for (const skillId of codeDefinedSkillIds) {
+      const aliases = GLOBAL_SKILL_SEARCH_ALIASES[skillId] ?? [];
+      if (
+        !aliases.some((alias) =>
+          subFilter(normalizedQuery, alias.toLowerCase())
+        )
+      ) {
+        continue;
+      }
+      const isExactAlias = aliases.some(
+        (alias) => alias.toLowerCase() === normalizedQuery
+      );
+      aliasQueries.push({
+        constant_score: {
+          filter: {
+            bool: {
+              filter: [
+                { term: { workspace_id: CODE_DEFINED_SKILLS_WORKSPACE_ID } },
+                { term: { skill_id: skillId } },
+              ],
+            },
+          },
+          // Exact aliases compete with names; partial aliases are a weak fallback.
+          boost: isExactAlias ? 3 : 0.1,
+        },
+      });
+    }
+  }
   return {
     bool: {
       filter: [
         { terms: { status: filters.status ?? ["active"] } },
         ...buildSelectionFilters(auth, filters),
       ],
-      must: [nameQuery],
+      must: [
+        aliasQueries.length > 0
+          ? { dis_max: { queries: [nameQuery, ...aliasQueries] } }
+          : nameQuery,
+      ],
       should,
       minimum_should_match: 1,
     },
