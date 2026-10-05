@@ -174,36 +174,34 @@ export function PodFileTabPreview({
     }
 
     setIsMarkdownSaving(true);
-    try {
-      const result = await writeFileContentByPath({
-        owner,
-        canonicalPath: editableMarkdownFilePath,
-        content: markdownDraft,
-        contentType: "text/markdown",
+    const result = await putFileContentByPath({
+      owner,
+      canonicalPath: editableMarkdownFilePath,
+      content: markdownDraft,
+      contentType: "text/markdown",
+    });
+    if (result.isErr()) {
+      sendNotification({
+        type: "error",
+        title: "Failed to save file",
+        description: result.error.message,
       });
-      if (result.isErr()) {
-        sendNotification({
-          type: "error",
-          title: "Failed to save file",
-          description: result.error.message,
-        });
-        return;
-      }
-      const loaded = {
-        kind: "loaded",
-        content: markdownDraft,
-        revision: result.value.revision,
-      } as const;
-      await mutate(contentApiPath, loaded, { revalidate: false });
-      await mutate(fileUrl, loaded, { revalidate: false });
-      setMarkdownSavedContent(markdownDraft);
-      if (entry?.path) {
-        markdownInitKeyRef.current = `${entry.path}:${markdownDraft}`;
-      }
-      sendNotification({ type: "success", title: "File saved" });
-    } finally {
       setIsMarkdownSaving(false);
+      return;
     }
+    const loaded = {
+      kind: "loaded",
+      content: markdownDraft,
+      revision: result.value.revision,
+    } as const;
+    await mutate(contentApiPath, loaded, { revalidate: false });
+    await mutate(fileUrl, loaded, { revalidate: false });
+    setMarkdownSavedContent(markdownDraft);
+    if (entry?.path) {
+      markdownInitKeyRef.current = `${entry.path}:${markdownDraft}`;
+    }
+    setIsMarkdownSaving(false);
+    sendNotification({ type: "success", title: "File saved" });
   };
 
   if (isFileMetadataLoading) {

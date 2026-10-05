@@ -310,16 +310,8 @@ export async function writeFileContentByPath({
   }
 
   if (!response.ok) {
-    // An error body that is empty or not JSON (a proxy, a 502) must still come back as `Err`.
-    try {
-      const errorData = await getErrorFromResponse(response);
-      return new Err({ code: "failed", message: errorData.message });
-    } catch {
-      return new Err({
-        code: "failed",
-        message: `The save failed (${response.status}).`,
-      });
-    }
+    const errorData = await getErrorFromResponse(response);
+    return new Err({ code: "failed", message: errorData.message });
   }
   const stored = FileRevisionSchema.safeParse(
     response.headers.get(DUST_FILE_REVISION_HEADER)
