@@ -1,5 +1,6 @@
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
+  BATCH_SUGGESTION_TITLE_ADVERTISED_MAX_LENGTH,
   BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
   DESCRIBE_AGENT_TOOL_NAME,
   DESCRIBE_SKILL_TOOL_NAME,
@@ -268,7 +269,7 @@ ${skillAgentFacingDescriptionGuidanceBody({ evidenceOnly: false })}
 Discovery (see <discovery_step>)
 
 Suggestions: \`${SUGGEST}\`, with:
-- \`title\`: a short, action-oriented title for the whole call (max 25 characters).
+- \`title\`: a short title for the whole call (max ${BATCH_SUGGESTION_TITLE_ADVERTISED_MAX_LENGTH} characters) that clearly describes the action, naming the agent or skill when a single entity is concerned, e.g. "Create PersonalAdviser agent", "Delete Create Hubspot Issues skill", "Add GMail to 5 agents", "Replace Jira by Github in all skills".
 - \`analysis\`: why these changes are needed (max 255 characters).
 - \`suggestions\`: the changes, one item per entity, discriminated by \`kind\`:
   - \`create_agent\`: a new agent from a \`name\`, a \`description\` and \`instructions\` (HTML), with optional \`toolIds\`, \`skillIds\` / \`skillRefs\` and \`subAgentIds\` / \`subAgentRefs\`, see <agent_capabilities>. Give it a \`ref\` when another suggestion of the call uses it, see <refs>.
