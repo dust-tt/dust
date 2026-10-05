@@ -1,4 +1,7 @@
-import type { MarkedDocument } from "@app/components/editor/document/DocumentCommentAnchor";
+import type {
+  AnchorFormatting,
+  MarkedDocument,
+} from "@app/components/editor/document/DocumentCommentAnchor";
 import {
   anchorsToMarks,
   marksToAnchors,
@@ -89,11 +92,13 @@ const withoutTrailingParagraphs = (document: JSONContent): JSONContent => {
 /** Markdown for an editor document, comment marks written as anchor directives. */
 const serializeWithAnchors = (
   document: JSONContent,
-  anchorOrder: string[]
+  anchorOrder: string[],
+  formatting: AnchorFormatting
 ): Result<string, string> => {
   const { document: anchored, directives } = marksToAnchors(
     document,
-    anchorOrder
+    anchorOrder,
+    formatting
   );
   return substituteAnchorDirectives(
     documentMarkdown.serialize(anchored),
@@ -164,20 +169,14 @@ export const parseDocumentContent = (
   return marked;
 };
 
-/**
- * @cc [owner:flvndvd,label:product] document-markdown-save
- * Markdown output MUST reopen with the same content and formatting, ignoring empty trailing
- * paragraphs. A failed conversion MUST NOT reach persistence or acknowledge the draft.
- */
-export const serializeDocumentMarkdown = (
-  document: JSONContent,
-  anchorOrder: string[] = []
+const serializeReadingBack = (
+  content: JSONContent,
+  anchorOrder: string[],
+  formatting: AnchorFormatting
 ): Result<string, string> => {
-  const content = withoutTrailingParagraphs(document);
-
   // Serializing or re-reading an unknown node throws; either way the document is not writable.
   try {
-    const markdown = serializeWithAnchors(content, anchorOrder);
+    const markdown = serializeWithAnchors(content, anchorOrder, formatting);
     if (markdown.isErr()) {
       return markdown;
     }
@@ -188,4 +187,26 @@ export const serializeDocumentMarkdown = (
   } catch {
     return new Err("The document could not be written as Markdown.");
   }
+};
+
+/**
+ * @cc [owner:flvndvd,label:product] document-markdown-save
+ * Markdown output MUST reopen with the same content and formatting, ignoring empty trailing
+ * paragraphs. A failed conversion MUST NOT reach persistence or acknowledge the draft.
+ */
+/**
+ * @cc [owner:tdraier,label:product] document-anchors-in-formatting
+ * Comment anchors MUST be written inside the formatting of the text they comment, as agents
+ * anchoring a quote write them, whenever that Markdown reads back the same, and with the
+ * formatting shared by both sides otherwise.
+ */
+export const serializeDocumentMarkdown = (
+  document: JSONContent,
+  anchorOrder: string[] = []
+): Result<string, string> => {
+  const content = withoutTrailingParagraphs(document);
+  const commented = serializeReadingBack(content, anchorOrder, "commented");
+  return commented.isOk()
+    ? commented
+    : serializeReadingBack(content, anchorOrder, "shared");
 };

@@ -7,12 +7,7 @@ import type { Node } from "@tiptap/pm/model";
 import { Fragment, Slice } from "@tiptap/pm/model";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
-import {
-  AddMarkStep,
-  RemoveMarkStep,
-  ReplaceAroundStep,
-  ReplaceStep,
-} from "@tiptap/pm/transform";
+import { AddMarkStep, RemoveMarkStep } from "@tiptap/pm/transform";
 import type { EditorView } from "@tiptap/pm/view";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { z } from "zod";
@@ -224,13 +219,19 @@ export const getCommentedTexts = (doc: Node): Map<string, string> => {
   return texts;
 };
 
-const buildDecorations = (doc: Node, activeId: string | null) => {
-  const commentsById = new Map(
-    getDocumentComments(doc).map((comment) => [comment.id, comment])
-  );
+const commentsById = (doc: Node) =>
+  new Map(getDocumentComments(doc).map((comment) => [comment.id, comment]));
+
+const highlightsBetween = (
+  doc: Node,
+  from: number,
+  to: number,
+  comments: Map<string, DfmComment>,
+  activeId: string | null
+) => {
   const decorations: Decoration[] = [];
 
-  doc.descendants((node, pos) => {
+  doc.nodesBetween(from, to, (node, pos) => {
     if (!node.isText) {
       return;
     }
@@ -240,7 +241,7 @@ const buildDecorations = (doc: Node, activeId: string | null) => {
         continue;
       }
 
-      const comment = commentsById.get(mark.attrs.id);
+      const comment = comments.get(mark.attrs.id);
       if (
         !comment ||
         (comment.status === "resolved" && comment.id !== activeId)
@@ -263,41 +264,76 @@ const buildDecorations = (doc: Node, activeId: string | null) => {
     }
   });
 
-  return DecorationSet.create(doc, decorations);
+  return decorations;
+};
+
+const buildDecorations = (doc: Node, activeId: string | null) =>
+  DecorationSet.create(
+    doc,
+    highlightsBetween(doc, 0, doc.content.size, commentsById(doc), activeId)
+  );
+
+/** Where the transactions changed content or marks, in the last one's document. */
+const changedRanges = (transactions: readonly Transaction[]) => {
+  let ranges: CommentRange[] = [];
+  for (const transaction of transactions) {
+    for (const step of transaction.steps) {
+      const map = step.getMap();
+      ranges = ranges.map(({ from, to }) => ({
+        from: map.map(from, -1),
+        to: map.map(to, 1),
+      }));
+      if (step instanceof AddMarkStep || step instanceof RemoveMarkStep) {
+        ranges.push({ from: step.from, to: step.to });
+      }
+      map.forEach((_oldStart, _oldEnd, newStart, newEnd) => {
+        ranges.push({ from: newStart, to: newEnd });
+      });
+    }
+  }
+  return ranges;
+};
+
+/** The range widened to the whole textblocks it touches. */
+const toTextblocks = (doc: Node, { from, to }: CommentRange): CommentRange => {
+  let start = from;
+  let end = to;
+  doc.nodesBetween(
+    Math.max(0, from - 1),
+    Math.min(doc.content.size, to + 1),
+    (node, pos) => {
+      if (node.isTextblock) {
+        start = Math.min(start, pos);
+        end = Math.max(end, pos + node.nodeSize);
+        return false;
+      }
+      return true;
+    }
+  );
+  return { from: start, to: end };
 };
 
 /**
- * Whether a transaction may add or remove comment-marked text, which mapping the highlights
- * cannot follow: a mark step on comments, a replacement inserting commented content, such as
- * undo restoring deleted commented text, or one replacing commented text with new content,
- * which mapping would stretch the old highlight over. Typing inside a comment counts, since
- * the typed text carries the mark.
+ * @cc [owner:tdraier,label:performance] document-comment-highlights-local
+ * Unless the threads or the active comment change, a transaction MUST only rebuild the
+ * highlights of the textblocks it changes, content or marks, and map the others.
  */
-const changesCommentMarks = (transaction: Transaction) =>
-  transaction.steps.some((step, index) => {
-    if (step instanceof AddMarkStep || step instanceof RemoveMarkStep) {
-      return step.mark.type.name === COMMENT_MARK_NAME;
-    }
-    if (step instanceof ReplaceStep || step instanceof ReplaceAroundStep) {
-      let commented = false;
-      step.slice.content.descendants((node) => {
-        commented ||= node.marks.some(
-          (mark) => mark.type.name === COMMENT_MARK_NAME
-        );
-        return !commented;
-      });
-      return (
-        commented ||
-        (step.slice.size > 0 &&
-          transaction.docs[index].rangeHasMark(
-            step.from,
-            step.to,
-            transaction.doc.type.schema.marks[COMMENT_MARK_NAME]
-          ))
-      );
-    }
-    return false;
-  });
+const updateDecorations = (
+  previous: DecorationSet,
+  transaction: Transaction,
+  activeId: string | null
+) => {
+  const { doc } = transaction;
+  const comments = commentsById(doc);
+  let decorations = previous.map(transaction.mapping, doc);
+  for (const changed of changedRanges([transaction])) {
+    const { from, to } = toTextblocks(doc, changed);
+    decorations = decorations
+      .remove(decorations.find(from, to))
+      .add(doc, highlightsBetween(doc, from, to, comments, activeId));
+  }
+  return decorations;
+};
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -349,27 +385,6 @@ const commentsMovedWhole = (view: EditorView) => {
     }
   }
   return ids;
-};
-
-/** Where the transactions inserted content, in the last one's document. */
-const insertedRanges = (transactions: readonly Transaction[]) => {
-  let ranges: CommentRange[] = [];
-  for (const transaction of transactions) {
-    for (const step of transaction.steps) {
-      const map = step.getMap();
-      ranges = ranges.map(({ from, to }) => ({
-        from: map.map(from, -1),
-        to: map.map(to, 1),
-      }));
-      if (
-        (step instanceof ReplaceStep || step instanceof ReplaceAroundStep) &&
-        step.slice.size > 0
-      ) {
-        ranges.push({ from: step.from, to: map.map(step.to, 1) });
-      }
-    }
-  }
-  return ranges;
 };
 
 const canCarryCommentMark = (node: Node, parent: Node | null) => {
@@ -505,7 +520,7 @@ export const DocumentCommentMark = Mark.create({
           if (getDocumentComments(newState.doc).length === 0) {
             return null;
           }
-          const inserted = insertedRanges(transactions);
+          const inserted = changedRanges(transactions);
           return inserted.length > 0
             ? inheritEnclosingComments(newState, inserted)
             : null;
@@ -590,13 +605,12 @@ export const DocumentComments = Extension.create({
           return {
             activeId,
             decorations:
-              threadsChanged ||
-              activeId !== previous.activeId ||
-              changesCommentMarks(transaction)
+              threadsChanged || activeId !== previous.activeId
                 ? buildDecorations(newState.doc, activeId)
-                : previous.decorations.map(
-                    transaction.mapping,
-                    transaction.doc
+                : updateDecorations(
+                    previous.decorations,
+                    transaction,
+                    activeId
                   ),
           };
         },

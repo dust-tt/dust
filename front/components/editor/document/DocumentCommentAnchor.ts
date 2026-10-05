@@ -265,18 +265,26 @@ interface Marker {
   id: string;
 }
 
+/** Whether anchors take the formatting of the text they comment or the one around them. */
+export type AnchorFormatting = "commented" | "shared";
+
 /**
  * @cc [owner:tdraier,label:product] document-marks-to-anchors
  * Each comment id carried by marks MUST become exactly one anchor pair: the start right before
  * the first text node carrying it and the end right after the last, in document order, with
- * comment marks removed from the text. Each anchor MUST carry the marks shared by the text on
- * both sides of it, so formatting that crosses a comment's edge is written as one run. Anchors meeting between the same two texts MUST keep the order `anchorOrder` gives
- * them when it knows them all; otherwise ends MUST come first, the latest opened closing first,
- * then starts, the longest opening first.
+ * comment marks removed from the text. With `"shared"` formatting, each anchor MUST carry the
+ * marks shared by the text on both sides of it, so formatting that crosses a comment's edge is
+ * written as one run. With `"commented"` formatting, an end MUST carry the marks of the text
+ * before it and a start those of the text after it, as long as only ends come before it, or
+ * only starts after it, among the anchors meeting there; others MUST carry the shared marks.
+ * Anchors meeting between the same two texts MUST keep the order `anchorOrder` gives them when
+ * it knows them all; otherwise ends MUST come first, the latest opened closing first, then
+ * starts, the longest opening first.
  */
 export const marksToAnchors = (
   document: JSONContent,
-  anchorOrder: string[] = []
+  anchorOrder: string[] = [],
+  formatting: AnchorFormatting = "shared"
 ): AnchoredDocument => {
   const firstText = new Map<string, number>();
   const lastText = new Map<string, number>();
@@ -341,15 +349,27 @@ export const marksToAnchors = (
   // around an anchor into `*foo *` and `*bar*`. A text run carrying the shared marks does not.
   const placeholders = (
     markers: Marker[],
-    marks: JSONContent["marks"]
-  ): JSONContent[] =>
-    ordered(markers).map(({ kind, id }) => {
+    before: JSONContent | undefined,
+    after: JSONContent | undefined
+  ): JSONContent[] => {
+    const group = ordered(markers);
+    const shared = sharedMarks(before, after);
+    return group.map(({ kind, id }, index) => {
       const placeholder = `${PLACEHOLDER_OPEN}${directives.size}${PLACEHOLDER_CLOSE}`;
       directives.set(placeholder, anchorDirective(kind, id));
-      return marks && marks.length > 0
+      const nextToCommented =
+        formatting === "commented" &&
+        (kind === "end"
+          ? group.slice(0, index).every((marker) => marker.kind === "end")
+          : group.slice(index + 1).every((marker) => marker.kind === "start"));
+      const marks = nextToCommented
+        ? nonCommentMarks(kind === "end" ? before : after)
+        : shared;
+      return marks.length > 0
         ? { type: "text", text: placeholder, marks }
         : { type: "text", text: placeholder };
     });
+  };
   const starting = (at: number): Marker[] =>
     (startsAt.get(at) ?? []).map((id) => ({ kind: "start", id }));
   const ending = (at: number): Marker[] =>
@@ -372,7 +392,7 @@ export const marksToAnchors = (
       const next = siblings[i + 1];
       // Anchors between two texts are written once, after the first, as one ordered group.
       if (previous?.type !== "text") {
-        content.push(...placeholders(starting(at), []));
+        content.push(...placeholders(starting(at), undefined, child));
       }
       const { marks: _marks, ...text } = child;
       const kept = nonCommentMarks(child);
@@ -380,7 +400,8 @@ export const marksToAnchors = (
       content.push(
         ...placeholders(
           [...ending(at), ...(next?.type === "text" ? starting(at + 1) : [])],
-          sharedMarks(child, next)
+          child,
+          next
         )
       );
     }

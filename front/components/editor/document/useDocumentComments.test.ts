@@ -4,6 +4,7 @@ import { useDocumentEditor } from "@app/components/editor/document/useDocumentEd
 import { Ok } from "@app/types/shared/result";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { Slice } from "@tiptap/pm/model";
+import { Decoration } from "@tiptap/pm/view";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 const AT = "2026-09-25T14:16:32.380Z";
@@ -128,6 +129,34 @@ describe("useDocumentComments", () => {
         editor.commands.insertContentAt(12, "XX");
       });
       expect(highlighted(editor)).toBe("thXXere");
+    });
+
+    it("are rebuilt only in the paragraph being typed in", async () => {
+      const thread = (id: string) =>
+        `::comment{id=${id} status=open}\n\n::message{author=user:u name="U" at=${AT}}\n\nNote.\n`;
+      const { result } = await renderCommentedEditor(
+        `Hi :comment-start{id=c1}there:comment-end{id=c1}\n\nYo :comment-start{id=c2}friend:comment-end{id=c2}\n\n:::annotations\n${thread("c1")}${thread("c2")}:::\n`
+      );
+      const editor = result.current.document.editor;
+      if (!editor) {
+        throw new Error("Editor did not mount.");
+      }
+      const built = vi.spyOn(Decoration, "inline");
+
+      act(() => {
+        // Inside "friend", after "fr".
+        editor.commands.insertContentAt(16, "XX");
+      });
+
+      expect(built.mock.calls.map(([from, to]) => [from, to])).toEqual([
+        [14, 22],
+      ]);
+      expect(highlighted(editor)).toBe("there");
+      expect(
+        editor.view.dom.querySelector('[data-comment-highlight="c2"]')
+          ?.textContent
+      ).toBe("frXXiend");
+      built.mockRestore();
     });
 
     it("go away when the commented text is replaced", async () => {

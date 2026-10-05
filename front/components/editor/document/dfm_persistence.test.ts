@@ -220,6 +220,17 @@ describe("saveDfm", () => {
     expect(roundTrip(FIXTURE)).toBe(FIXTURE);
   });
 
+  it.each([
+    "**foo :comment-start{id=c1}bar:comment-end{id=c1}** end",
+    "*foo :comment-start{id=c1}bar:comment-end{id=c1}* end",
+    "**:comment-start{id=c1}bar:comment-end{id=c1}** end",
+    "[foo :comment-start{id=c1}bar:comment-end{id=c1}](https://example.com) end",
+  ])("keeps anchors inside the formatting of the text they comment: %s", (body) => {
+    const source = `${body}\n\n${OPEN_THREAD}`;
+
+    expect(roundTrip(source)).toBe(source);
+  });
+
   it("writes anchors inside formatting without splitting it", () => {
     const source = `Some **bo:comment-start{id=c1}ld** and *it:comment-end{id=c1}alic* text.\n\n${OPEN_THREAD}`;
 
@@ -235,7 +246,7 @@ describe("saveDfm", () => {
         { type: "text", text: "bar", marks: [{ type: "italic" }, commented] },
         { type: "text", text: " baz" },
       ],
-      "*foo :comment-start{id=c1}bar*:comment-end{id=c1} baz",
+      "*foo :comment-start{id=c1}bar:comment-end{id=c1}* baz",
     ],
     [
       "bold running out of the comment",
@@ -244,7 +255,15 @@ describe("saveDfm", () => {
         { type: "text", text: "bar", marks: [{ type: "bold" }, commented] },
         { type: "text", text: " baz", marks: [{ type: "bold" }] },
       ],
-      "foo :comment-start{id=c1}**bar:comment-end{id=c1} baz**",
+      "foo **:comment-start{id=c1}bar:comment-end{id=c1} baz**",
+    ],
+    [
+      "bold right after a word, where an anchor inside it would not read back",
+      [
+        { type: "text", text: "foo" },
+        { type: "text", text: "bar", marks: [{ type: "bold" }, commented] },
+      ],
+      "foo:comment-start{id=c1}**bar**:comment-end{id=c1}",
     ],
     [
       "a link across both edges",
