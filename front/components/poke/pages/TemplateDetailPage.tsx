@@ -47,7 +47,7 @@ import {
   Markdown,
   TextArea,
 } from "@dust-tt/sparkle";
-import { ioTsResolver } from "@hookform/resolvers/io-ts";
+import { zodResolver } from "@hookform/resolvers/zod";
 import map from "lodash/map";
 import { ChevronDownIcon } from "lucide-react";
 import type React from "react";
@@ -545,7 +545,7 @@ export function TemplateDetailPage() {
   });
 
   const form = useForm<CreateTemplateFormType>({
-    resolver: ioTsResolver(CreateTemplateFormSchema),
+    resolver: zodResolver(CreateTemplateFormSchema),
     defaultValues: {
       userFacingDescription: "",
       agentFacingDescription: "",
