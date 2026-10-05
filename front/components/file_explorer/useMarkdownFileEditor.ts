@@ -143,7 +143,10 @@ export function useMarkdownFileEditor({
     }
   };
 
-  /** Makes written content the one the preview shows and the plain editor's saved baseline. */
+  /**
+   * Makes written content the one the preview shows and the plain editor's saved baseline. The
+   * plain draft is left alone: whatever was typed or undone during the save is still the draft.
+   */
   const adoptWritten = async (content: string) => {
     await mutate(
       fileUrl,
@@ -153,8 +156,6 @@ export function useMarkdownFileEditor({
       }
     );
     setSavedContent(content);
-    // A plain draft typed while the save was pending stays; a clean one follows the saved content.
-    setDraft((current) => (current === savedContent ? content : current));
     initKeyRef.current = `${entryPath}:${content}`;
   };
 
@@ -187,7 +188,11 @@ export function useMarkdownFileEditor({
     rawContent,
     isTruncated,
     writeFile,
-    adoptWritten,
+    // The plain editor is not shown while the rich one is open, so its draft follows the file.
+    adoptWritten: async (content) => {
+      await adoptWritten(content);
+      setDraft(content);
+    },
   });
 
   return {
