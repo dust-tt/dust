@@ -611,7 +611,11 @@ export class FileResource extends BaseResource<FileModel> {
 
     await deleteFileViewsForWorkspace(auth);
     await FrameSandboxAdapter.deleteAllForWorkspace(auth);
-    await this.deleteAllFrameFunctionsForWorkspace(workspaceModelId);
+    // Invocations FK their function, so they go first.
+    await SandboxFunctionInvocationResource.deleteAllForWorkspace(auth);
+    await destroyAllForWorkspaceInBatches(SandboxFunctionModel, {
+      workspaceModelId,
+    });
     await FramePublicationResource.deleteAllForWorkspace(auth);
     await getPrivateUploadBucket().deleteByPrefix(
       getFramesBasePath({ workspaceId: owner.sId })
@@ -660,19 +664,6 @@ export class FileResource extends BaseResource<FileModel> {
       where: {
         id: sandboxFunctionModelIds,
         workspaceId: workspaceModelId,
-      },
-    });
-  }
-
-  private static async deleteAllFrameFunctionsForWorkspace(
-    workspaceModelId: ModelId
-  ): Promise<void> {
-    await destroyAllForWorkspaceInBatches(SandboxFunctionModel, {
-      workspaceModelId,
-      beforeDestroyBatch: async (sandboxFunctionModelIds) => {
-        await SandboxFunctionInvocationResource.deleteAllForSandboxFunctionModelIds(
-          { workspaceModelId, sandboxFunctionModelIds }
-        );
       },
     });
   }

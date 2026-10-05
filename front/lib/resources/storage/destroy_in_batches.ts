@@ -15,21 +15,14 @@ const DESTROY_BATCH_SIZE = 10_000;
 /**
  * @cc [owner:fontanierh,label:performance;backend] bounded-workspace-destroy
  * Each DELETE statement issued against `model` MUST target at most `DESTROY_BATCH_SIZE` rows of the
- * given workspace, selected by primary key, and MUST run in its own implicit transaction.
- * `beforeDestroyBatch` MUST be awaited with a batch's ids before that batch is deleted, so dependent
- * rows can be removed first. Returns the number of `model` rows deleted.
+ * given workspace, selected by primary key, and MUST run in its own implicit transaction. Returns the
+ * number of `model` rows deleted.
  */
 export async function destroyAllForWorkspaceInBatches<
   M extends WorkspaceAwareModel,
 >(
   model: ModelStaticWorkspaceAware<M>,
-  {
-    workspaceModelId,
-    beforeDestroyBatch,
-  }: {
-    workspaceModelId: ModelId;
-    beforeDestroyBatch?: (modelIds: ModelId[]) => Promise<void>;
-  }
+  { workspaceModelId }: { workspaceModelId: ModelId }
 ): Promise<number> {
   const localLogger = logger.child({
     workspaceId: workspaceModelId,
@@ -48,11 +41,11 @@ export async function destroyAllForWorkspaceInBatches<
       break;
     }
 
-    const modelIds = batch.map((row) => row.id);
-    await beforeDestroyBatch?.(modelIds);
-
     deletedCount += await model.destroy({
-      where: { workspaceId: workspaceModelId, id: modelIds } as WhereOptions<M>,
+      where: {
+        workspaceId: workspaceModelId,
+        id: batch.map((row) => row.id),
+      } as WhereOptions<M>,
     });
 
     localLogger.info({ deletedCount }, "Deleted a batch of workspace rows");

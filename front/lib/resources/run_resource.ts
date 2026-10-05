@@ -410,14 +410,9 @@ export class RunResource extends BaseResource<RunModel> {
   static async deleteAllForWorkspace(auth: Authenticator) {
     const workspaceModelId = auth.getNonNullableWorkspace().id;
 
-    return destroyAllForWorkspaceInBatches(this.model, {
-      workspaceModelId,
-      beforeDestroyBatch: async (runModelIds) => {
-        await RunUsageModel.destroy({
-          where: { workspaceId: workspaceModelId, runId: runModelIds },
-        });
-      },
-    });
+    await destroyAllForWorkspaceInBatches(RunUsageModel, { workspaceModelId });
+
+    return destroyAllForWorkspaceInBatches(this.model, { workspaceModelId });
   }
 
   async delete(
