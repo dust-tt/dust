@@ -72,8 +72,8 @@ or requires a workspace admin.
 
 Group managers get access to the existing **People** page, with a restricted view:
 
-- **Members:** active members of their managed groups, each shown once. Search, counts, and
-  pagination cover only these members. A member's group list also shows only managed groups.
+- **Members:** all active workspace members. Search, counts, and pagination cover the full member
+  directory. A member's group list shows only managed groups.
   Actions add or remove membership in eligible managed groups; removing someone from a group does
   not remove them from the workspace.
 - **Groups:** all managed groups and their members, including groups with read-only membership.
@@ -206,12 +206,10 @@ clean up grants and their internal groups when the managed group is deleted.
 
 For [member usage reads](../../../front/lib/api/credits/members_usage.ts), restrict the candidate members
 to the authorized set before search, sorting, pagination, and counts. Intersect user-selected filters
-with that set. Apply the same restriction to the People members list and usage-editor lookups. The
-People list uses `managedOnly=true` on the existing member search: the server derives the group
-scope, deduplicates active members, and applies it before search, counts, and pagination. Group lists
-support the same mode; group and member-group management reads enforce the same scope. The
-add-member picker keeps the broader directory search, returning minimal identities without usage
-or other administration data.
+with that set. Apply the same restriction to usage-editor lookups. The People members list and
+add-member picker use the full workspace directory search, returning minimal identities without
+usage or other administration data to group managers. Group lists use `managedOnly=true`; group
+and member-group management reads enforce the managed-group scope.
 
 For People visibility, reuse `read_usage`, which the group-manager role grants on manual,
 provisioned, and admin-granting groups. Ordinary `read` is too broad because workspace members
