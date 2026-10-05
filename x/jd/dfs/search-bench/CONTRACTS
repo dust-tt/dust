@@ -1,0 +1,11 @@
+@cc [owner:id13,label:testing;security] search-benchmark-authority
+Permission fixtures MUST execute against the real DFS engine. Measured queries MUST derive metadata visibility and READ eligibility from the tested non-administrative DFS identity, never from a locally reimplemented grant evaluator. Administrative credentials MAY seed and mutate isolated fixtures only.
+
+@cc [owner:id13,label:testing] search-benchmark-reproducibility
+The same seed and corpus settings MUST produce identical logical fixtures and query expectations. Reports MUST identify corpus, query, dependency, source, and executable fingerprints and retain raw timing samples and failures. Correctness failures MUST make the run unsuccessful and MUST NOT be excluded from the reported sample set.
+
+@cc [owner:id13,label:testing;error-handling] search-benchmark-failures
+The standalone Python benchmark and its tests MAY raise and catch exceptions at scenario and run boundaries to record failed checks and terminate with a nonzero exit status. Failed or unavailable authority calls MUST NOT become an empty authorized view or a successful query.
+
+@cc [owner:id13,label:testing;security] isolated-search-benchmark
+Runs MUST refuse existing output directories and use only newly created local databases and credentials. Exportable reports MUST exclude bearer tokens and credential hashes. Embedded Lance timings MUST be distinguished from DFS authorization subprocess overhead and from an implemented HTTP search service.
