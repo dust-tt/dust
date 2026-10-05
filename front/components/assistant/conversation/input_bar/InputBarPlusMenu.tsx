@@ -186,8 +186,15 @@ function InputBarPlusMenuContent({
         return;
       }
       event.preventDefault();
-      if (!subMenuRef.current?.navigateUp?.() && activeFrame) {
+      if (subMenuRef.current?.navigateUp?.()) {
+        return;
+      }
+      if (activeFrame) {
         enterFrame(null);
+        return;
+      }
+      if (isAttachOnly) {
+        onClose();
       }
       return;
     }
