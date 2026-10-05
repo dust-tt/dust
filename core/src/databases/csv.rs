@@ -316,6 +316,11 @@ impl GoogleCloudStorageCSVContent {
             let record = record?;
             let mut record = record.iter().collect::<Vec<_>>();
 
+            cell_count += record.len();
+            if cell_count > MAX_TABLE_CELLS {
+                Err(anyhow!("Too many cells in CSV file"))?;
+            }
+
             // If we have a __dust_id column, we need to remove it from the record and use it as the row id.
             // It has been removed from the headers already.
             let (row_id, record) = if let Some(pos) = dust_id_pos {
@@ -324,11 +329,6 @@ impl GoogleCloudStorageCSVContent {
             } else {
                 (row_idx.to_string(), record)
             };
-
-            cell_count += record.len();
-            if cell_count > MAX_TABLE_CELLS {
-                Err(anyhow!("Too many cells in CSV file"))?;
-            }
 
             let row = Row::from_csv_record(headers.clone(), record, row_id)?;
             row_idx += 1;
@@ -387,6 +387,33 @@ BAR,acme";
         let row = vec!["1"; MAX_TABLE_COLUMNS].join(",");
         let csv = std::iter::once(header)
             .chain(std::iter::repeat(row).take(row_count))
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        let err = GoogleCloudStorageCSVContent::csv_to_rows(std::io::Cursor::new(csv), b',')
+            .await
+            .err()
+            .ok_or_else(|| anyhow!("Expected csv_to_rows to fail"))?;
+        assert_eq!(err.to_string(), "Too many cells in CSV file");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_csv_to_rows_counts_dust_id_cells() -> anyhow::Result<()> {
+        // Data cells alone stay under MAX_TABLE_CELLS; only counting the __dust_id cells exceeds it.
+        let row_count = MAX_TABLE_CELLS / MAX_TABLE_COLUMNS + 1;
+        let header = (0..MAX_TABLE_COLUMNS - 1)
+            .map(|i| format!("c{}", i))
+            .chain(std::iter::once("__dust_id".to_string()))
+            .collect::<Vec<_>>()
+            .join(",");
+        let csv = std::iter::once(header)
+            .chain((0..row_count).map(|i| {
+                let mut row = vec!["1".to_string(); MAX_TABLE_COLUMNS - 1];
+                row.push(format!("id{}", i));
+                row.join(",")
+            }))
             .collect::<Vec<_>>()
             .join("\n");
 
