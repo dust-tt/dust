@@ -32,13 +32,11 @@ export interface SkillEditorsChange {
 
 /**
  * @cc [owner:achilleburah,label:security;product] same-rules-as-manual-editors-route
- * A change MUST pass exactly when `PATCH /skills/:sId/editors` would accept it from the same
- * caller: `auth.can("admin", skill)`, skill not archived, every user found, added editors
- * active members able to read the skill's requested spaces. Removed users need no membership:
- * the route lets a departed member be removed, and so does this. Two deliberate additions the
- * route permits: a user in both lists fails with `user_in_both_lists`, as the recorded change
- * would be ambiguous to apply; a change leaving the skill with zero editors fails with
- * `last_editor_removed`, as one bad removal in a reviewed batch would orphan a skill.
+ * `PATCH /skills/:sId/editors` and the editors suggestion paths MUST validate a change through this
+ * function. A change passes when `auth.can("admin", skill)`, the skill is not archived, every user
+ * is found, no user is in both lists, added editors are active members able to read the skill's
+ * requested spaces, and the skill keeps at least one editor. Removed users need no membership, so
+ * a departed member can be removed.
  */
 /**
  * @cc [owner:achilleburah,label:security] editors-change-validated-against-live-state
@@ -140,7 +138,7 @@ export async function validateSkillEditorsChange(
   return new Ok({ usersToAdd, usersToRemove });
 }
 
-export async function resolveSkillEditorUsers({
+async function resolveSkillEditorUsers({
   addUserIds,
   removeUserIds,
 }: {
@@ -175,7 +173,7 @@ async function listNonMembers(
 
 // Only the editors being added need checking: the ones already there were validated when they were
 // added or when the skill's spaces last changed.
-export async function findAddedEditorsWithoutSpaceAccess(
+async function findAddedEditorsWithoutSpaceAccess(
   auth: Authenticator,
   skill: SkillResource,
   usersToAdd: UserResource[]
