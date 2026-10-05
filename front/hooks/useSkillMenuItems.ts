@@ -1,6 +1,10 @@
 import config from "@app/lib/api/config";
 import { useAppRouter } from "@app/lib/platform";
 import {
+  trackManageItemAction,
+  useManageTracking,
+} from "@app/lib/tracking/manageTracking";
+import {
   getManageSkillsRoute,
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
@@ -17,6 +21,7 @@ import {
 import { useCallback, useState } from "react";
 
 export function useSkillMenuItems({ owner }: { owner: LightWorkspaceType }) {
+  const tracking = useManageTracking();
   const { push } = useAppRouter();
   const [copiedSkillId, setCopiedSkillId] = useState<string | null>(null);
   const [isCopied, copyLink] = useCopyToClipboard();
@@ -42,6 +47,7 @@ export function useSkillMenuItems({ owner }: { owner: LightWorkspaceType }) {
           icon: Edit04,
           onClick: (event) => {
             event.stopPropagation();
+            trackManageItemAction(tracking, "edit", skillId);
             void push(getSkillBuilderRoute(owner.sId, skillId));
           },
         });
@@ -66,6 +72,7 @@ export function useSkillMenuItems({ owner }: { owner: LightWorkspaceType }) {
           onClick: async (event) => {
             event.preventDefault();
             event.stopPropagation();
+            trackManageItemAction(tracking, "copy_link", skillId);
             setCopiedSkillId(skillId);
             await copyLink(
               `${config.getAppUrl()}${getManageSkillsRoute(owner.sId, skillId)}`
@@ -89,6 +96,6 @@ export function useSkillMenuItems({ owner }: { owner: LightWorkspaceType }) {
 
       return menuItems;
     },
-    [push, owner.sId, isCopied, copiedSkillId, copyLink]
+    [push, owner.sId, isCopied, copiedSkillId, copyLink, tracking]
   );
 }

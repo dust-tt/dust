@@ -2,6 +2,10 @@ import { GlobalAgentAction } from "@app/components/assistant/manager/GlobalAgent
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
+import {
+  trackManageMutation,
+  useManageTracking,
+} from "@app/lib/tracking/manageTracking";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useState } from "react";
@@ -22,6 +26,7 @@ export function DefaultAgentToggle({
   agent,
   onRefresh,
 }: DefaultAgentToggleProps) {
+  const tracking = useManageTracking();
   const sendNotification = useSendNotification();
   const [isUpdating, setIsUpdating] = useState(false);
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
@@ -50,6 +55,11 @@ export function DefaultAgentToggle({
       if (!response.ok) {
         throw new Error("Could not update agent");
       }
+      trackManageMutation(
+        tracking,
+        status === "active" ? "enable" : "disable",
+        [agent.sId]
+      );
       trackEvent({
         area: TRACKING_AREAS.BUILDER,
         object: "default_agent_toggle",

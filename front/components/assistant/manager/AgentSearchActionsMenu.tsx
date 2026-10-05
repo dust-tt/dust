@@ -3,6 +3,10 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
+import {
+  trackManageItemAction,
+  useManageTracking,
+} from "@app/lib/tracking/manageTracking";
 import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
@@ -36,6 +40,7 @@ export function AgentSearchActionsMenu({
   onSelect,
   onRefresh,
 }: AgentSearchActionsMenuProps) {
+  const tracking = useManageTracking();
   const router = useAppRouter();
   const { isAdmin, providersHealth } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
@@ -90,9 +95,10 @@ export function AgentSearchActionsMenu({
       kind: "item",
       label: "Edit",
       icon: Edit04,
-      onClick: withoutPropagation(
-        () => void router.push(getAgentBuilderRoute(owner.sId, agentId))
-      ),
+      onClick: withoutPropagation(() => {
+        trackManageItemAction(tracking, "edit", agentId);
+        void router.push(getAgentBuilderRoute(owner.sId, agentId));
+      }),
     });
   }
   menuItems.push(
@@ -100,9 +106,10 @@ export function AgentSearchActionsMenu({
       kind: "item",
       label: "Copy agent ID",
       icon: Brackets,
-      onClick: withoutPropagation(
-        () => void navigator.clipboard.writeText(agentId)
-      ),
+      onClick: withoutPropagation(() => {
+        trackManageItemAction(tracking, "copy_id", agentId);
+        void navigator.clipboard.writeText(agentId);
+      }),
     },
     {
       kind: "item",
@@ -120,12 +127,12 @@ export function AgentSearchActionsMenu({
       kind: "item",
       label: "Duplicate (New)",
       icon: Clipboard,
-      onClick: withoutPropagation(
-        () =>
-          void router.push(
-            getAgentBuilderRoute(owner.sId, "new", `duplicate=${agentId}`)
-          )
-      ),
+      onClick: withoutPropagation(() => {
+        trackManageItemAction(tracking, "duplicate", agentId);
+        void router.push(
+          getAgentBuilderRoute(owner.sId, "new", `duplicate=${agentId}`)
+        );
+      }),
     });
   }
   if (canEdit) {

@@ -1,6 +1,7 @@
 import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
 import {
   clearFilterCategory,
+  filterSelectionCount,
   getFilterSummaries,
 } from "@app/components/shared/filter_panel/filterState";
 import { SEARCH_FILTER_CATEGORY_SINGULAR_LABEL } from "@app/components/shared/filter_panel/searchFilter";
@@ -34,6 +35,16 @@ import {
   useSearchSkills,
   useUpdateSkillsAvailability,
 } from "@app/lib/swr/skill_configurations";
+import type { ManageTracking } from "@app/lib/tracking/manageTracking";
+import {
+  ManageTrackingContext,
+  trackManageDetails,
+  trackManageFilter,
+  trackManageTab,
+  useManagePageTracking,
+  useTrackManageResults,
+} from "@app/lib/tracking/manageTracking";
+import { normalizeSearchQuery } from "@app/types/api/search";
 import type {
   SkillSearchFilters,
   SkillSearchPermissionFiltering,
@@ -65,15 +76,17 @@ function canBatchEditSkill(skill: SkillListItemType) {
 }
 
 interface SkillsListProps {
+  isFilterLoading: boolean;
   readOnly?: boolean;
   searchEndpoint?: string;
   searchTerm: string;
   filters: SkillSearchFilters;
   permissionFiltering?: SkillSearchPermissionFiltering;
-  onSelect: (skillId: string) => void;
+  onSelect: (skillId: string, tracking: ManageTracking | null) => void;
 }
 
 function SkillsList({
+  isFilterLoading,
   readOnly = false,
   searchEndpoint,
   searchTerm,
@@ -133,6 +146,20 @@ function SkillsList({
       sortBy,
       sortOrder,
     });
+
+  const resultTracking = useTrackManageResults({
+    total,
+    isLoading: isSkillsLoading || isFilterLoading,
+    isError: isSkillsError,
+    pageIndex: tablePagination.pageIndex,
+  });
+
+  const handleSelect = useCallback(
+    (id: string) => {
+      onSelect(id, resultTracking);
+    },
+    [onSelect, resultTracking]
+  );
 
   // Prefer the freshly loaded row so batch actions see the skill's current state.
   const pageSkillsById = new Map(skills.map((skill) => [skill.sId, skill]));
@@ -208,46 +235,48 @@ function SkillsList({
       (isSkillsLoading ||
         skills.length > 0 ||
         tablePagination.pageIndex > 0) ? (
-        <SkillSearchTable
-          owner={owner}
-          readOnly={readOnly}
-          skills={skills}
-          onSelect={onSelect}
-          onRefresh={mutate}
-          pagination={tablePagination}
-          setPagination={(next) => {
-            if (
-              next.pageIndex !== tablePagination.pageIndex ||
-              next.pageSize !== tablePagination.pageSize
-            ) {
-              setTablePagination(next);
+        <ManageTrackingContext.Provider value={resultTracking}>
+          <SkillSearchTable
+            owner={owner}
+            readOnly={readOnly}
+            skills={skills}
+            onSelect={handleSelect}
+            onRefresh={mutate}
+            pagination={tablePagination}
+            setPagination={(next) => {
+              if (
+                next.pageIndex !== tablePagination.pageIndex ||
+                next.pageSize !== tablePagination.pageSize
+              ) {
+                setTablePagination(next);
+              }
+            }}
+            total={total}
+            sorting={
+              sortBy === "relevance"
+                ? []
+                : [{ id: sortBy, desc: sortOrder !== "asc" }]
             }
-          }}
-          total={total}
-          sorting={
-            sortBy === "relevance"
-              ? []
-              : [{ id: sortBy, desc: sortOrder !== "asc" }]
-          }
-          setSorting={([sort]) => {
-            switch (sort?.id) {
-              case "name":
-              case "usage":
-              case "updatedAt":
-                setSelectedSort({
-                  sortBy: sort.id,
-                  sortOrder: sort.desc ? "desc" : "asc",
-                });
-                break;
-              default:
-                setSelectedSort(null);
-            }
-          }}
-          isLoading={isSkillsLoading}
-          selectedSkillIds={selectedSkills.map((skill) => skill.sId)}
-          setSelectedSkillIds={setSelectedSkillIds}
-          canSelect={canSelect}
-        />
+            setSorting={([sort]) => {
+              switch (sort?.id) {
+                case "name":
+                case "usage":
+                case "updatedAt":
+                  setSelectedSort({
+                    sortBy: sort.id,
+                    sortOrder: sort.desc ? "desc" : "asc",
+                  });
+                  break;
+                default:
+                  setSelectedSort(null);
+              }
+            }}
+            isLoading={isSkillsLoading}
+            selectedSkillIds={selectedSkills.map((skill) => skill.sId)}
+            setSelectedSkillIds={setSelectedSkillIds}
+            canSelect={canSelect}
+          />
+        </ManageTrackingContext.Provider>
       ) : !isSkillsError ? (
         <EmptyCTA
           message={
@@ -301,6 +330,10 @@ export function ManageSkillsPage({
   onSelect,
 }: ManageSkillsPageProps) {
   const owner = useWorkspace();
+  const [detailsSelection, setDetailsSelection] = useState<{
+    id: string;
+    tracking: ManageTracking | null;
+  } | null>(null);
   const { user, isAdmin } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
   const [skillId, setSkillId] = useHashParam("skillId");
@@ -308,8 +341,12 @@ export function ManageSkillsPage({
   const [hiddenSkillsParam, setHiddenSkillsParam] =
     useHashParam("hiddenSkills");
   const showHiddenSkills = hiddenSkillsParam === "true";
-  const setShowHiddenSkills = (isShown: boolean) =>
+  const setShowHiddenSkills = (isShown: boolean) => {
+    if (isShown !== showHiddenSkills) {
+      trackManageFilter(tracking, isShown ? "show_hidden" : "hide_hidden");
+    }
     setHiddenSkillsParam(isShown ? "true" : undefined);
+  };
   const {
     selectedTab,
     setSelectedTab,
@@ -350,6 +387,34 @@ export function ManageSkillsPage({
   useSetContentWidth("wide");
   useSetPageTitle("Dust - Manage Skills");
 
+  const normalizedQuery = normalizeSearchQuery(searchTerm, "name");
+  const tracking = useManagePageTracking({
+    entityType: "skill",
+    workspaceId: owner.sId,
+    queryKey: JSON.stringify({
+      query: normalizedQuery,
+      filters: { ...activeTab.filters, ...searchFilters },
+      hidden: showHiddenSkills,
+      tab: selectedTab,
+    }),
+    tab: selectedTab,
+    hasSearch: normalizedQuery.trim().length > 0,
+    filterCount: filterSelectionCount(filter, SKILL_FILTER_CATEGORIES),
+    filterCategories: SKILL_FILTER_CATEGORIES.filter(
+      (category) => filter[category]?.length
+    ).join(","),
+    showHidden: showHiddenSkills,
+    disabled: readOnly,
+  });
+  const handleSelect = useCallback(
+    (id: string, selectedTracking: ManageTracking | null) => {
+      trackManageDetails(selectedTracking, id);
+      setDetailsSelection({ id, tracking: selectedTracking });
+      (onSelect ?? setSkillId)(id);
+    },
+    [onSelect, setSkillId]
+  );
+
   const searchInput = (
     <div className="w-full md:w-1/2">
       <label htmlFor="skill-search" className="sr-only">
@@ -367,7 +432,7 @@ export function ManageSkillsPage({
   );
 
   return (
-    <>
+    <ManageTrackingContext.Provider value={tracking}>
       <div className="flex w-full flex-col gap-6 pb-4">
         {showHeader && (
           <Page.Header
@@ -400,7 +465,8 @@ export function ManageSkillsPage({
               value={selectedTab}
               onValueChange={(value) => {
                 const tab = SKILL_SEARCH_TABS.find(({ id }) => id === value);
-                if (tab) {
+                if (tab && tab.id !== selectedTab) {
+                  trackManageTab(tracking, tab.id);
                   setSelectedTab(tab.id);
                 }
               }}
@@ -416,7 +482,10 @@ export function ManageSkillsPage({
               tabFilters={activeTab.filters}
               permissionFiltering={permissionFiltering}
               filter={filter}
-              onFilterChange={setFilter}
+              onFilterChange={(nextFilter) => {
+                trackManageFilter(tracking, "apply");
+                setFilter(nextFilter);
+              }}
               hiddenSkills={
                 permissionFilteringOverride === undefined && isAdmin
                   ? {
@@ -434,9 +503,10 @@ export function ManageSkillsPage({
               SKILL_FILTER_CATEGORIES,
               SEARCH_FILTER_CATEGORY_SINGULAR_LABEL
             )}
-            onClearCategory={(category) =>
-              setFilter(clearFilterCategory(filter, category))
-            }
+            onClearCategory={(category) => {
+              trackManageFilter(tracking, "clear_category");
+              setFilter(clearFilterCategory(filter, category));
+            }}
             extraChips={
               permissionFilteringOverride === undefined &&
               isAdmin &&
@@ -455,18 +525,20 @@ export function ManageSkillsPage({
                 : []
             }
             onClearAll={() => {
+              trackManageFilter(tracking, "clear_all");
               setFilter({});
-              setShowHiddenSkills(false);
+              setHiddenSkillsParam(undefined);
             }}
           />
           <SkillsList
+            isFilterLoading={isSelectionLoading}
             readOnly={readOnly}
             searchEndpoint={searchEndpoint}
             key={`${owner.sId}-${activeTab.id}`}
             searchTerm={searchTerm}
             filters={{ ...activeTab.filters, ...searchFilters }}
             permissionFiltering={permissionFiltering}
-            onSelect={onSelect ?? setSkillId}
+            onSelect={handleSelect}
           />
         </div>
       </div>
@@ -477,14 +549,22 @@ export function ManageSkillsPage({
         />
       )}
       {!readOnly && (
-        <SkillDetailsSheet
-          owner={owner}
-          user={user}
-          skillId={skillId ?? null}
-          onClose={() => setSkillId(undefined)}
-          showFavoriteButton
-        />
+        <ManageTrackingContext.Provider
+          value={
+            detailsSelection && detailsSelection.id === skillId
+              ? detailsSelection.tracking
+              : tracking
+          }
+        >
+          <SkillDetailsSheet
+            owner={owner}
+            user={user}
+            skillId={skillId ?? null}
+            onClose={() => setSkillId(undefined)}
+            showFavoriteButton
+          />
+        </ManageTrackingContext.Provider>
       )}
-    </>
+    </ManageTrackingContext.Provider>
   );
 }

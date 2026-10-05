@@ -6,6 +6,10 @@ import {
   TRACKING_AREAS,
   trackEvent,
 } from "@app/lib/tracking";
+import {
+  trackManageMutation,
+  useManageTracking,
+} from "@app/lib/tracking/manageTracking";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -16,6 +20,7 @@ interface UseYAMLUploadOptions {
 }
 
 export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
+  const tracking = useManageTracking();
   const router = useAppRouter();
   const sendNotification = useSendNotification();
   const [isUploading, setIsUploading] = useState(false);
@@ -74,6 +79,9 @@ export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
       }
 
       const result = await response.json();
+      trackManageMutation(tracking, "import", [result.agentConfiguration.sId], {
+        import_source: "yaml",
+      });
 
       trackEvent({
         area: TRACKING_AREAS.BUILDER,
@@ -115,7 +123,7 @@ export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
 
       setIsUploading(false);
     },
-    [owner.sId, router, sendNotification]
+    [owner.sId, router, sendNotification, tracking]
   );
 
   const triggerYAMLUpload = useCallback(() => {

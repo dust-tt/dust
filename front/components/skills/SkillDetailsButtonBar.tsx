@@ -4,6 +4,10 @@ import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
 import { SkillFavoriteButton } from "@app/components/skills/SkillFavoriteButton";
 import config from "@app/lib/api/config";
 import {
+  trackManageItemAction,
+  useManageTracking,
+} from "@app/lib/tracking/manageTracking";
+import {
   getConversationRoute,
   getManageSkillsRoute,
   getSkillBuilderRoute,
@@ -44,6 +48,7 @@ export function SkillDetailsButtonBar({
   replaceOnEdit,
   onFavoriteChange,
 }: SkillDetailsButtonBarProps) {
+  const tracking = useManageTracking();
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const [isSkillLinkCopied, copySkillLink] = useCopyToClipboard();
   const previewBatchId = useSkillSuggestionPreviewBatchId();
@@ -79,6 +84,7 @@ export function SkillDetailsButtonBar({
           <Button
             size="sm"
             tooltip="Try skill"
+            onClick={() => trackManageItemAction(tracking, "try", skill.sId)}
             href={getConversationRoute(owner.sId, "new", `skill=${skill.sId}`)}
             variant="outline"
             icon={MessagePlusCircle}
@@ -90,6 +96,7 @@ export function SkillDetailsButtonBar({
             tooltip="Edit skill"
             href={getSkillBuilderRoute(owner.sId, skill.sId)}
             onClick={() => {
+              trackManageItemAction(tracking, "edit", skill.sId);
               if (previewBatchId) {
                 trackSuggestionPreviewEdit({
                   batchId: previewBatchId,
@@ -110,6 +117,7 @@ export function SkillDetailsButtonBar({
           icon={isSkillLinkCopied ? ClipboardCheck : Clipboard}
           onClick={(e) => {
             e.stopPropagation();
+            trackManageItemAction(tracking, "copy_link", skill.sId);
             void copySkillLink(
               `${config.getAppUrl()}${getManageSkillsRoute(owner.sId, skill.sId)}`
             );
