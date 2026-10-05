@@ -12,28 +12,7 @@
   "bracketSameLine": false,
   "bracketSpacing": true,
   "objectWrap": "preserve",
-  "sortImports": {
-    "groups": [
-      [
-        "side_effect",
-        "type",
-        "builtin",
-        "external",
-        "internal",
-        "subpath",
-        "unknown"
-      ],
-      [
-        "parent",
-        "sibling",
-        "index",
-        "style"
-      ]
-    ],
-    "newlinesBetween": false,
-    "ignoreCase": false,
-    "partitionByNewline": true
-  },
+  "sortImports": false,
   "sortPackageJson": false,
   "ignorePatterns": [
     "**/.next/**",
@@ -49,5 +28,69 @@
     "extension/shared/lib/swr.ts",
     "extension/packages/**",
     "cli/dust-sandbox/functions-runner/runner.js"
+  ],
+  "overrides": [
+    {
+      "files": [
+        "sdks/js/**",
+        "viz/**",
+        "extension/**",
+        "cli/dust-cli/**",
+        "firebase-functions/**",
+        "sparkle/**",
+        "connectors/**",
+        "front-spa/**",
+        "front/**",
+        "front-api/**",
+        "cli/dust-sandbox/functions-runner/**",
+        "cli/dust-sandbox/pod/**"
+      ],
+      "excludeFiles": [
+        "front/migrations/**",
+        "front/mailing/**",
+        "connectors/migrations/**",
+        "sparkle/**/*.stories.tsx",
+        "sparkle/.storybook/**",
+        "sparkle/playground/**",
+        "sparkle/scripts/**",
+        "sparkle/*.config.js",
+        "sparkle/svgr-*-template.js"
+      ],
+      "options": {
+        "sortImports": {
+          "customGroups": [
+            {
+              "groupName": "url",
+              "elementNamePattern": ["http://**", "https://**"]
+            },
+            {
+              "groupName": "protocol",
+              "elementNamePattern": [
+                "bun:*",
+                "bun:*/**",
+                "node:*",
+                "node:*/**",
+                "npm:*",
+                "jsr:*"
+              ]
+            },
+            {
+              "groupName": "alias",
+              "elementNamePattern": ["#*", "#*/**", "~/**", "@/**"]
+            }
+          ],
+          "groups": [
+            "url",
+            "protocol",
+            ["builtin", "external", "internal", "unknown"],
+            "alias",
+            ["parent", "sibling", "index", "style"]
+          ],
+          "newlinesBetween": false,
+          "ignoreCase": true,
+          "partitionByNewline": true
+        }
+      }
+    }
   ]
 }
