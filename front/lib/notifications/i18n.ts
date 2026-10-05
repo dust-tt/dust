@@ -1,28 +1,7 @@
 import { loadCatalog } from "@app/lib/i18n/i18n";
-import { UserResource } from "@app/lib/resources/user_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { SupportedLocale } from "@app/types/locale";
-import { DEFAULT_LOCALE } from "@app/types/locale";
 import type { I18n } from "@lingui/core";
 import { setupI18n } from "@lingui/core";
-
-export async function getNotificationLocale(
-  subscriberId: string | undefined,
-  workspaceId: string
-): Promise<SupportedLocale> {
-  if (!subscriberId) {
-    return DEFAULT_LOCALE;
-  }
-  const [user, workspace] = await Promise.all([
-    UserResource.fetchById(subscriberId),
-    WorkspaceResource.fetchById(workspaceId),
-  ]);
-  if (!user || !workspace) {
-    return DEFAULT_LOCALE;
-  }
-  return user.getLocale(renderLightWorkspaceType({ workspace }));
-}
 
 const i18nByLocale = new Map<SupportedLocale, Promise<I18n>>();
 

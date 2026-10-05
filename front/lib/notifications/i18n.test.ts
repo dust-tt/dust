@@ -1,7 +1,5 @@
-import {
-  getNotificationI18n,
-  getNotificationLocale,
-} from "@app/lib/notifications/i18n";
+import { getNotificationI18n } from "@app/lib/notifications/i18n";
+import { getNotificationLocale } from "@app/lib/notifications/locale";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { USER_LOCALE_METADATA_KEY } from "@app/types/locale";
