@@ -3,6 +3,7 @@ import { MessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { honoApp } from "@front-api/app";
@@ -112,6 +113,39 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId/observability/feed
     expect(await response.json()).toMatchObject({
       error: { type: "agent_configuration_not_found" },
     });
+  });
+
+  it("returns 404 to a manager for a hidden agent they cannot read", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "manager",
+    });
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { scope: "hidden" }
+    );
+
+    const response = await getFeedbackDistribution(workspace, agent.sId);
+
+    expect(response.status).toBe(404);
+  });
+
+  it("lets an admin read a hidden agent they cannot read", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { scope: "hidden" }
+    );
+
+    const response = await getFeedbackDistribution(workspace, agent.sId);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ points: [] });
   });
 
   it("returns empty points when no feedback exists for the agent", async () => {
