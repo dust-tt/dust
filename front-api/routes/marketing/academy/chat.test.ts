@@ -115,10 +115,19 @@ describe("POST /api/marketing/academy/chat", () => {
     expect(response.status).toBe(429);
   });
 
-  it("rejects an oversized title before calling the model", async () => {
+  it("fails closed when the rate limiter store is unavailable", async () => {
+    await postChat(validBody);
+
+    expect(vi.mocked(rateLimiter)).toHaveBeenCalledWith(
+      expect.objectContaining({ onStoreError: "deny" })
+    );
+  });
+
+  it("accepts an oversized title (truncated server-side)", async () => {
     const response = await postChat({ ...validBody, title: "x".repeat(501) });
 
-    expect(response.status).toBe(400);
+    // Passes validation, then fails on the unset Anthropic key.
+    expect(response.status).toBe(500);
   });
 
   it("rejects a chat request with a disallowed referer", async () => {
@@ -128,7 +137,7 @@ describe("POST /api/marketing/academy/chat", () => {
         referer: "https://evil.example.com",
         "content-type": "application/json",
       },
-      body: JSON.stringify({}),
+      body: JSON.stringify(validBody),
     });
 
     expect(response.status).toBe(403);

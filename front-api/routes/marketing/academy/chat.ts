@@ -11,6 +11,7 @@ import { bodyLimit } from "@front-api/middlewares/body_limit";
 import { unauthedApp } from "@front-api/middlewares/ctx";
 import { resolveOptionalSession } from "@front-api/middlewares/session_resolution";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import type { Context } from "hono";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
@@ -42,7 +43,8 @@ type ChatMessage = z.infer<typeof ChatMessageSchema>;
 const ChatRequestBodySchema = z.object({
   messages: z.array(ChatMessageSchema).max(MAX_MESSAGES),
   contentType: z.enum(["course", "lesson", "chapter"]),
-  title: z.string().max(MAX_TITLE_LENGTH),
+  // Truncated rather than rejected so that existing clients keep working.
+  title: z.string().transform((title) => title.slice(0, MAX_TITLE_LENGTH)),
   content: z.string(),
   correctAnswers: z.number().int().nonnegative(),
   totalQuestions: z.number().int().nonnegative(),
@@ -160,7 +162,8 @@ function hasAllowedOrigin(ctx: Context): boolean {
  * Each chat request MUST consume one unit from a bucket keyed on the logged-in user's `sId`, or,
  * when there is no session, from a single bucket shared by all anonymous requests. The key MUST
  * NOT derive from client-supplied values (IP headers, origin, browser id), which would let a caller
- * mint fresh buckets.
+ * mint fresh buckets. When no unit can be consumed, including when the rate limiter store is
+ * unavailable, the request MUST be rejected before calling the model.
  */
 async function consumeChatRateLimit(
   session: SessionWithUser | null
@@ -177,6 +180,7 @@ async function consumeChatRateLimit(
       : MAX_REQUESTS_PER_USER_PER_HOUR,
     timeframeSeconds: RATE_LIMIT_TIMEFRAME_SECONDS,
     logger,
+    onStoreError: "deny",
   });
 
   return { isAnonymous, remaining };
@@ -203,134 +207,127 @@ app.get("/", async (ctx) => {
 });
 
 // POST: stream the quiz-master response as SSE.
-app.post("/", bodyLimit(MAX_BODY_SIZE_BYTES), async (ctx) => {
-  if (!hasAllowedOrigin(ctx)) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Request origin not allowed.",
-      },
-    });
-  }
-
-  const csrfToken = ctx.req.header("x-csrf-token");
-  if (!csrfToken || !verifyCsrfToken(csrfToken)) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid or missing CSRF token.",
-      },
-    });
-  }
-
-  const session = await resolveOptionalSession(ctx);
-  const { isAnonymous, remaining } = await consumeChatRateLimit(session);
-
-  if (remaining <= 0) {
-    if (isAnonymous) {
-      logger.warn(
-        { maxPerHour: MAX_ANONYMOUS_REQUESTS_PER_HOUR },
-        ANONYMOUS_RATE_LIMIT_EXCEEDED_LOG_MESSAGE
-      );
+app.post(
+  "/",
+  bodyLimit(MAX_BODY_SIZE_BYTES),
+  validate("json", ChatRequestBodySchema),
+  async (ctx) => {
+    if (!hasAllowedOrigin(ctx)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Request origin not allowed.",
+        },
+      });
     }
 
-    return apiError(ctx, {
-      status_code: 429,
-      api_error: {
-        type: "rate_limit_error",
-        message: "Too many requests. Please wait a moment and try again.",
-      },
-    });
-  }
+    const csrfToken = ctx.req.header("x-csrf-token");
+    if (!csrfToken || !verifyCsrfToken(csrfToken)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Invalid or missing CSRF token.",
+        },
+      });
+    }
 
-  const rawBody = await ctx.req.json().catch(() => null);
-  const bodyValidation = ChatRequestBodySchema.safeParse(rawBody);
-  if (!bodyValidation.success) {
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `Invalid request body: ${bodyValidation.error.message}`,
-      },
-    });
-  }
+    const session = await resolveOptionalSession(ctx);
+    const { isAnonymous, remaining } = await consumeChatRateLimit(session);
 
-  const {
-    messages,
-    contentType,
-    title,
-    content,
-    correctAnswers,
-    totalQuestions,
-    userName,
-  } = bodyValidation.data;
-
-  const anthropicApiKey = config.getDustManagedAnthropicApiKey();
-  if (!anthropicApiKey) {
-    logger.error("DUST_MANAGED_ANTHROPIC_API_KEY is not configured");
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Chat service is not configured.",
-      },
-    });
-  }
-
-  const client = new Anthropic({ apiKey: anthropicApiKey });
-  const systemPrompt = buildSystemPrompt(
-    contentType,
-    title,
-    content,
-    correctAnswers,
-    totalQuestions,
-    userName
-  );
-
-  // Anthropic requires at least one message - add initial prompt if starting.
-  const apiMessages: ChatMessage[] =
-    messages.length === 0
-      ? [{ role: "user", content: "Start the quiz." }]
-      : messages;
-
-  return streamEvents<{ text?: string; error?: string }>({
-    ctx,
-    iterator: async function* (signal) {
-      try {
-        const stream = await client.messages.create(
-          {
-            model: CLAUDE_SONNET_4_6_MODEL_ID,
-            max_tokens: 1024,
-            system: systemPrompt,
-            messages: apiMessages,
-            stream: true,
-          },
-          { signal }
+    if (remaining <= 0) {
+      if (isAnonymous) {
+        logger.warn(
+          { maxPerHour: MAX_ANONYMOUS_REQUESTS_PER_HOUR },
+          ANONYMOUS_RATE_LIMIT_EXCEEDED_LOG_MESSAGE
         );
-
-        for await (const event of stream) {
-          if (signal.aborted) {
-            break;
-          }
-
-          if (
-            event.type === "content_block_delta" &&
-            event.delta.type === "text_delta"
-          ) {
-            yield { text: event.delta.text };
-          }
-        }
-      } catch (err) {
-        // The client's SSE reader surfaces `{ error }` frames as a thrown
-        // error; the stream then ends on EOF. The original `[DONE]` sentinel
-        // is omitted because the client treats it as a no-op skip marker.
-        logger.error({ err }, "Academy chat API error");
-        yield { error: "An error occurred while generating the response." };
       }
-    },
-  });
-});
+
+      return apiError(ctx, {
+        status_code: 429,
+        api_error: {
+          type: "rate_limit_error",
+          message: "Too many requests. Please wait a moment and try again.",
+        },
+      });
+    }
+
+    const {
+      messages,
+      contentType,
+      title,
+      content,
+      correctAnswers,
+      totalQuestions,
+      userName,
+    } = ctx.req.valid("json");
+
+    const anthropicApiKey = config.getDustManagedAnthropicApiKey();
+    if (!anthropicApiKey) {
+      logger.error("DUST_MANAGED_ANTHROPIC_API_KEY is not configured");
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Chat service is not configured.",
+        },
+      });
+    }
+
+    const client = new Anthropic({ apiKey: anthropicApiKey });
+    const systemPrompt = buildSystemPrompt(
+      contentType,
+      title,
+      content,
+      correctAnswers,
+      totalQuestions,
+      userName
+    );
+
+    // Anthropic requires at least one message - add initial prompt if starting.
+    const apiMessages: ChatMessage[] =
+      messages.length === 0
+        ? [{ role: "user", content: "Start the quiz." }]
+        : messages;
+
+    return streamEvents<{ text?: string; error?: string }>({
+      ctx,
+      iterator: async function* (signal) {
+        try {
+          const stream = await client.messages.create(
+            {
+              model: CLAUDE_SONNET_4_6_MODEL_ID,
+              max_tokens: 1024,
+              system: systemPrompt,
+              messages: apiMessages,
+              stream: true,
+            },
+            { signal }
+          );
+
+          for await (const event of stream) {
+            if (signal.aborted) {
+              break;
+            }
+
+            if (
+              event.type === "content_block_delta" &&
+              event.delta.type === "text_delta"
+            ) {
+              yield { text: event.delta.text };
+            }
+          }
+        } catch (err) {
+          // The client's SSE reader surfaces `{ error }` frames as a thrown
+          // error; the stream then ends on EOF. The original `[DONE]` sentinel
+          // is omitted because the client treats it as a no-op skip marker.
+          logger.error({ err }, "Academy chat API error");
+          yield { error: "An error occurred while generating the response." };
+        }
+      },
+    });
+  }
+);
 
 export default app;
