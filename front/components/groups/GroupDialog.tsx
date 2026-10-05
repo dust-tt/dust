@@ -72,7 +72,7 @@ export function GroupDialog({
             initialName={group?.name ?? ""}
             initialMembers={members}
             initialManagers={managers}
-            membersReadOnly={isReadOnlyForManager}
+            readOnly={isReadOnlyForManager}
             onCreated={onCreated}
             onClose={() => onOpenChange(false)}
           />
@@ -97,7 +97,7 @@ interface GroupFormProps {
   initialManagers: SearchMemberType[];
   // When true, the group is admin-only and the current user is not an admin:
   // membership is read-only (see the admin-only membership contract).
-  membersReadOnly?: boolean;
+  readOnly?: boolean;
   onCreated?: (group: GroupType) => void;
   onClose: () => void;
 }
@@ -109,7 +109,7 @@ function GroupForm({
   initialName,
   initialMembers,
   initialManagers,
-  membersReadOnly = false,
+  readOnly = false,
   onCreated,
   onClose,
 }: GroupFormProps) {
@@ -221,7 +221,7 @@ function GroupForm({
     <>
       <DialogContainer>
         <div className="flex flex-col gap-5">
-          {membersReadOnly && (
+          {readOnly && (
             <ContentMessage
               variant="warning"
               icon={InfoCircle}
@@ -253,7 +253,7 @@ function GroupForm({
               selectedMemberIds={selectedMemberIds}
               onSelectionChange={setSelectedMemberIds}
               initialMembers={initialMembers}
-              disabled={membersReadOnly || isSubmitting}
+              disabled={readOnly || isSubmitting}
             />
           </div>
           {canAssignManagers && (
