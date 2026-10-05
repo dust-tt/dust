@@ -74,12 +74,13 @@ pub const GET_SESSION_MAX_TRIES: usize = 3;
 // separator of the opaque table ID.
 const DUST_DOT_MARKER: &str = "__DUST_DOT__";
 
-/// Mirrors `quoteSnowflakeIdentifier` in connectors: simple identifiers stay unquoted so Snowflake
-/// keeps resolving them case-insensitively, anything else is double-quoted with `"` escaped.
+/// Simple identifiers (a letter or `_`, then letters, digits, `_` or `$`) stay unquoted so
+/// Snowflake keeps resolving them case-insensitively, anything else is double-quoted with `"`
+/// escaped. Close to `quoteSnowflakeIdentifier` in connectors, which also accepts a leading `$`.
 fn quote_snowflake_identifier(identifier: &str) -> String {
     let mut chars = identifier.chars();
     let is_simple = match chars.next() {
-        Some(c) if c.is_ascii_alphabetic() || c == '_' || c == '$' => {
+        Some(c) if c.is_ascii_alphabetic() || c == '_' => {
             chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '$')
         }
         _ => false,
@@ -96,7 +97,7 @@ fn quote_snowflake_identifier(identifier: &str) -> String {
  * `opaque_id` MUST be exactly `database.schema.table` (with dots inside a part encoded as
  * `__DUST_DOT__`), otherwise an error is returned and no SQL is produced. Each part MUST be
  * emitted as a single Snowflake identifier: unquoted only if it matches
- * `[A-Za-z_$][A-Za-z0-9_$]*`, double-quoted with `"` escaped as `""` otherwise. No other
+ * `[A-Za-z_][A-Za-z0-9_$]*`, double-quoted with `"` escaped as `""` otherwise. No other
  * characters of `opaque_id` may reach the statement.
  */
 fn describe_table_query(opaque_id: &str) -> Result<String> {
@@ -617,6 +618,14 @@ mod tests {
         assert_eq!(
             describe_table_query("my db.PUBLIC.my__DUST_DOT__table")?,
             "DESCRIBE TABLE \"my db\".PUBLIC.\"my.table\""
+        );
+        assert_eq!(
+            describe_table_query("DB.PUBLIC.$ORDERS")?,
+            "DESCRIBE TABLE DB.PUBLIC.\"$ORDERS\""
+        );
+        assert_eq!(
+            describe_table_query("DB.PUBLIC.ORDERS$1")?,
+            "DESCRIBE TABLE DB.PUBLIC.ORDERS$1"
         );
         Ok(())
     }
