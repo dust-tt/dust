@@ -12,7 +12,10 @@ export default defineConfig({
       jsxRuntime: "classic",
       babel: {
         plugins: [
-          ["@lingui/babel-plugin-lingui-macro", { descriptorFields: "message" }],
+          [
+            "@lingui/babel-plugin-lingui-macro",
+            { descriptorFields: "message" },
+          ],
         ],
       },
     }),
