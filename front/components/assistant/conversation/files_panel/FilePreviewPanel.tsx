@@ -131,7 +131,9 @@ export function FilePreviewPanel({
     isActive: !!entry,
     isContentLoading: preview.isContentLoading,
     isTooLarge: preview.isTooLarge,
+    isTruncated: preview.isTruncated,
     owner,
+    rawContent: preview.truncatedContent,
     processedContent: preview.processedContent,
   });
 
@@ -159,13 +161,16 @@ export function FilePreviewPanel({
 
   return (
     <div className="flex h-panel min-h-0 flex-col">
-      <ConversationSidePanelHeader onClose={closePanel}>
+      <ConversationSidePanelHeader
+        onClose={closePanel}
+        closeDisabled={markdown.holdsNavigation}
+      >
         <div className="flex min-w-0 items-center gap-1.5">
           <Icon visual={FileIcon} size="sm" className="shrink-0" />
           <span className="line-clamp-1 text-sm font-medium">{fileName}</span>
         </div>
         <div className="ml-2 flex items-center gap-1">
-          {markdown.canEdit && (
+          {markdown.canEdit && !markdown.richEditor && (
             <>
               <MarkdownFilePreviewViewModeSwitch
                 viewMode={markdown.viewMode}
