@@ -802,7 +802,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
    * Replacing the users holding one grant MUST serialize with other changes to that grant and
    * either apply every addition/removal or apply none. Callers MUST validate that the supplied
    * users are active members of the workspace before invoking this method. With expectedUserIds,
-   * a changed active user list MUST return null without changing the grant.
+   * a changed active workspace-member list MUST return null without changing the grant.
    */
   static async replaceUsersForGrant(
     auth: Authenticator,
@@ -852,9 +852,9 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       );
       if (expectedUserIds !== undefined) {
         const expectedIds = new Set(expectedUserIds);
-        const activeUsers = currentUsers.filter((user) =>
-          activeIds.has(user.id)
-        );
+        const activeUsers = group
+          ? await group.getActiveMembers(auth, { transaction })
+          : [];
         if (
           expectedIds.size !== activeUsers.length ||
           activeUsers.some((user) => !expectedIds.has(user.sId))
