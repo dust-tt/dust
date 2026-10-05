@@ -503,20 +503,6 @@ export async function finalizeConnection(
     });
   }
 
-  if (
-    providerStrategy.isCallbackQueryValid &&
-    !providerStrategy.isCallbackQueryValid(query)
-  ) {
-    childLogger.error(
-      { connectionId, step: "callback_validation" },
-      "OAuth: Failed to finalize connection"
-    );
-    return new Err({
-      code: "connection_finalization_failed",
-      message: `Failed to finalize ${provider} connection: invalid callback signature`,
-    });
-  }
-
   const api = new OAuthAPI(config.getOAuthAPIConfig(), logger);
 
   // Fetching the connection metadata is necessary to build the redirect URI
@@ -554,6 +540,20 @@ export async function finalizeConnection(
       "OAuth: Refusing to finalize connection — ownership or finalize nonce mismatch"
     );
     return ownershipRes;
+  }
+
+  if (
+    providerStrategy.isCallbackQueryValid &&
+    !(await providerStrategy.isCallbackQueryValid(query, connection))
+  ) {
+    childLogger.error(
+      { connectionId, step: "callback_validation" },
+      "OAuth: Failed to finalize connection"
+    );
+    return new Err({
+      code: "connection_finalization_failed",
+      message: `Failed to finalize ${provider} connection: invalid callback signature`,
+    });
   }
 
   const cRes = await api.finalizeConnection({

@@ -419,12 +419,6 @@ const config = {
   getOAuthHubspotClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_HUBSPOT_CLIENT_ID");
   },
-  getOAuthShopifyClientId: (): string => {
-    return EnvironmentConfig.getEnvVariable("OAUTH_SHOPIFY_CLIENT_ID");
-  },
-  getOAuthShopifyClientSecret: (): string => {
-    return EnvironmentConfig.getEnvVariable("OAUTH_SHOPIFY_CLIENT_SECRET");
-  },
   getOAuthFreshserviceClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_FRESHWORKS_CLIENT_ID");
   },

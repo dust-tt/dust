@@ -990,7 +990,7 @@ export type OauthAPIGetCredentialsResponse = {
   credential: {
     credential_id: string;
     created: number;
-    provider: CredentialsProvider;
+    provider: CredentialsProvider | OAuthProvider;
     metadata: {
       workspace_id: string;
       user_id: string;
