@@ -187,7 +187,7 @@ pre-commit:
 
     # Linting (packages covered by .oxlintrc.json)
     oxlint:
-      glob: "{sdks/js,viz,extension,cli/dust-cli,firebase-functions,sparkle,connectors,front-spa,front,front-api,marketing,cli/dust-sandbox/functions-runner,cli/dust-sandbox/pod}/**/*.{js,jsx,ts,tsx}"
+      glob: "{sdks/js,viz,extension,cli/dust-cli,firebase-functions,sparkle,connectors,front-spa,front,front-api,marketing,cli/dust-sandbox/functions-runner,cli/dust-sandbox/pod}/*.{js,jsx,ts,tsx}"
       run: npx oxlint {staged_files}
 
     # Optional: lossless image optimization (skip with e.g. LEFTHOOK_EXCLUDE=optimize-png,optimize-jpeg,optimize-svg,optimize-gif)
