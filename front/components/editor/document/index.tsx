@@ -7,8 +7,8 @@ import { DocumentSelectionToolbar } from "@app/components/editor/document/Docume
 import { DocumentSourcePreview } from "@app/components/editor/document/DocumentSourcePreview";
 import type { DocumentProps } from "@app/components/editor/document/types";
 import { useDocumentEditor } from "@app/components/editor/document/useDocumentEditor";
+import { EditorContent } from "@app/components/editor/EditorContent";
 import { cn } from "@dust-tt/sparkle";
-import { EditorContent } from "@tiptap/react";
 import type React from "react";
 
 export type {
