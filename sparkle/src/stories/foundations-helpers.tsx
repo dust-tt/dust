@@ -44,7 +44,7 @@ export function readCssVar(name: string): string {
 // Live value of a CSS custom property, re-read whenever the theme changes.
 export function useCssVar(name: string): string {
   const version = useThemeVersion();
-  // oxlint-disable-next-line react/exhaustive-deps -- `version` is an intentional re-read trigger when the theme toggles; readCssVar reads the DOM so biome can't infer the dependency.
+  // oxlint-disable-next-line react/exhaustive-deps -- `version` is an intentional re-read trigger when the theme toggles; readCssVar reads the DOM so the linter can't infer the dependency.
   return React.useMemo(() => readCssVar(name), [name, version]);
 }
 
