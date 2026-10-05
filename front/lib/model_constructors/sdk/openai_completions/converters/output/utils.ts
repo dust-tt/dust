@@ -202,11 +202,9 @@ export async function* rawOutputToEvents(
     }
     stopReason = finishReason;
     switch (finishReason) {
+      // Blackfuel ends a forced tool call with `stop` rather than `tool_calls`
+      // (verified live 2026-10-05), so both emit the accumulated tool calls.
       case "stop":
-        for (const e of flushAccumulated(acc, metadata, aggregated)) {
-          yield e;
-        }
-        break;
       case "tool_calls": {
         for (const e of flushAccumulated(acc, metadata, aggregated)) {
           yield e;

@@ -217,4 +217,30 @@ describe("rawOutputToEvents", () => {
 
     expect(events.map((e) => e.type)).toContain("reasoning");
   });
+
+  it("emits a tool call that finishes with `stop`", async () => {
+    const events = await collectEvents(
+      chunks([
+        [
+          {
+            tool_calls: [
+              {
+                index: 0,
+                id: "call_1",
+                function: { name: "calculator", arguments: '{"a":3}' },
+              },
+            ],
+          },
+          "stop",
+        ],
+      ])
+    );
+
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "tool_call",
+        content: { id: "call_1", name: "calculator", arguments: { a: 3 } },
+      })
+    );
+  });
 });
