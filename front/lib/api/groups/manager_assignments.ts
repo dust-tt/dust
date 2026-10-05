@@ -100,12 +100,11 @@ export async function replaceGroupManagers(
     return { kind: "invalid_managers" };
   }
 
-  const replacement =
-    await GroupPermissionResource.replaceUsersForGrant(auth, {
-      users: users.map((user) => user.toJSON()),
-      ...managerGrant(group),
-      expectedUserIds: expectedManagerIds,
-    });
+  const replacement = await GroupPermissionResource.replaceUsersForGrant(auth, {
+    users: users.map((user) => user.toJSON()),
+    ...managerGrant(group),
+    expectedUserIds: expectedManagerIds,
+  });
   if (!replacement) {
     return { kind: "conflict" };
   }

@@ -115,12 +115,13 @@ function GroupForm({
   onClose,
 }: GroupFormProps) {
   const { t } = useLingui();
-  // Keep the version the selection was seeded from, even if SWR refreshes the group.
-  const [{ initialName, initialMembers, initialManagers }] = useState(() => ({
-    initialName: loadedName,
-    initialMembers: loadedMembers,
-    initialManagers: loadedManagers,
-  }));
+  // Only this form's successful saves advance the version; SWR refreshes must not.
+  const [{ initialName, initialMembers, initialManagers }, setInitialGroup] =
+    useState(() => ({
+      initialName: loadedName,
+      initialMembers: loadedMembers,
+      initialManagers: loadedManagers,
+    }));
   const { hasFeature } = useFeatureFlags();
   const { isManager } = useAuth();
   const [name, setName] = useState(initialName);
@@ -188,6 +189,11 @@ function GroupForm({
       if (!result) {
         return false;
       }
+      setInitialGroup((previous) => ({
+        ...previous,
+        initialName: result.group.name,
+        initialMembers: result.members,
+      }));
     }
     if (hasManagerChanges) {
       const result = await doUpdateGroup({

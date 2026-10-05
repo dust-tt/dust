@@ -852,7 +852,9 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       );
       if (expectedUserIds !== undefined) {
         const expectedIds = new Set(expectedUserIds);
-        const activeUsers = currentUsers.filter((user) => activeIds.has(user.id));
+        const activeUsers = currentUsers.filter((user) =>
+          activeIds.has(user.id)
+        );
         if (
           expectedIds.size !== activeUsers.length ||
           activeUsers.some((user) => !expectedIds.has(user.sId))
