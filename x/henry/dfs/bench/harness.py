@@ -17,6 +17,7 @@ MANIFEST_SHA256 = '67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a
 MAX_DELAY_MS = int(os.environ.get('DFS_MAX_DELAY_MS', '1000'))
 DURABILITY = ('every mutation (including fsync) is acknowledged before its commit and committed within '
               'the window; fsync of a directory waits for every earlier mutation to commit')
+FUSE_THREADS = int(os.environ.get('DFS_FUSE_THREADS', '1'))
 KNOBS = ('DFS_FDB_GRV_BATCH_TIMEOUT_SECONDS', 'DFS_FDB_CLIENT_BUSY_WAIT_SECONDS')
 
 
@@ -37,7 +38,7 @@ def metadata():
             'mount_binary_sha256': hashlib.sha256((BIN / 'dfs-mount').read_bytes()).hexdigest(),
             'fdb_client_knobs': {k: os.environ[k] for k in KNOBS if k in os.environ},
             'max_delay_ms': MAX_DELAY_MS, 'durability': DURABILITY, 'fsync': 'buffered',
-            'kernel_caching': 'none (TTL 0, direct I/O)', 'fuse_threads': 8, 'max_background': 32}
+            'kernel_caching': 'none (TTL 0, direct I/O)', 'fuse_threads': FUSE_THREADS, 'max_background': 32}
 
 
 def totals(path, message):
@@ -88,7 +89,8 @@ class Stack:
     def mount(self, path, token, root=None):
         path.mkdir(parents=True, exist_ok=True)
         log = open(self.work / f'{self.phase}-mount-{path.name}.log', 'w')
-        command = [str(BIN / 'dfs-mount'), '--max-delay-ms', str(MAX_DELAY_MS), '--addr', self.addr, '--token', token, str(path)]
+        command = [str(BIN / 'dfs-mount'), '--max-delay-ms', str(MAX_DELAY_MS), '--threads', str(FUSE_THREADS), '--addr',
+                   self.addr, '--token', token, str(path)]
         if root is not None:
             command[1:1] = ['--root', str(root)]
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=log, text=True)

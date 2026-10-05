@@ -28,7 +28,9 @@ struct Cli {
     /// Object id to mount as the root (defaults to the tenant root).
     #[arg(long)]
     root: Option<u64>,
-    #[arg(long, default_value_t = 8)]
+    /// FUSE request threads. Kernel wakeups round-robin across idle threads, which costs a
+    /// cross-CPU wakeup per request; one thread measured 5-10x faster per cached op.
+    #[arg(long, default_value_t = 1)]
     threads: usize,
     /// MAX_EVENTUAL_CONSISTENCY_DELAY: longest between a mutation's acknowledgment here and every
     /// other mount serving it, split between the commit window and the cache TTL.
