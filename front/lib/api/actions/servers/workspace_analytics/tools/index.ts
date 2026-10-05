@@ -170,7 +170,7 @@ function formatCreditLine(
       `${name}: ${(point.values[groupKey] ?? 0).toFixed(2)}`
   );
   return (
-    `${formatDateFromMillis(point.timestamp, tz)} — ${parts.join(", ")}, ` +
+    `${formatDateFromMillis(point.timestamp, tz)} — ${parts.join(", ")} — ` +
     `${point.activeUsers} active user${pluralize(point.activeUsers)}`
   );
 }
@@ -277,7 +277,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       {
         type: "text" as const,
         text:
-          `Credits per ${granularity} for ${label} (${tz}):\n` +
+          `Credits and active users per ${granularity} for ${label} (${tz}):\n` +
           lines.join("\n"),
       },
     ]);
