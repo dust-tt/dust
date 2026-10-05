@@ -1,6 +1,3 @@
-import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { RoleType } from "@app/types/user";
-
 /**
  * Vocabulary for the `group_permissions` table (Admin Governance §1A).
  *
@@ -226,47 +223,14 @@ export const GOVERNANCE_CAPABILITIES = {
 /**
  * @cc [owner:rfrenoy,label:security] admin-grant-type-is-admin-only
  * A type-wide capability whose grant type is `admin` (`ADMIN_ONLY_GRANT_TYPE`) MUST be treated as
- * admin-only by both gates that hand it out: `governanceCapabilitiesForRole` MUST exclude it for
- * every role but `admin`, and `GroupResource.listAdminOnlyMembershipGroupModelIds` MUST flag a
- * group holding it. Neither gate MAY rely on a hand-maintained list of resource types, so a new
- * `admin` capability is covered by both without further code.
+ * admin-only by both gates that hand it out: the Governance delegation gate
+ * (`capabilitiesForRole` in `lib/api/permissions/governance.ts`) MUST exclude it for every role
+ * but `admin`, and `GroupResource.listAdminOnlyMembershipGroupModelIds` MUST flag a group holding
+ * it. Neither gate MAY rely on a hand-maintained list of resource types, so a new `admin`
+ * capability is covered by both without further code.
  */
 export const ADMIN_ONLY_GRANT_TYPE = "admin" satisfies GrantType;
 
 export function isAdminOnlyCapability({ grantType }: CapabilitySpec): boolean {
   return grantType === ADMIN_ONLY_GRANT_TYPE;
-}
-
-const ALL_GOVERNANCE_CAPABILITIES: CapabilitySpec[] = Object.values(
-  GOVERNANCE_CAPABILITIES
-).flat();
-
-const MANAGER_GOVERNANCE_CAPABILITIES: CapabilitySpec[] =
-  ALL_GOVERNANCE_CAPABILITIES.filter((c) => !isAdminOnlyCapability(c));
-
-const ADMIN_GOVERNANCE_CAPABILITIES: CapabilitySpec[] = [
-  ...MANAGER_GOVERNANCE_CAPABILITIES,
-  ...ALL_GOVERNANCE_CAPABILITIES.filter(isAdminOnlyCapability),
-];
-
-/**
- * @cc [owner:rfrenoy,label:security] governance-capabilities-by-role
- * The capabilities a role may see and delegate on the Governance page MUST be: every governance
- * capability for `admin`, every governance capability except the admin-only ones for `manager`,
- * and none for `user` and `none`.
- */
-export function governanceCapabilitiesForRole(
-  role: RoleType
-): CapabilitySpec[] {
-  switch (role) {
-    case "admin":
-      return ADMIN_GOVERNANCE_CAPABILITIES;
-    case "manager":
-      return MANAGER_GOVERNANCE_CAPABILITIES;
-    case "user":
-    case "none":
-      return [];
-    default:
-      return assertNever(role);
-  }
 }

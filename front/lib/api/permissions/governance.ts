@@ -16,13 +16,50 @@ import type {
 } from "@app/types/group_permissions";
 import {
   capabilityKey,
-  governanceCapabilitiesForRole,
+  GOVERNANCE_CAPABILITIES,
+  isAdminOnlyCapability,
 } from "@app/types/group_permissions";
 import { isManageableGroupKind } from "@app/types/groups";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
+
+const ALL_CAPABILITIES: CapabilitySpec[] = Object.values(
+  GOVERNANCE_CAPABILITIES
+).flat();
+
+// Capabilities every manager (and admin) can manage.
+const MANAGER_CAPABILITIES: CapabilitySpec[] = ALL_CAPABILITIES.filter(
+  (c) => !isAdminOnlyCapability(c)
+);
+
+// Capabilities every admin can manage.
+const ADMIN_CAPABILITIES: CapabilitySpec[] = [
+  ...MANAGER_CAPABILITIES,
+  ...ALL_CAPABILITIES.filter(isAdminOnlyCapability),
+];
+
+/**
+ * @cc [owner:rfrenoy,label:security] governance-capabilities-by-role
+ * The capabilities a role may see and delegate on the Governance page MUST be: every governance
+ * capability for `admin`, every governance capability except the admin-only ones
+ * (`isAdminOnlyCapability`) for `manager`, and none for `user` and `none`.
+ */
+function capabilitiesForRole(auth: Authenticator): CapabilitySpec[] {
+  const role = auth.role();
+  switch (role) {
+    case "admin":
+      return ADMIN_CAPABILITIES;
+    case "manager":
+      return MANAGER_CAPABILITIES;
+    case "user":
+    case "none":
+      return [];
+    default:
+      return assertNever(role);
+  }
+}
 
 function toConfiguration(
   state: CapabilityState
@@ -44,7 +81,7 @@ function toConfiguration(
 export async function getWorkspaceGovernancePermissions(
   auth: Authenticator
 ): Promise<GovernancePermissionsByKey> {
-  const capabilities = governanceCapabilitiesForRole(auth.role());
+  const capabilities = capabilitiesForRole(auth);
 
   const stateByKey = await GroupPermissionResource.getCapabilitiesState(
     auth,
@@ -80,7 +117,7 @@ export async function setWorkspaceGovernancePermission(
 > {
   const capability: CapabilitySpec = { grantType, resourceType };
 
-  const canManage = governanceCapabilitiesForRole(auth.role()).some(
+  const canManage = capabilitiesForRole(auth).some(
     (c) => c.grantType === grantType && c.resourceType === resourceType
   );
   if (!canManage) {
