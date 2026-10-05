@@ -25,7 +25,7 @@ describe("oauth finalize binding helpers", () => {
     expect(oauthFinalizeNonceCookieName("con_other-secret")).not.toBe(name);
   });
 
-  it("matches a stored hash against the plaintext cookie nonce", () => {
+  it("matches a stored digest against the plaintext cookie nonce", () => {
     const nonce = generateOAuthFinalizeNonce();
     const hash = hashOAuthFinalizeNonce(nonce);
     expect(hash).not.toEqual(nonce);

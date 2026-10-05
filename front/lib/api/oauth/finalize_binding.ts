@@ -1,11 +1,11 @@
 import config from "@app/lib/api/config";
 import { isDevelopment, isTest } from "@app/types/shared/env";
-import { createHash, randomBytes, timingSafeEqual } from "crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "crypto";
 
 /**
- * Metadata key storing the SHA-256 hash of the per-connection finalize nonce.
+ * Metadata key storing a digest of the per-connection finalize nonce.
  * The plaintext nonce lives only in the HttpOnly cookie, never in connection
- * metadata (password-hash hygiene).
+ * metadata.
  */
 export const OAUTH_FINALIZE_NONCE_METADATA_KEY = "finalize_nonce_hash";
 
@@ -13,6 +13,9 @@ export const OAUTH_FINALIZE_NONCE_METADATA_KEY = "finalize_nonce_hash";
 export const OAUTH_FINALIZE_NONCE_MAX_AGE_SECONDS = 600;
 
 const COOKIE_PREFIX = "dust_oauth_finalize_";
+
+// Public MAC context: the nonce is the HMAC key (high-entropy random token).
+const FINALIZE_NONCE_MAC_CONTEXT = "dust.oauth.finalize.nonce.v1";
 
 /**
  * Generates a cryptographically random nonce used to bind an OAuth setup to the
@@ -22,9 +25,14 @@ export function generateOAuthFinalizeNonce(): string {
   return randomBytes(32).toString("base64url");
 }
 
-/** SHA-256 digest of a finalize nonce, suitable for connection metadata. */
+/**
+ * Digest of a finalize nonce for connection metadata. HMAC-SHA256 with the
+ * nonce as key so the stored value is not a raw SHA-256 of the cookie secret.
+ */
 export function hashOAuthFinalizeNonce(nonce: string): string {
-  return createHash("sha256").update(nonce).digest("base64url");
+  return createHmac("sha256", nonce)
+    .update(FINALIZE_NONCE_MAC_CONTEXT)
+    .digest("base64url");
 }
 
 /**
@@ -58,8 +66,8 @@ export function oauthFinalizeNonceCookieOptions() {
 }
 
 /**
- * Constant-time compare of the expected finalize nonce hash (from connection
- * metadata) and the SHA-256 of the plaintext value presented by the browser
+ * Constant-time compare of the expected finalize nonce digest (from connection
+ * metadata) and the HMAC of the plaintext value presented by the browser
  * cookie.
  */
 export function oauthFinalizeNoncesMatch(
