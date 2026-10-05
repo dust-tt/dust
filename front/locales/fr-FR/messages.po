@@ -36,7 +36,7 @@ msgstr "Ouvrir le menu utilisateur"
 #: front/components/UserMenu.tsx
 #: front/components/me/PendingInvitationsTable.tsx
 msgid "Workspace"
-msgstr "Espace de travail"
+msgstr "Workspace"
 
 #: front/components/UserMenu.tsx
 msgid "Help"
@@ -168,7 +168,7 @@ msgstr "Informations personnelles"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "How you appear to other members of the workspace"
-msgstr "Comment les autres membres de l’espace de travail vous voient"
+msgstr "Comment les autres membres du workspace vous voient"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Save"
@@ -252,7 +252,7 @@ msgstr "Langue"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Language used by Dust for you, across all your workspaces"
-msgstr "Langue de Dust pour vous, dans tous vos espaces de travail"
+msgstr "Langue de Dust pour vous, dans tous vos workspaces"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Theme"
@@ -333,7 +333,7 @@ msgstr "Invitations"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Workspaces you've been invited to join"
-msgstr "Les espaces de travail que vous êtes invité à rejoindre"
+msgstr "Les workspaces que vous êtes invité à rejoindre"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Memory"
@@ -435,19 +435,19 @@ msgstr "Ouvrir ce Pod"
 
 #: front/components/command_palette/CommandPaletteActionPhase.tsx
 msgid "Remove from starred"
-msgstr "Retirer l’étoile"
+msgstr "Retirer des favoris"
 
 #: front/components/command_palette/CommandPaletteActionPhase.tsx
 msgid "Add to starred"
-msgstr "Ajouter une étoile"
+msgstr "Ajouter aux favoris"
 
 #: front/components/command_palette/CommandPaletteActionPhase.tsx
 msgid "Remove this Pod from your starred list"
-msgstr "Retirer l’étoile de ce Pod"
+msgstr "Retirer ce Pod de vos favoris"
 
 #: front/components/command_palette/CommandPaletteActionPhase.tsx
 msgid "Add this Pod to your starred list"
-msgstr "Marquer ce Pod d’une étoile"
+msgstr "Ajouter ce Pod à vos favoris"
 
 #: front/components/command_palette/CommandPaletteActionPhase.tsx
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
@@ -639,7 +639,7 @@ msgstr "Afficher une fenêtre dans Dust"
 
 #: front/components/me/NotificationPreferences.tsx
 msgid "Email and Slack notifications are turned off for this workspace by an admin."
-msgstr "Les notifications par e-mail et Slack ont été désactivées pour cet espace de travail par un administrateur."
+msgstr "Les notifications par e-mail et Slack ont été désactivées pour ce workspace par un administrateur."
 
 #: front/components/me/NotificationPreferences.tsx
 msgid "A direct message in Slack"
@@ -731,7 +731,7 @@ msgstr "Désactivée par un manager ou un administrateur, qui peut la réactiver
 
 #: front/components/me/UserAutomationsTable.tsx
 msgid "Disabled while the workspace is being relocated."
-msgstr "Désactivée pendant le transfert de l’espace de travail."
+msgstr "Désactivée pendant le transfert du workspace."
 
 #: front/components/me/UserAutomationsTable.tsx
 msgid "Disabled following a plan downgrade."
@@ -895,7 +895,7 @@ msgstr "Consultez notre <0>page de statut</0> pour suivre la situation."
 
 #: front/components/navigation/AppStatusBanner.tsx
 msgid "Your workspace is not operational"
-msgstr "Votre espace de travail n’est pas opérationnel"
+msgstr "Votre workspace n’est pas opérationnel"
 
 #: front/components/navigation/AppStatusBanner.tsx
 msgid "Model providers"
@@ -903,7 +903,7 @@ msgstr "Fournisseurs de modèles"
 
 #: front/components/navigation/AppStatusBanner.tsx
 msgid "Contact your workspace admin."
-msgstr "Contactez l’administrateur de votre espace de travail."
+msgstr "Contactez l’administrateur de votre workspace."
 
 #: front/components/navigation/AppStatusBanner.tsx
 msgid "No provider credentials configured. Please set up at least one model provider."
@@ -923,11 +923,11 @@ msgstr "Votre paiement a échoué !"
 
 #: front/components/navigation/AppStatusBanner.tsx
 msgid "Please make sure to update your payment method in the Admin section to maintain access to your workspace. We will retry in a few days."
-msgstr "Veuillez mettre à jour votre moyen de paiement dans la section Administration pour conserver l’accès à votre espace de travail. Nous réessaierons dans quelques jours."
+msgstr "Veuillez mettre à jour votre moyen de paiement dans la section Administration pour conserver l’accès à votre workspace. Nous réessaierons dans quelques jours."
 
 #: front/components/navigation/AppStatusBanner.tsx
 msgid "After 3 attempts, your workspace will be downgraded to the free plan. Connections will be deleted and members will be revoked. Details <0>here</0>."
-msgstr "Après 3 tentatives, votre espace de travail passera au forfait gratuit. Les connexions seront supprimées et l’accès des membres sera révoqué. Détails <0>ici</0>."
+msgstr "Après 3 tentatives, votre workspace passera au forfait gratuit. Les connexions seront supprimées et l’accès des membres sera révoqué. Détails <0>ici</0>."
 
 #: front/components/navigation/AppStatusBanner.tsx
 msgid "Manage credits"
@@ -935,19 +935,19 @@ msgstr "Gérer les crédits"
 
 #: front/components/navigation/AppStatusBanner.tsx
 msgid "Your workspace is out of credits"
-msgstr "Votre espace de travail n’a plus de crédits"
+msgstr "Votre workspace n’a plus de crédits"
 
 #: front/components/navigation/AppStatusBanner.tsx
 msgid "Your workspace has used all its credits"
-msgstr "Votre espace de travail a utilisé tous ses crédits"
+msgstr "Votre workspace a utilisé tous ses crédits"
 
 #: front/components/navigation/AppStatusBanner.tsx
 msgid "Your workspace has run out of credits. Agents are blocked until you top up."
-msgstr "Votre espace de travail n’a plus de crédits. Les agents sont bloqués jusqu’à votre prochaine recharge."
+msgstr "Votre workspace n’a plus de crédits. Les agents sont bloqués jusqu’à votre prochaine recharge."
 
 #: front/components/navigation/AppStatusBanner.tsx
 msgid "Your workspace has used all of its included credits and is now billed pay-as-you-go. Top up to avoid overage charges."
-msgstr "Votre espace de travail a utilisé tous ses crédits inclus et est désormais facturé à l’usage. Rechargez-le pour éviter des frais de dépassement."
+msgstr "Votre workspace a utilisé tous ses crédits inclus et est désormais facturé à l’usage. Rechargez-le pour éviter des frais de dépassement."
 
 #: front/components/navigation/AppStatusBanner.tsx
 msgid "Programmatic API cap reached"
@@ -959,11 +959,11 @@ msgstr "Plafond de l’API programmatique à 80 %"
 
 #: front/components/navigation/AppStatusBanner.tsx
 msgid "Your workspace has exhausted its monthly programmatic API credit cap. Programmatic API calls are blocked until the billing cycle resets or the cap is raised."
-msgstr "Votre espace de travail a épuisé son plafond mensuel de crédits pour l’API programmatique. Les appels programmatiques à l’API sont bloqués jusqu’au prochain cycle de facturation ou au relèvement du plafond."
+msgstr "Votre workspace a épuisé son plafond mensuel de crédits pour l’API programmatique. Les appels programmatiques à l’API sont bloqués jusqu’au prochain cycle de facturation ou au relèvement du plafond."
 
 #: front/components/navigation/AppStatusBanner.tsx
 msgid "Your workspace has used 80% of its monthly programmatic API credit cap. Consider raising the cap to avoid interruptions."
-msgstr "Votre espace de travail a utilisé 80 % de son plafond mensuel de crédits pour l’API programmatique. Pensez à relever le plafond pour éviter les interruptions."
+msgstr "Votre workspace a utilisé 80 % de son plafond mensuel de crédits pour l’API programmatique. Pensez à relever le plafond pour éviter les interruptions."
 
 #: front/components/navigation/AppStatusBanner.tsx
 msgid "Manage usage"
@@ -975,7 +975,7 @@ msgstr "Votre solde de crédits est bas"
 
 #: front/components/navigation/AppStatusBanner.tsx
 msgid "Your workspace's remaining credit balance has dropped below the threshold you set. Top up to avoid running out of credits."
-msgstr "Le solde de crédits de votre espace de travail est passé sous le seuil que vous avez défini. Rechargez-le pour ne pas manquer de crédits."
+msgstr "Le solde de crédits de votre workspace est passé sous le seuil que vous avez défini. Rechargez-le pour ne pas manquer de crédits."
 
 #: front/components/navigation/Navigation.tsx
 msgid "Open navigation"

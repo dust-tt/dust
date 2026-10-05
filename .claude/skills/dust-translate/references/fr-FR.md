@@ -21,7 +21,7 @@
 |---|---|---|
 | Dust | Dust | Never translated |
 | agent | agent | |
-| workspace | espace de travail | |
+| workspace | workspace | Never translated, masculine: « le workspace », « ce workspace » |
 | space | espace | |
 | Pod | Pod | Product name, capitalised |
 | skill | compétence | |
@@ -36,3 +36,4 @@
 | email | e-mail | |
 | settings | paramètres | |
 | sign in | se connecter | |
+| favorite, starred | favori | Never « étoile », even for starred items |
