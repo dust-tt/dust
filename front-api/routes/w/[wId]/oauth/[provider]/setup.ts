@@ -1,6 +1,7 @@
 /** @ignoreswagger */
 
 import { createConnectionAndGetSetupUrl } from "@app/lib/api/oauth";
+import { isTrustedDustOpenerOrigin } from "@app/lib/oauth/opener_origin";
 import type { GetOAuthSetupResponseBody } from "@app/types/api/oauth";
 import {
   ExtraConfigTypeSchema,
@@ -34,6 +35,20 @@ app.get(
     const auth = ctx.get("auth");
     const { provider } = ctx.req.valid("param");
     const { useCase, extraConfig, openerOrigin } = ctx.req.valid("query");
+
+    if (
+      openerOrigin !== undefined &&
+      !isTrustedDustOpenerOrigin(openerOrigin)
+    ) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Invalid openerOrigin: must be an explicitly trusted Dust origin.",
+        },
+      });
+    }
 
     let parsedExtraConfig: z.infer<typeof ExtraConfigTypeSchema> = {};
     if (extraConfig) {

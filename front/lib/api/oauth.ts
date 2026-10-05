@@ -39,6 +39,7 @@ import { ZendeskOAuthProvider } from "@app/lib/api/oauth/providers/zendesk";
 import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
+import { isTrustedDustOpenerOrigin } from "@app/lib/oauth/opener_origin";
 import logger from "@app/logger/logger";
 import type {
   ExtraConfigType,
@@ -238,13 +239,27 @@ export async function createConnectionAndGetSetupUrl(
   // never persist it on the OAuth connection metadata.
   const { mcp_server_id: _mcpServerId, ...connectionExtraConfig } = extraConfig;
 
+  // Defense in depth: only persist opener origins that are trusted Dust
+  // surfaces. The setup route also rejects untrusted values with 400.
+  const trustedOpenerOrigin =
+    openerOrigin && isTrustedDustOpenerOrigin(openerOrigin)
+      ? openerOrigin
+      : undefined;
+  if (openerOrigin && !trustedOpenerOrigin) {
+    return new Err({
+      code: "connection_creation_failed",
+      message:
+        "Invalid openerOrigin: must be an explicitly trusted Dust origin.",
+    });
+  }
+
   const metadata: Record<string, unknown> = {
     use_case: useCase,
     workspace_id: auth.getNonNullableWorkspace().sId,
     user_id: auth.getNonNullableUser().sId,
     ...connectionExtraConfig,
     // Store opener origin for postMessage after OAuth finalize (cross-origin popup communication)
-    ...(openerOrigin && { opener_origin: openerOrigin }),
+    ...(trustedOpenerOrigin && { opener_origin: trustedOpenerOrigin }),
   };
 
   const cRes = await api.createConnection({
