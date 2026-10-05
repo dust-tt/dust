@@ -124,9 +124,7 @@ async function availableExecutionModes(
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface TriggerResource extends ReadonlyAttributesType<TriggerModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 /**
  * @cc [owner:adrsimon,label:security;product] trigger-workspace-pool-capability
  * `use_workspace_pool` on the `trigger` type means charging a trigger's runs to the workspace's

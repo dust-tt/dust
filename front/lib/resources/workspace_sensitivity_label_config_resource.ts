@@ -16,10 +16,8 @@ export type WorkspaceSensitivityLabelConfigType = {
   allowedLabels: AllowedLabel[];
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface WorkspaceSensitivityLabelConfigResource
   extends ReadonlyAttributesType<WorkspaceSensitivityLabelConfigModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class WorkspaceSensitivityLabelConfigResource extends BaseResource<WorkspaceSensitivityLabelConfigModel> {
   static model: ModelStatic<WorkspaceSensitivityLabelConfigModel> =
     WorkspaceSensitivityLabelConfigModel;

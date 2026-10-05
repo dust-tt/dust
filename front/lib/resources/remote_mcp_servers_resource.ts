@@ -132,13 +132,11 @@ type RemoteMCPServerHeavyAttributesType = Pick<
 // Heavy attributes are not exposed directly: use their getters (`getCachedTools`, ...) after
 // listing them in `includeHeavyAttributes` at fetch time (none are fetched by default) or
 // after an explicit `hydrateHeavyAttributes`.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface RemoteMCPServerResource
   extends Omit<
     ReadonlyAttributesType<RemoteMCPServerModel>,
     RemoteMCPServerHeavyAttributeType
   > {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> {
   static model: ModelStaticWorkspaceAware<RemoteMCPServerModel> =
     RemoteMCPServerModel;

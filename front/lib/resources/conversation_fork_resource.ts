@@ -45,11 +45,9 @@ type ConversationForkResourceIds = Pick<
   | "sourceMessageId"
 >;
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ConversationForkResource
   extends ReadonlyAttributesType<ConversationForkModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ConversationForkResource extends BaseResource<ConversationForkModel> {
   static model: ModelStaticWorkspaceAware<ConversationForkModel> =
     ConversationForkModel;

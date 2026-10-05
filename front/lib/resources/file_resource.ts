@@ -1,6 +1,3 @@
-// Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// This design will be moved up to BaseResource once we transition away from Sequelize.
-
 import path from "node:path";
 
 import config from "@app/lib/api/config";
@@ -185,9 +182,9 @@ export type LegacyFrameFields = Pick<
   | "useCaseMetadata"
 >;
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+// Attributes are marked as read-only to reflect the stateless nature of our Resource.
+// This design will be moved up to BaseResource once we transition away from Sequelize.
 export interface FileResource extends ReadonlyAttributesType<FileModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class FileResource extends BaseResource<FileModel> {
   static model: ModelStaticWorkspaceAware<FileModel> = FileModel;
   static shareableFileModel: ModelStaticWorkspaceAware<ShareableFileModel> =

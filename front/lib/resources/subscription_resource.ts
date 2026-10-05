@@ -128,11 +128,8 @@ type CachedSubscription = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SubscriptionResource
   extends ReadonlyAttributesType<SubscriptionModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SubscriptionResource extends BaseResource<SubscriptionModel> {
   static model: ModelStaticWorkspaceAware<SubscriptionModel> =
     SubscriptionModel;
@@ -1557,13 +1554,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     return {
       status: this.status ?? "active",
       sId: this.sId || null,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       stripeSubscriptionId: this.stripeSubscriptionId || null,
       metronomeContractId: this.metronomeContractId ?? null,
       startDate: this.startDate?.getTime() || null,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       endDate: this.endDate?.getTime() || null,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       paymentFailingSince: this.paymentFailingSince?.getTime() || null,
       plan: this.getPlan(),
       requestCancelAt: this.requestCancelAt?.getTime() ?? null,

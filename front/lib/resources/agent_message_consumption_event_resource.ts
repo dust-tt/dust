@@ -45,11 +45,9 @@ type ConsumptionEventAppendArgs = {
   transaction: Transaction;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentMessageConsumptionEventResource
   extends ReadonlyAttributesType<AgentMessageConsumptionEventModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentMessageConsumptionEventResource extends BaseResource<AgentMessageConsumptionEventModel> {
   static model: ModelStaticWorkspaceAware<AgentMessageConsumptionEventModel> =
     AgentMessageConsumptionEventModel;

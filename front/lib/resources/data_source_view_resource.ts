@@ -1,6 +1,3 @@
-// Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// This design will be moved up to BaseResource once we transition away from Sequelize.
-
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -84,10 +81,10 @@ function isAllowedSearchColumn(column: string): column is AllowedSearchColumns {
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+// Attributes are marked as read-only to reflect the stateless nature of our Resource.
+// This design will be moved up to BaseResource once we transition away from Sequelize.
 export interface DataSourceViewResource
   extends ReadonlyAttributesType<DataSourceViewModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewModel> {
   static model: ModelStatic<DataSourceViewModel> = DataSourceViewModel;
 
@@ -619,7 +616,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     parentsToAdd: string[] = [],
     parentsToRemove: string[] = []
   ): Promise<Result<undefined, Error>> {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const currentParents = this.parentsIn || [];
 
     if (this.kind === "default") {

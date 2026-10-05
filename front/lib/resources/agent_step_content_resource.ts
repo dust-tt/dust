@@ -50,11 +50,9 @@ const METADATA_ATTRIBUTES = [
 ] as const;
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentStepContentResource
   extends ReadonlyAttributesType<AgentStepContentModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentStepContentResource extends BaseResource<AgentStepContentModel> {
   static model: ModelStaticWorkspaceAware<AgentStepContentModel> =
     AgentStepContentModel;

@@ -181,10 +181,8 @@ function autoGroupName({
   return `Group for permission ${grantType} on ${resourceType} (${resourceId})`;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface GroupPermissionResource
   extends ReadonlyAttributesType<GroupPermissionModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class GroupPermissionResource extends BaseResource<GroupPermissionModel> {
   static model: ModelStatic<GroupPermissionModel> = GroupPermissionModel;
 

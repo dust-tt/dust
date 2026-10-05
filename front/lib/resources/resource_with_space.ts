@@ -125,7 +125,6 @@ export abstract class ResourceWithSpace<
             throw new Error("Unreachable: space not found.");
           }
 
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           const includedResults = (includes || []).reduce<IncludeType>(
             (acc, current) => {
               if (
