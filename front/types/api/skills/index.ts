@@ -18,6 +18,12 @@ export type GetSkillsResponseBody = {
   })[];
 };
 
+export type GetSkillsReinforcementSettingsResponseBody = {
+  skills: (SkillWithoutInstructionsAndToolsType & {
+    editors: UserType[] | null;
+  })[];
+};
+
 export type SkillSearchPermissionFiltering = Exclude<
   SkillPermissionFilteringMode,
   "dangerously_skip"
