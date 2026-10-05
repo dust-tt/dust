@@ -460,13 +460,11 @@ describe("OAuth setup handler", () => {
     );
 
     expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({
-      error: {
-        type: "invalid_request_error",
-        message:
-          "Invalid openerOrigin: must be an explicitly trusted Dust origin.",
-      },
-    });
+    const body = await response.json();
+    expect(body.error.type).toBe("invalid_request_error");
+    expect(body.error.message).toContain(
+      "must be an explicitly trusted Dust origin"
+    );
     expect(mocks.createConnection).not.toHaveBeenCalled();
   });
 
@@ -499,6 +497,43 @@ describe("OAuth setup handler", () => {
           use_case: "connection",
         }),
       })
+    );
+  });
+
+  it("does not persist opener_origin smuggled through extraConfig", async () => {
+    vi.spyOn(config, "getOAuthGoogleDriveClientId").mockReturnValue(
+      "drive-client"
+    );
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+
+    // platform_actions + scope is a path where providers accept extra keys;
+    // opener_origin must still be stripped before metadata persistence.
+    const params = new URLSearchParams({
+      useCase: "platform_actions",
+      extraConfig: JSON.stringify({
+        scope: "https://www.googleapis.com/auth/drive.readonly",
+        opener_origin: "https://attacker.example",
+      }),
+    });
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/oauth/google_drive/setup?${params}`
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.createConnection).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        metadata: expect.not.objectContaining({
+          opener_origin: expect.anything(),
+        }),
+      })
+    );
+    const metadata = mocks.createConnection.mock.calls[0][0].metadata;
+    expect(metadata).not.toHaveProperty("opener_origin");
+    expect(metadata.scope).toBe(
+      "https://www.googleapis.com/auth/drive.readonly"
     );
   });
 });

@@ -21,7 +21,12 @@ const ProviderParamSchema = z.object({
 const SetupQuerySchema = z.object({
   useCase: z.enum(OAUTH_USE_CASES),
   extraConfig: z.string().optional(),
-  openerOrigin: z.string().optional(),
+  openerOrigin: z
+    .string()
+    .refine(isTrustedDustOpenerOrigin, {
+      message: "must be an explicitly trusted Dust origin",
+    })
+    .optional(),
 });
 
 // Mounted at /api/w/:wId/oauth/:provider/setup.
@@ -35,20 +40,6 @@ app.get(
     const auth = ctx.get("auth");
     const { provider } = ctx.req.valid("param");
     const { useCase, extraConfig, openerOrigin } = ctx.req.valid("query");
-
-    if (
-      openerOrigin !== undefined &&
-      !isTrustedDustOpenerOrigin(openerOrigin)
-    ) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            "Invalid openerOrigin: must be an explicitly trusted Dust origin.",
-        },
-      });
-    }
 
     let parsedExtraConfig: z.infer<typeof ExtraConfigTypeSchema> = {};
     if (extraConfig) {

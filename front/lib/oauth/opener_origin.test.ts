@@ -103,7 +103,6 @@ describe("connectionPayloadForOpener", () => {
       provider: "github",
       status: "finalized",
       related_credential_id: "cred_1",
-      redirect_uri: "https://app.dust.tt/oauth/github/finalize",
       metadata: {},
     });
   });

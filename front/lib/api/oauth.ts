@@ -121,6 +121,15 @@ export async function createConnectionAndGetSetupUrl(
 
   const providerStrategy = getProviderStrategy(provider);
 
+  // opener_origin is reserved for the validated query param. Strip it from
+  // caller-supplied extraConfig before validation/persistence so it cannot
+  // bypass the allowlist via metadata spread.
+  const {
+    opener_origin: _openerOriginFromExtraConfig,
+    ...extraConfigWithoutOpenerOrigin
+  } = extraConfig;
+  extraConfig = extraConfigWithoutOpenerOrigin;
+
   if (!providerStrategy.isExtraConfigValid(extraConfig, useCase)) {
     logger.error(
       { provider, useCase, extraConfig },
@@ -240,7 +249,7 @@ export async function createConnectionAndGetSetupUrl(
   const { mcp_server_id: _mcpServerId, ...connectionExtraConfig } = extraConfig;
 
   // Defense in depth: only persist opener origins that are trusted Dust
-  // surfaces. The setup route also rejects untrusted values with 400.
+  // surfaces. The setup route also rejects untrusted query values with 400.
   const trustedOpenerOrigin =
     openerOrigin && isTrustedDustOpenerOrigin(openerOrigin)
       ? openerOrigin

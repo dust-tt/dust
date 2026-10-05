@@ -92,7 +92,6 @@ describe("OAuthFinalizePage postMessage target origin", () => {
           provider: "github",
           status: "finalized",
           related_credential_id: undefined,
-          redirect_uri: undefined,
           metadata: {},
         },
       },
