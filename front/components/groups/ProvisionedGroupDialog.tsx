@@ -158,16 +158,6 @@ function ProvisionedGroupDetails({
           <p className="text-sm italic text-muted-foreground">
             {PROVISIONED_GROUP_TOOLTIP}
           </p>
-          {group.allowedActions?.canAssignManagers && (
-            <GroupManagersField
-              owner={owner}
-              group={group}
-              managers={selectedManagers}
-              groupMemberIds={new Set(members.map((member) => member.sId))}
-              onChange={setSelectedManagers}
-              disabled={isUpdating}
-            />
-          )}
           {hasFeature("group_management") && (
             <h3 className="text-sm font-semibold">
               Group members ({rows.length})
@@ -185,6 +175,16 @@ function ProvisionedGroupDetails({
             <div className="text-sm text-muted-foreground">
               This group has no members.
             </div>
+          )}
+          {group.allowedActions?.canAssignManagers && (
+            <GroupManagersField
+              owner={owner}
+              group={group}
+              managers={selectedManagers}
+              groupMemberIds={new Set(members.map((member) => member.sId))}
+              onChange={setSelectedManagers}
+              disabled={isUpdating}
+            />
           )}
         </div>
       </DialogContainer>
