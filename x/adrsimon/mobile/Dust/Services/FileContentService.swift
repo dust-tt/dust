@@ -14,6 +14,21 @@ enum FileContentService {
         return try await APIClient.authenticatedGetRawData(endpoint, tokenProvider: tokenProvider)
     }
 
+    static func fetchFileData(
+        workspaceId: String,
+        file: FileReference,
+        tokenProvider: TokenProvider
+    ) async throws -> Data {
+        switch file {
+        case let .id(fileId):
+            return try await fetchFileData(workspaceId: workspaceId, fileId: fileId, tokenProvider: tokenProvider)
+        case let .path(path):
+            let endpoint = AppConfig.Endpoints.filePathView(workspaceId: workspaceId, path: path)
+            logger.info("Fetching file data by path")
+            return try await APIClient.authenticatedGetRawData(endpoint, tokenProvider: tokenProvider)
+        }
+    }
+
     static func fetchConversationAttachments(
         workspaceId: String,
         conversationId: String,

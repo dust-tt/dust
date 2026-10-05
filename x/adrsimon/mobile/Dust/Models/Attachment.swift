@@ -33,9 +33,14 @@ struct Attachment: Identifiable {
     }
 
     static let frameContentTypePrefix = "application/vnd.dust.frame"
+    static let frameV2ContentType = "application/vnd.dust.frame.v2+json"
 
     static func isFrame(_ contentType: String) -> Bool {
         contentType.hasPrefix(frameContentTypePrefix)
+    }
+
+    static func isFrameV2(_ contentType: String) -> Bool {
+        contentType == frameV2ContentType
     }
 
     static func isImage(_ contentType: String) -> Bool {

@@ -72,6 +72,21 @@ enum AppConfig {
             "/api/w/\(workspaceId)/files/\(fileId)?action=view"
         }
 
+        static func filePathView(workspaceId: String, path: String) -> String {
+            let encodedPath = path.split(separator: "/")
+                .map { $0.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? String($0) }
+                .joined(separator: "/")
+            return "/api/w/\(workspaceId)/files/path/\(encodedPath)"
+        }
+
+        static func fileMetadata(workspaceId: String, fileId: String) -> String {
+            "/api/w/\(workspaceId)/files/\(fileId)/metadata"
+        }
+
+        static func framePermissions(workspaceId: String, frameId: String) -> String {
+            "/api/w/\(workspaceId)/frames/\(frameId)/permissions"
+        }
+
         static func conversationAttachments(workspaceId: String, conversationId: String) -> String {
             "/api/w/\(workspaceId)/assistant/conversations/\(conversationId)/attachments"
         }
