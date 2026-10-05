@@ -46,6 +46,7 @@ import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
 import { SKILL_ICON } from "@app/lib/skill";
+import { getCreateFromConversationRoute } from "@app/lib/skills/conversational_building";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
@@ -87,6 +88,7 @@ import {
   FolderOpen,
   Icon,
   Label,
+  MessageChatCircle,
   MessagePlusCircle,
   NavigationList,
   NavigationListCollapsibleSection,
@@ -938,6 +940,16 @@ export function AgentSidebarMenu({
                 >
                   <DropdownMenuLabel label="New skill" />
                   <DropdownMenuItem
+                    href={getCreateFromConversationRoute(owner.sId, "skill")}
+                    icon={MessageChatCircle}
+                    label="From conversation"
+                    onClick={withTracking(
+                      TRACKING_AREAS.BUILDER,
+                      "create_skill_from_conversation",
+                      () => setSidebarOpen(false)
+                    )}
+                  />
+                  <DropdownMenuItem
                     href={getSkillBuilderRoute(owner.sId, "new")}
                     icon={SKILL_ICON}
                     label="From scratch"
@@ -950,7 +962,11 @@ export function AgentSidebarMenu({
                   <DropdownMenuItem
                     icon={FolderOpen}
                     label="From existing"
-                    onClick={() => setIsImportSkillDialogOpen(true)}
+                    onClick={withTracking(
+                      TRACKING_AREAS.BUILDER,
+                      "import_skill",
+                      () => setIsImportSkillDialogOpen(true)
+                    )}
                   />
                 </DropdownMenuContent>
               </DropdownMenu>
