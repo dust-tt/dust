@@ -1,8 +1,8 @@
+import { timeAgoFrom } from "@app/lib/client/relative_time";
 import {
   useAgentMemoriesForUser,
   useDeleteAgentMemory,
 } from "@app/lib/swr/agent_memories";
-import { timeAgoFrom } from "@app/lib/utils";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -147,8 +147,7 @@ export function AgentMemoryTab({
                   >
                     <div className="flex flex-col gap-2">
                       <div className="text-xs text-muted-foreground">
-                        {timeAgoFrom(new Date(memory.lastUpdated).getTime())}{" "}
-                        ago
+                        {timeAgoFrom(new Date(memory.lastUpdated).getTime())}
                       </div>
                       <div className="text-sm text-foreground">
                         {memory.content}

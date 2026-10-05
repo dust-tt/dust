@@ -396,14 +396,6 @@ export function findSelectedModelEntry(
   );
 }
 
-export function getSelectedModelEntries(
-  selection: ModelPickerSelectionModel
-): SelectedModelEntry[] {
-  return selection.selected.filter(
-    (entry): entry is SelectedModelEntry => entry.kind === "model"
-  );
-}
-
 // Display equality ignoring reasoning effort: two model displays for the same
 // model are "the same" regardless of effort. Used to highlight the selected row
 // and to mark the default, where effort is surfaced by the slider instead.

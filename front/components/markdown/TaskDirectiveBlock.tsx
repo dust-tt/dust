@@ -1,6 +1,7 @@
 import { ConversationSidebarStatusDot } from "@app/components/assistant/conversation/ConversationSidebarStatusDot";
 import { PodTaskStartWorkingDropdown } from "@app/components/pod/tasks/PodTaskStartWorkingDropdown";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { timeAgoFrom } from "@app/lib/client/relative_time";
 import { useAppRouter } from "@app/lib/platform";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
@@ -9,7 +10,6 @@ import {
   useUpdatePodTask,
   useWorkspacePodTask,
 } from "@app/lib/swr/pods";
-import { timeAgoFrom } from "@app/lib/utils";
 import type { ConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
 import type { GetWorkspacePodTaskResponseBody } from "@app/types/api/projects/tasks";
@@ -51,7 +51,7 @@ function formatTaskStatusLabel(status: PodTaskStatus): string {
 }
 
 function formatRelativeAgo(value: Date | string): string {
-  return `${timeAgoFrom(new Date(value).getTime(), { useLongFormat: true })} ago`;
+  return timeAgoFrom(new Date(value).getTime(), { useLongFormat: true });
 }
 
 function conversationActivityCaption(

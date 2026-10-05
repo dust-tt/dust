@@ -1,3 +1,5 @@
+import type { SearchMemberWithWorkspaceType } from "@app/components/members/MemberSelectionTable";
+import { isFullUserType } from "@app/components/members/MemberSelectionTable";
 import {
   GROUP_ROLE_MANAGED_MESSAGE,
   getRoleDescription,
@@ -5,14 +7,10 @@ import {
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { MemberGroupsSection } from "@app/components/workspace/MemberGroupsSection";
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { SearchMembersAdminResponseBody } from "@app/lib/api/workspace";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { handleMembersRoleChange } from "@app/lib/client/members";
 import { useWorkspaceGrantedRoles } from "@app/lib/swr/groups";
-import type {
-  ActiveRoleType,
-  LightWorkspaceType,
-  UserTypeWithWorkspace,
-} from "@app/types/user";
+import type { ActiveRoleType, LightWorkspaceType } from "@app/types/user";
 import { isActiveRoleType, isAdmin } from "@app/types/user";
 import {
   Avatar,
@@ -34,7 +32,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
-import type { KeyedMutator } from "swr";
 
 function getMemberRoleMessage({
   rolesManagedByGroups,
@@ -52,6 +49,11 @@ function getMemberRoleMessage({
   )}`;
 }
 
+/**
+ * @cc [owner:philipperolet,label:security;react] delegated-member-controls
+ * Group delegation MUST NOT expose workspace role changes or workspace removal. Those controls
+ * require the caller's workspace manager role, even when the selected member has a full profile.
+ */
 export function ChangeMemberModal({
   onClose,
   member,
@@ -59,10 +61,13 @@ export function ChangeMemberModal({
   workspace,
 }: {
   onClose: () => void;
-  member: UserTypeWithWorkspace | null;
-  mutateMembers: KeyedMutator<SearchMembersAdminResponseBody>;
+  member: SearchMemberWithWorkspaceType | null;
+  mutateMembers: () => void | Promise<unknown>;
   workspace: LightWorkspaceType;
 }) {
+  const { isManager } = useAuth();
+  const canEditWorkspaceMember =
+    isManager && member !== null && isFullUserType(member);
   const { role = null } = member?.workspace ?? {};
 
   const sendNotification = useSendNotification();
@@ -73,6 +78,7 @@ export function ChangeMemberModal({
 
   const { grantedRoles } = useWorkspaceGrantedRoles({
     workspaceId: workspace.sId,
+    disabled: !canEditWorkspaceMember,
   });
 
   const rolesManagedByGroups = grantedRoles.length > 0;
@@ -86,10 +92,11 @@ export function ChangeMemberModal({
       : "";
 
   // Revoking an admin requires to be an admin
-  const canRevokeMember = role !== "admin" || isAdmin(workspace);
+  const canRevokeMember =
+    canEditWorkspaceMember && (role !== "admin" || isAdmin(workspace));
 
   const handleSave = async () => {
-    if (!selectedRole) {
+    if (!selectedRole || !canEditWorkspaceMember) {
       return;
     }
     setIsSaving(true);
@@ -136,18 +143,20 @@ export function ChangeMemberModal({
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    <div className="heading-base text-foreground">Role:</div>
-                    <RoleDropDown
-                      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                      selectedRole={selectedRole || role}
-                      onChange={setSelectedRole}
-                      disabled={rolesManagedByGroups}
-                    />
+                {canEditWorkspaceMember && (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="heading-base text-foreground">Role:</div>
+                      <RoleDropDown
+                        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+                        selectedRole={selectedRole || role}
+                        onChange={setSelectedRole}
+                        disabled={rolesManagedByGroups}
+                      />
+                    </div>
+                    <Page.P>{roleMessage}</Page.P>
                   </div>
-                  <Page.P>{roleMessage}</Page.P>
-                </div>
+                )}
 
                 <MemberGroupsSection owner={workspace} userId={member.sId} />
 
@@ -222,17 +231,19 @@ export function ChangeMemberModal({
                 )}
               </div>
             </SheetContainer>
-            <SheetFooter
-              rightButtonProps={{
-                label: "Update role",
-                onClick: handleSave,
-                disabled:
-                  selectedRole === member.workspace.role ||
-                  isSaving ||
-                  rolesManagedByGroups,
-                isLoading: isSaving,
-              }}
-            />
+            {canEditWorkspaceMember && (
+              <SheetFooter
+                rightButtonProps={{
+                  label: "Update role",
+                  onClick: handleSave,
+                  disabled:
+                    selectedRole === member.workspace.role ||
+                    isSaving ||
+                    rolesManagedByGroups,
+                  isLoading: isSaving,
+                }}
+              />
+            )}
           </>
         ) : null}
       </SheetContent>

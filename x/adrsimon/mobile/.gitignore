@@ -1,6 +1,13 @@
 ## Xcode
-*.xcodeproj/
-*.xcworkspace/
+*.xcodeproj/*
+!*.xcodeproj/project.xcworkspace/
+*.xcodeproj/project.xcworkspace/*
+!*.xcodeproj/project.xcworkspace/xcshareddata/
+*.xcodeproj/project.xcworkspace/xcshareddata/*
+!*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/*
+!*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+/*.xcworkspace/
 xcuserdata/
 DerivedData/
 build/
@@ -17,7 +24,6 @@ build/
 ## Swift Package Manager
 .build/
 Packages/
-Package.resolved
 
 ## macOS
 .DS_Store

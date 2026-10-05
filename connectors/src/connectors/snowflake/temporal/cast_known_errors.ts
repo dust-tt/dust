@@ -135,6 +135,18 @@ function isSnowflakeInvalidJwtError(err: unknown): boolean {
   );
 }
 
+function isSnowflakeSessionNoLongerExistsError(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "name" in err &&
+    err.name === "OperationFailedError" &&
+    "message" in err &&
+    typeof err.message === "string" &&
+    err.message.includes("Session no longer exists")
+  );
+}
+
 function isSnowflakeListingTrialExpiredError(err: unknown): err is Error {
   return (
     err instanceof Error &&
@@ -144,9 +156,32 @@ function isSnowflakeListingTrialExpiredError(err: unknown): err is Error {
   );
 }
 
+function isSnowflakeMfaRequiredError(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "message" in err &&
+    typeof err.message === "string" &&
+    err.message.startsWith(
+      "Multi-factor authentication is required for this account. Log in to Snowsight to enroll."
+    )
+  );
+}
+
 export class SnowflakeCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor
 {
+  /**
+   * @cc [owner:aubin-tchoi,label:error-handling] snowflake-session-requires-relogin
+   * Activity failures named `OperationFailedError` whose message contains
+   * `Session no longer exists` MUST be thrown as `ExternalOAuthTokenError`.
+   */
+  /**
+   * @cc [owner:aubin-tchoi,label:error-handling] snowflake-mfa-requires-reauthorization
+   * Activity failures whose message starts with `Multi-factor authentication is
+   * required for this account. Log in to Snowsight to enroll.` MUST be thrown as
+   * `ExternalOAuthTokenError`, preserving the original Error as the cause.
+   */
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">
@@ -164,7 +199,9 @@ export class SnowflakeCastKnownErrorsInterceptor
         isSnowflakeSuspendedError(err) ||
         isSnowflakeUserAccessDisabledError(err) ||
         isSnowflakeInsufficientPrivilegesError(err) ||
-        isSnowflakeInvalidJwtError(err)
+        isSnowflakeInvalidJwtError(err) ||
+        isSnowflakeSessionNoLongerExistsError(err) ||
+        isSnowflakeMfaRequiredError(err)
       ) {
         throw new ExternalOAuthTokenError(normalizeError(err));
       }

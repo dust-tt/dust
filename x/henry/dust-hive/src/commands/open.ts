@@ -16,7 +16,7 @@ interface OpenOptions {
   warmCommand?: string | undefined;
   noAttach?: boolean | undefined;
   initialCommand?: string | undefined;
-  initialInput?: string | undefined;
+  initialInput?: LayoutConfig["initialInput"];
   compact?: boolean | undefined;
   unifiedLogs?: boolean | undefined;
 }

@@ -11,7 +11,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 
 export type { AdditionalConfigurationInBuilderType } from "@app/lib/actions/additional_configuration";
-export { additionalConfigurationSchema } from "@app/lib/actions/additional_configuration";
 
 export type CapabilityFilterType = "all" | "skills" | "tools";
 

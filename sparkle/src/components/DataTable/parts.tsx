@@ -71,12 +71,16 @@ export function Header({ children, className, ...props }: HeaderProps) {
 
 interface HeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
   children?: ReactNode;
-  column: Column<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  column: Column<any>;
   /** Makes the header a sort toggle (button + sort icon + `aria-sort`); prefer it over `onClick` so keyboard users can sort. */
   onSort?: React.MouseEventHandler<HTMLButtonElement>;
 }
 
 /** Header cell (th) with alignment, optional tooltip, and optional sort button from the column meta. */
+/**
+ * @cc [owner:aubin-tchoi,label:react] stable-sort-header
+ * Pressing a sort header MUST NOT move or resize its label or icon.
+ */
 export function Head({
   children,
   className,
@@ -95,7 +99,6 @@ export function Head({
       className={cn(
         "heading-sm flex w-full min-w-0 cursor-pointer items-center gap-1 whitespace-nowrap rounded-xs capitalize text-foreground",
         "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
-        "active:scale-[0.985] motion-reduce:active:scale-100",
         ALIGN_JUSTIFY_CLASS[presets.headerAlign]
       )}
     >

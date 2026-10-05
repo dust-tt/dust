@@ -5,11 +5,13 @@ import {
 import { useAwuPurchase } from "@app/hooks/useAwuPurchase";
 import config from "@app/lib/api/config";
 import { formatCredits } from "@app/lib/client/credits";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import type { AwuPurchaseInfo } from "@app/lib/credits/awu_purchase";
 import {
   MAX_AWU_PURCHASE_CREDITS_PER_CYCLE,
   MIN_AWU_PURCHASE_CREDITS,
 } from "@app/lib/credits/awu_purchase_constants";
+import { formatNumber } from "@app/lib/i18n/format";
 import {
   awuCreditsToCurrency,
   currencyToAwuCredits,
@@ -20,7 +22,6 @@ import {
   useRedeemPoolTopupCoupon,
 } from "@app/lib/swr/credits";
 import { useValidateCoupon } from "@app/lib/swr/workspaces";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { CouponType } from "@app/types/coupon";
 import { CURRENCY_SYMBOLS } from "@app/types/currency";
 import {
@@ -78,9 +79,9 @@ function formatPaymentMethodLabel(
 
 function formatCost(amount: number): string {
   if (Number.isInteger(amount)) {
-    return amount.toLocaleString("en-US");
+    return formatNumber(amount);
   }
-  return amount.toLocaleString("en-US", {
+  return formatNumber(amount, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
@@ -476,7 +477,7 @@ export function BuyAwuCreditsDialog({
     if (maxAmountInCurrency === null) {
       return null;
     }
-    return `${currencySymbol}${maxAmountInCurrency.toLocaleString()}`;
+    return `${currencySymbol}${formatNumber(maxAmountInCurrency)}`;
   }, [maxAmountInCurrency, currencySymbol]);
 
   const effectiveMaxAmount =

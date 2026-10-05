@@ -60,6 +60,7 @@ describe("interactive_content", () => {
       ])
     );
     await expect(listToolNames({ enableFramesV2: true })).resolves.toEqual([
+      CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
       EXPORT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
     ]);
   });

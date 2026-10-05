@@ -1,7 +1,11 @@
 import { BulkSelectionBar } from "@app/components/shared/BulkSelectionBar";
+import type { ArchivableSkill } from "@app/components/skills/ArchiveSkillsDialog";
 import { ArchiveSkillsDialog } from "@app/components/skills/ArchiveSkillsDialog";
-import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
-import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
+import { getSkillIcon, SKILL_AVATAR_BACKGROUND_COLOR } from "@app/lib/skill";
+import type {
+  SkillAvailability,
+  SkillListItemType,
+} from "@app/types/assistant/skill_configuration";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -60,10 +64,14 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
   },
 ];
 
+export type BatchEditableSkill = ArchivableSkill &
+  Pick<SkillListItemType, "canAdministrate" | "name" | "icon">;
+
 interface SkillsBatchEditBarProps {
-  selectedSkills: GetSkillsWithRelationsResponseBody["skills"];
+  selectedSkills: BatchEditableSkill[];
   totalCount: number;
   isUpdating: boolean;
+  canSetAvailability?: boolean;
   canMakeSkillAutoDiscoverable: boolean;
   owner: LightWorkspaceType;
   onClear: () => void;
@@ -75,6 +83,7 @@ export function SkillsBatchEditBar({
   selectedSkills,
   totalCount,
   isUpdating,
+  canSetAvailability = true,
   canMakeSkillAutoDiscoverable,
   owner,
   onClear,
@@ -96,38 +105,45 @@ export function SkillsBatchEditBar({
       onClear={onClear}
       disabled={isUpdating}
       isLoading={isUpdating}
+      selectedAvatars={selectedSkills.map((skill) => ({
+        name: skill.name,
+        icon: getSkillIcon(skill.icon),
+        backgroundColor: SKILL_AVATAR_BACKGROUND_COLOR,
+      }))}
     >
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="primary"
-            size="sm"
-            label="Set availability"
-            isSelect
-            disabled={isUpdating}
-          />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {BATCH_AVAILABILITY_ACTIONS.map((action) => {
-            const isActionDisabled =
-              action.availability === "users_and_agents" &&
-              !canMakeSkillAutoDiscoverable;
-            return (
-              <DropdownMenuItem
-                key={action.availability}
-                label={action.label}
-                description={
-                  isActionDisabled
-                    ? "You don’t have permission to make skills auto-discoverable"
-                    : action.description
-                }
-                disabled={isActionDisabled}
-                onClick={() => onSelectAction(action)}
-              />
-            );
-          })}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      {canSetAvailability && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="primary"
+              size="sm"
+              label="Set availability"
+              isSelect
+              disabled={isUpdating}
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {BATCH_AVAILABILITY_ACTIONS.map((action) => {
+              const isActionDisabled =
+                action.availability === "users_and_agents" &&
+                !canMakeSkillAutoDiscoverable;
+              return (
+                <DropdownMenuItem
+                  key={action.availability}
+                  label={action.label}
+                  description={
+                    isActionDisabled
+                      ? "You don’t have permission to make skills auto-discoverable"
+                      : action.description
+                  }
+                  disabled={isActionDisabled}
+                  onClick={() => onSelectAction(action)}
+                />
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
       <ArchiveSkillsDialog
         skills={selectedSkills}
         disabled={isUpdating || !canArchiveSelection}

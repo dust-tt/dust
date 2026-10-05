@@ -3,8 +3,8 @@ import {
   getIcon,
   ResourceAvatar,
 } from "@app/components/resources/resources_icons";
+import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/lib/triggers/webhooks_client_side";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
-import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/types/triggers/webhooks_client_side";
 import type { Avatar } from "@dust-tt/sparkle";
 import type { ComponentProps } from "react";
 

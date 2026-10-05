@@ -1,6 +1,5 @@
 import type { BigQueryConfigurationModel } from "@connectors/lib/models/bigquery";
 import type { ConfluenceConfigurationModel } from "@connectors/lib/models/confluence";
-import type { DiscordConfigurationModel } from "@connectors/lib/models/discord";
 import type { DustProjectConfigurationModel } from "@connectors/lib/models/dust_project";
 import type { GithubConnectorStateModel } from "@connectors/lib/models/github";
 import type { GongConfigurationModel } from "@connectors/lib/models/gong";
@@ -16,7 +15,6 @@ import type { WebCrawlerConfigurationModel } from "@connectors/lib/models/webcra
 import type { ZendeskConfigurationModel } from "@connectors/lib/models/zendesk";
 import { BigQueryConnectorStrategy } from "@connectors/resources/connector/bigquery";
 import { ConfluenceConnectorStrategy } from "@connectors/resources/connector/confluence";
-import { DiscordConnectorStrategy } from "@connectors/resources/connector/discord";
 import { DustProjectConnectorStrategy } from "@connectors/resources/connector/dust_project";
 import { GithubConnectorStrategy } from "@connectors/resources/connector/github";
 import { GongConnectorStrategy } from "@connectors/resources/connector/gong";
@@ -50,7 +48,6 @@ export type WithCreationAttributes<T extends Model> = CreationAttributes<T>;
 
 export interface ConnectorProviderModelM {
   confluence: ConfluenceConfigurationModel;
-  discord_bot: DiscordConfigurationModel;
   github: GithubConnectorStateModel;
   google_drive: GoogleDriveConfigModel;
   intercom: IntercomWorkspaceModel;
@@ -91,7 +88,6 @@ export type ConnectorProviderConfigurationResource =
 
 export interface ConnectorProviderConfigurationTypeM {
   confluence: null;
-  discord_bot: null;
   github: null;
   google_drive: null;
   intercom: null;
@@ -143,9 +139,6 @@ export function getConnectorProviderStrategy(
   switch (type) {
     case "confluence":
       return new ConfluenceConnectorStrategy();
-
-    case "discord_bot":
-      return new DiscordConnectorStrategy();
 
     case "github":
       return new GithubConnectorStrategy();

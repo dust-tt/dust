@@ -29,6 +29,8 @@ export function makeMemberUsage(
     overallUsageTarget: null,
     spendLimitAlertId: null,
     spendLimitAwuCredits: null,
+    poolCapOverrideExpiresAt: null,
+    poolCapOverridePreviousAwuCredits: null,
     rateLimiterSpendAwuCredits: null,
     metronomeConsumedAwuCredits: null,
     spendLimitSource: "default",

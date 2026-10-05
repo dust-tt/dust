@@ -1,30 +1,49 @@
+import { useOngoingAgentLoopsSnapshot } from "@app/components/assistant/conversation/AgentLoopStreamContext";
+import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
+import {
+  isAgentMessageWithStreaming,
+  isPlaceholderMessage,
+} from "@app/components/assistant/conversation/types";
 import {
   useFetcher,
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import datadogLogger from "@app/logger/datadogLogger";
 import type {
   FetchConversationMessageActionResponse,
-  FetchConversationMessageResponse,
   FetchConversationMessagesResponse,
 } from "@app/types/api/assistant/messages";
-import { useMemo } from "react";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { RefObject } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type { Fetcher } from "swr";
 
 export const CONVERSATION_MESSAGES_PAGE_LIMIT = 50;
 
+/**
+ * @cc [owner:id13,label:react;reliability] registry-recovers-stale-conversation-messages
+ * After a successful ongoing-loop registry response, a mounted conversation whose non-placeholder
+ * streaming message IDs disagree with its registry message IDs MUST revalidate persisted messages
+ * once per distinct disagreement; a failed revalidation MUST permit retry on a later registry response.
+ * Unavailable registry or list data MUST NOT trigger revalidation.
+ */
 export function useConversationMessages({
   conversationId,
   workspaceId,
   limit,
   disabled = false,
+  messageListRef,
 }: {
   conversationId?: string | null;
   workspaceId: string;
   limit: number;
   startAtRank?: number;
   disabled?: boolean;
+  messageListRef?: RefObject<{ data: { get: () => VirtuosoMessage[] } }>;
 }) {
+  const ongoingLoopsSnapshot = useOngoingAgentLoopsSnapshot();
+  const lastRegistryMismatch = useRef<string | null>(null);
   const { fetcher } = useFetcher();
   const messagesFetcher: Fetcher<FetchConversationMessagesResponse> = fetcher;
 
@@ -57,6 +76,69 @@ export function useConversationMessages({
       }
     );
 
+  useEffect(() => {
+    if (
+      disabled ||
+      !conversationId ||
+      !data ||
+      isValidating ||
+      error ||
+      !ongoingLoopsSnapshot ||
+      ongoingLoopsSnapshot.workspaceId !== workspaceId
+    ) {
+      return;
+    }
+    const localMessages = messageListRef?.current?.data.get();
+    if (!localMessages) {
+      return;
+    }
+    const localIds = localMessages
+      .filter(
+        (message) =>
+          isAgentMessageWithStreaming(message) &&
+          message.status === "created" &&
+          !isPlaceholderMessage(message)
+      )
+      .map((message) => message.sId)
+      .sort();
+    const registryIds = ongoingLoopsSnapshot.agentLoops
+      .filter((loop) => loop.conversationId === conversationId)
+      .map((loop) => loop.messageId)
+      .sort();
+
+    if (
+      registryIds.length === localIds.length &&
+      registryIds.every((id, index) => id === localIds[index])
+    ) {
+      lastRegistryMismatch.current = null;
+      return;
+    }
+
+    const mismatch = JSON.stringify([conversationId, registryIds, localIds]);
+    if (lastRegistryMismatch.current !== mismatch) {
+      lastRegistryMismatch.current = mismatch;
+      void mutate().catch((error: unknown) => {
+        if (lastRegistryMismatch.current === mismatch) {
+          lastRegistryMismatch.current = null;
+        }
+        datadogLogger.error(
+          { err: normalizeError(error), conversationId, workspaceId },
+          "Failed to recover stale conversation messages."
+        );
+      });
+    }
+  }, [
+    conversationId,
+    disabled,
+    data,
+    error,
+    isValidating,
+    messageListRef,
+    mutate,
+    ongoingLoopsSnapshot,
+    workspaceId,
+  ]);
+
   return {
     isLoadingInitialData: !error && !data,
     isMessagesError: error,
@@ -66,39 +148,6 @@ export function useConversationMessages({
     mutateMessages: mutate,
     setSize,
     size,
-  };
-}
-
-export function useConversationMessage({
-  conversationId,
-  workspaceId,
-  messageId,
-  options,
-}: {
-  conversationId: string;
-  workspaceId: string;
-  messageId: string | null;
-  options?: {
-    disabled: boolean;
-  };
-}) {
-  const { fetcher } = useFetcher();
-  const messageFetcher: Fetcher<FetchConversationMessageResponse> = fetcher;
-
-  const { data, error, mutate, isLoading, isValidating } = useSWRWithDefaults(
-    messageId
-      ? `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}`
-      : null,
-    messageFetcher,
-    options
-  );
-
-  return {
-    message: data?.message,
-    isMessageError: error,
-    isMessageLoading: isLoading,
-    isValidating,
-    mutateMessage: mutate,
   };
 }
 

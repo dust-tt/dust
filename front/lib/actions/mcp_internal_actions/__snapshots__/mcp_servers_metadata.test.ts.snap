@@ -233,58 +233,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
-    "suggest_agent_creation": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-    "suggest_agent_deletion": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-    "suggest_agent_description": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-    "suggest_agent_instructions_change": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-    "suggest_agent_model_change": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-    "suggest_agent_name": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-    "suggest_agent_publish_state": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-    "suggest_skill_availability": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-    "suggest_skill_deletion": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-    "suggest_skill_editors": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-    "suggest_skill_name": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-    "suggest_skill_update": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-    "suggest_skill_user_facing_description": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
   },
   "clari_copilot": {
     "get_call_details": {
@@ -306,6 +254,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "basic",
     },
     "get_current_time": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "mark_conversation_read": {
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
@@ -2664,10 +2616,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
     },
   },
   "workspace_analytics": {
-    "get_agent_details": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
     "get_consumption_overview": {
       "freeUsage": true,
       "toolCostCategory": "basic",
@@ -2710,15 +2658,19 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
-    "list_agents": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
     "list_groups": {
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
-    "list_skills": {
+    "list_models": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "list_similar_skills": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "list_tags": {
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
@@ -2730,7 +2682,15 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
+    "search_agents": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
     "search_knowledge": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "search_skills": {
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
@@ -2842,19 +2802,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "describe_agent": "never_ask",
     "describe_skill": "never_ask",
     "suggest": "never_ask",
-    "suggest_agent_creation": "never_ask",
-    "suggest_agent_deletion": "never_ask",
-    "suggest_agent_description": "never_ask",
-    "suggest_agent_instructions_change": "never_ask",
-    "suggest_agent_model_change": "never_ask",
-    "suggest_agent_name": "never_ask",
-    "suggest_agent_publish_state": "never_ask",
-    "suggest_skill_availability": "never_ask",
-    "suggest_skill_deletion": "never_ask",
-    "suggest_skill_editors": "never_ask",
-    "suggest_skill_name": "never_ask",
-    "suggest_skill_update": "never_ask",
-    "suggest_skill_user_facing_description": "never_ask",
   },
   "clari_copilot": {
     "get_call_details": "never_ask",
@@ -2864,6 +2811,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "generate_random_float": "never_ask",
     "generate_random_number": "never_ask",
     "get_current_time": "never_ask",
+    "mark_conversation_read": "never_ask",
     "math_operation": "never_ask",
     "set_conversation_title": "never_ask",
     "wait": "never_ask",
@@ -3554,7 +3502,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "websearch": "never_ask",
   },
   "workspace_analytics": {
-    "get_agent_details": "never_ask",
     "get_consumption_overview": "never_ask",
     "get_credit_timeseries": "never_ask",
     "get_top_entities_by_credits": "never_ask",
@@ -3567,12 +3514,15 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_group_members": "never_ask",
     "get_skill_details": "never_ask",
     "get_tool_details": "never_ask",
-    "list_agents": "never_ask",
     "list_groups": "never_ask",
-    "list_skills": "never_ask",
+    "list_models": "never_ask",
+    "list_similar_skills": "never_ask",
+    "list_tags": "never_ask",
     "list_tools": "never_ask",
     "list_workspace_members": "never_ask",
+    "search_agents": "never_ask",
     "search_knowledge": "never_ask",
+    "search_skills": "never_ask",
     "update_group_members": "high",
   },
   "zendesk": {

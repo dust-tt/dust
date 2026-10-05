@@ -14,6 +14,8 @@
     "added_editor_ids": "string",
     "removed_editor_ids": "string",
     "actor_added_self": "string",
+    "suggestion_batch_id": "string",
+    "conversation_id": "string",
     "actor_type": "string"
   }
 }

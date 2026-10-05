@@ -1,8 +1,20 @@
+import {
+  AGENT_SEARCH_ALIAS_NAME,
+  SKILL_SEARCH_ALIAS_NAME,
+  withEs,
+} from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
+import { getMarkdownPipeline } from "@app/lib/editor/server_markdown_pipeline";
 import {
   convertBlockHtmlToMarkdown,
   convertMarkdownToBlockHtml,
 } from "@app/lib/editor/skill_instructions_html";
+import {
+  deleteWorkspaceAgentSearchActivity,
+  deleteWorkspaceSkillSearchActivity,
+  indexAgentSearchActivity,
+  indexSkillSearchActivity,
+} from "@app/temporal/es_indexation/activities";
 import type {
   SeededKnowledgeNode,
   SeededScenario,
@@ -42,6 +54,45 @@ export function getSeededDocuments(dataSourceIds: string[]): CoreAPIDocument[] {
 export async function seedScenario(
   testCase: TestCase
 ): Promise<SeededScenario> {
+  const scenario = await seedDatabase(testCase);
+  await indexSeededEntities(scenario);
+  return scenario;
+}
+
+/**
+ * The search tools read from Elasticsearch, which the factories do not feed: production indexes
+ * through Temporal workflows. Runs the indexation activities directly once the seed is committed
+ * (they read the entities back with their own authenticator), then refreshes the indices so the
+ * documents are searchable as soon as the run starts.
+ */
+async function indexSeededEntities(scenario: SeededScenario): Promise<void> {
+  const workspaceId = scenario.auth.getNonNullableWorkspace().sId;
+  for (const skillId of scenario.skillIdsByKey.values()) {
+    await indexSkillSearchActivity({ workspaceId, skillId });
+  }
+  for (const agentId of scenario.agentIdsByKey.values()) {
+    await indexAgentSearchActivity({ workspaceId, agentId });
+  }
+  const refreshResult = await withEs((client) =>
+    client.indices.refresh({
+      index: [SKILL_SEARCH_ALIAS_NAME, AGENT_SEARCH_ALIAS_NAME],
+    })
+  );
+  if (refreshResult.isErr()) {
+    throw refreshResult.error;
+  }
+}
+
+/** Removes the search documents `seedScenario` indexed for the scenario's workspace. */
+export async function deleteSeededSearchDocuments(
+  scenario: SeededScenario
+): Promise<void> {
+  const workspaceId = scenario.auth.getNonNullableWorkspace().sId;
+  await deleteWorkspaceSkillSearchActivity({ workspaceId });
+  await deleteWorkspaceAgentSearchActivity({ workspaceId });
+}
+
+async function seedDatabase(testCase: TestCase): Promise<SeededScenario> {
   return runInCommittedTransaction(async () => {
     const workspace = await WorkspaceFactory.basic();
     const user = await UserFactory.basic();
@@ -131,8 +182,12 @@ export async function seedScenario(
       const created = await AgentConfigurationFactory.createTestAgent(auth, {
         name: agent.name,
         description: agent.description,
-        instructions: convertBlockHtmlToMarkdown(agent.instructionsHtml),
+        instructions: convertBlockHtmlToMarkdown(
+          agent.instructionsHtml,
+          getMarkdownPipeline("agent")
+        ),
         instructionsHtml: agent.instructionsHtml,
+        model: agent.model,
       });
       agentIdsByKey.set(agent.key, created.sId);
     }
@@ -144,7 +199,10 @@ export async function seedScenario(
         agentFacingDescription: seed.agentFacingDescription,
         userFacingDescription: seed.userFacingDescription ?? "",
         instructions: seed.instructions,
-        instructionsHtml: convertMarkdownToBlockHtml(seed.instructions),
+        instructionsHtml: convertMarkdownToBlockHtml(
+          seed.instructions,
+          getMarkdownPipeline("skill")
+        ),
         availability: seed.availability,
       });
       skillIdsByKey.set(seed.key, skill.sId);

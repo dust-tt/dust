@@ -22,7 +22,9 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import { EmbeddingProviderSchema } from "@app/types/assistant/models/embedding";
-import { ModelProviderIdSchema } from "@app/types/assistant/models/providers";
+import { WhitelistableModelMakerIdSchema } from "@app/types/assistant/models/providers";
+import type { WhitelistableModelMakerIdType } from "@app/types/assistant/models/types";
+import { SUPPORTED_LOCALES } from "@app/types/locale";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
@@ -62,7 +64,6 @@ import grantedSeatTypes from "./granted-seat-types";
 import groups from "./groups";
 import invitations from "./invitations";
 import keys from "./keys";
-import labs from "./labs";
 import mcp from "./mcp";
 import me from "./me";
 import members from "./members";
@@ -108,13 +109,25 @@ const WorkspaceRegionalModelsOnlyUpdateBodySchema = z.object({
   regionalModelsOnly: z.boolean(),
 });
 
-const WorkspaceProvidersUpdateBodySchema = z.object({
-  whiteListedProviders: z.array(ModelProviderIdSchema),
-  defaultEmbeddingProvider: EmbeddingProviderSchema.nullable(),
-});
+// TODO(2026-10-03 WHITELIST LABS): Remove once all clients have refreshed. Clients from before
+// lab whitelisting send the "fireworks" host: translate it to the labs it serves.
+const FIREWORKS_SERVED_LABS: WhitelistableModelMakerIdType[] = [
+  "deepseek",
+  "moonshot",
+  "minimax",
+  "zai",
+  "thinking_machines",
+];
 
-const WorkspaceWorkOSUpdateBodySchema = z.object({
-  workOSOrganizationId: z.string().nullable(),
+const WorkspaceProvidersUpdateBodySchema = z.object({
+  whiteListedProviders: z
+    .array(z.union([WhitelistableModelMakerIdSchema, z.literal("fireworks")]))
+    .transform((ids) => [
+      ...new Set(
+        ids.flatMap((id) => (id === "fireworks" ? FIREWORKS_SERVED_LABS : id))
+      ),
+    ]),
+  defaultEmbeddingProvider: EmbeddingProviderSchema.nullable(),
 });
 
 // TODO(2026-03-20 FRAME SHARING): Remove once all clients have refreshed.
@@ -216,6 +229,10 @@ const WorkspaceDefaultAgentUpdateBodySchema = z.object({
   workspaceDefaultAgentId: z.string().nullable(),
 });
 
+const WorkspaceLocaleUpdateBodySchema = z.object({
+  locale: z.enum(SUPPORTED_LOCALES),
+});
+
 const WorkspaceInactiveAgentArchivalUpdateBodySchema = z.object({
   // Null turns automatic archival off: the policy is opt-in and has no default threshold.
   inactiveAgentArchivalThresholdDays: z
@@ -226,12 +243,17 @@ const WorkspaceInactiveAgentArchivalUpdateBodySchema = z.object({
     .nullable(),
 });
 
+/**
+ * @cc [owner:frankaloia,label:security;backend] workos-organization-binding-server-owned
+ * Session-authenticated workspace settings requests MUST NOT treat `workOSOrganizationId` as a
+ * supported setting or modify the binding. The binding may only be persisted by trusted
+ * server-side provisioning after resolving the WorkOS organization from the workspace's `sId`.
+ */
 const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceInactiveAgentArchivalUpdateBodySchema,
   WorkspaceNameUpdateBodySchema,
   WorkspaceRegionalModelsOnlyUpdateBodySchema,
   WorkspaceProvidersUpdateBodySchema,
-  WorkspaceWorkOSUpdateBodySchema,
   WorkspaceInteractiveContentSharingUpdateBodySchema,
   WorkspaceSharingPolicyUpdateBodySchema,
   WorkspaceVoiceTranscriptionUpdateBodySchema,
@@ -254,6 +276,7 @@ const PostWorkspaceRequestBodySchema = z.union([
   WorkspacePublishedAgentsRestrictedModelsUpdateBodySchema,
   WorkspaceDefaultAgentUpdateBodySchema,
   WorkspaceSlackPersonalFooterRemovalUpdateBodySchema,
+  WorkspaceLocaleUpdateBodySchema,
 ]);
 
 const app = workspaceApp();
@@ -446,30 +469,6 @@ app.post(
           default_embedding_provider: body.defaultEmbeddingProvider ?? "",
         },
       });
-    } else if ("workOSOrganizationId" in body) {
-      const previousWorkOSOrganizationId = owner.workOSOrganizationId;
-      await workspace.updateWorkspaceSettings({
-        workOSOrganizationId: body.workOSOrganizationId,
-      });
-
-      const auditWorkspace = {
-        ...owner,
-        workOSOrganizationId:
-          body.workOSOrganizationId ?? previousWorkOSOrganizationId,
-      };
-      void emitAuditLogEventDirect({
-        workspace: auditWorkspace,
-        action: "workspace.workos_organization_updated",
-        actor: buildAuditActor(auth),
-        targets: [buildAuditLogTarget("workspace", auditWorkspace)],
-        context: getAuditLogContext(auth),
-        metadata: {
-          configured: String(body.workOSOrganizationId !== null),
-          organization_id: body.workOSOrganizationId ?? "",
-        },
-      });
-
-      owner.workOSOrganizationId = body.workOSOrganizationId;
     } else if ("allowContentCreationFileSharing" in body) {
       const previousMetadata = owner.metadata ?? {};
       const newMetadata = {
@@ -1022,6 +1021,20 @@ app.post(
           enabled: String(body.allowConversationExternalNotifications),
         },
       });
+    } else if ("locale" in body) {
+      if (!(await hasFeatureFlag(auth, "localisation"))) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "feature_flag_not_found",
+            message:
+              "The localisation feature is not enabled for this workspace.",
+          },
+        });
+      }
+
+      await workspace.updateWorkspaceSettings({ locale: body.locale });
+      owner.locale = body.locale;
     }
 
     return ctx.json({ workspace: owner });
@@ -1060,7 +1073,6 @@ app.route("/governance-permissions", governancePermissions);
 app.route("/groups", groups);
 app.route("/invitations", invitations);
 app.route("/keys", keys);
-app.route("/labs", labs);
 app.route("/mcp", mcp);
 app.route("/me", me);
 app.route("/members", members);

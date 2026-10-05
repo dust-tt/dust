@@ -94,6 +94,9 @@ describe("agent suggestion authorization", () => {
     expect(isAuthorizedForAgentSuggestionKind(adminAuth, agent, "delete")).toBe(
       true
     );
+    expect(isAuthorizedForAgentSuggestionKind(adminAuth, agent, "tags")).toBe(
+      true
+    );
     expect(isAuthorizedForAgentSuggestionKind(adminAuth, agent, "name")).toBe(
       false
     );

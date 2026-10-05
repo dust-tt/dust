@@ -44,6 +44,18 @@ import { Button } from "@dust-tt/sparkle";
 FORBIDDEN_CLIENT_IMPORT
 ```
 
+## Should flag a value import from Lingui
+
+```typescript
+// @filename: app/front/lib/api/foo.ts
+import { msg } from "@lingui/core/macro";
+```
+
+```typescript
+// @filename: app/front/lib/api/foo.ts
+FORBIDDEN_CLIENT_IMPORT
+```
+
 ## Should allow `import type` because it is erased at runtime
 
 ```typescript

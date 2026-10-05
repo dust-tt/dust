@@ -26,9 +26,39 @@ struct UserMessage: Codable, Identifiable {
     let user: MessageUser?
     let context: UserMessageContext?
     let contentFragments: [ContentFragment]?
+    let agenticMessageData: AgenticMessageData?
+
+    private static let hiddenOrigins: Set<String> = [
+        "onboarding_conversation",
+        "project_kickoff",
+        "reinforced_skill_notification",
+        "system_activation",
+    ]
+    private static let bootstrapOrigins: Set<String> = ["agent_sidekick", "analytics_panel"]
+    private static let wakeUpOrigin = "wakeup"
+    private static let agentHandoverType = "agent_handover"
 
     var isPending: Bool {
         visibility == "pending"
+    }
+
+    var isWakeUp: Bool {
+        context?.origin == Self.wakeUpOrigin
+    }
+
+    /**
+     * @cc [owner:adrsimon,label:product] hidden-user-messages
+     * A user message MUST be hidden exactly when front's `isHiddenMessage` hides it: its origin is in
+     * `HIDDEN_MESSAGE_ORIGINS` other than `wakeup`, it is a rank-0 `agent_sidekick` or
+     * `analytics_panel` bootstrap message, or it is an `agent_handover`. Wake-up messages render as
+     * a marker instead of a bubble.
+     */
+    var isHidden: Bool {
+        if agenticMessageData?.type == Self.agentHandoverType {
+            return true
+        }
+        guard let origin = context?.origin else { return false }
+        return Self.hiddenOrigins.contains(origin) || (rank == 0 && Self.bootstrapOrigins.contains(origin))
     }
 
     var createdDate: Date {
@@ -55,6 +85,11 @@ struct UserMessageContext: Codable {
     let fullName: String?
     let email: String?
     let profilePictureUrl: String?
+    let origin: String?
+}
+
+struct AgenticMessageData: Codable {
+    let type: String
 }
 
 // MARK: - Content Fragment (nested in UserMessage)

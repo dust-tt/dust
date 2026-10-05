@@ -1,3 +1,4 @@
+import { compareStrings } from "@app/lib/i18n/format";
 import type { FileSystemEntry } from "@app/types/api/file_system/types";
 import { getFilePreviewConfig } from "@app/types/file_preview";
 import {
@@ -150,10 +151,10 @@ export function compareTreeNodesForSort(
 
   switch (sortMode) {
     case "name-asc":
-      return a.name.localeCompare(b.name);
+      return compareStrings(a.name, b.name);
 
     case "name-desc":
-      return b.name.localeCompare(a.name);
+      return compareStrings(b.name, a.name);
 
     case "last-modified": {
       // Folders have no timestamp on the tree (they're inferred from file paths). Among files,
@@ -164,7 +165,7 @@ export function compareTreeNodesForSort(
         return tb - ta;
       }
 
-      return a.name.localeCompare(b.name);
+      return compareStrings(a.name, b.name);
     }
 
     default:

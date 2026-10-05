@@ -2,7 +2,7 @@ import {
   getStatusIcon,
   PluginRunStatusChip,
 } from "@app/components/poke/plugins/PluginRunStatusChip";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import type { PluginRunType } from "@app/types/poke/plugins";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import {

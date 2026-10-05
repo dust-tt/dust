@@ -46,17 +46,15 @@ import {
   getCitationsFromActions,
   getRefs,
 } from "@app/lib/api/assistant/citations";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import { cancelAgentLoop } from "@app/lib/api/assistant/pubsub";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { CitationType } from "@app/types/assistant/conversation";
 import { getHeaderFromRole } from "@app/types/groups";
@@ -74,14 +72,15 @@ import { DustAPI, INTERNAL_MIME_TYPES, isAgentMessage } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { RequestMeta } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
+import escapeRegExp from "lodash/escapeRegExp";
 import maxBy from "lodash/maxBy";
 import type z from "zod";
 
-function canRunChildAgent(agent: LightAgentConfigurationType): boolean {
+function canRunChildAgent(auth: Authenticator, agent: AgentResource): boolean {
   switch (agent.status) {
     case "active":
     case "draft":
-      return agent.canRead;
+      return auth.can("read", agent);
     case "disabled_free_workspace":
     case "disabled_missing_datasource":
     case "disabled_by_admin":
@@ -130,10 +129,7 @@ async function getRunnableChildAgent(
     childAgentName?: string;
   }
 ): Promise<Result<ChildAgentBlob, MCPError>> {
-  const childAgent = await getAgentConfiguration(auth, {
-    agentId,
-    variant: "extra_light",
-  });
+  const childAgent = await AgentResource.fetchById(auth, agentId);
 
   if (childAgent?.status === "archived") {
     return new Err(
@@ -145,7 +141,7 @@ async function getRunnableChildAgent(
     );
   }
 
-  if (!childAgent || !canRunChildAgent(childAgent)) {
+  if (!childAgent || !canRunChildAgent(auth, childAgent)) {
     return new Err(
       makeChildAgentUnavailableError(childAgent?.name ?? childAgentName)
     );
@@ -510,11 +506,12 @@ export const runAgent = async (
 
     const newRefs: Record<string, CitationType> = {};
     Object.keys(refsFromAgent).forEach((refKeyFromAgent, index) => {
+      const escapedKey = escapeRegExp(refKeyFromAgent);
       const newRef = refs[index];
       if (newRef) {
         // Replace citation references only within :cite[...] blocks
         const citationRegex = new RegExp(
-          `(:cite\\[[^\\]]*\\b)${refKeyFromAgent}\\b([^\\]]*\\])`,
+          `(:cite\\[[^\\]]*\\b)${escapedKey}\\b([^\\]]*\\])`,
           "g"
         );
         text = text.replace(citationRegex, `$1${newRef}$2`);
@@ -522,7 +519,7 @@ export const runAgent = async (
       } else {
         // Remove trailing or extra commas as we ran out of refs capacity.
         const citationRegex = new RegExp(
-          `(:cite\\[[^\\]]*\\b)${refKeyFromAgent}\\b(?:,([^\\]]*\\])|([^\\]]*\\]))`,
+          `(:cite\\[[^\\]]*\\b)${escapedKey}\\b(?:,([^\\]]*\\])|([^\\]]*\\]))`,
           "g"
         );
         text = text.replace(citationRegex, "$1$2$3");
@@ -813,19 +810,17 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
     };
   }
 
-  const owner = auth.getNonNullableWorkspace();
-
-  const agentConfiguration = await AgentConfigurationModel.findOne({
-    where: {
-      sId: agentId,
-      workspaceId: owner.id,
-      status: ["active", "archived"],
-    },
-    attributes: ["name", "description"],
-    order: [["version", "DESC"]],
+  // Skips the `canFetch` drop (see `agent-dangerous-fetch`): the child agent's name and description
+  // are exposed even when the caller holds no verb on it, as documented above.
+  const agentConfiguration = await AgentResource.fetchById(auth, agentId, {
+    dangerouslySkipFetchCheck: true,
   });
 
-  if (!agentConfiguration) {
+  if (
+    !agentConfiguration ||
+    (agentConfiguration.status !== "active" &&
+      agentConfiguration.status !== "archived")
+  ) {
     return null;
   }
 

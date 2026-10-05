@@ -8,6 +8,7 @@ import type {
   SandboxFunctionToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
 import { clientFetch } from "@app/lib/egress/client";
+import { getLocalTimeZone } from "@app/lib/i18n/format";
 import { useFrameFiles } from "@app/lib/swr/frame_files";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
@@ -288,17 +289,40 @@ function SandboxFunctionInvocation({
   onSettle,
 }: SandboxFunctionInvocationProps) {
   const buildEventSourceURL = useCallback(
-    (lastEvent: string | null) => {
-      const esURL = `/api/sse/w/${workspaceId}/sandbox-functions/${functionId}/invocations/${invocationId}/events`;
+    (lastEvent: string | null, polling = false) => {
+      const esURL = `/api/sse/w/${workspaceId}/sandbox-functions/${functionId}/invocations/${invocationId}/events${polling ? "/poll" : ""}`;
       let lastEventId = "";
       if (lastEvent) {
         const eventPayload: { eventId: string } = JSON.parse(lastEvent);
         lastEventId = eventPayload.eventId;
       }
-      return esURL + "?lastEventId=" + lastEventId;
+      return esURL + "?lastEventId=" + encodeURIComponent(lastEventId);
     },
     [workspaceId, functionId, invocationId]
   );
+
+  const buildLongPollURL = useCallback(
+    (lastEvent: string | null) => buildEventSourceURL(lastEvent, true),
+    [buildEventSourceURL]
+  );
+  const isTerminalEvent = useCallback((event: string) => {
+    try {
+      const parsed: unknown = JSON.parse(event);
+      if (!parsed || typeof parsed !== "object" || !("data" in parsed)) {
+        return false;
+      }
+      const { data } = parsed;
+      return (
+        data !== null &&
+        typeof data === "object" &&
+        "type" in data &&
+        (data.type === "sandbox_function_invocation_result" ||
+          data.type === "sandbox_function_invocation_error")
+      );
+    } catch {
+      return false;
+    }
+  }, []);
 
   const onEventCallback = useCallback(
     (eventStr: string) => {
@@ -354,7 +378,7 @@ function SandboxFunctionInvocation({
     buildEventSourceURL,
     onEventCallback,
     `sandbox-function-invocation-${invocationId}`,
-    { onTerminalError, workspaceId }
+    { onTerminalError, workspaceId, buildLongPollURL, isTerminalEvent }
   );
 
   return null;
@@ -745,7 +769,7 @@ function CodeDrawer({
   return (
     <Sheet
       open={isOpened}
-      onOpenChange={(open) => {
+      onOpenChange={(open: boolean) => {
         if (!open) {
           onClose();
         }
@@ -986,7 +1010,7 @@ export const VisualizationActionIframe = forwardRef<
         const body: PostSandboxFunctionInvocationRequestBody = {
           input,
           context: {
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            timezone: getLocalTimeZone(),
           },
         };
 
@@ -1157,7 +1181,7 @@ export const VisualizationActionIframe = forwardRef<
           {!codeFullyGenerated ? (
             <div className="flex h-full w-full shrink-0">
               <Markdown
-                content={"```javascript\n" + (code ?? "") + "\n```"}
+                content={`\`\`\`javascript\n${code ?? ""}\n\`\`\``}
                 isStreaming={!codeFullyGenerated}
                 isLastMessage={true}
               />

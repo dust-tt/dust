@@ -1,3 +1,4 @@
+import { withBigQueryStaticIpProxy } from "@app/lib/egress/bigquery";
 import {
   concurrentExecutor,
   setTimeoutAsync,
@@ -37,10 +38,12 @@ app.post(
     const { credentials } = ctx.req.valid("json");
 
     try {
-      const bigquery = new BigQuery({
-        credentials,
-        scopes: ["https://www.googleapis.com/auth/bigquery.readonly"],
-      });
+      const bigquery = new BigQuery(
+        withBigQueryStaticIpProxy({
+          credentials,
+          scopes: ["https://www.googleapis.com/auth/bigquery.readonly"],
+        })
+      );
 
       // Strict location listing: only expose actual dataset locations and only associate
       // tables to their dataset's exact location (no regional/multi-region expansion).

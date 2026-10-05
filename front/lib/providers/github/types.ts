@@ -127,7 +127,6 @@ export const GitHubNodeQueryResponseSchema = z.object({
 
 export type GitHubIssueNode = z.infer<typeof GitHubIssueNodeSchema>;
 export type GitHubPullRequestNode = z.infer<typeof GitHubPullRequestNodeSchema>;
-export type GitHubNode = z.infer<typeof GitHubNodeSchema>;
 export type GitHubNodeQueryResponse = z.infer<
   typeof GitHubNodeQueryResponseSchema
 >;

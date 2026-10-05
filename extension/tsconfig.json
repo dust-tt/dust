@@ -25,6 +25,6 @@
       "@app/*": ["../front/*"]
     }
   },
-  "include": ["./global.d.ts", "./css.d.ts", "./domino.d.ts", "./shared/**/*", "./platforms/**/*", "./ui/**/*", "./run/**/*"],
+  "include": ["./global.d.ts", "./css.d.ts", "./domino.d.ts", "../front/lib/i18n/po.d.ts", "./shared/**/*", "./platforms/**/*", "./ui/**/*", "./run/**/*"],
   "exclude": ["node_modules", "build"]
 }

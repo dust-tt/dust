@@ -1,5 +1,5 @@
 import { cva } from "class-variance-authority";
-import type { ReactElement } from "react";
+import type { CSSProperties, ReactElement } from "react";
 import React, { useLayoutEffect, useRef, useState } from "react";
 
 import { cn } from "../lib/utils";
@@ -15,6 +15,19 @@ const diffLineVariants = cva("rounded px-1", {
   },
 });
 
+const diffContainerVariants = cva("p-2", {
+  variants: {
+    variant: {
+      default: "rounded-2xl border border-border bg-muted-background",
+      borderless: "rounded-2xl bg-muted-background",
+      plain: "",
+    },
+  },
+  defaultVariants: {
+    variant: "default",
+  },
+});
+
 export type DiffChange = {
   /** Removed content (may span multiple lines). */
   old?: string;
@@ -26,51 +39,46 @@ export type DiffBlockProps = {
   /** Controls rendered in the block's action slot (e.g. a "view changes" Button). */
   actions?: ReactElement;
   className?: string;
-  /** Number of lines shown before the diff collapses behind a "Show more" toggle (default 6). */
-  collapsedLines?: number;
+  /** When false, the whole diff always shows; otherwise it collapses past 6 lines behind a "Show more" toggle (default true). */
+  isCollapsible?: boolean;
+  /**
+   * Box around the diff: "default" has a border and background, "borderless" keeps only the
+   * background, "plain" has neither so the diff blends into its container.
+   */
+  variant?: "default" | "borderless" | "plain";
   /** The edits to display as removal/addition line pairs; ignored when children is provided. */
   changes?: DiffChange[];
-  /** Custom content rendered instead of the changes array. */
+  /** Custom diff content (e.g. a read-only editor showing a suggestion) rendered instead of the changes array. */
   children?: React.ReactNode;
 };
 
-const DEFAULT_COLLAPSED_LINES = 6;
+const COLLAPSED_LINES = 6;
 
 /** Rough CSS estimate to prevent flash before measurement */
-function getEstimatedCollapsedHeight(collapsedLines: number) {
-  return `calc(${collapsedLines} * 1.5em + 1rem)`;
-}
+const ESTIMATED_COLLAPSED_HEIGHT = `calc(${COLLAPSED_LINES} * 1.5em + 1rem)`;
 
-/**
- * Renders a set of code edits as a line-by-line diff inside an agent message,
- * taking a changes array of { old, new } pairs; large diffs collapse to a
- * preview with a "Show more" toggle, and an actions slot holds extra
- * controls. Use it to contrast previous and new content an agent proposes or
- * applied; for plain (non-diff) code rendering, use CodeBlock.
- * @summary Collapsible line-by-line code diff.
- */
-export function DiffBlock({
-  changes,
-  children,
-  actions,
-  className,
-  collapsedLines = DEFAULT_COLLAPSED_LINES,
-}: DiffBlockProps) {
-  const hasContent = changes !== undefined || children !== undefined;
-
+// Clamps a container to a fixed number of content lines. The real line height is only known once
+// mounted, so an estimate clamps the first paint, and content resizes trigger a re-measure.
+function useClampedHeight({
+  hasContent,
+  isEnabled,
+}: {
+  hasContent: boolean;
+  isEnabled: boolean;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isCollapsible, setIsCollapsible] = useState(false);
+  const [isOverflowing, setIsOverflowing] = useState(false);
   const [isMeasured, setIsMeasured] = useState(false);
   const [collapsedHeight, setCollapsedHeight] = useState<number>();
   const [expandedHeight, setExpandedHeight] = useState<number>();
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: changes/children are props that trigger re-measurement when content changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the refs only attach once there is content to render
   useLayoutEffect(() => {
     const element = contentRef.current;
     const container = containerRef.current;
-    if (!element || !container) {
+    if (!isEnabled || !element || !container) {
       return;
     }
 
@@ -87,15 +95,15 @@ export function DiffBlock({
         lineHeight = fontSize * 1.5;
       }
 
-      const nextCollapsedHeight = lineHeight * collapsedLines + paddingY;
+      const nextCollapsedHeight = lineHeight * COLLAPSED_LINES + paddingY;
       setCollapsedHeight(nextCollapsedHeight);
 
       const fullHeight = element.scrollHeight + paddingY;
       setExpandedHeight(fullHeight);
 
-      const isOverflowing = fullHeight > nextCollapsedHeight + 1;
-      setIsCollapsible(isOverflowing);
-      if (!isOverflowing) {
+      const nextIsOverflowing = fullHeight > nextCollapsedHeight + 1;
+      setIsOverflowing(nextIsOverflowing);
+      if (!nextIsOverflowing) {
         setIsExpanded(false);
       }
       setIsMeasured(true);
@@ -111,13 +119,70 @@ export function DiffBlock({
     return () => {
       resizeObserver.disconnect();
     };
-  }, [changes, children, collapsedLines]);
+  }, [hasContent, isEnabled]);
+
+  let containerStyle: CSSProperties | undefined;
+  if (isEnabled && !isMeasured) {
+    containerStyle = {
+      overflow: "hidden",
+      maxHeight: ESTIMATED_COLLAPSED_HEIGHT,
+    };
+  } else if (isEnabled && isOverflowing && collapsedHeight !== undefined) {
+    containerStyle = {
+      maxHeight: isExpanded
+        ? (expandedHeight ?? collapsedHeight)
+        : collapsedHeight,
+      overflow: "hidden",
+      transition: "max-height 200ms ease",
+    };
+  }
+
+  return {
+    containerRef,
+    contentRef,
+    containerStyle,
+    isExpanded,
+    isOverflowing: isEnabled && isOverflowing,
+    toggleExpanded: () => setIsExpanded((value) => !value),
+  };
+}
+
+/**
+ * Renders edits as a line-by-line diff, from { old, new } pairs or custom
+ * children. Large diffs collapse behind a "Show more" toggle. For plain code
+ * rendering, use CodeBlock.
+ * @summary Collapsible line-by-line code diff.
+ */
+/**
+ * @cc [owner:avervaet,label:react] box-styling-through-variant
+ * Callers MUST change the box around the diff only through `variant`, never through class
+ * selectors targeting the component's internal elements.
+ */
+export function DiffBlock({
+  changes,
+  children,
+  actions,
+  className,
+  isCollapsible = true,
+  variant = "default",
+}: DiffBlockProps) {
+  const hasContent = changes !== undefined || children !== undefined;
+
+  const {
+    containerRef,
+    contentRef,
+    containerStyle,
+    isExpanded,
+    isOverflowing,
+    toggleExpanded,
+  } = useClampedHeight({
+    hasContent,
+    isEnabled: isCollapsible,
+  });
 
   if (!hasContent) {
     return null;
   }
-
-  const shouldClamp = isCollapsible && !isExpanded;
 
   return (
     <ContentBlockWrapper
@@ -128,26 +193,8 @@ export function DiffBlock({
       <div className="flex flex-col gap-2">
         <div
           ref={containerRef}
-          className={cn(
-            "rounded-2xl border border-border",
-            "bg-muted-background p-2"
-          )}
-          style={
-            !isMeasured
-              ? {
-                  overflow: "hidden",
-                  maxHeight: getEstimatedCollapsedHeight(collapsedLines),
-                }
-              : isCollapsible && collapsedHeight !== undefined
-                ? {
-                    maxHeight: shouldClamp
-                      ? collapsedHeight
-                      : (expandedHeight ?? collapsedHeight),
-                    overflow: "hidden",
-                    transition: "max-height 200ms ease",
-                  }
-                : undefined
-          }
+          className={diffContainerVariants({ variant })}
+          style={containerStyle}
         >
           <div
             ref={contentRef}
@@ -178,7 +225,7 @@ export function DiffBlock({
               ))}
           </div>
         </div>
-        {isCollapsible && (
+        {isOverflowing && (
           <div className="flex justify-start px-3">
             <Button
               size="xs"
@@ -186,7 +233,7 @@ export function DiffBlock({
               label={isExpanded ? "Show less" : "Show more"}
               onClick={(e) => {
                 e.stopPropagation();
-                setIsExpanded((value) => !value);
+                toggleExpanded();
               }}
               aria-expanded={isExpanded}
             />

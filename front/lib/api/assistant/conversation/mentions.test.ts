@@ -1,4 +1,3 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
@@ -15,6 +14,7 @@ import {
   MentionModel,
   UserConversationReadsModel,
 } from "@app/lib/models/agent/conversation";
+import { toLightAgentConfiguration } from "@app/lib/resources/agent_resource_serialization";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -566,20 +566,23 @@ describe("createAgentMessages", () => {
       );
 
       // Fetch updated agent config
-      const updatedAgentConfig = await getAgentConfiguration(auth, {
-        agentId: agentConfig.sId,
-        agentVersion: agentConfig.version,
-        variant: "light",
-      });
-      expect(updatedAgentConfig).not.toBeNull();
-      expect(updatedAgentConfig?.instructions).toContain(mentionedUser.sId);
+      const updatedAgent = await AgentConfigurationFactory.refetch(
+        auth,
+        agentConfig.sId,
+        { agentVersion: agentConfig.version }
+      );
+      if (!updatedAgent) {
+        throw new Error("Agent not found");
+      }
+      const { instructions } = await updatedAgent.fetchInstructions();
+      expect(instructions).toContain(mentionedUser.sId);
 
       const { agentMessage } = await ConversationFactory.createAgentMessage(
         auth,
         {
           workspace,
           conversation: updatedConversation,
-          agentConfig: updatedAgentConfig!,
+          agentConfig: await toLightAgentConfiguration(auth, updatedAgent),
         }
       );
 
@@ -672,20 +675,23 @@ describe("createAgentMessages", () => {
       );
 
       // Fetch updated agent config
-      const updatedAgentConfig = await getAgentConfiguration(auth, {
-        agentId: agentConfig.sId,
-        agentVersion: agentConfig.version,
-        variant: "light",
-      });
-      expect(updatedAgentConfig).not.toBeNull();
-      expect(updatedAgentConfig?.instructions).not.toContain(mentionedUser.sId);
+      const updatedAgent = await AgentConfigurationFactory.refetch(
+        auth,
+        agentConfig.sId,
+        { agentVersion: agentConfig.version }
+      );
+      if (!updatedAgent) {
+        throw new Error("Agent not found");
+      }
+      const { instructions } = await updatedAgent.fetchInstructions();
+      expect(instructions).not.toContain(mentionedUser.sId);
 
       const { agentMessage } = await ConversationFactory.createAgentMessage(
         auth,
         {
           workspace,
           conversation: updatedConversation,
-          agentConfig: updatedAgentConfig!,
+          agentConfig: await toLightAgentConfiguration(auth, updatedAgent),
         }
       );
 
@@ -778,20 +784,23 @@ describe("createAgentMessages", () => {
       );
 
       // Fetch updated agent config
-      const updatedAgentConfig = await getAgentConfiguration(auth, {
-        agentId: agentConfig.sId,
-        agentVersion: agentConfig.version,
-        variant: "light",
-      });
-      expect(updatedAgentConfig).not.toBeNull();
-      expect(updatedAgentConfig?.instructions).toBeNull();
+      const updatedAgent = await AgentConfigurationFactory.refetch(
+        auth,
+        agentConfig.sId,
+        { agentVersion: agentConfig.version }
+      );
+      if (!updatedAgent) {
+        throw new Error("Agent not found");
+      }
+      const { instructions } = await updatedAgent.fetchInstructions();
+      expect(instructions).toBeNull();
 
       const { agentMessage } = await ConversationFactory.createAgentMessage(
         auth,
         {
           workspace,
           conversation: updatedConversation,
-          agentConfig: updatedAgentConfig!,
+          agentConfig: await toLightAgentConfiguration(auth, updatedAgent),
         }
       );
 
@@ -1659,13 +1668,16 @@ describe("createAgentMessages", () => {
       );
 
       // Fetch updated agent config
-      const updatedAgentConfig = await getAgentConfiguration(auth, {
-        agentId: triggerAgentConfig.sId,
-        agentVersion: triggerAgentConfig.version,
-        variant: "light",
-      });
-      expect(updatedAgentConfig).not.toBeNull();
-      expect(updatedAgentConfig?.instructions).toContain(mentionedUser.sId);
+      const updatedAgent = await AgentConfigurationFactory.refetch(
+        auth,
+        triggerAgentConfig.sId,
+        { agentVersion: triggerAgentConfig.version }
+      );
+      if (!updatedAgent) {
+        throw new Error("Agent not found");
+      }
+      const { instructions } = await updatedAgent.fetchInstructions();
+      expect(instructions).toContain(mentionedUser.sId);
 
       // Create an agent message
       const { agentMessage } = await ConversationFactory.createAgentMessage(
@@ -1673,7 +1685,7 @@ describe("createAgentMessages", () => {
         {
           workspace,
           conversation: updatedConversation,
-          agentConfig: updatedAgentConfig!,
+          agentConfig: await toLightAgentConfiguration(auth, updatedAgent),
         }
       );
 

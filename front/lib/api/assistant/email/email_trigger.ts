@@ -26,7 +26,7 @@ import { filterAndSortAgents } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentFavoriteEnrichment } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { SupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
@@ -34,7 +34,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import fs from "fs";
 import sanitizeHtml from "sanitize-html";
 import { Op } from "sequelize";
 import { Readable } from "stream";
@@ -306,7 +305,7 @@ async function findConversationIdFromThreadingHeaders(
 export { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/constants";
 
 export type EmailAttachment = {
-  filepath: string; // Temp file path from formidable
+  content: Buffer<ArrayBuffer>;
   filename: string; // Original filename
   contentType: string; // MIME type
   size: number; // File size in bytes
@@ -696,14 +695,16 @@ export async function userAndWorkspaceFromEmail({
 export function emailAssistantMatcher({
   targetEmail,
   allAgentConfigurations,
+  favorites,
   emailBlacklistedAgentIds,
 }: {
   targetEmail: string;
-  allAgentConfigurations: LightAgentConfigurationType[];
+  allAgentConfigurations: AgentResource[];
+  favorites: Map<string, AgentFavoriteEnrichment>;
   emailBlacklistedAgentIds: Set<string>;
 }): Result<
   {
-    agentConfiguration: LightAgentConfigurationType;
+    agentConfiguration: AgentResource;
   },
   EmailTriggerError
 > {
@@ -711,7 +712,8 @@ export function emailAssistantMatcher({
 
   const matchingAgents = filterAndSortAgents(
     allAgentConfigurations,
-    agentPrefix
+    agentPrefix,
+    favorites
   );
   if (matchingAgents.length === 0) {
     return new Err({
@@ -772,7 +774,7 @@ export async function triggerFromEmail(
     agentConfigurations,
     email,
   }: {
-    agentConfigurations: LightAgentConfigurationType[];
+    agentConfigurations: AgentResource[];
     email: InboundEmail;
   }
 ): Promise<
@@ -892,12 +894,11 @@ export async function triggerFromEmail(
         useCaseMetadata: null,
       });
 
-      const fileStream = fs.createReadStream(attachment.filepath);
       const processRes = await processAndStoreFile(auth, {
         file,
         content: {
           type: "readable",
-          value: Readable.from(fileStream),
+          value: Readable.from(attachment.content),
         },
       });
 

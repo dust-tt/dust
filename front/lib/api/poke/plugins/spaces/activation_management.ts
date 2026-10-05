@@ -4,8 +4,6 @@ import type {
   ActivationNudgePushedResourceType,
 } from "@app/lib/api/activation/nudge";
 import { listActivationPodsByUser } from "@app/lib/api/activation/pods";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { createPlugin } from "@app/lib/api/poke/types";
 import {
   createSpaceAndGroup,
@@ -14,6 +12,7 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import type { ActivationPodKind } from "@app/lib/models/activation/activation_pod";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
@@ -174,10 +173,7 @@ async function resolvePushedResource(
     return new Ok({ type: "skill", sId: parsed.sId, name: skill.name });
   }
 
-  const [agent] = await getAgentConfigurations(auth, {
-    agentIds: [parsed.sId],
-    variant: "light",
-  });
+  const agent = await AgentResource.fetchById(auth, parsed.sId);
   if (!agent) {
     return new Err(new Error(`Agent not found: ${parsed.sId}.`));
   }
@@ -454,7 +450,7 @@ export const activationManagementPlugin = createPlugin({
     requiredRoles: ["support"],
   },
   populateAsyncArgs: async (auth) => {
-    const [skills, agents, groups] = await Promise.all([
+    const [skills, workspaceAgents, groups] = await Promise.all([
       SkillResource.listByWorkspace(auth, {
         status: "active",
         globalSpaceOnly: true,
@@ -462,16 +458,12 @@ export const activationManagementPlugin = createPlugin({
         withTools: false,
         withFileAttachments: false,
       }),
-      getAgentConfigurationsForView({
-        auth,
-        agentsGetView: "published",
-        variant: "light",
-        omitHeavyAttributes: true,
-      }),
+      AgentResource.listByWorkspace(auth, { scope: "visible" }),
       GroupResource.listAllWorkspaceGroups(auth, {
         groupKinds: [...MANAGEABLE_GROUP_KINDS],
       }),
     ]);
+    const agents = workspaceAgents.filter((agent) => auth.can("read", agent));
 
     const pushedResource = [
       ...skills.map((skill) => ({

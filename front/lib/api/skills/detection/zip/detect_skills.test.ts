@@ -1,10 +1,19 @@
 // @vitest-environment node: adm-zip requires Node builtins (Buffer, zlib)
 // This directive makes them available in the test environment.
 
+import {
+  makeZipBombBuffer,
+  spyOnInflatedBytes,
+} from "@app/tests/utils/zip_bomb";
 import { isString } from "@app/types/shared/utils/general";
 import AdmZip from "adm-zip";
-import { describe, expect, test } from "vitest";
-import { detectSkillsFromZip } from "./detect_skills";
+import { afterEach, describe, expect, test, vi } from "vitest";
+import {
+  createZipAttachmentReader,
+  detectSkillsFromZip,
+  MAX_DECOMPRESSED_SIZE_BYTES,
+  MAX_ZIP_ENTRIES,
+} from "./detect_skills";
 
 function makeSkillMd(name: string, description: string, body: string): string {
   return `---
@@ -25,6 +34,10 @@ function buildZipBuffer(files: Record<string, string | Buffer>): Buffer {
   }
   return zip.toBuffer();
 }
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("detectSkillsFromZip", () => {
   test("detects skills from a valid ZIP", () => {
@@ -146,6 +159,48 @@ describe("detectSkillsFromZip", () => {
     }
   });
 
+  test("rejects a zip whose entry count exceeds the cap", () => {
+    const files: Record<string, string> = {};
+    for (let i = 0; i < MAX_ZIP_ENTRIES + 1; i++) {
+      files[`file-${i}.txt`] = "x";
+    }
+
+    const result = detectSkillsFromZip({ zipBuffer: buildZipBuffer(files) });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("too many entries");
+    }
+  });
+
+  test("does not inflate an entry declaring a size of 0", () => {
+    const zipBuffer = makeZipBombBuffer(
+      "skills/foo/SKILL.md",
+      2 * MAX_DECOMPRESSED_SIZE_BYTES
+    );
+    const inflated = spyOnInflatedBytes();
+
+    const result = detectSkillsFromZip({ zipBuffer });
+    expect(result.isOk()).toBe(true);
+    expect(inflated.total).toBe(0);
+  });
+
+  test("detects a small archive with more than 50 skill directories", () => {
+    const files: Record<string, string> = {};
+    for (let i = 0; i < 51; i++) {
+      files[`skills/skill-${i}/SKILL.md`] = makeSkillMd(
+        `skill-${i}`,
+        "A skill",
+        "Do the thing."
+      );
+    }
+
+    const result = detectSkillsFromZip({ zipBuffer: buildZipBuffer(files) });
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toHaveLength(51);
+    }
+  });
+
   test("returns error for invalid ZIP data", () => {
     const result = detectSkillsFromZip({
       zipBuffer: Buffer.from("not a zip file"),
@@ -154,5 +209,23 @@ describe("detectSkillsFromZip", () => {
     if (result.isErr()) {
       expect(result.error.message).toContain("Failed to open ZIP");
     }
+  });
+});
+
+describe("createZipAttachmentReader", () => {
+  test("does not inflate an entry declaring a size of 0", () => {
+    const zipBuffer = makeZipBombBuffer(
+      "skills/foo/data.txt",
+      2 * MAX_DECOMPRESSED_SIZE_BYTES
+    );
+    const inflated = spyOnInflatedBytes();
+
+    const readerResult = createZipAttachmentReader(zipBuffer);
+    expect(readerResult.isOk()).toBe(true);
+    if (readerResult.isOk()) {
+      const readResult = readerResult.value("skills/foo/data.txt");
+      expect(readResult.isOk()).toBe(true);
+    }
+    expect(inflated.total).toBe(0);
   });
 });

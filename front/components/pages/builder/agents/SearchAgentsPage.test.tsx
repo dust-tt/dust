@@ -1,4 +1,6 @@
 import { ManageAgentsPage } from "@app/components/pages/builder/agents/ManageAgentsPage";
+import { AssistantsDataTable } from "@app/components/poke/assistants/table";
+import { serializeFilterHash } from "@app/components/shared/filter_panel/filterHash";
 import { getModelFilterDisplayName } from "@app/components/shared/filter_panel/searchFilter";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { AuthContext } from "@app/lib/auth/AuthContext";
@@ -6,8 +8,17 @@ import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { SearchAgentsResponseBody } from "@app/types/agent_search/agent_search";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { MembershipRoleType } from "@app/types/memberships";
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import assert from "assert";
 import { SWRConfig } from "swr";
@@ -34,13 +45,23 @@ beforeEach(() => {
   }
 });
 
+const { push, patch, notify } = vi.hoisted(() => ({
+  push: vi.fn(),
+  patch: vi.fn(),
+  notify: vi.fn(),
+}));
+vi.mock("@app/lib/egress/client", () => ({ clientFetch: patch }));
+vi.mock("@app/hooks/useNotification", () => ({
+  useSendNotification: () => notify,
+}));
+
 vi.mock("@app/lib/platform", () => ({
   useAppRouter: () => ({
     isReady: true,
     pathname: "/w/workspace/builder/agents",
     asPath: "/w/workspace/builder/agents",
     query: {},
-    push: vi.fn(),
+    push,
     replace: vi.fn(),
     events: { on: vi.fn(), off: vi.fn() },
   }),
@@ -65,14 +86,6 @@ vi.mock("@app/components/sparkle/ThemeContext", () => ({
   useTheme: () => ({ isDark: false }),
 }));
 
-vi.mock("@app/components/assistant/ModelsFilterMenu", () => ({
-  ModelsFilterMenu: () => null,
-}));
-
-vi.mock("@app/components/assistant/TagsFilterMenu", () => ({
-  TagsFilterMenu: () => null,
-}));
-
 vi.mock("@app/components/assistant/SetModelAssistantsDialog", () => ({
   SetModelAssistantsDialog: () => <button type="button">Set model</button>,
 }));
@@ -82,21 +95,33 @@ vi.mock("@app/components/assistant/CreateAgentDropdown", () => ({
 }));
 
 afterEach(() => {
+  vi.clearAllMocks();
   vi.unstubAllGlobals();
+  window.history.replaceState({}, "", "/");
 });
 
 async function setup({
   role = "admin",
-  pageEnabled = true,
+  tagsLoaded,
+  globalStatus = "disabled_by_admin",
 }: {
   role?: MembershipRoleType;
-  pageEnabled?: boolean;
+  tagsLoaded?: Promise<void>;
+  globalStatus?: LightAgentConfigurationType["status"];
 } = {}) {
   const { authenticator, user } = await createResourceTest({ role });
   const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
     authenticator,
     { name: "Weekly report" }
   );
+  const globalAgent: LightAgentConfigurationType = {
+    ...agentConfiguration,
+    sId: GLOBAL_AGENTS_SID.DUST,
+    scope: "global",
+    name: "Default Dust",
+    status: globalStatus,
+  };
+  patch.mockImplementation(async () => ({ ok: true }));
   const { sId, fullName, image } = user.toJSON();
   const agent: SearchAgentsResponseBody["agents"][number] = {
     sId: agentConfiguration.sId,
@@ -126,7 +151,7 @@ async function setup({
     subscription: authenticator.getNonNullableSubscription(),
     isAdmin: role === "admin",
     isManager: false,
-    featureFlags: pageEnabled ? ["new_manage_agents_page"] : [],
+    featureFlags: [],
     vizUrl: "http://localhost",
     providersHealth: null,
     workspacePermissions: await authenticator.getWorkspacePermissions(),
@@ -153,10 +178,30 @@ async function setup({
     },
   };
   const fetcherWithBody = vi.fn(
-    async ([, body]: [string, { limit?: number }, string]) =>
-      body.limit === 0 ? facetsResponse : search()
+    async ([, body]: [
+      string,
+      { limit?: number; scope?: string[] },
+      string,
+    ]) => {
+      if (body.limit === 0) {
+        return facetsResponse;
+      }
+      if (body.scope?.length === 1 && body.scope[0] === "global") {
+        return {
+          agents: [{ ...agent, ...globalAgent, model: agent.model }],
+          total: 1,
+          hasMore: false,
+          facets: {},
+        };
+      }
+      return search();
+    }
   );
   const fetcher = vi.fn(async (url: string) => {
+    if (url.endsWith("/tags")) {
+      await tagsLoaded;
+      return { tags: [] };
+    }
     if (url.endsWith(`/agent_configurations/${agent.sId}`)) {
       return { agentConfiguration };
     }
@@ -165,8 +210,8 @@ async function setup({
     }
     return {};
   });
-  const mount = () =>
-    render(<ManageAgentsPage />, {
+  const mount = (ui = <ManageAgentsPage />) =>
+    render(ui, {
       wrapper: ({ children }) => (
         <SWRConfig
           value={{ provider: () => new Map(), shouldRetryOnError: false }}
@@ -182,6 +227,8 @@ async function setup({
   return {
     agent,
     agentConfiguration,
+    globalAgent,
+    context,
     editor: { sId, fullName },
     search,
     fetcher,
@@ -202,19 +249,120 @@ function lastSearchBody(fetcherWithBody: ReturnType<typeof vi.fn>) {
 }
 
 describe("search-backed Manage Agents", () => {
-  it("keeps the legacy page when the flag is off", async () => {
-    const { fetcherWithBody, fetcher, mount } = await setup({
-      pageEnabled: false,
+  it("lets admins enable disabled defaults and disable them again", async () => {
+    const { globalAgent, context, mount } = await setup();
+    patch.mockImplementation(async (_url: string, options: RequestInit) => {
+      globalAgent.status = JSON.parse(String(options.body)).status;
+      return { ok: true };
     });
     mount();
-
+    await userEvent.click(screen.getByRole("tab", { name: "Dust" }));
+    await screen.findByText("Default Dust");
+    const toggle = () => screen.getByRole("switch", { name: "Default Dust" });
     expect(
-      await screen.findByPlaceholderText("Search (Name, Editors)")
+      screen.getByRole("button", { name: /Default Dust/ })
     ).toBeInTheDocument();
-    expect(fetchedUrls(fetcher)).toContainEqual(
-      expect.stringContaining("/assistant/agent_configurations?view=manage")
+    expect(
+      screen
+        .getAllByRole("columnheader")
+        .map((header) => header.textContent?.trim())
+        .filter(Boolean)
+    ).toEqual([
+      "Name",
+      "Access",
+      "Model",
+      "Usage",
+      "Feedback",
+      "Editors",
+      "Tags",
+      "Last edited",
+    ]);
+    await userEvent.click(toggle());
+    await waitFor(() =>
+      expect(patch).toHaveBeenLastCalledWith(
+        `/api/w/${context.workspace.sId}/assistant/global_agents/${globalAgent.sId}`,
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({ status: "active" }),
+        })
+      )
     );
-    expect(fetcherWithBody).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(toggle()).toHaveAttribute("aria-checked", "true")
+    );
+    expect(
+      screen.queryByText(`Details of ${globalAgent.sId}`)
+    ).not.toBeInTheDocument();
+    toggle().focus();
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(patch).toHaveBeenLastCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          body: JSON.stringify({ status: "disabled_by_admin" }),
+        })
+      )
+    );
+  });
+
+  it("prevents members from changing default agents", async () => {
+    const { mount } = await setup({ role: "user" });
+    mount();
+    await userEvent.click(screen.getByRole("tab", { name: "Dust" }));
+    await screen.findByText("Default Dust");
+    const toggle = screen.getByRole("switch", { name: "Default Dust" });
+    await userEvent.click(toggle);
+    expect(patch).not.toHaveBeenCalled();
+  });
+
+  it("keeps the helper enabled and missing-data defaults disabled", async () => {
+    const { globalAgent, mount } = await setup({
+      globalStatus: "disabled_missing_datasource",
+    });
+    const { unmount } = mount();
+    await userEvent.click(screen.getByRole("tab", { name: "Dust" }));
+    const toggle = await screen.findByRole("switch", { name: "Default Dust" });
+    expect(toggle).toBeDisabled();
+    await userEvent.click(toggle);
+    expect(patch).not.toHaveBeenCalled();
+    unmount();
+    globalAgent.sId = GLOBAL_AGENTS_SID.HELPER;
+    globalAgent.status = "active";
+    mount();
+    await userEvent.click(screen.getByRole("tab", { name: "Dust" }));
+    await screen.findByRole("button", { name: /Default Dust/ });
+    await waitFor(() =>
+      expect(screen.queryByRole("switch")).not.toBeInTheDocument()
+    );
+  });
+
+  it("keeps paid defaults disabled on free plans", async () => {
+    const { mount } = await setup({
+      globalStatus: "disabled_free_workspace",
+    });
+    mount();
+    await userEvent.click(screen.getByRole("tab", { name: "Dust" }));
+    await screen.findByText("Default Dust");
+    const toggle = screen.getByRole("switch", { name: "Default Dust" });
+    await userEvent.click(toggle);
+    await screen.findByRole("dialog", { name: "Free plan" });
+    expect(patch).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  });
+
+  it("reports failed default-agent updates without changing the toggle", async () => {
+    const { mount } = await setup();
+    mount();
+    await userEvent.click(screen.getByRole("tab", { name: "Dust" }));
+    const toggle = await screen.findByRole("switch", { name: "Default Dust" });
+    patch.mockResolvedValue({ ok: false });
+    await userEvent.click(toggle);
+    await waitFor(() =>
+      expect(notify).toHaveBeenCalledWith(
+        expect.objectContaining({ type: "error" })
+      )
+    );
+    expect(toggle).toHaveAttribute("aria-checked", "false");
   });
 
   it("loads custom agents by usage and opens details on click", async () => {
@@ -224,6 +372,7 @@ describe("search-backed Manage Agents", () => {
     await screen.findByRole("button", { name: /Weekly report/ });
     expect(lastSearchBody(fetcherWithBody)).toEqual({
       query: "",
+      searchType: "name",
       status: ["active"],
       scope: ["visible", "hidden"],
       sortBy: "usage",
@@ -241,57 +390,50 @@ describe("search-backed Manage Agents", () => {
       },
       { timeout: CI_RENDER_TIMEOUT_MS }
     );
-    for (const header of [
+    expect(
+      screen
+        .getAllByRole("columnheader")
+        .map((header) => header.textContent?.trim())
+        .filter(Boolean)
+    ).toEqual([
       "Name",
-      "Model",
       "Access",
-      "Editors",
-      "Tags",
+      "Model",
       "Usage",
       "Feedback",
+      "Editors",
+      "Tags",
       "Last edited",
-    ]) {
-      expect(
-        screen.getByRole("columnheader", { name: header })
-      ).toBeInTheDocument();
-    }
+    ]);
     expect(fetchedUrls(fetcher)).not.toContainEqual(
       expect.stringContaining(`/agent_configurations/${agent.sId}`)
     );
   });
 
   it("requests each tab with its own filters", async () => {
-    const { fetcherWithBody, mount } = await setup();
+    const { fetcherWithBody, fetcher, mount } = await setup();
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
+    expect(
+      screen.queryByRole("tab", { name: "Editable" })
+    ).not.toBeInTheDocument();
 
-    for (const { tab, filters } of [
-      {
-        tab: "Editable",
-        filters: {
-          status: ["active"],
-          editedByMe: true,
-          permissionFiltering: "strict",
-        },
-      },
-      {
-        tab: "Default",
-        filters: {
-          status: ["active"],
-          scope: ["global"],
-          permissionFiltering: "strict",
-        },
-      },
-      {
-        tab: "Archived",
-        filters: { status: ["archived"], permissionFiltering: "unrestricted" },
-      },
-    ]) {
-      await userEvent.click(screen.getByRole("tab", { name: tab }));
-      await waitFor(() =>
-        expect(lastSearchBody(fetcherWithBody)).toMatchObject(filters)
-      );
-    }
+    await userEvent.click(screen.getByRole("tab", { name: "Dust" }));
+    await screen.findByText("Default Dust");
+    expect(lastSearchBody(fetcherWithBody)).toMatchObject({
+      scope: ["global"],
+      permissionFiltering: "strict",
+    });
+    expect(fetchedUrls(fetcher)).not.toContainEqual(
+      expect.stringContaining("view=global")
+    );
+    await userEvent.click(screen.getByRole("tab", { name: "Archived" }));
+    await waitFor(() =>
+      expect(lastSearchBody(fetcherWithBody)).toMatchObject({
+        status: ["archived"],
+        permissionFiltering: "unrestricted",
+      })
+    );
   });
 
   it("lets admins show hidden agents with unrestricted search", async () => {
@@ -299,15 +441,46 @@ describe("search-backed Manage Agents", () => {
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
 
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
     await userEvent.click(
-      screen.getByRole("checkbox", { name: "Show hidden agents" })
+      screen.getByRole("checkbox", { name: "Hidden agents" })
     );
+    expect(lastSearchBody(fetcherWithBody)).toMatchObject({
+      permissionFiltering: "strict",
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Apply" }));
     await waitFor(() =>
       expect(lastSearchBody(fetcherWithBody)).toMatchObject({
         scope: ["visible", "hidden"],
         permissionFiltering: "unrestricted",
       })
     );
+
+    expect(screen.getByText("Hidden agents")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Filters" })
+    ).not.toHaveTextContent(/\d/);
+
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    expect(
+      screen.getByRole("checkbox", { name: "Hidden agents" })
+    ).toBeChecked();
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Remove" }));
+    await waitFor(() =>
+      expect(screen.queryByText("Hidden agents")).not.toBeInTheDocument()
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    expect(
+      screen.getByRole("checkbox", { name: "Hidden agents" })
+    ).not.toBeChecked();
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Dust" }));
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    expect(
+      screen.queryByRole("checkbox", { name: "Hidden agents" })
+    ).not.toBeInTheDocument();
   });
 
   it("never requests unrestricted search for non-admins", async () => {
@@ -315,15 +488,41 @@ describe("search-backed Manage Agents", () => {
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
 
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
     expect(
-      screen.queryByRole("checkbox", { name: "Show hidden agents" })
+      screen.queryByRole("checkbox", { name: "Hidden agents" })
     ).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     await userEvent.click(screen.getByRole("tab", { name: "Archived" }));
     await waitFor(() =>
       expect(lastSearchBody(fetcherWithBody)).toMatchObject({
         status: ["archived"],
         permissionFiltering: "strict",
       })
+    );
+  });
+
+  it("starts text search at three characters", async () => {
+    const { fetcherWithBody, mount } = await setup();
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+
+    const input = screen.getByLabelText("Search agents");
+    await userEvent.type(input, "re");
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+    });
+    for (const [request] of fetcherWithBody.mock.calls) {
+      expect(request).toEqual([
+        expect.any(String),
+        expect.objectContaining({ query: "" }),
+        "POST",
+      ]);
+    }
+
+    await userEvent.type(input, "p");
+    await waitFor(() =>
+      expect(lastSearchBody(fetcherWithBody)).toMatchObject({ query: "rep" })
     );
   });
 
@@ -336,6 +535,7 @@ describe("search-backed Manage Agents", () => {
     await waitFor(() =>
       expect(lastSearchBody(fetcherWithBody)).toMatchObject({
         query: "report",
+        searchType: "name",
         sortBy: "relevance",
       })
     );
@@ -343,6 +543,7 @@ describe("search-backed Manage Agents", () => {
     await waitFor(() =>
       expect(lastSearchBody(fetcherWithBody)).toMatchObject({
         query: "report",
+        searchType: "name",
         sortBy: "name",
         sortOrder: "asc",
         offset: 0,
@@ -402,6 +603,29 @@ describe("search-backed Manage Agents", () => {
     );
   });
 
+  it("keeps a row checkbox click when tags finish loading mid-click", async () => {
+    let releaseTags = () => {};
+    const { mount } = await setup({
+      tagsLoaded: new Promise((resolve) => {
+        releaseTags = resolve;
+      }),
+    });
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+    const checkbox = screen.getByRole("checkbox", {
+      name: "Select Weekly report",
+    });
+
+    fireEvent.pointerDown(checkbox);
+    await act(async () => releaseTags());
+    await waitFor(() =>
+      expect(screen.queryByLabelText("Loading")).not.toBeInTheDocument()
+    );
+    fireEvent.click(checkbox);
+
+    expect(await screen.findByText("1 selected")).toBeInTheDocument();
+  });
+
   it("keeps the selection across pages and offers batch actions", async () => {
     const { agent, search, fetcherWithBody, mount } = await setup();
     search.mockResolvedValueOnce({
@@ -416,7 +640,7 @@ describe("search-backed Manage Agents", () => {
     await userEvent.click(
       screen.getByRole("checkbox", { name: "Select Weekly report" })
     );
-    expect(screen.getByText("1 selected.")).toBeInTheDocument();
+    expect(screen.getByText("1 selected")).toBeInTheDocument();
     for (const action of ["Change tag", "Set model", "Unpublish", "Archive"]) {
       expect(screen.getByRole("button", { name: action })).toBeInTheDocument();
     }
@@ -434,11 +658,11 @@ describe("search-backed Manage Agents", () => {
     await userEvent.click(
       screen.getByRole("checkbox", { name: "Select Second page" })
     );
-    expect(screen.getByText("2 selected.")).toBeInTheDocument();
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
 
     await userEvent.type(screen.getByLabelText("Search agents"), "report");
     await waitFor(() =>
-      expect(screen.queryByText(/selected\./)).not.toBeInTheDocument()
+      expect(screen.queryByText(/^\d+ selected$/)).not.toBeInTheDocument()
     );
   });
 
@@ -487,16 +711,18 @@ describe("search-backed Manage Agents", () => {
       screen.getByRole("checkbox", { name: "Not published" })
     );
     await userEvent.click(screen.getByRole("tab", { name: "Editors" }));
-    const meCheckbox = await screen.findByRole("checkbox", { name: "Me" });
-    const editorCheckboxes = within(screen.getByRole("dialog")).getAllByRole(
-      "checkbox"
-    );
+    const currentUserCheckbox = await screen.findByRole("checkbox", {
+      name: `${editor.fullName} (You)`,
+    });
+    const editorCheckboxes = within(screen.getByRole("dialog"))
+      .getAllByRole("checkbox")
+      .filter((checkbox) => checkbox.id.startsWith("agent-filter-option-"));
     expect(editorCheckboxes).toHaveLength(2);
-    expect(editorCheckboxes[0]).toBe(meCheckbox);
+    expect(editorCheckboxes[0]).toBe(currentUserCheckbox);
     expect(
       screen.queryByRole("checkbox", { name: editor.fullName })
     ).not.toBeInTheDocument();
-    await userEvent.click(meCheckbox);
+    await userEvent.click(currentUserCheckbox);
     await userEvent.click(screen.getByRole("tab", { name: "Models" }));
     await userEvent.click(
       await screen.findByRole("checkbox", {
@@ -518,6 +744,7 @@ describe("search-backed Manage Agents", () => {
     });
 
     await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(screen.getByText(`${editor.fullName} (You)`)).toBeInTheDocument();
     await waitFor(() =>
       expect(lastSearchBody(fetcherWithBody)).toMatchObject({
         scope: ["hidden"],
@@ -528,16 +755,148 @@ describe("search-backed Manage Agents", () => {
     );
   });
 
-  it("hides Access on the Default tab", async () => {
+  it.each([
+    "all",
+    "default",
+  ] as const)("ignores hidden Dust filters when starting on the %s tab", async (tabId) => {
+    const { fetcherWithBody, mount } = await setup();
+    const hash = serializeFilterHash(
+      {
+        tabId,
+        selection: {
+          access: { hidden: "Not published" },
+          editor: { "other-editor": "Alice Other" },
+          tag: { "workspace-tag": "Workspace tag" },
+          skill: { "workspace-skill": "Workspace skill" },
+          space: { "workspace-space": "Workspace space" },
+          usage: { "1-5": "1–5 active users" },
+          model: { "claude-sonnet-5": "Sonnet" },
+        },
+      },
+      "all"
+    );
+    window.history.replaceState({}, "", `/#?search=${hash}`);
+    mount();
+    if (tabId === "all") {
+      await screen.findByRole("button", { name: /Weekly report/ });
+      await userEvent.click(screen.getByRole("tab", { name: "Dust" }));
+    }
+    await screen.findByRole("switch", { name: "Default Dust" });
+    expect(lastSearchBody(fetcherWithBody)).toMatchObject({
+      scope: ["global"],
+      modelIds: ["claude-sonnet-5"],
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    await userEvent.click(
+      await screen.findByRole("checkbox", {
+        name: getModelFilterDisplayName("claude-sonnet-5"),
+      })
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+    await waitFor(() =>
+      expect(lastSearchBody(fetcherWithBody)).not.toHaveProperty("modelIds")
+    );
+
+    const dustRequests = fetcherWithBody.mock.calls
+      .map(([[, body]]) => body)
+      .filter((body) => body.scope?.includes("global"));
+    for (const body of dustRequests) {
+      for (const key of [
+        "editorIds",
+        "tagIds",
+        "skillIds",
+        "spaceIds",
+        "activeUsersCount",
+      ]) {
+        expect(body).not.toHaveProperty(key);
+      }
+      if (body.limit === 0) {
+        expect(body).toMatchObject({ facets: ["models"] });
+      }
+    }
+
+    await userEvent.click(screen.getByRole("tab", { name: "Workspace" }));
+    await waitFor(() =>
+      expect(lastSearchBody(fetcherWithBody)).toMatchObject({
+        scope: ["hidden"],
+        editorIds: ["other-editor"],
+        tagIds: ["workspace-tag"],
+        skillIds: ["workspace-skill"],
+        spaceIds: ["workspace-space"],
+        activeUsersCount: { min: 1, max: 5 },
+      })
+    );
+    expect(lastSearchBody(fetcherWithBody)).not.toHaveProperty("modelIds");
+  });
+
+  it("only shows model filters on the Dust tab", async () => {
     const { mount } = await setup();
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
 
-    await userEvent.click(screen.getByRole("tab", { name: "Default" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Dust" }));
     await userEvent.click(screen.getByRole("button", { name: "Filters" }));
     expect(
       screen.queryByRole("tab", { name: "Access" })
     ).not.toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Editors" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("tab", { name: "Editors" })
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Models" })).toBeInTheDocument();
+  });
+});
+
+describe("Poke Manage Agents", () => {
+  it("uses Poke table and facet requests and navigates to Poke details", async () => {
+    const { mount, context, agent, fetcherWithBody } = await setup();
+    mount(
+      <AssistantsDataTable owner={context.workspace} agentsRetention={{}} />
+    );
+    await screen.findByText(agent.name);
+    expect(fetcherWithBody).toHaveBeenCalledWith([
+      `/api/poke/workspaces/${context.workspace.sId}/agent_configurations/search`,
+      expect.objectContaining({
+        sortBy: "usage",
+        permissionFiltering: "unrestricted",
+        limit: 25,
+      }),
+      "POST",
+    ]);
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Restore an agent/ })
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByText(agent.name));
+    expect(push).toHaveBeenCalledWith(
+      `/poke/${context.workspace.sId}/assistants/${agent.sId}`
+    );
+    expect(
+      screen.queryByText(`Details of ${agent.sId}`)
+    ).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Filters" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Editors" }));
+    await waitFor(() =>
+      expect(fetcherWithBody).toHaveBeenCalledWith([
+        `/api/poke/workspaces/${context.workspace.sId}/agent_configurations/search`,
+        expect.objectContaining({ limit: 0, facets: ["editors"] }),
+        "POST",
+      ])
+    );
+  });
+
+  it("keeps agent tabs separate from skill filters in the hash", async () => {
+    const { mount, context, fetcherWithBody } = await setup();
+    mount(
+      <AssistantsDataTable owner={context.workspace} agentsRetention={{}} />
+    );
+    await screen.findByText("Weekly report");
+    await userEvent.click(screen.getByRole("tab", { name: "Archived" }));
+    await waitFor(() =>
+      expect(lastSearchBody(fetcherWithBody)).toMatchObject({
+        status: ["archived"],
+      })
+    );
+    expect(window.location.hash).toContain("agentSearch=");
+    expect(window.location.hash).not.toContain("skillSearch=");
   });
 });

@@ -8,6 +8,7 @@ import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
+import { getMarkdownPipeline } from "@app/lib/editor/server_markdown_pipeline";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -287,7 +288,8 @@ async function createProductboardSkill(
       icon: PRODUCTBOARD_SKILL_ICON,
       instructions: PRODUCTBOARD_SKILL_INSTRUCTIONS,
       instructionsHtml: convertMarkdownToBlockHtml(
-        PRODUCTBOARD_SKILL_INSTRUCTIONS
+        PRODUCTBOARD_SKILL_INSTRUCTIONS,
+        getMarkdownPipeline("skill")
       ),
       availability: DEFAULT_SKILL_AVAILABILITY,
       name: PRODUCTBOARD_SKILL_NAME,

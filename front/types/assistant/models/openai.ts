@@ -22,6 +22,7 @@ export const GPT_5_5_MODEL_ID = "gpt-5.5" as const;
 export const GPT_6_ASTRA_MODEL_ID = "gpt-6-astra" as const;
 export const GPT_5_6_SOL_MODEL_ID = "gpt-5.6-sol" as const;
 export const GPT_6_SOL_MODEL_ID = "gpt-6-sol" as const;
+export const GPT_6_1_SOL_MODEL_ID = "gpt-6.1-sol" as const;
 export const GPT_5_6_TERRA_MODEL_ID = "gpt-5.6-terra" as const;
 export const GPT_5_6_TERRA_LONG_CONTEXT_MODEL_ID =
   "gpt-5.6-terra-long-context" as const;
@@ -577,11 +578,59 @@ export const GPT_6_SOL_MODEL_CONFIG: ModelConfigurationType = {
     "OpenAI's GPT 6 Sol model for complex reasoning, coding, and agentic tasks (272k context).",
   shortDescription: "OpenAI's GPT 6 reasoning model.",
   isLegacy: false,
-  isLatest: true,
+  isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
   supportedReasoningEfforts: {
     none: true,
+    minimal: false,
+    low: true,
+    medium: true,
+    high: true,
+    xhigh: true,
+    maximal: true,
+  },
+  defaultReasoningEffort: "medium",
+  supportsResponseFormat: true,
+  supportsBatchProcessing: true,
+  supportsToolSearch: true,
+  // Mirrored by the endpoints' `PREMIUM_MODEL_ENDPOINT_FILTER` so the picker
+  // and the router agree.
+  availableIfOneOf: {
+    creditPricedPlan: true,
+    plansWithAdvancedModels: true,
+    featureFlag: "premium_model_access",
+  },
+  formattingMetaPrompt: OPENAI_FORMATTING_META_PROMPT,
+  toolUseMetaPrompt: OPENAI_TOOL_USE_META_PROMPT,
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": true,
+  },
+};
+// Verified 2026-09-30: https://developers.openai.com/api/docs/models/gpt-6.1-sol
+// gpt-6.1-sol supersedes gpt-6-sol with the same 1,050,000-token native
+// context, which Dust caps at the family's 272,000 tokens. Unlike gpt-6-sol it
+// has no "none" effort: "The `none` and `minimal` reasoning efforts are not
+// supported."
+export const GPT_6_1_SOL_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "openai",
+  modelId: GPT_6_1_SOL_MODEL_ID,
+  displayName: "GPT 6.1 Sol",
+  contextSize: 272_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "OpenAI's GPT 6.1 Sol model for complex reasoning, coding, and agentic tasks (272k context).",
+  shortDescription: "OpenAI's GPT 6.1 reasoning model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  supportedReasoningEfforts: {
+    none: false,
     minimal: false,
     low: true,
     medium: true,

@@ -91,6 +91,8 @@ type CachedGroup = {
   workspaceId: ModelId;
   workOSGroupId: string | null;
   poolCapAwuCredits: number | null;
+  groupLimitAwuCredits: number | null;
+  groupLimitPriority: number | null;
   grantedRole: GroupGrantableRole | null;
   grantedSeatType: GroupGrantableSeatType | null;
   createdAt: number;
@@ -136,7 +138,7 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   private static readonly workspaceGroupsFromSystemKeyCacheKeyResolver = (
     workspaceModelId: ModelId
-  ) => `workspace-groups-from-system-key:${workspaceModelId}`;
+  ) => `workspace-groups-from-system-key-v2:${workspaceModelId}`;
 
   private static async _listWorkspaceGroupsFromSystemKeyUncached(
     workspaceModelId: ModelId
@@ -154,6 +156,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       workspaceId: g.workspaceId,
       workOSGroupId: g.workOSGroupId,
       poolCapAwuCredits: g.poolCapAwuCredits,
+      groupLimitAwuCredits: g.groupLimitAwuCredits,
+      groupLimitPriority: g.groupLimitPriority,
       grantedRole: g.grantedRole,
       grantedSeatType: g.grantedSeatType,
       createdAt: g.createdAt.getTime(),
@@ -196,6 +200,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       workspaceId: data.workspaceId,
       workOSGroupId: data.workOSGroupId,
       poolCapAwuCredits: data.poolCapAwuCredits,
+      groupLimitAwuCredits: data.groupLimitAwuCredits,
+      groupLimitPriority: data.groupLimitPriority,
       grantedRole: data.grantedRole,
       grantedSeatType: data.grantedSeatType,
       createdAt: new Date(data.createdAt),
@@ -421,7 +427,8 @@ export class GroupResource extends BaseResource<GroupModel> {
    */
   static async makeNewRegularManual(
     auth: Authenticator,
-    { name, memberIds }: { name: string; memberIds: string[] }
+    { name, memberIds }: { name: string; memberIds: string[] },
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<
     Result<
       { group: GroupResource; addedUsers: UserType[] },
@@ -460,7 +467,9 @@ export class GroupResource extends BaseResource<GroupModel> {
     // Everything that can reject the request is checked before the group row exists: a rejected
     // creation must not leave an empty group behind, which would also block retrying the name.
     const uniqueMemberIds = [...new Set(memberIds)];
-    const users = await UserResource.fetchByIds(uniqueMemberIds);
+    const users = await UserResource.fetchByIds(uniqueMemberIds, {
+      transaction,
+    });
     if (users.length !== uniqueMemberIds.length) {
       return new Err(
         new DustError("user_not_found", "Some users were not found.")
@@ -470,6 +479,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       await MembershipResource.getActiveMemberships({
         users,
         workspace: owner,
+        transaction,
       });
     if (workspaceMemberships.length !== users.length) {
       return new Err(
@@ -481,16 +491,19 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
     const memberUsers = users.map((u) => u.toJSON());
 
-    const group = await GroupResource.makeNew({
-      name,
-      kind: "regular_manual",
-      workspaceId: owner.id,
-    });
+    const group = await GroupResource.makeNew(
+      { name, kind: "regular_manual", workspaceId: owner.id },
+      { transaction }
+    );
     // Cannot fail past this point: the users were validated above and the group is empty.
     const addResult = await group.dangerouslyAddMembers(auth, {
       users: memberUsers,
+      transaction,
     });
     if (addResult.isErr()) {
+      if (transaction) {
+        throw addResult.error;
+      }
       return new Err(addResult.error);
     }
 
@@ -1245,6 +1258,77 @@ export class GroupResource extends BaseResource<GroupModel> {
     );
   }
 
+  /**
+   * @cc [owner:rfrenoy,label:security;product;backend] limit-group-drop-not-reassign
+   * Each member's limit group is resolved from memberships and priorities alone, and the `read`
+   * filter applies to that resolved group: a member whose limit group the caller cannot read MUST
+   * be absent from the result, never attributed to the next readable group.
+   */
+  static async listLimitGroupByUserModelIdInWorkspace(
+    auth: Authenticator,
+    { userModelIds }: { userModelIds: ModelId[] }
+  ): Promise<Map<ModelId, GroupResource>> {
+    if (userModelIds.length === 0) {
+      return new Map();
+    }
+    const workspace = auth.getNonNullableWorkspace();
+
+    const limitedGroups = await GroupModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        kind: [...CAP_ELIGIBLE_GROUP_KINDS],
+        groupLimitAwuCredits: { [Op.ne]: null },
+        groupLimitPriority: { [Op.ne]: null },
+      },
+      order: [
+        ["groupLimitPriority", "ASC"],
+        ["id", "ASC"],
+      ],
+    });
+    if (limitedGroups.length === 0) {
+      return new Map();
+    }
+
+    const now = new Date();
+    const memberships = await GroupMembershipModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        groupId: limitedGroups.map((g) => g.id),
+        userId: userModelIds,
+        status: "active",
+        startAt: { [Op.lte]: now },
+        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+      },
+    });
+
+    const rankByGroupModelId = new Map(
+      limitedGroups.map((group, rank) => [group.id, rank])
+    );
+    const bestRankByUserModelId = new Map<ModelId, number>();
+    for (const m of memberships) {
+      const rank = rankByGroupModelId.get(m.groupId);
+      if (rank === undefined) {
+        continue;
+      }
+      const current = bestRankByUserModelId.get(m.userId);
+      if (current === undefined || rank < current) {
+        bestRankByUserModelId.set(m.userId, rank);
+      }
+    }
+
+    const groupByRank = limitedGroups.map(
+      (group) => new GroupResource(GroupModel, group.get())
+    );
+    const result = new Map<ModelId, GroupResource>();
+    for (const [userModelId, rank] of bestRankByUserModelId) {
+      const group = groupByRank[rank];
+      if (auth.can("read", group)) {
+        result.set(userModelId, group);
+      }
+    }
+    return result;
+  }
+
   static async getMemberCountsForGroups(
     auth: Authenticator,
     groups: GroupResource[]
@@ -1633,10 +1717,12 @@ export class GroupResource extends BaseResource<GroupModel> {
       users,
       transaction,
       allowProvisionedGroups = false,
+      allowDepartedMembers = false,
     }: {
       users: UserType[];
       transaction?: Transaction;
       allowProvisionedGroups?: boolean;
+      allowDepartedMembers?: boolean;
     }
   ): Promise<
     Result<
@@ -1672,21 +1758,23 @@ export class GroupResource extends BaseResource<GroupModel> {
         )
       );
     }
-    const { total } = await MembershipResource.getActiveMemberships({
-      users: userResources,
-      workspace: owner,
-      transaction,
-    });
+    if (!allowDepartedMembers) {
+      const { total } = await MembershipResource.getActiveMemberships({
+        users: userResources,
+        workspace: owner,
+        transaction,
+      });
 
-    if (total !== userIds.length) {
-      return new Err(
-        new DustError(
-          "user_not_member",
-          userIds.length === 1
-            ? "Cannot remove: user is not a member of the workspace"
-            : "Cannot remove: users are not members of the workspace"
-        )
-      );
+      if (total !== userIds.length) {
+        return new Err(
+          new DustError(
+            "user_not_member",
+            userIds.length === 1
+              ? "Cannot remove: user is not a member of the workspace"
+              : "Cannot remove: users are not members of the workspace"
+          )
+        );
+      }
     }
 
     // Check if all requested users are active members of the group.
@@ -2366,14 +2454,48 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   // Per-group usage spend limit (excluding seat allowance), applied per member.
   // Pass null to clear the cap.
-  // Authorization is handled the same way as user and workspace spend limits:
-  // by the route (`ensureIsManager`), and `setGroupSpendLimit` validates the
-  // group kind. This is a plain setter, mirroring `updatePoolCapOverride`.
+  // `setGroupSpendLimit` checks authorization and the group kind before calling
+  // this plain setter, mirroring `updatePoolCapOverride`.
   async updatePoolCap(
     poolCapAwuCredits: number | null
   ): Promise<Result<undefined, Error>> {
     await this.update({ poolCapAwuCredits });
     return new Ok(undefined);
+  }
+
+  /**
+   * @cc [owner:rfrenoy,label:product;backend] group-limit-columns-paired
+   * `groupLimitAwuCredits` and `groupLimitPriority` MUST be both null or both non-null, and MUST
+   * only be written by this method. A group is "limited" iff `groupLimitAwuCredits IS NOT NULL`
+   */
+  async updateGroupLimit(groupLimitAwuCredits: number | null): Promise<void> {
+    if (groupLimitAwuCredits === null) {
+      await this.update({
+        groupLimitAwuCredits: null,
+        groupLimitPriority: null,
+      });
+      return;
+    }
+
+    if (this.groupLimitPriority !== null) {
+      await this.update({ groupLimitAwuCredits });
+      return;
+    }
+
+    const maxPriority = await GroupModel.max<number | null, GroupModel>(
+      "groupLimitPriority",
+      {
+        where: {
+          workspaceId: this.workspaceId,
+          groupLimitPriority: { [Op.ne]: null },
+        },
+      }
+    );
+
+    await this.update({
+      groupLimitAwuCredits,
+      groupLimitPriority: (maxPriority ?? 0) + 1,
+    });
   }
 
   // Deletion

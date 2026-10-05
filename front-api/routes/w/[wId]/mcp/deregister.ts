@@ -7,10 +7,6 @@ const PostMCPDeregisterRequestBodySchema = z.object({
   serverId: z.string(),
 });
 
-export type PostMCPDeregisterRequestBody = z.infer<
-  typeof PostMCPDeregisterRequestBodySchema
->;
-
 // Mounted at /api/w/:wId/mcp/deregister.
 const app = workspaceApp();
 

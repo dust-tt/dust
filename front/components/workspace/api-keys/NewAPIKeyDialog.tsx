@@ -8,6 +8,7 @@ import {
   monthlyCapDollarsSchema,
   parseCreditsString,
 } from "@app/components/workspace/api-keys/utils";
+import { compareStrings } from "@app/lib/i18n/format";
 import type { SpaceType } from "@app/types/space";
 import {
   Button,
@@ -34,6 +35,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMemo, useState } from "react";
 import { FormProvider, useController, useForm } from "react-hook-form";
 import { z } from "zod";
+
+export const CREATE_API_KEY_LABEL = "Create API Key";
 
 const formSchema = z.object({
   name: z.string().min(1, "API key name is required"),
@@ -114,7 +117,7 @@ export const NewAPIKeyDialog = ({
   const sortedSpaces = useMemo(
     () =>
       [...spaces].sort((a, b) =>
-        a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+        compareStrings(a.name.toLowerCase(), b.name.toLowerCase())
       ),
     [spaces]
   );
@@ -157,7 +160,7 @@ export const NewAPIKeyDialog = ({
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
         <Button
-          label="Create API Key"
+          label={CREATE_API_KEY_LABEL}
           icon={Plus}
           disabled={disabled || isGenerating || isRevoking}
         />

@@ -91,7 +91,6 @@ const HeroSection = ({
         </div>
       </div>
 
-      {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
       {(config.testimonialCard || config.heroImage) && (
         <div className="relative col-span-12 mt-8 py-2 lg:col-span-6 lg:col-start-7 lg:mt-0">
           {config.decorativeShapes?.topRight && (
@@ -190,7 +189,6 @@ const AIAgentsSection = ({
   <div
     className={classNames(
       "rounded-2xl py-12 md:py-16",
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       config.bgColor || "bg-gray-50"
     )}
   >
@@ -345,7 +343,6 @@ const ImpactMetricsSection = ({
   config: NonNullable<IndustryPageConfig["impactMetrics"]>;
 }) => (
   <div
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     className={classNames("rounded-xl py-20", config.bgColor || "bg-blue-50")}
   >
     <div className="container mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
@@ -387,7 +384,6 @@ const TestimonialSection = ({
   <div
     className={classNames(
       "rounded-xl py-8 md:py-16",
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       config.bgColor || "bg-green-600"
     )}
   >
@@ -396,7 +392,6 @@ const TestimonialSection = ({
         <H1
           className={classNames(
             "mb-10 text-3xl !font-normal sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl",
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             config.textColor || "text-white"
           )}
         >
@@ -408,7 +403,6 @@ const TestimonialSection = ({
               size="lg"
               className={classNames(
                 "font-medium",
-                // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                 config.textColor || "text-white"
               )}
             >

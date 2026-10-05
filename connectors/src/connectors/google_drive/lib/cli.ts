@@ -32,7 +32,6 @@ import {
   GoogleDriveFilesModel,
   GoogleDriveFoldersModel,
 } from "@connectors/lib/models/google_drive";
-import { terminateWorkflow } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
@@ -41,10 +40,7 @@ import type {
   CheckFileGenericResponseType,
   GoogleDriveCommandType,
 } from "@connectors/types";
-import {
-  FILE_ATTRIBUTES_TO_FETCH,
-  googleDriveIncrementalSyncWorkflowId,
-} from "@connectors/types";
+import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types";
 import { isString } from "@connectors/types/shared/utils/general";
 import type { drive_v3 } from "googleapis";
 import type { GaxiosResponse } from "googleapis-common";
@@ -324,8 +320,6 @@ export const google_drive = async ({
         },
       });
       for (const connector of connectors) {
-        const workflowId = googleDriveIncrementalSyncWorkflowId(connector.id);
-        await terminateWorkflow(workflowId);
         await throwOnError(
           launchGoogleDriveIncrementalSyncWorkflow(connector.id)
         );

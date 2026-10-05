@@ -49,6 +49,7 @@ import {
   Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 
@@ -83,6 +84,7 @@ function RunningCell({
   row: TriggerRowData;
   canEnableManagerDisabled: boolean;
 }) {
+  const { t } = useLingui();
   switch (row.status) {
     case "enabled":
     case "disabled":
@@ -107,17 +109,21 @@ function RunningCell({
           }}
         />
       ) : (
-        <LockedToggle label="Disabled by a manager or admin, who can re-enable it." />
+        <LockedToggle
+          label={t`Disabled by a manager or admin, who can re-enable it.`}
+        />
       );
     case "relocating":
       return (
-        <LockedToggle label="Disabled while the workspace is being relocated." />
+        <LockedToggle
+          label={t`Disabled while the workspace is being relocated.`}
+        />
       );
     case "downgraded":
-      return <LockedToggle label="Disabled following a plan downgrade." />;
+      return <LockedToggle label={t`Disabled following a plan downgrade.`} />;
     default:
       assertNeverAndIgnore(row.status);
-      return <LockedToggle label="This automation is managed by Dust." />;
+      return <LockedToggle label={t`This automation is managed by Dust.`} />;
   }
 }
 
@@ -128,6 +134,7 @@ function ActionsCell({
   row: TriggerRowData;
   workspaceId: string;
 }) {
+  const { t } = useLingui();
   // A trigger on a global agent has no builder page to manage it from.
   if (isGlobalAgentId(row.agent.agentId)) {
     return (
@@ -135,7 +142,7 @@ function ActionsCell({
         variant="outline"
         size="xs"
         icon={Trash01}
-        tooltip="Delete automation"
+        tooltip={t`Delete automation`}
         onClick={(event) => {
           event.stopPropagation();
           row.onDelete();
@@ -148,7 +155,7 @@ function ActionsCell({
     <Button
       variant="outline"
       size="xs"
-      label="Manage"
+      label={t`Manage`}
       href={getAgentBuilderRoute(workspaceId, row.agent.agentId)}
       onClick={(event) => event.stopPropagation()}
     />
@@ -159,10 +166,12 @@ function buildColumns({
   workspaceId,
   expandedRowId,
   canEnableManagerDisabled,
+  statusHeader,
 }: {
   workspaceId: string;
   expandedRowId: string | null;
   canEnableManagerDisabled: boolean;
+  statusHeader: string;
 }): ColumnDef<TriggerRowData>[] {
   return [
     nameColumn(),
@@ -172,7 +181,7 @@ function buildColumns({
     poolColumn(),
     {
       id: "status",
-      header: "Enabled",
+      header: statusHeader,
       enableSorting: false,
       meta: { className: "w-16" },
       cell: (info) => (
@@ -204,6 +213,7 @@ interface UserAutomationsTableProps {
 }
 
 export function UserAutomationsTable({ owner }: UserAutomationsTableProps) {
+  const { t } = useLingui();
   const workspaceId = owner.sId;
   const canEnableManagerDisabled = isManager(owner);
   const period = DEFAULT_CONSUMPTION_PERIOD;
@@ -325,16 +335,17 @@ export function UserAutomationsTable({ owner }: UserAutomationsTableProps) {
 
     if (success) {
       await mutateTriggers();
+      const name = triggerToDelete.name;
       sendNotification({
         type: "success",
-        title: "Automation deleted",
-        description: `The automation "${triggerToDelete.name}" has been deleted.`,
+        title: t`Automation deleted`,
+        description: t`The automation "${name}" has been deleted.`,
       });
     } else {
       sendNotification({
         type: "error",
-        title: "Failed to delete automation",
-        description: "An error occurred while deleting the automation.",
+        title: t`Failed to delete automation`,
+        description: t`An error occurred while deleting the automation.`,
       });
     }
   };
@@ -370,10 +381,12 @@ export function UserAutomationsTable({ owner }: UserAutomationsTableProps) {
         workspaceId,
         expandedRowId,
         canEnableManagerDisabled,
+        statusHeader: t`Enabled`,
       }),
-    [workspaceId, expandedRowId, canEnableManagerDisabled]
+    [workspaceId, expandedRowId, canEnableManagerDisabled, t]
   );
 
+  const triggerToDeleteName = triggerToDelete?.name;
   const firstRowIndex = pagination.pageIndex * pagination.pageSize;
   const skeletonRowCount =
     totalCount > firstRowIndex
@@ -385,7 +398,7 @@ export function UserAutomationsTable({ owner }: UserAutomationsTableProps) {
       <div className="flex items-center gap-2">
         <SearchInput
           name="user-automations-search"
-          placeholder="Search automations"
+          placeholder={t`Search automations`}
           value={inputValue}
           onChange={setValue}
           className="flex-1"
@@ -407,19 +420,19 @@ export function UserAutomationsTable({ owner }: UserAutomationsTableProps) {
 
       {!isConsumptionAvailable && (
         <div className="text-sm text-muted-foreground">
-          Credit usage is temporarily unavailable.
+          <Trans>Credit usage is temporarily unavailable.</Trans>
         </div>
       )}
 
       {isTriggersError ? (
         <div className="py-10 text-center text-sm text-muted-foreground">
-          Failed to load your automations.
+          <Trans>Failed to load your automations.</Trans>
         </div>
       ) : !isTriggersLoading && rows.length === 0 ? (
         <div className="py-10 text-center text-sm text-muted-foreground">
           {debouncedValue.trim() || Object.keys(triggersFilter).length > 0
-            ? "No automation matches your search criteria."
-            : "You haven't created any automation yet."}
+            ? t`No automation matches your search criteria.`
+            : t`You haven't created any automation yet.`}
         </div>
       ) : (
         <div aria-busy={isTriggersLoading || undefined}>
@@ -457,9 +470,13 @@ export function UserAutomationsTable({ owner }: UserAutomationsTableProps) {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete automation</DialogTitle>
+            <DialogTitle>
+              <Trans>Delete automation</Trans>
+            </DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{triggerToDelete?.name}"?
+              <Trans>
+                Are you sure you want to delete "{triggerToDeleteName}"?
+              </Trans>
             </DialogDescription>
           </DialogHeader>
           {isDeleting ? (
@@ -469,15 +486,17 @@ export function UserAutomationsTable({ owner }: UserAutomationsTableProps) {
           ) : (
             <>
               <DialogContainer>
-                <b>This action cannot be undone.</b>
+                <b>
+                  <Trans>This action cannot be undone.</Trans>
+                </b>
               </DialogContainer>
               <DialogFooter
                 leftButtonProps={{
-                  label: "Cancel",
+                  label: t`Cancel`,
                   variant: "outline",
                 }}
                 rightButtonProps={{
-                  label: "Delete",
+                  label: t`Delete`,
                   variant: "warning",
                   onClick: handleDelete,
                 }}

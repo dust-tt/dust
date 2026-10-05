@@ -1,4 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { OutlookMailFolderListResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { OUTLOOK_MAIL_FOLDER_LIST_MIME_TYPE } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type {
   ToolHandlerExtra,
@@ -1084,7 +1085,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
             unreadItemCount: f.unreadItemCount,
             totalItemCount: f.totalItemCount,
           })),
-        },
+        } satisfies OutlookMailFolderListResourceType,
       },
     ]);
   },

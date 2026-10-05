@@ -1,5 +1,5 @@
 import type { FilterSummary } from "@app/components/shared/filter_panel/filterState";
-import { Button, Chip } from "@dust-tt/sparkle";
+import { Button, Chip, LoadingBlock } from "@dust-tt/sparkle";
 import {
   AnimatePresence,
   domMax,
@@ -7,6 +7,7 @@ import {
   m,
   useReducedMotion,
 } from "framer-motion";
+import type { ReactNode } from "react";
 import { Fragment } from "react";
 
 function SummaryLabel({
@@ -27,17 +28,43 @@ function SummaryLabel({
   );
 }
 
+interface FilterExtraChip {
+  key: string;
+  label: ReactNode;
+  onRemove: () => void;
+}
+
 interface FilterSummaryChipsProps<Category extends string> {
   summaries: FilterSummary<Category>[];
+  // Chips for settings outside the filter categories, shown after the category chips.
+  extraChips?: FilterExtraChip[];
   onClearCategory: (category: Category) => void;
   onClearAll: () => void;
+  isLoading?: boolean;
+  className?: string;
 }
 
 export function FilterSummaryChips<Category extends string>({
   summaries,
+  extraChips = [],
   onClearCategory,
   onClearAll,
+  isLoading = false,
+  className,
 }: FilterSummaryChipsProps<Category>) {
+  const chips: FilterExtraChip[] = [
+    ...summaries.map((summary) => ({
+      key: `category:${summary.category}`,
+      label: (
+        <SummaryLabel
+          categoryLabel={summary.categoryLabel}
+          options={summary.options}
+        />
+      ),
+      onRemove: () => onClearCategory(summary.category),
+    })),
+    ...extraChips.map((chip) => ({ ...chip, key: `extra:${chip.key}` })),
+  ];
   const shouldReduceMotion = useReducedMotion();
   const transition = shouldReduceMotion
     ? { duration: 0 }
@@ -46,35 +73,28 @@ export function FilterSummaryChips<Category extends string>({
   return (
     <LazyMotion features={domMax}>
       <AnimatePresence initial={false}>
-        {summaries.length > 0 && (
+        {chips.length > 0 && (
           <m.div
             key="filter-summary-chips"
-            initial={
-              shouldReduceMotion ? false : { opacity: 0, scale: 0.98, y: -4 }
-            }
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={
-              shouldReduceMotion
-                ? undefined
-                : { opacity: 0, scale: 0.98, y: -4 }
-            }
+            initial={shouldReduceMotion ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={shouldReduceMotion ? undefined : { opacity: 0 }}
             transition={transition}
-            className="mt-2 origin-top"
+            className={className}
           >
-            <div className="flex flex-wrap items-center gap-2">
+            <div
+              aria-busy={isLoading}
+              className="flex flex-wrap items-center gap-2"
+            >
               <AnimatePresence initial={false}>
-                {summaries.map((summary) => (
+                {chips.map((chip) => (
                   <m.div
-                    key={summary.category}
+                    key={chip.key}
                     layout={!shouldReduceMotion}
-                    initial={
-                      shouldReduceMotion ? false : { opacity: 0, scale: 0.96 }
-                    }
-                    animate={{ opacity: 1, scale: 1 }}
+                    initial={shouldReduceMotion ? false : { opacity: 0, x: -4 }}
+                    animate={{ opacity: 1, x: 0 }}
                     exit={
-                      shouldReduceMotion
-                        ? undefined
-                        : { opacity: 0, scale: 0.96 }
+                      shouldReduceMotion ? undefined : { opacity: 0, x: -4 }
                     }
                     transition={transition}
                     className="max-w-full"
@@ -83,16 +103,19 @@ export function FilterSummaryChips<Category extends string>({
                       size="xs"
                       color="highlight"
                       className="max-w-full"
-                      onRemove={() => onClearCategory(summary.category)}
+                      onRemove={chip.onRemove}
                     >
-                      <SummaryLabel
-                        categoryLabel={summary.categoryLabel}
-                        options={summary.options}
-                      />
+                      {chip.label}
                     </Chip>
                   </m.div>
                 ))}
               </AnimatePresence>
+              {isLoading && (
+                <>
+                  <LoadingBlock className="h-6 w-24 rounded-[9px]" />
+                  <LoadingBlock className="h-6 w-32 rounded-[9px]" />
+                </>
+              )}
               <m.div layout={!shouldReduceMotion} transition={transition}>
                 <Button
                   label="Clear all"

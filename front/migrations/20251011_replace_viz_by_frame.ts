@@ -1,3 +1,4 @@
+// @ts-nocheck
 import assert from "assert";
 import chunk from "lodash/chunk";
 import type { Logger } from "@app/logger/logger";

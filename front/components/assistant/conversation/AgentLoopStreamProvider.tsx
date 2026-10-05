@@ -1,5 +1,12 @@
-import type { ConversationStreamIds } from "@app/components/assistant/conversation/AgentLoopStreamContext";
-import { AgentLoopStreamContext } from "@app/components/assistant/conversation/AgentLoopStreamContext";
+import type {
+  ConversationStreamIds,
+  OngoingAgentLoopsSnapshot,
+} from "@app/components/assistant/conversation/AgentLoopStreamContext";
+import {
+  AgentLoopStreamContext,
+  isAgentLoopStreamActive,
+  OngoingAgentLoopsSnapshotContext,
+} from "@app/components/assistant/conversation/AgentLoopStreamContext";
 import { useEventSource } from "@app/hooks/useEventSource";
 import {
   getAgentLoopEventId,
@@ -10,7 +17,7 @@ import { eventSourceManager } from "@app/lib/client/event_source_manager";
 import { useOngoingAgentLoops } from "@app/lib/swr/ongoing_agent_loops";
 import type { OngoingAgentLoopType } from "@app/types/api/assistant/conversation/types";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface OngoingAgentLoopConnectionProps {
   owner: LightWorkspaceType;
@@ -95,15 +102,21 @@ export function AgentLoopStreamProvider({
   children,
   owner,
 }: AgentLoopStreamProviderProps) {
-  const [mountedStreamIds, setMountedStreamIds] =
-    useState<ConversationStreamIds>(() => new Map());
+  const [
+    registeredStreamIdsByConversation,
+    setRegisteredStreamIdsByConversation,
+  ] = useState<ConversationStreamIds>(() => new Map());
+  const [lastSuccessfulRegistrySnapshot, setLastSuccessfulRegistrySnapshot] =
+    useState<OngoingAgentLoopsSnapshot | null>(null);
+  const unmountedStreamUnsubscribers = useRef(new Map<string, () => void>());
   const onRegistryRefresh = useCallback(
     (agentLoops: OngoingAgentLoopType[]) => {
+      setLastSuccessfulRegistrySnapshot({ workspaceId: owner.sId, agentLoops });
       for (const { messageId } of agentLoops) {
         eventSourceManager.resume(`message-${messageId}`);
       }
     },
-    []
+    [owner.sId]
   );
   const { ongoingAgentLoops, refreshOngoingAgentLoops } = useOngoingAgentLoops({
     workspaceId: owner.sId,
@@ -111,7 +124,9 @@ export function AgentLoopStreamProvider({
   });
   const registerStream = useCallback(
     (conversationId: string, streamId: string) => {
-      setMountedStreamIds((current) => {
+      unmountedStreamUnsubscribers.current.get(streamId)?.();
+      unmountedStreamUnsubscribers.current.delete(streamId);
+      setRegisteredStreamIdsByConversation((current) => {
         const currentIds = current.get(conversationId);
         if (currentIds?.has(streamId)) {
           return current;
@@ -122,34 +137,64 @@ export function AgentLoopStreamProvider({
       });
 
       return () => {
-        setMountedStreamIds((current) => {
-          const currentIds = current.get(conversationId);
-          if (!currentIds?.has(streamId)) {
-            return current;
+        const removeStream = () =>
+          setRegisteredStreamIdsByConversation((current) => {
+            const currentIds = current.get(conversationId);
+            if (!currentIds?.has(streamId)) {
+              return current;
+            }
+            const next = new Map(current);
+            const nextIds = new Set(currentIds);
+            nextIds.delete(streamId);
+            if (nextIds.size === 0) {
+              next.delete(conversationId);
+            } else {
+              next.set(conversationId, nextIds);
+            }
+            return next;
+          });
+        const isActive = () =>
+          isAgentLoopStreamActive(
+            eventSourceManager.getConnectionState(streamId)
+          );
+        if (!isActive()) {
+          removeStream();
+          return;
+        }
+        const unsubscribe = eventSourceManager.subscribeToConnectionState(
+          streamId,
+          () => {
+            if (!isActive()) {
+              unmountedStreamUnsubscribers.current.get(streamId)?.();
+              unmountedStreamUnsubscribers.current.delete(streamId);
+              removeStream();
+            }
           }
-          const next = new Map(current);
-          const nextIds = new Set(currentIds);
-          nextIds.delete(streamId);
-          if (nextIds.size === 0) {
-            next.delete(conversationId);
-          } else {
-            next.set(conversationId, nextIds);
-          }
-          return next;
-        });
+        );
+        unmountedStreamUnsubscribers.current.set(streamId, unsubscribe);
       };
     },
     []
   );
   const contextValue = useMemo(() => {
-    const conversationStreamIds = new Map(mountedStreamIds);
+    const conversationStreamIds = new Map(registeredStreamIdsByConversation);
     for (const { conversationId, messageId } of ongoingAgentLoops) {
       const streamIds = new Set(conversationStreamIds.get(conversationId));
       streamIds.add(`message-${messageId}`);
       conversationStreamIds.set(conversationId, streamIds);
     }
     return { conversationStreamIds, registerStream };
-  }, [mountedStreamIds, ongoingAgentLoops, registerStream]);
+  }, [registeredStreamIdsByConversation, ongoingAgentLoops, registerStream]);
+
+  useEffect(
+    () => () => {
+      for (const unsubscribe of unmountedStreamUnsubscribers.current.values()) {
+        unsubscribe();
+      }
+      unmountedStreamUnsubscribers.current.clear();
+    },
+    []
+  );
 
   useEffect(
     () => () => eventSourceManager.releaseWorkspace(owner.sId),
@@ -158,7 +203,11 @@ export function AgentLoopStreamProvider({
 
   return (
     <AgentLoopStreamContext.Provider value={contextValue}>
-      {children}
+      <OngoingAgentLoopsSnapshotContext.Provider
+        value={lastSuccessfulRegistrySnapshot}
+      >
+        {children}
+      </OngoingAgentLoopsSnapshotContext.Provider>
       {ongoingAgentLoops.map(({ conversationId, messageId }) => (
         <OngoingAgentLoopConnection
           key={messageId}

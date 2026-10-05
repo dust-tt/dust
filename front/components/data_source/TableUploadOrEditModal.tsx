@@ -1,5 +1,6 @@
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { formatFileSize } from "@app/lib/i18n/format";
 import {
   useDataSourceViewTable,
   useUpdateDataSourceViewTable,
@@ -8,7 +9,6 @@ import { useUpsertFileAsDatasourceEntry } from "@app/lib/swr/files";
 import type { LightContentNode } from "@app/types/api/public/spaces";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import {
-  fileSizeToHumanReadable,
   getSupportedFileExtensions,
   isBigFileSize,
   MAX_FILE_SIZES,
@@ -403,10 +403,7 @@ export const TableUploadOrEditModal = ({
                   <div>
                     <Page.SectionHeader
                       title="Data File"
-                      description={
-                        `Select your data file for extraction. Supported formats: CSV, ` +
-                        `XLSX. Maximum file size: ${fileSizeToHumanReadable(MAX_FILE_SIZES.delimited)}.`
-                      }
+                      description={`Select your data file for extraction. Supported formats: CSV, XLSX. Maximum file size: ${formatFileSize(MAX_FILE_SIZES.delimited, { decimals: 0 })}.`}
                       action={{
                         label: fileUploaderService.isProcessingFiles
                           ? "Uploading..."

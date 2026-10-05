@@ -16,8 +16,6 @@ import { z } from "zod";
 
 import overview from "./overview";
 
-export type { GetSlackWorkflowsResponseBody };
-
 const PostBodySchema = z.object({
   botName: z.string().trim().min(1),
   spaceIds: z.array(z.string()),

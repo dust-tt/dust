@@ -1,9 +1,7 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
@@ -107,23 +105,20 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_model", (
       skippedAgentIds: [],
     });
 
-    // Fetched as "full" so the skills of the new version can be listed from it below.
-    const updatedAgent = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "full",
-      dangerouslySkipPermissionFiltering: true,
-    });
+    const updatedAgent = await AgentConfigurationFactory.refetch(
+      auth,
+      agent.sId,
+      { dangerouslySkipFetchCheck: true }
+    );
     assert(updatedAgent);
-    expect(updatedAgent.model.modelId).toBe(targetModel.modelId);
+    expect(updatedAgent.modelConfiguration.modelId).toBe(targetModel.modelId);
     // A new version is created: the model change re-saves the whole configuration.
     expect(updatedAgent.version).toBe(agent.version + 1);
     // The agent stays restricted to the space and keeps the skill.
-    expect(updatedAgent.requestedSpaceIds).toEqual([restrictedSpace.sId]);
-    const updatedSkills = await SkillResource.listByAgentConfiguration(
-      auth,
-      updatedAgent,
-      { permissionFiltering: "dangerously_skip" }
-    );
+    expect(updatedAgent.requestedSpaceModelIds()).toEqual([restrictedSpace.id]);
+    const updatedSkills = await updatedAgent.listSkills(auth, {
+      permissionFiltering: "dangerously_skip",
+    });
     expect(updatedSkills.map((s) => s.sId)).toEqual([skill.sId]);
   });
 
@@ -141,22 +136,24 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_model", (
     expect(body.updatedAgentIds).toEqual([agent.sId]);
     expect(body.skippedAgentIds).toEqual([]);
 
-    const updated = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "light",
-    });
-    expect(updated?.model.providerId).toBe(target.providerId);
-    expect(updated?.model.modelId).toBe(target.modelId);
+    const updated = await AgentConfigurationFactory.refetch(auth, agent.sId);
+    assert(updated);
+    expect(updated.modelConfiguration.providerId).toBe(target.providerId);
+    expect(updated.modelConfiguration.modelId).toBe(target.modelId);
     // Reasoning effort defaults to the target model's own default.
-    expect(updated?.model.reasoningEffort).toBe(target.defaultReasoningEffort);
+    expect(updated.modelConfiguration.reasoningEffort).toBe(
+      target.defaultReasoningEffort
+    );
 
     // A new version was created, and everything else was carried over.
-    expect(updated?.version).toBe(agent.version + 1);
-    expect(updated?.name).toBe(agent.name);
-    expect(updated?.description).toBe(agent.description);
-    expect(updated?.instructions).toBe(agent.instructions);
-    expect(updated?.scope).toBe(agent.scope);
-    expect(updated?.tags.map((t) => t.sId)).toEqual([tag.sId]);
+    expect(updated.version).toBe(agent.version + 1);
+    expect(updated.name).toBe(agent.name);
+    expect(updated.description).toBe(agent.description);
+    expect((await updated.fetchInstructions()).instructions).toBe(
+      agent.instructions
+    );
+    expect(updated.scope).toBe(agent.scope);
+    expect((await updated.listTags(auth)).map((t) => t.sId)).toEqual([tag.sId]);
   });
 
   it("updates what it can and reports the rest as skipped", async () => {
@@ -185,17 +182,14 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_model", (
     expect(body.updatedAgentIds).toEqual([agent.sId]);
     expect(body.skippedAgentIds).toEqual([archivedAgent.sId]);
 
-    const updated = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "light",
-    });
-    expect(updated?.model.modelId).toBe(target.modelId);
+    const updated = await AgentConfigurationFactory.refetch(auth, agent.sId);
+    expect(updated?.modelConfiguration.modelId).toBe(target.modelId);
 
-    const skipped = await getAgentConfiguration(auth, {
-      agentId: archivedAgent.sId,
-      variant: "light",
-    });
-    expect(skipped?.model.modelId).toBe(INITIAL_MODEL.modelId);
+    const skipped = await AgentConfigurationFactory.refetch(
+      auth,
+      archivedAgent.sId
+    );
+    expect(skipped?.modelConfiguration.modelId).toBe(INITIAL_MODEL.modelId);
     expect(skipped?.status).toBe("archived");
     expect(skipped?.version).toBe(archivedAgent.version);
   });
@@ -212,11 +206,8 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_model", (
     const body = await res.json();
     expect(body.error.message).toContain("not available");
 
-    const updated = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "light",
-    });
-    expect(updated?.model.modelId).toBe(INITIAL_MODEL.modelId);
+    const updated = await AgentConfigurationFactory.refetch(auth, agent.sId);
+    expect(updated?.modelConfiguration.modelId).toBe(INITIAL_MODEL.modelId);
   });
 
   it("updates an agent the admin is not an editor of", async () => {
@@ -242,23 +233,22 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_model", (
     expect(body.updatedAgentIds).toEqual([agent.sId]);
     expect(body.skippedAgentIds).toEqual([]);
 
-    const updated = await getAgentConfiguration(agentOwnerAuth, {
-      agentId: agent.sId,
-      variant: "light",
-    });
+    const updated = await AgentConfigurationFactory.refetch(
+      agentOwnerAuth,
+      agent.sId
+    );
     assert(updated, "Expected the updated agent to be found.");
-    expect(updated.model.modelId).toBe(target.modelId);
+    expect(updated.modelConfiguration.modelId).toBe(target.modelId);
 
     // The editors were carried over untouched: the admin did not silently gain an editor grant
     // on the way.
-    assert(updated.agentModelId, "Expected the agent identity to be present.");
     const editorGroup =
       await GroupPermissionResource.findRegularAutoGroupForGrant(
         agentOwnerAuth,
         {
           grantType: "editor",
           resourceType: "agent",
-          resourceId: updated.agentModelId,
+          resourceId: updated.id,
         }
       );
     assert(editorGroup, "Expected the agent to have an editor grant.");
@@ -282,11 +272,8 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_model", (
     expect(body.updatedAgentIds).toEqual([agent.sId]);
     expect(body.skippedAgentIds).toEqual([]);
 
-    const updated = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "light",
-    });
-    expect(updated?.model.modelId).toBe(target.modelId);
+    const updated = await AgentConfigurationFactory.refetch(auth, agent.sId);
+    expect(updated?.modelConfiguration.modelId).toBe(target.modelId);
   });
 
   it("skips agents a non-admin caller cannot edit", async () => {
@@ -312,10 +299,10 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_model", (
     expect(body.updatedAgentIds).toEqual([]);
     expect(body.skippedAgentIds).toEqual([agent.sId]);
 
-    const untouched = await getAgentConfiguration(agentOwnerAuth, {
-      agentId: agent.sId,
-      variant: "light",
-    });
-    expect(untouched?.model.modelId).toBe(INITIAL_MODEL.modelId);
+    const untouched = await AgentConfigurationFactory.refetch(
+      agentOwnerAuth,
+      agent.sId
+    );
+    expect(untouched?.modelConfiguration.modelId).toBe(INITIAL_MODEL.modelId);
   });
 });

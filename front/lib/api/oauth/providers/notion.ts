@@ -69,7 +69,10 @@ export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
         return true;
       }
     }
-    return Object.keys(extraConfig).length === 0;
+    return (
+      Object.keys(extraConfig).length === 0 ||
+      (Object.keys(extraConfig).length === 1 && "mcp_server_id" in extraConfig)
+    );
   }
 
   async getUpdatedExtraConfig(
@@ -195,9 +198,7 @@ export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
             (currentNotionWorkspaceName || "Unknown") +
             ").",
         });
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-      } catch (error) {
+      } catch {
         return new Err({
           message:
             "Unable to validate Notion workspace. Please try connecting again.",

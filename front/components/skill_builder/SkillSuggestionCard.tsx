@@ -1,16 +1,18 @@
+import { getSuggestionStateChip } from "@app/components/shared/getSuggestionStateChip";
+import { SuggestedEditors } from "@app/components/shared/SuggestedEditors";
+import type { SuggestionDiffLayout } from "@app/components/shared/SuggestionFieldEditSection";
 import { SuggestionFieldEditSection } from "@app/components/shared/SuggestionFieldEditSection";
 import { SuggestionInstructionsDiffBlock } from "@app/components/shared/SuggestionInstructionsDiffBlock";
+import { SuggestionNewInstructionsBlock } from "@app/components/shared/SuggestionNewInstructionsBlock";
 import { SuggestedSkillAvailability } from "@app/components/skill_builder/SuggestedSkillAvailability";
-import { SuggestedSkillEditors } from "@app/components/skill_builder/SuggestedSkillEditors";
 import { SuggestedSkillName } from "@app/components/skill_builder/SuggestedSkillName";
 import { SuggestedSkillUserFacingDescription } from "@app/components/skill_builder/SuggestedSkillUserFacingDescription";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { formatRelativeTime } from "@app/lib/client/relative_time";
 import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_instructions_extensions";
 import { SKILL_INVOCATION_LABEL } from "@app/lib/skills/labels";
 import { useSkill } from "@app/lib/swr/skill_configurations";
-import { formatRelativeTime } from "@app/lib/utils/timestamps";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type {
   SkillSuggestionState,
   SkillSuggestionType,
@@ -18,37 +20,14 @@ import type {
 import {
   Button,
   Card,
-  CheckCircle,
   Chip,
-  Clock,
   Hoverable,
   LoadingBlock,
   Tooltip,
-  XCircle,
 } from "@dust-tt/sparkle";
-import type { ComponentType, KeyboardEvent } from "react";
+import type { KeyboardEvent } from "react";
 
 const MAX_VISIBLE_CONVERSATIONS = 3;
-
-export function getSuggestionStateChip(state: SkillSuggestionState): {
-  color: "success" | "warning" | "primary";
-  icon: ComponentType;
-  label: string;
-} | null {
-  switch (state) {
-    case "pending":
-      return null;
-    case "approved":
-      return { color: "success", icon: CheckCircle, label: "Accepted" };
-    case "rejected":
-      return { color: "warning", icon: XCircle, label: "Declined" };
-    case "outdated":
-      return { color: "primary", icon: Clock, label: "Outdated" };
-    default:
-      assertNeverAndIgnore(state);
-      return null;
-  }
-}
 
 interface ReviewedSuggestionCardProps {
   state: SkillSuggestionState;
@@ -191,6 +170,7 @@ interface SuggestionDetailsProps {
   getSkillInstructionsHtml: () => string;
   getCurrentAgentFacingDescription: () => string;
   workspaceId: string;
+  layout: SuggestionDiffLayout;
 }
 
 function SuggestionDetails({
@@ -198,6 +178,7 @@ function SuggestionDetails({
   getSkillInstructionsHtml,
   getCurrentAgentFacingDescription,
   workspaceId,
+  layout,
 }: SuggestionDetailsProps) {
   switch (suggestion.kind) {
     case "availability":
@@ -222,26 +203,25 @@ function SuggestionDetails({
             label="Name"
             currentValue=""
             newValue={name}
+            layout={layout}
           />
           <SuggestionFieldEditSection
             label="Description"
             currentValue=""
             newValue={userFacingDescription}
+            layout={layout}
           />
           <SuggestionFieldEditSection
             label={SKILL_INVOCATION_LABEL}
             currentValue=""
             newValue={agentFacingDescription}
+            layout={layout}
           />
-          <div className="flex flex-col gap-2">
-            <span className="text-sm text-muted-foreground">Instructions</span>
-            <SuggestionInstructionsDiffBlock
-              instructionsHtml=""
-              targetBlockId={INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}
-              content={instructions}
-              extensions={buildSkillInstructionsExtensions(true)}
-            />
-          </div>
+          <SuggestionNewInstructionsBlock
+            instructionsHtml={instructions}
+            extensions={buildSkillInstructionsExtensions(true)}
+            layout={layout}
+          />
         </div>
       );
     }
@@ -262,9 +242,10 @@ function SuggestionDetails({
         <>
           {agentFacingDescriptionEdit && (
             <SuggestionFieldEditSection
-              label="Description"
+              label={SKILL_INVOCATION_LABEL}
               currentValue={getCurrentAgentFacingDescription()}
               newValue={agentFacingDescriptionEdit.content}
+              layout={layout}
             />
           )}
 
@@ -279,7 +260,10 @@ function SuggestionDetails({
                   instructionsHtml={getSkillInstructionsHtml()}
                   targetBlockId={edit.targetBlockId}
                   content={edit.content}
-                  extensions={buildSkillInstructionsExtensions(true)}
+                  extensions={buildSkillInstructionsExtensions(true, [], {
+                    hideUnchangedSuggestionBlocks: layout === "inline",
+                  })}
+                  layout={layout}
                 />
               ))}
             </div>
@@ -290,7 +274,7 @@ function SuggestionDetails({
 
     case "editors":
       return (
-        <SuggestedSkillEditors
+        <SuggestedEditors
           suggestion={suggestion.suggestion}
           workspaceId={workspaceId}
         />
@@ -302,6 +286,7 @@ function SuggestionDetails({
           suggestion={suggestion.suggestion}
           skillId={suggestion.skillConfigurationId}
           workspaceId={workspaceId}
+          layout={layout}
         />
       );
 
@@ -311,6 +296,7 @@ function SuggestionDetails({
           suggestion={suggestion.suggestion}
           skillId={suggestion.skillConfigurationId}
           workspaceId={workspaceId}
+          layout={layout}
         />
       );
 
@@ -325,6 +311,7 @@ interface PendingSkillSuggestionDetailsProps {
   getSkillInstructionsHtml: () => string;
   getCurrentAgentFacingDescription: () => string;
   workspaceId: string;
+  layout?: SuggestionDiffLayout;
 }
 
 export function PendingSkillSuggestionDetails({
@@ -332,6 +319,7 @@ export function PendingSkillSuggestionDetails({
   getSkillInstructionsHtml,
   getCurrentAgentFacingDescription,
   workspaceId,
+  layout = "boxed",
 }: PendingSkillSuggestionDetailsProps) {
   return (
     <>
@@ -340,6 +328,7 @@ export function PendingSkillSuggestionDetails({
         getSkillInstructionsHtml={getSkillInstructionsHtml}
         getCurrentAgentFacingDescription={getCurrentAgentFacingDescription}
         workspaceId={workspaceId}
+        layout={layout}
       />
 
       {suggestion.source !== "conversational" && (

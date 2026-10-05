@@ -1,12 +1,20 @@
+import { Authenticator } from "@app/lib/auth";
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import { frameContentType } from "@app/types/files";
+import { frameContentType, frameV2ContentType } from "@app/types/files";
+import {
+  getConversationFilesBasePath,
+  getPodFilesBasePath,
+} from "@app/types/mount_path";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 function url(workspace: { sId: string }, fileId: string) {
   return `/api/w/${workspace.sId}/files/${fileId}/save-in-project`;
@@ -273,6 +281,95 @@ describe("POST /api/w/:wId/files/:fileId/save-in-project", () => {
     // updateUseCase clears conversationId to avoid confusion when accessing the
     // file in project context.
     expect(data.file.useCaseMetadata.conversationId).toBeUndefined();
+  });
+
+  it("should move a Frames v2 package folder to the project", async () => {
+    const { user, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
+
+    const project = await SpaceFactory.project(workspace, user.id);
+    // Pod editor rights are resolved when the authenticator is built, so rebuild it after the Pod.
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+      spaceId: project.id,
+    });
+
+    const sourceMountDirectory = `${getConversationFilesBasePath({
+      workspaceId: workspace.sId,
+      conversationId: conversation.sId,
+    })}Status`;
+    const sourceObjects = [
+      `${sourceMountDirectory}/${FRAME_MANIFEST_FILE}`,
+      `${sourceMountDirectory}/index.tsx`,
+    ];
+    const destinationManifestMountPath = `${getPodFilesBasePath({
+      workspaceId: workspace.sId,
+      podId: project.sId,
+    })}Status/${FRAME_MANIFEST_FILE}`;
+    const frame = await FileFactory.create(auth, user, {
+      contentType: frameV2ContentType,
+      fileName: FRAME_MANIFEST_FILE,
+      fileSize: 32,
+      status: "created",
+      useCase: "conversation",
+      useCaseMetadata: {
+        activePublicationId: "publication-1",
+        conversationId: conversation.sId,
+      },
+      mountFilePath: sourceObjects[0],
+    });
+    await frame.markFrameV2AsReadyFromMount(auth);
+
+    fileStorageMock.setObject(sourceObjects[0], "{}");
+    fileStorageMock.setObject(sourceObjects[1], "ui source");
+    fileStorageMock.setFileExists(
+      (filePath) => fileStorageMock.getObject(filePath) !== undefined
+    );
+    fileStorageMock.setFilesByPrefix((prefix) =>
+      sourceObjects
+        .filter(
+          (name) =>
+            name.startsWith(prefix) &&
+            fileStorageMock.getObject(name) !== undefined
+        )
+        .map((name) => ({
+          name,
+          metadata: { contentType: "text/plain", size: "10" },
+        }))
+    );
+    const storage = getPrivateUploadBucket();
+    vi.mocked(getPrivateUploadBucket).mockReturnValue(storage);
+    vi.spyOn(storage, "copyFile").mockImplementation(async (source, target) => {
+      const content = fileStorageMock.getObject(source);
+      if (content !== undefined) {
+        fileStorageMock.setObject(target, content);
+      }
+      return { destinationGeneration: "mock" } as never;
+    });
+
+    const response = await postSave(workspace, frame.sId, {
+      projectId: project.sId,
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.file.sId).toBe(frame.sId);
+    expect(data.file.useCase).toBe("project_context");
+    expect(data.file.useCaseMetadata).toEqual({
+      activePublicationId: "publication-1",
+      sourceConversationId: conversation.sId,
+      spaceId: project.sId,
+    });
+    const reloaded = await FileResource.fetchById(auth, frame.sId);
+    expect(reloaded?.mountFilePath).toBe(destinationManifestMountPath);
+    expect(fileStorageMock.getObject(destinationManifestMountPath)).toBe("{}");
   });
 
   it("should return 400 when a file with the same name already exists in the project", async () => {

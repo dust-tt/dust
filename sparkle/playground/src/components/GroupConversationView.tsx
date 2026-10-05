@@ -10,6 +10,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSearchbar,
@@ -22,6 +23,7 @@ import {
   ListItemSection,
   MagicWand02,
   MessageChatSquare,
+  MessageCircle01,
   ReplySection,
   Robot,
   SearchInput,
@@ -37,6 +39,8 @@ import {
   TypingAnimation,
   Umbrella03,
   User01,
+  Users01,
+  Zap,
 } from "@dust-tt/sparkle";
 import { UniversalSearchItem } from "@dust-tt/sparkle/components/UniversalSearchItem";
 import { cn } from "@sparkle/lib/utils";
@@ -96,12 +100,21 @@ import {
   DATA_SOURCE_FILE_NAME_DRAG_MIME,
 } from "./FreeButtonSwitch";
 import { InputBar, type InputBarTaskCommand } from "./InputBar";
+import { NewConversation } from "./NewConversation";
 import { PodSettingsSection } from "./PodSettingsSection";
 import { SuggestionBox } from "./SuggestionBox";
 import { TaskItem } from "./TaskItem";
 import { TriggerRunAvatar } from "./TriggerRunAvatar";
 import { TodoInputBar } from "./TodoInputBar";
 import { ConversationListItem } from "./ConversationListItem";
+
+/** Mirrors the Inbox clear menu, cut the way a pod's conversations are. */
+const MARK_READ_ACTIONS = [
+  { id: "all", label: "All conversations", icon: MessageChatSquare },
+  { id: "automated", label: "All automated", icon: Zap },
+  { id: "group", label: "All group conversations", icon: Users01 },
+  { id: "personal", label: "All personal conversations", icon: User01 },
+] as const;
 
 interface GroupConversationViewProps {
   space: Space;
@@ -136,6 +149,11 @@ interface GroupConversationViewProps {
   onFileToRevealInKnowledgeHandled?: () => void;
   podVariant?: "shared" | "personal";
   showComposer?: boolean;
+  /**
+   * Shows a "New" button next to "Mark all as read", and turns an empty
+   * Conversations tab into the New conversation screen.
+   */
+  onNewConversation?: () => void;
   hideConversationFilters?: boolean;
   currentUserId?: string;
   /** The rows read elsewhere, which stop calling for attention here too. */
@@ -1353,6 +1371,7 @@ export function GroupConversationView({
   onFileToRevealInKnowledgeHandled,
   podVariant = "shared",
   showComposer = true,
+  onNewConversation,
   hideConversationFilters = false,
   currentUserId,
   readRowIds,
@@ -1899,6 +1918,46 @@ export function GroupConversationView({
 
     return itemMap;
   }, [agents, space.id, triggers, users, visibleConversations]);
+
+  // What each entry of the mark-as-read menu would take, so an entry with
+  // nothing left to mark reads as disabled, as it does in the Inbox.
+  const markableIds = useMemo(() => {
+    const unread = visibleConversations.filter((conversation) => {
+      const baseId = getBaseConversationId(conversation, conversations);
+      if (unreadRowIds?.has(baseId)) {
+        return true;
+      }
+      return (
+        (conversationListItemsById.get(conversation.id)?.unread ?? false) &&
+        !readRowIds?.has(baseId)
+      );
+    });
+    const idsOf = (list: Conversation[]) =>
+      list.map((conversation) =>
+        getBaseConversationId(conversation, conversations)
+      );
+
+    // Automated, group and personal split the list three ways, in that order.
+    const automated = unread.filter(isTriggeredConversation);
+    const rest = unread.filter(
+      (conversation) => !isTriggeredConversation(conversation)
+    );
+
+    return {
+      all: idsOf(unread),
+      automated: idsOf(automated),
+      group: idsOf(rest.filter(isMyPodGroupConversation)),
+      personal: idsOf(
+        rest.filter((conversation) => !isMyPodGroupConversation(conversation))
+      ),
+    };
+  }, [
+    conversationListItemsById,
+    conversations,
+    readRowIds,
+    unreadRowIds,
+    visibleConversations,
+  ]);
 
   const getAutoCheckRationales = (
     summary: OngoingSummary,
@@ -3084,238 +3143,283 @@ export function GroupConversationView({
         className="flex min-h-0 flex-1 flex-col"
       >
         {/* Conversations Tab */}
-        <GroupConversationTabContent
-          value="conversations"
-          topBox={
-            showComposer ? (
-              <InputBar
-                autoFocus
-                placeholder="What are we working on?"
-                className="w-full"
-                isFloating={false}
-              />
-            ) : undefined
-          }
-        >
-          {!hasHistory && showComposer && podVariant !== "personal" && (
-            <ProjectSetupEmptyState onSetupProject={handleSetupProject} />
-          )}
-          {!hasHistory && (podVariant === "personal" || !showComposer) && (
-            <EmptyState
-              title="No conversations"
-              description="Start a conversation from New, or pick one from Recent."
+        {onNewConversation && !hasHistory ? (
+          <TabsContent value="conversations">
+            <NewConversation
+              greeting={`Start the first conversation in ${space.name}`}
+              podName={space.name}
             />
-          )}
-          {hasHistory && (
-            <div className="flex w-full flex-wrap items-center gap-2">
-              {showMineGroupAll && (
-                <div className="flex flex-none flex-nowrap items-center gap-2">
-                  <ButtonsSwitchList
-                    defaultValue={goodToKnowFilter}
-                    onValueChange={(value) => {
-                      if (
-                        value === "all" ||
-                        value === "shared" ||
-                        value === "mine"
-                      ) {
-                        setGoodToKnowFilter(value);
+          </TabsContent>
+        ) : (
+          <GroupConversationTabContent
+            value="conversations"
+            topBox={
+              showComposer ? (
+                <InputBar
+                  autoFocus
+                  placeholder="What are we working on?"
+                  className="w-full"
+                  isFloating={false}
+                />
+              ) : undefined
+            }
+          >
+            {!hasHistory && showComposer && podVariant !== "personal" && (
+              <ProjectSetupEmptyState onSetupProject={handleSetupProject} />
+            )}
+            {!hasHistory && (podVariant === "personal" || !showComposer) && (
+              <EmptyState
+                title="No conversations"
+                description="Start a conversation from New, or pick one from Recent."
+              />
+            )}
+            {hasHistory && (
+              <div className="flex w-full flex-wrap items-center gap-2">
+                {showMineGroupAll && (
+                  <div className="flex flex-none flex-nowrap items-center gap-2">
+                    <ButtonsSwitchList
+                      defaultValue={goodToKnowFilter}
+                      onValueChange={(value) => {
+                        if (
+                          value === "all" ||
+                          value === "shared" ||
+                          value === "mine"
+                        ) {
+                          setGoodToKnowFilter(value);
+                        }
+                      }}
+                    >
+                      <ButtonsSwitch
+                        value="mine"
+                        label="Mine"
+                        tooltip="Conversations where you have sent a message."
+                      />
+                      <ButtonsSwitch
+                        value="shared"
+                        label="Group"
+                        tooltip="Conversations with more than one person"
+                      />
+                      <ButtonsSwitch
+                        value="all"
+                        label="All"
+                        tooltip="Every conversation in this Pod."
+                      />
+                    </ButtonsSwitchList>
+                  </div>
+                )}
+                <div className="flex min-w-[20rem] flex-1 items-center gap-2">
+                  <div className="min-w-0 max-w-80 flex-1">
+                    <SearchInputWithPopover
+                      name="conversation-search"
+                      value={searchText}
+                      onChange={(value) => {
+                        setSearchText(value);
+                        if (!value.trim()) {
+                          setIsSearchOpen(false);
+                        }
+                      }}
+                      open={isSearchOpen}
+                      onOpenChange={setIsSearchOpen}
+                      placeholder="Search..."
+                      items={searchResults}
+                      availableHeight
+                      noResults={
+                        searchText.trim()
+                          ? "No results found"
+                          : "Start typing to search"
                       }
-                    }}
-                  >
-                    <ButtonsSwitch
-                      value="mine"
-                      label="Mine"
-                      tooltip="Conversations where you have sent a message."
+                      onItemSelect={handleSearchItemSelect}
+                      renderItem={(item, selected) => (
+                        <SearchResultItem item={item} selected={selected} />
+                      )}
                     />
-                    <ButtonsSwitch
-                      value="shared"
-                      label="Group"
-                      tooltip="Conversations with more than one person"
-                    />
-                    <ButtonsSwitch
-                      value="all"
-                      label="All"
-                      tooltip="Every conversation in this Pod."
-                    />
-                  </ButtonsSwitchList>
-                </div>
-              )}
-              <div className="flex min-w-[20rem] flex-1 items-center gap-2">
-                <div className="min-w-0 max-w-80 flex-1">
-                  <SearchInputWithPopover
-                    name="conversation-search"
-                    value={searchText}
-                    onChange={(value) => {
-                      setSearchText(value);
-                      if (!value.trim()) {
-                        setIsSearchOpen(false);
-                      }
-                    }}
-                    open={isSearchOpen}
-                    onOpenChange={setIsSearchOpen}
-                    placeholder="Search..."
-                    items={searchResults}
-                    availableHeight
-                    noResults={
-                      searchText.trim()
-                        ? "No results found"
-                        : "Start typing to search"
+                  </div>
+                  <FilterMenu
+                    filter={conversationFilter}
+                    groups={conversationFilterGroups}
+                    onFilterChange={setConversationFilter}
+                    toggles={
+                      canHideTriggered
+                        ? [
+                            {
+                              id: "hide-triggered",
+                              label: "Hide triggered",
+                              checked: hideTriggeredConversations,
+                              onChange: setHideTriggeredConversations,
+                            },
+                          ]
+                        : []
                     }
-                    onItemSelect={handleSearchItemSelect}
-                    renderItem={(item, selected) => (
-                      <SearchResultItem item={item} selected={selected} />
-                    )}
+                    searchName="conversation-filter-search"
+                    searchPlaceholder="Filter by member or agent"
                   />
+                  <div className="ml-auto flex shrink-0 items-center gap-2">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          icon={CheckDouble}
+                          size="sm"
+                          variant="outline"
+                          tooltip="Mark conversations as read."
+                          isSelect
+                        />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel label="Mark as read" />
+                        {MARK_READ_ACTIONS.map(({ id, label, icon }) => (
+                          <DropdownMenuItem
+                            key={id}
+                            label={label}
+                            icon={icon}
+                            disabled={markableIds[id].length === 0}
+                            onClick={() => onRowsRead?.(markableIds[id])}
+                          />
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    {onNewConversation && (
+                      <Button
+                        variant="highlight"
+                        size="sm"
+                        icon={MessageCircle01}
+                        label="New"
+                        tooltip="Create a new conversation"
+                        onClick={() => onNewConversation()}
+                      />
+                    )}
+                  </div>
                 </div>
-                <FilterMenu
-                  filter={conversationFilter}
-                  groups={conversationFilterGroups}
-                  onFilterChange={setConversationFilter}
-                  toggles={
-                    canHideTriggered
-                      ? [
-                          {
-                            id: "hide-triggered",
-                            label: "Hide triggered",
-                            checked: hideTriggeredConversations,
-                            onChange: setHideTriggeredConversations,
-                          },
-                        ]
-                      : []
-                  }
-                  searchName="conversation-filter-search"
-                  searchPlaceholder="Filter by member or agent"
-                />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  icon={CheckDouble}
-                  label="Mark all as read"
-                  className="ml-auto shrink-0"
-                />
               </div>
-            </div>
-          )}
-          {visibleConversations.length > 0 && (
-            <>
-              <div className="flex flex-col">
-                {(
-                  ["Today", "Yesterday", "Last Week", "Last Month"] as const
-                ).map((bucketKey) => {
-                  const bucketConversations = conversationsByBucket[bucketKey];
-                  if (bucketConversations.length === 0) return null;
+            )}
+            {visibleConversations.length > 0 && (
+              <>
+                <div className="flex flex-col">
+                  {(
+                    ["Today", "Yesterday", "Last Week", "Last Month"] as const
+                  ).map((bucketKey) => {
+                    const bucketConversations =
+                      conversationsByBucket[bucketKey];
+                    if (bucketConversations.length === 0) return null;
 
-                  return (
-                    <Fragment key={bucketKey}>
-                      <ListItemSection className="pl-4">
-                        {bucketKey}
-                      </ListItemSection>
-                      <ListGroup className="border-transparent! gap-0.5">
-                        {bucketConversations.map((conversation) => {
-                          const listItem = conversationListItemsById.get(
-                            conversation.id
-                          );
-                          if (!listItem) {
-                            return null;
-                          }
+                    return (
+                      <Fragment key={bucketKey}>
+                        <ListItemSection className="pl-4">
+                          {bucketKey}
+                        </ListItemSection>
+                        <ListGroup className="border-transparent! gap-0.5">
+                          {bucketConversations.map((conversation) => {
+                            const listItem = conversationListItemsById.get(
+                              conversation.id
+                            );
+                            if (!listItem) {
+                              return null;
+                            }
 
-                          const baseConversationId = getBaseConversationId(
-                            conversation,
-                            conversations
-                          );
+                            const baseConversationId = getBaseConversationId(
+                              conversation,
+                              conversations
+                            );
 
-                          const conversationForLookup = {
-                            ...conversation,
-                            id: baseConversationId,
-                          };
+                            const conversationForLookup = {
+                              ...conversation,
+                              id: baseConversationId,
+                            };
 
-                          // The row that opened what is on screen, rather than
-                          // every row of that conversation: the same thread can
-                          // appear more than once in this list.
-                          const isSelected =
-                            selectedConversationRow?.rowId === conversation.id;
+                            // The row that opened what is on screen, rather than
+                            // every row of that conversation: the same thread can
+                            // appear more than once in this list.
+                            const isSelected =
+                              selectedConversationRow?.rowId ===
+                              conversation.id;
 
-                          // Read state belongs to the thread, not to the row
-                          // that shows it, and what the row's menu says of it
-                          // outranks whether anything new came in.
-                          const isForcedUnread =
-                            unreadRowIds?.has(baseConversationId) ?? false;
-                          const isUnread =
-                            isForcedUnread ||
-                            (listItem.unread &&
-                              !readRowIds?.has(baseConversationId));
+                            // Read state belongs to the thread, not to the row
+                            // that shows it, and what the row's menu says of it
+                            // outranks whether anything new came in.
+                            const isForcedUnread =
+                              unreadRowIds?.has(baseConversationId) ?? false;
+                            const isUnread =
+                              isForcedUnread ||
+                              (listItem.unread &&
+                                !readRowIds?.has(baseConversationId));
 
-                          return (
-                            <div
-                              id={getConversationRowDomId(conversation.id)}
-                              key={conversation.id}
-                            >
-                              <ConversationListItem
-                                conversation={conversation}
-                                creator={listItem.creator || undefined}
-                                leadingVisual={
-                                  listItem.trigger ? (
-                                    <TriggerRunAvatar
-                                      trigger={listItem.trigger}
-                                    />
-                                  ) : undefined
-                                }
-                                className={cn(
-                                  "border-t-0 border-b-0 rounded-2xl hover:bg-hover",
-                                  isSelected && "bg-highlight-50"
-                                )}
-                                time={listItem.time}
-                                unread={isUnread}
-                                showFocus={
-                                  conversationIdToShowFocus === conversation.id
-                                }
-                                replySection={
-                                  <ReplySection
-                                    replyCount={listItem.replyCount}
-                                    unreadCount={
-                                      isUnread ? listItem.messageCount : 0
-                                    }
-                                    mentionCount={
-                                      listItem.trigger || !isUnread
-                                        ? 0
-                                        : listItem.mentionCount
-                                    }
-                                    avatars={listItem.avatarProps}
-                                    lastMessageBy={
-                                      listItem.avatarProps[0]?.name || "Unknown"
-                                    }
-                                  />
-                                }
-                                menuItems={buildConversationRowMenuItems({
-                                  isUnread,
-                                  onMarkRead: () =>
-                                    onRowsRead?.([baseConversationId]),
-                                  onMarkUnread: () =>
-                                    onRowsUnread?.([baseConversationId]),
-                                  // Leaving takes out the row you clicked, not
-                                  // every row sharing its base conversation.
-                                  onLeave: () =>
-                                    onLeaveConversation?.(conversation.id),
-                                })}
-                                onClick={() => {
-                                  setSelectedConversationRow({
-                                    rowId: conversation.id,
-                                    conversationId: conversationForLookup.id,
-                                  });
-                                  onConversationClick?.(conversationForLookup);
-                                }}
-                              />
-                            </div>
-                          );
-                        })}
-                      </ListGroup>
-                    </Fragment>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </GroupConversationTabContent>
+                            return (
+                              <div
+                                id={getConversationRowDomId(conversation.id)}
+                                key={conversation.id}
+                              >
+                                <ConversationListItem
+                                  conversation={conversation}
+                                  creator={listItem.creator || undefined}
+                                  leadingVisual={
+                                    listItem.trigger ? (
+                                      <TriggerRunAvatar
+                                        trigger={listItem.trigger}
+                                      />
+                                    ) : undefined
+                                  }
+                                  className={cn(
+                                    "border-t-0 border-b-0 rounded-2xl hover:bg-hover",
+                                    isSelected && "bg-highlight-50"
+                                  )}
+                                  time={listItem.time}
+                                  unread={isUnread}
+                                  showFocus={
+                                    conversationIdToShowFocus ===
+                                    conversation.id
+                                  }
+                                  replySection={
+                                    // A trigger's run is not a thread you reply
+                                    // to, so it reads as it does in the Inbox.
+                                    listItem.trigger ? undefined : (
+                                      <ReplySection
+                                        replyCount={listItem.replyCount}
+                                        unreadCount={
+                                          isUnread ? listItem.messageCount : 0
+                                        }
+                                        mentionCount={
+                                          isUnread ? listItem.mentionCount : 0
+                                        }
+                                        avatars={listItem.avatarProps}
+                                        lastMessageBy={
+                                          listItem.avatarProps[0]?.name ||
+                                          "Unknown"
+                                        }
+                                      />
+                                    )
+                                  }
+                                  menuItems={buildConversationRowMenuItems({
+                                    isUnread,
+                                    onMarkRead: () =>
+                                      onRowsRead?.([baseConversationId]),
+                                    onMarkUnread: () =>
+                                      onRowsUnread?.([baseConversationId]),
+                                    // Leaving takes out the row you clicked, not
+                                    // every row sharing its base conversation.
+                                    onLeave: () =>
+                                      onLeaveConversation?.(conversation.id),
+                                  })}
+                                  onClick={() => {
+                                    setSelectedConversationRow({
+                                      rowId: conversation.id,
+                                      conversationId: conversationForLookup.id,
+                                    });
+                                    onConversationClick?.(
+                                      conversationForLookup
+                                    );
+                                  }}
+                                />
+                              </div>
+                            );
+                          })}
+                        </ListGroup>
+                      </Fragment>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </GroupConversationTabContent>
+        )}
 
         {/* Tasks Tab */}
         <GroupConversationTabContent

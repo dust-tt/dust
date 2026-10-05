@@ -88,7 +88,7 @@ runs:
       if: contains(inputs.component, 'front')
       shell: bash
       run: |
-        gcloud storage cp gs://bkt-dust-infra-model-configs/custom.json front/custom-models.json 2>/dev/null || echo '{"models":[]}' > front/custom-models.json
+        gcloud storage cp gs://bkt-dust-infra-model-configs/custom.json front/custom-models.json 2>/dev/null || echo '{"version":2,"models":[]}' > front/custom-models.json
 
     - name: "Setup Depot"
       uses: "depot/setup-action@15c09a5f77a0840ad4bce955686522a257853461" # v1.7.1

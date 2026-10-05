@@ -106,7 +106,7 @@ export function ProviderConfigurationContextItem({
         )}
 
         {apiKey && (
-          <div className="font-mono text-lg mt-4 text-foreground truncate">
+          <div className="dd-privacy-mask font-mono text-lg mt-4 text-foreground truncate">
             {apiKey}
           </div>
         )}

@@ -12,7 +12,6 @@ import {
 import logger from "@app/logger/logger";
 import type {
   ApiKeySpendLimit,
-  GetApiKeySpendLimitResponse,
   SetApiKeySpendLimitResponse,
 } from "@app/types/api/keys/spend_limit";
 import { isCreditPricedPlan } from "@app/types/plan";
@@ -36,30 +35,6 @@ class ApiKeySpendLimitError extends Error {
   ) {
     super(message);
   }
-}
-
-export async function getApiKeySpendLimit(
-  auth: Authenticator,
-  { keyModelId }: { keyModelId: number }
-): Promise<Result<GetApiKeySpendLimitResponse, ApiKeySpendLimitError>> {
-  const workspace = auth.getNonNullableWorkspace();
-  const key = await KeyResource.fetchByWorkspaceAndId({
-    workspace,
-    id: keyModelId,
-  });
-  if (!key) {
-    return new Err(
-      new ApiKeySpendLimitError(
-        "key_not_found",
-        "Could not find the API key in this workspace."
-      )
-    );
-  }
-
-  if (key.monthlyCapAwuCredits === null) {
-    return new Ok({ kind: "unlimited" });
-  }
-  return new Ok({ kind: "limited", awuCredits: key.monthlyCapAwuCredits });
 }
 
 /**

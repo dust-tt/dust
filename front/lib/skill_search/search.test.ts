@@ -113,8 +113,13 @@ describe("custom skill search", () => {
               })),
               should: [
                 {
+                  constant_score: {
+                    filter: { term: { "name.keyword": "  report   b  " } },
+                  },
+                },
+                {
                   multi_match: {
-                    query: "report b",
+                    query: "  report   b  ",
                     type: "bool_prefix",
                     operator: "and",
                     fields: [
@@ -384,10 +389,19 @@ describe("custom skill search", () => {
       expect(after).toBeUndefined();
     } else {
       // Skill fields are eventually consistent until the document is refreshed or deleted, but
-      // `canAdministrate` is derived from live grants and reflects the change immediately.
-      const { canAdministrate: beforeCanAdministrate, ...beforeRest } = before;
-      const { canAdministrate: afterCanAdministrate, ...afterRest } = after;
+      // caller permissions come from live grants and reflect the change immediately.
+      const {
+        canWrite: beforeCanWrite,
+        canAdministrate: beforeCanAdministrate,
+        ...beforeRest
+      } = before;
+      const {
+        canWrite: afterCanWrite,
+        canAdministrate: afterCanAdministrate,
+        ...afterRest
+      } = after;
       expect(afterRest).toEqual(beforeRest);
+      expect(afterCanWrite).toBe(change === "archive" ? beforeCanWrite : false);
       expect(afterCanAdministrate).toBe(
         change === "archive" ? beforeCanAdministrate : false
       );
@@ -499,6 +513,7 @@ describe("custom skill search", () => {
         SkillListItemSchema.omit({ editors: true }).strict().parse(listing)
       ).toEqual({
         sId: active.sId,
+        canWrite: true,
         canAdministrate: true,
         status: "active",
         name: "Indexed name",
@@ -559,6 +574,7 @@ describe("custom skill search", () => {
       expect(listings).toEqual([
         {
           ...toSkillListItem(auth, global),
+          canWrite: false,
           canAdministrate: false,
           editedBy: null,
           updatedAt: null,

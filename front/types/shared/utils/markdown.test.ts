@@ -38,6 +38,14 @@ describe("stripMarkdown", () => {
     ).toBe("I updated Meeting Recap for Scribe Suggestion");
   });
 
+  it("replaces built entities whose name holds brackets", () => {
+    expect(
+      stripMarkdown(
+        "Renamed :build_skill[[hr] OnboardNewHire]{sId=skill_1} and :build_skill[[eng]Fix]{sId=skill_2}"
+      )
+    ).toBe("Renamed [hr] OnboardNewHire and [eng]Fix");
+  });
+
   it("replaces content node mentions with title", () => {
     expect(
       stripMarkdown(":content_node_mention[My Doc]{url=https://example.com}")

@@ -86,4 +86,25 @@ describe("POST /api/v1/w/[wId]/assistant/conversations", () => {
     expect(response.status).toBe(400);
     expect((await response.json()).error.type).toBe("invalid_request_error");
   });
+
+  it("returns 400 when depth is negative", async () => {
+    const { workspace, key } = await createPublicApiMockRequest();
+
+    const response = await postConversations(workspace, key, {
+      title: "Test conversation",
+      depth: -2000000000,
+      message: {
+        content: "Hello",
+        mentions: [],
+        context: {
+          username: "tester",
+          timezone: "Europe/Paris",
+          origin: "api",
+        },
+      },
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.type).toBe("invalid_request_error");
+  });
 });

@@ -30,11 +30,6 @@ import { Op } from "sequelize";
 
 import wId from "./[wId]";
 
-export type {
-  GetPokeWorkspacesResponseBody,
-  PokeWorkspaceType,
-} from "@app/types/api/poke/workspaces";
-
 // Note: the parent poke/index.ts already applies pokeAuth (super-user gate).
 // This sub-router handles the workspace LIST endpoint (GET /) and mounts the
 // per-workspace [wId] sub-app (which adds workspace resolution on top via

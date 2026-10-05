@@ -3,7 +3,7 @@ import {
   deleteMessageFeedback,
   upsertMessageFeedback,
 } from "@app/lib/api/assistant/feedback";
-import { triggerAgentMessageFeedbackNotification } from "@app/lib/notifications/workflows/agent-message-feedback";
+import { triggerAgentMessageFeedbackNotification } from "@app/lib/notifications/triggers/agent-message-feedback";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { launchAgentMessageFeedbackWorkflow } from "@app/temporal/analytics_queue/client";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -169,7 +169,6 @@ app.post(
       conversation,
       user: user.toJSON(),
       thumbDirection: body.thumbDirection as AgentMessageFeedbackDirection,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       content: body.feedbackContent || "",
       isConversationShared: body.isConversationShared,
     });

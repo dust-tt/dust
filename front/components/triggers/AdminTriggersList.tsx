@@ -8,8 +8,9 @@ import type { WebhookSourceSheetMode } from "@app/components/triggers/WebhookSou
 import { WebhookSourceSheet } from "@app/components/triggers/WebhookSourceSheet";
 import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
+import { compareStrings } from "@app/lib/i18n/format";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { filterWebhookSource } from "@app/lib/webhook_source";
 import type { SpaceType } from "@app/types/space";
 import type {
@@ -120,7 +121,8 @@ export const AdminTriggersList = ({
         filterFn: (row, _id, filterValue) =>
           filterWebhookSource(row.original.webhookSource, filterValue),
         sortingFn: (rowA, rowB) => {
-          return rowA.original.webhookSource.name.localeCompare(
+          return compareStrings(
+            rowA.original.webhookSource.name,
             rowB.original.webhookSource.name
           );
         },
@@ -135,9 +137,10 @@ export const AdminTriggersList = ({
           />
         ),
         sortingFn: (rowA, rowB) => {
-          return (
-            rowA.original.webhookSource.provider ?? "custom"
-          ).localeCompare(rowB.original.webhookSource.provider ?? "custom");
+          return compareStrings(
+            rowA.original.webhookSource.provider ?? "custom",
+            rowB.original.webhookSource.provider ?? "custom"
+          );
         },
         meta: {
           className: "w-32",
@@ -182,7 +185,8 @@ export const AdminTriggersList = ({
           );
         },
         sortingFn: (rowA, rowB) => {
-          return rowA.original.webhookSource.name.localeCompare(
+          return compareStrings(
+            rowA.original.webhookSource.name,
             rowB.original.webhookSource.name
           );
         },

@@ -1,12 +1,14 @@
 import { RootLayout } from "@app/components/app/RootLayout";
 import { CellProvider } from "@app/lib/auth/CellContext";
 import { ClientTypeProvider } from "@app/lib/context/clientType";
+import { i18n } from "@app/lib/i18n/i18n";
 import { FrontPlatformProvider } from "@extension/platforms/front/context/FrontPlatformProvider";
 import { FrontContextProvider } from "@extension/platforms/front/context/FrontProvider";
 
 import { ExtensionFetcherProvider } from "@extension/shared/lib/ExtensionFetcherProvider";
 import { ExtensionAuthProvider } from "@extension/ui/components/auth/AuthProvider";
 import { routes } from "@extension/ui/pages/routes";
+import { I18nProvider } from "@lingui/react";
 import { useEffect, useState } from "react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 
@@ -43,20 +45,22 @@ export const FrontApp = () => {
   }
 
   return (
-    <ClientTypeProvider value="extension">
-      <CellProvider>
-        <FrontContextProvider>
-          <FrontPlatformProvider>
-            <ExtensionAuthProvider>
-              <ExtensionFetcherProvider>
-                <RootLayout>
-                  <RouterProvider router={router} key="front-router" />
-                </RootLayout>
-              </ExtensionFetcherProvider>
-            </ExtensionAuthProvider>
-          </FrontPlatformProvider>
-        </FrontContextProvider>
-      </CellProvider>
-    </ClientTypeProvider>
+    <I18nProvider i18n={i18n}>
+      <ClientTypeProvider value="extension">
+        <CellProvider>
+          <FrontContextProvider>
+            <FrontPlatformProvider>
+              <ExtensionAuthProvider>
+                <ExtensionFetcherProvider>
+                  <RootLayout>
+                    <RouterProvider router={router} key="front-router" />
+                  </RootLayout>
+                </ExtensionFetcherProvider>
+              </ExtensionAuthProvider>
+            </FrontPlatformProvider>
+          </FrontContextProvider>
+        </CellProvider>
+      </ClientTypeProvider>
+    </I18nProvider>
   );
 };

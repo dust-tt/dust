@@ -1,3 +1,4 @@
+import { EditorContent } from "@app/components/editor/EditorContent";
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
 import type { SlashCommandSkillSuggestion } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import {
@@ -20,7 +21,7 @@ import type { Range } from "@tiptap/core";
 import { CharacterCount, Placeholder } from "@tiptap/extensions";
 import type { Transaction } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { useEditor } from "@tiptap/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 function useEditorService(editor: Editor | null) {

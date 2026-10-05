@@ -6,6 +6,7 @@ import {
   PokeCardTitle,
 } from "@app/components/poke/shadcn/ui/card";
 import type { PluginListItem } from "@app/lib/api/poke/types";
+import { compareStrings } from "@app/lib/i18n/format";
 import { usePokeListPluginForResourceType } from "@app/poke/swr/plugins";
 import type { PluginResourceTarget } from "@app/types/poke/plugins";
 import { Button, cn, Input, Tooltip } from "@dust-tt/sparkle";
@@ -109,7 +110,7 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
                 }}
               >
                 {filteredPlugins
-                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .toSorted((a, b) => compareStrings(a.name, b.name))
                   .map((plugin) => (
                     <Tooltip
                       key={plugin.id}

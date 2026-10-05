@@ -1,14 +1,9 @@
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  AgentMessageModel,
-  MessageModel,
-} from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MentionResource } from "@app/lib/resources/mention_resource";
 import type {
   ConversationWithoutContentType,
-  LightConversationType,
   LightMessageType,
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
@@ -18,7 +13,6 @@ import {
 } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { Op } from "sequelize";
 
 const FIRST_VISIBLE_MESSAGE_RANK_LIMIT = 50;
 
@@ -215,89 +209,4 @@ export async function conversationUsesAgentsWithRetention(
     await resource.fetchAgentConfigurationAndContentFragmentIds(auth);
 
   return agentConfigurationIds.some((id) => retentionAgentIds.has(id));
-}
-
-export async function hasUnreadSucceededAgentReply(
-  auth: Authenticator,
-  conversationId: string
-): Promise<boolean> {
-  const resource = await ConversationResource.fetchById(auth, conversationId);
-  if (!resource) {
-    return false;
-  }
-
-  const conversation = await conversationWithoutContentForResource(
-    auth,
-    resource
-  );
-  const lastReadAt =
-    conversation.lastReadMs !== null ? new Date(conversation.lastReadMs) : null;
-  const unreadMessageIds = await resource.fetchUnreadMessageIds(
-    auth,
-    lastReadAt
-  );
-  if (unreadMessageIds.length === 0) {
-    return false;
-  }
-
-  const workspaceId = auth.getNonNullableWorkspace().id;
-  const message = await MessageModel.findOne({
-    attributes: ["id"],
-    where: {
-      workspaceId,
-      conversationId: conversation.id,
-      id: { [Op.in]: unreadMessageIds },
-    },
-    include: [
-      {
-        model: AgentMessageModel,
-        as: "agentMessage",
-        required: true,
-        attributes: [],
-        where: {
-          workspaceId,
-          conversationId: conversation.id,
-          status: "succeeded",
-        },
-      },
-    ],
-  });
-
-  return message !== null;
-}
-
-export async function fetchUnreadLightConversation(
-  auth: Authenticator,
-  conversationId: string
-): Promise<Result<LightConversationType, ConversationError>> {
-  const resource = await ConversationResource.fetchById(auth, conversationId);
-  if (!resource) {
-    return new Err(new ConversationError("conversation_not_found"));
-  }
-
-  const conversation = await conversationWithoutContentForResource(
-    auth,
-    resource
-  );
-  const lastReadAt =
-    conversation.lastReadMs !== null ? new Date(conversation.lastReadMs) : null;
-  const unreadMessageIds = await resource.fetchUnreadMessageIds(
-    auth,
-    lastReadAt
-  );
-  const messages = await resource.fetchMessagesByModelIds(
-    auth,
-    unreadMessageIds
-  );
-  const renderedRes = await renderLightMessages(auth, resource, messages);
-  if (renderedRes.isErr()) {
-    return renderedRes;
-  }
-
-  return new Ok({
-    ...conversation,
-    owner: auth.getNonNullableWorkspace(),
-    visibility: resource.visibility,
-    content: renderedRes.value,
-  });
 }

@@ -185,6 +185,41 @@ describe("editFrameTextAtSource", () => {
     TEST_TIMEOUT_MS
   );
 
+  it.each([
+    "../../pod-P/other-app/Dashboard.tsx:4:8",
+    "components/../../sibling/Dashboard.tsx:4:8",
+    "/pod-P/other-app/Dashboard.tsx:4:8",
+  ])(
+    "rejects a source escaping the bundle root without touching the mount (%s)",
+    async (source) => {
+      const { authenticator: auth } = await createResourceTest({});
+      const file = await createPublishedFrame(auth);
+      // A file outside the bundle root that is reachable through the same mount.
+      const foreignPath = "pod-P/other-app/Dashboard.tsx";
+      const files = mockMount(
+        new Map([
+          [`${ROOT}/Dashboard.tsx`, ENTRY_SOURCE],
+          [foreignPath, ENTRY_SOURCE],
+        ])
+      );
+      const result = await editFrameTextAtSource(auth, {
+        file,
+        source,
+        oldText: "Sales",
+        newText: "{(()=>fetch('https://evil'))()}",
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.code).toBe("invalid_source");
+      }
+      expect(DustFileSystem.fromScopedPath).not.toHaveBeenCalled();
+      expect(files.get(foreignPath)).toBe(ENTRY_SOURCE);
+      expect(files.get(`${ROOT}/Dashboard.tsx`)).toBe(ENTRY_SOURCE);
+    },
+    TEST_TIMEOUT_MS
+  );
+
   it(
     "returns source_not_found when the addressed file is absent",
     async () => {

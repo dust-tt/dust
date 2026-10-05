@@ -20,6 +20,8 @@ import type {
 import { formatMicroUsdCompact } from "@app/lib/client/credits";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { clientFetch } from "@app/lib/egress/client";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { formatDate } from "@app/lib/i18n/format";
 import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
 import {
   Button,
@@ -181,11 +183,15 @@ function GroupedTooltip(
     return null;
   }
 
-  const date = new Date(data.timestamp).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: displayMode === "cumulative" ? "numeric" : undefined,
-  });
+  const date = formatDate(
+    new Date(data.timestamp),
+    {
+      month: "short",
+      day: "numeric",
+      hour: displayMode === "cumulative" ? "numeric" : undefined,
+    },
+    getActiveLocale()
+  );
   return <ChartTooltipCard title={date} rows={rows} />;
 }
 
@@ -242,19 +248,23 @@ export function BaseProgrammaticCostChart({
     true
   );
 
-  const formatDate = (date: Date) =>
-    date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      timeZone: "UTC",
-    });
+  const formatCycleDate = (date: Date) =>
+    formatDate(
+      date,
+      {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        timeZone: "UTC",
+      },
+      getActiveLocale()
+    );
 
   // Format period label based on billing cycle
   // cycleEnd is exclusive (first day of next cycle), so we subtract 1 day for display
   const inclusiveEndDate = new Date(billingCycle.cycleEnd);
   inclusiveEndDate.setUTCDate(inclusiveEndDate.getUTCDate() - 1);
-  const periodLabel = `${formatDate(billingCycle.cycleStart)} → ${formatDate(inclusiveEndDate)}`;
+  const periodLabel = `${formatCycleDate(billingCycle.cycleStart)} → ${formatCycleDate(inclusiveEndDate)}`;
 
   // Calculate next and previous period dates
   // Use UTC methods since currentDate is a UTC date
@@ -742,10 +752,14 @@ export function BaseProgrammaticCostChart({
           minTickGap={8}
           ticks={midnightTicks}
           tickFormatter={(value) =>
-            new Date(value).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-            })
+            formatDate(
+              new Date(value),
+              {
+                month: "short",
+                day: "numeric",
+              },
+              getActiveLocale()
+            )
           }
         />
         <YAxis

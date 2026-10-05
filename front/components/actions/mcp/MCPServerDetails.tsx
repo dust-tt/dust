@@ -28,6 +28,10 @@ import {
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import datadogLogger from "@app/logger/datadogLogger";
+import {
+  hasRedactedHeaderValue,
+  REDACTED_HEADER_VALUES_ERROR_MESSAGE,
+} from "@app/types/shared/utils/http_headers";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import { Avatar, buttonVariants, Icon, LinkExternal01 } from "@dust-tt/sparkle";
@@ -347,6 +351,20 @@ export function MCPServerDetails({
             ),
           });
 
+          // Checked before any mutation so a rejected header update leaves nothing half-saved.
+          if (
+            diff.authCustomHeaders &&
+            hasRedactedHeaderValue(diff.authCustomHeaders)
+          ) {
+            sendNotification({
+              type: "error",
+              title: "Failed to save changes",
+              description: REDACTED_HEADER_VALUES_ERROR_MESSAGE,
+            });
+            success = false;
+            return;
+          }
+
           // Promoting to the global space hard-deletes any regular-space
           // copies of this tool. Require confirmation before mutating when
           // that's about to happen, naming the spaces that will lose their
@@ -480,8 +498,7 @@ export function MCPServerDetails({
         datadogLogger.error(
           {
             fields: keys,
-            errors: errors,
-            values: form.getValues(),
+            details,
             serverViewId: mcpServerView?.sId,
           },
           "[MCP Details] - Form validation error"

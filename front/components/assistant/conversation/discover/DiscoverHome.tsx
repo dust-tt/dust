@@ -1,12 +1,17 @@
 import type {
   CatalogItem,
   DiscoverSkill,
-} from "@app/components/assistant/conversation/discover/DiscoverCatalog";
+} from "@app/components/assistant/conversation/discover/catalog";
 import {
-  CatalogRow,
   getItemDescription,
   getItemId,
   getItemName,
+  toHydratedAgentCatalogItem,
+  toHydratedSkillCatalogItem,
+} from "@app/components/assistant/conversation/discover/catalog";
+import {
+  CatalogRow,
+  CatalogRowsSkeleton,
   ItemAuthor,
   SkillCatalogAvatar,
 } from "@app/components/assistant/conversation/discover/DiscoverCatalog";
@@ -15,6 +20,7 @@ import {
   trackDiscoverySuggestionClick,
   trackDiscoverySuggestionView,
 } from "@app/components/assistant/conversation/discover/discoveryTracking";
+import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { getSkillIcon } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
@@ -25,6 +31,7 @@ import {
 import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
 import type { DiscoveryRankedItemType } from "@app/types/api/discovery";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { RichAgentMentionCandidate } from "@app/types/assistant/mentions";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -34,6 +41,7 @@ import {
   ChevronRight,
   cn,
   EmptyCTA,
+  LoadingBlock,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -63,14 +71,14 @@ function resolveCatalogItems(
       case "agent": {
         const agent = agentsById.get(target.sId);
         if (agent) {
-          resolved.push({ kind: "agent", agent });
+          resolved.push(toHydratedAgentCatalogItem(agent));
         }
         break;
       }
       case "skill": {
         const skill = skillsById.get(target.sId);
         if (skill) {
-          resolved.push({ kind: "skill", skill });
+          resolved.push(toHydratedSkillCatalogItem(skill));
         }
         break;
       }
@@ -83,8 +91,8 @@ function resolveCatalogItems(
 
 interface DiscoverHomeProps {
   owner: WorkspaceType;
-  onAgentClick: (agent: LightAgentConfigurationType) => void;
-  onSkillClick: (skill: DiscoverSkill) => void;
+  onAgentClick: (agent: RichAgentMentionCandidate) => void;
+  onSkillClick: (skill: PendingSkill) => void;
   onPin?: (item: CatalogItem) => void;
   onDetails: (item: CatalogItem) => void;
   onFindMore: () => void;
@@ -151,6 +159,7 @@ export function DiscoverHome({
     <>
       {!isFeaturedHidden && (
         <FeaturedCarousel
+          title={`Curated by ${owner.name}`}
           items={featured}
           isLoading={isFeaturedLoadingAll}
           isRefreshing={isCatalogRefreshing}
@@ -200,6 +209,7 @@ function SectionTitle({ title, isRefreshing }: SectionTitleProps) {
 }
 
 interface FeaturedCarouselProps {
+  title: string;
   items: CatalogItem[];
   isLoading: boolean;
   isRefreshing: boolean;
@@ -207,6 +217,7 @@ interface FeaturedCarouselProps {
 }
 
 function FeaturedCarousel({
+  title,
   items,
   isLoading,
   isRefreshing,
@@ -247,12 +258,14 @@ function FeaturedCarousel({
     });
   };
 
-  const placeholderCount = Math.max(0, FEATURED_SLOT_COUNT - items.length);
+  const placeholderCount = isLoading
+    ? 0
+    : Math.max(0, FEATURED_SLOT_COUNT - items.length);
 
   return (
     <section className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <SectionTitle title="Featured" isRefreshing={isRefreshing} />
+        <SectionTitle title={title} isRefreshing={isRefreshing} />
         {(canScroll.left || canScroll.right) && (
           <div className="flex items-center gap-1">
             <Button
@@ -280,14 +293,24 @@ function FeaturedCarousel({
           onScroll={updateCanScroll}
           className="scrollbar-hide flex snap-x snap-mandatory gap-4 overflow-x-auto"
         >
-          {items.map((item) => (
-            <div
-              key={`${item.kind}-${getItemId(item)}`}
-              className={FEATURED_ITEM_CLASSES}
-            >
-              <FeaturedCard item={item} onClick={() => onUse(item)} />
-            </div>
-          ))}
+          {isLoading
+            ? Array.from({ length: FEATURED_SLOT_COUNT }, (_, slot) => (
+                <div
+                  key={`skeleton-${slot}`}
+                  aria-hidden
+                  className={FEATURED_ITEM_CLASSES}
+                >
+                  <FeaturedCardSkeleton />
+                </div>
+              ))
+            : items.map((item) => (
+                <div
+                  key={`${item.kind}-${getItemId(item)}`}
+                  className={FEATURED_ITEM_CLASSES}
+                >
+                  <FeaturedCard item={item} onClick={() => onUse(item)} />
+                </div>
+              ))}
           {Array.from({ length: placeholderCount }, (_, slot) => (
             <div
               key={`slot-${slot}`}
@@ -300,19 +323,13 @@ function FeaturedCarousel({
             />
           ))}
         </div>
-        {isLoading ? (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Spinner />
+        {!isLoading && items.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center px-6">
+            <p className="copy-sm text-center text-muted-foreground">
+              Nothing featured yet. Pin agents and skills from the list to show
+              them here.
+            </p>
           </div>
-        ) : (
-          items.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center px-6">
-              <p className="copy-sm text-center text-muted-foreground">
-                Nothing featured yet. Pin agents and skills from the list to
-                show them here.
-              </p>
-            </div>
-          )
         )}
       </div>
     </section>
@@ -379,9 +396,7 @@ function DiscoverSection({
         )}
       </div>
       {isLoading ? (
-        <div className="flex justify-center py-6">
-          <Spinner />
-        </div>
+        <CatalogRowsSkeleton count={SECTION_ITEM_COUNT} />
       ) : items.length === 0 ? (
         <EmptyCTA
           message={emptyMessage}
@@ -450,9 +465,9 @@ function FeaturedCard({ item, onClick }: FeaturedCardProps) {
           </>
         ) : (
           <>
-            <SkillBackdrop skill={item.skill} />
+            <SkillBackdrop icon={item.skill.icon} />
             <span className="relative">
-              <SkillCatalogAvatar skill={item.skill} size="md" />
+              <SkillCatalogAvatar icon={item.skill.icon} size="md" />
             </span>
           </>
         )}
@@ -472,12 +487,40 @@ function FeaturedCard({ item, onClick }: FeaturedCardProps) {
   );
 }
 
-interface SkillBackdropProps {
-  skill: DiscoverSkill;
+function FeaturedCardSkeleton() {
+  return (
+    <div
+      className={cn(
+        FEATURED_SLOT_CLASSES,
+        "flex w-full flex-col overflow-hidden border-border bg-background"
+      )}
+    >
+      <div className="flex h-32 w-full shrink-0 items-center justify-center bg-muted-background">
+        <LoadingBlock className="h-12 w-12 rounded-xl" />
+      </div>
+      <div className="flex flex-col gap-1 px-4 py-3">
+        <div className="flex h-6 items-center">
+          <LoadingBlock className="h-4 w-32" />
+        </div>
+        <div className="flex flex-col">
+          <div className="flex h-5 items-center">
+            <LoadingBlock className="h-3 w-full" />
+          </div>
+          <div className="flex h-5 items-center">
+            <LoadingBlock className="h-3 w-2/3" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
-function SkillBackdrop({ skill }: SkillBackdropProps) {
-  const SkillIcon = useMemo(() => getSkillIcon(skill.icon), [skill.icon]);
+interface SkillBackdropProps {
+  icon: string | null;
+}
+
+function SkillBackdrop({ icon }: SkillBackdropProps) {
+  const SkillIcon = useMemo(() => getSkillIcon(icon), [icon]);
   return (
     <span
       aria-hidden

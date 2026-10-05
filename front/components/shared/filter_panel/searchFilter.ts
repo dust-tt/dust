@@ -2,17 +2,21 @@ import {
   getModelTier,
   getTierIdForMetaModelId,
 } from "@app/components/model_picker/modelPickerUtils";
+import type { FilterHashSelection } from "@app/components/shared/filter_panel/filterHash";
 import type {
   CategoryFilter,
   FilterOptionBase,
 } from "@app/components/shared/filter_panel/filterState";
+import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/constants";
 import type { MCPServerType } from "@app/lib/api/mcp";
+import { compareStrings } from "@app/lib/i18n/format";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { SKILL_AVAILABILITY_DISPLAY } from "@app/lib/skills/labels";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration_constants";
 import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration_constants";
 import { GLOBAL_SPACE_NAME } from "@app/types/groups";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { SpaceType } from "@app/types/space";
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
@@ -24,9 +28,11 @@ export const SEARCH_FILTER_CATEGORY_LABEL = {
   availability: "Availability",
   editor: "Editors",
   model: "Models",
+  skill: "Skills",
   space: "Spaces",
   tag: "Tags",
   tool: "Tools",
+  usage: "Usage",
 } as const;
 
 export type SearchFilterCategory = keyof typeof SEARCH_FILTER_CATEGORY_LABEL;
@@ -39,9 +45,11 @@ export const SEARCH_FILTER_CATEGORY_SINGULAR_LABEL: Record<
   availability: "Availability",
   editor: "Editor",
   model: "Model",
+  skill: "Skill",
   space: "Space",
   tag: "Tag",
   tool: "Tool",
+  usage: "Usage",
 };
 
 export type SearchFilterOption = FilterOptionBase &
@@ -50,6 +58,7 @@ export type SearchFilterOption = FilterOptionBase &
     | { category: "availability"; id: SkillAvailability }
     | { category: "editor"; image: string | null }
     | { category: "model" }
+    | { category: "skill"; icon: string | null }
     | { category: "space" }
     | { category: "tag" }
     | {
@@ -57,24 +66,36 @@ export type SearchFilterOption = FilterOptionBase &
         icon: MCPServerType["icon"];
         mcpServerViewIds: string[];
       }
+    | { category: "usage"; min: number; max: number }
   );
 
 export type SearchFilter<Category extends SearchFilterCategory> =
   CategoryFilter<Category, SearchFilterOption>;
+
+interface SearchFilterSkillFacetValue {
+  sId: string;
+  name: string;
+  icon: string | null;
+}
+
+interface SearchFilterToolFacetValue {
+  sId: string;
+  mcpServerId: string;
+  name: string;
+  icon: MCPServerType["icon"];
+}
 
 // The facet values the options are built from; agent and skill search responses both fit.
 export interface SearchFilterFacets {
   availability?: { availability: SkillAvailability }[];
   editors?: Pick<UserType, "sId" | "fullName" | "image">[];
   models?: { modelId: string }[];
+  skills?: SearchFilterSkillFacetValue[];
   spaces?: Pick<SpaceType, "sId" | "name" | "kind">[];
   tags?: Pick<TagType, "sId" | "name">[];
-  mcpServerViews?: {
-    sId: string;
-    mcpServerId: string;
-    name: string;
-    icon: MCPServerType["icon"];
-  }[];
+  mcpServerViews?: SearchFilterToolFacetValue[];
+  // Bounds of the active users count; null when no matching resource has usage.
+  usage?: { min: number | null; max: number | null };
 }
 
 const ACCESS_FILTER_OPTIONS: SearchFilterOption[] = [
@@ -95,7 +116,7 @@ export function getModelFilterDisplayName(modelId: string): string {
 
 // One option per MCP server, filtering on every view of it that matching resources use.
 function toToolFilterOptions(
-  views: NonNullable<SearchFilterFacets["mcpServerViews"]>
+  views: SearchFilterToolFacetValue[]
 ): SearchFilterOption[] {
   const optionsByServerId = new Map<
     string,
@@ -117,11 +138,16 @@ function toToolFilterOptions(
     }
   }
   return [...optionsByServerId.values()].toSorted((a, b) =>
-    a.name.localeCompare(b.name)
+    compareStrings(a.name, b.name)
   );
 }
 
 // Access options are static; the others are the values held by the matching resources.
+/**
+ * @cc [owner:aubin-tchoi,label:product] current-editor-name
+ * Editor options MUST use the editor's full name, with ` (You)` appended for the
+ * current user. The current user's option MUST be listed first when present.
+ */
 export function getSearchFilterOptions(
   category: SearchFilterCategory,
   facets: SearchFilterFacets | undefined,
@@ -144,13 +170,15 @@ export function getSearchFilterOptions(
       }));
     }
     case "editor":
-      // The current user is listed first, as "Me".
       return (facets?.editors ?? [])
         .map(
           (editor): SearchFilterOption => ({
             category: "editor",
             id: editor.sId,
-            name: editor.sId === currentUserId ? "Me" : editor.fullName,
+            name:
+              editor.sId === currentUserId
+                ? `${editor.fullName} (You)`
+                : editor.fullName,
             image: editor.image,
             disabled: false,
           })
@@ -169,7 +197,19 @@ export function getSearchFilterOptions(
             disabled: false,
           })
         )
-        .toSorted((a, b) => a.name.localeCompare(b.name));
+        .toSorted((a, b) => compareStrings(a.name, b.name));
+    case "skill":
+      return (facets?.skills ?? [])
+        .map(
+          (skill): SearchFilterOption => ({
+            category: "skill",
+            id: skill.sId,
+            name: skill.name,
+            icon: skill.icon,
+            disabled: false,
+          })
+        )
+        .toSorted((a, b) => compareStrings(a.name, b.name));
     case "space":
       return (facets?.spaces ?? []).map((space) => ({
         category: "space",
@@ -186,6 +226,9 @@ export function getSearchFilterOptions(
       }));
     case "tool":
       return toToolFilterOptions(facets?.mcpServerViews ?? []);
+    // The usage range is picked on a slider, not among options.
+    case "usage":
+      return [];
   }
 }
 
@@ -204,4 +247,197 @@ export function getSearchFilterMcpServerViewIds<
     .flatMap((option) =>
       option?.category === "tool" ? option.mcpServerViewIds : []
     );
+}
+
+// Tool selections hold MCP server view IDs; the other categories hold option IDs.
+export type SearchFilterSelection<Category extends SearchFilterCategory> =
+  FilterHashSelection<Category>;
+
+export function toSearchFilterSelection<Category extends SearchFilterCategory>(
+  filter: SearchFilter<Category>,
+  categories: readonly Category[]
+): SearchFilterSelection<Category> {
+  const selection: SearchFilterSelection<Category> = {};
+  for (const category of categories) {
+    const labels = Object.fromEntries(
+      (filter[category] ?? []).flatMap((option) =>
+        option.category === "tool"
+          ? option.mcpServerViewIds.map((viewId) => [viewId, option.name])
+          : [[option.id, option.name]]
+      )
+    );
+    if (Object.keys(labels).length > 0) {
+      selection[category] = labels;
+    }
+  }
+  return selection;
+}
+
+export function getSearchFilterOptionKeys(
+  option: SearchFilterOption
+): string[] {
+  return option.category === "tool"
+    ? option.mcpServerViewIds.map((viewId) => `tool:${viewId}`)
+    : [`${option.category}:${option.id}`];
+}
+
+// Stands for a selected ID that no facet names; null for IDs that cannot be valid.
+function toUnresolvedOption(
+  category: SearchFilterCategory,
+  id: string,
+  name: string
+): SearchFilterOption | null {
+  switch (category) {
+    case "access":
+    case "availability":
+    case "usage":
+      return null;
+    case "editor":
+      return { category, id, name, image: null, disabled: false };
+    case "skill":
+      return { category, id, name, icon: null, disabled: false };
+    case "model":
+    case "space":
+    case "tag":
+      return { category, id, name, disabled: false };
+    case "tool":
+      return {
+        category,
+        id,
+        name,
+        icon: DEFAULT_MCP_SERVER_ICON,
+        mcpServerViewIds: [],
+        disabled: false,
+      };
+  }
+}
+
+/**
+ * @cc [owner:tdraier,label:product] resolve-every-selected-id
+ * Every selected ID that can be valid MUST be kept in the resolved filter, named from `facets`,
+ * then `knownOptions`, and otherwise by an unresolved placeholder carrying its selected label and
+ * listed in `unresolvedKeys`.
+ * Usage IDs MUST be named from the range they encode. Access, availability and usage IDs that
+ * match no option MUST be dropped. Tool options MUST carry only the selected view IDs, grouped by
+ * MCP server.
+ */
+export function resolveSearchFilterSelection<
+  Category extends SearchFilterCategory,
+>({
+  selection,
+  categories,
+  knownOptions,
+  facets,
+  currentUserId,
+}: {
+  selection: SearchFilterSelection<Category>;
+  categories: readonly Category[];
+  knownOptions: ReadonlyMap<string, SearchFilterOption>;
+  facets: SearchFilterFacets | undefined;
+  currentUserId: string;
+}): {
+  filter: SearchFilter<Category>;
+  unresolvedCategories: Category[];
+  unresolvedKeys: ReadonlySet<string>;
+} {
+  // Availability names derive from their IDs alone.
+  const allFacets: SearchFilterFacets = {
+    ...facets,
+    availability: SKILL_AVAILABILITIES.map((availability) => ({
+      availability,
+    })),
+  };
+  const filter: SearchFilter<Category> = {};
+  const unresolvedCategories: Category[] = [];
+  const unresolvedKeys = new Set<string>();
+
+  for (const category of categories) {
+    const optionsByKey = new Map(
+      getSearchFilterOptions(category, allFacets, currentUserId).flatMap(
+        (option) =>
+          getSearchFilterOptionKeys(option).map((key) => [key, option])
+      )
+    );
+    const optionsById = new Map<string, SearchFilterOption>();
+    const toolViewIdsById = new Map<string, string[]>();
+    let isCategoryResolved = true;
+    for (const [id, label] of Object.entries(selection[category] ?? {})) {
+      const key = `${category}:${id}`;
+      const resolved =
+        optionsByKey.get(key) ??
+        knownOptions.get(key) ??
+        (category === "usage" ? parseUsageFilterOption(id) : undefined);
+      const option = resolved ?? toUnresolvedOption(category, id, label);
+      if (!option) {
+        continue;
+      }
+      if (!resolved) {
+        unresolvedKeys.add(key);
+        isCategoryResolved = false;
+      }
+      if (!optionsById.has(option.id)) {
+        optionsById.set(option.id, option);
+      }
+      if (option.category === "tool") {
+        const viewIds = toolViewIdsById.get(option.id) ?? [];
+        viewIds.push(id);
+        toolViewIdsById.set(option.id, viewIds);
+      }
+    }
+    if (optionsById.size > 0) {
+      filter[category] = [...optionsById.values()].map((option) =>
+        option.category === "tool"
+          ? {
+              ...option,
+              mcpServerViewIds: toolViewIdsById.get(option.id) ?? [],
+            }
+          : option
+      );
+    }
+    if (!isCategoryResolved) {
+      unresolvedCategories.push(category);
+    }
+  }
+
+  return { filter, unresolvedCategories, unresolvedKeys };
+}
+
+export function toUsageFilterOption({
+  min,
+  max,
+}: {
+  min: number;
+  max: number;
+}): SearchFilterOption {
+  return {
+    category: "usage",
+    id: `${min}-${max}`,
+    name: `${min === max ? min : `${min}–${max}`} active user${pluralize(max)}`,
+    min,
+    max,
+    disabled: false,
+  };
+}
+
+function parseUsageFilterOption(id: string): SearchFilterOption | undefined {
+  const match = /^(\d+)-(\d+)$/.exec(id);
+  if (!match) {
+    return undefined;
+  }
+  const min = Number(match[1]);
+  const max = Number(match[2]);
+  return Number.isSafeInteger(min) && Number.isSafeInteger(max) && min <= max
+    ? toUsageFilterOption({ min, max })
+    : undefined;
+}
+
+export function getSearchFilterActiveUsersCount<
+  Category extends SearchFilterCategory,
+>(filter: SearchFilter<Category>): { min: number; max: number } | undefined {
+  const option = Object.values<SearchFilterOption[] | undefined>(filter)
+    .flat()
+    .find((candidate) => candidate?.category === "usage");
+  return option?.category === "usage"
+    ? { min: option.min, max: option.max }
+    : undefined;
 }

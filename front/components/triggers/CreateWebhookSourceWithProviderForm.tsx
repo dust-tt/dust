@@ -1,11 +1,11 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useCellContext } from "@app/lib/auth/CellContext";
+import { WEBHOOK_PRESETS } from "@app/lib/triggers/webhook_presets";
+import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/lib/triggers/webhooks_client_side";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type { OAuthConnectionType } from "@app/types/oauth/lib";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
-import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
-import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/types/triggers/webhooks_client_side";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, CloudArrowLeftRight, Label, Spinner } from "@dust-tt/sparkle";
 import { useState } from "react";

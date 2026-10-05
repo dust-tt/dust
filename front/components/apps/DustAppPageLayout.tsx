@@ -13,6 +13,7 @@ import { dustAppsListUrl } from "@app/lib/spaces";
 import { useApp } from "@app/lib/swr/apps";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { Spinner, Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 
@@ -37,6 +38,7 @@ interface DustAppPageLayoutProps {
 // TODO: We are not supposed to use z-index for radix components, check why
 // code input will go over without z-index.
 export function DustAppPageLayout({ children }: DustAppPageLayoutProps) {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const router = useAppRouter();
   const spaceId = useRequiredPathParam("spaceId");
@@ -86,6 +88,7 @@ export function DustAppPageLayout({ children }: DustAppPageLayoutProps) {
             app,
             current: currentTab,
             canAdministrateApps,
+            t,
           }).map((item) => (
             <TabsTrigger
               key={item.value}

@@ -1,7 +1,7 @@
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getContentFragmentsSpaceIds } from "@app/lib/api/assistant/permissions";
 import { listUsersWithoutAccessToSpaceResources } from "@app/lib/api/spaces/access";
 import { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { ConversationAccessType } from "@app/lib/resources/conversation_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -85,11 +85,11 @@ export async function canCurrentUserAddProjectMembers(
 export async function canAgentBeUsedInProjectConversation(
   auth: Authenticator,
   {
-    configuration,
+    agent,
     conversation,
     transaction,
   }: {
-    configuration: LightAgentConfigurationType;
+    agent: AgentResource;
     conversation: ConversationWithoutContentType;
     transaction?: Transaction;
   }
@@ -97,19 +97,26 @@ export async function canAgentBeUsedInProjectConversation(
   if (!isPodConversation(conversation)) {
     throw new Error("Unexpected: conversation is not a project conversation");
   }
+  const requestedSpaceModelIds = agent.requestedSpaceModelIds();
+  const conversationSpaceModelId = getResourceIdFromSId(conversation.spaceId);
 
   // In case of Project's conversation, we need to check if the agent configuration is using only the project spaces or open spaces, otherwise we reject the mention and do not create the agent message.
   // Check to skip heavy work if the agent configuration is only using the project space.
   if (
-    configuration.requestedSpaceIds.some(
-      (spaceId) => spaceId !== conversation.spaceId
+    requestedSpaceModelIds.some(
+      (spaceModelId) => spaceModelId !== conversationSpaceModelId
     )
   ) {
     // Need to load all the spaces to check if they are restricted.
-    const spaces = await SpaceResource.fetchByIds(
+    const spaces = await SpaceResource.fetchByModelIds(
       auth,
       // Ensure we have the project's space in the list of spaces to check.
-      uniq([conversation.spaceId, ...configuration.requestedSpaceIds]),
+      uniq([
+        ...(conversationSpaceModelId !== null
+          ? [conversationSpaceModelId]
+          : []),
+        ...requestedSpaceModelIds,
+      ]),
       { transaction }
     );
     const openIds = await SpaceResource.listOpenSpaceModelIds(auth, spaces);
@@ -158,19 +165,19 @@ export async function canAgentBeUsedInProjectConversation(
 export async function isAgentRestrictedBySpaceUsage(
   auth: Authenticator,
   {
-    configuration,
+    agent,
     conversation,
   }: {
-    configuration: LightAgentConfigurationType | null;
+    agent: AgentResource | null;
     conversation: ConversationWithoutContentType;
   }
 ): Promise<boolean> {
-  if (!configuration || !isPodConversation(conversation)) {
+  if (!agent || !isPodConversation(conversation)) {
     return false;
   }
 
   return !(await canAgentBeUsedInProjectConversation(auth, {
-    configuration,
+    agent,
     conversation,
   }));
 }
@@ -194,7 +201,7 @@ export async function updateConversationRequirements(
     conversation,
     t,
   }: {
-    agents?: LightAgentConfigurationType[];
+    agents?: Pick<LightAgentConfigurationType, "requestedSpaceIds">[];
     contentFragmentDatasourceViewIds?: string[];
     conversation: ConversationWithoutContentType;
     t?: Transaction;
@@ -301,16 +308,21 @@ export async function rebuildConversationRequirements(
       auth
     );
 
-  const agents =
-    agentConfigurationIds.length > 0
-      ? await getAgentConfigurations(auth, {
-          agentIds: agentConfigurationIds,
-          variant: "light",
-        })
-      : [];
+  // The requirements must cover every agent of the conversation, including those the caller holds
+  // no verb on anymore, so the `canFetch` drop is skipped (see `agent-dangerous-fetch`).
+  const agents = await AgentResource.fetchByIds(auth, agentConfigurationIds, {
+    dangerouslySkipFetchCheck: true,
+  });
+  const workspaceModelId = auth.getNonNullableWorkspace().id;
 
   await updateConversationRequirements(auth, {
-    agents,
+    agents: agents.map((agent) => ({
+      requestedSpaceIds: agent
+        .requestedSpaceModelIds()
+        .map((id) =>
+          SpaceResource.modelIdToSId({ id, workspaceId: workspaceModelId })
+        ),
+    })),
     contentFragmentDatasourceViewIds,
     conversation: conversationResource.toJSON(),
   });

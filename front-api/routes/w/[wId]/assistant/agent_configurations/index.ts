@@ -1,11 +1,17 @@
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
+import { listAgentsForView } from "@app/lib/api/assistant/agent_views";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getAgentsEditors } from "@app/lib/api/assistant/editors";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { runOnRedis } from "@app/lib/api/redis";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import {
+  enrichWithFavorites,
+  toAgentConfigurations,
+  toLightAgentConfigurations,
+} from "@app/lib/resources/agent_resource_serialization";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
+import { compareAgentsWithFavorites } from "@app/lib/utils";
 import {
   GetAgentConfigurationsQuerySchema,
   PostOrPatchAgentConfigurationRequestBodySchema,
@@ -28,7 +34,6 @@ import batchUpdateScope from "./batch_update_scope";
 import batchUpdateTags from "./batch_update_tags";
 import createPending from "./create-pending";
 import deleteRoute from "./delete";
-import lookup from "./lookup";
 import nameAvailable from "./name_available";
 import newRoutes from "./new";
 import search from "./search";
@@ -191,7 +196,6 @@ app.get("/", async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
     withEditors,
     sort,
   } = queryValidation.data;
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   let viewParam = view ? view : "all";
   // @ts-expect-error: added for backwards compatibility
   viewParam = viewParam === "assistant-search" ? "list" : viewParam;
@@ -213,18 +217,27 @@ app.get("/", async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
       },
     });
   }
-  let agentConfigurations = await getAgentConfigurationsForView({
+  const agents = await listAgentsForView(
     auth,
-    agentsGetView:
-      viewParam === "workspace"
-        ? "published" // workspace is deprecated, return all visible agents
-        : viewParam,
-    variant: "light",
-    limit,
-    sort,
-    // Stripped to stay under Next.js' 4MB API response limit.
-    omitHeavyAttributes: true,
-  });
+    viewParam === "workspace"
+      ? "published" // workspace is deprecated, return all visible agents
+      : viewParam,
+    { sort: sort === "priority" ? undefined : sort }
+  );
+  // Sorted and limited after the permission filtering, so a limit never drops a readable agent.
+  const sortedAgents =
+    sort === "priority"
+      ? agents.toSorted(
+          compareAgentsWithFavorites(await enrichWithFavorites(auth, agents))
+        )
+      : agents;
+  const listedAgents = limit ? sortedAgents.slice(0, limit) : sortedAgents;
+  // Stripped to stay under Next.js' 4MB API response limit.
+  let agentConfigurations = await toLightAgentConfigurations(
+    auth,
+    listedAgents,
+    { withInstructions: false }
+  );
   if (withUsage === "true") {
     const mentionCounts = await runOnRedis(
       { origin: "agent_usage" },
@@ -252,7 +265,7 @@ app.get("/", async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
   if (withAuthors === "true") {
     const recentAuthors = await getAgentsRecentAuthors({
       auth,
-      agents: agentConfigurations,
+      agents: listedAgents,
     });
     agentConfigurations = agentConfigurations.map(
       (agentConfiguration, index) => ({
@@ -263,7 +276,7 @@ app.get("/", async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
   }
 
   if (withEditors === "true") {
-    const editors = await getAgentsEditors(auth, agentConfigurations);
+    const editors = await getAgentsEditors(auth, listedAgents);
     agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
       ...agentConfiguration,
       editors: editors[agentConfiguration.sId],
@@ -274,7 +287,7 @@ app.get("/", async (ctx): HandlerResult<GetAgentConfigurationsResponseBody> => {
     const feedbacks =
       await AgentMessageFeedbackResource.getFeedbackCountForAssistants(
         auth,
-        agentConfigurations
+        listedAgents
           .filter((agent) => agent.scope !== "global")
           .map((agent) => agent.sId),
         30
@@ -337,9 +350,10 @@ app.post(
       });
     }
 
-    return ctx.json({
-      agentConfiguration: agentConfigurationRes.value.agentConfiguration,
-    });
+    const [agentConfiguration] = await toAgentConfigurations(auth, [
+      agentConfigurationRes.value.agent,
+    ]);
+    return ctx.json({ agentConfiguration });
   }
 );
 
@@ -351,7 +365,6 @@ app.route("/batch_update_scope", batchUpdateScope);
 app.route("/batch_update_tags", batchUpdateTags);
 app.route("/create-pending", createPending);
 app.route("/delete", deleteRoute);
-app.route("/lookup", lookup);
 app.route("/name_available", nameAvailable);
 app.route("/new", newRoutes);
 app.route("/search", search);

@@ -36,6 +36,7 @@ export const GRANT_VERBS = [
   "use_workspace_pool",
   "read_usage",
   "set_usage_limits",
+  "list",
 ] as const;
 export type GrantVerb = (typeof GRANT_VERBS)[number];
 

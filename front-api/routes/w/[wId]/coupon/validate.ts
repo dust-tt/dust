@@ -6,8 +6,6 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
-export type { GetCouponValidateResponseBody } from "@app/lib/resources/coupon_resource";
-
 const GetCouponValidateQuerySchema = z.object({
   code: z.string(),
   // Redemption context the coupon is being validated for. Defaults to

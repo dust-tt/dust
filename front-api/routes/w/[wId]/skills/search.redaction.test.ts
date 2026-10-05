@@ -4,7 +4,6 @@ import {
   MAX_SKILL_SEARCH_WINDOW,
 } from "@app/lib/skill_search/query";
 import { toSkillListItem } from "@app/lib/skill_search/serialization";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -70,8 +69,9 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     { role: "manager", grant: "none", expected: false },
     { role: "manager", grant: "editor", expected: true },
     { role: "admin", grant: "none", expected: true },
+    { role: "admin", grant: "editor", expected: true },
     { role: "user", grant: "*", expected: true },
-  ] as const)("returns administration permissions for $role with $grant grants", async ({
+  ] as const)("returns current permissions for $role with $grant grants", async ({
     role,
     grant,
     expected,
@@ -79,7 +79,7 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     const { auth, workspace, user } = await createPrivateApiMockRequest({
       role,
     });
-    await FeatureFlagFactory.basic(auth, "skills_search");
+
     const skill = await SkillFactory.create(auth, {
       availability: "workspace_users",
       addCurrentUserAsEditor: grant === "editor",
@@ -92,7 +92,7 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
       await auth.refresh();
     }
     const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
-    // Indexed editors may be stale; administration must use the current caller's grants.
+    // Indexed editors may be stale; permissions must use the current caller's grants.
     document.editor_ids = expected ? [] : [user.sId];
     const global = SkillFactory.createCodeDefinedSearchDocuments().find(
       (document) => document.skill_id === "go-deep"
@@ -109,8 +109,16 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
 
     expect(response.status).toBe(200);
     expect((await response.json()).skills).toEqual([
-      expect.objectContaining({ sId: skill.sId, canAdministrate: expected }),
-      expect.objectContaining({ sId: global.skill_id, canAdministrate: false }),
+      expect.objectContaining({
+        sId: skill.sId,
+        canWrite: grant !== "none",
+        canAdministrate: expected,
+      }),
+      expect.objectContaining({
+        sId: global.skill_id,
+        canWrite: false,
+        canAdministrate: false,
+      }),
     ]);
   });
 
@@ -121,7 +129,7 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     const { auth, workspace } = await createPrivateApiMockRequest({
       role: "user",
     });
-    await FeatureFlagFactory.basic(auth, "skills_search");
+
     const skill = await SkillFactory.create(auth);
     const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
     mockSearch.mockResolvedValue({
@@ -165,7 +173,7 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     const { auth, workspace } = await createPrivateApiMockRequest({
       role: "user",
     });
-    await FeatureFlagFactory.basic(auth, "skills_search");
+
     const skill = await SkillFactory.create(auth);
     const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
     mockSearch.mockResolvedValue({
@@ -212,7 +220,7 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     const { auth, workspace } = await createPrivateApiMockRequest({
       role: "user",
     });
-    await FeatureFlagFactory.basic(auth, "skills_search");
+
     const skill = await SkillFactory.create(auth, { name: "RésuméBot" });
     const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
     mockIndexedHits([
@@ -250,10 +258,9 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     { offset: MAX_SKILL_SEARCH_WINDOW - 1, limit: 2 },
     { offset: MAX_SKILL_SEARCH_WINDOW },
   ])("returns 400 for out-of-range pagination %s without querying Elasticsearch", async (pagination) => {
-    const { auth, workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPrivateApiMockRequest({
       role: "user",
     });
-    await FeatureFlagFactory.basic(auth, "skills_search");
 
     const response = await searchRequest(workspace.sId, pagination);
 
@@ -298,7 +305,7 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     const { auth, workspace, user } = await createPrivateApiMockRequest({
       role: "admin",
     });
-    await FeatureFlagFactory.basic(auth, "skills_search");
+
     const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     const restricted =
       spaceKind === "pod"
@@ -426,7 +433,7 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     const { auth, workspace } = await createPrivateApiMockRequest({
       role: "user",
     });
-    await FeatureFlagFactory.basic(auth, "skills_search");
+
     const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     const custom = await SkillFactory.create(auth, {
       name: "Custom",
@@ -468,10 +475,10 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
   });
 
   it("does not inject code-defined skills absent from Elasticsearch", async () => {
-    const { auth, workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPrivateApiMockRequest({
       role: "user",
     });
-    await FeatureFlagFactory.basic(auth, "skills_search");
+
     mockSearch.mockResolvedValue({
       hits: { total: { value: 0, relation: "eq" }, hits: [] },
     });

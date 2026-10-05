@@ -6,7 +6,7 @@ import type {
 } from "@temporalio/client";
 import { Client, Connection, WorkflowNotFoundError } from "@temporalio/client";
 import { OpenTelemetryWorkflowClientInterceptor } from "@temporalio/interceptors-opentelemetry";
-import fs from "fs-extra";
+import fs from "fs/promises";
 
 type TemporalNamespaces = "agent" | "connectors" | "front" | "relocation";
 export const temporalWorkspaceToEnvVar: Record<TemporalNamespaces, string> = {

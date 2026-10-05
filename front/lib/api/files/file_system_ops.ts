@@ -288,6 +288,45 @@ function inferDestMountInfo(
   return null;
 }
 
+/**
+ * @cc [owner:flvndvd,label:backend;product] registered-destination-refused-before-bytes-move
+ * A move or rename onto a path that a FileResource still claims MUST be refused before any bytes
+ * move, whether or not bytes exist there. Repointing the moved file's row would fail on the mount
+ * path unique index, and moving the bytes first would leave that row stranded at the source.
+ */
+/**
+ * @cc [owner:flvndvd,label:backend;product] registration-lookup-uses-resolved-path
+ * The lookup MUST use the destination as the file system will resolve it, control characters
+ * stripped and dot segments collapsed, so an unnormalized spelling of the same path cannot bypass
+ * the refusal.
+ */
+/**
+ * @cc [owner:flvndvd,label:backend;security] access-verified-before-registration-lookup
+ * The lookup MUST NOT run before the caller's write access to the destination mount is verified,
+ * so a refusal cannot reveal registrations in mounts the caller cannot reach.
+ */
+async function isDestinationRegistered(
+  auth: Authenticator,
+  dustFs: DustFileSystem,
+  dest: string
+): Promise<boolean> {
+  const destGcsPath = dustFs.toMountFilePath(dest);
+  if (!destGcsPath) {
+    return false;
+  }
+  const [registered] = await FileResource.fetchByMountFilePaths(auth, [
+    destGcsPath,
+  ]);
+  return registered !== undefined;
+}
+
+function registeredDestinationError(): DustFileSystemError {
+  return new DustFileSystemError(
+    "already_exists",
+    "A registered file already uses the destination path."
+  );
+}
+
 function toDustFileSystemError(
   error: MoveFrameV2SourceError
 ): DustFileSystemError {
@@ -387,11 +426,25 @@ async function moveFrameV2PackageFolder(
 export async function renameCanonicalFile(
   auth: Authenticator,
   dustFs: DustFileSystem,
-  scopedPath: string,
+  requestedScopedPath: string,
   newFileName: string
 ): Promise<
   Result<{ dest: string; sourceDeletionFailed: boolean }, DustFileSystemError>
 > {
+  const resolvedScopedPath =
+    DustFileSystem.resolveScopedPath(requestedScopedPath);
+  if (resolvedScopedPath.isErr()) {
+    return resolvedScopedPath;
+  }
+  const scopedPath = resolvedScopedPath.value;
+
+  // Verify access before any lookup, so a refusal cannot reveal what is registered in a mount the
+  // caller cannot reach. The destination is a sibling, so it lives in the same mount.
+  const writable = dustFs.checkWriteAccess(scopedPath);
+  if (writable.isErr()) {
+    return writable;
+  }
+
   // A Frames v2 package is a folder whose registered resource is the manifest inside it, so a
   // plain folder rename would move the bytes and leave that resource pointing at nothing.
   if (await fetchFrameV2PackageAt(auth, dustFs, scopedPath)) {
@@ -417,6 +470,29 @@ export async function renameCanonicalFile(
         });
   }
 
+  const validName = DustFileSystem.validateFileName(newFileName);
+  if (validName.isErr()) {
+    return validName;
+  }
+
+  // Resolve the full destination the way the file system will, so the lookup and the row update
+  // agree with where the bytes land (control characters are stripped, `.` segments collapsed).
+  const resolvedDest = DustFileSystem.resolveScopedPath(
+    path.posix.join(path.posix.dirname(scopedPath), newFileName)
+  );
+  if (resolvedDest.isErr()) {
+    return resolvedDest;
+  }
+  const dest = resolvedDest.value;
+  if (dest === scopedPath) {
+    return new Ok({ dest, sourceDeletionFailed: false });
+  }
+
+  const isDestRegistered = await isDestinationRegistered(auth, dustFs, dest);
+  if (isDestRegistered) {
+    return new Err(registeredDestinationError());
+  }
+
   const linkedFileResource = await fetchLinkedFileResource(
     auth,
     dustFs,
@@ -429,13 +505,12 @@ export async function renameCanonicalFile(
   }
 
   if (linkedFileResource) {
-    const { dest } = renameResult.value;
     const destGcsPath = dustFs.toMountFilePath(dest);
     const destInfo = inferDestMountInfo(dest);
 
     if (destGcsPath && destInfo) {
       await linkedFileResource.updateMount({
-        destFileName: newFileName,
+        destFileName: path.posix.basename(dest),
         destMountFilePath: destGcsPath,
         destUseCase: destInfo.useCase,
         destUseCaseMetadata: destInfo.useCaseMetadata,
@@ -443,7 +518,10 @@ export async function renameCanonicalFile(
     }
   }
 
-  return renameResult;
+  return new Ok({
+    dest,
+    sourceDeletionFailed: renameResult.value.sourceDeletionFailed,
+  });
 }
 
 /**
@@ -455,14 +533,41 @@ export async function renameCanonicalFile(
 export async function moveCanonicalFile(
   auth: Authenticator,
   dustFs: DustFileSystem,
-  src: string,
-  dest: string
+  requestedSrc: string,
+  requestedDest: string
 ): Promise<Result<{ sourceDeletionFailed: boolean }, DustFileSystemError>> {
+  const resolvedSrc = DustFileSystem.resolveScopedPath(requestedSrc);
+  if (resolvedSrc.isErr()) {
+    return resolvedSrc;
+  }
+  const resolvedDest = DustFileSystem.resolveScopedPath(requestedDest);
+  if (resolvedDest.isErr()) {
+    return resolvedDest;
+  }
+  const src = resolvedSrc.value;
+  const dest = resolvedDest.value;
+
+  // Verify access before any lookup, so a refusal cannot reveal what is registered in a mount the
+  // caller cannot reach.
+  const srcWritable = dustFs.checkWriteAccess(src);
+  if (srcWritable.isErr()) {
+    return srcWritable;
+  }
+  const destWritable = dustFs.checkWriteAccess(dest);
+  if (destWritable.isErr()) {
+    return destWritable;
+  }
+
   if (await fetchFrameV2PackageAt(auth, dustFs, src)) {
     return moveFrameV2PackageFolder(auth, dustFs, {
       sourceDirectoryPath: src,
       destinationDirectoryPath: dest,
     });
+  }
+
+  const isDestRegistered = await isDestinationRegistered(auth, dustFs, dest);
+  if (isDestRegistered) {
+    return new Err(registeredDestinationError());
   }
 
   // Look up the linked FileResource before the bytes move.
@@ -816,11 +921,24 @@ export async function convertCanonicalFileToPdf(
  * created directly in the sandbox), falls back to deleting the raw GCS object.
  */
 // TODO(FILE_SYSTEM): Remove once no more dependencies on FileResource.
+/**
+ * @cc [owner:frankaloia,label:security] linked-delete-requires-write
+ * Deletion MUST fail with unauthorized, before any FileResource lookup, when the resolved mount's
+ * permissions.canWrite is false. A linked FileResource MUST be left unchanged: FileResource.delete
+ * performs no authorization of its own.
+ */
 export async function deleteCanonicalFile(
   auth: Authenticator,
   dustFs: DustFileSystem,
   scopedPath: string
 ): Promise<Result<void, DustFileSystemError>> {
+  // FileResource.delete does not check mount permissions. Refuse before the lookup so a
+  // read-only caller neither deletes the linked file nor learns that one is registered.
+  const writable = dustFs.checkWriteAccess(scopedPath);
+  if (writable.isErr()) {
+    return writable;
+  }
+
   const linkedFileResource = await fetchLinkedFileResource(
     auth,
     dustFs,

@@ -83,9 +83,7 @@ export function NotionRequestsPage() {
     if (method === "POST" && body.trim()) {
       try {
         JSON.parse(body);
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-      } catch (e) {
+      } catch {
         setError("Invalid JSON in request body");
         return;
       }

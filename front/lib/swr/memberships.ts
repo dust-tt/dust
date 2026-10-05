@@ -2,6 +2,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import type { GetMembersUsageResponseBody } from "@app/lib/api/credits/members_usage";
 import type { GetMembersResponseBody } from "@app/lib/api/workspace";
 import { clientFetch } from "@app/lib/egress/client";
+import { formatNumber } from "@app/lib/i18n/format";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { debounce } from "@app/lib/utils/debounce";
 import type { GetWorkspaceInvitationsResponseBody } from "@app/types/api/invitation";
@@ -10,14 +11,15 @@ import type {
   MembersLookupResponseBody,
 } from "@app/types/api/members";
 import type {
-  GetUserSpendLimitResponseBody,
   PutUserSpendLimitResponseBody,
+  UserSpendLimit,
 } from "@app/types/api/users/spend_limit";
 import { SUPPORTED_CURRENCIES } from "@app/types/currency";
 import type { UserVisibleGroupKind } from "@app/types/groups";
 import type { MembershipSeatType, PaidSeatType } from "@app/types/memberships";
 import { MEMBERSHIP_SEAT_TYPES, PAID_SEAT_TYPES } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type {
   ActiveRoleType,
   LightUserTypeWithWorkspace,
@@ -128,16 +130,24 @@ export function useSearchMembers<
   pageIndex,
   pageSize,
   groupKind,
+  managedOnly,
   role,
   disabled,
+  keepPreviousData = true,
+  debounceMs = 300,
 }: {
   workspaceId: string;
   searchTerm: string;
   pageIndex: number;
   pageSize: number;
   groupKind?: UserVisibleGroupKind;
+  managedOnly?: boolean;
   role?: ActiveRoleType;
   disabled?: boolean;
+  /** When false, clear results while the next query loads (e.g. command palette). */
+  keepPreviousData?: boolean;
+  /** Set to 0 when the caller already debounces the search term. */
+  debounceMs?: number;
 }) {
   const { fetcher } = useFetcher();
   const searchMembersFetcher: Fetcher<{
@@ -148,18 +158,27 @@ export function useSearchMembers<
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
 
   useEffect(() => {
+    if (debounceMs <= 0) {
+      setDebouncedSearchTerm(searchTerm);
+      return;
+    }
+
     const debouncedSearch = () => {
       setDebouncedSearchTerm(searchTerm);
     };
 
-    debounce(debounceHandle, debouncedSearch, 300);
-  }, [searchTerm]);
+    debounce(debounceHandle, debouncedSearch, debounceMs);
+  }, [searchTerm, debounceMs]);
 
   const searchParams = new URLSearchParams({
     searchTerm: debouncedSearchTerm,
     offset: (pageIndex * pageSize).toString(),
     limit: pageSize.toString(),
   });
+
+  if (managedOnly) {
+    searchParams.set("managedOnly", "true");
+  }
 
   if (groupKind) {
     searchParams.set("groupKind", groupKind);
@@ -174,7 +193,7 @@ export function useSearchMembers<
       `/api/w/${workspaceId}/members/search?${searchParams.toString()}`,
       searchMembersFetcher,
       {
-        keepPreviousData: true,
+        keepPreviousData,
         revalidateOnFocus: false,
         revalidateOnReconnect: false,
         disabled,
@@ -183,6 +202,7 @@ export function useSearchMembers<
 
   return {
     members: data?.members ?? emptyArray(),
+    searchQuery: debouncedSearchTerm,
     totalMembersCount: data?.total ?? 0,
     isLoading: !error && !data && !disabled,
     isMembersValidating: isValidating,
@@ -262,7 +282,7 @@ export function useBulkSetUserSpendLimit({
       limit,
     }: {
       selection: BulkMemberSelectionBody;
-      limit: { kind: "unlimited" } | { kind: "limited"; awuCredits: number };
+      limit: UserSpendLimit;
     }): Promise<{ workflowId: string; memberCount: number } | null> => {
       const res = await clientFetch(bulkSpendLimitUrl(workspaceId), {
         method: "POST",
@@ -286,8 +306,8 @@ export function useBulkSetUserSpendLimit({
         title: "Spend limit updated",
         description:
           limit.kind === "limited"
-            ? `Applied a ${limit.awuCredits.toLocaleString("en-US")} credit limit to ${body.memberCount.toLocaleString("en-US")} members.`
-            : `Removed the spend limit for ${body.memberCount.toLocaleString("en-US")} members.`,
+            ? `Applied a ${formatNumber(limit.awuCredits)} credit limit to ${formatNumber(body.memberCount)} member${pluralize(body.memberCount)}.`
+            : `Removed the personal limit for ${formatNumber(body.memberCount)} member${pluralize(body.memberCount)}.`,
       });
 
       await invalidateMembersUsage(workspaceId);
@@ -422,8 +442,8 @@ export function useBulkChangeSeatType({
         type: "success",
         title: "Seats updated",
         description: hasDeferredChanges
-          ? `Changed ${body.memberCount.toLocaleString("en-US")} members to ${seatName}. Downgrades take effect at the next credit refresh.`
-          : `Changed ${body.memberCount.toLocaleString("en-US")} members to ${seatName}.`,
+          ? `Changed ${formatNumber(body.memberCount)} members to ${seatName}. Downgrades take effect at the next credit refresh.`
+          : `Changed ${formatNumber(body.memberCount)} members to ${seatName}.`,
       });
 
       await invalidateMembersUsage(workspaceId);
@@ -619,31 +639,6 @@ function spendLimitUrl(workspaceId: string, memberId: string): string {
   return `/api/w/${workspaceId}/members/${memberId}/spend_limit`;
 }
 
-export function useUserSpendLimit({
-  workspaceId,
-  memberId,
-  disabled,
-}: {
-  workspaceId: string;
-  memberId: string;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const spendLimitFetcher: Fetcher<GetUserSpendLimitResponseBody> = fetcher;
-  const { data, error, mutate } = useSWRWithDefaults(
-    spendLimitUrl(workspaceId, memberId),
-    spendLimitFetcher,
-    { disabled }
-  );
-
-  return {
-    spendLimit: data,
-    isSpendLimitLoading: !error && !data && !disabled,
-    isSpendLimitError: !!error,
-    mutateSpendLimit: mutate,
-  };
-}
-
 export function useUpdateUserSpendLimit({
   workspaceId,
 }: {
@@ -656,15 +651,26 @@ export function useUpdateUserSpendLimit({
       memberId,
       memberName,
       limit,
+      resetAtNextBillingCycle,
     }: {
       memberId: string;
       memberName: string;
       limit: { kind: "unlimited" } | { kind: "limited"; awuCredits: number };
+      resetAtNextBillingCycle?: boolean;
     }): Promise<PutUserSpendLimitResponseBody | null> => {
       const res = await clientFetch(spendLimitUrl(workspaceId, memberId), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(limit),
+        body: JSON.stringify(
+          limit.kind === "limited"
+            ? {
+                ...limit,
+                ...(resetAtNextBillingCycle
+                  ? { resetAtNextBillingCycle: true }
+                  : {}),
+              }
+            : limit
+        ),
       });
 
       if (!res.ok) {
@@ -684,7 +690,9 @@ export function useUpdateUserSpendLimit({
           description = `${memberName}'s spend limit has been removed.`;
           break;
         case "limited":
-          description = `${memberName}'s spend limit has been set to ${limit.awuCredits.toLocaleString("en-US")} credits.`;
+          description = resetAtNextBillingCycle
+            ? `${memberName}'s spend limit has been set to ${formatNumber(limit.awuCredits)} credits until the next billing cycle.`
+            : `${memberName}'s spend limit has been set to ${formatNumber(limit.awuCredits)} credits.`;
           break;
         default:
           assertNeverAndIgnore(limit);

@@ -11,7 +11,7 @@ import { config as regionConfig } from "@app/lib/api/regions/config";
 import { filterEnabledModels } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { listActiveAgentModels } from "@app/lib/resources/agent_configuration_rows";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -22,7 +22,6 @@ import type {
   KnowledgeCategory,
 } from "@app/types/api/public/spaces";
 import { KNOWLEDGE_CATEGORIES } from "@app/types/api/public/spaces";
-import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { USED_MODEL_CONFIGS } from "@app/types/assistant/models/used_model_configs";
@@ -81,8 +80,15 @@ export interface AvailableSkill {
 
 /**
  * Get the list of available models for the workspace.
- * This filters USED_MODEL_CONFIGS and CUSTOM_MODEL_CONFIGS based on feature flags,
- * plan, and workspace provider whitelisting.
+ * This filters USED_MODEL_CONFIGS based on feature flags, plan, and workspace provider
+ * whitelisting.
+ */
+/**
+ * @cc [owner:pmilliotte,label:security;product] custom-models-are-never-listed
+ * Custom models must never be part of this list, whatever the workspace's flags: it feeds the
+ * models API, the model picker, analytics facets and the sidekick model tools, all of which send
+ * model ids and display names to the browser. Custom models are only reachable through the
+ * global agents bound to them.
  */
 export async function getAvailableModelsForWorkspace(
   auth: Authenticator
@@ -93,8 +99,7 @@ export async function getAvailableModelsForWorkspace(
   const region = regionConfig.getCurrentRegion();
   const whitelistedProviders = getWhitelistedProviders(auth);
 
-  const allUsedModels = [...USED_MODEL_CONFIGS, ...CUSTOM_MODEL_CONFIGS];
-  return filterEnabledModels(allUsedModels, {
+  return filterEnabledModels([...USED_MODEL_CONFIGS], {
     featureFlags,
     plan,
     regionalModelsOnly: owner.regionalModelsOnly,
@@ -111,7 +116,6 @@ export async function getAvailableModelsForWorkspace(
 export async function listActiveAgentsUsingNonRegionalModels(
   auth: Authenticator
 ): Promise<string[]> {
-  const workspaceId = auth.getNonNullableWorkspace().id;
   const region = regionConfig.getCurrentRegion();
 
   // Match against the full catalog: existing agents may use older
@@ -123,16 +127,13 @@ export async function listActiveAgentsUsingNonRegionalModels(
     }
   }
 
-  const activeAgents = await AgentConfigurationModel.findAll({
-    where: { workspaceId, status: "active" },
-    attributes: ["sId", "providerId", "modelId"],
-  });
+  const activeAgents = await listActiveAgentModels(auth);
 
   return activeAgents
     .filter(
       (agent) => !regionalModelKeys.has(`${agent.providerId}:${agent.modelId}`)
     )
-    .map((agent) => agent.sId);
+    .map((agent) => agent.agentId);
 }
 
 /**

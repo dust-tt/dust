@@ -1,9 +1,10 @@
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
-import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
+import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { compareStrings } from "@app/lib/i18n/format";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import {
   Button,
@@ -56,7 +57,7 @@ export function SkillBuilderFilesSection() {
     () =>
       fields
         .map((field, index) => ({ field, originalIndex: index }))
-        .sort((a, b) => a.field.fileName.localeCompare(b.field.fileName)),
+        .sort((a, b) => compareStrings(a.field.fileName, b.field.fileName)),
     [fields]
   );
 

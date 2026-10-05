@@ -1,4 +1,3 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { ONE_DAY_MS } from "@app/lib/api/assistant/inactivity/policy";
 import type { Authenticator } from "@app/lib/auth";
 import * as scheduleClient from "@app/temporal/triggers/schedule_client";
@@ -98,10 +97,7 @@ function mockTemporalClients() {
 }
 
 async function statusOf(auth: Authenticator, agentId: string) {
-  const agent = await getAgentConfiguration(auth, {
-    agentId,
-    variant: "light",
-  });
+  const agent = await AgentConfigurationFactory.refetch(auth, agentId);
 
   return agent?.status;
 }
@@ -213,10 +209,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/archive_inactive/previ
     expect((await previewBody(first)).eligibleCount).toBe(1);
 
     // Still active, and still counted a second time: a dry run reports, it does not act.
-    const stillThere = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "light",
-    });
+    const stillThere = await AgentConfigurationFactory.refetch(auth, agent.sId);
     expect(stillThere?.status).toBe("active");
 
     const second = await postPreview(workspace.sId, {

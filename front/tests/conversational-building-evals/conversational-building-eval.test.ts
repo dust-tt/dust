@@ -16,6 +16,7 @@ import {
 import { executeBuildingAgent } from "@app/tests/conversational-building-evals/lib/executor";
 import { evaluateWithJudge } from "@app/tests/conversational-building-evals/lib/judge";
 import {
+  deleteSeededSearchDocuments,
   getSeededDocuments,
   seedScenario,
 } from "@app/tests/conversational-building-evals/lib/seed";
@@ -161,7 +162,7 @@ describe
 
               const finalToolCallResult = validateFinalToolCall(
                 testCase.expectedFinalToolCall,
-                finalToolCall,
+                execution,
                 scenario
               );
 
@@ -212,6 +213,12 @@ describe
         }
       });
     }
+
+    afterAll(async () => {
+      for (const { scenario } of seeded.values()) {
+        await deleteSeededSearchDocuments(scenario);
+      }
+    }, SEED_TIMEOUT_MS);
 
     afterAll(() => {
       if (evalResults.length === 0) {

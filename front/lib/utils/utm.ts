@@ -247,8 +247,3 @@ export function getStoredLandingContext(): LandingContext | null {
     return null;
   }
 }
-
-// Convenience helper for call sites that only need the referrer.
-export function getStoredReferrer(): string | null {
-  return getStoredLandingContext()?.referrer ?? null;
-}

@@ -5,6 +5,8 @@ import { useCallback, useRef, useState } from "react";
 // Academy chat endpoint lives on the API host (front-api) under
 // /api/marketing/academy, alongside the other marketing endpoints.
 const ACADEMY_CHAT_URL = `${config.getApiBaseUrl()}/api/marketing/academy/chat`;
+// Mirrors MAX_CONTENT_LENGTH in front-api/routes/marketing/academy/chat.ts.
+const MAX_CONTENT_LENGTH = 50000;
 
 interface QuizMessage {
   role: "user" | "assistant";
@@ -94,7 +96,8 @@ export function useAcademyQuiz({
             messages: messagesToSend,
             contentType,
             title,
-            content,
+            // The API only reads the first MAX_CONTENT_LENGTH chars.
+            content: content.slice(0, MAX_CONTENT_LENGTH),
             correctAnswers: currentCorrectAnswers,
             totalQuestions: currentTotalQuestions,
             userName,

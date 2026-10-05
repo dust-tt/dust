@@ -19,6 +19,7 @@ import type {
   SeatTypeInfo,
 } from "@app/lib/api/credits/seat_plan";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { formatNumber } from "@app/lib/i18n/format";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import type { BulkSeatChangePreviewBody } from "@app/lib/swr/memberships";
@@ -289,8 +290,8 @@ export function ChangeSeatModal({
     if (isSeatAtCap(seatType, info)) {
       return (
         <span className="text-xs text-warning-600">
-          Seat limit reached ({info.assignedCount.toLocaleString("en-US")}/
-          {info.maxSeats?.toLocaleString("en-US")})
+          Seat limit reached ({formatNumber(info.assignedCount)}/
+          {info.maxSeats !== null && formatNumber(info.maxSeats)})
         </span>
       );
     }
@@ -388,7 +389,7 @@ export function ChangeSeatModal({
     ? (seatPlans[selectedSeat]?.awuCredits ?? 0)
     : 0;
   const isMonthlyToYearlySwitch =
-    !!currentSeatType &&
+    isMembershipSeatType(currentSeatType) &&
     !!selectedSeat &&
     isPaidSeatType(currentSeatType) &&
     !currentSeatType.endsWith("_yearly") &&

@@ -1,8 +1,8 @@
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { CachedAgentStepContent } from "@app/lib/resources/agent_step_content/cache";
 import {
   tryHydrateAgentStepContentsFromCache,
@@ -103,24 +103,27 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     const uniqueAgentIds = [
       ...new Set(agentMessages.map((a) => a.agentConfigurationId)),
     ];
-    // Fetch agent configuration to check permissions
-    const agentConfigurations = await getAgentConfigurations(auth, {
-      agentIds: uniqueAgentIds,
-      variant: "extra_light",
-    });
+    // Step contents may carry data from the agent's requested spaces: access requires reading them,
+    // whatever verb the caller holds on the agent itself, so the `canFetch` drop is skipped (see
+    // `agent-dangerous-fetch`).
+    const agents = (
+      await AgentResource.fetchByIds(auth, uniqueAgentIds, {
+        dangerouslySkipFetchCheck: true,
+      })
+    ).filter((agent) => agent.requestedSpacesReadable(auth));
 
-    if (agentConfigurations.length !== uniqueAgentIds.length) {
+    if (agents.length !== uniqueAgentIds.length) {
       logger.info(
         {
           workspaceId: auth.getNonNullableWorkspace().sId,
           agentIds: uniqueAgentIds,
-          found: agentConfigurations.map((a) => a.sId),
+          found: agents.map((a) => a.sId),
         },
         "User does not have access to agents"
       );
     }
 
-    const allowedAgentIds = new Set(agentConfigurations.map((a) => a.sId));
+    const allowedAgentIds = new Set(agents.map((a) => a.sId));
     return agentMessages
       .filter((a) => allowedAgentIds.has(a.agentConfigurationId))
       .map((a) => a.id);

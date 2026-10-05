@@ -4,8 +4,8 @@ import { toCsv } from "@app/lib/api/csv";
 import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import { getShouldTrackTokenUsageCostsESFilter } from "@app/lib/api/programmatic_usage/common";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { getBillingCycleFromDay } from "@app/lib/plans/billing_cycle";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { APIError } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -178,14 +178,9 @@ export async function getProgrammaticCostExport(
   }
 
   const agentNames: Record<string, string> = {};
-  if (agentIds.size > 0) {
-    const agents = await AgentConfigurationModel.findAll({
-      where: { sId: Array.from(agentIds) },
-      attributes: ["sId", "name"],
-    });
-    for (const agent of agents) {
-      agentNames[agent.sId] = agent.name;
-    }
+  const agents = await AgentResource.fetchByIds(auth, Array.from(agentIds));
+  for (const agent of agents) {
+    agentNames[agent.sId] = agent.name;
   }
 
   const markupMultiplier = 1 + DUST_MARKUP_PERCENT / 100;

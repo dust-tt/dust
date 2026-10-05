@@ -1,5 +1,4 @@
 import type { ModelIdType } from "@app/types/assistant/models/types";
-import { ioTsEnum } from "@app/types/shared/utils/iots_utils";
 import { z } from "zod";
 
 import {
@@ -31,6 +30,8 @@ import {
   CLAUDE_OPUS_5_MODEL_ID,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_MODEL_ID,
+  CLAUDE_SONNET_5_5_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_5_5_MODEL_ID,
   CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_5_MODEL_ID,
 } from "./anthropic";
@@ -141,6 +142,8 @@ import {
   GPT_5_MODEL_ID,
   GPT_5_NANO_MODEL_CONFIG,
   GPT_5_NANO_MODEL_ID,
+  GPT_6_1_SOL_MODEL_CONFIG,
+  GPT_6_1_SOL_MODEL_ID,
   GPT_6_ASTRA_MODEL_CONFIG,
   GPT_6_ASTRA_MODEL_ID,
   GPT_6_LUNA_MODEL_CONFIG,
@@ -202,6 +205,7 @@ export const STATIC_MODEL_IDS = [
   GPT_6_ASTRA_MODEL_ID,
   GPT_6_LUNA_MODEL_ID,
   GPT_6_SOL_MODEL_ID,
+  GPT_6_1_SOL_MODEL_ID,
   GPT_5_6_SOL_MODEL_ID,
   GPT_5_6_TERRA_MODEL_ID,
   GPT_5_6_TERRA_LONG_CONTEXT_MODEL_ID,
@@ -227,6 +231,7 @@ export const STATIC_MODEL_IDS = [
   CLAUDE_FABLE_5_MODEL_ID,
   CLAUDE_FABLE_5_1_MODEL_ID,
   CLAUDE_SONNET_5_MODEL_ID,
+  CLAUDE_SONNET_5_5_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
   CLAUDE_3_OPUS_2024029_MODEL_ID,
   CLAUDE_3_5_SONNET_20240620_MODEL_ID,
@@ -300,8 +305,6 @@ export const MODEL_IDS = [...STATIC_MODEL_IDS, ...CUSTOM_MODEL_IDS] as const;
 export const isModelId = (modelId: string): modelId is ModelIdType =>
   MODEL_IDS.includes(modelId as ModelIdType);
 
-export const ModelIdCodec = ioTsEnum<(typeof MODEL_IDS)[number]>(MODEL_IDS);
-
 // Note: MODEL_IDS includes dynamic custom models from GCS, so we use z.custom
 // with the isModelId guard rather than z.enum (which requires a static tuple).
 export const ModelIdSchema = z.custom<ModelIdType>(
@@ -322,6 +325,7 @@ export type ImageModelIdType = (typeof IMAGE_MODEL_IDS)[number];
 export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_6_ASTRA_MODEL_CONFIG,
   GPT_6_SOL_MODEL_CONFIG,
+  GPT_6_1_SOL_MODEL_CONFIG,
   GPT_6_LUNA_MODEL_CONFIG,
   GPT_5_6_SOL_MODEL_CONFIG,
   GPT_5_6_TERRA_MODEL_CONFIG,
@@ -340,6 +344,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   CLAUDE_FABLE_5_1_DEFAULT_MODEL_CONFIG,
   CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_5_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_7_DEFAULT_MODEL_CONFIG,

@@ -2,25 +2,25 @@
 
 Part of the [Observe & Understand Credits v2](https://app.notion.com/p/dust-tt/Observe-Understand-Credits-v2-3dc28599d94180f3b417ca4579ad3992) initiative.
 
-Implementation breakdown: [work streams and PRs](group-management-plan.md).
+Implementation: [work streams and PRs](group-management-plan.md). Validation: [QA plan](group-management-qa.md).
 
 ## Goal
 
-Team leads need to manage their teams' membership and credit allowances without asking a workspace
-administrator each time. Today, this requires the workspace manager or admin role, which gives
-authority across the whole workspace.
-
-We will let administrators appoint group managers for selected teams. A team is an existing manual
-or provisioned group. This work delegates existing membership and limit controls; spending rules stay
-the same, and provisioned membership remains owned by the directory.
+Let workspace admins and managers appoint group managers so team leads can manage membership and credit allowances for
+selected groups. They can do this without workspace-wide authority or asking an admin each time.
+A team is an existing manual or provisioned group. Spending rules stay the same; provisioned
+membership remains managed by the identity provider.
 
 ## What
 
 ### Assign group managers
 
-In the existing group management UI, workspace admins select people in a new **Group managers**
-setting. A group can have several group managers, and a person can manage several groups. They must
-be active workspace members, but do not need to belong to the groups they manage.
+Workspace admins and managers appoint and remove managers in the **Group managers** section of the existing
+manual and provisioned group dialogs. A group can have several managers, and a person can manage
+several groups. Managers must be active workspace members but need not belong to the groups they manage.
+
+**People → Groups** shows each group's managers beside its name. Group dialogs show the number of
+managers and members in their section headings.
 
 This assignment lets group managers:
 
@@ -31,11 +31,10 @@ This assignment lets group managers:
 - Add existing workspace members to a managed manual group, or remove them from it, unless the group
   grants the workspace Admin role and the caller is not already a workspace admin.
 
-The assignment itself does not change the person's workspace role or group membership. Managing
-membership includes granting or removing the group's access, Manager role, and seats, including
-for oneself. Admin-granting groups retain their existing admin-only membership protection; delegates
-can still manage their usage. The assignment UI states this explicitly. Workspace managers and admins
-keep their existing workspace-wide access.
+Appointment does not change the person's workspace role or group membership. Membership changes
+carry the group's access, roles, and seats, including when managers add themselves. The assignment
+UI explains this and the Admin-group restriction. Workspace managers and admins keep their
+workspace-wide access.
 
 For example, Alice can manage Support while remaining an ordinary workspace member. She can add an
 existing colleague to the manual Support group and adjust a Support member's allowance. She cannot
@@ -43,52 +42,53 @@ edit Sales or change limits for someone who belongs only to Sales.
 
 ### Confirm appointments outside the group
 
-When saving a new manager for a manual group whose membership can be delegated, show a confirmation
-if the person is not already an active member of that group. List the group's configured Manager
-role, governance permissions, and seats in familiar language, such as “Workspace manager”, “Access
-billing features”, and “Publish agents”. For example:
+When appointing someone outside a manual group, confirm that the person appointing them trusts them to grant the
+group's access. This applies only when the appointment allows membership editing. Follow the
+[Figma design](https://www.figma.com/design/dhYmzTjBXjtmNOkjSfwumG/?node-id=108-39122):
 
-> **Appoint Alex as a group manager?**
+> **Alex isn't a member of Finance**
 >
-> Alex is not a member of Finance. As a group manager, they can add themselves or others and give
-> them the access this group grants, including:
+> As manager, they can add anyone to the group, including themselves. Anyone they add gains the
+> group's permissions and access to every space and data source shared with it. Continue only if you
+> trust Alex with those permissions.
 >
-> - Access billing features
-> - Publish agents
->
-> Appoint Alex only if you trust them to receive and grant this access. Removing their manager role
-> later will not undo access they have already granted.
->
-> **Cancel** · **Appoint manager**
+> **Cancel** · **Appoint anyway**
 
-Show only permissions actually configured for the group, and also mention access to resources shared
-with it. If no extra roles, governance permissions, or seats are configured, say so and keep the
-membership/access explanation. When several new managers need confirmation, list them in one modal.
-Cancel saves nothing; confirmation submits the pending changes.
+For several non-members, use “3 people you're appointing aren't members of Finance”, “As managers”,
+and “Continue only if you trust them with those permissions” in one modal, with a blue action button.
+Cancel saves nothing; **Appoint anyway** saves the pending changes.
 
-Existing group members skip this modal. The manager picker still explains that managing membership
-means deciding who receives the group's access. Provisioned and admin-granting groups skip this
-membership warning because the assignment does not grant membership editing. Explain their existing
-directory-managed or workspace-admin-only membership rule instead.
+Existing group members skip this modal. In the picker, managers outside the group have a blue
+“Not group member” badge. Its tooltip explains that they can manage the group and grant themselves
+its permissions and data. Pending membership additions keep the badge until saved; pending removals
+show it immediately. The picker description reads “Group managers can add members and set their usage
+and credit limits.” Follow the [picker design](https://www.figma.com/design/dhYmzTjBXjtmNOkjSfwumG/?node-id=104-33329).
+
+Provisioned and admin-granting groups skip the warning because appointment does not grant membership
+editing. Their picker and badge tooltip explain that membership is managed by the identity provider
+or requires a workspace admin.
 
 ### Open the People page to group managers
 
 Group managers get access to the existing **People** page, with a restricted view:
 
-- **Members:** people in their managed groups, with actions to add or remove membership in those
-  groups. Removing someone from a group does not remove them from the workspace.
-- **Groups:** their managed groups and their members. Editable manual groups have add/remove
-  controls; provisioned groups explain that membership is managed in the identity provider, and
-  admin-granting groups explain that membership changes require a workspace admin.
+- **Members:** all active workspace members. Search, counts, and pagination cover the full member
+  directory. A member's group list shows only managed groups.
+  Actions add or remove membership in eligible managed groups; removing someone from a group does
+  not remove them from the workspace.
+- **Groups:** all managed groups and their members, including groups with read-only membership.
+  Editable manual groups have add/remove controls. Provisioned groups explain that membership is
+  managed by the identity provider; admin-granting groups explain that it requires a workspace admin.
 - **Add members:** search existing active workspace members, including people outside the managed
   groups. Results show only the identity information needed to select someone, not their usage.
 
-Direct role and seat changes, workspace invitations, group creation/deletion, and appointing group
-managers keep their existing workspace-level authorization. Group managers can change membership of
-manual groups they manage that grant the Manager role, billing/security access, or paid seats.
-Admin-granting groups still require a workspace admin for membership changes, even if the group also
-grants other permissions. Group managers cannot directly change what a group grants. The tradeoff is
-described in the Annex.
+The group-manager role does not allow workspace invitations or removals, direct role or seat changes,
+group creation, renaming or deletion, manager appointments, or changes to what a group grants.
+These actions require their existing permissions.
+
+Managers can edit membership in manual groups granting the workspace Manager role, billing/security
+access, or paid seats. Any group granting Admin remains admin-only for membership changes, even if
+it also grants other permissions. The Annex explains the effects of these membership changes.
 
 ### Reuse the Usage page
 
@@ -100,18 +100,21 @@ restricted view, with a short explanation such as “You manage usage for Suppor
 | Members tab | Members of managed groups, with consumption, effective limit, its source, and an edit action. Members appearing in several groups appear only once. |
 | Group filter | “All groups you manage” and each managed group. Clearing a filter never reveals the rest of the workspace. |
 | Groups tab | Managed groups and their editable per-member allowances. |
-| Requests list | Requests from managed members, with actions to edit the limit and approve, or deny. Request counts and filters use the same scope. |
+| Requests list | Pending requests from managed members, with actions to edit the limit and approve, or deny. Request counts and filters use the same scope. |
 | Personal-limit editor | Editable personal limit and managed groups' allowances. Other inherited settings are read-only explanations. |
 | Other sections | Workspace settings, purchases, seat changes, and workspace-wide reporting are unavailable through this role. |
 
 Only authorized administration entries appear in navigation. Other permissions a person already
 holds continue to apply.
 
-Handling requests uses the same `set_usage_limits` permission as editing limits. A group manager
-approves through the existing limit editor: save the limit, then mark the request approved. Denial
-only changes the request status. The seat-upgrade action keeps its existing authorization.
-When a requester belongs to several managed groups, their request appears once; any authorized
-manager can resolve it. Request email notifications keep their current recipients.
+A manager can handle requests from anyone whose personal limit they can edit. Approval saves the
+limit before marking the request approved. If the limit save fails, the request stays pending. If
+the limit is saved but approval fails, keep the saved limit, explain this in the error message, and
+refresh the request status. Denial changes only the request status.
+
+Each request appears once, even when its requester belongs to several managed groups. Any authorized
+manager can resolve it, but only the first resolution succeeds. Seat upgrades require their existing
+permission. Request email notifications keep their current recipients.
 
 ### Keep the meaning of limits unchanged
 
@@ -123,6 +126,12 @@ This work preserves the existing behavior:
 - Personal edits remain ongoing and apply across the workspace. The editor states: **“This personal
   limit applies across the workspace.”** Raising a limit allows more consumption; it does not purchase
   or reserve credits.
+- Managers of different groups can edit the same member's personal limit, including an override set
+  by an admin. The last successful edit applies. Managers can edit their own limit if they belong to
+  a group they manage. No extra spending ceiling is imposed on group managers.
+
+A personal override or a higher allowance from another group can make a group allowance change have
+no effect on a member's limit. Show the effective limit and its source after saving.
 
 ## Technical design
 
@@ -153,16 +162,16 @@ admin-granting groups; filter it out for provisioned groups. Renaming and deleti
 require `admin` on the group, which this role does not grant. Update the verb contracts to make these
 boundaries explicit.
 
-No new permission table or budget fields are needed. Update the group permission contracts to
-describe the added verbs and the membership restrictions.
+No new permission table or budget fields are needed.
 
 ### 2. Manage assignments and discover access
 
 Extend the existing GET/PATCH `/api/w/:wId/groups/:groupId` management API with `managerIds`.
 PATCH changes only supplied fields: `managerIds` replaces the manager list, omission leaves it alone,
-and an empty list revokes all assignments. Only workspace admins may change this field. Validate
+and an empty list revokes all assignments. Only workspace admins and managers may change this field. Validate
 active workspace membership and apply additions/removals through the grant resource in a transaction.
 Keep this path separate from manual membership updates so provisioned groups can also have managers.
+Save `managerIds` in its own PATCH; combining it with a name or membership change is rejected.
 Check all supplied fields before applying any part of a patch.
 
 Use [Authenticator](../../../front/lib/auth.ts) directly to resolve scope: workspace managers/admins
@@ -197,9 +206,15 @@ clean up grants and their internal groups when the managed group is deleted.
 
 For [member usage reads](../../../front/lib/api/credits/members_usage.ts), restrict the candidate members
 to the authorized set before search, sorting, pagination, and counts. Intersect user-selected filters
-with that set. Apply the same restriction to the People members list and usage-editor lookups. The
-People add-member search is deliberately broader: it returns minimal identities for active workspace
-members, without exposing their usage or other administration data.
+with that set. Apply the same restriction to usage-editor lookups. The People members list and
+add-member picker use the full workspace directory search, returning minimal identities without
+usage or other administration data to group managers. Group lists use `managedOnly=true`; group
+and member-group management reads enforce the managed-group scope.
+
+For People visibility, reuse `read_usage`, which the group-manager role grants on manual,
+provisioned, and admin-granting groups. Ordinary `read` is too broad because workspace members
+already hold it on other groups. Use `canEditMembers` separately to enable membership controls;
+read-only managed groups still appear.
 
 Replace the role-only gates on the relevant individual read/write routes with these checks. Enforce
 write authorization inside [setUserSpendLimit](../../../front/lib/api/users/spend_limit.ts) and
@@ -236,21 +251,25 @@ Give the People and Usage routes their own access guards in
 [adminRoutes](../../../front-spa/src/app/routes/adminRoutes.tsx), allowing workspace managers/admins and
 group managers. Keep the other route guards unchanged.
 
-In [UsagePage](../../../front/components/pages/workspace/UsagePage.tsx), render a restricted view for
-group managers, reusing the member/group tables and limit inputs. Do the same in
-[MembersPage](../../../front/components/pages/workspace/MembersPage.tsx) for People. Keep workspace-only
-data hooks and actions in the workspace views so group managers do not fetch hidden sections.
+At the existing Usage route, render a restricted view for group managers, reusing the shared member
+section, group table, and limit inputs. Render a restricted People view in
+[MembersPage](../../../front/components/pages/workspace/MembersPage.tsx). Keep workspace-only data
+hooks and actions in the workspace views so group managers do not fetch hidden sections.
 Use the auth-context scope and group permissions to populate filters, navigation, and edit controls.
 Keep the admin-only read-only state for admin-granting groups, alongside the delegated membership
-authorization for other manual groups.
+authorization for other manual groups. Hide workspace role changes, workspace removal, invitations,
+group creation/deletion, and manager appointments unless the caller independently has their existing
+permissions. When saving membership, omit the name unless it changed so the API does not require
+rename authority for a membership-only edit.
+
 Explain in the manager picker and membership editor that membership carries the group's access,
 roles, and seats.
 
 Before submitting manager additions, compare them with current active group membership and show the
 confirmation described above. Treat someone removed in the same edit as a non-member too; adding them
-in the unsaved form does not make them an existing member. Use the existing group and Governance data
-and permission labels for the summary. The modal is an explanation, not an authorization check:
-assignment writes remain admin-only and the server validates every submitted field.
+in the unsaved form does not make them an existing member. Use the existing group and member data
+for the confirmation. The modal is an explanation, not an authorization check:
+assignment writes require a workspace admin or manager and the server validates every submitted field.
 
 Pass explicit edit permissions to the personal-limit modal. Each group field needs its own check:
 authority over a member does not grant authority over every group that member belongs to. Server
@@ -260,40 +279,12 @@ Reuse the existing request list, denial action, and limit-editor approval flow. 
 upgrades through the new role, and do not fetch workspace-wide requests before filtering them in the
 browser.
 
-### 5. Audit, verify, and release
-
-Audit assignment changes. Extend existing limit-change events to record the previous/new setting
-and the server-verified group authorizing a delegated change, alongside the actor and target. Reuse
-the existing group membership and request-resolution audit events, recording the authorizing group
-for delegated actions.
-
-Use a workspace feature flag at the API and UI entry points. Keep permission definitions, generic
-`Authenticator` methods, and grant storage free of flag conditions. APIs accept new manager
-assignments and delegated access only when enabled; when disabled, existing workspace-role checks
-still apply, including for callers who already have stored delegation grants.
-
-Shared services always check authority. Preserve current role restrictions for MCP tools and bulk
-workers, including the tools' admin-group protection and a fresh workspace-manager check when a bulk
-job executes. These callers must not gain access through the new delegation while bypassing the API
-rollout checks. Opening those entry points to group managers is outside this work.
-
-Focused tests cover allowed and denied reads/writes across two groups, an overlapping member,
-assignment or membership removal, filtered counts, and existing workspace-manager/admin access. Also
-cover adding someone outside the current group, delegated changes in groups granting the Manager
-role, billing/security access, or seats, and self-addition. Reject provisioned membership edits and
-all admin-group membership edits by non-admins, including explicitly assigned group managers.
-Verify that delegated usage management still works for admin-granting groups, role sync preserves
-its admin-role protection, and requests respect membership changes and prior resolution. Check the
-confirmation for non-members, its cancellation, and the existing-member, provisioned-group, and
-admin-granting-group cases. Check disabled-flag behavior with stored grants and the existing
-tool/worker restrictions. Enable the feature gradually as these flows are validated.
-
 ## Annex
 
 ### Out of scope
 
 - Shared team budgets, reserved credits, new spending ceilings, or new expiry behavior.
-- Bulk usage actions and changes to request email/notification routing.
+- Bulk usage actions, access through MCP tools, and changes to request email/notification routing.
 - Delegating membership changes in admin-granting groups to non-admins, or relaxing admin-role sync protections.
 - Purchasing credits, directly changing seats or workspace roles, inviting/removing workspace
   members, renaming/deleting groups, or appointing other group managers through the new role.
@@ -302,58 +293,34 @@ tool/worker restrictions. Enable the feature gradually as these flows are valida
 
 ### Tradeoffs and membership effects
 
-**Membership changes carry the group's existing grants.** Adding someone may give them access to
-spaces and governance capabilities, as well as the group's usage allowance. It also extends the
-group manager's usage authority to that person. Removing them removes group-derived access, but
-grants from other groups still apply. A group merely containing admins does not make new members
-admins: the group must itself grant that role.
+Adding someone grants the group's access and allowance and lets its managers manage that person's
+usage. Removing someone removes access from that group; grants from other groups still apply.
+Usage covers the member's current cycle, including consumption before they joined the group.
 
-**Managing membership means deciding who receives the group's privileges.** This is an explicit
-choice for ordinary groups and groups granting the Manager role, billing/security access, or paid
-seats. It gives admins a way to delegate who receives that access, without separate approval for
-each membership change. Admin-granting groups are the exception: membership remains admin-only and
-role-sync protections stay intact. Group managers can manage their usage without controlling who
-becomes an admin.
+Membership management therefore delegates who receives the group's privileges, without approval
+for each change. A group that contains admins does not necessarily grant Admin: only groups that
+grant that role have admin-only membership. Their managers can still manage usage.
 
-The tradeoff is broad authority, with five consequences:
+Workspace admins and managers should account for these effects when appointing group managers:
 
-- **Self-promotion or a compromised account.** Delegates can still give themselves billing/security
-  access or the workspace Manager role through an editable group. The admin-group restriction blocks
-  direct self-promotion to Admin through membership delegation. Trust delegates with the remaining
-  privileges; confirmation and audit logs cannot replace that trust.
-- **Separation of duties.** Someone trusted to maintain a roster or handle usage requests may not be
-  trusted to grant billing/security access. Keep organizational groups separate from groups granting
-  sensitive permissions when those decisions need different owners.
-- **Authority can grow later.** Adding privileges to a group also expands what its existing managers
-  can distribute. Review its managers whenever its grants expand; the appointment-time warning does
-  not cover future changes. If the group is mapped to Admin, its membership becomes admin-only.
-- **Costs and access disruption.** Adding members can allocate paid seats; removing members can
-  withdraw critical billing/security access or demote workspace managers. Delegate these groups only
-  to people trusted with those purchasing and access decisions, and retain a way for admins to recover
-  access.
-- **Revocation is not an undo button.** Removing the manager assignment leaves previous membership
-  changes and any further access grants intact. Revoking all access requires checking those effects
-  separately, including independently acquired workspace roles.
+- **Managers can grant themselves access.** They can add themselves to groups granting billing/security
+  access or the workspace Manager role. Appoint only people trusted with those privileges.
+- **Membership and sensitive access may need different owners.** Keep team groups separate from
+  groups granting sensitive permissions when the same person should not control both.
+- **Authority can grow later.** Review managers when adding privileges to a group. The appointment
+  warning does not cover later changes. A group newly mapped to Admin becomes admin-only for membership.
+- **Membership changes can affect costs and access.** Adding members can allocate paid seats;
+  removing them can withdraw billing/security access or demote workspace managers. Keep a way for
+  admins to recover access.
 
-The confirmation makes appointing a non-member explicit. Existing members skip it
-because they already receive the group's privileges, but managing membership additionally lets them
-grant those privileges to others. The persistent explanation in the picker still applies to them.
+Existing members skip the appointment warning because they already have the group's privileges.
+Managing the group also lets them grant those privileges to others; the picker explains this.
 
-**Personal limits have shared ownership.** If someone belongs to Support and Sales, either team's
-group manager can edit the same personal limit, including a limit previously set by an admin. The
-last successful edit applies. There is no additional financial ceiling for group managers beyond
-existing validation. They can also edit their own limit if they belong to a group they manage.
-
-**Revocation removes delegation, not its consequences.** Removing an assignment or removing a member
-from a managed group removes the corresponding delegated authority. It does not undo prior membership
-or limit changes, or access granted through them. Someone who added themselves to a Manager-granting
-or billing/security group can retain that authority after their group-manager assignment is revoked.
-Removing that authority requires a separate membership/access change. Existing self-lockout
-safeguards and grants from other groups also affect removal. A member's usage view covers their
-existing cycle usage, not just consumption since joining the team.
-
-**Group changes may not change a member's effective limit.** A personal override or a higher allowance
-from another group can still take precedence. Show the effective limit and its source after saving.
+Removing an assignment, or a member leaving a managed group, ends the corresponding delegated
+authority. It does not undo earlier membership or limit changes. A manager who added themselves
+to a group granting Manager or billing/security access can retain that access after their assignment
+is removed. Revoke that membership or access separately, subject to existing self-lockout protections
+and grants from other groups.
 
 ### Extension to other permissions
 

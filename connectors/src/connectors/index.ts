@@ -1,6 +1,5 @@
 import { BigQueryConnectorManager } from "@connectors/connectors/bigquery";
 import { ConfluenceConnectorManager } from "@connectors/connectors/confluence";
-import { DiscordBotConnectorManager } from "@connectors/connectors/discord_bot";
 import { DustProjectConnectorManager } from "@connectors/connectors/dust_project";
 import { GithubConnectorManager } from "@connectors/connectors/github";
 import { GongConnectorManager } from "@connectors/connectors/gong";
@@ -21,7 +20,6 @@ import { WebcrawlerConnectorManager } from "@connectors/connectors/webcrawler";
 import { ZendeskConnectorManager } from "@connectors/connectors/zendesk";
 import type {
   DataSourceConfig,
-  DiscordBotConfigurationType,
   ModelId,
   SlackConfigurationType,
   WebCrawlerConfiguration,
@@ -80,8 +78,6 @@ export function getConnectorManager({
       return new SalesforceConnectorManager(connectorId);
     case "gong":
       return new GongConnectorManager(connectorId);
-    case "discord_bot":
-      return new DiscordBotConnectorManager(connectorId);
     case "dust_project":
       return new DustProjectConnectorManager(connectorId);
     default:
@@ -96,7 +92,7 @@ export function createConnector({
   | {
       connectorProvider: Exclude<
         ConnectorProvider,
-        "webcrawler" | "slack" | "slack_bot" | "discord_bot" | "dust_project"
+        "webcrawler" | "slack" | "slack_bot" | "dust_project"
       >;
       params: {
         dataSourceConfig: DataSourceConfig;
@@ -118,14 +114,6 @@ export function createConnector({
         dataSourceConfig: DataSourceConfig;
         connectionId: string;
         configuration: SlackConfigurationType;
-      };
-    }
-  | {
-      connectorProvider: "discord_bot";
-      params: {
-        dataSourceConfig: DataSourceConfig;
-        connectionId: string;
-        configuration: DiscordBotConfigurationType;
       };
     }
   | {
@@ -169,8 +157,6 @@ export function createConnector({
       return SalesforceConnectorManager.create(params);
     case "gong":
       return GongConnectorManager.create(params);
-    case "discord_bot":
-      return DiscordBotConnectorManager.create(params);
     case "dust_project":
       return DustProjectConnectorManager.create(params);
     default:

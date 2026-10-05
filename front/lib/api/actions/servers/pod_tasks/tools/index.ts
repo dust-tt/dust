@@ -17,7 +17,7 @@ import {
   UPDATE_TASKS_TOOL_NAME,
 } from "@app/lib/api/actions/servers/pod_tasks/metadata";
 import { inferProjectTaskSourceFromUrl } from "@app/lib/api/actions/servers/pod_tasks/source_utils";
-import { resolveAgentConfigurationIdByName } from "@app/lib/api/assistant/configuration/agent";
+import { resolveAgentIdByName } from "@app/lib/api/agents/search";
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -420,7 +420,7 @@ export function createProjectTasksTools(
         for (const item of tasks) {
           const row = await ProjectTaskResource.fetchBySId(auth, item.taskId);
 
-          if (!row) {
+          if (!row || row.spaceId !== pod.id) {
             errors.push(`Task not found: ${item.taskId}`);
             continue;
           }
@@ -479,10 +479,7 @@ export function createProjectTasksTools(
         const { pod } = contextRes.value;
         let agentConfigurationId: string | undefined;
         if (agentName) {
-          const matchedAgentId = await resolveAgentConfigurationIdByName(
-            auth,
-            agentName
-          );
+          const matchedAgentId = await resolveAgentIdByName(auth, agentName);
           if (!matchedAgentId) {
             return new Err(
               new MCPError(`No agent found matching name: "${agentName}"`, {

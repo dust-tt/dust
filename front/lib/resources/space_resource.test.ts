@@ -3,6 +3,7 @@ import { hardDeleteSpace } from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversation_selected_space";
+import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -281,12 +282,22 @@ describe("SpaceResource", () => {
       expect(remainingTriggers.map((trigger) => trigger.sId)).toEqual([
         unrelatedTrigger.sId,
       ]);
+      // The webhook source outlives the space: its requests are kept, only the deleted triggers'
+      // outcome rows are removed.
       await expect(
         WebhookRequestResource.fetchByModelIdWithAuth(
           adminAuth,
           webhookRequest.id
         )
-      ).resolves.toBeNull();
+      ).resolves.not.toBeNull();
+      await expect(
+        WebhookRequestTriggerModel.count({
+          where: {
+            workspaceId: workspace.id,
+            webhookRequestId: webhookRequest.id,
+          },
+        })
+      ).resolves.toBe(0);
     });
 
     describe("authorization checks", () => {

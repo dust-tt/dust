@@ -1,7 +1,7 @@
 import { encodeUtf8HeaderValue } from "@dust-tt/client";
 import { describe, expect, it } from "vitest";
 
-import { decodeUtf8HeaderValue } from "./http_headers";
+import { decodeUtf8HeaderValue, hasRedactedHeaderValue } from "./http_headers";
 
 // Contract test between the sender (DustAPI's `encodeUtf8HeaderValue` in
 // @dust-tt/client, applied to extra headers in `baseHeaders`) and the receiver
@@ -58,5 +58,22 @@ describe("encodeUtf8HeaderValue / decodeUtf8HeaderValue", () => {
     expect(decodeUtf8HeaderValue("=?iso-8859-1?Q?a=E9?=")).toBe(
       "=?iso-8859-1?Q?a=E9?="
     );
+  });
+});
+
+describe("hasRedactedHeaderValue", () => {
+  it("accepts plaintext values", () => {
+    expect(
+      hasRedactedHeaderValue([{ key: "X-Api-Key", value: "sk-123" }])
+    ).toBe(false);
+  });
+
+  it.each([
+    "••••••••",
+    " ••••••••",
+    "\t••••••••  ",
+    "\r\n••••••••",
+  ])("rejects a masked value that survives sanitization (%j)", (value) => {
+    expect(hasRedactedHeaderValue([{ key: "X-Api-Key", value }])).toBe(true);
   });
 });

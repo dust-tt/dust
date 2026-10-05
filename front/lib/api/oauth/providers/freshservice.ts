@@ -1,6 +1,9 @@
 import config from "@app/lib/api/config";
 import type { OAuthError } from "@app/lib/api/oauth";
-import { getWorkspaceOAuthConnectionIdForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
+import {
+  getWorkspaceOAuthConnectionForMCPServer,
+  shouldFallThroughPlatformWorkspaceReuse,
+} from "@app/lib/api/oauth/mcp_server_connection_auth";
 import type {
   BaseOAuthStrategyProvider,
   RelatedCredential,
@@ -16,7 +19,6 @@ import type {
   OAuthConnectionType,
   OAuthUseCase,
 } from "@app/types/oauth/lib";
-import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { ParsedUrlQuery } from "querystring";
@@ -133,53 +135,47 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
       useCase: OAuthUseCase;
     }
   ): Promise<Result<RelatedCredential, OAuthError>> {
-    if (useCase === "personal_actions") {
-      // For personal actions we reuse the existing connection credential id from the existing
-      // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
-      // we have client_id and instance_url (initial admin setup).
+    if (useCase === "personal_actions" || useCase === "platform_actions") {
       const { mcp_server_id } = extraConfig;
 
       if (mcp_server_id) {
         logger.info(
           `Freshservice getRelatedCredential: Using MCP server connection for mcp_server_id: ${mcp_server_id}`
         );
-        const oauthConnectionIdRes =
-          await getWorkspaceOAuthConnectionIdForMCPServer(auth, mcp_server_id);
-        if (oauthConnectionIdRes.isErr()) {
-          return new Err({
-            code: "credential_retrieval_failed",
-            message: oauthConnectionIdRes.error.message,
+        const connectionRes = await getWorkspaceOAuthConnectionForMCPServer(
+          auth,
+          mcp_server_id
+        );
+        if (connectionRes.isOk()) {
+          const connection = connectionRes.value;
+          return new Ok({
+            content: {
+              from_connection_id: connection.connection_id,
+              freshservice_domain: connection.metadata.freshservice_domain,
+            },
+            metadata: { workspace_id: workspaceId, user_id: userId },
+            redirectUri: connection.redirect_uri,
           });
         }
-
-        const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-        const connectionRes = await oauthApi.getConnectionMetadata({
-          connectionId: oauthConnectionIdRes.value,
-        });
-        if (connectionRes.isErr()) {
+        if (
+          !shouldFallThroughPlatformWorkspaceReuse({
+            useCase,
+            error: connectionRes.error,
+          })
+        ) {
           return new Err({
             code: "credential_retrieval_failed",
-            message:
-              "Failed to get connection metadata: " +
-              connectionRes.error.message,
-            oAuthAPIError: connectionRes.error,
+            message: connectionRes.error.message,
+            ...(connectionRes.error.kind === "oauth_metadata_failed" &&
+            connectionRes.error.oAuthAPIError
+              ? { oAuthAPIError: connectionRes.error.oAuthAPIError }
+              : {}),
           });
         }
-        const connection = connectionRes.value.connection;
-        const connectionId = connection.connection_id;
-
-        return new Ok({
-          content: {
-            from_connection_id: connectionId,
-            freshservice_domain: connection.metadata.freshservice_domain,
-          },
-          metadata: { workspace_id: workspaceId, user_id: userId },
-          redirectUri: connection.redirect_uri,
-        });
+        // platform_actions first connect only: no workspace connection yet.
       }
     }
 
-    // For non-personal actions, we need freshservice_domain in the extraConfig
     if (!extraConfig.freshservice_domain) {
       return new Err({
         code: "credential_retrieval_failed",
@@ -205,35 +201,31 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
       useCase: OAuthUseCase;
     }
   ): Promise<ExtraConfigType> {
-    if (useCase === "personal_actions") {
-      // For personal actions we reuse the existing connection credential id from the existing
-      // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
-      // we have client_id and instance_url (initial admin setup).
+    if (useCase === "personal_actions" || useCase === "platform_actions") {
       const { mcp_server_id, ...restConfig } = extraConfig;
 
       if (mcp_server_id) {
-        const oauthConnectionIdRes =
-          await getWorkspaceOAuthConnectionIdForMCPServer(auth, mcp_server_id);
-        if (oauthConnectionIdRes.isErr()) {
-          throw new Error(oauthConnectionIdRes.error.message);
+        const connectionRes = await getWorkspaceOAuthConnectionForMCPServer(
+          auth,
+          mcp_server_id
+        );
+        if (connectionRes.isOk()) {
+          const connection = connectionRes.value;
+          return {
+            ...restConfig,
+            freshservice_domain: connection.metadata.freshservice_domain,
+            freshworks_org_url: connection.metadata.freshworks_org_url,
+          };
         }
-
-        const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
-        const connectionRes = await oauthApi.getConnectionMetadata({
-          connectionId: oauthConnectionIdRes.value,
-        });
-        if (connectionRes.isErr()) {
-          throw new Error(
-            "Failed to get connection metadata: " + connectionRes.error.message
-          );
+        if (
+          !shouldFallThroughPlatformWorkspaceReuse({
+            useCase,
+            error: connectionRes.error,
+          })
+        ) {
+          throw new Error(connectionRes.error.message);
         }
-        const connection = connectionRes.value.connection;
-
-        return {
-          ...restConfig,
-          freshservice_domain: connection.metadata.freshservice_domain,
-          freshworks_org_url: connection.metadata.freshworks_org_url,
-        };
+        // platform_actions first connect only: no workspace connection yet.
       }
     }
 

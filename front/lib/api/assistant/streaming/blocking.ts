@@ -60,9 +60,7 @@ async function waitForAgentCompletion(
       subscriptions.forEach((unsub) => {
         try {
           unsub();
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-        } catch (error) {
+        } catch {
           // Ignore individual unsubscribe errors to ensure all subscriptions are cleaned up.
         }
       });
@@ -117,9 +115,7 @@ async function waitForAgentCompletion(
           );
 
           subscriptions.push(unsubscribe);
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-        } catch (error) {
+        } catch {
           expectedMessageIds.delete(agentMessage.sId);
         }
       }

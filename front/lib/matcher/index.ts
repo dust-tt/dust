@@ -6,7 +6,6 @@ export { matchPayload } from "./matcher";
 export { parseMatcherExpression } from "./parser";
 // Export types.
 export type {
-  LogicalExpression,
   LogicalOp,
   MatcherExpression,
   Operation,

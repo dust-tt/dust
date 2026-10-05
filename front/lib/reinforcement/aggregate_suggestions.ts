@@ -1,3 +1,4 @@
+import { formatBatchSuggestionDirective } from "@app/lib/api/actions/servers/building_agents_and_skills/directives";
 import {
   createConversation,
   postNewContentFragment,
@@ -8,6 +9,7 @@ import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { formatSkillContext } from "@app/lib/reinforcement/format_skill_context";
 import { buildReinforcedSkillsLLMParams } from "@app/lib/reinforcement/run_reinforced_analysis";
+import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
@@ -18,13 +20,14 @@ import logger from "@app/logger/logger";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { removeNulls } from "@app/types/shared/utils/general";
 import { escapeXml } from "@app/types/shared/utils/string_utils";
 import type { ReinforcementSkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import {
   isReinforcementSkillSuggestion,
   REINFORCEMENT_SKILL_SUGGESTION_KINDS,
 } from "@app/types/suggestions/skill_suggestion";
-import type { UserType } from "@app/types/user";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 const AGGREGATION_ASSEMBLY_ORDER = [
   "primary",
@@ -83,7 +86,7 @@ You are provided all of the attributes associated with a conversation suggestion
 The exceptions are:
 - The "analysis", "title", and "sourceSuggestionIds" attributes; these MUST be newly authored for each final suggestion.
 
-For "analysis": Provide a user-facing explanation of why the suggestion is impactful and how many conversations support it. The end user does NOT care about the technical considerations behind your thought process.
+For "analysis": Provide a user-facing explanation of why the suggestion is impactful and how many conversations support it, in at most 255 characters. The end user does NOT care about the technical considerations behind your thought process.
 
 For "title": You MUST provide a short, action-oriented, user-facing title that summarizes what the suggestion changes. The title MUST be at most 25 characters. Examples: "Clarify response tone", "Add Slack search tool", "Remove GitHub tool". Each suggestion MUST have a distinct title.
 
@@ -271,34 +274,53 @@ export async function buildSkillAggregationBatchMap(
 }
 
 /**
- * Random canned opener for the notification conversation, merged into a single
- * message with the suggestion titles between the intro and outro lines.
+ * Random canned opener for the notification conversation, merged into a single message with a
+ * suggestion card per batched suggestion (older unbatched suggestions are listed by title) between
+ * the intro and outro lines.
  */
 function buildReinforcedSkillInitialMessage(
-  workspaceId: string,
+  owner: LightWorkspaceType,
   skillName: string,
   skillId: string,
-  titles: string[]
+  suggestions: SkillSuggestionResource[]
 ): string {
-  const builderUrl = getSkillBuilderRoute(workspaceId, skillId);
+  const builderUrl = getSkillBuilderRoute(owner.sId, skillId);
   const variants: Array<{ intro: string; outro: string }> = [
     {
       intro: `Dust has analyzed conversations in your workspace that use the ${skillName} skill and found suggestions to improve it:`,
-      outro: `You can view and apply these suggestions by going to the [skill builder](${builderUrl}).`,
+      outro: `You can accept or reject these suggestions right here, ask Dust to improve them, or review them in the [skill builder](${builderUrl}) directly.`,
     },
     {
       intro: `Based on recent conversations, Dust has identified ways to enhance the ${skillName} skill:`,
-      outro: `Head over to the [skill builder](${builderUrl}) to review and apply these improvements.`,
+      outro: `Review and apply these improvements right here, ask Dust to refine them, or head over to the [skill builder](${builderUrl}) directly.`,
     },
     {
       intro: `Dust has reviewed how the ${skillName} skill is being used and has new improvement suggestions:`,
-      outro: `Check them out in the [skill builder](${builderUrl}) and apply the ones you like.`,
+      outro: `Apply the ones you like right here, iterate on it from the conversation below, or check them out in the [skill builder](${builderUrl}) directly.`,
     },
   ];
   const { intro, outro } =
     variants[Math.floor(Math.random() * variants.length)];
-  const list = titles.map((t) => `- ${t}`).join("\n");
-  return `${intro}\n${list}\n\n${outro}`;
+
+  const batchModelIds = [
+    ...new Set(removeNulls(suggestions.map((s) => s.batchId))),
+  ];
+  const cards = batchModelIds.map((id) =>
+    formatBatchSuggestionDirective({
+      sId: BatchSuggestionResource.modelIdToSId({
+        id,
+        workspaceId: owner.id,
+      }),
+    })
+  );
+  const list = suggestions
+    .filter((s) => s.batchId === null)
+    .map((s) => `- ${s.title ?? s.sId}`);
+
+  const body = [...cards, ...(list.length > 0 ? [list.join("\n")] : [])].join(
+    "\n\n"
+  );
+  return `${intro}\n\n${body}\n\n${outro}`;
 }
 
 /**
@@ -402,10 +424,10 @@ export async function createSkillSuggestionsConversation(
   }
 
   const content = buildReinforcedSkillInitialMessage(
-    auth.getNonNullableWorkspace().sId,
+    auth.getNonNullableWorkspace(),
     skillType.name,
     skillType.sId,
-    pendingSuggestions.map((s) => s.title ?? s.sId)
+    pendingSuggestions
   );
 
   const messageRes = await postUserMessage(auth, {

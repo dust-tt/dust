@@ -1,8 +1,9 @@
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
+import { timeAgoFrom } from "@app/lib/client/relative_time";
+import { compareStrings, formatNumber } from "@app/lib/i18n/format";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
-import { timeAgoFrom } from "@app/lib/utils";
 import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 import type { KeyType } from "@app/types/key";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -400,9 +401,9 @@ function buildColumns({
           className="whitespace-nowrap"
           label={
             info.row.original.lastUsedAt
-              ? `${timeAgoFrom(info.row.original.lastUsedAt, {
+              ? timeAgoFrom(info.row.original.lastUsedAt, {
                   useLongFormat: true,
-                })} ago`
+                })
               : "Never"
           }
         />
@@ -656,7 +657,7 @@ export function APIKeysTable({
       let comparison = 0;
       switch (activeSort.id) {
         case "name":
-          comparison = left.name.localeCompare(right.name);
+          comparison = compareStrings(left.name, right.name);
           break;
         case "credits":
           if (left.credits === null || right.credits === null) {
@@ -800,7 +801,7 @@ export function APIKeysTable({
           )}
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-foreground">
-              {filteredRows.length.toLocaleString()} API key
+              {formatNumber(filteredRows.length)} API key
               {pluralize(filteredRows.length)}
             </span>
             {filteredRows.length > 0 && (

@@ -17,6 +17,8 @@ import type {
   SeatTypeInfo,
 } from "@app/lib/api/credits/seat_plan";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { formatDate, formatNumber } from "@app/lib/i18n/format";
 import type { BulkSeatChangePreviewBody } from "@app/lib/swr/memberships";
 import type { MembershipSeatType, PaidSeatType } from "@app/types/memberships";
 import { isMembershipSeatType, isPaidSeatType } from "@app/types/memberships";
@@ -28,6 +30,7 @@ import {
   Dialog,
   DialogContainer,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -35,8 +38,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { Fragment, useEffect, useRef, useState } from "react";
-
-const MAX_HEADER_AVATARS = 3;
 
 interface BulkChangeSeatModalProps {
   isOpen: boolean;
@@ -206,7 +207,7 @@ function SeatMoveSection({
               <span>{targetLabel}</span>
             </div>
             <span className="font-medium text-muted-foreground">
-              ×{move.count.toLocaleString("en-US")}
+              ×{formatNumber(move.count)}
             </span>
           </Fragment>
         ))}
@@ -263,14 +264,14 @@ function SeatSummarySection({
             </div>
             <span className={valueClasses}>
               {total.committedSeats > 0
-                ? total.committedSeats.toLocaleString("en-US")
+                ? formatNumber(total.committedSeats)
                 : "—"}
             </span>
             <span className={valueClasses}>
-              {total.assignedBefore.toLocaleString("en-US")}
+              {formatNumber(total.assignedBefore)}
             </span>
             <span className="justify-self-end font-medium text-foreground">
-              {total.assignedAfter.toLocaleString("en-US")}
+              {formatNumber(total.assignedAfter)}
             </span>
           </Fragment>
         ))}
@@ -280,11 +281,15 @@ function SeatSummarySection({
 }
 
 function formatBillingPeriodDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  return formatDate(
+    new Date(iso),
+    {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    },
+    getActiveLocale()
+  );
 }
 
 // Price badge of a seat card in the pick step; annual seats show the
@@ -301,52 +306,6 @@ function getBadge(info: SeatTypeInfo): React.ReactNode {
         formatPriceCents(info.priceCents, info.currency, info.billingFrequency)
       )}
     </span>
-  );
-}
-
-interface BulkChangeSeatModalHeaderProps {
-  // Selected members visible on the current page, for the avatar row.
-  selectedMembers: MemberUsageType[];
-  memberCount: number;
-  title: string;
-  subtitle: string;
-}
-
-function BulkChangeSeatModalHeader({
-  selectedMembers,
-  memberCount,
-  title,
-  subtitle,
-}: BulkChangeSeatModalHeaderProps) {
-  return (
-    <DialogHeader>
-      <div className="flex flex-col gap-2">
-        {selectedMembers.length > 0 && (
-          <div className="flex flex-row items-center gap-2">
-            <Avatar.Stack
-              avatars={selectedMembers
-                .slice(0, MAX_HEADER_AVATARS)
-                .map((member) => ({
-                  name: member.name,
-                  visual: member.image ?? undefined,
-                  isRounded: true,
-                }))}
-              nbVisibleItems={MAX_HEADER_AVATARS}
-              size="md"
-            />
-            {memberCount > MAX_HEADER_AVATARS && (
-              <span className="flex h-8 min-w-8 items-center justify-center rounded-full bg-highlight-100 px-2 text-sm font-medium text-highlight-600">
-                {memberCount}
-              </span>
-            )}
-          </div>
-        )}
-        <div className="flex flex-col gap-1">
-          <DialogTitle>{title}</DialogTitle>
-          <p className="text-sm text-muted-foreground">{subtitle}</p>
-        </div>
-      </div>
-    </DialogHeader>
   );
 }
 
@@ -438,7 +397,7 @@ function BulkChangeSeatModalPreviewDialogContent({
     <div className="flex flex-col gap-4">
       {blockedByCapCount > 0 && targetMaxSeats !== null && (
         <p className="text-sm text-warning-600">
-          {blockedByCapCount.toLocaleString("en-US")}{" "}
+          {formatNumber(blockedByCapCount)}{" "}
           {blockedByCapCount === 1 ? "member can't" : "members can't"} be
           assigned —{" "}
           {seatMoveLabel(
@@ -446,7 +405,7 @@ function BulkChangeSeatModalPreviewDialogContent({
             preview.targetSeatName,
             seatPlans
           )}{" "}
-          is at its cap of {targetMaxSeats.toLocaleString("en-US")}{" "}
+          is at its cap of {formatNumber(targetMaxSeats)}{" "}
           {targetMaxSeats === 1 ? "seat" : "seats"}.
         </p>
       )}
@@ -476,7 +435,7 @@ function BulkChangeSeatModalPreviewDialogContent({
       )}
       {unchangedCount > 0 && (
         <p className="text-sm text-muted-foreground">
-          {unchangedCount.toLocaleString("en-US")}{" "}
+          {formatNumber(unchangedCount)}{" "}
           {unchangedCount === 1 ? "member is" : "members are"} already on{" "}
           {seatMoveLabel(
             preview.targetSeatType,
@@ -594,15 +553,27 @@ function BulkChangeSeatForm({
 
   return (
     <>
-      <BulkChangeSeatModalHeader
-        selectedMembers={selectedMembers}
-        memberCount={preview?.memberCount ?? memberCount}
-        title={
-          title ??
-          `Change seat for ${(preview?.memberCount ?? memberCount).toLocaleString("en-US")} members`
-        }
-        subtitle={subtitle}
-      />
+      <DialogHeader>
+        <div className="flex flex-col gap-2">
+          {selectedMembers.length > 0 && (
+            <Avatar.Stack
+              avatars={selectedMembers.map((member) => ({
+                name: member.name,
+                visual: member.image ?? undefined,
+                isRounded: true,
+              }))}
+              size="md"
+            />
+          )}
+          <div className="flex flex-col gap-1">
+            <DialogTitle>
+              {title ??
+                `Change seat for ${formatNumber(preview?.memberCount ?? memberCount)} members`}
+            </DialogTitle>
+            <DialogDescription>{subtitle}</DialogDescription>
+          </div>
+        </div>
+      </DialogHeader>
       <DialogContainer>
         {isSubscriptionCancelled && (
           <p className="mb-3 text-xs text-warning-600">

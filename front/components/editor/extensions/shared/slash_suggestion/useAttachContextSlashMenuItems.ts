@@ -1,17 +1,15 @@
-import type {
-  ContextFileSlashSearchItem,
-  ContextFileSlashSearchSelection,
-} from "@app/components/editor/extensions/shared/slash_suggestion/ContextFileSlashSearch";
+import { toDataSourceViewContentNodes } from "@app/components/data_source_view/browser/knowledgeBrowserSearch";
+import type { ContextFileSlashSearchItem } from "@app/components/editor/extensions/shared/slash_suggestion/ContextFileSlashSearch";
 import { useContextFileSlashSearchItems } from "@app/components/editor/extensions/shared/slash_suggestion/ContextFileSlashSearch";
 import type {
   ContextSlashSearchSelection,
   ContextSlashSearchUseCase,
 } from "@app/components/editor/extensions/shared/slash_suggestion/contextSlashSearchTypes";
+import { useDebouncedValue } from "@app/hooks/useDebounce";
 import { getLocationForDataSourceViewContentNodeWithSpace } from "@app/lib/content_nodes";
 import { useUnifiedSearch } from "@app/lib/swr/search";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
-import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useMemo } from "react";
 
@@ -51,6 +49,12 @@ function contextFileItemToMenuItem(
   };
 }
 
+/**
+ * @cc [owner:id13,label:react;performance] slash-search-waits-for-typing
+ * Knowledge search MUST use a 300 ms debounce and stay disabled while the query is unsettled.
+ * During that wait, previous knowledge results MUST be hidden and loading MUST remain visible
+ * for queries meeting the minimum length. Shorter queries MUST NOT send a search request.
+ */
 export function useAttachContextSlashMenuItems({
   conversationId = null,
   owner,
@@ -100,6 +104,10 @@ export function useAttachContextSlashMenuItems({
 
   const normalizedQuery = query.trim().toLowerCase();
   const hasMinimalQuery = normalizedQuery.length >= MIN_SEARCH_QUERY_SIZE;
+  const { debouncedValue: debouncedQuery, isDebouncing } = useDebouncedValue(
+    query,
+    300
+  );
 
   const excludeNonRemoteDatabaseTables = useCase === "skill-builder";
   const includeDataSources = useCase === "conversation-input";
@@ -115,9 +123,9 @@ export function useAttachContextSlashMenuItems({
   const { knowledgeResults: searchResults, isSearchLoading } = useUnifiedSearch(
     {
       owner,
-      query,
+      query: debouncedQuery,
       pageSize: 10,
-      disabled: isSpacesLoading || !hasMinimalQuery,
+      disabled: isSpacesLoading || !hasMinimalQuery || isDebouncing,
       spaceIds,
       projectId,
       viewType: "all",
@@ -131,32 +139,19 @@ export function useAttachContextSlashMenuItems({
 
   const knowledgeItems = useMemo(
     () =>
-      removeNulls(
-        searchResults.map((node) => {
-          const { dataSourceViews, ...rest } = node;
-          const dataSourceView = dataSourceViews.find(
-            (view) => spacesMap[view.spaceId]
-          );
-
-          if (!dataSourceView) {
-            return null;
-          }
-
-          const knowledgeNode = { ...rest, dataSourceView };
-
-          return {
-            description: getLocationForDataSourceViewContentNodeWithSpace(
-              knowledgeNode,
-              spacesMap
-            ),
-            id: `knowledge-${node.internalId}-${dataSourceView.sId}`,
+      toDataSourceViewContentNodes(searchResults, Object.keys(spacesMap)).map(
+        (knowledgeNode) => ({
+          description: getLocationForDataSourceViewContentNodeWithSpace(
+            knowledgeNode,
+            spacesMap
+          ),
+          id: `knowledge-${knowledgeNode.internalId}-${knowledgeNode.dataSourceView.sId}`,
+          kind: "knowledge" as const,
+          label: knowledgeNode.title,
+          selection: {
             kind: "knowledge" as const,
-            label: node.title,
-            selection: {
-              kind: "knowledge" as const,
-              node: knowledgeNode,
-            },
-          };
+            node: knowledgeNode,
+          },
         })
       ),
     [searchResults, spacesMap]
@@ -170,7 +165,7 @@ export function useAttachContextSlashMenuItems({
   const isLoading =
     isSpacesLoading ||
     isFileItemsLoading ||
-    (hasMinimalQuery && isSearchLoading);
+    (hasMinimalQuery && (isDebouncing || isSearchLoading));
 
   const emptyMessage = !hasMinimalQuery
     ? "Type at least 2 characters to search"
@@ -185,5 +180,3 @@ export function useAttachContextSlashMenuItems({
     spaces: scopedSpaces,
   };
 }
-
-export type { ContextFileSlashSearchSelection };

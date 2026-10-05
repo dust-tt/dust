@@ -1,3 +1,4 @@
+import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import {
@@ -6,9 +7,14 @@ import {
   TriggerResource,
 } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import logger from "@app/logger/logger";
 import type { GetTriggersResponseBody } from "@app/types/api/assistant/configuration/triggers";
 import { TriggerSchema } from "@app/types/assistant/triggers";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -41,6 +47,52 @@ function isWebhookTriggerData(trigger: {
     trigger.kind === "webhook" &&
     typeof trigger.webhookSourceViewId === "string"
   );
+}
+
+// Returns the model ids of the requested webhook source views that the caller can read.
+async function fetchReadableWebhookSourceViewModelIds(
+  auth: Authenticator,
+  triggers: { kind: string; webhookSourceViewId?: unknown }[]
+): Promise<Set<ModelId>> {
+  const webhookSourceViewModelIds = removeNulls(
+    triggers
+      .filter(isWebhookTriggerData)
+      .map((trigger) => getResourceIdFromSId(trigger.webhookSourceViewId))
+  );
+  if (webhookSourceViewModelIds.length === 0) {
+    return new Set();
+  }
+
+  const views = await WebhookSourcesViewResource.fetchByModelIds(
+    auth,
+    webhookSourceViewModelIds
+  );
+  return new Set(views.map((view) => view.id));
+}
+
+// Resolves the trigger's webhook source view, requiring the caller to be able to read it unless it
+// is the view the trigger is already bound to.
+function resolveWebhookSourceViewModelId(
+  trigger: { kind: string; webhookSourceViewId?: unknown },
+  readableWebhookSourceViewModelIds: Set<ModelId>,
+  currentWebhookSourceViewModelId: ModelId | null = null
+): Result<ModelId | null, string> {
+  if (!isWebhookTriggerData(trigger)) {
+    return new Ok(null);
+  }
+
+  const webhookSourceViewModelId = getResourceIdFromSId(
+    trigger.webhookSourceViewId
+  );
+  if (
+    webhookSourceViewModelId === null ||
+    (webhookSourceViewModelId !== currentWebhookSourceViewModelId &&
+      !readableWebhookSourceViewModelIds.has(webhookSourceViewModelId))
+  ) {
+    return new Err("Webhook source view not found.");
+  }
+
+  return new Ok(webhookSourceViewModelId);
 }
 
 // Mounted under /api/w/:wId/triggers.
@@ -181,6 +233,8 @@ app.patch(
 
     const { triggers } = ctx.req.valid("json");
     const workspace = auth.getNonNullableWorkspace();
+    const readableWebhookSourceViewModelIds =
+      await fetchReadableWebhookSourceViewModelIds(auth, triggers);
 
     for (const triggerData of triggers) {
       const triggerToUpdate = userTriggers.find(
@@ -233,9 +287,21 @@ app.patch(
         });
       }
 
-      const webhookSourceViewId = isWebhookTriggerData(validatedTrigger)
-        ? getResourceIdFromSId(validatedTrigger.webhookSourceViewId)
-        : null;
+      const webhookSourceViewModelIdRes = resolveWebhookSourceViewModelId(
+        validatedTrigger,
+        readableWebhookSourceViewModelIds,
+        triggerToUpdate.webhookSourceViewId
+      );
+      if (webhookSourceViewModelIdRes.isErr()) {
+        return apiError(ctx, {
+          status_code: 404,
+          api_error: {
+            type: "webhook_source_view_not_found",
+            message: webhookSourceViewModelIdRes.error,
+          },
+        });
+      }
+      const webhookSourceViewModelId = webhookSourceViewModelIdRes.value;
 
       const executionMode = validatedTrigger.executionMode;
       const spaceIdRes = await resolveTriggerSpaceId(
@@ -295,7 +361,7 @@ app.patch(
         {
           ...validatedTrigger,
           status: validatedTrigger.status ?? "enabled",
-          webhookSourceViewId,
+          webhookSourceViewId: webhookSourceViewModelId,
           spaceId: spaceIdRes.value,
         }
       );
@@ -345,6 +411,8 @@ app.post(
 
     const { triggers } = ctx.req.valid("json");
     const workspace = auth.getNonNullableWorkspace();
+    const readableWebhookSourceViewModelIds =
+      await fetchReadableWebhookSourceViewModelIds(auth, triggers);
 
     for (const triggerData of triggers) {
       const triggerValidation = TriggerSchema.safeParse({
@@ -362,9 +430,20 @@ app.post(
       }
 
       const validatedTrigger = triggerValidation.data;
-      const webhookSourceViewId = isWebhookTriggerData(validatedTrigger)
-        ? getResourceIdFromSId(validatedTrigger.webhookSourceViewId)
-        : null;
+      const webhookSourceViewModelIdRes = resolveWebhookSourceViewModelId(
+        validatedTrigger,
+        readableWebhookSourceViewModelIds
+      );
+      if (webhookSourceViewModelIdRes.isErr()) {
+        return apiError(ctx, {
+          status_code: 404,
+          api_error: {
+            type: "webhook_source_view_not_found",
+            message: webhookSourceViewModelIdRes.error,
+          },
+        });
+      }
+      const webhookSourceViewModelId = webhookSourceViewModelIdRes.value;
       const executionPerDay = isWebhookTriggerData(validatedTrigger)
         ? validatedTrigger.executionPerDayLimitOverride
         : null;
@@ -393,7 +472,7 @@ app.post(
         naturalLanguageDescription: validatedTrigger.naturalLanguageDescription,
         customPrompt: validatedTrigger.customPrompt,
         editor: auth.getNonNullableUser().id,
-        webhookSourceViewId,
+        webhookSourceViewId: webhookSourceViewModelId,
         executionPerDayLimitOverride: executionPerDay,
         executionMode: validatedTrigger.executionMode,
         origin: "user",

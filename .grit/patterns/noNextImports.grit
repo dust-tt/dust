@@ -38,10 +38,15 @@ pattern no_next_import() {
     }
 }
 
-no_next_import() as $import where {
-    register_diagnostic(
-        span = $import,
-        message = "Direct import from 'next' or 'next/*' is not allowed in shared code. Use platform abstractions from '@app/lib/platform' instead.",
-        severity = "error"
-    )
+// Skip structural matching when the source cannot contain this rule's target.
+// Keep backslashes as candidates so escaped spellings are still checked.
+file(body = $body) where {
+    $body <: or { includes "next", includes "\\" },
+    $body <: contains bubble no_next_import() as $import where {
+        register_diagnostic(
+            span = $import,
+            message = "Direct import from 'next' or 'next/*' is not allowed in shared code. Use platform abstractions from '@app/lib/platform' instead.",
+            severity = "error"
+        )
+    }
 }

@@ -5,6 +5,7 @@ import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -188,6 +189,20 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId/editors", () => {
     expect(data.editors[0].id).toBeUndefined();
     expect(data.editors[0].provider).toBeUndefined();
     expect(data.editors[0].username).toBeUndefined();
+  });
+
+  it("should return 404 to a manager for a hidden agent they do not edit", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      role: "manager",
+    });
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { scope: "hidden" }
+    );
+
+    const response = await getEditors(workspace, agent.sId);
+    expect(response.status).toBe(404);
   });
 
   it("should return 404 for non-existent agent", async () => {

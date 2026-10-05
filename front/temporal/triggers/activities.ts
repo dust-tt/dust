@@ -1,4 +1,3 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
   postNewContentFragment,
@@ -17,20 +16,20 @@ import {
 } from "@app/lib/api/credits/access_control";
 import { notifyAdminsTriggerBlockedByProgrammaticCap } from "@app/lib/api/credits/programmatic_cap_trigger_alert";
 import { PostHogServerSideTracking } from "@app/lib/api/posthog";
+import { isTriggerProgrammaticCapReached } from "@app/lib/api/triggers/rate_limits";
+import { getWebhookRequestPayloadFromGCS } from "@app/lib/api/triggers/webhook";
 import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { fireAndForgetNotification } from "@app/lib/notifications/fire_and_forget";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
-import { isTriggerProgrammaticCapReached } from "@app/lib/triggers/rate_limits";
-import { getWebhookRequestPayloadFromGCS } from "@app/lib/triggers/webhook";
 import logger from "@app/logger/logger";
 import { makeTriggerScheduleId } from "@app/temporal/triggers/schedule_client";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ConversationWithoutContentType,
   UserMessageContext,
@@ -46,13 +45,13 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 async function createConversationForAgentConfiguration({
   auth,
-  agentConfiguration,
+  agent,
   trigger,
   lastRunAt,
   webhookRequest,
 }: {
   auth: Authenticator;
-  agentConfiguration: AgentConfigurationType;
+  agent: AgentResource;
   trigger: TriggerType;
   lastRunAt: Date | null;
   webhookRequest: WebhookRequestResource | null;
@@ -159,9 +158,9 @@ async function createConversationForAgentConfiguration({
   const messageRes = await postUserMessage(auth, {
     conversationResource: newConversation,
     content:
-      serializeMention(agentConfiguration) +
+      serializeMention(agent) +
       (trigger.customPrompt ? `\n\n${trigger.customPrompt}` : ""),
-    mentions: [{ configurationId: agentConfiguration.sId }],
+    mentions: [{ configurationId: agent.sId }],
     context: triggeredContext,
     skipToolsValidation: false,
   });
@@ -199,12 +198,11 @@ async function createConversationForAgentConfiguration({
       );
 
       const content =
-        serializeMention(agentConfiguration) +
+        serializeMention(agent) +
         (trigger.customPrompt ? `\n\n${trigger.customPrompt}` : "");
-
       await createTriggerLimitExceededMessages(auth, {
         conversation: newConversation.toJSON(),
-        agentConfiguration,
+        agent,
         content,
         context: triggeredContext,
         error: { type: errorType, message: errorMessage },
@@ -287,19 +285,19 @@ export async function runTriggeredAgentsActivity({
 
   const trigger = triggerResource.toJSON();
 
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId: trigger.agentConfigurationId,
-    variant: "extra_light",
-  });
+  const agent = await AgentResource.fetchById(
+    auth,
+    trigger.agentConfigurationId
+  );
 
-  if (!agentConfiguration) {
+  if (!agent || !auth.can("read", agent)) {
     logger.info(
       {
         triggerId: trigger.sId,
         agentConfigurationId: trigger.agentConfigurationId,
         workspaceId: auth.workspace()?.sId,
       },
-      "Disabling trigger: agent configuration not found."
+      "Disabling trigger: agent configuration not found or not readable."
     );
     await triggerResource.disable(auth);
     return;
@@ -347,9 +345,7 @@ export async function runTriggeredAgentsActivity({
           recentActions.length > 0
             ? recentActions[recentActions.length - 2].takenAt // -2 to get the last completed action, -1 is the current running action
             : null;
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-      } catch (error) {
+      } catch {
         // We can ignore this error, schedule might not have run yet.
       }
       break;
@@ -416,7 +412,7 @@ export async function runTriggeredAgentsActivity({
   // Create a single conversation for the editor.
   const conversationResult = await createConversationForAgentConfiguration({
     auth,
-    agentConfiguration,
+    agent,
     trigger,
     lastRunAt,
     webhookRequest,

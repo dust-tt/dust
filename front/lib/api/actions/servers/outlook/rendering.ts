@@ -1,7 +1,8 @@
 import type { OutlookEvent } from "@app/lib/api/actions/servers/outlook/outlook_api_helper";
 import { isValidTimezone } from "@app/lib/api/timezone";
 import { pluralize } from "@app/types/shared/utils/string_utils";
-import { formatInTimeZone, toDate } from "date-fns-tz";
+import { tz } from "@date-fns/tz";
+import { format, parseISO } from "date-fns";
 
 // Falls back to UTC rather than throwing, so one malformed timezone from an
 // external source doesn't fail the whole event render. Outlook mailbox
@@ -70,14 +71,20 @@ function stripHtmlTags(html: string): string {
 
 function enrichEventWithDayOfWeek(
   event: OutlookEvent,
-  tz: EventTimeZones
+  timeZones: EventTimeZones
 ): EnrichedOutlookEvent {
-  const startInstant = toDate(event.start.dateTime, {
-    timeZone: tz.startSource,
+  const startInstant = parseISO(event.start.dateTime, {
+    in: tz(timeZones.startSource),
   });
-  const endInstant = toDate(event.end.dateTime, { timeZone: tz.endSource });
-  const startDayOfWeek = formatInTimeZone(startInstant, tz.startTarget, "EEEE");
-  const endDayOfWeek = formatInTimeZone(endInstant, tz.endTarget, "EEEE");
+  const endInstant = parseISO(event.end.dateTime, {
+    in: tz(timeZones.endSource),
+  });
+  const startDayOfWeek = format(startInstant, "EEEE", {
+    in: tz(timeZones.startTarget),
+  });
+  const endDayOfWeek = format(endInstant, "EEEE", {
+    in: tz(timeZones.endTarget),
+  });
 
   return {
     ...event,
@@ -176,8 +183,8 @@ export function renderOutlookEvent(
   event: OutlookEvent,
   userTimezone?: string
 ): string {
-  const tz = resolveEventTimeZones(event, userTimezone);
-  const enrichedEvent = enrichEventWithDayOfWeek(event, tz);
+  const timeZones = resolveEventTimeZones(event, userTimezone);
+  const enrichedEvent = enrichEventWithDayOfWeek(event, timeZones);
 
   const lines: string[] = [];
 
@@ -188,15 +195,21 @@ export function renderOutlookEvent(
 
   if (enrichedEvent.start) {
     const start = enrichedEvent.start;
-    const targetTz = tz.startTarget;
-    const startInstant = toDate(start.dateTime, { timeZone: tz.startSource });
+    const targetTz = timeZones.startTarget;
+    const startInstant = parseISO(start.dateTime, {
+      in: tz(timeZones.startSource),
+    });
 
     if (start.isAllDay) {
-      const dateStr = formatInTimeZone(startInstant, targetTz, "MMMM d, yyyy");
+      const dateStr = format(startInstant, "MMMM d, yyyy", {
+        in: tz(targetTz),
+      });
       lines.push(`Date: ${start.eventDayOfWeek}, ${dateStr} (All day)`);
     } else {
-      const timeStr = formatInTimeZone(startInstant, targetTz, "h:mm a");
-      const dateStr = formatInTimeZone(startInstant, targetTz, "MMMM d, yyyy");
+      const timeStr = format(startInstant, "h:mm a", { in: tz(targetTz) });
+      const dateStr = format(startInstant, "MMMM d, yyyy", {
+        in: tz(targetTz),
+      });
       lines.push(
         `Start: ${start.eventDayOfWeek}, ${dateStr} at ${timeStr} (${targetTz})`
       );
@@ -205,11 +218,11 @@ export function renderOutlookEvent(
 
   if (enrichedEvent.end && !enrichedEvent.isAllDay) {
     const end = enrichedEvent.end;
-    const targetTz = tz.endTarget;
-    const endInstant = toDate(end.dateTime, { timeZone: tz.endSource });
+    const targetTz = timeZones.endTarget;
+    const endInstant = parseISO(end.dateTime, { in: tz(timeZones.endSource) });
 
-    const timeStr = formatInTimeZone(endInstant, targetTz, "h:mm a");
-    const dateStr = formatInTimeZone(endInstant, targetTz, "MMMM d, yyyy");
+    const timeStr = format(endInstant, "h:mm a", { in: tz(targetTz) });
+    const dateStr = format(endInstant, "MMMM d, yyyy", { in: tz(targetTz) });
     lines.push(
       `End: ${end.eventDayOfWeek}, ${dateStr} at ${timeStr} (${targetTz})`
     );

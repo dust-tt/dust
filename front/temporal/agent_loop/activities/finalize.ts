@@ -5,6 +5,7 @@ import {
 } from "@app/lib/api/assistant/email/email_reply";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
+import type { UserBlockedReason } from "@app/lib/metronome/user_block";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import logger from "@app/logger/logger";
 import {
@@ -12,7 +13,7 @@ import {
   launchAgentMessageConsumptionAttribution,
 } from "@app/temporal/agent_loop/activities/analytics";
 import {
-  creditsExhaustedMessage,
+  creditStopMessage,
   finalizeCancellation,
   finalizeCreditSpendCheckpointPause,
   finalizeCreditStop,
@@ -166,9 +167,11 @@ export async function finalizeCancelledAgentLoopActivity(
 
 export async function finalizeCreditStoppedAgentLoopActivity(
   authType: AuthenticatorType,
-  agentLoopArgs: AgentLoopArgs
+  agentLoopArgs: AgentLoopArgs,
+  // Absent for workflows scheduled before the reason was passed through.
+  reason: UserBlockedReason = "credits_exhausted"
 ): Promise<void> {
-  await finalizeCreditStop(authType, agentLoopArgs);
+  await finalizeCreditStop(authType, agentLoopArgs, reason);
 
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
@@ -188,7 +191,7 @@ export async function finalizeCreditStoppedAgentLoopActivity(
     ),
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
-    sendEmailReplyOnError(auth, agentLoopArgs, creditsExhaustedMessage(auth)),
+    sendEmailReplyOnError(auth, agentLoopArgs, creditStopMessage(auth, reason)),
   ]);
 }
 

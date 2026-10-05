@@ -7,7 +7,6 @@ import {
 } from "@app/lib/agent_search/query";
 import { buildAgentDefaultSort } from "@app/lib/agent_search/ranking";
 import { toAgentListItem } from "@app/lib/agent_search/serialization";
-import { listDefaultGlobalAgentIds } from "@app/lib/api/assistant/global_agents/global_agents";
 import {
   AGENT_SEARCH_ALIAS_NAME,
   bucketsToArray,
@@ -25,6 +24,8 @@ import type {
   AgentSearchSortOrder,
   AgentSearchTermsFacet,
 } from "@app/types/agent_search/agent_search";
+import type { SearchType } from "@app/types/api/search";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { Err, Ok } from "@app/types/shared/result";
 import { isNumber, removeNulls } from "@app/types/shared/utils/general";
 import type { estypes } from "@elastic/elasticsearch";
@@ -60,18 +61,18 @@ function buildFacetAggregation(
 
 /**
  * @cc [owner:tdraier,label:security;product] searchable-global-agents
- * Global agents are searchable only when the workspace resolves them as `active` (not disabled by
- * an admin, a missing data source or the plan) and the caller holds `read` on them (audience).
+ * Global-only searches include disabled defaults for management and return their workspace-resolved
+ * status. Other searches require the workspace to resolve them as `active`. In both cases, the
+ * caller MUST hold `read` on them (audience).
  */
 async function listSearchableGlobalAgents(
-  auth: Authenticator
+  auth: Authenticator,
+  includeDisabled: boolean
 ): Promise<AgentResource[]> {
-  const agents = await AgentResource.fetchByIds(
-    auth,
-    listDefaultGlobalAgentIds()
-  );
+  const agents = await AgentResource.listGlobalAgents(auth);
   return agents.filter(
-    (agent) => agent.status === "active" && auth.can("read", agent)
+    (agent) =>
+      (includeDisabled || agent.status === "active") && auth.can("read", agent)
   );
 }
 
@@ -120,6 +121,7 @@ export async function searchAgents(
     ...options
   }: {
     searchTerm: string;
+    searchType?: SearchType;
     facets?: AgentSearchFacet[];
     permissionFiltering?: AgentSearchPermissionFiltering;
     filters?: AgentSearchFilters;
@@ -137,11 +139,14 @@ export async function searchAgents(
     return new Err("offset_out_of_range" as const);
   }
 
-  const globalAgents = await listSearchableGlobalAgents(auth);
-  const globalAgentIds = globalAgents.map((agent) => agent.sId);
-  const globalAgentModels = new Map(
+  const isGlobalOnly =
+    options.filters?.scope?.length === 1 &&
+    options.filters.scope[0] === "global";
+  const globalAgents = await listSearchableGlobalAgents(auth, isGlobalOnly);
+  const globalAgentsById = new Map(
     globalAgents.map((agent) => [agent.sId, agent.toSearchModelJSON()])
   );
+  const globalAgentIds = globalAgents.map((agent) => agent.sId);
   const query = buildAgentSearchQuery(auth, { ...options, globalAgentIds });
 
   const result = await withEs((client) =>
@@ -185,16 +190,47 @@ export async function searchAgents(
   }
 
   return new Ok({
-    agents: removeNulls(hits.map((hit) => hit._source)).map((document) =>
-      toAgentListItem(
-        document,
+    agents: removeNulls(hits.map((hit) => hit._source)).map((document) => {
+      const globalAgent =
         document.workspace_id === GLOBAL_AGENTS_WORKSPACE_ID
-          ? globalAgentModels.get(document.agent_id)
-          : null
-      )
-    ),
+          ? globalAgentsById.get(document.agent_id)
+          : undefined;
+      const agent = toAgentListItem(document, globalAgent?.model);
+      if (isGlobalOnly && globalAgent) {
+        agent.status = globalAgent.status;
+      }
+      return agent;
+    }),
     total: totalCount,
     hasMore: offset + hits.length < totalCount,
     facets: facetValues,
   });
+}
+
+/**
+ * @cc [owner:tdraier,label:product;security] agent-name-resolution
+ * Resolves a user- or model-supplied agent name to the sId of an active agent the caller can
+ * `read`, or null when none matches or the name is blank. "dust" and "dust agent" (trimmed,
+ * case-insensitive) resolve to the Dust global agent; any other name MUST match an agent's name
+ * exactly, ignoring case (see `agent-fetch-by-name`): a partial or approximate name resolves to
+ * nothing, never to a guess.
+ */
+export async function resolveAgentIdByName(
+  auth: Authenticator,
+  agentName: string
+): Promise<string | null> {
+  const trimmedName = agentName.trim();
+  if (trimmedName.length === 0) {
+    return null;
+  }
+
+  const normalizedName = trimmedName.toLowerCase();
+  const agent =
+    normalizedName === "dust" || normalizedName === "dust agent"
+      ? await AgentResource.fetchById(auth, GLOBAL_AGENTS_SID.DUST)
+      : await AgentResource.fetchByName(auth, trimmedName);
+
+  return agent && agent.status === "active" && auth.can("read", agent)
+    ? agent.sId
+    : null;
 }

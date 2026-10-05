@@ -63,7 +63,7 @@ export async function getDrives(
   let nextPageToken: string | undefined | null = undefined;
   const authCredentials = await getAuthObject(connector.connectionId);
   const drives: LightGoogleDrive[] = [];
-  const myDriveId = await getMyDriveIdCached(authCredentials);
+  const myDriveId = await getMyDriveIdCached(authCredentials, connectorId);
   drives.push({ id: myDriveId, name: "My Drive", isSharedDrive: false });
   do {
     const res: GaxiosResponse<drive_v3.Schema$DriveList> =

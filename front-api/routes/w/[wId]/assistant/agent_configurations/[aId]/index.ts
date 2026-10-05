@@ -1,7 +1,9 @@
-import { getAgentConfigurationForDetails } from "@app/lib/api/assistant/configuration/agent";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
-import { getAgentRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import {
+  enrichWithRecentAuthors,
+  toAgentConfigurations,
+} from "@app/lib/resources/agent_resource_serialization";
 import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/types/api/agent_configuration";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -57,10 +59,11 @@ app.get(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
-    const agent = await getAgentConfigurationForDetails(auth, {
-      agentId: aId,
-    });
-    if (!agent) {
+    // Readers get the agent in full. Admins also get the agents they cannot read: redacted, or in
+    // full in a workspace with the `admin_can_see_private_entities` feature flag (see
+    // `agent-content-visibility`).
+    const agent = await AgentResource.fetchById(auth, aId);
+    if (!agent || (!agent.canViewContent && !auth.isAdmin())) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -70,10 +73,15 @@ app.get(
       });
     }
 
+    const [[serialized], recentAuthors] = await Promise.all([
+      toAgentConfigurations(auth, [agent]),
+      enrichWithRecentAuthors(auth, [agent]),
+    ]);
+
     return ctx.json({
       agentConfiguration: {
-        ...agent,
-        lastAuthors: await getAgentRecentAuthors({ agent, auth }),
+        ...serialized,
+        ...recentAuthors.get(agent.sId),
       },
     });
   }
@@ -133,8 +141,11 @@ app.patch(
 
     // Surface whether the save persisted a change so the client can tell the user the agent was
     // updated — including in-place scope/editor changes that create no new version — versus a no-op.
+    const [agentConfiguration] = await toAgentConfigurations(auth, [
+      agentConfigurationRes.value.agent,
+    ]);
     return ctx.json({
-      agentConfiguration: agentConfigurationRes.value.agentConfiguration,
+      agentConfiguration,
       updated: agentConfigurationRes.value.changed,
     });
   }

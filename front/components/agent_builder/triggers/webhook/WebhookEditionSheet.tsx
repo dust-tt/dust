@@ -1,4 +1,4 @@
-import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { RecentWebhookRequests } from "@app/components/agent_builder/triggers/RecentWebhookRequests";
 import { TriggerPodSelector } from "@app/components/agent_builder/triggers/TriggerPodSelector";
 import { TriggerPoolSelector } from "@app/components/agent_builder/triggers/TriggerPoolSelector";
@@ -6,13 +6,13 @@ import { TriggerStatusToggle } from "@app/components/agent_builder/triggers/Trig
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { WebhookEditionFilters } from "@app/components/agent_builder/triggers/webhook/WebhookEditionFilters";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { WEBHOOK_PRESETS } from "@app/lib/triggers/webhook_presets";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
-import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 import type {
-  BaseWebhookPreset,
-  WebhookEvent,
+  WebhookEventMetadata,
+  WebhookPresetMetadata,
 } from "@app/types/triggers/webhooks_source_preset";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -148,8 +148,8 @@ function WebhookEditionExecutionLimit({
 
 interface WebhookEditionEventSelectorProps {
   isEditor: boolean;
-  selectedPreset: BaseWebhookPreset | null;
-  availableEvents: WebhookEvent[];
+  selectedPreset: WebhookPresetMetadata | null;
+  availableEvents: WebhookEventMetadata[];
 }
 
 function WebhookEditionEventSelector({
@@ -297,7 +297,7 @@ export function WebhookEditionSheetContent({
   webhookSourceView,
   isEditor,
 }: WebhookEditionSheetContentProps) {
-  const selectedPreset = useMemo((): BaseWebhookPreset | null => {
+  const selectedPreset = useMemo((): WebhookPresetMetadata | null => {
     if (!webhookSourceView || webhookSourceView.provider === null) {
       return null;
     }

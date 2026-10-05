@@ -33,7 +33,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import assert from "assert";
 import { IncomingForm } from "formidable";
-import { readFile } from "fs/promises";
+import { Writable } from "stream";
 
 /**
  * Node-style headers shape: matches the record built from
@@ -237,10 +237,9 @@ export async function relayEmailToOtherCells(
     }
 
     for (const [index, attachment] of email.attachments.entries()) {
-      const buffer = await readFile(attachment.filepath);
       body.append(
         `attachment_${index}`,
-        new Blob([buffer], { type: attachment.contentType }),
+        new Blob([attachment.content], { type: attachment.contentType }),
         attachment.filename
       );
     }
@@ -339,6 +338,13 @@ type EmailWebhookErrorLogContext = {
 };
 
 // Parses the Sendgrid webhook form data and validates it returning a fully formed InboundEmail.
+/**
+ * @cc [owner:tdraier,label:security;performance] inbound-attachments-not-on-disk
+ * Parsing MUST NOT write any multipart file part to the filesystem, on success or failure:
+ * supported attachments are returned in memory as `content` and unsupported parts are discarded
+ * unbuffered. The inbound email webhook is reachable by any internet sender, so anything left on
+ * disk accumulates until the pod runs out of space.
+ */
 export const parseSendgridWebhookContent = async (
   rawBody: Buffer,
   headers: EmailWebhookHeaders
@@ -349,9 +355,24 @@ export const parseSendgridWebhookContent = async (
       new Error("Failed to recreate request body for multipart parsing")
     );
   }
+  const chunksByFile = new WeakMap<object, Buffer[]>();
   const form = new IncomingForm({
     allowEmptyFiles: true,
     minFileSize: 0,
+    filter: ({ mimetype }) =>
+      mimetype !== null && isSupportedFileContentType(mimetype),
+    fileWriteStreamHandler: (file) => {
+      const chunks: Buffer[] = [];
+      if (file) {
+        chunksByFile.set(file, chunks);
+      }
+      return new Writable({
+        write(chunk: Buffer, _encoding, callback) {
+          chunks.push(chunk);
+          callback();
+        },
+      });
+    },
   });
   const [fields, files] = await form.parse(req);
 
@@ -399,17 +420,16 @@ export const parseSendgridWebhookContent = async (
         continue;
       }
       for (const file of fileArray) {
-        if (file.size === 0) {
+        const chunks = chunksByFile.get(file);
+        if (file.size === 0 || !chunks || !file.mimetype) {
           continue;
         }
-        if (file.mimetype && isSupportedFileContentType(file.mimetype)) {
-          attachments.push({
-            filepath: file.filepath,
-            filename: file.originalFilename ?? key,
-            contentType: file.mimetype,
-            size: file.size,
-          });
-        }
+        attachments.push({
+          content: Buffer.concat(chunks),
+          filename: file.originalFilename ?? key,
+          contentType: file.mimetype,
+          size: file.size,
+        });
       }
     }
 
@@ -453,9 +473,7 @@ export const parseSendgridWebhookContent = async (
       },
       attachments,
     });
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-  } catch (e) {
+  } catch {
     return new Err(new Error("Failed to parse email content"));
   }
 };

@@ -11,7 +11,6 @@ type ColumnAlign = "left" | "right" | "center";
 type ColumnType = "text" | "numeric" | "row-actions" | "status";
 
 declare module "@tanstack/react-table" {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface ColumnMeta<TData, TValue> {
     className?: string;
     tooltip?: string;
@@ -24,7 +23,6 @@ declare module "@tanstack/react-table" {
     rowHeader?: boolean;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface TableMeta<TData extends RowData> {
     /** Human-readable row label used to name selection checkboxes. */
     getRowLabel?: (row: TData) => string;
@@ -52,9 +50,7 @@ export const ALIGN_JUSTIFY_CLASS: Record<ColumnAlign, string> = {
 };
 
 /** Resolves alignment, sizing and sortability from a column's `meta.type`. */
-export function getDataTableColumnPresets(
-  column: Column<any> // eslint-disable-line @typescript-eslint/no-explicit-any
-): ColumnPresets {
+export function getDataTableColumnPresets(column: Column<any>): ColumnPresets {
   const meta = column.columnDef.meta;
   const align: ColumnAlign =
     meta?.type === "numeric"

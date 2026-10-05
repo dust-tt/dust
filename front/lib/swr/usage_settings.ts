@@ -1,5 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { formatNumber } from "@app/lib/i18n/format";
 import { invalidateMembersUsage } from "@app/lib/swr/memberships";
 import {
   getErrorFromResponse,
@@ -333,9 +334,7 @@ export function useUpdateDefaultUserSpendLimit({
         sendNotification({
           type: "success",
           title: "Default spend limit updated",
-          description: `The default per-user spend limit has been set to ${body.awuCredits.toLocaleString(
-            "en-US"
-          )} credits.`,
+          description: `The default per-user spend limit has been set to ${formatNumber(body.awuCredits)} credits.`,
         });
 
         await mutate(defaultUserSpendLimitUrl(workspaceId));
@@ -433,7 +432,7 @@ export function useUpdateProgrammaticUsageLimit({
         sendNotification({
           type: "success",
           title: "Programmatic usage limit updated",
-          description: `Monthly limit set to ${monthlyCapCredits.toLocaleString()} credits.`,
+          description: `Monthly limit set to ${formatNumber(monthlyCapCredits)} credits.`,
         });
       }
 

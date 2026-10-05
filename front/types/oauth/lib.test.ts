@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  isValidSalesforceDomain,
   isValidShopifyStoreDomain,
   isValidSnowflakeAccount,
+  isValidSnowflakeRole,
   normalizeShopifyStoreDomain,
+  snowflakeRoleToOAuthScope,
 } from "./lib";
 
 describe("Shopify store domain", () => {
@@ -22,6 +25,51 @@ describe("Shopify store domain", () => {
     expect(isValidShopifyStoreDomain("https://my-store.myshopify.com")).toBe(
       false
     );
+  });
+});
+
+describe("isValidSalesforceDomain", () => {
+  it("accepts bare https Salesforce origins", () => {
+    expect(isValidSalesforceDomain("https://my-org.salesforce.com")).toBe(true);
+    expect(isValidSalesforceDomain("https://my-org.my.salesforce.com")).toBe(
+      true
+    );
+  });
+
+  it("rejects hosts that only end with .salesforce.com as a string", () => {
+    expect(
+      isValidSalesforceDomain("https://evil.example/x.salesforce.com")
+    ).toBe(false);
+    expect(
+      isValidSalesforceDomain("https://evil.example?.salesforce.com")
+    ).toBe(false);
+    expect(
+      isValidSalesforceDomain("https://evil.example#.salesforce.com")
+    ).toBe(false);
+    expect(
+      isValidSalesforceDomain("https://user@evil.example/.salesforce.com")
+    ).toBe(false);
+  });
+
+  it("rejects non-https, paths, ports, uppercase hosts and non-strings", () => {
+    expect(isValidSalesforceDomain("http://my-org.salesforce.com")).toBe(false);
+    expect(isValidSalesforceDomain("https://my-org.salesforce.com/")).toBe(
+      false
+    );
+    expect(isValidSalesforceDomain("https://my-org.salesforce.com/api")).toBe(
+      false
+    );
+    expect(isValidSalesforceDomain("https://my-org.salesforce.com:443")).toBe(
+      false
+    );
+    expect(isValidSalesforceDomain("https://my-org.salesforce.com:8443")).toBe(
+      false
+    );
+    expect(isValidSalesforceDomain("https://MY-ORG.salesforce.com")).toBe(
+      false
+    );
+    expect(isValidSalesforceDomain("https://salesforce.com")).toBe(false);
+    expect(isValidSalesforceDomain(undefined)).toBe(false);
   });
 });
 
@@ -90,5 +138,51 @@ describe("isValidSnowflakeAccount", () => {
 
     // With whitespace (should be trimmed internally)
     expect(isValidSnowflakeAccount(" abc123 ")).toBe(true);
+  });
+});
+
+describe("isValidSnowflakeRole", () => {
+  it("accepts unquoted and quoted-identifier role names", () => {
+    expect(isValidSnowflakeRole("ANALYST")).toBe(true);
+    expect(isValidSnowflakeRole("dev_role")).toBe(true);
+    expect(isValidSnowflakeRole("test@example.com")).toBe(true);
+    expect(isValidSnowflakeRole('"My Role"')).toBe(true);
+    expect(isValidSnowflakeRole("data-team")).toBe(true);
+  });
+
+  it("rejects empty, oversized and non-string values", () => {
+    expect(isValidSnowflakeRole("")).toBe(false);
+    expect(isValidSnowflakeRole("   ")).toBe(false);
+    expect(isValidSnowflakeRole('""')).toBe(false);
+    expect(isValidSnowflakeRole("a".repeat(256))).toBe(false);
+    expect(isValidSnowflakeRole(null)).toBe(false);
+    expect(isValidSnowflakeRole(123)).toBe(false);
+  });
+});
+
+describe("snowflakeRoleToOAuthScope", () => {
+  it("uppercases unquoted identifiers", () => {
+    expect(snowflakeRoleToOAuthScope(" analyst ")).toBe("session:role:ANALYST");
+    expect(snowflakeRoleToOAuthScope("DEV_ROLE$1")).toBe(
+      "session:role:DEV_ROLE$1"
+    );
+  });
+
+  it("preserves case and URL-encodes other role names", () => {
+    expect(snowflakeRoleToOAuthScope("test@example.com")).toBe(
+      "session:role-encoded:test%40example.com"
+    );
+    expect(snowflakeRoleToOAuthScope("AUTH SNOWFLAKE")).toBe(
+      "session:role-encoded:AUTH%20SNOWFLAKE"
+    );
+  });
+
+  it("treats double-quoted names as exact, case-sensitive identifiers", () => {
+    expect(snowflakeRoleToOAuthScope('"analyst"')).toBe(
+      "session:role-encoded:analyst"
+    );
+    expect(snowflakeRoleToOAuthScope('"say ""hi"""')).toBe(
+      "session:role-encoded:say%20%22hi%22"
+    );
   });
 });

@@ -4,7 +4,7 @@ import {
   batchRenderMessages,
   getCompletionDuration,
 } from "@app/lib/api/assistant/messages";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import {
   AgentMessageModel,
   MentionModel,
@@ -508,6 +508,57 @@ describe("batchRenderMessages", () => {
         expect(renderedAgentMessage).toBeDefined();
       }
     });
+  });
+
+  it("omits the instructions of an agent the viewer cannot read", async () => {
+    const hiddenAgent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Hidden Agent",
+      scope: "hidden",
+      instructions: "Secret instructions",
+    });
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: hiddenAgent.sId,
+      messagesCreatedAt: [new Date()],
+    });
+    const viewer = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, viewer, { role: "user" });
+    const viewerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      viewer.sId,
+      workspace.sId
+    );
+    const conversationResource = await ConversationResource.fetchById(
+      viewerAuth,
+      conversation.sId
+    );
+    expect(conversationResource).not.toBeNull();
+    const agentMessageModel = await MessageModel.findOne({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: workspace.id,
+        agentMessageId: { [Op.ne]: null },
+      },
+      include: [{ model: AgentMessageModel, as: "agentMessage" }],
+    });
+    expect(agentMessageModel).not.toBeNull();
+
+    for (const [renderAuth, expected] of [
+      [auth, { canRead: true, instructions: "Secret instructions" }],
+      [viewerAuth, { canRead: false, instructions: null }],
+    ] as const) {
+      const result = await batchRenderMessages(
+        renderAuth,
+        conversationResource!,
+        [agentMessageModel!],
+        "full"
+      );
+      expect(result.isOk()).toBe(true);
+      const renderedAgentMessage = result.isOk()
+        ? result.value.find((m) => m.type === "agent_message")
+        : undefined;
+      expect(
+        (renderedAgentMessage as AgentMessageType | undefined)?.configuration
+      ).toMatchObject(expected);
+    }
   });
 
   it("batch fetches data source views for multiple content-node fragments", async () => {

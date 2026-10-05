@@ -189,7 +189,6 @@ export const AgentConfigurationBaseSchema = z.object({
   sId: z.string(),
   version: z.number(),
   versionAuthorId: DbModelIdSchema.nullable(),
-  instructions: z.string().nullable(),
   model: AgentModelConfigurationSchema,
   status: AgentConfigurationStatusSchema,
   scope: z.enum(AGENT_CONFIGURATION_SCOPES),
@@ -206,6 +205,9 @@ export const AgentConfigurationBaseSchema = z.object({
   ignoreCreditSpendThresholdAlert: z.boolean().optional(),
   canRead: z.boolean(),
   canEdit: z.boolean(),
+  // Whether the caller can view the agent's private fields (instructions, skills, tools); they are
+  // redacted when `false` (see `agent-content-visibility`).
+  canViewContent: z.boolean().optional(),
   omittedThinking: z.boolean().optional(),
 });
 
@@ -214,8 +216,8 @@ export type AgentConfigurationBaseType = z.infer<
 >;
 
 // -- Builder enrichments: fields the resource builders add on top of the base via a matching
-// `enrichWith*` step in `lib/api/assistant/configuration/enrich.ts`. Each schema's inferred type is
-// the value of the `Map` that step returns, so the builder merges it in by spreading. --
+// `enrichWith*` step in `lib/resources/agent_resource_serialization.ts`. Each schema's inferred type
+// is the value of the `Map` that step returns, handed to the configuration builders there. --
 
 // `enrichWithFavorites` (per requesting user).
 export const AgentFavoriteEnrichmentSchema = z.object({
@@ -231,8 +233,17 @@ export const AgentTagsEnrichmentSchema = z.object({
 });
 export type AgentTagsEnrichment = z.infer<typeof AgentTagsEnrichmentSchema>;
 
-// `enrichWithActions` (full only). `instructionsHtml` is full-only too but comes from the resource's
-// content, not this step.
+// `enrichWithInstructions` (both `null` when the caller cannot view the content). `instructionsHtml`
+// is only part of the full configuration shape.
+export const AgentInstructionsEnrichmentSchema = z.object({
+  instructions: z.string().nullable(),
+  instructionsHtml: z.string().nullable(),
+});
+export type AgentInstructionsEnrichment = z.infer<
+  typeof AgentInstructionsEnrichmentSchema
+>;
+
+// `enrichWithActions` (full only).
 export const AgentActionsEnrichmentSchema = z.object({
   actions: z.array(MCPServerConfigurationSchema),
 });
@@ -252,19 +263,21 @@ export const AgentConfigurationDecorationsSchema = z.object({
   lastAuthors: z.array(z.string()).readonly().optional(),
 });
 
-// The full-only delta over light: `instructionsHtml` (from content) + `actions` + `codeDefinedSkillIds`.
+// The full-only delta over light: `instructionsHtml` + `actions` + `codeDefinedSkillIds`.
 export const AgentConfigurationFullFieldsSchema =
-  AgentActionsEnrichmentSchema.extend({
-    instructionsHtml: z.string().nullable(),
+  AgentActionsEnrichmentSchema.merge(
+    AgentInstructionsEnrichmentSchema.pick({ instructionsHtml: true })
+  ).extend({
     // Code-defined skill ids, only set by the in-code global agent definitions.
     codeDefinedSkillIds: z.array(z.string()).optional(),
   });
 
-// Light = base + the builder enrichments the light builder produces (favorite, tags) + the optional
-// route decorations.
+// Light = base + the builder enrichments the light builder produces (instructions, favorite, tags) +
+// the optional route decorations.
 export const LightAgentConfigurationSchema = AgentConfigurationBaseSchema.merge(
-  AgentFavoriteEnrichmentSchema
+  AgentInstructionsEnrichmentSchema.pick({ instructions: true })
 )
+  .merge(AgentFavoriteEnrichmentSchema)
   .merge(AgentTagsEnrichmentSchema)
   .merge(AgentConfigurationDecorationsSchema);
 

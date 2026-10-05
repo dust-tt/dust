@@ -1,6 +1,9 @@
+import { CUSTOM_MODEL_IDS } from "@app/types/assistant/models/custom_models.generated";
+
 export const GPT_6_ASTRA = "gpt-6-astra" as const;
 export const GPT_6_LUNA = "gpt-6-luna" as const;
 export const GPT_6_SOL = "gpt-6-sol" as const;
+export const GPT_6_1_SOL = "gpt-6.1-sol" as const;
 export const GPT_5_6_SOL = "gpt-5.6-sol" as const;
 export const GPT_5_6_TERRA = "gpt-5.6-terra" as const;
 export const GPT_5_6_TERRA_LONG_CONTEXT = "gpt-5.6-terra-long-context" as const;
@@ -17,6 +20,7 @@ export const GPT_5_NANO = "gpt-5-nano" as const;
 
 export const CLAUDE_SONNET_4_6 = "claude-sonnet-4-6" as const;
 export const CLAUDE_SONNET_5 = "claude-sonnet-5" as const;
+export const CLAUDE_SONNET_5_5 = "claude-sonnet-5-5" as const;
 export const CLAUDE_FABLE_5 = "claude-fable-5" as const;
 export const CLAUDE_FABLE_5_1 = "claude-fable-5-1" as const;
 export const CLAUDE_OPUS_4_6 = "claude-opus-4-6" as const;
@@ -65,6 +69,7 @@ export const MODELS = [
   GPT_6_ASTRA,
   GPT_6_LUNA,
   GPT_6_SOL,
+  GPT_6_1_SOL,
   GPT_5_6_SOL,
   GPT_5_6_TERRA,
   GPT_5_6_TERRA_LONG_CONTEXT,
@@ -79,6 +84,7 @@ export const MODELS = [
   GPT_5_MINI,
   GPT_5_NANO,
   CLAUDE_SONNET_4_6,
+  CLAUDE_SONNET_5_5,
   CLAUDE_SONNET_5,
   CLAUDE_FABLE_5,
   CLAUDE_FABLE_5_1,
@@ -115,6 +121,8 @@ export const MODELS = [
   GROK_4_7,
   SIMULATED_FAILURE_MODEL,
   NOOP_MODEL,
+  // Custom models, generated at build time from the infra custom-models config.
+  ...CUSTOM_MODEL_IDS,
 ] as const;
 
 export type Model = (typeof MODELS)[number];
@@ -122,26 +130,3 @@ export type Model = (typeof MODELS)[number];
 export function isModel(value: string): value is Model {
   return (MODELS as readonly string[]).includes(value);
 }
-
-export const ORDERED_LARGE_MODELS = [
-  CLAUDE_FABLE_5_1,
-  CLAUDE_FABLE_5,
-  CLAUDE_OPUS_5_5,
-  CLAUDE_OPUS_5,
-  CLAUDE_OPUS_4_8,
-  CLAUDE_OPUS_4_7,
-  CLAUDE_OPUS_4_6,
-  CLAUDE_SONNET_5,
-  CLAUDE_SONNET_4_6,
-  GPT_6_ASTRA,
-  GPT_5_6_SOL,
-  GPT_5_5,
-  GPT_5_4,
-  GPT_5_2,
-  GPT_5,
-  GPT_5_1,
-  GEMINI_3_1_PRO,
-  GROK_4_7,
-  GROK_4_6,
-  GROK_4_5,
-];

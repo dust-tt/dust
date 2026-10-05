@@ -21,9 +21,16 @@ import {
   MAX_AGENT_SEARCH_RESULTS,
   MAX_AGENT_SEARCH_WINDOW,
 } from "@app/lib/agent_search/query";
-import { buildAgentNameAutocompleteQuery } from "@app/lib/agent_search/ranking";
-import { searchAgents } from "@app/lib/api/agents/search";
+import { resolveAgentIdByName, searchAgents } from "@app/lib/api/agents/search";
+import { upsertGlobalAgentSettings } from "@app/lib/api/assistant/global_agents/global_agents";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import {
+  buildNameAutocompleteQuery,
+  buildNameSearchQuery,
+} from "@app/lib/search/agent_and_skill_queries";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { matchesAgentSearchFilters } from "@app/tests/utils/agent_search";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -135,7 +142,7 @@ describe("searchAgents", () => {
 
     await searchAgents(auth, { searchTerm: "  sal   mar " });
 
-    const nameQuery = buildAgentNameAutocompleteQuery("sal mar");
+    const nameQuery = buildNameAutocompleteQuery("  sal   mar ");
     expect(mockSearch.mock.calls[0][0].query.bool.must).toEqual([nameQuery]);
     expect(nameQuery.bool?.must).toEqual(
       ["sal", "mar"].map((term) => ({
@@ -146,7 +153,23 @@ describe("searchAgents", () => {
         }),
       }))
     );
-    expect(buildAgentNameAutocompleteQuery("   ")).toEqual({ match_all: {} });
+    expect(buildNameAutocompleteQuery("   ")).toEqual({ match_all: {} });
+  });
+
+  it("uses name matching with the same permissions as autocomplete", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    mockSearch.mockResolvedValue({ hits: { hits: [] } });
+    await searchAgents(auth, { searchTerm: "Write", searchType: "name" });
+    const nameQuery = mockSearch.mock.lastCall![0].query;
+    expect(nameQuery.bool.must).toEqual([buildNameSearchQuery("Write")]);
+
+    await searchAgents(auth, { searchTerm: "Write" });
+    const autocompleteQuery = mockSearch.mock.lastCall![0].query;
+    expect(autocompleteQuery.bool.must).toEqual([
+      buildNameAutocompleteQuery("Write"),
+    ]);
+    expect(nameQuery.bool.filter).toEqual(autocompleteQuery.bool.filter);
+    expect(nameQuery.bool.should).toEqual(autocompleteQuery.bool.should);
   });
 
   it("filters on editors and models and returns facet values with counts", async () => {
@@ -302,6 +325,82 @@ describe("searchAgents", () => {
     });
   });
 
+  it("includes disabled defaults only in global-only searches, with their workspace status", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    await upsertGlobalAgentSettings(auth, {
+      agentId: GLOBAL_AGENTS_SID.DUST,
+      status: "disabled_by_admin",
+    });
+    mockHits([
+      makeDocument({ workspace_id: workspace.sId, agent_id: "custom" }),
+      makeDocument({
+        workspace_id: GLOBAL_AGENTS_WORKSPACE_ID,
+        agent_id: GLOBAL_AGENTS_SID.DUST,
+        scope: "global",
+      }),
+      makeDocument({
+        workspace_id: GLOBAL_AGENTS_WORKSPACE_ID,
+        agent_id: "not-a-global-agent",
+        scope: "global",
+      }),
+    ]);
+
+    expect(await searchAgentIds(auth)).toEqual(["custom"]);
+    expect(
+      await searchAgentIds(auth, { filters: { scope: ["global", "visible"] } })
+    ).toEqual(["custom"]);
+
+    const result = await searchAgents(auth, {
+      searchTerm: "",
+      filters: { scope: ["global"] },
+    });
+    assert(result.isOk());
+    expect(result.value.agents).toEqual([
+      expect.objectContaining({
+        sId: GLOBAL_AGENTS_SID.DUST,
+        status: "disabled_by_admin",
+        model: expect.objectContaining({ modelId: expect.any(String) }),
+      }),
+    ]);
+    expect(result.value.total).toBe(1);
+
+    await upsertGlobalAgentSettings(auth, {
+      agentId: GLOBAL_AGENTS_SID.DUST,
+      status: "active",
+    });
+    const enabled = await searchAgents(auth, {
+      searchTerm: "",
+      filters: { scope: ["global"] },
+    });
+    assert(enabled.isOk());
+    expect(enabled.value.agents[0].status).toBe("active");
+    expect(await searchAgentIds(auth)).toEqual([
+      "custom",
+      GLOBAL_AGENTS_SID.DUST,
+    ]);
+  });
+
+  it("preserves global audience restrictions in global-only searches", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    mockHits([
+      makeDocument({
+        workspace_id: GLOBAL_AGENTS_WORKSPACE_ID,
+        agent_id: GLOBAL_AGENTS_SID.ANALYST,
+        scope: "global",
+      }),
+      makeDocument({
+        workspace_id: GLOBAL_AGENTS_WORKSPACE_ID,
+        agent_id: GLOBAL_AGENTS_SID.HELPER,
+        scope: "global",
+      }),
+    ]);
+    expect(
+      await searchAgentIds(auth, { filters: { scope: ["global"] } })
+    ).toEqual([GLOBAL_AGENTS_SID.HELPER]);
+  });
+
   it("rejects offsets past the result window without querying", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
 
@@ -433,5 +532,79 @@ describe("searchAgents", () => {
     expect(
       await searchAgentIds(auth, { filters: { scope: ["visible", "hidden"] } })
     ).toEqual(["visible", "hidden-editor", "readable-spaces"]);
+  });
+});
+
+describe("resolveAgentIdByName", () => {
+  beforeEach(() => {
+    mockSearch.mockReset();
+  });
+
+  it("resolves the Dust aliases and rejects blank names", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+
+    expect(await resolveAgentIdByName(auth, " Dust Agent ")).toBe(
+      GLOBAL_AGENTS_SID.DUST
+    );
+    expect(await resolveAgentIdByName(auth, "dust")).toBe(
+      GLOBAL_AGENTS_SID.DUST
+    );
+    expect(await resolveAgentIdByName(auth, "   ")).toBeNull();
+  });
+
+  it("does not resolve the Dust aliases when an admin disabled Dust", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    await upsertGlobalAgentSettings(auth, {
+      agentId: GLOBAL_AGENTS_SID.DUST,
+      status: "disabled_by_admin",
+    });
+
+    expect(await resolveAgentIdByName(auth, "dust")).toBeNull();
+  });
+
+  it("resolves a custom agent by its exact name, ignoring case, without searching", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Sales Helper",
+    });
+
+    expect(await resolveAgentIdByName(auth, " sales helper ")).toBe(agent.sId);
+    expect(mockSearch).not.toHaveBeenCalled();
+  });
+
+  it("resolves a global agent by its name", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    const helper = await AgentResource.fetchById(
+      auth,
+      GLOBAL_AGENTS_SID.HELPER
+    );
+    assert(helper);
+
+    expect(await resolveAgentIdByName(auth, helper.name.toUpperCase())).toBe(
+      GLOBAL_AGENTS_SID.HELPER
+    );
+  });
+
+  it("does not guess from a partial name", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "user" });
+    await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Marketing Sales",
+    });
+
+    expect(await resolveAgentIdByName(auth, "sales")).toBeNull();
+    expect(mockSearch).not.toHaveBeenCalled();
+  });
+
+  it("does not resolve an exact name the caller cannot read", async () => {
+    const { authenticator: adminAuth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
+    await AgentConfigurationFactory.createTestAgent(agentOwnerAuth, {
+      name: "Private Helper",
+      scope: "hidden",
+    });
+
+    expect(await resolveAgentIdByName(adminAuth, "Private Helper")).toBeNull();
   });
 });

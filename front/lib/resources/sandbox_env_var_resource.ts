@@ -8,6 +8,7 @@ import {
   MAX_VARS_PER_POD,
   MAX_VARS_PER_WORKSPACE,
   normalizeAllowedDomainsForKind,
+  normalizeHttpsSecretAllowedDomains,
   renderEgressSecretPlaceholder,
   renderSandboxEnvVarName,
   scopeEncryptionKey,
@@ -39,10 +40,6 @@ import assert from "assert";
 import { randomBytes } from "crypto";
 import type { Attributes, Includeable, Transaction } from "sequelize";
 import { UniqueConstraintError } from "sequelize";
-
-export type DeleteSandboxEnvVarResponseBody = {
-  success: true;
-};
 
 export type PatchSandboxEnvVarResponseBody = {
   envVar: SandboxEnvVarType;
@@ -910,6 +907,18 @@ export class SandboxEnvVarResource extends BaseResource<SandboxEnvVarModel> {
         return new Err(
           new Error(
             `HTTPS secret sandbox environment variable ${resource.envName} is missing ${missing}.`
+          )
+        );
+      }
+      // dsbx refuses the whole secrets table on one bad domain, so surface
+      // the row here instead of letting the forwarder die silently.
+      const domains = normalizeHttpsSecretAllowedDomains(
+        resource.allowedDomains
+      );
+      if (domains.isErr()) {
+        return new Err(
+          new Error(
+            `HTTPS secret sandbox environment variable ${resource.envName} has an invalid allowed domain: ${domains.error.message}`
           )
         );
       }

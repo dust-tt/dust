@@ -10,8 +10,13 @@ import {
   getTargetAuth,
   jsonResponse,
 } from "@app/lib/api/actions/servers/poke/tools/utils";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
-import { getAuthors, getEditors } from "@app/lib/api/assistant/editors";
+import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import {
+  toPokeAgentDetailsJSON,
+  toPokeAgentSummaryJSON,
+} from "@app/lib/resources/agent_resource_serialization";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { Err } from "@app/types/shared/result";
 
 type AgentHandlers = Pick<
@@ -47,6 +52,15 @@ function decodeCursor(cursor: string): { sortKey: string; sId: string } | null {
   }
 }
 
+function listAgentsByStatus(
+  auth: Authenticator,
+  status: "active" | "archived" | undefined
+): Promise<AgentResource[]> {
+  return status === "archived"
+    ? AgentResource.listByWorkspace(auth, { status: "archived" })
+    : AgentResource.listActive(auth);
+}
+
 export const agentHandlers: AgentHandlers = {
   [LIST_WORKSPACE_AGENTS_TOOL_NAME]: async (
     { workspace_id, status, limit, next_page_cursor },
@@ -61,21 +75,22 @@ export const agentHandlers: AgentHandlers = {
       return gateResult;
     }
 
-    const targetAuthResult = await getTargetAuth(workspace_id);
+    const targetAuthResult = await getTargetAuth(extra, workspace_id);
     if (targetAuthResult.isErr()) {
       return targetAuthResult;
     }
     const targetAuth = targetAuthResult.value;
 
-    const allAgents = await getAgentConfigurationsForView({
-      auth: targetAuth,
-      agentsGetView: status === "archived" ? "archived" : "admin_internal",
-      variant: "light",
-    });
+    const agents = await listAgentsByStatus(targetAuth, status);
+    const entries = agents.map((agent) => ({
+      agent,
+      sId: agent.sId,
+      versionCreatedAt: agent.toJSON().versionCreatedAt,
+    }));
 
     // Sort by versionCreatedAt DESC, sId ASC as tiebreaker.
     // Null versionCreatedAt is treated as oldest.
-    const sorted = [...allAgents].sort((a, b) => {
+    const sorted = entries.toSorted((a, b) => {
       const timeA = a.versionCreatedAt
         ? new Date(a.versionCreatedAt).getTime()
         : 0;
@@ -127,20 +142,19 @@ export const agentHandlers: AgentHandlers = {
           )
         : null;
 
+    const instructionsByAgent = await AgentResource.batchFetchInstructions(
+      page.map(({ agent }) => agent)
+    );
+
     return jsonResponse({
       workspace_id,
       totalCount: sorted.length,
-      agents: page.map((a) => ({
-        agentId: a.sId,
-        name: a.name,
-        description: a.description,
-        scope: a.scope,
-        status: a.status,
-        version: a.version,
-        versionCreatedAt: a.versionCreatedAt,
-        instructionsLength: a.instructions?.length ?? 0,
-        requestedSpaceCount: a.requestedSpaceIds.length,
-      })),
+      agents: page.map(({ agent }) =>
+        toPokeAgentSummaryJSON(agent, {
+          instructionsLength:
+            instructionsByAgent.get(agent)?.instructions?.length ?? 0,
+        })
+      ),
       nextPageCursor,
     });
   },
@@ -158,30 +172,18 @@ export const agentHandlers: AgentHandlers = {
       return gateResult;
     }
 
-    const targetAuthResult = await getTargetAuth(workspace_id);
+    const targetAuthResult = await getTargetAuth(extra, workspace_id);
     if (targetAuthResult.isErr()) {
       return targetAuthResult;
     }
     const targetAuth = targetAuthResult.value;
 
-    // Try active agents first (admin_internal), then archived.
-    let agents = await getAgentConfigurationsForView({
-      auth: targetAuth,
-      agentsGetView: "admin_internal",
-      variant: "full",
-    });
-    let agent = agents.find((a) => a.sId === agent_id) ?? null;
+    const resource = await AgentResource.fetchById(targetAuth, agent_id);
 
-    if (!agent) {
-      agents = await getAgentConfigurationsForView({
-        auth: targetAuth,
-        agentsGetView: "archived",
-        variant: "full",
-      });
-      agent = agents.find((a) => a.sId === agent_id) ?? null;
-    }
-
-    if (!agent) {
+    if (
+      !resource ||
+      (resource.status !== "active" && resource.status !== "archived")
+    ) {
       return new Err(
         new MCPError(
           `Agent "${agent_id}" not found in workspace "${workspace_id}".`,
@@ -190,44 +192,24 @@ export const agentHandlers: AgentHandlers = {
       );
     }
 
-    const [authors, editors] = await Promise.all([
-      getAuthors([agent]),
-      getEditors(targetAuth, agent),
+    // The poke superuser authenticator views the agent's content (see `poke-agent-content-access`).
+    const [{ instructions }, actions, editors, [author]] = await Promise.all([
+      resource.fetchInstructions(),
+      resource.listActions(targetAuth),
+      resource.listEditors(targetAuth),
+      UserResource.fetchByModelIds(
+        resource.versionAuthorId !== null ? [resource.versionAuthorId] : []
+      ),
     ]);
-
-    const author =
-      agent.versionAuthorId !== null
-        ? (authors.find((u) => u.id === agent.versionAuthorId) ?? null)
-        : null;
 
     return jsonResponse({
       workspace_id,
-      agent: {
-        agentId: agent.sId,
-        name: agent.name,
-        description: agent.description,
-        scope: agent.scope,
-        status: agent.status,
-        version: agent.version,
-        versionCreatedAt: agent.versionCreatedAt,
-        instructions: agent.instructions,
-        instructionsLength: agent.instructions?.length ?? 0,
-        toolCount: agent.actions.length,
-        toolNames: agent.actions.map((a) => a.name),
-        requestedSpaceIds: agent.requestedSpaceIds,
-        author: author
-          ? {
-              userId: author.sId,
-              email: author.email,
-              fullName: author.fullName,
-            }
-          : null,
-        editors: editors.map((e) => ({
-          userId: e.sId,
-          email: e.email,
-          fullName: e.fullName,
-        })),
-      },
+      agent: toPokeAgentDetailsJSON(resource, {
+        instructions,
+        actions,
+        author: author ?? null,
+        editors: editors ?? [],
+      }),
     });
   },
 };

@@ -1,7 +1,7 @@
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import type { AugmentedMessageFromLLM } from "@app/lib/api/assistant/voice_agent_finder";
 import { findAgentsInMessageGeneration } from "@app/lib/api/assistant/voice_agent_finder";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
@@ -17,11 +17,7 @@ export type AugmentedMessage =
     };
 
 async function listAgents(auth: Authenticator) {
-  const agents = await getAgentConfigurationsForView({
-    auth,
-    agentsGetView: "list",
-    variant: "extra_light",
-  });
+  const agents = await AgentResource.listReadable(auth);
 
   return agents.map((a) => ({
     id: a.sId,

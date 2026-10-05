@@ -144,7 +144,7 @@ export const FRESHSERVICE_TOOLS_METADATA = [
     name: "update_ticket",
     description: "Update an existing Freshservice ticket.",
     schema: {
-      ticket_id: z.string().describe("Ticket ID to update"),
+      ticket_id: z.number().describe("Ticket ID to update"),
       subject: z.string().optional().describe("Updated ticket subject"),
       description: z.string().optional().describe("Updated ticket description"),
       priority: z

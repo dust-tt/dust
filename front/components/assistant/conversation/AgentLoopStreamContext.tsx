@@ -1,4 +1,5 @@
 import { eventSourceManager } from "@app/lib/client/event_source_manager";
+import type { OngoingAgentLoopType } from "@app/types/api/assistant/conversation/types";
 import type { EventSourceConnectionState } from "@app/types/event_source";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
@@ -25,6 +26,18 @@ const EMPTY_CONTEXT_VALUE: AgentLoopStreamContextValue = {
 export const AgentLoopStreamContext =
   createContext<AgentLoopStreamContextValue>(EMPTY_CONTEXT_VALUE);
 
+export interface OngoingAgentLoopsSnapshot {
+  workspaceId: string;
+  agentLoops: OngoingAgentLoopType[];
+}
+
+export const OngoingAgentLoopsSnapshotContext =
+  createContext<OngoingAgentLoopsSnapshot | null>(null);
+
+export function useOngoingAgentLoopsSnapshot(): OngoingAgentLoopsSnapshot | null {
+  return useContext(OngoingAgentLoopsSnapshotContext);
+}
+
 export function isAgentLoopStreamActive(
   state: EventSourceConnectionState
 ): boolean {
@@ -46,9 +59,9 @@ export function isAgentLoopStreamActive(
 
 /**
  * @cc [owner:id13,label:product;architecture] sidebar-stream-indicator-state
- * The conversation sidebar streaming indicator MUST be active while any registry or mounted
- * message stream for that conversation has a live manager connection. Persisted conversation
- * running state MUST NOT keep the indicator active after transport failure.
+ * The conversation sidebar streaming indicator MUST be active while any registry, mounted, or
+ * retained-on-unmount message stream for that conversation has a live manager connection. It MUST
+ * stop when that connection terminates or fails, even if persisted conversation state says running.
  */
 export function useIsAgentLoopStreaming(conversationId: string): boolean {
   const streamIds = useContext(

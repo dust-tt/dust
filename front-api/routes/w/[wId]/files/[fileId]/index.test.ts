@@ -536,6 +536,68 @@ describe("DELETE /api/w/:wId/files/:fileId", () => {
     });
   });
 
+  describe("project_context files", () => {
+    it("should allow a Pod editor to delete Pod files", async () => {
+      const { auth, user, workspace } = await createPrivateApiMockRequest({
+        method: "DELETE",
+        role: "user",
+      });
+
+      const pod = await SpaceFactory.project(workspace, user.id);
+
+      const file = await FileFactory.create(auth, null, {
+        contentType: "application/pdf",
+        fileName: "test.pdf",
+        fileSize: 1024,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: {
+          spaceId: pod.sId,
+        },
+      });
+
+      const response = await honoApp.request(fileUrl(workspace, file.sId), {
+        method: "DELETE",
+      });
+
+      expect(response.status).toBe(204);
+    });
+
+    it("should deny a manager with only read access on an open Pod", async () => {
+      const { auth, workspace, globalGroup } =
+        await createPrivateApiMockRequest({
+          method: "DELETE",
+          role: "manager",
+        });
+
+      const pod = await SpaceFactory.project(workspace);
+      await SpaceFactory.attachGroup(pod, globalGroup, "project_viewer");
+
+      const file = await FileFactory.create(auth, null, {
+        contentType: "application/pdf",
+        fileName: "test.pdf",
+        fileSize: 1024,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: {
+          spaceId: pod.sId,
+        },
+      });
+
+      const response = await honoApp.request(fileUrl(workspace, file.sId), {
+        method: "DELETE",
+      });
+
+      expect(response.status).toBe(403);
+      expect(await response.json()).toEqual({
+        error: {
+          type: "workspace_auth_error",
+          message: "You cannot edit files in that pod.",
+        },
+      });
+    });
+  });
+
   it("should reject deleting a file referenced by skill history", async () => {
     const { auth, user, workspace } = await createPrivateApiMockRequest({
       method: "DELETE",

@@ -37,11 +37,15 @@ function isRetryableWriteError(error: unknown): boolean {
 // inline, so past the cap the file is the transport and stdout only names it.
 // Past the hard cap the result is refused outright with an actionable error.
 export const RESULT_INLINE_CAP_BYTES = 256 * 1024;
+// Mirrored by SANDBOX_FUNCTION_RESULT_MAX_BYTES in
+// front/lib/api/sandbox_functions/result_envelope.ts: front refuses to read
+// back a spill file larger than this, so the two must move together.
 export const RESULT_HARD_CAP_BYTES = 5 * 1024 * 1024;
 
-// Mirrors SANDBOX_FUNCTION_RESULT_SPILL_DIR in
+// Mirrored by SANDBOX_FUNCTION_RESULT_SPILL_FILE_PATTERN in
 // front/lib/api/sandbox_functions/result_envelope.ts: front refuses to read a
-// pointer outside this directory, so the two must move together.
+// pointer that is not `<uuid>.json` in this directory, so the two must move
+// together.
 export const RESULT_SPILL_DIR = "/tmp/dust-fn-results";
 
 export interface ResultSpillPointer {

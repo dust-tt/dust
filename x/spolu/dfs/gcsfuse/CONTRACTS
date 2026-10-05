@@ -1,0 +1,8 @@
+@cc [owner:spolu,label:architecture] official-gcsfuse-package
+The image MUST install gcsfuse from Google's official package repository.
+
+@cc [owner:spolu,label:security] runtime-gcs-credentials
+Google Cloud credentials MUST be supplied at runtime and MUST NOT be embedded in image layers.
+
+@cc [owner:id13,label:testing] benchmark-runtime
+The image MUST include Python 3 and ripgrep so the filesystem benchmark can run inside the mount.

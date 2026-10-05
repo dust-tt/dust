@@ -2,6 +2,7 @@ import {
   useCancelMetronomeContract,
   useReactivateMetronomeContract,
 } from "@app/hooks/useMetronomeContractLifecycleAction";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import type { MetronomeInvoiceSummary } from "@app/lib/metronome/invoice";
 import {
@@ -10,7 +11,6 @@ import {
 } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { useMetronomeInvoice } from "@app/lib/swr/workspaces";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { SubscriptionType } from "@app/types/plan";
 import {
   isSubscriptionCancellationScheduled,

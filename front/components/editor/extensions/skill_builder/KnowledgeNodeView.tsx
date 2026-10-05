@@ -17,15 +17,8 @@ import { useCallback, useEffect, useLayoutEffect } from "react";
 
 // Re-exports for existing consumers that import these from KnowledgeNodeView.
 // The canonical home is now KnowledgeNodeTypes.ts (React-free).
-export type {
-  BaseKnowledgeItem,
-  FullKnowledgeItem,
-  KnowledgeItem,
-} from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
-export {
-  computeHasChildren,
-  isFullKnowledgeItem,
-} from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
+export type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
+export { isFullKnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 
 interface KnowledgeDisplayProps {
   item: KnowledgeItem;

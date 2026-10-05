@@ -26,6 +26,8 @@ const FILES_FIRST_MARKER =
 const POD_APP_MARKER = "### Frames In A Pod";
 const POD_APP_UPDATE_MARKER = "#### Changing An Existing Pod Frame";
 const POD_STORAGE_MARKER = "### Where The Frame's Data Lives";
+const POD_V2_PLACEMENT_MARKER =
+  "new Frames still go in the conversation folder";
 
 const FILES_EDIT_TOOL = getPrefixedToolName(
   FILES_SERVER_NAME,
@@ -61,6 +63,9 @@ describe("framesSkill.fetchInstructions", () => {
     });
 
     expect(instructions).toContain("dsbx frame publish");
+    expect(instructions).toContain(
+      "`dsbx frame publish` and `validate` reject them"
+    );
     expect(instructions).toContain('mkdir -p "$FRAME"');
     expect(instructions).toContain(
       "write the real source\nand publish a new Frame in one Computer command"
@@ -139,7 +144,10 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("shared Zod domain");
     expect(instructions).toContain("instead of `bun build`");
     expect(instructions).toContain(
-      "`export_interactive_content_file`: use it to export a Frame as a PNG screenshot or PDF document"
+      "`export_interactive_content_file`: export a Frame as a PNG screenshot or PDF document"
+    );
+    expect(instructions).toContain(
+      "`create_interactive_content_file`: create a Frame from an existing template"
     );
     expect(framesSkill.mcpServers).toEqual([
       { name: "interactive_content" },
@@ -163,6 +171,9 @@ describe("framesSkill.fetchInstructions", () => {
 
     expect(instructions).toContain("dsbx frame publish");
     expect(instructions).toContain("Frames in this workspace are client-only");
+    expect(instructions).toContain(
+      "`dsbx frame publish` and `validate` reject them"
+    );
     expect(instructions).toContain("this workspace rejects them at publish");
     expect(instructions).toContain("does not\nallow downloads");
     expect(instructions).not.toContain("## Authoring a function");
@@ -186,6 +197,7 @@ describe("framesSkill.fetchInstructions", () => {
     });
 
     expect(instructions).toContain(COMPUTER_FIRST_MARKER);
+    expect(instructions).not.toContain("dsbx frame publish");
     expect(instructions).toContain("### Slideshows");
     expect(instructions).toContain("Keep the built-in width and height");
     expect(instructions).toContain(PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
@@ -205,6 +217,7 @@ describe("framesSkill.fetchInstructions", () => {
 
     expect(instructions).not.toContain(COMPUTER_FIRST_MARKER);
     expect(instructions).toContain(FILES_FIRST_MARKER);
+    expect(instructions).not.toContain("dsbx frame publish");
     expect(instructions).toContain(FILES_EDIT_TOOL);
     expect(instructions).toContain(PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
     expect(instructions).not.toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
@@ -221,6 +234,7 @@ describe("framesSkill.fetchInstructions", () => {
       agentLoopData: agentLoopDataWithUseFileSystem(false),
     });
 
+    expect(instructions).not.toContain("dsbx frame publish");
     expect(instructions).not.toContain(COMPUTER_FIRST_MARKER);
     expect(instructions).not.toContain(FILES_FIRST_MARKER);
     expect(instructions).toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
@@ -275,6 +289,34 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain(POD_APP_UPDATE_MARKER);
     expect(instructions).toContain(FILES_LIST_TOOL);
     expect(instructions).toContain("[id: fil_...]");
+  });
+
+  it("defaults Frames v2 to the conversation in a Pod", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    await FeatureFlagFactory.basic(auth, "frames_v2");
+
+    const instructions = await framesSkill.fetchInstructions(auth, {
+      spaceIds: [],
+      agentLoopData: agentLoopDataInPod("vlt_abc123"),
+    });
+
+    expect(instructions).toContain(POD_V2_PLACEMENT_MARKER);
+    expect(instructions).toContain("/files/pod-<podId>/<frame-folder>");
+    expect(instructions).toContain("Frame's Save button");
+    expect(instructions).not.toContain(POD_APP_MARKER);
+  });
+
+  it("omits Frames v2 Pod placement outside a Pod", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    await FeatureFlagFactory.basic(auth, "frames_v2");
+
+    const instructions = await framesSkill.fetchInstructions(auth, {
+      spaceIds: [],
+      agentLoopData: agentLoopDataInPod(null),
+    });
+
+    expect(instructions).not.toContain(POD_V2_PLACEMENT_MARKER);
+    expect(instructions).not.toContain("/files/pod-<podId>/<frame-folder>");
   });
 
   it("keeps the legacy flow for a Pod conversation without the file system", async () => {

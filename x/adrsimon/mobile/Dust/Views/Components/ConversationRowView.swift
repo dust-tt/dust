@@ -16,7 +16,7 @@ struct ConversationRowView: View {
     private var statusDot: some View {
         if conversation.actionRequired {
             Circle()
-                .fill(Color.golden400)
+                .fill(Color.info400)
                 .frame(width: 8, height: 8)
         } else if conversation.unread {
             Circle()
@@ -36,7 +36,7 @@ struct ConversationRowView: View {
                 .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 16)
         .padding(.vertical, 8)
     }
 
@@ -72,7 +72,7 @@ struct ConversationRowView: View {
                 }
             }
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 16)
         .padding(.vertical, 8)
     }
 }

@@ -30,13 +30,10 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isNonBusinessEmailDomain } from "@app/lib/utils/non_business_email_domains";
 import logger from "@app/logger/logger";
-import type {
-  PostDataSourceRequestBody,
-  PostSpaceDataSourceResponseBody,
-} from "@app/types/api/data_sources";
+import type { PostSpaceDataSourceResponseBody } from "@app/types/api/data_sources";
 import {
   PostDataSourceRequestBodySchema,
-  PostDataSourceWithProviderRequestBodySchema,
+  type PostDataSourceWithProviderRequestBodySchema,
 } from "@app/types/api/data_sources";
 import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
@@ -59,13 +56,9 @@ import { fromError } from "zod-validation-error";
 
 import dsId from "./[dsId]";
 
-export type { PostDataSourceRequestBody, PostSpaceDataSourceResponseBody };
 // Contract types and schemas are owned by `@app/lib/api/data_sources` and
 // re-exported here to preserve this module's public surface.
-export {
-  PostDataSourceRequestBodySchema,
-  PostDataSourceWithProviderRequestBodySchema,
-};
+export { PostDataSourceRequestBodySchema };
 
 // Mounted under /api/w/:wId/spaces/:spaceId/data_sources.
 const app = workspaceApp();
@@ -307,12 +300,6 @@ async function handleDataSourceWithProvider({
       whitelistedDomains: undefined,
       autoReadChannelPatterns: [],
       restrictedSpaceAgentsEnabled: true,
-    };
-  }
-
-  if (provider === "discord_bot") {
-    configuration = {
-      botEnabled: true,
     };
   }
 

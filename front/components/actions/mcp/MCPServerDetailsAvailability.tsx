@@ -1,5 +1,6 @@
 import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { compareStrings } from "@app/lib/i18n/format";
 import type { SpaceType } from "@app/types/space";
 import {
   DataTable,
@@ -138,7 +139,7 @@ export function MCPServerDetailsAvailability({
       isEnabled: sharingSettings?.[space.sId] ?? false,
       onClick: () => handleToggle(space),
     }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => compareStrings(a.name, b.name));
 
   const columns: ColumnDef<RowData>[] = [
     {

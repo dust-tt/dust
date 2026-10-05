@@ -1,21 +1,22 @@
 import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
+import { AdminSettingsSearchNav } from "@app/components/navigation/AdminSettingsSearchNav";
 import type { SidebarNavigation } from "@app/components/navigation/config";
-import { getTopNavigationTabs } from "@app/components/navigation/config";
+import {
+  getAdminSectionHref,
+  getTopNavigationTabs,
+} from "@app/components/navigation/config";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { SidebarUserMenu } from "@app/components/navigation/SidebarUserMenu";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
-import type {
-  ConcreteResourceType,
-  GrantVerb,
-} from "@app/types/group_permissions";
+import { hasGroupManagementScope } from "@app/types/api/auth_context";
 import type { SubscriptionType } from "@app/types/plan";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
-import { isAdmin, isManager } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import {
   CollapseButton,
   cn,
@@ -29,26 +30,8 @@ import {
   NavTabPillTrigger,
   XClose,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import React, { useCallback, useContext, useMemo } from "react";
-
-function getAdminSectionHref(
-  owner: WorkspaceType,
-  hasPermission: (
-    verb: GrantVerb,
-    resourceType: ConcreteResourceType
-  ) => boolean
-): string | null {
-  if (isManager(owner)) {
-    return `/w/${owner.sId}/members`;
-  }
-  if (hasPermission("admin", "billing")) {
-    return `/w/${owner.sId}/billing`;
-  }
-  if (hasPermission("admin", "security")) {
-    return `/w/${owner.sId}/identity-and-provisioning`;
-  }
-  return null;
-}
 
 interface NavigationSidebarProps {
   children: React.ReactNode;
@@ -74,6 +57,7 @@ export const NavigationSidebar = React.forwardRef<
   }: NavigationSidebarProps,
   ref
 ) {
+  const { t } = useLingui();
   const router = useAppRouter();
   const activePath = useMemo(() => {
     if (router.isReady && router.pathname) {
@@ -83,9 +67,17 @@ export const NavigationSidebar = React.forwardRef<
   }, [router.isReady, router.pathname]);
 
   const { hasFeature } = useFeatureFlags();
+  const { featureFlags, groupManagement } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
 
-  const adminSectionHref = getAdminSectionHref(owner, hasPermission);
+  const hasManagedGroups =
+    featureFlags.includes("group_management") &&
+    hasGroupManagementScope(groupManagement?.read_usage);
+  const adminSectionHref = getAdminSectionHref(
+    owner,
+    hasPermission,
+    hasManagedGroups
+  );
 
   const showAdminSection = adminSectionHref !== null;
 
@@ -98,9 +90,10 @@ export const NavigationSidebar = React.forwardRef<
         owner,
         spaceMenuButtonRef,
         showAdminSection,
-        adminSectionHref
+        adminSectionHref,
+        t
       ),
-    [owner, spaceMenuButtonRef, showAdminSection, adminSectionHref]
+    [owner, spaceMenuButtonRef, showAdminSection, adminSectionHref, t]
   );
 
   const currentTab = useMemo(
@@ -110,6 +103,8 @@ export const NavigationSidebar = React.forwardRef<
 
   const { setSidebarOpen } = useContext(SidebarContext);
   const { setIsNavigationBarOpen } = useDesktopNavigation();
+
+  const isAdminTab = currentTab?.id === "settings";
 
   return (
     <div ref={ref} className="flex min-w-0 grow flex-col pt-2">
@@ -150,33 +145,43 @@ export const NavigationSidebar = React.forwardRef<
               // and margins set on it do nothing — the side spacing has to go
               // on the list itself, as the other tabs' menus already do.
               <NavTabPillContent key={tab.id} value={tab.id}>
-                <NavigationList className="mx-sidebar-side-spacing">
+                <div className="mx-sidebar-side-spacing pt-sidebar-side-spacing">
                   {subNavigation &&
                     tab.isCurrent(activePath) &&
-                    subNavigation.map((nav) => (
-                      <React.Fragment key={`nav-${nav.label}`}>
-                        {nav.label && (
-                          <NavigationListCompactLabel label={nav.label} />
-                        )}
-                        {nav.menus
-                          .filter(
-                            (menu) =>
-                              !menu.featureFlag || hasFeature(menu.featureFlag)
-                          )
-                          .map((menu) => (
-                            <NavigationListItem
-                              key={menu.id}
-                              selected={menu.current}
-                              disabled={menu.disabled}
-                              label={menu.label}
-                              icon={menu.icon}
-                              href={menu.href}
-                              target={menu.target}
-                            />
-                          ))}
-                      </React.Fragment>
+                    (isAdminTab ? (
+                      <AdminSettingsSearchNav
+                        subNavigation={subNavigation}
+                        hasFeature={hasFeature}
+                      />
+                    ) : (
+                      <NavigationList>
+                        {subNavigation.map((nav) => (
+                          <React.Fragment key={`nav-${nav.id}`}>
+                            {nav.label && (
+                              <NavigationListCompactLabel label={nav.label} />
+                            )}
+                            {nav.menus
+                              .filter(
+                                (menu) =>
+                                  !menu.featureFlag ||
+                                  hasFeature(menu.featureFlag)
+                              )
+                              .map((menu) => (
+                                <NavigationListItem
+                                  key={menu.id}
+                                  selected={menu.current}
+                                  disabled={menu.disabled}
+                                  label={menu.label}
+                                  icon={menu.icon}
+                                  href={menu.href}
+                                  target={menu.target}
+                                />
+                              ))}
+                          </React.Fragment>
+                        ))}
+                      </NavigationList>
                     ))}
-                </NavigationList>
+                </div>
               </NavTabPillContent>
             ))}
           </NavTabPill>

@@ -11,6 +11,7 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { MentionResource } from "@app/lib/resources/mention_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -297,10 +298,10 @@ export interface AgentMessageModelResolution {
 export async function resolveModelForMentionedAgent(
   auth: Authenticator,
   {
-    configuration,
+    agent,
     selection,
   }: {
-    configuration: LightAgentConfigurationType;
+    agent: AgentResource;
     selection?: ModelSelectionType;
   }
 ): Promise<AgentMessageModelResolution> {
@@ -309,7 +310,7 @@ export async function resolveModelForMentionedAgent(
   // Sidekick picks its own model server-side. Never honor a user-supplied
   // model override for it
   let effectiveSelection = selection;
-  if (configuration.sId === GLOBAL_AGENTS_SID.SIDEKICK && selection) {
+  if (agent.sId === GLOBAL_AGENTS_SID.SIDEKICK && selection) {
     logger.warn(
       {
         workspaceId: auth.getNonNullableWorkspace().sId,
@@ -324,7 +325,7 @@ export async function resolveModelForMentionedAgent(
 
   return resolveModel(auth, {
     selection: effectiveSelection,
-    configuration,
+    agent,
     featureFlags,
   });
 }

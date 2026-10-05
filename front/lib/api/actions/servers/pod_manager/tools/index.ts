@@ -40,10 +40,7 @@ import {
 } from "@app/lib/api/actions/servers/pod_manager/metadata";
 import { partitionMembersToAdd } from "@app/lib/api/actions/servers/pod_manager/types";
 import { searchFunction } from "@app/lib/api/actions/servers/search/tools";
-import {
-  getAgentConfiguration,
-  resolveAgentConfigurationIdByName,
-} from "@app/lib/api/assistant/configuration/agent";
+import { resolveAgentIdByName } from "@app/lib/api/agents/search";
 import {
   createConversation,
   postUserMessage,
@@ -66,8 +63,9 @@ import { listPodsForScope } from "@app/lib/api/projects/list";
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
-import { notifyPodMembersAdded } from "@app/lib/notifications/workflows/pod-added-as-member";
+import { notifyPodMembersAdded } from "@app/lib/notifications/triggers/pod-added-as-member";
 import { seedInitialPodTasks } from "@app/lib/project_task/seed_initial_pod_tasks";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -524,10 +522,7 @@ export function createProjectManagerTools(
         let defaultAgentId: string | null = null;
         let defaultAgentName: string | null = null;
         if (agentName !== null) {
-          const resolvedAgentId = await resolveAgentConfigurationIdByName(
-            auth,
-            agentName
-          );
+          const resolvedAgentId = await resolveAgentIdByName(auth, agentName);
           if (!resolvedAgentId) {
             return new Err(
               new MCPError(`No agent found matching "${agentName}".`, {
@@ -535,10 +530,7 @@ export function createProjectManagerTools(
               })
             );
           }
-          const agent = await getAgentConfiguration(auth, {
-            agentId: resolvedAgentId,
-            variant: "extra_light",
-          });
+          const agent = await AgentResource.fetchById(auth, resolvedAgentId);
           if (!agent) {
             return new Err(
               new MCPError(`No agent found matching "${agentName}".`, {
@@ -769,10 +761,10 @@ export function createProjectManagerTools(
 
         let defaultAgent: { id: string; name: string | null } | null = null;
         if (metadata?.defaultAgentId) {
-          const agent = await getAgentConfiguration(auth, {
-            agentId: metadata.defaultAgentId,
-            variant: "extra_light",
-          });
+          const agent = await AgentResource.fetchById(
+            auth,
+            metadata.defaultAgentId
+          );
           defaultAgent = {
             id: metadata.defaultAgentId,
             name: agent?.name ?? null,
@@ -1357,7 +1349,7 @@ export function createProjectManagerTools(
 
         let mentions: { configurationId: string }[] = [];
         if (params.agentName) {
-          const matchedAgentId = await resolveAgentConfigurationIdByName(
+          const matchedAgentId = await resolveAgentIdByName(
             auth,
             params.agentName
           );
@@ -1668,7 +1660,7 @@ export function createProjectManagerTools(
 
         let mentions: { configurationId: string }[] = [];
         if (params.agentName) {
-          const matchedAgentId = await resolveAgentConfigurationIdByName(
+          const matchedAgentId = await resolveAgentIdByName(
             auth,
             params.agentName
           );

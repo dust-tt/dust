@@ -125,17 +125,14 @@ export function getActiveSlashSubMenuFrame(
   return storage.menuStack[storage.menuStack.length - 1] ?? null;
 }
 
-export const ATTACH_CONTEXT_QUERY_PLACEHOLDER = "Type to search";
+export const SLASH_MENU_QUERY_PLACEHOLDER = "Type to search";
 
-// Ghost text shown after the "/" while a sub-menu with an empty query is open.
-export function getSlashSubMenuQueryPlaceholder(
-  storage: SlashMenuNavigationStorage
-): string | null {
-  return getActiveSlashSubMenuFrame(storage)?.subMenuId ===
-    ATTACH_CONTEXT_SUB_MENU_ID
-    ? ATTACH_CONTEXT_QUERY_PLACEHOLDER
-    : null;
-}
+// The "/" trigger and the "Type to search" ghost text are two adjacent spans; these classes draw
+// them as a single chip (left half on the trigger, right half on the placeholder).
+export const SLASH_MENU_TRIGGER_CLASS_NAME =
+  "bg-input-bar-background-secondary py-1 pl-1 rounded-l-lg";
+export const SLASH_MENU_QUERY_PLACEHOLDER_CLASS_NAME =
+  "bg-input-bar-background-secondary py-1 pr-2 rounded-r-lg";
 
 export function enterSlashSubMenu({
   command,

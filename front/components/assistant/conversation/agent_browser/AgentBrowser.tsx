@@ -16,6 +16,7 @@ import { rankAgentsByPopularity } from "@app/components/assistant/helpers/agents
 import { useHashParam } from "@app/hooks/useHashParams";
 import { usePersistedAgentBrowserSelection } from "@app/hooks/usePersistedAgentBrowserSelection";
 import { useClientType } from "@app/lib/context/clientType";
+import { compareStrings } from "@app/lib/i18n/format";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
   compareForFuzzySort,
@@ -66,17 +67,17 @@ export function AgentBrowser({
       if (sortType === "popularity") {
         return (
           (b.usage?.messageCount ?? 0) - (a.usage?.messageCount ?? 0) ||
-          a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+          compareStrings(a.name.toLowerCase(), b.name.toLowerCase())
         );
       }
       if (sortType === "updated") {
         return (
           new Date(b.versionCreatedAt ?? 0).getTime() -
             new Date(a.versionCreatedAt ?? 0).getTime() ||
-          a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+          compareStrings(a.name.toLowerCase(), b.name.toLowerCase())
         );
       }
-      return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+      return compareStrings(a.name.toLowerCase(), b.name.toLowerCase());
     },
     [sortType]
   );

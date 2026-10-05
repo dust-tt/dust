@@ -1,372 +1,188 @@
-import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
-import { SearchSkillsPage } from "@app/components/pages/builder/skills/SearchSkillsPage";
-import type {
-  AvailabilityFilter,
-  SkillManagerTabType,
-} from "@app/components/pages/builder/skills/utils";
+import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
 import {
-  AVAILABILITY_FILTER_OPTIONS,
-  AVAILABILITY_QUERY_PARAMS,
-  filterByAvailability,
-  filterBySearch,
-  getAvailabilityFilterLabel,
-  isAvailabilityFilter,
-  isValidTab,
-  SKILL_MANAGER_TABS,
-  sortSkillsByName,
-} from "@app/components/pages/builder/skills/utils";
+  clearFilterCategory,
+  getFilterSummaries,
+} from "@app/components/shared/filter_panel/filterState";
+import { SEARCH_FILTER_CATEGORY_SINGULAR_LABEL } from "@app/components/shared/filter_panel/searchFilter";
+import { useSearchPageHashState } from "@app/components/shared/filter_panel/searchFilterHash";
 import { CreateSkillButton } from "@app/components/skills/CreateSkillButton";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
+import { SkillFilterPanel } from "@app/components/skills/SkillFilterPanel";
+import { SkillSearchTable } from "@app/components/skills/SkillSearchTable";
 import type { BatchAvailabilityAction } from "@app/components/skills/SkillsBatchEdit";
-import { BatchAvailabilityDialog } from "@app/components/skills/SkillsBatchEdit";
 import {
-  isSkillSelectable,
-  SkillsTable,
-} from "@app/components/skills/SkillsTable";
-import { SuggestedSkillsSection } from "@app/components/skills/SuggestedSkillsSection";
+  BatchAvailabilityDialog,
+  SkillsBatchEditBar,
+} from "@app/components/skills/SkillsBatchEdit";
+import {
+  SKILL_FILTER_CATEGORIES,
+  SKILL_FILTER_CATEGORY_FACET,
+  SKILL_SEARCH_TAB_IDS,
+  SKILL_SEARCH_TABS,
+  toSkillSearchFilterFacets,
+  toSkillSearchFilters,
+} from "@app/components/skills/skillFilter";
 import {
   useSetContentWidth,
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
 import { useHashParam } from "@app/hooks/useHashParams";
-import { useQueryParams } from "@app/hooks/useQueryParams";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
-  useSkillsWithRelations,
+  useSearchSkills,
   useUpdateSkillsAvailability,
 } from "@app/lib/swr/skill_configurations";
-import { getSkillBuilderRoute } from "@app/lib/utils/router";
-import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
-import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
-import { isEmptyString } from "@app/types/shared/utils/general";
+import type {
+  SkillSearchFilters,
+  SkillSearchPermissionFiltering,
+  SkillSearchSort,
+  SkillSearchSortOrder,
+} from "@app/types/api/skills";
+import type {
+  SkillAvailability,
+  SkillListItemType,
+} from "@app/types/assistant/skill_configuration";
 import {
   Button,
-  Checkbox,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+  ButtonsSwitch,
+  ButtonsSwitchList,
   EmptyCTA,
-  EmptyCTAButton,
-  InfoCircle,
   Page,
-  Plus,
   SearchInput,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  Tooltip,
 } from "@dust-tt/sparkle";
-import type { RowSelectionState } from "@tanstack/react-table";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { PaginationState } from "@tanstack/react-table";
+import type { ReactNode } from "react";
+import { useCallback, useState } from "react";
 
-export function ManageSkillsPage() {
-  const { hasFeature } = useFeatureFlags();
-  return hasFeature("skills_search") && hasFeature("new_manage_skills_page") ? (
-    <SearchSkillsPage />
-  ) : (
-    <LegacyManageSkillsPage />
-  );
+const SKILL_SEARCH_PAGE_SIZE = 50;
+
+// Batch edits are reserved to the skill's editors and to workspace admins, as for agents;
+// Dust-provided skills are never administrable.
+function canBatchEditSkill(skill: SkillListItemType) {
+  return skill.canAdministrate && skill.status !== "archived";
 }
 
-function LegacyManageSkillsPage() {
+interface SkillsListProps {
+  readOnly?: boolean;
+  searchEndpoint?: string;
+  searchTerm: string;
+  filters: SkillSearchFilters;
+  permissionFiltering?: SkillSearchPermissionFiltering;
+  onSelect: (skillId: string) => void;
+}
+
+function SkillsList({
+  readOnly = false,
+  searchEndpoint,
+  searchTerm,
+  filters,
+  permissionFiltering,
+  onSelect,
+}: SkillsListProps) {
   const owner = useWorkspace();
-  const { user, isAdmin } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
-  const [agentId, setAgentId] = useState<string | null>(null);
-  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "active");
-  const [skillSearch, setSkillSearch] = useState("");
-  const [skillIdParam, setSkillIdParam] = useHashParam("skillId");
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [pendingBatchAction, setPendingBatchAction] =
-    useState<BatchAvailabilityAction | null>(null);
-  const [bypassEditorVisibility, setBypassEditorVisibility] = useState(false);
-  const { availability: availabilityParam } = useQueryParams(
-    AVAILABILITY_QUERY_PARAMS
-  );
-  const availabilityFilter = isAvailabilityFilter(availabilityParam.value)
-    ? availabilityParam.value
-    : "all";
-  // Clear the param on "all" so the default state keeps the URL clean.
-  const setAvailabilityFilter = (value: AvailabilityFilter) =>
-    availabilityParam.setParam(value === "all" ? undefined : value);
-
-  // Switching tabs resets the availability filter to avoid carrying it across lists.
-  const handleTabChange = (tabId: SkillManagerTabType) => {
-    setSelectedTab(tabId);
-    setAvailabilityFilter("all");
-  };
-
-  const handleShowHiddenChange = (checked: boolean) => {
-    setBypassEditorVisibility(checked);
-    setAvailabilityFilter(checked ? "editors" : "all");
-  };
-
-  const doUpdateAvailability = useUpdateSkillsAvailability({ owner });
-
-  const isSearchActive = !isEmptyString(skillSearch);
-  const isFilterActive = isSearchActive || availabilityFilter !== "all";
-
-  const activeTab = useMemo<SkillManagerTabType>(() => {
-    if (
-      selectedTab &&
-      isValidTab(selectedTab) &&
-      SKILL_MANAGER_TABS.some((t) => t.id === selectedTab)
-    ) {
-      return selectedTab;
-    }
-    return "active";
-  }, [selectedTab]);
-
-  // The selection is scoped to the current tab/search/filter combination: a skill that drops
-  // out of view (tab switch, search, or filter change) should drop out of the selection too.
-  const selectionScopeKey = [activeTab, skillSearch, availabilityFilter].join(
-    "|"
-  );
-  const [prevSelectionScopeKey, setPrevSelectionScopeKey] =
-    useState(selectionScopeKey);
-  if (selectionScopeKey !== prevSelectionScopeKey) {
-    setPrevSelectionScopeKey(selectionScopeKey);
-    setRowSelection({});
-  }
-
-  const canCreateSkill = hasPermission("create", "skill");
-
-  const canBypassEditorVisibility = isAdmin;
-  const isBypassEditorVisibilityEnabled =
-    canBypassEditorVisibility && bypassEditorVisibility;
-
-  const {
-    skillsWithRelations: activeSkills,
-    isSkillsWithRelationsLoading: isActiveLoading,
-  } = useSkillsWithRelations({
-    owner,
-    status: "active",
-    bypassEditorVisibility: isBypassEditorVisibilityEnabled,
-    withUsage: true,
-  });
-
-  const {
-    skillsWithRelations: archivedSkills,
-    isSkillsWithRelationsLoading: isArchivedLoading,
-  } = useSkillsWithRelations({
-    owner,
-    status: "archived",
-    disabled: selectedTab !== "archived",
-    bypassEditorVisibility: isBypassEditorVisibilityEnabled,
-    withUsage: true,
-  });
-
-  const {
-    skillsWithRelations: suggestedSkills,
-    isSkillsWithRelationsLoading: isSuggestedLoading,
-  } = useSkillsWithRelations({
-    owner,
-    status: "suggested",
-    // Suggestions are only ever listed to users who can create skills, since
-    // adopting one means becoming its editor.
-    disabled: activeTab !== "active" || !canCreateSkill,
-  });
-
-  const sortedActiveSkills = useMemo(
-    () => sortSkillsByName(activeSkills),
-    [activeSkills]
-  );
-  const sortedArchivedSkills = useMemo(
-    () => sortSkillsByName(archivedSkills),
-    [archivedSkills]
-  );
-
-  const skillsByTab = useMemo<
-    Record<SkillManagerTabType, GetSkillsWithRelationsResponseBody["skills"]>
-  >(() => {
-    const searchLower = skillSearch.toLowerCase();
-    const editableByMeSkills = sortedActiveSkills.filter((s) =>
-      s.relations.editors?.some((e) => e.sId === user?.sId)
-    );
-    const favoriteSkills = sortSkillsByName(
-      activeSkills.filter((s) => s.isFavorite)
-    );
-
-    return {
-      active: filterBySearch(
-        filterByAvailability(sortedActiveSkills, availabilityFilter),
-        searchLower,
-        isSearchActive
-      ),
-      editable_by_me: filterBySearch(
-        filterByAvailability(editableByMeSkills, availabilityFilter),
-        searchLower,
-        isSearchActive
-      ),
-      favorites: filterBySearch(
-        filterByAvailability(favoriteSkills, availabilityFilter),
-        searchLower,
-        isSearchActive
-      ),
-      archived: filterBySearch(
-        filterByAvailability(sortedArchivedSkills, availabilityFilter),
-        searchLower,
-        isSearchActive
-      ),
-    };
-  }, [
-    sortedActiveSkills,
-    sortedArchivedSkills,
-    activeSkills,
-    skillSearch,
-    user,
-    isSearchActive,
-    availabilityFilter,
-  ]);
-
-  const isLoading = isActiveLoading || isArchivedLoading || isSuggestedLoading;
-
-  const handleSkillSelect = useCallback(
-    (skill: GetSkillsWithRelationsResponseBody["skills"][number] | null) => {
-      setSkillIdParam(skill?.sId);
-    },
-    [setSkillIdParam]
-  );
-
-  const [isBatchUpdating, setIsBatchUpdating] = useState(false);
-
-  const isBatchEditionAvailable =
-    hasPermission("publish", "skill") && activeTab !== "archived";
-
+  const canSetAvailability = hasPermission("publish", "skill");
   const canMakeSkillAutoDiscoverable = hasPermission(
     "make_discoverable",
     "skill"
   );
+  // Selected rows are kept by id across pages, with the item needed by batch actions.
+  const [selectedSkills, setSelectedSkills] = useState<SkillListItemType[]>([]);
+  const [pendingBatchAction, setPendingBatchAction] =
+    useState<BatchAvailabilityAction | null>(null);
+  const [isBatchUpdating, setIsBatchUpdating] = useState(false);
+  const doUpdateAvailability = useUpdateSkillsAvailability({ owner });
+  const [tablePagination, setTablePagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: SKILL_SEARCH_PAGE_SIZE,
+  });
+  const [selectedSort, setSelectedSort] = useState<{
+    sortBy: Exclude<SkillSearchSort, "relevance">;
+    sortOrder: SkillSearchSortOrder;
+  } | null>(null);
+  const sortBy =
+    selectedSort?.sortBy ?? (searchTerm.trim() ? "relevance" : "usage");
+  const sortOrder = selectedSort?.sortOrder;
+  const queryKey = JSON.stringify({
+    searchTerm,
+    filters,
+    permissionFiltering,
+    sortBy,
+    sortOrder,
+  });
+  const [previousQueryKey, setPreviousQueryKey] = useState(queryKey);
 
-  // Only skills that are still selectable in the current tab can end up in bulk actions,
-  // even if `rowSelection` (not reset on every scope change) still references a skill that
-  // is no longer selectable in the current view.
-  const selectedSkills = useMemo(
-    () =>
-      skillsByTab[activeTab].filter(
-        (skill) =>
-          rowSelection[skill.sId] &&
-          isSkillSelectable(skill, canMakeSkillAutoDiscoverable)
-      ),
-    [skillsByTab, activeTab, rowSelection, canMakeSkillAutoDiscoverable]
+  if (queryKey !== previousQueryKey) {
+    setPreviousQueryKey(queryKey);
+    setTablePagination({ pageIndex: 0, pageSize: SKILL_SEARCH_PAGE_SIZE });
+    setSelectedSkills([]);
+  }
+
+  const { skills, total, isSkillsLoading, isSkillsError, mutate } =
+    useSearchSkills({
+      owner,
+      searchEndpoint,
+      searchTerm,
+      searchType: "name",
+      filters,
+      permissionFiltering,
+      offset: tablePagination.pageIndex * SKILL_SEARCH_PAGE_SIZE,
+      limit: SKILL_SEARCH_PAGE_SIZE,
+      sortBy,
+      sortOrder,
+    });
+
+  // Prefer the freshly loaded row so batch actions see the skill's current state.
+  const pageSkillsById = new Map(skills.map((skill) => [skill.sId, skill]));
+  const currentSelectedSkills = selectedSkills.map(
+    (selected) => pageSkillsById.get(selected.sId) ?? selected
   );
-  const selectedSkillIds = useMemo(
-    () => selectedSkills.map((skill) => skill.sId),
-    [selectedSkills]
+
+  const setSelectedSkillIds = (skillIds: string[]) => {
+    const knownSkills = new Map(
+      [...currentSelectedSkills, ...skills].map((skill) => [skill.sId, skill])
+    );
+    setSelectedSkills(
+      skillIds.flatMap((skillId) => knownSkills.get(skillId) ?? [])
+    );
+  };
+
+  const canSelect = useCallback(
+    (skill: SkillListItemType) => !readOnly && canBatchEditSkill(skill),
+    [readOnly]
   );
+
+  const clearSelectionAndRefresh = () => {
+    setSelectedSkills([]);
+    void mutate();
+  };
 
   const handleBatchAvailability = async (availability: SkillAvailability) => {
-    if (selectedSkillIds.length === 0 || isBatchUpdating) {
+    if (currentSelectedSkills.length === 0 || isBatchUpdating) {
       return;
     }
     setIsBatchUpdating(true);
     try {
       const success = await doUpdateAvailability(
-        selectedSkillIds,
+        currentSelectedSkills.map((skill) => skill.sId),
         availability
       );
       if (success) {
-        setRowSelection({});
+        clearSelectionAndRefresh();
       }
     } finally {
       setIsBatchUpdating(false);
     }
   };
 
-  const searchBarRef = useRef<HTMLInputElement>(null);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
-  useEffect(() => {
-    if (searchBarRef.current) {
-      searchBarRef.current.focus();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchBarRef.current]);
-
-  useEffect(() => {
-    if (isImportDialogOpen) {
-      return;
-    }
-
-    const handleKeyPress = (event: KeyboardEvent) => {
-      if (event.key === "/") {
-        event.preventDefault();
-        searchBarRef.current?.focus();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyPress);
-    return () => {
-      window.removeEventListener("keydown", handleKeyPress);
-    };
-  }, [isImportDialogOpen]);
-
-  useSetContentWidth("wide");
-  useSetPageTitle("Dust - Manage Skills");
-
-  const isActiveTabEmpty = skillsByTab[activeTab].length === 0;
-
-  const renderEmptyTabState = () => {
-    if (isFilterActive) {
-      return (
-        <EmptyCTA
-          message="No skill matches your search or filters."
-          action={null}
-        />
-      );
-    }
-    // Nothing to create into from the archived tab.
-    if (activeTab === "archived" || !canCreateSkill) {
-      return null;
-    }
-    return (
-      <EmptyCTA
-        action={
-          <EmptyCTAButton
-            label="Create a skill"
-            icon={Plus}
-            variant="primary"
-            href={getSkillBuilderRoute(owner.sId, "new")}
-          />
-        }
-      />
-    );
-  };
-
   return (
-    <>
-      <SkillDetailsSheet
-        skillId={skillIdParam ?? null}
-        onClose={() => handleSkillSelect(null)}
-        showFavoriteButton
-        enforceDiscoveryVisibility
-        user={user}
-        owner={owner}
-      />
-      <AgentDetailsSheet
-        owner={owner}
-        user={user}
-        agentId={agentId}
-        onClose={() => setAgentId(null)}
-      />
-      {isImportDialogOpen && (
-        <ImportSkillsDialog
-          onClose={() => setIsImportDialogOpen(false)}
-          owner={owner}
-        />
-      )}
+    <div className="flex flex-col gap-4">
       {pendingBatchAction && (
         <BatchAvailabilityDialog
           action={pendingBatchAction}
-          selectedCount={selectedSkillIds.length}
+          selectedCount={currentSelectedSkills.length}
           isUpdating={isBatchUpdating}
           onConfirm={async () => {
             await handleBatchAvailability(pendingBatchAction.availability);
@@ -375,120 +191,300 @@ function LegacyManageSkillsPage() {
           onCancel={() => setPendingBatchAction(null)}
         />
       )}
-      <div className="flex w-full flex-col gap-8 pb-4">
-        <Page.Header
-          title="Manage Skills"
-          description="Reusable packages of instructions and tools that agents can share."
-          noTopPadding
+      {isSkillsError && (
+        <div
+          role="alert"
+          className="flex items-center justify-between gap-4 py-4"
+        >
+          <span>Could not load skills. Please try again.</span>
+          <Button
+            label="Retry"
+            variant="outline"
+            onClick={() => void mutate()}
+          />
+        </div>
+      )}
+      {!isSkillsError &&
+      (isSkillsLoading ||
+        skills.length > 0 ||
+        tablePagination.pageIndex > 0) ? (
+        <SkillSearchTable
+          owner={owner}
+          readOnly={readOnly}
+          skills={skills}
+          onSelect={onSelect}
+          onRefresh={mutate}
+          pagination={tablePagination}
+          setPagination={(next) => {
+            if (
+              next.pageIndex !== tablePagination.pageIndex ||
+              next.pageSize !== tablePagination.pageSize
+            ) {
+              setTablePagination(next);
+            }
+          }}
+          total={total}
+          sorting={
+            sortBy === "relevance"
+              ? []
+              : [{ id: sortBy, desc: sortOrder !== "asc" }]
+          }
+          setSorting={([sort]) => {
+            switch (sort?.id) {
+              case "name":
+              case "usage":
+              case "updatedAt":
+                setSelectedSort({
+                  sortBy: sort.id,
+                  sortOrder: sort.desc ? "desc" : "asc",
+                });
+                break;
+              default:
+                setSelectedSort(null);
+            }
+          }}
+          isLoading={isSkillsLoading}
+          selectedSkillIds={selectedSkills.map((skill) => skill.sId)}
+          setSelectedSkillIds={setSelectedSkillIds}
+          canSelect={canSelect}
         />
-        <Page.Vertical gap="md" align="stretch">
-          <div className="flex flex-row gap-2">
-            <SearchInput
-              ref={searchBarRef}
-              className="flex-grow"
-              name="search"
-              placeholder="Search (Name, Editors)"
-              value={skillSearch}
-              onChange={(s) => {
-                setSkillSearch(s);
-              }}
-            />
-            {canCreateSkill && (
-              <CreateSkillButton
-                owner={owner}
-                onImport={() => setIsImportDialogOpen(true)}
-              />
-            )}
-          </div>
-          <div className="flex flex-col pt-3">
-            <Tabs value={activeTab}>
-              <TabsList>
-                {SKILL_MANAGER_TABS.map((tab) => (
-                  <TabsTrigger
-                    key={tab.id}
-                    value={tab.id}
-                    label={tab.label}
-                    onClick={() => handleTabChange(tab.id)}
-                    tooltip={tab.description}
-                    isCounter={tab.id !== "archived"}
-                    counterValue={`${skillsByTab[tab.id].length}`}
+      ) : !isSkillsError ? (
+        <EmptyCTA
+          message={
+            searchTerm.trim()
+              ? "No skills match your search."
+              : "No skills to show."
+          }
+          action={null}
+        />
+      ) : null}
+      {!readOnly && (
+        <SkillsBatchEditBar
+          selectedSkills={currentSelectedSkills}
+          // Search results carry no selectable total, so selection is extended one page at a time.
+          totalCount={currentSelectedSkills.length}
+          isUpdating={isBatchUpdating}
+          canSetAvailability={canSetAvailability}
+          canMakeSkillAutoDiscoverable={canMakeSkillAutoDiscoverable}
+          owner={owner}
+          onClear={clearSelectionAndRefresh}
+          onSelectAll={() => undefined}
+          onSelectAction={setPendingBatchAction}
+        />
+      )}
+    </div>
+  );
+}
+
+interface ManageSkillsPageProps {
+  readOnly?: boolean;
+  showHeader?: boolean;
+  searchEndpoint?: string;
+  filterHashParam?: string;
+  permissionFiltering?: SkillSearchPermissionFiltering;
+  searchActions?: ReactNode;
+  onSelect?: (skillId: string) => void;
+}
+
+/**
+ * @cc [owner:aubin-tchoi,label:product;react] read-only-search-view
+ * In readOnly mode, built-in creation, batch-edit and detail controls MUST NOT render.
+ * Table and facet requests MUST use the same searchEndpoint when supplied.
+ */
+export function ManageSkillsPage({
+  readOnly = false,
+  showHeader = true,
+  searchEndpoint,
+  filterHashParam,
+  permissionFiltering: permissionFilteringOverride,
+  searchActions,
+  onSelect,
+}: ManageSkillsPageProps) {
+  const owner = useWorkspace();
+  const { user, isAdmin } = useAuth();
+  const { hasPermission } = useWorkspacePermissions();
+  const [skillId, setSkillId] = useHashParam("skillId");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [hiddenSkillsParam, setHiddenSkillsParam] =
+    useHashParam("hiddenSkills");
+  const showHiddenSkills = hiddenSkillsParam === "true";
+  const setShowHiddenSkills = (isShown: boolean) =>
+    setHiddenSkillsParam(isShown ? "true" : undefined);
+  const {
+    selectedTab,
+    setSelectedTab,
+    filter: pendingFilter,
+    setFilter,
+    unresolvedCategories,
+    resolveFilter,
+  } = useSearchPageHashState({
+    categories: SKILL_FILTER_CATEGORIES,
+    tabIds: SKILL_SEARCH_TAB_IDS,
+    defaultTabId: "all",
+    hashParam: filterHashParam,
+  });
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const activeTab =
+    SKILL_SEARCH_TABS.find((tab) => tab.id === selectedTab) ??
+    SKILL_SEARCH_TABS[0];
+  const permissionFiltering =
+    permissionFilteringOverride ??
+    (isAdmin && showHiddenSkills ? "redact_unreadable" : undefined);
+  // Names of the selections restored from a link come from the skills they match.
+  const { facets: selectionFacets, isSkillsLoading: isSelectionLoading } =
+    useSearchSkills({
+      owner,
+      searchEndpoint,
+      searchTerm: "",
+      searchType: "name",
+      limit: 0,
+      filters: { ...activeTab.filters, ...toSkillSearchFilters(pendingFilter) },
+      permissionFiltering,
+      facets: unresolvedCategories.map(
+        (category) => SKILL_FILTER_CATEGORY_FACET[category]
+      ),
+      disabled: unresolvedCategories.length === 0,
+    });
+  const filter = resolveFilter(toSkillSearchFilterFacets(selectionFacets));
+  const searchFilters = toSkillSearchFilters(filter);
+  useSetContentWidth("wide");
+  useSetPageTitle("Dust - Manage Skills");
+
+  const searchInput = (
+    <div className="w-full md:w-1/2">
+      <label htmlFor="skill-search" className="sr-only">
+        Search skills
+      </label>
+      <SearchInput
+        id="skill-search"
+        name="skill-search"
+        placeholder="Search for skills"
+        value={searchTerm}
+        onChange={setSearchTerm}
+        className="w-full"
+      />
+    </div>
+  );
+
+  return (
+    <>
+      <div className="flex w-full flex-col gap-6 pb-4">
+        {showHeader && (
+          <Page.Header
+            title={
+              <div className="flex w-full flex-wrap items-center justify-between gap-4">
+                <Page.H>Manage Skills</Page.H>
+                {!readOnly && hasPermission("create", "skill") && (
+                  <CreateSkillButton
+                    owner={owner}
+                    onImport={() => setIsImportDialogOpen(true)}
                   />
-                ))}
-                <div className="ml-auto flex flex-row items-center gap-3 self-center text-sm text-muted-foreground">
-                  {canBypassEditorVisibility && (
-                    <span className="flex gap-1">
-                      <label className="flex cursor-pointer flex-row items-center gap-2 whitespace-nowrap">
-                        <Checkbox
-                          checked={bypassEditorVisibility}
-                          onCheckedChange={(checked) =>
-                            handleShowHiddenChange(checked === true)
-                          }
-                        />
-                        Show hidden skills
-                      </label>
-                      <Tooltip
-                        label="Shows skills you can access as an admin, even if you’re not an editor"
-                        trigger={
-                          <InfoCircle className="h-4 w-4 text-muted-foreground" />
-                        }
-                      />
-                    </span>
-                  )}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        isSelect
-                        className="w-44 justify-between"
-                        label={getAvailabilityFilterLabel(availabilityFilter)}
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-48">
-                      {AVAILABILITY_FILTER_OPTIONS.map((option) => (
-                        <DropdownMenuItem
-                          key={option.value}
-                          label={option.label}
-                          onClick={() => setAvailabilityFilter(option.value)}
-                        />
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </TabsList>
-            </Tabs>
-            {!isLoading &&
-              activeTab === "active" &&
-              availabilityFilter === "all" &&
-              suggestedSkills.length > 0 && (
-                <SuggestedSkillsSection
-                  skills={sortSkillsByName(suggestedSkills)}
-                  onSkillClick={handleSkillSelect}
-                  owner={owner}
-                  user={user}
-                />
-              )}
-            {isLoading || !isActiveTabEmpty ? (
-              <SkillsTable
-                owner={owner}
-                skills={skillsByTab[activeTab]}
-                onSkillClick={handleSkillSelect}
-                onAgentClick={setAgentId}
-                onUsedBySkillClick={setSkillIdParam}
-                canMakeSkillAutoDiscoverable={canMakeSkillAutoDiscoverable}
-                enableSelection={isBatchEditionAvailable}
-                rowSelection={rowSelection}
-                setRowSelection={setRowSelection}
-                isBatchUpdating={isBatchUpdating}
-                onSelectAvailabilityAction={setPendingBatchAction}
-                isLoading={isLoading}
-              />
-            ) : (
-              <div className="pt-2">{renderEmptyTabState()}</div>
-            )}
+                )}
+              </div>
+            }
+            description="Reusable packages of instructions and tools that agents can share."
+            noTopPadding
+          />
+        )}
+        {searchActions ? (
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            {searchInput}
+            {searchActions}
           </div>
-        </Page.Vertical>
+        ) : (
+          searchInput
+        )}
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <ButtonsSwitchList
+              value={selectedTab}
+              onValueChange={(value) => {
+                const tab = SKILL_SEARCH_TABS.find(({ id }) => id === value);
+                if (tab) {
+                  setSelectedTab(tab.id);
+                }
+              }}
+            >
+              {SKILL_SEARCH_TABS.map((tab) => (
+                <ButtonsSwitch key={tab.id} value={tab.id} label={tab.label} />
+              ))}
+            </ButtonsSwitchList>
+            <SkillFilterPanel
+              owner={owner}
+              searchEndpoint={searchEndpoint}
+              searchTerm={searchTerm}
+              tabFilters={activeTab.filters}
+              permissionFiltering={permissionFiltering}
+              filter={filter}
+              onFilterChange={setFilter}
+              hiddenSkills={
+                permissionFilteringOverride === undefined && isAdmin
+                  ? {
+                      isShown: showHiddenSkills,
+                      onChange: setShowHiddenSkills,
+                    }
+                  : undefined
+              }
+            />
+          </div>
+          <FilterSummaryChips
+            isLoading={isSelectionLoading}
+            summaries={getFilterSummaries(
+              filter,
+              SKILL_FILTER_CATEGORIES,
+              SEARCH_FILTER_CATEGORY_SINGULAR_LABEL
+            )}
+            onClearCategory={(category) =>
+              setFilter(clearFilterCategory(filter, category))
+            }
+            extraChips={
+              permissionFilteringOverride === undefined &&
+              isAdmin &&
+              showHiddenSkills
+                ? [
+                    {
+                      key: "hidden-skills",
+                      label: (
+                        <span className="min-w-0 truncate text-xs font-bold">
+                          Hidden skills
+                        </span>
+                      ),
+                      onRemove: () => setShowHiddenSkills(false),
+                    },
+                  ]
+                : []
+            }
+            onClearAll={() => {
+              setFilter({});
+              setShowHiddenSkills(false);
+            }}
+          />
+          <SkillsList
+            readOnly={readOnly}
+            searchEndpoint={searchEndpoint}
+            key={`${owner.sId}-${activeTab.id}`}
+            searchTerm={searchTerm}
+            filters={{ ...activeTab.filters, ...searchFilters }}
+            permissionFiltering={permissionFiltering}
+            onSelect={onSelect ?? setSkillId}
+          />
+        </div>
       </div>
+      {isImportDialogOpen && (
+        <ImportSkillsDialog
+          owner={owner}
+          onClose={() => setIsImportDialogOpen(false)}
+        />
+      )}
+      {!readOnly && (
+        <SkillDetailsSheet
+          owner={owner}
+          user={user}
+          skillId={skillId ?? null}
+          onClose={() => setSkillId(undefined)}
+          showFavoriteButton
+        />
+      )}
     </>
   );
 }

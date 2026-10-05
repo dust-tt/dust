@@ -1,12 +1,12 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderTriggerType } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/lib/triggers/webhooks_client_side";
 import { describeScheduleConfig } from "@app/lib/utils/schedule_description";
 import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
-import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/types/triggers/webhooks_client_side";
 import { ActionCard, Clock } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
@@ -34,15 +34,7 @@ function getWebhookCardDescription({
   webhookTrigger: AgentBuilderTriggerType & { kind: "webhook" };
   webhookSourceView: WebhookSourceViewType | undefined;
 }) {
-  return (
-    "Triggered " +
-    (webhookTrigger.configuration.event
-      ? "by " + webhookTrigger.configuration.event + " events"
-      : "") +
-    " on " +
-    (webhookSourceView?.customName ?? webhookSourceView?.webhookSource.name) +
-    "'s source."
-  );
+  return `Triggered ${webhookTrigger.configuration.event ? `by ${webhookTrigger.configuration.event} events` : ""} on ${webhookSourceView?.customName ?? webhookSourceView?.webhookSource.name}'s source.`;
 }
 
 interface TriggerCardProps {

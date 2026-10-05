@@ -1,11 +1,17 @@
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
+import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
+import {
+  AUTOMATIONS_SLACK_WORKFLOWS_TAB_LABEL,
+  AUTOMATIONS_TRIGGERS_TAB_LABEL,
+} from "@app/components/pages/workspace/automationsAdminSearchEntries";
 import { AutomationsOverview } from "@app/components/workspace/analytics/automations/AutomationsOverview";
 import { AutomationsTriggersTable } from "@app/components/workspace/analytics/automations/AutomationsTriggersTable";
 import { SlackWorkflowsTab } from "@app/components/workspace/analytics/automations/SlackWorkflowsTab";
 import type { AutomationsFilter } from "@app/components/workspace/analytics/automationsFilter";
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
 import { useQueryParams } from "@app/hooks/useQueryParams";
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
@@ -91,30 +97,48 @@ export function AnalyticsAutomationsPage() {
             }
           >
             <TabsList className="mb-4">
-              <TabsTrigger value="triggers" label="Triggers" />
-              <TabsTrigger value="slack-workflows" label="Slack workflows" />
+              <TabsTrigger
+                value="triggers"
+                label={AUTOMATIONS_TRIGGERS_TAB_LABEL}
+              />
+              <TabsTrigger
+                value="slack-workflows"
+                label={AUTOMATIONS_SLACK_WORKFLOWS_TAB_LABEL}
+              />
             </TabsList>
             <TabsContent value="triggers">
-              <TriggersSection
-                owner={owner}
-                period={period}
-                filter={filter}
-                onFilterChange={setFilter}
-                onAgentClick={setAgentDetailsId}
-              />
+              <AdminSectionAnchor
+                sectionId={ADMIN_SECTION_IDS.automations.triggers}
+              >
+                <TriggersSection
+                  owner={owner}
+                  period={period}
+                  filter={filter}
+                  onFilterChange={setFilter}
+                  onAgentClick={setAgentDetailsId}
+                />
+              </AdminSectionAnchor>
             </TabsContent>
             <TabsContent value="slack-workflows">
-              <SlackWorkflowsTab owner={owner} period={period} />
+              <AdminSectionAnchor
+                sectionId={ADMIN_SECTION_IDS.automations.slackWorkflows}
+              >
+                <SlackWorkflowsTab owner={owner} period={period} />
+              </AdminSectionAnchor>
             </TabsContent>
           </Tabs>
         ) : (
-          <TriggersSection
-            owner={owner}
-            period={period}
-            filter={filter}
-            onFilterChange={setFilter}
-            onAgentClick={setAgentDetailsId}
-          />
+          <AdminSectionAnchor
+            sectionId={ADMIN_SECTION_IDS.automations.triggers}
+          >
+            <TriggersSection
+              owner={owner}
+              period={period}
+              filter={filter}
+              onFilterChange={setFilter}
+              onAgentClick={setAgentDetailsId}
+            />
+          </AdminSectionAnchor>
         )}
       </Page.Vertical>
     </AdminPageContainer>

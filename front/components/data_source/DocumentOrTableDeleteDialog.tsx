@@ -78,9 +78,7 @@ export const DocumentOrTableDeleteDialog = ({
       sendNotification({
         type: "success",
         title: `${capitalize(contentNode.type)} deletion submitted`,
-        description:
-          `Deletion of ${contentNode.type} ${contentNode.title} is ongoing, ` +
-          `it will complete shortly.`,
+        description: `Deletion of ${contentNode.type} ${contentNode.title} is ongoing, it will complete shortly.`,
       });
 
       if (onDeleteSuccess) {
@@ -88,9 +86,7 @@ export const DocumentOrTableDeleteDialog = ({
       }
 
       closeDialog();
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-    } catch (error) {
+    } catch {
       sendNotification({
         type: "error",
         title: `Error deleting ${contentNode.type}`,

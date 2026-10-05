@@ -1,8 +1,7 @@
 import { useAppRouter } from "@app/lib/platform";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import type { WorkspaceType } from "@app/types/user";
-import { isAdmin } from "@app/types/user";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Dialog,
   DialogContainer,
@@ -14,10 +13,11 @@ import {
 } from "@dust-tt/sparkle";
 
 type GlobalAgentActionProps = {
-  agent: LightAgentConfigurationType;
-  owner: WorkspaceType;
+  agent: Pick<LightAgentConfigurationType, "sId" | "name" | "status">;
+  owner: LightWorkspaceType;
+  disabled?: boolean;
   handleToggleAgentStatus: (
-    agent: LightAgentConfigurationType
+    agent: Pick<LightAgentConfigurationType, "sId" | "name" | "status">
   ) => Promise<void>;
   showDisabledFreeWorkspacePopup: string | null;
   setShowDisabledFreeWorkspacePopup: (s: string | null) => void;
@@ -26,6 +26,7 @@ type GlobalAgentActionProps = {
 export function GlobalAgentAction({
   agent,
   owner,
+  disabled = false,
   handleToggleAgentStatus,
   showDisabledFreeWorkspacePopup,
   setShowDisabledFreeWorkspacePopup,
@@ -37,16 +38,30 @@ export function GlobalAgentAction({
   if (canBeDisabled) {
     return (
       <>
-        <SliderToggle
+        <button
+          type="button"
+          role="switch"
+          aria-label={agent.name}
+          aria-checked={agent.status === "active"}
+          disabled={
+            disabled ||
+            owner.role !== "admin" ||
+            agent.status === "disabled_missing_datasource"
+          }
           onClick={(e) => {
             e.stopPropagation();
             void handleToggleAgentStatus(agent);
           }}
-          selected={agent.status === "active"}
-          disabled={
-            !isAdmin(owner) || agent.status === "disabled_missing_datasource"
-          }
-        />
+        >
+          <SliderToggle
+            selected={agent.status === "active"}
+            disabled={
+              disabled ||
+              owner.role !== "admin" ||
+              agent.status === "disabled_missing_datasource"
+            }
+          />
+        </button>
         <div className="whitespace-normal" onClick={(e) => e.stopPropagation()}>
           <Dialog
             open={showDisabledFreeWorkspacePopup === agent.sId}

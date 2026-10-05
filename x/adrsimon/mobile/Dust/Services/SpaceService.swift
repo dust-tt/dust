@@ -14,6 +14,36 @@ enum SpaceService {
             .filter { $0.kind == "project" }
     }
 
+    static func searchPods(
+        workspaceId: String,
+        query: String,
+        lastValue: String?,
+        limit: Int,
+        tokenProvider: TokenProvider
+    ) async throws -> SearchPodsResponse {
+        let endpoint = AppConfig.Endpoints.searchPods(
+            workspaceId: workspaceId,
+            query: query,
+            lastValue: lastValue,
+            limit: limit
+        )
+        return try await APIClient.authenticatedGet(endpoint, tokenProvider: tokenProvider, snakeCase: false)
+    }
+
+    static func joinPod(
+        workspaceId: String,
+        spaceId: String,
+        tokenProvider: TokenProvider
+    ) async throws {
+        struct EmptyBody: Encodable {}
+        try await APIClient.authenticatedSend(
+            AppConfig.Endpoints.joinPod(workspaceId: workspaceId, spaceId: spaceId),
+            method: "POST",
+            body: EmptyBody(),
+            tokenProvider: tokenProvider
+        )
+    }
+
     static func fetchGlobalSpaces(
         workspaceId: String,
         tokenProvider: TokenProvider

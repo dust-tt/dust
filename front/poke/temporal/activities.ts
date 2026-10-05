@@ -9,21 +9,12 @@ import { deleteWorksOSOrganizationWithWorkspace } from "@app/lib/api/workos/orga
 import { areAllSubscriptionsCanceled } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
-import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
-import {
-  AgentChildAgentConfigurationModel,
-  AgentMCPServerConfigurationModel,
-} from "@app/lib/models/agent/actions/mcp";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
-import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import {
-  AgentConfigurationModel,
-  AgentModel,
   AgentUserRelationModel,
   GlobalAgentSettingsModel,
 } from "@app/lib/models/agent/agent";
 import { AgentDataRetentionModel } from "@app/lib/models/agent/agent_data_retention";
-import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { SubscriptionModel } from "@app/lib/models/plan";
@@ -31,7 +22,7 @@ import { ActivationPodResource } from "@app/lib/resources/activation_pod_resourc
 import { ActivationRecommendationResource } from "@app/lib/resources/activation_recommendation_resource";
 import { ActivationWorkAreaResource } from "@app/lib/resources/activation_work_area_resource";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
-import { invalidateAgentResourceCaches } from "@app/lib/resources/agent_resource_cache";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
@@ -68,10 +59,6 @@ import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_me
 import { GroupPinnedItemModel } from "@app/lib/resources/storage/models/group_pinned_items";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import {
-  LabsTranscriptsConfigurationModel,
-  LabsTranscriptsHistoryModel,
-} from "@app/lib/resources/storage/models/labs_transcripts";
-import {
   UserMetadataModel,
   UserToolApprovalModel,
 } from "@app/lib/resources/storage/models/user";
@@ -96,7 +83,6 @@ import { launchDeleteWorkspaceAgentSearchWorkflow } from "@app/temporal/es_index
 import { deleteAllConversations } from "@app/temporal/scrub_workspace/activities";
 import { CoreAPI } from "@app/types/core/core_api";
 import assert from "assert";
-import { Op } from "sequelize";
 
 const hardDeleteLogger = logger.child({ activity: "hard-delete" });
 
@@ -354,12 +340,6 @@ export async function deleteAgentsActivity({
     throw new Error("Could not find the workspace.");
   }
 
-  const agents = await AgentConfigurationModel.findAll({
-    where: {
-      workspaceId: workspace.id,
-    },
-  });
-
   await AgentSuggestionResource.deleteAllForWorkspace(auth);
   // Skill suggestions are deleted by `deleteSkillsActivity`, which runs before this one.
   await BatchSuggestionResource.deleteAllForWorkspace(auth);
@@ -369,80 +349,7 @@ export async function deleteAgentsActivity({
       workspaceId: workspace.id,
     },
   });
-  for (const agent of agents) {
-    const mcpServerConfigurations =
-      await AgentMCPServerConfigurationModel.findAll({
-        where: {
-          agentConfigurationId: agent.id,
-          workspaceId: workspace.id,
-        },
-      });
-    await AgentDataSourceConfigurationModel.destroy({
-      where: {
-        mcpServerConfigurationId: {
-          [Op.in]: mcpServerConfigurations.map((r) => r.id),
-        },
-        workspaceId: workspace.id,
-      },
-    });
-    await AgentTablesQueryConfigurationTableModel.destroy({
-      where: {
-        mcpServerConfigurationId: {
-          [Op.in]: mcpServerConfigurations.map((r) => r.id),
-        },
-        workspaceId: workspace.id,
-      },
-    });
-
-    await AgentChildAgentConfigurationModel.destroy({
-      where: {
-        mcpServerConfigurationId: {
-          [Op.in]: mcpServerConfigurations.map((r) => `${r.id}`),
-        },
-        workspaceId: workspace.id,
-      },
-    });
-    await AgentMCPServerConfigurationModel.destroy({
-      where: {
-        agentConfigurationId: agent.id,
-        workspaceId: workspace.id,
-      },
-    });
-
-    await AgentUserRelationModel.destroy({
-      where: {
-        agentConfiguration: agent.sId,
-        workspaceId: workspace.id,
-      },
-    });
-
-    await TagAgentModel.destroy({
-      where: {
-        agentConfigurationId: agent.id,
-        workspaceId: workspace.id,
-      },
-    });
-
-    await AgentMemoryModel.destroy({
-      where: {
-        agentConfigurationId: agent.sId,
-        workspaceId: workspace.id,
-      },
-    });
-
-    hardDeleteLogger.info({ agentId: agent.sId }, "Deleting agent");
-    await agent.destroy();
-  }
-
-  await AgentModel.destroy({
-    where: { workspaceId: workspace.id },
-  });
-
-  // Cache entries have no TTL, so workspace deletion must drop every agent's cached snapshot.
-  await invalidateAgentResourceCaches(
-    workspace.id,
-    agents.map((agent) => agent.sId)
-  );
+  await AgentResource.dangerouslyDeleteAllForWorkspace(auth);
 
   const deleteSearchResult = await launchDeleteWorkspaceAgentSearchWorkflow({
     workspaceId: workspace.sId,
@@ -765,17 +672,24 @@ export async function deletePluginRunsActivity({
   await PluginRunResource.deleteAllForWorkspace(auth);
 }
 
+/**
+ * @cc [owner:Nils-Fedrigo,label:product;security] relocated-keeps-metronome-contract
+ * When `workspaceHasBeenRelocated` is true, the activity MUST NOT end or otherwise modify the
+ * workspace's Metronome contract: the relocated copy in the destination region shares the same
+ * `metronomeCustomerId` and `metronomeContractId`, and ending it would end the live tenant's
+ * subscription.
+ */
 export async function deleteWorkspaceActivity({
   workspaceId,
+  workspaceHasBeenRelocated = false,
 }: {
   workspaceId: string;
+  workspaceHasBeenRelocated?: boolean;
 }) {
   let auth: Authenticator;
   try {
     auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-  } catch (err) {
+  } catch {
     hardDeleteLogger.warn(
       { workspaceId },
       "Workspace not found, nothing to delete."
@@ -784,8 +698,14 @@ export async function deleteWorkspaceActivity({
   }
   const workspace = auth.getNonNullableWorkspace();
 
-  // End the Metronome contract if one exists.
-  if (workspace.metronomeCustomerId) {
+  // End the Metronome contract if one exists. A relocated workspace shares its contract with the
+  // live copy in the destination region, so it must be left untouched.
+  if (workspaceHasBeenRelocated) {
+    hardDeleteLogger.info(
+      { workspaceId },
+      "Skipping Metronome contract end for workspace that has been relocated."
+    );
+  } else if (workspace.metronomeCustomerId) {
     const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
     const subscription = workspaceResource
       ? await SubscriptionResource.fetchActiveByWorkspaceModelId(
@@ -869,36 +789,6 @@ export async function deleteWorkspaceActivity({
       throw deleteResult.error;
     }
   }
-}
-
-export async function deleteTranscriptsActivity({
-  workspaceId,
-}: {
-  workspaceId: string;
-}) {
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const workspace = auth.getNonNullableWorkspace();
-
-  const configs = await LabsTranscriptsConfigurationModel.findAll({
-    where: {
-      workspaceId: workspace.id,
-    },
-  });
-
-  await LabsTranscriptsHistoryModel.destroy({
-    where: {
-      workspaceId: workspace.id,
-      configurationId: {
-        [Op.in]: configs.map((c) => c.id),
-      },
-    },
-  });
-
-  await LabsTranscriptsConfigurationModel.destroy({
-    where: {
-      workspaceId: workspace.id,
-    },
-  });
 }
 
 export async function deleteTagsActivity({

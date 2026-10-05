@@ -1,9 +1,13 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import type { EditSkillSuggestion } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
+import type {
+  EditAgentSuggestion,
+  EditSkillSuggestion,
+} from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type {
   ModelIdType,
+  ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
@@ -58,6 +62,8 @@ export interface SeedAgent {
   // Block-structured HTML with hand-picked `data-block-id`s, so scenarios can assert on which
   // blocks an edit targets. Wrap in the `instructions-root` div, as the editor stores it.
   instructionsHtml: string;
+  // Defaults to the factory's model when omitted.
+  model?: { providerId: ModelProviderIdType; modelId: ModelIdType };
 }
 
 /** Everything the scenario's workspace is seeded with. Tools then run for real against it. */
@@ -80,9 +86,26 @@ export type SkillUpdateEditKind = keyof Pick<
 >;
 
 /**
+ * A suggestion the run must record: its target, and the fields it must carry with these exact
+ * values. Fields not listed are not checked.
+ */
+export type ExpectedSuggestion =
+  | {
+      kind: "edit_skill";
+      skillKey: string;
+      fields: Partial<Omit<EditSkillSuggestion, "kind" | "skillId">>;
+    }
+  | {
+      kind: "edit_agent";
+      agentKey: string;
+      fields: Partial<Omit<EditAgentSuggestion, "kind" | "agentId">>;
+    };
+
+/**
  * The change the run must end with. The "final" tool call is the last non-exploratory call of the
  * run, which must be a `suggest` call carrying this change: exploratory calls (listing / describing
- * entities) never count.
+ * entities) never count. `separateSuggestions` checks every `suggest` call of the run instead,
+ * since the change spans several calls.
  */
 export type FinalToolCallAssertion =
   | {
@@ -101,7 +124,12 @@ export type FinalToolCallAssertion =
       addMemberKeys?: string[];
     }
   | { type: "suggestSkillDeletion"; skillKey: string }
+  | { type: "suggestAgentDeletion"; agentKey: string }
   | { type: "suggestSkillName"; skillKey: string }
+  | {
+      type: "separateSuggestions";
+      suggestions: ExpectedSuggestion[];
+    }
   | {
       type: "suggestSkillAvailability";
       skillKey: string;
@@ -109,12 +137,50 @@ export type FinalToolCallAssertion =
     }
   | { type: "suggestSkillUserFacingDescription"; skillKey: string }
   | { type: "suggestAgentCreation" }
+  | { type: "suggestSkillCreation" }
+  | {
+      type: "suggestSubAgentByRef";
+      // The seeded agent that must get the created agent as a sub-agent, through its ref.
+      parentAgentKey: string;
+      // How many created agents it must get. Defaults to 1.
+      subAgentCount?: number;
+    }
+  | {
+      type: "suggestAgentSkillByRef";
+      // The seeded agent that must get the created skill. Without it, the run must create the
+      // agent too and give it the skill.
+      agentKey?: string;
+    }
+  | {
+      type: "suggestSkillCitingNewSkill";
+      // The seeded skill whose instruction edits must cite the created skill. Without it, one
+      // created skill must cite another one.
+      skillKey?: string;
+    }
+  | {
+      // The run must record no suggestion, e.g. because it has to ask the user first, and must have
+      // successfully called each of these (prefixed) tools.
+      type: "noSuggestion";
+      requiredToolNames: string[];
+    }
   | {
       type: "suggestAgentInstructionsChange";
       agentKey: string;
       // The edit must target one of these block ids (from the seeded HTML). Guards against a
       // rewrite of the root or of an unrelated block when the change fits in one block.
       allowedTargetBlockIds?: string[];
+    }
+  | {
+      type: "suggestAgentModelChange";
+      agentKey: string;
+      modelId: ModelIdType;
+    }
+  | {
+      type: "suggestAgentStructuredOutput";
+      agentKey: string;
+      // Each pattern must match the name of a required top-level property of the schema, so the
+      // scenario does not depend on the exact names the model picks (e.g. `zip_code`, `zipcode`).
+      requiredProperties: RegExp[];
     };
 
 interface BaseTestCase {
@@ -200,6 +266,11 @@ export interface BuildingAgentConfig {
   tools: AgentActionSpecification[];
 }
 
+/** A tool call of the run, with whether the tool rejected it (in which case it had no effect). */
+export interface ExecutedToolCall extends ToolCall {
+  isError: boolean;
+}
+
 export interface JudgeResult {
   finalScore: number;
   scores: number[];
@@ -208,7 +279,9 @@ export interface JudgeResult {
 
 export interface ExecutionResult {
   responseText: string;
-  toolCalls: ToolCall[];
+  toolCalls: ExecutedToolCall[];
+  // The same calls grouped by model round: calls of one round were issued in parallel.
+  toolCallRounds: ExecutedToolCall[][];
   finalToolCall: ToolCall | null;
   modelTimeMs: number;
 }

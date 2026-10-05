@@ -1,8 +1,10 @@
 import {
   computeTokensCostForUsageInMicroUsd,
   FLEX_DISCOUNT_FACTOR,
+  inferenceRegionForEndpointRegion,
 } from "@app/lib/api/assistant/token_pricing";
 import { EU_UPLIFT_MODEL_IDS } from "@app/lib/api/assistant/token_pricing/eu";
+import { FIREWORKS_GLM_5P3_MODEL_ID } from "@app/types/assistant/models/fireworks";
 import {
   GEMINI_3_1_PRO_MODEL_ID,
   GEMINI_3_PRO_MODEL_ID,
@@ -21,6 +23,24 @@ import {
   GROK_4_6_MODEL_ID,
 } from "@app/types/assistant/models/xai";
 import { describe, expect, it } from "vitest";
+
+describe("inferenceRegionForEndpointRegion", () => {
+  it.each([
+    { endpointRegion: "eu" as const, expectedInferenceRegion: "eu" },
+    {
+      endpointRegion: "global" as const,
+      expectedInferenceRegion: "global",
+    },
+    { endpointRegion: "us" as const, expectedInferenceRegion: "global" },
+  ])("maps $endpointRegion endpoints to $expectedInferenceRegion pricing", ({
+    endpointRegion,
+    expectedInferenceRegion,
+  }) => {
+    expect(inferenceRegionForEndpointRegion(endpointRegion)).toBe(
+      expectedInferenceRegion
+    );
+  });
+});
 
 describe("computeTokensCostForUsageInMicroUsd", () => {
   it.each(
@@ -108,6 +128,20 @@ describe("computeTokensCostForUsageInMicroUsd", () => {
         serviceTier: "flex",
       })
     ).toBe(computeTokensCostForUsageInMicroUsd({ ...usage, isBatch: true }));
+  });
+
+  it("prices GLM-5.3 in the EU at Mistral's list rates x1.1, not Fireworks' x1.1", () => {
+    const mistralListMicroUsd = 1.4e6 + 0.14e6 + 4.4e6;
+
+    expect(
+      computeTokensCostForUsageInMicroUsd({
+        modelId: FIREWORKS_GLM_5P3_MODEL_ID,
+        promptTokens: 2_000_000,
+        completionTokens: 1_000_000,
+        cachedTokens: 1_000_000,
+        inferenceRegion: "eu",
+      })
+    ).toBeCloseTo(mistralListMicroUsd * 1.1, 6);
   });
 
   it("does not uplift OpenAI models without regional premium pricing", () => {

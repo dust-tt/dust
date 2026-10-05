@@ -11,14 +11,12 @@ import { Err, Ok } from "../shared/result";
 import type { AdminCommandType, AdminResponseType } from "./admin/cli";
 import type { ConnectorConfiguration } from "./configuration";
 import type { ContentNodesViewType } from "./content_nodes";
-import { DiscordBotConfigurationTypeSchema } from "./discord_bot";
 import { SlackConfigurationTypeSchema } from "./slack";
 import { WebCrawlerConfigurationTypeSchema } from "./webcrawler";
 
 export const ConnectorConfigurationTypeSchema = z.union([
   WebCrawlerConfigurationTypeSchema,
   SlackConfigurationTypeSchema,
-  DiscordBotConfigurationTypeSchema,
   z.null(),
 ]);
 
@@ -66,13 +64,10 @@ export const CONNECTORS_ERROR_TYPES = [
   "remote_database_connection_not_readonly",
   "remote_database_network_error",
   "workspace_plan_no_api_access",
+  "workspace_relocated",
 ] as const;
 
 export type ConnectorErrorType = (typeof CONNECTORS_ERROR_TYPES)[number];
-
-export function isConnectorError(val: string): val is ConnectorErrorType {
-  return (CONNECTORS_ERROR_TYPES as unknown as string[]).includes(val);
-}
 
 export type InternalConnectorType = {
   id: string;

@@ -6,12 +6,13 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { getAgentAllowedTierNamesOverride } from "@app/lib/model_tiers/agent_tier_overrides";
 import {
   getEnabledModelsForAuth,
+  getTieredDefaultReasoningEffort,
   resolveStreamModel,
 } from "@app/lib/model_tiers/enabled_models";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
-  LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
@@ -48,11 +49,11 @@ export async function resolveModel(
   auth: Authenticator,
   {
     selection,
-    configuration,
+    agent,
     featureFlags,
   }: {
     selection?: ModelSelectionType;
-    configuration: LightAgentConfigurationType;
+    agent: AgentResource;
     featureFlags: WhitelistableFeature[];
   }
 ): Promise<{
@@ -72,8 +73,8 @@ export async function resolveModel(
 
   const agentConfig = SUPPORTED_MODEL_CONFIGS.find(
     (m) =>
-      m.providerId === configuration.model.providerId &&
-      m.modelId === configuration.model.modelId
+      m.providerId === agent.modelConfiguration.providerId &&
+      m.modelId === agent.modelConfiguration.modelId
   );
 
   const requestedConfig = userConfig ?? agentConfig;
@@ -98,19 +99,20 @@ export async function resolveModel(
   // (sentinel) selection.
   let streamEffort: ReasoningEffort | undefined;
 
+  const allowedTierNamesOverride = getAgentAllowedTierNamesOverride(agent.sId);
+
   // `auto`, `auto_fast` and `auto_complex` are all streams: walk the stream's
   // ordered candidate pool and pick the first one available to the workspace.
   if (enabled && isModelStreamId(enabled.modelId)) {
     const streamId = enabled.modelId;
     const models = await getEnabledModelsForAuth(auth, {
-      allowedTierNamesOverride: getAgentAllowedTierNamesOverride(
-        configuration.sId
-      ),
+      allowedTierNamesOverride,
     });
     const resolution = resolveStreamModel(
       models,
       streamId,
-      getDegradedModelIds()
+      getDegradedModelIds(),
+      featureFlags
     );
     enabled = resolution.model;
 
@@ -129,20 +131,24 @@ export async function resolveModel(
 
   // A stream tier dictates the effort of its resolved model. Otherwise honor the
   // selected or agent-configured effort only if the resolved model supports it
-  // (raw API clients can send an unsupported effort); fall back to its default.
+  // (raw API clients can send an unsupported effort); fall back to its default,
+  // or to the highest effort the caller's tiers allow when the default is above them.
   // TODO(reasoning-effort): return an error instead of falling back once the
   // reasoning effort migration has fixed the stored efforts.
   const requestedReasoningEffort =
     streamEffort ??
     (selection
       ? selection.reasoningEffort
-      : configuration.model.reasoningEffort);
+      : agent.modelConfiguration.reasoningEffort);
 
   const effort =
     requestedReasoningEffort &&
     enabled.supportedReasoningEfforts[requestedReasoningEffort]
       ? requestedReasoningEffort
-      : enabled.defaultReasoningEffort;
+      : await getTieredDefaultReasoningEffort(auth, {
+          model: enabled,
+          allowedTierNamesOverride,
+        });
 
   return {
     resolvedModel: toResolvedModel(enabled, effort),
@@ -173,10 +179,24 @@ export async function resolveAgentMessageModelConfig(
 
   let { resolvedModel } = agentMessage;
   if (!resolvedModel && isModelStreamId(model.modelId)) {
-    ({ resolvedModel } = await resolveModel(auth, {
-      configuration: agentConfiguration,
-      featureFlags: await getFeatureFlags(auth),
-    }));
+    // The message's pinned version, whatever the caller's current access: its configuration was
+    // already resolved for this message.
+    const [agent] = await AgentResource.fetchByIdsAndVersions(
+      auth,
+      [
+        {
+          agentId: agentConfiguration.sId,
+          agentVersion: agentConfiguration.version,
+        },
+      ],
+      { dangerouslySkipFetchCheck: true }
+    );
+    if (agent) {
+      ({ resolvedModel } = await resolveModel(auth, {
+        agent,
+        featureFlags: await getFeatureFlags(auth),
+      }));
+    }
   }
 
   const isNoopPinnedModel = model.modelId === NOOP_MODEL_ID;

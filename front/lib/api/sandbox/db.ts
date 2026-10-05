@@ -10,15 +10,10 @@ import type {
 import { rootCommand } from "@app/lib/api/sandbox/root_command";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import type { FileResource } from "@app/lib/resources/file_resource";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { concurrentExecutor } from "@app/temporal/workflow_utils";
-import {
-  getFrameDatabaseReplicaBasePath,
-  getFrameDatabaseReplicasBasePath,
-} from "@app/types/api/frame_storage";
 import {
   getPodStateBasePath,
   SANDBOX_STATE_DATABASES_DIR,
@@ -799,65 +794,6 @@ export async function deletePodStatePrefix(
         podId: space.sId,
       })
     );
-    return new Ok(undefined);
-  } catch (err) {
-    return new Err(normalizeError(err));
-  }
-}
-
-/**
- * Delete ONE database's litestream replica: the GCS prefix the directory watcher keys on that
- * database's filename.
- *
- * The replica is the durable copy of a Frame database, and `setupSandboxStateOnColdStart` restores
- * every replica it finds. So a replica that survives resurrects a database whose live files were
- * deleted — which makes this the step that actually makes a database deletion stick.
- *
- * Call it AFTER the live files are gone AND the daemon has been restarted
- * (`restartLitestreamDaemon`): a running litestream keeps replicating a database it can still see,
- * and removing the files does not make it let go — the directory watcher only enumerates at start,
- * so until the restart the daemon still holds the database and recreates the prefix this wipes. The
- * delete is verified by re-listing, because a silently-surviving replica is indistinguishable from
- * success until the Frame next boots.
- */
-export async function deleteFrameDatabaseReplica(
-  auth: Authenticator,
-  frame: Pick<FileResource, "sId">,
-  { database }: { database: string }
-): Promise<Result<void, Error>> {
-  if (!isValidPodDatabaseName(database)) {
-    return new Err(new Error(`Invalid sandbox database name: '${database}'.`));
-  }
-
-  const workspaceId = auth.getNonNullableWorkspace().sId;
-  const replicasPrefix = getFrameDatabaseReplicasBasePath({
-    workspaceId,
-    frameId: frame.sId,
-  });
-  const replicaDirName = `${database}.db`;
-
-  try {
-    const bucket = getPrivateUploadBucket();
-    await bucket.deleteByPrefix(
-      getFrameDatabaseReplicaBasePath({
-        workspaceId,
-        frameId: frame.sId,
-        databaseName: database,
-      })
-    );
-
-    const remaining = await bucket.listSubdirectoryNames({
-      prefix: replicasPrefix,
-    });
-    if (remaining.includes(replicaDirName)) {
-      return new Err(
-        new Error(
-          `Replica of Frame database '${database}' still present after deletion; ` +
-            "the database would be restored on the Frame's next cold start."
-        )
-      );
-    }
-
     return new Ok(undefined);
   } catch (err) {
     return new Err(normalizeError(err));

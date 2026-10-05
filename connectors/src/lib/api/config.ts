@@ -56,15 +56,6 @@ export const apiConfig = {
       ) === "true"
     );
   },
-  getDiscordAppPublicKey: (): string => {
-    return EnvironmentConfig.getEnvVariable("DISCORD_APP_PUBLIC_KEY");
-  },
-  getDiscordBotToken: (): string => {
-    return EnvironmentConfig.getEnvVariable("DISCORD_BOT_TOKEN");
-  },
-  getDiscordApplicationId: (): string => {
-    return EnvironmentConfig.getEnvVariable("DISCORD_APP_ID");
-  },
   getProfilerSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DEBUG_PROFILER_SECRET");
   },

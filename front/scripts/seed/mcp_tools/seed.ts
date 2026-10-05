@@ -4,7 +4,6 @@ import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/m
 import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
 import { SEARCH_SERVER_NAME } from "@app/lib/api/actions/servers/search/metadata";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
-import { searchAgentConfigurationsByName } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -153,11 +152,7 @@ async function createAgentWithTool({
   dataSourceViewId: string;
   mcpServerViewId: string;
 }) {
-  const existingAgents = await searchAgentConfigurationsByName(
-    auth,
-    agent.agentName
-  );
-  const existingAgent = existingAgents.find((a) => a.name === agent.agentName);
+  const existingAgent = await AgentResource.fetchByName(auth, agent.agentName);
   if (existingAgent) {
     return { agentId: existingAgent.sId, actionId: null };
   }

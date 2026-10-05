@@ -9,22 +9,28 @@ import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useCellContext } from "@app/lib/auth/CellContext";
 import { useAppRouter } from "@app/lib/platform";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
+import {
+  getModelMaker,
+  isWhitelistableModelMakerId,
+} from "@app/types/assistant/models/providers";
 import type {
   ModelConfigurationType,
   ModelProviderIdType,
+  WhitelistableModelMakerIdType,
 } from "@app/types/assistant/models/types";
 import type { ProvidersSelection } from "@app/types/provider_selection";
 import type { WorkspaceType } from "@app/types/user";
 import { ArrowRight, Button } from "@dust-tt/sparkle";
 import groupBy from "lodash/groupBy";
 import mapValues from "lodash/mapValues";
+import pickBy from "lodash/pickBy";
 import uniqBy from "lodash/uniqBy";
 
 interface ModelProvidersPageContentProps {
   workspace: WorkspaceType;
   providersSelection: ProvidersSelection;
   isWorkspaceValidating: boolean;
-  onToggleProvider: (provider: ModelProviderIdType) => void;
+  onToggleProvider: (provider: WhitelistableModelMakerIdType) => void;
   onSelectAllProviders: () => void;
 }
 
@@ -54,12 +60,20 @@ export function ModelProvidersPageContent({
       })
   );
 
+  const describeModels = (modelConfigurations: ModelConfigurationType[]) =>
+    modelConfigurations.map(({ displayName }) => displayName).join(", ");
+
+  // BYOK keys belong to the serving provider.
   const modelsDescriptionByProvider: Partial<
     Record<ModelProviderIdType, string>
-  > = mapValues(
-    groupBy(filteredModels, "providerId"),
-    (modelConfigurations: ModelConfigurationType[]) =>
-      modelConfigurations.map(({ displayName }) => displayName).join(", ")
+  > = mapValues(groupBy(filteredModels, "providerId"), describeModels);
+
+  // Whitelisting is by lab: GLM-5.3 is listed under Z.ai whoever serves it.
+  const modelsDescriptionByMaker: Partial<
+    Record<WhitelistableModelMakerIdType, string>
+  > = pickBy(
+    mapValues(groupBy(filteredModels, getModelMaker), describeModels),
+    (_, makerId) => isWhitelistableModelMakerId(makerId)
   );
 
   return (
@@ -80,7 +94,7 @@ export function ModelProvidersPageContent({
             providersSelection={providersSelection}
             onToggleProvider={onToggleProvider}
             isWorkspaceValidating={isWorkspaceValidating}
-            modelsDescriptionByProvider={modelsDescriptionByProvider}
+            modelsDescriptionByMaker={modelsDescriptionByMaker}
           />
         </>
       )}
@@ -93,12 +107,15 @@ export function ModelProvidersPageContent({
             allowed tier — set per workspace, group, or member.
           </div>
           <Button
-            label="Manage in Usage"
+            label="Manage in Credits"
             variant="highlight-ghost"
             size="sm"
             iconRight={ArrowRight}
             onClick={() => {
-              void router.push(`/w/${workspace.sId}/usage`);
+              // Per-member and per-group model tiers are edited on Credits
+              // (Members / Groups tables). Workspace-level defaults live on
+              // Models › Access tiers.
+              void router.push(`/w/${workspace.sId}/credits`);
             }}
           />
         </div>

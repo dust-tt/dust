@@ -1,4 +1,3 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { ONE_DAY_MS } from "@app/lib/api/assistant/inactivity/policy";
 import { updateWorkspaceMetadata } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
@@ -78,10 +77,7 @@ async function createUnusedAgent(
 }
 
 async function statusOf(auth: Authenticator, agentId: string) {
-  const agent = await getAgentConfiguration(auth, {
-    agentId,
-    variant: "light",
-  });
+  const agent = await AgentConfigurationFactory.refetch(auth, agentId);
 
   return agent?.status;
 }
@@ -158,7 +154,7 @@ describe("archiveWorkspaceInactiveAgentsActivity", () => {
 
     expect(res.archivedCount).toBe(1);
     expect(res.skippedCount).toBe(0);
-    expect(await statusOf(authenticator, agent.sId)).toBeUndefined();
+    expect(await statusOf(authenticator, agent.sId)).toBe("archived");
   });
 
   it("archives nothing once the workspace clears its threshold", async () => {

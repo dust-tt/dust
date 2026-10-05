@@ -11,6 +11,7 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import { renderPodsList } from "@app/components/assistant/conversation/sidebar/PodList";
 import { PodsBrowsePopover } from "@app/components/assistant/conversation/sidebar/PodsBrowsePopover";
 import { SidebarSearch } from "@app/components/assistant/conversation/sidebar/SidebarSearch";
+import { UnifiedSearchNav } from "@app/components/assistant/conversation/sidebar/UnifiedSearchNav";
 import {
   filterReadTriggeredConversations,
   getGroupConversationsByDate,
@@ -40,7 +41,8 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { usePodsSectionCollapsed } from "@app/hooks/usePodsSectionCollapsed";
 import { useSearchPods } from "@app/hooks/useSearchPods";
 import { useStarredPodsSectionCollapsed } from "@app/hooks/useStarredPodsSectionCollapsed";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import { useAppRouter } from "@app/lib/platform";
 import { SKILL_ICON } from "@app/lib/skill";
@@ -423,6 +425,8 @@ export function AgentSidebarMenu({
   const { hasPermission } = useWorkspacePermissions();
   const moveConversationToPod = useMoveConversationToPod(owner);
   const bulkMoveConversationsToPod = useBulkMoveConversationsToPod(owner);
+  const { hasFeature } = useFeatureFlags();
+  const hasUnifiedSearch = hasFeature("unified_search");
 
   const { providersHealth } = useAuth();
   const noHealthyProviders = !hasHealthyProviders(providersHealth);
@@ -1096,6 +1100,7 @@ export function AgentSidebarMenu({
                             icon={getSpaceIcon(pod)}
                             label={pod.name}
                             truncateText
+                            tooltip={pod.name}
                             onClick={() => moveSelectionToPod(pod)}
                           />
                         ))
@@ -1121,6 +1126,11 @@ export function AgentSidebarMenu({
                   onClick={toggleMultiSelect}
                 />
               </div>
+            ) : hasUnifiedSearch ? (
+              <UnifiedSearchNav
+                owner={owner}
+                onNewConversationClick={handleNewClick}
+              />
             ) : (
               <div className="z-50 flex justify-end gap-2 p-sidebar-side-spacing">
                 <div className="flex-1">
@@ -1452,7 +1462,7 @@ function WakeUpSuffix({ nextWakeupAt }: WakeUpSuffixProps) {
   return (
     <span className="copy-xs flex items-center gap-1 text-muted-foreground">
       <Icon visual={Clock} size="xs" />
-      {formatWakeUpSidebarLabel(nextWakeupAt)}
+      {formatWakeUpSidebarLabel(nextWakeupAt, getActiveLocale())}
     </span>
   );
 }

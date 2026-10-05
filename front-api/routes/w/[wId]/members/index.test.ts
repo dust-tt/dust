@@ -1,4 +1,3 @@
-import { parseQueryString } from "@app/lib/utils/router";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -223,13 +222,9 @@ describe("GET /api/w/:wId/members", () => {
     expect(firstPageData.members).toHaveLength(10);
     expect(firstPageData.nextPageUrl).toBeDefined();
 
-    const nextParams = parseQueryString(firstPageData.nextPageUrl);
-    const stringParams: Record<string, string> = {};
-    for (const [k, v] of Object.entries(nextParams)) {
-      if (typeof v === "string") {
-        stringParams[k] = v;
-      }
-    }
+    const stringParams = Object.fromEntries(
+      new URL(firstPageData.nextPageUrl, "http://localhost").searchParams
+    );
     const secondResponse = await honoApp.request(
       membersUrl(workspace.sId, stringParams)
     );

@@ -37,9 +37,7 @@ import {
   fetchConsumptionTopGroups,
   resolveConsumptionGroupLabels,
 } from "@app/lib/api/analytics/consumption/top";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { Err, Ok } from "@app/types/shared/result";
 import { formatDateFromMillis } from "@app/types/shared/utils/date_utils";
 import { pluralize } from "@app/types/shared/utils/string_utils";
@@ -175,65 +173,6 @@ function formatCreditLine(
 }
 
 const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
-  get_agent_details: async ({ agentId }, { auth }) => {
-    const deniedError = workspaceManagerGuard(auth);
-    if (deniedError) {
-      return new Err(deniedError);
-    }
-
-    const agents = await getAgentConfigurations(auth, {
-      agentIds: [agentId],
-      variant: "full",
-    });
-    const agent = agents[0];
-
-    if (!agent) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text:
-            `No agent found with id ${agentId} (it may be archived or not ` +
-            "accessible).",
-        },
-      ]);
-    }
-
-    if (!agent.canRead) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text:
-            `Agent ${agent.name} [${agent.sId}]\n` +
-            `- Description: (private agent - not available)\n` +
-            `- Scope: ${agent.scope}\n` +
-            `- Model: ${agent.model.providerId}/${agent.model.modelId}\n\n` +
-            "Instructions, skills, and tools are not available for private " +
-            "agents you do not have access to.",
-        },
-      ]);
-    }
-
-    const toolNames = agent.actions.map((action) => action.name).join(", ");
-    // Only reached for an agent the caller can read, so its skills are not private.
-    const skills = await SkillResource.listByAgentConfiguration(auth, agent);
-    const skillNames = skills.map((skill) => skill.name).join(", ");
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text:
-          `Agent ${agent.name} [${agent.sId}]\n` +
-          `- Description: ${agent.description}\n` +
-          `- Scope: ${agent.scope}\n` +
-          `- Model: ${agent.model.providerId}/${agent.model.modelId}\n` +
-          `- Skills: ${skillNames || "none"}\n` +
-          `- Tools: ${toolNames || "none"}\n\n` +
-          "Instructions (full system prompt):\n" +
-          `${agent.instructions ?? "(no instructions)"}`,
-      },
-    ]);
-  },
-
   get_consumption_overview: async (input, { auth }) => {
     const deniedError = workspaceManagerGuard(auth);
     if (deniedError) {

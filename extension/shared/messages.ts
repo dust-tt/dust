@@ -93,9 +93,24 @@ export type RouteChangeMesssage = {
   search: string;
 };
 
+export type GetPanelStateMessage = {
+  type: "EXT_GET_PANEL_STATE";
+  windowId: number;
+};
+
+export type PanelStateResponse =
+  | {
+      status: "open" | "loading";
+      workspaceId: string;
+      conversationId: string | null;
+      podId: string | null;
+    }
+  | { status: "unknown" };
+
 export type ExtensionAppMessage =
   | AttachSelectionMessage
   | RouteChangeMesssage
+  | GetPanelStateMessage
   | SaveToPodMessage;
 
 export type CaptureFullPageMessage = {
@@ -369,15 +384,6 @@ export function sendInteractWithPageMessage(
 }
 
 // Messages from background script to content script
-
-export const sendAttachSelection = (
-  opts: CaptureOptions = { includeContent: true, includeCapture: false }
-) => {
-  return sendMessage<AttachSelectionMessage, void>({
-    type: "EXT_ATTACH_TAB",
-    ...opts,
-  });
-};
 
 export const sendGetSessionInfoMessage =
   (): Promise<GetSessionInfoResponse> => {

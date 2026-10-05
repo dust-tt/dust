@@ -22,11 +22,6 @@ export const JiraProjectSchema = z.object({
 
 export type JiraProjectType = z.infer<typeof JiraProjectSchema>;
 
-export function isJiraProject(data: unknown): data is JiraProjectType {
-  const result = JiraProjectSchema.safeParse(data);
-  return result.success;
-}
-
 export const JiraProjectsResponseSchema = z.object({
   isLast: z.boolean(),
   startAt: z.number(),
@@ -67,10 +62,6 @@ export const JiraWebhooksResponseSchema = z.object({
   total: z.number(),
   values: z.array(JiraWebhookSchema),
 });
-
-export type JiraWebhooksResponseType = z.infer<
-  typeof JiraWebhooksResponseSchema
->;
 
 export async function validateJiraApiResponse<T extends z.ZodTypeAny>(
   response: Response,

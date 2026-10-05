@@ -19,7 +19,21 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
 import type { WhereOptions } from "sequelize";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { mockEmitAuditLogEvent } = vi.hoisted(() => ({
+  mockEmitAuditLogEvent: vi.fn(),
+}));
+
+vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/audit/workos_audit")>();
+  return { ...actual, emitAuditLogEvent: mockEmitAuditLogEvent };
+});
+
+beforeEach(() => {
+  mockEmitAuditLogEvent.mockClear();
+});
 
 async function setupTest(
   options: {
@@ -665,6 +679,16 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     expect(updatedSkill).not.toBeNull();
     expect(updatedSkill?.agentFacingDescription).toBe(newDescription);
     expect(updatedSkill?.requestedSpaceIds).toEqual([globalSpace.id]);
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "skill.updated",
+        targets: [
+          expect.objectContaining({ type: "workspace" }),
+          expect.objectContaining({ type: "skill", id: skill.sId }),
+        ],
+        metadata: { skill_name: skill.name },
+      })
+    );
   });
 
   it("updates availability, giving it priority over the deprecated isDefault", async () => {
@@ -707,6 +731,16 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     expect(data.skill.isDefault).toBe(false);
     updatedSkill = await SkillResource.fetchById(requestUserAuth, skill.sId);
     expect(updatedSkill?.availability).toBe("workspace_users");
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "skill.availability_updated",
+        metadata: {
+          skill_name: skill.name,
+          previous_availability: "users_and_agents",
+          new_availability: "workspace_users",
+        },
+      })
+    );
   });
 
   it("denies any edit to a non-editor even with the publish permission", async () => {
@@ -1310,6 +1344,106 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
   });
 });
 
+describe("PATCH /api/w/:wId/skills/:sId - self-improvement lock", () => {
+  function saveBody(skill: SkillResource, reinforcement: string) {
+    return {
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: skill.instructions,
+      icon: skill.icon,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: skill.instructionsHtml,
+      reinforcement,
+    };
+  }
+
+  it("denies a reinforcement change to a non-admin editor of a locked skill", async () => {
+    const { workspace, skill, requestUserAuth } = await setupTest({
+      skillOwnerRole: "user",
+      requestUserRole: "user",
+    });
+    await skill.updateReinforcement("off");
+    await skill.updateSelfImprovementLock(true);
+
+    const response = await patchSkill(
+      workspace,
+      skill.sId,
+      saveBody(skill, "on")
+    );
+
+    expect(response.status).toBe(403);
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill?.reinforcement).toBe("off");
+  });
+
+  it("lets a non-admin editor save a locked skill when reinforcement is unchanged", async () => {
+    const { workspace, skill, requestUserAuth } = await setupTest({
+      skillOwnerRole: "user",
+      requestUserRole: "user",
+    });
+    await skill.updateReinforcement("off");
+    await skill.updateSelfImprovementLock(true);
+
+    const response = await patchSkill(workspace, skill.sId, {
+      ...saveBody(skill, "off"),
+      name: "Renamed By Editor",
+    });
+
+    expect(response.status).toBe(200);
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill?.name).toBe("Renamed By Editor");
+    expect(updatedSkill?.reinforcement).toBe("off");
+  });
+
+  it("lets an admin editor change reinforcement on a locked skill", async () => {
+    const { workspace, skill, requestUserAuth } = await setupTest();
+    await skill.updateReinforcement("off");
+    await skill.updateSelfImprovementLock(true);
+
+    const response = await patchSkill(
+      workspace,
+      skill.sId,
+      saveBody(skill, "on")
+    );
+
+    expect(response.status).toBe(200);
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill?.reinforcement).toBe("on");
+  });
+
+  it("lets a non-admin editor change reinforcement on an unlocked skill", async () => {
+    const { workspace, skill, requestUserAuth } = await setupTest({
+      skillOwnerRole: "user",
+      requestUserRole: "user",
+    });
+    await skill.updateReinforcement("off");
+
+    const response = await patchSkill(
+      workspace,
+      skill.sId,
+      saveBody(skill, "on")
+    );
+
+    expect(response.status).toBe(200);
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill?.reinforcement).toBe("on");
+  });
+});
+
 describe("PATCH /api/w/:wId/skills/:sId - manually requested spaces", () => {
   // Sets up an open space the request user can read, plus a folder in it so knowledge attached
   // from that space makes it required automatically as well as manually.
@@ -1710,6 +1844,12 @@ describe("DELETE /api/w/:wId/skills/:sId", () => {
       restrictedSkill.sId,
     ]);
     expect(archived.status).toBe("archived");
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "skill.archived",
+        metadata: { skill_name: "Restricted Space Skill" },
+      })
+    );
   });
 
   it("should return 403 for non-editor user", async () => {

@@ -25,6 +25,23 @@ import { useState } from "react";
 
 import Block from "./Block";
 
+const RESPONSE_FORMAT_PLACEHOLDER = `{
+  "type": "json_schema",
+  "json_schema": {
+    "name": "YourSchemaName",
+    "strict": true,
+    "schema": {
+      "type": "object",
+      "properties": {
+        "property1":
+          { "type":"string" }
+      },
+      "required": ["property1"],
+      "additionalProperties": false
+    }
+  }
+}`;
+
 export default function Chat({
   owner,
   app,
@@ -137,9 +154,7 @@ export default function Chat({
         : delete b.config.response_format;
       setIsResponseFormatJsonValid(true);
       onBlockUpdate(b);
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-    } catch (e) {
+    } catch {
       setIsResponseFormatJsonValid(false);
     }
   };
@@ -394,24 +409,7 @@ export default function Chat({
                           readOnly={readOnly}
                           value={responseFormatText}
                           language="json"
-                          placeholder={
-                            "{\n" +
-                            '  "type": "json_schema",\n' +
-                            '  "json_schema": {\n' +
-                            '    "name": "YourSchemaName",\n' +
-                            '    "strict": true,\n' +
-                            '    "schema": {\n' +
-                            '      "type": "object",\n' +
-                            '      "properties": {\n' +
-                            '        "property1":\n' +
-                            '          { "type":"string" }\n' +
-                            "      },\n" +
-                            '      "required": ["property1"],\n' +
-                            '      "additionalProperties": false\n' +
-                            "    }\n" +
-                            "  }\n" +
-                            "}"
-                          }
+                          placeholder={RESPONSE_FORMAT_PLACEHOLDER}
                           onChange={(e) =>
                             handleResponseFormatChange(e.target.value)
                           }

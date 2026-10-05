@@ -47,12 +47,6 @@ export const CONNECTOR_CONFIGURATIONS: Record<
     status: "built",
     isDeletable: false,
   },
-  discord_bot: {
-    name: "Discord (Bot)",
-    connectorProvider: "discord_bot",
-    status: "rolling_out",
-    isDeletable: false,
-  },
   github: {
     name: "GitHub",
     connectorProvider: "github",
@@ -128,11 +122,7 @@ export function isWebhookBasedProvider(provider: ConnectorProvider): boolean {
   return WEBHOOK_BASED_CONNECTORS.includes(provider);
 }
 
-const BOT_TYPE_CONNECTORS: ConnectorProvider[] = [
-  "slack_bot",
-  "microsoft_bot",
-  "discord_bot",
-];
+const BOT_TYPE_CONNECTORS: ConnectorProvider[] = ["slack_bot", "microsoft_bot"];
 
 export function isBotTypeProvider(provider: ConnectorProvider): boolean {
   return BOT_TYPE_CONNECTORS.includes(provider);
@@ -172,7 +162,6 @@ export const isConnectorProviderAllowedForPlan = (
     case "microsoft":
     case "microsoft_bot":
     case "slack_bot":
-    case "discord_bot":
     case "snowflake":
     case "zendesk":
     case "bigquery":
@@ -203,7 +192,6 @@ export const isConnectorProviderAssistantDefaultSelected = (
     // Remote database connectors are not available for semantic search so it makes no sense to select them by default
     case "bigquery":
     case "slack_bot":
-    case "discord_bot":
     case "salesforce":
     case "snowflake":
     case "webcrawler":
@@ -218,7 +206,6 @@ export const isConnectorProviderAssistantDefaultSelected = (
 export const isBotIntegration = (provider: ConnectorProvider): boolean => {
   switch (provider) {
     case "slack_bot":
-    case "discord_bot":
     case "microsoft_bot":
       return true;
     case "bigquery":

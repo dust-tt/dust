@@ -1,6 +1,6 @@
 import { createContext, useEffect, useState } from "react";
 
-export const PortContext = createContext<chrome.runtime.Port | null>(null);
+const PortContext = createContext<chrome.runtime.Port | null>(null);
 
 export const PortProvider = ({ children }: { children: React.ReactNode }) => {
   const [port, setPort] = useState<chrome.runtime.Port | null>(null);

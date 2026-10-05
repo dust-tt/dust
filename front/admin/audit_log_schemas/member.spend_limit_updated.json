@@ -13,6 +13,9 @@
     "awu_credits": "string",
     "previous_kind": "string",
     "previous_awu_credits": "string",
-    "authorizing_group_id": "string"
+    "authorizing_group_id": "string",
+    "reset_at_next_billing_cycle": "string",
+    "expires_at": "string",
+    "reset_to_awu_credits": "string"
   }
 }

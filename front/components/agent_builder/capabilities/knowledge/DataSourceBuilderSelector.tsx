@@ -1,9 +1,13 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { DataSourceNavigationView } from "@app/components/agent_builder/capabilities/knowledge/DataSourceNavigationView";
+import { DataSourceBrowserTable } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBrowserTable";
 import { DataSourceSearchResults } from "@app/components/agent_builder/capabilities/knowledge/DataSourceSearchResults";
 import { DataSourceSpaceSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceSpaceSelector";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
+import { filterBrowsableSpaces } from "@app/components/data_source_view/browser/useBrowsableSpaces";
+import {
+  getKnowledgeBrowserBreadcrumbItems,
+  useKnowledgeBrowserShortcuts,
+} from "@app/components/data_source_view/browser/useKnowledgeBrowserNavigation";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
 import {
@@ -11,7 +15,9 @@ import {
   findDataSourceViewFromNavigationHistory,
   findSpaceFromNavigationHistory,
   getLatestNodeFromNavigationHistory,
+  navigationHistoryEntryTitle,
 } from "@app/components/data_source_view/context/utils";
+import { useSpacesContext } from "@app/components/shared/SpacesContext";
 import { useDebounce } from "@app/hooks/useDebounce";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import {
@@ -21,7 +27,6 @@ import {
 } from "@app/lib/connectors";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useAppRouter } from "@app/lib/platform";
-import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import {
   useSpaceProjectsLookup,
   useSpacesSearch,
@@ -53,12 +58,12 @@ export const DataSourceBuilderSelector = ({
   const { spaces, isSpacesLoading } = useSpacesContext();
   const { supportedDataSourceViews: dataSourceViews } =
     useDataSourceViewsContext();
-  const { navigationHistory, navigateTo, setSpaceEntry, setCategoryEntry } =
-    useDataSourceBuilderContext();
-  const router = useAppRouter();
-  const { systemSpace } = useSystemSpace({ workspaceId: owner.sId });
+  const navigation = useDataSourceBuilderContext();
+  const { navigationHistory, navigateTo } = navigation;
   const currentNavigationEntry =
     navigationHistory[navigationHistory.length - 1];
+  const router = useAppRouter();
+  const { systemSpace } = useSystemSpace({ workspaceId: owner.sId });
 
   const {
     inputValue: searchTerm,
@@ -102,11 +107,14 @@ export const DataSourceBuilderSelector = ({
     return [...spaces, ...missingSpaces];
   }, [spaces, missingSpaces]);
 
-  // Filter spaces to only those with data source views
-  const filteredSpaces = useMemo(() => {
-    const spaceIds = new Set(dataSourceViews.map((dsv) => dsv.spaceId));
-    return allSpaces.filter((s) => spaceIds.has(s.sId));
-  }, [allSpaces, dataSourceViews]);
+  // Only spaces with something to browse, like the knowledge pickers.
+  const filteredSpaces = useMemo(
+    () => filterBrowsableSpaces(allSpaces, dataSourceViews),
+    [allSpaces, dataSourceViews]
+  );
+
+  // Enter a lone space directly and skip a pod's category level.
+  useKnowledgeBrowserShortcuts({ navigation, spaces: filteredSpaces });
 
   // Get current space and node for search - memoized to prevent re-rendering issues
   const currentSpace = useMemo(
@@ -127,24 +135,6 @@ export const DataSourceBuilderSelector = ({
     () => findCategoryFromNavigationHistory(navigationHistory),
     [navigationHistory]
   );
-
-  // Automatically select the first space if there is only one
-  useEffect(() => {
-    if (filteredSpaces.length === 1) {
-      setSpaceEntry(filteredSpaces[0]);
-    }
-  }, [filteredSpaces, setSpaceEntry]);
-
-  // Automatically select the managed category if we are in a "project" kind of space
-  useEffect(() => {
-    if (
-      currentSpace &&
-      currentSpace.kind === "project" &&
-      currentNavigationEntry.type === "space"
-    ) {
-      setCategoryEntry("managed");
-    }
-  }, [currentSpace, currentNavigationEntry, setCategoryEntry]);
 
   const [searchScope, setSearchScope] = useState<"node" | "space">("space");
 
@@ -272,27 +262,26 @@ export const DataSourceBuilderSelector = ({
         const spaceNavigation =
           spaceIndex >= 0 ? navigationHistory.slice(0, lastIndex + 1) : [];
 
-        return spaceNavigation.map((entry, index) => ({
-          ...getBreadcrumbConfig(entry),
-          href: undefined,
-          onClick: () => navigateTo(index),
-        }));
+        return getKnowledgeBrowserBreadcrumbItems(
+          spaceNavigation,
+          navigateTo,
+          BREADCRUMB_OPTIONS
+        );
       }
 
-      // When searching in node scope, show full path (current behavior for node search)
-      return navigationHistory.map((entry, index) => ({
-        ...getBreadcrumbConfig(entry),
-        href: undefined,
-        onClick: () => navigateTo(index),
-      }));
+      // When searching in node scope, show the full path.
+      return getKnowledgeBrowserBreadcrumbItems(
+        navigationHistory,
+        navigateTo,
+        BREADCRUMB_OPTIONS
+      );
     }
 
-    // Normal navigation breadcrumbs
-    return navigationHistory.map((entry, index) => ({
-      ...getBreadcrumbConfig(entry),
-      href: undefined,
-      onClick: () => navigateTo(index),
-    }));
+    return getKnowledgeBrowserBreadcrumbItems(
+      navigationHistory,
+      navigateTo,
+      BREADCRUMB_OPTIONS
+    );
   }, [
     navigationHistory,
     navigateTo,
@@ -391,35 +380,20 @@ export const DataSourceBuilderSelector = ({
           error={hasError ? new Error("Search failed") : null}
         />
       ) : (
-        <DataSourceNavigationView viewType={viewType} />
+        <DataSourceBrowserTable viewType={viewType} />
       )}
     </div>
   );
 };
 
-function getBreadcrumbConfig(
-  entry: NavigationHistoryEntryType
-): BreadcrumbsItem {
-  switch (entry.type) {
-    case "root":
-      return {
-        label: "All",
-      };
-    case "space":
-      return {
-        label: entry.space.name,
-      };
-    case "category":
-      return {
-        label: CATEGORY_DETAILS[entry.category].label,
-      };
-    case "data_source":
-      return {
-        label: getDataSourceNameFromView(entry.dataSourceView),
-      };
-    case "node":
-      return {
-        label: entry.node.title,
-      };
-  }
+// The sheet has room for full names, so a data source view keeps its stored name here rather than
+// the browser's shortened label.
+function getBreadcrumbLabel(entry: NavigationHistoryEntryType): string {
+  return entry.type === "root" ? "All" : navigationHistoryEntryTitle(entry);
 }
+
+// The sheet shows every level, a pod's auto-entered category included.
+const BREADCRUMB_OPTIONS = {
+  getLabel: getBreadcrumbLabel,
+  includeSkippedLevels: true,
+};

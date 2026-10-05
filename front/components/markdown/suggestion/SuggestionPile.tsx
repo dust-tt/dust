@@ -1,9 +1,22 @@
 import {
+  parseSuggestionPreviewData,
+  useConversationSidePanelContext,
+} from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import {
   getBatchSuggestionTitle,
   PendingBatchSuggestionCard,
 } from "@app/components/markdown/suggestion/BatchSuggestionDirective";
-import { DEFAULT_SUGGESTION_VISUAL } from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
-import { getSuggestionStateChip } from "@app/components/skill_builder/SkillSuggestionCard";
+import {
+  DEFAULT_SUGGESTION_VISUAL,
+  RestrictedSuggestionCard,
+} from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
+import type { SuggestionPileBulkAction } from "@app/components/markdown/suggestion/suggestionTracking";
+import {
+  trackSuggestionCardDecision,
+  trackSuggestionPileBulkReview,
+  useTrackSuggestionCardViews,
+} from "@app/components/markdown/suggestion/suggestionTracking";
+import { getSuggestionStateChip } from "@app/components/shared/getSuggestionStateChip";
 import {
   useReviewSuggestionBatches,
   useSuggestionBatches,
@@ -154,7 +167,7 @@ function SuggestionPileRecapActions({
         <Button
           variant="outline"
           size="sm"
-          label="Accept all"
+          label="Allow all"
           onClick={onAcceptAll}
           disabled={isBusy}
           isLoading={bulkState === "approved"}
@@ -185,7 +198,7 @@ interface ConversationSuggestionPileProps {
 
 /**
  * @cc [owner:avervaet,label:product] bulk-review-pending-only
- * "Accept all", "Reject all" and "Accept remaining" MUST only review batches of this pile that are
+ * "Allow all", "Reject all" and "Allow remaining" MUST only review batches of this pile that are
  * still pending, and MUST leave a batch pending when its review request fails.
  */
 export function ConversationSuggestionPile({
@@ -193,17 +206,18 @@ export function ConversationSuggestionPile({
   batchIds,
   recap,
 }: ConversationSuggestionPileProps) {
-  const { batches, isBatchesLoading, mutateBatches } = useSuggestionBatches({
+  const { batches, isBatchesLoading } = useSuggestionBatches({
     batchIds,
     workspaceId: owner.sId,
   });
   const reviewBatches = useReviewSuggestionBatches({
     workspaceId: owner.sId,
-    mutateBatches,
   });
+  const { closePanel, data } = useConversationSidePanelContext();
 
   const [isReviewing, setIsReviewing] = useState(false);
   const [inFlight, setInFlight] = useState<InFlightReview | null>(null);
+  useTrackSuggestionCardViews(batches, { inPile: true });
 
   if (isBatchesLoading) {
     return <LoadingBlock className="h-24 w-full max-w-lg" />;
@@ -211,8 +225,9 @@ export function ConversationSuggestionPile({
 
   const batchesById = new Map(batches.map((b) => [b.id, b]));
   const pileBatches = batchIds.flatMap((id) => batchesById.get(id) ?? []);
+
   if (pileBatches.length === 0) {
-    return null;
+    return <RestrictedSuggestionCard />;
   }
 
   const pendingBatches = pileBatches.filter((b) => b.state === "pending");
@@ -225,14 +240,39 @@ export function ConversationSuggestionPile({
     batch?: BatchSuggestionType
   ) => {
     setInFlight({ batchId: batch?.id ?? null, state });
+    const reviewedIds = (batch ? [batch] : pendingBatches).map((b) => b.id);
     try {
-      await reviewBatches(
-        (batch ? [batch] : pendingBatches).map((b) => b.id),
-        state
-      );
+      await reviewBatches(reviewedIds, state);
+      const { batchId: previewedBatchId } = parseSuggestionPreviewData(data);
+      if (previewedBatchId && reviewedIds.includes(previewedBatchId)) {
+        closePanel();
+      }
     } finally {
       setInFlight(null);
     }
+  };
+
+  const bulkReview = (
+    state: SuggestionBatchReviewState,
+    bulkAction: SuggestionPileBulkAction
+  ) => {
+    trackSuggestionPileBulkReview({
+      bulkAction,
+      batchIds: pendingBatches.map((b) => b.id),
+    });
+    void review(state);
+  };
+
+  const decide = (
+    state: SuggestionBatchReviewState,
+    batch: BatchSuggestionType
+  ) => {
+    trackSuggestionCardDecision({
+      decision: state === "approved" ? "allow" : "decline",
+      batchId: batch.id,
+      inPile: true,
+    });
+    void review(state, batch);
   };
 
   // Only the front card is interactive; the ones behind it are drawn as decorative layers.
@@ -266,9 +306,15 @@ export function ConversationSuggestionPile({
             <SuggestionPileRecapActions
               isBusy={isBusy}
               bulkState={bulkState}
-              onReview={() => setIsReviewing(true)}
-              onAcceptAll={() => void review("approved")}
-              onRejectAll={() => void review("rejected")}
+              onReview={() => {
+                trackSuggestionPileBulkReview({
+                  bulkAction: "review",
+                  batchIds: pendingBatches.map((b) => b.id),
+                });
+                setIsReviewing(true);
+              }}
+              onAcceptAll={() => bulkReview("approved", "allow_all")}
+              onRejectAll={() => bulkReview("rejected", "reject_all")}
             />
           }
         />
@@ -281,10 +327,11 @@ export function ConversationSuggestionPile({
   return (
     <ActionCardStack cardCount={pendingBatches.length}>
       <PendingBatchSuggestionCard
+        key={batch.id}
         owner={owner}
         batch={batch}
-        onAccept={() => void review("approved", batch)}
-        onReject={() => void review("rejected", batch)}
+        onAccept={() => decide("approved", batch)}
+        onReject={() => decide("rejected", batch)}
         disabled={isBusy}
         isAccepting={cardState === "approved"}
         isDeclining={cardState === "rejected"}
@@ -293,8 +340,8 @@ export function ConversationSuggestionPile({
           <Button
             variant="ghost-secondary"
             size="sm"
-            label="Accept remaining"
-            onClick={() => void review("approved")}
+            label="Allow remaining"
+            onClick={() => bulkReview("approved", "allow_remaining")}
             disabled={isBusy}
             isLoading={bulkState === "approved"}
           />

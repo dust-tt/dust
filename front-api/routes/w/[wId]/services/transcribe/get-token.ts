@@ -3,6 +3,7 @@ import {
   getElevenLabs,
   REGION_TO_ELEVENLABS_ENVIRONMENT,
 } from "@app/lib/utils/transcribe_service";
+import { isAudioTranscriptionAvailable } from "@app/lib/workspace_policies";
 import { dustManagedServiceCredentials } from "@app/types/api/credentials";
 import type { GetTranscribeTokenResponseBody } from "@app/types/api/transcribe";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -17,13 +18,17 @@ const app = createHono<WorkspaceAwareCtx>();
 app.get("/", async (ctx): HandlerResult<GetTranscribeTokenResponseBody> => {
   const auth = ctx.get("auth");
 
-  const plan = auth.getNonNullablePlan();
-  if (plan.isByok) {
+  if (
+    !isAudioTranscriptionAvailable({
+      owner: auth.getNonNullableWorkspace(),
+      plan: auth.getNonNullablePlan(),
+    })
+  ) {
     return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "app_auth_error",
-        message: "Voice transcription is not available on this plan.",
+        message: "Voice transcription is not available in this workspace.",
       },
     });
   }

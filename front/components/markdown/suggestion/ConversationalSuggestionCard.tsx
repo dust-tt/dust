@@ -29,6 +29,7 @@ interface ConversationalSuggestionCardProps {
   visual?: React.ReactElement<ComponentProps<typeof Avatar>>;
   /** Extra detail revealed behind the chevron toggle at the bottom of the card. */
   collapsibleContent?: ReactNode;
+  onCollapsibleOpen?: () => void;
   onAccept?: () => void;
   onReject?: () => void;
   onPreview?: () => void;
@@ -46,11 +47,12 @@ export function ConversationalSuggestionCard({
   analysis,
   visual = DEFAULT_SUGGESTION_VISUAL,
   collapsibleContent,
+  onCollapsibleOpen,
   onAccept,
   onReject,
   onPreview,
   secondaryAction,
-  acceptLabel = "Accept",
+  acceptLabel = "Allow",
   rejectLabel = "Decline",
   disabled = false,
   isAccepting = false,
@@ -118,7 +120,7 @@ export function ConversationalSuggestionCard({
       </div>
 
       {collapsibleContent && (
-        <Collapsible>
+        <Collapsible onOpenChange={(open) => open && onCollapsibleOpen?.()}>
           {/* Padding lives on an inner element: padding on the animated one
               can't shrink with its height, which makes the toggle jump. */}
           <CollapsibleContent className="bg-muted-background">
@@ -143,5 +145,18 @@ export function ConversationalSuggestionCard({
         </Collapsible>
       )}
     </Card>
+  );
+}
+
+/**
+ * Stands in for a batch the viewer cannot read: `fetchByIds` omits a batch with any member the
+ * viewer cannot access, so its title and analysis are never shown.
+ */
+export function RestrictedSuggestionCard() {
+  return (
+    <ConversationalSuggestionCard
+      title="Suggested changes"
+      analysis="The agent has made a suggestion to improve an agent or a skill but you don't have the permissions to read it."
+    />
   );
 }

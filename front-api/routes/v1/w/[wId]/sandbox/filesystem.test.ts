@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { FileSystemOperationResponseSchema } from "@app/lib/api/file_system/namespace";
+import { FileSystemOperationResponseSchema } from "@app/lib/api/file_system/namespace_types";
 import { generateSandboxFileSystemToken } from "@app/lib/api/sandbox/access_tokens";
 import { createSandboxTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";

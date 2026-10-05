@@ -1,4 +1,3 @@
-import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { AgentYAMLConverter } from "@app/lib/agent_yaml_converter/converter";
 import type { AgentYAMLConfig } from "@app/lib/agent_yaml_converter/schemas";
 import {
@@ -9,11 +8,12 @@ import {
 import { getAgentConfigurationContext } from "@app/lib/api/assistant/configuration/context";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { PostOrPatchAgentConfigurationRequestBody } from "@app/types/api/agent_configuration";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -26,7 +26,7 @@ interface SkippedAction {
 
 type ImportResult = Result<
   {
-    agentConfiguration: AgentConfigurationType;
+    agent: AgentResource;
     skippedActions: SkippedAction[];
   },
   APIErrorWithContentfulStatusCode
@@ -156,7 +156,7 @@ async function saveAgentConfigurationFromAssistant({
   }
 
   return new Ok({
-    agentConfiguration: agentConfigurationRes.value.agentConfiguration,
+    agent: agentConfigurationRes.value.agent,
     skippedActions,
   });
 }
@@ -308,7 +308,30 @@ export async function patchAgentConfigurationFromJSON(
     return contextResult;
   }
 
-  const { agentConfiguration, editorUsers, skills } = contextResult.value;
+  const { agent, editorUsers, skills } = contextResult.value;
+  if (!agent.canViewContent && !auth.can("write", agent)) {
+    return new Err({
+      status_code: 404,
+      api_error: {
+        type: "agent_configuration_not_found",
+        message: "The agent configuration you requested was not found.",
+      },
+    });
+  }
+  // A writer who cannot view the content re-saves from a caller-independent copy, whose content
+  // only flows into the new version (see `resave-source-content`).
+  const sourceRes = await agent.getResaveSource(auth);
+  if (sourceRes.isErr()) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: sourceRes.error.message,
+      },
+    });
+  }
+  const current = await sourceRes.value.buildResaveParams(auth);
+
   const editorsResult = resolveEditorUsers(auth, editorUsers);
   if (editorsResult.isErr()) {
     return editorsResult;
@@ -316,38 +339,48 @@ export async function patchAgentConfigurationFromJSON(
 
   const patch = parsed.data;
   const {
-    model_id = agentConfiguration.model.modelId,
-    provider_id = agentConfiguration.model.providerId,
-    reasoning_effort = agentConfiguration.model.reasoningEffort,
-    response_format = agentConfiguration.model.responseFormat,
-    temperature = agentConfiguration.model.temperature,
+    model_id = current.model.modelId,
+    provider_id = current.model.providerId,
+    response_format = current.model.responseFormat,
+    temperature = current.model.temperature,
   } = patch.generation_settings ?? {};
+  // The current effort belongs to the current model: switching models without an effort lets the
+  // save resolve the new model's default.
+  const isSameModel =
+    model_id === current.model.modelId &&
+    provider_id === current.model.providerId;
+  const reasoning_effort =
+    patch.generation_settings?.reasoning_effort ??
+    (isSameModel ? current.model.reasoningEffort : undefined);
   const assistant: PatchRequestBody = {
-    name: agentConfiguration.name,
-    description: agentConfiguration.description,
-    instructions: agentConfiguration.instructions,
-    instructionsHtml: agentConfiguration.instructionsHtml,
-    pictureUrl: agentConfiguration.pictureUrl,
-    status: agentConfiguration.status,
-    scope: agentConfiguration.scope,
+    name: current.name,
+    description: current.description,
+    instructions: current.instructions,
+    instructionsHtml: current.instructionsHtml,
+    pictureUrl: current.pictureUrl,
+    status: current.status,
+    scope: current.scope,
     model: {
-      ...agentConfiguration.model,
+      ...current.model,
       modelId: model_id,
       providerId: provider_id,
       temperature,
       reasoningEffort: reasoning_effort,
       responseFormat: response_format,
     },
-    actions: agentConfiguration.actions.filter(
-      isServerSideMCPServerConfiguration
-    ),
-    templateId: agentConfiguration.templateId,
-    tags: agentConfiguration.tags,
+    actions: current.actions ?? [],
+    templateId: current.templateId,
+    tags: current.tags,
     editors: editorsResult.value.editors,
     skills: skills.map((skill) => ({
       sId: skill.sId,
     })),
-    additionalRequestedSpaceIds: agentConfiguration.requestedSpaceIds,
+    additionalRequestedSpaceIds: current.requestedSpaceIds.map((id) =>
+      SpaceResource.modelIdToSId({
+        id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      })
+    ),
     ...(patch.agent?.handle ? { name: patch.agent.handle } : {}),
     ...(patch.agent?.description
       ? { description: patch.agent.description }

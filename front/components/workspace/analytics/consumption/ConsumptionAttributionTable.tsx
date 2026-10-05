@@ -25,6 +25,7 @@ import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_s
 import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import type { ConsumptionExportBody } from "@app/lib/api/analytics/consumption/schema";
 import { formatAvgCredits, formatCredits } from "@app/lib/client/credits";
+import { formatNumber } from "@app/lib/i18n/format";
 import { LinkWrapper } from "@app/lib/platform";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import type {
@@ -386,11 +387,7 @@ function buildColumns({
                 label={
                   info.row.original.activeMembers !== undefined &&
                   info.row.original.totalMembers !== undefined
-                    ? `${info.row.original.activeMembers.toLocaleString(
-                        "en-US"
-                      )} / ${info.row.original.totalMembers.toLocaleString(
-                        "en-US"
-                      )}`
+                    ? `${formatNumber(info.row.original.activeMembers)} / ${formatNumber(info.row.original.totalMembers)}`
                     : "--"
                 }
               />
@@ -475,7 +472,7 @@ function buildColumns({
       cell: (info) => (
         <DataTable.BasicCellContent
           className="justify-end text-right tabular-nums"
-          label={info.row.original.count.toLocaleString()}
+          label={formatNumber(info.row.original.count)}
         />
       ),
     },

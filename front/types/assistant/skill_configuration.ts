@@ -109,6 +109,7 @@ export const SkillWithoutInstructionsAndToolsSchema = z.object({
  */
 export const SkillListItemSchema = z.object({
   sId: z.string(),
+  canWrite: z.boolean(),
   canAdministrate: z.boolean(),
   status: z.enum(SKILL_STATUSES),
   name: z.string(),

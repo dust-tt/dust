@@ -1,4 +1,5 @@
 import type { WebhookSourceFormValues } from "@app/components/triggers/forms/webhookSourceFormSchema";
+import { compareStrings } from "@app/lib/i18n/format";
 import type { SpaceType } from "@app/types/space";
 import type { WebhookSourceWithViewsType } from "@app/types/triggers/webhooks";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -79,7 +80,7 @@ export function WebhookSourceDetailsSharing({
       isEnabled: sharingSettings?.[space.sId] ?? false,
       onClick: () => handleToggle(space),
     }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => compareStrings(a.name, b.name));
 
   const columns: ColumnDef<RowData, any>[] = [
     {

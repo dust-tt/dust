@@ -106,6 +106,9 @@ export enum GLOBAL_AGENTS_SID {
   DUST_MISTRAL_MEDIUM_NONE = "dust-mistral-medium-none",
   DUST_MISTRAL_MEDIUM_HIGH = "dust-mistral-medium-high",
   DUST_NEXT_HIGH = "dust-next-high",
+  DUST_NEXT_NONE = "dust-next-none",
+  DUST_NEXT_XHIGH = "dust-next-xhigh",
+  DUST_NEXT_MAX = "dust-next-max",
   DEEP_DIVE = "deep-dive",
   DUST_TASK = "dust-task",
   DUST_BROWSER_SUMMARY = "dust-browser-summary",
@@ -276,7 +279,7 @@ const globalAgentIndexMap = new Map(
 export function compareAgentsForSort<
   T extends {
     sId: string;
-    userFavorite: boolean | undefined;
+    userFavorite?: boolean;
     scope: AgentConfigurationScope;
     name: string;
   },

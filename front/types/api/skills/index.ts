@@ -9,13 +9,18 @@ import type {
   SkillWithoutInstructionsAndToolsWithRelationsType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
-import type { AgentsAndSkillsUsageType } from "@app/types/data_source";
 import type { SpaceKind } from "@app/types/space";
 import type { UserType } from "@app/types/user";
 
 export type GetSkillsResponseBody = {
   skills: (SkillWithoutInstructionsAndToolsType & {
     isFavorite?: boolean;
+  })[];
+};
+
+export type GetSkillsReinforcementSettingsResponseBody = {
+  skills: (SkillWithoutInstructionsAndToolsType & {
+    editors: UserType[] | null;
   })[];
 };
 
@@ -32,7 +37,8 @@ export interface SkillSearchFilters {
   // Supports "edited by me", but not "not edited by me".
   editedByMe?: true;
   availability?: SkillAvailability[];
-  codeDefinedOnly?: true;
+  // True selects code-defined skills, false selects workspace skills, omitted selects both.
+  codeDefinedOnly?: boolean;
   editorIds?: string[];
   childSkillIds?: string[];
   spaceIds?: string[];
@@ -81,10 +87,6 @@ export type SkillSearchSort = (typeof SKILL_SEARCH_SORTS)[number];
 
 export const SKILL_SEARCH_SORT_ORDERS = ["asc", "desc"] as const;
 export type SkillSearchSortOrder = (typeof SKILL_SEARCH_SORT_ORDERS)[number];
-
-export type PostSkillsUsedByResponseBody = {
-  usedBy: Record<string, AgentsAndSkillsUsageType>;
-};
 
 export type SearchSkillsResponseBody = {
   skills: SkillListItemType[];

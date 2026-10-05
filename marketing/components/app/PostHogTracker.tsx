@@ -1,8 +1,13 @@
 import {
   DUST_COOKIES_ACCEPTED,
+  DUST_SESSION_REPLAY_CONSENT,
   hasCookiesAccepted,
 } from "@marketing/lib/cookies";
 import { useAppRouter } from "@marketing/lib/platform";
+import {
+  applyMarketingSessionReplayDecision,
+  shouldRecordMarketingSessionReplay,
+} from "@marketing/lib/session_replay";
 import {
   DUST_ANONYMOUS_ID_COOKIE,
   getOrCreateAnonymousId,
@@ -40,11 +45,21 @@ interface PostHogTrackerEffectsProps {
   authenticated?: boolean;
 }
 
+/**
+ * @cc [owner:dchristenhuis,label:product;security] marketing-replay-consent-gated
+ * PostHog MUST be initialized with session recording disabled, and recording MUST only be started
+ * through `applyMarketingSessionReplayDecision` with the result of
+ * `shouldRecordMarketingSessionReplay`. Analytics consent, the `authenticated` prop, and
+ * geolocation MUST NOT start recording on their own.
+ */
 export function PostHogTrackerEffects({
   authenticated,
 }: PostHogTrackerEffectsProps) {
   const router = useAppRouter();
-  const [cookies] = useCookies([DUST_COOKIES_ACCEPTED]);
+  const [cookies] = useCookies([
+    DUST_COOKIES_ACCEPTED,
+    DUST_SESSION_REPLAY_CONSENT,
+  ]);
 
   const { wId } = router.query;
   const workspaceId = isString(wId) ? wId : undefined;
@@ -72,6 +87,14 @@ export function PostHogTrackerEffects({
   const planProperties = null as Record<string, string> | null;
   const isAdmin = false;
   const currentWorkspace = undefined as { role?: string } | undefined;
+
+  // Deliberately ignores `authenticated` and geolocation-based "auto" consent: replay needs its own
+  // explicit opt-in on top of explicit analytics consent. Whether PostHog then actually records is
+  // decided by the project's replay settings (triggers), not by this site.
+  const shouldRecordReplay = shouldRecordMarketingSessionReplay({
+    analyticsCookie: cookieValue,
+    replayCookie: cookies[DUST_SESSION_REPLAY_CONSENT],
+  });
 
   const isTrackablePage = isTrackablePathname(router.pathname);
 
@@ -143,6 +166,8 @@ export function PostHogTrackerEffects({
       capture_pageview: "history_change",
       capture_pageleave: false,
       autocapture: false,
+      // Off at init for everyone so nothing is recorded or buffered before
+      // replay consent. Only the replay effect below may turn it on.
       disable_session_recording: true,
       property_denylist: ["$ip"],
       before_send: (event) => {
@@ -323,10 +348,11 @@ export function PostHogTrackerEffects({
     }
   }, [user, posthogId]);
 
-  // Phase 2: Upgrade to full cookie persistence and enable session recording
-  // when consent is granted mid-visit (consent banner or login). Visitors who
-  // were already consented at init started there, so only the recording and
-  // super-property parts do anything for them.
+  // Phase 2: Upgrade to full cookie persistence when consent is granted
+  // mid-visit (consent banner or login). Visitors who were already consented at
+  // init started there, so only the super-property part does anything for them.
+  // Session recording is NOT started here: analytics consent never implies
+  // replay consent (see the replay effect below).
   useEffect(() => {
     if (
       !posthog.__loaded ||
@@ -342,9 +368,7 @@ export function PostHogTrackerEffects({
       ...(getPostHogCookieDomain()
         ? { cookie_domain: getPostHogCookieDomain() }
         : {}),
-      disable_session_recording: false,
     });
-    posthog.startSessionRecording();
 
     // Register the anonymous device ID as a super property so it persists
     // across events after persistence upgrade.
@@ -355,6 +379,16 @@ export function PostHogTrackerEffects({
 
     hasUpgradedPersistence.current = true;
   }, [hasAcceptedCookies]);
+
+  // Session replay: request recording only with explicit analytics + explicit
+  // replay consent; stop as soon as either goes away (e.g. withdrawal via
+  // Cookie Settings). PostHog's triggers decide when recording actually starts.
+  useEffect(() => {
+    if (!posthog.__loaded || !hasInitialized.current) {
+      return;
+    }
+    applyMarketingSessionReplayDecision(posthog, shouldRecordReplay);
+  }, [shouldRecordReplay]);
 
   // Group users by workspace and set workspace properties (admin only).
   const lastUserRole = useRef<string | null>(null);

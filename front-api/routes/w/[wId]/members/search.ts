@@ -4,6 +4,7 @@ import type {
 } from "@app/lib/api/workspace";
 import { searchMembers } from "@app/lib/api/workspace";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
+import { hasAnyGroupPermission } from "@app/lib/resources/group_management_access";
 import { USER_VISIBLE_GROUP_KINDS } from "@app/types/groups";
 import { ActiveRoleSchema, toLightUserWithWorkspace } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -17,6 +18,7 @@ const DEFAULT_PAGE_LIMIT = 25;
 const SearchMembersQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).catch(0),
   limit: z.coerce.number().int().min(0).max(150).catch(DEFAULT_PAGE_LIMIT),
+  managedOnly: z.enum(["true", "false"]).optional(),
   searchTerm: z.string().optional(),
   searchEmails: z.string().optional(),
   groupKind: z.enum(USER_VISIBLE_GROUP_KINDS).optional(),
@@ -39,6 +41,19 @@ app.get(
     const auth = ctx.get("auth");
     const query = ctx.req.valid("query");
 
+    if (
+      query.managedOnly === "true" &&
+      !(await hasAnyGroupPermission(auth, "read_usage"))
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Group management access required.",
+        },
+      });
+    }
+
     const emails = query.searchEmails?.split(",");
     if (emails?.length && emails.length > MAX_SEARCH_EMAILS) {
       return apiError(ctx, {
@@ -53,6 +68,7 @@ app.get(
     const { members, total } = await searchMembers(
       auth,
       {
+        managedOnly: query.managedOnly === "true",
         searchTerm: query.searchTerm,
         searchEmails: emails,
         groupKind: query.groupKind,

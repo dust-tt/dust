@@ -1,4 +1,4 @@
-import type { AgentBuilderTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderTriggerType } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { ScheduleEditionSheetContent } from "@app/components/agent_builder/triggers/schedule/ScheduleEditionSheet";
 import { TriggerSelectionPageContent } from "@app/components/agent_builder/triggers/TriggerSelectionPage";
 import type { SheetMode } from "@app/components/agent_builder/triggers/TriggerViewsSheet";
@@ -20,6 +20,7 @@ import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/constants";
+import { formatDate } from "@app/lib/i18n/format";
 import { useAgentSuggestionsPreview } from "@app/lib/swr/agent_suggestions";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -168,8 +169,9 @@ export function AgentDetailsBody({
   });
   const agentConfiguration =
     fetchedAgentConfiguration && preview
-      ? { ...fetchedAgentConfiguration, ...preview }
+      ? { ...fetchedAgentConfiguration, ...preview.fields }
       : fetchedAgentConfiguration;
+  const previewedCapabilities = preview?.capabilities ?? null;
 
   // Fetch webhook source views when triggers tab is active so they're ready
   // when the user clicks edit on a webhook trigger.
@@ -225,8 +227,8 @@ export function AgentDetailsBody({
     agentId != null &&
     !isGlobalAgent &&
     agentConfiguration?.status === "active";
-  // The triggers tab only lists the caller's own triggers, which is pointless on an agent whose
-  // private fields were redacted for an admin (flagged by `canRead: false`).
+  // The triggers tab only lists the caller's own triggers, and creating one needs `read` on the
+  // agent.
   const showTriggersTabs =
     agentId != null &&
     agentConfiguration?.status === "active" &&
@@ -244,14 +246,11 @@ export function AgentDetailsBody({
     const lastAuthor = agentConfiguration?.lastAuthors?.[0];
     const editedDate =
       agentConfiguration?.versionCreatedAt &&
-      new Date(agentConfiguration.versionCreatedAt).toLocaleDateString(
-        "en-US",
-        {
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-        }
-      );
+      formatDate(new Date(agentConfiguration.versionCreatedAt), {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      });
 
     return (
       <div className="flex flex-col items-center gap-4 pt-4">
@@ -398,6 +397,11 @@ export function AgentDetailsBody({
                       value="editors"
                       label="Editors"
                       icon={Users01}
+                      iconRight={
+                        editedSections.has("editors") ? (
+                          <EditedDot />
+                        ) : undefined
+                      }
                       onClick={() => setSelectedTab("editors")}
                     />
                   )}
@@ -415,6 +419,7 @@ export function AgentDetailsBody({
                     <TabsContent value="info">
                       <AgentInfoTab
                         agentConfiguration={agentConfiguration}
+                        previewedCapabilities={previewedCapabilities}
                         owner={owner}
                       />
                     </TabsContent>
@@ -456,6 +461,7 @@ export function AgentDetailsBody({
             ) : agentConfiguration ? (
               <AgentInfoTab
                 agentConfiguration={agentConfiguration}
+                previewedCapabilities={previewedCapabilities}
                 owner={owner}
               />
             ) : (

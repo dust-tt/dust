@@ -1,8 +1,9 @@
 import { ToolChip } from "@app/components/editor/extensions/skill_builder/ToolChip";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
-import type { AttachedKnowledgeFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
+import type { AttachedKnowledgeFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import { compareStrings } from "@app/lib/i18n/format";
 import { getSkillIcon } from "@app/lib/skill";
 import { extractSkillReferenceTags } from "@app/lib/skills/format";
 import { extractToolTags } from "@app/lib/tools/format";
@@ -64,9 +65,9 @@ function compareReferenceSummaryItems(
   b: ReferenceSummaryItem
 ) {
   return (
-    a.title.localeCompare(b.title, undefined, { sensitivity: "base" }) ||
-    a.kind.localeCompare(b.kind) ||
-    a.id.localeCompare(b.id)
+    compareStrings(a.title, b.title, { sensitivity: "base" }) ||
+    compareStrings(a.kind, b.kind) ||
+    compareStrings(a.id, b.id)
   );
 }
 

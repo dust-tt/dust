@@ -1,0 +1,102 @@
+@cc [owner:spolu,label:security] workspace-isolation
+Every filesystem operation MUST derive its workspace and grants from its authenticated session.
+Neither matching grants nor knowledge of an object ID MUST permit cross-workspace access.
+
+@cc [owner:spolu,label:security] live-authorization
+Every server read MUST authorize and return data from one consistent SlateDB snapshot. Every server
+mutation MUST validate current authorization and preserve it against grant changes and session
+closure through publication. Session-authorized mutations MUST recheck session activity immediately
+before invoking SlateDB publication. If that check succeeds, the mutation MAY publish and succeed even
+if the session expires while SlateDB publication waits or executes. Effective grants are
+explicit grants on the object and its ancestors. Workspace keys alone authorize grant administration
+and session creation; the server key alone authorizes workspace creation. Sessions MUST reject more
+than 512 distinct grants. Expired, closed, and previous-process sessions MUST fail authorization checks.
+
+@cc [owner:spolu,label:security] private-projections
+Server-rendered root and /shared MUST expose only authorized entries; cached listings follow
+kernel-owned-cache. Shared entries MUST use basename--object-id.
+Synthetic entries MUST NOT be mutated. Inode parents MUST follow the visible projection, never expose
+hidden canonical ancestry. Missing and inaccessible objects MUST produce indistinguishable errors.
+
+@cc [owner:spolu,label:backend] atomic-filesystem-mutations
+Every filesystem mutation MUST atomically publish all affected blocks, object records, child entries,
+and explicit grant indexes in one SlateDB batch. Reads MUST NOT observe a partial mutation. Shrink followed by
+extension MUST return zeros for removed bytes. Renames MUST preserve object identity and reject cycles.
+
+@cc [owner:spolu,label:concurrency] compare-and-publish
+Mutations of existing filesystem objects MUST compare expected versions under synchronization covering
+authorization and publication. A mismatch MUST publish nothing. Each changed, surviving object MUST
+advance its version once; new objects start at 1. Unrelated files MUST have independent versions. No automatic retry may replace a rejected expected version.
+
+@cc [owner:spolu,label:performance;backend] memory-acknowledgement
+Successful filesystem/workspace mutation RPCs MUST await SlateDB memory publication but MUST NOT
+await remote durability. Buffered FUSE writes MAY acknowledge client RAM. Fsync MUST wait for preceding
+kernel writeback and client write RPCs and propagate deferred errors without
+flushing SlateDB. SlateDB's internal WAL
+MUST remain enabled. Recovery MUST retain complete batches only; losing recent acknowledgements is
+allowed. An application WAL, overlay, or filesystem persistence worker MUST NOT be introduced.
+Derived search indexing MAY run in the background and MUST NOT be awaited by filesystem mutations or fsync.
+
+@cc [owner:spolu,label:backend;performance] bounded-slate-storage
+Authoritative file contents MUST use SlateDB keys with at most 65536 bytes per block. No separate
+filesystem GCS blobs. LanceDB MAY contain derived, rebuildable text for search.
+Requests, batches, caches, and retained handles MUST be bounded; large files MUST NOT require buffers
+proportional to file size. Server cache budgets MUST be shared across workspaces and configurable.
+Every restart MUST discard local caches and recover only from remote durable state.
+
+@cc [owner:spolu,label:security;error-handling] transport-boundary
+Credentials MUST appear only in RPC metadata or protected credential files, never URLs or logs.
+Errors MUST NOT expose hidden names, grants, or backend details. Server version conflicts MUST remain
+distinguishable from other RPC errors. Kernel writeback failures MUST reach fsync/close even if the
+original write succeeded; the kernel may translate their errno. Ambiguous writes MUST return an error
+and MUST NOT be automatically replayed.
+
+@cc [owner:spolu,label:performance;security] kernel-owned-cache
+FUSE MUST prioritize kernel metadata, directory, and content caching without a duplicate userspace
+content cache. Cached data MAY remain accessible after remote changes or revocation, without a
+freshness deadline. Every RPC MUST still use current server authorization. Observed session loss MUST
+stop the mount, and reconnecting MUST NOT reuse cached state. Local mutations MUST maintain cache
+coherence across aliases; no workspace-wide revision or periodic authorization polling.
+
+@cc [owner:spolu,label:concurrency;error-handling] failed-writeback-stays-failed
+Cached file data and queued writes MUST retain their base object version, advancing only for this
+client's successful mutations. A failure MUST NOT refresh the version of pending dirty data. Retain
+the first writeback error, regular-file mutation conflict, or ambiguous file mutation across handles.
+Reject subsequent mutations while that state lives. Known metadata precondition errors need not poison
+cached state. Read conflicts MUST fail the read without changing the base version or shared failure
+state. Recovery from sticky failures requires inode reclamation or remount. Regular-file
+aliases MUST share one kernel inode. Unlink MUST remove the server object immediately; cached state
+MUST NOT recreate it, and deferred writes MUST report the server's rejection.
+
+@cc [owner:spolu,label:concurrency] unlinked-kernel-timestamps
+Timestamp-only cleanup without a handle after this mount successfully unlinks an object MAY be
+acknowledged locally. It MUST NOT clear writeback errors, send an RPC, or acknowledge content changes.
+
+@cc [owner:spolu,label:rust] fallible-rust
+Rust code MUST propagate or explicitly handle fallible operations; unwrap() and expect() are forbidden.
+
+@cc [owner:spolu,label:security;backend] gcs-adc-identity
+GCS authentication MUST use GOOGLE_APPLICATION_CREDENTIALS, local application-default credentials,
+or the attached service identity. Unrelated SERVICE_ACCOUNT configuration MUST NOT override ADC.
+
+@cc [owner:spolu,label:security;performance] search-authority-and-cache
+Search MUST derive its workspace/grants from the session and authorize every returned hit against
+one live SlateDB snapshot, requiring a matching indexed object version. Excerpts, metadata, and IDs
+of rejected hits MUST NOT be returned. Permission memoization MUST be bounded and discarded at the
+end of each search; no cross-request permission cache or materialized grants in LanceDB.
+
+@cc [owner:spolu,label:backend;concurrency] atomic-search-work
+Every changed or deleted file MUST enqueue coalesced indexing work in the same batch as its mutation.
+Directory moves/grant changes MUST NOT enqueue descendant work. Search indexing MUST consume only
+complete, remotely durable snapshots. LanceDB commits MUST precede token-checked queue completion;
+replayed work MUST be idempotent, and old completions MUST NOT clear newer work.
+
+@cc [owner:spolu,label:performance;error-handling] bounded-search
+Search filters, candidates, response bytes, memoization, worker batches, and retained tables MUST be
+bounded. Exhausted search budgets MUST produce partial results, never claim exhaustive completion.
+Unavailable indexes MUST return errors. Unsupported or oversized extraction MUST be explicit.
+
+@cc [owner:spolu,label:backend;performance] search-object-cache-authority
+All writes to cached Lance storage MUST pass through the same process and cache wrapper. Cached
+object bytes MAY survive indefinitely until eviction or mutation; they MUST NOT replace live search
+authorization. Cache read failures MUST fall back to GCS. Local cache state MUST be discarded on start.

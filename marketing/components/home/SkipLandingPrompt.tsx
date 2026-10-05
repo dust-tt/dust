@@ -78,7 +78,6 @@ export function SkipLandingPrompt() {
             "always_open_dust",
             () => {
               setCookie(DUST_SKIP_LANDING, "1", SKIP_LANDING_COOKIE_OPTIONS);
-              // eslint-disable-next-line react-hooks/immutability
               window.location.href = target;
             }
           )}

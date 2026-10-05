@@ -327,7 +327,7 @@ export async function deleteDataSourceDocument(
 
   const endpoint =
     `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
-    `/data_sources/${dataSourceConfig.dataSourceId}/documents/${documentId}`;
+    `/data_sources/${dataSourceConfig.dataSourceId}/documents/${encodeURIComponent(documentId)}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
       Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
@@ -1268,7 +1268,7 @@ export async function deleteDataSourceTableRow({
 
   const endpoint =
     `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
-    `/data_sources/${dataSourceConfig.dataSourceId}/tables/${tableId}/rows/${rowId}`;
+    `/data_sources/${dataSourceConfig.dataSourceId}/tables/${encodeURIComponent(tableId)}/rows/${encodeURIComponent(rowId)}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
       Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
@@ -1352,7 +1352,7 @@ async function _getDataSourceTable({
 
   const endpoint =
     `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
-    `/data_sources/${dataSourceConfig.dataSourceId}/tables/${tableId}`;
+    `/data_sources/${dataSourceConfig.dataSourceId}/tables/${encodeURIComponent(tableId)}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
       Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
@@ -1406,7 +1406,7 @@ export async function deleteDataSourceTable({
 
   const endpoint =
     `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
-    `/data_sources/${dataSourceConfig.dataSourceId}/tables/${tableId}`;
+    `/data_sources/${dataSourceConfig.dataSourceId}/tables/${encodeURIComponent(tableId)}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
       Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,

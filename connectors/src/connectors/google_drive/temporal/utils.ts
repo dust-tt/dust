@@ -18,7 +18,10 @@ export function getDriveFileId(documentId: string): string {
   return documentId.replace(/^gdrive-/, "");
 }
 
-async function _getMyDriveId(auth_credentials: OAuth2Client) {
+async function _getMyDriveId(
+  auth_credentials: OAuth2Client,
+  _connectorId: ModelId
+) {
   const drive = await getDriveClient(auth_credentials);
   let myDriveRes: GaxiosResponse<drive_v3.Schema$File>;
   try {
@@ -43,12 +46,7 @@ async function _getMyDriveId(auth_credentials: OAuth2Client) {
 }
 export const getMyDriveIdCached = cacheWithRedis(
   _getMyDriveId,
-  (auth_credentials: OAuth2Client) => {
-    if (!auth_credentials.credentials.access_token) {
-      throw new Error("No access token in auth credentials");
-    }
-    return auth_credentials.credentials.access_token;
-  },
+  (_authCredentials: OAuth2Client, connectorId: ModelId) => `${connectorId}`,
   {
     ttlMs: 60 * 10 * 1000, // 10 minutes
   }
@@ -150,7 +148,7 @@ export async function driveObjectToDustType(
       createdAtMs: new Date(file.createdTime).getTime(),
       trashed: file.trashed ? file.trashed : false,
       size: file.size ? parseInt(file.size, 10) : null,
-      driveId: await getMyDriveIdCached(authCredentials),
+      driveId: await getMyDriveIdCached(authCredentials, connectorId),
       isInSharedDrive: false,
       updatedAtMs: file.modifiedTime
         ? new Date(file.modifiedTime).getTime()

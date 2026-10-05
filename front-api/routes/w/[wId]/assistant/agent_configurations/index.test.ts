@@ -1,4 +1,3 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
@@ -217,6 +216,56 @@ describe("GET /api/w/:wId/assistant/agent_configurations", () => {
     ).toEqual(["hidden", "visible"]);
   });
 
+  it("applies the limit after dropping the agents the caller cannot read", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      method: "GET",
+    });
+    const { agentOwner, agentOwnerAuth } = await setupAgentOwner(
+      workspace,
+      "user"
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const addMembersResult = await restrictedSpace.addMembers(
+      await Authenticator.internalAdminForWorkspace(workspace.sId),
+      { userIds: [agentOwner.sId] }
+    );
+    expect(addMembersResult.isOk()).toBe(true);
+    await agentOwnerAuth.refresh();
+
+    // Sorts first by name, but the caller cannot read it.
+    await AgentConfigurationFactory.createTestAgent(agentOwnerAuth, {
+      name: "Limit A / Restricted",
+      scope: "visible",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const readableAgents = await Promise.all(
+      ["Limit B", "Limit C", "Limit D"].map((name) =>
+        AgentConfigurationFactory.createTestAgent(userAuth, {
+          name,
+          scope: "visible",
+        })
+      )
+    );
+
+    const response = await listAgents(workspace, {
+      view: "published",
+      sort: "alphabetical",
+      limit: "2",
+    });
+
+    expect(response.status).toBe(200);
+    const data: { agentConfigurations: LightAgentConfigurationType[] } =
+      await response.json();
+    expect(data.agentConfigurations.map((a) => a.sId)).toEqual([
+      readableAgents[0].sId,
+      readableAgents[1].sId,
+    ]);
+  });
+
   it("returns agents from spaces the admin cannot read with the analytics view", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "GET",
@@ -254,6 +303,36 @@ describe("GET /api/w/:wId/assistant/agent_configurations", () => {
     expect(data.agentConfigurations.map((a) => a.sId)).toContain(
       restrictedAgent.sId
     );
+  });
+
+  it("lists hidden agents without their editors for a manager with the analytics view", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "manager",
+    });
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
+    const hiddenAgent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { name: "Hidden agent", scope: "hidden" }
+    );
+    const visibleAgent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { name: "Visible agent", scope: "visible" }
+    );
+
+    const response = await listAgents(workspace, {
+      view: "analytics",
+      withEditors: "true",
+    });
+
+    expect(response.status).toBe(200);
+    const data: { agentConfigurations: LightAgentConfigurationType[] } =
+      await response.json();
+    const agentsById = new Map(
+      data.agentConfigurations.map((agent) => [agent.sId, agent])
+    );
+    expect(agentsById.get(hiddenAgent.sId)?.editors).toEqual([]);
+    expect(agentsById.get(visibleAgent.sId)?.editors).toHaveLength(1);
   });
 
   it("narrows the analytics view to non-private agents below the manager role", async () => {
@@ -1074,22 +1153,28 @@ describe("GET /api/w/:wId/assistant/agent_configurations - instructionsHtml", ()
     expect(response.status).toBe(200);
     const createdAgent = (await response.json()).agentConfiguration;
 
-    // Light variant (via getAgentConfiguration) should nullify instructionsHtml.
-    const lightAgent = await getAgentConfiguration(auth, {
-      agentId: createdAgent.sId,
-      variant: "light",
-    });
-    expect(lightAgent).not.toBeNull();
-    // instructionsHtml is not part of LightAgentConfigurationType but we verify
-    // the runtime value is null (not leaked from the DB).
-    expect(lightAgent).toHaveProperty("instructionsHtml", null);
+    const listResponse = await listAgents(workspace);
+    expect(listResponse.status).toBe(200);
+    const {
+      agentConfigurations,
+    }: {
+      agentConfigurations: LightAgentConfigurationType[];
+    } = await listResponse.json();
+    const lightAgent = agentConfigurations.find(
+      (a) => a.sId === createdAgent.sId
+    );
+    expect(lightAgent).toBeDefined();
+    // instructionsHtml is not part of LightAgentConfigurationType: verify it is
+    // not leaked from the DB at runtime.
+    expect(lightAgent).not.toHaveProperty("instructionsHtml");
 
-    // Full variant (via getAgentConfiguration) should include instructionsHtml.
-    const fullAgent = await getAgentConfiguration(auth, {
-      agentId: createdAgent.sId,
-      variant: "full",
-    });
+    const fullAgent = await AgentConfigurationFactory.refetch(
+      auth,
+      createdAgent.sId
+    );
     expect(fullAgent).not.toBeNull();
-    expect(fullAgent!.instructionsHtml).toBe(testInstructionsHtml);
+    expect((await fullAgent!.fetchInstructions()).instructionsHtml).toBe(
+      testInstructionsHtml
+    );
   });
 });

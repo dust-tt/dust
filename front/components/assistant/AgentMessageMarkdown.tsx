@@ -1,9 +1,9 @@
 import { actionCardDirective } from "@app/components/markdown/ActionCardDirective";
 import {
-  BuildSkillDirectiveBlock,
   buildAgentDirective,
   buildSkillDirective,
   getBuildAgentDirectivePlugin,
+  getBuildSkillDirectivePlugin,
 } from "@app/components/markdown/BuildEntityDirectives";
 import {
   CiteBlock,
@@ -21,17 +21,10 @@ import {
 } from "@app/components/markdown/InstructionBlock";
 import { quickReplyDirective } from "@app/components/markdown/QuickReplyBlock";
 import {
-  agentSuggestionDirective,
-  getConversationAgentSuggestionPlugin,
-} from "@app/components/markdown/suggestion/AgentSuggestionDirective";
-import {
   batchSuggestionDirective,
   getBatchSuggestionPlugin,
 } from "@app/components/markdown/suggestion/BatchSuggestionDirective";
-import {
-  getSkillSuggestionPlugin,
-  skillSuggestionDirective,
-} from "@app/components/markdown/suggestion/SkillSuggestionDirective";
+import { extractBatchIds } from "@app/components/markdown/suggestion/suggestion_directives";
 import {
   getTaskDirectiveBlock,
   taskDirective,
@@ -53,7 +46,6 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 export const AgentMessageMarkdown = ({
   owner,
-  conversationId,
   content,
   additionalMarkdownComponents = {} as Components,
   additionalMarkdownPlugins = [] as PluggableList,
@@ -66,7 +58,6 @@ export const AgentMessageMarkdown = ({
   canCopyQuotes,
 }: {
   owner: WorkspaceType;
-  conversationId?: string;
   content: string;
   isLastMessage?: boolean;
   streamingState?: StreamingState;
@@ -83,6 +74,11 @@ export const AgentMessageMarkdown = ({
     return isInstructions ? preprocessInstructionBlocks(content) : content;
   }, [content, isInstructions]);
 
+  const previewBatchId = React.useMemo(() => {
+    const batchIds = extractBatchIds(content);
+    return batchIds.size === 1 ? [...batchIds][0] : undefined;
+  }, [content]);
+
   const markdownComponents: Components = React.useMemo(
     () => ({
       sup: CiteBlock,
@@ -93,17 +89,12 @@ export const AgentMessageMarkdown = ({
       dustimg: getImgPlugin(owner),
       file_preview: getFilePreviewPlugin(),
       instruction_block: InstructionBlock,
-      build_skill: BuildSkillDirectiveBlock,
-      build_agent: getBuildAgentDirectivePlugin(owner),
-      skill_suggestion: getSkillSuggestionPlugin(owner, conversationId),
+      build_skill: getBuildSkillDirectivePlugin(previewBatchId),
+      build_agent: getBuildAgentDirectivePlugin(owner, previewBatchId),
       batch_edit: getBatchSuggestionPlugin(owner),
-      agent_suggestion: getConversationAgentSuggestionPlugin(
-        owner,
-        conversationId
-      ),
       ...additionalMarkdownComponents,
     }),
-    [owner, conversationId, additionalMarkdownComponents]
+    [owner, previewBatchId, additionalMarkdownComponents]
   );
 
   const markdownPlugins = React.useMemo(() => {
@@ -120,8 +111,6 @@ export const AgentMessageMarkdown = ({
       actionCardDirective,
       buildSkillDirective,
       buildAgentDirective,
-      skillSuggestionDirective,
-      agentSuggestionDirective,
       batchSuggestionDirective,
       ...additionalMarkdownPlugins,
     ];

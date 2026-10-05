@@ -1,4 +1,7 @@
-import { getSandboxFunctionInvocationEvents } from "@app/lib/api/sandbox_functions/events";
+import {
+  getSandboxFunctionInvocationEvents,
+  getSandboxFunctionInvocationEventsBatch,
+} from "@app/lib/api/sandbox_functions/events";
 import { makeTestFrameInvocation } from "@app/tests/utils/FrameFunctionFactory";
 import type { SandboxFunctionInvocationEvent } from "@app/types/api/sandbox_functions";
 import { honoApp } from "@front-api/app";
@@ -12,37 +15,44 @@ vi.mock("@app/lib/api/sandbox_functions/events", async (importOriginal) => {
   return {
     ...mod,
     publishSandboxFunctionInvocationEvent: vi.fn(),
+    getSandboxFunctionInvocationEventsBatch: vi.fn(),
     getSandboxFunctionInvocationEvents: vi.fn(async function* () {}),
   };
 });
 
-function getEvents({
-  workspaceId,
-  frameId,
-  invocationId,
-}: {
-  workspaceId: string;
-  frameId: string;
-  invocationId: string;
-}) {
-  return honoApp.request(
-    `/api/sse/w/${workspaceId}/frames/${frameId}/invocations/${invocationId}/events`
-  );
-}
+describe.each([
+  "",
+  "/poll",
+])("GET /api/sse/w/:wId/frames/:frameId/invocations/:invocationId/events%s", (suffix) => {
+  function getEvents({
+    workspaceId,
+    frameId,
+    invocationId,
+  }: {
+    workspaceId: string;
+    frameId: string;
+    invocationId: string;
+  }) {
+    return honoApp.request(
+      `/api/sse/w/${workspaceId}/frames/${frameId}/invocations/${invocationId}/events${suffix}`
+    );
+  }
 
-function mockEventStream(event: SandboxFunctionInvocationEvent) {
-  vi.mocked(getSandboxFunctionInvocationEvents).mockImplementation(
-    async function* () {
-      yield { eventId: "event-1", data: event };
-    }
-  );
-}
+  function mockEventStream(event: SandboxFunctionInvocationEvent) {
+    vi.mocked(getSandboxFunctionInvocationEventsBatch).mockResolvedValue([
+      { eventId: "event-1", data: event },
+    ]);
+    vi.mocked(getSandboxFunctionInvocationEvents).mockImplementation(
+      async function* () {
+        yield { eventId: "event-1", data: event };
+      }
+    );
+  }
 
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
-describe("GET /api/sse/w/:wId/frames/:frameId/invocations/:invocationId/events", () => {
   it("keeps an invocation streamable after the Frame republishes", async () => {
     const { frame, invocation, sandboxFunction, workspace } =
       await makeTestFrameInvocation();
@@ -65,8 +75,15 @@ describe("GET /api/sse/w/:wId/frames/:frameId/invocations/:invocationId/events",
     });
 
     expect(response.status).toBe(200);
-    expect(await response.text()).toContain('"result":{"ok":true}');
-    expect(getSandboxFunctionInvocationEvents).toHaveBeenCalledWith({
+    const payload = suffix
+      ? (await response.json()).events.join("\n")
+      : await response.text();
+    expect(payload).toContain('"result":{"ok":true}');
+    expect(
+      suffix
+        ? getSandboxFunctionInvocationEventsBatch
+        : getSandboxFunctionInvocationEvents
+    ).toHaveBeenCalledWith({
       invocationId: invocation.sId,
       lastEventId: null,
       signal: expect.any(AbortSignal),
@@ -85,7 +102,11 @@ describe("GET /api/sse/w/:wId/frames/:frameId/invocations/:invocationId/events",
     });
 
     expect(response.status).toBe(404);
-    expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();
+    expect(
+      suffix
+        ? getSandboxFunctionInvocationEventsBatch
+        : getSandboxFunctionInvocationEvents
+    ).not.toHaveBeenCalled();
   });
 
   it("is available only behind frames_v2_functions", async () => {
@@ -100,6 +121,10 @@ describe("GET /api/sse/w/:wId/frames/:frameId/invocations/:invocationId/events",
     });
 
     expect(response.status).toBe(403);
-    expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();
+    expect(
+      suffix
+        ? getSandboxFunctionInvocationEventsBatch
+        : getSandboxFunctionInvocationEvents
+    ).not.toHaveBeenCalled();
   });
 });

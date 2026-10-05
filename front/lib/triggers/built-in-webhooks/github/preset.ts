@@ -1,86 +1,50 @@
-import {
-  issueExample,
-  issueSchema,
-} from "@app/lib/triggers/built-in-webhooks/github/schemas/issues";
-import {
-  projectsV2ItemExample,
-  projectsV2ItemSchema,
-} from "@app/lib/triggers/built-in-webhooks/github/schemas/projects_v2_item";
-import {
-  pullRequestExample,
-  pullRequestSchema,
-} from "@app/lib/triggers/built-in-webhooks/github/schemas/pull_request";
-import {
-  prReviewExample,
-  prReviewSchema,
-} from "@app/lib/triggers/built-in-webhooks/github/schemas/pull_request_review";
-import {
-  pushExample,
-  pushSchema,
-} from "@app/lib/triggers/built-in-webhooks/github/schemas/push";
-import {
-  releaseExample,
-  releaseSchema,
-} from "@app/lib/triggers/built-in-webhooks/github/schemas/release";
 import type {
-  BaseWebhookPreset,
-  WebhookEvent,
+  WebhookEventMetadata,
+  WebhookPresetMetadata,
 } from "@app/types/triggers/webhooks_source_preset";
 
-const GITHUB_PULL_REQUEST_EVENT: WebhookEvent = {
+const GITHUB_PULL_REQUEST_EVENT = {
   name: "pull_request",
-  value: "pull_request",
+  value: "pull_request" as const,
   description:
     "Activity related to pull requests. The type of activity is specified in the `action` property of the payload object.",
-  schema: pullRequestSchema,
-  sample: pullRequestExample,
-};
+} satisfies WebhookEventMetadata;
 
-const GITHUB_ISSUES_EVENT: WebhookEvent = {
+const GITHUB_ISSUES_EVENT = {
   name: "issues",
-  value: "issues",
+  value: "issues" as const,
   description:
     "Activity related to an issue. The type of activity is specified in the `action` property of the payload object.",
-  schema: issueSchema,
-  sample: issueExample,
-};
+} satisfies WebhookEventMetadata;
 
-const GITHUB_PULL_REQUEST_REVIEW_EVENT: WebhookEvent = {
+const GITHUB_PULL_REQUEST_REVIEW_EVENT = {
   name: "pull_request_review",
-  value: "pull_request_review",
+  value: "pull_request_review" as const,
   description:
     "Activity related to a pull request review. The type of activity is specified in the `action` property of the payload object.",
-  schema: prReviewSchema,
-  sample: prReviewExample,
-};
+} satisfies WebhookEventMetadata;
 
-const GITHUB_PUSH_EVENT: WebhookEvent = {
+const GITHUB_PUSH_EVENT = {
   name: "push",
-  value: "push",
+  value: "push" as const,
   description: "Activity related to code pushes.",
-  schema: pushSchema,
-  sample: pushExample,
-};
+} satisfies WebhookEventMetadata;
 
-const GITHUB_PROJECTS_V2_ITEM_EVENT: WebhookEvent = {
+const GITHUB_PROJECTS_V2_ITEM_EVENT = {
   name: "projects_v2_item (organizations only)",
-  value: "projects_v2_item",
+  value: "projects_v2_item" as const,
   description:
     "Activity related to an item on an organization-level project. Only available for organization webhooks, not repository webhooks. The type of activity is specified in the `action` property of the payload object.",
-  schema: projectsV2ItemSchema,
-  sample: projectsV2ItemExample,
-};
+} satisfies WebhookEventMetadata;
 
-const GITHUB_RELEASE_EVENT: WebhookEvent = {
+const GITHUB_RELEASE_EVENT = {
   name: "release",
-  value: "release",
+  value: "release" as const,
   description:
     "Activity related to a release. The type of activity is specified in the `action` property of the payload object.",
-  schema: releaseSchema,
-  sample: releaseExample,
-};
+} satisfies WebhookEventMetadata;
 
-export const GITHUB_WEBHOOK_PRESET: BaseWebhookPreset = {
+export const GITHUB_WEBHOOK_METADATA = {
   name: "GitHub",
   eventCheck: {
     type: "headers",
@@ -97,6 +61,5 @@ export const GITHUB_WEBHOOK_PRESET: BaseWebhookPreset = {
   event_blacklist: ["ping"],
   description:
     "Receive events from GitHub such as creation or edition of issues or pull requests.",
-  filterGenerationInstructions: null,
   webhookPageUrl: `https://github.com/settings/connections/applications/${process.env.NEXT_PUBLIC_OAUTH_GITHUB_APP_WEBHOOKS_CLIENT_ID}`,
-};
+} satisfies WebhookPresetMetadata;

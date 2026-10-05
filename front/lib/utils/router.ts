@@ -1,3 +1,4 @@
+import type { SystemPodTab } from "@app/hooks/useSpaceProjectTabs";
 import type { AppRouter } from "@app/lib/platform";
 
 export const setQueryParam = (
@@ -30,20 +31,6 @@ export const setQueryParam = (
         );
       }
     });
-};
-
-export const parseQueryString = (url: string) => {
-  // Remove everything before the query string
-  const queryString = url.split("?")[1] || "";
-  const searchParams = new URLSearchParams(queryString);
-
-  // Convert to plain object
-  const params: Record<string, string> = {};
-  searchParams.forEach((value, key) => {
-    params[key] = value;
-  });
-
-  return params;
 };
 
 export const getAgentBuilderRoute = (
@@ -88,6 +75,51 @@ export const getSpaceRoute = (workspaceId: string, spaceId: string) => {
   return `/w/${workspaceId}/spaces/${spaceId}`;
 };
 
-export const getPodRoute = (workspaceId: string, spaceId: string) => {
-  return `/w/${workspaceId}/pods/${spaceId}`;
+export const getPodRoute = (
+  workspaceId: string,
+  spaceId: string,
+  podTab?: SystemPodTab,
+  queryParams?: string
+) => {
+  const fullPath = `/w/${workspaceId}/pods/${spaceId}`;
+  const route = queryParams ? `${fullPath}?${queryParams}` : fullPath;
+  return podTab ? `${route}#${podTab}` : route;
 };
+
+/**
+ * Navigate to a pod (optional tab + query). Same-path jumps set `location.hash`
+ * so `usePodTabs`' `hashchange` listener re-runs — React Router hash updates use
+ * pushState and do not fire `hashchange`.
+ */
+export function navigateToPod(
+  push: (href: string) => void,
+  workspaceId: string,
+  spaceId: string,
+  podTab?: SystemPodTab,
+  queryParams?: string
+): void {
+  const href = getPodRoute(workspaceId, spaceId, podTab, queryParams);
+  const target = new URL(href, window.location.origin);
+  const samePath = target.pathname === window.location.pathname;
+
+  if (!samePath) {
+    push(href);
+    return;
+  }
+
+  // Already on this pod. Update search via the router when it changes so
+  // `?agent=` / `?user=` apply, then set the hash to fire `hashchange`.
+  if (target.search !== window.location.search) {
+    push(href);
+  }
+
+  if (!podTab) {
+    return;
+  }
+
+  const nextHash = `#${podTab}`;
+  if (window.location.hash === nextHash) {
+    window.location.hash = "";
+  }
+  window.location.hash = podTab;
+}

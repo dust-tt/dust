@@ -5,14 +5,14 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
-import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import { WHITELISTABLE_MODEL_MAKER_IDS } from "@app/types/assistant/models/providers";
+import type { WhitelistableModelMakerIdType } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Op } from "sequelize";
 
-const PROVIDER_TO_REMOVE: ModelProviderIdType = "xai";
+const PROVIDER_TO_REMOVE: WhitelistableModelMakerIdType = "xai";
 const UPDATE_CONCURRENCY = 8;
-const KNOWN_PROVIDERS = new Set<string>(MODEL_PROVIDER_IDS);
+const KNOWN_PROVIDERS = new Set<string>(WHITELISTABLE_MODEL_MAKER_IDS);
 
 // Workspaces holding this flag keep xai. A plain string, not a WhitelistableFeature: the flag is
 // not declared in WHITELISTABLE_FEATURES_CONFIG, and the resource lookup below takes names that
@@ -49,11 +49,11 @@ async function listExemptWorkspaceModelIds(
 
 interface WhitelistChange {
   workspaceId: string;
-  before: ModelProviderIdType[];
-  after: ModelProviderIdType[];
-  // Ids the row carried that are no longer declared in MODEL_PROVIDER_IDS. Logged separately
+  before: WhitelistableModelMakerIdType[];
+  after: WhitelistableModelMakerIdType[];
+  // Ids the row carried that are no longer declared in WHITELISTABLE_MODEL_MAKER_IDS. Logged separately
   // because dropping them goes beyond what this migration's name promises.
-  retiredProviders: ModelProviderIdType[];
+  retiredProviders: WhitelistableModelMakerIdType[];
   updatedAt: Date;
 }
 
@@ -113,7 +113,7 @@ export async function removeXaiFromWhitelistedProviders({
       return [];
     }
     // Retired ids go out with xai. The column validator rejects any id no longer in
-    // MODEL_PROVIDER_IDS, so keeping them would make the row unwritable.
+    // WHITELISTABLE_MODEL_MAKER_IDS, so keeping them would make the row unwritable.
     const retiredProviders = before.filter(
       (provider) => !KNOWN_PROVIDERS.has(provider)
     );

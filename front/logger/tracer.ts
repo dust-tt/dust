@@ -1,5 +1,4 @@
 import { isDevelopment } from "@app/types/shared/env";
-import type { Span as DDSpan } from "dd-trace";
 
 /**
  * Minimal tracer interface matching the dd-trace API surface we actually use.
@@ -21,16 +20,6 @@ interface SpanLike {
   setTag(key: string, value: unknown): SpanLike;
   setOperationName(name: string): SpanLike;
 }
-
-// biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-const noopSpan: SpanLike = {
-  setTag() {
-    return noopSpan;
-  },
-  setOperationName() {
-    return noopSpan;
-  },
-};
 
 const noopTracer: TracerLike = {
   scope() {
@@ -65,6 +54,5 @@ if (isDevelopment()) {
   tracer = require("dd-trace").default as TracerLike;
 }
 
-export type { DDSpan as Span };
 export { tracer };
 export default tracer;

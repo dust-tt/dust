@@ -14,6 +14,7 @@ import {
   OVER_POOL_LIMIT_BAR_CLASSES,
   OVERAGE_BAR_CLASSES,
 } from "@app/components/workspace/seat_styles";
+import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import type { PremiumModelMessageUsage } from "@app/lib/api/assistant/rate_limits";
 import type {
   MemberFairUseUsage,
@@ -34,6 +35,8 @@ import {
   formatUserModelTierInheritLabel,
   resolveModelTiersForUser,
 } from "@app/lib/client/model_tiers";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { formatDate } from "@app/lib/i18n/format";
 import type { ModelsTierDefinition } from "@app/lib/model_tiers/allowed_tiers";
 import { getMaxTierName } from "@app/lib/model_tiers/tier_order";
 import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective";
@@ -42,6 +45,7 @@ import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { getModelsTierDisplayName } from "@app/types/assistant/models/model_tiers";
 import type { MembershipSeatType } from "@app/types/memberships";
 import {
+  isMembershipSeatType,
   isPaidSeatType,
   SEAT_TYPE_ORDER,
   toBaseSeatType,
@@ -94,6 +98,7 @@ const EMPTY_MODEL_TIER_DEFINITION_BY_NAME = new Map<
 >();
 const NOOP_ON_MEMBER = (_member: MemberUsageType) => {};
 const ALWAYS_CAN_UPGRADE_SEAT = (_member: MemberUsageType) => true;
+const ALWAYS_CAN_EDIT_SPEND_LIMIT = (_member: MemberUsageType) => true;
 
 const DEFAULT_PREMIUM_MESSAGE_WINDOW_DAYS = 7;
 
@@ -112,6 +117,8 @@ type RowData = {
   spendLimitAwuCredits: number | null;
   spendLimitSource: EffectiveSpendLimitSource;
   spendLimitGroupName: string | null;
+  poolCapOverrideExpiresAt: string | null;
+  poolCapOverridePreviousAwuCredits: number | null;
   scheduledSeatType: MembershipSeatType | null;
   scheduledSeatChangeAt: string | null;
   isTotalAllowedUsagePending: boolean;
@@ -193,11 +200,15 @@ function getScheduledSeatChangeLabel(
   scheduledSeatChangeAt: string | null
 ): string {
   const dateSuffix = scheduledSeatChangeAt
-    ? ` (${new Date(scheduledSeatChangeAt).toLocaleDateString("en-US", {
-        month: "long",
-        day: "numeric",
-        timeZone: "UTC",
-      })})`
+    ? ` (${formatDate(
+        new Date(scheduledSeatChangeAt),
+        {
+          month: "long",
+          day: "numeric",
+          timeZone: "UTC",
+        },
+        getActiveLocale()
+      )})`
     : "";
 
   // A same-tier monthly→yearly commitment (e.g. pro -> pro_yearly) isn't a
@@ -205,7 +216,7 @@ function getScheduledSeatChangeLabel(
   // billing cadence switches. Call that out explicitly instead of the
   // confusing "changed to Pro" wording, since the user is already on Pro.
   const isMonthlyToYearlySwitch =
-    !!currentSeatType &&
+    isMembershipSeatType(currentSeatType) &&
     isPaidSeatType(currentSeatType) &&
     !currentSeatType.endsWith("_yearly") &&
     scheduledSeatType.endsWith("_yearly") &&
@@ -283,6 +294,8 @@ interface PoolCreditUsageBarProps {
   // access, i.e. a zero pool limit.
   effectiveLimit: number | null;
   isTotalAllowedUsagePending: boolean;
+  poolCapOverrideExpiresAt: string | null;
+  poolCapOverridePreviousAwuCredits: number | null;
 }
 
 // Single-segment bar showing only the workspace pool share of a member's
@@ -292,6 +305,8 @@ function PoolCreditUsageBar({
   memberUsageLimit,
   effectiveLimit,
   isTotalAllowedUsagePending: isPending,
+  poolCapOverrideExpiresAt,
+  poolCapOverridePreviousAwuCredits,
 }: PoolCreditUsageBarProps) {
   const poolLimit = computePoolLimitAwuCredits({
     memberUsageLimit,
@@ -306,11 +321,34 @@ function PoolCreditUsageBar({
         ? 100
         : 0;
   const limitLabel = formatCredits(poolLimit);
+  const temporaryResetLabel =
+    poolCapOverrideExpiresAt !== null
+      ? poolCapOverridePreviousAwuCredits === null
+        ? `Resets to no personal limit on ${formatConsumptionDate(poolCapOverrideExpiresAt, getActiveLocale())}`
+        : `Resets to ${formatCredits(poolCapOverridePreviousAwuCredits)} credits on ${formatConsumptionDate(poolCapOverrideExpiresAt, getActiveLocale())}`
+      : null;
   return (
     <div className="flex w-full flex-col gap-1">
       <div className="flex justify-between text-xs tabular-nums text-foreground">
         <span>{formatCredits(consumedFromPool)}</span>
-        {isPending ? <Spinner size="xs" /> : <span>{limitLabel}</span>}
+        {isPending ? (
+          <Spinner size="xs" />
+        ) : (
+          <span className="inline-flex items-center gap-1">
+            <span>{limitLabel}</span>
+            {temporaryResetLabel && (
+              <Tooltip
+                tooltipTriggerAsChild
+                label={temporaryResetLabel}
+                trigger={
+                  <span className="inline-flex text-muted-foreground">
+                    <Icon visual={Clock} size="xs" />
+                  </span>
+                }
+              />
+            )}
+          </span>
+        )}
       </div>
       <div className="flex h-3 w-full items-center">
         <ProgressBar
@@ -707,6 +745,10 @@ function buildPoolCreditUsageColumn(
           isTotalAllowedUsagePending={
             info.row.original.isTotalAllowedUsagePending
           }
+          poolCapOverrideExpiresAt={info.row.original.poolCapOverrideExpiresAt}
+          poolCapOverridePreviousAwuCredits={
+            info.row.original.poolCapOverridePreviousAwuCredits
+          }
         />
       </div>
     ),
@@ -786,11 +828,15 @@ function buildPremiumMessageUsageColumn(
                   <span className="font-medium">Reset schedule:</span>
                   {refillSchedule.map(({ date, messages }) => (
                     <span key={date}>
-                      {new Date(date).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        timeZone: "UTC",
-                      })}
+                      {formatDate(
+                        new Date(date),
+                        {
+                          month: "short",
+                          day: "numeric",
+                          timeZone: "UTC",
+                        },
+                        getActiveLocale()
+                      )}
                       : +{messages}
                     </span>
                   ))}
@@ -878,11 +924,15 @@ function buildFairUseCreditsColumn(
                   <span className="font-medium">Reset schedule:</span>
                   {refillSchedule.map(({ date, credits }) => (
                     <span key={date}>
-                      {new Date(date).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        timeZone: "UTC",
-                      })}
+                      {formatDate(
+                        new Date(date),
+                        {
+                          month: "short",
+                          day: "numeric",
+                          timeZone: "UTC",
+                        },
+                        getActiveLocale()
+                      )}
                       : +{formatCredits(credits)}
                     </span>
                   ))}
@@ -1170,11 +1220,14 @@ interface MembersUsageTableProps {
   seatChangePendingMemberIds: ReadonlySet<string>;
   isSeatBased: boolean;
   showSpendLimit: boolean;
+  canEditSpendLimit?: (member: MemberUsageType) => boolean;
   // Disables every row action
   readOnly?: boolean;
   // Seat and credits usage columns plus the seat row actions. Off for
   // workspaces that are not on a credit plan.
   showSeatAndCredits?: boolean;
+  // Keep credit usage visible without offering seat changes to group managers.
+  showSeatActions?: boolean;
   // Disables only the seat-assign/change/remove actions (e.g. while the
   // subscription has a cancellation scheduled), independent of `readOnly`.
   seatActionsDisabled?: boolean;
@@ -1218,8 +1271,10 @@ export function MembersUsageTable({
   seatChangePendingMemberIds,
   isSeatBased,
   showSpendLimit,
+  canEditSpendLimit = ALWAYS_CAN_EDIT_SPEND_LIMIT,
   readOnly = false,
   showSeatAndCredits = true,
+  showSeatActions = true,
   seatActionsDisabled = false,
   onChangeSeat,
   onRemoveSeat,
@@ -1251,7 +1306,8 @@ export function MembersUsageTable({
     () =>
       members.map((m) => {
         const hasSeat = m.seatType !== null && m.seatType !== "none";
-        const canEditSeat = showSeatAndCredits && isSeatBased && hasSeat;
+        const canEditSeat =
+          showSeatActions && showSeatAndCredits && isSeatBased && hasSeat;
         const resolvedModelTiers = showModelTiersColumn
           ? resolveModelTiersForUser({
               userId: m.sId,
@@ -1278,6 +1334,9 @@ export function MembersUsageTable({
           spendLimitAwuCredits: m.spendLimitAwuCredits,
           spendLimitSource: m.spendLimitSource,
           spendLimitGroupName: m.spendLimitGroupName,
+          poolCapOverrideExpiresAt: m.poolCapOverrideExpiresAt,
+          poolCapOverridePreviousAwuCredits:
+            m.poolCapOverridePreviousAwuCredits,
           scheduledSeatType: m.scheduledSeatType,
           scheduledSeatChangeAt: m.scheduledSeatChangeAt,
           isTotalAllowedUsagePending: totalAllowedUsagePendingMemberIds.has(
@@ -1286,7 +1345,7 @@ export function MembersUsageTable({
           isSeatChangePending: seatChangePendingMemberIds.has(m.sId),
           overallUsageTarget: m.overallUsageTarget,
           isSpendCapped: m.isSpendCapped,
-          canUpgradeSeat: canUpgradeSeat(m),
+          canUpgradeSeat: showSeatActions && canUpgradeSeat(m),
           onOpenChangeSeatRecap: () => onOpenChangeSeatRecap(m),
           onOpenSpendLimitRecap: () => onOpenSpendLimitRecap(m),
           premiumMessageUsage: m.premiumMessageUsage ?? null,
@@ -1297,7 +1356,10 @@ export function MembersUsageTable({
           })(),
           hasUserLevelModelTiersOverride: resolvedModelTiers?.source === "user",
           menuItems: [
-            ...(showSeatAndCredits && !hasSeat && !showPremiumMessageUsage
+            ...(showSeatActions &&
+            showSeatAndCredits &&
+            !hasSeat &&
+            !showPremiumMessageUsage
               ? [
                   {
                     kind: "item" as const,
@@ -1317,12 +1379,14 @@ export function MembersUsageTable({
                   },
                 ]
               : []),
-            ...(showSpendLimit && hasSeat && m.seatType !== "free"
+            ...(showSpendLimit &&
+            isMembershipSeatType(m.seatType) &&
+            isPaidSeatType(m.seatType)
               ? [
                   {
                     kind: "item" as const,
                     label: "Edit spend limit",
-                    disabled: readOnly,
+                    disabled: readOnly || !canEditSpendLimit(m),
                     onClick: () => onEditSpendLimit(m),
                   },
                 ]
@@ -1374,6 +1438,7 @@ export function MembersUsageTable({
       seatChangePendingMemberIds,
       isSeatBased,
       showSpendLimit,
+      canEditSpendLimit,
       showModelTiersColumn,
       userModelTierSelectionByUserId,
       userAllowedModelTiersByUserId,
@@ -1382,6 +1447,7 @@ export function MembersUsageTable({
       groupNameToId,
       readOnly,
       showSeatAndCredits,
+      showSeatActions,
       showPremiumMessageUsage,
       seatActionsDisabled,
       onChangeSeat,

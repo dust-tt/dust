@@ -18,7 +18,10 @@ import type {
   OAuthConnectionType,
   OAuthUseCase,
 } from "@app/types/oauth/lib";
-import { isValidSnowflakeRole } from "@app/types/oauth/lib";
+import {
+  isValidSnowflakeRole,
+  snowflakeRoleToOAuthScope,
+} from "@app/types/oauth/lib";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -113,7 +116,7 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
     const account = extraConfig.snowflake_account;
     const role = extraConfig.snowflake_role;
 
-    // For Custom OAuth, use session:role:<ROLE> to specify the role.
+    // For Custom OAuth, the scope specifies the role (see snowflakeRoleToOAuthScope).
     // The role is set by admin as default, users can override during personal auth.
     const qs = querystring.stringify({
       response_type: "code",
@@ -123,7 +126,7 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
         provider: "snowflake",
         connection,
       }),
-      scope: `session:role:${role.toUpperCase()}`,
+      scope: snowflakeRoleToOAuthScope(role),
     });
 
     // Build account-specific authorization URL
@@ -284,7 +287,7 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
           if (!isValidSnowflakeRole(trimmedUserRole)) {
             throw new Error(
               `Invalid Snowflake role format: "${trimmedUserRole}". ` +
-                "Role must start with a letter or underscore and contain only alphanumeric characters and underscores."
+                "Role must be non-empty and at most 255 characters."
             );
           }
           role = trimmedUserRole;

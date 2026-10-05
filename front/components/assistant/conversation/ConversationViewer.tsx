@@ -75,6 +75,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import {
   isLightAgentMessageType,
+  isMentionRequiringValidation,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
@@ -352,6 +353,7 @@ export const ConversationViewer = ({
     workspaceId: owner.sId,
     limit: CONVERSATION_MESSAGES_PAGE_LIMIT,
     disabled,
+    messageListRef: virtuosoMessageListRef,
   });
 
   const handleAgentMessageRetry = useCallback(
@@ -1273,10 +1275,7 @@ export const ConversationViewer = ({
         // renders below the user message — scroll to the bottom so the action
         // card is visible.
         const hasPendingMentions = messageFromBackend.richMentions?.some(
-          (m) =>
-            m.status === "pending_conversation_access" ||
-            m.status === "pending_project_membership" ||
-            m.status === "agent_restricted_by_space_usage"
+          isMentionRequiringValidation
         );
         if (hasPendingMentions) {
           virtuosoMessageListRef.current.scrollToItem({

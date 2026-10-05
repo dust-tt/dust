@@ -11,7 +11,6 @@ const shutdownMock = vi.hoisted(() => ({ controller: new AbortController() }));
 vi.mock("@app/lib/shutdown_signal", () => ({
   DUST_WORKER_SHUTDOWN_ABORT_REASON: "DUST_WORKER_SHUTDOWN_ABORT",
   getShutdownSignal: () => shutdownMock.controller.signal,
-  markShuttingDownWithDelayedAbort: vi.fn(),
 }));
 
 vi.mock("@temporalio/activity", () => ({

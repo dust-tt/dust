@@ -1,8 +1,7 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
@@ -74,11 +73,10 @@ async function updateAgentRequestedSpaceIds(
   for (const agent of agentConfigurations) {
     // Get the full agent configuration with actions
     // Using dangerouslyRequestAllGroups auth ensures we can access all agents
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      agentVersion: agent.version,
-      variant: "full",
-    });
+    const [agentConfiguration] = await AgentResource.fetchByIdsAndVersions(
+      auth,
+      [{ agentId: agent.sId, agentVersion: agent.version }]
+    );
 
     if (!agentConfiguration) {
       logger.warn(
@@ -89,26 +87,29 @@ async function updateAgentRequestedSpaceIds(
       continue;
     }
 
+    // Without the content the tools list comes back empty: recomputing from it would strip the
+    // agent's space requirements.
+    if (!agentConfiguration.canViewContent) {
+      logger.warn(
+        { workspaceId, agentId: agent.sId, agentName: agent.name },
+        "Agent content not viewable, skipping"
+      );
+      errorCount++;
+      continue;
+    }
+
     // Calculate the correct group IDs from actions
     // Note: You may see workspace_isolation_violation warnings in logs - these are benign
     // monitoring warnings, not actual errors. The auth parameter ensures proper scoping.
     const newRequirements =
       await getAgentConfigurationRequirementsFromCapabilities(auth, {
-        actions: agentConfiguration.actions,
+        actions: await agentConfiguration.listActions(auth),
         skills: [],
       });
 
-    const currentRequestedSpaceIds = agentConfiguration.requestedSpaceIds.map(
-      (spaceId) => {
-        const modelId = getResourceIdFromSId(spaceId);
-        if (modelId === null) {
-          throw new Error(
-            `Invalid space sId: ${spaceId} for agent ${agent.sId}`
-          );
-        }
-        return modelId;
-      }
-    );
+    const currentRequestedSpaceIds = [
+      ...agentConfiguration.requestedSpaceModelIds(),
+    ];
 
     // Normalize the arrays for comparison
     const newSpaceIds = newRequirements.requestedSpaceIds;
@@ -154,6 +155,8 @@ async function updateAgentRequestedSpaceIds(
           silent: true,
         }
       );
+      // The write skips the hooks, so the cached resource would keep the old requirements.
+      await AgentResource.invalidateCache(workspace.id, agent.sId);
       updatedCount++;
     } else {
       updatedCount++;

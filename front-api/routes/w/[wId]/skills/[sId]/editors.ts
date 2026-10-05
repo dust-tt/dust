@@ -1,23 +1,13 @@
-import {
-  findAddedEditorsWithoutSpaceAccess,
-  resolveSkillEditorUsers,
-} from "@app/lib/api/skills/editors_change";
+import { validateSkillEditorsChange } from "@app/lib/api/skills/editors_change";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import type {
-  PatchSkillEditorsRequestBody,
-  SkillEditorsResponseBody,
-} from "@app/types/api/skills/editors";
 import { PatchSkillEditorsRequestBodySchema } from "@app/types/api/skills/editors";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { toLightUser } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { rejectArchivedSkill } from "@front-api/routes/w/[wId]/skills/guards";
 import type { Context } from "hono";
 import { z } from "zod";
-
-export type { PatchSkillEditorsRequestBody, SkillEditorsResponseBody };
 
 const ParamsSchema = z.object({
   sId: z.string(),
@@ -96,56 +86,49 @@ app.patch(
       return skillRes;
     }
 
-    if (!auth.can("admin", skillRes)) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message: "User is not authorized to edit the skill editors list.",
-        },
-      });
-    }
-
-    const archivedError = rejectArchivedSkill(ctx, skillRes);
-    if (archivedError) {
-      return archivedError;
-    }
-
     const { addEditorIds = [], removeEditorIds = [] } = ctx.req.valid("json");
 
-    // TODO(achilleburah): adopt validateSkillEditorsChange here so this route follows the same
-    // rules as the suggestion path. Today removing an editor who left the workspace is accepted
-    // there and rejected here by dangerouslyRemoveMembers, which breaks the
-    // same-rules-as-manual-editors-route contract.
-    const { missingIds, usersToAdd, usersToRemove } =
-      await resolveSkillEditorUsers({
-        addUserIds: addEditorIds,
-        removeUserIds: removeEditorIds,
-      });
-    if (missingIds.length > 0) {
-      return apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "user_not_found",
-          message: `Some users were not found: ${missingIds.join(", ")}`,
-        },
-      });
+    const validation = await validateSkillEditorsChange(auth, skillRes, {
+      addUserIds: addEditorIds,
+      removeUserIds: removeEditorIds,
+    });
+    if (validation.isErr()) {
+      const { code, message } = validation.error;
+      switch (code) {
+        case "not_authorized":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "workspace_auth_error",
+              message,
+            },
+          });
+        case "user_not_found":
+          return apiError(ctx, {
+            status_code: 404,
+            api_error: {
+              type: "user_not_found",
+              message,
+            },
+          });
+        case "archived":
+        case "user_in_both_lists":
+        case "user_not_member":
+        case "space_access_denied":
+        case "last_editor_removed":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message,
+            },
+          });
+        default:
+          assertNever(code);
+      }
     }
 
-    const editorsAccessError = await findAddedEditorsWithoutSpaceAccess(
-      auth,
-      skillRes,
-      usersToAdd
-    );
-    if (editorsAccessError) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: editorsAccessError,
-        },
-      });
-    }
+    const { usersToAdd, usersToRemove } = validation.value;
 
     // Editors are per-user grants on the skill (`grantToUser`), not group memberships.
     const addRes = await skillRes.addEditors(auth, usersToAdd);

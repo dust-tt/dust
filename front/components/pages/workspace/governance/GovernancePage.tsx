@@ -1,34 +1,40 @@
+import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
 import { GovernancePageLayout } from "@app/components/pages/workspace/governance/GovernancePageLayout";
 import { GovernancePageSkeleton } from "@app/components/pages/workspace/governance/GovernancePageSkeleton";
 import { GovernanceSettingRow } from "@app/components/pages/workspace/governance/GovernanceSettingRow";
 import { GovernanceSettingSection } from "@app/components/pages/workspace/governance/GovernanceSettingSection";
-import { RoleProvisioningSection } from "@app/components/pages/workspace/governance/RoleProvisioningSection";
 import { SkillDiscoverabilityWarning } from "@app/components/pages/workspace/governance/SkillDiscoverabilityWarning";
-import { ExtensionMcpToolsSection } from "@app/components/workspace/ExtensionMcpToolsSection";
 import { LinkedSectionNotice } from "@app/components/workspace/LinkedSectionNotice";
-import { AuditLogsGovernanceSection } from "@app/components/workspace/settings/AuditLogsToggle";
 import { ConversationExternalNotificationsToggle } from "@app/components/workspace/settings/ConversationExternalNotificationsToggle";
-import { DustMcpServerSettingsItem } from "@app/components/workspace/settings/DustMcpServerSettingsItem";
-import { EmailAgentsToggle } from "@app/components/workspace/settings/EmailAgentsToggle";
 import { InactiveAgentArchival } from "@app/components/workspace/settings/InactiveAgentArchival";
 import { InteractiveContentSharing } from "@app/components/workspace/settings/InteractiveContentSharingToggle";
-import { MessagingAppToggles } from "@app/components/workspace/settings/MessagingAppToggles";
 import { OpenPodPolicy } from "@app/components/workspace/settings/OpenPodsPolicy";
 import { PodKnowledgePolicy } from "@app/components/workspace/settings/PodKnowledgePolicy";
 import { PrivateConversationUrlsToggle } from "@app/components/workspace/settings/PrivateConversationUrlsToggle";
-import { SlackPersonalFooterRemovalToggle } from "@app/components/workspace/settings/SlackPersonalFooterRemovalToggle";
+import { SelfImprovingSkillsListSection } from "@app/components/workspace/settings/SelfImprovingSkillsListSection";
+import { SelfImprovingSkillsSettingsSection } from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
 import { VoiceTranscriptionToggle } from "@app/components/workspace/settings/VoiceTranscriptionToggle";
 import { WorkspaceAnalyticsToggle } from "@app/components/workspace/settings/WorkspaceAnalyticsToggle";
 import { WorkspaceDefaultAgentPicker } from "@app/components/workspace/settings/WorkspaceDefaultAgentPicker";
+import { WorkspaceLocalePicker } from "@app/components/workspace/settings/WorkspaceLocalePicker";
 import { WorkspaceNameEditor } from "@app/components/workspace/settings/WorkspaceNameEditor";
+import { useAdminPageTab } from "@app/hooks/useAdminPageTab";
 import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
+import type { AdminSectionId } from "@app/lib/admin/adminSectionIds";
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import { useAppRouter } from "@app/lib/platform";
+import {
+  getWorkspaceDefaultSelfImprovementCapPerSkillAwuCredits,
+  getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd,
+} from "@app/lib/reinforcement/consumption";
 import {
   useGovernancePermissions,
   useUpdateGovernancePermission,
 } from "@app/lib/swr/governance";
 import { useGroups } from "@app/lib/swr/groups";
+import { useReinforcementBillingUnit } from "@app/lib/swr/useSelfImprovingSkillsSettings";
 import type { GovernancePermissionsByKey } from "@app/types/api/governance";
 import type {
   CapabilitySpec,
@@ -45,16 +51,22 @@ import type { WorkspaceSharingPolicy } from "@app/types/user";
 import {
   ActionFrame,
   Clock,
-  CloudArrowLeftRight,
   ContentMessage,
   Cube01,
   InfoCircle,
-  Lock01,
   PuzzlePiece01,
   Robot,
   ShapesPlus,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
+import { useState } from "react";
+
+const GOVERNANCE_TABS = ["agents", "pods", "features"] as const;
+type GovernanceTab = (typeof GOVERNANCE_TABS)[number];
 
 // Frame governance permissions are only relevant when the workspace sharing policy actually
 // enables the underlying capability: email invites require external email sharing, and public
@@ -76,7 +88,7 @@ function isFrameCapabilityEnabled(
   }
 }
 
-// Split the keyed permission map into the page's four sections. Each section pulls its capabilities
+// Split the keyed permission map into the page's sections. Each section pulls its capabilities
 // from the map in catalog (display) order, dropping any the current user's role isn't allowed to
 // see (absent from the map). Frame filtering by sharing policy is applied by the caller, which has
 // the runtime policy.
@@ -86,7 +98,6 @@ function groupGovernancePermissionsBySection(
   agents: GovernancePermission[];
   skills: GovernancePermission[];
   frames: GovernancePermission[];
-  billingAndSecurity: GovernancePermission[];
   triggers: GovernancePermission[];
 } {
   const resolve = (specs: CapabilitySpec[]): GovernancePermission[] =>
@@ -98,7 +109,6 @@ function groupGovernancePermissionsBySection(
     agents: resolve(GOVERNANCE_CAPABILITIES.agent),
     skills: resolve(GOVERNANCE_CAPABILITIES.skill),
     frames: resolve(GOVERNANCE_CAPABILITIES.frame),
-    billingAndSecurity: resolve(GOVERNANCE_CAPABILITIES.billingAndSecurity),
     triggers: resolve(GOVERNANCE_CAPABILITIES.trigger),
   };
 }
@@ -120,10 +130,23 @@ export const GovernancePage = () => {
   const { sharingPolicy, doUpdateSharingPolicy, isChanging } =
     useFrameSharingToggle({ owner });
 
+  const hasSelfImprovement = useIsSelfImprovementAvailable();
+  const reinforcementUnit = useReinforcementBillingUnit({ owner });
+  const [defaultCapPerSkill, setDefaultCapPerSkill] = useState(() =>
+    reinforcementUnit === "awu_credits"
+      ? getWorkspaceDefaultSelfImprovementCapPerSkillAwuCredits(owner)
+      : getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(owner) / 1_000_000
+  );
+
+  const { tab, setTab } = useAdminPageTab<GovernanceTab>(
+    GOVERNANCE_TABS,
+    "agents"
+  );
+
   const isLoading = isGroupsLoading || isGovernancePermissionsLoading;
   const isError = isGroupsError || isGovernancePermissionsError;
 
-  const { agents, skills, frames, billingAndSecurity, triggers } =
+  const { agents, skills, frames, triggers } =
     groupGovernancePermissionsBySection(governancePermissions);
 
   const framePermissions = frames.filter((permission) =>
@@ -135,54 +158,24 @@ export const GovernancePage = () => {
     void router.push(`/w/${owner.sId}/members?tab=groups`);
   };
 
-  const sections: {
-    id: "agents" | "skills" | "frame" | "automations" | "billing";
+  const agentsSections: {
+    sectionId: AdminSectionId;
     label: string;
     icon: ComponentType;
     governancePermissions: GovernancePermission[];
   }[] = [
     {
-      id: "agents",
+      sectionId: ADMIN_SECTION_IDS.governance.agents,
       label: "Agents",
       icon: Robot,
       governancePermissions: agents,
     },
     {
-      id: "skills",
+      sectionId: ADMIN_SECTION_IDS.governance.skills,
       label: "Skills",
       icon: PuzzlePiece01,
       governancePermissions: skills,
     },
-    ...(triggers.length > 0
-      ? [
-          {
-            id: "automations" as const,
-            label: "Automations",
-            icon: Clock,
-            governancePermissions: triggers,
-          },
-        ]
-      : []),
-    ...(framePermissions.length > 0 || isAdmin
-      ? [
-          {
-            id: "frame" as const,
-            label: "Frames",
-            icon: ActionFrame,
-            governancePermissions: framePermissions,
-          },
-        ]
-      : []),
-    ...(isAdmin
-      ? [
-          {
-            id: "billing" as const,
-            label: "Billing and security",
-            icon: Lock01,
-            governancePermissions: billingAndSecurity,
-          },
-        ]
-      : []),
   ];
 
   if (isLoading) {
@@ -209,33 +202,94 @@ export const GovernancePage = () => {
       {isAdmin && <WorkspaceNameEditor owner={owner} />}
       <LinkedSectionNotice
         description="Groups assigned here are managed in"
-        linkLabel="People → Groups"
+        linkLabel="Members → Groups"
         onLinkClick={handleNavigateToGroups}
       />
-      <div className="flex w-full flex-col gap-8">
-        {sections.map(
-          ({ id, label, icon, governancePermissions: sectionPermissions }) => (
-            <GovernanceSettingSection
-              key={id}
-              label={label}
-              icon={icon}
-              footer={
-                id === "skills" ? (
-                  <SkillDiscoverabilityWarning
-                    governancePermissions={governancePermissions}
+      <Tabs
+        value={tab}
+        onValueChange={(value) => setTab(value as GovernanceTab)}
+      >
+        <TabsList className="mb-6">
+          <TabsTrigger value="agents" label="Agents" />
+          <TabsTrigger value="pods" label="Pods" />
+          <TabsTrigger value="features" label="Features" />
+        </TabsList>
+        <TabsContent value="agents" className="flex w-full flex-col gap-8">
+          {agentsSections.map(
+            ({
+              sectionId,
+              label,
+              icon,
+              governancePermissions: sectionPermissions,
+            }) => (
+              <GovernanceSettingSection
+                key={sectionId}
+                sectionId={sectionId}
+                label={label}
+                icon={icon}
+                footer={
+                  sectionId === ADMIN_SECTION_IDS.governance.skills ? (
+                    <SkillDiscoverabilityWarning
+                      governancePermissions={governancePermissions}
+                      groups={groups}
+                    />
+                  ) : undefined
+                }
+              >
+                {sectionPermissions.map((governancePermission) => (
+                  <GovernanceSettingRow
+                    key={capabilityKey(governancePermission)}
+                    governancePermission={governancePermission}
                     groups={groups}
+                    onChange={(newConfiguration) =>
+                      onPermissionChange({
+                        grantType: governancePermission.grantType,
+                        resourceType: governancePermission.resourceType,
+                        configuration: newConfiguration,
+                      })
+                    }
                   />
-                ) : undefined
-              }
+                ))}
+              </GovernanceSettingSection>
+            )
+          )}
+          {hasSelfImprovement && (
+            <>
+              <AdminSectionAnchor
+                sectionId={ADMIN_SECTION_IDS.selfImprovingSkills.settings}
+              >
+                <SelfImprovingSkillsSettingsSection
+                  owner={owner}
+                  showCaps={false}
+                  onDefaultCapPerSkillSaved={setDefaultCapPerSkill}
+                />
+              </AdminSectionAnchor>
+              <AdminSectionAnchor
+                sectionId={ADMIN_SECTION_IDS.selfImprovingSkills.skills}
+              >
+                <SelfImprovingSkillsListSection
+                  owner={owner}
+                  defaultCapPerSkill={defaultCapPerSkill}
+                />
+              </AdminSectionAnchor>
+            </>
+          )}
+        </TabsContent>
+        <TabsContent value="pods" className="flex w-full flex-col gap-8">
+          {(framePermissions.length > 0 || isAdmin) && (
+            <GovernanceSettingSection
+              sectionId={ADMIN_SECTION_IDS.governance.frame}
+              label="Frames"
+              icon={ActionFrame}
             >
-              {id === "frame" && isAdmin && (
+              {isAdmin && (
                 <InteractiveContentSharing
                   sharingPolicy={sharingPolicy}
                   doUpdateSharingPolicy={doUpdateSharingPolicy}
                   isChanging={isChanging}
                 />
               )}
-              {sectionPermissions.map((governancePermission) => (
+              {framePermissions.map((governancePermission) => (
                 <GovernanceSettingRow
                   key={capabilityKey(governancePermission)}
                   governancePermission={governancePermission}
@@ -250,38 +304,58 @@ export const GovernancePage = () => {
                 />
               ))}
             </GovernanceSettingSection>
-          )
-        )}
-
-        {isAdmin && (
-          <>
-            <RoleProvisioningSection owner={owner} groups={groups} />
-            <GovernanceSettingSection label="Pods" icon={Cube01}>
+          )}
+          {triggers.length > 0 && (
+            <GovernanceSettingSection
+              sectionId={ADMIN_SECTION_IDS.governance.automations}
+              label="Automations"
+              icon={Clock}
+            >
+              {triggers.map((governancePermission) => (
+                <GovernanceSettingRow
+                  key={capabilityKey(governancePermission)}
+                  governancePermission={governancePermission}
+                  groups={groups}
+                  onChange={(newConfiguration) =>
+                    onPermissionChange({
+                      grantType: governancePermission.grantType,
+                      resourceType: governancePermission.resourceType,
+                      configuration: newConfiguration,
+                    })
+                  }
+                />
+              ))}
+            </GovernanceSettingSection>
+          )}
+          {isAdmin && (
+            <GovernanceSettingSection
+              sectionId={ADMIN_SECTION_IDS.governance.pods}
+              label="Pods"
+              icon={Cube01}
+            >
               <OpenPodPolicy owner={owner} />
               <PodKnowledgePolicy owner={owner} />
             </GovernanceSettingSection>
-            <GovernanceSettingSection label="Features" icon={ShapesPlus}>
+          )}
+        </TabsContent>
+        <TabsContent value="features" className="flex w-full flex-col gap-8">
+          {isAdmin && (
+            <GovernanceSettingSection
+              sectionId={ADMIN_SECTION_IDS.governance.features}
+              label="Features"
+              icon={ShapesPlus}
+            >
               <WorkspaceDefaultAgentPicker owner={owner} />
+              <WorkspaceLocalePicker owner={owner} />
               <VoiceTranscriptionToggle owner={owner} />
-              <EmailAgentsToggle owner={owner} />
               <ConversationExternalNotificationsToggle owner={owner} />
               <PrivateConversationUrlsToggle owner={owner} />
-              <DustMcpServerSettingsItem owner={owner} />
-              <ExtensionMcpToolsSection owner={owner} />
-              <SlackPersonalFooterRemovalToggle owner={owner} />
               <WorkspaceAnalyticsToggle owner={owner} />
               <InactiveAgentArchival owner={owner} />
             </GovernanceSettingSection>
-            <GovernanceSettingSection
-              label="Messaging apps"
-              icon={CloudArrowLeftRight}
-            >
-              <MessagingAppToggles owner={owner} />
-            </GovernanceSettingSection>
-            <AuditLogsGovernanceSection owner={owner} />
-          </>
-        )}
-      </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </GovernancePageLayout>
   );
 };

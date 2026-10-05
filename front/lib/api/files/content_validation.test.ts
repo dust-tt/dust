@@ -16,6 +16,40 @@ function expectWarningsToContain(
 }
 
 describe("validateTailwindCode", () => {
+  it.each([
+    "a-".repeat(40_000) + "a",
+    "h-[".repeat(40_000),
+  ])("should scan long nonmatching input promptly %#", (className) => {
+    const startMs = performance.now();
+    const result = validateTailwindCode(`<div className="${className}" />`);
+    const elapsedMs = performance.now() - startMs;
+
+    expect(result.isOk()).toBe(true);
+    // Linear scans take milliseconds; the old regex takes seconds on these inputs.
+    expect(elapsedMs).toBeLessThan(1_000);
+  });
+
+  it("should preserve variants, negative utilities, and bracket matching", () => {
+    const code = `<div className="hover:bg-[#ff0000] -mt-[12px] grid-cols-[1fr_2fr] h-[] w-[2px] h-[w-[3px]" />`;
+    const result = validateTailwindCode(code);
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.map((warning) => warning.message)).toEqual(
+        [
+          "bg-[#ff0000]",
+          "mt-[12px]",
+          "grid-cols-[1fr_2fr]",
+          "w-[2px]",
+          "h-[w-[3px]",
+        ].map(
+          (value) =>
+            `Forbidden Tailwind arbitrary value '${value}'. Use predefined classes or inline styles instead.`
+        )
+      );
+    }
+  });
+
   it("should pass code without arbitrary values", () => {
     const validCode = `
       <div className="flex items-center justify-center">

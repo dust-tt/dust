@@ -23,28 +23,17 @@ export const PodManagerEditInformationInputSchema = z.object({
   dustPod: DustPodConfigurationSchema.optional(),
 });
 
-const PodManagerMoveConversationInputSchema = z.object({
-  destination: z.enum(["pod", "personal"]),
-  conversationId: z.string().optional(),
-  dustPod: DustPodConfigurationSchema.optional(),
-});
-
 const PodManagerDefaultAgentInputSchema = z.object({
   agentName: z.string().nullable(),
   dustPod: DustPodConfigurationSchema.optional(),
 });
 
-export type PodMemberRole = z.infer<typeof PodMemberRoleSchema>;
-export type PodAccess = z.infer<typeof PodAccessSchema>;
 type PodMembersToAdd = z.infer<typeof PodMembersToAddSchema>;
 export type PodManagerUpdateMembersInput = z.infer<
   typeof PodManagerUpdateMembersInputSchema
 >;
 export type PodManagerEditInformationInput = z.infer<
   typeof PodManagerEditInformationInputSchema
->;
-type PodManagerMoveConversationInput = z.infer<
-  typeof PodManagerMoveConversationInputSchema
 >;
 type PodManagerDefaultAgentInput = z.infer<
   typeof PodManagerDefaultAgentInputSchema
@@ -60,12 +49,6 @@ export function isPodManagerEditInformationInput(
   input: Record<string, unknown>
 ): input is PodManagerEditInformationInput {
   return PodManagerEditInformationInputSchema.safeParse(input).success;
-}
-
-export function isPodManagerMoveConversationInput(
-  input: Record<string, unknown>
-): input is PodManagerMoveConversationInput {
-  return PodManagerMoveConversationInputSchema.safeParse(input).success;
 }
 
 export function isPodManagerDefaultAgentInput(

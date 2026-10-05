@@ -9,8 +9,6 @@ import { withSpace } from "@front-api/middlewares/with_space";
 import tableId from "./[tableId]";
 import search from "./search";
 
-export type { ListTablesResponseBody };
-
 // Mounted under /api/w/:wId/spaces/:spaceId/data_source_views/:dsvId/tables.
 const app = workspaceApp();
 

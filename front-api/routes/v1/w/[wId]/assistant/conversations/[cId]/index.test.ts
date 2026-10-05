@@ -2,6 +2,7 @@ import type { ToolGeneratedFilePathType } from "@app/lib/actions/mcp_internal_ac
 import { Authenticator } from "@app/lib/auth";
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
@@ -129,6 +130,48 @@ describe("GET /api/v1/w/[wId]/assistant/conversations/[cId]", () => {
     const response = await getConversation(workspace, key, conversation.sId);
 
     expect(response.status).toBe(200);
+  });
+
+  it.each([
+    { scope: "visible", instructions: "Agent instructions" },
+    { scope: "hidden", instructions: null },
+  ] as const)("returns the instructions of a $scope agent only when the caller can read it", async ({
+    scope,
+    instructions,
+  }) => {
+    const { workspace, key } = await createPublicApiMockRequest({
+      method: "GET",
+    });
+
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const agent = await AgentConfigurationFactory.createTestAgent(userAuth, {
+      scope,
+      instructions: "Agent instructions",
+    });
+    const conversation = await ConversationFactory.create(userAuth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const response = await getConversation(workspace, key, conversation.sId);
+    const data = await response.json();
+
+    expect(response.status, JSON.stringify(data)).toBe(200);
+    const agentMessage = data.conversation.content
+      .flat()
+      .find((message: { type: string }) => message.type === "agent_message");
+    expect(agentMessage.configuration).toMatchObject({
+      sId: agent.sId,
+      canRead: scope === "visible",
+      instructions,
+      actions: [],
+      instructionsHtml: null,
+    });
   });
 
   it("returns path-backed generated files on agent message actions", async () => {

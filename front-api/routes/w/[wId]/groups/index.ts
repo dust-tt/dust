@@ -1,5 +1,14 @@
-import { emitGroupMemberAuditLogs } from "@app/lib/api/groups/audit";
+import {
+  emitGroupManagerAuditLog,
+  emitGroupMemberAuditLogs,
+} from "@app/lib/api/groups/audit";
+import { createGroup } from "@app/lib/api/groups/create";
 import { getGroupAllowedActions } from "@app/lib/api/groups/management_actions";
+import { getGroupManagersForGroups } from "@app/lib/api/groups/manager_assignments";
+import {
+  hasAnyGroupPermission,
+  listGroupsWithVerb,
+} from "@app/lib/resources/group_management_access";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { GetGroupsResponseBody } from "@app/types/api/groups";
 import {
@@ -23,6 +32,7 @@ import { z } from "zod";
 import groupDetail from "./[groupId]";
 import grantedRole from "./[groupId]/granted_role";
 import grantedSeatType from "./[groupId]/granted_seat_type";
+import groupLimit from "./[groupId]/group_limit";
 import spendLimit from "./[groupId]/spend_limit";
 
 const GetGroupsQuerySchema = z.object({
@@ -30,6 +40,8 @@ const GetGroupsQuerySchema = z.object({
   // When "true", each group also carries its member sIds (one extra batched
   // query) instead of just memberCount.
   withMembers: z.enum(["true", "false"]).optional(),
+  withManagers: z.enum(["true", "false"]).optional(),
+  managedOnly: z.enum(["true", "false"]).optional(),
 });
 
 // Mounted at /api/w/:wId/groups.
@@ -41,7 +53,8 @@ app.get(
   validate("query", GetGroupsQuerySchema),
   async (ctx): HandlerResult<GetGroupsResponseBody> => {
     const auth = ctx.get("auth");
-    const { kind, withMembers } = ctx.req.valid("query");
+    const { kind, withMembers, withManagers, managedOnly } =
+      ctx.req.valid("query");
 
     const requestedKinds: GroupKind[] = kind
       ? Array.isArray(kind)
@@ -54,23 +67,47 @@ app.get(
     // whatever was requested to the visible set.
     const groupKinds = requestedKinds.filter(isUserVisibleGroupKind);
 
-    const groups = await GroupResource.listAllWorkspaceGroups(auth, {
-      groupKinds,
-    });
+    if (
+      managedOnly === "true" &&
+      !(await hasAnyGroupPermission(auth, "read_usage"))
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Group management access required.",
+        },
+      });
+    }
+    const groups =
+      managedOnly === "true"
+        ? (await listGroupsWithVerb(auth, "read_usage")).filter((group) =>
+            groupKinds.some((kind) => kind === group.kind)
+          )
+        : await GroupResource.listAllWorkspaceGroups(auth, { groupKinds });
 
     const serializedGroups =
       withMembers === "true"
         ? await GroupResource.fetchJSONWithMembers(auth, groups)
         : await GroupResource.toJSONWithMemberCounts(auth, groups);
-    const groupsById = new Map(groups.map((group) => [group.sId, group]));
     const isGroupManagementEnabled =
       await auth.hasFeatureFlag("group_management");
+    const managersByGroup =
+      withManagers === "true" && isGroupManagementEnabled
+        ? await getGroupManagersForGroups(auth, groups)
+        : null;
+    const groupsById = new Map(groups.map((group) => [group.sId, group]));
     return ctx.json({
       groups: serializedGroups.map((serialized) => {
         const group = groupsById.get(serialized.sId);
         assert(group);
         return {
           ...serialized,
+          ...(managersByGroup && {
+            managers: (managersByGroup.get(serialized.sId) ?? []).map(
+              ({ sId, fullName, image }) => ({ sId, fullName, image })
+            ),
+          }),
           allowedActions: getGroupAllowedActions(
             auth,
             group,
@@ -89,11 +126,25 @@ app.post(
   validate("json", CreateGroupBodySchema),
   async (ctx): HandlerResult<PostGroupResponseBody> => {
     const auth = ctx.get("auth");
-    const { name, memberIds } = ctx.req.valid("json");
+    const { name, memberIds, managerIds } = ctx.req.valid("json");
 
-    const groupRes = await GroupResource.makeNewRegularManual(auth, {
+    if (
+      managerIds?.length &&
+      !(await auth.hasFeatureFlag("group_management"))
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Group management is not enabled for this workspace.",
+        },
+      });
+    }
+
+    const groupRes = await createGroup(auth, {
       name,
       memberIds,
+      managerIds,
     });
     if (groupRes.isErr()) {
       switch (groupRes.error.code) {
@@ -135,15 +186,20 @@ app.post(
           assertNever(groupRes.error.code);
       }
     }
-    const { group, addedUsers } = groupRes.value;
+    const { group, addedUsers, addedManagers } = groupRes.value;
 
     emitGroupMemberAuditLogs(auth, group, { addedUsers, removedUsers: [] });
+    emitGroupManagerAuditLog(auth, group, {
+      addedUsers: addedManagers,
+      removedUsers: [],
+    });
 
     return ctx.json({ group: await group.toJSONWithMemberCount(auth) });
   }
 );
 
 app.route("/:groupId/spend_limit", spendLimit);
+app.route("/:groupId/group_limit", groupLimit);
 app.route("/:groupId/granted_role", grantedRole);
 app.route("/:groupId/granted_seat_type", grantedSeatType);
 app.route("/:groupId", groupDetail);

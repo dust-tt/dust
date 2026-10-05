@@ -259,23 +259,6 @@ const CommandItem = React.forwardRef<
 
 CommandItem.displayName = CommandPrimitive.Item.displayName;
 
-const CommandShortcut = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLSpanElement>) => {
-  return (
-    <span
-      className={cn(
-        "ml-auto text-xs tracking-widest text-muted-foreground",
-        "",
-        className
-      )}
-      {...props}
-    />
-  );
-};
-CommandShortcut.displayName = "CommandShortcut";
-
 export {
   Command as PokeCommand,
   CommandDialog as PokeCommandDialog,
@@ -285,5 +268,4 @@ export {
   CommandItem as PokeCommandItem,
   CommandList as PokeCommandList,
   CommandSeparator as PokeCommandSeparator,
-  CommandShortcut as PokeCommandShortcut,
 };

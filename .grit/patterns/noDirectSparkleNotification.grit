@@ -12,10 +12,15 @@ pattern direct_sparkle_notification() {
     `import { useSendNotification } from "@dust-tt/sparkle"`
 }
 
-direct_sparkle_notification() as $import where {
-    register_diagnostic(
-        span = $import,
-        message = "Avoid importing useSendNotification from @dust-tt/sparkle. Use 'import { useSendNotification } from \"@app/hooks/useNotification\"' instead.",
-        severity = "error"
-    )
+// Skip structural matching when the source cannot contain this rule's target.
+// Keep backslashes as candidates so escaped spellings are still checked.
+file(body = $body) where {
+    $body <: or { includes "useSendNotification", includes "\\" },
+    $body <: contains bubble direct_sparkle_notification() as $import where {
+        register_diagnostic(
+            span = $import,
+            message = "Avoid importing useSendNotification from @dust-tt/sparkle. Use 'import { useSendNotification } from \"@app/hooks/useNotification\"' instead.",
+            severity = "error"
+        )
+    }
 }

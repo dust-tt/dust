@@ -1,0 +1,34 @@
+engine biome(1.0)
+language js
+
+// Disallows `toLocaleDateString` and `toLocaleTimeString` calls without a
+// locale, which format in the browser's locale instead of the user's.
+// Use `formatDate` or `formatTime` from `@app/lib/i18n/format` instead.
+// See CONTRACTS [no-locale-less-date-time-calls].
+pattern locale_less_date_time_call() {
+    or {
+        `$_.toLocaleDateString()`,
+        `$_.toLocaleTimeString()`,
+        `$_.toLocaleDateString(undefined)`,
+        `$_.toLocaleTimeString(undefined)`,
+        `$_.toLocaleDateString(undefined, $_)`,
+        `$_.toLocaleTimeString(undefined, $_)`
+    }
+}
+
+// Skip structural matching when the source cannot contain this rule's target.
+// Keep backslashes as candidates so escaped spellings are still checked.
+file(body = $body) where {
+    $body <: or {
+        includes "toLocaleDateString",
+        includes "toLocaleTimeString",
+        includes "\\"
+    },
+    $body <: contains bubble locale_less_date_time_call() as $call where {
+        register_diagnostic(
+            span = $call,
+            message = "Date and time calls without a locale format in the browser's locale. Use `formatDate` or `formatTime` from `@app/lib/i18n/format` instead.",
+            severity = "error"
+        )
+    }
+}

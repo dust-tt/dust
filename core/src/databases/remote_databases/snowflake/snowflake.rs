@@ -66,9 +66,72 @@ struct SnowflakeQueryPlanEntry {
 
 pub const MAX_QUERY_RESULT_ROWS: usize = 25_000;
 
-pub const FORBIDDEN_OPERATIONS: [&str; 3] = ["UPDATE", "DELETE", "INSERT"];
+// Data-modifying operators emitted by Snowflake EXPLAIN (Insert also covers COPY INTO table, Copy
+// covers COPY INTO stage). DDL produces no plan, so EXPLAIN fails on it.
+pub const FORBIDDEN_OPERATIONS: [&str; 5] = ["INSERT", "UPDATE", "DELETE", "MERGE", "COPY"];
 
 pub const GET_SESSION_MAX_TRIES: usize = 3;
+
+// Connectors encode dots inside database/schema/table names with this marker, since "." is the
+// separator of the opaque table ID.
+const DUST_DOT_MARKER: &str = "__DUST_DOT__";
+
+/// Simple identifiers (a letter or `_`, then letters, digits, `_` or `$`) stay unquoted so
+/// Snowflake keeps resolving them case-insensitively, anything else is double-quoted with `"`
+/// escaped. Close to `quoteSnowflakeIdentifier` in connectors, which also accepts a leading `$`.
+fn quote_snowflake_identifier(identifier: &str) -> String {
+    let mut chars = identifier.chars();
+    let is_simple = match chars.next() {
+        Some(c) if c.is_ascii_alphabetic() || c == '_' => {
+            chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '$')
+        }
+        _ => false,
+    };
+    if is_simple {
+        identifier.to_string()
+    } else {
+        format!("\"{}\"", identifier.replace('"', "\"\""))
+    }
+}
+
+/**
+ * @cc [label:security] snowflake-forbidden-plan-operations
+ * Returns every plan operation matching `FORBIDDEN_OPERATIONS`, compared case-insensitively
+ * (Snowflake EXPLAIN emits mixed-case names such as `Insert`). `authorize_query` MUST reject the
+ * query when the result is non-empty.
+ */
+fn forbidden_operations(plan: Vec<SnowflakeQueryPlanEntry>) -> Vec<String> {
+    plan.into_iter()
+        .filter_map(|entry| entry.operation)
+        .filter(|op| {
+            FORBIDDEN_OPERATIONS
+                .iter()
+                .any(|forbidden_op| op.eq_ignore_ascii_case(forbidden_op))
+        })
+        .collect()
+}
+
+/**
+ * @cc [owner:davidebbo,label:security] describe-table-quoted-identifiers
+ * `opaque_id` MUST be exactly `database.schema.table` (with dots inside a part encoded as
+ * `__DUST_DOT__`), otherwise an error is returned and no SQL is produced. Each part MUST be
+ * emitted as a single Snowflake identifier: unquoted only if it matches
+ * `[A-Za-z_][A-Za-z0-9_$]*`, double-quoted with `"` escaped as `""` otherwise. No other
+ * characters of `opaque_id` may reach the statement.
+ */
+fn describe_table_query(opaque_id: &str) -> Result<String> {
+    let parts: Vec<&str> = opaque_id.split('.').collect();
+    if parts.len() != 3 || parts.iter().any(|p| p.is_empty()) {
+        Err(anyhow!("Invalid Snowflake table ID: {}", opaque_id))?
+    }
+    let quoted = parts
+        .iter()
+        .map(|p| quote_snowflake_identifier(&p.replace(DUST_DOT_MARKER, ".")))
+        .collect::<Vec<_>>()
+        .join(".");
+
+    Ok(format!("DESCRIBE TABLE {}", quoted))
+}
 
 impl TryFrom<SnowflakeSchemaColumn> for TableSchemaColumn {
     type Error = anyhow::Error;
@@ -438,19 +501,7 @@ impl SnowflakeRemoteDatabase {
             ))?
         }
 
-        let used_forbidden_operations = plan
-            .into_iter()
-            .filter_map(|entry| match entry.operation {
-                Some(op)
-                    if FORBIDDEN_OPERATIONS
-                        .iter()
-                        .any(|forbidden_op| op.to_lowercase() == *forbidden_op) =>
-                {
-                    Some(op)
-                }
-                _ => None,
-            })
-            .collect::<Vec<_>>();
+        let used_forbidden_operations = forbidden_operations(plan);
 
         if !used_forbidden_operations.is_empty() {
             Err(QueryDatabaseError::ExecutionError(
@@ -507,8 +558,8 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
         // Construct a "DESCRIBE TABLE" query for each opaque table ID.
         let queries: Vec<String> = opaque_ids
             .iter()
-            .map(|opaque_id| format!("DESCRIBE TABLE {}", opaque_id))
-            .collect();
+            .map(|opaque_id| describe_table_query(opaque_id))
+            .collect::<Result<Vec<_>>>()?;
 
         let session = self.get_session().await?;
 
@@ -553,5 +604,84 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
                 }))
             })
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_describe_table_query_simple_identifiers() -> Result<()> {
+        assert_eq!(
+            describe_table_query("MY_DB.PUBLIC.ORDERS")?,
+            "DESCRIBE TABLE MY_DB.PUBLIC.ORDERS"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_describe_table_query_quotes_special_identifiers() -> Result<()> {
+        assert_eq!(
+            describe_table_query("my db.PUBLIC.my__DUST_DOT__table")?,
+            "DESCRIBE TABLE \"my db\".PUBLIC.\"my.table\""
+        );
+        assert_eq!(
+            describe_table_query("DB.PUBLIC.$ORDERS")?,
+            "DESCRIBE TABLE DB.PUBLIC.\"$ORDERS\""
+        );
+        assert_eq!(
+            describe_table_query("DB.PUBLIC.ORDERS$1")?,
+            "DESCRIBE TABLE DB.PUBLIC.ORDERS$1"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_describe_table_query_escapes_injection() -> Result<()> {
+        assert_eq!(
+            describe_table_query("DB.SCHEMA.T\"; DROP TABLE X; --")?,
+            "DESCRIBE TABLE DB.SCHEMA.\"T\"\"; DROP TABLE X; --\""
+        );
+        Ok(())
+    }
+
+    fn plan_entry(operation: Option<&str>) -> SnowflakeQueryPlanEntry {
+        SnowflakeQueryPlanEntry {
+            objects: Some("DB.SCHEMA.ALLOWED".to_string()),
+            operation: operation.map(str::to_string),
+        }
+    }
+
+    #[test]
+    fn test_forbidden_operations_detects_dml_in_any_case() {
+        for op in [
+            "Insert", "Update", "Delete", "Merge", "Copy", "INSERT", "delete",
+        ] {
+            assert_eq!(
+                forbidden_operations(vec![plan_entry(Some("Result")), plan_entry(Some(op))]),
+                vec![op.to_string()],
+                "{}",
+                op
+            );
+        }
+    }
+
+    #[test]
+    fn test_forbidden_operations_allows_read_only_plans() {
+        let plan = vec![
+            plan_entry(Some("Result")),
+            plan_entry(Some("Filter")),
+            plan_entry(Some("TableScan")),
+            plan_entry(None),
+        ];
+        assert!(forbidden_operations(plan).is_empty());
+    }
+
+    #[test]
+    fn test_describe_table_query_rejects_malformed_ids() {
+        for opaque_id in ["INFORMATION_SCHEMA.TABLES", "A.B.C.D", "A..C", "TABLE"] {
+            assert!(describe_table_query(opaque_id).is_err(), "{}", opaque_id);
+        }
     }
 }

@@ -119,7 +119,6 @@ app.patch(
       timeFrameDuration: data.timeFrameDuration
         ? parseInt(data.timeFrameDuration, 10)
         : null,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       timeFrameUnit: data.timeFrameUnit || null,
     });
 

@@ -3,15 +3,12 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { GetEgressPolicyPodsResponseBody } from "@app/types/api/sandbox/egress_policy";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
-import { withSandboxFunctionInvocationFeature } from "@front-api/middlewares/with_sandbox_functions_feature";
 
 // Mounted at /api/w/:wId/sandbox/egress-policy/pods. Lists the Pods that have
 // their own egress policy, for the central Computer admin scope selector — so
 // the dropdown only offers Pods that have diverged from the workspace
 // baseline. Same gates as the bulk read.
 const app = workspaceApp();
-
-app.use("*", withSandboxFunctionInvocationFeature());
 
 /** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetEgressPolicyPodsResponseBody> => {

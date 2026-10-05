@@ -13,8 +13,10 @@ import { useContext, useEffect, useRef } from "react";
 export function useAgentFromSearchParam(workspaceId: string) {
   const router = useAppRouter();
   const agent = useSearchParam("agent");
+  const user = useSearchParam("user");
   const activeConversationId = useActiveConversationId();
-  const { selectedSingleAgent, setSelectedAgent } = useContext(InputBarContext);
+  const { selectedSingleAgent, setSelectedAgent, suppressDefaultAgent } =
+    useContext(InputBarContext);
   // Last ?agent= value whose selection we have observed in the composer (isSynced).
   // Intentionally not set when we merely call setSelectedAgent — that would let a
   // still-stale selection be mirrored into the URL as a fake picker change.
@@ -23,6 +25,13 @@ export function useAgentFromSearchParam(workspaceId: string) {
   // Bumped when entering /conversation/new so the URL→composer effect re-runs after
   // appliedParamRef is cleared (refs alone do not invalidate effects).
   const newConversationVisitRef = useRef(0);
+
+  // While ?user= is still in the URL, member deep-link owns the composer — do not
+  // apply or mirror ?agent=. Once ?user= is consumed, suppressDefaultAgent only
+  // blocks writing a stale default agent back into the URL; an explicit ?agent=
+  // (e.g. Cmd+K → New conversation with agent) must still apply and keeps
+  // existing composer content.
+  const isUserParamActive = !!user;
 
   // Entering /conversation/new from an existing conversation remounts the homepage
   // InputBar. Clear the applied marker so we re-push ?agent= through setSelectedAgent;
@@ -40,7 +49,8 @@ export function useAgentFromSearchParam(workspaceId: string) {
   const newConversationVisit = newConversationVisitRef.current;
 
   const isSynced = !!agent && selectedSingleAgent?.id === agent;
-  const isUrlAgentPending = !!agent && appliedParamRef.current !== agent;
+  const isUrlAgentPending =
+    !!agent && appliedParamRef.current !== agent && !isUserParamActive;
 
   const { agentConfiguration, isAgentConfigurationError } =
     useAgentConfiguration({
@@ -56,6 +66,10 @@ export function useAgentFromSearchParam(workspaceId: string) {
     // Read the visit counter so entering /conversation/new re-runs this effect after
     // appliedParamRef is cleared.
     void newConversationVisit;
+
+    if (isUserParamActive) {
+      return;
+    }
 
     if (!agent || appliedParamRef.current === agent) {
       return;
@@ -74,6 +88,7 @@ export function useAgentFromSearchParam(workspaceId: string) {
   }, [
     agent,
     agentConfiguration,
+    isUserParamActive,
     newConversationVisit,
     selectedSingleAgent,
     setSelectedAgent,
@@ -82,6 +97,13 @@ export function useAgentFromSearchParam(workspaceId: string) {
   // Composer to URL. On a new conversation, once the URL agent has been applied, a picker
   // change is mirrored into the url param "agent" so the address bar always reflects the selected agent.
   useEffect(() => {
+    // Block while ?user= is active, or after a user deep-link until an agent is
+    // explicitly chosen (suppressDefaultAgent). Applying ?agent= clears suppress
+    // via setSelectedSingleAgent, so mirroring resumes for that selection.
+    if (isUserParamActive || suppressDefaultAgent) {
+      return;
+    }
+
     if (isSynced) {
       appliedParamRef.current = agent;
     }
@@ -99,6 +121,8 @@ export function useAgentFromSearchParam(workspaceId: string) {
 
     const params = new URLSearchParams(window.location.search);
     params.set("agent", selectedSingleAgent.id);
+    // Never keep a stale ?user= when syncing an agent selection.
+    params.delete("user");
     void router.replace(
       `${window.location.pathname}?${params.toString()}${window.location.hash}`
     );
@@ -107,7 +131,9 @@ export function useAgentFromSearchParam(workspaceId: string) {
     agent,
     isAgentConfigurationError,
     isSynced,
+    isUserParamActive,
     router,
     selectedSingleAgent,
+    suppressDefaultAgent,
   ]);
 }

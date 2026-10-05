@@ -1,13 +1,12 @@
 import { timingSafeEqual } from "node:crypto";
-
+import {
+  HEADERS_ALLOWED_LIST,
+  processWebhookRequest,
+} from "@app/lib/api/triggers/webhook";
 import { Authenticator } from "@app/lib/auth";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import {
-  HEADERS_ALLOWED_LIST,
-  processWebhookRequest,
-} from "@app/lib/triggers/webhook";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 import { isString } from "@app/types/shared/utils/general";
 import type { PostWebhookTriggerResponseType } from "@dust-tt/client";
@@ -24,7 +23,50 @@ const ParamsSchema = z.object({
 });
 
 // 2mb body limit, matches the original `raw-body` `limit: "2mb"`.
-const WEBHOOK_REQUEST_MAX_SIZE_BYTES = 2 * 1024 * 1024;
+export const WEBHOOK_REQUEST_MAX_SIZE_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Streams the request body into a Buffer, aborting as soon as `maxBytes` is
+ * exceeded. Returns null when the body is over the limit so the caller can
+ * reject before the full allocation completes.
+ */
+/**
+ * @cc [owner:frankaloia,label:security;api] webhook-body-streamed-before-auth
+ * MUST count body bytes as they arrive. Once the running total exceeds
+ * `maxBytes`, MUST cancel the unread remainder, MUST NOT retain the chunk that
+ * crossed the cap, and MUST return null. The trigger webhook POST in this file
+ * MUST call this with `WEBHOOK_REQUEST_MAX_SIZE_BYTES` and MUST respond HTTP
+ * 400 when it returns null. That handler MUST NOT read the body with
+ * `arrayBuffer()` or `text()` before the cap is applied.
+ */
+async function readBodyWithSizeLimit(
+  request: Request,
+  maxBytes: number
+): Promise<Buffer | null> {
+  const reader = request.body?.getReader();
+  if (!reader) {
+    return Buffer.alloc(0);
+  }
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return Buffer.concat(chunks);
+}
 
 /**
  * @swagger
@@ -84,10 +126,14 @@ app.post(
       });
     }
 
-    // Read the raw body for signature verification (must match exactly what the
-    // sender signed), then parse JSON for processing.
-    const arrayBuffer = await ctx.req.arrayBuffer();
-    if (arrayBuffer.byteLength > WEBHOOK_REQUEST_MAX_SIZE_BYTES) {
+    // Stream the body into a buffer, aborting as soon as the size cap is
+    // exceeded. The cap is enforced before the full allocation, so a
+    // large-body DoS is stopped incrementally rather than after OOM.
+    const bodyBuffer = await readBodyWithSizeLimit(
+      ctx.req.raw,
+      WEBHOOK_REQUEST_MAX_SIZE_BYTES
+    );
+    if (bodyBuffer === null) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
@@ -96,7 +142,7 @@ app.post(
         },
       });
     }
-    const rawBody = Buffer.from(arrayBuffer).toString("utf8");
+    const rawBody = bodyBuffer.toString("utf8");
     let body: Record<string, unknown>;
     try {
       body = JSON.parse(rawBody) as Record<string, unknown>;

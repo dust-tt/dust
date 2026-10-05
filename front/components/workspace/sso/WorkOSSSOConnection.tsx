@@ -1,5 +1,6 @@
 import { ToggleEnforceEnterpriseConnectionModal } from "@app/components/workspace/sso/Toggle";
 import { UpgradePlanDialog } from "@app/components/workspace/UpgradePlanDialog";
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import {
   useDisableWorkOSSSOConnection,
@@ -28,6 +29,10 @@ import React from "react";
 
 import { WorkspaceSection } from "../WorkspaceSection";
 
+export const SSO_SECTION_TITLE = "Authentication and access";
+export const SSO_HEADING_LABEL = "Single Sign-On (SSO)";
+export const ENFORCE_SSO_LABEL = "Enforce SSO login";
+
 interface WorkOSSSOConnectionProps {
   domains: Organization["domains"];
   owner: WorkspaceType;
@@ -55,11 +60,15 @@ export default function WorkOSSSOConnection({
   const isSSOConfigured = ssoStatus?.status === "configured";
 
   return (
-    <WorkspaceSection title="Authentication and access" icon={Lock01}>
+    <WorkspaceSection
+      title={SSO_SECTION_TITLE}
+      icon={Lock01}
+      sectionId={ADMIN_SECTION_IDS.identity.sso}
+    >
       <div className="flex w-full flex-row items-center gap-2">
         <div className="flex-1">
           <div className="flex flex-row items-center gap-2">
-            <Page.H variant="h5">Single Sign-On (SSO)</Page.H>
+            <Page.H variant="h5">{SSO_HEADING_LABEL}</Page.H>
             {isSSOConfigured && (
               <>
                 <Chip label="Enabled" color="success" size="xs" />
@@ -132,7 +141,7 @@ export default function WorkOSSSOConnection({
                 }}
               />
               <Label htmlFor="sso-enforced" className="text-md font-normal">
-                Enforce SSO login
+                {ENFORCE_SSO_LABEL}
               </Label>
             </div>
             <Page.P variant="secondary">

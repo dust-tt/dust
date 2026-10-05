@@ -10,11 +10,9 @@ import type { UserType } from "@app/types/user";
 import assert from "assert";
 
 export const getAuthors = async (
-  agentConfigurations: LightAgentConfigurationType[]
+  agents: AgentResource[]
 ): Promise<UserType[]> => {
-  const authorIds = new Set(
-    removeNulls(agentConfigurations.map((a) => a.versionAuthorId))
-  );
+  const authorIds = new Set(removeNulls(agents.map((a) => a.versionAuthorId)));
   const authors = await UserResource.fetchByModelIds(Array.from(authorIds));
   return authors.map((a) => a.toJSON());
 };
@@ -27,21 +25,15 @@ export const getAuthors = async (
  */
 export async function getAgentEditors(
   auth: Authenticator,
-  agentConfiguration: LightAgentConfigurationType
+  agent: AgentResource
 ): Promise<Result<UserResource[], DustError<"group_not_found">>> {
-  if (agentConfiguration.scope === "global") {
+  if (agent.scope === "global") {
     return new Err(
       new DustError("group_not_found", "Global agents have no editors.")
     );
   }
 
-  const resource = await AgentResource.fetchById(auth, agentConfiguration.sId);
-  if (!resource) {
-    return new Err(
-      new DustError("group_not_found", "Unable to find the agent.")
-    );
-  }
-  const editors = await resource.listEditors(auth);
+  const editors = await agent.listEditors(auth);
   assert(editors !== null);
 
   return new Ok(editors);
@@ -49,9 +41,13 @@ export async function getAgentEditors(
 
 export const getEditors = async (
   auth: Authenticator,
-  agentConfiguration: LightAgentConfigurationType
+  agentConfiguration: Pick<LightAgentConfigurationType, "sId">
 ): Promise<UserType[]> => {
-  const editors = await getAgentEditors(auth, agentConfiguration);
+  const agent = await AgentResource.fetchById(auth, agentConfiguration.sId);
+  if (!agent) {
+    return [];
+  }
+  const editors = await getAgentEditors(auth, agent);
   if (editors.isErr()) {
     // We could do better here but this is not a critical path.
     return [];
@@ -65,23 +61,17 @@ export const getEditors = async (
  */
 export const getAgentsEditors = async (
   auth: Authenticator,
-  agentConfigurations: LightAgentConfigurationType[]
+  agents: AgentResource[]
 ): Promise<Record<string, UserType[]>> => {
-  const resources = await AgentResource.fetchByIds(
+  const editorsByAgent = await AgentResource.batchListEditors(
     auth,
-    agentConfigurations
-      .filter((agent) => agent.scope !== "global")
-      .map((agent) => agent.sId)
-  );
-  const editorsByAgentId = await AgentResource.batchListEditors(
-    auth,
-    resources
+    agents.filter((agent) => agent.scope !== "global")
   );
 
   return Object.fromEntries(
-    [...editorsByAgentId].map(([agentId, editors]) => {
+    [...editorsByAgent].map(([agent, editors]) => {
       assert(editors !== null);
-      return [agentId, editors.map((editor) => editor.toJSON())];
+      return [agent.sId, editors.map((editor) => editor.toJSON())];
     })
   );
 };

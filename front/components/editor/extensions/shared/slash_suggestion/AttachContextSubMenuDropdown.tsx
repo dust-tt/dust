@@ -1,6 +1,10 @@
 import { useBrowsableSpaces } from "@app/components/data_source_view/browser/useBrowsableSpaces";
 import { useKnowledgeBrowserItems } from "@app/components/data_source_view/browser/useKnowledgeBrowserItems";
-import { useKnowledgeBrowserNavigation } from "@app/components/data_source_view/browser/useKnowledgeBrowserNavigation";
+import {
+  getKnowledgeBrowserBreadcrumbItems,
+  navigateToKnowledgeBrowserItem,
+  useKnowledgeBrowserNavigation,
+} from "@app/components/data_source_view/browser/useKnowledgeBrowserNavigation";
 import { AttachContextSlashMenuItemIcon } from "@app/components/editor/extensions/shared/slash_suggestion/AttachContextSlashMenuItemIcon";
 import type { AttachContextSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/attachContextSlashCommand";
 import {
@@ -16,10 +20,8 @@ import {
   buildBrowseCommands,
   buildRootBrowseSections,
   getAttachableNodeForItem,
-  getKnowledgeBrowserBreadcrumbItems,
   isLoadMoreKnowledgeBrowserSlashCommand,
   isNavigateKnowledgeBrowserSlashCommand,
-  navigateToKnowledgeBrowserItem,
 } from "@app/components/editor/extensions/shared/slash_suggestion/knowledgeBrowserSlashCommands";
 import type {
   SlashCommand,
@@ -30,7 +32,6 @@ import type { SlashMenuStackFrame } from "@app/components/editor/extensions/shar
 import { useAttachContextSearchSections } from "@app/components/editor/extensions/shared/slash_suggestion/useAttachContextSearchSections";
 import type { AttachContextSlashMenuItem } from "@app/components/editor/extensions/shared/slash_suggestion/useAttachContextSlashMenuItems";
 import { useAttachContextSlashMenuItems } from "@app/components/editor/extensions/shared/slash_suggestion/useAttachContextSlashMenuItems";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -43,8 +44,6 @@ import {
   useMemo,
   useRef,
 } from "react";
-
-export { SELECT_ATTACH_CONTEXT_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/slash_suggestion/attachContextSlashCommand";
 
 const BROWSE_EMPTY_MESSAGE = "Nothing to browse here";
 
@@ -65,17 +64,12 @@ function toSlashCommandItem(
 type SubMenuMode = "browse" | "search" | "scoped-search";
 
 function getSubMenuMode({
-  isBrowserEnabled,
   query,
   canNavigateUp,
 }: {
-  isBrowserEnabled: boolean;
   query: string;
   canNavigateUp: boolean;
 }): SubMenuMode {
-  if (!isBrowserEnabled) {
-    return "search";
-  }
   if (query.trim().length === 0) {
     return "browse";
   }
@@ -89,6 +83,7 @@ type SubMenuListProps =
 function getSubMenuListProps({
   mode,
   isRoot,
+  rootSection,
   browseSections,
   browseCommands,
   searchCommands,
@@ -96,6 +91,7 @@ function getSubMenuListProps({
 }: {
   mode: SubMenuMode;
   isRoot: boolean;
+  rootSection: SlashCommandSection | null;
   browseSections: SlashCommandSection[];
   browseCommands: SlashCommand[];
   searchCommands: SlashCommand[];
@@ -108,7 +104,14 @@ function getSubMenuListProps({
       return { sections: searchSections };
     case "browse":
       // The root renders labelled sections; they carry their own loading state.
-      return isRoot ? { sections: browseSections } : { items: browseCommands };
+      if (!isRoot) {
+        return { items: browseCommands };
+      }
+      return {
+        sections: rootSection
+          ? [...browseSections, rootSection]
+          : browseSections,
+      };
     default:
       assertNeverAndIgnore(mode);
       return { items: searchCommands };
@@ -120,10 +123,17 @@ interface AttachContextSubMenuDropdownProps
     SuggestionProps<SlashCommand>,
     "clientRect" | "editor" | "query" | "range"
   > {
-  activeFrame: SlashMenuStackFrame;
+  // The sub-menu command the user came from, and how to return to it. Absent when the browser is
+  // the whole menu: no Back row, Escape closes.
+  activeFrame?: SlashMenuStackFrame;
+  onBack?: () => void;
   conversationId?: string | null;
-  onBack: () => void;
   onClose: () => void;
+  // Extra rows shown as the last section of the browser's root with an empty query, for a menu
+  // where the browser is the whole menu and commands such as "Upload file" have nowhere else to go.
+  // Last so the first space stays the default highlight.
+  rootSection?: { label: string; items: SlashCommand[] };
+  onRootSectionSelect?: (item: SlashCommand) => void;
   onSelect: (selection: ContextSlashSearchSelection) => void;
   owner: LightWorkspaceType;
   spaceId?: string | null;
@@ -132,19 +142,22 @@ interface AttachContextSubMenuDropdownProps
 
 interface AttachContextSubMenuDropdownRef {
   onKeyDown: (props: { event: KeyboardEvent }) => boolean;
+  // Always provided; optional so a shared sub-menu ref keeps satisfying the type.
+  navigateUp?: () => boolean;
 }
 
 /**
  * @cc [owner:smb2268,label:product] browse-when-query-empty
- * With the `knowledge_browser` feature enabled and an empty query the sub-menu MUST list the
- * current navigation level of the knowledge browser (spaces at the root, then categories, data
- * source views and folder contents). A non-empty query at the root MUST show the global search
- * results; below the root it MUST show two sections, the matches within the browsed level first
- * and then the remaining global results with those matches removed, while keeping the breadcrumbs
- * and the navigation state. Back and Escape MUST leave the sub-menu from any level; Backspace on
- * an empty query MUST go up one level while below the root (skipping levels the pod shortcut
- * owns) and leave the sub-menu from the root; a leading space in the query MUST NOT dismiss it.
- * Without the feature the sub-menu MUST behave as a search-only menu.
+ * With an empty query the sub-menu MUST list the current navigation level of the knowledge
+ * browser (spaces at the root, then categories, data source views and folder contents). A
+ * non-empty query at the root MUST show the global search results; below the root it MUST show
+ * two sections, the matches within the browsed level first and then the remaining global results
+ * with those matches removed, while keeping the breadcrumbs and the navigation state. Back and
+ * Escape MUST leave the sub-menu from any level; Backspace on an empty query MUST go up one level
+ * while below the root (skipping levels the pod shortcut owns) and leave the sub-menu from the
+ * root; a leading space in the query MUST NOT dismiss it. Without `activeFrame` and `onBack` the
+ * browser is the whole menu: it MUST offer no Back row, and Escape, like Backspace on an empty
+ * query at the root, MUST close the menu.
  */
 export const AttachContextSubMenuDropdown = forwardRef<
   AttachContextSubMenuDropdownRef,
@@ -157,9 +170,11 @@ export const AttachContextSubMenuDropdown = forwardRef<
       conversationId = null,
       onBack,
       onClose,
+      onRootSectionSelect,
       onSelect,
       owner,
       query,
+      rootSection,
       spaceId = null,
       useCase,
     },
@@ -167,8 +182,6 @@ export const AttachContextSubMenuDropdown = forwardRef<
   ) => {
     const dropdownRef = useRef<SlashCommandDropdownRef>(null);
 
-    const { hasFeature } = useFeatureFlags();
-    const isBrowserEnabled = hasFeature("knowledge_browser");
     const excludeNonRemoteDatabaseTables = useCase === "skill-builder";
 
     const {
@@ -190,17 +203,13 @@ export const AttachContextSubMenuDropdown = forwardRef<
     const { spaces, isLoading: isBrowsableSpacesLoading } = useBrowsableSpaces({
       owner,
       spaces: scopedSpaces,
-      enabled: isBrowserEnabled,
     });
 
-    const navigation = useKnowledgeBrowserNavigation({
-      spaces,
-      enabled: isBrowserEnabled,
-    });
+    const navigation = useKnowledgeBrowserNavigation({ spaces });
     const { navigationHistory, navigateTo, navigateUp } = navigation;
     const currentEntry = navigationHistory[navigationHistory.length - 1];
     const canNavigateUp = navigationHistory.length > 1;
-    const mode = getSubMenuMode({ isBrowserEnabled, query, canNavigateUp });
+    const mode = getSubMenuMode({ query, canNavigateUp });
 
     const browser = useKnowledgeBrowserItems({
       owner,
@@ -259,7 +268,7 @@ export const AttachContextSubMenuDropdown = forwardRef<
 
     const breadcrumbs = useMemo(
       () =>
-        isBrowserEnabled && canNavigateUp ? (
+        canNavigateUp ? (
           // Keep the editor focused: a focused breadcrumb button would trap focus in the menu.
           // `w-0 min-w-full` gives the trail a definite width inside the Radix scroll viewport,
           // whose `display: table` wrapper would otherwise grow with the trail and clip it.
@@ -277,7 +286,7 @@ export const AttachContextSubMenuDropdown = forwardRef<
             />
           </div>
         ) : undefined,
-      [canNavigateUp, isBrowserEnabled, navigateTo, navigationHistory]
+      [canNavigateUp, navigateTo, navigationHistory]
     );
 
     const handleSelect = (item: SlashCommand) => {
@@ -289,6 +298,8 @@ export const AttachContextSubMenuDropdown = forwardRef<
         }
       } else if (isAttachContextSlashCommand(item)) {
         onSelect(item.data.selection);
+      } else if (rootSection?.items.some((row) => row.id === item.id)) {
+        onRootSectionSelect?.(item);
       }
     };
 
@@ -322,6 +333,13 @@ export const AttachContextSubMenuDropdown = forwardRef<
 
           return dropdownRef.current?.onKeyDown({ event }) ?? false;
         },
+        navigateUp: () => {
+          if (!canNavigateUp) {
+            return false;
+          }
+          navigateUp();
+          return true;
+        },
       }),
       [attachNode, canNavigateUp, navigateUp, onClose, query]
     );
@@ -340,15 +358,17 @@ export const AttachContextSubMenuDropdown = forwardRef<
         {...getSubMenuListProps({
           mode,
           isRoot: currentEntry.type === "root",
+          rootSection: rootSection ?? null,
           browseSections,
           browseCommands,
           searchCommands,
           searchSections,
         })}
-        subMenuNavigation={{
-          label: activeFrame.command.label,
-          onBack,
-        }}
+        subMenuNavigation={
+          activeFrame && onBack
+            ? { label: activeFrame.command.label, onBack }
+            : undefined
+        }
         size="wide"
       />
     );

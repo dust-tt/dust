@@ -63,19 +63,6 @@ export type CheckHeartbeat = Omit<CheckHeartbeatDetails, "results">;
 // Result types for API responses
 export type CheckResultStatus = "success" | "failure" | "skipped" | "running";
 
-export interface CheckResult {
-  checkName: string;
-  status: CheckResultStatus;
-  timestamp: string;
-  payload:
-    | CheckSuccessPayload
-    | CheckFailurePayload
-    | CheckFailurePayload[]
-    | null;
-  errorMessage: string | null;
-  actionLinks: ActionLink[];
-}
-
 export type CheckActivityResult = z.infer<typeof CheckActivityResultSchema>;
 
 export type CheckSummaryStatus = "ok" | "alert" | "no-data";

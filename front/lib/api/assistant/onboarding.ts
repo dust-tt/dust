@@ -11,6 +11,7 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
+import { isEmailProviderType } from "@app/lib/utils/email_provider_detection";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { UserMessageContext } from "@app/types/assistant/conversation";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
@@ -145,6 +146,16 @@ function getToolsForOnboarding(
   return tools;
 }
 
+/**
+ * @cc [owner:avervaet,label:security] bare-language-code-only
+ * Returns the trimmed input only when it is a 2-3 letter language code, and null otherwise. Every
+ * caller-provided language interpolated into an onboarding prompt MUST go through this first.
+ */
+function toLanguageCode(language: string | null): string | null {
+  const code = language?.trim();
+  return code && /^[a-z]{2,3}$/i.test(code) ? code : null;
+}
+
 function buildOnboardingPrompt(options: {
   emailProvider: EmailProviderType;
   userJobType: string | null;
@@ -209,8 +220,9 @@ function buildOnboardingPrompt(options: {
         suggestedTopToolNames
       );
 
-  const languageInstruction = options.language
-    ? `\n## LANGUAGE\n\nYou MUST respond in ${options.language}. All your messages, including greetings, instructions, and button labels, must be in ${options.language}.\n`
+  const language = toLanguageCode(options.language);
+  const languageInstruction = language
+    ? `\n## LANGUAGE\n\nYou MUST respond in ${language}. All your messages, including greetings, instructions, and button labels, must be in ${language}.\n`
     : "";
 
   return `<dust_system>
@@ -440,8 +452,9 @@ export function buildOnboardingFollowUpPrompt(
     TOOL_TASK_SUGGESTIONS[toolId] ?? DEFAULT_AUTO_QUERY_GUIDANCE;
   const toolName = asDisplayName(toolId);
 
-  const languageInstruction = language
-    ? `\n**IMPORTANT:** You MUST respond in ${language}. All your messages must be in ${language}.\n`
+  const languageCode = toLanguageCode(language);
+  const languageInstruction = languageCode
+    ? `\n**IMPORTANT:** You MUST respond in ${languageCode}. All your messages must be in ${languageCode}.\n`
     : "";
 
   return `<dust_system>
@@ -517,15 +530,12 @@ export async function createOnboardingConversationIfNeeded(
   const emailProviderMetadata = await user.getMetadata(
     "onboarding:email_provider"
   );
-  let emailProvider: EmailProviderType = "other";
-  if (
-    emailProviderMetadata?.value &&
-    (emailProviderMetadata.value === "google" ||
-      emailProviderMetadata.value === "microsoft" ||
-      emailProviderMetadata.value === "other")
-  ) {
-    emailProvider = emailProviderMetadata.value;
-  }
+  const storedEmailProvider = emailProviderMetadata?.value;
+  const emailProvider: EmailProviderType = isEmailProviderType(
+    storedEmailProvider
+  )
+    ? storedEmailProvider
+    : "other";
 
   // Job type is user-scoped (not workspace-specific).
   const jobTypeMetadata = await user.getMetadata("job_type");

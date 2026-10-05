@@ -1,6 +1,6 @@
 import { SpaceLinks } from "@app/components/shared/SpaceLinks";
-import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import type { EditorWithoutSpaceAccess } from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
+import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
 import { useRemoveSkillSpace } from "@app/components/skill_builder/useRemoveSkillSpace";
 import { getSpaceName } from "@app/lib/spaces";
 import type { LightWorkspaceType } from "@app/types/user";

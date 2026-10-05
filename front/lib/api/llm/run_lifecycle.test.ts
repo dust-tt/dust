@@ -225,7 +225,6 @@ function makeLifecycleParameters(): Parameters<
   return {
     dustRunId: createLLMTraceId(generateRandomModelSId()),
     inferenceProvider: "openai-responses",
-    inferenceRegion: "global" as const,
     modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
     providerId: GPT_5_MINI_MODEL_CONFIG.providerId,
     region: "us" as const,
@@ -371,12 +370,10 @@ describe("endpoint billing metadata", () => {
 
     expect(streamLlm.getMetadata()).toMatchObject({
       inferenceProvider: "openai-responses",
-      inferenceRegion: "eu",
       region: "eu",
     });
     expect(batchLlm.getMetadata()).toMatchObject({
       inferenceProvider: "openai-responses",
-      inferenceRegion: "eu",
       region: "eu",
     });
   });
@@ -395,7 +392,6 @@ describe("endpoint billing metadata", () => {
     }
 
     expect(llm.getMetadata()).toMatchObject({
-      inferenceRegion: "global",
       region: "global",
     });
   });

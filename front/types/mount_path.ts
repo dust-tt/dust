@@ -41,16 +41,6 @@ export function getConversationFilesBasePath({
 
 export const TOOL_OUTPUTS_FOLDER_NAME = ".tool_outputs";
 
-export function getConversationToolOutputsBasePath({
-  workspaceId,
-  conversationId,
-}: {
-  workspaceId: string;
-  conversationId: string;
-}): string {
-  return `${getConversationFilesBasePath({ workspaceId, conversationId })}${TOOL_OUTPUTS_FOLDER_NAME}/`;
-}
-
 export function getConversationFilePath({
   workspaceId,
   conversationId,
@@ -107,17 +97,6 @@ export function getFramePublicationFunctionsMountPoint({
   publicationId: string;
 }): string {
   return `${getFramePublicationsMountPoint(frameId)}/${publicationId}/functions`;
-}
-
-/** Sibling archive of that functions directory (cold materialization). */
-export function getFramePublicationFunctionsArchiveMountPoint({
-  frameId,
-  publicationId,
-}: {
-  frameId: string;
-  publicationId: string;
-}): string {
-  return `${getFramePublicationsMountPoint(frameId)}/${publicationId}/functions.tar`;
 }
 
 /** Exact immutable publication descriptor selected for one Frame invocation. */

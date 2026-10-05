@@ -21,6 +21,7 @@ import {
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 import type { Control } from "react-hook-form";
 import { useController, useForm } from "react-hook-form";
@@ -34,6 +35,7 @@ const SoundNotificationFormSchema = z.object({
 type SoundNotificationFormValues = z.infer<typeof SoundNotificationFormSchema>;
 
 export function useSoundNotificationPreferencesForm() {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const {
     metadata: enabledMetadata,
@@ -92,7 +94,7 @@ export function useSoundNotificationPreferencesForm() {
       } catch (error) {
         sendNotification({
           type: "error",
-          title: "Error updating sound notification preferences",
+          title: t`Error updating sound notification preferences`,
           description: error instanceof Error ? error.message : String(error),
         });
       }
@@ -117,6 +119,7 @@ export function SoundNotificationPreferences({
   control,
   disabled,
 }: SoundNotificationPreferencesProps) {
+  const { t } = useLingui();
   const { field: enabledField } = useController({ name: "enabled", control });
   const { field: soundField } = useController({ name: "sound", control });
 
@@ -134,8 +137,8 @@ export function SoundNotificationPreferences({
   return (
     <SettingsList className={MODAL_SETTINGS_LIST_CLASSES}>
       <SettingsList.Row
-        title="Agent waiting sound alert"
-        description="Play a sound when an agent needs your input to continue"
+        title={t`Agent waiting sound alert`}
+        description={t`Play a sound when an agent needs your input to continue`}
         action={
           <SliderToggle
             selected={enabledField.value}
@@ -158,12 +161,12 @@ export function SoundNotificationPreferences({
       <SettingsList.Row
         title={
           <span className={cn(!enabledField.value && "text-faint")}>
-            Notification sound
+            <Trans>Notification sound</Trans>
           </span>
         }
         description={
           <span className={cn(!enabledField.value && "text-faint")}>
-            Pick your alert sound
+            <Trans>Pick your alert sound</Trans>
           </span>
         }
         action={
@@ -200,7 +203,7 @@ export function SoundNotificationPreferences({
             <Button
               variant="ghost"
               size="sm"
-              label="Play"
+              label={t({ message: "Play", context: "verb, play a sound" })}
               className="text-highlight-500"
               onClick={handlePlay}
               disabled={disabled || !enabledField.value}

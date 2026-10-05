@@ -128,7 +128,7 @@
  *           nullable: true
  *           items:
  *             type: string
- *           description: Allowed model provider IDs
+ *           description: Whitelisted model lab (maker) IDs, e.g. "zai" for GLM whoever hosts it. Null allows every lab.
  *         defaultEmbeddingProvider:
  *           type: string
  *           nullable: true
@@ -137,6 +137,10 @@
  *         regionalModelsOnly:
  *           type: boolean
  *           description: When true, only models whose regionalAvailability includes the workspace's region are usable.
+ *         locale:
+ *           type: string
+ *           enum: [en-US, en-GB, fr-FR]
+ *           description: Default language of the product UI for the workspace members
  *         metadata:
  *           type: object
  *           nullable: true
@@ -968,6 +972,9 @@
  *           type: boolean
  *         canEdit:
  *           type: boolean
+ *         canViewContent:
+ *           type: boolean
+ *           description: Whether the caller can view the agent's private fields (instructions, skills, tools); they are redacted when false
  *         lastAuthors:
  *           type: array
  *           description: Optional, returned when withAuthors query param is set

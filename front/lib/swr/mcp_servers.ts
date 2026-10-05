@@ -376,18 +376,21 @@ export function useCreateInternalMCPServer(owner: LightWorkspaceType) {
  *
  * Note: this hook should not be called too frequently, as it is likely rate limited by the mcp server provider.
  */
+type DiscoverOAuthMetadataRequestBody =
+  | { url: string; customHeaders?: { key: string; value: string }[] }
+  | { mcpServerId: string };
+
 export function useDiscoverOAuthMetadata(owner: LightWorkspaceType) {
-  const discoverOAuthMetadata = useCallback(
+  const postDiscoverOAuthMetadata = useCallback(
     async (
-      url: string,
-      customHeaders?: { key: string; value: string }[]
+      requestBody: DiscoverOAuthMetadataRequestBody
     ): Promise<Result<DiscoverOAuthMetadataResponseBody, Error>> => {
       const response = await clientFetch(
         `/api/w/${owner.sId}/mcp/discover_oauth_metadata`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url, customHeaders }),
+          body: JSON.stringify(requestBody),
         }
       );
 
@@ -404,7 +407,20 @@ export function useDiscoverOAuthMetadata(owner: LightWorkspaceType) {
     [owner.sId]
   );
 
-  return { discoverOAuthMetadata };
+  const discoverOAuthMetadata = useCallback(
+    (url: string, customHeaders?: { key: string; value: string }[]) =>
+      postDiscoverOAuthMetadata({ url, customHeaders }),
+    [postDiscoverOAuthMetadata]
+  );
+
+  // For an existing server: the backend uses its stored URL and headers, which the client only
+  // ever receives redacted.
+  const discoverOAuthMetadataForServer = useCallback(
+    (mcpServerId: string) => postDiscoverOAuthMetadata({ mcpServerId }),
+    [postDiscoverOAuthMetadata]
+  );
+
+  return { discoverOAuthMetadata, discoverOAuthMetadataForServer };
 }
 
 class MCPCreateServerError extends Error {

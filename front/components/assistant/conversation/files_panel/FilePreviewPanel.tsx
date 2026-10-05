@@ -73,18 +73,6 @@ export function FilePreviewPanel({
   const fileName = path
     ? (path.split("/").pop() ?? path)
     : (fileMetadata?.fileName ?? "");
-  const urls = path
-    ? {
-        baseUrl: getFilePathViewUrl(owner, path),
-        downloadUrl: getFilePathDownloadUrl(owner, path),
-      }
-    : fileId
-      ? {
-          baseUrl: getFileViewUrl(owner, fileId),
-          downloadUrl: getFileDownloadUrl(owner, fileId),
-        }
-      : null;
-
   // Reuse the file-explorer entry when the sandbox listing has loaded so we get
   // the real content type, fileId, and version. Before it loads (or for files
   // missing from the listing) fall back to a minimal entry derived from the
@@ -95,6 +83,19 @@ export function FilePreviewPanel({
         (f): f is FileSystemFileEntry => !f.isDirectory && f.path === path
       )
     : undefined;
+  const urls = path
+    ? {
+        baseUrl: getFilePathViewUrl(owner, path),
+        downloadUrl: getFilePathDownloadUrl(owner, path, {
+          lastModifiedMs: sandboxFile?.lastModifiedMs,
+        }),
+      }
+    : fileId
+      ? {
+          baseUrl: getFileViewUrl(owner, fileId),
+          downloadUrl: getFileDownloadUrl(owner, fileId),
+        }
+      : null;
   const contentType =
     sandboxFile?.contentType ??
     fileMetadata?.contentType ??
@@ -130,7 +131,9 @@ export function FilePreviewPanel({
     isActive: !!entry,
     isContentLoading: preview.isContentLoading,
     isTooLarge: preview.isTooLarge,
+    isTruncated: preview.isTruncated,
     owner,
+    rawContent: preview.truncatedContent,
     processedContent: preview.processedContent,
   });
 
@@ -158,13 +161,16 @@ export function FilePreviewPanel({
 
   return (
     <div className="flex h-panel min-h-0 flex-col">
-      <ConversationSidePanelHeader onClose={closePanel}>
+      <ConversationSidePanelHeader
+        onClose={closePanel}
+        closeDisabled={markdown.holdsNavigation}
+      >
         <div className="flex min-w-0 items-center gap-1.5">
           <Icon visual={FileIcon} size="sm" className="shrink-0" />
           <span className="line-clamp-1 text-sm font-medium">{fileName}</span>
         </div>
         <div className="ml-2 flex items-center gap-1">
-          {markdown.canEdit && (
+          {markdown.canEdit && !markdown.richEditor && (
             <>
               <MarkdownFilePreviewViewModeSwitch
                 viewMode={markdown.viewMode}

@@ -200,9 +200,9 @@ export function HomepageUseCases({
         >
           <ul className="flex flex-col gap-1">
             {Array.from({ length: VISIBLE_COUNT }, (_, index) => (
-              <li key={index} className="flex h-12 items-center gap-3 px-2">
-                <LoadingBlock className="h-9 w-9 shrink-0 rounded-full" />
-                <LoadingBlock className="h-4 w-64 max-w-full" />
+              <li key={index} className="flex h-10 items-center gap-2 px-2">
+                <LoadingBlock className="h-7 w-7 shrink-0 rounded-full" />
+                <LoadingBlock className="h-3.5 w-56 max-w-full" />
               </li>
             ))}
           </ul>
@@ -281,7 +281,7 @@ const UseCaseRow = forwardRef<HTMLLIElement, UseCaseRowProps>(
       >
         <div
           className={cn(
-            "group flex h-12 items-center gap-1 rounded-xl pr-2",
+            "group flex h-10 items-center gap-1 rounded-xl pr-2",
             "transition-[colors,opacity] duration-150 motion-reduce:transition-none",
             isDisabled ? "opacity-50" : "hover:bg-hover"
           )}
@@ -290,10 +290,10 @@ const UseCaseRow = forwardRef<HTMLLIElement, UseCaseRowProps>(
             type="button"
             disabled={isDisabled || isDismissing}
             onClick={onPick}
-            className="flex h-full min-w-0 flex-1 items-center gap-3 px-2 text-left"
+            className="flex h-full min-w-0 flex-1 items-center gap-2 px-2 text-left"
           >
-            <ResourceAvatar icon={getIcon(useCase.icon)} size="sm" />
-            <span className="copy-base truncate text-foreground">
+            <ResourceAvatar icon={getIcon(useCase.icon)} size="xs" />
+            <span className="copy-sm truncate text-foreground">
               {useCase.label}
             </span>
           </button>

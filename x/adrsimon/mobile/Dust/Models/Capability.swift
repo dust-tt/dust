@@ -35,9 +35,9 @@ enum Capability: Identifiable {
     var icon: SparkleIcon {
         switch self {
         case let .tool(serverView):
-            MCPServerIcon.icon(for: serverView.server.name) ?? .bolt
+            MCPServerIcon.icon(for: serverView.server.name) ?? .zap
         case .skill:
-            .puzzle
+            .puzzlePiece01
         }
     }
 

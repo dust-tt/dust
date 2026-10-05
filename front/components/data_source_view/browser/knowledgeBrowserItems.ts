@@ -1,5 +1,6 @@
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
 import { navigationHistoryEntryTitle } from "@app/components/data_source_view/context/utils";
+import { timeAgoFrom } from "@app/lib/client/relative_time";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { NON_REMOTE_DATABASE_TABLE_MIME_TYPES } from "@app/lib/content_nodes_constants";
@@ -7,9 +8,9 @@ import {
   getDataSourceNameFromView,
   isRemoteDatabase,
 } from "@app/lib/data_sources";
+import { compareStrings } from "@app/lib/i18n/format";
 import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
 import { CATEGORY_DETAILS, getSpaceIcon } from "@app/lib/spaces";
-import { timeAgoFrom } from "@app/lib/utils";
 import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
 import {
   DATA_SOURCE_VIEW_CATEGORIES,
@@ -85,7 +86,7 @@ export function buildSpaceItems(
       if (a.isRestricted !== b.isRestricted) {
         return a.isRestricted ? 1 : -1;
       }
-      return a.name.localeCompare(b.name);
+      return compareStrings(a.name, b.name);
     })
     .map((space) => ({
       kind: "space",
@@ -126,7 +127,8 @@ export function buildCategoryItems(
 }
 
 // A pod's own data source is stored as "Project (<sId>): <pod>", which does not fit a menu row;
-// the browser uses the pod page's own word for it, and the pod is already named one level up.
+// the slash menu uses the pod page's own word for it, since the pod is already named one level up.
+// Rows keep the stored name so other surfaces (the Agent Builder) read as they always did.
 export const POD_FILES_TITLE = "Pod files";
 
 export function getBrowsableDataSourceViewTitle(
@@ -184,12 +186,12 @@ export function buildDataSourceViewItems(
       return {
         kind: "data_source" as const,
         id: dsv.sId,
-        title: getBrowsableDataSourceViewTitle(dsv),
+        title: getDataSourceNameFromView(dsv),
         icon,
         dataSourceView: dsv,
       };
     })
-    .toSorted((a, b) => a.title.localeCompare(b.title));
+    .toSorted((a, b) => compareStrings(a.title, b.title));
 }
 
 // "5 items" for containers, "Space · Updated 6d ago" for leaves, trimmed to what is known.
@@ -205,7 +207,7 @@ function getNodeDescription(
   const parts = [
     spaceName,
     node.lastUpdatedAt
-      ? `Updated ${timeAgoFrom(node.lastUpdatedAt)} ago`
+      ? `Updated ${timeAgoFrom(node.lastUpdatedAt)}`
       : undefined,
   ].filter((part) => part !== undefined);
   return parts.length > 0 ? parts.join(" · ") : undefined;

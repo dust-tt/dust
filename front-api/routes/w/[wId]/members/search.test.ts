@@ -1,5 +1,9 @@
+import { replaceGroupManagers } from "@app/lib/api/groups/manager_assignments";
+import { Authenticator } from "@app/lib/auth";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -375,5 +379,110 @@ describe("GET /api/w/:wId/members/search", () => {
       expect(member.workspace).toBeDefined();
       expect(member.email).toBeDefined();
     }
+  });
+});
+
+describe("managed People reads", () => {
+  it("scopes reads and pagination while preserving the directory picker", async () => {
+    const { workspace, user } = await setup("user");
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const alice = await UserFactory.basic();
+    const bob = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, alice, { role: "user" });
+    await MembershipFactory.associate(workspace, bob, { role: "user" });
+    const manual = await GroupFactory.regularManual(workspace, "Managed");
+    const provisioned = await GroupFactory.provisioned(workspace, "Directory");
+    const other = await GroupFactory.regularManual(workspace, "Other");
+    await GroupFactory.withMembers(adminAuth, manual, [alice, bob]);
+    await GroupFactory.withMembers(adminAuth, provisioned, [bob]);
+    await GroupFactory.withMembers(adminAuth, other, [alice]);
+    for (const group of [manual, provisioned]) {
+      expect(
+        (await replaceGroupManagers(adminAuth, group, [user.sId])).kind
+      ).toBe("ok");
+    }
+
+    const managedUrl = searchUrl(workspace.sId, {
+      managedOnly: "true",
+      limit: "1",
+      offset: "1",
+    });
+    expect((await honoApp.request(managedUrl)).status).toBe(403);
+    await FeatureFlagFactory.basic(adminAuth, "group_management");
+    const page = await (await honoApp.request(managedUrl)).json();
+    expect(page.total).toBe(2);
+    expect(page.members).toHaveLength(1);
+    expect([alice.sId, bob.sId]).toContain(page.members[0].sId);
+    expect(page.members[0].id).toBeUndefined();
+    const outside = await (
+      await honoApp.request(
+        searchUrl(workspace.sId, {
+          managedOnly: "true",
+          searchEmails: user.email,
+        })
+      )
+    ).json();
+    expect(outside).toEqual({ members: [], total: 0 });
+    const roles = await (
+      await honoApp.request(
+        searchUrl(workspace.sId, {
+          managedOnly: "true",
+          role: "admin",
+        })
+      )
+    ).json();
+    expect(roles).toEqual({ members: [], total: 0 });
+    const directory = await (
+      await honoApp.request(searchUrl(workspace.sId))
+    ).json();
+    expect(directory.total).toBe(3);
+
+    const base = `/api/w/${workspace.sId}`;
+    const list = await (
+      await honoApp.request(`${base}/groups?managedOnly=true`)
+    ).json();
+    expect(list.groups.map((g: { sId: string }) => g.sId).sort()).toEqual(
+      [manual.sId, provisioned.sId].sort()
+    );
+    for (const group of [manual, provisioned]) {
+      const response = await honoApp.request(`${base}/groups/${group.sId}`);
+      expect(response.status).toBe(200);
+      const detail = await response.json();
+      for (const person of [...detail.members, ...detail.managers]) {
+        expect(person).not.toHaveProperty("id");
+        expect(person).not.toHaveProperty("lastLoginAt");
+        expect(person).not.toHaveProperty("provider");
+      }
+    }
+    expect((await honoApp.request(`${base}/groups/${other.sId}`)).status).toBe(
+      403
+    );
+    const memberGroups = await (
+      await honoApp.request(`${base}/members/${alice.sId}/groups`)
+    ).json();
+    expect(memberGroups.groups.map((g: { sId: string }) => g.sId)).toEqual([
+      manual.sId,
+    ]);
+
+    await replaceGroupManagers(adminAuth, manual, []);
+    await replaceGroupManagers(adminAuth, provisioned, []);
+    expect((await honoApp.request(managedUrl)).status).toBe(403);
+  });
+
+  it("keeps an empty managed group scope empty", async () => {
+    const { workspace, user } = await setup("user");
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const group = await GroupFactory.provisioned(workspace, "Empty");
+    await replaceGroupManagers(adminAuth, group, [user.sId]);
+    await FeatureFlagFactory.basic(adminAuth, "group_management");
+    const response = await honoApp.request(
+      searchUrl(workspace.sId, { managedOnly: "true" })
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ members: [], total: 0 });
   });
 });

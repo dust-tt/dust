@@ -8,7 +8,7 @@ import {
   PostSpaceMembersRequestBodySchema,
 } from "@app/lib/api/spaces/members";
 import type { Authenticator } from "@app/lib/auth";
-import { notifyPodMembersAdded } from "@app/lib/notifications/workflows/pod-added-as-member";
+import { notifyPodMembersAdded } from "@app/lib/notifications/triggers/pod-added-as-member";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
@@ -19,11 +19,6 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
 import type { Context } from "hono";
-
-export type {
-  PatchSpaceMembersRequestBodyType,
-  PostSpaceMembersRequestBodyType,
-} from "@app/lib/api/spaces/members";
 
 // Mounted at /api/w/:wId/spaces/:spaceId/members.
 const app = workspaceApp();

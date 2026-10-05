@@ -25,6 +25,8 @@ import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
+import type { SupportedLocale } from "@app/types/locale";
+import { isSupportedLocale, USER_LOCALE_METADATA_KEY } from "@app/types/locale";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -92,6 +94,8 @@ type CachedUserData = {
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface UserResource extends ReadonlyAttributesType<UserModel> {}
+
+export const ANONYMIZED_USER_EMAIL_DOMAIN = "anonymized.invalid";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class UserResource extends BaseResource<UserModel> {
@@ -226,10 +230,17 @@ export class UserResource extends BaseResource<UserModel> {
     return users.map((user) => new UserResource(UserModel, user.get()));
   }
 
+  /**
+   * @cc [owner:avervaet,label:security] email-lookup-ignores-case
+   * `email` MUST match a lowercase stored email regardless of the input's letter case, and MUST
+   * still match a stored email given exactly as stored. Most writers lowercase emails but not all
+   * do (e.g. anonymized emails embed a mixed-case id), so the lookup MUST compare against both the
+   * input as given and its lowercase form.
+   */
   static async listByEmail(email: string): Promise<UserResource[]> {
     const users = await UserModel.findAll({
       where: {
-        email,
+        email: { [Op.in]: [...new Set([email, email.toLowerCase()])] },
       },
     });
 
@@ -340,7 +351,7 @@ export class UserResource extends BaseResource<UserModel> {
   }
 
   static async fetchByEmail(email: string): Promise<UserResource | null> {
-    const users = await this.listByEmail(email.toLowerCase());
+    const users = await this.listByEmail(email);
     const sortedUsers = users.sort((a, b) => {
       // Best effort strategy as user db entries are not updated often.
       return b.updatedAt.getTime() - a.updatedAt.getTime();
@@ -698,6 +709,43 @@ export class UserResource extends BaseResource<UserModel> {
     }
   }
 
+  /**
+   * @cc [owner:pmilliotte,label:security;backend] anonymize-scrubs-personal-data
+   * MUST overwrite every personal field of the user row and delete its metadata in one transaction.
+   * The row is kept, so rows in other tables referencing the user stay valid.
+   */
+  async anonymize(): Promise<Result<undefined, Error>> {
+    const oldWorkOSUserId = this.workOSUserId;
+
+    await withTransaction(async (transaction) => {
+      await UserMetadataModel.destroy({
+        where: { userId: this.id },
+        transaction,
+      });
+      await this.update(
+        {
+          username: this.sId,
+          email: `${this.sId}@${ANONYMIZED_USER_EMAIL_DOMAIN}`,
+          name: "Anonymized user",
+          firstName: "Anonymized",
+          lastName: null,
+          imageUrl: null,
+          workOSUserId: null,
+          provider: null,
+          providerId: null,
+        },
+        transaction
+      );
+      if (oldWorkOSUserId) {
+        invalidateCacheAfterCommit(transaction, () =>
+          UserResource.invalidateUserByWorkOSIdCache(oldWorkOSUserId)
+        );
+      }
+    });
+
+    return launchIndexUserSearchWorkflow({ userId: this.sId });
+  }
+
   async getMetadata(key: string, workspaceModelId?: number | null) {
     return UserMetadataModel.findOne({
       where: {
@@ -748,6 +796,18 @@ export class UserResource extends BaseResource<UserModel> {
       enabled ? "true" : "false",
       auth.getNonNullableWorkspace().id
     );
+  }
+
+  /**
+   * @cc [owner:sfriquet,label:product;backend] locale-defaults-to-workspace-locale
+   * MUST return the locale stored in the user's global `locale` metadata when it is one of
+   * `SUPPORTED_LOCALES`, and `workspace.locale` when there is no stored value or it is not a
+   * supported locale.
+   */
+  async getLocale(workspace: LightWorkspaceType): Promise<SupportedLocale> {
+    const metadata = await this.getMetadata(USER_LOCALE_METADATA_KEY);
+    const storedLocale = metadata?.value;
+    return isSupportedLocale(storedLocale) ? storedLocale : workspace.locale;
   }
 
   /**

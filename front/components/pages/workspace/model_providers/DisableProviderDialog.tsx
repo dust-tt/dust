@@ -1,5 +1,5 @@
-import type { ModelProviderIdType } from "@app/types/assistant/models/types";
-import { PRETTIFIED_PROVIDER_NAMES } from "@app/types/provider_selection";
+import { getModelMakerDisplayName } from "@app/types/assistant/models/providers";
+import type { WhitelistableModelMakerIdType } from "@app/types/assistant/models/types";
 import {
   Dialog,
   DialogContainer,
@@ -11,7 +11,7 @@ import {
 } from "@dust-tt/sparkle";
 
 interface DisableProviderDialogProps {
-  providerId: ModelProviderIdType | null;
+  providerId: WhitelistableModelMakerIdType | null;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -21,7 +21,7 @@ export function DisableProviderDialog({
   onConfirm,
   onCancel,
 }: DisableProviderDialogProps) {
-  const providerName = providerId ? PRETTIFIED_PROVIDER_NAMES[providerId] : "";
+  const providerName = providerId ? getModelMakerDisplayName(providerId) : "";
 
   return (
     <Dialog open={providerId !== null} onOpenChange={() => onCancel()}>

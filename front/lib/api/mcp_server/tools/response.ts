@@ -1,10 +1,3 @@
-export function mcpAuthError() {
-  return {
-    content: [{ type: "text" as const, text: "Not authenticated." }],
-    isError: true as const,
-  };
-}
-
 export function mcpError(text: string) {
   return {
     content: [{ type: "text" as const, text }],

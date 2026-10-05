@@ -5,9 +5,9 @@ import {
   MIN_FILES_FOR_SEARCH,
 } from "@app/components/file_explorer/utils";
 import { useDebounce } from "@app/hooks/useDebounce";
+import { formatRelativeTime } from "@app/lib/client/relative_time";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import { getFileProcessedUrl } from "@app/lib/swr/files";
-import { formatRelativeTime } from "@app/lib/utils/timestamps";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,

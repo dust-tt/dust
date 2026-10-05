@@ -1,4 +1,3 @@
-/* eslint-disable */
 // @ts-nocheck
 // biome-ignore-all: imperative DOM/SVG scene ported from the
 // landing-gather-remix design prototype. The animation and SVG foreignObject

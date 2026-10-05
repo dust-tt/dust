@@ -20,6 +20,7 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
+import { getMarkdownPipeline } from "@app/lib/editor/server_markdown_pipeline";
 import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
 import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
@@ -77,7 +78,10 @@ function makeSkillType(config: MockSkillConfig): SkillType {
     userFacingDescription: config.description ?? "",
     instructions: config.instructions ?? null,
     instructionsHtml: config.instructions
-      ? convertMarkdownToBlockHtml(config.instructions)
+      ? convertMarkdownToBlockHtml(
+          config.instructions,
+          getMarkdownPipeline("skill")
+        )
       : null,
     icon: null,
     source: null,

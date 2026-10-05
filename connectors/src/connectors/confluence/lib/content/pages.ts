@@ -25,6 +25,7 @@ import {
   renderMarkdownSection,
   upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
+import { htmlToMarkdown } from "@connectors/lib/html_to_markdown";
 import type { ConfluenceConfigurationModel } from "@connectors/lib/models/confluence";
 import { ConfluencePageModel } from "@connectors/lib/models/confluence";
 import { heartbeat } from "@connectors/lib/temporal";
@@ -34,9 +35,6 @@ import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 import { removeNulls } from "@dust-tt/client";
 import { Op } from "sequelize";
-import TurndownService from "turndown";
-
-const turndownService = new TurndownService();
 
 function getConfluencePageTitle(page: { title: string | null }): string {
   return page.title ?? "Untitled";
@@ -92,7 +90,7 @@ export async function confluenceUpsertPageToDataSource({
 }: ConfluenceUpsertPageInput) {
   const localLogger = logger.child(loggerArgs);
 
-  const markdown = turndownService.turndown(page.body.view.value);
+  const markdown = htmlToMarkdown(page.body.view.value);
   const pageCreatedAt = new Date(page.createdAt);
   const lastPageVersionCreatedAt = new Date(page.version.createdAt);
   const title = getConfluencePageTitle(page);

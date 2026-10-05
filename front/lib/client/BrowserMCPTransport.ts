@@ -1,31 +1,40 @@
-import { clientEventSource, clientFetch } from "@app/lib/egress/client";
+import { eventSourceManager } from "@app/lib/client/event_source_manager";
+import { clientFetch } from "@app/lib/egress/client";
+import datadogLogger from "@app/logger/datadogLogger";
+import type { LongPollActivation } from "@app/types/event_source";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
-import type { EventSourcePolyfill } from "event-source-polyfill";
+import { JSONRPCMessageSchema } from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
 
-const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes.
-const RECONNECT_DELAY_MS = 5_000; // 5 seconds.
+const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1_000;
+const RECONNECT_DELAY_MS = 5_000;
+const RegistrationResponseSchema = z.object({ serverId: z.string() });
+const HeartbeatResponseSchema = z.object({ success: z.boolean() });
+const RequestEventSchema = z.object({
+  eventId: z.string(),
+  data: z.unknown(),
+});
 
 /**
- * Browser-specific MCP transport implementation.
- * Uses private API with session authentication (credentials: 'include').
- *
- * - Uses native EventSource for SSE (receives requests from Dust)
- * - Uses fetch with credentials for HTTP POST (sends results back to Dust)
+ * @cc [owner:id13,label:concurrency;architecture] browser-mcp-managed-lifecycle
+ * Each browser MCP registration MUST use one managed stream with polling fallback. Closing during
+ * registration MUST deregister a late result without opening a stream. Recovery MUST preserve the
+ * cursor within a registration and reset it when the registration changes. Closing from the registration
+ * callback MUST NOT leave heartbeat timers running.
  */
 export class BrowserMCPTransport implements Transport {
-  private eventSource: EventSourcePolyfill | null = null;
-  private lastEventId: string | null = null;
+  private unsubscribeStream: (() => void) | null = null;
+  private recoveryTimer: ReturnType<typeof setTimeout> | null = null;
+  private registrationPromise: Promise<boolean> | null = null;
+  private recoveryPromise: Promise<void> | null = null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private serverId: string | null = null;
+  private lastEventId: string | null = null;
   private isClosing = false;
+  private closePromise: Promise<void> | null = null;
 
-  // Set to true when we receive the "done" event from the server, indicating a normal stream close
-  // (timeout) rather than an actual error.
-  private isServerClosing = false;
-
-  // Required by Transport interface.
   public onmessage?: (message: JSONRPCMessage) => void;
   public onclose?: () => void;
   public onerror?: (error: Error) => void;
@@ -33,8 +42,7 @@ export class BrowserMCPTransport implements Transport {
 
   private readonly handleBeforeUnload = () => {
     this.isClosing = true;
-    // Use sendBeacon for reliable delivery during page unload — fetch is not
-    // guaranteed to complete when the document is being torn down.
+
     if (this.serverId) {
       navigator.sendBeacon(
         `/api/w/${this.workspaceId}/mcp/deregister`,
@@ -48,7 +56,8 @@ export class BrowserMCPTransport implements Transport {
   constructor(
     private readonly workspaceId: string,
     private readonly serverName: string,
-    private readonly onServerIdReceived: (serverId: string) => void
+    private readonly onServerIdReceived: (serverId: string) => void,
+    private readonly longPollActivation: LongPollActivation = "fallback"
   ) {
     window.addEventListener("beforeunload", this.handleBeforeUnload);
   }
@@ -67,30 +76,33 @@ export class BrowserMCPTransport implements Transport {
         }
       );
       if (!response.ok) {
-        console.warn(
-          "[BrowserMCPTransport] Failed to deregister MCP server:",
-          response.status
+        datadogLogger.warn(
+          { error: response.status },
+          "[BrowserMCPTransport] Failed to deregister MCP server:"
         );
       }
     } catch (error) {
-      console.warn(
-        "[BrowserMCPTransport] Failed to deregister MCP server:",
-        error
+      datadogLogger.warn(
+        { err: normalizeError(error) },
+        "[BrowserMCPTransport] Failed to deregister MCP server:"
       );
     }
   }
 
-  /**
-   * Register the MCP server.
-   */
-  private async registerServer(): Promise<boolean> {
+  private registerServer(): Promise<boolean> {
+    this.registrationPromise ??= this.performRegistration().finally(() => {
+      this.registrationPromise = null;
+    });
+    return this.registrationPromise;
+  }
+
+  private async performRegistration(): Promise<boolean> {
     try {
-      // If we already hold a registration (e.g. re-registering after a failed
-      // heartbeat), release it first. serverIds are random and never recycled,
-      // so the new registration always gets a fresh id — deregistering here just
-      // frees the old id's Redis key immediately instead of waiting for its TTL
-      // to expire, and detaches us from the old request channel before we
-      // subscribe to the new one.
+      if (this.isClosing) {
+        return false;
+      }
+      this.unsubscribeStream?.();
+      this.unsubscribeStream = null;
       if (this.serverId) {
         const previousServerId = this.serverId;
         this.serverId = null;
@@ -111,50 +123,40 @@ export class BrowserMCPTransport implements Transport {
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error(
-          "[BrowserMCPTransport] Failed to register MCP server:",
-          errorData
+        datadogLogger.error(
+          { error: errorData },
+          "[BrowserMCPTransport] Failed to register MCP server:"
         );
         return false;
       }
 
-      const data = (await response.json()) as {
-        serverId: string;
-        expiresAt: string;
-      };
+      const data = RegistrationResponseSchema.parse(await response.json());
+      if (this.isClosing) {
+        await this.deregisterServer(data.serverId);
+        return false;
+      }
       this.serverId = data.serverId;
+      this.lastEventId = null;
 
-      // Notify the parent that the serverId has been updated.
       this.onServerIdReceived(data.serverId);
+      if (this.isClosing) {
+        return false;
+      }
 
-      // Setup heartbeat to keep the server registration alive.
       this.setupHeartbeat(data.serverId);
 
-      // If an SSE stream was already opened (re-registration after a lost
-      // registration), it is still attached to the previous serverId's channel
-      // and would keep receiving requests that no longer
-      // belong to this transport. Reconnect to the new serverId's channel. The
-      // lastEventId belongs to the old channel's stream, so drop it.
-      if (this.eventSource) {
-        this.lastEventId = null;
-        await this.connectToRequestsStream();
-      }
+      this.connectToRequestsStream();
 
       return true;
     } catch (error) {
-      console.error(
-        "[BrowserMCPTransport] Failed to register MCP server:",
-        error
+      datadogLogger.error(
+        { err: normalizeError(error) },
+        "[BrowserMCPTransport] Failed to register MCP server:"
       );
       return false;
     }
   }
 
-  /**
-   * Send a single heartbeat for the given serverId.
-   * Returns true if the registration is still alive, false if it is gone or
-   * the request failed.
-   */
   private async sendHeartbeat(serverId: string): Promise<boolean> {
     try {
       const response = await clientFetch(
@@ -173,27 +175,22 @@ export class BrowserMCPTransport implements Transport {
         return false;
       }
 
-      const data = (await response.json()) as { success: boolean };
+      const data = HeartbeatResponseSchema.parse(await response.json());
       return data.success;
     } catch (error) {
-      console.error(
-        "[BrowserMCPTransport] Failed to heartbeat MCP server:",
-        error
+      datadogLogger.error(
+        { err: normalizeError(error) },
+        "[BrowserMCPTransport] Failed to heartbeat MCP server:"
       );
       return false;
     }
   }
 
-  /**
-   * Send periodic heartbeats to keep the server registration alive.
-   */
   private setupHeartbeat(serverId: string): void {
-    // Clear any existing heartbeat timer.
     if (this.heartbeatTimer) {
       clearInterval(this.heartbeatTimer);
     }
 
-    // Set up a new heartbeat timer (every HEARTBEAT_INTERVAL_MS).
     this.heartbeatTimer = setInterval(async () => {
       if (this.isClosing) {
         return;
@@ -201,46 +198,26 @@ export class BrowserMCPTransport implements Transport {
 
       const alive = await this.sendHeartbeat(serverId);
       if (!alive && !this.isClosing) {
-        console.error(
+        datadogLogger.error(
           "[BrowserMCPTransport] Server not registered, re-registering"
         );
-        await this.registerServer();
+        await this.recoverStream();
       }
     }, HEARTBEAT_INTERVAL_MS);
   }
 
-  /**
-   * Start the transport and connect to the SSE endpoint.
-   * This method is required by the Transport interface.
-   */
   async start(): Promise<void> {
-    try {
-      // First, register the server (or ensure it's registered).
-      const registered = await this.registerServer();
-      if (!registered) {
-        throw new Error("Failed to register MCP server");
-      }
-
-      // Connect to the workspace-scoped requests endpoint.
-      await this.connectToRequestsStream();
-
-      console.log("[BrowserMCPTransport] MCP transport started successfully");
-    } catch (error) {
-      console.error(
-        "[BrowserMCPTransport] Failed to start MCP transport:",
-        error
-      );
-      this.onerror?.(normalizeError(error));
+    const registered = await this.registerServer();
+    if (!registered) {
+      const error = new Error("Failed to register MCP server");
+      this.onerror?.(error);
       throw error;
     }
   }
 
-  /**
-   * Connect to the SSE stream for the workspace.
-   */
-  private async connectToRequestsStream(): Promise<void> {
+  private connectToRequestsStream(): void {
     if (!this.serverId) {
-      console.error("[BrowserMCPTransport] Server ID is not set");
+      datadogLogger.error("[BrowserMCPTransport] Server ID is not set");
       return;
     }
 
@@ -248,133 +225,73 @@ export class BrowserMCPTransport implements Transport {
       return;
     }
 
-    // Close any existing connection.
-    if (this.eventSource) {
-      this.eventSource.close();
-      this.eventSource = null;
-    }
-
-    // Build relative URL with query parameters.
-    const params = new URLSearchParams();
-    params.set("serverId", this.serverId);
-    if (this.lastEventId) {
-      params.set("lastEventId", this.lastEventId);
-    }
-
-    this.eventSource = await clientEventSource(
-      `/api/sse/w/${this.workspaceId}/mcp/requests?${params.toString()}`,
-      // The MCP SSE connection is idle most of the time (waiting for requests
-      // from Dust). Disable the polyfill's heartbeat timeout so it doesn't
-      // treat silence as a dead connection (default is 45s).
-      { heartbeatTimeout: HEARTBEAT_INTERVAL_MS * 2 }
-    );
-
-    this.eventSource.onmessage = (event) => {
-      try {
-        if (event.data === "done") {
-          // Server is closing the stream normally (timeout). Flag it so the onerror handler can
-          // reconnect immediately without treating it as a real error.
-          this.isServerClosing = true;
-
-          return;
-        }
-
-        const eventData = JSON.parse(event.data) as {
-          eventId?: string;
-          data?: JSONRPCMessage;
-        };
-
-        // Save the eventId for reconnection purposes.
-        if (eventData.eventId) {
-          this.lastEventId = eventData.eventId;
-        }
-
-        // The actual request is in the data property.
-        const { data } = eventData;
-        if (!data) {
-          console.error(
-            "[BrowserMCPTransport] No data field found in the event"
-          );
-          return;
-        }
-
-        // Forward the message to the handler.
-        if (this.onmessage) {
-          this.onmessage(data);
-        } else {
-          console.error(
-            "[BrowserMCPTransport] onmessage handler not set - MCP response won't be sent"
-          );
-        }
-      } catch (error) {
-        console.error(
-          "[BrowserMCPTransport] Failed to parse MCP request:",
-          error
-        );
-        this.onerror?.(new Error(`Failed to parse MCP request: ${error}`));
+    this.unsubscribeStream?.();
+    const serverId = this.serverId;
+    const streamId = `mcp-${this.workspaceId}-${serverId}`;
+    const buildURL = (transport: "sse" | "poll") => {
+      const params = new URLSearchParams({ serverId, transport });
+      if (this.lastEventId) {
+        params.set("lastEventId", this.lastEventId);
       }
+      return `/api/sse/w/${this.workspaceId}/mcp/requests?${params.toString()}`;
     };
-
-    this.eventSource.onerror = () => {
-      if (this.isClosing) {
-        return;
-      }
-
-      // Close the existing connection to prevent automatic reconnects.
-      this.eventSource?.close();
-
-      const isNormalClose = this.isServerClosing;
-      this.isServerClosing = false;
-
-      if (isNormalClose) {
-        // Server closed the stream after its idle timeout. This is expected.
-        // Reconnect immediately, no error to propagate.
-        void this.connectToRequestsStream().catch((reconnectError) => {
-          console.error(
-            "[BrowserMCPTransport] Failed to reconnect:",
-            reconnectError
-          );
-        });
-      } else {
-        // Actual connection error. Propagate and recover after a delay.
-        console.error(
-          "[BrowserMCPTransport] Error in MCP EventSource connection"
-        );
-        this.onerror?.(new Error("SSE connection error"));
-
-        this.scheduleStreamRecovery();
-      }
-    };
-
-    this.eventSource.onopen = () => {
-      console.log("[BrowserMCPTransport] MCP SSE connection established");
-    };
+    this.unsubscribeStream = eventSourceManager.subscribe({
+      streamId,
+      config: {
+        workspaceId: this.workspaceId,
+        buildURL: () => buildURL("sse"),
+        buildLongPollURL: () => buildURL("poll"),
+        longPollActivation: this.longPollActivation,
+        restartKey: streamId,
+        replayBufferedEventsOnSubscribe: false,
+        telemetryContext: { sseKind: "browser_mcp", serverId },
+      },
+      subscriber: {
+        onEvent: (event) => {
+          if (this.isClosing || this.serverId !== serverId) {
+            return;
+          }
+          try {
+            const eventData = RequestEventSchema.parse(JSON.parse(event));
+            this.lastEventId = eventData.eventId;
+            this.onmessage?.(JSONRPCMessageSchema.parse(eventData.data));
+          } catch (error) {
+            this.onerror?.(normalizeError(error));
+          }
+        },
+        onStateChange: () => undefined,
+        onTerminalError: (error) => {
+          this.scheduleStreamRecovery();
+          this.onerror?.(error);
+        },
+      },
+      keepAliveWithoutSubscribers: false,
+    });
   }
 
   private scheduleStreamRecovery(): void {
-    setTimeout(() => {
+    if (this.isClosing || this.recoveryTimer) {
+      return;
+    }
+    this.recoveryTimer = setTimeout(() => {
+      this.recoveryTimer = null;
       void this.recoverStream();
     }, RECONNECT_DELAY_MS);
   }
 
-  /**
-   * Recover from an SSE stream error.
-   *
-   * The error may be caused by an expired registration (e.g. the tab was
-   * frozen or the machine slept past the registration TTL), in which case
-   * reconnecting with the current serverId would keep failing. Verify the
-   * registration first: if it is still alive, reconnect the stream; otherwise
-   * re-register. If recovery fails entirely (e.g. network down), retry after a
-   * delay.
-   */
-  private async recoverStream(): Promise<void> {
+  private recoverStream(): Promise<void> {
+    this.recoveryPromise ??= this.performRecovery().finally(() => {
+      this.recoveryPromise = null;
+    });
+    return this.recoveryPromise;
+  }
+
+  private async performRecovery(): Promise<void> {
     if (this.isClosing) {
       return;
     }
 
     try {
-      // serverId can be null if a previous re-registration attempt failed
-      // mid-way; in that case skip the liveness check and re-register.
       const alive = this.serverId
         ? await this.sendHeartbeat(this.serverId)
         : false;
@@ -383,7 +300,7 @@ export class BrowserMCPTransport implements Transport {
       }
 
       if (alive) {
-        await this.connectToRequestsStream();
+        this.connectToRequestsStream();
         return;
       }
 
@@ -392,18 +309,14 @@ export class BrowserMCPTransport implements Transport {
         this.scheduleStreamRecovery();
       }
     } catch (error) {
-      console.error(
-        "[BrowserMCPTransport] Failed to recover MCP SSE connection:",
-        error
+      datadogLogger.error(
+        { err: normalizeError(error) },
+        "[BrowserMCPTransport] Failed to recover MCP SSE connection:"
       );
       this.scheduleStreamRecovery();
     }
   }
 
-  /**
-   * Send a message to the server.
-   * This method is required by the Transport interface.
-   */
   private async postResult(body: string): Promise<Response> {
     return clientFetch(`/api/w/${this.workspaceId}/mcp/results`, {
       method: "POST",
@@ -415,7 +328,7 @@ export class BrowserMCPTransport implements Transport {
 
   async send(message: JSONRPCMessage): Promise<void> {
     if (!this.serverId) {
-      console.error("[BrowserMCPTransport] Server ID is not set");
+      datadogLogger.error("[BrowserMCPTransport] Server ID is not set");
       return;
     }
 
@@ -439,15 +352,13 @@ export class BrowserMCPTransport implements Transport {
         } catch {
           errorData = `HTTP ${response.status}`;
         }
-        console.error(
-          "[BrowserMCPTransport] Failed to send MCP result:",
-          errorData
+        datadogLogger.error(
+          { error: errorData },
+          "[BrowserMCPTransport] Failed to send MCP result:"
         );
 
-        // If the payload was too large and this was a response (has an id),
-        // re-send as an error response so the server doesn't hang.
         if (response.status === 413 && "id" in message && message.id) {
-          console.warn(
+          datadogLogger.warn(
             "[BrowserMCPTransport] Payload too large, sending error response instead"
           );
           const errorBody = JSON.stringify({
@@ -464,7 +375,7 @@ export class BrowserMCPTransport implements Transport {
           });
           const errorResponse = await this.postResult(errorBody);
           if (!errorResponse.ok) {
-            console.error(
+            datadogLogger.error(
               "[BrowserMCPTransport] Failed to send error response"
             );
           }
@@ -476,46 +387,45 @@ export class BrowserMCPTransport implements Transport {
         );
       }
     } catch (error) {
-      console.error("[BrowserMCPTransport] Failed to send MCP result:", error);
+      datadogLogger.error(
+        { err: normalizeError(error) },
+        "[BrowserMCPTransport] Failed to send MCP result:"
+      );
       this.onerror?.(new Error(`Failed to send MCP result: ${error}`));
     }
   }
 
-  /**
-   * Close the transport and disconnect from the SSE endpoint.
-   * This method is required by the Transport interface.
-   */
-  async close(): Promise<void> {
+  close(): Promise<void> {
+    this.closePromise ??= this.performClose();
+    return this.closePromise;
+  }
+
+  private async performClose(): Promise<void> {
     this.isClosing = true;
 
     window.removeEventListener("beforeunload", this.handleBeforeUnload);
 
-    // Clear heartbeat timer.
     if (this.heartbeatTimer) {
       clearInterval(this.heartbeatTimer);
       this.heartbeatTimer = null;
     }
 
-    // Close SSE connection.
-    if (this.eventSource) {
-      console.log("[BrowserMCPTransport] Closing MCP SSE connection");
-      this.eventSource.close();
-      this.eventSource = null;
+    if (this.recoveryTimer) {
+      clearTimeout(this.recoveryTimer);
+      this.recoveryTimer = null;
     }
+    this.unsubscribeStream?.();
+    this.unsubscribeStream = null;
 
-    // Deregister the server to clean up Redis.
     if (this.serverId) {
-      await this.deregisterServer(this.serverId);
+      const serverId = this.serverId;
       this.serverId = null;
+      await this.deregisterServer(serverId);
     }
 
-    // Trigger onclose callback.
     this.onclose?.();
   }
 
-  /**
-   * Get the current server ID.
-   */
   getServerId(): string | undefined {
     return this.serverId ?? undefined;
   }

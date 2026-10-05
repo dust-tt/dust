@@ -106,6 +106,9 @@ function parseList(state: ParserState): Result<unknown[], Error> {
   const result: unknown[] = [];
   skipWhitespace(state);
   while (state.expression[state.index] !== ")") {
+    if (state.index >= state.expression.length) {
+      return new Err(new Error("Unexpected end of expression: missing ')'"));
+    }
     if (state.expression[state.index] === "(") {
       state.index++; // Skip opening paren.
       const listResult = parseList(state);

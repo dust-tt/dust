@@ -19,6 +19,7 @@ const mockOwner: LightWorkspaceType = {
   defaultEmbeddingProvider: null,
   regionalModelsOnly: false,
   sharingPolicy: "workspace_only",
+  locale: "en-US",
   metronomeCustomerId: null,
 };
 
@@ -159,5 +160,51 @@ describe("useChildAgentStream", () => {
     ]);
     // CoT buffer flushed, no longer active.
     expect(result.current.activeCotContent).toBe("");
+  });
+  it("settles on end-of-stream without leaving a polling subscriber", () => {
+    const { result, emit } = renderChildStream();
+    emit({ type: "end-of-stream" });
+    expect(result.current.isDone).toBe(true);
+    expect(result.current.isError).toBe(false);
+    expect(
+      mockUseEventSource.mock.calls.at(-1)?.[3].isReadyToConsumeStream
+    ).toBe(false);
+    expect(
+      mockUseEventSource.mock.calls
+        .at(-1)?.[3]
+        .isTerminalEvent(JSON.stringify({ data: { type: "end-of-stream" } }))
+    ).toBe(true);
+  });
+
+  it("starts cleanly when the sidebar switches to another child message", () => {
+    let emit: (event: string) => void = () => undefined;
+    mockUseEventSource.mockImplementation((_url, callback) => {
+      emit = callback;
+    });
+    const { result, rerender } = renderHook(
+      ({ agentMessageId }) =>
+        useChildAgentStream({
+          owner: mockOwner,
+          disabled: false,
+          childStreamIds: { conversationId: "child", agentMessageId },
+        }),
+      { initialProps: { agentMessageId: "first" } }
+    );
+    act(() =>
+      emit(JSON.stringify({ eventId: "1-0", data: { type: "end-of-stream" } }))
+    );
+    expect(result.current.isDone).toBe(true);
+    rerender({ agentMessageId: "second" });
+    expect(result.current.isDone).toBe(false);
+    expect(result.current.response).toBe("");
+    rerender({ agentMessageId: "first" });
+    expect(result.current.isDone).toBe(false);
+    expect(result.current.response).toBe("");
+    act(() =>
+      mockUseEventSource.mock.calls
+        .at(-1)?.[3]
+        .onTerminalError(new Error("network"))
+    );
+    expect(result.current.isError).toBe(true);
   });
 });

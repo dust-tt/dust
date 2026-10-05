@@ -2,6 +2,7 @@
 export * from "./types";
 
 // Re-export all data and utilities
+export * from "./agentActions";
 export * from "./agentBuilder";
 export * from "./agents";
 export * from "./build";
@@ -10,6 +11,7 @@ export * from "./conversations";
 export * from "./myPod";
 export * from "./podSettings";
 export * from "./requests";
+export * from "./rowBadges";
 export * from "./spaces";
 export * from "./spaceMembers";
 export * from "./time";

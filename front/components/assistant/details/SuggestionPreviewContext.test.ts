@@ -117,8 +117,31 @@ describe("getEditedAgentSections", () => {
           dataSourceViewId: "dsv",
         },
       },
+      {
+        ...AGENT_SUGGESTION,
+        kind: "editors",
+        suggestion: { addUserIds: ["u1"], removeUserIds: [] },
+      },
+      {
+        ...AGENT_SUGGESTION,
+        kind: "tags",
+        suggestion: { addTags: ["Sales"], removeTags: [] },
+      },
     ]);
-    expect(sections).toEqual(new Set(["description", "knowledge"]));
+    expect(sections).toEqual(
+      new Set(["description", "knowledge", "editors", "tags"])
+    );
+  });
+
+  it("maps structured output to its own section", () => {
+    const sections = getEditedAgentSections([
+      {
+        ...AGENT_SUGGESTION,
+        kind: "structured_output",
+        suggestion: { responseFormat: null },
+      },
+    ]);
+    expect(sections).toEqual(new Set(["structured_output"]));
   });
 
   it("maps sub agents to tools", () => {

@@ -28,6 +28,7 @@ import {
   DriveLogo,
   FaceSmile,
   FathomLogo,
+  FigmaLogo,
   File06,
   FreshserviceLogo,
   FrontLogo,
@@ -113,8 +114,6 @@ export type {
   InternalAllowedIconType,
 } from "@app/types/resources_icon_names";
 export {
-  CUSTOM_RESOURCE_ALLOWED,
-  INTERNAL_ALLOWED_ICONS,
   isCustomResourceIconType,
   isInternalAllowedIcon,
 } from "@app/types/resources_icon_names";
@@ -243,6 +242,7 @@ export const InternalActionIcons = {
   DatabricksLogo,
   DriveLogo,
   FathomLogo,
+  FigmaLogo,
   FreshserviceLogo,
   FrontLogo,
   GammaLogo,

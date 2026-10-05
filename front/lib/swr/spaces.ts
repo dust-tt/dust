@@ -178,20 +178,33 @@ export function useSpacesAccessCheck({
   };
 }
 
-// Note that this hook only returns spaces of kind "global", "regular" and "system" (backend enforced).
-// The other kinds are left aside as they are not relevant for the admins point of view.
+// The space kinds an agent or skill can be restricted to, and so the ones an admin may join.
+export const REQUESTABLE_SPACE_KINDS: SpaceKind[] = ["regular", "project"];
+
+type UseSpacesAsAdminParams = {
+  workspaceId: string;
+  // Filters the returned kinds. Pods are only listed when `"project"` is requested.
+  kinds?: SpaceKind[];
+  disabled?: boolean;
+};
+
+// Without `kinds`, this hook only returns spaces of kind "global", "regular" and "system" (backend
+// enforced).
+
 export function useSpacesAsAdmin({
   workspaceId,
+  kinds,
   disabled,
-}: {
-  workspaceId: string;
-  disabled?: boolean;
-}) {
+}: UseSpacesAsAdminParams) {
   const { fetcher } = useFetcher();
   const spacesFetcher: Fetcher<GetSpacesResponseBody> = fetcher;
+  const kindsQuery = (kinds ?? [])
+    .toSorted()
+    .map((kind) => `&kind=${encodeURIComponent(kind)}`)
+    .join("");
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/spaces?role=admin`,
+    `/api/w/${workspaceId}/spaces?role=admin${kindsQuery}`,
     spacesFetcher,
     { disabled }
   );

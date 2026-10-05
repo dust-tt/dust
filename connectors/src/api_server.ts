@@ -23,7 +23,6 @@ import { syncConnectorAPIHandler } from "@connectors/api/sync_connector";
 import { syncConnectorIncrementalAPIHandler } from "@connectors/api/sync_connector_incremental";
 import { unpauseConnectorAPIHandler } from "@connectors/api/unpause_connector";
 import { postConnectorUpdateAPIHandler } from "@connectors/api/update_connector";
-import { webhookDiscordAppHandler } from "@connectors/api/webhooks/webhook_discord_app";
 import { webhookGithubAPIHandler } from "@connectors/api/webhooks/webhook_github";
 import { webhookNotionAPIHandler } from "@connectors/api/webhooks/webhook_notion";
 import { webhookSlackAPIHandler } from "@connectors/api/webhooks/webhook_slack";
@@ -191,12 +190,6 @@ export function startServer(port: number) {
     bodyParser.raw({ type: "application/json" }),
     webhookFirecrawlAPIHandler
   );
-  app.post(
-    "/webhooks/:webhooks_secret/discord/app",
-    bodyParser.raw({ type: "application/json" }),
-    webhookDiscordAppHandler
-  );
-
   app.post(
     "/webhooks/:webhook_secret/microsoft_teams_bot",
     webhookTeamsAPIHandler

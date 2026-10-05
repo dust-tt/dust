@@ -1,4 +1,3 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { archiveInactiveWorkspaceAgents } from "@app/lib/api/assistant/inactivity/archive_inactive_agents";
 import { ONE_DAY_MS } from "@app/lib/api/assistant/inactivity/policy";
 import type { Authenticator } from "@app/lib/auth";
@@ -42,10 +41,7 @@ async function createUnusedAgent(auth: Authenticator, name: string) {
 }
 
 async function statusOf(auth: Authenticator, agentId: string) {
-  const agent = await getAgentConfiguration(auth, {
-    agentId,
-    variant: "light",
-  });
+  const agent = await AgentConfigurationFactory.refetch(auth, agentId);
 
   return agent?.status;
 }

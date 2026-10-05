@@ -8,9 +8,11 @@ import { ActivationWorkAreaResource } from "@app/lib/resources/activation_work_a
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import {
   deleteAgentsActivity,
   deleteSpacesActivity,
+  deleteWorkspaceActivity,
 } from "@app/poke/temporal/activities";
 import { launchDeleteWorkspaceAgentSearchWorkflow } from "@app/temporal/es_indexation/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -20,8 +22,21 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { Err } from "@app/types/shared/result";
-import { describe, expect, it, vi } from "vitest";
+import { Err, Ok } from "@app/types/shared/result";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { mockScheduleMetronomeContractEnd } = vi.hoisted(() => ({
+  mockScheduleMetronomeContractEnd: vi.fn(),
+}));
+
+vi.mock("@app/lib/metronome/client", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/metronome/client")>();
+  return {
+    ...actual,
+    scheduleMetronomeContractEnd: mockScheduleMetronomeContractEnd,
+  };
+});
 
 vi.mock("@app/lib/api/data_sources", async (importOriginal) => {
   const actual =
@@ -147,5 +162,44 @@ describe("deleteSpacesActivity", () => {
         activationPods: [activationPod],
       })
     ).resolves.toEqual([]);
+  });
+});
+
+describe("deleteWorkspaceActivity", () => {
+  beforeEach(() => {
+    mockScheduleMetronomeContractEnd.mockReset();
+    mockScheduleMetronomeContractEnd.mockResolvedValue(new Ok(undefined));
+  });
+
+  it("ends the Metronome contract of a regular workspace", async () => {
+    const workspace = await WorkspaceFactory.metronome({
+      metronomeCustomerId: "test-metronome-customer-id",
+    });
+
+    await deleteWorkspaceActivity({ workspaceId: workspace.sId });
+
+    expect(mockScheduleMetronomeContractEnd).toHaveBeenCalledExactlyOnceWith({
+      metronomeCustomerId: "test-metronome-customer-id",
+      contractId: "test-metronome-contract-id",
+    });
+    await expect(
+      WorkspaceResource.fetchById(workspace.sId)
+    ).resolves.toBeNull();
+  });
+
+  it("keeps the Metronome contract of a relocated workspace", async () => {
+    const workspace = await WorkspaceFactory.metronome({
+      metronomeCustomerId: "test-metronome-customer-id",
+    });
+
+    await deleteWorkspaceActivity({
+      workspaceId: workspace.sId,
+      workspaceHasBeenRelocated: true,
+    });
+
+    expect(mockScheduleMetronomeContractEnd).not.toHaveBeenCalled();
+    await expect(
+      WorkspaceResource.fetchById(workspace.sId)
+    ).resolves.toBeNull();
   });
 });

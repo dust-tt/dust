@@ -6,6 +6,7 @@ import {
   usePokeProductionChecksAllCells,
   useRunProductionCheckForCell,
 } from "@app/hooks/usePokeProductionChecks";
+import { formatDate, formatTime } from "@app/lib/i18n/format";
 import { getCellChipColor, getCellDisplay } from "@app/lib/poke/cells";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import type { CellType } from "@app/types/cell";
@@ -296,7 +297,7 @@ function HistoryRunRow({ run, checkName }: HistoryRunRowProps) {
     <>
       <div className="flex flex-1 items-center gap-2">
         <span className="text-sm font-medium text-primary-600">
-          {timestamp.toLocaleDateString()} {timestamp.toLocaleTimeString()}
+          {formatDate(timestamp)} {formatTime(timestamp)}
         </span>
         <span className="text-xs text-primary-400">({run.workflowType})</span>
       </div>
@@ -402,7 +403,7 @@ function ProductionCheckCard({
         </div>
         <div className="text-xs text-primary-500">
           {lastRunDate
-            ? `Last run: ${lastRunDate.toLocaleDateString()} ${lastRunDate.toLocaleTimeString()}`
+            ? `Last run: ${formatDate(lastRunDate)} ${formatTime(lastRunDate)}`
             : "Never run"}
           {" • "}
           Every {check.everyHour} hour{pluralize(check.everyHour)}

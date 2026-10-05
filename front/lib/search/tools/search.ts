@@ -2,7 +2,6 @@ import { getConnectionForMCPServer } from "@app/lib/actions/mcp_authentication";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
-import { addFileToProject } from "@app/lib/api/projects/context";
 import type { Authenticator } from "@app/lib/auth";
 import {
   download as githubDownload,
@@ -40,11 +39,7 @@ import type {
 } from "@app/lib/search/tools/types";
 import logger from "@app/logger/logger";
 import type { ConnectorProvider } from "@app/types/data_source";
-import type {
-  FileType,
-  FileUseCase,
-  FileUseCaseMetadata,
-} from "@app/types/files";
+import type { FileType, FileUseCaseMetadata } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { Readable } from "stream";
@@ -54,10 +49,8 @@ export const ToolUploadRequestBodySchema = z.object({
   serverViewId: z.string().min(1, "serverViewId is required"),
   externalId: z.string().min(1, "externalId is required"),
   conversationId: z.string().optional(), // TODO(seb): remove after the next extension release + a few days.
-  useCase: z.enum(["conversation", "project_context"]).default("conversation"),
   useCaseMetadata: z.object({
     conversationId: z.string().optional(),
-    spaceId: z.string().optional(),
   }),
   serverName: z.string().optional(),
   serverIcon: z.string().optional(),
@@ -242,6 +235,14 @@ export async function* streamToolFiles({
   }
 }
 
+/**
+ * @cc [owner:frankaloia,label:security;api] mcp-server-view-space-authorization
+ * After fetching the MCPServerView by id, the caller's read or admin access to
+ * serverView.space MUST be verified before resolving or returning any token or tool
+ * data from that view. fetchById scopes only to the workspace; without the space
+ * check any workspace member can receive the workspace-level OAuth token attached
+ * to a restricted-space view by supplying an arbitrary serverViewId.
+ */
 export async function getToolAccessToken({
   auth,
   serverViewId,
@@ -263,6 +264,17 @@ export async function getToolAccessToken({
     return new Err(new Error("MCP server view not found."));
   }
 
+  // Enforce space-level read authorization. fetchById scopes only to the
+  // workspace; without this check any workspace member can supply an arbitrary
+  // serverViewId and receive the view's workspace-level OAuth access token even
+  // if the view lives in a restricted space they cannot read.
+  if (
+    !auth.can("read", serverView.space) &&
+    !auth.can("admin", serverView.space)
+  ) {
+    return new Err(new Error("MCP server view not found."));
+  }
+
   const result = await _getToolAndAccessTokenForView(auth, serverView);
   if (!result) {
     return new Err(new Error("Failed to get tool access token."));
@@ -276,7 +288,6 @@ export async function downloadAndUploadToolFile({
   tool,
   accessToken,
   externalId,
-  useCase,
   useCaseMetadata,
   metadata,
   serverName,
@@ -286,7 +297,6 @@ export async function downloadAndUploadToolFile({
   tool: SearchableTool;
   accessToken: string;
   externalId: string;
-  useCase: FileUseCase;
   useCaseMetadata?: FileUseCaseMetadata;
   metadata?: Record<string, string>;
   serverName?: string;
@@ -332,7 +342,7 @@ export async function downloadAndUploadToolFile({
     fileSize: Buffer.byteLength(downloadResult.content, "utf8"),
     userId: user.id,
     workspaceId: owner.id,
-    useCase,
+    useCase: "conversation",
     useCaseMetadata: {
       ...(useCaseMetadata ? useCaseMetadata : {}),
       ...(serverName ? { sourceProvider: serverName } : {}),
@@ -352,22 +362,6 @@ export async function downloadAndUploadToolFile({
     return new Err(
       new Error(`Failed to process file: ${processResult.error.message}`)
     );
-  }
-
-  // TODO(seb): we shouldn't have multiple places where we handle the post file upload logic.
-  if (useCase === "project_context" && useCaseMetadata?.spaceId) {
-    const space = await SpaceResource.fetchById(auth, useCaseMetadata?.spaceId);
-    if (!space) {
-      return new Err(new Error("Space not found."));
-    }
-    const addFileToProjectRes = await addFileToProject(auth, {
-      file,
-      space,
-    });
-
-    if (addFileToProjectRes.isErr()) {
-      return new Err(new Error("Failed to add file to project."));
-    }
   }
 
   return new Ok(file.toJSON(auth));

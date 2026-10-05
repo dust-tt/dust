@@ -1,3 +1,4 @@
+import { lingui } from "@lingui/vite-plugin";
 import react from "@vitejs/plugin-react";
 import { createRequire } from "module";
 import path from "path";
@@ -72,6 +73,7 @@ function detectServerImportsPlugin(): Plugin {
   const SERVER_ONLY_PATTERNS = [
     /\/front\/temporal\//,
     /\/front\/lib\/resources\//,
+    /\/front\/lib\/api\/triggers\//,
   ];
 
   // Known exceptions that are tolerated.
@@ -292,7 +294,8 @@ export default defineConfig(({ mode }) => {
       serveHtmlPlugin(appDefinition),
       organizeMultiEntryOutputPlugin(appDefinition),
       reactScanPlugin(enableReactScan),
-      react(),
+      react({ babel: { plugins: ["@lingui/babel-plugin-lingui-macro"] } }),
+      lingui(),
       enableAnalyzer &&
         visualizer({
           open: true,
@@ -369,7 +372,7 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       outDir: path.resolve(__dirname, `dist/${appName}`),
-      sourcemap: true,
+      sourcemap: env.BUILD_SOURCEMAPS !== "false",
       rollupOptions: {
         input: appDefinition.inputs,
       },

@@ -28,8 +28,6 @@ import { Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
 import { resolveDimensionDisplayNames } from "./labels";
 
-export { DEFAULT_CONSUMPTION_BREAKDOWN_COUNT } from "@app/lib/api/analytics/consumption/schema";
-
 export type ConsumptionGranularity = "day" | "week" | "month";
 export type ConsumptionTimeseriesMode = "period" | "cumulative";
 

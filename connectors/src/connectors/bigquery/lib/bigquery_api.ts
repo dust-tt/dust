@@ -13,6 +13,8 @@ import { Err, normalizeError, Ok, removeNulls } from "@dust-tt/client";
 import { BigQuery } from "@google-cloud/bigquery";
 import { ProjectsClient } from "@google-cloud/resource-manager";
 
+import { withBigQueryStaticIpProxy } from "./bigquery_proxy";
+
 const MAX_TABLES_PER_SCHEMA = 1500;
 type TestConnectionErrorCode = "INVALID_CREDENTIALS" | "UNKNOWN";
 
@@ -62,16 +64,20 @@ export function connectToBigQuery(
   credentials: BigQueryCredentialsWithLocation,
   projectId: string
 ): BigQuery {
-  return new BigQuery({
-    credentials,
-    scopes: ["https://www.googleapis.com/auth/bigquery.readonly"],
-    location: credentials.location,
-    retryOptions: {
-      autoRetry: true,
-      maxRetries: 3,
-    },
-    projectId,
-  });
+  // Use the static IP proxy when configured so BigQuery traffic shares the same
+  // allowlisted egress IP as Snowflake (customers IP-restrict warehouse access).
+  return new BigQuery(
+    withBigQueryStaticIpProxy({
+      credentials,
+      scopes: ["https://www.googleapis.com/auth/bigquery.readonly"],
+      location: credentials.location,
+      retryOptions: {
+        autoRetry: true,
+        maxRetries: 3,
+      },
+      projectId,
+    })
+  );
 }
 
 async function listAccessibleProjects(
@@ -251,66 +257,65 @@ export const fetchTables = async ({
         "[BigQuery] dataset.getTables (paginated)"
       );
 
-      const pageTables = await concurrentExecutor(
-        tables,
-        async (table) => {
-          if (!table.id) {
-            return null;
-          }
+      for (const table of tables) {
+        if (!table.id) {
+          continue;
+        }
 
-          if (fetchTablesDescription) {
-            try {
-              const metadata = await table.getMetadata();
-              logger?.info(
+        if (fetchTablesDescription) {
+          try {
+            const metadata = await table.getMetadata();
+            logger?.info(
+              {
+                dataset,
+                table: table.id,
+              },
+              "[BigQuery] table.getMetadata"
+            );
+            remoteDBTables.push({
+              name: table.id,
+              database_name: dataset.database_name,
+              schema_name: dataset.name,
+              description: metadata[0].description,
+            });
+          } catch (error) {
+            if (isBigqueryPermissionsError(error)) {
+              logger?.warn(
                 {
+                  projectId: dataset.database_name,
                   dataset,
                   table: table.id,
+                  error: normalizeError(error).message,
                 },
-                "[BigQuery] table.getMetadata"
+                "[BigQuery] Permission denied accessing table metadata, skipping table"
               );
-              return {
-                name: table.id!,
-                database_name: dataset.database_name,
-                schema_name: dataset.name,
-                description: metadata[0].description,
-              };
-            } catch (error) {
-              if (isBigqueryPermissionsError(error)) {
-                logger?.warn(
-                  {
-                    projectId: dataset.database_name,
-                    dataset,
-                    table: table.id,
-                    error: normalizeError(error).message,
-                  },
-                  "[BigQuery] Permission denied accessing table metadata, skipping table"
-                );
-                return null;
-              }
-              throw error;
+              continue;
             }
+            throw error;
           }
-
-          return {
-            name: table.id!,
+        } else {
+          remoteDBTables.push({
+            name: table.id,
             database_name: dataset.database_name,
             schema_name: dataset.name,
-          };
-        },
-        { concurrency: 4 }
-      );
-
-      remoteDBTables.push(...removeNulls(pageTables));
+          });
+        }
+      }
 
       nextQuery = q as typeof nextQuery;
     }
 
-    return new Ok(removeNulls(remoteDBTables));
+    return new Ok(remoteDBTables);
   } catch (error) {
     return new Err(normalizeError(error));
   }
 };
 
+/**
+ * @cc [owner:aubin-tchoi,label:performance] skip-oversized-datasets-before-enumeration
+ * When tables.list reports more than MAX_TABLES_PER_SCHEMA tables, skip the dataset without
+ * fetching subsequent table pages or table descriptions.
+ */
 export const fetchTree = async ({
   credentials,
   fetchTablesDescription,
@@ -340,21 +345,34 @@ export const fetchTree = async ({
           schemas: await concurrentExecutor(
             schemas,
             async (schema) => {
-              const tablesRes = await fetchTables({
-                credentials,
-                dataset: schema,
-                fetchTablesDescription,
-                logger,
-              });
-              if (tablesRes.isErr()) {
-                throw tablesRes.error;
+              const connection = connectToBigQuery(credentials, db.name);
+              const [, , tableList] = await connection
+                .dataset(schema.name)
+                .getTables({ autoPaginate: false, maxResults: 1 });
+
+              let tables: RemoteDBTable[] = [];
+              if ((tableList?.totalItems ?? 0) <= MAX_TABLES_PER_SCHEMA) {
+                const tablesRes = await fetchTables({
+                  credentials,
+                  dataset: schema,
+                  fetchTablesDescription,
+                  connection,
+                  logger,
+                });
+                if (tablesRes.isErr()) {
+                  throw tablesRes.error;
+                }
+                tables = tablesRes.value;
               }
-              const tables = tablesRes.value;
+              const tablesCount = Math.max(
+                tableList?.totalItems ?? 0,
+                tables.length
+              );
 
               // Do not store if too many tables, the sync will be too long and it's quite likely that these are useless tables.
-              if (tables.length > MAX_TABLES_PER_SCHEMA) {
+              if (tablesCount > MAX_TABLES_PER_SCHEMA) {
                 logger.warn(
-                  `[BigQuery] Skipping schema ${schema.name} with ${tables.length} tables because it has more than ${MAX_TABLES_PER_SCHEMA} tables.`
+                  `[BigQuery] Skipping schema ${schema.name} with ${tablesCount} tables because it has more than ${MAX_TABLES_PER_SCHEMA} tables.`
                 );
                 return {
                   name:

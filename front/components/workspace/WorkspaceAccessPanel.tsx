@@ -3,6 +3,7 @@ import { AuditLogsSection } from "@app/components/workspace/AuditLogsSection";
 import UserProvisioning from "@app/components/workspace/DirectorySync";
 import SSOConnection from "@app/components/workspace/SSOConnection";
 import { AutoJoinToggle } from "@app/components/workspace/sso/AutoJoinToggle";
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isSCIMEnabled } from "@app/lib/plans/scim";
 import {
@@ -31,16 +32,25 @@ import React from "react";
 
 import { WorkspaceSection } from "./WorkspaceSection";
 
+export const DOMAIN_VERIFICATION_TITLE = "Domain Verification";
+export const ADD_DOMAIN_LABEL = "Add Domain";
+
 interface WorkspaceAccessPanelProps {
   workspaceVerifiedDomains: WorkspaceDomain[];
   owner: LightWorkspaceType;
   plan: PlanType;
+  showAutoJoin?: boolean;
+  showProvisioning?: boolean;
+  showAuditLogs?: boolean;
 }
 
 export default function WorkspaceAccessPanel({
   workspaceVerifiedDomains,
   owner,
   plan,
+  showAutoJoin = true,
+  showProvisioning = true,
+  showAuditLogs: showAuditLogsProp = true,
 }: WorkspaceAccessPanelProps) {
   const { addDomainLink, domains, isDomainsLoading } = useWorkspaceDomains({
     owner,
@@ -51,7 +61,10 @@ export default function WorkspaceAccessPanel({
   const hasAuditLogsAccess =
     plan.isAuditLogsAllowed || hasFeature("audit_logs");
   const showAuditLogs =
-    hasAuditLogsAccess && workspace.metadata?.disableAuditLogs !== true;
+    showAuditLogsProp &&
+    hasAuditLogsAccess &&
+    workspace.metadata?.disableAuditLogs !== true;
+  const showProvisioningSection = showProvisioning && scimEnabled;
 
   return (
     <div className="flex flex-col gap-6">
@@ -64,14 +77,18 @@ export default function WorkspaceAccessPanel({
       />
       <Separator />
       <SSOConnection domains={domains} plan={plan} owner={owner} />
-      <AutoJoinToggle
-        domains={domains}
-        workspaceVerifiedDomains={workspaceVerifiedDomains}
-        owner={owner}
-        plan={plan}
-      />
-      {scimEnabled && <Separator />}
-      {scimEnabled && <UserProvisioning owner={owner} plan={plan} />}
+      {showAutoJoin && (
+        <AutoJoinToggle
+          domains={domains}
+          workspaceVerifiedDomains={workspaceVerifiedDomains}
+          owner={owner}
+          plan={plan}
+        />
+      )}
+      {showProvisioningSection && <Separator />}
+      {showProvisioningSection && (
+        <UserProvisioning owner={owner} plan={plan} />
+      )}
       {showAuditLogs && <Separator />}
       {showAuditLogs && <AuditLogsSection owner={owner} />}
     </div>
@@ -94,7 +111,11 @@ function DomainVerification({
   owner,
 }: DomainVerificationProps) {
   return (
-    <WorkspaceSection icon={Globe01} title="Domain Verification">
+    <WorkspaceSection
+      icon={Globe01}
+      title={DOMAIN_VERIFICATION_TITLE}
+      sectionId={ADMIN_SECTION_IDS.identity.domain}
+    >
       <Page.P variant="secondary">
         Verify your company domains to enable Single Sign-On (SSO), automatic
         workspace enrollment for team members, and secure connections to your
@@ -106,7 +127,7 @@ function DomainVerification({
         <EmptyCTA
           action={
             <Button
-              label="Add Domain"
+              label={ADD_DOMAIN_LABEL}
               variant="primary"
               icon={Plus}
               href={addDomainLink}
@@ -237,7 +258,7 @@ function DomainVerificationTable({
       {addDomainLink && (
         <div>
           <Button
-            label="Add Domain"
+            label={ADD_DOMAIN_LABEL}
             variant="primary"
             href={addDomainLink}
             icon={Plus}

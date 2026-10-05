@@ -1,11 +1,10 @@
 import {
-  differenceInCalendarDays,
+  formatDate as formatLocaleDate,
+  formatTime,
+} from "@app/lib/i18n/format";
+import {
   format,
-  formatDistance,
-  isToday,
-  isTomorrow,
   isValid,
-  isYesterday,
   startOfDay,
   subDays,
   subMonths,
@@ -15,7 +14,7 @@ import {
 } from "date-fns";
 
 // What moment renders for an invalid date; kept so migrated call sites never throw mid-render.
-const INVALID_DATE_LABEL = "Invalid date";
+export const INVALID_DATE_LABEL = "Invalid date";
 
 /**
  * Formats a date with a date-fns pattern, rendering invalid input as a sentinel string
@@ -64,7 +63,7 @@ export const cleanTimestamp = (
 
 export const formatTimestring = (timestamp: number): string => {
   const date = new Date(timestamp);
-  return date.toLocaleTimeString(undefined, {
+  return formatTime(date, {
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -98,94 +97,10 @@ export const formatDurationString = (durationMs: number): string => {
  * @returns A formatted string like "Jan 15"
  */
 export const formatShortDate = (timestamp: number | string): string => {
-  return new Date(timestamp).toLocaleDateString(undefined, {
+  return formatLocaleDate(new Date(timestamp), {
     month: "short",
     day: "numeric",
   });
-};
-
-/**
- * Formats a date in a calendar-relative way.
- * @param date - The date to format (Date object or timestamp)
- * @returns A formatted string like "Today", "Yesterday", "Last Monday", or "13/10/2025"
- */
-export const formatCalendarDate = (date: Date | number): string => {
-  const dateObj = toDate(date);
-  if (!isValid(dateObj)) {
-    return INVALID_DATE_LABEL;
-  }
-
-  if (isToday(dateObj)) {
-    return "Today";
-  }
-  if (isTomorrow(dateObj)) {
-    return "Tomorrow";
-  }
-  if (isYesterday(dateObj)) {
-    return "Yesterday";
-  }
-
-  const now = new Date();
-  const diffInDays = Math.floor(
-    (now.getTime() - dateObj.getTime()) / (1000 * 60 * 60 * 24)
-  );
-
-  if (diffInDays > 0 && diffInDays <= 7) {
-    return `Last ${format(dateObj, "EEEE")}`;
-  }
-
-  if (diffInDays < 0 && diffInDays >= -7) {
-    return format(dateObj, "EEEE");
-  }
-
-  return format(dateObj, "dd/MM/yyyy");
-};
-
-export const formatRelativeTime = (
-  date: Date | number,
-  now: Date = new Date()
-): string => {
-  const dateObj = toDate(date);
-  if (!isValid(dateObj)) {
-    return INVALID_DATE_LABEL;
-  }
-
-  return formatDistance(dateObj, now, { addSuffix: true });
-};
-
-export const formatCalendarDateTime = (
-  date: Date | number,
-  now: Date = new Date()
-): string => {
-  const dateObj = toDate(date);
-  if (!isValid(dateObj)) {
-    return INVALID_DATE_LABEL;
-  }
-
-  // Calendar-day distance is DST-safe: a 23h or 25h day still counts as exactly one day.
-  const diffDays = differenceInCalendarDays(dateObj, now);
-  const timeWithSeconds = format(dateObj, "h:mm:ss a");
-
-  if (diffDays === 0) {
-    return `Today at ${timeWithSeconds}`;
-  }
-  if (diffDays === -1) {
-    return `Yesterday at ${timeWithSeconds}`;
-  }
-  if (diffDays >= -6 && diffDays < -1) {
-    return `Last ${format(dateObj, "EEEE")} at ${timeWithSeconds}`;
-  }
-
-  // moment's built-in future formats use LT (no seconds), unlike the overridden past ones.
-  const timeWithoutSeconds = format(dateObj, "h:mm a");
-  if (diffDays === 1) {
-    return `Tomorrow at ${timeWithoutSeconds}`;
-  }
-  if (diffDays > 1 && diffDays < 7) {
-    return `${format(dateObj, "EEEE")} at ${timeWithoutSeconds}`;
-  }
-
-  return format(dateObj, "MM/dd/yyyy");
 };
 
 export type RelativeDateBucket =

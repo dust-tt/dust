@@ -1,6 +1,5 @@
 import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
-import { useFrameSharingToggle } from "@app/hooks/useFrameSharingToggle";
-import type { WorkspaceSharingPolicy, WorkspaceType } from "@app/types/user";
+import type { WorkspaceSharingPolicy } from "@app/types/user";
 import {
   Button,
   Dialog,
@@ -42,26 +41,8 @@ const SHARING_POLICY_OPTIONS: {
 ];
 
 const LABEL = "Frame sharing";
+export const FRAME_SHARING_LABEL = LABEL;
 const DESCRIPTION = "Whether frames are shareable outside the workspace";
-
-interface InteractiveContentSharingToggleProps {
-  owner: WorkspaceType;
-}
-
-export function InteractiveContentSharingToggle({
-  owner,
-}: InteractiveContentSharingToggleProps) {
-  const { sharingPolicy, doUpdateSharingPolicy, isChanging } =
-    useFrameSharingToggle({ owner });
-
-  return (
-    <InteractiveContentSharing
-      sharingPolicy={sharingPolicy}
-      doUpdateSharingPolicy={doUpdateSharingPolicy}
-      isChanging={isChanging}
-    />
-  );
-}
 
 interface InteractiveContentSharingProps {
   isChanging: boolean;

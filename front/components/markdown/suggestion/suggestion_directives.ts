@@ -1,12 +1,19 @@
+import type { AgentActionCardSuggestionType } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
+import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
+
 const CONVERSATION_AGENT_SUGGESTION_KINDS = [
   "create",
   "delete",
   "description",
+  "editors",
   "instructions",
   "model",
   "name",
   "scope",
   "skills",
+  "structured_output",
+  "sub_agent",
+  "tags",
   "tools",
 ] as const;
 
@@ -17,10 +24,17 @@ export type ConversationAgentSuggestionKind =
 export const DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS: ConversationAgentSuggestionKind[] =
   ["create"];
 
-export function isConversationAgentSuggestionKind(
+function isConversationAgentSuggestionKind(
   kind: string
 ): kind is ConversationAgentSuggestionKind {
   return CONVERSATION_AGENT_SUGGESTION_KINDS.some((k) => k === kind);
+}
+
+/** Whether the suggestion is of a kind the conversational agent cards render. */
+export function isAgentActionCardSuggestion(
+  suggestion: AgentSuggestionType
+): suggestion is AgentActionCardSuggestionType {
+  return isConversationAgentSuggestionKind(suggestion.kind);
 }
 
 const BATCH_DIRECTIVE_REGEX = /:{1,2}batch_edit\[\]\{([^}]*)\}/g;
@@ -67,6 +81,22 @@ function capRecap(text: string): string {
   return text.length <= MAX_SUGGESTION_RECAP_LENGTH
     ? text
     : `${text.slice(0, MAX_SUGGESTION_RECAP_LENGTH - 1).trimEnd()}…`;
+}
+
+export function extractBatchIds(content: string): Set<string> {
+  const batchIds = new Set<string>();
+  replaceOutsideCode(
+    content,
+    BATCH_DIRECTIVE_REGEX,
+    (match, rawAttributes: string) => {
+      const batchId = parseBatchId(rawAttributes);
+      if (batchId) {
+        batchIds.add(batchId);
+      }
+      return match;
+    }
+  );
+  return batchIds;
 }
 
 /**

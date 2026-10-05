@@ -423,7 +423,11 @@ describe("storeAgentAnalyticsActivity - reasoning tokens", () => {
         totalTokens: 1_300,
       },
       GPT_5_MINI_MODEL_CONFIG.modelId,
-      { usageType: USAGE_TYPE_USER, useWorkspaceCredentials: false }
+      {
+        region: null,
+        usageType: USAGE_TYPE_USER,
+        useWorkspaceCredentials: false,
+      }
     );
     await AgentMessageModel.update(
       { runIds: [run.dustRunId] },

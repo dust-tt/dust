@@ -1,8 +1,13 @@
+import { AdminLayout } from "@dust-tt/front/components/layouts/AdminLayout";
+import Custom404 from "@dust-tt/front/components/pages/Custom404";
+import { useAuth } from "@dust-tt/front/lib/auth/AuthContext";
+import { hasGroupManagementScope } from "@dust-tt/front/types/api/auth_context";
+import { isManager } from "@dust-tt/front/types/user";
 import { RequirePermissionLayout } from "@spa/app/layouts/RequirePermissionLayout";
 import { RequireRoleLayout } from "@spa/app/layouts/RequireRoleLayout";
 import { withSuspense } from "@spa/app/routes/withSuspense";
 import type { RouteObject } from "react-router-dom";
-import { Navigate } from "react-router-dom";
+import { Navigate, useParams } from "react-router-dom";
 
 const AnalyticsConsumptionPage = withSuspense(
   () =>
@@ -18,10 +23,12 @@ const AnalyticsAutomationsPage = withSuspense(
     ),
   "AnalyticsAutomationsPage"
 );
-const APIKeysPage = withSuspense(
+const DevelopersPage = withSuspense(
   () =>
-    import("@dust-tt/front/components/pages/workspace/developers/APIKeysPage"),
-  "APIKeysPage"
+    import(
+      "@dust-tt/front/components/pages/workspace/developers/DevelopersPage"
+    ),
+  "DevelopersPage"
 );
 const CreditsUsagePage = withSuspense(
   () =>
@@ -30,40 +37,13 @@ const CreditsUsagePage = withSuspense(
     ),
   "CreditsUsagePage"
 );
-const ProvidersPage = withSuspense(
-  () =>
-    import(
-      "@dust-tt/front/components/pages/workspace/developers/ProvidersPage"
-    ),
-  "ProvidersPage"
-);
-const SecretsPage = withSuspense(
-  () =>
-    import("@dust-tt/front/components/pages/workspace/developers/SecretsPage"),
-  "SecretsPage"
-);
-const SandboxPage = withSuspense(
-  () =>
-    import("@dust-tt/front/components/pages/workspace/developers/SandboxPage"),
-  "SandboxPage"
-);
-const SelfImprovingSkillsPage = withSuspense(
-  () =>
-    import(
-      "@dust-tt/front/components/pages/workspace/developers/SelfImprovingSkillsPage"
-    ),
-  "SelfImprovingSkillsPage"
-);
 const MembersPage = withSuspense(
   () => import("@dust-tt/front/components/pages/workspace/MembersPage"),
   "MembersPage"
 );
-const WorkspaceIdentityProvisioningPage = withSuspense(
-  () =>
-    import(
-      "@dust-tt/front/components/pages/workspace/WorkspaceIdentityProvisioningPage.js"
-    ),
-  "WorkspaceIdentityProvisioningPage"
+const SecurityPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/workspace/SecurityPage"),
+  "SecurityPage"
 );
 const ManageSubscriptionPage = withSuspense(
   () =>
@@ -84,16 +64,22 @@ const WorkspaceBrandingPage = withSuspense(
     import("@dust-tt/front/components/pages/workspace/WorkspaceBrandingPage"),
   "WorkspaceBrandingPage"
 );
-const ModelProvidersPage = withSuspense(
-  () =>
-    import(
-      "@dust-tt/front/components/pages/workspace/model_providers/ModelProvidersPage"
-    ),
-  "ModelProvidersPage"
+const ModelsPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/workspace/ModelsPage"),
+  "ModelsPage"
+);
+const IntegrationsPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/workspace/IntegrationsPage"),
+  "IntegrationsPage"
 );
 const UsagePage = withSuspense(
   () => import("@dust-tt/front/components/pages/workspace/UsagePage"),
   "UsagePage"
+);
+const GroupManagerUsagePage = withSuspense(
+  () =>
+    import("@dust-tt/front/components/pages/workspace/GroupManagerUsagePage"),
+  "GroupManagerUsagePage"
 );
 const BillingPage = withSuspense(
   () => import("@dust-tt/front/components/pages/workspace/billing/BillingPage"),
@@ -107,13 +93,56 @@ const GovernancePage = withSuspense(
   "GovernancePage"
 );
 
+function PeopleRoute() {
+  const { isManager, featureFlags, groupManagement } = useAuth();
+  if (
+    !isManager &&
+    (!featureFlags.includes("group_management") ||
+      !hasGroupManagementScope(groupManagement?.read_usage))
+  ) {
+    return <Custom404 />;
+  }
+  return (
+    <AdminLayout>
+      <MembersPage />
+    </AdminLayout>
+  );
+}
+
+function CreditsRoute() {
+  const { workspace, featureFlags, groupManagement } = useAuth();
+  if (isManager(workspace)) {
+    return (
+      <AdminLayout>
+        <UsagePage />
+      </AdminLayout>
+    );
+  }
+  if (
+    !featureFlags.includes("group_management") ||
+    !hasGroupManagementScope(groupManagement?.read_usage)
+  ) {
+    return <Custom404 />;
+  }
+  return (
+    <AdminLayout>
+      <GroupManagerUsagePage />
+    </AdminLayout>
+  );
+}
+
+/** Preserve path params when redirecting legacy admin URLs. */
+function WorkspaceRedirect({ to, search }: { to: string; search?: string }) {
+  const { wId } = useParams();
+  const target = `/w/${wId}/${to}${search ?? ""}`;
+  return <Navigate to={target} replace />;
+}
+
 export const adminRoutes: RouteObject[] = [
   {
     // Accessible to admins and managers.
     element: <RequireRoleLayout requiredRole="manager" />,
     children: [
-      { path: "members", element: <MembersPage /> },
-      // Legacy analytics page, now superseded by consumption analytics.
       {
         path: "analytics",
         element: <Navigate to="../analytics/consumption" replace />,
@@ -126,43 +155,58 @@ export const adminRoutes: RouteObject[] = [
         path: "automations",
         element: <AnalyticsAutomationsPage />,
       },
-      { path: "usage", element: <UsagePage /> },
       { path: "governance", element: <GovernancePage /> },
-      // Legacy Workspace Settings page, merged into Settings & Governance.
+      // Legacy Workspace Settings page, merged into Governance.
       { path: "workspace", element: <Navigate to="../governance" replace /> },
     ],
   },
+  { path: "members", element: <PeopleRoute /> },
+  { path: "credits", element: <CreditsRoute /> },
+  // Legacy Usage URL → Credits.
+  { path: "usage", element: <WorkspaceRedirect to="credits" /> },
   {
-    // Admin-only areas.
     element: <RequireRoleLayout requiredRole="admin" />,
     children: [
-      { path: "model-providers", element: <ModelProvidersPage /> },
-      { path: "branding", element: <WorkspaceBrandingPage /> },
-      { path: "developers/api-keys", element: <APIKeysPage /> },
+      { path: "models", element: <ModelsPage /> },
       {
-        path: "developers/credits-usage",
-        element: <CreditsUsagePage />,
+        path: "model-providers",
+        element: <WorkspaceRedirect to="models" />,
       },
+      { path: "integrations", element: <IntegrationsPage /> },
+      { path: "branding", element: <WorkspaceBrandingPage /> },
+      // Legacy short URL → Branding.
+      { path: "brand", element: <WorkspaceRedirect to="branding" /> },
+      { path: "developers", element: <DevelopersPage /> },
+      // Legacy developer URLs → new tabbed pages.
       {
-        path: "developers/providers",
-        element: <ProvidersPage />,
+        path: "developers/api-keys",
+        element: <WorkspaceRedirect to="developers" />,
       },
       {
         path: "developers/dev-secrets",
-        element: <SecretsPage />,
+        element: <WorkspaceRedirect to="developers" search="?tab=secrets" />,
       },
       {
         path: "developers/sandbox",
-        element: <SandboxPage />,
+        element: <WorkspaceRedirect to="security" search="?tab=network" />,
+      },
+      {
+        path: "developers/providers",
+        element: <WorkspaceRedirect to="models" search="?tab=apps" />,
       },
       {
         path: "developers/self-improving-skills",
-        element: <SelfImprovingSkillsPage />,
+        element: <WorkspaceRedirect to="governance" search="?tab=agents" />,
+      },
+      {
+        // Legacy non–credit-priced programmatic usage page. Kept until those
+        // workspaces are fully migrated onto Credits.
+        path: "developers/credits-usage",
+        element: <CreditsUsagePage />,
       },
     ],
   },
   {
-    // Billing areas: accessible to admins and to members holding the billing admin permission.
     element: <RequirePermissionLayout verb="admin" resourceType="billing" />,
     children: [
       { path: "subscription", element: <SubscriptionPage /> },
@@ -172,9 +216,10 @@ export const adminRoutes: RouteObject[] = [
   {
     element: <RequirePermissionLayout verb="admin" resourceType="security" />,
     children: [
+      { path: "security", element: <SecurityPage /> },
       {
         path: "identity-and-provisioning",
-        element: <WorkspaceIdentityProvisioningPage />,
+        element: <WorkspaceRedirect to="security" />,
       },
     ],
   },

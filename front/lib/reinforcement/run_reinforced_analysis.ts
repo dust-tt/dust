@@ -35,6 +35,7 @@ import {
   isTerminalToolName,
   TOOL_SCHEMAS,
 } from "@app/lib/reinforcement/types";
+import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
@@ -43,6 +44,7 @@ import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
+import { BATCH_SUGGESTION_ANALYSIS_MAX_LENGTH } from "@app/types/suggestions/batch_suggestion";
 import type { SkillSuggestionSource } from "@app/types/suggestions/skill_suggestion";
 import { isEditSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -116,7 +118,19 @@ function buildReinforcedSkillsToolDefinitions(): Record<
   };
 }
 
+// Reinforcement suggestions are wrapped in a batch, whose analysis is length-limited.
+const REINFORCEMENT_ANALYSIS_FIELD: z.ZodRawShape = {
+  analysis: z
+    .string()
+    .max(BATCH_SUGGESTION_ANALYSIS_MAX_LENGTH)
+    .optional()
+    .describe(
+      `Why this change improves the skill (MUST be at most ${BATCH_SUGGESTION_ANALYSIS_MAX_LENGTH} characters).`
+    ),
+};
+
 const AGGREGATION_EXTRA_FIELDS: z.ZodRawShape = {
+  ...REINFORCEMENT_ANALYSIS_FIELD,
   sourceSuggestionIds: z
     .array(z.string())
     .min(1)
@@ -436,6 +450,17 @@ type ToolCallResult =
   | { type: "rejected"; suggestionsRejected: number }
   | { type: "error"; errorMessage: string };
 
+/**
+ * @cc [owner:fabiencelier,label:product] reinforcement-suggestion-in-own-batch
+ * Every `reinforcement` skill suggestion created here MUST belong to a new batch holding only that
+ * suggestion, with the suggestion's title and analysis. `synthetic` suggestions MUST NOT belong to
+ * a batch: their state is updated individually during aggregation.
+ */
+/**
+ * @cc [owner:fabiencelier,label:product] reinforcement-analysis-length-error
+ * An `edit_skill` call creating a `reinforcement` suggestion whose analysis is longer than
+ * `BATCH_SUGGESTION_ANALYSIS_MAX_LENGTH` MUST return an error to the model, creating nothing.
+ */
 async function createSkillSuggestionsFromToolCall({
   auth,
   toolName,
@@ -457,7 +482,11 @@ async function createSkillSuggestionsFromToolCall({
 }): Promise<ToolCallResult> {
   switch (toolName) {
     case "edit_skill": {
-      const parsed = getEditSkillToolSchema().safeParse(actionArguments);
+      const schema =
+        source === "reinforcement"
+          ? getEditSkillToolSchema().extend(REINFORCEMENT_ANALYSIS_FIELD)
+          : getEditSkillToolSchema();
+      const parsed = schema.safeParse(actionArguments);
       if (!parsed.success) {
         logger.warn(
           { contextId, toolName, error: parsed.error },
@@ -560,6 +589,19 @@ async function createSkillSuggestionsFromToolCall({
         sourceConversationIds = [conversation.id];
       }
 
+      const analysis = parsed.data.analysis ?? null;
+      const title = parsed.data.title ?? null;
+
+      // Reinforcement suggestions are reviewed through a batch holding them alone.
+      const batch =
+        source === "reinforcement"
+          ? await BatchSuggestionResource.makeNew(auth, {
+              title,
+              analysis,
+              sourceConversation: null,
+            })
+          : null;
+
       const newSuggestion =
         await SkillSuggestionResource.createSuggestionForSkill(auth, skill, {
           kind: "edit",
@@ -567,11 +609,12 @@ async function createSkillSuggestionsFromToolCall({
             instructionEdits: parsed.data.instructionEdits,
             agentFacingDescriptionEdit: parsed.data.agentFacingDescriptionEdit,
           },
-          analysis: parsed.data.analysis ?? null,
-          title: parsed.data.title ?? null,
+          analysis,
+          title,
           state: "pending",
           source,
           sourceConversationIds,
+          batchId: batch?.id ?? null,
         });
 
       if (isEditSkillSuggestion(newSuggestion)) {

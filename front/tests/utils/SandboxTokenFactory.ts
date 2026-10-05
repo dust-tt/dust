@@ -27,9 +27,11 @@ import { frameV2ContentType } from "@app/types/files";
 process.env.DUST_SANDBOX_JWT_SECRET ??= "test-sandbox-jwt-secret";
 
 export async function createSandboxTokenTestContext({
+  agentScope = "visible",
   disableComputerFeature = false,
   usePodSpaceForConversation = false,
 }: {
+  agentScope?: "visible" | "hidden";
   disableComputerFeature?: boolean;
   usePodSpaceForConversation?: boolean;
 } = {}) {
@@ -64,6 +66,7 @@ export async function createSandboxTokenTestContext({
 
   const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
     requestedSpaceIds: [agentSpace.id],
+    scope: agentScope,
   });
   let agentServerView = null;
   if (usePodSpaceForConversation) {

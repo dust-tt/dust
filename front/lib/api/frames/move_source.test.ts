@@ -35,6 +35,7 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
+import { getPodFilesBasePath } from "@app/types/mount_path";
 import assert from "assert";
 
 beforeEach(() => {
@@ -96,5 +97,48 @@ describe("moveFrameV2Source", () => {
       `release:${getFramePublishLockName(c.frame.sId)}`,
       `release:${getFrameSourceLockName(c.frame.sId)}`,
     ]);
+  });
+
+  it("saves a conversation Frame to its Pod as Pod content", async () => {
+    const c = await setupFrameSourceStorageTest({ inPod: true });
+    assert(c.pod, "The conversation should belong to a Pod");
+    const storage = getPrivateUploadBucket();
+    vi.mocked(getPrivateUploadBucket).mockReturnValue(storage);
+    vi.spyOn(storage, "copyFile").mockImplementation(async (source, target) => {
+      const content = fileStorageMock.getObject(source);
+      if (content !== undefined) {
+        fileStorageMock.setObject(target, content);
+      }
+      return { destinationGeneration: "mock" } as never;
+    });
+    const destinationManifestMountPath = `${getPodFilesBasePath({
+      workspaceId: c.workspace.sId,
+      podId: c.pod.sId,
+    })}Status/${FRAME_MANIFEST_FILE}`;
+
+    const moved = await moveFrameSourceForTest(c, {
+      destinationDirectoryPath: `pod-${c.pod.sId}/Status`,
+      sourceDirectoryPath: c.sourceDirectoryPath,
+    });
+
+    assert(moved.isOk(), moved.isErr() ? moved.error.message : undefined);
+    const reloaded = await FileResource.fetchById(c.auth, c.frame.sId);
+    expect(reloaded?.mountFilePath).toBe(destinationManifestMountPath);
+    expect(reloaded?.useCase).toBe("project_context");
+    // The Frame keeps serving its publication, now scoped to the Pod.
+    expect(reloaded?.useCaseMetadata).toEqual({
+      activePublicationId: "publication-1",
+      sourceConversationId: c.conversation.sId,
+      spaceId: c.pod.sId,
+    });
+    expect(fileStorageMock.getObject(destinationManifestMountPath)).toBe(
+      frameManifest
+    );
+    expect(fileStorageMock.getObject(c.sourceObjects[0])).toBeUndefined();
+    expect(emitMovedAuditLog).toHaveBeenCalledWith(
+      expect.anything(),
+      { useCase: "pod", podId: c.pod.sId },
+      { relativeFilePath: "Status", parentRelativePath: "" }
+    );
   });
 });

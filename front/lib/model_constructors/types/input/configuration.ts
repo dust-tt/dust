@@ -9,7 +9,6 @@ export const reasoningSchema = z.object({
 export type Reasoning = z.infer<typeof reasoningSchema>;
 
 export const temperatureSchema = z.number().min(0).max(1);
-export const maxOutputTokensSchema = z.number().min(0);
 
 export const outputFormatSchema = z.object({
   type: z.literal("json_schema"),

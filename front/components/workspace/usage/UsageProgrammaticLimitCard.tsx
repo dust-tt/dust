@@ -1,9 +1,13 @@
+import { formatNumber } from "@app/lib/i18n/format";
 import {
   useProgrammaticUsageLimit,
   useUpdateProgrammaticUsageLimit,
 } from "@app/lib/swr/usage_settings";
 import { InputWithSave, Page, SettingsList } from "@dust-tt/sparkle";
 import { useState } from "react";
+
+export const PROGRAMMATIC_USAGE_SECTION_LABEL = "Programmatic usage";
+export const PROGRAMMATIC_MONTHLY_LIMIT_LABEL = "Programmatic monthly limit";
 
 interface UsageProgrammaticLimitCardProps {
   workspaceId: string;
@@ -46,11 +50,13 @@ export function UsageProgrammaticLimitCard({
   return (
     <Page.Vertical gap="sm" align="stretch">
       <div className="flex flex-col gap-0.5">
-        <span className="heading-base text-foreground">Programmatic usage</span>
+        <span className="heading-base text-foreground">
+          {PROGRAMMATIC_USAGE_SECTION_LABEL}
+        </span>
       </div>
       <SettingsList>
         <SettingsList.Row
-          title="Programmatic monthly limit"
+          title={PROGRAMMATIC_MONTHLY_LIMIT_LABEL}
           description={
             <>
               Maximum credits allowed for programmatic usage per month.{" "}
@@ -63,11 +69,11 @@ export function UsageProgrammaticLimitCard({
                 inputMode="numeric"
                 pattern="[0-9]*"
                 placeholder="No access"
-                value={currentLimit === 0 ? "" : currentLimit.toLocaleString()}
+                value={currentLimit === 0 ? "" : formatNumber(currentLimit)}
                 unit={currentLimit === 0 && !isEditing ? undefined : "credits"}
                 normalizeValue={(value) => value.replace(/[^\d]/g, "")}
                 formatValue={(value) =>
-                  value ? Number(value).toLocaleString() : value
+                  value ? formatNumber(Number(value)) : value
                 }
                 onSave={handleSaveLimit}
                 onFocus={() => setIsEditing(true)}

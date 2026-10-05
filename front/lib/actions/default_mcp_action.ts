@@ -108,29 +108,37 @@ function uniqueActionName(baseName: string, takenNames: Set<string>): string {
 
 /**
  * The action saved for a tool added with its defaults, as the agent builder saves a picked tool.
- * Only meant for tools that need no configuration (`getMCPServerRequirements(...).noRequirement`):
- * knowledge, child agent, time frame, JSON schema, Dust app, secret and project are left unset.
- * Where the builder would ask the user, the name and description fall back to defaults, and the
- * name is made unique among `takenNames`. The description is kept as is: the save only stores it
- * when it differs from the server's own.
+ * Only meant for tools that need no configuration (`getMCPServerRequirements(...).noRequirement`),
+ * or for the `run_agent` tool with the `childAgent` it runs, named after it as the builder names a
+ * sub-agent action: knowledge, time frame, JSON schema, Dust app, secret and project are left
+ * unset. Where the builder would ask the user, the name and description fall back to defaults, and
+ * the name is made unique among `takenNames`. The description is kept as is: the save only stores
+ * it when it differs from the server's own.
  */
 export function getDefaultMCPActionPayload(
   mcpServerView: MCPServerViewType,
-  { takenNames }: { takenNames: Set<string> }
+  {
+    takenNames,
+    childAgent,
+  }: {
+    takenNames: Set<string>;
+    childAgent?: { sId: string; name: string };
+  }
 ): AgentActionPayload {
+  const baseName = childAgent
+    ? nameToStorageFormat(`run_${childAgent.name}`)
+    : getDefaultMCPActionName(mcpServerView);
+
   return {
     type: "mcp_server_configuration",
     mcpServerViewId: mcpServerView.sId,
-    name: uniqueActionName(
-      getDefaultMCPActionName(mcpServerView) || DEFAULT_MCP_ACTION_NAME,
-      takenNames
-    ),
+    name: uniqueActionName(baseName || DEFAULT_MCP_ACTION_NAME, takenNames),
     description:
       getDefaultMCPActionDescription(mcpServerView) ||
       DEFAULT_MCP_ACTION_DESCRIPTION,
     dataSources: null,
     tables: null,
-    childAgentId: null,
+    childAgentId: childAgent?.sId ?? null,
     timeFrame: null,
     jsonSchema: null,
     additionalConfiguration: getDefaultAdditionalConfiguration(mcpServerView),

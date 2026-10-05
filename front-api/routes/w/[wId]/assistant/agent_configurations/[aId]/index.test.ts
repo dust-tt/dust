@@ -1,4 +1,3 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
@@ -11,6 +10,7 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { honoApp } from "@front-api/app";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -20,7 +20,11 @@ afterEach(() => {
 
 vi.mock("@app/lib/api/assistant/recent_authors", () => ({
   agentConfigurationWasUpdatedBy: vi.fn(),
-  getAgentRecentAuthors: vi.fn().mockResolvedValue([]),
+  getAgentsRecentAuthors: vi
+    .fn()
+    .mockImplementation(async ({ agents }: { agents: unknown[] }) =>
+      agents.map(() => [])
+    ),
 }));
 
 function patch(workspace: { sId: string }, aId: string, body: unknown) {
@@ -330,11 +334,13 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - non-editor adm
 
     expect(response.status).toBe(403);
 
-    const unchanged = await getAgentConfiguration(agentOwnerAuth, {
-      agentId: agent.sId,
-      variant: "light",
-    });
-    expect(unchanged?.instructions).toBe(agent.instructions);
+    const unchanged = await AgentConfigurationFactory.refetch(
+      agentOwnerAuth,
+      agent.sId
+    );
+    expect((await unchanged?.fetchInstructions())?.instructions).toBe(
+      agent.instructions
+    );
   });
 });
 
@@ -568,6 +574,7 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId - agents the calle
     expect(data.agentConfiguration.sId).toBe(agent.sId);
     expect(data.agentConfiguration.name).toBe(agent.name);
     expect(data.agentConfiguration.canRead).toBe(false);
+    expect(data.agentConfiguration.canViewContent).toBe(false);
     expect(data.agentConfiguration.instructions).toBeNull();
     expect(data.agentConfiguration.instructionsHtml).toBeNull();
     expect(data.agentConfiguration.actions).toEqual([]);
@@ -599,6 +606,7 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId - agents the calle
     expect(data.agentConfiguration.sId).toBe(agent.sId);
     expect(data.agentConfiguration.name).toBe(agent.name);
     expect(data.agentConfiguration.canRead).toBe(false);
+    expect(data.agentConfiguration.canViewContent).toBe(false);
     expect(data.agentConfiguration.instructions).toBeNull();
     expect(data.agentConfiguration.instructionsHtml).toBeNull();
     expect(data.agentConfiguration.actions).toEqual([]);
@@ -683,7 +691,9 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId - agents the calle
     expect(response.status).toBe(200);
     const data = await response.json();
     expect(data.agentConfiguration.sId).toBe(agent.sId);
-    expect(data.agentConfiguration.canRead).toBe(true);
+    // The flag shows the content without granting `read`.
+    expect(data.agentConfiguration.canRead).toBe(false);
+    expect(data.agentConfiguration.canViewContent).toBe(true);
     expect(data.agentConfiguration.instructions).toBe(agent.instructions);
   });
 
@@ -801,5 +811,28 @@ describe("DELETE /api/w/:wId/assistant/agent_configurations/:aId", () => {
     expect(response.status).toBe(404);
     const unchanged = await AgentResource.fetchById(agentOwnerAuth, agent.sId);
     expect(unchanged?.status).toBe("active");
+  });
+});
+
+describe("GET /api/w/:wId/assistant/agent_configurations/:aId - global agents", () => {
+  it("returns a global agent with its instructions", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      role: "user",
+      method: "GET",
+    });
+
+    const response = await get(workspace, GLOBAL_AGENTS_SID.HELPER);
+
+    expect(response.status).toBe(200);
+    const { agentConfiguration } = await response.json();
+    expect(agentConfiguration).toMatchObject({
+      sId: GLOBAL_AGENTS_SID.HELPER,
+      scope: "global",
+      agentModelId: null,
+      canRead: true,
+      canEdit: false,
+    });
+    expect(agentConfiguration.instructions).toContain("@help");
+    expect(Array.isArray(agentConfiguration.actions)).toBe(true);
   });
 });

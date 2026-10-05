@@ -1,3 +1,9 @@
+# @cc [label:security] gh-actions-expression-injection-prevention
+# Untrusted repository_dispatch client_payload values and workflow_dispatch inputs MUST NOT
+# be interpolated into shell scripts, github-script source, or action arguments that treat
+# them as flags or file paths. app MUST be exactly "app" or "poke" before it is used in the
+# wrangler command or a git tag path. version_id MUST match a lowercase UUID before it is
+# written to GITHUB_OUTPUT or the wrangler command. Rejected values MUST NOT be logged.
 name: Deploy SPA to production
 
 on:
@@ -26,12 +32,34 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        # Only app, poke, or the "all" expansion ever become matrix values. Anything else
+        # is a single rejected sentinel so the job fails in the validate step below
+        # instead of forwarding the raw payload into wrangler or a git ref.
         app: ${{ fromJson(
           (github.event.client_payload.app || inputs.app) == 'all'
           && '["app","poke"]'
-          || format('["{0}"]', github.event.client_payload.app || inputs.app)
+          || (github.event.client_payload.app || inputs.app) == 'app'
+          && '["app"]'
+          || (github.event.client_payload.app || inputs.app) == 'poke'
+          && '["poke"]'
+          || '["__rejected__"]'
           ) }}
     steps:
+      - name: Validate app
+        id: app
+        env:
+          APP: ${{ matrix.app }}
+        run: |
+          case "$APP" in
+            app|poke)
+              echo "name=$APP" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "::error::app must be 'app' or 'poke'."
+              exit 1
+              ;;
+          esac
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup Node Dependencies
@@ -39,12 +67,20 @@ jobs:
 
       - name: Resolve version ID
         id: version
+        env:
+          VERSION_ID_PAYLOAD: ${{ github.event.client_payload[format('spa_{0}_version_id', steps.app.outputs.name)] }}
+          VERSION_ID_INPUT: ${{ inputs.version_id }}
         run: |
           # repository_dispatch: per-app version IDs in payload
           # workflow_dispatch: single version_id input
-          VERSION_ID="${{ github.event.client_payload[format('spa_{0}_version_id', matrix.app)] || inputs.version_id }}"
+          VERSION_ID="${VERSION_ID_PAYLOAD:-$VERSION_ID_INPUT}"
           if [ -z "$VERSION_ID" ]; then
-            echo "::error::No version ID provided for ${{ matrix.app }}. Cannot promote without an explicit version ID."
+            echo "::error::No version ID provided. Cannot promote without an explicit version ID."
+            exit 1
+          fi
+          # Cloudflare Worker version IDs are UUIDs; reject anything else.
+          if ! [[ "$VERSION_ID" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]]; then
+            echo "::error::version_id does not match the expected UUID format."
             exit 1
           fi
           echo "id=${VERSION_ID}" >> "$GITHUB_OUTPUT"
@@ -56,21 +92,35 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: front-spa
-          command: versions deploy ${{ steps.version.outputs.id }}@100% --config wrangler-${{ matrix.app }}.toml -y
+          # version id is a lowercase UUID and app name is allowlisted to app or poke.
+          command: versions deploy ${{ steps.version.outputs.id }}@100% --config wrangler-${{ steps.app.outputs.name }}.toml -y
           wranglerVersion: "4.80.0"
 
       - name: Create deploy tag
         if: ${{ github.event.client_payload.sha && github.event.client_payload.image_tag }}
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          PAYLOAD_SHA: ${{ github.event.client_payload.sha }}
+          PAYLOAD_IMAGE_TAG: ${{ github.event.client_payload.image_tag }}
+          MATRIX_APP: ${{ steps.app.outputs.name }}
         with:
           script: |
-            const tag = `refs/tags/spa/${{ matrix.app }}/${{ github.event.client_payload.image_tag }}`;
+            // All client_payload values come from process.env to prevent JS injection
+            // via repository_dispatch payloads — never interpolated as GHA expressions.
+            const imageTag = process.env.PAYLOAD_IMAGE_TAG;
+            const sha = process.env.PAYLOAD_SHA;
+            const app = process.env.MATRIX_APP;
+            if (app !== "app" && app !== "poke") {
+              core.setFailed("app must be app or poke.");
+              return;
+            }
+            const tag = `refs/tags/spa/${app}/${imageTag}`;
             try {
               await github.rest.git.createRef({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 ref: tag,
-                sha: '${{ github.event.client_payload.sha }}',
+                sha: sha,
               });
             } catch (e) {
               // Tag already exists (redeployment of same commit) — ignore.
@@ -84,10 +134,10 @@ jobs:
           step: "spa_production_success"
           channel: ${{ github.event.client_payload.slack_channel }}
           thread_ts: ${{ github.event.client_payload.slack_thread_ts }}
-          component: spa-${{ matrix.app }}
+          component: spa-${{ steps.app.outputs.name }}
           image_tag: ${{ github.event.client_payload.image_tag }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
-          preview_url: https://${{ matrix.app }}.dust.tt
+          preview_url: https://${{ steps.app.outputs.name }}.dust.tt
 
       - name: Notify Deploy Failure
         if: ${{ failure() && github.event.client_payload.slack_thread_ts }}
@@ -96,6 +146,6 @@ jobs:
           step: "failure"
           channel: ${{ github.event.client_payload.slack_channel }}
           thread_ts: ${{ github.event.client_payload.slack_thread_ts }}
-          component: spa-${{ matrix.app }}
+          component: spa-${{ steps.app.outputs.name }}
           image_tag: ${{ github.event.client_payload.image_tag || 'unknown' }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}

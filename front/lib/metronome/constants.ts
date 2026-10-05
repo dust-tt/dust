@@ -14,21 +14,13 @@ export function awuFromMicroUsd(microUsd: number): number {
 
 // --- DEV (sandbox) ---
 
-// Metrics
-const DEV_METRIC_LLM_PROVIDER_COST_PROGRAMMATIC =
-  "e02846b3-956c-48bc-9fd1-162061aed624";
 const DEV_METRIC_TOOL_INVOCATIONS_V2 = "0a35a534-0d1c-4ed5-8177-358d9dff71a5";
 const DEV_METRIC_LLM_PROVIDER_COST_AWU_V2 =
   "a6abefc5-d749-4757-a139-336b53c837f5";
 
 // Products
 const DEV_PRODUCT_PROGRAMMATIC_USAGE = "daaf92ec-d0a7-444d-972e-a2d48c7edd0c";
-const DEV_PRODUCT_AI_USAGE = "8b2baf8c-5edc-451d-877f-0eeef554afa9";
-const DEV_PRODUCT_TOOL_USAGE = "995bcf0a-801f-4883-bde4-ef6ff39ffbb3";
 const DEV_PRODUCT_WORKSPACE_SEAT = "e1532e1d-4964-4656-b6db-070fafafc44c";
-const DEV_PRODUCT_PRO_SEAT = "db03586f-9e8d-4978-9a62-f51193182be3";
-const DEV_PRODUCT_MAX_SEAT = "51b4ea2f-c4ed-4903-aba6-486d0bf61ac0";
-const DEV_PRODUCT_FREE_SEAT = "e3302b51-66af-40ad-ac0e-544fc38ccfa9";
 const DEV_PRODUCT_FREE_CREDITS = "04f41dd1-ba27-42e3-93d5-6121712a4b67";
 const DEV_PRODUCT_EXCESS_CREDITS = "7e74d48b-44be-4e9c-9543-7136e6da8d96";
 const DEV_PRODUCT_PREPAID_COMMIT = "5f4331b7-4bf6-488b-9a0c-51bd139ac91c";
@@ -40,21 +32,13 @@ const DEV_PRODUCT_PLATFORM_FEE = "11e635e1-0fb9-44e1-9499-690d5ee27ace";
 
 // --- PROD (production) — TODO: update after running setup script in production ---
 
-// Metrics
-const PROD_METRIC_LLM_PROVIDER_COST_PROGRAMMATIC =
-  "3ad68bfb-7a59-49ad-b29e-54700fa0e6fa";
 const PROD_METRIC_TOOL_INVOCATIONS_V2 = "f32cc30e-c52f-4dc0-bde0-cef343bdc6d3";
 const PROD_METRIC_LLM_PROVIDER_COST_AWU_V2 =
   "ffb1ecce-6c2b-4f16-add1-5da81baec0a7";
 
 // Products
 const PROD_PRODUCT_PROGRAMMATIC_USAGE = "cb21a6da-9790-4ab4-bb2d-0a82d5fdf4f3";
-const PROD_PRODUCT_AI_USAGE = "24f8b558-5ad1-4c41-890a-0e6ccf3ba0ea";
-const PROD_PRODUCT_TOOL_USAGE = "d44f373d-730f-424f-8866-241b61157b68";
 const PROD_PRODUCT_WORKSPACE_SEAT = "5c2e2986-1305-4406-96a2-2296e66b5a25";
-const PROD_PRODUCT_PRO_SEAT = "19934ee2-fcf4-40a2-a57a-24f75b0c2b22";
-const PROD_PRODUCT_MAX_SEAT = "8a92cf6a-8e0b-416c-9b46-9c715eff0c89";
-const PROD_PRODUCT_FREE_SEAT = "198511a4-2b27-44b3-b1d1-9839ae6c2b23";
 const PROD_PRODUCT_FREE_CREDITS = "7379999c-5492-4e68-968f-345a26f6da63";
 const PROD_PRODUCT_EXCESS_CREDITS = "26f0023b-e123-4154-a82d-104451fba068";
 const PROD_PRODUCT_PREPAID_COMMIT = "1408c9fc-dea1-4269-bd6d-1bc0aa1f1218";
@@ -156,8 +140,6 @@ export type ContractCreditType =
 // transition is rejected. Re-granting as a plain prepaid commit keeps it in the
 // prepaid tier, ordered after the seat allocation by priority.
 export const CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY = "DUST_CARRY_ON_RENEWAL";
-
-export const CARRY_ON_RENEWAL_FOREVER_VALUE = "forever";
 
 // Custom fields stamped on AWU pool commits (admin grants via
 // `grantAwuCreditsPlugin` and self-serve top-ups via `addPaymentGatedCommitToContract`)
@@ -262,12 +244,6 @@ export const getCreditTypeAwuId = () =>
 export const getCreditTypeProgrammaticUsdId = () =>
   devOrProd(DEV_CREDIT_TYPE_PROG_USD_ID, PROD_CREDIT_TYPE_PROG_USD_ID);
 
-// Metrics
-export const getMetricLlmProviderCostProgrammaticId = () =>
-  devOrProd(
-    DEV_METRIC_LLM_PROVIDER_COST_PROGRAMMATIC,
-    PROD_METRIC_LLM_PROVIDER_COST_PROGRAMMATIC
-  );
 export const getMetricToolInvocationsId = () =>
   devOrProd(DEV_METRIC_TOOL_INVOCATIONS_V2, PROD_METRIC_TOOL_INVOCATIONS_V2);
 export const getMetricLlmProviderCostAwuId = () =>
@@ -279,18 +255,8 @@ export const getMetricLlmProviderCostAwuId = () =>
 // Products
 export const getProductProgrammaticUsageId = () =>
   devOrProd(DEV_PRODUCT_PROGRAMMATIC_USAGE, PROD_PRODUCT_PROGRAMMATIC_USAGE);
-export const getProductAiUsageId = () =>
-  devOrProd(DEV_PRODUCT_AI_USAGE, PROD_PRODUCT_AI_USAGE);
-export const getProductToolUsageId = () =>
-  devOrProd(DEV_PRODUCT_TOOL_USAGE, PROD_PRODUCT_TOOL_USAGE);
 export const getProductWorkspaceSeatId = () =>
   devOrProd(DEV_PRODUCT_WORKSPACE_SEAT, PROD_PRODUCT_WORKSPACE_SEAT);
-export const getProductProSeatId = () =>
-  devOrProd(DEV_PRODUCT_PRO_SEAT, PROD_PRODUCT_PRO_SEAT);
-export const getProductMaxSeatId = () =>
-  devOrProd(DEV_PRODUCT_MAX_SEAT, PROD_PRODUCT_MAX_SEAT);
-export const getProductFreeSeatId = () =>
-  devOrProd(DEV_PRODUCT_FREE_SEAT, PROD_PRODUCT_FREE_SEAT);
 export const getProductFreeCreditId = () =>
   devOrProd(DEV_PRODUCT_FREE_CREDITS, PROD_PRODUCT_FREE_CREDITS);
 export const getProductExcessCreditsId = () =>
@@ -337,8 +303,3 @@ export const MAX_SEAT_MONTHLY_AWU_CREDITS = 40000;
 // Seat commit/credit priorities
 export const SEAT_PRIORITY_SUBSCRIPTION_COMMIT = 200;
 export const SEAT_PRIORITY_COUPON_CREDIT = 300;
-
-// 80% threshold for near-limit warnings: applies to both cap consumption
-// (consumed ≥ 80% of effectiveCapAwuCredits) and seat depletion (≤ 20%
-// remaining = 80% used).
-export const NEAR_LIMIT_FRACTION = 0.8;

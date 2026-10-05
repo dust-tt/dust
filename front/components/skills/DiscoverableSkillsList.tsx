@@ -1,6 +1,5 @@
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getSkillAvatarIcon } from "@app/lib/skill";
-import { useSearchSkills, useSkills } from "@app/lib/swr/skill_configurations";
+import { useSearchSkills } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, Spinner, Tooltip } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -12,20 +11,11 @@ interface DiscoverableSkillsListProps {
 }
 
 export function DiscoverableSkillsList({ owner }: DiscoverableSkillsListProps) {
-  const { hasFeature } = useFeatureFlags();
-  const useSkillSearch = hasFeature("skills_search");
   const [pageIndex, setPageIndex] = useState(0);
 
-  const { skills: listedSkills, isSkillsLoading: isListedSkillsLoading } =
-    useSkills({
-      owner,
-      status: "active",
-      availability: "users_and_agents",
-      disabled: useSkillSearch,
-    });
   const {
-    skills: searchSkills,
-    isSkillsLoading: isSearchSkillsLoading,
+    skills: discoverableSkills,
+    isSkillsLoading: isDiscoverableLoading,
     hasMore,
   } = useSearchSkills({
     owner,
@@ -33,12 +23,7 @@ export function DiscoverableSkillsList({ owner }: DiscoverableSkillsListProps) {
     offset: pageIndex * DISCOVERABLE_SKILLS_PAGE_SIZE,
     limit: DISCOVERABLE_SKILLS_PAGE_SIZE,
     filters: { availability: ["users_and_agents"] },
-    disabled: !useSkillSearch,
   });
-  const discoverableSkills = useSkillSearch ? searchSkills : listedSkills;
-  const isDiscoverableLoading = useSkillSearch
-    ? isSearchSkillsLoading
-    : isListedSkillsLoading;
 
   return (
     <div className="flex flex-col gap-4">
@@ -68,7 +53,7 @@ export function DiscoverableSkillsList({ owner }: DiscoverableSkillsListProps) {
           })}
         </div>
       )}
-      {useSkillSearch && (pageIndex > 0 || hasMore) && (
+      {(pageIndex > 0 || hasMore) && (
         <div className="flex items-center gap-2">
           <Button
             label="Previous"

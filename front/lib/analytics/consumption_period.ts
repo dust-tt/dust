@@ -1,6 +1,8 @@
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import { formatDate } from "@app/lib/i18n/format";
 import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 import { CONSUMPTION_SCOPE_FILTER_KEYS } from "@app/types/api/analytics/consumption";
+import type { SupportedLocale } from "@app/types/locale";
 
 export const CONSUMPTION_PERIOD_DAY_OPTIONS = [7, 30, 90] as const;
 
@@ -54,12 +56,15 @@ export function consumptionGranularityLabel(
   return CONSUMPTION_GRANULARITY_LABELS[granularity];
 }
 
-export function formatConsumptionDate(date: string | number): string {
-  return new Date(date).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
+export function formatConsumptionDate(
+  date: string | number,
+  locale: SupportedLocale
+): string {
+  return formatDate(
+    new Date(date),
+    { month: "short", day: "numeric", timeZone: "UTC" },
+    locale
+  );
 }
 
 // The counterpart the used share of the cap is read against.

@@ -23,11 +23,11 @@ seed workspace (skills, admin member) from the scenario
 3. **Skill state**: the skill is already enabled, so its instructions are injected as the same
    `<dust_system>` message production uses, and the agent only sees the tools of the two servers
    the skill equips (`building_agents_and_skills`, `workspace_management`), under their prefixed
-   names (`workspace_management__list_skills`, ...). `stake: "high"` tools are left out since
+   names (`workspace_management__search_skills`, ...). `stake: "high"` tools are left out since
    production would ask the user before running them.
 4. **Tool calls run for real** (`lib/tool-runner.ts`): the executor validates the arguments
    against the tool schema, calls the production handler with the scenario's authenticator, and
-   feeds the text result back. Nothing is mocked: `list_skills` lists the seeded skills,
+   feeds the text result back. Nothing is mocked: `search_skills` searches the seeded skills,
    `describe_skill` returns their stored block HTML, `suggest` records a real batch of
    suggestions.
 5. **Assertions**: the *final* tool call (last non-exploratory one, i.e. the last `suggest`) must
@@ -92,7 +92,8 @@ RUN_CONVERSATIONAL_BUILDING_EVAL=true VERBOSE=true \
 
 ## Adding tests
 
-1. Create or edit a suite in `test-suites/` and export it from `test-suites/index.ts`.
+1. Create or edit a suite in `test-suites/` and export it from `test-suites/index.ts`. Reusable
+   assets (skills descriptions and instructions...) live in `test-suites/assets/`.
 2. To assert on another kind of change, add a `FinalToolCallAssertion` variant
    in `lib/types.ts` + `lib/assertions.ts`.
    Tools added to either server are picked up automatically by the tool runner.

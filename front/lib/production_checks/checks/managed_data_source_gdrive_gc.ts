@@ -5,7 +5,10 @@ import {
 } from "@app/lib/production_checks/utils";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import {
+  concurrentExecutor,
+  withPeriodicHeartbeat,
+} from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { googleDriveGarbageCollectorWorkflowId } from "@app/types/connectors/workflows";
 import type { ActionLink, CheckFunction } from "@app/types/production_checks";
@@ -17,6 +20,7 @@ import { QueryTypes } from "sequelize";
 // Below this share of a data source's documents, a non-empty GC backlog is treated as
 // benign lag between GC runs rather than a GC failure.
 const NOT_DELETED_RATIO_THRESHOLD = 0.05;
+const HEARTBEAT_INTERVAL_MS = 60_000;
 
 async function isGarbageCollectorRunning(
   client: Client,
@@ -72,7 +76,7 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
   const temporalClient = await getTemporalClientForConnectorsNamespace();
 
   const CONCURRENCY = 8;
-  await concurrentExecutor(
+  const scanPromise = concurrentExecutor(
     GdriveDataSources,
     async (ds) => {
       logger.info(
@@ -190,4 +194,8 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
     },
     { concurrency: CONCURRENCY }
   );
+  await withPeriodicHeartbeat(() => scanPromise, {
+    intervalMs: HEARTBEAT_INTERVAL_MS,
+    heartbeatFn: heartbeat,
+  });
 };

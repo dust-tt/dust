@@ -10,6 +10,7 @@ import {
   ProviderPassthroughView,
 } from "@app/components/poke/conversation/ProviderPassthroughView";
 import { ToolActionView } from "@app/components/poke/conversation/ToolActionView";
+import { formatDateTime } from "@app/lib/i18n/format";
 import type { AgentMessageStatus } from "@app/types/assistant/conversation";
 import type { PokeAgentMessageType } from "@app/types/poke";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -206,7 +207,7 @@ export const AgentMessageView = ({
                 color={AGENT_STATUS[message.status]?.color ?? "primary"}
               />
               <MetadataItem label="date">
-                {new Date(message.created).toLocaleString()}
+                {formatDateTime(message.created)}
               </MetadataItem>
               <MetadataItem label="version">{message.version}</MetadataItem>
               <MetadataItem label="message" mono>

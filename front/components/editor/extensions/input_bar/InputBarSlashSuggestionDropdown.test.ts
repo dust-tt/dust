@@ -18,6 +18,7 @@ import {
 import type { InputBarSlashCommand } from "./InputBarSlashSuggestionTypes";
 import {
   getAvailableInputBarSlashCommands,
+  getInputBarSlashMenuMode,
   INPUT_BAR_SLASH_COMMANDS,
 } from "./InputBarSlashSuggestionTypes";
 
@@ -310,5 +311,25 @@ describe("resolveSlashSubMenuFromQuery", () => {
     expect(
       resolveSlashSubMenuFromQuery({ commandItems, query: "compact fab" })
     ).toBeNull();
+  });
+});
+
+describe("getInputBarSlashMenuMode", () => {
+  it("offers the command list with capabilities", () => {
+    expect(getInputBarSlashMenuMode(["capabilities"])).toBe("commands");
+    expect(getInputBarSlashMenuMode(["attachment", "capabilities"])).toBe(
+      "commands"
+    );
+  });
+
+  it("locks the menu to the browser with attachments alone", () => {
+    expect(getInputBarSlashMenuMode(["attachment", "agents-list"])).toBe(
+      "attach-only"
+    );
+  });
+
+  it("offers no menu with neither", () => {
+    expect(getInputBarSlashMenuMode([])).toBeNull();
+    expect(getInputBarSlashMenuMode(["model-picker"])).toBeNull();
   });
 });

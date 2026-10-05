@@ -5,6 +5,30 @@ import { slugify } from "@app/types/shared/utils/string_utils";
 
 const MAX_TOOL_NAME_LENGTH = 64;
 
+// A prefix shorter than this is not worth keeping: `tryGetPrefixedToolName` drops it entirely.
+const MIN_MEANINGFUL_PREFIX_LENGTH = 3;
+
+function slugifyToolName(originalName: string): string {
+  return slugify(originalName).replaceAll(
+    // Remove anything that is not a-zA-Z0-9_.- because it's not supported by the LLMs.
+    /[^a-zA-Z0-9_.-]/g,
+    ""
+  );
+}
+
+/**
+ * True when the tool's slugified name leaves no room for a meaningful server-name prefix plus
+ * separator, in which case `tryGetPrefixedToolName` returns the bare tool name whatever the
+ * server is called.
+ */
+export function wouldDropToolNamePrefix(originalName: string): boolean {
+  const availableSpace =
+    MAX_TOOL_NAME_LENGTH - slugifyToolName(originalName).length;
+  return (
+    availableSpace < MIN_MEANINGFUL_PREFIX_LENGTH + TOOL_NAME_SEPARATOR.length
+  );
+}
+
 // Some providers (e.g. Gemini) require function/tool names to start with a letter or an
 // underscore, while slugify can yield a leading digit (e.g. "1Password" -> "1password"). Prefix an
 // underscore in that case so the name is valid everywhere.
@@ -28,11 +52,7 @@ export function tryGetPrefixedToolName(
   originalName: string
 ): Result<string, Error> {
   const slugifiedConfigName = getToolNamePrefix(serverName);
-  const slugifiedOriginalName = slugify(originalName).replaceAll(
-    // Remove anything that is not a-zA-Z0-9_.- because it's not supported by the LLMs.
-    /[^a-zA-Z0-9_.-]/g,
-    ""
-  );
+  const slugifiedOriginalName = slugifyToolName(originalName);
 
   const separator = TOOL_NAME_SEPARATOR;
 
@@ -45,21 +65,49 @@ export function tryGetPrefixedToolName(
     );
   }
 
-  // Calculate if we have enough room for a meaningful prefix (3 chars) plus separator
-  const minPrefixLength = 3 + separator.length;
-  const availableSpace = MAX_TOOL_NAME_LENGTH - slugifiedOriginalName.length;
-
   // If we don't have enough room for a meaningful prefix, just return the original name
-  if (availableSpace < minPrefixLength) {
+  if (wouldDropToolNamePrefix(originalName)) {
     return new Ok(ensureValidLeadingChar(slugifiedOriginalName));
   }
 
   // Calculate the maximum allowed length for the config name portion
-  const maxConfigNameLength = availableSpace - separator.length;
+  const maxConfigNameLength =
+    MAX_TOOL_NAME_LENGTH - slugifiedOriginalName.length - separator.length;
   const truncatedConfigName = slugifiedConfigName.slice(0, maxConfigNameLength);
   const prefixedName = `${truncatedConfigName}${separator}${slugifiedOriginalName}`;
 
   return new Ok(ensureValidLeadingChar(prefixedName));
+}
+
+/**
+ * Computes the model-facing name of each tool under `serverName` and partitions the results by
+ * prefixing regime: names too long to carry a server-name prefix (see `wouldDropToolNamePrefix`)
+ * land in `droppedPrefixNames`, the others in `prefixedNames` along with the original name needed
+ * to re-prefix them under a different server name. Tool names too long to be used at all (`Err`
+ * from `tryGetPrefixedToolName`) are skipped.
+ */
+export function getModelFacingToolNames(
+  serverName: string,
+  toolNames: readonly string[]
+): {
+  droppedPrefixNames: Set<string>;
+  prefixedNames: { originalName: string; prefixedName: string }[];
+} {
+  const droppedPrefixNames = new Set<string>();
+  const prefixedNames: { originalName: string; prefixedName: string }[] = [];
+
+  for (const originalName of toolNames) {
+    const prefixedName = tryGetPrefixedToolName(serverName, originalName);
+    if (prefixedName.isErr()) {
+      continue;
+    }
+    if (wouldDropToolNamePrefix(originalName)) {
+      droppedPrefixNames.add(prefixedName.value);
+    } else {
+      prefixedNames.push({ originalName, prefixedName: prefixedName.value });
+    }
+  }
+  return { droppedPrefixNames, prefixedNames };
 }
 
 // Throwing variant for call sites passing compile-time constant names (e.g.

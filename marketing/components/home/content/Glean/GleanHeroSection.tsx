@@ -195,7 +195,6 @@ export function GleanHeroSection({
                   TRACKING_AREAS.COMPETITIVE,
                   "glean_hero_expert",
                   () => {
-                    // eslint-disable-next-line react-hooks/immutability
                     window.location.href = appendUTMParams(secondaryButtonLink);
                   }
                 )}

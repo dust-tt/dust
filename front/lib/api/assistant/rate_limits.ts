@@ -1,6 +1,7 @@
 import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import type { Authenticator } from "@app/lib/auth";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
+import type { GroupResource } from "@app/lib/resources/group_resource";
 import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import {
   expireRateLimiterKey,
@@ -317,6 +318,13 @@ export const makeSpendLimitAwuCreditsRateLimitKeyForUser = (
   user: UserType
 ) => {
   return `workspace:${owner.id}:user:${user.id}:spend_limit_awu_microcredit_count`;
+};
+
+export const makeGroupLimitAwuCreditsRateLimitKeyForGroup = (
+  owner: LightWorkspaceType,
+  group: GroupResource
+) => {
+  return `workspace:${owner.id}:group:${group.id}:group_limit_awu_microcredit_count`;
 };
 
 // Fixed-window bounds for the per-user spend cap over a Metronome contract

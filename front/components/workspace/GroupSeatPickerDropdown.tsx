@@ -2,6 +2,7 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { BulkChangeSeatModal } from "@app/components/workspace/BulkChangeSeatModal";
 import { seatTypeDisplayName } from "@app/components/workspace/billing/seatTypeUtils";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
+import { formatNumber } from "@app/lib/i18n/format";
 import {
   useGroupSeatMappingPreview,
   useUpdateGroupGrantedSeatType,
@@ -77,9 +78,7 @@ export function GroupSeatPickerDropdown({
         title: "Remove group seat",
         message: `Members of ${groupName} will lose their ${seatTypeDisplayName(
           grantedSeatType
-        )} seat at the end of the current billing period. Members who also get this seat (or a higher one) from another group keep it. This affects up to ${memberCount.toLocaleString(
-          "en-US"
-        )} member${memberCount === 1 ? "" : "s"}.`,
+        )} seat at the end of the current billing period. Members who also get this seat (or a higher one) from another group keep it. This affects up to ${formatNumber(memberCount)} member${memberCount === 1 ? "" : "s"}.`,
         validateLabel: "Remove seat",
         validateVariant: "warning",
       });

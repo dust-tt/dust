@@ -3,10 +3,11 @@ import type { WebhookSourceFormValues } from "@app/components/triggers/forms/web
 import { WebhookEndpointUsageInfo } from "@app/components/triggers/WebhookEndpointUsageInfo";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
+import { formatDate } from "@app/lib/i18n/format";
+import { WEBHOOK_PRESETS } from "@app/lib/triggers/webhook_presets";
+import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/lib/triggers/webhooks_client_side";
 import { buildWebhookUrl, normalizeWebhookIcon } from "@app/lib/webhook_source";
 import type { WebhookSourceViewForAdminType } from "@app/types/triggers/webhooks";
-import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
-import { CLIENT_SIDE_WEBHOOK_PRESETS } from "@app/types/triggers/webhooks_client_side";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ActionIcons,
@@ -47,9 +48,9 @@ const getEditedLabel = (webhookSourceView: WebhookSourceViewForAdminType) => {
   if (webhookSourceView.editedByUser.editedAt === null) {
     return `Edited by ${webhookSourceView.editedByUser.fullName}`;
   }
-  const editedAtDateString = new Date(
+  const editedAtDateString = formatDate(
     webhookSourceView.editedByUser.editedAt
-  ).toLocaleDateString();
+  );
   if (webhookSourceView.editedByUser.fullName === null) {
     return `Edited on ${editedAtDateString}`;
   }
@@ -177,7 +178,7 @@ export function WebhookSourceDetailsInfo({
         <div>
           <Page.H variant="h6">Webhook URL</Page.H>
           <div className="flex items-center space-x-2">
-            <p className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
+            <p className="dd-privacy-mask min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
               {webhookUrl}
             </p>
             <IconButton
@@ -230,7 +231,7 @@ export function WebhookSourceDetailsInfo({
             <div className="flex items-center space-x-2">
               <p
                 className={cn(
-                  "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-mono",
+                  "dd-privacy-mask min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-mono",
                   {
                     "select-none blur-sm": !isSecretVisible,
                   }

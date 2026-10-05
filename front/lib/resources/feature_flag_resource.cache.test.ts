@@ -41,15 +41,18 @@ describe("feature flag resource caches", () => {
     await expect(GlobalFeatureFlagResource.listAll()).resolves.toEqual([]);
 
     await GlobalFeatureFlagResource.setRolloutPercentage(
-      "labs_transcripts",
+      "dummy_feature_for_flag_testing",
       50
     );
     const enabled = await GlobalFeatureFlagResource.listAll();
     expect(enabled).toHaveLength(1);
-    expect(enabled[0]?.name).toBe("labs_transcripts");
+    expect(enabled[0]?.name).toBe("dummy_feature_for_flag_testing");
     expect(enabled[0]?.rolloutPercentage).toBe(50);
 
-    await GlobalFeatureFlagResource.setRolloutPercentage("labs_transcripts", 0);
+    await GlobalFeatureFlagResource.setRolloutPercentage(
+      "dummy_feature_for_flag_testing",
+      0
+    );
     await expect(GlobalFeatureFlagResource.listAll()).resolves.toEqual([]);
   });
 

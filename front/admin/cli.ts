@@ -8,6 +8,10 @@ import {
 } from "@app/lib/api/data_sources";
 import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import {
+  getWebhookRequestPayloadFromGCS,
+  processWebhookRequest,
+} from "@app/lib/api/triggers/webhook";
 import { Authenticator } from "@app/lib/auth";
 import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
@@ -15,7 +19,6 @@ import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
-import { LabsTranscriptsConfigurationResource } from "@app/lib/resources/labs_transcripts_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -24,26 +27,15 @@ import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resou
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
-import {
-  getWebhookRequestPayloadFromGCS,
-  processWebhookRequest,
-} from "@app/lib/triggers/webhook";
 import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
-import {
-  launchRetrieveTranscriptsWorkflow,
-  stopRetrieveTranscriptsWorkflow,
-} from "@app/temporal/labs/transcripts/client";
 import { REGISTERED_CHECKS } from "@app/temporal/production_checks/activities";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
-import { labsTranscriptsProviders } from "@app/types/labs";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { isAssignableRoleType } from "@app/types/user";
-import fs from "fs/promises";
 import parseArgs from "minimist";
-import path from "path";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
@@ -79,7 +71,6 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
         planCode: FREE_UPGRADED_PLAN_CODE,
         endDate: null,
       });
-      await workspace("show", args);
       return;
     }
 
@@ -96,7 +87,6 @@ const workspace = async (command: string, args: parseArgs.ParsedArgs) => {
       await SubscriptionResource.internalSubscribeWorkspaceToFreeNoPlan({
         workspaceId: w.sId,
       });
-      await workspace("show", args);
       return;
     }
 
@@ -598,177 +588,6 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
   }
 };
 
-// The active IDs file is a JSON array of string configuration sIds, e.g.:
-// ["trc_...", "trc_...", ...]
-// A config is considered 'active' if isActive === true OR dataSourceViewId is set (truthy).
-// You can override the path with --activeIdsFile=/path/to/file.json
-function getActiveIdsFile(args: parseArgs.ParsedArgs) {
-  return args.activeIdsFile
-    ? path.resolve(args.activeIdsFile)
-    : path.join(__dirname, "active_labs_workflow_ids.json");
-}
-
-const transcripts = async (command: string, args: parseArgs.ParsedArgs) => {
-  const auth = await Authenticator.internalAdminForWorkspace(args.wId);
-  switch (command) {
-    case "stop": {
-      if (!args.cId) {
-        throw new Error("Missing --cId argument");
-      }
-      const transcriptsConfiguration =
-        await LabsTranscriptsConfigurationResource.fetchById(auth, args.cId);
-
-      if (!transcriptsConfiguration) {
-        throw new Error(
-          `Transcripts configuration not found: cId='${args.cId}'`
-        );
-      }
-
-      await stopRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-
-      logger.info(
-        {
-          transcriptsConfiguration,
-        },
-        "Transcript retrieval workflow stopped."
-      );
-
-      return;
-    }
-    case "start": {
-      if (!args.cId) {
-        throw new Error("Missing --cId argument");
-      }
-      const transcriptsConfiguration =
-        await LabsTranscriptsConfigurationResource.fetchById(auth, args.cId);
-
-      if (!transcriptsConfiguration) {
-        throw new Error(
-          `Transcripts configuration not found: cId='${args.cId}'`
-        );
-      }
-
-      await launchRetrieveTranscriptsWorkflow(transcriptsConfiguration);
-      await transcriptsConfiguration.setStatus("active");
-
-      logger.info(
-        {
-          transcriptsConfiguration,
-        },
-        "Transcript retrieval workflow started."
-      );
-      return;
-    }
-    case "pause-all": {
-      const execute = !!args.execute;
-      const activeIdsFile = getActiveIdsFile(args);
-      logger.info(
-        `Pausing all LabsTranscripts workflows and recording active ones... (activeIdsFile: ${activeIdsFile})`
-      );
-      const allWorkspaces = await WorkspaceResource.listAll();
-      const activeConfigIds: string[] = [];
-      for (const ws of allWorkspaces) {
-        const configs =
-          await LabsTranscriptsConfigurationResource.findByWorkspaceId(ws.id);
-        for (const config of configs) {
-          if (config.status === "active" || !!config.dataSourceViewId) {
-            activeConfigIds.push(config.sId);
-            if (execute) {
-              await stopRetrieveTranscriptsWorkflow(config);
-            } else {
-              logger.info(
-                `[DRY RUN] Would stop workflow for config sId=${config.sId}`
-              );
-            }
-          }
-        }
-      }
-      await fs.writeFile(
-        activeIdsFile,
-        JSON.stringify(activeConfigIds, null, 2)
-      );
-      logger.info(
-        `Paused all workflows. Active workflow sIds recorded: ${activeConfigIds.length}`
-      );
-      return;
-    }
-    case "restart-active": {
-      const execute = !!args.execute;
-      const activeIdsFile = getActiveIdsFile(args);
-      logger.info(
-        `Restarting only previously active LabsTranscripts workflows... (activeIdsFile: ${activeIdsFile})`
-      );
-      let activeConfigIds: string[] = [];
-      try {
-        const data = await fs.readFile(activeIdsFile, "utf-8");
-        activeConfigIds = JSON.parse(data);
-      } catch (e) {
-        logger.error(`Could not read ${activeIdsFile}: ${e}`);
-        process.exit(1);
-      }
-      for (const sId of activeConfigIds) {
-        const config = await LabsTranscriptsConfigurationResource.fetchById(
-          auth,
-          sId
-        );
-        if (!config) {
-          logger.warn(`Config sId=${sId} not found, skipping.`);
-          continue;
-        }
-        if (execute) {
-          await launchRetrieveTranscriptsWorkflow(config);
-        } else {
-          logger.info(
-            `[DRY RUN] Would restart workflow for config sId=${config.sId}`
-          );
-        }
-      }
-      logger.info(`Restarted ${activeConfigIds.length} workflows.`);
-      return;
-    }
-    case "stop-all": {
-      const provider = labsTranscriptsProviders.find(
-        (p) => p === args.provider
-      );
-      if (!provider) {
-        throw new Error(
-          `Missing or invalid --provider argument. Valid values: ${labsTranscriptsProviders.join(", ")}`
-        );
-      }
-
-      const providerConfigs =
-        await LabsTranscriptsConfigurationResource.listByWorkspaceAndProvider({
-          auth,
-          provider,
-        });
-
-      if (providerConfigs.length === 0) {
-        logger.info(
-          `No transcript configurations found for provider '${provider}' in workspace '${args.wId}'.`
-        );
-        return;
-      }
-
-      let stoppedCount = 0;
-      for (const config of providerConfigs) {
-        if (config.isActive()) {
-          await stopRetrieveTranscriptsWorkflow(config);
-          stoppedCount++;
-          logger.info(
-            { configId: config.sId },
-            `Stopped transcript workflow for config ${config.sId}.`
-          );
-        }
-      }
-
-      logger.info(
-        `Stopped ${stoppedCount}/${providerConfigs.length} workflows for provider '${provider}'.`
-      );
-      return;
-    }
-  }
-};
-
 const productionCheck = async (command: string, args: parseArgs.ParsedArgs) => {
   switch (command) {
     case "run": {
@@ -951,7 +770,6 @@ const CLI_OBJECT_TYPES = [
   "data-source",
   "space",
   "conversation",
-  "transcripts",
   "production-check",
   "api-key",
   "trigger",
@@ -997,8 +815,6 @@ const main = async () => {
       return;
     case "conversation":
       return conversation(command, argv);
-    case "transcripts":
-      return transcripts(command, argv);
     case "production-check":
       return productionCheck(command, argv);
     case "api-key":

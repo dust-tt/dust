@@ -251,6 +251,11 @@ describe("RemoteMCPServerResource.discoverOAuthMetadata egress routing", () => {
       expectedAgent: egressMocks.staticIPAgent,
     },
     {
+      label: "the static IP proxy for a hardcoded official remote MCP URL",
+      serverUrl: () => "https://bigquery.googleapis.com/mcp",
+      expectedAgent: egressMocks.staticIPAgent,
+    },
+    {
       label: "the untrusted egress proxy for a server outside verified domains",
       serverUrl: () => "https://mcp.unverified.example.com/mcp",
       expectedAgent: egressMocks.untrustedAgent,
@@ -487,5 +492,27 @@ describe("RemoteMCPServerResource heavy attributes contract", () => {
     });
 
     expect(light.getCachedTools().map((t) => t.name)).toEqual(["tool_new"]);
+  });
+});
+
+describe("RemoteMCPServerResource.toJSON", () => {
+  it("redacts the shared secret and header values of a server updated just now", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    await SpaceFactory.system(workspace);
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const server = await RemoteMCPServerFactory.create(workspace);
+
+    await server.updateMetadata(auth, {
+      sharedSecret: "sk-live-abcdef1234",
+      customHeaders: { "X-Api-Key": "key-9876", "X-Pin": "42" },
+      lastSyncAt: new Date(),
+    });
+
+    const json = server.toJSON();
+    expect(json.sharedSecret).toBe("••••1234");
+    expect(json.customHeaders).toEqual({
+      "X-Api-Key": "••••••••",
+      "X-Pin": "••••••••",
+    });
   });
 });

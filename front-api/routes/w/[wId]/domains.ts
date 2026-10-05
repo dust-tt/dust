@@ -7,8 +7,8 @@ import {
   generateWorkOSAdminPortalUrl,
   getOrCreateWorkOSOrganization,
 } from "@app/lib/api/workos/organization";
-import { removeWorkOSOrganizationDomain } from "@app/lib/api/workos/organization_primitives";
 import type { GetWorkspaceResponseBody } from "@app/lib/api/workspace";
+import { removeWorkspaceDomain } from "@app/lib/api/workspace_has_domains";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import logger from "@app/logger/logger";
@@ -106,16 +106,16 @@ app.delete(
 
     const body = ctx.req.valid("json");
 
-    const removeDomainRes = await removeWorkOSOrganizationDomain(
-      auth.getNonNullableWorkspace(),
-      { domain: body.domain }
-    );
+    const removeDomainRes = await removeWorkspaceDomain(auth, {
+      domain: body.domain,
+    });
 
     if (removeDomainRes.isErr()) {
       logger.error(
         {
           error: removeDomainRes.error,
           domain: body.domain,
+          workspaceId: auth.getNonNullableWorkspace().sId,
         },
         "Failed to remove WorkOS organization domain"
       );
@@ -128,17 +128,6 @@ app.delete(
         },
       });
     }
-
-    const workspace = auth.getNonNullableWorkspace();
-    void emitAuditLogEvent({
-      auth,
-      action: "domain.removed",
-      targets: [buildAuditLogTarget("workspace", workspace)],
-      context: getAuditLogContext(auth),
-      metadata: {
-        domain: body.domain,
-      },
-    });
 
     return ctx.body(null, 204);
   }

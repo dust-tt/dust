@@ -83,13 +83,7 @@ import { ConversationView } from "../components/ConversationView";
 import { CreateRoomDialog } from "../components/CreateRoomDialog";
 import { GroupConversationView } from "../components/GroupConversationView";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
-import {
-  type AgentSort,
-  type AgentType,
-  NewConversation,
-  NewConversationActionBar,
-  type WelcomeAgentTab,
-} from "../components/NewConversation";
+import { NewConversation } from "../components/NewConversation";
 import {
   PanelLayout,
   PanelLayoutNav,
@@ -269,14 +263,6 @@ function Pods() {
   // The Build screens live in the Inbox story, so here the nav only highlights.
   const [buildNavItem, setBuildNavItem] = useState("agents");
   const [searchText, setSearchText] = useState("");
-  const [welcomeAgentTab, setWelcomeAgentTab] =
-    useState<WelcomeAgentTab>("favorites");
-  const [welcomeAgentSort, setWelcomeAgentSort] = useState<AgentSort>("custom");
-  const [welcomeAgentType, setWelcomeAgentType] = useState<AgentType>("all");
-  const [welcomeAgentCategory, setWelcomeAgentCategory] = useState<
-    string | null
-  >(null);
-  const [isWelcomeToolbarPinned, setIsWelcomeToolbarPinned] = useState(false);
   const [inboxHideTriggered] = useState(false);
   const [spaceNotificationPreferences, setSpaceNotificationPreferences] =
     useState<Map<string, PodNotificationCondition>>(new Map());
@@ -1155,21 +1141,7 @@ function Pods() {
         />
       );
     // welcome
-    return (
-      <NewConversation
-        greeting={greeting}
-        spaces={spaces}
-        agentTab={welcomeAgentTab}
-        onAgentTabChange={setWelcomeAgentTab}
-        agentSort={welcomeAgentSort}
-        onAgentSortChange={setWelcomeAgentSort}
-        agentType={welcomeAgentType}
-        onAgentTypeChange={setWelcomeAgentType}
-        agentCategory={welcomeAgentCategory}
-        onAgentCategoryChange={setWelcomeAgentCategory}
-        onToolbarPinnedChange={setIsWelcomeToolbarPinned}
-      />
-    );
+    return <NewConversation greeting={greeting} />;
   })();
 
   // ── P3 / P4 content ───────────────────────────────────────────────────────
@@ -1429,29 +1401,6 @@ function Pods() {
           size="sm"
           hasLighterFont
         />
-      );
-    if (p2View.kind === "welcome")
-      return (
-        <div
-          className={
-            "w-full transition-opacity duration-200 " +
-            (isWelcomeToolbarPinned
-              ? "opacity-100"
-              : "opacity-0 pointer-events-none")
-          }
-          aria-hidden={!isWelcomeToolbarPinned}
-        >
-          <NewConversationActionBar
-            value={welcomeAgentTab}
-            onValueChange={setWelcomeAgentTab}
-            agentSort={welcomeAgentSort}
-            onAgentSortChange={setWelcomeAgentSort}
-            agentType={welcomeAgentType}
-            onAgentTypeChange={setWelcomeAgentType}
-            agentCategory={welcomeAgentCategory}
-            onAgentCategoryChange={setWelcomeAgentCategory}
-          />
-        </div>
       );
     return null;
   })();

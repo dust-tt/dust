@@ -15,6 +15,7 @@ import SwitchContractDialog from "@app/components/poke/subscriptions/SwitchContr
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
+import { formatDate, formatTime } from "@app/lib/i18n/format";
 import { getMetronomeContractUrl } from "@app/lib/metronome/urls";
 import { FREE_NO_PLAN_CODE, isProPlanPrefix } from "@app/lib/plans/plan_codes";
 import type { PlanLimitOverride } from "@app/lib/plans/plan_limit_overrides";
@@ -47,7 +48,6 @@ import {
   SlackLogo,
 } from "@dust-tt/sparkle";
 import { Separator } from "@radix-ui/react-select";
-import { format } from "date-fns/format";
 
 type SubscriptionStatus = "paymentFailed" | "ended" | "active" | "inconsistent";
 
@@ -123,14 +123,10 @@ function prepareSubscriptionsForDisplay(
           ? getMetronomeContractUrl(metronomeCustomerId, s.metronomeContractId)
           : null,
       startDate: s.startDate
-        ? `${new Date(s.startDate).toLocaleDateString()} ${new Date(
-            s.startDate
-          ).toLocaleTimeString()}`
+        ? `${formatDate(s.startDate)} ${formatTime(s.startDate)}`
         : null,
       endDate: s.endDate
-        ? `${new Date(s.endDate).toLocaleDateString()} ${new Date(
-            s.endDate
-          ).toLocaleTimeString()}`
+        ? `${formatDate(s.endDate)} ${formatTime(s.endDate)}`
         : null,
       startDateValue: s.startDate ? new Date(s.startDate).getTime() : null,
       endDateValue: s.endDate ? new Date(s.endDate).getTime() : null,
@@ -219,7 +215,7 @@ function SubscriptionDetailsTable({
           <PokeTableCell>Start Date</PokeTableCell>
           <PokeTableCell>
             {subscription.startDate
-              ? format(subscription.startDate, "yyyy-MM-dd HH:mm")
+              ? `${formatDate(subscription.startDate)} ${formatTime(subscription.startDate)}`
               : "/"}
           </PokeTableCell>
         </PokeTableRow>
@@ -234,7 +230,7 @@ function SubscriptionDetailsTable({
                     "font-semibold text-red-500"
                 )}
               >
-                {format(subscription.endDate, "yyyy-MM-dd HH:mm")}
+                {`${formatDate(subscription.endDate)} ${formatTime(subscription.endDate)}`}
               </span>
             ) : (
               "/"

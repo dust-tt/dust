@@ -1,3 +1,4 @@
+import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
@@ -59,12 +60,23 @@ export async function seedSkillSuggestions(
         { sId: existing.sId, title },
         "Skill suggestion already exists, deleting to recreate it"
       );
+      // The batch is only reachable through its members: fetch it before deleting the suggestion.
+      const existingBatch = existing.batchId
+        ? await BatchSuggestionResource.fetchById(
+            auth,
+            BatchSuggestionResource.modelIdToSId({
+              id: existing.batchId,
+              workspaceId: existing.workspaceId,
+            })
+          )
+        : null;
       const deleteResult = await existing.delete(auth);
       if (deleteResult.isErr()) {
         throw new Error(
           `Failed to delete skill suggestion ${existing.sId}: ${deleteResult.error.message}`
         );
       }
+      await existingBatch?.delete(auth);
     }
 
     let sourceConversationIds: number[] | null = null;
@@ -75,6 +87,16 @@ export async function seedSkillSuggestions(
       );
     }
 
+    // Like the reinforcement workflow, each reinforcement suggestion gets a batch of its own.
+    const batch =
+      suggestionAsset.source === "reinforcement"
+        ? await BatchSuggestionResource.makeNew(auth, {
+            title,
+            analysis: suggestionAsset.analysis,
+            sourceConversation: null,
+          })
+        : null;
+
     const resource = await SkillSuggestionFactory.create(auth, skill, {
       kind: suggestionAsset.kind,
       suggestion: suggestionAsset.suggestion,
@@ -83,6 +105,7 @@ export async function seedSkillSuggestions(
       state: suggestionAsset.state,
       source: suggestionAsset.source,
       sourceConversationIds,
+      batchModelId: batch?.id ?? null,
     });
     logger.info(
       { sId: resource.sId, skillName: suggestionAsset.skillName },

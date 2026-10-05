@@ -7,6 +7,7 @@ import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consum
 import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { formatAvgCredits, formatCredits } from "@app/lib/client/credits";
+import { formatNumber } from "@app/lib/i18n/format";
 import { ArrowUpRight, Button, LoadingBlock } from "@dust-tt/sparkle";
 
 export interface ConsumptionSummaryProps {
@@ -23,8 +24,8 @@ export interface ConsumptionSummaryProps {
 export function ConsumptionSummary({
   workspaceId,
   period: periodSelection,
-  usageHref = `/w/${workspaceId}/usage`,
-  usageLinkLabel = "Manage in Usage",
+  usageHref = `/w/${workspaceId}/credits`,
+  usageLinkLabel = "Manage in Credits",
   analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
   disabled,
 }: ConsumptionSummaryProps) {
@@ -154,7 +155,7 @@ export function ConsumptionSummaryView({
         />
         <SummaryCard
           label={MESSAGE_COUNT_LABEL}
-          value={messageCount.toLocaleString()}
+          value={formatNumber(messageCount)}
           hint={
             averageCostPerMessage === null
               ? null
@@ -238,13 +239,13 @@ function AgentConsumptionSummaryView({
         <SummaryCard
           className="h-20"
           label="Active Users"
-          value={overview.members.active.toLocaleString()}
+          value={formatNumber(overview.members.active)}
           hint={null}
         />
         <SummaryCard
           className="h-20"
           label="Messages / active user"
-          value={messagesPerActiveUser.toLocaleString()}
+          value={formatNumber(messagesPerActiveUser)}
           hint={null}
         />
       </div>

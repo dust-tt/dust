@@ -1,4 +1,3 @@
-import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { editorVariants } from "@app/components/editor/editorStyles";
 import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/input_bar/SkillNode";
 import type { SlashCommandSkillSuggestion } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
@@ -10,16 +9,17 @@ import {
   useSkillInstructionsEditor,
 } from "@app/components/editor/SkillInstructionsEditor";
 import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
+import { getDefaultMCPAction } from "@app/components/shared/tools_picker/formDefaults";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT } from "@app/components/skill_builder/events";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
-import type {
-  ReferencedSkillFormData,
-  SkillBuilderFormData,
-} from "@app/components/skill_builder/SkillBuilderFormContext";
 import type { ReferenceSummaryItem } from "@app/components/skill_builder/SkillBuilderInstructionsReferenceSummary";
 import { SkillBuilderInstructionsReferenceSummary } from "@app/components/skill_builder/SkillBuilderInstructionsReferenceSummary";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
+import type {
+  ReferencedSkillFormData,
+  SkillBuilderFormData,
+} from "@app/components/skill_builder/skillBuilderFormSchema";
 import {
   useAreSkillSuggestionsEnabled,
   useSkillSuggestions,
@@ -523,7 +523,6 @@ export function SkillBuilderInstructionsEditor({
   const { suggestions, isSuggestionsLoading } = useSkillSuggestions({
     skillId,
     states: ["pending"],
-    sources: ["reinforcement"],
     workspaceId: owner.sId,
     disabled: !skillId || !areSuggestionsEnabled,
   });

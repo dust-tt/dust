@@ -18,6 +18,7 @@ import type {
   RemoteMCPServerType,
 } from "@app/lib/api/mcp";
 import { DustError } from "@app/lib/error";
+import { compareStrings } from "@app/lib/i18n/format";
 import {
   dangerouslyMakeSIdWithCustomFirstPrefix,
   getResourceNameAndIdFromSId,
@@ -190,7 +191,7 @@ export const mcpServersSortingFn = (
   const bDisplayName = b.mcpServerView
     ? getMcpServerViewDisplayName(b.mcpServerView)
     : getMcpServerDisplayName(b.mcpServer);
-  return aDisplayName.localeCompare(bDisplayName);
+  return compareStrings(aDisplayName, bDisplayName);
 };
 
 export function isRemoteMCPServerType(

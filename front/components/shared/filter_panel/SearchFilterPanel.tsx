@@ -1,5 +1,9 @@
 import { getIcon } from "@app/components/resources/resources_icons";
 import { FilterPanel } from "@app/components/shared/filter_panel/FilterPanel";
+import {
+  clearFilterCategory,
+  selectAllFilterOptions,
+} from "@app/components/shared/filter_panel/filterState";
 import type {
   SearchFilter,
   SearchFilterCategory,
@@ -7,12 +11,17 @@ import type {
   SearchFilterOption,
 } from "@app/components/shared/filter_panel/searchFilter";
 import {
+  getSearchFilterActiveUsersCount,
   getSearchFilterOptions,
   SEARCH_FILTER_CATEGORY_LABEL,
+  toUsageFilterOption,
 } from "@app/components/shared/filter_panel/searchFilter";
+import { UsageRangeFilter } from "@app/components/shared/filter_panel/UsageRangeFilter";
 import type { FilterPanelState } from "@app/components/shared/filter_panel/useFilterPanel";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { getSkillIcon } from "@app/lib/skill";
 import { Avatar, Icon } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 
 function renderOptionIcon(option: SearchFilterOption) {
   switch (option.category) {
@@ -20,6 +29,8 @@ function renderOptionIcon(option: SearchFilterOption) {
       return (
         <Avatar visual={option.image} name={option.name} size="xxs" isRounded />
       );
+    case "skill":
+      return <Icon visual={getSkillIcon(option.icon)} size="sm" />;
     case "tool":
       return <Icon visual={getIcon(option.icon)} size="sm" />;
     default:
@@ -39,6 +50,9 @@ interface SearchFilterPanelProps<Category extends SearchFilterCategory> {
   idPrefix: string;
   warning?: string;
   applyDisabled?: boolean;
+  categoryNavFooter?: ReactNode;
+  onOpen?: () => void;
+  onClearAll?: () => void;
 }
 
 export function SearchFilterPanel<Category extends SearchFilterCategory>({
@@ -52,6 +66,9 @@ export function SearchFilterPanel<Category extends SearchFilterCategory>({
   idPrefix,
   warning,
   applyDisabled,
+  categoryNavFooter,
+  onOpen,
+  onClearAll,
 }: SearchFilterPanelProps<Category>) {
   const { user } = useAuth();
 
@@ -71,8 +88,30 @@ export function SearchFilterPanel<Category extends SearchFilterCategory>({
       isError={isError}
       idPrefix={idPrefix}
       renderIcon={renderOptionIcon}
+      renderCategoryContent={(category) =>
+        category === "usage" && (
+          <UsageRangeFilter
+            bounds={facets?.usage}
+            selected={getSearchFilterActiveUsersCount(panel.draftFilter)}
+            isLoading={isLoading}
+            onChange={(range) =>
+              panel.setDraftFilter((draft) => {
+                const cleared = clearFilterCategory(draft, category);
+                return range
+                  ? selectAllFilterOptions(cleared, category, [
+                      toUsageFilterOption(range),
+                    ])
+                  : cleared;
+              })
+            }
+          />
+        )
+      }
       warning={warning}
       applyDisabled={applyDisabled}
+      categoryNavFooter={categoryNavFooter}
+      onOpen={onOpen}
+      onClearAll={onClearAll}
     />
   );
 }

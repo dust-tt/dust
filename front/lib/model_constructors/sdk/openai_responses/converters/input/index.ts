@@ -11,6 +11,7 @@ import {
   assistantToolCallRequestToInputItem,
   conversationToInput,
   forceToolToToolChoice,
+  namespaceDeferredFunctionCalls,
   outputFormatToResponseFormat,
   promptCacheBreakpointFor,
   reasoningToOpenAIResponsesReasoning,
@@ -119,7 +120,10 @@ export function WithOpenAIResponsesInputConverter<
                 },
               ])
             : []),
-          ...this.conversationToInput(conversation),
+          ...namespaceDeferredFunctionCalls(
+            this.conversationToInput(conversation),
+            openAITools
+          ),
         ],
         ...(reasoningConfig
           ? {

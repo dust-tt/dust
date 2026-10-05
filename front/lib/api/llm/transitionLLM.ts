@@ -1,4 +1,3 @@
-import type { InferenceRegionType } from "@app/lib/api/assistant/token_pricing";
 import { withFlexProcessing } from "@app/lib/api/llm/flex_processing";
 import { LLM } from "@app/lib/api/llm/llm";
 import { withConciseOpenAIReasoningSummary } from "@app/lib/api/llm/reasoning_summary";
@@ -73,8 +72,6 @@ import type {
   NonDeltaResponseEvent,
   PassthroughLab,
 } from "@app/lib/model_constructors/types/output/events";
-import type { Region } from "@app/lib/model_constructors/types/regions";
-import { EUROPE, GLOBAL, US } from "@app/lib/model_constructors/types/regions";
 import { isCacheMissReason } from "@app/lib/model_constructors/utils/cache_miss_reason";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type {
@@ -96,20 +93,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
-
-export function inferenceRegionForEndpointRegion(
-  region: Region
-): InferenceRegionType {
-  switch (region) {
-    case EUROPE:
-      return "eu";
-    case GLOBAL:
-    case US:
-      return "global";
-    default:
-      return assertNever(region);
-  }
-}
 
 /**
  * The effort sent to the provider, a missing one reading as `none`. An effort the model does not
@@ -859,7 +842,6 @@ export class StreamEndpointTransition extends BaseTransition {
     this.metadata = {
       ...this.metadata,
       inferenceProvider: api,
-      inferenceRegion: inferenceRegionForEndpointRegion(region),
       region,
     };
   }
@@ -987,7 +969,7 @@ export class NoopStreamTransition extends StreamEndpointTransition {
       .replace(/<dust_system>[\s\S]*?<\/dust_system>/g, "")
       .trim();
     const consumeMatch = command.match(/consume \$(\d+(?:\.\d+)?)/i);
-    if (consumeMatch) {
+    if (!staticResponse && consumeMatch) {
       const costMicroUsd = Math.round(parseFloat(consumeMatch[1]) * 1_000_000);
       this.simulatedRunUsages = [
         {
@@ -1051,7 +1033,6 @@ export class BatchEndpointTransition extends BaseTransition {
     this.metadata = {
       ...this.metadata,
       inferenceProvider: api,
-      inferenceRegion: inferenceRegionForEndpointRegion(region),
       region,
     };
   }

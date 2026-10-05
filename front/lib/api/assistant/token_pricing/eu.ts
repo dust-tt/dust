@@ -10,8 +10,10 @@ import {
   CLAUDE_OPUS_5_5_MODEL_ID,
   CLAUDE_OPUS_5_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
+  CLAUDE_SONNET_5_5_MODEL_ID,
   CLAUDE_SONNET_5_MODEL_ID,
 } from "@app/types/assistant/models/anthropic";
+import { FIREWORKS_GLM_5P3_MODEL_ID } from "@app/types/assistant/models/fireworks";
 import {
   GEMINI_3_6_FLASH_MODEL_ID,
   GEMINI_3_7_FLASH_MODEL_ID,
@@ -33,6 +35,7 @@ import {
   GPT_5_6_SOL_MODEL_ID,
   GPT_5_6_TERRA_LONG_CONTEXT_MODEL_ID,
   GPT_5_6_TERRA_MODEL_ID,
+  GPT_6_1_SOL_MODEL_ID,
   GPT_6_ASTRA_MODEL_ID,
   GPT_6_LUNA_MODEL_ID,
   GPT_6_SOL_MODEL_ID,
@@ -59,6 +62,7 @@ const EU_PRICING_MULTIPLIER = 1.1;
 export const EU_UPLIFT_MODEL_IDS = [
   CLAUDE_4_5_SONNET_20250929_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
+  CLAUDE_SONNET_5_5_MODEL_ID,
   CLAUDE_SONNET_5_MODEL_ID,
   CLAUDE_4_5_OPUS_20251101_MODEL_ID,
   CLAUDE_OPUS_4_6_MODEL_ID,
@@ -73,6 +77,7 @@ export const EU_UPLIFT_MODEL_IDS = [
   GPT_5_5_MODEL_ID,
   GPT_5_6_SOL_MODEL_ID,
   GPT_6_SOL_MODEL_ID,
+  GPT_6_1_SOL_MODEL_ID,
   GPT_6_ASTRA_MODEL_ID,
   GPT_5_6_TERRA_MODEL_ID,
   GPT_5_6_TERRA_LONG_CONTEXT_MODEL_ID,
@@ -129,10 +134,24 @@ function applyRegionalUplift(pricing: PricingEntry): PricingEntry {
   };
 }
 
-export const EU_MODEL_PRICING: Partial<Record<string, PricingEntry>> =
-  Object.fromEntries(
+// EU endpoints on a different host than their global sibling, so their price
+// is not a flat uplift of it. GLM-5.3: Fireworks globally, Mistral in the EU
+// (1.1x Mistral list, https://docs.mistral.ai/models/zai-glm-5-3, 2026-09-28).
+// Regional inference pricing reference: https://docs.mistral.ai/inference/regional-inference.
+const EU_HOST_MODEL_PRICING = {
+  [FIREWORKS_GLM_5P3_MODEL_ID]: {
+    input: 1.54,
+    output: 4.84,
+    cache_read_input_tokens: 0.154,
+  },
+} satisfies Partial<Record<StaticModelIdType, PricingEntry>>;
+
+export const EU_MODEL_PRICING: Partial<Record<string, PricingEntry>> = {
+  ...Object.fromEntries(
     EU_UPLIFT_MODEL_IDS.map((modelId) => [
       modelId,
       applyRegionalUplift(MODEL_PRICING[modelId]),
     ])
-  );
+  ),
+  ...EU_HOST_MODEL_PRICING,
+};

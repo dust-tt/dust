@@ -1,5 +1,4 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import type { InferenceRegionType } from "@app/lib/api/assistant/token_pricing";
 import type {
   LLMTraceContext,
   LLMTraceCustomization,
@@ -13,8 +12,6 @@ import type {
 } from "@app/types/assistant/models/types";
 import type { LLMCredentialsType } from "@app/types/provider_credential";
 import { isString } from "@app/types/shared/utils/general";
-
-export type { InferenceRegionType };
 
 export interface SystemPromptInstruction {
   role: "instruction";
@@ -109,16 +106,11 @@ export type LLMParameters<E> = {
   omittedThinking?: boolean;
 } & LLMTraceCustomization;
 
-export type LLMParameterOverwrites<E> = Partial<
-  Omit<LLMParameters<E>, "credentials">
->;
-
 export type LLMClientMetadata = {
   clientId: ModelProviderIdType;
   // Holds the inference provider for legacy clients (e.g. "google_vertex_ai")
   // and the new router's `providerApi` value (e.g. "agent-platform").
   inferenceProvider: string;
-  inferenceRegion: InferenceRegionType;
   region?: Region;
   modelId: ModelIdType;
 };

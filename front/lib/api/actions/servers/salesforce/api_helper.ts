@@ -1,4 +1,5 @@
 import { SF_API_VERSION } from "@app/lib/api/actions/servers/salesforce/helpers";
+import { untrustedFetch } from "@app/lib/egress/server";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -134,8 +135,7 @@ async function downloadSalesforceAttachment(
   try {
     const url = `${conn.instanceUrl}/services/data/v${SF_API_VERSION}/sobjects/Attachment/${attachmentId}/Body`;
 
-    // eslint-disable-next-line no-restricted-globals
-    const response = await fetch(url, {
+    const response = await untrustedFetch(url, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${conn.accessToken}`,
@@ -162,8 +162,7 @@ async function downloadSalesforceFile(
   try {
     const url = `${conn.instanceUrl}/services/data/v${SF_API_VERSION}/sobjects/ContentVersion/${contentVersionId}/VersionData`;
 
-    // eslint-disable-next-line no-restricted-globals
-    const response = await fetch(url, {
+    const response = await untrustedFetch(url, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${conn.accessToken}`,

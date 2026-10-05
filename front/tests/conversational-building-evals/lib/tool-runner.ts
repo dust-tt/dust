@@ -10,6 +10,8 @@ import {
 import { TOOLS as BUILDING_TOOLS } from "@app/lib/api/actions/servers/building_agents_and_skills/tools";
 import {
   GET_AGENT_DETAILS_TOOL_NAME,
+  GET_SKILL_DETAILS_TOOL_NAME,
+  LIST_SIMILAR_SKILLS_TOOL_NAME,
   WORKSPACE_MANAGEMENT_SERVER_NAME,
 } from "@app/lib/api/actions/servers/workspace_management/metadata";
 import { TOOLS as WORKSPACE_MANAGEMENT_TOOLS } from "@app/lib/api/actions/servers/workspace_management/tools";
@@ -39,6 +41,14 @@ export const TOOL = {
   getAgentDetails: getPrefixedToolName(
     WORKSPACE_MANAGEMENT_SERVER_NAME,
     GET_AGENT_DETAILS_TOOL_NAME
+  ),
+  getSkillDetails: getPrefixedToolName(
+    WORKSPACE_MANAGEMENT_SERVER_NAME,
+    GET_SKILL_DETAILS_TOOL_NAME
+  ),
+  listSimilarSkills: getPrefixedToolName(
+    WORKSPACE_MANAGEMENT_SERVER_NAME,
+    LIST_SIMILAR_SKILLS_TOOL_NAME
   ),
 } as const;
 
@@ -104,16 +114,22 @@ function makeExtra(
   return extra as ToolHandlerExtra;
 }
 
+export interface ToolRunOutput {
+  // What the model receives: text content blocks joined, or the error message.
+  text: string;
+  // The call was rejected (invalid arguments or handler error): it had no effect.
+  isError: boolean;
+}
+
 /**
  * Runs a tool call for real against the scenario's workspace, through the production handler,
- * and renders the result the way the model would receive it: text content blocks joined, or the
- * error message.
+ * and renders the result the way the model would receive it.
  */
 export async function runTool(
   { auth, conversation }: SeededScenario,
   toolName: string,
   toolArguments: Record<string, unknown>
-): Promise<string> {
+): Promise<ToolRunOutput> {
   const tool = TOOL_DEFINITIONS.get(toolName);
   if (!tool) {
     throw new Error(`Unknown tool "${toolName}".`);
@@ -123,7 +139,10 @@ export async function runTool(
   // the handler directly skips that step, so it is replayed here.
   const parsed = z.object(tool.schema).safeParse(toolArguments);
   if (!parsed.success) {
-    return `Error: invalid arguments: ${parsed.error.message}`;
+    return {
+      text: `Error: invalid arguments: ${parsed.error.message}`,
+      isError: true,
+    };
   }
 
   // Each handler is typed on its own schema; dispatching over the union needs the erased call.
@@ -140,10 +159,13 @@ export async function runTool(
   );
 
   if (result.isErr()) {
-    return `Error: ${result.error.message}`;
+    return { text: `Error: ${result.error.message}`, isError: true };
   }
 
-  return result.value
-    .map((item) => (item.type === "text" ? item.text : JSON.stringify(item)))
-    .join("\n");
+  return {
+    text: result.value
+      .map((item) => (item.type === "text" ? item.text : JSON.stringify(item)))
+      .join("\n"),
+    isError: false,
+  };
 }

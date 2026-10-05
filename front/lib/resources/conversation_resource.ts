@@ -17,6 +17,7 @@ import { REINFORCED_SKILLS_METADATA_KEYS } from "@app/lib/reinforcement/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -134,6 +135,7 @@ export type AgentMessageConsumptionAnalyticsContext = {
     resolvedReasoningEffort: string | null;
     runIds: string[] | null;
     status: AgentMessageStatus;
+    updatedAt: Date;
     version: number;
   };
   conversation: {
@@ -980,6 +982,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         resolvedReasoningEffort: agentMessage.resolvedReasoningEffort,
         runIds: agentMessage.runIds,
         status: agentMessage.status,
+        updatedAt: agentMessage.updatedAt,
         version: messageRow.version,
       },
       conversation: {
@@ -1007,6 +1010,50 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   ): Promise<void> {
     await AgentMessageModel.update(
       { costCredits },
+      {
+        where: {
+          id: agentMessageModelId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
+  }
+
+  static async fetchAgentMessageLimitGroup(
+    auth: Authenticator,
+    { agentMessageId }: { agentMessageId: string }
+  ): Promise<{
+    agentMessageModelId: ModelId;
+    limitGroupModelId: ModelId | null;
+  } | null> {
+    const messageRow = await MessageModel.findOne({
+      where: {
+        sId: agentMessageId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      include: [
+        { model: AgentMessageModel, as: "agentMessage", required: true },
+      ],
+    });
+    const agentMessage = messageRow?.agentMessage;
+    if (!agentMessage) {
+      return null;
+    }
+    return {
+      agentMessageModelId: agentMessage.id,
+      limitGroupModelId: agentMessage.limitGroupModelId,
+    };
+  }
+
+  static async setAgentMessageLimitGroup(
+    auth: Authenticator,
+    {
+      agentMessageModelId,
+      limitGroupModelId,
+    }: { agentMessageModelId: ModelId; limitGroupModelId: ModelId }
+  ): Promise<void> {
+    await AgentMessageModel.update(
+      { limitGroupModelId },
       {
         where: {
           id: agentMessageModelId,
@@ -2149,10 +2196,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return message?.userMessage?.userContextOrigin ?? null;
   }
 
+  /**
+   * Fetches a conversation and hydrates per-user participation + read state on
+   * the resource. Use {@link ConversationResource#unread} /
+   * {@link ConversationResource#actionRequired} /
+   * {@link ConversationResource#lastReadMs} after this call.
+   */
   static async fetchConversationWithParticipantState(
     auth: Authenticator,
     sId: string
-  ): Promise<Result<ConversationWithoutContentType, ConversationError>> {
+  ): Promise<Result<ConversationResource, ConversationError>> {
     const conversation = await this.fetchById(auth, sId);
 
     if (!conversation) {
@@ -2161,7 +2214,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     await this.enrichWithParticipationAndReadState(auth, [conversation]);
 
-    return new Ok(conversation.toJSON());
+    return new Ok(conversation);
   }
 
   private static async update(
@@ -2967,7 +3020,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   static async markAsActionRequired(
     auth: Authenticator,
-    { conversation }: { conversation: ConversationWithoutContentType }
+    {
+      conversation,
+    }: { conversation: ConversationWithoutContentType | ConversationResource }
   ) {
     const user = auth.user();
     if (!user) {
@@ -5272,8 +5327,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(firstParticipant.userId === user.id);
   }
 
+  /**
+   * @cc [owner:avervaet,label:security] only-active-members
+   * When `onlyActiveMembers` is true, the result MUST exclude participants without an active
+   * membership in the workspace of `auth`.
+   */
   async listParticipants(
-    auth: Authenticator
+    auth: Authenticator,
+    { onlyActiveMembers = false }: { onlyActiveMembers?: boolean } = {}
   ): Promise<(UserType & { lastReadAt: Date | null })[]> {
     const participants = await ConversationParticipantModel.findAll({
       where: {
@@ -5293,9 +5354,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       conversationReads.map((cr) => [cr.userId, cr.lastReadAt])
     );
 
-    const userResources = await UserResource.fetchByModelIds(
+    const participantUsers = await UserResource.fetchByModelIds(
       participants.map((p) => p.userId)
     );
+    // Revocation keeps participant rows, so membership is checked separately.
+    const userResources = onlyActiveMembers
+      ? await MembershipResource.filterActiveMembers({
+          users: participantUsers,
+          workspace: auth.getNonNullableWorkspace(),
+        })
+      : participantUsers;
 
     return userResources.map((userResource) => ({
       ...userResource.toJSON(),
@@ -5530,12 +5598,36 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     };
   }
 
+  /**
+   * Per-user unread flag. Meaningful after
+   * {@link ConversationResource.fetchConversationWithParticipantState} (or
+   * another path that hydrates participation + read state).
+   */
+  get unread(): boolean {
+    return this.userLastReadAt === null || this.updatedAt > this.userLastReadAt;
+  }
+
+  /**
+   * Per-user action-required flag. Meaningful after participation hydration.
+   */
+  get actionRequired(): boolean {
+    return this.userParticipation?.actionRequired ?? false;
+  }
+
+  /**
+   * Per-user last-read timestamp in ms, or null when never read. Meaningful
+   * after read-state hydration.
+   */
+  get lastReadMs(): number | null {
+    return this.userLastReadAt?.getTime() ?? null;
+  }
+
   toListItem(): ConversationListItemType {
     return {
-      actionRequired: this.userParticipation?.actionRequired ?? false,
+      actionRequired: this.actionRequired,
       created: this.createdAt.getTime(),
       hasError: this.hasError,
-      lastReadMs: this.userLastReadAt?.getTime() ?? null,
+      lastReadMs: this.lastReadMs,
       metadata: this.metadata ?? {},
       nextWakeupAt: this.nextWakeupAt,
       requestedSpaceIds: this.getRequestedSpaceIdsFromModel(),
@@ -5547,8 +5639,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         title: this.title,
       }),
       triggerId: this.triggerSId,
-      unread:
-        this.userLastReadAt === null || this.updatedAt > this.userLastReadAt,
+      unread: this.unread,
       updated: this.updatedAt.getTime(),
       isRunningAgentLoop: this.isRunningAgentLoop,
       isParticipant: !!this.userParticipation,

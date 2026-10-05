@@ -1,5 +1,6 @@
 import type { SlashCommandDropdownRef } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { hasSlashCharacterAtPosition } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
+import { cn } from "@dust-tt/sparkle";
 import type { Editor, Range } from "@tiptap/core";
 import { Extension } from "@tiptap/core";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
@@ -101,7 +102,12 @@ interface CreateSlashSuggestionExtensionConfig<
   onDropdownExit?: (ctx: { storage: Storage }) => void;
   pluginKey: PluginKey<SuggestionPluginState>;
   // Ghost text rendered after the trigger while the suggestion is active with an empty query.
-  getQueryPlaceholder?: (ctx: { storage: Storage }) => string | null;
+  queryPlaceholder?: string;
+  // Extra classes applied to the `queryPlaceholder` span, on top of the shared base styling.
+  queryPlaceholderClassName?: string;
+  // Extra classes applied to the inline span tiptap wraps around the active trigger ("/" plus
+  // the typed query). tiptap also toggles `is-empty` on it while the query is empty.
+  triggerClassName?: string;
   preventEscapeDefault?: boolean;
   shouldMountDropdown?: (
     ctx: SlashSuggestionDropdownContext<Options, Storage, Item>
@@ -144,7 +150,9 @@ export function createSlashSuggestionExtension<
   notifyActiveChange,
   onDropdownClose,
   onDropdownExit,
-  getQueryPlaceholder,
+  queryPlaceholder,
+  queryPlaceholderClassName,
+  triggerClassName,
   preventEscapeDefault = false,
 }: CreateSlashSuggestionExtensionConfig<Options, Storage, Item>) {
   return Extension.create<Options, Storage>({
@@ -183,6 +191,7 @@ export function createSlashSuggestionExtension<
           editor: this.editor,
           char: "/",
           pluginKey,
+          decorationClass: cn("suggestion", triggerClassName),
           allowSpaces: true,
           startOfLine: false,
           allow: ({ editor, state, range, isActive }) =>
@@ -333,7 +342,7 @@ export function createSlashSuggestionExtension<
             };
           },
         }),
-        ...(getQueryPlaceholder
+        ...(queryPlaceholder
           ? [
               new Plugin({
                 key: new PluginKey(`${name}QueryPlaceholder`),
@@ -343,21 +352,17 @@ export function createSlashSuggestionExtension<
                     if (!suggestion?.active || suggestion.query) {
                       return null;
                     }
-                    const placeholder = getQueryPlaceholder({
-                      storage: extensionStorage,
-                    });
-                    if (!placeholder) {
-                      return null;
-                    }
                     return DecorationSet.create(state.doc, [
                       Decoration.widget(
                         suggestion.range.to,
                         () => {
                           const span = document.createElement("span");
-                          span.className =
-                            "pointer-events-none select-none text-faint dark:text-stone-400";
+                          span.className = cn(
+                            "pointer-events-none select-none text-faint dark:text-stone-400",
+                            queryPlaceholderClassName
+                          );
                           span.contentEditable = "false";
-                          span.textContent = placeholder;
+                          span.textContent = queryPlaceholder;
                           return span;
                         },
                         { side: 1 }

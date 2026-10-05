@@ -7,6 +7,7 @@ import {
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getClientIp } from "@app/lib/utils/request";
+import logger from "@app/logger/logger";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { getGroupIdsFromHeaders, getRoleFromHeaders } from "@app/types/groups";
 import { getUserEmailFromHeaders } from "@app/types/user";
@@ -98,6 +99,13 @@ function applyClientIp(auth: Authenticator, headers: HeaderRecord): void {
  * sandbox token, OAuth bearer, or API key) and stashes the resolved
  * `Authenticator` on the Hono context under `auth`.
  */
+/**
+ * @cc [owner:avervaet,label:security] user-email-impersonation-fails-closed
+ * A system-key request carrying `x-api-user-email` MUST NOT run with the system key's default
+ * `admin` role or its workspace-wide groups. When the email resolves to no active member, the
+ * request MUST be rejected with a 401, unless it names groups in `X-Dust-Group-Ids`: it then runs
+ * with only those groups and the `user` role.
+ */
 export const publicApiAuth = createMiddleware<PublicApiCtx>(
   async (ctx, next) => {
     const wId = ctx.req.param("wId");
@@ -176,12 +184,22 @@ export const publicApiAuth = createMiddleware<PublicApiCtx>(
       return apiError(ctx, keyRes.error);
     }
     const requestedRole = getRoleFromHeaders(headers);
+    const requestedGroupIds = getGroupIdsFromHeaders(headers);
 
+    // x-api-user-email: system-key-only impersonation.
+    const userEmailFromHeader = keyRes.value.isSystem
+      ? getUserEmailFromHeaders(headers)
+      : undefined;
+    // Presence, not value, marks impersonation: an empty email must not keep the system defaults.
+    const isImpersonating = userEmailFromHeader !== undefined;
+
+    // An impersonation request starts from the narrowest grant (the `user` role and only the
+    // groups it names) and gains the user's own access only once the email resolves to a member.
     let workspaceAuth = await Authenticator.fromKey(
       keyRes.value,
       wId,
-      getGroupIdsFromHeaders(headers),
-      requestedRole
+      isImpersonating ? (requestedGroupIds ?? []) : requestedGroupIds,
+      isImpersonating ? "user" : requestedRole
     );
 
     const workspaceError = validateWorkspaceFromAuth(workspaceAuth);
@@ -199,17 +217,30 @@ export const publicApiAuth = createMiddleware<PublicApiCtx>(
       });
     }
 
-    // x-api-user-email: system-key-only impersonation.
-    const userEmailFromHeader = getUserEmailFromHeaders(headers);
-    if (userEmailFromHeader) {
-      workspaceAuth =
-        (await workspaceAuth.exchangeSystemKeyForUserAuthByEmail(
-          workspaceAuth,
-          {
-            userEmail: userEmailFromHeader,
-            requestedRole,
-          }
-        )) ?? workspaceAuth;
+    if (isImpersonating) {
+      const userAuth = await workspaceAuth.exchangeSystemKeyForUserAuthByEmail(
+        workspaceAuth,
+        {
+          userEmail: userEmailFromHeader,
+          requestedRole,
+        }
+      );
+      if (userAuth) {
+        workspaceAuth = userAuth;
+      } else if (!requestedGroupIds?.length) {
+        // Without named groups there is nothing narrower to fall back to.
+        logger.warn(
+          { workspaceId: wId, keyModelId: keyRes.value.id },
+          "Rejected system-key impersonation of an email with no active membership"
+        );
+        return apiError(ctx, {
+          status_code: 401,
+          api_error: {
+            type: "workspace_user_not_found",
+            message: "The user is not an active member of the workspace.",
+          },
+        });
+      }
     }
 
     // x-dust-api-key-name: system-key-only usage attribution, see

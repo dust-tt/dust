@@ -57,10 +57,6 @@ export const ShareTokenLookupSchema = z.object({
 
 export type UserLookupRequestBodyType = z.infer<typeof UserLookupSchema>;
 
-export type WorkspaceLookupRequestBodyType = z.infer<
-  typeof WorkspaceLookupSchema
->;
-
 export type InvitationsLookupRequestBodyType = z.infer<
   typeof InvitationsLookupSchema
 >;

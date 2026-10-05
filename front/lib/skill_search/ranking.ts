@@ -5,6 +5,10 @@ import type {
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { estypes } from "@elastic/elasticsearch";
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] relevance-tie-breaking
+ * When sorting by relevance, usage MUST break relevance ties, then skill ID.
+ */
 export function buildSkillDefaultSort({
   sortBy = "relevance",
   sortOrder = sortBy === "name" ? "asc" : "desc",
@@ -48,51 +52,4 @@ export function buildSkillDefaultSort({
     default:
       assertNever(sortBy);
   }
-}
-
-const NAME_AUTOCOMPLETE_FIELDS = [
-  "name.autocomplete",
-  "name.autocomplete._2gram",
-  "name.autocomplete_preserved",
-  "name.autocomplete_preserved._2gram",
-];
-
-/**
- * @cc [owner:aubin-tchoi,label:product] indexed-skill-name-matching
- * Whole-name prefix matches on name.keyword contribute additional relevance.
- * Name matching uses both autocomplete fields and Elasticsearch relevance, without
- * description matching or usage boosts. Usage breaks relevance ties, then skill ID.
- * Every whitespace-separated search term MUST match the name autocomplete fields as a
- * `bool_prefix` query, in any order. Terms are analyzed like the name (case-change and punctuation
- * splits), so only a term's last token is prefix-matched (`ReportB` matches "Report Builder").
- */
-export function buildSkillNameAutocompleteQuery(
-  searchTerm: string
-): estypes.QueryDslQueryContainer {
-  const terms = searchTerm.split(/\s+/).filter((term) => term.length > 0);
-  if (terms.length === 0) {
-    return { match_all: {} };
-  }
-  return {
-    bool: {
-      must: terms.map((term) => ({
-        multi_match: {
-          query: term,
-          type: "bool_prefix",
-          operator: "and",
-          fields: NAME_AUTOCOMPLETE_FIELDS,
-        },
-      })),
-      should: [
-        {
-          multi_match: {
-            query: terms.join(" "),
-            type: "bool_prefix",
-            operator: "and",
-            fields: ["name.keyword", ...NAME_AUTOCOMPLETE_FIELDS],
-          },
-        },
-      ],
-    },
-  };
 }

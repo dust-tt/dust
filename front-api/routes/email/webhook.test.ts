@@ -5,6 +5,8 @@ import {
   EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER,
 } from "@app/lib/api/assistant/email/webhook_helpers";
 import { config as cellsConfig } from "@app/lib/api/cells/config";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -58,6 +60,26 @@ vi.mock(
   }
 );
 
+vi.mock(
+  "@app/lib/api/assistant/email/email_trigger",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("@app/lib/api/assistant/email/email_trigger")
+      >();
+    const { Err } = await import("@app/types/shared/result");
+    return {
+      ...actual,
+      triggerFromEmail: vi
+        .fn()
+        .mockResolvedValue(
+          new Err({ type: "unexpected_error", message: "Trigger not run." })
+        ),
+    };
+  }
+);
+
+import { triggerFromEmail } from "@app/lib/api/assistant/email/email_trigger";
 import { sendEmailToRecipients } from "@app/lib/api/email";
 import type { CellInfo } from "@app/types/cell";
 
@@ -71,7 +93,11 @@ const RELAY_AUTH_HEADERS = {
   [EMAIL_WEBHOOK_RELAY_HEADER]: EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
 };
 
-function buildSendgridForm(senderEmail: string, messageId: string): FormData {
+function buildSendgridForm(
+  senderEmail: string,
+  messageId: string,
+  targetEmail: string
+): FormData {
   const senderDomain = senderEmail.split("@")[1];
   const form = new FormData();
   form.set("subject", "Hello agent");
@@ -82,7 +108,7 @@ function buildSendgridForm(senderEmail: string, messageId: string): FormData {
   form.set("dkim", `{@${senderDomain} : pass}`);
   form.set(
     "envelope",
-    JSON.stringify({ from: senderEmail, to: ["some-agent@dust.team"] })
+    JSON.stringify({ from: senderEmail, to: [targetEmail] })
   );
   form.set("headers", `Message-ID: ${messageId}`);
   return form;
@@ -94,11 +120,12 @@ function buildSendgridForm(senderEmail: string, messageId: string): FormData {
 const postWebhook = async (
   senderEmail: string,
   headers: Record<string, string>,
-  messageId = `<${randomUUID()}@example.com>`
+  messageId = `<${randomUUID()}@example.com>`,
+  targetEmail = "some-agent@dust.team"
 ): Promise<Response> => {
   const encoded = new Request("http://localhost/", {
     method: "POST",
-    body: buildSendgridForm(senderEmail, messageId),
+    body: buildSendgridForm(senderEmail, messageId, targetEmail),
   });
   const rawBody = Buffer.from(await encoded.arrayBuffer());
 
@@ -118,6 +145,7 @@ const getCurrentCellMock = vi.mocked(cellsConfig.getCurrentCell);
 describe("POST /api/email/webhook", () => {
   beforeEach(() => {
     vi.mocked(sendEmailToRecipients).mockClear();
+    vi.mocked(triggerFromEmail).mockClear();
     getCurrentCellMock.mockReturnValue(cellsConfig.getCellInfo("cell-00002"));
   });
 
@@ -345,5 +373,53 @@ describe("POST /api/email/webhook", () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+
+  it("triggers the readable agent matching the target email", async () => {
+    const { workspace, user, authenticator } = await createResourceTest({
+      role: "admin",
+    });
+    await WorkspaceResource.updateMetadata(workspace.id, {
+      allowEmailAgents: true,
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "SalesHelper" }
+    );
+
+    const response = await postWebhook(
+      user.email,
+      { Authorization: SENDGRID_AUTH_HEADER },
+      undefined,
+      "saleshelper@dust.team"
+    );
+    expect(response.status).toBe(200);
+
+    await vi.waitFor(() => expect(triggerFromEmail).toHaveBeenCalledOnce());
+    const [, { agentConfigurations }] =
+      vi.mocked(triggerFromEmail).mock.calls[0];
+    expect(agentConfigurations.map((a) => a.sId)).toEqual([agent.sId]);
+  });
+
+  it("replies with an error when no agent matches the target email", async () => {
+    const { workspace, user } = await createResourceTest({ role: "admin" });
+    await WorkspaceResource.updateMetadata(workspace.id, {
+      allowEmailAgents: true,
+    });
+
+    const response = await postWebhook(
+      user.email,
+      { Authorization: SENDGRID_AUTH_HEADER },
+      undefined,
+      "nosuchagent@dust.team"
+    );
+    expect(response.status).toBe(200);
+
+    await vi.waitFor(() =>
+      expect(sendEmailToRecipients).toHaveBeenCalledOnce()
+    );
+    const [{ message }] = vi.mocked(sendEmailToRecipients).mock.calls[0];
+    expect(message.html).toContain("nosuchagent");
+    expect(triggerFromEmail).not.toHaveBeenCalled();
   });
 });

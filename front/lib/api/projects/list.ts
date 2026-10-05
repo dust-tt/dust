@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import { removeDiacritics } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type { SearchProjectsResponseBody } from "@app/types/api/projects/list";
@@ -67,6 +68,10 @@ export async function searchReadablePods(
     projectSpaces
   );
   const metadataMap = new Map(projectsWithMetadata.map((p) => [p.sId, p]));
+  const starredSpaceModelIds =
+    await UserProjectPreferencesResource.fetchStarred(auth, {
+      spaceIds: projectSpaces.map((space) => space.id),
+    });
 
   const results = [];
   for (const space of projectSpaces) {
@@ -75,7 +80,11 @@ export async function searchReadablePods(
       logger.warn({ spaceId: space.sId }, "Missing metadata for project");
       continue;
     }
-    results.push({ ...metadata, isMember: space.isMember(auth) });
+    results.push({
+      ...metadata,
+      isMember: space.isMember(auth),
+      isStarred: starredSpaceModelIds.has(space.id),
+    });
   }
 
   return {

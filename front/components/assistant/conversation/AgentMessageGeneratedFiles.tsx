@@ -1,12 +1,12 @@
 import { getCollapseAnimationStyle } from "@app/components/assistant/conversation/actions/inline/utils";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { formatCalendarDate } from "@app/lib/utils/timestamps";
+import { formatCalendarDate } from "@app/lib/client/calendar_date";
+import { formatTime } from "@app/lib/i18n/format";
 import type { LightAgentMessageType } from "@app/types/assistant/conversation";
 import {
   frameSlideshowContentType,
   isFrameContentType,
 } from "@app/types/files";
-import { getTime } from "@app/types/shared/utils/date_utils";
 import {
   ActionFrame,
   ChevronRight,
@@ -18,6 +18,12 @@ import {
   Icon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
+
+const FILE_TIME_OPTIONS = {
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+} as const;
 
 function getDescriptionForContentType(
   file: LightAgentMessageType["generatedFiles"][number]
@@ -92,13 +98,17 @@ export function AgentMessageInteractiveContentGeneratedFiles({
                           Updated {formatCalendarDate(file.updatedAt)}
                         </span>
                         <span className="mx-1">{"\u00B7"}</span>
-                        <time>{getTime(file.updatedAt)}</time>
+                        <time>
+                          {formatTime(file.updatedAt, FILE_TIME_OPTIONS)}
+                        </time>
                       </>
                     ) : file.createdAt ? (
                       <>
                         <span>{formatCalendarDate(file.createdAt)}</span>
                         <span className="mx-1">{"\u00B7"}</span>
-                        <time>{getTime(file.createdAt)}</time>
+                        <time>
+                          {formatTime(file.createdAt, FILE_TIME_OPTIONS)}
+                        </time>
                       </>
                     ) : null}
                   </div>

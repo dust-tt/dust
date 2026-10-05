@@ -6,9 +6,10 @@ import { isEligibleForAutoSeatUpgrade } from "@app/lib/api/credits/auto_seat_upg
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { notifyUpgradeRequested } from "@app/lib/notifications/workflows/upgrade-request-created";
+import { notifyUpgradeRequested } from "@app/lib/notifications/triggers/upgrade-request-created";
 import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
+import { hasAnyGroupPermission } from "@app/lib/resources/group_management_access";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import {
   MembershipUpgradeRequestResource,
@@ -29,6 +30,7 @@ type UpgradeRequestErrorType =
   | "user_not_found"
   | "request_not_found"
   | "request_not_pending"
+  | "unauthorized"
   | "internal_error";
 
 export class UpgradeRequestError extends Error {
@@ -250,16 +252,19 @@ export async function getUpgradeRequestAvailabilityForUser(
   };
 }
 
-// Admin-only: list pending upgrade requests for the workspace.
+// List pending requests within the caller's usage-limit scope.
 export async function listPendingUpgradeRequests(
-  auth: Authenticator
+  auth: Authenticator,
+  { groupId }: { groupId?: string } = {}
 ): Promise<MembershipUpgradeRequestType[]> {
   const requests =
-    await MembershipUpgradeRequestResource.listPendingByWorkspace(auth);
+    await MembershipUpgradeRequestResource.listPendingByWorkspace(auth, {
+      groupId,
+    });
   return requests.map((r) => r.toJSON());
 }
 
-// Admin-only: record the outcome of a request. The actual spend-limit / seat
+// Record the outcome of an authorized request. The actual spend-limit / seat
 // change is performed by the existing flows; this only marks the request.
 export async function resolveUpgradeRequest(
   auth: Authenticator,
@@ -273,6 +278,14 @@ export async function resolveUpgradeRequest(
     auditContext?: AuditLogContext;
   }
 ): Promise<Result<MembershipUpgradeRequestType, UpgradeRequestError>> {
+  if (!(await hasAnyGroupPermission(auth, "set_usage_limits"))) {
+    return new Err(
+      new UpgradeRequestError(
+        "unauthorized",
+        "You cannot resolve upgrade requests."
+      )
+    );
+  }
   const request = await MembershipUpgradeRequestResource.fetchById(
     auth,
     requestId
@@ -283,11 +296,15 @@ export async function resolveUpgradeRequest(
     );
   }
 
-  const resolvedByUser = auth.getNonNullableUser();
-  const result = await request.markAsResolved(auth, { status, resolvedByUser });
+  const result = await request.markAsResolved(auth, { status });
   if (result.isErr()) {
     return new Err(
-      new UpgradeRequestError("request_not_pending", result.error.message)
+      new UpgradeRequestError(
+        result.error,
+        result.error === "unauthorized"
+          ? "You can no longer resolve this request."
+          : "Request is not pending."
+      )
     );
   }
 
@@ -302,7 +319,14 @@ export async function resolveUpgradeRequest(
       }),
     ],
     context: auditContext,
-    metadata: { status, request_sid: request.sId },
+    metadata: {
+      status,
+      request_sid: request.sId,
+      authorizing_group_id:
+        result.value.kind === "group"
+          ? result.value.group.sId
+          : "workspace_role",
+    },
   });
 
   return new Ok(request.toJSON());

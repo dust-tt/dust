@@ -425,9 +425,6 @@ const config = {
   getOAuthMondayClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_MONDAY_CLIENT_ID");
   },
-  getOAuthDiscordClientId: (): string => {
-    return EnvironmentConfig.getEnvVariable("OAUTH_DISCORD_CLIENT_ID");
-  },
   getOAuthFathomClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_FATHOM_CLIENT_ID");
   },

@@ -35,7 +35,8 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { UserMessageTypeModel } from "@app/types/assistant/generation";
 import type { WorkspaceType } from "@app/types/user";
-import { formatInTimeZone } from "date-fns-tz";
+import { tz } from "@date-fns/tz";
+import { format } from "date-fns";
 
 // This section is included in the system prompt, which benefits from prompt caching.
 // To maximize cache hits, avoid adding high-entropy data (e.g., timestamps with time precision,
@@ -62,11 +63,9 @@ function constructContextSection({
       "Invalid IANA timezone in user message context, falling back to UTC"
     );
   }
-  const currentDate = formatInTimeZone(
-    new Date(),
-    resolvedTimezone,
-    "yyyy-MM-dd (EEE)"
-  );
+  const currentDate = format(new Date(), "yyyy-MM-dd (EEE)", {
+    in: tz(resolvedTimezone),
+  });
 
   let context = "# CONTEXT\n\n";
   context += `assistant: @${agentConfiguration.name}\n`;
@@ -177,7 +176,10 @@ function constructToolsSection({
       "is about and why the user's answer will help. Ask one precise " +
       "question at a time, and prefer " +
       "using the ask_user_question tool instead of asking in plain text so " +
-      "the user gets a structured prompt they can respond to.\n";
+      "the user gets a structured prompt they can respond to. " +
+      "Prefer omitting option descriptions. Only include them when labels " +
+      "alone are not clear enough, and then include a description for every " +
+      "option.\n";
   }
 
   return toolsSection;

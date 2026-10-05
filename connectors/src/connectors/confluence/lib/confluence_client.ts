@@ -340,6 +340,10 @@ function getRateLimitHeaders(headers: Headers) {
   return rateLimitHeaders;
 }
 
+function escapeCqlString(value: string): string {
+  return value.replace(/["\\]/g, "\\$&");
+}
+
 export class ConfluenceClient {
   private readonly apiUrl = "https://api.atlassian.com";
   private readonly restApiBaseUrl: string;
@@ -692,6 +696,12 @@ export class ConfluenceClient {
     };
   }
 
+  /**
+   * @cc [owner:tdraier,label:security] cql-values-are-data
+   * `spaceKey` MUST be escaped as a CQL string literal so no value can alter the query grammar.
+   * Callers MUST only pass a numeric Confluence id in `parentContentId`, which is interpolated
+   * unquoted.
+   */
   async getChildContent({
     limit,
     pageCursor,
@@ -704,7 +714,7 @@ export class ConfluenceClient {
     spaceKey: string;
   }) {
     // Build CQL query to get pages with specific IDs.
-    const cqlQuery = `type IN (page, folder) AND space="${spaceKey}" AND parent=${parentContentId}`;
+    const cqlQuery = `type IN (page, folder) AND space="${escapeCqlString(spaceKey)}" AND parent=${parentContentId}`;
 
     const params = new URLSearchParams({
       cql: cqlQuery,
@@ -810,6 +820,11 @@ export class ConfluenceClient {
     };
   }
 
+  /**
+   * @cc [owner:tdraier,label:security] cql-values-are-data
+   * `spaceKey` MUST be escaped as a CQL string literal so no value can alter the query grammar.
+   * Callers MUST only pass numeric Confluence ids in `pageIds`, which are interpolated unquoted.
+   */
   async getPagesByIdsInSpace({
     spaceKey,
     pageIds,
@@ -821,7 +836,7 @@ export class ConfluenceClient {
   }) {
     // Build CQL query to get pages with specific IDs.
     const idClause = pageIds?.length ? ` AND id in (${pageIds.join(",")})` : "";
-    const cqlQuery = `type=page AND space="${spaceKey}"${idClause}`;
+    const cqlQuery = `type=page AND space="${escapeCqlString(spaceKey)}"${idClause}`;
 
     const params = new URLSearchParams({
       cql: cqlQuery,

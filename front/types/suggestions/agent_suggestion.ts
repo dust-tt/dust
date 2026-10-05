@@ -19,6 +19,9 @@ export const AGENT_SUGGESTION_KINDS = [
   "name",
   "description",
   "scope",
+  "editors",
+  "tags",
+  "structured_output",
 ] as const;
 
 export type AgentSuggestionKind = (typeof AGENT_SUGGESTION_KINDS)[number];
@@ -34,13 +37,16 @@ export function getAgentSuggestionAction(
     case "delete":
       return "delete";
     case "description":
+    case "editors":
     case "instructions":
     case "knowledge":
     case "model":
     case "name":
     case "scope":
     case "skills":
+    case "structured_output":
     case "sub_agent":
+    case "tags":
     case "tools":
       return "edit";
     default:
@@ -62,15 +68,6 @@ export type AgentSuggestionState = (typeof AGENT_SUGGESTION_STATES)[number];
 export const AGENT_SUGGESTION_SOURCES = ["sidekick", "conversational"] as const;
 
 export type AgentSuggestionSource = (typeof AGENT_SUGGESTION_SOURCES)[number];
-
-export function isAgentSuggestionSource(
-  value: unknown
-): value is AgentSuggestionSource {
-  return (
-    typeof value === "string" &&
-    AGENT_SUGGESTION_SOURCES.includes(value as AgentSuggestionSource)
-  );
-}
 
 export const INSTRUCTIONS_ROOT_TARGET_BLOCK_ID = "instructions-root";
 
@@ -125,6 +122,20 @@ const CreateSuggestionSchema = z.object({
     .trim()
     .min(1)
     .describe("The agent's instructions, as HTML."),
+  toolIds: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Ids of the tools (MCP server views) the agent is created with, each with its default configuration."
+    ),
+  skillIds: z
+    .array(z.string())
+    .optional()
+    .describe("Ids of the skills the agent is created with."),
+  subAgentIds: z
+    .array(z.string())
+    .optional()
+    .describe("Ids of the agents the agent is created with as sub-agents."),
 });
 
 const DeleteSuggestionSchema = z.object({
@@ -141,6 +152,40 @@ const DescriptionSuggestionSchema = z.object({
 
 const ScopeSuggestionSchema = z.object({
   scope: z.enum(["hidden", "visible"]),
+});
+
+const EditorsSuggestionSchema = z
+  .object({
+    addUserIds: z
+      .array(z.string())
+      .describe("sIds of the workspace members to add as editors."),
+    removeUserIds: z
+      .array(z.string())
+      .describe("sIds of the current editors to remove."),
+  })
+  .refine(
+    (d) => d.addUserIds.length > 0 || d.removeUserIds.length > 0,
+    "At least one of addUserIds or removeUserIds must be non-empty."
+  );
+
+// Tags are referenced by name, not id: a suggestion may add a tag that does not exist yet, which is
+// created when the suggestion is applied.
+const TagsSuggestionSchema = z
+  .object({
+    addTags: z.array(z.string()).describe("Names of the tags to add."),
+    removeTags: z
+      .array(z.string())
+      .describe("Names of the agent's tags to remove."),
+  })
+  .refine(
+    (d) => d.addTags.length > 0 || d.removeTags.length > 0,
+    "At least one of addTags or removeTags must be non-empty."
+  );
+
+// The JSON schema the agent's answers must follow, as stored on its model configuration (a
+// `ResponseFormat` serialized as JSON), or `null` to remove it.
+const StructuredOutputSuggestionSchema = z.object({
+  responseFormat: z.string().min(1).nullable(),
 });
 
 const KNOWLEDGE_SUGGESTION_METHODS = ["search", "query_tables"] as const;
@@ -173,6 +218,11 @@ export type DescriptionSuggestionType = z.infer<
 >;
 export type NameSuggestionType = z.infer<typeof NameSuggestionSchema>;
 export type ScopeSuggestionType = z.infer<typeof ScopeSuggestionSchema>;
+export type EditorsSuggestionType = z.infer<typeof EditorsSuggestionSchema>;
+export type TagsSuggestionType = z.infer<typeof TagsSuggestionSchema>;
+export type StructuredOutputSuggestionType = z.infer<
+  typeof StructuredOutputSuggestionSchema
+>;
 
 export function isToolsSuggestion(data: unknown): data is ToolsSuggestionType {
   return ToolsSuggestionSchema.safeParse(data).success;
@@ -200,13 +250,16 @@ export type SuggestionPayload =
   | CreateSuggestionType
   | DeleteSuggestionType
   | DescriptionSuggestionType
+  | EditorsSuggestionType
   | InstructionsSuggestionSchemaType
   | KnowledgeSuggestionType
   | ModelSuggestionType
   | NameSuggestionType
   | ScopeSuggestionType
   | SkillsSuggestionType
+  | StructuredOutputSuggestionType
   | SubAgentSuggestionType
+  | TagsSuggestionType
   | ToolsSuggestionType;
 
 export const AgentSuggestionDataSchema = z.discriminatedUnion("kind", [
@@ -233,6 +286,15 @@ export const AgentSuggestionDataSchema = z.discriminatedUnion("kind", [
     suggestion: DescriptionSuggestionSchema,
   }),
   z.object({ kind: z.literal("scope"), suggestion: ScopeSuggestionSchema }),
+  z.object({
+    kind: z.literal("editors"),
+    suggestion: EditorsSuggestionSchema,
+  }),
+  z.object({ kind: z.literal("tags"), suggestion: TagsSuggestionSchema }),
+  z.object({
+    kind: z.literal("structured_output"),
+    suggestion: StructuredOutputSuggestionSchema,
+  }),
 ]);
 
 export type AgentSuggestionData = z.infer<typeof AgentSuggestionDataSchema>;
@@ -324,6 +386,21 @@ export type AgentScopeSuggestionType = Extract<
   { kind: "scope" }
 >;
 
+export type AgentEditorsSuggestionType = Extract<
+  AgentSuggestionType,
+  { kind: "editors" }
+>;
+
+export type AgentTagsSuggestionType = Extract<
+  AgentSuggestionType,
+  { kind: "tags" }
+>;
+
+export type AgentStructuredOutputSuggestionType = Extract<
+  AgentSuggestionType,
+  { kind: "structured_output" }
+>;
+
 export interface ToolSuggestionRelations {
   tool: MCPServerViewType;
 }
@@ -366,11 +443,14 @@ export type AgentSuggestionWithRelationsType =
   | (AgentCreateSuggestionType & { relations: null })
   | (AgentDeleteSuggestionType & { relations: null })
   | (AgentDescriptionSuggestionType & { relations: null })
+  | (AgentEditorsSuggestionType & { relations: null })
   | (AgentInstructionsSuggestionType & { relations: null })
   | AgentKnowledgeSuggestionWithRelationsType
   | AgentModelSuggestionWithRelationsType
   | (AgentNameSuggestionType & { relations: null })
   | (AgentScopeSuggestionType & { relations: null })
   | AgentSkillsSuggestionWithRelationsType
+  | (AgentStructuredOutputSuggestionType & { relations: null })
   | AgentSubAgentSuggestionWithRelationsType
+  | (AgentTagsSuggestionType & { relations: null })
   | AgentToolsSuggestionWithRelationsType;

@@ -1,5 +1,11 @@
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import type { MemberVerbAuthority } from "@app/lib/resources/group_management_access";
+import {
+  getMemberScopeWithGroupVerb,
+  getMemberVerbAuthority,
+} from "@app/lib/resources/group_management_access";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { MembershipUpgradeRequestModel } from "@app/lib/resources/storage/models/membership_upgrade_requests";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -196,60 +202,109 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     return request ?? null;
   }
 
+  /**
+   * @cc [owner:philipperolet,label:security] pending-request-scope
+   * Delegates MUST receive only requests from current members covered by `set_usage_limits`.
+   * Group filters MUST narrow that scope; overlapping groups MUST NOT duplicate requests.
+   */
   static async listPendingByWorkspace(
-    auth: Authenticator
+    auth: Authenticator,
+    { groupId }: { groupId?: string } = {}
   ): Promise<MembershipUpgradeRequestResource[]> {
-    if (!auth.isManager()) {
+    const scope = await getMemberScopeWithGroupVerb(auth, "set_usage_limits");
+    let memberModelIds =
+      scope.kind === "ids" ? scope.memberModelIds : undefined;
+    if (groupId) {
+      const group = await GroupResource.fetchById(auth, groupId);
+      if (group.isErr()) {
+        return [];
+      }
+      const members = await group.value.getActiveMembers(auth);
+      const groupMemberModelIds = new Set(members.map((member) => member.id));
+      memberModelIds = memberModelIds
+        ? memberModelIds.filter((id) => groupMemberModelIds.has(id))
+        : [...groupMemberModelIds];
+    }
+    if (memberModelIds?.length === 0) {
       return [];
     }
+    // The workspace/status and pending workspace/user indexes cover both paths.
     return this.baseFetch(auth, {
-      where: { status: "pending" },
+      where: {
+        status: "pending",
+        ...(memberModelIds ? { userId: memberModelIds } : {}),
+      },
       order: [["createdAt", "DESC"]],
     });
   }
 
-  // Fetching an arbitrary request by id is a business-admin operation (a
-  // manager or full admin resolves it from the usage page).
+  // Fetch requests only when the caller can manage the requester's limit.
   static async fetchById(
     auth: Authenticator,
     membershipUpgradeRequestId: string
   ): Promise<MembershipUpgradeRequestResource | null> {
-    if (!auth.isManager()) {
-      return null;
-    }
     const modelId = getResourceIdFromSId(membershipUpgradeRequestId);
     if (!modelId) {
       return null;
     }
     const [request] = await this.baseFetch(auth, { where: { id: modelId } });
-    return request ?? null;
+    if (
+      !request ||
+      (await request.getResolutionAuthority(auth)).kind === "none"
+    ) {
+      return null;
+    }
+    return request;
   }
 
-  // Mark the request as resolved by an admin. Only a `pending` request can be
-  // resolved; resolving an already-resolved request is rejected.
+  private async getResolutionAuthority(
+    auth: Authenticator
+  ): Promise<MemberVerbAuthority> {
+    const workspace = auth.getNonNullableWorkspace();
+    if (this.workspaceId !== workspace.id) {
+      return { kind: "none" };
+    }
+    // Workspace managers can still clear requests after the requester leaves the workspace.
+    if (auth.isManager()) {
+      return { kind: "workspace" };
+    }
+    return getMemberVerbAuthority(auth, this.requester, "set_usage_limits");
+  }
+
+  /**
+   * @cc [owner:philipperolet,label:security;concurrency] request-resolution-authority
+   * Delegated resolution MUST recheck the requester's current workspace and group membership.
+   * Workspace managers may also resolve former members' requests. Only pending requests in the
+   * caller's workspace may change, and concurrent resolutions MUST have only one winner.
+   */
   async markAsResolved(
     auth: Authenticator,
     {
       status,
-      resolvedByUser,
     }: {
       status: Exclude<MembershipUpgradeRequestStatus, "pending">;
-      resolvedByUser: UserResource;
     },
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<undefined, Error>> {
-    if (this.status !== "pending") {
-      return new Err(new Error("Request is not pending."));
+  ): Promise<
+    Result<MemberVerbAuthority, "unauthorized" | "request_not_pending">
+  > {
+    const authority = await this.getResolutionAuthority(auth);
+    if (authority.kind === "none") {
+      return new Err("unauthorized");
     }
-    await this.update(
+    const [updated] = await this.update(
       {
         status,
-        resolvedByUserId: resolvedByUser.id,
+        resolvedByUserId: auth.getNonNullableUser().id,
         resolvedAt: new Date(),
       },
-      transaction
+      transaction,
+      { workspaceId: auth.getNonNullableWorkspace().id, status: "pending" }
     );
-    return new Ok(undefined);
+    if (updated === 0) {
+      return new Err("request_not_pending");
+    }
+    return new Ok(authority);
   }
 
   async delete(

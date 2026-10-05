@@ -1,7 +1,6 @@
 import logger from "@app/logger/logger";
 import type { SandboxFunctionCallError } from "@app/types/api/sandbox_functions";
 import { SANDBOX_FUNCTION_RUNNER_ERROR_CODES } from "@app/types/api/sandbox_functions";
-import { truncate } from "@app/types/shared/utils/string_utils";
 import { z } from "zod";
 
 // Current wire version dsbx emits. Parsing accepts the supported set below so a future bump
@@ -12,8 +11,8 @@ export const SUPPORTED_SANDBOX_FUNCTION_RESULT_PROTOCOL_VERSIONS = [
   SANDBOX_FUNCTION_RESULT_PROTOCOL_VERSION,
 ] as const;
 
-// Cap on the rejected-payload snippet included in logs.
-const REJECTED_ENVELOPE_LOG_SNIPPET_MAX_CHARS = 512;
+// Cap on the top-level keys of a rejected payload included in logs.
+const REJECTED_ENVELOPE_LOG_MAX_KEYS = 20;
 
 export type NormalizedSandboxFunctionOutcome =
   | { ok: true; output: unknown }
@@ -58,11 +57,16 @@ const ProtocolVersionProbeSchema = z.object({
   protocolVersion: z.number(),
 });
 
-// The only directory a result-spill pointer may name. The runner writes spilled results there
-// (cli/dust-sandbox/functions-runner) and the pointer rides the exec's stdout, which untrusted
-// function code can also write to: restricting read-back to this scratch directory keeps a forged
-// pointer from making front read an arbitrary sandbox file.
-export const SANDBOX_FUNCTION_RESULT_SPILL_DIR = "/tmp/dust-fn-results/";
+// The only file names a result-spill pointer may name: `<uuid>.json` directly in the runner's
+// scratch directory (cli/dust-sandbox/functions-runner/emit.ts RESULT_SPILL_DIR). The pointer
+// rides the exec's stdout, which untrusted function code can also write to, so this keeps a forged
+// pointer from naming an arbitrary sandbox file.
+export const SANDBOX_FUNCTION_RESULT_SPILL_FILE_PATTERN =
+  /^\/tmp\/dust-fn-results\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.json$/;
+
+// Mirrors RESULT_HARD_CAP_BYTES in cli/dust-sandbox/functions-runner/emit.ts: the runner never
+// spills a result larger than this, so front never buffers more when reading one back.
+export const SANDBOX_FUNCTION_RESULT_MAX_BYTES = 5 * 1024 * 1024;
 
 // A result too large to inline on stdout: the runner writes the full envelope JSON to a
 // sandbox-local scratch file and emits this pointer instead. Deliberately not `.strict()`: a
@@ -143,6 +147,31 @@ export function extractResultEnvelopeTimings(
   return timings.success ? timings.data : null;
 }
 
+/**
+ * @cc [owner:fontanierh,label:security;logging] rejected-payload-shape-only
+ * The returned description MUST NOT include any value from `payload`, only its type and top-level
+ * keys: a spilled result is read back from a workload-controlled file, so a rejected payload can
+ * be the content of a file the workload pointed front at.
+ */
+function describeRejectedPayloadShape(payload: unknown): {
+  type: string;
+  keys?: string[];
+} {
+  if (payload === null) {
+    return { type: "null" };
+  }
+  if (Array.isArray(payload)) {
+    return { type: "array" };
+  }
+  if (typeof payload === "object") {
+    return {
+      type: "object",
+      keys: Object.keys(payload).slice(0, REJECTED_ENVELOPE_LOG_MAX_KEYS),
+    };
+  }
+  return { type: typeof payload };
+}
+
 function invalidResultEnvelope(
   reason: string,
   details?: Record<string, unknown>
@@ -166,10 +195,7 @@ function normalizeRunnerOutcome(
   const current = SandboxFunctionRunnerOutputSchema.safeParse(result);
   if (!current.success) {
     return invalidResultEnvelope("unrecognized_runner_outcome", {
-      resultSnippet: truncate(
-        JSON.stringify(result) ?? "undefined",
-        REJECTED_ENVELOPE_LOG_SNIPPET_MAX_CHARS
-      ),
+      resultShape: describeRejectedPayloadShape(result),
     });
   }
 
@@ -218,10 +244,7 @@ export function normalizeSandboxFunctionResult(
     if (!v3.success) {
       return invalidResultEnvelope("malformed_v3_envelope", {
         protocolVersion,
-        resultSnippet: truncate(
-          JSON.stringify(result) ?? "undefined",
-          REJECTED_ENVELOPE_LOG_SNIPPET_MAX_CHARS
-        ),
+        resultShape: describeRejectedPayloadShape(result),
       });
     }
 

@@ -55,8 +55,8 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { ModelId } from "@connectors/types";
 import {
-  getHeaderFromGroupIds,
   getHeaderFromUserEmail,
+  getHeadersFromRequestedGroupIds,
 } from "@connectors/types";
 import type {
   AgentMessageSuccessEvent,
@@ -243,6 +243,12 @@ export async function botAnswerMessage(
   }
 }
 
+/**
+ * @cc [owner:tdraier,label:security] bot-message-scoped-to-connector
+ * The `SlackChatBotMessage` row named by the interaction payload MUST be loaded with a
+ * `connectorId` predicate equal to the connector resolved from the Slack team. A row belonging to
+ * another connector MUST be treated as missing.
+ */
 export async function botReplaceMention(
   messageId: number,
   mentionOverride: string,
@@ -257,7 +263,7 @@ export async function botReplaceMention(
 
   try {
     const slackChatBotMessage = await SlackChatBotMessageModel.findOne({
-      where: { id: messageId },
+      where: { id: messageId, connectorId: connector.id },
     });
     if (!slackChatBotMessage) {
       throw new Error("Missing initial message");
@@ -326,6 +332,76 @@ export async function botReplaceMention(
   }
 }
 
+/**
+ * Groups a Slack user clicking a bot interaction acts with: none for a workspace member, the
+ * whitelisted ones for an allowed external user. `null` when the user is not allowed, after they
+ * were notified. Calls made on the user's behalf must carry these groups, since their email alone
+ * grants nothing to a non-member.
+ */
+async function getInteractingSlackUserGroups(
+  connector: ConnectorResource,
+  slackConfig: SlackConfigurationResource,
+  slackClient: WebClient,
+  {
+    slackUserId,
+    slackChannel,
+    slackTeamId,
+    slackMessageTs,
+  }: {
+    slackUserId: string | undefined;
+    slackChannel: string;
+    slackTeamId: string;
+    slackMessageTs: string;
+  }
+): Promise<Result<string[] | null, Error>> {
+  if (!slackUserId) {
+    return new Err(new Error("Failed to get slack user info"));
+  }
+
+  let slackUserInfo: SlackUserInfo;
+  try {
+    slackUserInfo = await getSlackUserInfoMemoized(
+      connector.id,
+      slackClient,
+      slackUserId
+    );
+  } catch (e) {
+    if (isSlackWebAPIPlatformError(e)) {
+      logger.error(
+        {
+          error: e,
+          connectorId: connector.id,
+          slackUserId,
+        },
+        "Failed to get slack user info"
+      );
+    }
+    throw e;
+  }
+
+  if (slackUserInfo.is_bot) {
+    throw new Error("Unreachable: bot cannot interact with bot messages.");
+  }
+
+  const hasChatbotAccessRes = await notifyIfSlackUserIsNotAllowed(
+    connector,
+    slackClient,
+    slackUserInfo,
+    {
+      slackChannelId: slackChannel,
+      slackTeamId,
+      slackMessageTs,
+    },
+    slackConfig.whitelistedDomains
+  );
+  if (hasChatbotAccessRes.isErr()) {
+    return hasChatbotAccessRes;
+  }
+
+  const hasChatbotAccess = hasChatbotAccessRes.value;
+  return new Ok(hasChatbotAccess.authorized ? hasChatbotAccess.groupIds : null);
+}
+
 type ToolValidationParams = {
   actionId: string;
   approved: "approved" | "rejected";
@@ -335,6 +411,12 @@ type ToolValidationParams = {
   text: string;
 };
 
+/**
+ * @cc [owner:tdraier,label:security] bot-message-scoped-to-connector
+ * The `SlackChatBotMessage` row named by the interaction payload MUST be loaded with a
+ * `connectorId` predicate equal to the connector resolved from the Slack team. A row belonging to
+ * another connector MUST be treated as missing.
+ */
 export async function botValidateToolExecution(
   {
     actionId,
@@ -352,7 +434,6 @@ export async function botValidateToolExecution(
     slackTeamId,
     responseUrl,
     slackUserId,
-    slackBotId,
   } = params;
 
   const connectorRes = await getSlackConnector(params);
@@ -363,7 +444,7 @@ export async function botValidateToolExecution(
 
   try {
     const slackChatBotMessage = await SlackChatBotMessageModel.findOne({
-      where: { id: slackChatBotMessageId },
+      where: { id: slackChatBotMessageId, connectorId: connector.id },
     });
     if (!slackChatBotMessage) {
       throw new Error("Missing Slack message");
@@ -374,63 +455,20 @@ export async function botValidateToolExecution(
       slackChatBotMessage.slackEmail !== "unknown"
         ? slackChatBotMessage.slackEmail
         : undefined;
-    let slackUserInfo: SlackUserInfo | null = null;
-    let requestedGroups: string[] | undefined = undefined;
 
-    if (slackUserId) {
-      try {
-        slackUserInfo = await getSlackUserInfoMemoized(
-          connector.id,
-          slackClient,
-          slackUserId
-        );
-      } catch (e) {
-        if (isSlackWebAPIPlatformError(e)) {
-          logger.error(
-            {
-              error: e,
-              connectorId: connector.id,
-              slackUserId,
-            },
-            "Failed to get slack user info"
-          );
-        }
-        throw e;
-      }
-    } else if (slackBotId) {
-      throw new Error("Unreachable: bot cannot validate tool execution.");
-    }
-
-    if (!slackUserInfo) {
-      throw new Error("Failed to get slack user info");
-    }
-
-    if (slackUserInfo.is_bot) {
-      throw new Error("Unreachable: bot cannot validate tool execution.");
-    }
-
-    const hasChatbotAccessRes = await notifyIfSlackUserIsNotAllowed(
+    const requestedGroupsRes = await getInteractingSlackUserGroups(
       connector,
+      slackConfig,
       slackClient,
-      slackUserInfo,
-      {
-        slackChannelId: slackChannel,
-        slackTeamId,
-        slackMessageTs,
-      },
-      slackConfig.whitelistedDomains
+      { slackUserId, slackChannel, slackTeamId, slackMessageTs }
     );
-    if (hasChatbotAccessRes.isErr()) {
-      return hasChatbotAccessRes;
+    if (requestedGroupsRes.isErr()) {
+      return requestedGroupsRes;
     }
-
-    const hasChatbotAccess = hasChatbotAccessRes.value;
-    if (!hasChatbotAccess.authorized) {
+    const requestedGroups = requestedGroupsRes.value;
+    if (!requestedGroups) {
       return new Ok(undefined);
     }
-
-    // If the user is allowed, we retrieve the groups he has access to.
-    requestedGroups = hasChatbotAccess.groupIds;
 
     const dustAPI = new DustAPI(
       { url: apiConfig.getDustFrontAPIUrl() },
@@ -438,7 +476,7 @@ export async function botValidateToolExecution(
         apiKey: connector.workspaceAPIKey,
         // Validation must include user's groups and email for personal tools and group-gated actions.
         extraHeaders: {
-          ...getHeaderFromGroupIds(requestedGroups),
+          ...getHeadersFromRequestedGroupIds(requestedGroups),
           ...getHeaderFromUserEmail(userEmailHeader),
         },
         workspaceId: connector.workspaceId,
@@ -585,9 +623,16 @@ type UserQuestionAnswerParams = {
   slackTeamId: string;
   slackChannel: string;
   slackThreadTs: string;
+  slackUserId: string;
   responseUrl: string | undefined;
 };
 
+/**
+ * @cc [owner:tdraier,label:security] bot-message-scoped-to-connector
+ * The `SlackChatBotMessage` row named by the interaction payload MUST be loaded with a
+ * `connectorId` predicate equal to the connector resolved from the Slack team. A row belonging to
+ * another connector MUST be treated as missing.
+ */
 export async function botAnswerUserQuestion({
   actionId,
   answer,
@@ -597,9 +642,10 @@ export async function botAnswerUserQuestion({
   slackTeamId,
   slackChannel,
   slackThreadTs,
+  slackUserId,
   responseUrl,
 }: UserQuestionAnswerParams): Promise<
-  Result<AnswerUserQuestionResponseType, Error | APIError>
+  Result<AnswerUserQuestionResponseType | undefined, Error | APIError>
 > {
   const slackConfig =
     await SlackConfigurationResource.fetchByActiveBot(slackTeamId);
@@ -616,7 +662,7 @@ export async function botAnswerUserQuestion({
   }
 
   const slackChatBotMessage = await SlackChatBotMessageModel.findOne({
-    where: { id: slackChatBotMessageId },
+    where: { id: slackChatBotMessageId, connectorId: connector.id },
   });
   if (!slackChatBotMessage) {
     return new Err(new Error("Missing Slack message"));
@@ -627,17 +673,36 @@ export async function botAnswerUserQuestion({
       ? slackChatBotMessage.slackEmail
       : undefined;
 
-  const dustAPI = new DustAPI(
-    { url: apiConfig.getDustFrontAPIUrl() },
-    {
-      apiKey: connector.workspaceAPIKey,
-      extraHeaders: getHeaderFromUserEmail(userEmailHeader),
-      workspaceId: connector.workspaceId,
-    },
-    logger
+  const slackClient = await getSlackClient(connector.id);
+
+  const requestedGroupsRes = await getInteractingSlackUserGroups(
+    connector,
+    slackConfig,
+    slackClient,
+    { slackUserId, slackChannel, slackTeamId, slackMessageTs: slackThreadTs }
   );
+  if (requestedGroupsRes.isErr()) {
+    return requestedGroupsRes;
+  }
+  const requestedGroups = requestedGroupsRes.value;
+  if (!requestedGroups) {
+    return new Ok(undefined);
+  }
 
   try {
+    const dustAPI = new DustAPI(
+      { url: apiConfig.getDustFrontAPIUrl() },
+      {
+        apiKey: connector.workspaceAPIKey,
+        extraHeaders: {
+          ...getHeadersFromRequestedGroupIds(requestedGroups),
+          ...getHeaderFromUserEmail(userEmailHeader),
+        },
+        workspaceId: connector.workspaceId,
+      },
+      logger
+    );
+
     const res = await dustAPI.answerUserQuestion({
       conversationId,
       messageId,
@@ -660,7 +725,6 @@ export async function botAnswerUserQuestion({
       }
     }
 
-    const slackClient = await getSlackClient(connector.id);
     const confirmationText =
       answer.selectedOptions.length === 0 && !answer.customResponse
         ? "Question skipped ⏭️"
@@ -968,7 +1032,7 @@ async function answerMessage(
       workspaceId: connector.workspaceId,
       apiKey: connector.workspaceAPIKey,
       extraHeaders: {
-        ...getHeaderFromGroupIds(requestedGroups),
+        ...getHeadersFromRequestedGroupIds(requestedGroups),
         ...getHeaderFromUserEmail(userEmailHeader),
       },
     },

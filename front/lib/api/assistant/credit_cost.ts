@@ -7,6 +7,7 @@ import {
 } from "@app/lib/api/assistant/rate_limits";
 import { maybeProactivelyAutoUpgradeSeatOnCapReached } from "@app/lib/api/credits/auto_seat_upgrade";
 import { recordProgrammaticSpendLimitUsage } from "@app/lib/api/credits/programmatic_usage_limit";
+import { recordGroupLimitUsage } from "@app/lib/api/groups/group_limit";
 import { recordApiKeySpendLimitUsage } from "@app/lib/api/keys/spend_limit";
 import { PostHogServerSideTracking } from "@app/lib/api/posthog";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
@@ -94,6 +95,13 @@ export function computeAgentMessageCredits({
  * Metronome events. Tagging is idempotent (same runIds → same runKey), so it stays overwrite-safe
  * across Temporal retries.
  */
+/**
+ * @cc [owner:tdraier,label:product] programmatic-usage-not-user-attributed
+ * When the triggering message is programmatic (`isProgrammaticUsage` on its origin, user and auth
+ * method, the same classification as its run usage type), its cost MUST NOT be recorded in the
+ * user's fair-use AWU counter, per-user spend-cap counter or free-seat lifetime counter, even when
+ * `auth` carries a user. It is recorded in the programmatic counters only.
+ */
 export async function computeAndStoreAgentMessageCredits(
   auth: Authenticator,
   {
@@ -147,16 +155,14 @@ export async function computeAndStoreAgentMessageCredits(
   // Repair legacy run usages that predate creation-time classification. New
   // rows are already classified and this fallback never overwrites them.
   const messageOrigin = triggeringUserMessageOrigin ?? "web";
+  const isProgrammatic = isProgrammaticUsage(auth, {
+    userMessageOrigin: messageOrigin,
+    userId: triggeringUserId,
+    messageAuthMethod: triggeringUserMessageAuthMethod,
+  });
   await RunResource.setUsageTypeForRunsIfMissing(auth, {
     runs,
-    usageType: getUsageType(
-      isProgrammaticUsage(auth, {
-        userMessageOrigin: messageOrigin,
-        userId: triggeringUserId,
-        messageAuthMethod: triggeringUserMessageAuthMethod,
-      }),
-      messageOrigin
-    ),
+    usageType: getUsageType(isProgrammatic, messageOrigin),
   });
 
   const [runUsages, actions] = await Promise.all([
@@ -190,7 +196,7 @@ export async function computeAndStoreAgentMessageCredits(
   const recordedCostDelta =
     costCredits !== null ? costCredits - (previousCostCredits ?? 0) : 0;
 
-  const user = auth.user();
+  const user = isProgrammatic ? null : auth.user();
   const plan = auth.plan();
   const assistantLimits = plan?.limits.assistant;
 
@@ -316,6 +322,11 @@ export async function computeAndStoreAgentMessageCredits(
           incrementBy: recordedCostDelta,
           cycle: spendLimitCycleOverrideForAuth(auth),
         });
+        await recordGroupLimitUsage(auth, {
+          user,
+          agentMessageId,
+          incrementBy: recordedCostDelta,
+        });
       }
 
       // Proactively auto-upgrade the moment this message's usage puts the user
@@ -336,7 +347,7 @@ export async function computeAndStoreAgentMessageCredits(
     }
 
     // Workspace programmatic cap, for programmatic calls.
-    if (isProgrammaticUsage(auth, { userMessageOrigin: messageOrigin })) {
+    if (isProgrammatic) {
       await recordProgrammaticSpendLimitUsage(auth, {
         incrementBy: recordedCostDelta,
       });

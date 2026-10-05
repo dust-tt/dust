@@ -13,8 +13,8 @@ export { isUserMessageOrigin } from "@app/lib/api/analytics/source_labels";
 
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { formatShortDate } from "@app/lib/utils/timestamps";
+import { tz } from "@date-fns/tz";
 import { addDays, startOfDay, subDays } from "date-fns";
-import { fromZonedTime, toZonedTime } from "date-fns-tz";
 
 type VersionMarker = { version: string; timestamp: number };
 
@@ -107,20 +107,15 @@ export function getDayTimestamps(
   periodDays: number,
   timezone: string
 ): number[] {
-  const zonedNow = toZonedTime(new Date(), timezone);
-  const startOfTomorrowZoned = startOfDay(addDays(zonedNow, 1));
-  const startOfTomorrowMs = fromZonedTime(
-    startOfTomorrowZoned,
-    timezone
-  ).getTime();
+  const startOfTomorrow = startOfDay(
+    addDays(new Date(), 1, { in: tz(timezone) })
+  );
 
   const timestamps: number[] = [];
-  let cursorZoned = subDays(startOfTomorrowZoned, periodDays);
-  let cursorMs = fromZonedTime(cursorZoned, timezone).getTime();
-  while (cursorMs < startOfTomorrowMs) {
-    timestamps.push(cursorMs);
-    cursorZoned = addDays(cursorZoned, 1);
-    cursorMs = fromZonedTime(cursorZoned, timezone).getTime();
+  let cursor = subDays(startOfTomorrow, periodDays);
+  while (cursor.getTime() < startOfTomorrow.getTime()) {
+    timestamps.push(cursor.getTime());
+    cursor = addDays(cursor, 1);
   }
   return timestamps;
 }

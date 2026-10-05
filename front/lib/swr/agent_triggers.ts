@@ -1,6 +1,7 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { BulkTriggerSelection } from "@app/lib/api/triggers/bulk_selection";
 import { clientFetch } from "@app/lib/egress/client";
+import { getLocalTimeZone } from "@app/lib/i18n/format";
 import { parseMatcherExpression } from "@app/lib/matcher";
 import {
   emptyArray,
@@ -8,7 +9,6 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { GetTriggerEstimationResponseBody } from "@app/lib/triggers/trigger_usage_estimation";
 import type {
   GetTriggersResponseBody,
   PatchTriggerExecutionModeRequestBody,
@@ -22,6 +22,7 @@ import type {
   PostWebhookFilterGeneratorRequestBody,
   PostWebhookFilterGeneratorResponseBody,
 } from "@app/types/api/assistant/configuration/triggers/webhook_filter_generator";
+import type { GetTriggerEstimationResponseBody } from "@app/types/api/webhook_source";
 import type {
   BulkTriggerUpdateOutcome,
   ScheduleConfig,
@@ -379,7 +380,7 @@ export function useTextAsCronRule({
             },
             body: JSON.stringify({
               naturalDescription,
-              defaultTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+              defaultTimezone: getLocalTimeZone(),
             } satisfies PostTextAsCronRuleRequestBody),
             signal,
           }

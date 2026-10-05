@@ -1,3 +1,4 @@
+import { compareStrings } from "@app/lib/i18n/format";
 import { useAllowSlackWorkflow } from "@app/lib/swr/slack_workflows";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { GLOBAL_SPACE_NAME } from "@app/types/groups";
@@ -54,7 +55,7 @@ export function AllowSlackWorkflowDialog({
     () =>
       spaces
         .filter((space) => space.kind === "regular" || space.kind === "project")
-        .sort((a, b) => a.name.localeCompare(b.name)),
+        .sort((a, b) => compareStrings(a.name, b.name)),
     [spaces]
   );
 

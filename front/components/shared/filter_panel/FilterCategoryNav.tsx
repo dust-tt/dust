@@ -1,9 +1,11 @@
 import {
   Counter,
+  cn,
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
 } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 
 interface FilterCategoryNavProps<Category extends string> {
   categories: readonly Category[];
@@ -11,6 +13,8 @@ interface FilterCategoryNavProps<Category extends string> {
   selectionCounts: Partial<Record<Category, number>>;
   activeCategory: Category;
   onCategoryChange: (category: Category) => void;
+  footer?: ReactNode;
+  className?: string;
 }
 
 export function FilterCategoryNav<Category extends string>({
@@ -19,9 +23,11 @@ export function FilterCategoryNav<Category extends string>({
   selectionCounts,
   activeCategory,
   onCategoryChange,
+  footer,
+  className,
 }: FilterCategoryNavProps<Category>) {
   return (
-    <div className="flex h-full w-44 flex-col p-2">
+    <div className={cn("flex h-full w-44 flex-col p-2", className)}>
       <NavigationListLabel
         label="Filter"
         className="bg-transparent pt-1.5 font-medium"
@@ -34,7 +40,7 @@ export function FilterCategoryNav<Category extends string>({
               type="button"
               role="tab"
               aria-selected={category === activeCategory}
-              className="w-full text-left"
+              className="w-full rounded-lg text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring"
               key={category}
               onClick={() => onCategoryChange(category)}
             >
@@ -59,6 +65,7 @@ export function FilterCategoryNav<Category extends string>({
           );
         })}
       </NavigationList>
+      {footer}
     </div>
   );
 }

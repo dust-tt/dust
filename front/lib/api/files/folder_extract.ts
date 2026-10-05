@@ -1,5 +1,6 @@
 import path from "node:path";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import { readZipEntryData } from "@app/lib/utils/zip";
 import type { DustFileSystemError } from "@app/types/file_system";
 import { isDustFileSystemError } from "@app/types/file_system";
 import { contentTypeFromFileName } from "@app/types/files";
@@ -222,6 +223,11 @@ function planArchiveExtraction(
  * leaves the destination untouched.
  */
 /**
+ * @cc [owner:sfriquet,label:security;performance] extract-decompression-bounded-by-limits
+ * MUST NOT decompress more than `limits.maxUncompressedSizeBytes` in total,
+ * whatever sizes the entry headers declare.
+ */
+/**
  * Expands a ZIP archive into `destFolderPath`, the mirror image of
  * `planFolderArchive`/`streamFolderArchive`.
  */
@@ -271,7 +277,7 @@ export async function extractArchiveToFolder(
     const fileName = destPath.split("/").pop() ?? destPath;
     const writeResult = await fileSystem.write(
       destPath,
-      entry.getData(),
+      readZipEntryData(entry),
       contentTypeFromFileName(fileName) ?? FALLBACK_CONTENT_TYPE
     );
     if (writeResult.isErr()) {

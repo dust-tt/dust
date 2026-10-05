@@ -1,4 +1,3 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { checkMessagesLimit } from "@app/lib/api/assistant/conversation";
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
@@ -15,6 +14,8 @@ import {
 import { enforcePremiumModelLimit } from "@app/lib/api/assistant/premium_model_limit";
 import { publishMessageEventsOnMessagePostOrEdit } from "@app/lib/api/assistant/streaming/events";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toLightAgentConfiguration } from "@app/lib/resources/agent_resource_serialization";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MentionResource } from "@app/lib/resources/mention_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -187,15 +188,12 @@ export async function validateAgentMention(
     return new Ok(undefined);
   }
 
-  const configuration = await getAgentConfiguration(auth, {
-    agentId: agentConfigurationId,
-    variant: "light",
-  });
+  const agent = await AgentResource.fetchById(auth, agentConfigurationId);
   if (
-    !configuration ||
+    !agent ||
     !(
-      (configuration.status === "active" || configuration.status === "draft") &&
-      configuration.canRead
+      (agent.status === "active" || agent.status === "draft") &&
+      auth.can("read", agent)
     )
   ) {
     return new Err({
@@ -207,6 +205,13 @@ export async function validateAgentMention(
       },
     });
   }
+
+  // The agent message created for the mention carries its agent's configuration on the wire, as
+  // on the other mention paths: without favorites or tags.
+  const configuration = await toLightAgentConfiguration(auth, agent, {
+    withFavorites: false,
+    withTags: false,
+  });
 
   const limitResult = await checkMessagesLimit(auth, {
     mentions: [{ configurationId: agentConfigurationId }],
@@ -229,7 +234,7 @@ export async function validateAgentMention(
   );
 
   const resolution = await resolveModelForMentionedAgent(auth, {
-    configuration,
+    agent,
     selection: message.requestedModel ?? undefined,
   });
 

@@ -13,6 +13,7 @@ struct ConversationPreview: Codable, Hashable {
     let authorAvatarUrl: String?
     let snippet: String?
     let replyCount: Int
+    let participantAvatarUrls: [String]
 }
 
 struct Conversation: Decodable, Identifiable, Hashable {
@@ -95,6 +96,15 @@ private struct PreviewMessage: Decodable {
     let context: Context?
     let configuration: Configuration?
 
+    var avatarUrl: String? {
+        switch type {
+        case MessageType.agentMessage.rawValue:
+            configuration?.pictureUrl
+        default:
+            user?.image ?? context?.profilePictureUrl
+        }
+    }
+
     /// Mirrors the `validMessages` filter in the web front-end.
     var isValid: Bool {
         switch type {
@@ -116,22 +126,49 @@ private extension ConversationPreview {
         switch first.type {
         case MessageType.agentMessage.rawValue:
             self.authorName = first.configuration?.name.map { "@\($0)" }
-            self.authorAvatarUrl = first.configuration?.pictureUrl
         default:
             self.authorName = first.user?.fullName ?? first.context?.fullName
-            self.authorAvatarUrl = first.user?.image ?? first.context?.profilePictureUrl
         }
+        self.authorAvatarUrl = first.avatarUrl
         self.snippet = first.content?.strippedSnippet
         self.replyCount = max(0, valid.count - 1)
+        self.participantAvatarUrls = valid.compactMap(\.avatarUrl).uniqued()
     }
 }
+
+private let citeDirectiveRegex = #/:cite\[[^\]]*\](?:\{[^}]*\})?/#
+private let labeledDirectiveRegex = #/:{1,3}[a-z_]+\[(?<label>[^\]]*)\](?:\{[^}]*\})?/#
+private let htmlTagRegex = #/<[^>]*>/#
+private let markdownLinkRegex = #/!?\[(?<text>[^\]]*)\]\([^)]*\)/#
+private let markdownEmphasisRegex = #/\*\*|__|~~|`/#
 
 private extension String {
     static let leadingMarkdownMarkers = "#>-*` "
 
+    /**
+     * @cc [owner:adrsimon,label:product] snippet-is-plain-text
+     * The snippet MUST NOT contain raw directives, tags, or markdown syntax: skill tags become the
+     * skill name, mentions become `@Name`, pasted directives become `📎 title`, citations are
+     * removed, other `:directive[label]{…}` become their label, links become their text.
+     */
     var strippedSnippet: String {
-        let collapsed = split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        let plain = replacing(skillTagRegex) { skillTagName($0.output.attributes).map { "\($0) " } ?? "" }
+            .replacing(mentionDirectiveRegex) { "@\($0.output.name)" }
+            .replacing(pastedDirectiveRegex) { "📎 \($0.output.title) " }
+            .replacing(citeDirectiveRegex, with: "")
+            .replacing(labeledDirectiveRegex) { String($0.output.label) }
+            .replacing(htmlTagRegex, with: "")
+            .replacing(markdownLinkRegex) { String($0.output.text) }
+            .replacing(markdownEmphasisRegex, with: "")
+        let collapsed = plain.split(whereSeparator: \.isWhitespace).joined(separator: " ")
         return String(collapsed.drop(while: { Self.leadingMarkdownMarkers.contains($0) }))
+    }
+}
+
+private extension [String] {
+    func uniqued() -> [String] {
+        var seen = Set<String>()
+        return filter { seen.insert($0).inserted }
     }
 }
 
@@ -139,6 +176,56 @@ struct ConversationsResponse: Decodable {
     let conversations: [Conversation]
     let hasMore: Bool
     let lastValue: String?
+}
+
+struct SpaceConversationSearchResponse: Decodable {
+    let conversations: [Conversation]
+}
+
+// MARK: - Pod conversation listing
+
+struct PodConversationListItem: Decodable {
+    struct Avatar: Decodable {
+        let name: String
+        let visual: String
+    }
+
+    let id: String
+    let title: String
+    let created: Double
+    let updated: Double
+    let replyCount: Int
+    let unreadMessageCount: Int
+    let description: String
+    let creator: Avatar?
+    let avatars: [Avatar]
+}
+
+struct PodConversationsResponse: Decodable {
+    let conversations: [PodConversationListItem]
+    let hasMore: Bool
+    let lastValue: String?
+}
+
+extension Conversation {
+    init(podItem: PodConversationListItem) {
+        self.sId = podItem.id
+        self.created = podItem.created
+        self.updated = podItem.updated
+        self.title = podItem.title
+        self.unread = podItem.unreadMessageCount > 0
+        self.actionRequired = false
+        self.preview = ConversationPreview(
+            authorName: podItem.creator?.name,
+            authorAvatarUrl: podItem.creator?.visual,
+            snippet: podItem.description.strippedSnippet,
+            replyCount: podItem.replyCount,
+            participantAvatarUrls: ([podItem.creator].compactMap(\.self) + podItem.avatars)
+                .map(\.visual)
+                .filter { !$0.isEmpty }
+                .uniqued()
+        )
+    }
 }
 
 extension Notification.Name {

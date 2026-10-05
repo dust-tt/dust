@@ -4,6 +4,7 @@ import { InputBarButtons } from "@app/components/assistant/conversation/input_ba
 import type { PendingInputText } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { InputBarModelPicker } from "@app/components/assistant/conversation/input_bar/InputBarModelPicker";
 import { InputBarSpacesPicker } from "@app/components/assistant/conversation/input_bar/InputBarSpacesPicker";
+import type { InputBarAction } from "@app/components/assistant/conversation/input_bar/inputBarActions";
 import {
   INPUT_BAR_COMPACT_CONTENT_ENTER_ANIMATION_CLASSES,
   INPUT_BAR_COMPACT_PILL_INNER_CLASSES,
@@ -15,9 +16,13 @@ import {
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { useInputBarOverlayTracker } from "@app/components/assistant/conversation/input_bar/useInputBarOverlayTracker";
+import { EditorContent } from "@app/components/editor/EditorContent";
 import { EditorSelectionToolbar } from "@app/components/editor/EditorSelectionToolbar";
 import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
-import { getAvailableInputBarSlashCommands } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import {
+  getAvailableInputBarSlashCommands,
+  getInputBarSlashMenuMode,
+} from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/input_bar/SkillNode";
 import type {
   RunCommandSlashCommand,
@@ -114,7 +119,6 @@ import {
   VoicePicker,
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
-import { EditorContent } from "@tiptap/react";
 import type { BezierDefinition } from "framer-motion";
 import { animate, useReducedMotion } from "framer-motion";
 import type React from "react";
@@ -157,20 +161,6 @@ const TYPING_EASE: BezierDefinition = [0.86, 0, 0.07, 1];
 const EMPTY_SPACE_IDS: string[] = [];
 const EMPTY_SELECTABLE_SPACES: SelectableConversationSpaceType[] = [];
 const acceptSelectedSpaceIds = async (spaceIds: string[]) => spaceIds;
-
-export const INPUT_BAR_ACTIONS = [
-  "capabilities",
-  "attachment",
-  "agents-list",
-  "agents-list-with-actions",
-  "model-picker",
-  "turn-into-agent",
-  "spaces",
-  "voice",
-  "fullscreen",
-] as const;
-
-export type InputBarAction = (typeof INPUT_BAR_ACTIONS)[number];
 
 export interface DefaultSkillReference {
   sId: string;
@@ -396,7 +386,10 @@ const InputBarContainer = ({
   const inputBarButtonsRef = useRef<HTMLDivElement>(null);
   const plusButtonRef = useRef<HTMLDivElement>(null);
   const isWidthConstrained = useIsWidthConstrained();
-  const shouldEnableSlashSuggestion = actions.includes("capabilities");
+  // The extension composer keeps its own "+" menu and no slash menu.
+  const slashMenuMode =
+    clientType === "extension" ? null : getInputBarSlashMenuMode(actions);
+  const shouldEnableSlashSuggestion = slashMenuMode !== null;
 
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
@@ -406,6 +399,10 @@ const InputBarContainer = ({
   const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
   const selectedSpaceIdsRef = useRef(selectedSpaceIds);
   const shouldEnableSlashSuggestionRef = useRef(shouldEnableSlashSuggestion);
+  const slashMenuModeRef = useRef(slashMenuMode);
+  useEffect(() => {
+    slashMenuModeRef.current = slashMenuMode;
+  }, [slashMenuMode]);
   // The slash suggestion extension captures its options at editor initialization, while the
   // conversation may only be created after the first message; the ref keeps it current.
   const conversationIdRef = useRef<string | null>(conversation?.sId ?? null);
@@ -834,6 +831,7 @@ const InputBarContainer = ({
       includeSelectSpacesRef,
       onModelSelectRef,
       onNodeSelectRef,
+      slashMenuModeRef,
       spaceIdRef,
     },
     placeholderOverride: disableInput ? submitBlockMessage : placeholder,
@@ -980,18 +978,6 @@ const InputBarContainer = ({
   const handleCapabilitiesPickerOpenChange = useCallback(
     (open: boolean) => {
       setOverlayOpen("capabilities-picker", open);
-    },
-    [setOverlayOpen]
-  );
-  const handleAttachmentsPickerOpenChange = useCallback(
-    (open: boolean) => {
-      setOverlayOpen("attachments-picker", open);
-    },
-    [setOverlayOpen]
-  );
-  const handlePlusMenuOpenChange = useCallback(
-    (open: boolean) => {
-      setOverlayOpen("plus-menu", open);
     },
     [setOverlayOpen]
   );
@@ -1814,29 +1800,15 @@ const InputBarContainer = ({
                       onMCPServerViewSelect={handleToolSelect}
                       modelSelectionRef={modelSelectionRef}
                       modelSelectionCommitRef={modelSelectionCommitRef}
-                      onNodeSelect={handleNodeSelect}
                       onSkillSelect={handleSkillSelect}
                       owner={owner}
                       selectedAgent={selectedSingleAgent}
-                      selectedSpaceIds={selectedSpaceIds}
-                      onSelectedSpaceIdsChange={
-                        handleSelectedSpaceIdsChangeSafely
-                      }
-                      spaces={
-                        shouldShowSpacesAction ? selectableSpaces : undefined
-                      }
-                      isSpacesLoading={isSelectableSpacesLoading}
-                      canDeselectSelectedSpaces={!conversation?.sId}
                       space={space}
                       user={user}
                       onAgentPickerOpenChange={handleAgentPickerOpenChange}
                       onCapabilitiesPickerOpenChange={
                         handleCapabilitiesPickerOpenChange
                       }
-                      onAttachmentsPickerOpenChange={
-                        handleAttachmentsPickerOpenChange
-                      }
-                      onPlusMenuOpenChange={handlePlusMenuOpenChange}
                     />
                   </div>
                 )}
@@ -1939,7 +1911,6 @@ const InputBarContainer = ({
                           onNodeSelect={handleNodeSelect}
                           buttonSize={buttonSize}
                           toolFileUpload={{
-                            useCase: "conversation",
                             useCaseMetadata: {
                               conversationId: conversation?.sId,
                             },

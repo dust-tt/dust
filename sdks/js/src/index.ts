@@ -469,7 +469,6 @@ export class DustAPI {
       appHash: string;
     },
     config: DustAppConfigType,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     inputs: any[],
     { useWorkspaceCredentials }: { useWorkspaceCredentials: boolean } = {
       useWorkspaceCredentials: false,

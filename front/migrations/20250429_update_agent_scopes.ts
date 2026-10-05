@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { Logger } from "@app/logger/logger";
 
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";

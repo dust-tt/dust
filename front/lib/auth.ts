@@ -67,6 +67,7 @@ import type { WithAccessControl } from "@app/types/resource_permissions";
 import { isDevelopment } from "@app/types/shared/env";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import {
+  applyFeatureFlagOverrides,
   isWhitelistableFeature,
   WHITELISTABLE_FEATURES,
 } from "@app/types/shared/feature_flags";
@@ -85,6 +86,7 @@ import { isAdmin, isManager, isUser, lowestRole } from "@app/types/user";
 import assert from "assert";
 import { TokenExpiredError } from "jsonwebtoken";
 import type { Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
 
@@ -833,13 +835,21 @@ export class Authenticator {
     return conversation?.requestedSpaceIds ?? null;
   }
 
+  // Given a user's full group IDs, restricts them to the groups associated with the conversation
+  // and the agent's requested spaces. The agent can use tools backed by spaces that are not
+  // explicitly selected on the conversation. The groups holding a grant on the agent are kept too,
+  // so a hidden agent stays readable to its editors.
+  //
+  // Falls back to the full set if the conversation is not found or has no requested spaces,
+  // preserving the existing behavior for legacy conversations.
   /**
-   * Given a user's full group IDs, restricts them to the groups associated with
-   * the conversation and the agent's requested spaces. The agent can use tools
-   * backed by spaces that are not explicitly selected on the conversation.
-   *
-   * Falls back to the full set if the conversation is not found or has no
-   * requested spaces, preserving the existing behavior for legacy conversations.
+   * @cc [owner:tdraier,label:security] sandbox-exec-groups
+   * When the conversation has requested spaces, the sandbox-token groups MUST be the user's groups
+   * that hold a grant on one of those spaces or on one of the token agent version's requested
+   * spaces, plus those holding any grant on the token's agent, whatever their kind or grant type,
+   * and no other: the sandbox holds the verbs the agent loop holds on that agent (see `agent-verbs`),
+   * restricted to the conversation's spaces. A group kept for its agent grant brings its other grants
+   * along: the narrowing is per group.
    */
   private static async restrictGroupsToSandboxExecSpaces(
     userGroupIds: ModelId[],
@@ -858,7 +868,7 @@ export class Authenticator {
             version: claims.aV,
             workspaceId,
           },
-          attributes: ["requestedSpaceIds"],
+          attributes: ["requestedSpaceIds", "agentId"],
         }),
       ]);
 
@@ -885,17 +895,29 @@ export class Authenticator {
       requestedSpaceIds.add(spaceId);
     }
 
-    const spaceGrants = await GroupPermissionModel.findAll({
+    // A hidden agent is readable through its grants only (its editors'): keep the groups holding one
+    // so the sandbox reads the agent as the loop does.
+    const grants = await GroupPermissionModel.findAll({
       where: {
-        resourceType: "space",
-        resourceId: [...requestedSpaceIds],
         workspaceId,
+        groupId: userGroupIds,
+        [Op.or]: [
+          { resourceType: "space", resourceId: [...requestedSpaceIds] },
+          ...(agentConfiguration
+            ? [
+                {
+                  resourceType: "agent",
+                  resourceId: agentConfiguration.agentId,
+                },
+              ]
+            : []),
+        ],
       },
       attributes: ["groupId"],
     });
 
     const allowedGroupIds = new Set(
-      spaceGrants.map((grant) => Number(grant.groupId) as ModelId)
+      grants.map((grant) => Number(grant.groupId) as ModelId)
     );
 
     return new Ok(userGroupIds.filter((id) => allowedGroupIds.has(id)));
@@ -1446,6 +1468,7 @@ export class Authenticator {
           metadata: this._workspace.metadata,
           metronomeCustomerId: this._workspace.metronomeCustomerId ?? null,
           sharingPolicy: this._workspace.sharingPolicy ?? "all_scopes",
+          locale: this._workspace.locale,
         }
       : null;
   }
@@ -2135,7 +2158,7 @@ export async function getFeatureFlagsForWorkspace(
     }
   }
 
-  return effectiveFlags;
+  return applyFeatureFlagOverrides(effectiveFlags);
 }
 
 export function getFeatureFlags(

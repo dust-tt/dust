@@ -2,6 +2,7 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
+import { getLocalTimeZone } from "@app/lib/i18n/format";
 import { useResumeOngoingAgentLoopsPolling } from "@app/lib/swr/ongoing_agent_loops";
 import { useFetcher } from "@app/lib/swr/swr";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -198,7 +199,7 @@ export function useCreateConversationWithMessage({
         message: {
           content: input,
           context: {
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+            timezone: getLocalTimeZone() || "UTC",
             profilePictureUrl: user.image,
             clientSideMCPServerIds,
             selectedMCPServerViewIds,
@@ -305,8 +306,7 @@ async function postFirstMessageInBackground({
   modelSelection?: ModelSelectionType;
   onError?: (err: SubmitMessageError) => void;
 }): Promise<void> {
-  const timezone =
-    Intl.DateTimeFormat().resolvedOptions().timeZone || "Etc/UTC";
+  const timezone = getLocalTimeZone() || "Etc/UTC";
 
   try {
     const contentFragmentUploads = [

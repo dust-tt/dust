@@ -6,6 +6,7 @@ import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { TRIGGERS_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/triggers_management/metadata";
 import { generateScheduleRule } from "@app/lib/api/assistant/configuration/triggers";
 import { getWebhookFilterGeneration } from "@app/lib/api/assistant/configuration/triggers/webhook_filter";
+import { WEBHOOK_PRESETS } from "@app/lib/api/triggers/webhook_presets";
 import type { Authenticator } from "@app/lib/auth";
 import { parseMatcherExpression } from "@app/lib/matcher/parser";
 import { AgentResource } from "@app/lib/resources/agent_resource";
@@ -29,7 +30,6 @@ import {
   isWebhookTrigger,
 } from "@app/types/assistant/triggers";
 import { Err, Ok } from "@app/types/shared/result";
-import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 import assert from "assert";
 import { UniqueConstraintError } from "sequelize";
 

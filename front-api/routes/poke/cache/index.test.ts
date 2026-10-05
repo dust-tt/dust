@@ -60,8 +60,8 @@ describe("Poke cache: group permissions", () => {
 });
 
 const workspaceId = "cache-cutover-test-workspace";
-const newKey = `cacheWithRedis-workspace_by_sid-v3:${workspaceId}`;
-const previousKey = `cacheWithRedis-_fetchByIdUncached-workspace:v2:${workspaceId}`;
+const newKey = `cacheWithRedis-workspace_by_sid-v4:${workspaceId}`;
+const previousKey = `cacheWithRedis-workspace_by_sid-v3:${workspaceId}`;
 
 describe("DELETE /api/poke/cache", () => {
   const deleteKey = vi.fn();

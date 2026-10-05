@@ -1,13 +1,10 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import {
-  AgentBuilderFormContext,
-  agentBuilderFormSchema,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLayout";
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { AgentCreatedDialog } from "@app/components/agent_builder/AgentCreatedDialog";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
+import { agentBuilderFormSchema } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { useAgentBuilderFormHydration } from "@app/components/agent_builder/hooks/useAgentBuilderFormHydration";
 import {
   PersonalConnectionRequiredDialog,
@@ -589,50 +586,48 @@ function AgentBuilderForm({
     : (agentConfiguration?.sId ?? pendingAgentId ?? null);
 
   return (
-    <AgentBuilderFormContext.Provider value={form}>
-      <FormProvider form={form} asForm={false}>
-        <SidekickSuggestionsProvider
-          agentConfigurationId={suggestionsAgentId}
-          disabled={isEditorLocked}
-        >
-          <AgentBuilderContent
-            agentConfiguration={agentConfiguration}
-            pendingAgentId={pendingAgentId}
-            title={title}
-            handleCancel={handleCancel}
-            saveLabel={saveLabel}
-            handleSave={handleSave}
-            isSaveDisabled={isSaveDisabled}
-            isEditorLocked={isEditorLocked}
-            isEditorLoadErrorVisible={isAdminExistingAgent && isEditorsError}
-            isEditorGateVisible={isAdminNonEditor}
-            isAddingSelfAsEditor={isAddingSelfAsEditor}
-            onAddSelfAsEditor={() => {
-              void handleAddSelfAsEditor();
-            }}
-            onRetryEditors={() => {
-              void mutateEditors();
-            }}
-            isTriggersLoading={isTriggersLoading}
-            dialogProps={dialogProps}
-            isCreatedDialogOpen={isCreatedDialogOpen}
-            setIsCreatedDialogOpen={setIsCreatedDialogOpen}
-            isNewAgent={!!duplicateAgentId || !agentConfiguration}
-            isDuplicate={!!duplicateAgentId}
-            templateInfo={
-              assistantTemplate
-                ? {
-                    templateId: assistantTemplate.sId,
-                    sidekickInstructions:
-                      assistantTemplate.sidekickInstructions,
-                  }
-                : undefined
-            }
-            conversationId={conversationId}
-          />
-        </SidekickSuggestionsProvider>
-      </FormProvider>
-    </AgentBuilderFormContext.Provider>
+    <FormProvider form={form} asForm={false}>
+      <SidekickSuggestionsProvider
+        agentConfigurationId={suggestionsAgentId}
+        disabled={isEditorLocked}
+      >
+        <AgentBuilderContent
+          agentConfiguration={agentConfiguration}
+          pendingAgentId={pendingAgentId}
+          title={title}
+          handleCancel={handleCancel}
+          saveLabel={saveLabel}
+          handleSave={handleSave}
+          isSaveDisabled={isSaveDisabled}
+          isEditorLocked={isEditorLocked}
+          isEditorLoadErrorVisible={isAdminExistingAgent && isEditorsError}
+          isEditorGateVisible={isAdminNonEditor}
+          isAddingSelfAsEditor={isAddingSelfAsEditor}
+          isEditorsListUnavailable={isEditorsLoading || isEditorsError}
+          onAddSelfAsEditor={() => {
+            void handleAddSelfAsEditor();
+          }}
+          onRetryEditors={() => {
+            void mutateEditors();
+          }}
+          isTriggersLoading={isTriggersLoading}
+          dialogProps={dialogProps}
+          isCreatedDialogOpen={isCreatedDialogOpen}
+          setIsCreatedDialogOpen={setIsCreatedDialogOpen}
+          isNewAgent={!!duplicateAgentId || !agentConfiguration}
+          isDuplicate={!!duplicateAgentId}
+          templateInfo={
+            assistantTemplate
+              ? {
+                  templateId: assistantTemplate.sId,
+                  sidekickInstructions: assistantTemplate.sidekickInstructions,
+                }
+              : undefined
+          }
+          conversationId={conversationId}
+        />
+      </SidekickSuggestionsProvider>
+    </FormProvider>
   );
 }
 
@@ -651,6 +646,7 @@ interface AgentBuilderContentProps {
   isEditorLoadErrorVisible: boolean;
   isEditorGateVisible: boolean;
   isAddingSelfAsEditor: boolean;
+  isEditorsListUnavailable: boolean;
   onAddSelfAsEditor: () => void;
   onRetryEditors: () => void;
   isTriggersLoading: boolean;
@@ -682,6 +678,7 @@ function AgentBuilderContent({
   isEditorLoadErrorVisible,
   isEditorGateVisible,
   isAddingSelfAsEditor,
+  isEditorsListUnavailable,
   onAddSelfAsEditor,
   onRetryEditors,
   isTriggersLoading,
@@ -809,6 +806,7 @@ function AgentBuilderContent({
             initialRequestedSpaceIds={agentConfiguration?.requestedSpaceIds}
             isEditorGateVisible={isEditorGateVisible}
             isAddingSelfAsEditor={isAddingSelfAsEditor}
+            isEditorsListUnavailable={isEditorsListUnavailable}
             onAddSelfAsEditor={onAddSelfAsEditor}
           />
         }

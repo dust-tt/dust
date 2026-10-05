@@ -9,6 +9,7 @@ import {
 } from "@app/types/mount_path";
 import { isString } from "@app/types/shared/utils/general";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
+import { isContentTypeSafeToDisplay } from "@front-api/lib/file_serving";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -84,7 +85,10 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
 
   // If a FileResource exists, stream its best available version (processed if available).
   if (fileResource) {
-    if (!isSupportedImageContentType(fileResource.contentType)) {
+    if (
+      !isSupportedImageContentType(fileResource.contentType) ||
+      !isContentTypeSafeToDisplay(fileResource.contentType)
+    ) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
@@ -120,7 +124,10 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   }
 
   const contentType = contentTypeResult.value ?? "application/octet-stream";
-  if (!isSupportedImageContentType(contentType)) {
+  if (
+    !isSupportedImageContentType(contentType) ||
+    !isContentTypeSafeToDisplay(contentType)
+  ) {
     return apiError(ctx, {
       status_code: 400,
       api_error: {

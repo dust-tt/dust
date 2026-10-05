@@ -152,12 +152,12 @@ describe("formatWakeUpSidebarLabel", () => {
   it("renders the abbreviated weekday when the wake-up is more than 24h away", () => {
     // 25h after Monday noon -> Tuesday afternoon.
     const justOverADayMs = NOW_MS + 25 * 60 * 60 * 1000;
-    expect(formatWakeUpSidebarLabel(justOverADayMs)).toBe("Tue");
+    expect(formatWakeUpSidebarLabel(justOverADayMs, "en-US")).toBe("Tue");
   });
 
   it("renders the abbreviated weekday for far-future wake-ups", () => {
     const fiveDaysMs = NOW_MS + 5 * 24 * 60 * 60 * 1000;
-    expect(formatWakeUpSidebarLabel(fiveDaysMs)).toBe("Sat");
+    expect(formatWakeUpSidebarLabel(fiveDaysMs, "en-US")).toBe("Sat");
   });
 });
 

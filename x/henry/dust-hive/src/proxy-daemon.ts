@@ -21,6 +21,8 @@ import type { ServerWebSocket } from "bun";
 
 import { logger } from "./lib/logger";
 
+const PROXY_IDLE_TIMEOUT_SECONDS = 60;
+
 type Target = "front-api" | "marketing";
 
 // Declarative routing table: first matching pattern wins. Patterns are anchored
@@ -113,10 +115,15 @@ function safeClose(
   }
 }
 
+/**
+ * @cc [owner:id13,label:performance] proxy-long-poll-deadline
+ * The proxy MUST allow the API's 25-second long polls to finish without an idle timeout.
+ */
 export function startProxy(listenPort: number, ports: Record<Target, number>) {
   return Bun.serve<WsClientData>({
     port: listenPort,
     hostname: "localhost",
+    idleTimeout: PROXY_IDLE_TIMEOUT_SECONDS,
     async fetch(req, srv) {
       const url = new URL(req.url);
 

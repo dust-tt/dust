@@ -170,6 +170,40 @@ describe("POST /api/w/:wId/invitations", () => {
     expect(data.every((r: { success: boolean }) => r.success)).toBe(true);
   });
 
+  it("updates the role when a manager re-invites a revoked admin as a user", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "manager",
+    });
+    const revokedInvitation = await MembershipInvitationFactory.create(
+      workspace,
+      {
+        inviteEmail: "revoked-admin@example.com",
+        status: "revoked",
+        initialRole: "admin",
+      }
+    );
+
+    const response = await honoApp.request(invitationsUrl(workspace.sId), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify([
+        { email: "revoked-admin@example.com", role: "user" },
+      ]),
+    });
+
+    expect(response.status).toBe(200);
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const reloaded = await MembershipInvitationResource.fetchById(
+      adminAuth,
+      revokedInvitation.sId
+    );
+    expect(reloaded?.status).toBe("pending");
+    expect(reloaded?.initialRole).toBe("user");
+  });
+
   it("rejects an invitation with the deprecated builder role", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "POST",

@@ -1,21 +1,21 @@
-import type { CatalogItem } from "@app/components/assistant/conversation/discover/DiscoverCatalog";
+import type { CatalogItem } from "@app/components/assistant/conversation/discover/catalog";
 import { DiscoverCatalog } from "@app/components/assistant/conversation/discover/DiscoverCatalog";
 import { DiscoverHome } from "@app/components/assistant/conversation/discover/DiscoverHome";
 import { DiscoverPinDialog } from "@app/components/assistant/conversation/discover/DiscoverPinDialog";
 import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { RichAgentMentionCandidate } from "@app/types/assistant/mentions";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@dust-tt/sparkle";
 import { forwardRef, useState } from "react";
 
-const DISCOVER_TABS = ["Discover", "Agents & Skills"] as const;
+const DISCOVER_TABS = ["Featured", "Catalog"] as const;
 type DiscoverTab = (typeof DISCOVER_TABS)[number];
 
 interface DiscoverContainerProps {
-  onAgentConfigurationClick: (agent: LightAgentConfigurationType) => void;
+  onAgentConfigurationClick: (agent: RichAgentMentionCandidate) => void;
   onSkillClick: (skill: PendingSkill) => void;
   onFiltersChange: () => void;
   owner: WorkspaceType;
@@ -29,7 +29,7 @@ export const DiscoverContainer = forwardRef<
   { onAgentConfigurationClick, onSkillClick, onFiltersChange, owner, user },
   ref
 ) {
-  const [tab, setTab] = useState<DiscoverTab>("Discover");
+  const [tab, setTab] = useState<DiscoverTab>("Featured");
   const [pinTarget, setPinTarget] = useState<CatalogItem | null>(null);
   const onPin = isAdmin(owner) ? setPinTarget : undefined;
   const [detailsTarget, setDetailsTarget] = useState<CatalogItem | null>(null);
@@ -53,17 +53,17 @@ export const DiscoverContainer = forwardRef<
             ))}
           </TabsList>
         </div>
-        <TabsContent value="Discover" className="flex flex-col gap-12">
+        <TabsContent value="Featured" className="flex flex-col gap-12">
           <DiscoverHome
             owner={owner}
             onAgentClick={onAgentConfigurationClick}
             onSkillClick={onSkillClick}
             onPin={onPin}
             onDetails={setDetailsTarget}
-            onFindMore={() => setTab("Agents & Skills")}
+            onFindMore={() => setTab("Catalog")}
           />
         </TabsContent>
-        <TabsContent value="Agents & Skills">
+        <TabsContent value="Catalog">
           <DiscoverCatalog
             owner={owner}
             onAgentClick={onAgentConfigurationClick}

@@ -1,10 +1,14 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import { AgentBuilderSimilarAgentsSection } from "@app/components/agent_builder/AgentBuilderSimilarAgentsSection";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { AdvancedSettings } from "@app/components/agent_builder/instructions/AdvancedSettings";
 import { AgentBuilderInstructionsEditor } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 import { AgentInstructionsHistory } from "@app/components/agent_builder/instructions/AgentInstructionsHistory";
+import {
+  formatDateTime,
+  NUMERIC_DATE_TIME_OPTIONS,
+} from "@app/lib/i18n/format";
 import { useAgentConfigurationHistory } from "@app/lib/swr/assistants";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import {
@@ -14,7 +18,6 @@ import {
   Separator,
   XClose,
 } from "@dust-tt/sparkle";
-import { format } from "date-fns/format";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 
@@ -88,7 +91,10 @@ export function AgentBuilderInstructionsBlock({
           {compareVersion?.versionCreatedAt && (
             <Label>
               Comparing current version with{" "}
-              {format(compareVersion.versionCreatedAt, "Pp")}
+              {formatDateTime(
+                new Date(compareVersion.versionCreatedAt),
+                NUMERIC_DATE_TIME_OPTIONS
+              )}
             </Label>
           )}
           <div className="flex gap-2">

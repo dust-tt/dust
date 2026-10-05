@@ -19,9 +19,5 @@ export type TagTypeWithUsage = TagType & {
 
 export const MAX_TAG_LENGTH = 100;
 
-export const tagSchema = z.object({
-  tag: z
-    .string()
-    .min(1, "Tag name is required")
-    .max(MAX_TAG_LENGTH, `Tag name cannot exceed ${MAX_TAG_LENGTH} characters`),
-});
+// Bounds a suggested tag change, whose tags are resolved and created in batches.
+export const MAX_TAGS_PER_CHANGE = 20;

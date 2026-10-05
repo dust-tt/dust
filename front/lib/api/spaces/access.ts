@@ -100,14 +100,10 @@ export async function listUsersWithoutAccessToSpaces(
   // its spaces, and neither do unknown user ids. Both fall through to the
   // `usersWithoutMembership` bucket below.
   const users = await UserResource.fetchByIds(userIds);
-  const { memberships } = await MembershipResource.getActiveMemberships({
+  const workspaceUsers = await MembershipResource.filterActiveMembers({
     users,
     workspace,
   });
-  const activeUserModelIds = new Set(memberships.map((m) => m.userId));
-  const workspaceUsers = users.filter((user) =>
-    activeUserModelIds.has(user.id)
-  );
 
   const workspaceUserIds = new Set(workspaceUsers.map((user) => user.sId));
   const usersWithoutMembership = userIds.filter(

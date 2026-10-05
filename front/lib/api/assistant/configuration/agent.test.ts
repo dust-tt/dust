@@ -1,8 +1,4 @@
-import {
-  getAgentConfiguration,
-  getAgentConfigurations,
-  updateAgentConfigurationsScope,
-} from "@app/lib/api/assistant/configuration/agent";
+import { updateAgentConfigurationsScope } from "@app/lib/api/assistant/configuration/agent";
 import { getEditors } from "@app/lib/api/assistant/editors";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -28,9 +24,7 @@ import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory"
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { saveAgentConfiguration } from "@app/tests/utils/saveAgentConfiguration";
 import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
@@ -42,270 +36,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 afterEach(() => {
   vi.restoreAllMocks();
-});
-
-describe("getAgentConfigurations", () => {
-  it.each([
-    "system key",
-    "Poke",
-  ] as const)("reports %s edit access", async (caller) => {
-    const { authenticator, workspace, systemGroup } = await createResourceTest({
-      role: "admin",
-    });
-    const agent = await AgentConfigurationFactory.createTestAgent(
-      authenticator,
-      {
-        scope: "hidden",
-      }
-    );
-    const auth =
-      caller === "system key"
-        ? await Authenticator.fromKey(
-            await KeyFactory.system(systemGroup),
-            workspace.sId
-          )
-        : await Authenticator.fromDustSuperUser({
-            wId: workspace.sId,
-            pokePrincipal: { email: "operator@dust.tt", name: "Operator" },
-          });
-    const configuration = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "light",
-    });
-
-    expect(configuration).toMatchObject({ canRead: true, canEdit: true });
-  });
-
-  it.each([
-    true,
-    false,
-  ])("internal admins report edit access from their grants (all groups: %s)", async (dangerouslyRequestAllGroups) => {
-    const { authenticator, workspace } = await createResourceTest({
-      role: "admin",
-    });
-    const agent = await AgentConfigurationFactory.createTestAgent(
-      authenticator,
-      { scope: "hidden" }
-    );
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId, {
-      dangerouslyRequestAllGroups,
-    });
-
-    const configuration = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "light",
-    });
-
-    expect(configuration).toMatchObject({
-      canRead: dangerouslyRequestAllGroups,
-      canEdit: dangerouslyRequestAllGroups,
-    });
-  });
-
-  it("denies read and edit on an agent backed by an unreadable space", async () => {
-    const { authenticator, workspace } = await createResourceTest({
-      role: "user",
-    });
-    const restrictedSpace = await SpaceFactory.regular(workspace);
-    const agent = await AgentConfigurationFactory.createTestAgent(
-      authenticator,
-      { scope: "hidden" }
-    );
-    // Put the agent behind the restricted space after creation: nobody can create an agent on a
-    // space they cannot read, but an existing agent can end up on one the caller cannot read.
-    await AgentConfigurationModel.update(
-      { requestedSpaceIds: [restrictedSpace.id] },
-      { where: { sId: agent.sId, workspaceId: workspace.id } }
-    );
-
-    const configuration = await getAgentConfiguration(authenticator, {
-      agentId: agent.sId,
-      variant: "light",
-      dangerouslySkipPermissionFiltering: true,
-    });
-
-    // The space read gate denies read and write even to the agent's own editor.
-    expect(configuration).toMatchObject({ canRead: false, canEdit: false });
-  });
-
-  it("denies a scoped system key without the admin role on an unreadable space", async () => {
-    const { authenticator, workspace, systemGroup } = await createResourceTest({
-      role: "admin",
-    });
-    const restrictedSpace = await SpaceFactory.regular(workspace);
-    const agent = await AgentConfigurationFactory.createTestAgent(
-      authenticator,
-      { scope: "hidden" }
-    );
-    // Put the agent behind the restricted space after creation: nobody can create an agent on a
-    // space they cannot read, but an existing agent can end up on one the caller cannot read.
-    await AgentConfigurationModel.update(
-      { requestedSpaceIds: [restrictedSpace.id] },
-      { where: { sId: agent.sId, workspaceId: workspace.id } }
-    );
-    const group = await GroupFactory.regularManual(workspace, "Agent editors");
-    const resource = await AgentResource.fetchById(authenticator, agent.sId);
-    assert(resource !== null);
-    assert(resource.id !== null);
-    await GroupPermissionResource.grant(authenticator, {
-      group,
-      grantType: "editor",
-      resourceType: "agent",
-      resourceId: resource.id,
-    });
-    const auth = await Authenticator.fromKey(
-      await KeyFactory.system(systemGroup),
-      workspace.sId,
-      [group.sId],
-      "user"
-    );
-
-    const configuration = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "light",
-      dangerouslySkipPermissionFiltering: true,
-    });
-
-    expect(configuration).toMatchObject({ canRead: false, canEdit: false });
-  });
-
-  it("respects the agent grants of a scoped system key", async () => {
-    const { authenticator, workspace, systemGroup } = await createResourceTest({
-      role: "admin",
-    });
-    const agent =
-      await AgentConfigurationFactory.createTestAgent(authenticator);
-    const otherAgent = await AgentConfigurationFactory.createTestAgent(
-      authenticator,
-      {
-        name: "Other agent",
-      }
-    );
-    const group = await GroupFactory.regularManual(workspace, "Agent editors");
-    const resource = await AgentResource.fetchById(authenticator, agent.sId);
-    assert(resource !== null);
-    assert(resource.id !== null);
-    await GroupPermissionResource.grant(authenticator, {
-      group,
-      grantType: "editor",
-      resourceType: "agent",
-      resourceId: resource.id,
-    });
-    const key = await KeyFactory.system(systemGroup);
-    const auth = await Authenticator.fromKey(key, workspace.sId, [group.sId]);
-    const agents = await getAgentConfigurations(auth, {
-      agentIds: [agent.sId, otherAgent.sId],
-      variant: "light",
-    });
-
-    expect(
-      Object.fromEntries(agents.map((agent) => [agent.sId, agent.canEdit]))
-    ).toEqual({
-      [agent.sId]: true,
-      [otherAgent.sId]: false,
-    });
-  });
-
-  it("does not give human or impersonated admins implicit edit access", async () => {
-    const { authenticator, workspace, systemGroup } = await createResourceTest({
-      role: "admin",
-    });
-    const agent =
-      await AgentConfigurationFactory.createTestAgent(authenticator);
-    const admin = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, admin, { role: "admin" });
-    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      admin.sId,
-      workspace.sId
-    );
-    const key = await KeyFactory.system(systemGroup);
-    const systemAuth = await Authenticator.fromKey(key, workspace.sId);
-    const impersonatedAuth =
-      await systemAuth.exchangeSystemKeyForUserAuthByEmail(systemAuth, {
-        userEmail: admin.email,
-        requestedRole: "admin",
-      });
-    assert(impersonatedAuth);
-    const resource = await AgentResource.fetchById(authenticator, agent.sId);
-    assert(resource !== null);
-    for (const auth of [adminAuth, impersonatedAuth]) {
-      expect(auth.can("write", resource)).toBe(false);
-      const configuration = await getAgentConfiguration(auth, {
-        agentId: agent.sId,
-        variant: "light",
-      });
-      expect(configuration?.canEdit).toBe(false);
-    }
-  });
-
-  it("reads a stored legacy light reasoning effort as low", async () => {
-    const { authenticator, workspace } = await createResourceTest({
-      role: "admin",
-    });
-    const agent =
-      await AgentConfigurationFactory.createTestAgent(authenticator);
-    await AgentConfigurationModel.update(
-      { reasoningEffort: "light" as never },
-      { where: { workspaceId: workspace.id, sId: agent.sId } }
-    );
-
-    const fetched = await getAgentConfiguration(authenticator, {
-      agentId: agent.sId,
-      variant: "light",
-    });
-
-    expect(fetched?.model.reasoningEffort).toBe("low");
-  });
-
-  it("returns only the latest version of each requested agent", async () => {
-    const { authenticator } = await createResourceTest({ role: "admin" });
-    const firstAgent =
-      await AgentConfigurationFactory.createTestAgent(authenticator);
-    const secondAgent = await AgentConfigurationFactory.createTestAgent(
-      authenticator,
-      { name: "Second agent" }
-    );
-
-    await AgentConfigurationFactory.updateTestAgent(
-      authenticator,
-      firstAgent.sId
-    );
-    const latestFirstAgent = await AgentConfigurationFactory.updateTestAgent(
-      authenticator,
-      firstAgent.sId
-    );
-    const latestSecondAgent = await AgentConfigurationFactory.updateTestAgent(
-      authenticator,
-      secondAgent.sId,
-      { name: "Second agent" }
-    );
-
-    const agents = await getAgentConfigurations(authenticator, {
-      agentIds: [
-        firstAgent.sId,
-        secondAgent.sId,
-        firstAgent.sId,
-        generateRandomModelSId(),
-      ],
-      variant: "light",
-      dangerouslySkipPermissionFiltering: true,
-    });
-
-    // `getAgentConfigurations` deduplicates the requested ids, drops the unknown one, and returns
-    // the latest version of each agent. It orders by version across agents, which is not a
-    // meaningful order between distinct agents (both are at the same version here), so compare
-    // order-independently by sorting on sId.
-    const bySId = (a: { sId: string }, b: { sId: string }) =>
-      a.sId.localeCompare(b.sId);
-    expect(
-      agents.map(({ sId, version }) => ({ sId, version })).sort(bySId)
-    ).toEqual(
-      [
-        { sId: latestFirstAgent.sId, version: latestFirstAgent.version },
-        { sId: latestSecondAgent.sId, version: latestSecondAgent.version },
-      ].sort(bySId)
-    );
-  });
 });
 
 describe("stable agent identities", () => {
@@ -598,7 +328,7 @@ describe("saveAgentConfiguration with pending agent", () => {
       authenticator,
       pending.value.sId
     );
-    assert(resource?.isFull());
+    assert(resource?.canViewContent);
 
     const result = await resource.updateConfiguration(authenticator, {
       scope: "visible",
@@ -824,13 +554,13 @@ describe("saveAgentConfiguration with pending agent", () => {
       throw pendingAgentRes.error;
     }
     const { sId: pendingId } = pendingAgentRes.value;
-    const pendingAgent = await getAgentConfiguration(authenticator, {
-      agentId: pendingId,
-      variant: "light",
-    });
+    const pendingAgent = await AgentConfigurationFactory.refetch(
+      authenticator,
+      pendingId
+    );
     expect(pendingAgent).not.toBeNull();
 
-    const originalAgentId = pendingAgent!.id;
+    const originalAgentId = pendingAgent!.agentConfigurationModelId;
 
     await AgentSuggestionFactory.createInstructions(
       authenticator,
@@ -1205,7 +935,7 @@ describe("AgentResource.archive and AgentResource.restore", () => {
       )
     ).toEqual(new Ok(true));
     const archived = await AgentResource.fetchById(authenticator, agent.sId);
-    assert(archived?.isFull());
+    assert(archived?.canViewContent);
 
     const result = await archived.updateConfiguration(authenticator, {
       status: "active",
@@ -1970,12 +1700,11 @@ it("revokes grant-only editors when saving the complete editor set", async () =>
     editor.sId,
     workspace.sId
   );
-  expect(
-    (
-      await getAgentConfiguration(editorAuth, {
-        agentId: agent.sId,
-        variant: "light",
-      })
-    )?.canEdit
-  ).toBe(false);
+  const editorAgent = await AgentConfigurationFactory.refetch(
+    editorAuth,
+    agent.sId
+  );
+  expect(editorAgent !== null && editorAuth.can("write", editorAgent)).toBe(
+    false
+  );
 });

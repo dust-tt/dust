@@ -1,48 +1,56 @@
+import { CreatePodModal } from "@app/components/assistant/conversation/CreatePodModal";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
+import { MemberDetails } from "@app/components/assistant/details/MemberDetails";
 import type {
   ActionPhaseItem,
   CommandPaletteAction,
 } from "@app/components/command_palette/CommandPaletteActionPhase";
 import { CommandPaletteActionPhase } from "@app/components/command_palette/CommandPaletteActionPhase";
 import { useCommandPalette } from "@app/components/command_palette/CommandPaletteContext";
-import type { CommandPaletteItem } from "@app/components/command_palette/CommandPaletteSearchPhase";
-import { CommandPaletteSearchPhase } from "@app/components/command_palette/CommandPaletteSearchPhase";
+import type {
+  CommandPaletteFilter,
+  CommandPaletteItem,
+} from "@app/components/command_palette/CommandPaletteSearchPhase";
+import {
+  CommandPaletteSearchPhase,
+  commandPaletteItemHasActions,
+  getCommandPaletteItemKey,
+} from "@app/components/command_palette/CommandPaletteSearchPhase";
+import { useCommandPaletteSearch } from "@app/components/command_palette/useCommandPaletteSearch";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useActivePodId } from "@app/hooks/useActivePodId";
+import { useFrecencySorting } from "@app/hooks/useFrerencySorting";
+import { navigateToAdminSetting } from "@app/lib/admin/buildAdminSettingHref";
 import { useAppRouter } from "@app/lib/platform";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { useSearchSkills, useSkills } from "@app/lib/swr/skill_configurations";
-import { useSpaces } from "@app/lib/swr/spaces";
-import { filterAndSortAgents, subFilter } from "@app/lib/utils";
+import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
+import { useStarPod } from "@app/lib/swr/pods";
 import {
   getAgentBuilderRoute,
   getConversationRoute,
-  getPodRoute,
   getSkillBuilderRoute,
+  navigateToPod,
 } from "@app/lib/utils/router";
-import { compareAgentsForSort } from "@app/types/assistant/assistant";
-import { isProjectType } from "@app/types/space";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { Dialog, DialogContent } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+const MAX_FREQUENT_ITEMS = 5;
 
 interface CommandPaletteProps {
   owner: LightWorkspaceType;
   user: UserType;
 }
 
-const MAX_DISPLAYED_SKILLS = 5;
-
 export function CommandPalette({ owner, user }: CommandPaletteProps) {
-  const { isOpen, close } = useCommandPalette();
-  const { hasFeature } = useFeatureFlags();
-  const isSkillsSearchEnabled = hasFeature("skills_search");
+  const { isOpen, close, initialCategory } = useCommandPalette();
   const router = useAppRouter();
 
-  // Dialog state.
   const [searchQuery, setSearchQuery] = useState("");
   const [phase, setPhase] = useState<"search" | "action">("search");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedCategory, setSelectedCategory] =
+    useState<CommandPaletteFilter>("All");
   const [selectedItem, setSelectedItem] = useState<ActionPhaseItem | null>(
     null
   );
@@ -50,191 +58,241 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
   // Detail sheet state (lives outside the dialog lifecycle).
   const [agentDetailsId, setAgentDetailsId] = useState<string | null>(null);
   const [skillDetailsId, setSkillDetailsId] = useState<string | null>(null);
-
-  // Fetch agents and skills only when the palette is open.
-  const { agentConfigurations, isAgentConfigurationsLoading } =
-    useAgentConfigurations({
-      workspaceId: owner.sId,
-      agentsGetView: "list",
-      disabled: !isOpen,
-    });
-
-  const { skills, isSkillsLoading: isListedSkillsLoading } = useSkills({
-    owner,
-    disabled: !isOpen || isSkillsSearchEnabled,
-    status: "active",
-  });
-  const {
-    skills: searchSkills,
-    hasMore: hasMoreSearchSkills,
-    isSkillsLoading: isSearchSkillsLoading,
-  } = useSearchSkills({
-    owner,
-    searchTerm: searchQuery.trim(),
-    limit: MAX_DISPLAYED_SKILLS,
-    disabled: !isOpen || !isSkillsSearchEnabled,
-  });
-  const isSkillsLoading = isSkillsSearchEnabled
-    ? isSearchSkillsLoading
-    : isListedSkillsLoading;
-
-  const { spaces, isSpacesLoading } = useSpaces({
-    workspaceId: owner.sId,
-    kinds: ["project"],
-    disabled: !isOpen,
-  });
-  const memberPods = useMemo(
-    () => spaces.filter(isProjectType).filter((p) => p.archivedAt === null),
-    [spaces]
-  );
-
-  // Debounce the search query to avoid expensive fuzzy filtering on every keystroke.
-  const [debouncedQuery, setDebouncedQuery] = useState("");
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    const trimmed = searchQuery.trim();
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-    debounceTimerRef.current = setTimeout(() => {
-      setDebouncedQuery(trimmed);
-    }, 150);
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-    };
-  }, [searchQuery]);
-
-  const isDebouncing = searchQuery.trim() !== debouncedQuery;
-
-  // Cap the number of rendered items to avoid slow DOM rendering on large workspaces.
-  // This is a temporary measure until the command palette moves to Sparkle with
-  // proper list virtualization (@tanstack/react-virtual).
-  const MAX_DISPLAYED_AGENTS = 5;
-  const MAX_DISPLAYED_PODS = 5;
-
-  const allFilteredAgents = useMemo(
-    () =>
-      debouncedQuery
-        ? filterAndSortAgents(agentConfigurations, debouncedQuery)
-        : [...agentConfigurations].sort(compareAgentsForSort),
-    [agentConfigurations, debouncedQuery]
-  );
-
-  const allFilteredPods = useMemo(() => {
-    if (!debouncedQuery) {
-      return memberPods;
-    }
-    const lowerQuery = debouncedQuery.toLowerCase();
-    return memberPods.filter((p) =>
-      subFilter(lowerQuery, p.name.toLowerCase())
-    );
-  }, [memberPods, debouncedQuery]);
-
-  const allFilteredSkills = useMemo(() => {
-    if (!debouncedQuery) {
-      return skills;
-    }
-    const lowerQuery = debouncedQuery.toLowerCase();
-    return skills.filter((s) => subFilter(lowerQuery, s.name.toLowerCase()));
-  }, [skills, debouncedQuery]);
+  const [memberDetailsId, setMemberDetailsId] = useState<string | null>(null);
+  const [isCreatePodModalOpen, setIsCreatePodModalOpen] = useState(false);
 
   const {
-    filteredAgents,
-    filteredPods,
-    filteredSkills,
+    agents,
+    conversations,
+    members,
+    pods,
+    skills,
+    settings,
     hasMoreAgents,
+    hasMoreConversations,
+    hasMoreMembers,
     hasMorePods,
     hasMoreSkills,
-  } = useMemo(
-    () => ({
-      filteredAgents: allFilteredAgents.slice(0, MAX_DISPLAYED_AGENTS),
-      filteredPods: allFilteredPods.slice(0, MAX_DISPLAYED_PODS),
-      filteredSkills: isSkillsSearchEnabled
-        ? searchSkills
-        : allFilteredSkills.slice(0, MAX_DISPLAYED_SKILLS),
-      hasMoreAgents: allFilteredAgents.length > MAX_DISPLAYED_AGENTS,
-      hasMorePods: allFilteredPods.length > MAX_DISPLAYED_PODS,
-      hasMoreSkills: isSkillsSearchEnabled
-        ? hasMoreSearchSkills
-        : allFilteredSkills.length > MAX_DISPLAYED_SKILLS,
-    }),
-    [
-      allFilteredAgents,
-      allFilteredPods,
-      allFilteredSkills,
-      isSkillsSearchEnabled,
-      searchSkills,
-      hasMoreSearchSkills,
-    ]
-  );
+    hasMoreSettings,
+    canSearchSettings,
+    isLoading,
+  } = useCommandPaletteSearch({
+    owner,
+    isOpen,
+    searchQuery,
+    currentUserId: user.sId,
+  });
 
-  const isLoading =
-    isAgentConfigurationsLoading ||
-    isSkillsLoading ||
-    isSpacesLoading ||
-    isDebouncing;
+  const podId = useActivePodId();
+
+  const starPod = useStarPod({
+    workspaceId: owner.sId,
+    podId: selectedItem?.kind === "pod" ? selectedItem.pod.sId : null,
+  });
+  const { updateUserFavorite } = useUpdateUserFavorite({
+    owner,
+    agentConfigurationId:
+      selectedItem?.kind === "agent" ? selectedItem.agent.sId : "",
+  });
+
+  const { visitedItems, visitItem } = useFrecencySorting<CommandPaletteItem>(
+    undefined,
+    {
+      key: getCommandPaletteItemKey,
+      namespace: `command-palette-${owner.sId}`,
+    }
+  );
+  const frequentItems = useMemo(
+    () => visitedItems.slice(0, MAX_FREQUENT_ITEMS),
+    [visitedItems]
+  );
 
   // Reset state when dialog opens/closes.
   useEffect(() => {
     if (isOpen) {
       setSearchQuery("");
-      setDebouncedQuery("");
       setPhase("search");
       setSelectedIndex(0);
       setSelectedItem(null);
+      setSelectedCategory(initialCategory ?? "All");
     }
-  }, [isOpen]);
+  }, [isOpen, initialCategory]);
 
   const executeAction = useCallback(
     (item: CommandPaletteItem, action: CommandPaletteAction) => {
-      close();
-
       switch (action) {
+        case "chat_with_in_pod":
+          close();
+          if (item.kind === "agent") {
+            navigateToPod(
+              (href) => {
+                void router.push(href);
+              },
+              owner.sId,
+              podId ?? "",
+              "conversations",
+              `agent=${item.agent.sId}`
+            );
+          } else if (item.kind === "member") {
+            navigateToPod(
+              (href) => {
+                void router.push(href);
+              },
+              owner.sId,
+              podId ?? "",
+              "conversations",
+              `user=${item.member.sId}`
+            );
+          }
+          break;
         case "chat_with":
+          close();
           if (item.kind === "agent") {
             void router.push(
               getConversationRoute(owner.sId, "new", `agent=${item.agent.sId}`)
             );
+          } else if (item.kind === "member") {
+            void router.push(
+              getConversationRoute(owner.sId, "new", `user=${item.member.sId}`)
+            );
           }
           break;
         case "view_details":
+          close();
           if (item.kind === "agent") {
             setAgentDetailsId(item.agent.sId);
           } else if (item.kind === "skill") {
             setSkillDetailsId(item.skill.sId);
+          } else if (item.kind === "member") {
+            setMemberDetailsId(item.member.sId);
           }
           break;
         case "edit":
+          close();
           if (item.kind === "agent") {
             void router.push(getAgentBuilderRoute(owner.sId, item.agent.sId));
           } else if (item.kind === "skill") {
             void router.push(getSkillBuilderRoute(owner.sId, item.skill.sId));
           }
           break;
+        case "go":
+          close();
+          if (item.kind === "pod") {
+            navigateToPod(
+              (href) => {
+                void router.push(href);
+              },
+              owner.sId,
+              item.pod.sId
+            );
+          }
+          break;
+        case "star":
+        case "unstar":
+          close();
+          if (item.kind === "pod") {
+            void starPod(action === "star");
+          }
+          break;
+        case "favorite":
+        case "unfavorite":
+          close();
+          if (item.kind === "agent") {
+            void updateUserFavorite(action === "favorite");
+          }
+          break;
+        default:
+          assertNever(action);
       }
     },
-    [close, router, owner.sId]
+    [close, router, owner.sId, podId, starPod, updateUserFavorite]
   );
 
+  // Enter / row click: run the item's default action.
   const handleItemSelect = useCallback(
     (item: CommandPaletteItem) => {
-      if (item.kind === "pod") {
+      if (item.kind === "action") {
         close();
-        void router.push(getPodRoute(owner.sId, item.pod.sId));
+        switch (item.action) {
+          case "new_conversation_in_pod":
+            if (podId) {
+              navigateToPod(
+                (href) => {
+                  void router.push(href);
+                },
+                owner.sId,
+                podId,
+                "conversations"
+              );
+            }
+            break;
+          case "new_conversation":
+            void router.push(getConversationRoute(owner.sId, "new"));
+            break;
+          case "new_pod":
+            setIsCreatePodModalOpen(true);
+            break;
+          default:
+            assertNever(item.action);
+        }
         return;
       }
-      // Skills without administration access have only one action (view details).
-      if (item.kind === "skill" && !item.skill.canAdministrate) {
-        executeAction(item, "view_details");
-      } else {
-        setSelectedItem(item);
-        setPhase("action");
+
+      void visitItem(item);
+
+      switch (item.kind) {
+        case "pod":
+          close();
+          navigateToPod(
+            (href) => {
+              void router.push(href);
+            },
+            owner.sId,
+            item.pod.sId
+          );
+          break;
+        case "conversation":
+          close();
+          void router.push(
+            getConversationRoute(owner.sId, item.conversation.sId)
+          );
+          break;
+        case "setting":
+          close();
+          navigateToAdminSetting(
+            (href) => {
+              void router.push(href);
+            },
+            item.setting.pageHref,
+            item.setting
+          );
+          break;
+        case "agent":
+        case "member":
+          executeAction(item, "chat_with");
+          break;
+        case "skill":
+          executeAction(item, "view_details");
+          break;
+        default:
+          assertNever(item);
       }
     },
-    [close, executeAction, owner.sId, router]
+    [close, executeAction, owner.sId, podId, router, visitItem]
+  );
+
+  // Right arrow / row chevron: open the actions phase when the item has one.
+  const handleOpenActions = useCallback(
+    (item: CommandPaletteItem) => {
+      if (!commandPaletteItemHasActions(item)) {
+        return;
+      }
+
+      void visitItem(item);
+      setSelectedItem(item);
+      setPhase("action");
+    },
+    [visitItem]
   );
 
   const handleBack = useCallback(() => {
@@ -260,36 +318,85 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
     [close]
   );
 
+  const handleEscapeKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      // Action phase: Esc returns to search (don't close the dialog).
+      if (phase === "action") {
+        e.preventDefault();
+        handleBack();
+        return;
+      }
+      // Search: first Esc clears the query; a second Esc closes the dialog.
+      if (searchQuery.length > 0) {
+        e.preventDefault();
+        setSearchQuery("");
+      }
+    },
+    [phase, searchQuery, handleBack]
+  );
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-        <DialogContent size="lg" variant="command" trapFocusScope>
+        <DialogContent
+          size="lg"
+          variant="command"
+          trapFocusScope
+          onEscapeKeyDown={handleEscapeKeyDown}
+        >
           {phase === "search" ? (
             <CommandPaletteSearchPhase
               searchQuery={searchQuery}
               onSearchQueryChange={setSearchQuery}
-              agents={filteredAgents}
-              pods={filteredPods}
-              skills={filteredSkills}
+              agents={agents}
+              conversations={conversations}
+              members={members}
+              pods={pods}
+              skills={skills}
+              settings={settings}
+              frequentItems={frequentItems}
+              activePodId={podId ?? null}
               hasMoreAgents={hasMoreAgents}
+              hasMoreConversations={hasMoreConversations}
+              hasMoreMembers={hasMoreMembers}
               hasMorePods={hasMorePods}
               hasMoreSkills={hasMoreSkills}
+              hasMoreSettings={hasMoreSettings}
+              canSearchSettings={canSearchSettings}
+              selectedCategory={selectedCategory}
+              onSelectedCategoryChange={setSelectedCategory}
               isLoading={isLoading}
               selectedIndex={selectedIndex}
               onSelectedIndexChange={setSelectedIndex}
               onItemSelect={handleItemSelect}
-              onClose={close}
+              onOpenActions={handleOpenActions}
             />
           ) : selectedItem ? (
             <CommandPaletteActionPhase
+              workspaceId={owner.sId}
               item={selectedItem}
               onAction={handleAction}
               onBack={handleBack}
-              onClose={close}
             />
           ) : null}
         </DialogContent>
       </Dialog>
+
+      <CreatePodModal
+        isOpen={isCreatePodModalOpen}
+        onClose={() => setIsCreatePodModalOpen(false)}
+        onCreated={(pod) => {
+          setIsCreatePodModalOpen(false);
+          navigateToPod(
+            (href) => {
+              void router.push(href);
+            },
+            owner.sId,
+            pod.sId
+          );
+        }}
+        owner={owner}
+      />
 
       <AgentDetailsSheet
         owner={owner}
@@ -303,6 +410,12 @@ export function CommandPalette({ owner, user }: CommandPaletteProps) {
         user={user}
         skillId={skillDetailsId}
         onClose={() => setSkillDetailsId(null)}
+      />
+
+      <MemberDetails
+        owner={owner}
+        userId={memberDetailsId}
+        onClose={() => setMemberDetailsId(null)}
       />
     </>
   );

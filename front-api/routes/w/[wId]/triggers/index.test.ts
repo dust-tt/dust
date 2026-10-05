@@ -7,6 +7,7 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";
 import { faker } from "@faker-js/faker";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
@@ -48,6 +49,19 @@ function scheduleTriggerBody(spaceId: string | null | undefined) {
         spaceId,
       },
     ],
+  };
+}
+
+function webhookTriggerBody(webhookSourceViewId: string) {
+  return {
+    name: `trigger-${faker.string.alphanumeric(8)}`,
+    kind: "webhook" as const,
+    customPrompt: "",
+    naturalLanguageDescription: null,
+    status: "disabled" as const,
+    configuration: { includePayload: true },
+    webhookSourceViewId,
+    executionPerDayLimitOverride: 10,
   };
 }
 
@@ -94,6 +108,79 @@ describe("POST /api/w/:wId/triggers (agent access)", () => {
         agent.sId
       )
     ).toEqual([]);
+  });
+});
+
+describe("POST/PATCH /api/w/:wId/triggers (webhookSourceViewId)", () => {
+  async function setup() {
+    const { workspace, user, globalSpace } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
+      method: "POST",
+      role: "user",
+    });
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const viewFactory = new WebhookSourceViewFactory(workspace);
+    const readableView = await viewFactory.create(globalSpace);
+    const restrictedView = await viewFactory.create(
+      await SpaceFactory.regular(workspace)
+    );
+    return { workspace, auth, agent, readableView, restrictedView };
+  }
+
+  it("creates a webhook trigger on a view the user can read", async () => {
+    const { workspace, auth, agent, readableView } = await setup();
+
+    const response = await postTriggers(workspace, agent.sId, {
+      triggers: [webhookTriggerBody(readableView.sId)],
+    });
+
+    expect(response.status).toBe(204);
+    const triggers = await TriggerResource.listByWebhookSourceViewId(
+      auth,
+      readableView.id
+    );
+    expect(triggers).toHaveLength(1);
+  });
+
+  it("rejects creating a webhook trigger on a view in a restricted space", async () => {
+    const { workspace, auth, agent, restrictedView } = await setup();
+
+    const response = await postTriggers(workspace, agent.sId, {
+      triggers: [webhookTriggerBody(restrictedView.sId)],
+    });
+
+    expect(response.status).toBe(404);
+    expect(
+      await TriggerResource.listByWebhookSourceViewId(auth, restrictedView.id)
+    ).toEqual([]);
+  });
+
+  it("rejects moving a webhook trigger to a view in a restricted space", async () => {
+    const { workspace, auth, agent, readableView, restrictedView } =
+      await setup();
+    const body = webhookTriggerBody(readableView.sId);
+    const createRes = await postTriggers(workspace, agent.sId, {
+      triggers: [body],
+    });
+    expect(createRes.status).toBe(204);
+    const [trigger] = await TriggerResource.listByWebhookSourceViewId(
+      auth,
+      readableView.id
+    );
+
+    const response = await patchTriggers(workspace, agent.sId, {
+      triggers: [
+        { ...body, sId: trigger.sId, webhookSourceViewId: restrictedView.sId },
+      ],
+    });
+
+    expect(response.status).toBe(404);
+    const unchanged = await TriggerResource.fetchById(auth, trigger.sId);
+    expect(unchanged?.webhookSourceViewId).toBe(readableView.id);
   });
 });
 

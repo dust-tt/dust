@@ -2,12 +2,15 @@ import type { BatchApplicationStep } from "@app/lib/api/assistant/batch_applicat
 import { planBatchApplication } from "@app/lib/api/assistant/batch_application_plan";
 import type { Authenticator } from "@app/lib/auth";
 import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
+import type { WorkspaceType } from "@app/types/user";
 import assert from "assert";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -18,9 +21,15 @@ function describeStep(step: BatchApplicationStep): string {
 
 describe("planBatchApplication", () => {
   let auth: Authenticator;
+  let user: UserResource;
+  let workspace: WorkspaceType;
 
   beforeEach(async () => {
-    ({ authenticator: auth } = await createResourceTest({ role: "user" }));
+    ({
+      authenticator: auth,
+      user,
+      workspace,
+    } = await createResourceTest({ role: "user" }));
   });
 
   async function fetchBatch(batchId: string) {
@@ -32,6 +41,11 @@ describe("planBatchApplication", () => {
   it("orders creations first, then edits, then deletions", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const skill = await SkillFactory.create(auth);
+    // Recording an agent creation requires the create-agent capability.
+    await grantWorkspacePermission(workspace, user, {
+      grantType: "create",
+      resourceType: "agent",
+    });
     await auth.refresh();
     const { id: batchModelId, sId } =
       await BatchSuggestionFactory.createEmpty(auth);
@@ -50,7 +64,12 @@ describe("planBatchApplication", () => {
     await AgentSuggestionFactory.createCreate(auth, agent, { batchModelId });
     await SkillSuggestionFactory.create(auth, skill, {
       kind: "create",
-      suggestion: { name: skill.name },
+      suggestion: {
+        name: skill.name,
+        userFacingDescription: "Created skill",
+        agentFacingDescription: "Use it when created",
+        instructions: "<p>Created instructions</p>",
+      },
       batchModelId,
     });
 

@@ -11,8 +11,7 @@ import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { computeStepContexts } from "@app/lib/actions/utils";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
+import { getPinnedAgentToolingForAgentMessage } from "@app/lib/api/assistant/configuration/run_configuration";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { resolveAgentMessageModelConfig } from "@app/lib/api/assistant/resolve_model";
@@ -21,7 +20,7 @@ import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
 import { pauseSandboxBashForBlockedChild } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
-import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
+import { notifyManualActionRequired } from "@app/lib/notifications/triggers/manual-action-required";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -49,7 +48,6 @@ export async function createSandboxChildAction(
   auth: Authenticator,
   {
     parentActionId,
-    agentId,
     agentVersion,
     conversationId,
     agentMessageId,
@@ -58,7 +56,6 @@ export async function createSandboxChildAction(
     rawInputs,
   }: {
     parentActionId: string;
-    agentId: string;
     agentVersion: number;
     conversationId: string;
     agentMessageId: string;
@@ -70,15 +67,6 @@ export async function createSandboxChildAction(
   const view = await MCPServerViewResource.fetchById(auth, serverViewId);
   if (!view) {
     return new Err(new Error("MCP server view not found."));
-  }
-
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId,
-    agentVersion,
-    variant: "full",
-  });
-  if (!agentConfiguration) {
-    return new Err(new Error("Agent configuration not found."));
   }
 
   const conversationResource = await ConversationResource.fetchById(
@@ -113,8 +101,26 @@ export async function createSandboxChildAction(
     agentMessageId
   );
 
-  if (agentMessageRes.isErr()) {
+  if (agentMessageRes.isErr() || !agentMessageRes.value.parentId) {
     return new Err(new Error("Agent message not found."));
+  }
+
+  const [userMessageRow] = await conversationResource.fetchMessagesByModelIds(
+    auth,
+    [agentMessageRes.value.parentId]
+  );
+  if (!userMessageRow?.userMessage) {
+    return new Err(new Error("User message not found."));
+  }
+
+  const agentConfiguration = await getPinnedAgentToolingForAgentMessage(auth, {
+    agentVersion,
+    conversation: conversationResource,
+    agentMessage: agentMessageRes.value,
+    userMessage: userMessageRow,
+  });
+  if (!agentConfiguration) {
+    return new Err(new Error("Agent configuration not found."));
   }
 
   const agentMessageRenderRes = await batchRenderMessages(
@@ -133,9 +139,9 @@ export async function createSandboxChildAction(
     return new Err(new Error("Agent message not found."));
   }
 
-  // Using the fetchConversationWithParticipantState method as we need the read and action required states
+  // Need per-user actionRequired (and related read state) on the resource.
   const conversationRes =
-    // biome-ignore lint/plugin/noExpensiveConversationFetch: need actionRequired/lastReadAt
+    // biome-ignore lint/plugin/noExpensiveConversationFetch: need actionRequired
     await ConversationResource.fetchConversationWithParticipantState(
       auth,
       conversationId
@@ -146,6 +152,8 @@ export async function createSandboxChildAction(
   }
 
   const conversation = conversationRes.value;
+  // Wire shape for helpers that still take ConversationWithoutContentType.
+  const conversationJson = conversation.toJSON();
 
   // JIT servers cover tools added via the conversation input bar, skill
   // servers cover tools attached through skills. Resolve the server config
@@ -155,14 +163,14 @@ export async function createSandboxChildAction(
   // are derived from it.
   const jitServers = await getJITServers(auth, {
     agentConfiguration,
-    conversation,
+    conversation: conversationJson,
     attachments: [],
   });
   const { skillServers, systemSkillServers } = await resolveSkillMCPServers(
     auth,
     {
       agentConfiguration,
-      conversation,
+      conversation: conversationJson,
     }
   );
 
@@ -271,7 +279,7 @@ export async function createSandboxChildAction(
     actionConfiguration: fullToolConfiguration,
     agentMessage,
     augmentedInputs: rawInputs,
-    conversation,
+    conversation: conversationJson,
     status: persistedStatus,
     stepContent: parentAction.stepContent,
     stepContext: {
@@ -297,7 +305,7 @@ export async function createSandboxChildAction(
     await updateResourceAndPublishEvent(auth, {
       event: approvalRequirementEvent,
       agentMessage,
-      conversation,
+      conversation: conversationJson,
       step: parentAction.stepContent.step,
     });
 
@@ -321,13 +329,9 @@ export async function createSandboxChildAction(
     return new Ok({
       actionId: action.sId,
       pauseSandbox: () =>
-        pauseSandboxBashForBlockedChild(auth, action, conversation),
+        pauseSandboxBashForBlockedChild(auth, action, conversationJson),
     });
   }
-
-  const userMessageInfo = await getUserMessageIdFromMessageId(auth, {
-    messageId: agentMessage.sId,
-  });
 
   await launchSandboxChildToolWorkflow(auth, {
     agentLoopArgs: {
@@ -335,9 +339,9 @@ export async function createSandboxChildAction(
       agentMessageVersion: agentMessage.version,
       conversationId: conversation.sId,
       conversationTitle: conversation.title,
-      userMessageId: userMessageInfo.userMessageId,
-      userMessageVersion: userMessageInfo.userMessageVersion,
-      userMessageOrigin: userMessageInfo.userMessageOrigin,
+      userMessageId: userMessageRow.sId,
+      userMessageVersion: userMessageRow.version,
+      userMessageOrigin: userMessageRow.userMessage.userContextOrigin,
       initialStartTime: Date.now(),
     },
     action,

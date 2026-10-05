@@ -13,13 +13,13 @@ import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversation
 import { useSearchPodConversations } from "@app/hooks/useSearchPodConversations";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
+import { formatRelativeTime } from "@app/lib/client/relative_time";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { usePodDefaultSkills, usePodMetadata } from "@app/lib/swr/pods";
 import { useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { RelativeDateBucket } from "@app/lib/utils/timestamps";
-import { formatRelativeTime } from "@app/lib/utils/timestamps";
 import type { PodConversationListItemType } from "@app/types/api/assistant/conversation/spaces";
 import type { GetSpaceResponseBody } from "@app/types/api/spaces";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";

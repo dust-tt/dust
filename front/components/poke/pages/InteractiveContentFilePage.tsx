@@ -1,9 +1,8 @@
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
-import { formatFileSize } from "@app/lib/utils";
+import { formatDateTime, formatFileSize } from "@app/lib/i18n/format";
 import type { GetPokeFileResponseBody } from "@app/types/api/poke/files";
 import type { FileTypeWithMetadata, SharingGrantType } from "@app/types/files";
-import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
 import {
   Button,
   Chip,
@@ -161,7 +160,10 @@ export function InteractiveContentFilePage({
                       Shared At
                     </div>
                     <div className="font-mono text-sm">
-                      {dateToHumanReadable(new Date(shareInfo.sharedAt))}
+                      {formatDateTime(new Date(shareInfo.sharedAt), {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })}
                     </div>
                   </div>
                   <div className="col-span-2">
@@ -213,9 +215,10 @@ export function InteractiveContentFilePage({
                                   )}
                                   <span className="text-xs">
                                     Granted{" "}
-                                    {dateToHumanReadable(
-                                      new Date(grant.grantedAt)
-                                    )}
+                                    {formatDateTime(new Date(grant.grantedAt), {
+                                      dateStyle: "medium",
+                                      timeStyle: "short",
+                                    })}
                                   </span>
                                   {grant.grantedBy && (
                                     <span className="text-xs">
@@ -254,15 +257,20 @@ export function InteractiveContentFilePage({
                                   />
                                   <span className="text-xs">
                                     Revoked{" "}
-                                    {dateToHumanReadable(
-                                      new Date(grant.revokedAt!)
+                                    {formatDateTime(
+                                      new Date(grant.revokedAt!),
+                                      {
+                                        dateStyle: "medium",
+                                        timeStyle: "short",
+                                      }
                                     )}
                                   </span>
                                   <span className="text-xs">
                                     Granted{" "}
-                                    {dateToHumanReadable(
-                                      new Date(grant.grantedAt)
-                                    )}
+                                    {formatDateTime(new Date(grant.grantedAt), {
+                                      dateStyle: "medium",
+                                      timeStyle: "short",
+                                    })}
                                   </span>
                                   {grant.grantedBy && (
                                     <span className="text-xs">

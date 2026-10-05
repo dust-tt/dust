@@ -204,4 +204,29 @@ describe("TagResource", () => {
       expect(await TagResource.fetchById(authenticator, sId)).not.toBeNull();
     });
   });
+
+  describe("makeNewForNames", () => {
+    it("creates the missing tags, restores the deleted ones and returns the existing ones", async () => {
+      const existing = await TagFactory.create(workspace, { name: "existing" });
+      const deleted = await TagFactory.create(workspace, { name: "deleted" });
+      await deleted.delete(authenticator);
+
+      const tags = await TagResource.makeNewForNames(authenticator, {
+        names: ["existing", "deleted", "new"],
+        kind: "standard",
+      });
+
+      expect(tags.map((tag) => tag.name).sort()).toEqual([
+        "deleted",
+        "existing",
+        "new",
+      ]);
+      const sIdsByName = new Map(tags.map((tag) => [tag.name, tag.sId]));
+      expect(sIdsByName.get("existing")).toBe(existing.sId);
+      expect(sIdsByName.get("deleted")).toBe(deleted.sId);
+      expect(
+        (await TagResource.findAll(authenticator)).map((tag) => tag.name)
+      ).toEqual(["deleted", "existing", "new"]);
+    });
+  });
 });

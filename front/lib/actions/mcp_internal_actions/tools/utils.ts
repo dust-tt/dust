@@ -7,7 +7,6 @@ import {
   DATA_SOURCE_CONFIGURATION_URI_PATTERN,
   TABLE_CONFIGURATION_URI_PATTERN,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { PodConfigInfo } from "@app/lib/actions/mcp_internal_actions/pod_configuration_uri";
 import { parsePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/pod_configuration_uri";
 import type { TagsInputType } from "@app/lib/actions/mcp_internal_actions/types";
 import type {
@@ -601,5 +600,4 @@ export async function getCoreSearchArgs(
   return new Ok(toCoreSearchArgs(configRes.value));
 }
 
-export type { PodConfigInfo };
 export { parsePodConfigurationURI };

@@ -4,6 +4,7 @@ import {
   validateWorkspaceAccess,
 } from "@app/lib/api/workspace_validation";
 import { Authenticator } from "@app/lib/auth";
+import { sessionSatisfiesSSOEnforcement } from "@app/lib/iam/session";
 import { getClientIp } from "@app/lib/utils/request";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -93,6 +94,12 @@ interface WorkspaceAuthOptions {
  * call in the chain (e.g. a path-specific override registered before the
  * catch-all), it short-circuits.
  */
+/**
+ * @cc [owner:tdraier,label:security;api] reject-non-sso-session-on-sso-enforced-workspace
+ * When the resolved workspace member's session does not satisfy
+ * `sessionSatisfiesSSOEnforcement`, the middleware MUST respond 401 with error type
+ * `sso_enforced` and MUST NOT call the downstream handler.
+ */
 export const workspaceAuth = (opts: WorkspaceAuthOptions = {}) =>
   createMiddleware<WorkspaceAwareCtx>(async (ctx, next) => {
     if (ctx.get("auth")) {
@@ -159,6 +166,22 @@ export const workspaceAuth = (opts: WorkspaceAuthOptions = {}) =>
         api_error: {
           type: "workspace_auth_error",
           message: "Only users of the workspace can access this content.",
+        },
+      });
+    }
+
+    if (
+      !sessionSatisfiesSSOEnforcement(
+        auth.getNonNullableWorkspace(),
+        sessionResult
+      )
+    ) {
+      return apiError(ctx, {
+        status_code: 401,
+        api_error: {
+          type: "sso_enforced",
+          message:
+            "Access requires Single Sign-On (SSO) authentication. Use your SSO provider to sign in.",
         },
       });
     }

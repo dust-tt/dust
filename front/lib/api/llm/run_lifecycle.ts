@@ -1,4 +1,3 @@
-import type { InferenceRegionType } from "@app/lib/api/assistant/token_pricing";
 import type { TokenUsage } from "@app/lib/api/llm/types/events";
 import { usesWorkspaceProvidedCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
@@ -15,7 +14,6 @@ import type { ModelId } from "@app/types/shared/model_id";
 interface LLMRunLifecycleParameters {
   dustRunId: string;
   inferenceProvider: string;
-  inferenceRegion: InferenceRegionType;
   modelId: ModelIdType;
   providerId: ModelProviderIdType;
   region: Region | null;
@@ -68,7 +66,7 @@ export class LLMRunLifecycle {
       usage,
       this.parameters.modelId,
       {
-        inferenceRegion: this.parameters.inferenceRegion,
+        region: this.parameters.region,
       }
     );
   }

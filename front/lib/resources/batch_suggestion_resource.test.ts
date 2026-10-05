@@ -144,12 +144,12 @@ describe("BatchSuggestionResource", () => {
     });
 
     // Neither user can access every member.
-    await expect(
-      BatchSuggestionResource.fetchById(authenticator, batch.sId)
-    ).rejects.toThrow();
-    await expect(
-      BatchSuggestionResource.fetchById(otherAuth, batch.sId)
-    ).rejects.toThrow();
+    expect(
+      await BatchSuggestionResource.fetchById(authenticator, batch.sId)
+    ).toBeNull();
+    expect(
+      await BatchSuggestionResource.fetchById(otherAuth, batch.sId)
+    ).toBeNull();
   });
 
   it("updates the state of the batch and of all its members", async () => {
@@ -173,6 +173,39 @@ describe("BatchSuggestionResource", () => {
     ]);
     expect(refetched!.skillSuggestions.map((s) => [s.sId, s.state])).toEqual([
       [skillSuggestion.sId, "approved"],
+    ]);
+  });
+
+  it("records the reviewer on the batch and its skill suggestions", async () => {
+    const { batch } = await createBatchWithMembers(authenticator);
+    const userModelId = authenticator.getNonNullableUser().id;
+
+    await batch.updateState(authenticator, "approved");
+    expect(batch.updatedByUserId).toBe(userModelId);
+
+    const refetched = await BatchSuggestionResource.fetchById(
+      authenticator,
+      batch.sId
+    );
+    expect(refetched!.updatedByUserId).toBe(userModelId);
+    expect(refetched!.skillSuggestions.map((s) => s.updatedByUserId)).toEqual([
+      userModelId,
+    ]);
+  });
+
+  it("does not record a reviewer when outdating or resetting a batch", async () => {
+    const { batch } = await createBatchWithMembers(authenticator);
+
+    await batch.updateState(authenticator, "pending");
+    await BatchSuggestionResource.outdateBatchesOf(authenticator, [batch.id]);
+
+    const refetched = await BatchSuggestionResource.fetchById(
+      authenticator,
+      batch.sId
+    );
+    expect(refetched!.updatedByUserId).toBeNull();
+    expect(refetched!.skillSuggestions.map((s) => s.updatedByUserId)).toEqual([
+      null,
     ]);
   });
 

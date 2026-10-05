@@ -1,4 +1,4 @@
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
+import { searchAgents } from "@app/lib/api/agents/search";
 import { getLastUserMessageMentions } from "@app/lib/api/assistant/conversation";
 import { fetchConversationParticipants } from "@app/lib/api/assistant/participants";
 import type { Authenticator } from "@app/lib/auth";
@@ -8,20 +8,21 @@ import {
   SUGGESTION_PRIORITY,
   sortEditorSuggestionUsers,
 } from "@app/lib/mentions/editor/suggestion";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { enrichWithFavorites } from "@app/lib/resources/agent_resource_serialization";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { subFilter } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
   RichAgentMentionInConversation,
   RichMention,
   RichUserMentionInConversation,
 } from "@app/types/assistant/mentions";
-import {
-  toRichAgentMentionType,
-  toRichUserMentionType,
-} from "@app/types/assistant/mentions";
+import { toRichUserMentionType } from "@app/types/assistant/mentions";
 
 export function interleaveMentionsPreservingAgentOrder(
   agents: RichAgentMentionInConversation[],
@@ -167,6 +168,12 @@ export function parseMentionSelectParam(
   };
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:product;security] empty-query-favorite-mentions
+ * With agents selected, a blank query MUST return only active,
+ * readable favorites in alphabetical order when any exist, without searching. No favorites
+ * or a nonblank query MUST retain the existing suggestions behavior.
+ */
 export const suggestionsOfMentions = async (
   auth: Authenticator,
   {
@@ -192,6 +199,18 @@ export const suggestionsOfMentions = async (
   const normalizedQuery = query.toLowerCase();
   // can be called from the public API, so user may be null
   const currentUser = auth.user();
+
+  if (select.agents && !query.trim()) {
+    const favorites = await AgentResource.listFavoritesForCurrentUser(auth);
+    const favoriteSuggestions = favorites
+      .filter((agent) => agent.status === "active" && auth.can("read", agent))
+      .toSorted((a, b) => a.name.localeCompare(b.name))
+      .slice(0, SUGGESTION_DISPLAY_LIMIT)
+      .map((agent) => agent.toMentionSuggestionJSON({ userFavorite: true }));
+    if (favoriteSuggestions.length > 0) {
+      return favoriteSuggestions;
+    }
+  }
 
   // Id of the last user or agent mentioned by the current user in the conversation
   let lastMentionedId: string | null = null;
@@ -276,36 +295,97 @@ export const suggestionsOfMentions = async (
   }
 
   if (select.agents) {
-    const agentConfigurations = await getAgentConfigurationsForView({
-      auth,
-      agentsGetView: "list",
-      variant: "light",
+    let activeAgents: RichAgentMentionInConversation[] | null = null;
+    const result = await searchAgents(auth, {
+      searchTerm: query,
+      limit: SUGGESTION_DISPLAY_LIMIT,
+      sortBy: query.trim() ? "relevance" : "name",
+      permissionFiltering: "strict",
     });
-
-    const activeAgents: RichAgentMentionInConversation[] = agentConfigurations
-      .filter((a) => a.status === "active")
-      .map((a) => ({
-        ...toRichAgentMentionType(a),
-        isParticipant: participantAgents.some((pa) => pa.id === a.sId),
-        lastActivityAt:
-          participantAgents.find((pa) => pa.id === a.sId)?.lastActivityAt ?? 0,
+    if (result.isOk()) {
+      activeAgents = result.value.agents.map((agent) => ({
+        type: "agent",
+        id: agent.sId,
+        label: agent.name,
+        pictureUrl: agent.pictureUrl,
+        description: agent.description,
       }));
-
-    // The sidekick agent is excluded from default global agent listings but should
-    // be mentionable when it's a conversation participant.
-    const sidekickParticipant = participantAgents.find(
-      (pa) => pa.id === GLOBAL_AGENTS_SID.SIDEKICK
-    );
-    if (sidekickParticipant) {
-      activeAgents.push(sidekickParticipant);
+    } else {
+      logger.error(
+        {
+          error: result.error,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+        },
+        "Failed to search mention suggestions, falling back to agent listing"
+      );
     }
 
-    const filteredAgents = filterAndSortEditorSuggestionAgents(
-      normalizedQuery,
-      activeAgents
-    );
+    const isSearchResult = activeAgents !== null;
+    if (activeAgents === null) {
+      const agents = await AgentResource.listReadable(auth);
+      const favorites = await enrichWithFavorites(auth, agents);
+      activeAgents = agents.map((agent) =>
+        agent.toMentionSuggestionJSON({
+          userFavorite: favorites.get(agent.sId)?.userFavorite ?? false,
+        })
+      );
+    }
 
-    agentSuggestions.push(...filteredAgents);
+    const participantsById = new Map(
+      participantAgents.map((agent) => [agent.id, agent])
+    );
+    activeAgents = activeAgents.map((agent) => ({
+      ...agent,
+      isParticipant: participantsById.has(agent.id),
+      lastActivityAt: participantsById.get(agent.id)?.lastActivityAt ?? 0,
+    }));
+
+    if (isSearchResult) {
+      // Participants must be considered even when absent from the first search page.
+      const participantConfigurations = await AgentResource.fetchByIds(auth, [
+        ...participantsById.keys(),
+      ]);
+      const mentionableParticipantIds = new Set(
+        participantConfigurations
+          .filter(
+            (agent) => agent.status === "active" && auth.can("read", agent)
+          )
+          .map((agent) => agent.sId)
+      );
+      const searchResultsById = new Map(
+        activeAgents.map((agent) => [agent.id, agent])
+      );
+      const matchingParticipants = participantAgents
+        .filter(
+          (agent) =>
+            mentionableParticipantIds.has(agent.id) &&
+            (searchResultsById.has(agent.id) ||
+              subFilter(normalizedQuery, agent.label.toLowerCase()))
+        )
+        .toSorted(
+          (a, b) =>
+            Number(b.id === lastMentionedId) -
+              Number(a.id === lastMentionedId) ||
+            (b.lastActivityAt ?? 0) - (a.lastActivityAt ?? 0)
+        );
+      agentSuggestions.push(
+        ...matchingParticipants.map(
+          (agent) => searchResultsById.get(agent.id) ?? agent
+        ),
+        ...activeAgents.filter((agent) => !participantsById.has(agent.id))
+      );
+    } else {
+      // Sidekick is excluded from default listings but is mentionable as a participant.
+      const sidekickParticipant = participantsById.get(
+        GLOBAL_AGENTS_SID.SIDEKICK
+      );
+      if (sidekickParticipant) {
+        activeAgents.push(sidekickParticipant);
+      }
+      agentSuggestions.push(
+        ...filterAndSortEditorSuggestionAgents(normalizedQuery, activeAgents)
+      );
+    }
   }
 
   if (select.users) {

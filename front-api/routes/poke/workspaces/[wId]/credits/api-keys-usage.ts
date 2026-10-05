@@ -3,8 +3,6 @@ import { getApiKeysUsage } from "@app/lib/api/credits/api_keys_usage";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
-export type { GetApiKeysUsageResponseBody };
-
 // Mounted at /api/poke/workspaces/:wId/credits/api-keys-usage.
 const app = pokeApp();
 

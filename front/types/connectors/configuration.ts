@@ -1,11 +1,9 @@
-import type { DiscordBotConfigurationType } from "./discord_bot";
 import type { SlackConfigurationType } from "./slack";
 import type { WebCrawlerConfigurationType } from "./webcrawler";
 
 export type ConnectorConfiguration =
   | WebCrawlerConfigurationType
   | SlackConfigurationType
-  | DiscordBotConfigurationType
   | null;
 
 export function isWebCrawlerConfiguration(
@@ -22,14 +20,3 @@ export function isWebCrawlerConfiguration(
     maybeWebCrawlerConfig?.headers !== undefined
   );
 }
-
-export type ConnectorConfigurations = {
-  webcrawler: WebCrawlerConfigurationType;
-  notion: null;
-  slack: SlackConfigurationType;
-  google_drive: null;
-  github: null;
-  confluence: null;
-  microsoft: null;
-  intercom: null;
-};

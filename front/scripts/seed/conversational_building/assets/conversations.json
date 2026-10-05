@@ -3,7 +3,6 @@
     "sId": "ConvBuildingConv01",
     "title": "Improve MeetingNotesFormatter",
     "agentName": "Dust",
-    "overwrite": true,
     "exchanges": [
       {
         "user": {
@@ -73,6 +72,60 @@
         "agent": {
           "sId": "ConvBuildingAMsg07",
           "content": "Yes: :build_skill[MeetingNotesFormatter]{sId=__MEETING_NOTES_SKILL_SID__} is currently available to members and agents, which lets agents pick it on their own. Making it available to members only keeps it in everyone's composer while agents stop discovering it:\n\n:skill_suggestion[]{sId=__SKILL_AVAILABILITY_SUGGESTION_SID__ kind=availability skillId=__MEETING_NOTES_SKILL_SID__}\n\nAccepting this requires the permission to publish skills."
+        }
+      }
+    ]
+  },
+  {
+    "sId": "ConvBuildingConv02",
+    "title": "Batch suggestions on StandupDigest",
+    "agentName": "Dust",
+    "exchanges": [
+      {
+        "user": {
+          "sId": "ConvBuildingUMsg08",
+          "content": ":mention[Dust]{sId=dust} Action items from our standups get lost after the digest. Can we track them in their own skill, and have StandupDigest hand them over?"
+        },
+        "agent": {
+          "sId": "ConvBuildingAMsg08",
+          "content": "Here is a new :build_skill[ActionItemTracker]{sId=__ACTION_ITEM_TRACKER_SKILL_SID__} skill, and an edit on :build_skill[StandupDigest]{sId=__STANDUP_DIGEST_SKILL_SID__} that passes the action items to it. They only make sense together, so they are reviewed as one change:\n\n:batch_edit[]{sId=__ACTION_ITEM_TRACKER_BATCH_SID__}"
+        }
+      },
+      {
+        "user": {
+          "sId": "ConvBuildingUMsg09",
+          "content": "While you are at it, can you clean up StandupDigest? It should group action items by owner, its name no longer matches what it does, and agents keep picking it for the wrong things."
+        },
+        "agent": {
+          "sId": "ConvBuildingAMsg09",
+          "content": ":suggestion_recap[Group action items by owner, rename the skill to TeamDigest and keep it for members only.]\n\nHere are three independent changes on :build_skill[StandupDigest]{sId=__STANDUP_DIGEST_SKILL_SID__}, so you can accept or reject each one:\n\n:batch_edit[]{sId=__GROUP_BY_OWNER_BATCH_SID__}\n\n:batch_edit[]{sId=__RENAME_TO_TEAM_DIGEST_BATCH_SID__}\n\n:batch_edit[]{sId=__MEMBERS_ONLY_BATCH_SID__}"
+        }
+      }
+    ]
+  },
+  {
+    "sId": "ConvBuildingConv03",
+    "title": "Skill and agent references in agent changes",
+    "agentName": "Dust",
+    "exchanges": [
+      {
+        "user": {
+          "sId": "ConvBuildingUMsg10",
+          "content": ":mention[Dust]{sId=dust} Decisions from our meetings get lost. Can you create a DecisionLog skill, add it to :mention[TeamAssistant]{sId=__TEAM_ASSISTANT_AGENT_SID__}, and set up a MeetingPrep agent that uses it too and that TeamAssistant can call?"
+        },
+        "agent": {
+          "sId": "ConvBuildingAMsg10",
+          "content": "Here is a new :build_skill[DecisionLog]{sId=__DECISION_LOG_SKILL_SID__} skill, added to TeamAssistant, and a new MeetingPrep agent created with it and added as a sub-agent of TeamAssistant. The agent changes use the skill and the agent this batch creates, so they are reviewed as one change:\n\n:batch_edit[]{sId=__REFERENCES_BATCH_SID__}"
+        }
+      },
+      {
+        "user": {
+          "sId": "ConvBuildingUMsg11",
+          "content": ":mention[Dust]{sId=dust} Sales questions mix pricing and everything else. Can you create a SalesLead agent that hands pricing to a new PricingHelper agent and the rest to :mention[TeamAssistant]{sId=__TEAM_ASSISTANT_AGENT_SID__}?"
+        },
+        "agent": {
+          "sId": "ConvBuildingAMsg11",
+          "content": "Here is a new SalesLead agent created with two sub-agents: a new PricingHelper agent from this batch, and TeamAssistant:\n\n:batch_edit[]{sId=__CREATED_SUB_AGENTS_BATCH_SID__}"
         }
       }
     ]

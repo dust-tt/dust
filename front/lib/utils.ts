@@ -1,5 +1,10 @@
+import { compareStrings } from "@app/lib/i18n/format";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  AgentFavoriteEnrichment,
+  LightAgentConfigurationType,
+} from "@app/types/assistant/agent";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
 import { isDevelopment } from "@app/types/shared/env";
 import type { TagType } from "@app/types/tag";
@@ -21,105 +26,6 @@ export const shallowBlockClone = (block: any) => {
   b.config = Object.assign({}, block.config || {});
   return b;
 };
-
-function maybePlural(unit: number, label: string) {
-  return `${label}${unit > 1 ? "s" : ""}`;
-}
-
-export const timeAgoFrom = (
-  millisSinceEpoch: number,
-  { useLongFormat = false }: { useLongFormat?: boolean } = {}
-) => {
-  // return the duration elapsed from the given time to now in human readable format (using seconds, minutes, days)
-  const now = new Date().getTime();
-  const diff = now - millisSinceEpoch;
-  const seconds = Math.floor(diff / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-  const months = Math.floor(days / 30);
-  const years = Math.floor(days / 365);
-  if (years > 0) {
-    return `${years}${useLongFormat ? maybePlural(years, " year") : "y"}`;
-  }
-  if (months > 0) {
-    return `${months}${useLongFormat ? maybePlural(months, " month") : "m"}`;
-  }
-  if (days > 0) {
-    return `${days}${useLongFormat ? maybePlural(days, " day") : "d"}`;
-  }
-  if (hours > 0) {
-    return `${hours}${useLongFormat ? maybePlural(hours, " hour") : "h"}`;
-  }
-  if (minutes > 0) {
-    return `${minutes}${
-      useLongFormat ? maybePlural(minutes, " minute") : "min"
-    }`;
-  }
-
-  return "<1m";
-};
-
-/**
- * Formats a timestamp to a human-readable date string.
- * @param timestamp
- * @param version - "long" (default), "short", or "compact"
- *
- * long: September 23, 2025 at 3:37:32 PM
- * short: September 23, 2025
- * compactWithDay: Sep 23, 2025
- * compact: Sep, 2025
- *
- */
-export function formatFileSize(bytes: number): string {
-  if (bytes < 1024) {
-    return `${bytes} B`;
-  }
-  if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(1)} KB`;
-  }
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-}
-
-export function formatTimestampToFriendlyDate(
-  timestamp: number,
-  version: "long" | "short" | "compact" | "compactWithDay" = "long"
-): string {
-  const date = new Date(timestamp);
-
-  switch (version) {
-    case "compact":
-      return date
-        .toLocaleDateString("en-US", {
-          month: "short",
-          year: "numeric",
-        })
-        .replace(" ", ", ");
-
-    case "short":
-      return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-
-    case "long":
-      return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "numeric",
-        minute: "numeric",
-        second: "numeric",
-      });
-    case "compactWithDay":
-      return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
-  }
-}
 
 // from http://emailregex.com/
 const EMAIL_REGEX =
@@ -197,9 +103,9 @@ function spreadLength(a: string, b: string) {
 
 export const tagsSorter = (a: TagType, b: TagType) => {
   if (a.kind !== b.kind) {
-    return a.kind.localeCompare(b.kind);
+    return compareStrings(a.kind, b.kind);
   }
-  return a.name.localeCompare(b.name);
+  return compareStrings(a.name, b.name);
 };
 
 /**
@@ -268,7 +174,7 @@ export function compareForAutocompleteSort(
   const normalizedB = b.toLowerCase();
 
   if (normalizedQuery.length === 0) {
-    return a.localeCompare(b);
+    return compareStrings(a, b);
   }
 
   const matchA = getAutocompleteMatch(normalizedQuery, normalizedA);
@@ -290,7 +196,7 @@ export function compareForAutocompleteSort(
     return a.length - b.length;
   }
 
-  return a.localeCompare(b);
+  return compareStrings(a, b);
 }
 
 /**
@@ -341,25 +247,51 @@ export function compareForFuzzySort(query: string, a: string, b: string) {
   return 0;
 }
 
-export function filterAndSortAgents(
-  agents: LightAgentConfigurationType[],
-  searchText: string
-) {
+// `favorites` supplies the favorite state of agents that carry none (`AgentResource`).
+export function filterAndSortAgents<
+  T extends LightAgentConfigurationType | AgentResource,
+>(
+  agents: T[],
+  searchText: string,
+  favorites?: Map<string, AgentFavoriteEnrichment>
+): T[] {
   const lowerCaseSearchText = searchText.toLowerCase();
 
   const filtered = agents.filter((a) =>
     subFilter(lowerCaseSearchText, a.name.toLowerCase())
   );
 
+  const compareAgents = favorites
+    ? compareAgentsWithFavorites(favorites)
+    : compareAgentsForSort<T>;
+
   if (searchText.length > 0) {
     filtered.sort(
       (a, b) =>
         compareForFuzzySort(lowerCaseSearchText, a.name, b.name) ||
-        compareAgentsForSort(a, b)
+        compareAgents(a, b)
     );
   }
 
   return filtered;
+}
+
+// `compareAgentsForSort` for agents that carry no favorite state (`AgentResource`).
+export function compareAgentsWithFavorites(
+  favorites: Map<string, AgentFavoriteEnrichment>
+) {
+  const withFavorite = (
+    agent: Pick<AgentResource, "sId" | "name" | "scope">
+  ) => ({
+    sId: agent.sId,
+    name: agent.name,
+    scope: agent.scope,
+    userFavorite: favorites.get(agent.sId)?.userFavorite,
+  });
+  return (
+    a: Pick<AgentResource, "sId" | "name" | "scope">,
+    b: Pick<AgentResource, "sId" | "name" | "scope">
+  ) => compareAgentsForSort(withFavorite(a), withFavorite(b));
 }
 
 export function sanitizeJSONOutput(obj: unknown): unknown {

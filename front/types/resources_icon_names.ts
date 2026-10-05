@@ -208,6 +208,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "DatabricksLogo",
   "DriveLogo",
   "FathomLogo",
+  "FigmaLogo",
   "FreshserviceLogo",
   "FrontLogo",
   "GammaLogo",

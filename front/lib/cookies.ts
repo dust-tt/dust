@@ -34,14 +34,3 @@ export function hasCookiesAccepted(
     cookieValue === "true" || cookieValue === "auto" || cookieValue === true
   );
 }
-
-/**
- * Checks if we should auto-accept cookies based on geolocation
- * @param cookieValue - The current cookie value
- * @returns boolean indicating if we should check geolocation
- */
-export function shouldCheckGeolocation(
-  cookieValue: string | boolean | undefined
-): boolean {
-  return cookieValue === undefined;
-}

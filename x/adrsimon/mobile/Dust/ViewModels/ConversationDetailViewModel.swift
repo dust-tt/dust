@@ -364,8 +364,11 @@ final class ConversationDetailViewModel: ObservableObject {
             rank: nextRank,
             content: content,
             user: nil,
-            context: UserMessageContext(username: nil, fullName: nil, email: userEmail, profilePictureUrl: nil),
-            contentFragments: nil
+            context: UserMessageContext(
+                username: nil, fullName: nil, email: userEmail, profilePictureUrl: nil, origin: nil
+            ),
+            contentFragments: nil,
+            agenticMessageData: nil
         )
         optimisticUserMessageId = sId
         messages.append(.user(message))
@@ -434,7 +437,7 @@ final class ConversationDetailViewModel: ObservableObject {
                             guard cursor.shouldProcess(eventId: envelope.eventId) else { continue }
                             retryDelayNs = StreamingReconnect.initialRetryDelayNs
 
-                            let finished = await self?.reduce(envelope.data, messageId: messageId) ?? false
+                            let finished = self?.reduce(envelope.data, messageId: messageId) ?? false
                             didProcessEvent = true
                             if finished {
                                 isTerminated = true
@@ -452,7 +455,7 @@ final class ConversationDetailViewModel: ObservableObject {
 
                 guard !Task.isCancelled, !isTerminated else { break }
 
-                await self?.commitPartialTurn(messageId: messageId, generation: currentGeneration)
+                self?.commitPartialTurn(messageId: messageId, generation: currentGeneration)
 
                 if !shouldBackOff, !didProcessEvent {
                     let terminal = await self?.refreshMessageIfTerminal(

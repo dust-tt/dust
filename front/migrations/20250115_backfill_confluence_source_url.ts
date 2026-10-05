@@ -22,11 +22,6 @@ export function makeSpaceInternalId(confluenceSpaceId: string) {
   return `${ConfluenceInternalIdPrefix.Space}${confluenceSpaceId}`;
 }
 
-// Copy-pasted from connectors/confluence/lib/internal_ids.ts
-export function makePageInternalId(confluencePageId: string) {
-  return `${ConfluenceInternalIdPrefix.Page}${confluencePageId}`;
-}
-
 async function backfillDataSource(
   frontDataSource: DataSourceModel,
   coreSequelize: Sequelize,

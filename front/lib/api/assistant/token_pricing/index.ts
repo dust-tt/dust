@@ -2,13 +2,15 @@ import { EU_MODEL_PRICING } from "@app/lib/api/assistant/token_pricing/eu";
 import type { PricingEntry } from "@app/lib/api/assistant/token_pricing/global";
 import { MODEL_PRICING } from "@app/lib/api/assistant/token_pricing/global";
 import type { ServiceTier } from "@app/lib/model_constructors/types/input/configuration";
+import type { Region } from "@app/lib/model_constructors/types/regions";
+import { EUROPE, GLOBAL, US } from "@app/lib/model_constructors/types/regions";
 import type {
   ImageModelIdType,
   StaticModelIdType,
 } from "@app/types/assistant/models/models";
 import type { ModelIdType } from "@app/types/assistant/models/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
-export type { PricingEntry } from "@app/lib/api/assistant/token_pricing/global";
 export { MODEL_PRICING } from "@app/lib/api/assistant/token_pricing/global";
 
 export type InferenceRegionType = "global" | "eu";
@@ -20,6 +22,20 @@ const REGIONAL_MODEL_PRICING: Record<
 > = {
   eu: EU_MODEL_PRICING,
 };
+
+export function inferenceRegionForEndpointRegion(
+  region: Region
+): InferenceRegionType {
+  switch (region) {
+    case EUROPE:
+      return "eu";
+    case GLOBAL:
+    case US:
+      return "global";
+    default:
+      return assertNever(region);
+  }
+}
 
 export const DUST_MARKUP_PERCENT = 30;
 

@@ -95,13 +95,13 @@ describe("checkPoolCreditGate", () => {
     "credits_exhausted",
     "user_cap_reached",
     "no_seat",
-  ] as const)("stops as credits_exhausted when isUserBlocked returns %s", async (blockedReason) => {
+  ] as const)("stops with reason %s when isUserBlocked returns it", async (blockedReason) => {
     mockIsUserBlocked.mockResolvedValue(blockedReason);
     const auth = makeAuth({ hasUser: true });
     const result = await callGate(auth);
     expect(result).toEqual({
       shouldStop: true,
-      reason: "credits_exhausted",
+      reason: blockedReason,
     });
   });
 

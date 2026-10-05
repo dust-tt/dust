@@ -1,5 +1,5 @@
-import { toAgentConfigurationsWithSkills } from "@app/lib/api/assistant/configuration/helpers";
 import { importAgentConfigurationFromJSON } from "@app/lib/api/assistant/configuration/yaml_import";
+import { toAgentConfigurationsWithSkills } from "@app/lib/resources/agent_resource_serialization";
 import type { ImportAgentConfigurationFromYAMLResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -144,10 +144,10 @@ app.post(
       return apiError(ctx, result.error);
     }
 
-    const { agentConfiguration, skippedActions } = result.value;
-    const [serialized] = await toAgentConfigurationsWithSkills(auth, [
-      agentConfiguration,
-    ]);
+    const { agent, skippedActions } = result.value;
+    const [serialized] = await toAgentConfigurationsWithSkills(auth, [agent], {
+      variant: "full",
+    });
 
     return ctx.json({
       agentConfiguration: serialized,

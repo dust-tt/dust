@@ -3,7 +3,6 @@ import { useEditedAgentSections } from "@app/components/assistant/details/Sugges
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import {
-  getMcpServerDisplayName,
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
   getServerTypeAndIdFromSId,
@@ -21,11 +20,15 @@ import type {
   MCPServerViewLightType,
   MCPServerViewType,
 } from "@app/lib/api/mcp";
+import type { PreviewedAgentCapabilities } from "@app/lib/editor/preview_agent_suggestions";
 import { getSkillAvatarIcon } from "@app/lib/skill";
+import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useMCPServers, useMCPServerViews } from "@app/lib/swr/mcp_servers";
+import { useSkill } from "@app/lib/swr/skill_configurations";
 import { useAgentConfigurationSkills } from "@app/lib/swr/skills";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
@@ -38,6 +41,7 @@ import { useMemo, useState } from "react";
 
 interface AssistantToolsSectionProps {
   agentConfiguration: AgentConfigurationType;
+  previewedCapabilities: PreviewedAgentCapabilities | null;
   owner: LightWorkspaceType;
   isDustAgent: boolean;
 }
@@ -81,6 +85,7 @@ function isHiddenDustAction(action: MCPServerConfigurationType): boolean {
 
 export function AssistantSkillsToolsSection({
   agentConfiguration,
+  previewedCapabilities,
   owner,
   isDustAgent,
 }: AssistantToolsSectionProps) {
@@ -99,16 +104,79 @@ export function AssistantSkillsToolsSection({
       agentConfiguration,
     });
 
-  const sortedActions = useMemo(() => {
-    const actions = removeNulls(
-      agentConfiguration.actions
-        .filter((action) => (isDustAgent ? !isHiddenDustAction(action) : true))
-        .map((action) => renderOtherAction(action, mcpServers))
-    );
-    return sortBy(uniqBy(actions, "title"), ["order", "title"]);
-  }, [agentConfiguration.actions, mcpServers, isDustAgent]);
+  const serverViewsById = useMemo(
+    () =>
+      new Map(
+        mcpServers.flatMap((server) =>
+          server.views.map((view): [string, ServerView] => [
+            view.sId,
+            { server, view },
+          ])
+        )
+      ),
+    [mcpServers]
+  );
 
-  const sortedSkills = useMemo(() => sortBy(skills, "name"), [skills]);
+  const sortedActions = useMemo(() => {
+    const removedToolIds = new Set(previewedCapabilities?.removedToolIds);
+    const removedSubAgentIds = new Set(
+      previewedCapabilities?.removedSubAgentIds
+    );
+    const isRemovedTool = (action: MCPServerConfigurationType) =>
+      isServerSideMCPServerConfiguration(action) &&
+      (removedToolIds.has(action.mcpServerViewId) ||
+        (action.childAgentId !== null &&
+          removedSubAgentIds.has(action.childAgentId)));
+
+    const currentToolIds = new Set(
+      agentConfiguration.actions
+        .filter(isServerSideMCPServerConfiguration)
+        .map((action) => action.mcpServerViewId)
+    );
+
+    const keptTools = agentConfiguration.actions
+      .filter((action) => (isDustAgent ? !isHiddenDustAction(action) : true))
+      .filter((action) => !isRemovedTool(action))
+      .map((action) => renderOtherAction(action, serverViewsById));
+
+    const addedTools = (previewedCapabilities?.addedToolIds ?? [])
+      .filter((toolId) => !currentToolIds.has(toolId))
+      .map((toolId) => renderServerSideTool(serverViewsById.get(toolId)));
+
+    const actions = removeNulls([...keptTools, ...addedTools]);
+    return sortBy(uniqBy(actions, "title"), ["order", "title"]);
+  }, [
+    agentConfiguration.actions,
+    serverViewsById,
+    isDustAgent,
+    previewedCapabilities,
+  ]);
+
+  const sortedSkills = useMemo(() => {
+    const removedSkillIds = new Set(previewedCapabilities?.removedSkillIds);
+    return sortBy(
+      skills.filter((skill) => !removedSkillIds.has(skill.sId)),
+      "name"
+    );
+  }, [skills, previewedCapabilities]);
+
+  const addedSkillIds = useMemo(() => {
+    const currentSkillIds = new Set(skills.map((skill) => skill.sId));
+    return (previewedCapabilities?.addedSkillIds ?? []).filter(
+      (skillId) => !currentSkillIds.has(skillId)
+    );
+  }, [skills, previewedCapabilities]);
+
+  const addedSubAgentIds = useMemo(() => {
+    const currentSubAgentIds = new Set(
+      agentConfiguration.actions
+        .filter(isServerSideMCPServerConfiguration)
+        .map((action) => action.childAgentId)
+    );
+    return (previewedCapabilities?.addedSubAgentIds ?? []).filter(
+      (subAgentId) => !currentSubAgentIds.has(subAgentId)
+    );
+  }, [agentConfiguration.actions, previewedCapabilities]);
 
   const allTools = useMemo(
     () => [...sortedActions, ...availableToolsets],
@@ -120,8 +188,8 @@ export function AssistantSkillsToolsSection({
   const visibleTools = allTools.slice(0, visibleToolsCount);
   const hasMore = allTools.length > visibleToolsCount;
 
-  const hasTools = allTools.length > 0;
-  const hasSkills = skills.length > 0;
+  const hasTools = allTools.length > 0 || addedSubAgentIds.length > 0;
+  const hasSkills = sortedSkills.length > 0 || addedSkillIds.length > 0;
 
   return (
     <div className="flex flex-col gap-5">
@@ -135,18 +203,18 @@ export function AssistantSkillsToolsSection({
                 <Spinner size="xs" />
               </div>
             ) : (
-              sortedSkills.map((skill) => {
-                const SkillAvatar = getSkillAvatarIcon(skill);
-                return (
-                  <div
-                    className="flex flex-row items-center gap-2"
-                    key={skill.sId}
-                  >
-                    <SkillAvatar size="xs" />
-                    <div>{skill.name}</div>
-                  </div>
-                );
-              })
+              <>
+                {sortedSkills.map((skill) => (
+                  <SkillItem key={skill.sId} skill={skill} />
+                ))}
+                {addedSkillIds.map((skillId) => (
+                  <AddedSkillItem
+                    key={skillId}
+                    owner={owner}
+                    skillId={skillId}
+                  />
+                ))}
+              </>
             )}
           </div>
         </div>
@@ -162,39 +230,48 @@ export function AssistantSkillsToolsSection({
                 <Spinner size="xs" />
               </div>
             ) : (
-              visibleTools.map((tool) => {
-                if (isActionData(tool)) {
+              <>
+                {visibleTools.map((tool) => {
+                  if (isActionData(tool)) {
+                    return (
+                      <Tooltip
+                        key={tool.title}
+                        label={tool.description ?? tool.title}
+                        trigger={
+                          <div className="flex flex-row items-center gap-2">
+                            {tool.avatar}
+                            <div className="truncate">{tool.title}</div>
+                          </div>
+                        }
+                        tooltipTriggerAsChild
+                      />
+                    );
+                  }
+                  const avatar = getAvatarFromIcon(tool.server.icon, "xs");
+                  const displayName = getMcpServerViewDisplayName(tool);
+                  const description = getMcpServerViewDescription(tool);
                   return (
                     <Tooltip
-                      key={tool.title}
-                      label={tool.description ?? tool.title}
+                      key={tool.sId}
+                      label={description ?? displayName}
                       trigger={
                         <div className="flex flex-row items-center gap-2">
-                          {tool.avatar}
-                          <div className="truncate">{tool.title}</div>
+                          {avatar}
+                          <div className="truncate">{displayName}</div>
                         </div>
                       }
                       tooltipTriggerAsChild
                     />
                   );
-                }
-                const avatar = getAvatarFromIcon(tool.server.icon, "xs");
-                const displayName = getMcpServerViewDisplayName(tool);
-                const description = getMcpServerViewDescription(tool);
-                return (
-                  <Tooltip
-                    key={tool.sId}
-                    label={description ?? displayName}
-                    trigger={
-                      <div className="flex flex-row items-center gap-2">
-                        {avatar}
-                        <div className="truncate">{displayName}</div>
-                      </div>
-                    }
-                    tooltipTriggerAsChild
+                })}
+                {addedSubAgentIds.map((subAgentId) => (
+                  <AddedSubAgentItem
+                    key={subAgentId}
+                    owner={owner}
+                    subAgentId={subAgentId}
                   />
-                );
-              })
+                ))}
+              </>
             )}
           </div>
           {hasMore && (
@@ -267,33 +344,100 @@ function useAvailableToolsets({
   };
 }
 
+interface SkillItemProps {
+  skill: SkillType;
+}
+
+function SkillItem({ skill }: SkillItemProps) {
+  const SkillAvatar = getSkillAvatarIcon(skill);
+  return (
+    <div className="flex flex-row items-center gap-2">
+      <SkillAvatar size="xs" />
+      <div>{skill.name}</div>
+    </div>
+  );
+}
+
+interface AddedSkillItemProps {
+  owner: LightWorkspaceType;
+  skillId: string;
+}
+
+function AddedSkillItem({ owner, skillId }: AddedSkillItemProps) {
+  const { skill, isSkillLoading } = useSkill({
+    workspaceId: owner.sId,
+    skillId,
+    shouldRetryOnError: false,
+  });
+  if (isSkillLoading) {
+    return <Spinner size="xs" />;
+  }
+  return skill ? <SkillItem skill={skill} /> : null;
+}
+
+interface AddedSubAgentItemProps {
+  owner: LightWorkspaceType;
+  subAgentId: string;
+}
+
+function AddedSubAgentItem({ owner, subAgentId }: AddedSubAgentItemProps) {
+  const { agentConfiguration: subAgent, isAgentConfigurationLoading } =
+    useAgentConfiguration({
+      workspaceId: owner.sId,
+      agentConfigurationId: subAgentId,
+    });
+  if (isAgentConfigurationLoading) {
+    return <Spinner size="xs" />;
+  }
+  if (!subAgent) {
+    return null;
+  }
+  return (
+    <Tooltip
+      label={subAgent.description || subAgent.name}
+      trigger={
+        <div className="flex flex-row items-center gap-2">
+          <Avatar size="xs" visual={subAgent.pictureUrl} />
+          <div className="truncate">@{subAgent.name}</div>
+        </div>
+      }
+      tooltipTriggerAsChild
+    />
+  );
+}
+
+interface ServerView {
+  server: MCPServerTypeWithViews<MCPServerViewLightType>;
+  view: MCPServerViewLightType;
+}
+
+function renderServerSideTool(
+  serverView: ServerView | undefined,
+  action?: MCPServerConfigurationType
+): ActionData | null {
+  if (!serverView) {
+    return null;
+  }
+  const { server, view } = serverView;
+  const { serverType } = getServerTypeAndIdFromSId(server.sId);
+
+  return {
+    title: getMcpServerViewDisplayName(view, action),
+    description: getMcpServerViewDescription(view),
+    avatar: getAvatar(server, "xs"),
+    order: serverType === "internal" ? 1 : 3,
+  };
+}
+
 function renderOtherAction(
   action: MCPServerConfigurationType,
-  mcpServers: MCPServerTypeWithViews<MCPServerViewLightType>[]
+  serverViewsById: Map<string, ServerView>
 ): ActionData | null {
   if (isServerSideMCPServerConfiguration(action)) {
-    const mcpServer = mcpServers.find((s) =>
-      s.views.some((v) => v.sId === action.mcpServerViewId)
+    return renderServerSideTool(
+      serverViewsById.get(action.mcpServerViewId),
+      action
     );
-    if (!mcpServer) {
-      return null;
-    }
-    const view = mcpServer.views.find((v) => v.sId === action.mcpServerViewId);
-    const { serverType } = getServerTypeAndIdFromSId(mcpServer.sId);
-    const avatar = getAvatar(mcpServer, "xs");
-    const title = view
-      ? getMcpServerViewDisplayName(view, action)
-      : getMcpServerDisplayName(mcpServer, action);
-    const description = view
-      ? getMcpServerViewDescription(view)
-      : mcpServer.description;
-
-    return {
-      title,
-      description,
-      avatar,
-      order: serverType === "internal" ? 1 : 3,
-    };
   } else if (isMCPServerConfiguration(action)) {
     return {
       title: asDisplayName(action.name),

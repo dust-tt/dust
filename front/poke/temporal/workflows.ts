@@ -19,7 +19,6 @@ const {
   deleteSpacesActivity,
   deleteWebhookSourcesActivity,
   deleteTagsActivity,
-  deleteTranscriptsActivity,
   deleteWorkOSOrganization,
   deleteWorkspaceUserMetadataActivity,
   isWorkflowDeletableActivity,
@@ -79,8 +78,7 @@ export async function deleteWorkspaceWorkflow({
   await deleteWebhookSourcesActivity({ workspaceId });
   await deleteSpacesActivity({ workspaceId });
   await deleteMembersActivity({ workspaceId });
-  await deleteTranscriptsActivity({ workspaceId });
   await deletePluginRunsActivity({ workspaceId });
-  await deleteWorkspaceActivity({ workspaceId });
+  await deleteWorkspaceActivity({ workspaceId, workspaceHasBeenRelocated });
   await deleteWorkOSOrganization({ workspaceId, workspaceHasBeenRelocated });
 }

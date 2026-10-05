@@ -1,3 +1,11 @@
+import {
+  AUTO_COMPLEX_MODEL_CONFIG,
+  AUTO_COMPLEX_MODEL_ID,
+  AUTO_FAST_MODEL_CONFIG,
+  AUTO_FAST_MODEL_ID,
+  AUTO_MODEL_CONFIG,
+  AUTO_MODEL_ID,
+} from "@app/types/assistant/models/auto";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 
 /**
@@ -229,7 +237,24 @@ These options are not mutually exclusive, but you must specify in the prompt whe
 </tool_vs_knowledge>
 </knowledge_guidance>`;
 
-export const MODEL_GUIDANCE_LINE = `Model: Haiku is a good default for simple, single-purpose agents. Recommend upgrading to Sonnet only for agents with complex workflows, multi-step reasoning, or advanced tool orchestration. Don't mention models unless you are recommending a change.`;
+export const MODEL_GUIDANCE_LINE = `Model: unless the user asks for a specific model, recommend a tier model, which routes every message to the best model of its tier available to the workspace: ${AUTO_MODEL_CONFIG.displayName} (modelId \`${AUTO_MODEL_ID}\`) is a good default, ${AUTO_FAST_MODEL_CONFIG.displayName} (\`${AUTO_FAST_MODEL_ID}\`) for simple, single-purpose agents where speed and cost matter, ${AUTO_COMPLEX_MODEL_CONFIG.displayName} (\`${AUTO_COMPLEX_MODEL_ID}\`) for complex workflows, multi-step reasoning or advanced tool orchestration. Don't mention models unless you are recommending a change.`;
+
+// ─── Architecture ────────────────────────────────────────────────────────
+
+export const ARCHITECTURE_GUIDANCE_SECTION = `<architecture_guidance>
+Design the leanest setup that achieves the user's goal: every extra model tier, instruction line and tool adds cost and latency. Apply it when creating an entity and when reviewing one.
+
+Structure, stop at the first level that works:
+1. One agent with short instructions: one job for one audience.
+2. Agent + skills: a method is reusable across agents, or the agent's instructions mix several unrelated methods. A skill is written once and keeps each agent's instructions short.
+3. Agent + sub-agent (Run Agent): only when part of the work needs its own model, its own tools or data, parallel runs, or must digest a lot of content and return a summary. Every call is a full extra agent run: NEVER create a sub-agent that only carries instructions, even when the user asks for one: suggest a skill instead and tell them in one sentence why it fits better.
+
+Model: unless the user asks for a specific model, recommend a tier model, which routes every message to the best model of its tier available to the workspace. Default to ${AUTO_FAST_MODEL_CONFIG.displayName} (modelId \`${AUTO_FAST_MODEL_ID}\`), most single-purpose agents run well on it. Move up to ${AUTO_MODEL_CONFIG.displayName} (\`${AUTO_MODEL_ID}\`) when answers need nuanced writing or judgment, and to ${AUTO_COMPLEX_MODEL_CONFIG.displayName} (\`${AUTO_COMPLEX_MODEL_ID}\`) only for multi-step reasoning or advanced tool orchestration. Don't mention models unless you are recommending a change.
+
+Instructions: keep them as short as the task allows. When they are long, repeat themselves, or restate what an equipped skill already covers, suggest a compact rewrite that keeps every rule.
+
+Tool calls: each one adds latency and cost. Equip only the tools the task uses, and prefer one skill wrapping a tool over several standalone tools. Put stable facts in the instructions or knowledge rather than fetching them on every run, and say when a tool is NOT needed.
+</architecture_guidance>`;
 
 // ─── Workflow helpers ────────────────────────────────────────────────────
 

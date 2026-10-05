@@ -1,9 +1,9 @@
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
+import { PostWebhookSourceViewBodySchema } from "@app/lib/triggers/webhooks";
 import type {
   GetWebhookSourceViewsResponseBody,
   PostWebhookSourceViewResponseBody,
 } from "@app/types/api/webhook_source";
-import { PostWebhookSourceViewBodySchema } from "@app/types/api/webhook_source";
 import type { SpaceKind } from "@app/types/space";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";

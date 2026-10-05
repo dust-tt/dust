@@ -30,6 +30,7 @@ const owner = {
   metadata: null,
   metronomeCustomerId: null,
   sharingPolicy: "all_scopes",
+  locale: "en-US",
   regionalModelsOnly: false,
 } satisfies WorkspaceType;
 
@@ -102,16 +103,6 @@ vi.mock(import("@app/lib/swr/skill_configurations"), () => ({
     mutate: vi.fn(async () => undefined),
     mutateRegardlessOfQueryParams: vi.fn(async () => []),
   }),
-  useSkills: () => ({
-    skills: [],
-    isSkillsError: false,
-    isSkillsLoading: false,
-    mutateSkills: vi.fn(async () => undefined),
-  }),
-}));
-
-vi.mock(import("@app/lib/auth/AuthContext"), () => ({
-  useFeatureFlags: () => ({ featureFlags: [], hasFeature: () => false }),
 }));
 
 vi.mock(import("@app/lib/swr/useIsMobile"), () => ({

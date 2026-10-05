@@ -331,13 +331,27 @@ async function handleDirectMessage(
   });
 }
 
+/**
+ * @cc [owner:tdraier,label:security] created-channel-on-verified-team
+ * A created channel MUST only be auto-read for `teamId`, the team the webhook was verified for.
+ * When the channel's `contextTeamId` differs from `teamId`, the event MUST be ignored.
+ */
 async function joinCreatedChannel(
   { channelId, contextTeamId }: PayloadOfType<"channel_created">,
+  teamId: string,
   logger: Logger
 ) {
+  if (contextTeamId !== teamId) {
+    logger.info(
+      { channelId, contextTeamId },
+      "Ignoring channel_created event: channel belongs to another team"
+    );
+    return;
+  }
+
   const res = await onChannelCreation({
     channelId,
-    contextTeamId,
+    contextTeamId: teamId,
     logger,
     provider: "slack",
   });
@@ -462,7 +476,7 @@ async function dispatchEvent(
       return renameChannel(event, slackConfigurations, logger);
 
     case "channel_created":
-      return joinCreatedChannel(event, logger);
+      return joinCreatedChannel(event, teamId, logger);
 
     case "member_joined_channel":
       return announceBotJoinedPrivateChannel(event, teamId, logger);

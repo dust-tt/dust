@@ -38,10 +38,23 @@ interface FilterPanelProps<
   isError: boolean;
   idPrefix: string;
   renderIcon?: (option: Option) => ReactNode;
+  // Replaces the option search and list for categories that are not picked among options.
+  renderCategoryContent?: (category: Category) => ReactNode;
   warning?: string;
   applyDisabled?: boolean;
+  // Rendered below the categories, for settings that are not a category.
+  categoryNavFooter?: ReactNode;
+  // Called when the panel opens and on "Clear filters", so the caller can reset its own drafts.
+  onOpen?: () => void;
+  onClearAll?: () => void;
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:product;react] responsive-filter-panel
+ * Below 768px viewport width, the panel MUST fit the viewport while keeping category
+ * navigation, option selection, selected filters and Apply accessible. Desktop layout
+ * MUST remain unchanged.
+ */
 export function FilterPanel<
   Category extends string,
   Option extends FilterOptionBase,
@@ -56,8 +69,12 @@ export function FilterPanel<
   isError,
   idPrefix,
   renderIcon,
+  renderCategoryContent,
   warning,
   applyDisabled,
+  categoryNavFooter,
+  onOpen,
+  onClearAll,
 }: FilterPanelProps<Category, Option>) {
   const {
     isOpen,
@@ -99,12 +116,14 @@ export function FilterPanel<
     {}
   );
   const activeCategorySelectionCount = draftFilter[activeCategory]?.length ?? 0;
+  const activeCategoryContent = renderCategoryContent?.(activeCategory);
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     if (open) {
       setDraftFilter(filter);
       setSearchText("");
+      onOpen?.();
     }
   };
 
@@ -126,9 +145,14 @@ export function FilterPanel<
           counterValue={String(appliedSelectionCount)}
         />
       </PopoverTrigger>
-      <PopoverContent fullWidth align="end" className="w-auto rounded-2xl p-0">
-        <div className="flex h-96 flex-row divide-x divide-border">
+      <PopoverContent
+        fullWidth
+        align="start"
+        className="w-auto rounded-2xl p-0 max-md:flex max-md:max-h-(--radix-popover-content-available-height) max-md:w-[calc(100vw-2rem)] max-md:flex-col"
+      >
+        <div className="flex h-96 flex-row divide-x divide-border max-md:grid max-md:h-128 max-md:min-h-0 max-md:grid-cols-[8rem_minmax(0,1fr)] max-md:grid-rows-[minmax(0,2fr)_minmax(0,1fr)] dark:divide-border-dark">
           <FilterCategoryNav
+            className="max-md:min-h-0 max-md:w-32"
             categories={categories}
             categoryLabels={categoryLabels}
             selectionCounts={categorySelectionCounts}
@@ -138,8 +162,9 @@ export function FilterPanel<
               setSearchText("");
               resetContentScroll();
             }}
+            footer={categoryNavFooter}
           />
-          <div className="flex h-full w-80 flex-col gap-2 p-2">
+          <div className="flex h-full w-80 flex-col gap-3 p-2 max-md:min-h-0 max-md:w-auto max-md:min-w-0 max-md:border-e-0">
             <FilterSection
               title={categoryLabels[activeCategory]}
               action={
@@ -155,24 +180,28 @@ export function FilterPanel<
                 />
               }
             >
-              <SearchInput
-                name={`${idPrefix}-search`}
-                value={searchText}
-                onChange={(value) => {
-                  setSearchText(value);
-                  resetContentScroll();
-                }}
-                placeholder={`Search ${categoryLabels[activeCategory].toLowerCase()}`}
-              />
+              {!activeCategoryContent && (
+                <SearchInput
+                  name={`${idPrefix}-search`}
+                  value={searchText}
+                  onChange={(value) => {
+                    setSearchText(value);
+                    resetContentScroll();
+                  }}
+                  placeholder={`Search ${categoryLabels[activeCategory].toLowerCase()}`}
+                />
+              )}
             </FilterSection>
             <div
               ref={setContentScrollContainer}
-              className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto"
+              className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto"
             >
               {isError ? (
                 <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
                   Failed to load filters.
                 </div>
+              ) : activeCategoryContent ? (
+                activeCategoryContent
               ) : (
                 <FilterOptionCheckboxList
                   key={`${isOpen}|${activeCategory}|${searchText}`}
@@ -200,6 +229,7 @@ export function FilterPanel<
             </div>
           </div>
           <FilterSelectionSummary
+            className="max-md:col-span-2 max-md:min-h-0 max-md:w-auto max-md:border-t max-md:border-border max-md:dark:border-border-dark"
             categoriesWithSelection={categoriesWithSelection}
             categoryLabels={categoryLabels}
             filter={draftFilter}
@@ -215,7 +245,10 @@ export function FilterPanel<
         )}
         <FilterFooter
           applyDisabled={applyDisabled}
-          onClearAll={clearAllCategories}
+          onClearAll={() => {
+            clearAllCategories();
+            onClearAll?.();
+          }}
           onCancel={() => setIsOpen(false)}
           onApply={() => {
             onFilterChange(draftFilter);

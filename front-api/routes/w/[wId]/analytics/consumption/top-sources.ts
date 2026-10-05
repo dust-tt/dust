@@ -9,8 +9,6 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { consumptionAnalyticsApp } from "./context";
 
-export type { GetConsumptionTopSourcesResponse };
-
 // Mounted at /api/w/:wId/analytics/consumption/top-sources.
 // Also mounted at /api/w/:wId/me/analytics/consumption/top-sources.
 // Also mounted at /api/w/:wId/assistant/agent_configurations/:aId/analytics/consumption/top-sources.

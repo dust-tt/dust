@@ -7,7 +7,7 @@ import {
   ROLES_DATA,
 } from "@app/components/members/Roles";
 import { LinkedSectionNotice } from "@app/components/workspace/LinkedSectionNotice";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isSCIMEnabled } from "@app/lib/plans/scim";
 import { useAppRouter } from "@app/lib/platform";
 import { useDeleteGroup, useGroups } from "@app/lib/swr/groups";
@@ -40,11 +40,13 @@ import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { useCallback, useContext, useMemo, useState } from "react";
 
 const DEFAULT_PAGE_SIZE = 25;
+const MAX_VISIBLE_MANAGERS = 3;
 
 type GroupRowData = {
   groupId: string;
   name: string;
   memberCount: number;
+  managers: { fullName: string; image: string | null }[];
   kind: GroupKind;
   grantedRole: GroupGrantableRole | null;
   onClick?: () => void;
@@ -69,6 +71,33 @@ const columns: ColumnDef<GroupRowData>[] = [
           description={`${memberCount} member${pluralize(memberCount)}`}
         >
           {name}
+        </DataTable.CellContent>
+      );
+    },
+  },
+  {
+    id: "managers",
+    header: "Group Manager",
+    meta: { className: "w-[240px]" },
+    cell: ({ row }) => {
+      const { managers } = row.original;
+      if (managers.length === 0) {
+        return <DataTable.CellContent>-</DataTable.CellContent>;
+      }
+      return (
+        <DataTable.CellContent
+          className="gap-2"
+          avatarStack={{
+            items: managers.map(({ fullName, image }) => ({
+              name: fullName,
+              visual: image ?? undefined,
+              isRounded: true,
+            })),
+            maxVisibleAvatars: MAX_VISIBLE_MANAGERS,
+            hasMagnifier: false,
+          }}
+        >
+          {managers.length === 1 && managers[0].fullName}
         </DataTable.CellContent>
       );
     },
@@ -135,15 +164,22 @@ const columns: ColumnDef<GroupRowData>[] = [
     },
   },
 ];
+const columnsWithoutManagers = columns.filter(
+  (column) => column.id !== "managers"
+);
 
 export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
+  const { hasFeature } = useFeatureFlags();
+  const { subscription, isManager } = useAuth();
+  const isGroupManagementEnabled = hasFeature("group_management");
   const { groups, isGroupsLoading } = useGroups({
     owner,
     kinds: MANAGEABLE_GROUP_KINDS,
+    withManagers: isGroupManagementEnabled,
+    managedOnly: !isManager,
   });
 
   const router = useAppRouter();
-  const { subscription } = useAuth();
   const isScimAllowed = isSCIMEnabled(subscription.plan);
   const [searchTerm, setSearchTerm] = useState("");
   const [pagination, setPagination] = useState<PaginationState>({
@@ -190,6 +226,7 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
         groupId: group.sId,
         name: group.name,
         memberCount: group.memberCount,
+        managers: group.managers ?? [],
         kind: group.kind,
         grantedRole: group.grantedRole,
         onClick: isManual
@@ -205,9 +242,10 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
               });
               setIsProvisionedDialogOpen(true);
             },
-        onDelete: isManual
-          ? () => handleDeleteGroup(group.sId, group.name)
-          : undefined,
+        onDelete:
+          isManual && group.allowedActions?.canEditDetails
+            ? () => handleDeleteGroup(group.sId, group.name)
+            : undefined,
       };
     });
   }, [groups, handleDeleteGroup]);
@@ -239,15 +277,19 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
                 onChange={setSearchTerm}
                 className="w-full"
               />
-              <Button
-                icon={Plus}
-                label="Create group"
-                onClick={openCreateDialog}
-              />
+              {isManager && (
+                <Button
+                  icon={Plus}
+                  label="Create group"
+                  onClick={openCreateDialog}
+                />
+              )}
             </div>
             <DataTable
               data={rows}
-              columns={columns}
+              columns={
+                isGroupManagementEnabled ? columns : columnsWithoutManagers
+              }
               filter={searchTerm}
               filterColumn="name"
               pagination={pagination}
@@ -257,11 +299,13 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
         ) : (
           <EmptyCTA
             action={
-              <Button
-                icon={Plus}
-                label="Create group"
-                onClick={openCreateDialog}
-              />
+              isManager ? (
+                <Button
+                  icon={Plus}
+                  label="Create group"
+                  onClick={openCreateDialog}
+                />
+              ) : undefined
             }
             message="You don’t have any groups yet."
           />

@@ -9,6 +9,7 @@ import {
 } from "@app/lib/api/provider_credentials";
 import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes_constants";
+import { formatFileSize } from "@app/lib/i18n/format";
 import { DATASOURCE_QUOTA_PER_SEAT } from "@app/lib/plans/usage/types";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { enqueueUpsertDocument } from "@app/lib/upsert_queue";
@@ -17,7 +18,6 @@ import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import { sectionFullText } from "@app/types/core/data_source";
-import { fileSizeToHumanReadable } from "@app/types/files";
 import type { LLMCredentialsType } from "@app/types/provider_credential";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { safeSubstring } from "@app/types/shared/utils/string_utils";
@@ -453,8 +453,7 @@ app.post(
             content: body.text,
             sections: [],
           }
-        : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          body.section || null;
+        : body.section || null;
 
     if (!section) {
       return apiError(ctx, {
@@ -511,7 +510,7 @@ app.post(
           status_code: 403,
           api_error: {
             type: "workspace_quota_error",
-            message: `You've exceeded your plan limit (${fileSizeToHumanReadable(quotaUsed)} used / ${fileSizeToHumanReadable(activeSeats * DATASOURCE_QUOTA_PER_SEAT)} allowed)`,
+            message: `You've exceeded your plan limit (${formatFileSize(quotaUsed, { decimals: 0 }, "en-US")} used / ${formatFileSize(activeSeats * DATASOURCE_QUOTA_PER_SEAT, { decimals: 0 }, "en-US")} allowed)`,
           },
         });
       }
@@ -596,7 +595,6 @@ app.post(
 
     const mimeType = body.mime_type ?? "application/octet-stream";
 
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const tags = body.tags || [];
     const titleInTags = tags
       .find((t) => t.startsWith("title:"))
@@ -604,7 +602,6 @@ app.post(
       ?.trim();
 
     // Use titleInTags if no title is provided, then documentId as last resort (same behavior as uploading in the web app).
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const title = body.title?.trim() || titleInTags || documentId;
 
     if (!titleInTags) {
@@ -627,14 +624,11 @@ app.post(
           dataSourceId: dataSource.sId,
           documentId,
           tags,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           parentId: body.parent_id || null,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           parents: body.parents || [documentId],
           timestamp: cleanTimestamp(body.timestamp),
           sourceUrl,
           section,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           upsertContext: body.upsert_context || null,
           title,
           mimeType,
@@ -682,11 +676,8 @@ app.post(
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
         documentId,
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         tags: (body.tags || []).map((tag) => safeSubstring(tag, 0)),
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         parentId: body.parent_id || null,
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         parents: body.parents || [documentId],
         sourceUrl,
         timestamp: cleanTimestamp(body.timestamp),

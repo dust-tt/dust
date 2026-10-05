@@ -2,6 +2,7 @@ import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpS
 import { MCPServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
 import { MCPServerMetaFields } from "@app/components/actions/mcp/MCPServerMetaFields";
 import type { RemoteMCPServerType } from "@app/lib/api/mcp";
+import { formatDateTime } from "@app/lib/i18n/format";
 import { useSyncRemoteMCPServer } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -63,14 +64,13 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
     <div className="space-y-5 text-foreground">
       {lastError && (
         <ContentMessage
-          variant="warning"
+          variant="info"
           icon={AlertCircle}
           size="sm"
-          title="Synchronization Error"
+          title="Synchronization warning"
         >
           Server could not synchronize successfully. Last attempt{" "}
-          {lastSyncAt ? "on " + new Date(lastSyncAt).toLocaleString() : ""} :{" "}
-          {lastError}
+          {lastSyncAt ? `on ${formatDateTime(lastSyncAt)}` : ""}: {lastError}
         </ContentMessage>
       )}
 

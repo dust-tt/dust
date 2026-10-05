@@ -1,10 +1,10 @@
 import { CreateCouponForm } from "@app/components/poke/coupons/CreateCouponForm";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import {
   usePokeArchiveCoupon,
   usePokeCouponRedemptions,
   usePokeCoupons,
 } from "@app/lib/swr/poke";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import type {
   CouponDiscountType,

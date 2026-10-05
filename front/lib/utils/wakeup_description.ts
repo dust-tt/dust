@@ -1,7 +1,13 @@
+import {
+  formatDate,
+  formatTime,
+  prefersTwentyFourHourTime,
+} from "@app/lib/i18n/format";
 import type {
   WakeUpScheduleConfig,
   WakeUpType,
 } from "@app/types/assistant/wakeups";
+import type { SupportedLocale } from "@app/types/locale";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { CronExpressionParser } from "cron-parser";
@@ -12,20 +18,10 @@ import cronstrue from "cronstrue";
 // regions see "14:30" and users in 12h regions see "2:30 PM".
 function formatWakeUpTimeOfDay(timestamp: number): string {
   const date = new Date(timestamp);
-  return date.toLocaleTimeString(undefined, {
+  return formatTime(date, {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-// Whether the viewer's locale prefers 24-hour time. Used to keep cron
-// schedule descriptions (rendered by cronstrue) consistent with the
-// time-of-day strings produced by `formatWakeUpTimeOfDay` above.
-function prefers24HourTime(): boolean {
-  const { hourCycle } = new Intl.DateTimeFormat(undefined, {
-    hour: "numeric",
-  }).resolvedOptions();
-  return hourCycle === "h23" || hourCycle === "h24";
 }
 
 // Compute the millisecond timestamp of the next time a wake-up fires. For
@@ -57,11 +53,12 @@ export function getNextWakeUpFireAtFromScheduleConfig(
 // Compact label for the sidebar conversation-list wake-up indicator. When
 // the next firing is more than a day away the time of day on its own gives
 // the viewer no sense of when — show the abbreviated weekday instead.
-export function formatWakeUpSidebarLabel(timestamp: number): string {
+export function formatWakeUpSidebarLabel(
+  timestamp: number,
+  locale: SupportedLocale
+): string {
   if (timestamp - Date.now() > ONE_DAY_MS) {
-    return new Date(timestamp).toLocaleDateString("en-US", {
-      weekday: "short",
-    });
+    return formatDate(timestamp, { weekday: "short" }, locale);
   }
   return formatWakeUpTimeOfDay(timestamp);
 }
@@ -84,7 +81,7 @@ export function describeWakeUpSchedule(
     case "cron": {
       let description = cronstrue.toString(config.cron, {
         verbose: false,
-        use24HourTimeFormat: prefers24HourTime(),
+        use24HourTimeFormat: prefersTwentyFourHourTime(),
       });
       // cronstrue renders DOM steps as ", every N days in a month", which
       // reads awkwardly. Reword to natural English; "every 2" becomes

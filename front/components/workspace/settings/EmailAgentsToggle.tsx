@@ -15,10 +15,7 @@ import {
 import { useState } from "react";
 
 const ENABLE_EMAIL_AGENTS_CONFIRMATION_MESSAGE =
-  "All users in your company will be able to forward emails to their agents. " +
-  "As a general rule, caution is advised when forwarding emails or attachments " +
-  "from untrusted sources, since those are exposed to security risks such as " +
-  "prompt injection.";
+  "All users in your company will be able to forward emails to their agents. As a general rule, caution is advised when forwarding emails or attachments from untrusted sources, since those are exposed to security risks such as prompt injection.";
 
 export const EMAIL_AGENTS_LABEL = "Email agents";
 export const EMAIL_AGENTS_DESCRIPTION = `Whether members can reach agents by email at AGENT_NAME@${ASSISTANT_EMAIL_SUBDOMAIN}`;

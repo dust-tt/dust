@@ -2,7 +2,6 @@ import {
   assertSupportedReasoningEffort,
   convertToOldEvent,
   getPromptCacheKeyForHost,
-  inferenceRegionForEndpointRegion,
   reasoningContentToLegacyMetadata,
   toBaseMessages,
   withMessageCacheBreakpoints,
@@ -28,7 +27,6 @@ import { describe, expect, it } from "vitest";
 const llmMetadata: LLMClientMetadata = {
   clientId: "anthropic",
   inferenceProvider: "anthropic",
-  inferenceRegion: "global",
   modelId: "claude-sonnet-4-6",
 };
 
@@ -45,24 +43,6 @@ const serverToolUseBlock = {
   name: "tool_search_tool_bm25",
   input: { query: "x" },
 };
-
-describe("inferenceRegionForEndpointRegion", () => {
-  it.each([
-    { endpointRegion: "eu" as const, expectedInferenceRegion: "eu" },
-    {
-      endpointRegion: "global" as const,
-      expectedInferenceRegion: "global",
-    },
-    { endpointRegion: "us" as const, expectedInferenceRegion: "global" },
-  ])("maps $endpointRegion endpoints to $expectedInferenceRegion pricing", ({
-    endpointRegion,
-    expectedInferenceRegion,
-  }) => {
-    expect(inferenceRegionForEndpointRegion(endpointRegion)).toBe(
-      expectedInferenceRegion
-    );
-  });
-});
 
 describe("assertSupportedReasoningEffort", () => {
   it("keeps every effort the model supports as is", () => {

@@ -1,9 +1,13 @@
 import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
+import { formatNumber } from "@app/lib/i18n/format";
 import {
   useUpdateUsageSettings,
   useUsageSettings,
 } from "@app/lib/swr/usage_settings";
 import { Page, SettingsList, SliderToggle } from "@dust-tt/sparkle";
+
+export const COST_MANAGEMENT_SECTION_LABEL = "Cost management";
+export const CREDIT_SPEND_CHECKPOINT_LABEL = "Credit spend checkpoint";
 
 interface CreditSpendCheckpointSettingsCardProps {
   workspaceId: string;
@@ -26,11 +30,13 @@ export function CreditSpendCheckpointSettingsCard({
 
   return (
     <Page.Vertical gap="sm" align="stretch">
-      <span className="heading-base text-foreground">Cost management</span>
+      <span className="heading-base text-foreground">
+        {COST_MANAGEMENT_SECTION_LABEL}
+      </span>
       <SettingsList>
         <SettingsList.Row
-          title="Credit spend checkpoint"
-          description={`Pause the agent and ask the user to confirm continuing once a single message's LLM token spend reaches ${CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS.toLocaleString()} credits.`}
+          title={CREDIT_SPEND_CHECKPOINT_LABEL}
+          description={`Pause the agent and ask the user to confirm continuing once a single message's LLM token spend reaches ${formatNumber(CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS)} credits.`}
           action={
             <SliderToggle
               selected={usageSettings.creditSpendCheckpointEnabled}

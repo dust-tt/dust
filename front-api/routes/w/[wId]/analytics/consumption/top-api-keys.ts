@@ -9,8 +9,6 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { consumptionAnalyticsApp } from "./context";
 
-export type { GetConsumptionTopApiKeysResponse };
-
 // Mounted at /api/w/:wId/analytics/consumption/top-api-keys.
 // Also mounted at /api/w/:wId/me/analytics/consumption/top-api-keys.
 // Also mounted at /api/w/:wId/assistant/agent_configurations/:aId/analytics/consumption/top-api-keys.

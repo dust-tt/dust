@@ -4,9 +4,14 @@ import {
   isSandboxFunctionRunContext,
 } from "@app/lib/actions/types";
 import { isValidTimezone } from "@app/lib/api/timezone";
+import {
+  ONE_MINUTE_MS,
+  resolveCalendarDate,
+} from "@app/types/shared/utils/date_utils";
+import { tzOffset } from "@date-fns/tz";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import { parseISO } from "date-fns";
 import { google } from "googleapis";
-import { DateTime, Interval } from "luxon";
 
 interface GoogleCalendarEventDateTime {
   date?: string;
@@ -453,27 +458,58 @@ interface AvailabilityParticipant {
   dailyTimeWindowEnd?: string;
 }
 
-function applyTimeToDateTime(base: DateTime, timeStr: string): DateTime {
-  const [hourStr, minuteStr = "0", secondStr = "0"] = timeStr.split(":");
-  return base.set({
-    hour: Number(hourStr),
-    minute: Number(minuteStr),
-    second: Number(secondStr),
-    millisecond: 0,
-  });
+/**
+ * @cc [owner:aubin-tchoi,label:product] availability-iso-utc
+ * ISO timestamps without an explicit offset MUST be interpreted in UTC, independently
+ * of the host timezone. Invalid timestamps, including malformed offsets, MUST
+ * produce an invalid Date rather than defaulting to UTC.
+ */
+export function parseAvailabilityDateTime(value: string): Date {
+  // parseISO defaults unrecognized timezone suffixes to UTC, so validate syntax first.
+  const match =
+    /^([+-]?\d[\dW-]*)(?:[T ](\d{2}(?::?\d{2}(?::?\d{2})?)?(?:[.,]\d+)?)([Zz]|[+-](?:[01]\d|2[0-3])(?::?[0-5]\d)?)?)?$/.exec(
+      value
+    );
+  if (!match) {
+    return new Date(NaN);
+  }
+  const [, date, time, offset] = match;
+  if (time?.startsWith("24") && /[1-9]/.test(time.slice(2))) {
+    return new Date(NaN);
+  }
+  return parseISO(
+    `${date}T${time ?? "00:00:00"}${offset?.toUpperCase() ?? "Z"}`
+  );
 }
 
+export interface CalendarInterval {
+  start: Date;
+  end: Date;
+}
+
+function applyTimeToDate(base: Date, timeStr: string, timezone: string): Date {
+  const [hourStr, minuteStr = "0", secondStr = "0"] = timeStr.split(":");
+  const date = new Date(base);
+  date.setUTCHours(Number(hourStr), Number(minuteStr), Number(secondStr), 0);
+  return resolveCalendarDate(date, timezone);
+}
+
+/**
+ * @cc [owner:aubin-tchoi,label:product] participant-local-calendar
+ * Daily windows and excluded weekends MUST use each participant's timezone, including
+ * DST changes, independently of the host timezone. Repeated window boundaries MUST
+ * select the earlier occurrence; skipped times MUST move forward by the offset change.
+ * Each day boundary MUST be resolved independently so a skipped midnight cannot
+ * shift subsequent midnights. Intervals MUST be clipped to the requested range.
+ */
 export function buildUnavailableIntervals(
-  range: Interval,
+  range: CalendarInterval,
   participant: AvailabilityParticipant,
   excludeWeekends: boolean
-): Interval[] {
-  const rangeStartDate = range.start;
-  const rangeEndDate = range.end;
-  if (!rangeStartDate || !rangeEndDate) {
+): CalendarInterval[] {
+  if (!isValidInterval(range)) {
     return [];
   }
-
   if (
     !participant.dailyTimeWindowStart &&
     !participant.dailyTimeWindowEnd &&
@@ -482,169 +518,143 @@ export function buildUnavailableIntervals(
     return [];
   }
 
-  const unavailable: Interval[] = [];
-  const startInZone = rangeStartDate.setZone(participant.timezone);
-  const endInZone = rangeEndDate.setZone(participant.timezone);
+  const unavailable: CalendarInterval[] = [];
+  const { timezone } = participant;
+  // UTC fields carry local calendar fields, avoiding host timezone setters.
+  let cursor = new Date(
+    range.start.getTime() + tzOffset(timezone, range.start) * ONE_MINUTE_MS
+  );
+  cursor.setUTCHours(0, 0, 0, 0);
 
-  let cursor = startInZone.startOf("day");
+  function addUnavailable(start: Date, end: Date): void {
+    const clippedStart = new Date(
+      Math.max(start.getTime(), range.start.getTime())
+    );
+    const clippedEnd = new Date(Math.min(end.getTime(), range.end.getTime()));
+    if (clippedStart < clippedEnd) {
+      unavailable.push({ start: clippedStart, end: clippedEnd });
+    }
+  }
 
-  while (cursor < endInZone) {
-    const dayStart = cursor;
-    const dayEnd = cursor.plus({ days: 1 });
-
-    if (excludeWeekends && (dayStart.weekday === 6 || dayStart.weekday === 7)) {
-      const unavailableStart = DateTime.max(dayStart, startInZone);
-      const unavailableEnd = DateTime.min(dayEnd, endInZone);
-      if (unavailableStart < unavailableEnd) {
-        unavailable.push(
-          Interval.fromDateTimes(
-            unavailableStart.toUTC(),
-            unavailableEnd.toUTC()
-          )
-        );
-      }
-      cursor = dayEnd;
+  let dayStart = resolveCalendarDate(cursor, timezone);
+  while (dayStart < range.end) {
+    const weekday = cursor.getUTCDay();
+    const nextDay = new Date(cursor);
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+    const dayEnd = resolveCalendarDate(nextDay, timezone);
+    if (dayStart >= dayEnd) {
+      cursor = nextDay;
+      dayStart = dayEnd;
       continue;
     }
 
-    if (!participant.dailyTimeWindowStart && !participant.dailyTimeWindowEnd) {
-      cursor = dayEnd;
-      continue;
-    }
-
-    const windowStart = participant.dailyTimeWindowStart
-      ? applyTimeToDateTime(dayStart, participant.dailyTimeWindowStart)
-      : dayStart;
-    const windowEnd = participant.dailyTimeWindowEnd
-      ? applyTimeToDateTime(dayStart, participant.dailyTimeWindowEnd)
-      : dayEnd;
-
-    if (participant.dailyTimeWindowStart) {
-      const beforeStart = DateTime.max(dayStart, startInZone);
-      const beforeEnd = DateTime.min(windowStart, endInZone);
-      if (beforeStart < beforeEnd) {
-        unavailable.push(
-          Interval.fromDateTimes(beforeStart.toUTC(), beforeEnd.toUTC())
+    if (excludeWeekends && (weekday === 0 || weekday === 6)) {
+      addUnavailable(dayStart, dayEnd);
+    } else {
+      if (participant.dailyTimeWindowStart) {
+        addUnavailable(
+          dayStart,
+          applyTimeToDate(cursor, participant.dailyTimeWindowStart, timezone)
+        );
+      }
+      if (participant.dailyTimeWindowEnd) {
+        addUnavailable(
+          applyTimeToDate(cursor, participant.dailyTimeWindowEnd, timezone),
+          dayEnd
         );
       }
     }
-
-    if (participant.dailyTimeWindowEnd) {
-      const afterStart = DateTime.max(windowEnd, startInZone);
-      const afterEnd = DateTime.min(dayEnd, endInZone);
-      if (afterStart < afterEnd) {
-        unavailable.push(
-          Interval.fromDateTimes(afterStart.toUTC(), afterEnd.toUTC())
-        );
-      }
-    }
-
-    cursor = dayEnd;
+    cursor = nextDay;
+    dayStart = dayEnd;
   }
 
   return unavailable;
 }
 
-function isValidInterval(interval: Interval | null): interval is Interval {
-  if (!interval) {
-    return false;
-  }
-  return (
-    interval.isValid &&
-    !interval.isEmpty() &&
-    interval.start !== null &&
-    interval.end !== null
-  );
+export function isValidInterval(interval: CalendarInterval): boolean {
+  return interval.start < interval.end;
 }
 
-export function mergeIntervals(intervals: Interval[]): Interval[] {
+export function mergeIntervals(
+  intervals: CalendarInterval[]
+): CalendarInterval[] {
   const sorted = intervals
     .filter(isValidInterval)
-    .sort((a, b) => a.start!.toMillis() - b.start!.toMillis());
+    .sort((a, b) => a.start.getTime() - b.start.getTime());
 
-  if (sorted.length === 0) {
-    return [];
-  }
-
-  const merged: Interval[] = [];
+  const merged: CalendarInterval[] = [];
   for (const interval of sorted) {
-    if (merged.length === 0) {
-      merged.push(interval);
-      continue;
-    }
-
     const prev = merged[merged.length - 1];
-    if (prev.end! >= interval.start!) {
-      merged[merged.length - 1] = Interval.fromDateTimes(
-        prev.start!,
-        DateTime.max(prev.end!, interval.end!)
-      );
+    if (prev && prev.end >= interval.start) {
+      merged[merged.length - 1] = {
+        start: prev.start,
+        end: new Date(Math.max(prev.end.getTime(), interval.end.getTime())),
+      };
     } else {
       merged.push(interval);
     }
   }
-
   return merged;
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] sorted-busy-intervals
+ * `busyIntervals` MUST be sorted by start with overlaps merged. Availability MUST
+ * contain only the gaps within `range`, excluding every supplied busy interval.
+ */
 export function computeAvailability(
-  range: Interval,
-  busyIntervals: Interval[]
-): Interval[] {
+  range: CalendarInterval,
+  busyIntervals: CalendarInterval[]
+): CalendarInterval[] {
   if (!isValidInterval(range)) {
     return [];
   }
-
-  if (busyIntervals.length === 0) {
-    return [range];
-  }
-
-  const availability: Interval[] = [];
-  const rangeStart = range.start;
-  const rangeEnd = range.end;
-  if (!rangeStart || !rangeEnd) {
-    return [];
-  }
-  let cursor: DateTime = rangeStart;
-
+  const availability: CalendarInterval[] = [];
+  let cursor = range.start;
   for (const busy of busyIntervals) {
-    const busyStart = busy.start;
-    const busyEnd = busy.end;
-    if (!busyStart || !busyEnd) {
-      continue;
-    }
-
-    const clampedStart = DateTime.max(busyStart, rangeStart);
-    const clampedEnd = DateTime.min(busyEnd, rangeEnd);
-
+    const clampedStart = new Date(
+      Math.max(busy.start.getTime(), range.start.getTime())
+    );
+    const clampedEnd = new Date(
+      Math.min(busy.end.getTime(), range.end.getTime())
+    );
     if (clampedStart >= clampedEnd) {
       continue;
     }
-
     if (cursor < clampedStart) {
-      availability.push(Interval.fromDateTimes(cursor, clampedStart));
+      availability.push({ start: cursor, end: clampedStart });
     }
-    cursor = DateTime.max(cursor, clampedEnd);
+    cursor = new Date(Math.max(cursor.getTime(), clampedEnd.getTime()));
   }
-
-  if (cursor < rangeEnd) {
-    availability.push(Interval.fromDateTimes(cursor, rangeEnd));
+  if (cursor < range.end) {
+    availability.push({ start: cursor, end: range.end });
   }
-
-  return mergeIntervals(availability);
+  return availability;
 }
 
-function formatDateTime(date: DateTime, timezone: string): string {
-  return date.setZone(timezone).toFormat("EEE, MMM d yyyy 'at' HH:mm ZZZZ");
+function formatDateTime(date: Date, timezone: string): string {
+  const parts = new Map(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+      timeZoneName: "short",
+    })
+      .formatToParts(date)
+      .map((part) => [part.type, part.value] as const)
+  );
+  return `${parts.get("weekday")}, ${parts.get("month")} ${parts.get("day")} ${parts.get("year")} at ${parts.get("hour")}:${parts.get("minute")} ${parts.get("timeZoneName")}`;
 }
 
 function formatIntervalForDisplay(
-  interval: Interval,
+  interval: CalendarInterval,
   timezone: string
 ): string {
-  if (!interval.start || !interval.end) {
-    return "Unknown interval";
-  }
   const start = formatDateTime(interval.start, timezone);
   const end = formatDateTime(interval.end, timezone);
   return `${start} → ${end}`;
@@ -657,8 +667,8 @@ export function formatAvailabilitySummary({
   excludeWeekends,
 }: {
   participants: AvailabilityParticipant[];
-  range: Interval;
-  availabilitySlots: Interval[];
+  range: CalendarInterval;
+  availabilitySlots: CalendarInterval[];
   excludeWeekends: boolean;
 }): string {
   const lines: string[] = [];

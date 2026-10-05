@@ -1,13 +1,18 @@
 import { InputBarSlashSuggestionDropdown } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionDropdown";
-import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import type {
+  InputBarSlashCommand,
+  InputBarSlashMenuMode,
+} from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { createSlashSuggestionExtension } from "@app/components/editor/extensions/shared/slash_suggestion/SlashSuggestionExtension";
 import {
   clearSlashSubMenuStack,
   createSlashMenuNavigationStorage,
   getActiveSlashSubMenuFrame,
-  getSlashSubMenuQueryPlaceholder,
   handleSlashSubMenuCommand,
+  SLASH_MENU_QUERY_PLACEHOLDER,
+  SLASH_MENU_QUERY_PLACEHOLDER_CLASS_NAME,
+  SLASH_MENU_TRIGGER_CLASS_NAME,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import {
   getSlashTriggerText,
@@ -53,6 +58,7 @@ interface InputBarSlashSuggestionExtensionOptions {
   onSelectRef: RefObject<((item: SlashCommand) => void) | undefined>;
   owner?: WorkspaceType;
   slashCommandsRef: RefObject<InputBarSlashCommand[]>;
+  slashMenuModeRef: RefObject<InputBarSlashMenuMode | null>;
   spaceIdRef: RefObject<string | null | undefined>;
 }
 
@@ -83,6 +89,7 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     onSelectRef: { current: undefined },
     onDetailsRef: { current: undefined },
     slashCommandsRef: { current: [] },
+    slashMenuModeRef: { current: "commands" },
     spaceIdRef: { current: null },
   },
   allow: ({ editor, state, range, isActive, options, storage }) =>
@@ -91,8 +98,10 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     storage.hasBeenFocused &&
     (editor.isFocused || isActive) &&
     storage.dismissedTriggerStart !== range.from &&
-    // Inside a sub-menu the text after "/" is its query, so a leading space is allowed.
+    // Inside a sub-menu, or when the menu is only the browser, the text after "/" is a search
+    // query, so a leading space is allowed.
     (getActiveSlashSubMenuFrame(storage) !== null ||
+      options.slashMenuModeRef.current === "attach-only" ||
       isAllowedSlashQuery(state, range)),
   // Inserts a "/" at the cursor to open the dropdown, even if the editor was
   // never focused or the dropdown was dismissed at this position.
@@ -140,6 +149,7 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
     onNodeSelectRef: options.onNodeSelectRef,
     owner: options.owner,
     slashCommandsRef: options.slashCommandsRef,
+    slashMenuModeRef: options.slashMenuModeRef,
     spaceIdRef: options.spaceIdRef,
   }),
   notifyActiveChange: (active, options) => {
@@ -155,7 +165,8 @@ export const InputBarSlashSuggestionExtension = createSlashSuggestionExtension<
   onDropdownExit: ({ storage }) => {
     clearSlashSubMenuStack(storage);
   },
-  getQueryPlaceholder: ({ storage }) =>
-    getSlashSubMenuQueryPlaceholder(storage),
+  queryPlaceholder: SLASH_MENU_QUERY_PLACEHOLDER,
+  queryPlaceholderClassName: SLASH_MENU_QUERY_PLACEHOLDER_CLASS_NAME,
+  triggerClassName: SLASH_MENU_TRIGGER_CLASS_NAME,
   preventEscapeDefault: true,
 });

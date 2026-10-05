@@ -10,6 +10,7 @@
   ],
   "metadata": {
     "status": "string",
-    "request_sid": "string"
+    "request_sid": "string",
+    "authorizing_group_id": "string"
   }
 }

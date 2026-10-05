@@ -1,3 +1,4 @@
+import { formatDateTime } from "@app/lib/i18n/format";
 import {
   describeWakeUpSchedule,
   getNextWakeUpFireAtFromScheduleConfig,
@@ -94,7 +95,7 @@ function WakeUpEntry({ wakeUp }: WakeUpEntryProps) {
       {nextFireAt !== null && (
         <WakeUpField
           label="next fire"
-          value={new Date(nextFireAt).toLocaleString()}
+          value={formatDateTime(nextFireAt)}
           mono
         />
       )}
@@ -108,7 +109,7 @@ function WakeUpEntry({ wakeUp }: WakeUpEntryProps) {
       <WakeUpField label="id" value={wakeUp.sId} mono />
       <WakeUpField
         label="created"
-        value={new Date(wakeUp.createdAt).toLocaleString()}
+        value={formatDateTime(wakeUp.createdAt)}
         mono
       />
     </div>

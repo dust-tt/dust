@@ -1,36 +1,22 @@
-import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
-import { Authenticator } from "@app/lib/auth";
-import { DustError } from "@app/lib/error";
+import type { Authenticator } from "@app/lib/auth";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
-import { getNovuClient } from "@app/lib/notifications";
+import { getActiveSubscriberAuth } from "@app/lib/notifications";
 import { renderEmail as renderDigestEmail } from "@app/lib/notifications/email-templates/agent-message-feedback-digest";
+import type { AgentMessageFeedbackPayloadType } from "@app/lib/notifications/triggers/agent-message-feedback";
+import {
+  AGENT_MESSAGE_FEEDBACK_TRIGGER_ID,
+  AgentMessageFeedbackPayloadSchema,
+} from "@app/lib/notifications/triggers/agent-message-feedback";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
-import logger from "@app/logger/logger";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import { isDevelopment } from "@app/types/shared/env";
-import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
 import { workflow } from "@novu/framework";
 import z from "zod";
-
-const AgentMessageFeedbackPayloadSchema = z.object({
-  workspaceId: z.string(),
-  conversationId: z.string(),
-  messageId: z.string(),
-  agentConfigurationId: z.string(),
-  userWhoGaveFeedbackId: z.string(),
-  thumbDirection: z.union([z.literal("up"), z.literal("down")]),
-  feedbackId: z.string(),
-});
-
-type AgentMessageFeedbackPayloadType = z.infer<
-  typeof AgentMessageFeedbackPayloadSchema
->;
 
 const isAgentMessageFeedbackPayload = (
   payload: unknown
@@ -38,13 +24,11 @@ const isAgentMessageFeedbackPayload = (
   return AgentMessageFeedbackPayloadSchema.safeParse(payload).success;
 };
 
-const AGENT_MESSAGE_FEEDBACK_TRIGGER_ID = "agent-message-feedback";
-
 const FeedbackDetailsSchema = z.object({
-  conversationTitle: z.string(),
   userWhoGaveFeedbackFullName: z.string(),
   agentName: z.string(),
   workspaceName: z.string(),
+  isConversationShared: z.boolean(),
 });
 
 type FeedbackDetailsType = z.infer<typeof FeedbackDetailsSchema>;
@@ -56,25 +40,23 @@ const getFeedbackDetails = async ({
   subscriberId?: string | null;
   payload: AgentMessageFeedbackPayloadType;
 }): Promise<FeedbackDetailsType> => {
-  let conversationTitle: string = "A conversation";
   let userWhoGaveFeedbackFullName: string = "Someone";
   let agentName: string = "an agent";
   let workspaceName: string = "A workspace";
+  let isConversationShared = false;
 
   if (subscriberId) {
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    const auth = await getActiveSubscriberAuth(
       subscriberId,
       payload.workspaceId
     );
 
-    const conversation = await ConversationResource.fetchById(
-      auth,
-      payload.conversationId
-    );
+    const conversation = auth
+      ? await ConversationResource.fetchById(auth, payload.conversationId)
+      : null;
 
-    if (conversation) {
+    if (auth && conversation) {
       workspaceName = auth.getNonNullableWorkspace().name;
-      conversationTitle = getConversationDisplayTitle(conversation.toJSON());
 
       const userWhoGaveFeedback = await UserResource.fetchById(
         payload.userWhoGaveFeedbackId
@@ -92,14 +74,21 @@ const getFeedbackDetails = async ({
       if (agent) {
         agentName = agent.name;
       }
+
+      const feedback = await AgentMessageFeedbackResource.fetchById(auth, {
+        feedbackId: payload.feedbackId,
+        agentConfigurationId: payload.agentConfigurationId,
+      });
+
+      isConversationShared = feedback?.isConversationShared ?? false;
     }
   }
 
   return {
-    conversationTitle,
     userWhoGaveFeedbackFullName,
     agentName,
     workspaceName,
+    isConversationShared,
   };
 };
 
@@ -114,10 +103,10 @@ const shouldSkipNotification = async ({
     return true;
   }
 
-  const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    subscriberId,
-    payload.workspaceId
-  );
+  const auth = await getActiveSubscriberAuth(subscriberId, payload.workspaceId);
+  if (!auth) {
+    return true;
+  }
 
   const conversation = await ConversationResource.fetchById(
     auth,
@@ -158,18 +147,24 @@ export const agentMessageFeedbackWorkflow = workflow(
         return {
           subject: `New feedback on ${details.agentName}`,
           body: `${details.userWhoGaveFeedbackFullName} left a ${payload.thumbDirection === "up" ? "positive" : "negative"} feedback on ${details.agentName}.`,
-          primaryAction: {
-            label: "View",
-            redirect: {
-              url: getConversationRoute(
-                payload.workspaceId,
-                payload.conversationId
-              ),
-            },
-          },
+          ...(details.isConversationShared
+            ? {
+                primaryAction: {
+                  label: "View",
+                  redirect: {
+                    url: getConversationRoute(
+                      payload.workspaceId,
+                      payload.conversationId
+                    ),
+                  },
+                },
+              }
+            : {}),
           data: {
             autoDelete: true,
-            conversationId: payload.conversationId,
+            ...(details.isConversationShared
+              ? { conversationId: payload.conversationId }
+              : {}),
           },
         };
       },
@@ -215,7 +210,7 @@ export const agentMessageFeedbackWorkflow = workflow(
         let feedbackAuth: Authenticator | null = null;
 
         if (subscriber.subscriberId) {
-          feedbackAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          feedbackAuth = await getActiveSubscriberAuth(
             subscriber.subscriberId,
             payload.workspaceId
           );
@@ -240,6 +235,7 @@ export const agentMessageFeedbackWorkflow = workflow(
           });
 
           let feedbackContent: string | undefined;
+          let conversation: { id: string; title: string } | undefined;
 
           if (feedbackAuth) {
             const feedback = await AgentMessageFeedbackResource.fetchById(
@@ -252,13 +248,30 @@ export const agentMessageFeedbackWorkflow = workflow(
 
             if (feedback) {
               feedbackContent = feedback.content ?? undefined;
+
+              // The conversation title may leak private content: only expose it (and the link)
+              // when the user who gave the feedback chose to share the conversation.
+              if (eventDetails.isConversationShared) {
+                const conversationResource =
+                  await ConversationResource.fetchById(
+                    feedbackAuth,
+                    event.payload.conversationId
+                  );
+                if (conversationResource) {
+                  conversation = {
+                    id: conversationResource.sId,
+                    title: getConversationDisplayTitle(
+                      conversationResource.toJSON()
+                    ),
+                  };
+                }
+              }
             }
           }
 
           feedbacks.push({
             agentName: eventDetails.agentName,
-            conversationId: event.payload.conversationId,
-            conversationTitle: eventDetails.conversationTitle,
+            conversation,
             userWhoGaveFeedbackFullName:
               eventDetails.userWhoGaveFeedbackFullName,
             thumbDirection: event.payload.thumbDirection,
@@ -318,119 +331,3 @@ export const agentMessageFeedbackWorkflow = workflow(
     tags: ["conversations"] as NotificationAllowedTags,
   }
 );
-
-export const triggerAgentMessageFeedbackNotification = async (
-  auth: Authenticator,
-  {
-    conversationId,
-    messageId,
-    agentConfigurationId,
-    thumbDirection,
-    feedbackId,
-  }: {
-    conversationId: string;
-    messageId: string;
-    agentConfigurationId: string;
-    thumbDirection: AgentMessageFeedbackDirection;
-    feedbackId: string;
-  }
-): Promise<Result<void, DustError<"internal_error">>> => {
-  const userWhoGaveFeedback = auth.user();
-
-  if (!userWhoGaveFeedback) {
-    return new Ok(undefined);
-  }
-
-  const conversation = await ConversationResource.fetchById(
-    auth,
-    conversationId
-  );
-
-  if (!conversation) {
-    return new Err(new DustError("internal_error", "Conversation not found"));
-  }
-
-  if (conversation.depth > 0) {
-    logger.info(
-      { conversationDepth: conversation.depth },
-      "Skipping notification for sub-conversation"
-    );
-    return new Ok(undefined);
-  }
-
-  const agent = await AgentResource.fetchById(auth, agentConfigurationId);
-
-  if (!agent) {
-    return new Err(
-      new DustError("internal_error", "Agent configuration not found")
-    );
-  }
-
-  const editors = (await agent.listEditors(auth)) ?? [];
-
-  if (editors.length === 0) {
-    logger.info(
-      { agentConfigurationId },
-      "No editors found for agent, skipping notification"
-    );
-    return new Ok(undefined);
-  }
-
-  // In development, allow sending notifications to yourself for debugging
-  const editorsToNotify = isDevelopment()
-    ? editors
-    : editors.filter((editor) => editor.sId !== userWhoGaveFeedback.sId);
-
-  if (editorsToNotify.length === 0) {
-    return new Ok(undefined);
-  }
-
-  try {
-    const novuClient = await getNovuClient();
-
-    const payload: AgentMessageFeedbackPayloadType = {
-      workspaceId: auth.getNonNullableWorkspace().sId,
-      conversationId,
-      messageId,
-      agentConfigurationId,
-      userWhoGaveFeedbackId: userWhoGaveFeedback.sId,
-      thumbDirection,
-      feedbackId,
-    };
-
-    const r = await novuClient.triggerBulk({
-      events: editorsToNotify.map((editor) => ({
-        workflowId: AGENT_MESSAGE_FEEDBACK_TRIGGER_ID,
-        to: {
-          subscriberId: editor.sId,
-          email: editor.email,
-          firstName: editor.firstName ?? undefined,
-          lastName: editor.lastName ?? undefined,
-        },
-        payload,
-      })),
-    });
-
-    if (r.result.some((res) => !!res.error?.length)) {
-      const eventErrors = r.result
-        .filter((res) => !!res.error?.length)
-        .map(({ error }) => error?.join("; "))
-        .join("; ");
-      return new Err({
-        name: "dust_error",
-        code: "internal_error",
-        message: `Failed to trigger agent message feedback notification: errors: ${eventErrors}`,
-      });
-    }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-  } catch (error) {
-    return new Err({
-      name: "dust_error",
-      code: "internal_error",
-      message: "Failed to trigger agent message feedback notification",
-    });
-  }
-
-  return new Ok(undefined);
-};

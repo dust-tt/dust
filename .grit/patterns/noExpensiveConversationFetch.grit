@@ -14,10 +14,20 @@ pattern expensive_conversation_fetch() {
     }
 }
 
-expensive_conversation_fetch() as $match where {
-    register_diagnostic(
-        span = $match,
-        message = "Avoid getConversation/getLightConversation/ConversationResource.fetchConversationWithParticipantState unless needed. Prefer ConversationResource.fetchById when message content and participation fields are not required. Suppress with biome-ignore only when the richer fetch is intentional.",
-        severity = "error"
-    )
+// Skip structural matching when the source cannot contain this rule's target.
+// Keep backslashes as candidates so escaped spellings are still checked.
+file(body = $body) where {
+    $body <: or {
+        includes "getConversation",
+        includes "getLightConversation",
+        includes "fetchConversationWithParticipantState",
+        includes "\\"
+    },
+    $body <: contains bubble expensive_conversation_fetch() as $match where {
+        register_diagnostic(
+            span = $match,
+            message = "Avoid getConversation/getLightConversation/ConversationResource.fetchConversationWithParticipantState unless needed. Prefer ConversationResource.fetchById when message content and participation fields are not required. Suppress with biome-ignore only when the richer fetch is intentional.",
+            severity = "error"
+        )
+    }
 }

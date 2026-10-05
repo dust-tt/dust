@@ -9,6 +9,7 @@ const {
   mockKill,
   mockLoggerError,
   mockLoggerInfo,
+  mockLoggerWarn,
   mockRun,
   mockSendStdin,
   mockCloseStdin,
@@ -21,6 +22,7 @@ const {
   mockKill: vi.fn(),
   mockLoggerError: vi.fn(),
   mockLoggerInfo: vi.fn(),
+  mockLoggerWarn: vi.fn(),
   mockRun: vi.fn(),
   mockSendStdin: vi.fn(),
   mockCloseStdin: vi.fn(),
@@ -31,6 +33,7 @@ vi.mock("@app/logger/logger", () => ({
   default: {
     error: mockLoggerError,
     info: mockLoggerInfo,
+    warn: mockLoggerWarn,
   },
 }));
 
@@ -89,6 +92,19 @@ import {
 import { SandboxExecTimeoutError } from "../provider";
 import { rootCommand } from "../root_command";
 import { E2BSandboxProvider } from "./e2b";
+
+const READ_OPTS = { user: "agent-proxied", maxBytes: 1024 } as const;
+
+function streamOf(...chunks: Uint8Array[]): ReadableStream<Uint8Array> {
+  return new ReadableStream({
+    start(controller) {
+      for (const chunk of chunks) {
+        controller.enqueue(chunk);
+      }
+      controller.close();
+    },
+  });
+}
 
 describe("E2BSandboxProvider", () => {
   beforeEach(() => {
@@ -770,7 +786,9 @@ describe("E2BSandboxProvider", () => {
     });
 
     it("retries a file read on a fresh connection", async () => {
-      const mockFilesRead = vi.fn().mockResolvedValue(new Uint8Array([1, 2]));
+      const mockFilesRead = vi
+        .fn()
+        .mockImplementation(async () => streamOf(new Uint8Array([1, 2])));
       mockConnect.mockResolvedValue({
         commands: {
           run: mockRun,
@@ -784,16 +802,21 @@ describe("E2BSandboxProvider", () => {
         domain: undefined,
       });
 
-      await provider.readFile("provider-id", "/tmp/a", {
+      await provider.readFile("provider-id", "/tmp/a", READ_OPTS, {
         workspaceId: "workspace-id",
       });
       mockFilesRead.mockRejectedValueOnce(new Error("connection refused"));
 
       // Reading the same path twice returns the same bytes, so unlike a command this is safe to
       // repeat once the stale connection has been replaced.
-      const result = await provider.readFile("provider-id", "/tmp/a", {
-        workspaceId: "workspace-id",
-      });
+      const result = await provider.readFile(
+        "provider-id",
+        "/tmp/a",
+        READ_OPTS,
+        {
+          workspaceId: "workspace-id",
+        }
+      );
 
       expect(result).toEqual(Buffer.from([1, 2]));
       expect(mockConnect).toHaveBeenCalledTimes(2);
@@ -847,7 +870,9 @@ describe("E2BSandboxProvider", () => {
     });
 
     it("does not reconnect when the sandbox reports a missing file", async () => {
-      const mockFilesRead = vi.fn().mockResolvedValue(new Uint8Array([1, 2]));
+      const mockFilesRead = vi
+        .fn()
+        .mockImplementation(async () => streamOf(new Uint8Array([1, 2])));
       mockConnect.mockResolvedValue({
         commands: {
           run: mockRun,
@@ -861,13 +886,13 @@ describe("E2BSandboxProvider", () => {
         domain: undefined,
       });
 
-      await provider.readFile("provider-id", "/tmp/a", {
+      await provider.readFile("provider-id", "/tmp/a", READ_OPTS, {
         workspaceId: "workspace-id",
       });
       mockFilesRead.mockRejectedValueOnce(new NotFoundError("no such file"));
 
       await expect(
-        provider.readFile("provider-id", "/tmp/missing", {
+        provider.readFile("provider-id", "/tmp/missing", READ_OPTS, {
           workspaceId: "workspace-id",
         })
       ).rejects.toThrow("no such file");
@@ -892,6 +917,91 @@ describe("E2BSandboxProvider", () => {
       if (result.isErr()) {
         expect(result.error.name).toBe("SandboxNotFoundError");
       }
+    });
+  });
+
+  describe("readFile", () => {
+    function connectWithFilesRead(read: ReturnType<typeof vi.fn>) {
+      mockConnect.mockResolvedValue({
+        commands: {
+          run: mockRun,
+          sendStdin: mockSendStdin,
+          closeStdin: mockCloseStdin,
+        },
+        files: { read },
+      });
+      return new E2BSandboxProvider({ apiKey: "api-key", domain: undefined });
+    }
+
+    it("streams the file as the requested user", async () => {
+      const mockFilesRead = vi
+        .fn()
+        .mockImplementation(async () =>
+          streamOf(new Uint8Array([1, 2]), new Uint8Array([3]))
+        );
+      const provider = connectWithFilesRead(mockFilesRead);
+
+      const result = await provider.readFile(
+        "provider-id",
+        "/tmp/a",
+        READ_OPTS,
+        { workspaceId: "workspace-id" }
+      );
+
+      expect(result).toEqual(Buffer.from([1, 2, 3]));
+      expect(mockFilesRead).toHaveBeenCalledWith("/tmp/a", {
+        format: "stream",
+        user: "agent-proxied",
+      });
+    });
+
+    it("accepts a file of exactly maxBytes", async () => {
+      const mockFilesRead = vi
+        .fn()
+        .mockImplementation(async () =>
+          streamOf(new Uint8Array(READ_OPTS.maxBytes))
+        );
+      const provider = connectWithFilesRead(mockFilesRead);
+
+      const result = await provider.readFile(
+        "provider-id",
+        "/tmp/a",
+        READ_OPTS,
+        { workspaceId: "workspace-id" }
+      );
+
+      expect(result.length).toBe(READ_OPTS.maxBytes);
+    });
+
+    it("stops reading and rejects once the file exceeds maxBytes, without reconnecting", async () => {
+      const cancel = vi.fn();
+      let pulledBytes = 0;
+      // An endless stream stands in for a multi-GB sparse file or a FIFO that keeps producing.
+      const mockFilesRead = vi.fn().mockImplementation(
+        async () =>
+          new ReadableStream<Uint8Array>({
+            pull(controller) {
+              pulledBytes += 512;
+              controller.enqueue(new Uint8Array(512));
+            },
+            cancel,
+          })
+      );
+      const provider = connectWithFilesRead(mockFilesRead);
+
+      await expect(
+        provider.readFile("provider-id", "/tmp/a", READ_OPTS, {
+          workspaceId: "workspace-id",
+        })
+      ).rejects.toThrow("larger than 1024 bytes");
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
+        expect.objectContaining({ path: "/tmp/a", maxBytes: 1024 }),
+        "Sandbox file read exceeded its byte cap"
+      );
+      expect(cancel).toHaveBeenCalledTimes(1);
+      expect(pulledBytes).toBeLessThanOrEqual(4 * 512);
+      expect(mockFilesRead).toHaveBeenCalledTimes(1);
+      expect(mockConnect).toHaveBeenCalledTimes(1);
     });
   });
 });

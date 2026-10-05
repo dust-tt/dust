@@ -18,12 +18,14 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
   AgentMessageType,
   ConversationType,
 } from "@app/types/assistant/conversation";
 import { USED_MODEL_CONFIGS } from "@app/types/assistant/models/used_model_configs";
 import type { LightWorkspaceType } from "@app/types/user";
+import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TOOLS } from "./tools";
@@ -112,6 +114,45 @@ async function useRealGetAgentFeedbacks() {
 }
 
 describe("agent_sidekick_context tools", () => {
+  describe("inspect_available_agent", () => {
+    it("does not reveal a hidden agent to a member who cannot read it", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const owner = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, owner, { role: "user" });
+      const ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        owner.sId,
+        workspace.sId
+      );
+      const agent = await AgentConfigurationFactory.createTestAgent(ownerAuth, {
+        scope: "hidden",
+        instructions: "Secret instructions",
+      });
+
+      const result = await getToolByName("inspect_available_agent").handler(
+        { agentId: agent.sId },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+    });
+
+    it("returns the instructions of a global agent", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+
+      const result = await getToolByName("inspect_available_agent").handler(
+        { agentId: GLOBAL_AGENTS_SID.HELPER },
+        createTestExtra(authenticator)
+      );
+
+      assert(result.isOk());
+      const [output] = result.value;
+      assert(output.type === "text");
+      expect(JSON.parse(output.text).instructions).toContain("@help");
+    });
+  });
+
   describe("search_knowledge", () => {
     it("returns data source views and empty nodes in browse mode (no query)", async () => {
       const { authenticator, globalSpace, workspace } =
@@ -579,6 +620,37 @@ describe("agent_sidekick_context tools", () => {
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
         expect(result.error.message).toContain("not found or not accessible");
+      }
+    });
+
+    it("does not expose another user's hidden agent to a member", async () => {
+      const { authenticator: owner, workspace } = await createResourceTest({
+        role: "user",
+      });
+
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(owner, {
+          scope: "hidden",
+          instructions: "Secret instructions",
+        });
+
+      const member = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, member, { role: "user" });
+      const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        member.sId,
+        workspace.sId
+      );
+
+      const tool = getToolByName("inspect_available_agent");
+      const result = await tool.handler(
+        { agentId: agentConfiguration.sId },
+        createTestExtra(memberAuth)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("not found or not accessible");
+        expect(result.error.message).not.toContain("Secret instructions");
       }
     });
   });
@@ -1497,6 +1569,34 @@ describe("agent_sidekick_context tools", () => {
   });
 
   describe("suggest_sub_agent", () => {
+    it.each([
+      ["the agent itself", (agentId: string) => agentId],
+      [
+        "a global agent the builder does not list",
+        () => GLOBAL_AGENTS_SID.SIDEKICK,
+      ],
+    ])("rejects adding %s as a sub-agent", async (_, getSubAgentId) => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+      await MCPServerViewResource.ensureAllAutoToolsAreCreated(authenticator);
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_sidekick_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_sub_agent");
+      const result = await tool.handler(
+        { action: "add", subAgentId: getSubAgentId(agentConfiguration.sId) },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+    });
+
     it("creates sub-agent suggestion with add action successfully", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
@@ -1591,6 +1691,32 @@ describe("agent_sidekick_context tools", () => {
   });
 
   describe("suggest_skills", () => {
+    it("rejects adding an archived skill", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const skill = await SkillFactory.create(authenticator);
+      await skill.archive(authenticator);
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_sidekick_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_skills");
+      const result = await tool.handler(
+        { suggestions: [{ action: "add", skillId: skill.sId }] },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("archived");
+      }
+    });
+
     it("returns error when agent configuration ID is not available", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
@@ -1692,7 +1818,9 @@ describe("agent_sidekick_context tools", () => {
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
         expect(result.error.message).toContain("non-existent-skill-id");
-        expect(result.error.message).toContain("invalid or not accessible");
+        expect(result.error.message).toContain(
+          "invalid, archived or not accessible"
+        );
         expect(result.error.message).toContain("<workspace_context>");
       }
     });
@@ -1918,7 +2046,9 @@ describe("agent_sidekick_context tools", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toContain("Invalid reasoning effort");
+        expect(result.error.message).toContain(
+          'does not support the "minimal" reasoning effort'
+        );
         expect(result.error.message).toContain("none");
         expect(result.error.message).toContain("claude-sonnet-4-6");
       }
@@ -1951,7 +2081,9 @@ describe("agent_sidekick_context tools", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toContain("Invalid model ID");
+        expect(result.error.message).toContain(
+          "is not available in this workspace"
+        );
         expect(result.error.message).toContain("gpt-4o-mini");
         expect(result.error.message).toContain("<workspace_context>");
       }
@@ -1996,7 +2128,9 @@ describe("agent_sidekick_context tools", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.message).toContain("Invalid model ID");
+        expect(result.error.message).toContain(
+          "is not available in this workspace"
+        );
         expect(result.error.message).toContain("gpt-5.6-sol");
       }
     });

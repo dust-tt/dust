@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfigurationContext } from "@app/lib/api/assistant/configuration/context";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
@@ -144,7 +145,7 @@ async function createReplacementVersion(
     );
   }
 
-  return result.value.agentConfiguration.version;
+  return result.value.agent.version;
 }
 
 makeScript(

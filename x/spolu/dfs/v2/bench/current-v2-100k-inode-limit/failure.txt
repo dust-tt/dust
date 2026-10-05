@@ -1,0 +1,130 @@
+Created 100,000 documents in /tmp/dfs-v2-current-100k/corpus/docs (seed=42)
+Report: /tmp/dfs-v2-current-100k
+Tool versions
++-----------+----------------------------------+------------------+
+| Tool      | Version                          | Executable       |
++-----------+----------------------------------+------------------+
+| Python    | CPython 3.13.5                   | /usr/bin/python3 |
+| ripgrep   | ripgrep 14.1.1                   | /usr/bin/rg      |
+| OS kernel | Linux 6.12.54-linuxkit (aarch64) | -                |
++-----------+----------------------------------+------------------+
+
+Benchmark results
+local: scandir + stat (100 dirs, 100,000 files) (first)
+metadata | scandir + stat (100 dirs, 100,000 files) | first | 1,296.04 | OK
+local: scandir + stat (100 dirs, 100,000 files) (warm)
+metadata | scandir + stat (100 dirs, 100,000 files) | warm | 1,295.14 | OK
+local: rg --files (100,000 files) (first)
+metadata | rg --files (100,000 files) | first | 23.78 | OK
+local: rg --files (100,000 files) (warm)
+metadata | rg --files (100,000 files) | warm | 22.14 | OK
+local: open + fstat + close (100,000 files) (first)
+metadata | open + fstat + close (100,000 files) | first | 436.07 | OK
+local: open + fstat + close (100,000 files) (warm)
+metadata | open + fstat + close (100,000 files) | warm | 439.95 | OK
+local: stat missing (256 paths) (first)
+metadata | stat missing (256 paths) | first | 2.41 | OK
+local: stat missing (256 paths) (warm)
+metadata | stat missing (256 paths) | warm | 1.65 | OK
+local: rg no-match scan (100,000 files, 1775.1 MB) (first)
+page cache | rg no-match scan (100,000 files, 1775.1 MB) | first | 133.23 | OK
+local: rg no-match scan (100,000 files, 1775.1 MB) (warm)
+page cache | rg no-match scan (100,000 files, 1775.1 MB) | warm | 133.67 | OK
+local: rg rare literal (100,000 files, 4 matches) (first)
+search | rg rare literal (100,000 files, 4 matches) | first | 132.86 | OK
+local: rg rare literal (100,000 files, 4 matches) (warm)
+search | rg rare literal (100,000 files, 4 matches) | warm | 134.97 | OK
+local: rg branch glob (9,810 candidate files) (first)
+path pruning | rg branch glob (9,810 candidate files) | first | 82.15 | OK
+local: rg branch glob (9,810 candidate files) (warm)
+path pruning | rg branch glob (9,810 candidate files) | warm | 75.63 | OK
+local: rg depth-10 subtree (1,360 files) (first)
+path pruning | rg depth-10 subtree (1,360 files) | first | 19.93 | OK
+local: rg depth-10 subtree (1,360 files) (warm)
+path pruning | rg depth-10 subtree (1,360 files) | warm | 19.76 | OK
+local: open + read + SHA-256 (100,000 files, 1775.1 MB) (first)
+page cache | open + read + SHA-256 (100,000 files, 1775.1 MB) | first | 1,388.93 | OK
+local: open + read + SHA-256 (100,000 files, 1775.1 MB) (warm)
+page cache | open + read + SHA-256 (100,000 files, 1775.1 MB) | warm | 1,553.97 | OK
+local: open + pread tail (256 files x 4 KiB) (first)
+random I/O | open + pread tail (256 files x 4 KiB) | first | 2.12 | OK
+local: open + pread tail (256 files x 4 KiB) (warm)
+random I/O | open + pread tail (256 files x 4 KiB) | warm | 1.39 | OK
+local: create + write (32 x 32 KiB files) (once)
+write | create + write (32 x 32 KiB files) | once | 0.54 | OK
+local: fsync (32 files) (once)
+file sync | fsync (32 files) | once | 11.93 | OK
+local: close (32 files) (once)
+write | close (32 files) | once | 0.02 | OK
+local: unlink (32 files) (once)
+write | unlink (32 files) | once | 0.21 | OK
++--------------+--------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                         | Phase | Time (ms) | Result |
++--------------+--------------------------------------------------+-------+-----------+--------+
+| metadata     | scandir + stat (100 dirs, 100,000 files)         | first | 1,296.04  | OK     |
+| metadata     | scandir + stat (100 dirs, 100,000 files)         | warm  | 1,295.14  | OK     |
+| metadata     | rg --files (100,000 files)                       | first | 23.78     | OK     |
+| metadata     | rg --files (100,000 files)                       | warm  | 22.14     | OK     |
+| metadata     | open + fstat + close (100,000 files)             | first | 436.07    | OK     |
+| metadata     | open + fstat + close (100,000 files)             | warm  | 439.95    | OK     |
+| metadata     | stat missing (256 paths)                         | first | 2.41      | OK     |
+| metadata     | stat missing (256 paths)                         | warm  | 1.65      | OK     |
+| page cache   | rg no-match scan (100,000 files, 1775.1 MB)      | first | 133.23    | OK     |
+| page cache   | rg no-match scan (100,000 files, 1775.1 MB)      | warm  | 133.67    | OK     |
+| search       | rg rare literal (100,000 files, 4 matches)       | first | 132.86    | OK     |
+| search       | rg rare literal (100,000 files, 4 matches)       | warm  | 134.97    | OK     |
+| path pruning | rg branch glob (9,810 candidate files)           | first | 82.15     | OK     |
+| path pruning | rg branch glob (9,810 candidate files)           | warm  | 75.63     | OK     |
+| path pruning | rg depth-10 subtree (1,360 files)                | first | 19.93     | OK     |
+| path pruning | rg depth-10 subtree (1,360 files)                | warm  | 19.76     | OK     |
+| page cache   | open + read + SHA-256 (100,000 files, 1775.1 MB) | first | 1,388.93  | OK     |
+| page cache   | open + read + SHA-256 (100,000 files, 1775.1 MB) | warm  | 1,553.97  | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)            | first | 2.12      | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)            | warm  | 1.39      | OK     |
+| write        | create + write (32 x 32 KiB files)               | once  | 0.54      | OK     |
+| file sync    | fsync (32 files)                                 | once  | 11.93     | OK     |
+| write        | close (32 files)                                 | once  | 0.02      | OK     |
+| write        | unlink (32 files)                                | once  | 0.21      | OK     |
++--------------+--------------------------------------------------+-------+-----------+--------+
+First = first measured invocation, not guaranteed cold OS cache; warm = median repeat.
+Final result comparisons are outside timings; in-loop checks are included.
+Run on a fresh mount for first-touch comparisons.
+Untar: 405.282s
+Tool versions
++-----------+----------------------------------+------------------+
+| Tool      | Version                          | Executable       |
++-----------+----------------------------------+------------------+
+| Python    | CPython 3.13.5                   | /usr/bin/python3 |
+| ripgrep   | ripgrep 14.1.1                   | /usr/bin/rg      |
+| OS kernel | Linux 6.12.54-linuxkit (aarch64) | -                |
++-----------+----------------------------------+------------------+
+
+Benchmark results
+dfs: scandir + stat (100 dirs, 100,000 files) (first)
++----------+------------------------------------------+-------+-----------+--------+
+| Feature  | Workload                                 | Phase | Time (ms) | Result |
++----------+------------------------------------------+-------+-----------+--------+
+| metadata | scandir + stat (100 dirs, 100,000 files) | first | -         | FAIL   |
++----------+------------------------------------------+-------+-----------+--------+
+FAILED: [Errno 28] No space left on device: '/tmp/dfs-v2-current-100k/mount/work/docs/node_01_00/node_02_00/node_03_00/node_04_00/node_05_00/node_06_00/node_07_00/node_08_00/node_09_00/node_10_00'
+Traceback (most recent call last):
+  File "/dfs/v2/bench/vfs.py", line 142, in <module>
+    main()
+    ~~~~^^
+  File "/dfs/v2/bench/vfs.py", line 115, in main
+    measure(mount_path / 'work')
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/dfs/v2/bench/vfs.py", line 87, in measure
+    raise RuntimeError('benchmark validation failed')
+RuntimeError: benchmark validation failed
+Traceback (most recent call last):
+  File "/Users/spolu/code/dust/.hives/wk0/x/spolu/dfs/v2/local/run", line 36, in <module>
+    main()
+  File "/Users/spolu/code/dust/.hives/wk0/x/spolu/dfs/v2/local/run", line 30, in main
+    run('exec', '-T', 'dev', *command[1:])
+  File "/Users/spolu/code/dust/.hives/wk0/x/spolu/dfs/v2/local/run", line 11, in run
+    return subprocess.run([*COMPOSE, *args], check=True, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.12/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['docker', 'compose', '-f', '/Users/spolu/code/dust/.hives/wk0/x/spolu/dfs/v2/local/compose.yaml', 'exec', '-T', 'dev', 'python3', '/dfs/v2/bench/vfs.py', '--files', '100000', '--work', '/tmp/dfs-v2-current-100k']' returned non-zero exit status 1.

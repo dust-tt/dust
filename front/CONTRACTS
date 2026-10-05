@@ -527,6 +527,12 @@ setup and assertions.
 When existing Resource APIs cannot express a required fixture or assertion, direct model access
 is allowed under the `models-behind-resources` contract; do not add test-only Resource APIs.
 
+@cc [owner:sfriquet,label:testing;react] tests-render-with-i18n
+`vite.i18nSetup.ts` MUST make `render` and `renderHook` from `@testing-library/react` wrap the tree in
+an `I18nProvider` with the `i18n` instance from `lib/i18n/i18n.ts`, outside any `wrapper` the test
+passes, and MUST reset `i18n` to `DEFAULT_LOCALE` after each test. Tests MUST NOT mount their own
+`I18nProvider`.
+
 @cc [label:react] component-props-interfaces
 Components props should always be typed using an `interface`.
 
@@ -648,9 +654,11 @@ Reviewer: If you see an inline object or array literal passed directly as a Cont
 value, require the author to memoize it.
 
 @cc [label:react] client-exhaustiveness-tolerates-new-values
-Frontend components must use `assertNeverAndIgnore` instead of `assertNever` in exhaustive switch
-statements. The server may introduce new enum values (e.g., new action types, connector types,
-event types) before the client is redeployed. Using `assertNever` would throw at runtime and crash
+Frontend code that branches on a value received from the API must use `assertNeverAndIgnore`
+instead of `assertNever` in exhaustive switch statements; a union the client creates itself (local
+reducer state, UI modes) keeps `assertNever`, per `exhaustive-union-branching`. The server may
+introduce new enum values (e.g., new action types, connector types, event types) before the client
+is redeployed. Using `assertNever` would throw at runtime and crash
 the app for all users. `assertNeverAndIgnore` provides the same compile-time exhaustiveness
 checking but silently ignores unknown values at runtime.
 
@@ -696,3 +704,69 @@ usage still costs out.
 Reviewer: for a new image model, check the pricing entry exists and its numbers match the linked
 provider page.
 
+@cc [owner:sfriquet,label:product;react] translated-files-stay-translated
+In a file under `components/`, `hooks/` or `lib/` that imports a Lingui macro, every user-visible
+string (JSX text, labels, placeholders, tooltips, `aria-label`, `alt`, toasts, validation messages)
+MUST go through the Lingui macros with the English text as the message, and a sentence MUST be a
+single message, never assembled by concatenating strings or translated fragments. Text sent to
+models (`lib/actions/**`, skill and agent definitions, zod `.describe()`) MUST NOT be wrapped.
+Catalog freshness and completeness are enforced by `npm run i18n:check`, and Lingui imports in
+server code by the `noClientImportsInServer` lint rule.
+
+@cc [owner:sfriquet,label:product;react] ui-intl-through-format-module
+Code under `components/` and `hooks/` MUST NOT reference the `Intl` global: dates, numbers,
+currencies, file sizes, hour cycles, the local time zone and string comparisons go through
+`lib/i18n/format.ts`, the only place that calls `Intl` for UI code. Enforced by the
+`noRestrictedGlobals` lint rule.
+
+@cc [owner:sfriquet,label:product;react] ui-text-not-concatenated
+User-visible text in `.tsx` files under `components/`, outside `components/poke/`, MUST NOT be built
+with `+`: each sentence is a single string literal or a single template literal. Error messages are
+exempt. In every `.tsx` file, a `+` with a string or template literal operand inside JSX props or
+children is rejected by the `noStringConcatInJsx` lint rule.
+
+@cc [owner:frankaloia,label:security;backend] oauth-connection-ownership-before-token
+Before calling getMCPConnectionAccessToken or otherwise using a caller-supplied OAuth
+connectionId, the code MUST call checkConnectionOwnership(auth, connectionId) and reject
+if it returns Err. This ensures the connection belongs to the calling user in the calling
+workspace; without the check any workspace member can obtain another user's live OAuth
+access token by supplying a foreign connectionId.
+
+@cc [owner:sfriquet,label:product] no-locale-less-date-time-calls
+Outside tests, `toLocaleDateString` and `toLocaleTimeString` MUST NOT be called without a locale
+(no argument, or `undefined` as the locale): dates and times MUST be formatted with `formatDate` or
+`formatTime` from `@app/lib/i18n/format`, which follow `format-locale-resolution`. Enforced by the
+`noLocaleLessDateTimeFormat` lint rule.
+
+@cc [owner:sfriquet,label:product] no-bare-locale-compare
+Outside tests, code under `components/`, `hooks/` and `lib/swr/` MUST NOT call `localeCompare`:
+locale-aware string comparisons MUST use `compareStrings` from `@app/lib/i18n/format`, which follows
+`format-locale-resolution`. Enforced by the `noBareLocaleCompare` lint rule.
+
+@cc [owner:sfriquet,label:product] no-hardcoded-en-us-in-ui
+Outside tests, code under `components/`, `hooks/`, `lib/client/` and `lib/swr/` MUST NOT contain
+the `"en-US"` literal, except a machine-facing one (export, API parameter, file name, map key),
+which MUST carry a `biome-ignore` comment saying why. Enforced by the `noHardcodedEnUsLocale` lint
+rule.
+
+@cc [owner:sfriquet,label:product;react] ui-dates-without-date-libraries
+Code under `components/` and `hooks/` MUST NOT format dates with `dayjs`, `luxon` or the formatting
+functions of `date-fns` and `date-fns-tz` (`format*`, `intlFormat*`, `lightFormat`): displayed
+dates go through `lib/i18n/format.ts`, and fixed patterns that must not follow the locale (such
+as file names parsed back) through `formatDate` of `lib/utils/timestamps.ts`. `date-fns` date
+arithmetic stays allowed. Enforced by the `noRestrictedImports` lint rule.
+
+@cc [owner:fabiencelier,label:security;react] secrets-masked-from-session-replay
+In UI served with Datadog RUM (Real User Monitoring) session replay (`front-spa` main app, `defaultPrivacyLevel:
+"mask-user-input"`), any credential rendered as DOM text outside a form input (API keys, URL
+secrets, signing secrets, tokens, or a URL embedding one) MUST be inside an element carrying the
+`dd-privacy-mask` class.
+
+@cc [owner:nfedrigo,label:architecture;performance] novu-workflows-only-imported-by-bridge
+Modules under `front/lib/notifications/workflows/` MUST only be imported by
+`front-api/routes/novu/index.ts` (the Novu bridge) and by their own tests. Code that triggers
+notifications MUST import from `front/lib/notifications/triggers/`, and modules under
+`front/lib/notifications/triggers/` MUST NOT import (directly or transitively) any workflow module.
+
+Rationale: workflow definitions render translated text with Lingui macros and `.po` catalogs that
+only the front-api bundle compiles; Temporal workers and tsx scripts crash when loading them.

@@ -1,17 +1,21 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
+import { getTieredDefaultReasoningEffort } from "@app/lib/model_tiers/enabled_models";
 import {
   AgentConfigurationModel,
   AgentModel,
 } from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import type {
   AgentConfigurationType,
   AgentReinforcementMode,
 } from "@app/types/assistant/agent";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type {
   ModelIdType,
   ModelProviderIdType,
+  ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
@@ -29,6 +33,9 @@ export class AgentConfigurationFactory {
         providerId: ModelProviderIdType;
         modelId: ModelIdType;
         temperature?: number;
+        // Null stores no effort, like agents saved before efforts were pinned.
+        reasoningEffort?: ReasoningEffort | null;
+        responseFormat?: string;
       };
       requestedSpaceIds: ModelId[];
       templateId: string | null;
@@ -58,6 +65,19 @@ export class AgentConfigurationFactory {
       workspace.sId
     );
 
+    // Like a real save (`createOrUpgradeAgentConfiguration`), pin the effort the model resolves to.
+    const modelConfig = getSupportedModelConfig({ providerId, modelId });
+    const requestedEffort = overrides.model?.reasoningEffort;
+    const reasoningEffort =
+      requestedEffort === null
+        ? undefined
+        : (requestedEffort ??
+          (modelConfig
+            ? await getTieredDefaultReasoningEffort(auth, {
+                model: modelConfig,
+              })
+            : undefined));
+
     const result = await AgentResource.makeNew(internalAuth, {
       name,
       description,
@@ -70,6 +90,8 @@ export class AgentConfigurationFactory {
         providerId,
         modelId,
         temperature,
+        reasoningEffort,
+        responseFormat: overrides.model?.responseFormat,
       },
       templateId: overrides.templateId ?? null,
       reinforcement: overrides.reinforcement,
@@ -89,17 +111,18 @@ export class AgentConfigurationFactory {
 
     // Re-read the full config: as the caller when they are a workspace member (so the returned
     // verbs reflect their editor grant), otherwise as the internal admin — legacy tests build agents
-    // with a non-member auth, which `getAgentConfigurations` rejects.
-    // `dangerouslySkipPermissionFiltering` lets tests build agents on spaces the caller cannot read.
+    // with a non-member auth. `dangerouslySkipFetchCheck` lets tests build agents on spaces the
+    // caller cannot read. The content is the one just saved (no tools yet), so it is restored from
+    // the inputs when the reader cannot view it.
     const readAuth = auth.isUser() ? auth : internalAuth;
-    const config = await getAgentConfiguration(readAuth, {
-      agentId: result.value.sId,
-      variant: "full",
-      dangerouslySkipPermissionFiltering: true,
+    const resource = await AgentResource.fetchById(readAuth, result.value.sId, {
+      dangerouslySkipFetchCheck: true,
     });
-    assert(config, "The saved agent must be resolvable");
+    assert(resource, "The saved agent must be resolvable");
+    const [config] = await toAgentConfigurations(readAuth, [resource]);
+    assert(config, "The saved agent must be serializable");
 
-    return config;
+    return { ...config, instructions, instructionsHtml };
   }
 
   /**
@@ -156,8 +179,14 @@ export class AgentConfigurationFactory {
       throw result.error;
     }
 
+    const { resource } = result.value;
+    const { instructions } = resource.canViewContent
+      ? await resource.fetchInstructions()
+      : { instructions: null };
+
     return {
-      ...result.value.resource.toJSON(),
+      ...resource.toJSON(),
+      instructions,
       tags: [],
       userFavorite: false,
       instructionsHtml: overrides.instructionsHtml ?? null,
@@ -182,5 +211,36 @@ export class AgentConfigurationFactory {
       AgentModel.update({ createdAt }, { where }),
       AgentConfigurationModel.update({ createdAt }, { where }),
     ]);
+  }
+
+  /**
+   * Re-reads an agent for `auth`, its current version or the pinned `agentVersion`. It drops the
+   * cached entry first, since tests update agent rows directly behind the resource cache.
+   */
+  static async refetch(
+    auth: Authenticator,
+    agentId: string,
+    {
+      agentVersion,
+      dangerouslySkipFetchCheck,
+    }: { agentVersion?: number; dangerouslySkipFetchCheck?: boolean } = {}
+  ): Promise<AgentResource | null> {
+    if (!isGlobalAgentId(agentId)) {
+      await AgentResource.invalidateCache(
+        auth.getNonNullableWorkspace().id,
+        agentId
+      );
+    }
+    const [agent] =
+      agentVersion === undefined
+        ? await AgentResource.fetchByIds(auth, [agentId], {
+            dangerouslySkipFetchCheck,
+          })
+        : await AgentResource.fetchByIdsAndVersions(
+            auth,
+            [{ agentId, agentVersion }],
+            { dangerouslySkipFetchCheck }
+          );
+    return agent ?? null;
   }
 }

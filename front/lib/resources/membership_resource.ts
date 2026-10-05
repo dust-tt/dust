@@ -67,6 +67,7 @@ export type MembershipsPaginationParams = {
 export type PoolCapOverrideSnapshot = {
   poolCapOverrideAwuCredits: number | null;
   poolCapOverrideExpiresAt: Date | null;
+  poolCapOverridePreviousAwuCredits: number | null;
 };
 
 type MembershipsWithTotal = {
@@ -277,6 +278,24 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       total: count,
       nextPageParams,
     };
+  }
+
+  static async filterActiveMembers({
+    users,
+    workspace,
+    transaction,
+  }: {
+    users: UserResource[];
+    workspace: LightWorkspaceType;
+    transaction?: Transaction;
+  }): Promise<UserResource[]> {
+    const { memberships } = await this.getActiveMemberships({
+      users,
+      workspace,
+      transaction,
+    });
+    const activeUserModelIds = new Set(memberships.map((m) => m.userId));
+    return users.filter((user) => activeUserModelIds.has(user.id));
   }
 
   /**
@@ -1300,6 +1319,12 @@ export class MembershipResource extends BaseResource<MembershipModel> {
    * Caller of this method should call `ServerSideTracking.trackUpdateMembershipRole`. Prefer
    * `updateMembershipRoleAndTrack` from `@app/lib/api/membership` which handles it.
    */
+  /**
+   * @cc [owner:rfrenoy,label:security;backend] role-write-covers-unended-rows
+   * A role update MUST be written to every membership row of the (user, workspace) whose
+   * `endAt` is null or not in the past, including a scheduled seat-change row that has not
+   * started yet. A scheduled row MUST NOT retain a role the active row no longer carries.
+   */
   static async updateMembershipRole({
     user,
     workspace,
@@ -1379,7 +1404,16 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
       await MembershipModel.update(
         { role: newRole },
-        { where: { id: membership.id }, transaction }
+        {
+          where: {
+            userId: user.id,
+            workspaceId: workspace.id,
+            endAt: {
+              [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }],
+            },
+          },
+          transaction,
+        }
       );
 
       const workspaceId = workspace.sId;
@@ -1577,18 +1611,20 @@ export class MembershipResource extends BaseResource<MembershipModel> {
    * letting the seat-type default apply. Callers are responsible for syncing
    * the derived Metronome alerts.
    *
-   * `poolCapOverrideExpiresAt` schedules an automatic revert back to the
-   * seat-type default (see the `spend_limit_expiration` Temporal sweep).
-   * Meaningless — and ignored by enforcement — when
-   * `poolCapOverrideAwuCredits` is null.
+   * `poolCapOverrideExpiresAt` schedules an automatic revert to
+   * `poolCapOverridePreviousAwuCredits` (see the `spend_limit_expiration`
+   * Temporal sweep). Both expiry fields are meaningless — and ignored by
+   * enforcement — when `poolCapOverrideAwuCredits` is null.
    */
   async updatePoolCapOverride(
     {
       poolCapOverrideAwuCredits,
       poolCapOverrideExpiresAt,
+      poolCapOverridePreviousAwuCredits,
     }: {
       poolCapOverrideAwuCredits: number | null;
       poolCapOverrideExpiresAt?: Date | null;
+      poolCapOverridePreviousAwuCredits?: number | null;
     },
     transaction?: Transaction
   ): Promise<void> {
@@ -1596,6 +1632,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       {
         poolCapOverrideAwuCredits,
         poolCapOverrideExpiresAt: poolCapOverrideExpiresAt ?? null,
+        poolCapOverridePreviousAwuCredits:
+          poolCapOverridePreviousAwuCredits ?? null,
       },
       transaction
     );
@@ -1608,6 +1646,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     return {
       poolCapOverrideAwuCredits: this.poolCapOverrideAwuCredits,
       poolCapOverrideExpiresAt: this.poolCapOverrideExpiresAt,
+      poolCapOverridePreviousAwuCredits: this.poolCapOverridePreviousAwuCredits,
     };
   }
 
@@ -1720,6 +1759,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
           // it's the pool-only portion, independent of the seat allowance.
           poolCapOverrideAwuCredits: this.poolCapOverrideAwuCredits,
           poolCapOverrideExpiresAt: this.poolCapOverrideExpiresAt,
+          poolCapOverridePreviousAwuCredits:
+            this.poolCapOverridePreviousAwuCredits,
         },
         { transaction }
       );

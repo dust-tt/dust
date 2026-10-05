@@ -15,27 +15,34 @@ vi.mock("@app/lib/api/sandbox_functions/events", async (importOriginal) => {
     >();
   return {
     ...mod,
+    getSandboxFunctionInvocationEventsBatch: vi.fn(),
     getSandboxFunctionInvocationEvents: vi.fn(),
   };
 });
 
-import { getSandboxFunctionInvocationEvents } from "@app/lib/api/sandbox_functions/events";
+import {
+  getSandboxFunctionInvocationEvents,
+  getSandboxFunctionInvocationEventsBatch,
+} from "@app/lib/api/sandbox_functions/events";
 
-function getEvents({
-  workspaceId,
-  functionId,
-  invocationId,
-}: {
-  workspaceId: string;
-  functionId: string;
-  invocationId: string;
-}) {
-  return honoApp.request(
-    `/api/sse/w/${workspaceId}/sandbox-functions/${functionId}/invocations/${invocationId}/events`
-  );
-}
+describe.each([
+  "",
+  "/poll",
+])("GET /api/sse/w/[wId]/sandbox-functions/[functionId]/invocations/[invocationId]/events%s", (suffix) => {
+  function getEvents({
+    workspaceId,
+    functionId,
+    invocationId,
+  }: {
+    workspaceId: string;
+    functionId: string;
+    invocationId: string;
+  }) {
+    return honoApp.request(
+      `/api/sse/w/${workspaceId}/sandbox-functions/${functionId}/invocations/${invocationId}/events${suffix}`
+    );
+  }
 
-describe("GET /api/sse/w/[wId]/sandbox-functions/[functionId]/invocations/[invocationId]/events", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -60,6 +67,10 @@ describe("GET /api/sse/w/[wId]/sandbox-functions/[functionId]/invocations/[invoc
       asyncIteratorFrom([resultEvent])
     );
 
+    vi.mocked(getSandboxFunctionInvocationEventsBatch).mockResolvedValue([
+      resultEvent,
+    ]);
+
     const response = await getEvents({
       workspaceId: workspace.sId,
       functionId: sandboxFunction.sId,
@@ -67,11 +78,17 @@ describe("GET /api/sse/w/[wId]/sandbox-functions/[functionId]/invocations/[invoc
     });
 
     expect(response.status).toBe(200);
-    const payloads = parseSseDataPayloads(await response.text());
+    const payloads: string[] = suffix
+      ? (await response.json()).events
+      : parseSseDataPayloads(await response.text());
     expect(payloads.map((p) => JSON.parse(p).data.result)).toEqual([
       { hello: "world" },
     ]);
-    expect(getSandboxFunctionInvocationEvents).toHaveBeenCalledWith({
+    expect(
+      suffix
+        ? getSandboxFunctionInvocationEventsBatch
+        : getSandboxFunctionInvocationEvents
+    ).toHaveBeenCalledWith({
       invocationId: invocation.sId,
       lastEventId: null,
       signal: expect.any(AbortSignal),
@@ -88,7 +105,11 @@ describe("GET /api/sse/w/[wId]/sandbox-functions/[functionId]/invocations/[invoc
     });
 
     expect(response.status).toBe(404);
-    expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();
+    expect(
+      suffix
+        ? getSandboxFunctionInvocationEventsBatch
+        : getSandboxFunctionInvocationEvents
+    ).not.toHaveBeenCalled();
   });
 
   it("hides another member's invocation from a Frame reader without use rights", async () => {
@@ -106,7 +127,11 @@ describe("GET /api/sse/w/[wId]/sandbox-functions/[functionId]/invocations/[invoc
     });
 
     expect(response.status).toBe(404);
-    expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();
+    expect(
+      suffix
+        ? getSandboxFunctionInvocationEventsBatch
+        : getSandboxFunctionInvocationEvents
+    ).not.toHaveBeenCalled();
   });
 
   it("requires Frames v2 to be enabled", async () => {
@@ -126,6 +151,10 @@ describe("GET /api/sse/w/[wId]/sandbox-functions/[functionId]/invocations/[invoc
         message: "Frame functions are not enabled for this workspace.",
       },
     });
-    expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();
+    expect(
+      suffix
+        ? getSandboxFunctionInvocationEventsBatch
+        : getSandboxFunctionInvocationEvents
+    ).not.toHaveBeenCalled();
   });
 });

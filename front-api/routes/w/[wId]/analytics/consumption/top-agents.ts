@@ -9,8 +9,6 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { consumptionAnalyticsApp } from "./context";
 
-export type { GetConsumptionTopAgentsResponse };
-
 // Mounted at /api/w/:wId/analytics/consumption/top-agents.
 // Also mounted at /api/w/:wId/me/analytics/consumption/top-agents.
 const app = consumptionAnalyticsApp();

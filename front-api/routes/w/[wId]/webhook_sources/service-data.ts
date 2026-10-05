@@ -1,10 +1,10 @@
 import config from "@app/lib/api/config";
 import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import { WEBHOOK_SERVICES } from "@app/lib/api/triggers/built-in-webhooks/services";
+import { isWebhookProvider } from "@app/lib/triggers/webhooks";
 import logger from "@app/logger/logger";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { GetServiceDataResponseType } from "@app/types/triggers/webhooks";
-import { isWebhookProvider } from "@app/types/triggers/webhooks";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";

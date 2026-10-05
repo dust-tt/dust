@@ -1,6 +1,7 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
+import { formatDate } from "@app/lib/i18n/format";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 import { isSameDay } from "date-fns";
@@ -23,11 +24,6 @@ import type {
 } from "./models/types";
 
 export type MessageVisibility = "visible" | "deleted" | "pending";
-
-export type ConversationMessageReactions = {
-  messageId: string;
-  reactions: MessageReactionType[];
-}[];
 
 /**
  * @swaggerschema PrivateReaction (swagger_private_schemas.ts)
@@ -192,6 +188,26 @@ export type RichMentionWithStatus =
       dismissed: boolean;
       status: "agent_restricted_by_space_usage";
     });
+
+export type RichMentionRequiringValidation = Extract<
+  RichMentionWithStatus,
+  {
+    status:
+      | "pending_conversation_access"
+      | "pending_project_membership"
+      | "agent_restricted_by_space_usage";
+  }
+>;
+
+export function isMentionRequiringValidation(
+  mention: RichMentionWithStatus
+): mention is RichMentionRequiringValidation {
+  return (
+    mention.status === "pending_conversation_access" ||
+    mention.status === "pending_project_membership" ||
+    mention.status === "agent_restricted_by_space_usage"
+  );
+}
 
 /**
  * @swaggerschema PrivateUserMessage (swagger_private_schemas.ts)
@@ -390,10 +406,6 @@ export type InlineActivityStep =
       toolName: string | null;
       step?: number;
     };
-
-export type ParsedContentItem =
-  | { kind: "reasoning"; content: string }
-  | { kind: "action"; action: AgentMCPActionWithOutputType };
 
 /**
  * @swaggerschema PrivateAgentMessage (swagger_private_schemas.ts)
@@ -677,7 +689,7 @@ export function getConversationDisplayTitle(
   const createdDate = new Date(conversation.created);
   return isSameDay(createdDate, now)
     ? "New Conversation"
-    : `Conversation from ${createdDate.toLocaleDateString()}`;
+    : `Conversation from ${formatDate(createdDate)}`;
 }
 
 /**
@@ -804,16 +816,6 @@ export type UserMessagePromotedEvent = {
   type: "user_message_promoted";
   created: number;
   messageId: string;
-};
-
-// Event sent when the user message is created.
-export type UserMessageErrorEvent = {
-  type: "user_message_error";
-  created: number;
-  error: {
-    code: string;
-    message: string;
-  };
 };
 
 // Event sent when a new message is created (empty) and the agent is about to be executed.

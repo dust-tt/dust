@@ -1,9 +1,7 @@
 import { getWebhookFilterGeneration } from "@app/lib/api/assistant/configuration/triggers/webhook_filter";
+import { WEBHOOK_PRESETS } from "@app/lib/api/triggers/webhook_presets";
+import { WEBHOOK_PROVIDERS } from "@app/lib/triggers/webhooks";
 import type { PostWebhookFilterGeneratorResponseBody } from "@app/types/api/assistant/configuration/triggers/webhook_filter_generator";
-import {
-  WEBHOOK_PRESETS,
-  WEBHOOK_PROVIDERS,
-} from "@app/types/triggers/webhooks";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";

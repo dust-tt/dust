@@ -10,17 +10,6 @@ const KNOWLEDGE_TAG_REGEX_GLOBAL = new RegExp(
   "g"
 );
 
-export function extractKnowledgeTagIds(content: string): string[] {
-  const ids = [...content.matchAll(KNOWLEDGE_TAG_REGEX_GLOBAL)].flatMap(
-    (match) => {
-      const id = /\bid="([^"]+)"/.exec(match[1])?.[1];
-      return id ? [id] : [];
-    }
-  );
-
-  return [...new Set(ids)];
-}
-
 function normalizeTagAttributes(attributes: string): string {
   return [...attributes.matchAll(/(\w+)="([^"]*)"/g)]
     .map(([, key, value]) => `${key}="${value}"`)

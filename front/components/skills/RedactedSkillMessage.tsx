@@ -1,10 +1,11 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import {
+  useInvalidateSkills,
   useSkill,
-  useSkillsWithRelations,
 } from "@app/lib/swr/skill_configurations";
 import {
+  REQUESTABLE_SPACE_KINDS,
   useAddSpaceMembers,
   useSpaces,
   useSpacesAsAdmin,
@@ -25,11 +26,17 @@ export function RedactedSkillMessage({
   owner: LightWorkspaceType;
 }) {
   // Spaces the caller is a member of, and every space of the workspace to name the missing ones.
-  const { spaces: memberSpaces } = useSpaces({
-    workspaceId: owner.sId,
-    kinds: "all",
-  });
-  const { spaces: allSpaces } = useSpacesAsAdmin({ workspaceId: owner.sId });
+  const { spaces: memberSpaces, isSpacesLoading: isMemberSpacesLoading } =
+    useSpaces({
+      workspaceId: owner.sId,
+      kinds: "all",
+    });
+  const { spaces: allSpaces, isSpacesLoading: isAllSpacesLoading } =
+    useSpacesAsAdmin({
+      workspaceId: owner.sId,
+      kinds: REQUESTABLE_SPACE_KINDS,
+    });
+  const isSpacesLoading = isMemberSpacesLoading || isAllSpacesLoading;
   const { user } = useAuth();
   const addSpaceMembers = useAddSpaceMembers({ owner });
   const { mutateSkillRegardlessOfQueryParams: mutateSkill } = useSkill({
@@ -37,13 +44,7 @@ export function RedactedSkillMessage({
     skillId: skill.sId,
     disabled: true, // We only use the hook to mutate the cache
   });
-  const {
-    mutateSkillsWithRelationsRegardlessOfQueryParams: mutateSkillsWithRelations,
-  } = useSkillsWithRelations({
-    owner,
-    status: "active",
-    disabled: true, // We only use the hook to mutate the cache
-  });
+  const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
   const [isJoiningSpaces, setIsJoiningSpaces] = useState(false);
   const confirm = useContext(ConfirmContext);
 
@@ -64,9 +65,7 @@ export function RedactedSkillMessage({
     }
     const confirmed = await confirm({
       title: "Security notice",
-      message:
-        `You are about to join ${missingSpaceIds.length === 1 ? "this space" : "these spaces"}. ` +
-        "This action will be logged for security purposes. Do you want to proceed?",
+      message: `You are about to join ${missingSpaceIds.length === 1 ? "this space" : "these spaces"}. This action will be logged for security purposes. Do you want to proceed?`,
       validateLabel: "Proceed",
       validateVariant: "warning",
     });
@@ -92,7 +91,7 @@ export function RedactedSkillMessage({
         { concurrency: 4 }
       );
       void mutateSkill();
-      void mutateSkillsWithRelations();
+      void invalidateSkills();
     } finally {
       setIsJoiningSpaces(false);
     }
@@ -118,8 +117,8 @@ export function RedactedSkillMessage({
                     ? `Join space ${missingSpaceNames[0]}`
                     : "Join all required spaces"
                 }
-                isLoading={isJoiningSpaces}
-                disabled={isJoiningSpaces}
+                isLoading={isSpacesLoading || isJoiningSpaces}
+                disabled={isSpacesLoading || isJoiningSpaces}
                 onClick={() => {
                   void handleJoinSpaces();
                 }}

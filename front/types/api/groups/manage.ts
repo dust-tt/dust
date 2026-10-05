@@ -4,12 +4,13 @@ import {
   GROUP_GRANTABLE_ROLES,
   GROUP_GRANTABLE_SEAT_TYPES,
 } from "@app/types/groups";
-import type { UserType } from "@app/types/user";
+import type { LightUserType } from "@app/types/user";
 import { z } from "zod";
 
 export const CreateGroupBodySchema = z.object({
   name: z.string().min(1),
   memberIds: z.array(z.string()).min(1),
+  managerIds: z.array(z.string()).optional(),
 });
 
 export type PostGroupResponseBody = {
@@ -18,8 +19,8 @@ export type PostGroupResponseBody = {
 
 export type GetGroupResponseBody = {
   group: GroupWithAllowedActions;
-  members: UserType[];
-  managers: UserType[];
+  members: LightUserType[];
+  managers: LightUserType[];
 };
 
 export const PatchGroupBodySchema = z.object({
@@ -30,8 +31,8 @@ export const PatchGroupBodySchema = z.object({
 
 export type PatchGroupResponseBody = {
   group: GroupWithAllowedActions;
-  members: UserType[];
-  managers: UserType[];
+  members: LightUserType[];
+  managers: LightUserType[];
 };
 
 export type DeleteGroupResponseBody = {

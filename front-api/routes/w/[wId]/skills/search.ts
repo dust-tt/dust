@@ -5,7 +5,6 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
 
 // Mounted at /api/w/:wId/skills/search.
 const app = workspaceApp();
@@ -13,12 +12,12 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.post(
   "/",
-  withFeatureFlag("skills_search"),
   validate("json", SearchSkillsQuerySchema),
   async (ctx): HandlerResult<SearchSkillsResponseBody> => {
     const auth = ctx.get("auth");
     const {
       query,
+      searchType,
       limit,
       offset,
       permissionFiltering,
@@ -34,6 +33,8 @@ app.post(
       facets,
       sortBy,
       sortOrder,
+      defaultToFavorites,
+      excludeSkillId,
     } = ctx.req.valid("json");
     if (permissionFiltering === "redact_unreadable" && !auth.isAdmin()) {
       return apiError(ctx, {
@@ -46,10 +47,13 @@ app.post(
     }
     const result = await searchSkillListings(auth, {
       searchTerm: query,
+      searchType,
       limit,
       offset,
       sortBy,
       sortOrder,
+      defaultToFavorites,
+      excludeSkillId,
       permissionFiltering,
       facets,
       filters: {

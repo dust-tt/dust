@@ -506,8 +506,8 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     isRestricted: undefined,
     isPreview: false,
     tools_arguments_requiring_approval: {
-      post_message: ["channel"],
-      schedule_message: ["channel"],
+      post_message: ["to"],
+      schedule_message: ["to"],
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1257,8 +1257,7 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: false,
-    isRestricted: ({ featureFlags }) =>
-      !featureFlags.includes("conversational_building"),
+    isRestricted: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1359,32 +1358,6 @@ type AutoServerKeys<T> = {
 export type AutoInternalMCPServerNameType = AutoServerKeys<
   typeof INTERNAL_MCP_SERVERS
 >;
-
-export function validateToolInputs<
-  S extends InternalMCPServerNameType,
-  T extends InternalMCPToolNameType<S>,
->(
-  serverName: S,
-  toolName: T,
-  inputs: Record<string, unknown>
-): inputs is z.infer<
-  z.ZodObject<
-    Extract<
-      (typeof INTERNAL_MCP_SERVERS)[S]["metadata"]["tools"][number],
-      { name: T }
-    >["schema"]
-  >
-> {
-  const toolMetadata = INTERNAL_MCP_SERVERS[serverName].metadata.tools.find(
-    (tool) => tool.name === toolName
-  );
-  // The type enforces that this exists, but we return false out of retro-compatibility over tool/server name changes.
-  if (!toolMetadata) {
-    return false;
-  }
-
-  return z.object(toolMetadata.schema).safeParse(inputs).success;
-}
 
 export function isAutoInternalMCPServerName(
   name: InternalMCPServerNameType

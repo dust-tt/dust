@@ -49,6 +49,7 @@ import { recordToolDuration } from "@app/lib/api/sandbox/instrumentation";
 import { ensureConversationSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { resolvePodForRuntimeOwner } from "@app/lib/api/sandbox/owner";
 import type { ExecResult } from "@app/lib/api/sandbox/provider";
+import { isSandboxExecTimeoutError } from "@app/lib/api/sandbox/provider";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -60,10 +61,7 @@ import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import type { EgressPolicy } from "@app/types/sandbox/egress_policy";
 import { normalizeEgressPolicyDomain } from "@app/types/sandbox/egress_policy";
 import { isDevelopment } from "@app/types/shared/env";
-import {
-  isComputerFeatureEnabled,
-  isFramesV2FunctionsEnabled,
-} from "@app/types/shared/feature_flags";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -307,15 +305,15 @@ export async function createSandboxTools(
   const tools = buildTools(SANDBOX_TOOLS_METADATA, handlers);
 
   // Both require Computer. add_egress_domain is also gated on the self-serve
-  // toggle; request_egress_domain on Frame functions instead — so it only
-  // appears where its Pod/workspace review settings exist, never the toggle.
+  // toggle; request_egress_domain requires only the Computer, matching the
+  // Pod/workspace review surfaces it files into.
   const flags = await getFeatureFlags(auth);
   const computerEnabled = isComputerFeatureEnabled(flags);
   const excluded = new Set<string>();
   if (!computerEnabled || !isSandboxAgentEgressRequestsAllowed(auth)) {
     excluded.add(ADD_EGRESS_DOMAIN_TOOL_NAME);
   }
-  if (!computerEnabled || !isFramesV2FunctionsEnabled(flags)) {
+  if (!computerEnabled) {
     excluded.add(REQUEST_EGRESS_DOMAIN_TOOL_NAME);
   }
 
@@ -517,7 +515,11 @@ export async function runSandboxBashTool(
   );
 
   if (execResult.isErr()) {
-    return new Err(new MCPError(execResult.error.message));
+    return new Err(
+      new MCPError(execResult.error.message, {
+        tracked: !isSandboxExecTimeoutError(execResult.error),
+      })
+    );
   }
 
   let denyLogEntries: string[] | undefined;

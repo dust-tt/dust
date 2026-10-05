@@ -12,6 +12,7 @@ import {
   getBillingCycle,
   getPriceAsString,
 } from "@app/lib/client/subscription";
+import { formatDate } from "@app/lib/i18n/format";
 import { useCreditPurchaseInfo, useCredits } from "@app/lib/swr/credits";
 import type { CreditDisplayData, CreditType } from "@app/types/credits";
 import type { SubscriptionType } from "@app/types/plan";
@@ -95,7 +96,7 @@ interface UsageSectionProps {
 }
 
 function formatDateShort(date: Date): string {
-  return date.toLocaleDateString(undefined, {
+  return formatDate(date, {
     month: "short",
     day: "numeric",
     year: "numeric",

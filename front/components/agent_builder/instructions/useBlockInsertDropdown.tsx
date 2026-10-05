@@ -63,7 +63,7 @@ const BLOCK_SUGGESTIONS: BlockSuggestion[] = [
   },
 ];
 
-export interface BlockInsertDropdownState {
+interface BlockInsertDropdownState {
   isOpen: boolean;
   query: string;
   suggestions: BlockSuggestion[];

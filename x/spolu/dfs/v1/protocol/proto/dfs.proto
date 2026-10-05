@@ -1,0 +1,115 @@
+syntax = "proto3";
+package dfs.v1;
+
+// Authentication is a bearer key in authorization metadata. Filesystem RPCs derive workspace and
+// grants from the session. Workspace/grant administration uses workspace or server authority.
+service Dfs {
+  rpc CreateWorkspace(CreateWorkspaceRequest) returns (Workspace);
+  rpc CreateSession(CreateSessionRequest) returns (Session);
+  rpc CurrentSession(Empty) returns (Session);
+  rpc CloseSession(Empty) returns (Empty);
+  rpc ListGrants(ListGrantsRequest) returns (GrantPage);
+  rpc UpdateGrants(UpdateGrantsRequest) returns (Object);
+  rpc Stat(ObjectRequest) returns (Object);
+  rpc Lookup(LookupRequest) returns (Object);
+  rpc List(ListRequest) returns (Page);
+  rpc Create(CreateRequest) returns (Mutation);
+  rpc Update(UpdateRequest) returns (Mutation);
+  rpc Rename(RenameRequest) returns (Mutation);
+  rpc Remove(RemoveRequest) returns (Mutation);
+  rpc Read(ReadRequest) returns (ReadResponse);
+  rpc Write(WriteRequest) returns (Mutation);
+  rpc Fsync(ObjectRequest) returns (Object);
+  rpc SearchFiles(SearchFilesRequest) returns (SearchFilesResponse);
+  rpc GetIndexStatus(IndexStatusRequest) returns (IndexStatus);
+}
+message Empty {}
+message Timestamp { int64 seconds = 1; uint32 nanos = 2; }
+// Parent links remain private. IDs also accept root/shared for projected directories on reads.
+message Object {
+  string id = 1;
+  bool directory = 2;
+  uint64 size = 3;
+  uint64 version = 4;
+  string mime_type = 5;
+  map<string, bytes> xattrs = 6;
+  uint32 mode = 7;
+  Timestamp atime = 8;
+  Timestamp mtime = 9;
+  Timestamp ctime = 10;
+}
+message Expected { string id = 1; uint64 version = 2; }
+message Mutation { Object object = 1; repeated Object related = 2; }
+message Entry { string name = 1; Object object = 2; }
+message Page { repeated Entry entries = 1; optional string next_after = 2; }
+message CreateWorkspaceRequest { string workspace_id = 1; repeated string root_grants = 2; }
+message Workspace { string workspace_id = 1; string root_id = 2; string workspace_key = 3; }
+message CreateSessionRequest { string workspace_id = 1; repeated string grants = 2; }
+message Session {
+  string id = 1; string workspace_id = 2; repeated string grants = 3;
+  string session_key = 4; uint64 expires_at = 5; string root_id = 6;
+}
+message ListGrantsRequest {
+  string workspace_id = 1; string object_id = 2; optional string after = 3; uint32 limit = 4;
+}
+message GrantPage { repeated string grants = 1; optional string next_after = 2; uint64 version = 3; }
+message GrantChange { string grant = 1; bool attached = 2; }
+message UpdateGrantsRequest {
+  string workspace_id = 1; string object_id = 2; uint64 expected_version = 3;
+  repeated GrantChange changes = 4;
+}
+message ObjectRequest { string object_id = 1; }
+message LookupRequest { string parent_id = 1; string name = 2; }
+message ListRequest { string directory_id = 1; optional string after = 2; uint32 limit = 3; }
+message CreateRequest {
+  string parent_id = 1; string name = 2; uint64 expected_parent_version = 3;
+  bool directory = 4; optional string mime_type = 5; uint32 mode = 6;
+  map<string, bytes> xattrs = 7;
+}
+message XattrChange { string name = 1; optional bytes value = 2; }
+// A size patch is truncate. All requested changes publish together with one version increment.
+message UpdateRequest {
+  string object_id = 1; uint64 expected_version = 2;
+  optional string mime_type = 3; repeated XattrChange xattrs = 4;
+  optional uint32 mode = 5; Timestamp atime = 6; Timestamp mtime = 7; optional uint64 size = 8;
+}
+// Expected versions include the source, its old parent, the destination parent, and any replacement.
+message RenameRequest {
+  string object_id = 1; string parent_id = 2; string name = 3; bool replace = 4;
+  repeated Expected expected = 5;
+}
+message RemoveRequest { string object_id = 1; bool directory = 2; repeated Expected expected = 3; }
+message ReadRequest { string object_id = 1; uint64 offset = 2; uint32 length = 3; optional uint64 version = 4; }
+message ReadResponse { bytes data = 1; uint64 version = 2; uint64 size = 3; }
+message WriteRequest {
+  string object_id = 1; uint64 expected_version = 2; uint64 offset = 3; bytes data = 4; bool append = 5;
+}
+// Stable details for filesystem errno mapping; public messages never include private state.
+enum ErrorCode {
+  INTERNAL = 0; INVALID_INPUT = 1; NOT_FOUND = 2; FORBIDDEN = 3; UNAUTHENTICATED = 4;
+  VERSION_CONFLICT = 5; ALREADY_EXISTS = 6; NOT_DIRECTORY = 7; IS_DIRECTORY = 8;
+  NOT_EMPTY = 9; CAPACITY = 10; UNAVAILABLE = 11; UNSUPPORTED = 12; NAME_TOO_LONG = 13;
+}
+message ErrorDetails { ErrorCode code = 1; repeated Expected current = 2; }
+
+// Search authority comes only from the session. Filters are combined with AND.
+message SearchFilter {
+  optional string name = 1;
+  optional string name_prefix = 2;
+  repeated string mime_types = 3;
+  optional uint64 min_size = 4;
+  optional uint64 max_size = 5;
+  Timestamp modified_after = 6;
+  Timestamp modified_before = 7;
+  repeated SearchXattr xattrs = 8;
+}
+// An absent value means EXISTS; a present value means byte-exact equality, including empty bytes.
+message SearchXattr { string name = 1; optional bytes value = 2; }
+message SearchFilesRequest { string query = 1; SearchFilter filter = 2; uint32 limit = 3; }
+message SearchHit { string uri = 1; Object object = 2; string name = 3; string excerpt = 4; }
+message SearchFilesResponse { repeated SearchHit hits = 1; bool partial = 2; }
+message IndexStatusRequest { string workspace_id = 1; }
+message IndexStatus {
+  uint64 pending = 1; uint64 failed = 2; uint64 skipped = 3;
+  uint64 oldest_pending_seconds = 4; Timestamp last_commit = 5; bool backfilling = 6;
+}

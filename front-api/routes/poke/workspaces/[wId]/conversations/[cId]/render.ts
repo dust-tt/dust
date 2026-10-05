@@ -1,7 +1,6 @@
 import { buildToolSpecification } from "@app/lib/actions/mcp";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
@@ -15,6 +14,8 @@ import {
 import { getStreamEndpointFromLegacyModelId } from "@app/lib/api/llm/selectPreferredEndpointForWorkspace";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { constructProjectContext } from "@app/lib/resources/skill/code_defined/global/projects";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -76,10 +77,10 @@ app.post(
       onMissingAction,
     } = ctx.req.valid("json");
 
-    const [conversationRes, agentConfiguration] = await Promise.all([
+    const [conversationRes, agent] = await Promise.all([
       // biome-ignore lint/plugin/noExpensiveConversationFetch: intentional full conversation load
       getConversation(auth, cId, true),
-      getAgentConfiguration(auth, { agentId, variant: "full" }),
+      AgentResource.fetchById(auth, agentId),
     ]);
 
     if (conversationRes.isErr()) {
@@ -93,7 +94,7 @@ app.post(
     }
     const conversation: ConversationType = conversationRes.value;
 
-    if (!agentConfiguration) {
+    if (!agent) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -102,6 +103,10 @@ app.post(
         },
       });
     }
+
+    // The conversation rendering takes the configuration JSON; poke's superuser authenticator views
+    // the agent's content (see `poke-agent-content-access`).
+    const [agentConfiguration] = await toAgentConfigurations(auth, [agent]);
 
     // The agent's configured model can be a model stream (`auto`, `auto_fast`,
     // `auto_complex`): a sentinel that never names a concrete model and has no

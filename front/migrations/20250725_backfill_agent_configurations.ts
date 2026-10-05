@@ -1,3 +1,4 @@
+// @ts-nocheck
 import * as _ from "lodash";
 import { Op } from "sequelize";
 

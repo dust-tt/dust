@@ -176,6 +176,44 @@ describe("PATCH/DELETE /api/w/:wId/sandbox/env-vars/:id", () => {
     });
   });
 
+  it("rejects a single-label allowed domain and keeps the stored list", async () => {
+    const { workspace, auth } = await setupTest();
+    const scope = {
+      kind: "workspace" as const,
+      workspace: auth.getNonNullableWorkspace(),
+    };
+
+    const upsert = await SandboxEnvVarResource.upsert(auth, scope, {
+      name: "API_TOKEN",
+      value: "super-secret-token",
+      kind: "https_secret",
+      allowedDomains: ["api.example.com"],
+    });
+    if (upsert.isErr()) {
+      throw upsert.error;
+    }
+
+    const response = await patchEnvVar(
+      workspace.sId,
+      upsert.value.resource.sId,
+      { allowedDomains: ["localhost"] }
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      error: {
+        type: "invalid_request_error",
+        message: expect.stringContaining("at least two DNS labels"),
+      },
+    });
+    const stored = await SandboxEnvVarResource.fetchByName(
+      auth,
+      scope,
+      "API_TOKEN"
+    );
+    expect(stored?.allowedDomains).toEqual(["api.example.com"]);
+  });
+
   it("updates allowed domains on an HTTPS secret", async () => {
     const { workspace, auth } = await setupTest();
 

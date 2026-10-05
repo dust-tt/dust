@@ -100,11 +100,11 @@ struct SnakeGameView: View {
                 RoundedRectangle(cornerRadius: 3)
                     .fill(Color.dustMuted)
                     .frame(width: size, height: size)
-                SparkleIcon.sparkles.image
+                SparkleIcon.stars02.image
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(width: size * 0.7, height: size * 0.7)
-                    .foregroundStyle(Color.golden500)
+                    .foregroundStyle(Color.info500)
             }
         } else {
             RoundedRectangle(cornerRadius: 3)

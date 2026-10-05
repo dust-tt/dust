@@ -521,6 +521,7 @@ export function ConversationMenu({
                       icon={getSpaceIcon(pod)}
                       label={pod.name}
                       truncateText
+                      tooltip={pod.name}
                       onClick={async () => moveToPod(pod)}
                     />
                   ))

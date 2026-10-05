@@ -2,7 +2,11 @@ import {
   filterInputBarSlashCommandItems,
   getInputBarSlashCommandItems,
 } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionItems";
-import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import type {
+  InputBarSlashCommand,
+  InputBarSlashMenuMode,
+} from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import { isRunCommandSlashCommand } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { AttachContextSubMenuDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/AttachContextSubMenuDropdown";
 import { applyAttachContextSelection } from "@app/components/editor/extensions/shared/slash_suggestion/applyAttachContextSelection";
 import { buildSlashCommandSections } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
@@ -33,6 +37,16 @@ import {
   useRef,
 } from "react";
 
+const ATTACH_ONLY_FILES_SECTION_LABEL = "Files";
+
+/**
+ * @cc [owner:smb2268,label:product] attach-only-menu-is-locked
+ * In the `attach-only` mode the dropdown MUST render the knowledge browser as the whole menu, with
+ * the text after "/" as its query: no command list, no Back row, no capabilities fetched, and
+ * Escape or Backspace at the browser's root closing the menu. The composer's "Upload file" command,
+ * when it has one, MUST be offered as the last section of the browser's root, after the spaces, so
+ * the first space stays the default highlight. The `commands` mode is unchanged.
+ */
 export const InputBarSlashSuggestionDropdown = forwardRef<
   SlashCommandDropdownRef,
   Pick<
@@ -51,6 +65,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     >;
     owner: LightWorkspaceType;
     slashCommandsRef: RefObject<InputBarSlashCommand[]>;
+    slashMenuModeRef: RefObject<InputBarSlashMenuMode | null>;
     spaceIdRef: RefObject<string | null | undefined>;
   }
 >(
@@ -71,12 +86,14 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       query,
       range,
       slashCommandsRef,
+      slashMenuModeRef,
       spaceIdRef,
     },
     ref
   ) => {
     const dropdownRef = useRef<SlashCommandDropdownRef>(null);
     const subMenuRef = useRef<SlashCommandDropdownRef>(null);
+    const isAttachOnly = slashMenuModeRef.current === "attach-only";
     const {
       activeFrame: stackFrame,
       pop,
@@ -132,19 +149,20 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     // Back then relies on `pop` deleting the text after "/", not on the (empty) stack.
     const queryFrame = useMemo(
       () =>
-        stackFrame
+        stackFrame || isAttachOnly
           ? null
           : resolveSlashSubMenuFromQuery({
               commandItems: allCommandItems,
               query,
             }),
-      [allCommandItems, query, stackFrame]
+      [allCommandItems, isAttachOnly, query, stackFrame]
     );
     const activeFrame = stackFrame ?? queryFrame?.frame ?? null;
     const subMenuQuery = queryFrame?.query ?? query;
 
     const { capabilityItems, isLoading, resolvedQuery } =
       useInputBarSlashCommandCapabilities({
+        disabled: isAttachOnly,
         owner,
         query,
       });
@@ -172,12 +190,24 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       ref,
       () => ({
         onKeyDown: ({ event }) => {
+          if (isAttachOnly) {
+            return subMenuRef.current?.onKeyDown({ event }) ?? false;
+          }
+
           if (
             activeFrame?.subMenuId === ATTACH_CONTEXT_SUB_MENU_ID ||
             activeFrame?.subMenuId === PICK_MODEL_SUB_MENU_ID
           ) {
-            // The command text is still in the editor: let Backspace edit it.
+            // The command text is still in the editor: Backspace edits it, except that with an
+            // empty sub-menu query below the browser's root it goes up a level, as from the stack.
             if (queryFrame && event.key === "Backspace") {
+              if (
+                subMenuQuery.trim().length === 0 &&
+                subMenuRef.current?.navigateUp?.()
+              ) {
+                event.preventDefault();
+                return true;
+              }
               return false;
             }
 
@@ -201,8 +231,46 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
           return dropdownRef.current?.onKeyDown({ event }) ?? false;
         },
       }),
-      [activeFrame?.subMenuId, flatItems.length, onClose, query, queryFrame]
+      [
+        activeFrame?.subMenuId,
+        flatItems.length,
+        isAttachOnly,
+        onClose,
+        query,
+        queryFrame,
+        subMenuQuery,
+      ]
     );
+
+    if (isAttachOnly) {
+      // The browser is the whole menu, so the file upload command rides along at its root.
+      const uploadItems = allCommandItems.filter(
+        (item) =>
+          isRunCommandSlashCommand<InputBarSlashCommand>(item) &&
+          item.data.command.id === "upload-file"
+      );
+      return (
+        <AttachContextSubMenuDropdown
+          ref={subMenuRef}
+          clientRect={clientRect}
+          conversationId={conversationIdRef?.current ?? null}
+          editor={editor}
+          onClose={onClose}
+          onRootSectionSelect={command}
+          onSelect={handleAttachContextSelect}
+          owner={owner}
+          query={query}
+          range={range}
+          rootSection={
+            uploadItems.length > 0
+              ? { label: ATTACH_ONLY_FILES_SECTION_LABEL, items: uploadItems }
+              : undefined
+          }
+          spaceId={spaceIdRef.current ?? null}
+          useCase="conversation-input"
+        />
+      );
+    }
 
     if (activeFrame?.subMenuId === ATTACH_CONTEXT_SUB_MENU_ID) {
       return (

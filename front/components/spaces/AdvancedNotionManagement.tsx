@@ -1,4 +1,5 @@
 import { clientFetch } from "@app/lib/egress/client";
+import { formatDateTime, formatTime } from "@app/lib/i18n/format";
 import { useNotionLastSyncedUrls } from "@app/lib/swr/data_sources";
 import { GetPostNotionSyncResponseBodySchema } from "@app/types/api/spaces";
 import type { DataSourceType } from "@app/types/data_source";
@@ -118,7 +119,7 @@ export function AdvancedNotionManagement({
       accessorKey: "timestamp",
       cell: (info: CellContext<TableData, string>) => (
         <DataTable.CellContent>
-          {new Date(info.row.original.timestamp).toLocaleTimeString("en-US", {
+          {formatTime(new Date(info.row.original.timestamp), {
             hour: "2-digit",
             minute: "2-digit",
             hour12: false,
@@ -223,9 +224,7 @@ export function AdvancedNotionManagement({
         dust: data.dust,
         summary: data.summary,
       });
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-    } catch (e) {
+    } catch {
       sendNotification({
         type: "error",
         title: "Error checking URL status",
@@ -295,9 +294,7 @@ export function AdvancedNotionManagement({
         }
         await mutate();
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-    } catch (e) {
+    } catch {
       sendNotification({
         type: "error",
         title: "Error syncing Notion URLs",
@@ -375,7 +372,7 @@ export function AdvancedNotionManagement({
                       <span className="text-element-600">
                         {" "}
                         (last sync:{" "}
-                        {new Date(urlStatus.dust.lastSync).toLocaleString()})
+                        {formatDateTime(new Date(urlStatus.dust.lastSync))})
                       </span>
                     )}
                   </>

@@ -14,7 +14,6 @@ import {
   useBlocker,
   useLocation,
   useNavigate,
-  useOutletContext,
   useParams as useRouterParams,
   useSearchParams as useRouterSearchParams,
 } from "react-router-dom";
@@ -278,18 +277,6 @@ export function useAppRouter(): AppRouter {
 }
 
 export const LinkWrapper = ReactRouterLinkWrapper;
-
-/**
- * Hook to get page context (auth data) in extension
- * Uses React Router's outlet context
- */
-export function usePageContext<T>(): T | null {
-  try {
-    return useOutletContext<T>();
-  } catch {
-    return null;
-  }
-}
 
 /**
  * Hook to get route params in extension

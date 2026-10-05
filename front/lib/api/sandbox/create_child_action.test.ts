@@ -36,7 +36,6 @@ import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guard
 import { WEBSEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { computeAndStoreAgentMessageConsumptionAttribution } from "@app/lib/api/assistant/agent_message_consumption_attribution/store";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { createSandboxChildAction } from "@app/lib/api/sandbox/create_child_action";
@@ -212,7 +211,6 @@ describe("createSandboxChildAction", () => {
   ) {
     return createSandboxChildAction(auth, {
       parentActionId,
-      agentId: agentConfig.sId,
       agentVersion: agentConfig.version,
       conversationId: conversation.sId,
       agentMessageId: agentMessage.sId,
@@ -240,11 +238,14 @@ describe("createSandboxChildAction", () => {
   // Resolves the function-call name the model sees on direct calls for this
   // tool, going through the same agent configuration the child path uses.
   async function getDirectCallToolName(): Promise<string> {
-    const fullConfig = await getAgentConfiguration(auth, {
-      agentId: agentConfig.sId,
-      variant: "full",
-    });
-    const serverConfig = fullConfig?.actions
+    const agent = await AgentConfigurationFactory.refetch(
+      auth,
+      agentConfig.sId
+    );
+    if (!agent) {
+      throw new Error("Expected the agent to exist.");
+    }
+    const serverConfig = (await agent.listActions(auth))
       .filter(isServerSideMCPServerConfiguration)
       .find((a) => a.mcpServerViewId === view.sId);
     if (!serverConfig) {
@@ -446,12 +447,15 @@ describe("createSandboxChildAction", () => {
     await setToolPermission("never_ask");
     await AgentConfigurationFactory.updateTestAgent(auth, agentConfig.sId);
 
-    const latestConfig = await getAgentConfiguration(auth, {
-      agentId: agentConfig.sId,
-      variant: "full",
-    });
+    const latestAgent = await AgentConfigurationFactory.refetch(
+      auth,
+      agentConfig.sId
+    );
+    if (!latestAgent) {
+      throw new Error("Expected the agent to exist.");
+    }
     expect(
-      latestConfig?.actions
+      (await latestAgent.listActions(auth))
         .filter(isServerSideMCPServerConfiguration)
         .some((action) => action.mcpServerViewId === view.sId)
     ).toBe(false);
@@ -500,11 +504,14 @@ describe("createSandboxChildAction", () => {
       workspace.sId
     );
 
-    const fullConfig = await getAgentConfiguration(auth, {
-      agentId: agentConfig.sId,
-      variant: "full",
-    });
-    const rawConfigName = fullConfig?.actions
+    const agent = await AgentConfigurationFactory.refetch(
+      auth,
+      agentConfig.sId
+    );
+    if (!agent) {
+      throw new Error("Expected the agent to exist.");
+    }
+    const rawConfigName = (await agent.listActions(auth))
       .filter(isServerSideMCPServerConfiguration)
       .find((a) => a.mcpServerViewId === otherView.sId)?.name;
     if (!rawConfigName) {

@@ -4,6 +4,7 @@ import { cancelPendingContract } from "@app/lib/api/poke/cancel_pending_contract
 import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
+import { formatNumber } from "@app/lib/i18n/format";
 import { metronomeAmount } from "@app/lib/metronome/amounts";
 import type {
   MetronomePackageSummary,
@@ -679,7 +680,7 @@ async function stepContractEdits({
       starting_at: floorToHourISO(alignedStart),
       applicable_product_tags: ["usage"],
       recurrence_frequency: "MONTHLY",
-      name: `Recurring free credit: ${body.recurringFreeCredit.toLocaleString()} AWU/month`,
+      name: `Recurring free credit: ${formatNumber(body.recurringFreeCredit)} AWU/month`,
     });
   }
 
@@ -726,7 +727,7 @@ async function stepContractEdits({
       addCommits.push({
         product_id: getProductPrepaidCommitId(),
         type: "PREPAID",
-        name: `Initial credits: ${amountCredits.toLocaleString()} credits`,
+        name: `Initial credits: ${formatNumber(amountCredits)} credits`,
         priority: AWU_PRIORITY_PURCHASED_COMMIT,
         applicable_product_tags: ["usage"],
         custom_fields: {
@@ -770,7 +771,7 @@ async function stepContractEdits({
       product_id: getProductPlatformFeeId(),
       name:
         body.scheduledCharge.name ??
-        `Platform fee: ${body.scheduledCharge.invoiceAmount.toLocaleString()} ${resolvedCurrency.toUpperCase()}`,
+        `Platform fee: ${formatNumber(body.scheduledCharge.invoiceAmount)} ${resolvedCurrency.toUpperCase()}`,
       schedule: {
         credit_type_id: CURRENCY_TO_CREDIT_TYPE_ID[resolvedCurrency],
         schedule_items: scheduleItems.map((item) => ({

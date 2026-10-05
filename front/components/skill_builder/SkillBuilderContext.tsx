@@ -1,8 +1,5 @@
-import { SpacesProvider } from "@app/components/agent_builder/SpacesContext";
+import { SpacesProvider } from "@app/components/shared/SpacesContext";
 import { MCPServerViewsProvider } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { CAPABILITIES_SWR_OPTIONS } from "@app/lib/swr/capabilities";
-import { useSkills } from "@app/lib/swr/skill_configurations";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import type { ReactNode } from "react";
 import { createContext, useContext, useMemo, useState } from "react";
@@ -41,16 +38,6 @@ export function SkillBuilderProvider({
   skillId,
   children,
 }: SkillBuilderProviderProps) {
-  const { hasFeature } = useFeatureFlags();
-  // SpacesProvider and MCPServerViewsProvider preload the tools shown by the
-  // slash command. Preload active skills as well before its dropdown mounts.
-  useSkills({
-    owner,
-    status: "active",
-    disabled: hasFeature("skills_search"),
-    swrOptions: CAPABILITIES_SWR_OPTIONS,
-  });
-
   const [selectedSuggestionId, setSelectedSuggestionId] = useState<
     string | null
   >(null);

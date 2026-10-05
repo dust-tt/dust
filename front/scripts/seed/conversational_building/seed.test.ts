@@ -1,10 +1,12 @@
 import type { Authenticator } from "@app/lib/auth";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
+import { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import {
+  BATCH_CONVERSATION_SID,
   CONVERSATION_SID,
   LUKE_USER_SID,
   SKILL_NAME,
@@ -47,7 +49,7 @@ describe("conversational building seed script integration test", () => {
     authenticator = testResources.authenticator;
   });
 
-  it("seeds the skill, its suggestions and the conversation, and recreates them on re-run", async () => {
+  it("seeds the skill, its suggestions and the conversation, and outdates them on re-run", async () => {
     const ctx: SeedContext = {
       auth: authenticator,
       workspace,
@@ -56,8 +58,14 @@ describe("conversational building seed script integration test", () => {
       logger,
     };
 
-    const { users, skills, skillSuggestions, toolView, knowledgeView } =
-      await seedConversationalBuilding(ctx);
+    const {
+      users,
+      skills,
+      skillSuggestions,
+      toolView,
+      knowledgeView,
+      conversationSIds,
+    } = await seedConversationalBuilding(ctx);
 
     // Users carry their asset sId so the editors suggestion references them directly.
     expect(users.size).toBe(2);
@@ -155,7 +163,7 @@ describe("conversational building seed script integration test", () => {
     // The conversation embeds each suggestion as a directive, with no leftover placeholder.
     const conversation = await ConversationResource.fetchById(
       authenticator,
-      CONVERSATION_SID
+      conversationSIds.get(CONVERSATION_SID)!
     );
     expect(conversation).toBeDefined();
     const { text, agentMessageIds } = await getConversationAgentText(
@@ -170,7 +178,8 @@ describe("conversational building seed script integration test", () => {
       );
     }
 
-    // Re-run: users, skill and tool are kept, suggestions and conversation are recreated.
+    // Re-run: users, skill and tool are kept, new suggestions outdate the previous ones and a new
+    // conversation is created.
     const rerun = await seedConversationalBuilding(ctx);
     expect(rerun.skills.get(SKILL_NAME)!.sId).toBe(skill!.sId);
     expect(rerun.toolView!.sId).toBe(toolView!.sId);
@@ -178,19 +187,30 @@ describe("conversational building seed script integration test", () => {
     for (const [id, suggestion] of skillSuggestions) {
       expect(rerun.skillSuggestions.get(id)!.sId).not.toBe(suggestion.sId);
     }
+    const rerunListed =
+      await SkillSuggestionResource.listBySkillConfigurationId(
+        authenticator,
+        skill!.sId,
+        { sources: ["conversational"] }
+      );
     expect(
-      (
-        await SkillSuggestionResource.listBySkillConfigurationId(
-          authenticator,
-          skill!.sId,
-          { sources: ["conversational"] }
-        )
-      ).length
-    ).toBe(9);
+      rerunListed
+        .filter((s) => s.toJSON().state === "pending")
+        .map((s) => s.sId)
+        .toSorted()
+    ).toEqual(
+      [...rerun.skillSuggestions.values()].map((s) => s.sId).toSorted()
+    );
+    expect(
+      rerunListed
+        .filter((s) => s.toJSON().state === "outdated")
+        .map((s) => s.sId)
+        .toSorted()
+    ).toEqual([...skillSuggestions.values()].map((s) => s.sId).toSorted());
 
     const rerunConversation = await ConversationResource.fetchById(
       authenticator,
-      CONVERSATION_SID
+      rerun.conversationSIds.get(CONVERSATION_SID)!
     );
     expect(rerunConversation!.id).not.toBe(conversation!.id);
     const { text: rerunText } = await getConversationAgentText(
@@ -200,11 +220,100 @@ describe("conversational building seed script integration test", () => {
     for (const suggestion of rerun.skillSuggestions.values()) {
       expect(rerunText).toContain(`sId=${suggestion.sId} `);
     }
-    // Old step contents are gone.
+    // The previous conversation is kept.
     expect(
       await AgentStepContentResource.fetchByAgentMessages(authenticator, {
         agentMessageIds,
       })
-    ).toHaveLength(0);
+    ).toHaveLength(7);
+  });
+
+  it("seeds the suggestion batches, the skill creation and the conversation piling them", async () => {
+    const ctx: SeedContext = {
+      auth: authenticator,
+      workspace,
+      user,
+      execute: true,
+      logger,
+    };
+
+    const {
+      suggestionBatches,
+      batchSkillSuggestions,
+      pendingSkills,
+      conversationSIds,
+    } = await seedConversationalBuilding(ctx);
+
+    const pendingSkill = pendingSkills.get("ActionItemTracker");
+    expect(pendingSkill?.status).toBe("pending");
+
+    const creation = batchSkillSuggestions
+      .get("batchCreateActionItemTracker")!
+      .toJSON();
+    expect(creation.kind).toBe("create");
+    expect(creation.skillConfigurationId).toBe(pendingSkill!.sId);
+
+    const handOver = batchSkillSuggestions.get("batchEditHandOverActionItems")!;
+    expect(isEditSkillSuggestion(handOver)).toBe(true);
+    if (isEditSkillSuggestion(handOver)) {
+      expect(handOver.suggestion.instructionEdits![0].content).toContain(
+        `<skill id="${pendingSkill!.sId}" name="ActionItemTracker" />`
+      );
+    }
+
+    const batches = await BatchSuggestionResource.fetchByIds(
+      authenticator,
+      [...suggestionBatches.values()].map((b) => b.sId)
+    );
+    expect(
+      batches
+        .map((b) => [
+          b.title,
+          b.skillSuggestions.map((s) => s.toJSON().kind).toSorted(),
+        ])
+        .toSorted()
+    ).toEqual([
+      ["Group action items by owner", ["edit"]],
+      ["Keep it for members only", ["availability"]],
+      ["Rename to TeamDigest", ["name", "user_facing_description"]],
+      ["Track action items in their own skill", ["create", "edit"]],
+    ]);
+
+    const conversation = await ConversationResource.fetchById(
+      authenticator,
+      conversationSIds.get(BATCH_CONVERSATION_SID)!
+    );
+    const { text, agentMessageIds } = await getConversationAgentText(
+      authenticator,
+      conversation!
+    );
+    expect(agentMessageIds).toHaveLength(2);
+    expect(text).not.toContain("__");
+    expect(text).toContain(":suggestion_recap[");
+    for (const batch of suggestionBatches.values()) {
+      expect(text).toContain(`:batch_edit[]{sId=${batch.sId}}`);
+    }
+
+    const rerun = await seedConversationalBuilding(ctx);
+    const previousBatches = await BatchSuggestionResource.fetchByIds(
+      authenticator,
+      [...suggestionBatches.values()].map((b) => b.sId)
+    );
+    expect(previousBatches.map((b) => b.state)).toEqual([
+      "outdated",
+      "outdated",
+      "outdated",
+      "outdated",
+    ]);
+    const rerunBatches = await BatchSuggestionResource.fetchByIds(
+      authenticator,
+      [...rerun.suggestionBatches.values()].map((b) => b.sId)
+    );
+    expect(rerunBatches.map((b) => b.state)).toEqual([
+      "pending",
+      "pending",
+      "pending",
+      "pending",
+    ]);
   });
 });

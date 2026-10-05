@@ -1,17 +1,16 @@
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { listVersionAuthors } from "@app/lib/resources/agent_configuration_rows";
 import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
+  AgentConfigurationScope,
   AgentRecentAuthors,
-  LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import { getGlobalAgentAuthorName } from "@app/types/assistant/assistant";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
-import { Op, Sequelize } from "sequelize";
 
 // We keep the most recent authorIds for 3 days.
 const recentAuthorIdsKeyTTL = 60 * 60 * 24 * 3; // 3 days.
@@ -37,25 +36,10 @@ async function fetchRecentAuthorIdsWithVersionForAgents(
     return new Map();
   }
 
-  const rows = await AgentConfigurationModel.findAll({
-    attributes: [
-      "sId",
-      "authorId",
-      [Sequelize.fn("MAX", Sequelize.col("version")), "version"],
-    ],
-    group: ["sId", "authorId"],
-    where: {
-      workspaceId: auth.getNonNullableWorkspace().id,
-      sId: { [Op.in]: agentIds },
-    },
-  });
+  const rows = await listVersionAuthors(auth, agentIds);
 
   const byAgentId = new Map<string, { authorId: number; version: number }[]>();
-  for (const row of rows) {
-    const agentId = row.get("sId") as string;
-    const authorId = row.get("authorId") as number;
-    // `version` is aliased from MAX(version) so read it via get().
-    const version = row.get("version") as number;
+  for (const { agentId, authorId, version } of rows) {
     const bucket = byAgentId.get(agentId) ?? [];
     bucket.push({ authorId, version });
     byAgentId.set(agentId, bucket);
@@ -167,7 +151,7 @@ export async function getAgentsRecentAuthors({
   agents,
   auth,
 }: {
-  agents: LightAgentConfigurationType[];
+  agents: { sId: string; scope: AgentConfigurationScope }[];
   auth: Authenticator;
 }): Promise<AgentRecentAuthors[]> {
   const owner = auth.getNonNullableWorkspace();
@@ -237,20 +221,6 @@ export async function getAgentsRecentAuthors({
   });
 }
 
-export async function getAgentRecentAuthors({
-  agent,
-  auth,
-}: {
-  agent: LightAgentConfigurationType;
-  auth: Authenticator;
-}): Promise<AgentRecentAuthors> {
-  const recentAuthors = await getAgentsRecentAuthors({
-    agents: [agent],
-    auth,
-  });
-  return recentAuthors[0];
-}
-
 export async function agentConfigurationWasUpdatedBy({
   agent,
   auth,
@@ -258,8 +228,7 @@ export async function agentConfigurationWasUpdatedBy({
   agent: AgentResource;
   auth: Authenticator;
 }) {
-  const { sId: agentId, versionAuthorId: authorId } = agent;
-  const { version } = agent.content;
+  const { sId: agentId, versionAuthorId: authorId, version } = agent;
   if (!authorId) {
     return;
   }

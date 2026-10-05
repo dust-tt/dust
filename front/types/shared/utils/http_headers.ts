@@ -1,4 +1,4 @@
-import { stripCRLF } from "./string_utils";
+import { isRedactedSecret, stripCRLF } from "./string_utils";
 
 export type HeaderRow = { key: string; value: string };
 export type MetaRow = { key: string; value: string };
@@ -43,4 +43,16 @@ export function headersArrayToRecord(
   const entries = sanitized.map(({ key, value }) => [key, value]);
 
   return Object.fromEntries(entries);
+}
+
+export const REDACTED_HEADER_VALUES_ERROR_MESSAGE =
+  "Header values are hidden once saved: re-enter every header value to update headers.";
+
+/**
+ * @cc [owner:pmilliotte,label:security;mcp] redacted-header-values-rejected
+ * Returns true when any row's value came out of `redactSecret`. Header updates carrying such a value
+ * MUST be rejected rather than stored, since the stored plaintext would be replaced by the mask.
+ */
+export function hasRedactedHeaderValue(rows: HeaderRow[]): boolean {
+  return rows.some(({ value }) => isRedactedSecret(sanitizeHeaderPart(value)));
 }

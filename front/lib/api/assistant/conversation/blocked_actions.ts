@@ -104,8 +104,7 @@ function emitApprovalResolvedAuditEvents(
     try {
       // All blocked actions belong to the same agent message, so resolve the agent
       // configuration once.
-      const auditAgentConfig =
-        await deniedApprovals[0].getLightAgentConfiguration(auth);
+      const auditAgent = await deniedApprovals[0].getAgent(auth);
       const workspace = auth.getNonNullableWorkspace();
       for (const action of deniedApprovals) {
         void emitAuditLogEventDirect({
@@ -135,10 +134,10 @@ function emitApprovalResolvedAuditEvents(
             tool_name: action.toolConfiguration.originalName,
             mcp_server_name: action.toolConfiguration.mcpServerName,
             stake_level: action.toolConfiguration.permission,
-            ...(auditAgentConfig
+            ...(auditAgent
               ? {
-                  agent_id: auditAgentConfig.sId,
-                  agent_name: auditAgentConfig.name,
+                  agent_id: auditAgent.sId,
+                  agent_name: auditAgent.name,
                 }
               : {}),
             conversation_id: conversation.sId,

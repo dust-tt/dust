@@ -79,14 +79,6 @@ export function computeSandboxFunctionBundleSha256(bundleCode: string): string {
   return createHash("sha256").update(bundleCode, "utf8").digest("hex");
 }
 
-/**
- * Short prefix of a bundle sha for tool output: enough to tell two publishes apart at a glance,
- * mirroring short commit hashes. "unknown" covers functions last published before hashes existed.
- */
-export function shortSandboxFunctionBundleSha256(sha: string | null): string {
-  return sha === null ? "unknown" : sha.slice(0, 12);
-}
-
 export function getSandboxFunctionPublishLockName(
   sandboxFunctionId: string
 ): string {

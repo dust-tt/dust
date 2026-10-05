@@ -1,4 +1,8 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type {
+  ClariCallDetailsResourceType,
+  ClariCallListResourceType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   CLARI_CALL_DETAILS_MIME_TYPE,
   CLARI_CALL_LIST_MIME_TYPE,
@@ -40,7 +44,7 @@ const handlers: ToolHandlers<typeof CLARI_COPILOT_TOOLS_METADATA> = {
           text: `${calls.length} call(s) returned${totalText}`,
           calls,
           pagination,
-        },
+        } satisfies ClariCallListResourceType,
       },
     ]);
   },
@@ -73,7 +77,7 @@ const handlers: ToolHandlers<typeof CLARI_COPILOT_TOOLS_METADATA> = {
           uri: call.call_review_page_url ?? "",
           text: `Call details retrieved for "${call.title ?? call.id}"`,
           call: callToReturn,
-        },
+        } satisfies ClariCallDetailsResourceType,
       },
     ]);
   },

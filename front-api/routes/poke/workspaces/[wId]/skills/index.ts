@@ -4,6 +4,7 @@ import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
 import sId from "./[sId]";
+import search from "./search";
 import suggestions from "./suggestions";
 
 // Mounted at /api/poke/workspaces/:wId/skills.
@@ -22,6 +23,7 @@ app.get("/", async (ctx): HandlerResult<GetPokeSkillsResponseBody> => {
 
 // Literal segments before param segments.
 app.route("/suggestions", suggestions);
+app.route("/search", search);
 app.route("/:sId", sId);
 
 export default app;

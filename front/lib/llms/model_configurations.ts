@@ -6,34 +6,13 @@ import type {
   SupportedModel,
 } from "@app/types/assistant/models/types";
 
-/**
- * Lazy-loaded cache for model configurations.
- * Currently wraps static arrays - Next PR will add GCS loading for custom models.
- */
-let _modelConfigs: ModelConfigurationType[] | null = null;
-
-/**
- * Initialize model configurations.
- * Called once at app startup (Next PR will make this load from GCS).
- */
-export function initializeModelConfigs(): void {
-  _modelConfigs = [...SUPPORTED_MODEL_CONFIGS];
-}
-
-/**
- * Get all supported model configurations.
- * Stays synchronous reads from cache with lazy initialization fallback.
- */
 export function getSupportedModelConfigs(): readonly ModelConfigurationType[] {
-  // Fallback to static if not initialized.
-  _modelConfigs ??= [...SUPPORTED_MODEL_CONFIGS];
-  return _modelConfigs;
+  return SUPPORTED_MODEL_CONFIGS;
 }
 
 /**
  * Get a specific supported model configuration by model/provider ID.
  * Returns null if the model configuration is not found.
- * Stays synchronous reads from cache.
  */
 export function getSupportedModelConfig(
   supportedModel: SupportedModel | AgentModelConfigurationType
@@ -52,7 +31,6 @@ export function getSupportedModelConfig(
  * Get the reasoning effort a model configuration actually runs at: its explicit effort, or the
  * effort its model defaults to when it sets none. Falls back to "none" for a model that is no
  * longer supported.
- * Stays synchronous reads from cache.
  */
 export function getEffectiveReasoningEffort(
   model: AgentModelConfigurationType
@@ -66,7 +44,6 @@ export function getEffectiveReasoningEffort(
 
 /**
  * Get a specific model configuration by model ID only.
- * Stays synchronous reads from cache.
  */
 export function getModelConfigByModelId(
   modelId: string

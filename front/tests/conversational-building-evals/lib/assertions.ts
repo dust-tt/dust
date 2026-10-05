@@ -1,16 +1,24 @@
 import { extractKnowledgeTagReferences } from "@app/lib/knowledge/format";
+import { extractSkillRefs } from "@app/lib/skills/format";
 import { extractToolTags } from "@app/lib/tools/format";
 import { TOOL } from "@app/tests/conversational-building-evals/lib/tool-runner";
 import type {
+  ExecutedToolCall,
+  ExecutionResult,
+  ExpectedSuggestion,
   FinalToolCallAssertion,
   SeededScenario,
   SkillUpdateEditKind,
   ToolCall,
 } from "@app/tests/conversational-building-evals/lib/types";
+import { ResponseFormatSchema } from "@app/types/assistant/models/types";
+import { validateResponseFormat } from "@app/types/assistant/models/utils";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
+import { BUILD_ENTITY_REGEX } from "@app/types/shared/utils/markdown";
 import type { SkillInstructionEditItemType } from "@app/types/suggestions/skill_suggestion";
 import { SkillInstructionEditItemSchema } from "@app/types/suggestions/skill_suggestion";
+import isEqual from "lodash/isEqual";
 
 type AssertionResult = { success: true } | { success: false; error: string };
 
@@ -45,6 +53,12 @@ function hasEdit(item: SuggestionItem, kind: SkillUpdateEditKind): boolean {
   }
 }
 
+function getSuggestions(suggestCall: ToolCall): SuggestionItem[] {
+  return Array.isArray(suggestCall.arguments.suggestions)
+    ? suggestCall.arguments.suggestions.filter(isSuggestionItem)
+    : [];
+}
+
 type FindSuggestionResult =
   | { success: true; item: SuggestionItem }
   | { success: false; error: string };
@@ -64,9 +78,7 @@ function findSuggestion(
       error: `Expected final tool call ${TOOL.suggest}, got ${finalToolCall.name}`,
     };
   }
-  const suggestions = Array.isArray(finalToolCall.arguments.suggestions)
-    ? finalToolCall.arguments.suggestions.filter(isSuggestionItem)
-    : [];
+  const suggestions = getSuggestions(finalToolCall);
   const item = suggestions.find(
     (s) => s.kind === kind && (!target || s[target.field] === target.id)
   );
@@ -194,6 +206,117 @@ function requireField(
   return { success: true };
 }
 
+function describeExpectedSuggestion(expected: ExpectedSuggestion): string {
+  switch (expected.kind) {
+    case "edit_skill":
+      return `edit_skill on skill "${expected.skillKey}"`;
+    case "edit_agent":
+      return `edit_agent on agent "${expected.agentKey}"`;
+    default:
+      assertNever(expected);
+  }
+}
+
+function matchesExpectedSuggestion(
+  item: SuggestionItem,
+  expected: ExpectedSuggestion,
+  scenario: SeededScenario
+): boolean {
+  switch (expected.kind) {
+    case "edit_skill":
+      return (
+        item.kind === "edit_skill" &&
+        item.skillId === resolveSkillId(scenario, expected.skillKey)
+      );
+    case "edit_agent":
+      return (
+        item.kind === "edit_agent" &&
+        item.agentId === resolveAgentId(scenario, expected.agentKey)
+      );
+    default:
+      assertNever(expected);
+  }
+}
+
+// Independent changes must be recorded as separate suggestions: every `suggest` call that went
+// through carries a single suggestion, and together they record exactly the expected ones, in any
+// round. Rejected calls recorded nothing, so a retry after one is fine.
+function validateSeparateSuggestions(
+  expectedSuggestions: ExpectedSuggestion[],
+  toolCalls: ExecutedToolCall[],
+  scenario: SeededScenario
+): AssertionResult {
+  const recordedCalls = toolCalls.filter(
+    (tc) => tc.name === TOOL.suggest && !tc.isError
+  );
+
+  const unmatched = [...expectedSuggestions];
+  for (const suggestCall of recordedCalls) {
+    const suggestions = getSuggestions(suggestCall);
+    if (suggestions.length !== 1) {
+      return {
+        success: false,
+        error: `Each ${TOOL.suggest} call must carry a single suggestion; got ${JSON.stringify(suggestions)}`,
+      };
+    }
+    const [item] = suggestions;
+    const index = unmatched.findIndex((expected) =>
+      matchesExpectedSuggestion(item, expected, scenario)
+    );
+    if (index === -1) {
+      return {
+        success: false,
+        error: `Unexpected or duplicate suggestion: ${JSON.stringify(item)}`,
+      };
+    }
+    const [expected] = unmatched.splice(index, 1);
+    const wrongFields = Object.entries(expected.fields).filter(
+      ([field, value]) => !isEqual(item[field], value)
+    );
+    if (wrongFields.length > 0) {
+      return {
+        success: false,
+        error:
+          `The ${describeExpectedSuggestion(expected)} suggestion must carry ` +
+          `${JSON.stringify(Object.fromEntries(wrongFields))}; got ${JSON.stringify(item)}`,
+      };
+    }
+  }
+
+  if (unmatched.length > 0) {
+    return {
+      success: false,
+      error: `Missing suggestion(s): ${unmatched.map(describeExpectedSuggestion).join(", ")}`,
+    };
+  }
+  return { success: true };
+}
+
+function validateNoSuggestion(
+  requiredToolNames: string[],
+  toolCalls: ExecutedToolCall[]
+): AssertionResult {
+  const missing = requiredToolNames.filter(
+    (name) => !toolCalls.some((tc) => tc.name === name && !tc.isError)
+  );
+  if (missing.length > 0) {
+    return {
+      success: false,
+      error: `Expected a successful call to ${missing.join(", ")}`,
+    };
+  }
+  const recorded = toolCalls.filter(
+    (tc) => tc.name === TOOL.suggest && !tc.isError
+  );
+  if (recorded.length > 0) {
+    return {
+      success: false,
+      error: `Expected no ${TOOL.suggest} call; got ${JSON.stringify(recorded.map(getSuggestions))}`,
+    };
+  }
+  return { success: true };
+}
+
 /**
  * Validates the run's final (last non-exploratory) tool call against the scenario expectation: it
  * must be a `suggest` call carrying the expected change on the expected entity. Skill, agent and
@@ -201,9 +324,16 @@ function requireField(
  */
 export function validateFinalToolCall(
   assertion: FinalToolCallAssertion,
-  finalToolCall: ToolCall | null,
+  {
+    finalToolCall,
+    toolCalls,
+  }: Pick<ExecutionResult, "finalToolCall" | "toolCalls">,
   scenario: SeededScenario
 ): AssertionResult {
+  if (assertion.type === "noSuggestion") {
+    return validateNoSuggestion(assertion.requiredToolNames, toolCalls);
+  }
+
   if (!finalToolCall) {
     return {
       success: false,
@@ -214,6 +344,137 @@ export function validateFinalToolCall(
   switch (assertion.type) {
     case "suggestAgentCreation":
       return findSuggestion(finalToolCall, "create_agent");
+
+    case "suggestSubAgentByRef": {
+      const created = findSuggestion(finalToolCall, "create_agent");
+      if (!created.success) {
+        return created;
+      }
+      const createdRefs = getSuggestions(finalToolCall)
+        .filter((s) => s.kind === "create_agent")
+        .map((s) => s.ref)
+        .filter(isString);
+
+      const parent = findSuggestion(finalToolCall, "edit_agent", {
+        field: "agentId",
+        id: resolveAgentId(scenario, assertion.parentAgentKey),
+        label: `agent "${assertion.parentAgentKey}"`,
+      });
+      if (!parent.success) {
+        return parent;
+      }
+      const { subAgents } = parent.item;
+      const addAgentRefs =
+        isSuggestionItem(subAgents) && Array.isArray(subAgents.addAgentRefs)
+          ? subAgents.addAgentRefs
+          : [];
+      const addedCreatedRefs = createdRefs.filter((ref) =>
+        addAgentRefs.includes(ref)
+      );
+
+      const expectedCount = assertion.subAgentCount ?? 1;
+      if (addedCreatedRefs.length < expectedCount) {
+        return {
+          success: false,
+          error: `The edit_agent suggestion adds ${addedCreatedRefs.length} created agent(s) as sub-agents by ref, expected ${expectedCount} (created refs ${JSON.stringify(createdRefs)}): ${JSON.stringify(parent.item)}`,
+        };
+      }
+      return { success: true };
+    }
+
+    case "suggestAgentSkillByRef": {
+      const created = findSuggestion(finalToolCall, "create_skill");
+      if (!created.success) {
+        return created;
+      }
+      const { ref } = created.item;
+      if (!isString(ref)) {
+        return {
+          success: false,
+          error: `The create_skill suggestion declares no ref: ${JSON.stringify(created.item)}`,
+        };
+      }
+
+      if (!assertion.agentKey) {
+        const agent = findSuggestion(finalToolCall, "create_agent");
+        if (!agent.success) {
+          return agent;
+        }
+        const { skillRefs } = agent.item;
+        if (!Array.isArray(skillRefs) || !skillRefs.includes(ref)) {
+          return {
+            success: false,
+            error: `The create_agent suggestion does not give the created skill (ref "${ref}") to the agent: ${JSON.stringify(agent.item)}`,
+          };
+        }
+        return { success: true };
+      }
+
+      const agent = findSuggestion(finalToolCall, "edit_agent", {
+        field: "agentId",
+        id: resolveAgentId(scenario, assertion.agentKey),
+        label: `agent "${assertion.agentKey}"`,
+      });
+      if (!agent.success) {
+        return agent;
+      }
+      const { skills } = agent.item;
+      const addSkillRefs =
+        isSuggestionItem(skills) && Array.isArray(skills.addSkillRefs)
+          ? skills.addSkillRefs
+          : [];
+      if (!addSkillRefs.includes(ref)) {
+        return {
+          success: false,
+          error: `The edit_agent suggestion does not add the created skill (ref "${ref}") to the agent: ${JSON.stringify(agent.item)}`,
+        };
+      }
+      return { success: true };
+    }
+
+    case "suggestSkillCitingNewSkill": {
+      const created = findSuggestion(finalToolCall, "create_skill");
+      if (!created.success) {
+        return created;
+      }
+      const creations = getSuggestions(finalToolCall).filter(
+        (s) => s.kind === "create_skill"
+      );
+      const declaredRefs = creations.map((s) => s.ref).filter(isString);
+
+      if (!assertion.skillKey) {
+        const citesAnotherCreation = creations.some(
+          (creation) =>
+            isString(creation.instructions) &&
+            extractSkillRefs(creation.instructions).some(
+              (ref) => ref !== creation.ref && declaredRefs.includes(ref)
+            )
+        );
+        if (!citesAnotherCreation) {
+          return {
+            success: false,
+            error: `No create_skill suggestion cites another created skill as <skill ref="..."/>: ${JSON.stringify(creations)}`,
+          };
+        }
+        return { success: true };
+      }
+
+      const edit = findSkillEdit(finalToolCall, scenario, assertion.skillKey);
+      if (!edit.success) {
+        return edit;
+      }
+      const citedRefs = extractSkillRefs(getInstructionEditsContent(edit.item));
+      if (!citedRefs.some((ref) => declaredRefs.includes(ref))) {
+        return {
+          success: false,
+          error: `The edit_skill instruction edits cite no created skill (declared refs ${JSON.stringify(declaredRefs)}, cited ${JSON.stringify(citedRefs)})`,
+        };
+      }
+      return { success: true };
+    }
+
+    case "suggestSkillCreation":
+      return findSuggestion(finalToolCall, "create_skill");
 
     case "suggestSkillUpdate": {
       const found = findSkillEdit(finalToolCall, scenario, assertion.skillKey);
@@ -276,10 +537,24 @@ export function validateFinalToolCall(
         label: `skill "${assertion.skillKey}"`,
       });
 
+    case "suggestAgentDeletion":
+      return findSuggestion(finalToolCall, "delete_agent", {
+        field: "agentId",
+        id: resolveAgentId(scenario, assertion.agentKey),
+        label: `agent "${assertion.agentKey}"`,
+      });
+
     case "suggestSkillName":
       return requireField(
         findSkillEdit(finalToolCall, scenario, assertion.skillKey),
         "name"
+      );
+
+    case "separateSuggestions":
+      return validateSeparateSuggestions(
+        assertion.suggestions,
+        toolCalls,
+        scenario
       );
 
     case "suggestSkillAvailability": {
@@ -342,59 +617,160 @@ export function validateFinalToolCall(
       return { success: true };
     }
 
+    case "suggestAgentModelChange": {
+      const found = findSuggestion(finalToolCall, "edit_agent", {
+        field: "agentId",
+        id: resolveAgentId(scenario, assertion.agentKey),
+        label: `agent "${assertion.agentKey}"`,
+      });
+      if (!found.success) {
+        return found;
+      }
+      if (found.item.modelId !== assertion.modelId) {
+        return {
+          success: false,
+          error: `Expected modelId "${assertion.modelId}", got ${JSON.stringify(found.item.modelId)}`,
+        };
+      }
+      return { success: true };
+    }
+
+    case "suggestAgentStructuredOutput": {
+      const found = findSuggestion(finalToolCall, "edit_agent", {
+        field: "agentId",
+        id: resolveAgentId(scenario, assertion.agentKey),
+        label: `agent "${assertion.agentKey}"`,
+      });
+      if (!found.success) {
+        return found;
+      }
+      const { structuredOutput } = found.item;
+      if (!isString(structuredOutput)) {
+        return {
+          success: false,
+          error: `Expected a structuredOutput JSON string, got ${JSON.stringify(structuredOutput)}`,
+        };
+      }
+      const validation = validateResponseFormat(structuredOutput);
+      if (!validation.isValid) {
+        return { success: false, error: validation.errorMessage };
+      }
+      const { required } = ResponseFormatSchema.parse(
+        JSON.parse(structuredOutput)
+      ).json_schema.schema;
+      const missing = assertion.requiredProperties.filter(
+        (pattern) => !required.some((name) => pattern.test(name))
+      );
+      if (missing.length > 0) {
+        return {
+          success: false,
+          error: `No required property matches ${missing.join(", ")}; required: ${JSON.stringify(required)}`,
+        };
+      }
+      return { success: true };
+    }
+
     default:
       assertNever(assertion);
   }
 }
 
-// `:build_skill[Name]{sId=xxx}` / `:build_agent[Name]{sId=xxx}`, the directives that render the
-// entity as a clickable chip. Only the id matters here: the label is what the model wrote.
-const BUILD_SKILL_REGEX = /:build_skill\[[^\]]*\]\{[^}]*sId=([^}\s]+)/g;
-const BUILD_AGENT_REGEX = /:build_agent\[[^\]]*\]\{[^}]*sId=([^}\s]+)/g;
+interface BuildEntityMention {
+  kind: "skill" | "agent";
+  sId: string;
+}
 
-function mentionedIds(responseText: string, regex: RegExp): string[] {
-  return [...responseText.matchAll(regex)].map((m) => m[1]);
+const SID_ATTRIBUTE_REGEX = /(?:^|\s)sId=([^\s}]+)/;
+
+// The `:build_skill` / `:build_agent` directives of the response, the ones that render the entity
+// as a clickable chip. Only the id matters here: the label is what the model wrote.
+function extractBuildEntityMentions(text: string): BuildEntityMention[] {
+  return [...text.matchAll(BUILD_ENTITY_REGEX)].flatMap(
+    ([, kind, , attributes]) => {
+      const sId = SID_ATTRIBUTE_REGEX.exec(attributes)?.[1];
+      if (!sId) {
+        return [];
+      }
+      return [{ kind: kind === "skill" ? "skill" : "agent", sId }];
+    }
+  );
+}
+
+type MentionedEntity = { kind: BuildEntityMention["kind"]; key: string };
+
+// The entities the response must mention, or none for a creation.
+function getEntitiesToMention(
+  assertion: FinalToolCallAssertion
+): MentionedEntity[] {
+  switch (assertion.type) {
+    // A created agent has no id the model could know: it is named in plain text.
+    case "suggestAgentCreation":
+    case "suggestSkillCreation":
+    // Nothing was suggested: what the response must name is left to the judge criteria.
+    case "noSuggestion":
+      return [];
+    case "suggestSubAgentByRef":
+      return [{ kind: "agent", key: assertion.parentAgentKey }];
+    case "suggestAgentSkillByRef":
+      return assertion.agentKey
+        ? [{ kind: "agent", key: assertion.agentKey }]
+        : [];
+    case "suggestSkillCitingNewSkill":
+      return assertion.skillKey
+        ? [{ kind: "skill", key: assertion.skillKey }]
+        : [];
+    case "suggestAgentInstructionsChange":
+    case "suggestAgentModelChange":
+    case "suggestAgentStructuredOutput":
+    case "suggestAgentDeletion":
+      return [{ kind: "agent", key: assertion.agentKey }];
+    case "separateSuggestions":
+      return assertion.suggestions.map((expected) => {
+        switch (expected.kind) {
+          case "edit_skill":
+            return { kind: "skill", key: expected.skillKey };
+          case "edit_agent":
+            return { kind: "agent", key: expected.agentKey };
+          default:
+            assertNever(expected);
+        }
+      });
+    case "suggestSkillUpdate":
+    case "suggestSkillEditors":
+    case "suggestSkillDeletion":
+    case "suggestSkillName":
+    case "suggestSkillAvailability":
+    case "suggestSkillUserFacingDescription":
+      return [{ kind: "skill", key: assertion.skillKey }];
+    default:
+      assertNever(assertion);
+  }
 }
 
 /**
- * The response must mention the entity it acted on with its mention directive, so the user can
+ * The response must mention every entity it acted on with its mention directive, so the user can
  * click it open next to the suggestion cards. A created agent has no id the model could know, so it
- * is not checked; an edited agent is
- * checked against its seeded id, like a skill.
+ * is not checked; an edited agent is checked against its seeded id, like a skill.
  */
 export function validateEntityMention(
   assertion: FinalToolCallAssertion,
   responseText: string,
   scenario: SeededScenario
 ): AssertionResult {
-  // A created agent has no id the model could know: it is named in plain text.
-  if (assertion.type === "suggestAgentCreation") {
-    return { success: true };
-  }
-
-  if (assertion.type === "suggestAgentInstructionsChange") {
-    const expectedAgentId = resolveAgentId(scenario, assertion.agentKey);
-    const mentioned = mentionedIds(responseText, BUILD_AGENT_REGEX);
-    if (!mentioned.includes(expectedAgentId)) {
+  const mentions = extractBuildEntityMentions(responseText);
+  for (const { kind, key } of getEntitiesToMention(assertion)) {
+    const expectedId =
+      kind === "skill"
+        ? resolveSkillId(scenario, key)
+        : resolveAgentId(scenario, key);
+    if (!mentions.some((m) => m.kind === kind && m.sId === expectedId)) {
       return {
         success: false,
         error:
-          `Expected the response to mention agent "${assertion.agentKey}" as ` +
-          `:build_agent[...]{sId=${expectedAgentId}}; mentioned ids: ${JSON.stringify(mentioned)}`,
+          `Expected the response to mention ${kind} "${key}" as ` +
+          `:build_${kind}[...]{sId=${expectedId}}; mentions: ${JSON.stringify(mentions)}`,
       };
     }
-    return { success: true };
-  }
-
-  const expectedSkillId = resolveSkillId(scenario, assertion.skillKey);
-  const mentioned = mentionedIds(responseText, BUILD_SKILL_REGEX);
-  if (!mentioned.includes(expectedSkillId)) {
-    return {
-      success: false,
-      error:
-        `Expected the response to mention skill "${assertion.skillKey}" as ` +
-        `:build_skill[...]{sId=${expectedSkillId}}; mentioned ids: ${JSON.stringify(mentioned)}`,
-    };
   }
   return { success: true };
 }

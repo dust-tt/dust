@@ -1,5 +1,1 @@
-export {
-  CaptchaError,
-  type CaptchaErrorType,
-  verifyTurnstileToken,
-} from "./verify";
+export { verifyTurnstileToken } from "./verify";

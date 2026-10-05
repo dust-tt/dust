@@ -1,8 +1,9 @@
 import type {
   AgentBuilderScheduleTriggerType,
   AgentBuilderTriggerType,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
-import { triggerStatusSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
+} from "@app/components/agent_builder/agentBuilderFormSchema";
+import { triggerStatusSchema } from "@app/components/agent_builder/agentBuilderFormSchema";
+import { getLocalTimeZone } from "@app/lib/i18n/format";
 import type { ScheduleConfig } from "@app/types/assistant/triggers";
 import {
   isCronScheduleConfig,
@@ -67,7 +68,7 @@ export function getScheduleFormDefaultValues(
       ...commonDefaults,
       scheduleType: "cron" as const,
       cron: "",
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      timezone: getLocalTimeZone(),
     };
   }
 

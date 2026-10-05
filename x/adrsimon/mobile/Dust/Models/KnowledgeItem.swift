@@ -17,6 +17,6 @@ struct KnowledgeItem: Identifiable {
         if let provider = connectorProvider, let icon = MCPServerIcon.icon(for: provider) {
             return icon
         }
-        return nodeType == "table" ? .actionTable : .documentText
+        return nodeType == "table" ? .table : .file06
     }
 }

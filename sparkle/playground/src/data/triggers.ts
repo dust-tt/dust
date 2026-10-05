@@ -82,6 +82,31 @@ export function getTriggerById(
 }
 
 /**
+ * How far along a run is, read off when it fired: one that started minutes ago
+ * is still going, one from earlier today is done and unlooked-at, and anything
+ * older has been dealt with. A run never waits on you — nobody is in it to
+ * answer — so it is never pending.
+ */
+function getRunWorkState(
+  trigger: Trigger,
+  lastRunAt: Date
+): Pick<Conversation, "workState" | "unreadCount"> {
+  const hoursSinceRun = (Date.now() - lastRunAt.getTime()) / (60 * 60 * 1000);
+
+  if (hoursSinceRun < 3) {
+    return { workState: "thinking" };
+  }
+  if (hoursSinceRun < 24) {
+    return {
+      workState: "unread",
+      // Held to the trigger's id so a run keeps its count for the session.
+      unreadCount: (trigger.id.charCodeAt(trigger.id.length - 1) % 4) + 1,
+    };
+  }
+  return {};
+}
+
+/**
  * The conversations automated work is made of: one per trigger that has
  * already fired. A run is an agent talking to nobody, so it carries no human
  * participant — its trigger is what says who ran and why.
@@ -103,8 +128,11 @@ export function createTriggeredConversations(
         updatedAt: trigger.lastRunAt,
         userParticipants: [],
         agentParticipants: [trigger.agentId],
+        // Nobody else is in the room, so the agent has always had the last word.
+        lastSpeaker: { id: trigger.agentId, type: "agent" },
         spaceId: trigger.spaceId,
         triggerId: trigger.id,
+        ...getRunWorkState(trigger, trigger.lastRunAt),
       },
     ];
   });

@@ -179,7 +179,9 @@ ${existingSkills}
     return new Err(new Error("No similar skills generated"));
   }
 
-  return new Ok(similar_skills);
+  // Drop the ids the model made up: only the skills of the batch can be similar.
+  const batchSkillIds = new Set(skills.map((s) => s.sId));
+  return new Ok(similar_skills.filter((sId) => batchSkillIds.has(sId)));
 }
 
 // By default we compare against all existing published custom skills: unpublished

@@ -1,4 +1,3 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
@@ -6,6 +5,7 @@ import {
   SkillDataSourceConfigurationModel,
 } from "@app/lib/models/skill";
 import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorite";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { DiscoveryItemResource } from "@app/lib/resources/discovery_item_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
@@ -37,6 +37,7 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -312,6 +313,46 @@ describe("SkillResource", () => {
           onlyActive: true,
         })
       ).toBeNull();
+    });
+  });
+
+  describe("listExpiredPending", () => {
+    it("lists only pending skills created before the cutoff, oldest first", async () => {
+      const { authenticator: auth } = testContext;
+      const first = await SkillFactory.create(auth, {
+        name: "Pending 1",
+        status: "pending",
+      });
+      const second = await SkillFactory.create(auth, {
+        name: "Pending 2",
+        status: "pending",
+      });
+      await SkillFactory.create(auth, { name: "Active skill" });
+
+      const inOneMinute = new Date(Date.now() + 60 * 1000);
+      const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+
+      const expired = await SkillResource.listExpiredPending(auth, {
+        createdBefore: inOneMinute,
+        limit: 10,
+      });
+      expect(expired.map((skill) => skill.sId)).toEqual([
+        first.sId,
+        second.sId,
+      ]);
+
+      const limited = await SkillResource.listExpiredPending(auth, {
+        createdBefore: inOneMinute,
+        limit: 1,
+      });
+      expect(limited.map((skill) => skill.sId)).toEqual([first.sId]);
+
+      expect(
+        await SkillResource.listExpiredPending(auth, {
+          createdBefore: oneMinuteAgo,
+          limit: 10,
+        })
+      ).toEqual([]);
     });
   });
 
@@ -1936,23 +1977,24 @@ describe("SkillResource", () => {
       // Archiving the skill should drop its space from the agent's requirements.
       await skill.archive(testContext.authenticator);
 
-      const agentAfterArchive = await getAgentConfiguration(
+      const agentAfterArchive = await AgentConfigurationFactory.refetch(
         testContext.authenticator,
-        { agentId: agent.sId, variant: "light" }
+        agent.sId
       );
-      expect(agentAfterArchive?.requestedSpaceIds).not.toContain(
-        restrictedSpace.sId
+      expect(agentAfterArchive).not.toBeNull();
+      expect(agentAfterArchive!.requestedSpaceModelIds()).not.toContain(
+        restrictedSpace.id
       );
 
       // Restoring the skill should add its space back to the agent's requirements.
       await skill.restore(testContext.authenticator);
 
-      const agentAfterRestore = await getAgentConfiguration(
+      const agentAfterRestore = await AgentConfigurationFactory.refetch(
         testContext.authenticator,
-        { agentId: agent.sId, variant: "light" }
+        agent.sId
       );
-      expect(agentAfterRestore?.requestedSpaceIds).toContain(
-        restrictedSpace.sId
+      expect(agentAfterRestore?.requestedSpaceModelIds()).toContain(
+        restrictedSpace.id
       );
     });
 
@@ -1989,14 +2031,11 @@ describe("SkillResource", () => {
       // Archiving skill1 must not remove sharedSpace because skill2 still requires it.
       await skill1.archive(testContext.authenticator);
 
-      const agentAfter = await getAgentConfiguration(
+      const agentAfter = await AgentConfigurationFactory.refetch(
         testContext.authenticator,
-        {
-          agentId: agent.sId,
-          variant: "light",
-        }
+        agent.sId
       );
-      expect(agentAfter?.requestedSpaceIds).toContain(sharedSpace.sId);
+      expect(agentAfter?.requestedSpaceModelIds()).toContain(sharedSpace.id);
     });
 
     it("marks parent skill references unavailable while a child skill is archived", async () => {
@@ -2181,7 +2220,7 @@ describe("SkillResource", () => {
     });
   });
 
-  describe("listByAgentConfigurations", () => {
+  describe("listByAgents (custom agents)", () => {
     it("maps each agent to its own skills", async () => {
       const [firstAgent, secondAgent, skillLessAgent] = await Promise.all([
         AgentConfigurationFactory.createTestAgent(testContext.authenticator, {
@@ -2212,26 +2251,25 @@ describe("SkillResource", () => {
         });
       }
 
-      const pairs = await SkillResource.listByAgentConfigurations(
+      const [first, second, skillLess] = await AgentResource.fetchByIds(
         testContext.authenticator,
-        [firstAgent, secondAgent, skillLessAgent]
+        [firstAgent.sId, secondAgent.sId, skillLessAgent.sId]
+      );
+      const skillsByAgent = await SkillResource.listByAgents(
+        testContext.authenticator,
+        [first, second, skillLess]
       );
 
-      const skillModelIdsByAgentId = new Map<string, number[]>();
-      for (const { agentConfiguration, skill } of pairs) {
-        const skillModelIds =
-          skillModelIdsByAgentId.get(agentConfiguration.sId) ?? [];
-        skillModelIds.push(skill.id);
-        skillModelIdsByAgentId.set(agentConfiguration.sId, skillModelIds);
-      }
-
-      expect(skillModelIdsByAgentId.get(firstAgent.sId)?.sort()).toEqual(
-        [firstSkill.id, sharedSkill.id].sort()
-      );
-      expect(skillModelIdsByAgentId.get(secondAgent.sId)).toEqual([
+      expect(
+        skillsByAgent
+          .get(first)
+          ?.map((skill) => skill.id)
+          .sort()
+      ).toEqual([firstSkill.id, sharedSkill.id].sort());
+      expect(skillsByAgent.get(second)?.map((skill) => skill.id)).toEqual([
         sharedSkill.id,
       ]);
-      expect(skillModelIdsByAgentId.has(skillLessAgent.sId)).toBe(false);
+      expect(skillsByAgent.get(skillLess)).toEqual([]);
     });
 
     it("resolves global skills attached to a workspace agent", async () => {
@@ -2244,21 +2282,24 @@ describe("SkillResource", () => {
         agentConfigurationId: agent.id,
       });
 
-      const pairs = await SkillResource.listByAgentConfigurations(
+      const resources = await AgentResource.fetchByIds(
         testContext.authenticator,
-        [agent]
+        [agent.sId]
+      );
+      const skillsByAgent = await SkillResource.listByAgents(
+        testContext.authenticator,
+        resources
       );
 
-      expect(pairs.map(({ skill }) => skill.sId)).toEqual(["frames"]);
+      expect(
+        skillsByAgent.get(resources[0])?.map((skill) => skill.sId)
+      ).toEqual(["frames"]);
     });
 
     it("returns nothing for no agents", async () => {
       expect(
-        await SkillResource.listByAgentConfigurations(
-          testContext.authenticator,
-          []
-        )
-      ).toEqual([]);
+        (await SkillResource.listByAgents(testContext.authenticator, [])).size
+      ).toBe(0);
     });
 
     it("does not return skills the caller cannot read", async () => {
@@ -2285,9 +2326,59 @@ describe("SkillResource", () => {
         testContext.workspace.sId
       );
 
+      const resources = await AgentResource.fetchByIds(otherAuth, [agent.sId]);
+      expect(resources).toHaveLength(1);
+
       expect(
-        await SkillResource.listByAgentConfigurations(otherAuth, [agent])
+        (await SkillResource.listByAgents(otherAuth, resources)).get(
+          resources[0]
+        )
       ).toEqual([]);
+    });
+  });
+
+  describe("listByAgents", () => {
+    it("lists each agent's skills by its scope, with no skill for skill-less agents", async () => {
+      const { authenticator } = testContext;
+      const [withSkill, skillLess] = await Promise.all([
+        AgentConfigurationFactory.createTestAgent(authenticator, {
+          name: "With Skill",
+        }),
+        AgentConfigurationFactory.createTestAgent(authenticator, {
+          name: "Skill-less",
+        }),
+      ]);
+      const skill = await SkillFactory.create(authenticator, {
+        name: "Linked Skill",
+      });
+      await SkillFactory.linkToAgent(authenticator, {
+        skillId: skill.id,
+        agentConfigurationId: withSkill.id,
+      });
+
+      const agents = await AgentResource.fetchByIds(authenticator, [
+        withSkill.sId,
+        skillLess.sId,
+        GLOBAL_AGENTS_SID.HELPER,
+      ]);
+      expect(agents).toHaveLength(3);
+      const [withSkillAgent, skillLessAgent, globalAgent] = agents;
+
+      const skillsByAgent = await SkillResource.listByAgents(
+        authenticator,
+        agents
+      );
+
+      expect(
+        [...skillsByAgent].map(([agent, skills]) => [
+          agent,
+          skills.map((s) => s.sId),
+        ])
+      ).toEqual([
+        [withSkillAgent, [skill.sId]],
+        [skillLessAgent, []],
+        [globalAgent, ["frames"]],
+      ]);
     });
   });
 

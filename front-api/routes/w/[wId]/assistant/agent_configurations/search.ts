@@ -18,6 +18,7 @@ app.post(
     const auth = ctx.get("auth");
     const {
       query,
+      searchType,
       limit,
       offset,
       permissionFiltering,
@@ -37,6 +38,7 @@ app.post(
     } = ctx.req.valid("json");
     const result = await searchAgentListings(auth, {
       searchTerm: query,
+      searchType,
       limit,
       offset,
       sortBy,

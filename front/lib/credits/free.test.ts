@@ -28,14 +28,6 @@ vi.mock("@app/lib/plans/stripe", async () => {
   };
 });
 
-vi.mock("@app/lib/auth", async () => {
-  const actual = await vi.importActual("@app/lib/auth");
-  return {
-    ...actual,
-    getFeatureFlags: vi.fn(),
-  };
-});
-
 const MONTH_SECONDS = 30 * 24 * 60 * 60;
 const YEAR_SECONDS = 365 * 24 * 60 * 60;
 const NOW = 1700000000; // Fixed timestamp for tests
@@ -81,6 +73,7 @@ function makeWorkspace(
     metadata: null,
     metronomeCustomerId: null,
     sharingPolicy: "all_scopes",
+    locale: "en-US",
     ...overrides,
   };
 }

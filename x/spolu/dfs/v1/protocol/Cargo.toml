@@ -1,0 +1,20 @@
+[package]
+name = "dfs-protocol"
+version = "0.2.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+prost = "0.14"
+serde = { version = "1", features = ["derive"] }
+tonic = { version = "0.14", features = ["tls-ring", "tls-native-roots"] }
+tonic-prost = "0.14"
+uuid = { version = "1", features = ["v4"] }
+mime = "0.3"
+percent-encoding = "2"
+
+[build-dependencies]
+tonic-prost-build = "0.14"
+
+[lints]
+workspace = true

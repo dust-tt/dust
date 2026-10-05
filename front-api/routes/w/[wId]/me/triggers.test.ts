@@ -1,3 +1,4 @@
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -37,5 +38,33 @@ describe("GET /api/w/:wId/me/triggers", () => {
       isEditor: true,
     });
     expect(triggers[0].agentPictureUrl).toBeTruthy();
+  });
+
+  it("lists a trigger on a custom agent with the agent's name and picture", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Digest Agent",
+    });
+
+    await TriggerFactory.schedule(auth, {
+      name: "Weekly custom digest",
+      agentConfigurationId: agent.sId,
+      configuration: EVERY_MONDAY_9AM,
+    });
+
+    const response = await getUserTriggers(workspace.sId);
+    expect(response.status).toBe(200);
+
+    const { triggers } = await response.json();
+    expect(triggers).toHaveLength(1);
+    expect(triggers[0]).toMatchObject({
+      name: "Weekly custom digest",
+      agentConfigurationId: agent.sId,
+      agentName: "Digest Agent",
+      agentPictureUrl: agent.pictureUrl,
+      isEditor: true,
+    });
   });
 });

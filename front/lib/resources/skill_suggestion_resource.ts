@@ -10,6 +10,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { SKILL_STATUSES } from "@app/types/assistant/skill_configuration_constants";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -21,7 +22,10 @@ import type {
   SkillSuggestionType,
   SkillSuggestionUpdatedBy,
 } from "@app/types/suggestions/skill_suggestion";
-import { parseSkillSuggestionData } from "@app/types/suggestions/skill_suggestion";
+import {
+  parseSkillSuggestionData,
+  SkillSuggestionDataSchema,
+} from "@app/types/suggestions/skill_suggestion";
 import type {
   Attributes,
   CreationAttributes,
@@ -45,8 +49,8 @@ export interface SkillSuggestionResource
 /**
  * Resource for managing skill suggestions.
  *
- * IMPORTANT: Access to suggestions requires edit permissions on the associated skill.
- * Users can only create, read, update, or delete suggestions for skills they can edit.
+ * IMPORTANT: Creating, reading, updating and deleting a suggestion requires what its kind needs on
+ * the associated skill, see `isAuthorizedForSkillSuggestion`.
  */
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> {
@@ -141,14 +145,25 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     auth: Authenticator,
     options?: ResourceFindOptions<SkillSuggestionModel> & {
       dangerouslyBypassConversationsVisibilityCheck?: boolean;
-      // Throw instead of silently dropping the suggestions the caller cannot access.
-      throwOnInaccessible?: boolean;
     }
-  ) {
+  ): Promise<SkillSuggestionResource[]> {
+    const { resources } = await this.baseFetchWithAccess(auth, options);
+    return resources;
+  }
+
+  // Also returns the matching rows dropped because the caller is not authorized for their kind.
+  private static async baseFetchWithAccess(
+    auth: Authenticator,
+    options?: ResourceFindOptions<SkillSuggestionModel> & {
+      dangerouslyBypassConversationsVisibilityCheck?: boolean;
+    }
+  ): Promise<{
+    resources: SkillSuggestionResource[];
+    inaccessible: SkillSuggestionModel[];
+  }> {
     const {
       where,
       dangerouslyBypassConversationsVisibilityCheck,
-      throwOnInaccessible,
       ...otherOptions
     } = options ?? {};
     const owner = auth.getNonNullableWorkspace();
@@ -163,8 +178,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
           model: SkillConfigurationModel,
           as: "skillConfiguration",
           required: true,
-          // Only used for the required inner join's existence check: canAdministrateCustomSkillId
-          // and modelIdToSId resolve permissions and sId from the id alone, no column needed here.
+          // Only used for the required inner join's existence check: the skill is fetched below.
           attributes: [],
         },
         {
@@ -184,51 +198,40 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     });
 
     if (suggestions.length === 0) {
-      return [];
+      return { resources: [], inaccessible: [] };
     }
 
-    // Filter suggestions to only include those for skills the user can administrate. Resolved
-    // without fetching the skill row: `canAdministrateCustomSkillId` only needs the id and
-    // workspace id, and `sId` is a pure derivation from the same pair. This also means a
-    // suggestion whose skill was archived since (e.g. a `delete` suggestion archives its own
-    // target on accept) stays visible: the permission check never depends on skill status.
-    const resources = removeNulls(
-      suggestions.map((suggestion) => {
-        if (
-          !SkillResource.canAdministrateCustomSkillId(auth, {
-            id: suggestion.skillConfigurationId,
-            workspaceId: owner.id,
-          })
-        ) {
-          if (throwOnInaccessible) {
-            throw new Error(
-              "User does not have permission to access every requested skill suggestion"
-            );
+    const skillsById = await this.getSkillsByModelId(
+      auth,
+      suggestions.map((s) => s.skillConfigurationId)
+    );
+
+    const resources: SkillSuggestionResource[] = [];
+    const inaccessible: SkillSuggestionModel[] = [];
+    for (const suggestion of suggestions) {
+      const skill = skillsById.get(suggestion.skillConfigurationId);
+      if (!skill || !this.isAuthorizedForKind(auth, skill, suggestion)) {
+        inaccessible.push(suggestion);
+        continue;
+      }
+      const user = suggestion.updatedByUser;
+      const updatedBy = user
+        ? {
+            sId: user.sId,
+            fullName: [user.firstName, user.lastName].filter(Boolean).join(" "),
+            email: user.email,
           }
-          return null;
-        }
-        const user = suggestion.updatedByUser;
-        const updatedBy = user
-          ? {
-              sId: user.sId,
-              fullName: [user.firstName, user.lastName]
-                .filter(Boolean)
-                .join(" "),
-              email: user.email,
-            }
-          : null;
-        return new this(
+        : null;
+      resources.push(
+        new this(
           SkillSuggestionModel,
           suggestion.get(),
-          SkillResource.modelIdToSId({
-            id: suggestion.skillConfigurationId,
-            workspaceId: owner.id,
-          }),
+          skill.sId,
           updatedBy,
           suggestion.notificationConversation?.sId ?? null
-        );
-      })
-    );
+        )
+      );
+    }
 
     // Enrich resources with visible source conversation IDs.
     const allConversationModelIds = [
@@ -264,7 +267,39 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       }
     }
 
-    return resources;
+    return { resources, inaccessible };
+  }
+
+  // Admins get the skills they cannot read too (redacted): they can still apply the kinds
+  // that only need `admin`, e.g. availability.
+  private static async getSkillsByModelId(
+    auth: Authenticator,
+    skillModelIds: ModelId[]
+  ): Promise<Map<ModelId, SkillResource>> {
+    const skills = await SkillResource.fetchByModelIds(
+      auth,
+      [...new Set(skillModelIds)],
+      {
+        status: [...SKILL_STATUSES],
+        withTools: false,
+        permissionFiltering: auth.isAdmin() ? "redact_unreadable" : "strict",
+      }
+    );
+    return new Map(skills.map((skill) => [skill.id, skill]));
+  }
+
+  private static isAuthorizedForKind(
+    auth: Authenticator,
+    skill: SkillResource,
+    suggestion: SkillSuggestionModel
+  ): boolean {
+    const parsed = SkillSuggestionDataSchema.safeParse({
+      kind: suggestion.kind,
+      suggestion: suggestion.suggestion,
+    });
+    return (
+      parsed.success && isAuthorizedForSkillSuggestion(auth, skill, parsed.data)
+    );
   }
 
   static async fetchByIds(
@@ -347,21 +382,31 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
 
   /**
    * Lists the suggestions belonging to the given batches (by batch model id), whatever their
-   * source. Throws if the caller cannot administrate the skill of any of them.
+   * source, along with the batches holding a suggestion the caller cannot access: its skill cannot
+   * be fetched, or the caller lacks what the suggestion's kind requires on it.
    */
   static async listByBatchModelIds(
     auth: Authenticator,
     batchModelIds: ModelId[]
-  ): Promise<SkillSuggestionResource[]> {
+  ): Promise<{
+    suggestions: SkillSuggestionResource[];
+    inaccessibleBatchModelIds: Set<ModelId>;
+  }> {
     if (batchModelIds.length === 0) {
-      return [];
+      return { suggestions: [], inaccessibleBatchModelIds: new Set() };
     }
 
-    return this.baseFetch(auth, {
+    const { resources, inaccessible } = await this.baseFetchWithAccess(auth, {
       where: { batchId: batchModelIds },
       order: [["id", "ASC"]],
-      throwOnInaccessible: true,
     });
+
+    return {
+      suggestions: resources,
+      inaccessibleBatchModelIds: new Set(
+        removeNulls(inaccessible.map((s) => s.batchId))
+      ),
+    };
   }
 
   /**

@@ -24,7 +24,6 @@ export const safeRehypeKatex: (options?: RehypeKatexOptions) => Transformer = (
       // Note: Type incompatibility exists between react-markdown@8.0.7 (uses vfile@5.3.7) and
       // rehype-katex@7.0.1 (uses vfile@6.0.3). Consider upgrading to react-markdown@10+ for proper
       // type compatibility.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return katexProcessor(tree as any, file as any);
     } catch (error) {
       // Log the error for debugging but don't throw.

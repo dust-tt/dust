@@ -12,12 +12,15 @@ import {
   getMcpServerDisplayName,
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
+  isRemoteMCPServerType,
   mcpServersSortingFn,
   requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerType, MCPServerViewLightType } from "@app/lib/api/mcp";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
+import { compareStrings } from "@app/lib/i18n/format";
 import { filterMCPServer } from "@app/lib/mcp";
 import {
   useCreateInternalMCPServer,
@@ -26,7 +29,6 @@ import {
   useMCPServersUsage,
 } from "@app/lib/swr/mcp_servers";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type {
   AgentsAndSkillsUsageType,
   AgentsUsageType,
@@ -36,6 +38,7 @@ import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
+  AlertCircle,
   AvatarCellSkeleton,
   Chip,
   cn,
@@ -44,6 +47,7 @@ import {
   EmptyCTA,
   LoadingBlock,
   TextCellSkeleton,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
@@ -53,6 +57,7 @@ type RowData = {
   mcpServerView?: MCPServerViewLightType;
   usage: AgentsUsageType | AgentsAndSkillsUsageType | null;
   isConnected: boolean;
+  hasSyncError: boolean;
   account: string;
   spaces: SpaceType[];
   onClick: () => void;
@@ -99,7 +104,7 @@ function AdminActionSkeletonCell({
 }
 
 const NameCell = ({ row }: { row: RowData }) => {
-  const { mcpServer, mcpServerView, isConnected } = row;
+  const { mcpServer, mcpServerView, isConnected, hasSyncError } = row;
 
   return (
     <DataTable.CellContent grow>
@@ -122,6 +127,18 @@ const NameCell = ({ row }: { row: RowData }) => {
               : mcpServer.description}
           </div>
         </div>
+
+        {mcpServerView && hasSyncError && (
+          <Tooltip
+            label="Synchronization needs attention. Open the tool to refresh authentication."
+            tooltipTriggerAsChild
+            trigger={
+              <span className="inline-flex shrink-0">
+                <AlertCircle className="h-4 w-4 text-warning-500" />
+              </span>
+            }
+          />
+        )}
 
         {mcpServerView && !isConnected && mcpServer.authorization && (
           <Chip color="warning" size="xs">
@@ -260,6 +277,9 @@ export const AdminActionsList = ({
                 c.internalMCPServerId === mcpServerWithViews.sId ||
                 c.remoteMCPServerId === mcpServerWithViews.sId
             ),
+            hasSyncError:
+              isRemoteMCPServerType(mcpServerWithViews) &&
+              !!mcpServerWithViews.lastError,
             onClick: () => {
               if (mcpServerView && mcpServerWithViews) {
                 setMcpServerToShow(mcpServerWithViews);
@@ -362,7 +382,8 @@ export const AdminActionsList = ({
           );
         },
         sortingFn: (rowA, rowB) => {
-          return rowA.original.mcpServer.name.localeCompare(
+          return compareStrings(
+            rowA.original.mcpServer.name,
             rowB.original.mcpServer.name
           );
         },
@@ -386,7 +407,7 @@ export const AdminActionsList = ({
         sortingFn: (rowA, rowB) => {
           const accountA = rowA.original.account;
           const accountB = rowB.original.account;
-          return accountA.localeCompare(accountB);
+          return compareStrings(accountA, accountB);
         },
         meta: {
           className: "hidden @sm:w-5 @sm:table-cell",

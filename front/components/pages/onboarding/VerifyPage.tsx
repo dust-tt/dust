@@ -4,6 +4,7 @@ import config from "@app/lib/api/config";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useIsMetronomeCheckout } from "@app/lib/client/subscription";
 import { clientFetch } from "@app/lib/egress/client";
+import { formatNumber } from "@app/lib/i18n/format";
 import { FREE_SEAT_LIFETIME_AWU_CREDITS } from "@app/lib/metronome/constants";
 import {
   CODE_LENGTH,
@@ -708,7 +709,7 @@ function WelcomeStep({ credits, onStartBuilding }: WelcomeStepProps) {
           <p className="text-lg text-muted-foreground">
             You've got{" "}
             <span className="font-bold text-foreground">
-              {credits.toLocaleString()} credits
+              {formatNumber(credits)} credits
             </span>{" "}
             to explore, they never expire, so take your time. Let's put them to
             work.

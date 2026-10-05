@@ -294,8 +294,10 @@ type AvatarStackSizeType = (typeof AVATAR_STACK_SIZES)[number];
 
 export interface AvatarStackProps {
   avatars: AvatarProps[];
-  /** Max avatars shown before collapsing the rest into a "+N" counter. */
+  /** Max avatars shown before collapsing the rest into a "+N" counter (default 3). */
   nbVisibleItems?: number;
+  /** Maximum picture avatars before a "+N" counter; overrides nbVisibleItems. */
+  maxVisibleAvatars?: number;
   size?: AvatarStackSizeType;
   /** Slightly scale down avatars deeper in the stack for a depth effect (default true). */
   hasMagnifier?: boolean;
@@ -319,7 +321,8 @@ const sizeClassesPx: Record<AvatarStackSizeType, number> = {
  */
 Avatar.Stack = function ({
   avatars,
-  nbVisibleItems,
+  nbVisibleItems = 3,
+  maxVisibleAvatars,
   size = "sm",
   hasMagnifier = true,
   tooltipTriggerAsChild = false,
@@ -329,21 +332,25 @@ Avatar.Stack = function ({
   const [isHovered, setIsHovered] = useState(false);
 
   // Get visible avatars and calculate remaining count
-  const shouldShowAll = !nbVisibleItems || avatars.length <= nbVisibleItems;
+  const shouldShowAll = avatars.length <= (maxVisibleAvatars ?? nbVisibleItems);
   const isFirstOnTop = onTop === "first";
 
   const maxVisible = shouldShowAll
     ? avatars.length
-    : isFirstOnTop
-      ? nbVisibleItems
-      : nbVisibleItems - 1;
+    : (maxVisibleAvatars ??
+      (isFirstOnTop ? nbVisibleItems : nbVisibleItems - 1));
 
   const visibleAvatars = isFirstOnTop
     ? avatars.slice(0, maxVisible).reverse()
     : avatars.slice(0, maxVisible);
 
   const remainingCount =
-    shouldShowAll || isFirstOnTop ? 0 : avatars.length - maxVisible;
+    shouldShowAll || (isFirstOnTop && maxVisibleAvatars === undefined)
+      ? 0
+      : avatars.length - maxVisible;
+
+  // The counter matches the shape of the avatars it stands for.
+  const isCounterRounded = visibleAvatars.every((avatar) => avatar.isRounded);
 
   // Get all names for tooltip
   const avatarNames = avatars
@@ -481,6 +488,7 @@ Avatar.Stack = function ({
                   >
                     <Avatar
                       size={size}
+                      isRounded={isCounterRounded}
                       name={
                         Number(remainingCount) < 10
                           ? `+${remainingCount}`
@@ -491,6 +499,7 @@ Avatar.Stack = function ({
                 ) : (
                   <Avatar
                     size={size}
+                    isRounded={isCounterRounded}
                     name={
                       Number(remainingCount) < 10 ? `+${remainingCount}` : "9+"
                     }
