@@ -40,6 +40,7 @@ import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { useCallback, useContext, useMemo, useState } from "react";
 
 const DEFAULT_PAGE_SIZE = 25;
+const MAX_VISIBLE_MANAGERS = 3;
 
 type GroupRowData = {
   groupId: string;
@@ -56,6 +57,10 @@ interface WorkspaceGroupsListProps {
   owner: WorkspaceType;
 }
 
+/**
+ * @cc [owner:philipperolet,label:product] group-manager-overflow
+ * Show up to three manager avatars; additional managers MUST appear as a "+N" count.
+ */
 const columns: ColumnDef<GroupRowData>[] = [
   {
     id: "name",
@@ -92,7 +97,7 @@ const columns: ColumnDef<GroupRowData>[] = [
               visual: image ?? undefined,
               isRounded: true,
             })),
-            nbVisibleItems: 4,
+            maxVisibleAvatars: MAX_VISIBLE_MANAGERS,
             hasMagnifier: false,
           }}
         >
