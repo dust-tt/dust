@@ -15,25 +15,8 @@ struct ConversationAttachment: Codable, Identifiable, Hashable {
         Attachment.isFrame(contentType)
     }
 
-    var isImage: Bool {
-        contentType.hasPrefix("image/")
-    }
-
-    var isPDF: Bool {
-        contentType.contains("pdf")
-    }
-
-    var isText: Bool {
-        contentType.contains("text") || contentType.contains("json")
-            || contentType.contains("xml") || contentType.contains("html")
-    }
-
     var category: AttachmentCategory {
-        if isFrame { return .frame }
-        if isImage { return .image }
-        if isPDF { return .document }
-        if isText { return .document }
-        return .other
+        AttachmentCategory(contentType: contentType)
     }
 }
 
@@ -42,6 +25,20 @@ enum AttachmentCategory: String, CaseIterable {
     case image = "Images"
     case document = "Documents"
     case other = "Other"
+
+    init(contentType: String) {
+        if Attachment.isFrame(contentType) {
+            self = .frame
+        } else if contentType.hasPrefix("image/") {
+            self = .image
+        } else if contentType.contains("pdf") || contentType.contains("text") || contentType.contains("json")
+            || contentType.contains("xml") || contentType.contains("html")
+        {
+            self = .document
+        } else {
+            self = .other
+        }
+    }
 }
 
 struct ConversationAttachmentsResponse: Decodable {

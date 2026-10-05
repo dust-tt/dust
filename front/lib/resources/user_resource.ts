@@ -230,10 +230,17 @@ export class UserResource extends BaseResource<UserModel> {
     return users.map((user) => new UserResource(UserModel, user.get()));
   }
 
+  /**
+   * @cc [owner:avervaet,label:security] email-lookup-ignores-case
+   * `email` MUST match a lowercase stored email regardless of the input's letter case, and MUST
+   * still match a stored email given exactly as stored. Most writers lowercase emails but not all
+   * do (e.g. anonymized emails embed a mixed-case id), so the lookup MUST compare against both the
+   * input as given and its lowercase form.
+   */
   static async listByEmail(email: string): Promise<UserResource[]> {
     const users = await UserModel.findAll({
       where: {
-        email,
+        email: { [Op.in]: [...new Set([email, email.toLowerCase()])] },
       },
     });
 
@@ -344,7 +351,7 @@ export class UserResource extends BaseResource<UserModel> {
   }
 
   static async fetchByEmail(email: string): Promise<UserResource | null> {
-    const users = await this.listByEmail(email.toLowerCase());
+    const users = await this.listByEmail(email);
     const sortedUsers = users.sort((a, b) => {
       // Best effort strategy as user db entries are not updated often.
       return b.updatedAt.getTime() - a.updatedAt.getTime();

@@ -49,6 +49,12 @@ interface FilterPanelProps<
   onClearAll?: () => void;
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:product;react] responsive-filter-panel
+ * Below 768px viewport width, the panel MUST fit the viewport while keeping category
+ * navigation, option selection, selected filters and Apply accessible. Desktop layout
+ * MUST remain unchanged.
+ */
 export function FilterPanel<
   Category extends string,
   Option extends FilterOptionBase,
@@ -142,10 +148,11 @@ export function FilterPanel<
       <PopoverContent
         fullWidth
         align="start"
-        className="w-auto rounded-2xl p-0"
+        className="w-auto rounded-2xl p-0 max-md:flex max-md:max-h-(--radix-popover-content-available-height) max-md:w-[calc(100vw-2rem)] max-md:flex-col"
       >
-        <div className="flex h-96 flex-row divide-x divide-border dark:divide-border-dark">
+        <div className="flex h-96 flex-row divide-x divide-border max-md:grid max-md:h-128 max-md:min-h-0 max-md:grid-cols-[8rem_minmax(0,1fr)] max-md:grid-rows-[minmax(0,2fr)_minmax(0,1fr)] dark:divide-border-dark">
           <FilterCategoryNav
+            className="max-md:min-h-0 max-md:w-32"
             categories={categories}
             categoryLabels={categoryLabels}
             selectionCounts={categorySelectionCounts}
@@ -157,7 +164,7 @@ export function FilterPanel<
             }}
             footer={categoryNavFooter}
           />
-          <div className="flex h-full w-80 flex-col gap-3 p-2">
+          <div className="flex h-full w-80 flex-col gap-3 p-2 max-md:min-h-0 max-md:w-auto max-md:min-w-0 max-md:border-e-0">
             <FilterSection
               title={categoryLabels[activeCategory]}
               action={
@@ -222,6 +229,7 @@ export function FilterPanel<
             </div>
           </div>
           <FilterSelectionSummary
+            className="max-md:col-span-2 max-md:min-h-0 max-md:w-auto max-md:border-t max-md:border-border max-md:dark:border-border-dark"
             categoriesWithSelection={categoriesWithSelection}
             categoryLabels={categoryLabels}
             filter={draftFilter}

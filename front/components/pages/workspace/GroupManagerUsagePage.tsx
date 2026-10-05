@@ -143,7 +143,7 @@ export function GroupManagerUsagePage() {
     <AdminPageContainer>
       <Page.Vertical align="stretch" gap="xl">
         <Page.Header
-          title={<Page.H variant="h3">Usage</Page.H>}
+          title={<Page.H variant="h3">Credits</Page.H>}
           description="Manage credit limits for members and groups in your scope."
         />
         <Tabs

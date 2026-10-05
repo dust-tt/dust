@@ -710,7 +710,9 @@ export const CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     xhigh: false,
     maximal: true,
   },
-  defaultReasoningEffort: "high",
+  // temporary override of anthropic default config to avoid BYOK workspaces not
+  // having access to the default.
+  defaultReasoningEffort: "medium",
   tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT,
   supportsPromptCaching: true,
   supportsBatchProcessing: true,

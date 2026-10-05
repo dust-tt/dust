@@ -41,7 +41,7 @@ struct ConversationFilesSheet: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button { dismiss() } label: {
-                        SparkleIcon.xMark.image
+                        SparkleIcon.xClose.image
                             .resizable()
                             .frame(width: 16, height: 16)
                             .foregroundStyle(Color.dustForeground)
@@ -57,7 +57,7 @@ struct ConversationFilesSheet: View {
                 AttachmentViewerView(
                     title: attachment.title,
                     contentType: attachment.contentType,
-                    fileId: fileId,
+                    file: .id(fileId),
                     workspaceId: workspaceId,
                     tokenProvider: tokenProvider,
                     sourceUrl: attachment.sourceUrl
@@ -77,12 +77,7 @@ struct ConversationFilesSheet: View {
                             fileRow(attachment)
                         }
                     } header: {
-                        Text(category.rawValue)
-                            .sparkleLabelXs()
-                            .foregroundStyle(Color.dustFaint)
-                            .padding(.horizontal, 16)
-                            .padding(.top, 16)
-                            .padding(.bottom, 4)
+                        FileListSectionHeader(title: category.rawValue)
                     }
                 }
             }
@@ -91,42 +86,16 @@ struct ConversationFilesSheet: View {
     }
 
     private func fileRow(_ attachment: ConversationAttachment) -> some View {
-        Button {
+        FileListRow(
+            systemImage: Attachment.sfSymbol(for: attachment.contentType),
+            title: attachment.title,
+            subtitle: attachment.source.map { "by \($0)" },
+            isHighlighted: attachment.isFrame,
+            showsChevron: attachment.isFrame
+        ) {
             guard attachment.fileId != nil else { return }
             selectedAttachment = attachment
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: Attachment.sfSymbol(for: attachment.contentType))
-                    .font(.system(size: 18))
-                    .foregroundStyle(attachment.isFrame ? Color.highlight : Color.dustFaint)
-                    .frame(width: 28, height: 28)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(attachment.title)
-                        .sparkleCopySm()
-                        .foregroundStyle(Color.dustForeground)
-                        .lineLimit(1)
-
-                    if let source = attachment.source {
-                        Text("by \(source)")
-                            .sparkleCopyXs()
-                            .foregroundStyle(Color.dustFaint)
-                    }
-                }
-
-                Spacer()
-
-                if attachment.isFrame {
-                    SparkleIcon.chevronRight.image
-                        .resizable()
-                        .frame(width: 12, height: 12)
-                        .foregroundStyle(Color.dustFaint)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
         }
-        .buttonStyle(.plain)
     }
 
     // MARK: - Grouping

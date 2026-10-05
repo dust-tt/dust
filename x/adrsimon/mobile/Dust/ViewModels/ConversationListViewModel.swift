@@ -13,15 +13,6 @@ enum ConversationDateGroup: String, CaseIterable {
 }
 
 enum ConversationGrouping {
-    static func filtered(_ conversations: [Conversation], by searchText: String) -> [Conversation] {
-        guard !searchText.isEmpty else { return conversations }
-        let query = searchText.lowercased()
-        return conversations.filter { conversation in
-            guard let title = conversation.title else { return false }
-            return title.lowercased().contains(query)
-        }
-    }
-
     static func groupedByDate(_ conversations: [Conversation]) -> [(String, [Conversation])] {
         let calendar = Calendar.current
         let now = Date()
@@ -80,7 +71,10 @@ final class ConversationListViewModel: ObservableObject {
     @Published var workspace: Workspace?
     @Published var workspaces: [Workspace] = []
     @Published var pods: [Space] = []
-    @Published var isPodsExpanded: Bool = true
+    @Published var showsAllPods = false
+    @Published private var listHasMore = false
+    @Published private var searchResults: [Conversation]?
+    @Published private var searchHasMore = false
     /// Dust sId of the signed-in user, used to scope tool-approval prompts to their own turns.
     @Published var currentUserSId: String?
 
@@ -88,6 +82,9 @@ final class ConversationListViewModel: ObservableObject {
     private var titleObserver: ConversationTitleObserver?
     private var readObserver: ConversationReadObserver?
     private var hasLoaded = false
+    private var listLastValue: String?
+    private var searchLastValue: String?
+    private var isLoadingMoreConversations = false
 
     init(tokenProvider: TokenProvider) {
         self.tokenProvider = tokenProvider
@@ -132,6 +129,8 @@ final class ConversationListViewModel: ObservableObject {
     func switchWorkspace(_ newWorkspace: Workspace) async {
         workspace = newWorkspace
         conversations = []
+        searchText = ""
+        searchResults = nil
         pods = []
         state = .loading
         do {
@@ -163,7 +162,74 @@ final class ConversationListViewModel: ObservableObject {
             tokenProvider: tokenProvider
         )
         conversations = response.conversations
+        listHasMore = response.hasMore
+        listLastValue = response.lastValue
         state = .loaded
+    }
+
+    var hasMoreConversations: Bool {
+        searchResults == nil ? listHasMore : searchHasMore
+    }
+
+    var isSearching: Bool {
+        !searchQuery.isEmpty && searchResults == nil
+    }
+
+    private var searchQuery: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    func search() async {
+        let query = searchQuery
+        guard !query.isEmpty, let workspaceId = workspace?.sId else {
+            searchResults = nil
+            return
+        }
+        try? await Task.sleep(for: .milliseconds(300))
+        guard !Task.isCancelled else { return }
+        do {
+            let response = try await ConversationService.searchConversations(
+                workspaceId: workspaceId,
+                query: query,
+                tokenProvider: tokenProvider
+            )
+            guard !Task.isCancelled else { return }
+            searchResults = response.conversations
+            searchHasMore = response.hasMore
+            searchLastValue = response.lastValue
+        } catch {
+            logger.error("Failed to search conversations: \(error)")
+        }
+    }
+
+    func loadMoreConversations() async {
+        guard hasMoreConversations, !isLoadingMoreConversations, let workspaceId = workspace?.sId else { return }
+        isLoadingMoreConversations = true
+        defer { isLoadingMoreConversations = false }
+        do {
+            if searchResults != nil {
+                let response = try await ConversationService.searchConversations(
+                    workspaceId: workspaceId,
+                    query: searchQuery,
+                    tokenProvider: tokenProvider,
+                    lastValue: searchLastValue
+                )
+                searchResults? += response.conversations
+                searchHasMore = response.hasMore
+                searchLastValue = response.lastValue
+            } else {
+                let response = try await ConversationService.fetchConversations(
+                    workspaceId: workspaceId,
+                    tokenProvider: tokenProvider,
+                    lastValue: listLastValue
+                )
+                conversations += response.conversations
+                listHasMore = response.hasMore
+                listLastValue = response.lastValue
+            }
+        } catch {
+            logger.error("Failed to load more conversations: \(error)")
+        }
     }
 
     private func loadPods() async {
@@ -179,9 +245,19 @@ final class ConversationListViewModel: ObservableObject {
     }
 
     func markConversationsAsRead(_ ids: Set<String>) {
-        for index in conversations.indices where ids.contains(conversations[index].sId) {
-            conversations[index].unread = false
-            conversations[index].actionRequired = false
+        for id in ids {
+            setReadState(conversationId: id, unread: false, actionRequired: false)
+        }
+    }
+
+    private func setReadState(conversationId: String, unread: Bool, actionRequired: Bool) {
+        for index in conversations.indices where conversations[index].sId == conversationId {
+            conversations[index].unread = unread
+            conversations[index].actionRequired = actionRequired
+        }
+        for index in (searchResults ?? []).indices where searchResults?[index].sId == conversationId {
+            searchResults?[index].unread = unread
+            searchResults?[index].actionRequired = actionRequired
         }
     }
 
@@ -190,10 +266,7 @@ final class ConversationListViewModel: ObservableObject {
 
         // Optimistically update local state.
         let wasUnread = conversation.unread || conversation.actionRequired
-        if let index = conversations.firstIndex(where: { $0.sId == conversation.sId }) {
-            conversations[index].unread = !wasUnread
-            conversations[index].actionRequired = false
-        }
+        setReadState(conversationId: conversation.sId, unread: !wasUnread, actionRequired: false)
 
         do {
             if wasUnread {
@@ -212,10 +285,11 @@ final class ConversationListViewModel: ObservableObject {
         } catch {
             // Revert on failure.
             logger.error("Failed to toggle read status: \(error)")
-            if let index = conversations.firstIndex(where: { $0.sId == conversation.sId }) {
-                conversations[index].unread = conversation.unread
-                conversations[index].actionRequired = conversation.actionRequired
-            }
+            setReadState(
+                conversationId: conversation.sId,
+                unread: conversation.unread,
+                actionRequired: conversation.actionRequired
+            )
         }
     }
 
@@ -224,7 +298,9 @@ final class ConversationListViewModel: ObservableObject {
 
         // Optimistically remove from local state.
         let snapshot = conversations
+        let searchSnapshot = searchResults
         conversations.removeAll { $0.sId == conversation.sId }
+        searchResults?.removeAll { $0.sId == conversation.sId }
 
         do {
             try await ConversationService.deleteConversation(
@@ -236,6 +312,7 @@ final class ConversationListViewModel: ObservableObject {
             // Revert on failure.
             logger.error("Failed to delete conversation: \(error)")
             conversations = snapshot
+            searchResults = searchSnapshot
         }
     }
 
@@ -244,25 +321,18 @@ final class ConversationListViewModel: ObservableObject {
     }
 
     var filteredConversations: [Conversation] {
-        ConversationGrouping.filtered(conversations, by: searchText)
+        searchQuery.isEmpty ? conversations : searchResults ?? []
+    }
+
+    var inboxConversations: [Conversation] {
+        filteredConversations.filter { $0.unread || $0.actionRequired }
     }
 
     var groupedConversations: [(String, [Conversation])] {
-        let filtered = filteredConversations
-        let dateGroups = ConversationGrouping.groupedByDate(filtered)
+        ConversationGrouping.groupedByDate(filteredConversations.filter { !$0.unread && !$0.actionRequired })
+    }
 
-        // Prepend Inbox section: unread or actionRequired conversations.
-        let inboxIds = Set(unreadConversations.map(\.sId))
-        let inboxConversations = filtered.filter { inboxIds.contains($0.sId) }
-        guard !inboxConversations.isEmpty else { return dateGroups }
-
-        var result: [(String, [Conversation])] = [("Inbox (\(inboxConversations.count))", inboxConversations)]
-        for (label, convos) in dateGroups {
-            let nonInbox = convos.filter { !inboxIds.contains($0.sId) }
-            if !nonInbox.isEmpty {
-                result.append((label, nonInbox))
-            }
-        }
-        return result
+    func podJoined() async {
+        await loadPods()
     }
 }

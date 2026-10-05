@@ -58,6 +58,7 @@ make format               # SwiftFormat (writes changes)
 make format-check         # SwiftFormat in lint mode (no writes)
 make clean                # remove build artifacts
 make generate             # (re)generate Dust.xcodeproj from project.yml
+make tokens               # regenerate SparkleTokens from ../../../sparkle
 ```
 
 Every env-specific task has two equivalent forms:
@@ -71,6 +72,12 @@ Override the simulator with `SIMULATOR`:
 
 ```bash
 make run SIMULATOR='iPhone 16 Pro'
+```
+
+Open a conversation in the running simulator app:
+
+```bash
+xcrun simctl openurl booted dust://conversation/<conversationId>
 ```
 
 ## Releasing to TestFlight

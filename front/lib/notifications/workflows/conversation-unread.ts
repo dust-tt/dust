@@ -1,9 +1,10 @@
 import config from "@app/lib/api/config";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
 import {
   ensureSlackNotificationsReady,
+  getActiveSubscriberAuth,
   getNovuClient,
   getUserNotificationDelay,
 } from "@app/lib/notifications";
@@ -135,10 +136,10 @@ const shouldSkipUnreadConversation = async ({
   triggerShouldSkip: boolean;
   hasUnreadMessages: boolean;
 }): Promise<boolean> => {
-  const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    subscriberId,
-    payload.workspaceId
-  );
+  const auth = await getActiveSubscriberAuth(subscriberId, payload.workspaceId);
+  if (!auth) {
+    return true;
+  }
 
   const conversation = await ConversationResource.fetchById(
     auth,
@@ -177,10 +178,10 @@ export const shouldSkipNewProjectConversation = async ({
   subscriberId: string;
   payload: ConversationUnreadPayloadType;
 }): Promise<boolean> => {
-  const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    subscriberId,
-    payload.workspaceId
-  );
+  const auth = await getActiveSubscriberAuth(subscriberId, payload.workspaceId);
+  if (!auth) {
+    return true;
+  }
 
   const conversationResource = await ConversationResource.fetchById(
     auth,
@@ -758,7 +759,9 @@ export const triggerConversationUnreadNotifications = async (
   }
   const { authorUserId } = detailsResult.value;
   // Get all participants to determine total count (for single-participant exception).
-  const totalParticipants = await conversation.listParticipants(auth);
+  const totalParticipants = await conversation.listParticipants(auth, {
+    onlyActiveMembers: true,
+  });
   const allParticipants = totalParticipants.filter((p) => {
     if (userToNotifyId && p.sId !== userToNotifyId) {
       return false;

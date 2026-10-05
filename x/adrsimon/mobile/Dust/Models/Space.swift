@@ -6,13 +6,14 @@ struct Space: Codable, Identifiable, Hashable {
     let kind: String
     let description: String?
     let isRestricted: Bool
+    let isMember: Bool
 
     var id: String {
         sId
     }
 
     private enum CodingKeys: String, CodingKey {
-        case sId, name, kind, description, isRestricted
+        case sId, name, kind, description, isRestricted, isMember
     }
 
     init(from decoder: Decoder) throws {
@@ -22,6 +23,7 @@ struct Space: Codable, Identifiable, Hashable {
         self.kind = try container.decode(String.self, forKey: .kind)
         self.description = try container.decodeIfPresent(String.self, forKey: .description)
         self.isRestricted = try container.decodeIfPresent(Bool.self, forKey: .isRestricted) ?? false
+        self.isMember = try container.decodeIfPresent(Bool.self, forKey: .isMember) ?? false
     }
 }
 
@@ -31,6 +33,12 @@ struct SpaceSummaryEntry: Codable {
 
 struct SpaceSummaryResponse: Codable {
     let summary: [SpaceSummaryEntry]
+}
+
+struct SearchPodsResponse: Decodable {
+    let spaces: [Space]
+    let hasMore: Bool
+    let lastValue: String?
 }
 
 struct SpacesResponse: Codable {

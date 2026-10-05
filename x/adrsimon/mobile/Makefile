@@ -18,7 +18,7 @@ PROJECT   := Dust.xcodeproj
 SCHEME    := Dust
 BUNDLE_ID := com.dust.mobile
 BUILD_DIR := build
-SIMULATOR ?= iPhone 17 Pro
+SIMULATOR ?= iPhone 18 Pro
 ENV       ?= dev
 
 # Map ENV -> Xcode build configuration.
@@ -75,14 +75,14 @@ generate:
 ## build: build the app for the simulator (ENV selects the config)
 .PHONY: build
 build: generate
-	$(XCODEBUILD) CODE_SIGNING_ALLOWED=NO build $(BEAUTIFY)
+	$(XCODEBUILD) CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- build $(BEAUTIFY)
 
 ## run: build, then boot the simulator, install and launch the app
 .PHONY: run
 run: build
 	@echo "==> Booting $(SIMULATOR)"
 	@xcrun simctl boot "$(SIMULATOR)" 2>/dev/null || true
-	@open -a Simulator
+	@open -a DeviceHub 2>/dev/null || open -a Simulator
 	@echo "==> Installing $(APP_PATH)"
 	@xcrun simctl install "$(SIMULATOR)" "$(APP_PATH)"
 	@echo "==> Launching $(BUNDLE_ID) ($(CONFIG))"
@@ -118,6 +118,12 @@ format:
 .PHONY: format-check
 format-check:
 	swiftformat Dust SparkleTokens/Sources --lint
+
+## tokens: regenerate SparkleTokens from ../../../sparkle
+.PHONY: tokens
+tokens:
+	node scripts/generate-sparkle-tokens.mjs
+	swiftformat SparkleTokens/Sources
 
 ## clean: remove build artifacts
 .PHONY: clean

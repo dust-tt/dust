@@ -17,6 +17,7 @@ private let logger = Logger(subsystem: AppConfig.bundleId, category: "Auth")
 final class AuthViewModel: NSObject, ObservableObject, ASWebAuthenticationPresentationContextProviding {
     @Published var state: AuthState = .loading
     @Published var pendingFrameToken: String?
+    @Published var pendingConversationId: String?
 
     private var pkcePair: AuthService.PKCEPair?
     private var webAuthSession: ASWebAuthenticationSession?
@@ -107,6 +108,8 @@ final class AuthViewModel: NSObject, ObservableObject, ASWebAuthenticationPresen
             Task { await exchangeCode(code) }
         case let .frame(token):
             pendingFrameToken = token
+        case let .conversation(id):
+            pendingConversationId = id
         }
     }
 
@@ -125,6 +128,22 @@ final class AuthViewModel: NSObject, ObservableObject, ASWebAuthenticationPresen
                     logger.error("Server logout failed: \(error)")
                 }
             }
+        }
+    }
+
+    /**
+     * @cc [owner:adrsimon,label:product] restore-keeps-session-on-transient-failure
+     * A launch refresh failing with a 4xx MUST clear the saved tokens. Any other failure (network,
+     * 5xx) MUST keep them, and retrying MUST attempt the refresh again instead of logging out.
+     */
+    func retry() {
+        guard AuthService.loadTokens() != nil else {
+            logout()
+            return
+        }
+        state = .loading
+        restoreTask = Task { [weak self] in
+            await self?.restoreSession()
         }
     }
 
@@ -170,9 +189,12 @@ final class AuthViewModel: NSObject, ObservableObject, ASWebAuthenticationPresen
                 expiresIn: response.expiresIn
             )
             state = .authenticated(user: response.user, tokenProvider: provider)
-        } catch {
+        } catch let APIError.httpError(statusCode, _) where (400 ..< 500).contains(statusCode) {
             AuthService.clearTokens()
             state = .unauthenticated
+        } catch {
+            logger.error("Session restore failed: \(error)")
+            state = .error(error.localizedDescription)
         }
     }
 

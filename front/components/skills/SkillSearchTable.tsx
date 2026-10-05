@@ -28,14 +28,16 @@ import type {
 } from "@tanstack/react-table";
 import { useMemo } from "react";
 
-// Leave room for Select, Usage and Actions, then Editors/Last edited at @sm and Availability at @md.
 /**
  * @cc [owner:aubin-tchoi,label:product] skill-name-column-visibility
- * Secondary columns MUST hide based on available container width to keep skill names
- * visible.
+ * Below 768px viewport width, Usage MUST remain visible unless sorting by Last edited,
+ * which MUST then remain visible instead. Names MUST truncate to leave room for that
+ * column and row actions. Other columns appear as table space allows. At 768px and above,
+ * preserve the existing container-based layout. Sorting MUST NOT replace cell renderers.
+ * Column visibility rules MUST remain in each column definition.
  */
 const SKILL_SEARCH_NAME_COLUMN_WIDTH =
-  "w-[calc(100%-12rem)] @sm:w-[calc(100%-28rem)] @md:w-[calc(100%-38rem)]";
+  "md:w-[calc(100%-12rem)] md:@sm:w-[calc(100%-28rem)] md:@md:w-[calc(100%-38rem)]";
 
 interface SkillSearchTableProps {
   owner: LightWorkspaceType;
@@ -56,8 +58,8 @@ interface SkillSearchTableProps {
 
 type SkillSearchRow = SkillListItemType & { onClick: () => void };
 
-// Cells render as components, so a new `columns` identity remounts every cell: an open menu
-// closes and an in-flight checkbox click is lost.
+// Cells render as components, so recreating their renderer functions remounts them:
+// an open menu closes and an in-flight checkbox click is lost.
 /**
  * @cc [owner:tdraier,label:react;performance] stable-columns
  * `columns` MUST only be rebuilt when `onSelect`, `onRefresh`, `owner` or `readOnly` change, never
@@ -235,7 +237,11 @@ export function SkillSearchTable({
               }
             />
           ),
-          meta: { type: "numeric", className: "w-24 font-mono" },
+          meta: {
+            type: "numeric",
+            className:
+              "w-24 font-mono max-md:@max-[32rem]:[.sort-by-last-edited_&]:hidden",
+          },
         },
         {
           id: "editors" as const,
@@ -256,7 +262,10 @@ export function SkillSearchTable({
           cell: ({ row: { original: skill } }) => (
             <SkillLastEditedCell updatedAt={skill.updatedAt} emptyLabel="-" />
           ),
-          meta: { className: "hidden w-32 @sm:table-cell" },
+          meta: {
+            className:
+              "hidden w-32 max-md:@xs:table-cell max-md:[.sort-by-last-edited_&]:table-cell @sm:table-cell",
+          },
         },
         {
           id: "actions" as const,
@@ -284,12 +293,15 @@ export function SkillSearchTable({
         : columns.filter((column) => column.id !== "select"),
     [columns, hasSelectableRows]
   );
+  // Expose sorting to column CSS without recreating cell renderers.
+  const tableClassName =
+    sorting[0]?.id === "updatedAt" ? "sort-by-last-edited" : undefined;
 
   // Show skeletons only when no rows are available; keep previous results during refreshes.
   // Mirror BasicCellContent's inner h-12 so the divider contributes equally to row height.
   if (isLoading && skills.length === 0) {
     return (
-      <div role="status" aria-label="Loading skills">
+      <div role="status" aria-label="Loading skills" className={tableClassName}>
         <DataTableSkeleton
           columns={visibleColumns}
           rowCount={12}
@@ -340,6 +352,7 @@ export function SkillSearchTable({
 
   return (
     <DataTable
+      className={tableClassName}
       data={skills.map((skill) => ({
         ...skill,
         onClick: () => onSelect(skill.sId),

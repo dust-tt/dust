@@ -3,21 +3,26 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import {
   purgeExpiredPendingAgentsActivity,
+  purgeExpiredPendingSkillsActivity,
   purgeExpiredSyntheticSkillSuggestionsActivity,
 } from "@app/temporal/hard_delete/activities";
 import {
   PENDING_AGENTS_RETENTION_HOURS,
+  PENDING_SKILLS_RETENTION_HOURS,
   SYNTHETIC_SUGGESTIONS_RETENTION_DAYS,
 } from "@app/temporal/hard_delete/utils";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
+import { SKILL_STATUSES } from "@app/types/assistant/skill_configuration_constants";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
+import { randomUUID } from "crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@temporalio/activity", () => ({
@@ -304,6 +309,113 @@ describe("purgeExpiredPendingAgentsActivity", () => {
         activeGroupModelId,
       ])
     ).toHaveLength(1);
+  });
+});
+
+const PAST_PENDING_SKILLS_THRESHOLD_MS =
+  (PENDING_SKILLS_RETENTION_HOURS + 1) * 3600 * 1000;
+
+function createPendingSkill(
+  authenticator: Authenticator
+): Promise<SkillResource> {
+  // Pending skills share a status, so they need distinct names (unique on workspace, name, status).
+  return SkillFactory.create(authenticator, {
+    name: `Pending ${randomUUID()}`,
+    status: "pending",
+  });
+}
+
+// Fetches the skills still in the database, whatever their status or the caller's access.
+function fetchRemainingSkills(
+  authenticator: Authenticator,
+  skillModelIds: ModelId[]
+): Promise<SkillResource[]> {
+  return SkillResource.fetchByModelIds(authenticator, skillModelIds, {
+    status: [...SKILL_STATUSES],
+    permissionFiltering: "dangerously_skip",
+  });
+}
+
+async function getSkillEditorGrantGroupModelId(
+  authenticator: Authenticator,
+  skill: SkillResource
+): Promise<ModelId> {
+  const group = await GroupPermissionResource.findRegularAutoGroupForGrant(
+    authenticator,
+    {
+      grantType: "editor",
+      resourceType: "skill",
+      resourceId: skill.id,
+    }
+  );
+  if (!group) {
+    throw new Error("Skill editor grant was not created");
+  }
+  return group.id;
+}
+
+describe("purgeExpiredPendingSkillsActivity", () => {
+  it("only deletes expired pending skills with their editor grants", async () => {
+    const { authenticator } = await createResourceTest({
+      role: "admin",
+    });
+
+    const expiredSkill = await createPendingSkill(authenticator);
+    const expiredGroupModelId = await getSkillEditorGrantGroupModelId(
+      authenticator,
+      expiredSkill
+    );
+    const activeSkill = await SkillFactory.create(authenticator);
+
+    // Advance time past the retention threshold.
+    vi.advanceTimersByTime(PAST_PENDING_SKILLS_THRESHOLD_MS);
+
+    // Created after the time advance, so it is still fresh.
+    const freshSkill = await createPendingSkill(authenticator);
+    const freshGroupModelId = await getSkillEditorGrantGroupModelId(
+      authenticator,
+      freshSkill
+    );
+
+    await purgeExpiredPendingSkillsActivity();
+
+    const remaining = await fetchRemainingSkills(authenticator, [
+      expiredSkill.id,
+      activeSkill.id,
+      freshSkill.id,
+    ]);
+    expect(remaining.map((s) => s.id).sort()).toEqual(
+      [activeSkill.id, freshSkill.id].sort()
+    );
+
+    expect(
+      await GroupResource.dangerouslyFetchByModelIds(authenticator, [
+        expiredGroupModelId,
+      ])
+    ).toHaveLength(0);
+    expect(
+      await GroupResource.dangerouslyFetchByModelIds(authenticator, [
+        freshGroupModelId,
+      ])
+    ).toHaveLength(1);
+  });
+
+  it("deletes all expired pending skills across multiple batches", async () => {
+    const { authenticator } = await createResourceTest({
+      role: "admin",
+    });
+
+    const ids: ModelId[] = [];
+    for (let i = 0; i < 3; i++) {
+      ids.push((await createPendingSkill(authenticator)).id);
+    }
+
+    vi.advanceTimersByTime(PAST_PENDING_SKILLS_THRESHOLD_MS);
+
+    // Use batchSize=1 to force multiple pagination loops.
+    await purgeExpiredPendingSkillsActivity(1);
+
+    expect(await fetchRemainingSkills(authenticator, ids)).toHaveLength(0);
   });
 });
 

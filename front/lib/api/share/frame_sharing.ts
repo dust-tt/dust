@@ -324,18 +324,11 @@ async function getFrameWorkspaceMemberEmails(
     return new Set();
   }
   const users = await UserResource.fetchByEmails(emails);
-  const { memberships } = await MembershipResource.getActiveMemberships({
+  const activeUsers = await MembershipResource.filterActiveMembers({
     users,
     workspace: auth.getNonNullableWorkspace(),
   });
-  const userModelIds = new Set(
-    memberships.map((membership) => membership.userId)
-  );
-  return new Set(
-    users
-      .filter((user) => userModelIds.has(user.id))
-      .map((user) => user.email.toLowerCase())
-  );
+  return new Set(activeUsers.map((user) => user.email.toLowerCase()));
 }
 
 const OTP_TTL_SECONDS = 15 * 60; // 15 minutes.

@@ -61,15 +61,18 @@ function buildFacetAggregation(
 
 /**
  * @cc [owner:tdraier,label:security;product] searchable-global-agents
- * Global agents are searchable only when the workspace resolves them as `active` (not disabled by
- * an admin, a missing data source or the plan) and the caller holds `read` on them (audience).
+ * Global-only searches include disabled defaults for management and return their workspace-resolved
+ * status. Other searches require the workspace to resolve them as `active`. In both cases, the
+ * caller MUST hold `read` on them (audience).
  */
 async function listSearchableGlobalAgents(
-  auth: Authenticator
+  auth: Authenticator,
+  includeDisabled: boolean
 ): Promise<AgentResource[]> {
   const agents = await AgentResource.listGlobalAgents(auth);
   return agents.filter(
-    (agent) => agent.status === "active" && auth.can("read", agent)
+    (agent) =>
+      (includeDisabled || agent.status === "active") && auth.can("read", agent)
   );
 }
 
@@ -136,11 +139,14 @@ export async function searchAgents(
     return new Err("offset_out_of_range" as const);
   }
 
-  const globalAgents = await listSearchableGlobalAgents(auth);
-  const globalAgentIds = globalAgents.map((agent) => agent.sId);
-  const globalAgentModels = new Map(
+  const isGlobalOnly =
+    options.filters?.scope?.length === 1 &&
+    options.filters.scope[0] === "global";
+  const globalAgents = await listSearchableGlobalAgents(auth, isGlobalOnly);
+  const globalAgentsById = new Map(
     globalAgents.map((agent) => [agent.sId, agent.toSearchModelJSON()])
   );
+  const globalAgentIds = globalAgents.map((agent) => agent.sId);
   const query = buildAgentSearchQuery(auth, { ...options, globalAgentIds });
 
   const result = await withEs((client) =>
@@ -184,14 +190,17 @@ export async function searchAgents(
   }
 
   return new Ok({
-    agents: removeNulls(hits.map((hit) => hit._source)).map((document) =>
-      toAgentListItem(
-        document,
+    agents: removeNulls(hits.map((hit) => hit._source)).map((document) => {
+      const globalAgent =
         document.workspace_id === GLOBAL_AGENTS_WORKSPACE_ID
-          ? globalAgentModels.get(document.agent_id)
-          : null
-      )
-    ),
+          ? globalAgentsById.get(document.agent_id)
+          : undefined;
+      const agent = toAgentListItem(document, globalAgent?.model);
+      if (isGlobalOnly && globalAgent) {
+        agent.status = globalAgent.status;
+      }
+      return agent;
+    }),
     total: totalCount,
     hasMore: offset + hits.length < totalCount,
     facets: facetValues,

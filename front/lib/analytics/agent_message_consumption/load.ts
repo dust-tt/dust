@@ -71,6 +71,7 @@ export type AgentMessageConsumptionAnalyticsInput =
     billedCredits: number;
     dustRunIds: string[];
     enabledSkillIdsByActionId: ReadonlyMap<string, string[]>;
+    hasUnbilledExecution: boolean;
     items: AgentMessageConsumptionItemResource[];
     runs: RunResource[];
     skills: SkillResource[];
@@ -96,6 +97,18 @@ function isBilledRunUsage(
     default:
       return assertNever(usage.usageType);
   }
+}
+
+function filterUsagesAttributedByItems(
+  usages: BilledRunUsage[],
+  items: AgentMessageConsumptionItemResource[]
+): BilledRunUsage[] {
+  const attributedRunUsageModelIds = new Set(
+    items.map((item) => item.runUsageId)
+  );
+  return usages.filter((usage) =>
+    attributedRunUsageModelIds.has(usage.runUsageModelId)
+  );
 }
 
 async function loadApiKeyName(
@@ -177,6 +190,13 @@ async function loadAnalyticsUser({
   };
 }
 
+/**
+ * @cc [owner:sfriquet,label:product;backend] unbilled-execution-snapshot
+ * A terminal message whose status is not tracked for billing (`failed`) MUST return null when its
+ * `costCredits` is null. Otherwise it MUST be loaded with `hasUnbilledExecution` set and `usages`
+ * restricted to the billed run usages referenced by its stored attribution items, so that the
+ * indexed snapshot covers only the executions billed before the message failed.
+ */
 export async function loadAgentMessageConsumptionAnalyticsInput(
   auth: Authenticator,
   {
@@ -212,13 +232,19 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
   if (!messageConversation) {
     throw new Error("Agent message conversation not found");
   }
-  if (
-    !AGENT_MESSAGE_STATUSES_TO_TRACK.includes(agentMessage.status) ||
-    !isTerminalAgentMessageStatus(agentMessage.status)
-  ) {
+  const hasUnbilledExecution = !AGENT_MESSAGE_STATUSES_TO_TRACK.includes(
+    agentMessage.status
+  );
+  if (hasUnbilledExecution && agentMessage.costCredits === null) {
     return null;
   }
-  if (!agentMessage.completedAt) {
+  // A paused message cancelled through `finalizeAgentMessagesWithoutWorkflow` is not re-indexed,
+  // so its documents keep the `created` status and the pause time as `completed_at`. Credits stay
+  // correct since cancelling adds none.
+  const completedAt = isTerminalAgentMessageStatus(agentMessage.status)
+    ? agentMessage.completedAt
+    : agentMessage.updatedAt;
+  if (!completedAt) {
     throw new Error("Settled agent message is missing completedAt");
   }
 
@@ -242,6 +268,9 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
       agentMessageModelIds: [agentMessage.agentMessageModelId],
       maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
     });
+  const indexedUsages = hasUnbilledExecution
+    ? filterUsagesAttributedByItems(billedUsages, items)
+    : billedUsages;
   const actions =
     preloadedActions ??
     (await AgentMCPActionResource.listByAgentMessageIds(auth, [
@@ -282,7 +311,7 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
   const agentTagIds = await loadAgentTagIds(auth, agentMessage);
   const user = await loadAnalyticsUser({
     auth,
-    completedAt: agentMessage.completedAt,
+    completedAt,
     userId: triggeringUserMessage.userId,
   });
 
@@ -307,11 +336,12 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
     agentMessageId,
     apiKeyName,
     billedCredits: agentMessage.costCredits,
-    completedAt: agentMessage.completedAt,
+    completedAt,
     contextOrigin: triggeringUserMessage.origin,
     conversationId: conversation.conversationId,
     dustRunIds,
     enabledSkillIdsByActionId,
+    hasUnbilledExecution,
     items,
     messageStatus: agentMessage.status,
     messageVersion: agentMessage.version,
@@ -338,7 +368,7 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
       conversation.triggerModelId,
       workspace.id
     ),
-    usages: billedUsages,
+    usages: indexedUsages,
     // userId is a nullable FK with ON DELETE SET NULL. Never substitute the worker identity.
     user,
     workspaceId: workspace.sId,

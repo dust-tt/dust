@@ -155,7 +155,10 @@ export function getGroupIdsFromHeaders(
 ): string[] | undefined {
   const groupIds = headers[DustGroupIdsHeader.toLowerCase()];
   if (typeof groupIds === "string" && groupIds.trim().length > 0) {
-    return groupIds.split(",").map((id) => id.trim());
+    return groupIds
+      .split(",")
+      .map((id) => id.trim())
+      .filter((id) => id.length > 0);
   } else {
     return undefined;
   }

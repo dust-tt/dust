@@ -124,6 +124,7 @@ export type FinalToolCallAssertion =
       addMemberKeys?: string[];
     }
   | { type: "suggestSkillDeletion"; skillKey: string }
+  | { type: "suggestAgentDeletion"; agentKey: string }
   | { type: "suggestSkillName"; skillKey: string }
   | {
       type: "separateSuggestions";

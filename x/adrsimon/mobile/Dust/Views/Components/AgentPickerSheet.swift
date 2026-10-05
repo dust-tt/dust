@@ -43,7 +43,7 @@ struct AgentPickerSheet: View {
                         .sparkleLabelSm()
                         .foregroundStyle(Color.dustForeground)
                     if agent.userFavorite {
-                        SparkleIcon.star.image
+                        SparkleIcon.star01.image
                             .resizable()
                             .frame(width: 10, height: 10)
                             .foregroundStyle(.yellow)

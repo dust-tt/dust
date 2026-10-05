@@ -426,10 +426,8 @@ app.post(
     // Validate all MCP server views exist before creating anything. The views end up on the
     // created skill, whose serialized response includes their tools — fetch the heavy attributes.
     const mcpServerViewIds = uniq(body.tools.map((t) => t.mcpServerViewId));
-    const mcpServerViews = await MCPServerViewResource.fetchByIds(
-      auth,
-      mcpServerViewIds,
-      {
+    const mcpServerViews = (
+      await MCPServerViewResource.fetchByIds(auth, mcpServerViewIds, {
         includeHeavyAttributes: [
           "authorization",
           "cachedTools",
@@ -437,8 +435,8 @@ app.post(
           "lastError",
           "sharedSecret",
         ],
-      }
-    );
+      })
+    ).filter((view) => auth.can("read", view));
 
     if (mcpServerViewIds.length !== mcpServerViews.length) {
       return apiError(ctx, {
@@ -456,10 +454,9 @@ app.post(
       attachedKnowledge.map((attachment) => attachment.dataSourceViewId)
     );
 
-    const dataSourceViews = await DataSourceViewResource.fetchByIds(
-      auth,
-      dataSourceViewIds
-    );
+    const dataSourceViews = (
+      await DataSourceViewResource.fetchByIds(auth, dataSourceViewIds)
+    ).filter((dsv) => auth.can("read", dsv));
     if (dataSourceViews.length !== dataSourceViewIds.length) {
       return apiError(ctx, {
         status_code: 404,

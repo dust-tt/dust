@@ -15,14 +15,16 @@ export const BaseSearchAgentsSchema = z.object({
     .min(1)
     .max(2)
     .optional()
-    .describe("Return agents with one of these statuses. Defaults to active."),
+    .describe(
+      "Return agents with one of these statuses. Defaults to active. For global-only searches, active also includes workspace-disabled defaults."
+    ),
   scope: z
     .array(z.enum(AGENT_CONFIGURATION_SCOPES))
     .min(1)
     .max(AGENT_CONFIGURATION_SCOPES.length)
     .optional()
     .describe(
-      "Filter by agent scope: global for Dust built-ins, visible for published agents, hidden for unpublished agents. Matches any listed scope."
+      "Filter by agent scope: global for Dust built-ins, visible for published agents, hidden for unpublished agents. Matches any listed scope. Global-only searches also include disabled defaults and return their workspace-resolved status."
     ),
   tagIds: z
     .array(z.string().min(1))

@@ -1,4 +1,5 @@
 import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
+import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import type { Authenticator } from "@app/lib/auth";
 import {
   USAGE_TYPE_FREE,
@@ -7,7 +8,9 @@ import {
 } from "@app/lib/metronome/constants";
 import type { UsageType } from "@app/lib/metronome/types";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
+import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { RunResource } from "@app/lib/resources/run_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
@@ -477,10 +480,10 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
     ).rejects.toThrow("Billed agent message is missing costCredits");
   });
 
-  it("returns null while the message can still resume", async () => {
+  it("returns null when a failed message was never billed", async () => {
     const context = await setupSettledMessage();
     await AgentMessageModel.update(
-      { status: "created" },
+      { costCredits: null, status: "failed" },
       {
         where: {
           id: context.agentMessage.agentMessageId!,
@@ -495,5 +498,90 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
     );
 
     expect(input).toBeNull();
+  });
+
+  it("keeps only the attributed usages of a failed message", async () => {
+    const context = await setupSettledMessage();
+    const agentMessageModelId = context.agentMessage.agentMessageId!;
+    const [billedUsage] = await RunResource.listRunUsagesForRuns(context.auth, {
+      runs: [context.run],
+    });
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(
+      context.auth,
+      {
+        conversation: context.conversation,
+        agentMessageModelId,
+        attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        records: [
+          {
+            itemType: "input",
+            runUsageModelId: billedUsage.runUsageModelId,
+            inputTokensCount: 100,
+            grossAttributedCreditAmountMicro: 4_000_000,
+          },
+          {
+            itemType: "output",
+            runUsageModelId: billedUsage.runUsageModelId,
+            outputTokensCount: 20,
+            grossAttributedCreditAmountMicro: 1_000_000,
+          },
+        ],
+        pendingToolItems: [],
+      }
+    );
+    const { run: unbilledRun } = await RunFactory.createWithUsage(context.auth);
+    await AgentMessageModel.update(
+      {
+        runIds: [context.run.dustRunId, unbilledRun.dustRunId],
+        status: "failed",
+      },
+      {
+        where: {
+          id: agentMessageModelId,
+          workspaceId: context.workspace.id,
+        },
+      }
+    );
+
+    const input = await loadAgentMessageConsumptionAnalyticsInput(
+      context.auth,
+      { agentMessageId: context.agentMessage.sId }
+    );
+
+    expect(input).toMatchObject({
+      billedCredits: 5,
+      hasUnbilledExecution: true,
+      messageStatus: "failed",
+      usages: [{ runUsageModelId: billedUsage.runUsageModelId }],
+    });
+  });
+
+  it("loads a billed message that can still resume at its last update", async () => {
+    const context = await setupSettledMessage();
+    await AgentMessageModel.update(
+      { completedAt: null, status: "created" },
+      {
+        where: {
+          id: context.agentMessage.agentMessageId!,
+          workspaceId: context.workspace.id,
+        },
+      }
+    );
+    const analyticsContext =
+      await ConversationResource.fetchAgentMessageConsumptionAnalyticsContext(
+        context.auth,
+        { agentMessageId: context.agentMessage.sId }
+      );
+
+    const input = await loadAgentMessageConsumptionAnalyticsInput(
+      context.auth,
+      { agentMessageId: context.agentMessage.sId }
+    );
+
+    expect(input).toMatchObject({
+      billedCredits: 5,
+      completedAt: analyticsContext?.agentMessage.updatedAt,
+      messageStatus: "created",
+    });
   });
 });

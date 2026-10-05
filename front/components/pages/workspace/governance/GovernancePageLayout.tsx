@@ -11,7 +11,7 @@ export function GovernancePageLayout({ children }: GovernancePageLayoutProps) {
     <AdminPageContainer>
       <div className="flex flex-col gap-6">
         <Page.Header
-          title="Settings & Governance"
+          title="Governance"
           description="Manage what members can do in your workspace"
         />
         {children}

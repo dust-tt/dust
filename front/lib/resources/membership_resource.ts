@@ -280,6 +280,24 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     };
   }
 
+  static async filterActiveMembers({
+    users,
+    workspace,
+    transaction,
+  }: {
+    users: UserResource[];
+    workspace: LightWorkspaceType;
+    transaction?: Transaction;
+  }): Promise<UserResource[]> {
+    const { memberships } = await this.getActiveMemberships({
+      users,
+      workspace,
+      transaction,
+    });
+    const activeUserModelIds = new Set(memberships.map((m) => m.userId));
+    return users.filter((user) => activeUserModelIds.has(user.id));
+  }
+
   /**
    * Return memberships whose `startAt` is strictly in the future for the given
    * workspace — i.e. scheduled seat-type changes that haven't taken effect yet.

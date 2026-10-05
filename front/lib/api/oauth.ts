@@ -44,6 +44,7 @@ import { ZendeskOAuthProvider } from "@app/lib/api/oauth/providers/zendesk";
 import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
+import { isTrustedDustOpenerOrigin } from "@app/lib/oauth/opener_origin";
 import logger from "@app/logger/logger";
 import type {
   ExtraConfigType,
@@ -149,6 +150,15 @@ export async function createConnectionAndGetSetupUrl(
   const api = new OAuthAPI(config.getOAuthAPIConfig(), logger);
 
   const providerStrategy = getProviderStrategy(provider);
+
+  // opener_origin is reserved for the validated query param. Strip it from
+  // caller-supplied extraConfig before validation/persistence so it cannot
+  // bypass the allowlist via metadata spread.
+  const {
+    opener_origin: _openerOriginFromExtraConfig,
+    ...extraConfigWithoutOpenerOrigin
+  } = extraConfig;
+  extraConfig = extraConfigWithoutOpenerOrigin;
 
   if (!providerStrategy.isExtraConfigValid(extraConfig, useCase)) {
     logger.error(
@@ -273,6 +283,21 @@ export async function createConnectionAndGetSetupUrl(
   // Identity and finalize binding MUST be written after spreading caller
   // extraConfig so a malicious client cannot overwrite user_id / workspace_id /
   // finalize_nonce via setup query params.
+
+  // Defense in depth: only persist opener origins that are trusted Dust
+  // surfaces. The setup route also rejects untrusted query values with 400.
+  const trustedOpenerOrigin =
+    openerOrigin && isTrustedDustOpenerOrigin(openerOrigin)
+      ? openerOrigin
+      : undefined;
+  if (openerOrigin && !trustedOpenerOrigin) {
+    return new Err({
+      code: "connection_creation_failed",
+      message:
+        "Invalid openerOrigin: must be an explicitly trusted Dust origin.",
+    });
+  }
+
   const metadata: Record<string, unknown> = {
     use_case: useCase,
     ...connectionExtraConfig,
@@ -280,7 +305,7 @@ export async function createConnectionAndGetSetupUrl(
     user_id: auth.getNonNullableUser().sId,
     [OAUTH_FINALIZE_NONCE_METADATA_KEY]: finalizeNonce,
     // Store opener origin for postMessage after OAuth finalize (cross-origin popup communication)
-    ...(openerOrigin && { opener_origin: openerOrigin }),
+    ...(trustedOpenerOrigin && { opener_origin: trustedOpenerOrigin }),
   };
 
   const cRes = await api.createConnection({

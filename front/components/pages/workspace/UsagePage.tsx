@@ -16,12 +16,12 @@ import { GroupsUsageTable } from "@app/components/workspace/GroupsUsageTable";
 import { MembersSelectionBanner } from "@app/components/workspace/MembersSelectionBanner";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
+import { SelfImprovingSkillsSettingsSection } from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
 import { TopUpsHistoryTable } from "@app/components/workspace/TopUpsHistoryTable";
 import { UpgradeRequests } from "@app/components/workspace/UpgradeRequests";
 import { UsageMembersSection } from "@app/components/workspace/UsageMembersSection";
 import { CreditSpendCheckpointSettingsCard } from "@app/components/workspace/usage/CreditSpendCheckpointSettingsCard";
 import { LockedSection } from "@app/components/workspace/usage/LockedSection";
-import { ModelTiersSettingsCard } from "@app/components/workspace/usage/ModelTiersSettingsCard";
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
@@ -49,6 +49,7 @@ import {
   buildModelTierDefinitionByName,
   expandMaxTierName,
 } from "@app/lib/client/model_tiers";
+import { useIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import { DEFAULT_MAX_MODEL_TIER } from "@app/lib/model_tiers/tier_order";
 import { isCreditPricedFreePlan, isFreePlan } from "@app/lib/plans/plan_codes";
@@ -307,6 +308,7 @@ export function UsagePage() {
     []
   );
   const isWorkspaceAdmin = isAdmin(owner);
+  const hasSelfImprovement = useIsSelfImprovementAvailable();
   const [membersTab, setMembersTab] = useState<"members" | "requests">(
     "members"
   );
@@ -977,7 +979,7 @@ export function UsagePage() {
             <Page.Header
               title={
                 <div className="flex w-full items-center justify-between gap-4">
-                  <Page.H variant="h3">Usage</Page.H>
+                  <Page.H variant="h3">Credits</Page.H>
                   <Button
                     label="Breakdown in analytics"
                     iconRight={LinkExternal01}
@@ -993,7 +995,7 @@ export function UsagePage() {
             <Page.Header
               title={
                 <div className="flex w-full items-center justify-between gap-4">
-                  <Page.H variant="h3">Usage</Page.H>
+                  <Page.H variant="h3">Credits</Page.H>
                   <div className="flex items-center gap-4">
                     <Button
                       label="Breakdown in analytics"
@@ -1137,11 +1139,26 @@ export function UsagePage() {
             </div>
           ) : null}
 
+          {isWorkspaceAdmin ? (
+            <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.usage.addCredits}>
+              <div className="flex justify-end">
+                {isCreditPriced ? (
+                  topUpButton
+                ) : (
+                  // Non–credit-priced plans still purchase on the legacy page.
+                  <Button
+                    label="Add credits"
+                    icon={Plus}
+                    size="sm"
+                    variant="outline"
+                    href={`/w/${owner.sId}/developers/credits-usage`}
+                  />
+                )}
+              </div>
+            </AdminSectionAnchor>
+          ) : null}
           {isCreditPriced ? (
-            <div className="flex flex-col items-stretch gap-4">
-              <div className="flex justify-end">{topUpButton}</div>
-              <CreditPoolCards owner={owner} disabled={!isCreditPriced} />
-            </div>
+            <CreditPoolCards owner={owner} disabled={!isCreditPriced} />
           ) : null}
 
           <Tabs
@@ -1249,7 +1266,13 @@ export function UsagePage() {
             )}
 
             {isWorkspaceAdmin && (
-              <TabsContent value="settings" className={TAB_CONTENT_CLASS}>
+              <TabsContent
+                value="settings"
+                forceMount
+                className={
+                  usageTab === "settings" ? TAB_CONTENT_CLASS : "hidden"
+                }
+              >
                 <Page.Vertical align="stretch" gap="xl">
                   {isCreditPriced && (
                     <AdminSectionAnchor
@@ -1269,12 +1292,8 @@ export function UsagePage() {
                       workspaceId={owner.sId}
                     />
                   </AdminSectionAnchor>
-                  <AdminSectionAnchor
-                    sectionId={ADMIN_SECTION_IDS.usage.modelTiers}
-                  >
-                    <ModelTiersSettingsCard owner={owner} />
-                  </AdminSectionAnchor>
-                  {isCreditPriced && (
+                  {/* Always mounted so search deep links resolve on all plans. */}
+                  {isCreditPriced ? (
                     <LockedSection
                       locked={!isAwuPoolCurrentCycleLoading && !hasPool}
                       className="flex flex-col gap-8"
@@ -1282,7 +1301,15 @@ export function UsagePage() {
                       <AdminSectionAnchor
                         sectionId={ADMIN_SECTION_IDS.usage.programmatic}
                       >
-                        <UsageProgrammaticLimitCard workspaceId={owner.sId} />
+                        <div className="flex flex-col gap-8">
+                          <UsageProgrammaticLimitCard workspaceId={owner.sId} />
+                          {hasSelfImprovement && (
+                            <SelfImprovingSkillsSettingsSection
+                              owner={owner}
+                              showToggles={false}
+                            />
+                          )}
+                        </div>
                       </AdminSectionAnchor>
                       <AdminSectionAnchor
                         sectionId={ADMIN_SECTION_IDS.usage.notifications}
@@ -1290,6 +1317,20 @@ export function UsagePage() {
                         <UsageNotificationsCard workspaceId={owner.sId} />
                       </AdminSectionAnchor>
                     </LockedSection>
+                  ) : (
+                    <AdminSectionAnchor
+                      sectionId={ADMIN_SECTION_IDS.usage.programmatic}
+                    >
+                      <div className="flex flex-col gap-8">
+                        <UsageProgrammaticLimitCard workspaceId={owner.sId} />
+                        {hasSelfImprovement && (
+                          <SelfImprovingSkillsSettingsSection
+                            owner={owner}
+                            showToggles={false}
+                          />
+                        )}
+                      </div>
+                    </AdminSectionAnchor>
                   )}
                 </Page.Vertical>
               </TabsContent>
