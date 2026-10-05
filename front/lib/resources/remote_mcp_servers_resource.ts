@@ -6,7 +6,7 @@ import type {
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { MCPToolType, RemoteMCPServerType } from "@app/lib/api/mcp";
-import { MCP_CLIENT_ID_METADATA_DOCUMENT_URL } from "@app/lib/api/mcp_server/urls";
+import { getMcpClientIdMetadataDocumentUrl } from "@app/lib/api/mcp_server/urls";
 import { shouldUseStaticIpProxy } from "@app/lib/api/workspace_has_domains";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -701,7 +701,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
    * applies: (1) outside development, when the authorization-server metadata
    * advertises `client_id_metadata_document_supported`, returns a public-client
    * metadata (`token_endpoint_auth_method: "none"`, no `client_secret`) whose
-   * `client_id` is `MCP_CLIENT_ID_METADATA_DOCUMENT_URL`; else (2) attempts
+   * `client_id` is `getMcpClientIdMetadataDocumentUrl()`; else (2) attempts
    * Dynamic Client Registration; else (3) fails with a `DustError` directing the
    * caller to Static OAuth. It never performs DCR when CIMD applies.
    */
@@ -831,7 +831,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
         authorization_endpoint: metadata.authorization_endpoint,
         token_endpoint: metadata.token_endpoint,
         token_endpoint_auth_method: "none",
-        client_id: MCP_CLIENT_ID_METADATA_DOCUMENT_URL,
+        client_id: getMcpClientIdMetadataDocumentUrl(),
         resource: resource
           ? url.format(resource, { fragment: false })
           : undefined,
