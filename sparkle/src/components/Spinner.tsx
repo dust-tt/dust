@@ -1,9 +1,9 @@
+import { useLingui } from "@lingui/react/macro";
 import { customColors } from "@sparkle/lib/colors";
 import animDark from "@sparkle/lottie/spinnerDark";
 import animDarkXS from "@sparkle/lottie/spinnerDarkXS";
 import animLight from "@sparkle/lottie/spinnerLight";
 import animLightXS from "@sparkle/lottie/spinnerLightXS";
-import { useLingui } from "@lingui/react/macro";
 import Lottie from "lottie-react";
 import React from "react";
 
