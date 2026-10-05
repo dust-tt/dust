@@ -292,6 +292,115 @@ function validateSeparateSuggestions(
   return { success: true };
 }
 
+function resolveToolId(scenario: SeededScenario, toolKey: string): string {
+  const toolId = scenario.toolIdsByKey.get(toolKey);
+  if (!toolId) {
+    throw new Error(`Scenario references unknown tool key "${toolKey}"`);
+  }
+  return toolId;
+}
+
+function getStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter(isString) : [];
+}
+
+function checkAgentToolReplacement(
+  item: SuggestionItem,
+  agentKey: string,
+  { fromToolId, toToolId }: { fromToolId: string; toToolId: string }
+): AssertionResult {
+  const tools = isSuggestionItem(item.tools) ? item.tools : {};
+  if (
+    !getStringArray(tools.removeToolIds).includes(fromToolId) ||
+    !getStringArray(tools.addToolIds).includes(toToolId)
+  ) {
+    return {
+      success: false,
+      error:
+        `The edit of agent "${agentKey}" must remove tool ${fromToolId} and add tool ` +
+        `${toToolId}; got ${JSON.stringify(item.tools)}`,
+    };
+  }
+  return { success: true };
+}
+
+// Every recorded suggestion must edit one expected skill or move one expected agent from the old
+// tool to the new one, and every expected entity must be edited exactly once, in one call or
+// several. What the skill edits change is left to the judge.
+function validateToolReplacement(
+  assertion: Extract<
+    FinalToolCallAssertion,
+    { type: "suggestToolReplacement" }
+  >,
+  toolCalls: ExecutedToolCall[],
+  scenario: SeededScenario
+): AssertionResult {
+  const toolIds = {
+    fromToolId: resolveToolId(scenario, assertion.fromToolKey),
+    toToolId: resolveToolId(scenario, assertion.toToolKey),
+  };
+  const skillKeysById = new Map(
+    assertion.skillKeys.map((key) => [resolveSkillId(scenario, key), key])
+  );
+  const agentKeysById = new Map(
+    assertion.agentKeys.map((key) => [resolveAgentId(scenario, key), key])
+  );
+
+  // Entities edited so far, as `skill:<key>` or `agent:<key>`.
+  const edited = new Set<string>();
+  const suggestions = toolCalls
+    .filter((tc) => tc.name === TOOL.suggest && !tc.isError)
+    .flatMap(getSuggestions);
+  for (const item of suggestions) {
+    const skillKey =
+      item.kind === "edit_skill" && isString(item.skillId)
+        ? skillKeysById.get(item.skillId)
+        : undefined;
+    const agentKey =
+      item.kind === "edit_agent" && isString(item.agentId)
+        ? agentKeysById.get(item.agentId)
+        : undefined;
+    let entity: string;
+    if (skillKey) {
+      entity = `skill:${skillKey}`;
+    } else if (agentKey) {
+      const result = checkAgentToolReplacement(item, agentKey, toolIds);
+      if (!result.success) {
+        return result;
+      }
+      entity = `agent:${agentKey}`;
+    } else {
+      return {
+        success: false,
+        error: `Unexpected suggestion: ${JSON.stringify(item)}`,
+      };
+    }
+    if (edited.has(entity)) {
+      return {
+        success: false,
+        error: `Duplicate suggestion: ${JSON.stringify(item)}`,
+      };
+    }
+    edited.add(entity);
+  }
+
+  const missing = [
+    ...assertion.skillKeys
+      .filter((key) => !edited.has(`skill:${key}`))
+      .map((key) => `skill "${key}"`),
+    ...assertion.agentKeys
+      .filter((key) => !edited.has(`agent:${key}`))
+      .map((key) => `agent "${key}"`),
+  ];
+  if (missing.length > 0) {
+    return {
+      success: false,
+      error: `Missing edit of ${missing.join(", ")}`,
+    };
+  }
+  return { success: true };
+}
+
 function validateNoSuggestion(
   requiredToolNames: string[],
   toolCalls: ExecutedToolCall[]
@@ -550,6 +659,9 @@ export function validateFinalToolCall(
         "name"
       );
 
+    case "suggestToolReplacement":
+      return validateToolReplacement(assertion, toolCalls, scenario);
+
     case "separateSuggestions":
       return validateSeparateSuggestions(
         assertion.suggestions,
@@ -724,6 +836,11 @@ function getEntitiesToMention(
     case "suggestAgentStructuredOutput":
     case "suggestAgentDeletion":
       return [{ kind: "agent", key: assertion.agentKey }];
+    case "suggestToolReplacement":
+      return [
+        ...assertion.skillKeys.map((key) => ({ kind: "skill" as const, key })),
+        ...assertion.agentKeys.map((key) => ({ kind: "agent" as const, key })),
+      ];
     case "separateSuggestions":
       return assertion.suggestions.map((expected) => {
         switch (expected.kind) {

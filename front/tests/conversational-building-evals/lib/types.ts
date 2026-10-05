@@ -20,7 +20,8 @@ export interface SeedSkill {
   name: string;
   agentFacingDescription: string;
   userFacingDescription?: string;
-  // Markdown, converted to block-structured HTML (with data-block-id) at seed time.
+  // Markdown, converted to block-structured HTML (with data-block-id) at seed time. Cite a seeded
+  // tool inline as `{{tool:<key>}}`: the skill is then equipped with it.
   instructions: string;
   // Defaults to the factory default.
   availability?: SkillAvailability;
@@ -64,6 +65,8 @@ export interface SeedAgent {
   instructionsHtml: string;
   // Defaults to the factory's model when omitted.
   model?: { providerId: ModelProviderIdType; modelId: ModelIdType };
+  // Seeded tools (by key) the agent is equipped with.
+  toolKeys?: string[];
 }
 
 /** Everything the scenario's workspace is seeded with. Tools then run for real against it. */
@@ -162,6 +165,16 @@ export type FinalToolCallAssertion =
       // successfully called each of these (prefixed) tools.
       type: "noSuggestion";
       requiredToolNames: string[];
+    }
+  | {
+      // Every skill and agent using `fromToolKey` must be edited, and nothing else. Checks every
+      // `suggest` call of the run: the edits can be separate or batched. Agent edits must swap the
+      // tools; what skill edits change is left to the judge criteria.
+      type: "suggestToolReplacement";
+      fromToolKey: string;
+      toToolKey: string;
+      skillKeys: string[];
+      agentKeys: string[];
     }
   | {
       type: "suggestAgentInstructionsChange";
