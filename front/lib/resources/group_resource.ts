@@ -2225,7 +2225,8 @@ export class GroupResource extends BaseResource<GroupModel> {
   /**
    * @cc [owner:philipperolet,label:concurrency;backend] stale-group-members
    * With expectedMemberIds, a changed active member list MUST reject the save before any mutation.
-   * The comparison and membership replacement MUST serialize with other dialog saves.
+   * The comparison and membership replacement MUST serialize with full-list and individual
+   * membership edits.
    */
   async updateRegularManualGroup(
     auth: Authenticator,
@@ -2423,9 +2424,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Everything that can reject the request is checked before any mutation: the additions and
-    // removals below run as two separate writes, so a late rejection would leave the first one
-    // persisted (and unaudited by the caller).
+    // Validate both sides before any mutation so a rejected update leaves the members untouched.
     const owner = auth.getNonNullableWorkspace();
     const { memberships: workspaceMemberships } =
       await MembershipResource.getActiveMemberships({
@@ -2457,57 +2456,71 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    const currentMemberIds = new Set(
-      (await this.getActiveMembers(auth)).map((m) => m.sId)
-    );
-    if (uniqueAddUserIds.some((userId) => currentMemberIds.has(userId))) {
-      return new Err(
-        new DustError(
-          "user_already_member",
-          "Cannot add: users are already members of the group"
-        )
+    return withTransaction(async (transaction) => {
+      const lockedIds = await GroupResource.lockGroupIdsForUpdate(
+        auth,
+        [this.id],
+        transaction
       );
-    }
-    if (!uniqueRemoveUserIds.every((userId) => currentMemberIds.has(userId))) {
-      return new Err(
-        new DustError(
-          "user_not_member",
-          "Cannot remove: users are not members of the group"
-        )
-      );
-    }
-
-    // Members are added first and removed second, so a user in both lists ends up removed.
-    const removedUserIds = new Set(uniqueRemoveUserIds);
-    const remainingCount =
-      [...currentMemberIds].filter((userId) => !removedUserIds.has(userId))
-        .length +
-      uniqueAddUserIds.filter((userId) => !removedUserIds.has(userId)).length;
-    if (remainingCount === 0) {
-      return new Err(
-        new DustError("last_group_member", LAST_GROUP_MEMBER_ERROR_MESSAGE)
-      );
-    }
-
-    if (addedUsers.length > 0) {
-      const addRes = await this.dangerouslyAddMembers(auth, {
-        users: addedUsers,
-      });
-      if (addRes.isErr()) {
-        return addRes;
+      if (lockedIds.length === 0) {
+        return new Err(new DustError("group_not_found", "Group not found."));
       }
-    }
-
-    if (removedUsers.length > 0) {
-      const removeRes = await this.dangerouslyRemoveMembers(auth, {
-        users: removedUsers,
-      });
-      if (removeRes.isErr()) {
-        return removeRes;
+      const currentMemberIds = new Set(
+        (await this.getActiveMembers(auth, { transaction })).map((m) => m.sId)
+      );
+      if (uniqueAddUserIds.some((userId) => currentMemberIds.has(userId))) {
+        return new Err(
+          new DustError(
+            "user_already_member",
+            "Cannot add: users are already members of the group"
+          )
+        );
       }
-    }
+      if (
+        !uniqueRemoveUserIds.every((userId) => currentMemberIds.has(userId))
+      ) {
+        return new Err(
+          new DustError(
+            "user_not_member",
+            "Cannot remove: users are not members of the group"
+          )
+        );
+      }
 
-    return new Ok({ addedUsers, removedUsers });
+      // Members are added first and removed second, so a user in both lists ends up removed.
+      const removedUserIds = new Set(uniqueRemoveUserIds);
+      const remainingCount =
+        [...currentMemberIds].filter((userId) => !removedUserIds.has(userId))
+          .length +
+        uniqueAddUserIds.filter((userId) => !removedUserIds.has(userId)).length;
+      if (remainingCount === 0) {
+        return new Err(
+          new DustError("last_group_member", LAST_GROUP_MEMBER_ERROR_MESSAGE)
+        );
+      }
+
+      if (addedUsers.length > 0) {
+        const addRes = await this.dangerouslyAddMembers(auth, {
+          users: addedUsers,
+          transaction,
+        });
+        if (addRes.isErr()) {
+          return addRes;
+        }
+      }
+
+      if (removedUsers.length > 0) {
+        const removeRes = await this.dangerouslyRemoveMembers(auth, {
+          users: removedUsers,
+          transaction,
+        });
+        if (removeRes.isErr()) {
+          return removeRes;
+        }
+      }
+
+      return new Ok({ addedUsers, removedUsers });
+    });
   }
 
   async deleteRegularManualGroup(
