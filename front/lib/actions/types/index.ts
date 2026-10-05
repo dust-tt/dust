@@ -52,6 +52,10 @@ export function isSandboxChildActionInfo(
   return SandboxChildActionInfoSchema.safeParse(value).success;
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:api] omitted-option-description-is-null
+ * Omitted option descriptions MUST parse as null for compatibility with existing clients.
+ */
 const UserQuestionOptionSchema = z.object({
   label: z
     .string()
@@ -59,7 +63,13 @@ const UserQuestionOptionSchema = z.object({
       "Concise choice text, 1-5 words. " +
         "Recommended option should include '(Recommended)'."
     ),
-  description: z.string().nullable().describe("Explanation of this option."),
+  description: z
+    .string()
+    .nullable()
+    .default(null)
+    .describe(
+      "Optional explanation, only useful when the label alone is not clear enough."
+    ),
 });
 
 export const UserQuestionSchema = z.object({
@@ -70,7 +80,9 @@ export const UserQuestionSchema = z.object({
     .array(UserQuestionOptionSchema)
     .describe(
       "The available choices (typically 2 to 4 options, too many options to " +
-        "choose from can be overwhelming for the user)."
+        "choose from can be overwhelming for the user). " +
+        "Prefer omitting descriptions for all options. If descriptions are needed, " +
+        "include them for every option."
     ),
   multiSelect: z
     .boolean()
