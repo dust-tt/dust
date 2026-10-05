@@ -16,19 +16,6 @@ import type { z } from "zod";
 type AgentFeedbackInput = z.input<z.ZodObject<typeof agentFeedbackSchema>>;
 type AgentInsightsInput = z.input<z.ZodObject<typeof agentInsightsSchema>>;
 
-// Same access rule as the agent's feedback and observability endpoints: readers of the agent, or
-// workspace admins.
-async function fetchReadableAgent(
-  auth: Authenticator,
-  agentConfigurationId: string
-): Promise<AgentResource | null> {
-  const agent = await AgentResource.fetchById(auth, agentConfigurationId);
-  if (!agent || (!auth.can("read", agent) && !auth.isAdmin())) {
-    return null;
-  }
-  return agent;
-}
-
 export async function getAgentFeedbackToolResult(
   auth: Authenticator,
   {
@@ -40,7 +27,10 @@ export async function getAgentFeedbackToolResult(
 ): Promise<ToolHandlerResult> {
   const latestVersionOnlyWithDefault = latestVersionOnly ?? true;
 
-  const agent = await fetchReadableAgent(auth, agentConfigurationId);
+  const agent = await AgentResource.fetchByIdForReaderOrWorkspaceAdmin(
+    auth,
+    agentConfigurationId
+  );
   if (!agent) {
     return new Err(
       new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
@@ -131,7 +121,10 @@ export async function getAgentInsightsToolResult(
     days,
   }: AgentInsightsInput & { agentConfigurationId: string }
 ): Promise<ToolHandlerResult> {
-  const agent = await fetchReadableAgent(auth, agentConfigurationId);
+  const agent = await AgentResource.fetchByIdForReaderOrWorkspaceAdmin(
+    auth,
+    agentConfigurationId
+  );
   if (!agent) {
     return new Err(
       new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
