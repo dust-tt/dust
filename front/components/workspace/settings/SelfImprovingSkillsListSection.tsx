@@ -3,7 +3,6 @@ import {
   normalizeCapInput,
   SELF_IMPROVING_SKILLS_LIST_SECTION_LABEL,
 } from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
-import { useSkillsReinforcementSettings } from "@app/hooks/useSkillsReinforcementSettings";
 import { formatCredits } from "@app/lib/client/credits";
 import { compareStrings } from "@app/lib/i18n/format";
 import type { ReinforcementBillingUnit } from "@app/lib/reinforcement/enforcement";
@@ -11,6 +10,7 @@ import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useUpdateSkillReinforcement } from "@app/lib/swr/skill_configurations";
 import {
   useReinforcementBillingUnit,
+  useSkillsReinforcementSettings,
   useSkillsSelfImprovingSpend,
 } from "@app/lib/swr/useSelfImprovingSkillsSettings";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
