@@ -1,4 +1,5 @@
 import {
+  CUT_TEXT_SAVE_REFUSED,
   FilePreviewContent,
   useFilePreviewContent,
 } from "@app/components/file_explorer/FilePreviewContent";
@@ -120,13 +121,14 @@ export function PodFileTabPreview({
     entry && canEdit && parseCanonicalScopedPath(entry.path)
       ? entry.path
       : null;
-  // The editor edits the preview text; saving it after a cut would truncate the file.
+  const isMarkdownDirty = markdownDraft !== markdownSavedContent;
+  // The editor edits the preview text; saving it after a cut would truncate the file. A draft
+  // already open stays on screen when the file grows past the cut, and the save refuses it.
   const canEditMarkdown =
     category === "markdown" &&
     !!editableMarkdownFilePath &&
     !isTooLarge &&
-    !isTruncated;
-  const isMarkdownDirty = markdownDraft !== markdownSavedContent;
+    (!isTruncated || isMarkdownDirty);
 
   useEffect(() => {
     if (
@@ -165,6 +167,10 @@ export function PodFileTabPreview({
 
   const handleMarkdownSave = async () => {
     if (!editableMarkdownFilePath || !isMarkdownDirty || isMarkdownSaving) {
+      return;
+    }
+    if (isTruncated) {
+      sendNotification({ type: "error", ...CUT_TEXT_SAVE_REFUSED });
       return;
     }
 

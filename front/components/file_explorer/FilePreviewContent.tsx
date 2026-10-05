@@ -25,6 +25,13 @@ import type { CellContext, ColumnDef } from "@tanstack/react-table";
 
 const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
+
+/** Shown when a Markdown editor refuses to save text that was cut at MAX_TEXT_CHARS. */
+export const CUT_TEXT_SAVE_REFUSED = {
+  title: "File too long to save here",
+  description:
+    "It grew past what the preview can edit. Copy your changes, then reopen the file.",
+};
 export const MAX_PREVIEW_BYTES = 10 * 1024 * 1024;
 
 const EXTENSION_TO_LANGUAGE: Record<string, string> = {
