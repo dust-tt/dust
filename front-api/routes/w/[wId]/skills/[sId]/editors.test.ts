@@ -64,7 +64,7 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
     expect(await response.json()).toEqual({
       error: {
         type: "invalid_request_error",
-        message: "An archived skill cannot be updated. Restore it first.",
+        message: "This skill is archived; its editors cannot be changed.",
       },
     });
 
