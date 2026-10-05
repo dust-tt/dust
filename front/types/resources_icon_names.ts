@@ -200,6 +200,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "ToolsIcon",
   "CanvaLogo",
   "ClariLogo",
+  "ClayLogo",
   "CommandLineIcon",
   "ConfluenceLogo",
   "ContentsquareLogo",
