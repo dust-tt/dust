@@ -5,11 +5,9 @@ import type { ComponentProps } from "react";
 
 /**
  * @cc label:security
- * Every rich-text editor is rendered through this component. Editors are
- * contenteditable elements, not form controls, so session-replay tooling
- * that masks "user input" records their text verbatim unless an explicit
- * mask is present. The mask is applied here so every current and future
- * placement is covered without per-page wiring.
+ * Every rich-text editor renders through this component. Editors are
+ * contenteditable, not form inputs, so session replay records their text
+ * unless explicitly masked.
  */
 export function EditorContent({
   className,
