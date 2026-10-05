@@ -75,7 +75,7 @@ generate:
 ## build: build the app for the simulator (ENV selects the config)
 .PHONY: build
 build: generate
-	$(XCODEBUILD) CODE_SIGNING_ALLOWED=NO build $(BEAUTIFY)
+	$(XCODEBUILD) CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- build $(BEAUTIFY)
 
 ## run: build, then boot the simulator, install and launch the app
 .PHONY: run

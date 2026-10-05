@@ -128,6 +128,22 @@ final class AuthViewModel: NSObject, ObservableObject, ASWebAuthenticationPresen
         }
     }
 
+    /**
+     * @cc [owner:adrsimon,label:product] restore-keeps-session-on-transient-failure
+     * A launch refresh failing with a 4xx MUST clear the saved tokens. Any other failure (network,
+     * 5xx) MUST keep them, and retrying MUST attempt the refresh again instead of logging out.
+     */
+    func retry() {
+        guard AuthService.loadTokens() != nil else {
+            logout()
+            return
+        }
+        state = .loading
+        restoreTask = Task { [weak self] in
+            await self?.restoreSession()
+        }
+    }
+
     // MARK: - Private
 
     private func makeTokenProvider(
@@ -170,9 +186,12 @@ final class AuthViewModel: NSObject, ObservableObject, ASWebAuthenticationPresen
                 expiresIn: response.expiresIn
             )
             state = .authenticated(user: response.user, tokenProvider: provider)
-        } catch {
+        } catch let APIError.httpError(statusCode, _) where (400 ..< 500).contains(statusCode) {
             AuthService.clearTokens()
             state = .unauthenticated
+        } catch {
+            logger.error("Session restore failed: \(error)")
+            state = .error(error.localizedDescription)
         }
     }
 
