@@ -341,10 +341,17 @@ export async function patchAgentConfigurationFromJSON(
   const {
     model_id = current.model.modelId,
     provider_id = current.model.providerId,
-    reasoning_effort = current.model.reasoningEffort,
     response_format = current.model.responseFormat,
     temperature = current.model.temperature,
   } = patch.generation_settings ?? {};
+  // The current effort belongs to the current model: switching models without an effort lets the
+  // save resolve the new model's default.
+  const isSameModel =
+    model_id === current.model.modelId &&
+    provider_id === current.model.providerId;
+  const reasoning_effort =
+    patch.generation_settings?.reasoning_effort ??
+    (isSameModel ? current.model.reasoningEffort : undefined);
   const assistant: PatchRequestBody = {
     name: current.name,
     description: current.description,

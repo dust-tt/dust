@@ -6,6 +6,7 @@ import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { getModelTierAccessErrorForAgentConfiguration } from "@app/lib/model_tiers/access";
+import { getTieredDefaultReasoningEffort } from "@app/lib/model_tiers/enabled_models";
 import type { AgentAuditOptions } from "@app/lib/resources/agent_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -44,6 +45,11 @@ import uniq from "lodash/uniq";
  * nothing when an action's `dustAppConfiguration.appId` does not resolve to a Dust app readable by
  * `auth`. `AppResource` fetchers drop unreadable apps, so without this check such an app would add
  * no space requirement and its id would still be persisted on the action.
+ */
+/**
+ * @cc [owner:Nils-Fedrigo,label:product] unspecified-effort-is-pinned
+ * When `assistant.model.reasoningEffort` is not set, the saved version MUST store the effort
+ * returned by `getTieredDefaultReasoningEffort` for the model, never a null effort.
  */
 export async function createOrUpgradeAgentConfiguration({
   auth,
@@ -204,11 +210,12 @@ export async function createOrUpgradeAgentConfiguration({
     );
   }
 
-  const { reasoningEffort } = assistant.model;
-  if (
-    reasoningEffort &&
-    !modelConfig.supportedReasoningEfforts[reasoningEffort]
-  ) {
+  // An agent saved without an effort is pinned to the effort it would run at today, so it does
+  // not drift when the model's default changes.
+  const reasoningEffort =
+    assistant.model.reasoningEffort ??
+    (await getTieredDefaultReasoningEffort(auth, { model: modelConfig }));
+  if (!modelConfig.supportedReasoningEfforts[reasoningEffort]) {
     return new Err(
       new Error(
         `Model "${modelConfig.modelId}" does not support the "${reasoningEffort}" ` +
@@ -220,7 +227,7 @@ export async function createOrUpgradeAgentConfiguration({
   const accessError = await getModelTierAccessErrorForAgentConfiguration(auth, {
     agentName: assistant.name,
     model: modelConfig,
-    reasoningEffort: assistant.model.reasoningEffort,
+    reasoningEffort,
   });
   if (accessError) {
     return new Err(new Error(accessError.message));
@@ -274,7 +281,7 @@ export async function createOrUpgradeAgentConfiguration({
     pictureUrl: assistant.pictureUrl,
     status: assistant.status,
     scope: assistant.scope,
-    model: assistant.model,
+    model: { ...assistant.model, reasoningEffort },
     templateId: assistant.templateId ?? null,
     requestedSpaceIds: allRequestedSpaceIds,
     tags: assistant.tags,
