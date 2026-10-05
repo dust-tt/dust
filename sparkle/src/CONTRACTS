@@ -1,0 +1,21 @@
+@cc [owner:ykmsd,label:product;react] sparkle-owned-text-translated
+Every user-visible string that sparkle supplies itself (JSX text, default labels, placeholders,
+tooltips, `aria-label`, `alt`) in a non-story file MUST go through a Lingui macro with the English
+text as the message, and a sentence MUST be a single message. A prop default MUST be resolved in the
+component body (`label ?? t\`Load more\``), and the prop documented with `@default`. Text passed in
+by the consumer through props is the consumer's to translate. Brand names, keyboard symbols and
+user content MUST NOT be wrapped. Catalog freshness and completeness are enforced by
+`npm run i18n:check`.
+
+@cc [owner:ykmsd,label:coding] sparkle-macros-call-expressions-only
+Sparkle sources MUST only use Lingui call-expression macros: `useLingui` from `@lingui/react/macro`,
+and `msg`/`plural`/`select` from `@lingui/core/macro`. They MUST NOT use JSX macros (`<Trans>`,
+`<Plural>`, ...), the global `t` from `@lingui/core/macro`, or import `@lingui/react` or
+`@lingui/core` outside `lib/i18n/`. Enforced by the `noRestrictedImports` Biome rule on
+`sparkle/src`.
+
+@cc [owner:ykmsd,label:architecture] single-lingui-react-copy
+`@lingui/react` in sparkle's `dependencies` MUST be the exact version front depends on, so that the
+monorepo installs a single copy and sparkle's `useLingui` reads the `LinguiContext` of front's
+`I18nProvider`. With two copies sparkle silently renders in English. Covered by
+`front/lib/i18n/i18n.test.ts`.
