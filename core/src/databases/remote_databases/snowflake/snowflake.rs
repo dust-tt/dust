@@ -66,7 +66,9 @@ struct SnowflakeQueryPlanEntry {
 
 pub const MAX_QUERY_RESULT_ROWS: usize = 25_000;
 
-pub const FORBIDDEN_OPERATIONS: [&str; 3] = ["UPDATE", "DELETE", "INSERT"];
+// Data-modifying operators emitted by Snowflake EXPLAIN (Insert also covers COPY INTO table, Copy
+// covers COPY INTO stage). DDL produces no plan, so EXPLAIN fails on it.
+pub const FORBIDDEN_OPERATIONS: [&str; 5] = ["INSERT", "UPDATE", "DELETE", "MERGE", "COPY"];
 
 pub const GET_SESSION_MAX_TRIES: usize = 3;
 
@@ -90,6 +92,23 @@ fn quote_snowflake_identifier(identifier: &str) -> String {
     } else {
         format!("\"{}\"", identifier.replace('"', "\"\""))
     }
+}
+
+/**
+ * @cc [label:security] snowflake-forbidden-plan-operations
+ * Returns every plan operation matching `FORBIDDEN_OPERATIONS`, compared case-insensitively
+ * (Snowflake EXPLAIN emits mixed-case names such as `Insert`). `authorize_query` MUST reject the
+ * query when the result is non-empty.
+ */
+fn forbidden_operations(plan: Vec<SnowflakeQueryPlanEntry>) -> Vec<String> {
+    plan.into_iter()
+        .filter_map(|entry| entry.operation)
+        .filter(|op| {
+            FORBIDDEN_OPERATIONS
+                .iter()
+                .any(|forbidden_op| op.eq_ignore_ascii_case(forbidden_op))
+        })
+        .collect()
 }
 
 /**
@@ -482,19 +501,7 @@ impl SnowflakeRemoteDatabase {
             ))?
         }
 
-        let used_forbidden_operations = plan
-            .into_iter()
-            .filter_map(|entry| match entry.operation {
-                Some(op)
-                    if FORBIDDEN_OPERATIONS
-                        .iter()
-                        .any(|forbidden_op| op.to_lowercase() == *forbidden_op) =>
-                {
-                    Some(op)
-                }
-                _ => None,
-            })
-            .collect::<Vec<_>>();
+        let used_forbidden_operations = forbidden_operations(plan);
 
         if !used_forbidden_operations.is_empty() {
             Err(QueryDatabaseError::ExecutionError(
@@ -637,6 +644,38 @@ mod tests {
             "DESCRIBE TABLE DB.SCHEMA.\"T\"\"; DROP TABLE X; --\""
         );
         Ok(())
+    }
+
+    fn plan_entry(operation: Option<&str>) -> SnowflakeQueryPlanEntry {
+        SnowflakeQueryPlanEntry {
+            objects: Some("DB.SCHEMA.ALLOWED".to_string()),
+            operation: operation.map(str::to_string),
+        }
+    }
+
+    #[test]
+    fn test_forbidden_operations_detects_dml_in_any_case() {
+        for op in [
+            "Insert", "Update", "Delete", "Merge", "Copy", "INSERT", "delete",
+        ] {
+            assert_eq!(
+                forbidden_operations(vec![plan_entry(Some("Result")), plan_entry(Some(op))]),
+                vec![op.to_string()],
+                "{}",
+                op
+            );
+        }
+    }
+
+    #[test]
+    fn test_forbidden_operations_allows_read_only_plans() {
+        let plan = vec![
+            plan_entry(Some("Result")),
+            plan_entry(Some("Filter")),
+            plan_entry(Some("TableScan")),
+            plan_entry(None),
+        ];
+        assert!(forbidden_operations(plan).is_empty());
     }
 
     #[test]
