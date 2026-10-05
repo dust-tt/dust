@@ -2,6 +2,7 @@ import {
   parseStdoutResultEnvelope,
   resolveSpilledResult,
 } from "@app/lib/api/sandbox_functions/result_delivery";
+import { SANDBOX_FUNCTION_RESULT_MAX_BYTES } from "@app/lib/api/sandbox_functions/result_envelope";
 import { Err, Ok } from "@app/types/shared/result";
 import { describe, expect, it, vi } from "vitest";
 
@@ -134,7 +135,8 @@ describe("parseStdoutResultEnvelope", () => {
 describe("resolveSpilledResult", () => {
   const spill = {
     ok: true as const,
-    resultFile: "/tmp/dust-fn-results/abc.json",
+    resultFile:
+      "/tmp/dust-fn-results/0f8e4d2a-1b3c-4d5e-8f90-a1b2c3d4e5f6.json",
     resultBytes: 300_000,
   };
 
@@ -154,7 +156,10 @@ describe("resolveSpilledResult", () => {
       ok: true,
       output: { hello: "big world" },
     });
-    expect(readFile).toHaveBeenCalledWith("/tmp/dust-fn-results/abc.json");
+    expect(readFile).toHaveBeenCalledWith(spill.resultFile, {
+      user: "agent-proxied",
+      maxBytes: SANDBOX_FUNCTION_RESULT_MAX_BYTES,
+    });
   });
 
   it("fails with invocation_failed naming the file when the read fails", async () => {
@@ -165,7 +170,7 @@ describe("resolveSpilledResult", () => {
       error: {
         code: "invocation_failed",
         message:
-          "Frame function result could not be read back from /tmp/dust-fn-results/abc.json: gone",
+          "Frame function result could not be read back from /tmp/dust-fn-results/0f8e4d2a-1b3c-4d5e-8f90-a1b2c3d4e5f6.json: gone",
       },
     });
   });
@@ -183,12 +188,15 @@ describe("resolveSpilledResult", () => {
     });
   });
 
-  it("refuses to read a pointer outside the spill directory", async () => {
+  it("refuses to read a pointer that is not a runner spill file", async () => {
     const readFile = vi.fn();
 
     for (const resultFile of [
       "/etc/shadow",
       "/tmp/dust-fn-results/../../etc/shadow",
+      "/tmp/dust-fn-results/x.json",
+      "/tmp/dust-fn-results/sub/0f8e4d2a-1b3c-4d5e-8f90-a1b2c3d4e5f6.json",
+      `${spill.resultFile}\n`,
     ]) {
       await expect(
         resolveSpilledResult({ ...spill, resultFile }, readFile)

@@ -978,8 +978,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       const normalized =
         parsed.spill === null
           ? parsed.outcome
-          : await resolveSpilledResult(parsed.spill, (path) =>
-              sandbox.readFile(auth, path)
+          : await resolveSpilledResult(parsed.spill, (path, opts) =>
+              sandbox.readFile(auth, path, opts)
             );
       recordSandboxFunctionRun({
         ownerKind: frame ? "frame" : "pod",
