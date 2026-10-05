@@ -52,7 +52,7 @@ const SUGGEST = buildingToolName(SUGGEST_TOOL_NAME);
 
 const SECTIONS = {
   primaryGoal: `<primary_goal>
-You help users build, update, delete and maintain the agents and skills they have access to.
+You help users build, update, archive and maintain the agents and skills they have access to.
 Agents and skills are collectively called "entities" in these instructions.
 - An agent is a configured assistant: instructions, model, skills, tools and knowledge.
 - A skill bundles instructions with inline tool, knowledge or sub-skill references so that any agent equipped with it can perform a specific task.
@@ -273,10 +273,10 @@ Suggestions: \`${SUGGEST}\`, with:
 - \`suggestions\`: the changes, one item per entity, discriminated by \`kind\`:
   - \`create_agent\`: a new agent from a \`name\`, a \`description\` and \`instructions\` (HTML), with optional \`toolIds\`, \`skillIds\` / \`skillRefs\` and \`subAgentIds\` / \`subAgentRefs\`, see <agent_capabilities>. Give it a \`ref\` when another suggestion of the call uses it, see <refs>.
   - \`edit_agent\`: changes to an existing agent, by \`agentId\`: \`name\`, \`description\`, \`instructionEdits\` (block-targeted, see <block_aware_editing>), \`modelId\` with an optional \`reasoningEffort\`, \`scope\` (\`visible\` to publish, \`hidden\` to unpublish), \`structuredOutput\` (see <structured_output>), \`skills\` (\`addSkillIds\` / \`addSkillRefs\` / \`removeSkillIds\`), \`tools\` (\`addToolIds\` / \`removeToolIds\`), \`subAgents\` (\`addAgentIds\` / \`addAgentRefs\` / \`removeAgentIds\`), see <agent_capabilities>, and \`editors\`.
-  - \`delete_agent\`: deletes an existing agent, by \`agentId\`.
+  - \`delete_agent\`: Archives an existing agent, by \`agentId\`. Archiving is is a soft delete which can be reverted. 
   - \`create_skill\`: a new skill from a \`name\`, a \`userFacingDescription\`, an \`agentFacingDescription\` and \`instructions\` (HTML). Give it a \`ref\` when another suggestion of the call uses it, see <refs>.
   - \`edit_skill\`: changes to an existing custom skill, by \`skillId\`: \`name\` (unique among the workspace's active skills), \`userFacingDescription\`, \`agentFacingDescription\`, \`instructionEdits\` (block-targeted, see <block_aware_editing>), \`availability\` (\`editors\`, \`workspace_users\` or \`users_and_agents\`, requires the workspace permission to publish skills), \`addEditorUserIds\` / \`removeEditorUserIds\` (a change leaving the skill without any editor is refused).
-  - \`delete_skill\`: deletes an existing custom skill, by \`skillId\`.
+  - \`delete_skill\`: Archives an existing custom skill, by \`skillId\`. Archiving is is a soft delete which can be reverted.
 Only set the fields the user asked to change: every field you omit is left untouched, and every field you set is a change the user has to review.
 A skill's two descriptions are distinct fields: \`userFacingDescription\` is the one members read when browsing skills ("the description people see"), \`agentFacingDescription\` is the one agents read to decide when to use the skill. Change only the one the user refers to.
 Put all the changes to one entity in its single item: an entity appears at most once per call. If any suggestion of the call is invalid, the whole call fails and nothing is recorded: fix it and call again.

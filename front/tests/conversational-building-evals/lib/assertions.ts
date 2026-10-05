@@ -537,6 +537,13 @@ export function validateFinalToolCall(
         label: `skill "${assertion.skillKey}"`,
       });
 
+    case "suggestAgentDeletion":
+      return findSuggestion(finalToolCall, "delete_agent", {
+        field: "agentId",
+        id: resolveAgentId(scenario, assertion.agentKey),
+        label: `agent "${assertion.agentKey}"`,
+      });
+
     case "suggestSkillName":
       return requireField(
         findSkillEdit(finalToolCall, scenario, assertion.skillKey),
@@ -715,6 +722,7 @@ function getEntitiesToMention(
     case "suggestAgentInstructionsChange":
     case "suggestAgentModelChange":
     case "suggestAgentStructuredOutput":
+    case "suggestAgentDeletion":
       return [{ kind: "agent", key: assertion.agentKey }];
     case "separateSuggestions":
       return assertion.suggestions.map((expected) => {
