@@ -30,7 +30,7 @@ describe("buildBalanceThresholdReachedEmailCopy", () => {
     );
 
     expect(subject).toBe(
-      "[Dust] Alerte de solde de crédits\u00a0: le solde de votre espace de travail est passé sous 1 500 crédits"
+      "[Dust] Alerte de solde\u00a0: le solde de crédits de votre workspace est passé sous 1 500 crédits"
     );
     expect(actionLabel).toBe("Gérer les crédits");
   });

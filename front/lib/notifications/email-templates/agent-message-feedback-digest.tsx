@@ -1,5 +1,6 @@
 import config from "@app/lib/api/config";
 import {
+  EmailGreeting,
   EmailLayout,
   renderEmailWithI18n,
 } from "@app/lib/notifications/email-templates/_layout";
@@ -9,7 +10,7 @@ import { Plural, Trans } from "@lingui/react/macro";
 import { z } from "zod";
 
 const AgentMessageFeedbackDigestEmailTemplatePropsSchema = z.object({
-  name: z.string(),
+  name: z.string().optional(),
   workspace: z.object({
     id: z.string(),
     name: z.string(),
@@ -51,7 +52,7 @@ const AgentMessageFeedbackDigestEmailTemplate = ({
   return (
     <EmailLayout workspace={workspace}>
       <h3>
-        <Trans>Hi {name},</Trans>
+        <EmailGreeting name={name} />
       </h3>
       <p>
         <Plural

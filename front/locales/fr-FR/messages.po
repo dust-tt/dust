@@ -1135,13 +1135,15 @@ msgstr "Cet e-mail est automatique. Merci de ne pas y répondre."
 
 #: front/lib/notifications/email-templates/_layout.tsx
 msgid "You can manage your notification preferences from <0>your workspace</0>."
-msgstr "Vous pouvez gérer vos préférences de notification depuis <0>votre espace de travail</0>."
+msgstr "Vous pouvez gérer vos préférences de notification depuis <0>votre workspace</0>."
 
-#: front/lib/notifications/email-templates/agent-message-feedback-digest.tsx
-#: front/lib/notifications/email-templates/conversations-unread.tsx
-#: front/lib/notifications/email-templates/default.tsx
+#: front/lib/notifications/email-templates/_layout.tsx
 msgid "Hi {name},"
 msgstr "Bonjour {name},"
+
+#: front/lib/notifications/email-templates/_layout.tsx
+msgid "Hi there,"
+msgstr "Bonjour,"
 
 #: front/lib/notifications/email-templates/agent-message-feedback-digest.tsx
 msgid "{feedbackCount, plural, one {You received # feedback on your agents today:} other {You received # feedbacks on your agents today:}}"
@@ -1196,6 +1198,14 @@ msgstr "{createdBy} a lancé « {conversationTitle} »"
 msgid "{createdBy} started \"{conversationTitle}\" in {projectName}"
 msgstr "{createdBy} a lancé « {conversationTitle} » dans {projectName}"
 
+#: front/lib/notifications/helpers.ts
+msgid "Summary not generated due to data retention policy on conversations in this workspace."
+msgstr "Résumé non généré en raison de la politique de conservation des données appliquée aux conversations de ce workspace."
+
+#: front/lib/notifications/helpers.ts
+msgid "Summary not generated due to data retention policy on agents in this conversation."
+msgstr "Résumé non généré en raison de la politique de conservation des données appliquée aux agents de cette conversation."
+
 #: front/lib/notifications/workflows/agent-message-feedback.ts
 msgid "an agent"
 msgstr "un agent"
@@ -1203,7 +1213,7 @@ msgstr "un agent"
 #: front/lib/notifications/workflows/agent-message-feedback.ts
 #: front/lib/notifications/workflows/pod-added-as-member.ts
 msgid "A workspace"
-msgstr "Un espace de travail"
+msgstr "Un workspace"
 
 #: front/lib/notifications/workflows/agent-message-feedback.ts
 msgid "New feedback on {agentName}"
@@ -1228,17 +1238,6 @@ msgstr "Voir"
 msgid "[Dust] {feedbackCount, plural, one {# feedback on your agents} other {# feedbacks on your agents}} (👍 {positiveCount} - 👎 {negativeCount})"
 msgstr "[Dust] {feedbackCount, plural, one {# retour sur vos agents} many {# retours sur vos agents} other {# retours sur vos agents}} (👍 {positiveCount} - 👎 {negativeCount})"
 
-#: front/lib/notifications/workflows/agent-message-feedback.ts
-#: front/lib/notifications/workflows/balance-threshold-reached.ts
-#: front/lib/notifications/workflows/conversation-unread.ts
-#: front/lib/notifications/workflows/pod-added-as-member.ts
-#: front/lib/notifications/workflows/programmatic-cap-reached.ts
-#: front/lib/notifications/workflows/seat-auto-upgraded.ts
-#: front/lib/notifications/workflows/upgrade-request-created.ts
-#: front/lib/notifications/workflows/user-awu-cap-reached.ts
-msgid "there"
-msgstr "à vous"
-
 #: front/lib/notifications/workflows/agent-suggestions-ready.ts
 #: front/lib/notifications/workflows/skill-suggestions-ready.ts
 msgid "{suggestionCount, plural, one {# new improvement suggestion ready for review.} other {# new improvement suggestions ready for review.}}"
@@ -1252,11 +1251,11 @@ msgstr "Examiner"
 
 #: front/lib/notifications/workflows/balance-threshold-reached.ts
 msgid "[Dust] Credit balance alert - your workspace balance dropped below {threshold} credits"
-msgstr "[Dust] Alerte de solde de crédits : le solde de votre espace de travail est passé sous {threshold} crédits"
+msgstr "[Dust] Alerte de solde : le solde de crédits de votre workspace est passé sous {threshold} crédits"
 
 #: front/lib/notifications/workflows/balance-threshold-reached.ts
 msgid "Your workspace's remaining credit balance has dropped below the threshold you configured."
-msgstr "Le solde de crédits restant de votre espace de travail est passé sous le seuil que vous avez configuré."
+msgstr "Le solde de crédits restant de votre workspace est passé sous le seuil que vous avez configuré."
 
 #: front/lib/notifications/workflows/balance-threshold-reached.ts
 msgid "Alert threshold: {threshold} credits"
@@ -1272,7 +1271,7 @@ msgstr "Pour éviter de manquer de crédits, contactez votre interlocuteur Dust.
 
 #: front/lib/notifications/workflows/balance-threshold-reached.ts
 msgid "To avoid running out of credits, you can purchase more from your workspace usage page."
-msgstr "Pour éviter de manquer de crédits, vous pouvez en acheter depuis la page d’utilisation de votre espace de travail."
+msgstr "Pour éviter de manquer de crédits, vous pouvez en acheter depuis la page d’utilisation de votre workspace."
 
 #: front/lib/notifications/workflows/balance-threshold-reached.ts
 msgid "See usage details"
@@ -1345,7 +1344,7 @@ msgstr "Voir la conversation"
 
 #: front/lib/notifications/workflows/conversation-unread.ts
 msgid "Preview not available due to data retention policy on conversations in this workspace."
-msgstr "Aperçu indisponible en raison de la politique de conservation des données appliquée aux conversations de cet espace de travail."
+msgstr "Aperçu indisponible en raison de la politique de conservation des données appliquée aux conversations de ce workspace."
 
 #: front/lib/notifications/workflows/conversation-unread.ts
 msgid "Preview not available due to data retention policy on agents in this conversation."
@@ -1369,55 +1368,55 @@ msgstr "Voir le Pod"
 
 #: front/lib/notifications/workflows/programmatic-cap-reached.ts
 msgid "[Dust] Your workspace has used 80% of its programmatic API credit cap in {workspaceName}"
-msgstr "[Dust] Votre espace de travail a utilisé 80 % de son plafond de crédits pour l’API programmatique dans {workspaceName}"
+msgstr "[Dust] Votre workspace {workspaceName} a utilisé 80 % de son plafond de crédits API"
 
 #: front/lib/notifications/workflows/programmatic-cap-reached.ts
 msgid "Your workspace \"{workspaceName}\" has used 80% of its monthly programmatic API credit cap of {cap} credits."
-msgstr "Votre espace de travail « {workspaceName} » a utilisé 80 % de son plafond mensuel de {cap} crédits pour l’API programmatique."
+msgstr "Votre workspace « {workspaceName} » a utilisé 80 % de son plafond mensuel de {cap} crédits API."
 
 #: front/lib/notifications/workflows/programmatic-cap-reached.ts
 msgid "Your workspace \"{workspaceName}\" has used 80% of its monthly programmatic API credit cap."
-msgstr "Votre espace de travail « {workspaceName} » a utilisé 80 % de son plafond mensuel de crédits pour l’API programmatique."
+msgstr "Votre workspace « {workspaceName} » a utilisé 80 % de son plafond mensuel de crédits API."
 
 #: front/lib/notifications/workflows/programmatic-cap-reached.ts
 msgid "Once the cap is fully reached, programmatic API calls will be blocked. Consider raising the cap before that happens."
-msgstr "Une fois le plafond atteint, les appels à l’API programmatique seront bloqués. Pensez à relever le plafond avant que cela ne se produise."
+msgstr "Une fois le plafond atteint, les appels à l’API seront bloqués. Pensez à relever le plafond d’ici là."
 
 #: front/lib/notifications/workflows/programmatic-cap-reached.ts
 msgid "[Dust] Your workspace has reached its programmatic API credit cap in {workspaceName}"
-msgstr "[Dust] Votre espace de travail a atteint son plafond de crédits pour l’API programmatique dans {workspaceName}"
+msgstr "[Dust] Votre workspace {workspaceName} a atteint son plafond de crédits API"
 
 #: front/lib/notifications/workflows/programmatic-cap-reached.ts
 msgid "Your workspace \"{workspaceName}\" has exhausted its monthly programmatic API credit cap of {cap} credits."
-msgstr "Votre espace de travail « {workspaceName} » a épuisé son plafond mensuel de {cap} crédits pour l’API programmatique."
+msgstr "Votre workspace « {workspaceName} » a épuisé son plafond mensuel de {cap} crédits API."
 
 #: front/lib/notifications/workflows/programmatic-cap-reached.ts
 msgid "Your workspace \"{workspaceName}\" has exhausted its monthly programmatic API credit cap."
-msgstr "Votre espace de travail « {workspaceName} » a épuisé son plafond mensuel de crédits pour l’API programmatique."
+msgstr "Votre workspace « {workspaceName} » a épuisé son plafond mensuel de crédits API."
 
 #: front/lib/notifications/workflows/programmatic-cap-reached.ts
 msgid "Programmatic API calls are now blocked until the billing cycle resets or the cap is raised."
-msgstr "Les appels à l’API programmatique sont désormais bloqués jusqu’à la réinitialisation du cycle de facturation ou au relèvement du plafond."
+msgstr "Les appels à l’API sont désormais bloqués jusqu’au prochain cycle de facturation ou au relèvement du plafond."
 
 #: front/lib/notifications/workflows/programmatic-cap-reached.ts
 msgid "[Dust] Your programmatic triggers are paused in {workspaceName}"
-msgstr "[Dust] Vos déclencheurs programmatiques sont en pause dans {workspaceName}"
+msgstr "[Dust] Vos déclencheurs sont en pause dans {workspaceName}"
 
 #: front/lib/notifications/workflows/programmatic-cap-reached.ts
 msgid "A programmatic trigger in your Dust workspace \"{workspaceName}\" could not run because the workspace's monthly programmatic usage limit is set to 0 credits."
-msgstr "Un déclencheur programmatique de votre espace de travail Dust « {workspaceName} » n’a pas pu s’exécuter, car la limite mensuelle d’utilisation programmatique de l’espace de travail est fixée à 0 crédit."
+msgstr "Un déclencheur de votre workspace Dust « {workspaceName} » n’a pas pu s’exécuter, car la limite mensuelle d’utilisation via l’API du workspace est fixée à 0 crédit."
 
 #: front/lib/notifications/workflows/programmatic-cap-reached.ts
 msgid "Programmatic triggers will remain blocked until you set a positive limit in workspace usage settings."
-msgstr "Les déclencheurs programmatiques resteront bloqués tant que vous n’aurez pas défini une limite positive dans les paramètres d’utilisation de l’espace de travail."
+msgstr "Les déclencheurs resteront bloqués tant que vous n’aurez pas défini une limite supérieure à 0 dans les paramètres d’utilisation du workspace."
 
 #: front/lib/notifications/workflows/programmatic-cap-reached.ts
 msgid "Manage workspace usage"
-msgstr "Gérer l’utilisation de l’espace de travail"
+msgstr "Gérer l’utilisation du workspace"
 
 #: front/lib/notifications/workflows/seat-auto-upgraded.ts
 msgid "[Dust] {count, plural, one {# member was auto-upgraded to a higher seat} other {# members were auto-upgraded to higher seats}}"
-msgstr "[Dust] {count, plural, one {# membre est passé automatiquement à un siège supérieur} other {# membres sont passés automatiquement à des sièges supérieurs}}"
+msgstr "[Dust] {count, plural, one {# membre est passé automatiquement à un siège supérieur} many {# membres sont passés automatiquement à des sièges supérieurs} other {# membres sont passés automatiquement à des sièges supérieurs}}"
 
 #: front/lib/notifications/workflows/seat-auto-upgraded.ts
 msgid "[Dust] {member} was auto-upgraded to a {newSeatType} seat"
@@ -1425,7 +1424,7 @@ msgstr "[Dust] {member} est passé automatiquement à un siège {newSeatType}"
 
 #: front/lib/notifications/workflows/seat-auto-upgraded.ts
 msgid "{count, plural, one {# member reached their credit limit and was automatically upgraded to a higher seat so they can keep working:} other {# members reached their credit limit and were automatically upgraded to higher seats so they can keep working:}}"
-msgstr "{count, plural, one {# membre a atteint sa limite de crédits et est passé automatiquement à un siège supérieur pour pouvoir continuer à travailler :} other {# membres ont atteint leur limite de crédits et sont passés automatiquement à des sièges supérieurs pour pouvoir continuer à travailler :}}"
+msgstr "{count, plural, one {# membre a atteint sa limite de crédits et est passé automatiquement à un siège supérieur pour pouvoir continuer à travailler :} many {# membres ont atteint leur limite de crédits et sont passés automatiquement à des sièges supérieurs pour pouvoir continuer à travailler :} other {# membres ont atteint leur limite de crédits et sont passés automatiquement à des sièges supérieurs pour pouvoir continuer à travailler :}}"
 
 #: front/lib/notifications/workflows/seat-auto-upgraded.ts
 msgid "{member} reached their credit limit and was automatically upgraded from a {previousSeatType} seat to a {newSeatType} seat so they can keep working."
@@ -1433,11 +1432,11 @@ msgstr "{member} a atteint sa limite de crédits et est passé automatiquement d
 
 #: front/lib/notifications/workflows/seat-auto-upgraded.ts
 msgid "This might increase your subscription cost. You can turn off automatic seat upgrades from your workspace usage settings."
-msgstr "Cela peut augmenter le coût de votre abonnement. Vous pouvez désactiver le passage automatique à un siège supérieur dans les paramètres d’utilisation de votre espace de travail."
+msgstr "Cela peut augmenter le coût de votre abonnement. Vous pouvez désactiver le passage automatique à un siège supérieur dans les paramètres d’utilisation de votre workspace."
 
 #: front/lib/notifications/workflows/seat-auto-upgraded.ts
 msgid "Go to workspace usage"
-msgstr "Voir l’utilisation de l’espace de travail"
+msgstr "Voir l’utilisation du workspace"
 
 #: front/lib/notifications/workflows/upgrade-request-created.ts
 msgid "• {requester} (reason: {reason})"
@@ -1453,7 +1452,7 @@ msgstr "{count} membres ont atteint leur limite de dépenses par utilisateur et 
 
 #: front/lib/notifications/workflows/upgrade-request-created.ts
 msgid "Review the requests and adjust their limits from your workspace usage page."
-msgstr "Examinez les demandes et ajustez les limites depuis la page d’utilisation de votre espace de travail."
+msgstr "Examinez les demandes et ajustez les limites depuis la page d’utilisation de votre workspace."
 
 #: front/lib/notifications/workflows/upgrade-request-created.ts
 msgid "Review requests"
@@ -1473,7 +1472,7 @@ msgstr "{requester} a atteint sa limite de dépenses par utilisateur et demande 
 
 #: front/lib/notifications/workflows/upgrade-request-created.ts
 msgid "Review the request and adjust their limit from your workspace usage page."
-msgstr "Examinez la demande et ajustez sa limite depuis la page d’utilisation de votre espace de travail."
+msgstr "Examinez la demande et ajustez sa limite depuis la page d’utilisation de votre workspace."
 
 #: front/lib/notifications/workflows/upgrade-request-created.ts
 msgid "Review request"
@@ -1485,7 +1484,7 @@ msgstr "Vous avez atteint votre limite d’utilisation"
 
 #: front/lib/notifications/workflows/user-awu-cap-reached.ts
 msgid "You have reached your {cap} credits limit in workspace \"{workspaceName}\" and can no longer run agents. Contact your admin to increase your limit."
-msgstr "Vous avez atteint votre limite de {cap} crédits dans l’espace de travail « {workspaceName} » et ne pouvez plus exécuter d’agents. Contactez votre administrateur pour augmenter votre limite."
+msgstr "Vous avez atteint votre limite de {cap} crédits dans le workspace « {workspaceName} » et ne pouvez plus exécuter d’agents. Contactez votre administrateur pour augmenter votre limite."
 
 #: front/lib/notifications/workflows/user-awu-cap-reached.ts
 msgid "You've used 80% of your usage limit"
@@ -1493,7 +1492,7 @@ msgstr "Vous avez utilisé 80 % de votre limite d’utilisation"
 
 #: front/lib/notifications/workflows/user-awu-cap-reached.ts
 msgid "You have used 80% of your {cap} credits limit in workspace \"{workspaceName}\". Contact your admin to increase your limit before you are blocked."
-msgstr "Vous avez utilisé 80 % de votre limite de {cap} crédits dans l’espace de travail « {workspaceName} ». Contactez votre administrateur pour augmenter votre limite avant d’être bloqué."
+msgstr "Vous avez utilisé 80 % de votre limite de {cap} crédits dans le workspace « {workspaceName} ». Contactez votre administrateur pour augmenter votre limite avant d’être bloqué."
 
 #: front/lib/notifications/workflows/user-awu-cap-reached.ts
 msgid "[Dust] You've reached your usage limit in {workspaceName}"
@@ -1501,11 +1500,11 @@ msgstr "[Dust] Vous avez atteint votre limite d’utilisation dans {workspaceNam
 
 #: front/lib/notifications/workflows/user-awu-cap-reached.ts
 msgid "You have reached your {cap} credits usage limit in the Dust workspace {workspaceName} and can no longer run agents."
-msgstr "Vous avez atteint votre limite d’utilisation de {cap} crédits dans l’espace de travail Dust {workspaceName} et ne pouvez plus exécuter d’agents."
+msgstr "Vous avez atteint votre limite d’utilisation de {cap} crédits dans le workspace Dust {workspaceName} et ne pouvez plus exécuter d’agents."
 
 #: front/lib/notifications/workflows/user-awu-cap-reached.ts
 msgid "Please contact your workspace admin to increase your limit."
-msgstr "Contactez l’administrateur de votre espace de travail pour augmenter votre limite."
+msgstr "Contactez l’administrateur de votre workspace pour augmenter votre limite."
 
 #: front/lib/notifications/workflows/user-awu-cap-reached.ts
 msgid "[Dust] You've used 80% of your usage limit in {workspaceName}"
@@ -1513,12 +1512,12 @@ msgstr "[Dust] Vous avez utilisé 80 % de votre limite d’utilisation dans {wo
 
 #: front/lib/notifications/workflows/user-awu-cap-reached.ts
 msgid "You have used 80% of your {cap} credits usage limit in the Dust workspace {workspaceName}."
-msgstr "Vous avez utilisé 80 % de votre limite d’utilisation de {cap} crédits dans l’espace de travail Dust {workspaceName}."
+msgstr "Vous avez utilisé 80 % de votre limite d’utilisation de {cap} crédits dans le workspace Dust {workspaceName}."
 
 #: front/lib/notifications/workflows/user-awu-cap-reached.ts
 msgid "Once you reach 100%, you won't be able to run agents until your limit is increased. Please contact your workspace admin."
-msgstr "Une fois 100 % atteints, vous ne pourrez plus exécuter d’agents tant que votre limite n’aura pas été augmentée. Contactez l’administrateur de votre espace de travail."
+msgstr "Une fois 100 % atteints, vous ne pourrez plus exécuter d’agents tant que votre limite n’aura pas été augmentée. Contactez l’administrateur de votre workspace."
 
 #: front/lib/notifications/workflows/user-awu-cap-reached.ts
 msgid "Go to workspace"
-msgstr "Accéder à l’espace de travail"
+msgstr "Accéder au workspace"

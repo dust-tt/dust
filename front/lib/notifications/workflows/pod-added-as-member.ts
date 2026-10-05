@@ -174,7 +174,7 @@ export const podAddedAsMemberWorkflow = workflow(
           buildPodAddedAsMemberCopy(i18n, details);
         const body = await renderEmail({
           i18n,
-          name: subscriber.firstName ?? i18n._(msg`there`),
+          name: subscriber.firstName ?? undefined,
           workspace: {
             id: payload.workspaceId,
             name: details.workspaceName,

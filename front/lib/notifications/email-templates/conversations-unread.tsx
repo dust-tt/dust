@@ -1,5 +1,6 @@
 import config from "@app/lib/api/config";
 import {
+  EmailGreeting,
   EmailLayout,
   renderEmailWithI18n,
 } from "@app/lib/notifications/email-templates/_layout";
@@ -11,7 +12,7 @@ import * as React from "react";
 import { z } from "zod";
 
 export const ConversationsUnreadEmailTemplatePropsSchema = z.object({
-  name: z.string(),
+  name: z.string().optional(),
   workspace: z.object({
     id: z.string(),
     name: z.string(),
@@ -73,7 +74,7 @@ const ConversationsUnreadEmailTemplate = ({
   return (
     <EmailLayout workspace={workspace}>
       <p>
-        <Trans>Hi {name},</Trans>
+        <EmailGreeting name={name} />
       </p>
 
       {conversationsWithMention.length > 0 && (

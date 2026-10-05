@@ -435,6 +435,7 @@ export const conversationUnreadWorkflow = workflow(
               });
             } else {
               const summary = await getEmailSummary({
+                i18n,
                 details: detailsResult.value,
                 subscriberId: subscriber.subscriberId ?? "",
                 payload,
@@ -453,7 +454,7 @@ export const conversationUnreadWorkflow = workflow(
         // details is guaranteed non-null here because skip prevents execution otherwise.
         const body = await renderEmail({
           i18n,
-          name: subscriber.firstName ?? i18n._(msg`there`),
+          name: subscriber.firstName ?? undefined,
           workspace: {
             id: payload.workspaceId,
             name: details!.workspaceName,

@@ -57,4 +57,14 @@ describe("agent message feedback copy", () => {
     );
     expect(html).toContain("par Ada Lovelace");
   });
+
+  it("greets a recipient without a first name with a single sentence", async () => {
+    const html = await renderEmail({
+      i18n: await getNotificationI18n("fr-FR"),
+      workspace: { id: "w_1", name: "Acme" },
+      feedbacks: [FEEDBACK],
+    });
+
+    expect(html).toContain("Bonjour,");
+  });
 });

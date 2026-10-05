@@ -89,9 +89,7 @@ describe("buildProgrammaticCapReachedEmailCopy", () => {
       reason: "programmatic_cap_disabled",
     });
 
-    expect(subject).toBe(
-      "[Dust] Vos déclencheurs programmatiques sont en pause dans Acme"
-    );
+    expect(subject).toBe("[Dust] Vos déclencheurs sont en pause dans Acme");
   });
 });
 

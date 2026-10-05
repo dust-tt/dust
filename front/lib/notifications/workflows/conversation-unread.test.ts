@@ -1525,6 +1525,7 @@ describe("getEmailSummary", () => {
     };
 
     const result = await getEmailSummary({
+      i18n,
       details,
       subscriberId: user.sId,
       payload: mockPayload,
@@ -1551,6 +1552,7 @@ describe("getEmailSummary", () => {
     };
 
     const result = await getEmailSummary({
+      i18n,
       details,
       subscriberId: user.sId,
       payload: mockPayload,
@@ -1590,6 +1592,7 @@ describe("getEmailSummary", () => {
     );
 
     const result = await getEmailSummary({
+      i18n,
       details,
       subscriberId: user.sId,
       payload: mockPayload,
@@ -1608,6 +1611,7 @@ describe("getEmailSummary", () => {
     expect(revokeResult.isOk()).toBe(true);
 
     const result = await getEmailSummary({
+      i18n,
       details: createMockDetails(),
       subscriberId: user.sId,
       payload: {
@@ -1636,6 +1640,7 @@ describe("getEmailSummary", () => {
     );
 
     const result = await getEmailSummary({
+      i18n,
       details,
       subscriberId: user.sId,
       payload: mockPayload,
@@ -1673,6 +1678,7 @@ describe("getEmailSummary", () => {
     );
 
     const result = await getEmailSummary({
+      i18n,
       details,
       subscriberId: user.sId,
       payload: mockPayload,

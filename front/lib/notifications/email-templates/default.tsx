@@ -1,13 +1,13 @@
 import {
+  EmailGreeting,
   EmailLayout,
   renderEmailWithI18n,
 } from "@app/lib/notifications/email-templates/_layout";
 import type { I18n } from "@lingui/core";
-import { Trans } from "@lingui/react/macro";
 import { z } from "zod";
 
 export const DefaultEmailTemplatePropsSchema = z.object({
-  name: z.string(),
+  name: z.string().optional(),
   workspace: z.object({
     id: z.string(),
     name: z.string(),
@@ -35,7 +35,7 @@ const DefaultEmailTemplate = ({
   return (
     <EmailLayout workspace={workspace}>
       <h3>
-        <Trans>Hi {name},</Trans>
+        <EmailGreeting name={name} />
       </h3>
       {content.split("\n").map((line, index) => (
         <div key={index}>{line}</div>
