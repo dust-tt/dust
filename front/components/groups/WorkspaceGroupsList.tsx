@@ -20,7 +20,6 @@ import {
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Avatar,
   Button,
   Chip,
   DataTable,
@@ -85,20 +84,19 @@ const columns: ColumnDef<GroupRowData>[] = [
         return <DataTable.CellContent>-</DataTable.CellContent>;
       }
       return (
-        <DataTable.CellContent>
-          <div className="flex items-center gap-2">
-            <Avatar.Stack
-              avatars={managers.map(({ fullName, image }) => ({
-                name: fullName,
-                visual: image ?? undefined,
-                isRounded: true,
-              }))}
-              nbVisibleItems={4}
-              size="xs"
-              hasMagnifier={false}
-            />
-            {managers.length === 1 && managers[0].fullName}
-          </div>
+        <DataTable.CellContent
+          className="gap-2"
+          avatarStack={{
+            items: managers.map(({ fullName, image }) => ({
+              name: fullName,
+              visual: image ?? undefined,
+              isRounded: true,
+            })),
+            nbVisibleItems: 4,
+            hasMagnifier: false,
+          }}
+        >
+          {managers.length === 1 && managers[0].fullName}
         </DataTable.CellContent>
       );
     },
