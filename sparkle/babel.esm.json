@@ -1,5 +1,6 @@
 {
   "babelrc": false,
+  "presets": ["@babel/preset-typescript"],
   "plugins": [
     ["@lingui/babel-plugin-lingui-macro", { "descriptorFields": "message" }],
     [
