@@ -57,10 +57,6 @@ interface WorkspaceGroupsListProps {
   owner: WorkspaceType;
 }
 
-/**
- * @cc [owner:philipperolet,label:product] empty-group-managers
- * Groups without managers MUST display a dash in the manager column.
- */
 const columns: ColumnDef<GroupRowData>[] = [
   {
     id: "name",
