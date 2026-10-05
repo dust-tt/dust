@@ -3,6 +3,7 @@ import animDark from "@sparkle/lottie/spinnerDark";
 import animDarkXS from "@sparkle/lottie/spinnerDarkXS";
 import animLight from "@sparkle/lottie/spinnerLight";
 import animLightXS from "@sparkle/lottie/spinnerLightXS";
+import { useLingui } from "@lingui/react/macro";
 import Lottie from "lottie-react";
 import React from "react";
 
@@ -82,6 +83,7 @@ function WormSpinnerSVG({
   trackOpacity = 1,
   className,
 }: WormSpinnerSVGProps) {
+  const { t } = useLingui();
   const px = pxSizeMap[size];
   const sw = strokeWidthMap[size];
   return (
@@ -91,7 +93,7 @@ function WormSpinnerSVG({
       viewBox="0 0 24 24"
       fill="none"
       role="status"
-      aria-label="Loading"
+      aria-label={t`Loading`}
       shapeRendering="geometricPrecision"
       className={className}
     >
@@ -163,6 +165,7 @@ function ShapesSpinnerSVG({
   color: string;
   className?: string;
 }) {
+  const { t } = useLingui();
   const px = pxSizeMap[size];
   const sw = strokeWidthMap[size];
   return (
@@ -172,7 +175,7 @@ function ShapesSpinnerSVG({
       viewBox="0 0 24 24"
       fill="none"
       role="status"
-      aria-label="Loading"
+      aria-label={t`Loading`}
       shapeRendering="geometricPrecision"
       className={className}
     >

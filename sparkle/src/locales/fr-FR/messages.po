@@ -17,11 +17,20 @@ msgstr ""
 msgid "Show less"
 msgstr "Afficher moins"
 
+#: src/components/Pagination.tsx
+msgid "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plural, one {#+ item} other {#+ items}}"
+msgstr "Affichage de {firstItemOnPageIndex}-{lastItemOnPageIndex} sur {rowCount, plural, one {#+ élément} other {#+ éléments}}"
+
 #: src/components/LoadMore.tsx
 msgid "Showing {rowCount} of {totalRowCount, plural, one {# item} other {# items}}"
 msgstr "Affichage de {rowCount} sur {totalRowCount, plural, one {# élément} other {# éléments}}"
 
+#: src/components/Pagination.tsx
+msgid "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plural, one {# item} other {# items}}"
+msgstr "Affichage de {firstItemOnPageIndex}-{lastItemOnPageIndex} sur {rowCount, plural, one {# élément} other {# éléments}}"
+
 #: src/components/LoadMore.tsx
+#: src/components/Pagination.tsx
 msgid "{rowCount, plural, one {# item} other {# items}}"
 msgstr "{rowCount, plural, one {# élément} other {# éléments}}"
 
@@ -34,5 +43,6 @@ msgid "Load more"
 msgstr "Charger plus"
 
 #: src/components/LoadMore.tsx
+#: src/components/Spinner.tsx
 msgid "Loading"
 msgstr "Chargement"

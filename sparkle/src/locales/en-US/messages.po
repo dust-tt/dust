@@ -17,11 +17,20 @@ msgstr ""
 msgid "Show less"
 msgstr "Show less"
 
+#: src/components/Pagination.tsx
+msgid "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plural, one {#+ item} other {#+ items}}"
+msgstr "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plural, one {#+ item} other {#+ items}}"
+
 #: src/components/LoadMore.tsx
 msgid "Showing {rowCount} of {totalRowCount, plural, one {# item} other {# items}}"
 msgstr "Showing {rowCount} of {totalRowCount, plural, one {# item} other {# items}}"
 
+#: src/components/Pagination.tsx
+msgid "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plural, one {# item} other {# items}}"
+msgstr "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plural, one {# item} other {# items}}"
+
 #: src/components/LoadMore.tsx
+#: src/components/Pagination.tsx
 msgid "{rowCount, plural, one {# item} other {# items}}"
 msgstr "{rowCount, plural, one {# item} other {# items}}"
 
@@ -34,5 +43,6 @@ msgid "Load more"
 msgstr "Load more"
 
 #: src/components/LoadMore.tsx
+#: src/components/Spinner.tsx
 msgid "Loading"
 msgstr "Loading"
