@@ -117,7 +117,7 @@ export const anchorsToMarks = (
   schema: Schema
 ): Result<MarkedDocument, string> => {
   const markType = schema.marks[COMMENT_MARK_NAME];
-  const open: string[] = [];
+  const open = new Set<string>();
   const started = new Set<string>();
   const marked = new Set<string>();
   // Covered text the mark cannot carry, before a comment's first marked text or after its last.
@@ -146,10 +146,10 @@ export const anchorsToMarks = (
         const { kind, id } = child.attrs ?? {};
         if (kind === "start" && !started.has(id)) {
           started.add(id);
-          open.push(id);
+          open.add(id);
           anchorOrder.push(markerKey(kind, id));
-        } else if (kind === "end" && open.includes(id)) {
-          open.splice(open.indexOf(id), 1);
+        } else if (kind === "end" && open.has(id)) {
+          open.delete(id);
           anchorOrder.push(markerKey(kind, id));
           if (unmarkedTail.has(id)) {
             error ??= shrinks(id);
@@ -159,7 +159,7 @@ export const anchorsToMarks = (
         }
         continue;
       }
-      if (child.type === "text" && open.length > 0) {
+      if (child.type === "text" && open.size > 0) {
         if (canCarryMark(child, node)) {
           for (const id of open) {
             if (unmarkedLead.has(id) && !marked.has(id)) {
@@ -172,7 +172,10 @@ export const anchorsToMarks = (
             ...child,
             marks: [
               ...(child.marks ?? []),
-              ...open.map((id) => ({ type: COMMENT_MARK_NAME, attrs: { id } })),
+              ...[...open].map((id) => ({
+                type: COMMENT_MARK_NAME,
+                attrs: { id },
+              })),
             ],
           });
           continue;
@@ -187,8 +190,9 @@ export const anchorsToMarks = (
   };
 
   const converted = rebuild(document);
-  if (error === null && open.length > 0) {
-    error = `Comment anchor "${open[0]}" is never closed where the editor reads it.`;
+  const [unclosed] = open;
+  if (error === null && unclosed !== undefined) {
+    error = `Comment anchor "${unclosed}" is never closed where the editor reads it.`;
   }
   const unmarked = [...started].find((id) => !marked.has(id));
   if (error === null && unmarked !== undefined) {

@@ -112,3 +112,53 @@ export const DocumentSaveError = ({ error }: DocumentSaveErrorProps) => (
     {error}
   </p>
 );
+
+interface DocumentStatusProps {
+  editable: boolean;
+  dirty: boolean;
+  saving: boolean;
+  error: string | null;
+  autosaveDebounceMs: number;
+  onRetry: () => Promise<void>;
+  badge?: ReactNode;
+  children?: ReactNode;
+}
+
+/** The status row with the save status and the host's controls, and the save error under it. */
+export const DocumentStatus = ({
+  editable,
+  dirty,
+  saving,
+  error,
+  autosaveDebounceMs,
+  onRetry,
+  badge,
+  children,
+}: DocumentStatusProps) => {
+  const showSaveStatus = editable || dirty || saving;
+  const saveError =
+    !editable && dirty && !saving
+      ? "Saving is unavailable. Your unsaved changes are still here. Copy them before reopening."
+      : error;
+
+  if (!showSaveStatus && !badge && !children) {
+    return null;
+  }
+  return (
+    <>
+      <StatusRow badge={badge}>
+        {showSaveStatus && (
+          <DocumentSaveStatus
+            dirty={dirty}
+            saving={saving}
+            error={saveError}
+            onRetry={editable ? onRetry : undefined}
+            autosaveDebounceMs={autosaveDebounceMs}
+          />
+        )}
+        {children}
+      </StatusRow>
+      {showSaveStatus && saveError && <DocumentSaveError error={saveError} />}
+    </>
+  );
+};

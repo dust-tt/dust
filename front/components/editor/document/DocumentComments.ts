@@ -87,6 +87,25 @@ export const withoutDocumentJSONComments = ({
   return Object.keys(rest).length > 0 ? { ...document, attrs: rest } : document;
 };
 
+/** Comment ids of every highlight wrapping the clicked element. */
+export const getClickedCommentIds = (
+  target: EventTarget | null,
+  root: Element
+) => {
+  const ids: string[] = [];
+  let element = target instanceof Element ? target : null;
+
+  while (element && element !== root) {
+    const id = element.getAttribute("data-comment-highlight");
+    if (id !== null) {
+      ids.push(id);
+    }
+    element = element.parentElement;
+  }
+
+  return ids;
+};
+
 /** First rendered highlight of each unresolved comment, from one DOM pass. */
 export const getCommentHighlights = (editor: Editor) => {
   const highlights = new Map<string, HTMLElement>();

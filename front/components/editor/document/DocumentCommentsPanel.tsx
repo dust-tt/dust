@@ -4,11 +4,13 @@ import { formatDateTime } from "@app/lib/i18n/format";
 import type { DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
 import {
   Avatar,
+  Button,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   cn,
   Icon,
+  MessageTextCircle01,
   Tooltip,
   XClose,
 } from "@dust-tt/sparkle";
@@ -108,9 +110,8 @@ const CommentThread = ({
       tabIndex={-1}
       aria-label={`Comment by ${first.author.name}`}
       aria-current={active ? "true" : undefined}
-      onClick={onSelect}
       className={cn(
-        "flex cursor-pointer flex-col gap-2.5 rounded-xl border border-border bg-background p-3 transition-colors motion-reduce:transition-none",
+        "rounded-xl border border-border bg-background transition-colors motion-reduce:transition-none",
         "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
         active
           ? "border-golden-500/60 ring-1 ring-golden-500/40"
@@ -118,40 +119,49 @@ const CommentThread = ({
         resolved && "bg-muted-background"
       )}
     >
-      <header className="flex items-center gap-1">
-        <MessageByline message={first} size="xxs" />
-      </header>
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          onSelect();
-        }}
-        className={cn(
-          "line-clamp-2 rounded-r-md border-l-2 border-golden-400 py-0.5 pl-2 text-left text-xs text-muted-foreground",
-          "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
-          resolved && "line-through decoration-muted-foreground/60"
-        )}
+      {/* Only catches clicks bubbling from the card; the quoted text is its keyboard control. */}
+      <div
+        role="presentation"
+        onClick={onSelect}
+        className="flex cursor-pointer flex-col gap-2.5 p-3"
       >
-        <span className="sr-only">Commented text: </span>
-        {quote || "The commented text was removed."}
-      </button>
-      <p className="text-sm whitespace-pre-wrap wrap-anywhere">{first.body}</p>
-      {replies.length > 0 && (
-        <ul className="flex flex-col gap-2.5 border-l border-border pl-3">
-          {replies.map((reply, index) => (
-            <li
-              key={`${reply.createdAt}:${index}`}
-              className="flex flex-col gap-1"
-            >
-              <MessageByline message={reply} size="3xs" />
-              <p className="text-sm whitespace-pre-wrap wrap-anywhere">
-                {reply.body}
-              </p>
-            </li>
-          ))}
-        </ul>
-      )}
+        <header className="flex items-center gap-1">
+          <MessageByline message={first} size="xxs" />
+        </header>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onSelect();
+          }}
+          className={cn(
+            "line-clamp-2 rounded-r-md border-l-2 border-golden-400 py-0.5 pl-2 text-left text-xs text-muted-foreground",
+            "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
+            resolved && "line-through decoration-muted-foreground/60"
+          )}
+        >
+          <span className="sr-only">Commented text: </span>
+          {quote || "The commented text was removed."}
+        </button>
+        <p className="text-sm whitespace-pre-wrap wrap-anywhere">
+          {first.body}
+        </p>
+        {replies.length > 0 && (
+          <ul className="flex flex-col gap-2.5 border-l border-border pl-3">
+            {replies.map((reply, index) => (
+              <li
+                key={`${reply.createdAt}:${index}`}
+                className="flex flex-col gap-1"
+              >
+                <MessageByline message={reply} size="3xs" />
+                <p className="text-sm whitespace-pre-wrap wrap-anywhere">
+                  {reply.body}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </article>
   );
 };
@@ -284,5 +294,37 @@ export const DocumentCommentsPanel = ({
         )}
       </div>
     </aside>
+  );
+};
+
+interface DocumentCommentsToggleProps {
+  panelId: string;
+  comments: DocumentCommentsController;
+}
+
+export const DocumentCommentsToggle = ({
+  panelId,
+  comments,
+}: DocumentCommentsToggleProps) => {
+  const unresolvedCount = comments.unresolved.length;
+  return (
+    <Button
+      ref={comments.toggleRef}
+      type="button"
+      variant="ghost"
+      size="xs"
+      icon={MessageTextCircle01}
+      label="Comments"
+      aria-label={
+        unresolvedCount > 0
+          ? `Comments, ${unresolvedCount} unresolved`
+          : "Comments"
+      }
+      isCounter={unresolvedCount > 0}
+      counterValue={String(unresolvedCount)}
+      aria-expanded={comments.panelOpen}
+      aria-controls={panelId}
+      onClick={comments.togglePanel}
+    />
   );
 };

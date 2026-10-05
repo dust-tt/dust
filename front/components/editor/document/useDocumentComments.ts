@@ -1,5 +1,6 @@
 import {
   documentCommentsPluginKey,
+  getClickedCommentIds,
   getCommentedTexts,
   getDocumentComments,
   scrollToCommentHighlight,
@@ -78,6 +79,12 @@ export const useDocumentComments = ({ editor }: UseDocumentCommentsProps) => {
     editor?.commands.setActiveComment(id);
   };
 
+  const reveal = (id: string) => {
+    select(id);
+    setPanelOpen(true);
+    requestFocus(id);
+  };
+
   return {
     comments: state.comments,
     unresolved,
@@ -101,10 +108,30 @@ export const useDocumentComments = ({ editor }: UseDocumentCommentsProps) => {
       setPanelOpen((open) => !open);
     },
     /** Opens the panel on a comment, from a highlight or marker. */
-    reveal: (id: string) => {
-      select(id);
-      setPanelOpen(true);
-      requestFocus(id);
+    reveal,
+    /**
+     * Reveals the comment under a click in the text: the one covering the least text first,
+     * then wider ones on repeated clicks. A click outside every comment clears the active one.
+     */
+    revealClicked: (target: EventTarget | null) => {
+      // A drag or double click on commented text selects it; revealing would steal its focus.
+      if (!editor || !editor.state.selection.empty) {
+        return;
+      }
+      const clicked = getClickedCommentIds(target, editor.view.dom);
+      if (clicked.length === 0) {
+        if (state.activeId !== null) {
+          select(null);
+        }
+        return;
+      }
+      const ids = clicked.sort(
+        (a, b) =>
+          (state.quotes.get(a)?.length ?? 0) -
+          (state.quotes.get(b)?.length ?? 0)
+      );
+      const current = state.activeId ? ids.indexOf(state.activeId) : -1;
+      reveal(ids[(current + 1) % ids.length]);
     },
     /** Activates a thread from the panel and scrolls to its text. */
     jumpTo: (id: string) => {
