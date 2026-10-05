@@ -1,21 +1,23 @@
 import { cn } from "@app/components/poke/shadcn/lib/utils";
-import {
-  ArrowRight,
-  CoinsStacked01,
-  Icon,
-  LinkWrapper,
-} from "@dust-tt/sparkle";
+import { ArrowRight, Icon, LinkWrapper } from "@dust-tt/sparkle";
+import type { ComponentType } from "react";
 
-interface WorkspacePoolUsageButtonProps {
-  workspaceId: string;
+interface WorkspaceLinkCardProps {
+  href: string;
+  icon: ComponentType;
+  title: string;
+  description: string;
 }
 
-export function WorkspacePoolUsageButton({
-  workspaceId,
-}: WorkspacePoolUsageButtonProps) {
+export function WorkspaceLinkCard({
+  href,
+  icon,
+  title,
+  description,
+}: WorkspaceLinkCardProps) {
   return (
     <LinkWrapper
-      href={`/poke/${workspaceId}/pool-usage`}
+      href={href}
       className={cn(
         "group relative isolate flex min-h-20 w-full items-center gap-3 overflow-hidden",
         "rounded-lg border border-highlight-200 bg-linear-to-r from-background via-background to-highlight-50/50",
@@ -30,15 +32,11 @@ export function WorkspacePoolUsageButton({
           "rounded-lg border border-highlight-200 bg-background text-highlight-500 shadow-sm"
         )}
       >
-        <Icon visual={CoinsStacked01} size="md" />
+        <Icon visual={icon} size="md" />
       </div>
       <div className="flex min-w-0 flex-1 flex-col">
-        <span className="text-sm font-semibold text-foreground">
-          Credits Usage
-        </span>
-        <span className="text-xs text-muted-foreground">
-          Review member seats and credit pool consumption.
-        </span>
+        <span className="text-sm font-semibold text-foreground">{title}</span>
+        <span className="text-xs text-muted-foreground">{description}</span>
       </div>
       <Icon visual={ArrowRight} size="sm" className="text-highlight-500" />
     </LinkWrapper>

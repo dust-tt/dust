@@ -140,6 +140,13 @@ const ParamsSchema = z.object({
  *       400:
  *         description: Invalid request
  */
+/**
+ * @cc [owner:davidebbo,label:security;api] remote-database-fields-system-key-only
+ * The table upsert (POST) MUST reject with a 400, before calling core, any request from a
+ * non-system caller that sets `remote_database_table_id` or `remote_database_secret_id`. Core
+ * fetches the referenced credential without checking which workspace owns it, so only connectors
+ * (system key) may point a table at a remote warehouse.
+ */
 const app = publicApiApp();
 
 // `/csv` must be mounted before `/:tId` so the literal segment isn't
@@ -380,6 +387,19 @@ app.post(
           type: "invalid_request_error",
           message:
             "Setting a custom hierarchy is not supported yet. Please omit the parent_id field.",
+        },
+      });
+    }
+    if (
+      !auth.isSystemKey() &&
+      (remoteDatabaseTableId || remoteDatabaseSecretId)
+    ) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Invalid request body: remote_database_table_id and remote_database_secret_id must not be provided.",
         },
       });
     }

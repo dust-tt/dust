@@ -22,6 +22,11 @@ const DSBX_BIN_PATH = "/opt/bin/dsbx";
 // Non-mounted scratch root, so a build never writes into the owner's files mount.
 const BUILD_STAGING_ROOT = "/tmp/dust-sandbox-function-builds";
 const BUILD_EXEC_TIMEOUT_MS = 2 * 60 * 1000;
+// Read-back bounds for the build artifacts. The function's top-level code runs in the build exec
+// and owns the staging dir, so without a bound it could make front buffer a multi-GB file before
+// the hash pin is checked. Both are far above any real bundle or schema.
+const BUILD_BUNDLE_MAX_BYTES = 64 * 1024 * 1024;
+const BUILD_SCHEMA_MAX_BYTES = 4 * 1024 * 1024;
 
 export interface SandboxFunctionBuildResult {
   bundleCode: string;
@@ -95,8 +100,7 @@ export async function buildSandboxFunctionOnReadySandbox(
     // `--` stops the model-supplied source path from being read as a dsbx flag.
     `${DSBX_BIN_PATH} function build -- ${shellEscape(srcSandboxPath)} ${shellEscape(bundlePath)} ${shellEscape(schemaPath)}`,
     // Pin the artifact hashes in the same exec; verified after the provider read-back
-    // below (the read-back runs as root and follows symlinks, so a swapped staging
-    // file would otherwise read an arbitrary root file).
+    // below, so an artifact swapped after the build cannot be read back in its place.
     ...stagingHashCaptureLines([bundlePath, schemaPath]),
   ].join("\n");
 
@@ -121,7 +125,10 @@ export async function buildSandboxFunctionOnReadySandbox(
   }
 
   // Success means dsbx wrote both files.
-  const bundleResult = await sandbox.readFile(auth, bundlePath);
+  const bundleResult = await sandbox.readFile(auth, bundlePath, {
+    user: "agent-proxied",
+    maxBytes: BUILD_BUNDLE_MAX_BYTES,
+  });
   if (bundleResult.isErr()) {
     return new Err(
       new SandboxFunctionError("internal", bundleResult.error.message)
@@ -136,7 +143,10 @@ export async function buildSandboxFunctionOnReadySandbox(
   if (bundleIntegrity.isErr()) {
     return bundleIntegrity;
   }
-  const schemaResult = await sandbox.readFile(auth, schemaPath);
+  const schemaResult = await sandbox.readFile(auth, schemaPath, {
+    user: "agent-proxied",
+    maxBytes: BUILD_SCHEMA_MAX_BYTES,
+  });
   if (schemaResult.isErr()) {
     return new Err(
       new SandboxFunctionError("internal", schemaResult.error.message)

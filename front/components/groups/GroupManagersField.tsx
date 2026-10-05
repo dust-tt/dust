@@ -19,9 +19,9 @@ interface GroupManagersFieldProps {
 
 /**
  * @cc [owner:philipperolet,label:product] manager-membership-badge
- * Selected managers absent from groupMemberIds MUST be marked as non-members. Callers MUST exclude
- * pending additions and removals from groupMemberIds. Membership warnings MUST reflect the
- * group's directory-managed or Admin-only restrictions when applicable.
+ * Selected managers and search results absent from groupMemberIds MUST be marked as non-members.
+ * Callers MUST exclude pending additions and removals from groupMemberIds. Membership warnings MUST
+ * reflect the group's directory-managed or Admin-only restrictions when applicable.
  */
 export function GroupManagersField({
   owner,
@@ -44,7 +44,7 @@ export function GroupManagersField({
       meta: { className: "w-36" },
       cell: ({ row }) => {
         const { sId, fullName } = row.original;
-        if (!managerIds.has(sId) || groupMemberIds.has(sId)) {
+        if (groupMemberIds.has(sId)) {
           return null;
         }
         return (

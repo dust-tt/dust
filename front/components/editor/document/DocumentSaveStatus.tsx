@@ -7,9 +7,29 @@ interface DocumentSaveStatusProps {
   error: string | null;
   autosaveDebounceMs: number;
   onRetry?: () => Promise<void>;
+  /** Rendered at the left of the row, the status staying at the right. */
+  badge?: ReactNode;
 }
 
 type SaveState = "error" | "saving" | "pending" | "saved";
+
+interface StatusRowProps {
+  /** Rendered at the left of the row, the status staying at the right. */
+  badge?: ReactNode;
+  state?: SaveState;
+  children?: ReactNode;
+}
+
+/** The row above the document: the host's badge at the left, the save status at the right. */
+export const StatusRow = ({ badge, state, children }: StatusRowProps) => (
+  <div
+    className="mb-6 flex min-h-6 items-center justify-end gap-2.5 text-muted-foreground copy-xs data-[state=error]:text-foreground print:hidden"
+    data-state={state}
+  >
+    {badge && <span className="mr-auto">{badge}</span>}
+    {children}
+  </div>
+);
 
 const SAVE_STATES: Record<SaveState, { label: string; icon: ReactNode }> = {
   error: {
@@ -47,16 +67,14 @@ export const DocumentSaveStatus = ({
   error,
   autosaveDebounceMs,
   onRetry,
+  badge,
 }: DocumentSaveStatusProps) => {
   const state = saveState({ dirty, saving, error });
   const { icon, label } = SAVE_STATES[state];
 
   return (
     <>
-      <div
-        className="mb-6 flex min-h-6 items-center justify-end gap-2.5 text-muted-foreground copy-xs data-[state=error]:text-foreground print:hidden"
-        data-state={state}
-      >
+      <StatusRow badge={badge} state={state}>
         <span
           role="status"
           className="inline-flex items-center gap-1.5"
@@ -83,7 +101,7 @@ export const DocumentSaveStatus = ({
             Retry
           </button>
         )}
-      </div>
+      </StatusRow>
       {error && (
         <p
           role="alert"

@@ -188,7 +188,11 @@ export async function withStagedFrameSource<T, E>(
                 stagingDirectory,
                 sourceFile.relativePath
               );
-              const readResult = await sandbox.readFile(auth, stagedPath);
+              // Bounded by the expected size: a larger staged file cannot match anyway.
+              const readResult = await sandbox.readFile(auth, stagedPath, {
+                user: "agent-proxied",
+                maxBytes: sourceFile.content.length,
+              });
               if (readResult.isErr()) {
                 return new Err(readResult.error);
               }

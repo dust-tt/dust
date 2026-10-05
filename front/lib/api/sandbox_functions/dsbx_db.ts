@@ -247,6 +247,9 @@ const schemaEnvelopeSchema = z.union([
 
 // Non-mounted scratch root for regenerated schema files (cf. BUILD_STAGING_ROOT).
 const DB_SCHEMA_STAGING_ROOT = "/tmp/dust-sandbox-db-schemas";
+// Read-back bound for a regenerated schema file: the exec that writes it imports workload code, so
+// the file size is workload-controlled. Far above any real drizzle schema.
+const DB_SCHEMA_MAX_BYTES = 4 * 1024 * 1024;
 
 /**
  * `dsbx db schema`: regenerate a drizzle schema file from the live database and read its text
@@ -267,8 +270,8 @@ export async function getDatabaseSchemaOnReadySandbox(
       // `--` stops the model-influenced database name from being read as a flag.
       `${DSBX_BIN_PATH} db schema -- ${shellEscape(database)} ${shellEscape(outPath)}`,
       // Pin the artifact hash in the same exec; verified after the provider
-      // read-back below (the read-back runs as root and follows symlinks, so a
-      // swapped staging file would otherwise read an arbitrary root file).
+      // read-back below, so a file swapped after the exec cannot be read back in
+      // its place.
       ...stagingHashCaptureLines([outPath]),
     ].join("\n"),
     schema: schemaEnvelopeSchema,
@@ -289,7 +292,10 @@ export async function getDatabaseSchemaOnReadySandbox(
     );
   }
 
-  const fileResult = await sandbox.readFile(auth, outPath);
+  const fileResult = await sandbox.readFile(auth, outPath, {
+    user: "agent-proxied",
+    maxBytes: DB_SCHEMA_MAX_BYTES,
+  });
   if (fileResult.isErr()) {
     return new Err(
       new SandboxFunctionError("internal", fileResult.error.message)
