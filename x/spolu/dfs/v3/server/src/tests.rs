@@ -165,6 +165,9 @@ fn local_filesystem_contracts() -> Result<()> {
         grants_namespace_and_tenant_isolation()
             .await
             .context("grants/namespace")?;
+        directory_pages_preserve_snapshot_and_grants()
+            .await
+            .context("directory pages")?;
         independent_servers_and_deleted_writer()
             .await
             .context("independent writers")?;
@@ -207,6 +210,129 @@ fn local_filesystem_contracts() -> Result<()> {
         Ok(())
     })
 }
+async fn listed(view: &read::View, directory: &str, limit: u32) -> Result<Vec<(String, String)>> {
+    let mut after = None;
+    let mut entries = Vec::new();
+    for _ in 0..100 {
+        let page = view.list(directory, after.as_deref(), limit).await?;
+        assert!(page.entries.len() <= limit as usize);
+        if let Some(cursor) = &page.next_after {
+            assert_eq!(Some(cursor), page.entries.last().map(|entry| &entry.name));
+            assert!(after.as_ref().is_none_or(|previous| previous < cursor));
+        }
+        for entry in page.entries {
+            entries.push((entry.name, entry.object.context("Listing object")?.id));
+        }
+        after = page.next_after;
+        if after.is_none() {
+            view.snapshot.valid()?;
+            return Ok(entries);
+        }
+    }
+    anyhow::bail!("Directory pagination did not finish")
+}
+
+async fn directory_pages_preserve_snapshot_and_grants() -> Result<()> {
+    let f = Fixture::configured(cache::CacheConfig {
+        max_eventual_consistency_delay_ms: 8000,
+        ..Default::default()
+    })
+    .await?;
+    let folder = f.create(&f.tenant.root_id, "folder", true).await?;
+    let directory = f.create(&folder.id, "deep", true).await?;
+    let mut expected = Vec::new();
+    for n in 0..40 {
+        let name = format!("file-{n:02}");
+        let object = f.create(&directory.id, &name, false).await?;
+        expected.push((name, object.id));
+    }
+    // Use an empty read cache over durable children before introducing RAM namespace changes.
+    f.api.0.cache.drain().await?;
+    f.api.0.cache.invalidate_base().await;
+    let before = read::View::from_snapshot(
+        f.api.0.cache.snapshot().await?,
+        &f.tenant.tenant_id,
+        f.owner.grants.iter().cloned().collect(),
+    )
+    .await?;
+    f.api.0.cache.paused.store(true, Ordering::Release);
+    f.api
+        .rename(request(
+            &f.owner.session_key,
+            RenameRequest {
+                object_id: expected[0].1.clone(),
+                parent_id: directory.id.clone(),
+                name: "renamed".into(),
+                replace: false,
+            },
+        )?)
+        .await?;
+    f.api
+        .remove(request(
+            &f.owner.session_key,
+            RemoveRequest {
+                object_id: expected[1].1.clone(),
+                directory: false,
+            },
+        )?)
+        .await?;
+    let added = f.create(&directory.id, "added", false).await?;
+    for limit in [1, 7, 100] {
+        assert_eq!(listed(&before, &directory.id, limit).await?, expected);
+    }
+    expected[0].0 = "renamed".into();
+    expected.remove(1);
+    expected.push(("added".into(), added.id));
+    expected.sort();
+    let after = read::View::from_snapshot(
+        f.api.0.cache.snapshot().await?,
+        &f.tenant.tenant_id,
+        f.owner.grants.iter().cloned().collect(),
+    )
+    .await?;
+    assert_eq!(listed(&after, &directory.id, 7).await?, expected);
+    f.api.0.cache.paused.store(false, Ordering::Release);
+    f.api.0.cache.drain().await?;
+
+    // The virtual entry must respect page limits even with a reserved physical name and hidden rows.
+    let mut visible = vec![("shared".to_owned(), "shared".to_owned())];
+    let mut all = vec![("folder".to_owned(), folder.id)];
+    for name in ["alpha", "shared", "zeta"] {
+        let object = f.create(&f.tenant.root_id, name, true).await?;
+        if name == "shared" {
+            continue;
+        }
+        visible.push((name.into(), object.id.clone()));
+        f.api
+            .update_grants(request(
+                &f.tenant.tenant_key,
+                UpdateGrantsRequest {
+                    tenant_id: f.tenant.tenant_id.clone(),
+                    object_id: object.id,
+                    changes: vec![GrantChange {
+                        grant: "reader".into(),
+                        attached: true,
+                    }],
+                },
+            )?)
+            .await?;
+    }
+    visible.sort();
+    all.extend(visible.clone());
+    all.sort();
+    for (grant, expected) in [("reader", visible), ("owner", all)] {
+        let view = read::View::from_snapshot(
+            f.api.0.cache.snapshot().await?,
+            &f.tenant.tenant_id,
+            [grant.to_owned()].into(),
+        )
+        .await?;
+        assert_eq!(listed(&view, "root", 1).await?, expected);
+    }
+    f.api.0.cache.drain().await?;
+    f.clean().await
+}
+
 async fn ram_acceptance_and_sparse_publication() -> Result<()> {
     let f = Fixture::new().await?;
     f.api.0.cache.paused.store(true, Ordering::Release);

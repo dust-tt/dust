@@ -62,9 +62,9 @@ Completed and verified before resuming the full benchmark suites below.
 
 - [x] Reuse create response metadata only within that FUSE callback; preserve fresh ordinary opens.
 - [x] Test handle modes and mounted behavior; benchmark 10k untar at both bounds and decide.
-- [ ] Use scanned child IDs and bounded concurrent metadata reads within each listing snapshot.
-- [ ] Test pagination, namespace changes, and grants; benchmark listings at both bounds and decide.
-- [ ] Record separate comparisons and retain only justified changes; commit and push each milestone.
+- [x] Use scanned child IDs and bounded concurrent metadata reads within each listing snapshot.
+- [x] Test pagination, namespace changes, and grants; benchmark listings at both bounds and decide.
+- [x] Record separate comparisons and retain only justified changes; commit and push each milestone.
 
 ## Local follow-up
 

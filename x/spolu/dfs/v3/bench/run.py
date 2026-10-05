@@ -22,13 +22,18 @@ def main():
     """@cc [owner:spolu,label:testing] comparable-local-workloads
     Timed actions and validation MUST remain jd's. Each first read MUST start a new server/session/
     mount, retaining only FDB's backend caches. Untar and remaining publication drain MUST be separate.
+    Focused runs MUST record their workload selection and MUST NOT claim full-suite coverage.
     Credentials and raw execution reports MUST remain outside the repository.
     """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--work', type=Path)
     parser.add_argument('--files', type=int, choices=[10000, 100000], default=10000)
     parser.add_argument('--untar-only', action='store_true', help='Stop after population and drain.')
+    parser.add_argument('--workload-prefix', action='append', default=[],
+                        help='Select read workloads by name prefix; omit scratch writes. Repeatable.')
     args = parser.parse_args()
+    if args.untar_only and args.workload_prefix:
+        parser.error('--untar-only cannot be combined with --workload-prefix')
     work = args.work or Path(tempfile.mkdtemp(prefix='dfs-v3-benchmark-'))
     work.mkdir(exist_ok=True, parents=True)
     print(f'Report directory: {work}', flush=True)
@@ -41,6 +46,7 @@ def main():
     prefix, key, key_path = support.identity(work)
     report = {'files': args.files, 'prefix': prefix, 'warm_runs': 1,
         'untar_only': args.untar_only, 'profile': os.environ.get('DFS_PROFILE') == '1',
+        'workload_prefixes': args.workload_prefix,
         'revision': os.environ.get('DFS_BENCH_REVISION', 'uncommitted'),
         'date': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
         'platform': platform.platform(), 'cpus': os.cpu_count(),
@@ -49,7 +55,7 @@ def main():
         'document_bytes': sum(p.stat().st_size for p in (data / 'docs').rglob('*.txt')),
         'cold_scope': 'new server/session/mount for each first case; FDB/OS caches retained',
         'kernel_data_cache': False, 'kernel_writeback': False, 'metadata_ttl_ms': 0,
-        'server_binary_sha256': hashlib.sha256((support.BINARY / 'dfs-server-v3').read_bytes()).hexdigest(),
+        'server_binary_sha256': hashlib.sha256(support.server_binary().read_bytes()).hexdigest(),
         'fuse_binary_sha256': hashlib.sha256(support.fuse_binary().read_bytes()).hexdigest(),
         'server_lifetimes': [], 'rows': []}
     def save():
@@ -132,7 +138,15 @@ def main():
         jd.DOCUMENTS = args.files
         jd.SAMPLE_INDICES = frozenset(random.Random(42).sample(range(args.files), 256))
         original = jd.Benchmark
+        matched = set()
         class Measured(original):
+            def pair(self, feature, workload, *a, **kw):
+                selected = {prefix for prefix in args.workload_prefix if workload.startswith(prefix)}
+                if args.workload_prefix and not selected:
+                    return
+                matched.update(selected)
+                return super().pair(feature, workload, *a, **kw)
+
             def measure(self, feature, workload, phase, *a, **kw):
                 if phase == 'first':
                     reset()
@@ -144,8 +158,12 @@ def main():
                 return result
         jd.Benchmark = Measured
         sys.argv = ['benchmark.py', str(path), '--warm-runs', '1']
+        if args.workload_prefix:
+            sys.argv.append('--skip-writes')
         if jd.main() != 0:
             raise RuntimeError('Benchmark validation failed')
+        if matched != set(args.workload_prefix):
+            raise RuntimeError(f'Unmatched workload prefixes: {set(args.workload_prefix) - matched}')
         unmount()
         stop()
         report['complete'] = True

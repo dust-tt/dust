@@ -167,7 +167,13 @@ impl View {
         let Some(value) = value else {
             return Ok(None);
         };
-        let id = uuid::Uuid::from_slice(&value)
+        self.child_record(parent, name, &value).await.map(Some)
+    }
+    /// @cc [owner:spolu,label:concurrency;security] coherent-child-record
+    /// The index value MUST come from a tracked point or range read in this view. The returned
+    /// record MUST match its ID, parent, and name in the same view, or the operation MUST fail.
+    async fn child_record(&self, parent: &str, name: &str, value: &[u8]) -> Result<Record> {
+        let id = uuid::Uuid::from_slice(value)
             .map_err(failed)?
             .simple()
             .to_string();
@@ -182,7 +188,7 @@ impl View {
         if let Some(hints) = &self.ancestry {
             hints.remember_child(&self.keys, parent, name, &id);
         }
-        Ok(Some(child))
+        Ok(child)
     }
     pub(crate) async fn attached(&self, id: &str) -> Result<bool> {
         Self::read_attached(&self.snapshot, &self.keys, &self.grants, id).await
@@ -285,6 +291,9 @@ impl View {
         let child = child?.ok_or_else(|| status(ErrorCode::NotFound))?;
         Ok(child.object)
     }
+    /// @cc [owner:spolu,label:performance;concurrency;security] ordered-listing-reads
+    /// Child reads MUST have bounded concurrency within this view. Child results and errors MUST be
+    /// consumed in index order; pagination MUST return only authorized entries and cursors.
     pub async fn list(&self, directory: &str, after: Option<&str>, limit: u32) -> Result<Page> {
         if !(1..=1000).contains(&limit) {
             return Err(status(ErrorCode::InvalidInput));
@@ -303,12 +312,27 @@ impl View {
         };
         let inherited = !is_root || self.authorized(&parent).await?;
         let prefix = self.keys.children(&parent.object.id)?;
-        let mut scan = self.scan(prefix.clone(), after.map(str::as_bytes)).await?;
+        let scan = self.scan(prefix.clone(), after.map(str::as_bytes)).await?;
+        let parent_id = parent.object.id.as_str();
+        let prefix_len = prefix.len();
+        let children = stream::try_unfold(scan, |mut scan| async move {
+            Ok::<_, Status>(scan.next().await?.map(|row| (row, scan)))
+        })
+        .map_ok(|row| async move {
+            let name = String::from_utf8(row.key[prefix_len..].to_vec()).map_err(failed)?;
+            let child = if is_root && name == "shared" {
+                None
+            } else {
+                Some(self.child_record(parent_id, &name, &row.value).await?)
+            };
+            Ok::<_, Status>((name, child))
+        })
+        .try_buffered(16);
+        futures::pin_mut!(children);
         let mut entries = Vec::new();
         let mut bytes = 0;
         let mut synthetic_pending = is_root && after.is_none_or(|a| a < "shared");
-        while let Some(row) = scan.next().await? {
-            let name = String::from_utf8(row.key[prefix.len()..].to_vec()).map_err(failed)?;
+        while let Some((name, child)) = children.try_next().await? {
             if synthetic_pending && name.as_str() >= "shared" {
                 entries.push(Entry {
                     name: "shared".into(),
@@ -316,14 +340,17 @@ impl View {
                 });
                 bytes += 256;
                 synthetic_pending = false;
+                if entries.len() > limit as usize || bytes > MAX_IO {
+                    entries.pop();
+                    return Ok(Page {
+                        next_after: entries.last().map(|e| e.name.clone()),
+                        entries,
+                    });
+                }
             }
-            if is_root && name == "shared" {
+            let Some(child) = child else {
                 continue;
-            }
-            let child = self
-                .child(&parent.object.id, &name)
-                .await?
-                .ok_or_else(|| status(ErrorCode::Unavailable))?;
+            };
             if !inherited && !self.authorized(&child).await? {
                 continue;
             }

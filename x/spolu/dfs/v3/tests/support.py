@@ -18,6 +18,10 @@ def fuse_binary():
     return Path(os.environ.get('DFS_BENCH_FUSE_BINARY', str(BINARY / 'dfs-fuse')))
 
 
+def server_binary():
+    return Path(os.environ.get('DFS_BENCH_SERVER_BINARY', str(BINARY / 'dfs-server-v3')))
+
+
 def secret_file(path, value):
     with os.fdopen(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'w') as out:
         out.write(value)
@@ -96,7 +100,7 @@ def identity(work):
 def start(work, phase, prefix, key_path):
     log_path = work / f'{phase}-server.log'
     with log_path.open('w') as log:
-        process = subprocess.Popen([str(BINARY / 'dfs-server-v3'), '--listen', '127.0.0.1:0',
+        process = subprocess.Popen([str(server_binary()), '--listen', '127.0.0.1:0',
             '--server-key-file', str(key_path), '--fdb-prefix', prefix], stdout=log, stderr=log)
     deadline = time.monotonic() + 30
     while time.monotonic() < deadline:

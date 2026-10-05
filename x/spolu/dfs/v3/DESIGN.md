@@ -137,6 +137,10 @@ snapshot or cached page. Rewinding starts fresh, and another call after EOF must
 Partial-response buffers live only during the current callback. libc may retain already returned
 directory entries; that is application buffering, not a filesystem freshness promise.
 
+Within a server listing snapshot, use the child IDs returned by the tracked index scan and fetch
+up to 16 child records concurrently. Validate each record's ID, parent, and name; consume results
+in name order and apply the existing grant checks before pagination. No client cache is added.
+
 [FUSE direct I/O](https://www.kernel.org/doc/html/latest/filesystems/fuse/fuse-io.html) bypasses the
 page cache. Metadata TTLs remain separate [protocol controls](https://libfuse.github.io/doxygen/structfuse__entry__param.html).
 

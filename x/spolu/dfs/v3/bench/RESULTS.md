@@ -1,7 +1,9 @@
 # Benchmark results — dfs v3 localhost
 
-Latest: [four-run block-retention comparison](#block-retention-comparison) and
-[current timing breakdown](#where-latest-version-time-is-spent). Original baselines are preserved below.
+Latest focused comparisons: [create-stat reuse](#create-stat-reuse) and
+[batched directory listings](#batched-directory-listings).
+Latest full suite: [block-retention comparison](#block-retention-comparison) and its
+[timing breakdown](#where-latest-version-time-is-spent). Original baselines are preserved below.
 
 2026-10-05. First baselines, before revision-validated block retention. Both runs use revision
 `a090704e0f`, with identical server and FUSE binaries. All **24 checks per run passed**, including
@@ -543,3 +545,82 @@ Server SHA-256 remains `d6b3f1975eba393615f2511763b17e9bd9800df4e32883318ffaebda
 Candidate FUSE SHA-256: `175a6cf51e4b9121ef4957e877943f9ae7879cf39ae526badb3b815d7f2721ea`.
 Reproduce with the earlier profiled benchmark command plus `--untar-only`;
 `DFS_BENCH_FUSE_BINARY` selects a separately built baseline or candidate client.
+
+## Batched directory listings
+
+**Keep.** Reuse child IDs from the tracked namespace scan and fetch up to 16 child records
+concurrently in the same snapshot. Validate ID/parent/name, preserve name order, and retain grant
+filtering. The FUSE client, API, freshness bounds, and publication behavior are unchanged.
+
+Fresh paired runs use the same create-stat-optimized client from `074ea12918`. Order:
+before/after at 1s, after/before at 8s. Each first read starts a fresh server/session/mount;
+FDB/OS caches remain. Profiling is enabled; no builds or tests overlap timing. These are
+**focused runs: six listing-dependent workload pairs, not the full 24-check suite**.
+
+All **48 selected checks passed** across the four runs, with zero publication failures.
+Stat traversal improves 13–15%; first-pass `rg --files` improves 44–47%. Warm `rg --files`
+improves 40% at 1s but only 4% at 8s. Content scans and pruning change much less; these single
+pairs do not establish the significance of small differences, including the 2.2% regression
+in the warm 8s depth-10 case.
+
+| Workload | D | Before first (ms) | After first (ms) | Before warm (ms) | After warm (ms) |
+| --- | --- | ---: | ---: | ---: | ---: |
+| scandir + stat (100 dirs, 10,000 files) | 1s | 76,380.22 | 66,420.16 | 76,274.37 | 65,017.58 |
+| rg --files (10,000 files) | 1s | 378.43 | 212.09 | 178.50 | 106.80 |
+| rg no-match scan (10,000 files, 177.5 MB) | 1s | 7,665.13 | 7,493.96 | 7,691.07 | 7,363.84 |
+| rg rare literal (10,000 files, 4 matches) | 1s | 7,986.89 | 7,654.73 | 7,698.92 | 7,469.69 |
+| rg branch glob (981 candidate files) | 1s | 6,768.55 | 6,593.24 | 6,935.38 | 6,540.58 |
+| rg depth-10 subtree (136 files) | 1s | 1,721.63 | 1,670.03 | 1,655.09 | 1,625.72 |
+| scandir + stat (100 dirs, 10,000 files) | 8s | 67,008.81 | 57,784.36 | 67,481.61 | 58,626.60 |
+| rg --files (10,000 files) | 8s | 352.82 | 185.55 | 104.66 | 100.34 |
+| rg no-match scan (10,000 files, 177.5 MB) | 8s | 7,686.50 | 7,287.13 | 7,435.73 | 7,253.15 |
+| rg rare literal (10,000 files, 4 matches) | 8s | 7,470.11 | 7,266.96 | 7,347.75 | 7,333.92 |
+| rg branch glob (981 candidate files) | 8s | 6,665.63 | 6,448.66 | 6,677.63 | 6,522.85 |
+| rg depth-10 subtree (136 files) | 8s | 1,696.57 | 1,627.92 | 1,585.57 | 1,620.68 |
+
+### Where directory traversal time is spent
+
+Cumulative first + warm `scandir + stat` profiles, including their small untimed setup.
+The elapsed columns overlap and may include concurrent work; **do not add them as wall time**.
+`List` is a subset of handler time. CPU excludes the FDB server and benchmark process.
+
+| Variant | D | FUSE CPU (s) | DFS CPU (s) | Client RPC elapsed (s) | Handler elapsed (s) | List elapsed (s) | FDB get elapsed (s) |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| before | 1s | 66.010 | 41.310 | 133.427 | 64.887 | 22.465 | 54.960 |
+| after | 1s | 65.730 | 38.190 | 112.685 | 44.616 | 0.705 | 40.526 |
+| before | 8s | 65.590 | 38.690 | 115.888 | 47.927 | 19.956 | 37.000 |
+| after | 8s | 61.280 | 36.740 | 97.002 | 30.764 | 0.539 | 24.699 |
+
+All four traversals issue the same 780 List, 313,826 Lookup, and 335,039 Stat RPCs.
+Listing handler time drops about 97%, explaining most of the wall-time gain. Per-file
+lookup/stat and client processing still dominate; this is not a new client cache.
+Aggregate FDB gets fall from 98,876 to 87,091 at 1s, but rise from 65,145 to 67,211 at 8s.
+These totals also include authorization/metadata refresh and bounded lookahead; eliminating
+the redundant index get does not imply an equal reduction in whole-workload FDB calls.
+
+### Untar control
+
+| D | Untar before (s) | After (s) | Drain before / after (ms) |
+| --- | ---: | ---: | ---: |
+| 1s | 50.791 | 50.754 | 24 / 21 |
+| 8s | 44.781 | 45.755 | 26 / 29 |
+
+Population records zero List RPCs for all four runs, so these untar differences do not measure
+a directory-batching benefit. Create-stat reuse was evaluated separately above.
+
+Validation: full Rust workspace tests against real FDB, mounted tests at both bounds,
+formatting, Clippy, and contract checks. Added cases cover ordered pagination beyond the
+concurrency window, a pinned view across rename/remove/create, durable children plus RAM edits,
+grant-filtered root pages, and the reserved physical `shared` name. The latter also caught a
+pre-existing page-limit edge case, fixed by checking the limit when inserting virtual `shared`.
+
+Reports: `/tmp/dfs-v3-directory-comparison-qau_nqur/{before,after}-{1000,8000}/run.json`
+inside the development container. Baseline source: `074ea12918`; candidate reports are labelled
+`074ea12918+directory-batching`, the isolated server change committed with this section.
+Server SHA-256: before `d6b3f1975eba393615f2511763b17e9bd9800df4e32883318ffaebda01f691eb`,
+after `e9fa79ca5a6f67190b2964946e11bf8ae626639c0f09628bcde533edf940708a`.
+Both use FUSE SHA-256 `175a6cf51e4b9121ef4957e877943f9ae7879cf39ae526badb3b815d7f2721ea`.
+
+Reproduce with the profiled benchmark command and
+`--workload-prefix 'scandir +' --workload-prefix 'rg '`.
+`DFS_BENCH_SERVER_BINARY` selects a separately built baseline or candidate server.
