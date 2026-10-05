@@ -10,15 +10,11 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::env;
 
 lazy_static! {
-    static ref OAUTH_SHOPIFY_CLIENT_ID: String =
-        env::var("OAUTH_SHOPIFY_CLIENT_ID").expect("OAUTH_SHOPIFY_CLIENT_ID must be set");
-    static ref OAUTH_SHOPIFY_CLIENT_SECRET: String =
-        env::var("OAUTH_SHOPIFY_CLIENT_SECRET").expect("OAUTH_SHOPIFY_CLIENT_SECRET must be set");
     static ref SHOPIFY_STORE_DOMAIN_RE: Regex =
-        Regex::new(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.myshopify\.com$").unwrap();
+        Regex::new(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.myshopify\.com$")
+            .expect("Shopify store domain regex must be valid");
 }
 
 pub struct ShopifyConnectionProvider {}
@@ -26,6 +22,27 @@ pub struct ShopifyConnectionProvider {}
 impl ShopifyConnectionProvider {
     pub fn new() -> Self {
         Self {}
+    }
+
+    /// @cc [owner:spolu,label:security] connection-app-credentials
+    /// Token exchanges MUST use client_id and client_secret from the connection's encrypted
+    /// related credential. Missing credentials MUST fail without a shared-app fallback.
+    fn get_credentials(credentials: Option<Credential>) -> Result<(String, String)> {
+        let credentials =
+            credentials.ok_or_else(|| anyhow!("Missing credentials for Shopify connection"))?;
+        let content = credentials.unseal_encrypted_content()?;
+        let client_id = content
+            .get("client_id")
+            .and_then(|v| v.as_str())
+            .filter(|v| !v.is_empty())
+            .ok_or_else(|| anyhow!("Missing client_id in Shopify credential"))?;
+        let client_secret = content
+            .get("client_secret")
+            .and_then(|v| v.as_str())
+            .filter(|v| !v.is_empty())
+            .ok_or_else(|| anyhow!("Missing client_secret in Shopify credential"))?;
+
+        Ok((client_id.to_string(), client_secret.to_string()))
     }
 
     fn store_domain<'a>(&self, connection: &'a Connection) -> Result<&'a str, ProviderError> {
@@ -91,14 +108,15 @@ impl Provider for ShopifyConnectionProvider {
     async fn finalize(
         &self,
         connection: &Connection,
-        _related_credentials: Option<Credential>,
+        related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
         let store_domain = self.store_domain(connection)?;
+        let (client_id, client_secret) = Self::get_credentials(related_credentials)?;
         let params = [
-            ("client_id", OAUTH_SHOPIFY_CLIENT_ID.as_str()),
-            ("client_secret", OAUTH_SHOPIFY_CLIENT_SECRET.as_str()),
+            ("client_id", client_id.as_str()),
+            ("client_secret", client_secret.as_str()),
             ("code", code),
             ("expiring", "1"),
         ];
@@ -131,15 +149,16 @@ impl Provider for ShopifyConnectionProvider {
     async fn refresh(
         &self,
         connection: &Connection,
-        _related_credentials: Option<Credential>,
+        related_credentials: Option<Credential>,
     ) -> Result<RefreshResult, ProviderError> {
         let store_domain = self.store_domain(connection)?;
+        let (client_id, client_secret) = Self::get_credentials(related_credentials)?;
         let refresh_token = connection
             .unseal_refresh_token()?
             .ok_or_else(|| anyhow!("Missing refresh token in Shopify connection"))?;
         let params = [
-            ("client_id", OAUTH_SHOPIFY_CLIENT_ID.as_str()),
-            ("client_secret", OAUTH_SHOPIFY_CLIENT_SECRET.as_str()),
+            ("client_id", client_id.as_str()),
+            ("client_secret", client_secret.as_str()),
             ("grant_type", "refresh_token"),
             ("refresh_token", refresh_token.as_str()),
         ];
@@ -175,18 +194,67 @@ impl Provider for ShopifyConnectionProvider {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::oauth::{
+        credential::{CredentialMetadata, CredentialProvider},
+        encryption::seal_str,
+    };
     use serde_json::json;
 
     #[test]
-    fn scrubs_tokens_from_raw_response() {
+    fn scrubs_tokens_from_raw_response() -> Result<()> {
         let provider = ShopifyConnectionProvider::new();
-        let scrubbed = provider
-            .scrubbed_raw_json(&json!({
-                "access_token": "access",
-                "refresh_token": "refresh",
-                "scope": "read_products"
-            }))
-            .unwrap();
+        let scrubbed = provider.scrubbed_raw_json(&json!({
+            "access_token": "access",
+            "refresh_token": "refresh",
+            "scope": "read_products"
+        }))?;
         assert_eq!(scrubbed, json!({ "scope": "read_products" }));
+        Ok(())
+    }
+
+    fn credential(content: serde_json::Value) -> Result<Credential> {
+        Ok(Credential::new(
+            "credential-id".to_string(),
+            0,
+            CredentialProvider::Shopify,
+            CredentialMetadata {
+                workspace_id: "workspace-id".to_string(),
+                user_id: "user-id".to_string(),
+            },
+            seal_str(&content.to_string())?,
+        ))
+    }
+
+    #[test]
+    fn uses_the_related_app_credentials() -> Result<()> {
+        assert_eq!(
+            CredentialProvider::from(ConnectionProvider::Shopify),
+            CredentialProvider::Shopify
+        );
+        let credentials = credential(json!({
+            "client_id": "shopify-client",
+            "client_secret": "shopify-secret"
+        }))?;
+        assert_eq!(
+            ShopifyConnectionProvider::get_credentials(Some(credentials))?,
+            ("shopify-client".to_string(), "shopify-secret".to_string())
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn rejects_missing_or_incomplete_credentials() -> Result<()> {
+        assert!(ShopifyConnectionProvider::get_credentials(None).is_err());
+        for content in [
+            json!({ "client_id": "client" }),
+            json!({ "client_secret": "secret" }),
+            json!({ "client_id": "client", "client_secret": "" }),
+            json!({ "client_id": 123, "client_secret": "secret" }),
+        ] {
+            assert!(
+                ShopifyConnectionProvider::get_credentials(Some(credential(content)?)).is_err()
+            );
+        }
+        Ok(())
     }
 }
