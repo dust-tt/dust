@@ -17,6 +17,47 @@ use serde::{Deserialize, Serialize};
 
 use super::utils::ProviderHttpRequestError;
 
+/// Composite finalize `code` from front: `gh_app_install:{installation_id}:{oauth_code}`.
+const GITHUB_APP_FINALIZE_CODE_PREFIX: &str = "gh_app_install";
+
+fn is_github_installation_id(value: &str) -> bool {
+    let mut chars = value.chars();
+    match chars.next() {
+        Some('1'..='9') => chars.all(|c| c.is_ascii_digit()) && value.len() <= 20,
+        _ => false,
+    }
+}
+
+/// Parses the App-flow finalize code into `(installation_id, user_oauth_code)`.
+/// A bare installation id is rejected: it is not proof the caller installed it.
+fn parse_github_app_finalize_code(code: &str) -> Result<(String, String), ProviderError> {
+    let rest = match code
+        .strip_prefix(GITHUB_APP_FINALIZE_CODE_PREFIX)
+        .and_then(|s| s.strip_prefix(':'))
+    {
+        Some(rest) => rest,
+        None => return Err(ProviderError::TokenRevokedError),
+    };
+    let (installation_id, oauth_code) = match rest.split_once(':') {
+        Some((installation_id, oauth_code)) => (installation_id, oauth_code),
+        None => return Err(ProviderError::TokenRevokedError),
+    };
+    if !is_github_installation_id(installation_id) || oauth_code.is_empty() {
+        return Err(ProviderError::TokenRevokedError);
+    }
+    Ok((installation_id.to_string(), oauth_code.to_string()))
+}
+
+/// Authorization code stored on the connection: the composite finalize code
+/// (so a duplicate callback is idempotent) or a bare installation id from
+/// connections finalized before that composite existed.
+fn installation_id_from_stored_authorization_code(code: &str) -> Result<String, ProviderError> {
+    if is_github_installation_id(code) {
+        return Ok(code.to_string());
+    }
+    parse_github_app_finalize_code(code).map(|(installation_id, _)| installation_id)
+}
+
 lazy_static! {
     static ref OAUTH_GITHUB_APP_CLIENT_ID: String =
         std::env::var("OAUTH_GITHUB_APP_CLIENT_ID").unwrap();
@@ -25,6 +66,8 @@ lazy_static! {
         let key = std::fs::read_to_string(path).unwrap();
         EncodingKey::from_rsa_pem(key.as_bytes()).unwrap()
     };
+    static ref OAUTH_GITHUB_APP_CLIENT_SECRET: String =
+        std::env::var("OAUTH_GITHUB_APP_CLIENT_SECRET").unwrap();
     static ref OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_ID: String =
         std::env::var("OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_ID").unwrap();
     static ref OAUTH_GITHUB_APP_PLATFORM_ACTIONS_ENCODING_KEY: EncodingKey = {
@@ -106,11 +149,99 @@ impl GithubConnectionProvider {
         }
     }
 
+    fn github_app_oauth_credentials(
+        app_type: GithubUseCase,
+    ) -> Result<(&'static str, &'static str), ProviderError> {
+        match app_type {
+            GithubUseCase::Connection => Ok((
+                OAUTH_GITHUB_APP_CLIENT_ID.as_str(),
+                OAUTH_GITHUB_APP_CLIENT_SECRET.as_str(),
+            )),
+            GithubUseCase::PlatformActions => Ok((
+                OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_ID.as_str(),
+                OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_SECRET.as_str(),
+            )),
+            GithubUseCase::PersonalActions | GithubUseCase::Webhooks => {
+                Err(ProviderError::InternalError(anyhow!(
+                    "github_app_oauth_credentials only supports GitHub App use cases"
+                )))
+            }
+        }
+    }
+
+    async fn exchange_github_app_user_token(
+        &self,
+        app_type: GithubUseCase,
+        oauth_code: &str,
+        redirect_uri: &str,
+    ) -> Result<String, ProviderError> {
+        let (client_id, client_secret) = Self::github_app_oauth_credentials(app_type)?;
+
+        let req = self
+            .reqwest_client()
+            .post("https://github.com/login/oauth/access_token")
+            .header("Accept", "application/json")
+            .header("User-Agent", "dust/oauth")
+            .header("X-GitHub-Api-Version", "2022-11-28")
+            .form(&[
+                ("client_id", client_id),
+                ("client_secret", client_secret),
+                ("code", oauth_code),
+                ("redirect_uri", redirect_uri),
+            ]);
+
+        let raw_json = execute_request(ConnectionProvider::Github, req)
+            .await
+            .map_err(|e| self.handle_provider_request_error(e))?;
+
+        if raw_json.get("error").is_some() {
+            return Err(ProviderError::TokenRevokedError);
+        }
+
+        match raw_json["access_token"].as_str() {
+            Some(token) if !token.is_empty() => Ok(token.to_string()),
+            _ => Err(ProviderError::TokenRevokedError),
+        }
+    }
+
+    /// Confirms the user token can access this installation *before* minting an
+    /// App installation token. Uses GET /user/installations/{id}/repositories
+    /// so a foreign id is indistinguishable from a missing one (both 404).
+    async fn verify_user_can_access_installation(
+        &self,
+        user_token: &str,
+        installation_id: &str,
+    ) -> Result<(), ProviderError> {
+        if !is_github_installation_id(installation_id) {
+            return Err(ProviderError::TokenRevokedError);
+        }
+
+        let req = self
+            .reqwest_client()
+            .get(format!(
+                "https://api.github.com/user/installations/{}/repositories?per_page=1",
+                installation_id
+            ))
+            .header("Accept", "application/vnd.github+json")
+            .header("Authorization", format!("Bearer {}", user_token))
+            .header("User-Agent", "dust/oauth")
+            .header("X-GitHub-Api-Version", "2022-11-28");
+
+        match execute_request(ConnectionProvider::Github, req).await {
+            Ok(_) => Ok(()),
+            Err(e) => Err(self.handle_provider_request_error(e)),
+        }
+    }
+
     async fn refresh_installation_token(
         &self,
         app_type: GithubUseCase,
         code: &str,
     ) -> Result<(String, u64, serde_json::Value), ProviderError> {
+        if !is_github_installation_id(code) {
+            return Err(ProviderError::TokenRevokedError);
+        }
+
         // https://github.com/octokit/auth-app.js/blob/main/src/get-installation-authentication.ts
         let req = self
             .reqwest_client()
@@ -281,6 +412,11 @@ impl Provider for GithubConnectionProvider {
         ConnectionProvider::Github
     }
 
+    /// @cc [owner:sflory,label:security] github-app-install-ownership
+    /// GitHub App finalize MUST exchange the user OAuth `code` and verify the
+    /// installation is accessible to that user before minting an installation
+    /// token. A caller-supplied installation id MUST NOT be enough to call
+    /// POST /app/installations/{id}/access_tokens.
     async fn finalize(
         &self,
         connection: &Connection,
@@ -303,11 +439,20 @@ impl Provider for GithubConnectionProvider {
             return self.finalize_oauth_flow(code, redirect_uri, app_type).await;
         }
 
-        // `code` is the installation_id returned by Github for GitHub App installations
-        // This includes Connection and PlatformActions
-        let (token, expiry, raw_json) = self.refresh_installation_token(app_type, code).await?;
+        let (installation_id, oauth_code) = parse_github_app_finalize_code(code)?;
+        let user_token = self
+            .exchange_github_app_user_token(app_type.clone(), &oauth_code, redirect_uri)
+            .await?;
+        self.verify_user_can_access_installation(&user_token, &installation_id)
+            .await?;
 
-        // We store the installation_id as `code` which will be used to refresh tokens.
+        let (token, expiry, raw_json) = self
+            .refresh_installation_token(app_type, &installation_id)
+            .await?;
+
+        // Persist the incoming composite code so a second finalize (React
+        // StrictMode, popup retry) matches `is_already_finalized`. Refresh
+        // extracts the installation id from it.
         Ok(FinalizeResult {
             redirect_uri: redirect_uri.to_string(),
             code: code.to_string(),
@@ -343,12 +488,15 @@ impl Provider for GithubConnectionProvider {
             return self.refresh_oauth_token(&refresh_token, app_type).await;
         }
 
-        let code = match connection.unseal_authorization_code()? {
+        let stored_code = match connection.unseal_authorization_code()? {
             Some(code) => code,
             None => Err(anyhow!("Missing installation_id in connection"))?,
         };
+        let installation_id = installation_id_from_stored_authorization_code(&stored_code)?;
 
-        let (token, expiry, raw_json) = self.refresh_installation_token(app_type, &code).await?;
+        let (token, expiry, raw_json) = self
+            .refresh_installation_token(app_type, &installation_id)
+            .await?;
 
         Ok(RefreshResult {
             access_token: token.to_string(),
@@ -376,7 +524,7 @@ impl Provider for GithubConnectionProvider {
     fn handle_provider_request_error(&self, error: ProviderHttpRequestError) -> ProviderError {
         match &error {
             ProviderHttpRequestError::RequestFailed { status, .. }
-                if *status == 403 || *status == 404 =>
+                if *status == 401 || *status == 403 || *status == 404 =>
             {
                 ProviderError::TokenRevokedError
             }
@@ -384,6 +532,97 @@ impl Provider for GithubConnectionProvider {
                 // Call the default implementation for other cases.
                 self.default_handle_provider_request_error(error)
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        installation_id_from_stored_authorization_code, is_github_installation_id,
+        parse_github_app_finalize_code, GithubConnectionProvider,
+    };
+    use crate::oauth::{
+        connection::{ConnectionProvider, Provider, ProviderError},
+        providers::utils::ProviderHttpRequestError,
+    };
+
+    #[test]
+    fn rejects_bare_installation_id_as_finalize_code() {
+        assert!(matches!(
+            parse_github_app_finalize_code("12345"),
+            Err(ProviderError::TokenRevokedError)
+        ));
+        assert!(matches!(
+            parse_github_app_finalize_code("gh_app_install:12345"),
+            Err(ProviderError::TokenRevokedError)
+        ));
+        assert!(matches!(
+            parse_github_app_finalize_code("gh_app_install:0123:oauth-code"),
+            Err(ProviderError::TokenRevokedError)
+        ));
+        assert!(matches!(
+            parse_github_app_finalize_code("gh_app_install:../1:oauth-code"),
+            Err(ProviderError::TokenRevokedError)
+        ));
+    }
+
+    #[test]
+    fn parses_installation_id_and_user_oauth_code() {
+        let (installation_id, oauth_code) =
+            parse_github_app_finalize_code("gh_app_install:12345:user-oauth-code")
+                .expect("valid App finalize code");
+        assert_eq!(installation_id, "12345");
+        assert_eq!(oauth_code, "user-oauth-code");
+    }
+
+    #[test]
+    fn oauth_code_may_contain_colons() {
+        let (installation_id, oauth_code) =
+            parse_github_app_finalize_code("gh_app_install:99:abc:def")
+                .expect("oauth code with colon");
+        assert_eq!(installation_id, "99");
+        assert_eq!(oauth_code, "abc:def");
+    }
+
+    #[test]
+    fn stored_authorization_code_yields_installation_id() {
+        assert_eq!(
+            installation_id_from_stored_authorization_code("12345").unwrap(),
+            "12345"
+        );
+        assert_eq!(
+            installation_id_from_stored_authorization_code("gh_app_install:12345:user-oauth-code")
+                .unwrap(),
+            "12345"
+        );
+        assert!(matches!(
+            installation_id_from_stored_authorization_code("not-an-id"),
+            Err(ProviderError::TokenRevokedError)
+        ));
+    }
+
+    #[test]
+    fn installation_id_must_be_a_positive_integer() {
+        assert!(is_github_installation_id("1"));
+        assert!(is_github_installation_id("12345"));
+        assert!(!is_github_installation_id("0"));
+        assert!(!is_github_installation_id("0123"));
+        assert!(!is_github_installation_id("12a"));
+        assert!(!is_github_installation_id(""));
+    }
+
+    #[test]
+    fn github_auth_failures_are_token_revoked() {
+        let provider = GithubConnectionProvider::new();
+        for status in [401, 403, 404] {
+            let error =
+                provider.handle_provider_request_error(ProviderHttpRequestError::RequestFailed {
+                    provider: ConnectionProvider::Github,
+                    status,
+                    message: "not found".to_string(),
+                });
+            assert!(matches!(error, ProviderError::TokenRevokedError));
         }
     }
 }
