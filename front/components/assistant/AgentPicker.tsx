@@ -1,4 +1,3 @@
-import { CapabilitiesPickerLoading } from "@app/components/assistant/CapabilitiesPicker";
 import { CreateAgentDropdown } from "@app/components/assistant/CreateAgentDropdown";
 import { useSearchAgents } from "@app/hooks/useSearchAgents";
 import { useClientType } from "@app/lib/context/clientType";
@@ -18,6 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Icon,
+  LoadingBlock,
   Robot,
   XClose,
 } from "@dust-tt/sparkle";
@@ -158,7 +158,19 @@ export function AgentPicker({
       >
         {isAgentsLoading ? (
           <div role="status" aria-label="Loading agents">
-            <CapabilitiesPickerLoading />
+            <div aria-hidden="true">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div
+                  key={`agent-picker-loading-${i}`}
+                  className="flex items-center gap-2.5 px-2 py-1"
+                >
+                  <LoadingBlock className="h-7 w-7 shrink-0 rounded-md" />
+                  <LoadingBlock
+                    className={i % 2 === 0 ? "h-4 w-2/3" : "h-4 w-1/2"}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         ) : isAgentsError ? (
           <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
