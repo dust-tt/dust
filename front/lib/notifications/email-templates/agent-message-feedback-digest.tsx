@@ -1,7 +1,10 @@
 import config from "@app/lib/api/config";
-import { EmailLayout } from "@app/lib/notifications/email-templates/_layout";
+import {
+  EmailLayout,
+  renderEmailWithI18n,
+} from "@app/lib/notifications/email-templates/_layout";
 import { getConversationRoute } from "@app/lib/utils/router";
-import { render } from "@react-email/render";
+import type { I18n } from "@lingui/core";
 import { z } from "zod";
 
 const AgentMessageFeedbackDigestEmailTemplatePropsSchema = z.object({
@@ -110,8 +113,12 @@ const AgentMessageFeedbackDigestEmailTemplate = ({
   );
 };
 
-export function renderEmail(
-  args: AgentMessageFeedbackDigestEmailTemplateProps
-) {
-  return render(<AgentMessageFeedbackDigestEmailTemplate {...args} />);
+export function renderEmail({
+  i18n,
+  ...args
+}: AgentMessageFeedbackDigestEmailTemplateProps & { i18n: I18n }) {
+  return renderEmailWithI18n(
+    i18n,
+    <AgentMessageFeedbackDigestEmailTemplate {...args} />
+  );
 }

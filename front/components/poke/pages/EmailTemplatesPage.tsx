@@ -13,7 +13,9 @@ import {
   DefaultEmailTemplatePropsSchema,
   renderEmail as renderDefaultEmail,
 } from "@app/lib/notifications/email-templates/default";
+import { getNotificationI18n } from "@app/lib/notifications/i18n";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
+import { DEFAULT_LOCALE } from "@app/types/locale";
 import { Button, Input, TextArea } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { JSONSchema7 } from "json-schema";
@@ -424,7 +426,10 @@ export function EmailTemplatesPage() {
 
         // Validate and parse with Zod schema
         const parsed = selectedTemplate.schema.parse(cleanedValues);
-        const html = await selectedTemplate.render(parsed);
+        const html = await selectedTemplate.render({
+          ...parsed,
+          i18n: await getNotificationI18n(DEFAULT_LOCALE),
+        });
         setRenderedHtml(html);
       } catch (error) {
         console.error("Error rendering email:", error);

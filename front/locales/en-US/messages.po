@@ -1119,3 +1119,23 @@ msgstr "Could not save the language"
 #: front/hooks/useUserLocale.ts
 msgid "Your language could not be saved to your account."
 msgstr "Your language could not be saved to your account."
+
+#: front/lib/notifications/email-templates/_layout.tsx
+msgid "An email from Dust about {workspaceName}"
+msgstr "An email from Dust about {workspaceName}"
+
+#: front/lib/notifications/email-templates/_layout.tsx
+msgid "Dust logo"
+msgstr "Dust logo"
+
+#: front/lib/notifications/email-templates/_layout.tsx
+msgid "This is an automated email. Please do not reply."
+msgstr "This is an automated email. Please do not reply."
+
+#: front/lib/notifications/email-templates/_layout.tsx
+msgid "You can manage your notification preferences from <0>your workspace</0>."
+msgstr "You can manage your notification preferences from <0>your workspace</0>."
+
+#: front/lib/notifications/email-templates/default.tsx
+msgid "Hi {name},"
+msgstr "Hi {name},"

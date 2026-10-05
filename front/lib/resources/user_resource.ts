@@ -804,10 +804,10 @@ export class UserResource extends BaseResource<UserModel> {
    * `SUPPORTED_LOCALES`, and `workspace.locale` when there is no stored value or it is not a
    * supported locale.
    */
-  async getLocale(workspace: LightWorkspaceType): Promise<SupportedLocale> {
+  async getLocale(fallbackLocale: SupportedLocale): Promise<SupportedLocale> {
     const metadata = await this.getMetadata(USER_LOCALE_METADATA_KEY);
     const storedLocale = metadata?.value;
-    return isSupportedLocale(storedLocale) ? storedLocale : workspace.locale;
+    return isSupportedLocale(storedLocale) ? storedLocale : fallbackLocale;
   }
 
   /**

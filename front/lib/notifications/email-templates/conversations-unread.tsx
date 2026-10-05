@@ -1,8 +1,11 @@
 import config from "@app/lib/api/config";
-import { EmailLayout } from "@app/lib/notifications/email-templates/_layout";
+import {
+  EmailLayout,
+  renderEmailWithI18n,
+} from "@app/lib/notifications/email-templates/_layout";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { pluralize } from "@app/types/shared/utils/string_utils";
-import { render } from "@react-email/render";
+import type { I18n } from "@lingui/core";
 import * as React from "react";
 import { z } from "zod";
 
@@ -194,6 +197,12 @@ const ConversationsUnreadEmailTemplate = ({
   );
 };
 
-export function renderEmail(args: ConversationsUnreadEmailTemplateProps) {
-  return render(<ConversationsUnreadEmailTemplate {...args} />);
+export function renderEmail({
+  i18n,
+  ...args
+}: ConversationsUnreadEmailTemplateProps & { i18n: I18n }) {
+  return renderEmailWithI18n(
+    i18n,
+    <ConversationsUnreadEmailTemplate {...args} />
+  );
 }
