@@ -33,7 +33,8 @@ export type DiscoveryPinError = DustError<
 export async function listFeaturedDiscoveryItems(
   auth: Authenticator
 ): Promise<GetFeaturedDiscoveryItemsResponseBody> {
-  const items = (await DiscoveryItemResource.listPinnedForAuth(auth)).filter(
+  const pinnedItems = await DiscoveryItemResource.listPinnedForAuth(auth);
+  const items = pinnedItems.filter(
     (item) =>
       item.type !== "skill" ||
       isSkillVisibleToViewer({
