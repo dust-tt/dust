@@ -11,9 +11,16 @@ use crate::{
 };
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use lazy_static::lazy_static;
+use regex::Regex;
 use tracing::info;
 
 use super::utils::ProviderHttpRequestError;
+
+lazy_static! {
+    static ref SNOWFLAKE_ACCOUNT_RE: Regex =
+        Regex::new(r"^[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*$").unwrap();
+}
 
 pub struct SnowflakeConnectionProvider {}
 
@@ -43,12 +50,24 @@ impl SnowflakeConnectionProvider {
         Ok((client_id.to_string(), client_secret.to_string()))
     }
 
-    /// Builds the Snowflake token endpoint URL from the account identifier
-    fn get_token_endpoint(snowflake_account: &str) -> String {
-        format!(
+    /// @cc [owner:fontanierh,label:security] account-is-host-labels
+    /// The trimmed `snowflake_account` MUST be made only of dot-separated, non-empty labels of
+    /// ASCII letters, digits, `_` and `-`, and an `InvalidMetadataError` is returned otherwise.
+    /// The value is interpolated into the host of a request sent over the static-IP egress (not
+    /// the SSRF-filtering untrusted egress proxy), so a value such as `evil.example/x?` that moves
+    /// the `.snowflakecomputing.com` suffix out of the host MUST be rejected.
+    fn get_token_endpoint(snowflake_account: &str) -> Result<String, ProviderError> {
+        let snowflake_account = snowflake_account.trim();
+        if !SNOWFLAKE_ACCOUNT_RE.is_match(snowflake_account) {
+            return Err(ProviderError::InvalidMetadataError(
+                "Snowflake account identifier format is invalid".to_string(),
+            ));
+        }
+
+        Ok(format!(
             "https://{}.snowflakecomputing.com/oauth/token-request",
-            snowflake_account.trim()
-        )
+            snowflake_account
+        ))
     }
 
     /// Builds the Basic auth header for Snowflake OAuth.
@@ -84,7 +103,7 @@ impl SnowflakeConnectionProvider {
         // Get Snowflake client_id and client_secret
         let (client_id, client_secret) = Self::get_credentials(related_credentials).await?;
 
-        let token_endpoint = Self::get_token_endpoint(snowflake_account);
+        let token_endpoint = Self::get_token_endpoint(snowflake_account)?;
         let auth_header = Self::build_auth_header(&client_id, &client_secret);
 
         let req = self
@@ -269,7 +288,7 @@ mod tests {
 
     #[test]
     fn test_get_token_endpoint_format() {
-        let url = SnowflakeConnectionProvider::get_token_endpoint("my-account");
+        let url = SnowflakeConnectionProvider::get_token_endpoint("my-account").unwrap();
         assert_eq!(
             url,
             "https://my-account.snowflakecomputing.com/oauth/token-request"
@@ -278,11 +297,49 @@ mod tests {
 
     #[test]
     fn test_get_token_endpoint_trims_whitespace() {
-        let url = SnowflakeConnectionProvider::get_token_endpoint("  my-account  ");
+        let url = SnowflakeConnectionProvider::get_token_endpoint("  my-account  ").unwrap();
         assert_eq!(
             url,
             "https://my-account.snowflakecomputing.com/oauth/token-request"
         );
+    }
+
+    #[test]
+    fn test_get_token_endpoint_accepts_account_formats() {
+        for account in [
+            "abc123",
+            "abc123.us-east-1",
+            "th19603.us-east4.gcp",
+            "myorg-myaccount.privatelink",
+            "company_name-prod",
+        ] {
+            assert!(
+                SnowflakeConnectionProvider::get_token_endpoint(account).is_ok(),
+                "{account}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_get_token_endpoint_rejects_non_host_label_accounts() {
+        for account in [
+            "",
+            "evil.example/x?",
+            "attacker.internal:8443/p?",
+            "user:pw@host/?",
+            "evil.example#",
+            "evil.example\\x",
+            "abc..us-east-1",
+            ".abc",
+            "abc.",
+            "abc 123",
+            "%2F",
+        ] {
+            assert!(
+                SnowflakeConnectionProvider::get_token_endpoint(account).is_err(),
+                "{account}"
+            );
+        }
     }
 
     #[test]
