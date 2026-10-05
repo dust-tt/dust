@@ -9,7 +9,9 @@ use bytes::Bytes;
 use clap::Args;
 use dfs_protocol::{error::status, rpc::ErrorCode};
 use futures::{StreamExt, TryStreamExt, stream};
-use parking_lot::Mutex;
+use parking_lot::{Mutex, RwLock};
+
+mod index;
 use std::{
     collections::{BTreeMap, BTreeSet, VecDeque},
     ops::{Bound, RangeBounds},
@@ -203,7 +205,10 @@ struct Receipt {
 }
 #[derive(Default)]
 struct Inner {
-    journal: VecDeque<Arc<Entry>>,
+    journal: BTreeMap<u64, Arc<Entry>>,
+    pending: BTreeMap<u64, Arc<Entry>>,
+    participants: BTreeMap<Vec<u8>, BTreeSet<u64>>,
+    index: index::Index,
     seq: u64,
     receipts: BTreeMap<(String, Vec<u8>), Receipt>,
 }
@@ -218,7 +223,7 @@ pub struct Cache {
     budget: Arc<Budget>,
     dirty: Arc<Budget>,
     base: tokio::sync::Mutex<Option<Arc<Base>>>,
-    inner: Mutex<Inner>,
+    inner: RwLock<Inner>,
     wake: Notify,
     stop: AtomicBool,
     task: Mutex<Option<tokio::task::JoinHandle<()>>>,
@@ -322,36 +327,34 @@ impl Cache {
             }
         };
         drop(slot);
-        let mut profile = Guard::new(Phase::SnapshotRam);
-        let mut inner = self.inner.lock();
-        self.reap(&mut inner);
-        profile.items(inner.journal.len());
-        let overlay = inner
-            .journal
-            .iter()
-            .filter(|e| {
-                let outcome = e.outcome.load(Ordering::Acquire);
-                outcome != FAILED && (outcome == PENDING || outcome > base.raw.version)
-            })
-            .cloned()
-            .collect();
+        let _profile = Guard::new(Phase::SnapshotRam);
+        let cut = self.inner.read().seq;
         Ok(Arc::new(Snapshot {
             cache: self.clone(),
             base,
-            overlay,
-            cut: inner.seq,
+            cut,
             reads: Default::default(),
             used: Default::default(),
         }))
     }
+    /// @cc [owner:spolu,label:concurrency] bounded-history-retirement
+    /// An edit accepted at A MUST remain indexed until A + P + C, unless still pending (retain it).
+    /// A successful publication finishes by A + P; any base that predates it expires by A + P + C.
+    /// Thus removing the terminal oldest prefix MUST NOT remove data needed by a valid pinned view.
     fn reap(&self, inner: &mut Inner) {
         let mut profile = Guard::new(Phase::Reap);
-        profile.items(inner.journal.len());
+        let mut retired = 0;
         let now = Instant::now();
-        inner.journal.retain(|e| {
-            e.outcome.load(Ordering::Acquire) == PENDING
-                || now < e.deadline + self.config.freshness()
-        });
+        while inner.journal.first_key_value().is_some_and(|(_, e)| {
+            e.outcome.load(Ordering::Acquire) != PENDING
+                && now >= e.deadline + self.config.freshness()
+        }) {
+            if let Some((_, entry)) = inner.journal.pop_first() {
+                inner.index.remove(&entry);
+                retired += 1;
+            }
+        }
+        profile.items(retired);
         inner
             .receipts
             .retain(|_, r| r.session.upgrade().is_some_and(|s| s.active().is_ok()));
@@ -359,7 +362,7 @@ impl Cache {
     pub(crate) fn error(&self, session: &SessionState, key: &[u8]) -> Result<()> {
         match self
             .inner
-            .lock()
+            .read()
             .receipts
             .get(&(session.info.id.clone(), key.to_vec()))
         {
@@ -370,6 +373,8 @@ impl Cache {
     /// @cc [owner:spolu,label:backend] acknowledge-only-complete-edits
     /// Capacity or local-conflict rejection MUST occur before acceptance. Once accepted, all keys
     /// become visible atomically and keep their original deadline, including through fsync.
+    /// The caller MUST supply all object participants; edits touching the same physical key MUST
+    /// share a participant so publication preserves their local sequence order.
     pub(crate) fn accept(
         &self,
         snapshot: &Snapshot,
@@ -385,7 +390,7 @@ impl Cache {
             return Ok(());
         }
         let reads = snapshot.reads.lock().clone();
-        let mut inner = self.inner.lock();
+        let mut inner = self.inner.write();
         snapshot.valid()?;
         self.reap(&mut inner);
         for key in &scope {
@@ -399,15 +404,9 @@ impl Cache {
         {
             return Err(status(ErrorCode::Capacity));
         }
-        for later in inner
-            .journal
-            .iter()
-            .filter(|e| e.seq > snapshot.cut && e.outcome.load(Ordering::Acquire) != FAILED)
-        {
-            if reads.iter().any(|r| {
-                let (a, b) = r.bounds();
-                later.batch.intersects(&a, &b)
-            }) {
+        for read in &reads {
+            let (start, end) = read.bounds();
+            if inner.index.changed_after(&start, &end, snapshot.cut) {
                 return Err(retry());
             }
         }
@@ -427,15 +426,19 @@ impl Cache {
                 )
             })
             .collect();
-        for e in &inner.journal {
-            if e.outcome.load(Ordering::Acquire) == PENDING && !e.scope.is_disjoint(&scope) {
-                deps.insert(
-                    e.seq,
-                    Dependency {
-                        seq: e.seq,
-                        outcome: e.outcome.clone(),
-                    },
-                );
+        for key in &scope {
+            if let Some(sequences) = inner.participants.get(key) {
+                for seq in sequences {
+                    if let Some(e) = inner.pending.get(seq) {
+                        deps.insert(
+                            *seq,
+                            Dependency {
+                                seq: *seq,
+                                outcome: e.outcome.clone(),
+                            },
+                        );
+                    }
+                }
             }
         }
         if deps
@@ -445,9 +448,10 @@ impl Cache {
             return Err(retry());
         }
         let bytes = batch.bytes()
+            + index::Index::charge(&batch)?
             + reads.iter().map(Read::bytes).sum::<usize>()
             + deps.len() * 64
-            + scope.iter().map(|k| k.len() + 64).sum::<usize>()
+            + scope.iter().map(|k| 2 * k.len() + 256).sum::<usize>()
             + 512;
         let charge = self.budget.reserve(bytes)?;
         let dirty = self.dirty.reserve(bytes)?;
@@ -472,10 +476,30 @@ impl Cache {
             _charge: charge,
             dirty: Mutex::new(Some(dirty)),
         });
-        inner.journal.push_back(entry);
+        inner.index.insert(&entry);
+        for key in &entry.scope {
+            inner
+                .participants
+                .entry(key.clone())
+                .or_default()
+                .insert(entry.seq);
+        }
+        inner.pending.insert(entry.seq, entry.clone());
+        inner.journal.insert(entry.seq, entry);
         self.metrics.accepted.fetch_add(1, Ordering::Relaxed);
         self.wake.notify_waiters();
         Ok(())
+    }
+    fn retire_pending(inner: &mut Inner, entry: &Entry) {
+        inner.pending.remove(&entry.seq);
+        for key in &entry.scope {
+            if let Some(sequences) = inner.participants.get_mut(key) {
+                sequences.remove(&entry.seq);
+                if sequences.is_empty() {
+                    inner.participants.remove(key);
+                }
+            }
+        }
     }
     fn reject_locked(&self, inner: &mut Inner, entry: &Arc<Entry>, error: Status) {
         if entry
@@ -492,6 +516,7 @@ impl Cache {
             created = entry.created.is_some(),
             "RAM edit rejected"
         );
+        Self::retire_pending(inner, entry);
         entry.dirty.lock().take();
         entry.base.invalidate(&entry.batch);
         if let Some(s) = entry.session.upgrade() {
@@ -514,9 +539,9 @@ impl Cache {
     fn select(&self, limit: usize) -> Vec<Vec<Arc<Entry>>> {
         let _profile = Guard::new(Phase::Select);
         {
-            let mut inner = self.inner.lock();
+            let mut inner = self.inner.write();
             self.reap(&mut inner);
-            let entries: Vec<_> = inner.journal.iter().cloned().collect();
+            let entries: Vec<_> = inner.pending.values().cloned().collect();
             for e in &entries {
                 if Instant::now() >= e.deadline
                     || e.deps
@@ -703,7 +728,7 @@ impl Cache {
                 }
             }
         }
-        let mut inner = self.inner.lock();
+        let mut inner = self.inner.write();
         match result {
             Ok(version) => {
                 self.metrics.commits.fetch_add(1, Ordering::Relaxed);
@@ -711,6 +736,7 @@ impl Cache {
                     if Instant::now() >= e.deadline {
                         self.reject_locked(&mut inner, e, status(ErrorCode::Unavailable));
                     }
+                    Self::retire_pending(&mut inner, e);
                     e.dirty.lock().take();
                     if e.outcome
                         .compare_exchange(PENDING, version, Ordering::AcqRel, Ordering::Acquire)
@@ -726,7 +752,7 @@ impl Cache {
                 }
             }
         }
-        let entries: Vec<_> = inner.journal.iter().cloned().collect();
+        let entries: Vec<_> = inner.pending.values().cloned().collect();
         for e in entries {
             if e.deps
                 .iter()
@@ -756,13 +782,7 @@ impl Cache {
     }
     pub async fn drain(&self) -> Result<()> {
         let started = Instant::now();
-        while self
-            .inner
-            .lock()
-            .journal
-            .iter()
-            .any(|e| e.outcome.load(Ordering::Acquire) == PENDING)
-        {
+        while !self.inner.read().pending.is_empty() {
             if started.elapsed() > Duration::from_secs(10) {
                 return Err(status(ErrorCode::Unavailable));
             }
@@ -778,7 +798,7 @@ impl Cache {
             cache_misses = self.metrics.misses.load(Ordering::Relaxed),
             "cache drained"
         );
-        if !self.inner.lock().receipts.is_empty() {
+        if !self.inner.read().receipts.is_empty() {
             return Err(status(ErrorCode::Unavailable));
         }
         Ok(())
@@ -793,12 +813,11 @@ impl Drop for Cache {
     }
 }
 
-/// Values in one base all have the same FDB read version and absolute expiry. The overlay is pinned
-/// as a whole; independently aged keys never compose a response.
+/// Values in one base share an FDB read version and absolute expiry. The cut pins a complete prefix
+/// of accepted RAM edits; indexed reads MUST exclude later edits, without copying their history.
 pub(crate) struct Snapshot {
     cache: Arc<Cache>,
     base: Arc<Base>,
-    overlay: Vec<Arc<Entry>>,
     cut: u64,
     reads: Mutex<Vec<Read>>,
     used: Mutex<BTreeMap<u64, Arc<Entry>>>,
@@ -852,21 +871,39 @@ impl Snapshot {
         self.record(Read::Ancestry(key, ancestry_value(value.clone())?))?;
         Ok(value)
     }
-    pub(crate) async fn peek(&self, key: Vec<u8>) -> Result<Option<Bytes>> {
-        self.load(&key, false).await
+    /// Speculative warming MAY skip initialized base cells even if RAM edits supersede them.
+    /// Semantic reads still resolve the index and validate the view; hints never authorize access.
+    pub(crate) async fn peek(&self, key: Vec<u8>) -> Result<()> {
+        if self
+            .base
+            .points
+            .lock()
+            .get(&key)
+            .is_some_and(|cell| cell.get().is_some())
+        {
+            return Ok(());
+        }
+        self.load(&key, false).await.map(|_| ())
     }
     async fn load(&self, key: &[u8], consume: bool) -> Result<Option<Bytes>> {
         self.valid()?;
         self.base.check(key, &after(key))?;
         let mut profile = Guard::new(Phase::Overlay);
-        for (index, e) in self.overlay.iter().rev().enumerate() {
-            profile.items(index + 1);
-            if let Some(value) = e.batch.value(key) {
-                if consume {
-                    self.use_entry(e)?;
-                }
-                return Ok(value);
+        let (change, examined) =
+            self.cache
+                .inner
+                .read()
+                .index
+                .point(key, self.cut, self.base.raw.version);
+        profile.items(examined);
+        if let Some(change) = change {
+            if consume {
+                self.use_entry(&change.entry)?;
             }
+            return Ok(match change.mutation() {
+                storage::Mutation::Put(_, value) => Some(value.clone()),
+                storage::Mutation::Delete(_) | storage::Mutation::Clear(..) => None,
+            });
         }
         drop(profile);
         let cell = {
@@ -933,10 +970,24 @@ impl Snapshot {
         } else {
             end.to_vec()
         };
-        for e in &self.overlay {
-            if e.batch.intersects(start, &stop) {
-                self.use_entry(e)?;
-                e.batch.overlay(&mut rows, start, &stop);
+        let changes =
+            self.cache
+                .inner
+                .read()
+                .index
+                .range(start, &stop, self.cut, self.base.raw.version);
+        for change in changes {
+            self.use_entry(&change.entry)?;
+            match change.mutation() {
+                storage::Mutation::Put(key, value) => {
+                    rows.insert(key.clone(), value.clone());
+                }
+                storage::Mutation::Delete(key) => {
+                    rows.remove(key);
+                }
+                storage::Mutation::Clear(a, b) => {
+                    rows.retain(|key, _| key < a || key >= b);
+                }
             }
         }
         self.record(Read::Range(start.to_vec(), stop.clone(), rows.clone()))?;

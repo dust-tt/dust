@@ -97,3 +97,16 @@ pub(crate) fn prefix_end(prefix: &[u8]) -> Vec<u8> {
     }
     end
 }
+
+/// Return the tenant-scoped file data prefix, including its UUID, for a data key or prefix.
+pub(crate) fn data_owner(key: &[u8]) -> Option<&[u8]> {
+    if key.first() != Some(&1) {
+        return None;
+    }
+    let length = u32::from_be_bytes(key.get(1..5)?.try_into().ok()?) as usize;
+    let family = 5usize.checked_add(length)?;
+    if key.get(family) != Some(&5) {
+        return None;
+    }
+    key.get(..family.checked_add(17)?)
+}

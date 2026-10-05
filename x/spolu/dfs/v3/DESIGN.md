@@ -417,6 +417,14 @@ are cached there too. Refresh uses bounded ancestry hints. A short RAM lock vali
 edits; no lock is held across FDB I/O. Publication scopes and dependency barriers remain per object.
 Initial writes can join their create; unrelated children remain separate commits.
 
+RAM edits are indexed by physical key, with file-scoped indexes for truncation/clear markers.
+A read pins an acceptance sequence and resolves only versions at or before that cut, newer than
+its FDB base. It does not copy or scan the full journal. Listings merge indexed mutations in batch
+order; local conflict checks use the same key/range index. Pending publication and object-participant
+indexes exclude completed history. Retire only the oldest terminal entries after `P + C`, when no
+valid older snapshot can need them; account for index memory before acknowledgment. Hot hint warming
+skips initialized base cells, while semantic reads still validate the overlay and authorization.
+
 Publication retries definitely uncommitted attempts after validating their original preconditions
 at a fresh read version. Authorization guards compare consumed parent links and grants, allowing
 unrelated ancestor timestamps to change. A changed target precondition rejects the tentative branch

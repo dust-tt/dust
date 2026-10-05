@@ -244,14 +244,6 @@ impl WriteBatch {
             })
             .sum()
     }
-    pub(crate) fn value(&self, key: &[u8]) -> Option<Option<Bytes>> {
-        self.0.iter().rev().find_map(|m| match m {
-            Mutation::Put(k, v) if k == key => Some(Some(v.clone())),
-            Mutation::Delete(k) if k == key => Some(None),
-            Mutation::Clear(a, b) if a.as_slice() <= key && key < b.as_slice() => Some(None),
-            _ => None,
-        })
-    }
     pub(crate) fn intersects(&self, start: &[u8], end: &[u8]) -> bool {
         self.0.iter().any(|m| match m {
             Mutation::Put(k, _) | Mutation::Delete(k) => {
@@ -259,22 +251,6 @@ impl WriteBatch {
             }
             Mutation::Clear(a, b) => a.as_slice() < end && start < b.as_slice(),
         })
-    }
-    pub(crate) fn overlay(&self, rows: &mut Rows, start: &[u8], end: &[u8]) {
-        for m in &self.0 {
-            match m {
-                Mutation::Put(k, v) if start <= k.as_slice() && k.as_slice() < end => {
-                    rows.insert(k.clone(), v.clone());
-                }
-                Mutation::Delete(k) => {
-                    rows.remove(k);
-                }
-                Mutation::Clear(a, b) => {
-                    rows.retain(|k, _| k < a || k >= b);
-                }
-                _ => (),
-            }
-        }
     }
     pub(crate) fn apply(&self, view: &Snapshot) -> Result<(), Status> {
         if self.bytes() > 8 * 1024 * 1024 {

@@ -127,6 +127,50 @@ Both corpus manifests have SHA-256
 `67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1`.
 Earlier pilot/failed runs are excluded. Raw JSON, logs, and credentials are not committed.
 
-Work is paused after these baselines. Diagnosing the longer-window untar slowdown, implementing
-revision-validated block retention, and rerunning both bounds remain pending; there are no
-post-optimization results yet. The 100k and networked GCP evaluations also remain future work.
+The original baselines above are preserved. Investigation and the block-reuse comparison resumed
+below. The 100k and networked GCP evaluations remain future work.
+
+## Untar profiling — before block reuse
+
+Opt-in aggregate profiling at revision `35a427d8e5`, otherwise the same setup and workload.
+Both populations completed without publication failure. These are additional runs; instrumentation
+adds overhead, so the later block-reuse comparison must use the same profiling settings.
+
+| Measurement | D = 1s | D = 8s |
+| --- | ---: | ---: |
+| Untar wall time (s) | 70.643 | 133.007 |
+| Remaining publication drain (ms) | 18 | 10 |
+| Client RPC calls | 229,669 | 229,669 |
+| Cumulative client RPC time (s) | 65.650 | 127.102 |
+| Cumulative server handler time (s) | 46.504 | 103.958 |
+| Server CPU, user + system (s) | 37.800 | 110.070 |
+| Client CPU, user + system (s) | 18.610 | 20.750 |
+| RAM key reads | 12,635,795 | 12,598,142 |
+| Retained edits examined by key reads | 2,202,096,489 | 8,440,659,746 |
+| RAM overlay scan time (s) | 9.903 | 54.560 |
+| RAM read-view construction time (s) | 2.258 | 17.280 |
+| History reaping time (s) | 1.642 | 8.150 |
+| Publication selection time (s) | 1.504 | 14.472 |
+| Cumulative FDB get time (s) | 72.209 | 72.391 |
+| Cumulative FDB commit time (s) | 19.411 | 18.257 |
+
+**The longer-window slowdown is in the RAM cache's history scans.**
+`Snapshot::load` scans the pinned edit list backwards for each key; `WriteBatch::value` then scans
+each edit's mutations. An authorization walk reads multiple parent/grant keys, and hinted prefetch
+also passes through this lookup. This produced about 12.6 million key reads in each untar, despite
+only 229,669 RPCs. At 8s, the retained history is larger: the same reads examine 8.44 billion edits
+instead of 2.20 billion. Building each request's view and scanning publication history also grow.
+Key reads should use an indexed overlay rather than a full history scan; block reuse addresses a
+different cost and does not fix this behavior.
+
+These timings are **nested and sometimes concurrent**, not additive wall-time categories. In
+particular, reaping is included in read-view construction/selection, and FDB reads include parallel
+background publication validation. Client RPC time includes server time plus transport, serialization,
+and runtime scheduling; their difference is not pure network latency. Population server counters
+also include the small untimed fixture setup. CPU samples stop before shutdown/drain.
+
+Profile reports remain outside Git: `/tmp/dfs-v3-benchmark-w4ifis7y` (1s) and
+`/tmp/dfs-v3-benchmark-wp7sltav` (8s), inside the development container. The 8s full suite passed all
+24 checks. The 1s suite was stopped at the user's request after five complete rows, to prioritize
+RAM access optimization. Its untar/profile above completed before that interruption. Full-suite
+reruns and block reuse are deferred until the memory-access work is validated.

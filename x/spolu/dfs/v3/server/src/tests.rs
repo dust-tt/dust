@@ -177,6 +177,12 @@ fn local_filesystem_contracts() -> Result<()> {
         expired_fdb_read_refreshes_before_cache_ttl()
             .await
             .context("early FDB expiry")?;
+        indexed_views_preserve_cuts_and_truncation()
+            .await
+            .context("indexed snapshot cuts")?;
+        indexed_acceptance_rejects_later_namespace_changes()
+            .await
+            .context("indexed local conflicts")?;
         capacity_and_cold_recovery()
             .await
             .context("capacity/restart")?;
@@ -741,5 +747,153 @@ async fn expired_fdb_read_refreshes_before_cache_ttl() -> Result<()> {
         "The cold read must encounter native FDB expiry."
     );
     assert_eq!(object.id, cold.id);
+    f.clean().await
+}
+
+async fn indexed_views_preserve_cuts_and_truncation() -> Result<()> {
+    let f = Fixture::configured(cache::CacheConfig {
+        max_eventual_consistency_delay_ms: 8000,
+        ..Default::default()
+    })
+    .await?;
+    let file = f.create(&f.tenant.root_id, "cuts", false).await?;
+    f.write(&file.id, 0, vec![7; 3 * BLOCK_SIZE]).await?;
+    f.api.0.cache.drain().await?;
+    f.api.0.cache.invalidate_base().await;
+    let keys = keys::Keys::new(&f.tenant.tenant_id)?;
+    let original = f.api.0.cache.snapshot().await?;
+    f.api.0.cache.paused.store(true, Ordering::Release);
+    f.api
+        .update(request(
+            &f.owner.session_key,
+            UpdateRequest {
+                object_id: file.id.clone(),
+                size: Some((BLOCK_SIZE + 3) as u64),
+                ..Default::default()
+            },
+        )?)
+        .await?;
+    let truncated = f.api.0.cache.snapshot().await?;
+    f.write(&file.id, (2 * BLOCK_SIZE + 2) as u64, b"tail".to_vec())
+        .await?;
+    let extended = f.api.0.cache.snapshot().await?;
+    let block = keys.block(&file.id, 2)?;
+    assert_eq!(
+        original
+            .get(&block)
+            .await?
+            .context("Original block")?
+            .as_ref(),
+        vec![7; BLOCK_SIZE]
+    );
+    assert!(
+        truncated.get(&block).await?.is_none(),
+        "A later write must not enter an earlier cut."
+    );
+    assert_eq!(
+        extended
+            .get(&block)
+            .await?
+            .context("Extended block")?
+            .as_ref(),
+        b"\0\0tail"
+    );
+    for (snapshot, expected) in [
+        (&original, vec![BLOCK_SIZE; 3]),
+        (&truncated, vec![BLOCK_SIZE, 3]),
+        (&extended, vec![BLOCK_SIZE, 3, 6]),
+    ] {
+        let start = keys.data(&file.id)?;
+        let mut scan = snapshot
+            .scan(start.clone()..keys::prefix_end(&start))
+            .await?;
+        let mut lengths = Vec::new();
+        while let Some(row) = scan.next().await? {
+            lengths.push(row.value.len());
+        }
+        assert_eq!(
+            lengths, expected,
+            "Range reads must preserve the same cut and clear ordering."
+        );
+        snapshot.valid()?;
+    }
+    f.api.0.cache.paused.store(false, Ordering::Release);
+    f.api.0.cache.drain().await?;
+    f.api.0.cache.invalidate_base().await;
+    let data = f.read(&file.id).await?;
+    assert_eq!(data.size, (2 * BLOCK_SIZE + 6) as u64);
+    assert!(
+        data.data[BLOCK_SIZE + 3..2 * BLOCK_SIZE + 2]
+            .iter()
+            .all(|v| *v == 0)
+    );
+    assert_eq!(&data.data[2 * BLOCK_SIZE + 2..], b"tail");
+    f.clean().await
+}
+
+async fn indexed_acceptance_rejects_later_namespace_changes() -> Result<()> {
+    let f = Fixture::new().await?;
+    let snapshot = f.api.0.cache.snapshot().await?;
+    let view = read::View::from_snapshot(
+        snapshot.clone(),
+        &f.tenant.tenant_id,
+        f.owner.grants.iter().cloned().collect(),
+    )
+    .await?;
+    let (edit, candidate) = view
+        .create(CreateRequest {
+            parent_id: f.tenant.root_id.clone(),
+            name: "same".into(),
+            mode: 0o644,
+            ..Default::default()
+        })
+        .await?;
+    let candidate = candidate.object.context("Candidate")?;
+    let winner = f.create(&f.tenant.root_id, "same", false).await?;
+    let page = view.list(&f.tenant.root_id, None, 100).await?;
+    assert!(
+        !page.entries.iter().any(|e| e.name == "same"),
+        "Later membership must not enter a pinned listing."
+    );
+    let session = f
+        .api
+        .0
+        .sessions
+        .get(&request(&f.owner.session_key, Empty {})?)
+        .await?;
+    let scope = std::collections::BTreeSet::from([
+        view.keys.object(&f.tenant.root_id)?,
+        view.keys.object(&candidate.id)?,
+    ]);
+    let error = f
+        .api
+        .0
+        .cache
+        .accept(
+            &snapshot,
+            edit.batch,
+            scope,
+            false,
+            Some(view.keys.object(&candidate.id)?),
+            &session,
+        )
+        .err()
+        .context("Accepted a stale create")?;
+    assert!(cache::is_retry(&error));
+    assert_eq!(
+        f.api
+            .lookup(request(
+                &f.owner.session_key,
+                LookupRequest {
+                    parent_id: f.tenant.root_id.clone(),
+                    name: "same".into()
+                }
+            )?)
+            .await?
+            .into_inner()
+            .id,
+        winner.id
+    );
+    f.api.0.cache.drain().await?;
     f.clean().await
 }

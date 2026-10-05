@@ -32,10 +32,21 @@ Keep v1/v2 unchanged. Commit and push each verified milestone.
 - [x] Local deep-subtree untar and filesystem benchmark with cold/warm results and drain.
 - [x] Record commands, configuration, corpus, measurements, and remaining limitations.
 
-## 5. Revision-validated block reuse
+## 5. RAM access optimization (priority)
+
+Full benchmark suites are stopped until this work is optimized and verified.
+
+- [x] Attribute the longer-window slowdown with client/server/FDB profiles.
+- [x] Index key history and file-scoped clears; pin sequence cuts without copying the journal.
+- [x] Index local conflict checks and pending participants; retire history incrementally.
+- [x] Skip speculative warming of hot base cells without bypassing semantic validation.
+- [x] Test pinned point/range views, truncation ordering, and stale local acceptance against FDB.
+- [ ] Verify mounted behavior and compare focused 1s/8s untar CPU profiles before another suite.
+
+## 6. Revision-validated block reuse
 
 - [x] Finish baseline deep untar + full benchmark at `D = 1000 ms` and `D = 8000 ms`.
-- [ ] Profile why untar is slower at 8s before attributing the difference to mutation-history scans.
+- [x] Profile why untar is slower at 8s before attributing the difference to mutation-history scans.
 - [ ] Rerun both full baselines with client/server/FDB timing breakdowns; preserve original results.
 - [ ] Retain blocks across snapshot expiry within the existing RAM budget; require a validated
       matching object revision and current authorization before serving them.
