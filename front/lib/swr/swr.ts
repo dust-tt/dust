@@ -1,6 +1,7 @@
 export { useFetcher } from "@app/lib/swr/FetcherContext";
 
 import { isAPIErrorResponse } from "@app/types/error";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import { useCallback, useRef } from "react";
 import type {
   Fetcher,
@@ -193,4 +194,15 @@ export async function getErrorFromResponse(response: Response) {
   }
 
   return { message: "An error occurred" };
+}
+
+// Reads an error response body so `useFormatAPIError` can display it.
+export async function getAPIErrorFromResponse(
+  response: Response
+): Promise<unknown> {
+  const text = await response.text();
+  const parsed = safeParseJSON(text);
+  return parsed.isOk() && parsed.value !== null
+    ? parsed.value
+    : new Error(text || response.statusText);
 }

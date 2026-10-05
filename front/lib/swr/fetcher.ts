@@ -16,6 +16,20 @@ const addClientVersionHeaders = (headers: HeadersInit = {}): HeadersInit => ({
   "X-Build-Date": BUILD_DATE,
 });
 
+function isUnknownAPIErrorResponse(
+  value: unknown
+): value is { error: { type: string } } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "error" in value &&
+    typeof value.error === "object" &&
+    value.error !== null &&
+    "type" in value.error &&
+    typeof value.error.type === "string"
+  );
+}
+
 const makeResHandler =
   ({ redirectOnUnauthenticated }: { redirectOnUnauthenticated: boolean }) =>
   async (res: Response) => {
@@ -70,6 +84,11 @@ const makeResHandler =
             // Return a never-resolving promise to prevent SWR from processing.
             return new Promise(() => {});
           }
+          throw parseRes.value;
+        }
+        // A server newer than this client can send an error type the client doesn't know yet:
+        // keep the structured body so the UI still shows its message instead of raw JSON.
+        if (isUnknownAPIErrorResponse(parseRes.value)) {
           throw parseRes.value;
         }
       }

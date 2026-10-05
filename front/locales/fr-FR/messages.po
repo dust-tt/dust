@@ -1113,6 +1113,10 @@ msgctxt "font name"
 msgid "OpenDyslexic"
 msgstr "OpenDyslexic"
 
+#: front/hooks/useFormatAPIError.ts
+msgid "{typeMessage} Raw message: \"{rawMessage}\"."
+msgstr "{typeMessage} Message brut : « {rawMessage} »."
+
 #: front/hooks/useUserLocale.ts
 msgid "Could not save the language"
 msgstr "Impossible d’enregistrer la langue"
@@ -1120,6 +1124,586 @@ msgstr "Impossible d’enregistrer la langue"
 #: front/hooks/useUserLocale.ts
 msgid "Your language could not be saved to your account."
 msgstr "Votre langue n’a pas pu être enregistrée dans votre compte."
+
+#: front/lib/client/api_errors/display.ts
+msgid "Something went wrong."
+msgstr "Une erreur s’est produite."
+
+#: front/lib/client/api_errors/display.ts
+msgid "You need to sign in to continue."
+msgstr "Vous devez vous connecter pour continuer."
+
+#: front/lib/client/api_errors/display.ts
+msgid "Your workspace requires you to sign in with SSO."
+msgstr "Votre espace de travail exige une connexion par SSO."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The request is missing its credentials."
+msgstr "Il manque les identifiants de la requête."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The request credentials are malformed."
+msgstr "Les identifiants de la requête sont mal formés."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The request credentials are invalid."
+msgstr "Les identifiants de la requête ne sont pas valides."
+
+#: front/lib/client/api_errors/display.ts
+msgid "Your session is invalid. Sign in again."
+msgstr "Votre session n’est pas valide. Reconnectez-vous."
+
+#: front/lib/client/api_errors/display.ts
+msgid "Your session has expired. Sign in again."
+msgstr "Votre session a expiré. Reconnectez-vous."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The API key is invalid."
+msgstr "La clé d’API n’est pas valide."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The sandbox token is invalid."
+msgstr "Le jeton sandbox n’est pas valide."
+
+#: front/lib/client/api_errors/display.ts
+msgid "You need to sign in as a user to do this."
+msgstr "Vous devez vous connecter en tant qu’utilisateur pour faire cela."
+
+#: front/lib/client/api_errors/display.ts
+msgid "Something went wrong on our side."
+msgstr "Une erreur s’est produite de notre côté."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The request is invalid."
+msgstr "La requête n’est pas valide."
+
+#: front/lib/client/api_errors/display.ts
+msgid "Your data is incomplete."
+msgstr "Vos données sont incomplètes."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The request could not be processed."
+msgstr "La requête n’a pas pu être traitée."
+
+#: front/lib/client/api_errors/display.ts
+msgid "This action is not supported."
+msgstr "Cette action n’est pas prise en charge."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The content is too large."
+msgstr "Le contenu est trop volumineux."
+
+#: front/lib/client/api_errors/display.ts
+msgid "Too many requests. Wait a moment and try again."
+msgstr "Trop de requêtes. Patientez un instant et réessayez."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The service is temporarily unavailable. Try again later."
+msgstr "Le service est temporairement indisponible. Réessayez plus tard."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The pagination parameters are invalid."
+msgstr "Les paramètres de pagination ne sont pas valides."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The user was not found."
+msgstr "L’utilisateur est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The workspace was not found."
+msgstr "L’espace de travail est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "This workspace is hosted in another region."
+msgstr "Cet espace de travail est hébergé dans une autre région."
+
+#: front/lib/client/api_errors/display.ts
+msgid "You don't have permission to do this in this workspace."
+msgstr "Vous n’avez pas l’autorisation de faire cela dans cet espace de travail."
+
+#: front/lib/client/api_errors/display.ts
+msgid "Your workspace doesn't have access to this product."
+msgstr "Votre espace de travail n’a pas accès à ce produit."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The user is not a member of this workspace."
+msgstr "L’utilisateur n’est pas membre de cet espace de travail."
+
+#: front/lib/client/api_errors/display.ts
+msgid "Your personal workspace was not found."
+msgstr "Votre espace de travail personnel est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The membership was not found."
+msgstr "L’adhésion est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "Your access to this workspace has been revoked."
+msgstr "Votre accès à cet espace de travail a été révoqué."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The invitation was not found."
+msgstr "L’invitation est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "An invitation was already sent recently. Wait before sending another one."
+msgstr "Une invitation a déjà été envoyée récemment. Patientez avant d’en envoyer une autre."
+
+#: front/lib/client/api_errors/display.ts
+msgid "Your workspace has reached its maximum number of members."
+msgstr "Votre espace de travail a atteint son nombre maximal de membres."
+
+#: front/lib/client/api_errors/display.ts
+msgid "No seat is available for this user."
+msgstr "Aucun siège n’est disponible pour cet utilisateur."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The group was not found."
+msgstr "Le groupe est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "You've reached a limit of your plan."
+msgstr "Vous avez atteint une limite de votre forfait."
+
+#: front/lib/client/api_errors/display.ts
+msgid "You've reached the message limit of your plan."
+msgstr "Vous avez atteint la limite de messages de votre forfait."
+
+#: front/lib/client/api_errors/display.ts
+msgid "Your workspace has run out of credits."
+msgstr "Votre espace de travail n’a plus de crédits."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The selected product is invalid."
+msgstr "Le produit sélectionné n’est pas valide."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The subscription payment failed."
+msgstr "Le paiement de l’abonnement a échoué."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The subscription was not found."
+msgstr "L’abonnement est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The subscription is not in a valid state for this action."
+msgstr "L’état de l’abonnement ne permet pas cette action."
+
+#: front/lib/client/api_errors/display.ts
+msgid "This is not available during the trial."
+msgstr "Cette fonctionnalité n’est pas disponible pendant l’essai."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The coupon was not found."
+msgstr "Le coupon est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The coupon can't be redeemed."
+msgstr "Le coupon ne peut pas être utilisé."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The coupon has already been redeemed."
+msgstr "Le coupon a déjà été utilisé."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The data source returned an error."
+msgstr "La source de données a renvoyé une erreur."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The data source was not found."
+msgstr "La source de données est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The data source view was not found."
+msgstr "La vue de la source de données est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "You don't have permission to access this data source."
+msgstr "Vous n’avez pas l’autorisation d’accéder à cette source de données."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The data source has reached its storage limit."
+msgstr "La source de données a atteint sa limite de stockage."
+
+#: front/lib/client/api_errors/display.ts
+msgid "Your workspace has reached its storage limit."
+msgstr "Votre espace de travail a atteint sa limite de stockage."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The document was not found."
+msgstr "Le document est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "This data source is not managed by a connection."
+msgstr "Cette source de données n’est pas gérée par une connexion."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The table was not found."
+msgstr "La table est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The connection was not found."
+msgstr "La connexion est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The connection could not be updated."
+msgstr "Impossible de mettre à jour la connexion."
+
+#: front/lib/client/api_errors/display.ts
+msgid "You don't have permission to update this connection."
+msgstr "Vous n’avez pas l’autorisation de modifier cette connexion."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The authorization for this connection was not found."
+msgstr "L’autorisation de cette connexion est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The authorized account doesn't match the one used by this connection."
+msgstr "Le compte autorisé ne correspond pas à celui utilisé par cette connexion."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The authorized account is missing the required permissions."
+msgstr "Le compte autorisé n’a pas les autorisations requises."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The authorized account must be an admin."
+msgstr "Le compte autorisé doit être administrateur."
+
+#: front/lib/client/api_errors/display.ts
+msgid "This connection provider is not supported."
+msgstr "Ce fournisseur de connexion n’est pas pris en charge."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The connection credentials are invalid."
+msgstr "Les identifiants de la connexion ne sont pas valides."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The connection credentials were not found."
+msgstr "Les identifiants de la connexion sont introuvables."
+
+#: front/lib/client/api_errors/display.ts
+msgid "An operation is already in progress on this connection. Try again later."
+msgstr "Une opération est déjà en cours sur cette connexion. Réessayez plus tard."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The file was not found."
+msgstr "Le fichier est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The file is too large."
+msgstr "Le fichier est trop volumineux."
+
+#: front/lib/client/api_errors/display.ts
+msgid "This file type is not supported."
+msgstr "Ce type de fichier n’est pas pris en charge."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The file is empty."
+msgstr "Le fichier est vide."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The run failed."
+msgstr "L’exécution a échoué."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The run was not found."
+msgstr "L’exécution est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The app was not found."
+msgstr "L’application est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "You don't have permission to access this app."
+msgstr "Vous n’avez pas l’autorisation d’accéder à cette application."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The provider rejected the credentials."
+msgstr "Le fournisseur a refusé les identifiants."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The provider was not found."
+msgstr "Le fournisseur est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The dataset was not found."
+msgstr "Le jeu de données est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The secret was not found."
+msgstr "Le secret est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The agent was not found."
+msgstr "L’agent est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "You don't have access to this agent."
+msgstr "Vous n’avez pas accès à cet agent."
+
+#: front/lib/client/api_errors/display.ts
+msgid "You don't have permission to edit this agent."
+msgstr "Vous n’avez pas l’autorisation de modifier cet agent."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The agent encountered an error."
+msgstr "L’agent a rencontré une erreur."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The agent memory was not found."
+msgstr "La mémoire de l’agent est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The suggestion was not found."
+msgstr "La suggestion est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The suggestions were not found."
+msgstr "Les suggestions sont introuvables."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The agent could not be saved."
+msgstr "Impossible d’enregistrer l’agent."
+
+#: front/lib/client/api_errors/display.ts
+msgid "This default agent can't be changed this way."
+msgstr "Cet agent par défaut ne peut pas être modifié de cette façon."
+
+#: front/lib/client/api_errors/display.ts
+msgid "This model is disabled."
+msgstr "Ce modèle est désactivé."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The template was not found."
+msgstr "Le modèle est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The message was not found."
+msgstr "Le message est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The conversation was not found."
+msgstr "La conversation est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "You don't have access to this conversation."
+msgstr "Vous n’avez pas accès à cette conversation."
+
+#: front/lib/client/api_errors/display.ts
+msgid "An agent is still running in this conversation."
+msgstr "Un agent est encore en cours d’exécution dans cette conversation."
+
+#: front/lib/client/api_errors/display.ts
+msgid "This conversation uses an agent that is no longer available."
+msgstr "Cette conversation utilise un agent qui n’est plus disponible."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The conversation context usage was not found."
+msgstr "L’utilisation du contexte de la conversation est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The user is already a participant in this conversation."
+msgstr "L’utilisateur participe déjà à cette conversation."
+
+#: front/lib/client/api_errors/display.ts
+msgid "You don't have permission to delete this message."
+msgstr "Vous n’avez pas l’autorisation de supprimer ce message."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The action failed for an unknown reason."
+msgstr "L’action a échoué pour une raison inconnue."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The action failed."
+msgstr "L’action a échoué."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The action returned an unexpected response."
+msgstr "L’action a renvoyé une réponse inattendue."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The action was not found."
+msgstr "L’action est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "This action is not waiting for approval."
+msgstr "Cette action n’attend pas d’approbation."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The tool requires authentication."
+msgstr "L’outil nécessite une authentification."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The tool ID is invalid."
+msgstr "L’identifiant de l’outil n’est pas valide."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The tool was not found."
+msgstr "L’outil est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The tool connection was not found."
+msgstr "La connexion de l’outil est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The tool is not available in this space."
+msgstr "L’outil n’est pas disponible dans cet espace."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The plugin was not found."
+msgstr "Le plugin est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The plugin failed to run."
+msgstr "Le plugin n’a pas pu s’exécuter."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The recommendation was not found."
+msgstr "La recommandation est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The skill was not found."
+msgstr "La compétence est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The GitHub repository was not found."
+msgstr "Le dépôt GitHub est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The sandbox function was not found."
+msgstr "La fonction sandbox est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The sandbox function call was not found."
+msgstr "L’appel de fonction sandbox est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The frame runtime is unavailable."
+msgstr "L’environnement d’exécution des Frames est indisponible."
+
+#: front/lib/client/api_errors/display.ts
+msgid "This function can't call tools."
+msgstr "Cette fonction ne peut pas appeler d’outils."
+
+#: front/lib/client/api_errors/display.ts
+msgid "A space with this name already exists."
+msgstr "Un espace portant ce nom existe déjà."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The space was not found."
+msgstr "L’espace est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The task was not found."
+msgstr "La tâche est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The project details were not found."
+msgstr "Les détails du projet sont introuvables."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The work area was not found."
+msgstr "La zone de travail est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The trigger was not found."
+msgstr "Le déclencheur est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The webhook source was not found."
+msgstr "La source de webhook est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "You don't have permission to access this webhook source in this space."
+msgstr "Vous n’avez pas l’autorisation d’accéder à cette source de webhook dans cet espace."
+
+#: front/lib/client/api_errors/display.ts
+msgid "You don't have permission to access this webhook source."
+msgstr "Vous n’avez pas l’autorisation d’accéder à cette source de webhook."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The webhook source is not available in this space."
+msgstr "La source de webhook n’est pas disponible dans cet espace."
+
+#: front/lib/client/api_errors/display.ts
+msgid "This webhook source is still used by an agent trigger."
+msgstr "Cette source de webhook est encore utilisée par un déclencheur d’agent."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The webhook source is misconfigured."
+msgstr "La source de webhook est mal configurée."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The webhook could not be processed."
+msgstr "Impossible de traiter le webhook."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The webhook could not be stored."
+msgstr "Impossible d’enregistrer le webhook."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The wake-up was not found."
+msgstr "Le réveil est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The API key was not found."
+msgstr "La clé d’API est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The API key doesn't have the required scope."
+msgstr "La clé d’API n’a pas la portée requise."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The meeting transcripts configuration was not found."
+msgstr "La configuration des transcriptions de réunion est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "This meeting transcripts configuration can't be the default."
+msgstr "Cette configuration des transcriptions de réunion ne peut pas être celle par défaut."
+
+#: front/lib/client/api_errors/display.ts
+msgid "A meeting transcripts configuration already exists."
+msgstr "Une configuration des transcriptions de réunion existe déjà."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The feature flag was not found."
+msgstr "Le feature flag est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The feature flag already exists."
+msgstr "Le feature flag existe déjà."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The identity provider organization was not found."
+msgstr "L’organisation du fournisseur d’identité est introuvable."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The identity provider returned an error."
+msgstr "Le fournisseur d’identité a renvoyé une erreur."
+
+#: front/lib/client/api_errors/display.ts
+msgid "Multiple SSO connections are not supported."
+msgstr "Les connexions SSO multiples ne sont pas prises en charge."
+
+#: front/lib/client/api_errors/display.ts
+msgid "Multiple directories are not supported."
+msgstr "Les annuaires multiples ne sont pas pris en charge."
+
+#: front/lib/client/api_errors/display.ts
+msgid "Search is temporarily unavailable."
+msgstr "La recherche est temporairement indisponible."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The server returned an unexpected error."
+msgstr "Le serveur a renvoyé une erreur inattendue."
+
+#: front/lib/client/api_errors/display.ts
+msgid "The server returned an unexpected response."
+msgstr "Le serveur a renvoyé une réponse inattendue."
+
+#: front/lib/client/api_errors/display.ts
+msgid "A network error occurred. Check your connection and try again."
+msgstr "Une erreur réseau s’est produite. Vérifiez votre connexion et réessayez."
 
 #: front/lib/notifications/email-templates/_layout.tsx
 msgid "An email from Dust about {workspaceName}"
