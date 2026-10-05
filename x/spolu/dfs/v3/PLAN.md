@@ -32,13 +32,22 @@ Keep v1/v2 unchanged. Commit and push each verified milestone.
 - [ ] Local deep-subtree untar and filesystem benchmark with cold/warm results and drain.
 - [ ] Record commands, configuration, corpus, measurements, and remaining limitations.
 
+## 5. Revision-validated block reuse
+
+- [ ] Finish baseline deep untar + full benchmark at `D = 1000 ms` and `D = 8000 ms`.
+- [ ] Retain blocks across snapshot expiry within the existing RAM budget; require a validated
+      matching object revision and current authorization before serving them.
+- [ ] Test reuse, changed revisions, truncate/extend, permission refresh, and eviction.
+- [ ] Commit/push the verified optimization, then rerun untar + the full benchmark at both bounds.
+- [ ] Keep all four untar timings and complete tables in `bench/RESULTS.md`, including drain times.
+
 ## Local follow-up
 
-- [ ] Retain blocks/grant facts across refresh after validating their object revisions.
+- [ ] Retain grant facts across refresh after validating their object revisions.
 - [ ] Reusable authority proofs and independently refreshed object bases; same freshness budget.
 - [ ] Semantic rebase after a changed target precondition; currently reject the tentative branch.
 - [ ] Broader fault/race coverage: late commits, slow fills, FDB outage, remote open-directory moves.
-- [ ] 100,000-file corpus and `D = 8000 ms` comparison.
+- [ ] 100,000-file corpus comparison.
 
 ## Later
 

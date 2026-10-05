@@ -112,7 +112,9 @@ struct Base {
 }
 impl Base {
     fn valid(&self) -> bool {
-        Instant::now() < self.expires && !self.invalid.load(Ordering::Acquire)
+        Instant::now() < self.expires
+            && !self.invalid.load(Ordering::Acquire)
+            && !self.raw.expired()
     }
     fn invalidate(&self, batch: &WriteBatch) {
         let mut ranges = self.invalidated.lock();
@@ -724,6 +726,20 @@ impl Cache {
                 self.reject_locked(&mut inner, &e, status(ErrorCode::Unavailable));
             }
         }
+    }
+    #[cfg(test)]
+    pub(crate) async fn expire_read_transaction(&self) -> Result<Arc<storage::Snapshot>> {
+        let raw = self
+            .base
+            .lock()
+            .await
+            .as_ref()
+            .ok_or_else(|| status(ErrorCode::Internal))?
+            .raw
+            .clone();
+        raw.expire_for_test()?;
+        tokio::time::sleep(Duration::from_millis(5)).await;
+        Ok(raw)
     }
     #[cfg(test)]
     pub(crate) fn commits(&self) -> u64 {

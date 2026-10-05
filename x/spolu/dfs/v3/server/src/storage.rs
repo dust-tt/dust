@@ -10,7 +10,10 @@ use serde::{Serialize, de::DeserializeOwned};
 use std::{
     collections::BTreeMap,
     future::Future,
-    sync::Arc,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
     time::{Duration, Instant},
 };
 use tonic::Status;
@@ -93,6 +96,7 @@ impl Storage {
             prefix: self.prefix.clone(),
             version,
             started,
+            expired: AtomicBool::new(false),
         }))
     }
     /// The closure has no side effects. Only definitely uncommitted attempts may be repeated.
@@ -123,8 +127,32 @@ pub struct Snapshot {
     prefix: Arc<[u8]>,
     pub(crate) version: i64,
     pub(crate) started: Instant,
+    expired: AtomicBool,
 }
 impl Snapshot {
+    pub(crate) fn expired(&self) -> bool {
+        self.expired.load(Ordering::Acquire)
+    }
+    /// @cc [owner:spolu,label:concurrency] expired-reads-refresh
+    /// FDB rejecting a read snapshot as too old or timed out MUST invalidate the cached snapshot
+    /// and request a fresh pre-acceptance view. This MUST NOT classify uncertain commits as safe
+    /// to replay; commit failures use their separate outcome handling.
+    fn failed(&self, error: FdbError) -> Status {
+        if matches!(error.code(), 1007 | 1031) {
+            self.expired.store(true, Ordering::Release);
+            tracing::debug!(code = error.code(), "FDB read snapshot expired");
+            Status::aborted("FDB read snapshot expired.")
+        } else {
+            failed(error)
+        }
+    }
+    #[cfg(test)]
+    pub(crate) fn expire_for_test(&self) -> Result<(), Status> {
+        self.transaction
+            .set_option(TransactionOption::Timeout(1))
+            .map_err(failed)
+    }
+
     fn key(&self, suffix: &[u8]) -> Vec<u8> {
         [self.prefix.as_ref(), suffix].concat()
     }
@@ -133,7 +161,7 @@ impl Snapshot {
             .get(&self.key(key.as_ref()), false)
             .await
             .map(|v| v.map(|v| Bytes::copy_from_slice(&v)))
-            .map_err(failed)
+            .map_err(|e| self.failed(e))
     }
     pub(crate) async fn range(
         &self,
@@ -148,7 +176,7 @@ impl Snapshot {
             .transaction
             .get_range(&options, 1, false)
             .await
-            .map_err(failed)?;
+            .map_err(|e| self.failed(e))?;
         let more = rows.more();
         Ok((
             rows.iter()

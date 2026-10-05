@@ -174,6 +174,9 @@ fn local_filesystem_contracts() -> Result<()> {
         lost_commit_reply_is_not_replayed()
             .await
             .context("ambiguous publication")?;
+        expired_fdb_read_refreshes_before_cache_ttl()
+            .await
+            .context("early FDB expiry")?;
         capacity_and_cold_recovery()
             .await
             .context("capacity/restart")?;
@@ -704,5 +707,39 @@ async fn remote_namespace_and_grants_expire() -> Result<()> {
         .entries
         .is_empty()
     );
+    f.clean().await
+}
+
+async fn expired_fdb_read_refreshes_before_cache_ttl() -> Result<()> {
+    let f = Fixture::configured(cache::CacheConfig {
+        max_eventual_consistency_delay_ms: 8000,
+        ..Default::default()
+    })
+    .await?;
+    let warm = f.create(&f.tenant.root_id, "warm", false).await?;
+    let cold = f.create(&f.tenant.root_id, "cold", false).await?;
+    f.api.0.cache.drain().await?;
+    f.api.0.cache.invalidate_base().await;
+    f.sync(&warm.id).await?;
+    let old = f.api.0.cache.expire_read_transaction().await?;
+    assert!(
+        !old.expired(),
+        "The native error has not been observed yet."
+    );
+    let object = f
+        .api
+        .stat(request(
+            &f.owner.session_key,
+            ObjectRequest {
+                object_id: cold.id.clone(),
+            },
+        )?)
+        .await?
+        .into_inner();
+    assert!(
+        old.expired(),
+        "The cold read must encounter native FDB expiry."
+    );
+    assert_eq!(object.id, cold.id);
     f.clean().await
 }
