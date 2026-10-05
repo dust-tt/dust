@@ -9,6 +9,7 @@ import type {
   UpsertFolderResponseType,
 } from "@dust-tt/client";
 import { UpsertDataSourceFolderRequestSchema } from "@dust-tt/client";
+import { parseSourceUrlParam } from "@front-api/lib/api/source_url";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import { ensureIsSystemKey } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -133,6 +134,13 @@ app.post(
       source_url,
       provider_visibility,
     } = ctx.req.valid("json");
+
+    const sourceUrlRes = parseSourceUrlParam(source_url);
+    if (sourceUrlRes.isErr()) {
+      return apiError(ctx, sourceUrlRes.error);
+    }
+    const sourceUrl = sourceUrlRes.value;
+
     if (parentId && parents && parents[1] !== parentId) {
       return apiError(ctx, {
         status_code: 400,
@@ -191,7 +199,7 @@ app.post(
 
       title: title.trim() || "Untitled Folder",
       mimeType: mime_type,
-      sourceUrl: source_url ?? null,
+      sourceUrl,
       providerVisibility: provider_visibility,
     });
 

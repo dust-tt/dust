@@ -584,6 +584,9 @@ export async function firecrawlCrawlPage(
     // current folder, its parents start at index+1 (including itself as first parent) and end at
     // the root.
     const parents = parentFolderIds.slice(index + 1);
+    // /!\ Front rejects folder upserts whose source_url is not a valid http(s) URL, and a 400
+    // here fails the whole crawl activity. Keep this in sync with `parseSourceUrlParam`.
+    const validatedFolderUrl = validateUrl(webCrawlerFolder.url);
     await upsertDataSourceFolder({
       dataSourceConfig,
       folderId: webCrawlerFolder.internalId,
@@ -592,7 +595,9 @@ export async function firecrawlCrawlPage(
       parentId: parents[1] || null,
       title: getDisplayNameForFolder(webCrawlerFolder),
       mimeType: INTERNAL_MIME_TYPES.WEBCRAWLER.FOLDER,
-      sourceUrl: webCrawlerFolder.url,
+      sourceUrl: validatedFolderUrl.valid
+        ? validatedFolderUrl.standardized
+        : undefined,
     });
   }
   const documentId = stableIdForUrl({

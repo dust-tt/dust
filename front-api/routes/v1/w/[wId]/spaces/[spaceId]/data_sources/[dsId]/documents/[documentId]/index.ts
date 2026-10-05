@@ -21,13 +21,13 @@ import { sectionFullText } from "@app/types/core/data_source";
 import type { LLMCredentialsType } from "@app/types/provider_credential";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { safeSubstring } from "@app/types/shared/utils/string_utils";
-import { validateUrl } from "@app/types/shared/utils/url_utils";
 import type {
   DeleteDocumentResponseType,
   GetDocumentResponseType,
   UpsertDocumentResponseType,
 } from "@dust-tt/client";
 import { PostDataSourceDocumentRequestSchema } from "@dust-tt/client";
+import { parseSourceUrlParam } from "@front-api/lib/api/source_url";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -428,23 +428,11 @@ app.post(
 
     const body = ctx.req.valid("json");
 
-    let sourceUrl: string | null = null;
-    if (body.source_url) {
-      const { valid: isSourceUrlValid, standardized: standardizedSourceUrl } =
-        validateUrl(body.source_url);
-
-      if (!isSourceUrlValid) {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "Invalid request body, `source_url` if provided must be a valid URL.",
-          },
-        });
-      }
-      sourceUrl = standardizedSourceUrl;
+    const sourceUrlRes = parseSourceUrlParam(body.source_url);
+    if (sourceUrlRes.isErr()) {
+      return apiError(ctx, sourceUrlRes.error);
     }
+    const sourceUrl = sourceUrlRes.value;
 
     const section =
       typeof body.text === "string"
