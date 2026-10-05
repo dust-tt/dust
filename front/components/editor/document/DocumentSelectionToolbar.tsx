@@ -43,7 +43,10 @@ export const DocumentSelectionToolbar = ({
         !state.selection.empty &&
         state.doc.textBetween(from, to).length > 0 &&
         (editor.isFocused ||
-          !!document.activeElement?.closest("[data-document-selection]"))
+          // The editor's own document: TipTap fires this from a timer that can outlive the page.
+          !!editor.view.dom.ownerDocument.activeElement?.closest(
+            "[data-document-selection]"
+          ))
       }
     >
       <div
