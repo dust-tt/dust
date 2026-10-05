@@ -1,6 +1,6 @@
 import { BillingPeriodSwitch } from "@app/components/pages/onboarding/SubscriptionPlans";
 import {
-  formatPriceCents,
+  formatSeatAmountCents,
   getAvailableFrequencies,
   groupSeatTypesByFrequency,
   includedSeatsOpen,
@@ -10,9 +10,11 @@ import {
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import type {
+  SeatBillingFrequency,
   SeatPlanResponseBody,
   SeatTypeInfo,
 } from "@app/lib/api/credits/seat_plan";
+import type { SupportedCurrency } from "@app/types/currency";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { isMembershipSeatType, toBaseSeatType } from "@app/types/memberships";
 import { pluralize } from "@app/types/shared/utils/string_utils";
@@ -52,6 +54,21 @@ function useUnavailableSeatChangeSave() {
       description: "Changing a member's seat from Poke isn't supported yet.",
       type: "info",
     });
+}
+
+const BILLING_FREQUENCY_SUFFIX: Record<SeatBillingFrequency, string> = {
+  weekly: "/wk",
+  monthly: "/mo",
+  quarterly: "/qtr",
+  annual: "/yr",
+};
+
+function formatPriceCents(
+  cents: number,
+  currency: SupportedCurrency,
+  billingFrequency: SeatBillingFrequency
+): string {
+  return `${formatSeatAmountCents(cents, currency)}${BILLING_FREQUENCY_SUFFIX[billingFrequency]}`;
 }
 
 // Mirrors ChangeSeatModal's getBadge: a "Current" chip for the member's own

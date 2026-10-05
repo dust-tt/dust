@@ -1,5 +1,4 @@
 import { getGovernancePermissionMetadata } from "@app/components/pages/workspace/governance/capabilityMetadata";
-import { DIRECTORY_SYNC_LABEL } from "@app/components/workspace/DirectorySync";
 import type { AdminSettingEntry } from "@app/lib/admin/adminSearchTypes";
 import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
@@ -65,12 +64,7 @@ export const PEOPLE_SEARCH_ENTRIES: AdminSettingEntry[] = [
   ...adminSearchEntries(
     PAGE,
     I.provisioning,
-    [
-      [
-        DIRECTORY_SYNC_LABEL,
-        "gsuite google workspace scim workos provisioning",
-      ],
-    ],
+    [["Directory sync", "gsuite google workspace scim workos provisioning"]],
     "groups"
   ),
   ...adminSearchEntries(

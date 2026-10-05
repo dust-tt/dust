@@ -4,10 +4,8 @@ import {
   useUpdateProgrammaticUsageLimit,
 } from "@app/lib/swr/usage_settings";
 import { InputWithSave, Page, SettingsList } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
-
-export const PROGRAMMATIC_USAGE_SECTION_LABEL = "Programmatic usage";
-export const PROGRAMMATIC_MONTHLY_LIMIT_LABEL = "Programmatic monthly limit";
 
 interface UsageProgrammaticLimitCardProps {
   workspaceId: string;
@@ -16,6 +14,7 @@ interface UsageProgrammaticLimitCardProps {
 export function UsageProgrammaticLimitCard({
   workspaceId,
 }: UsageProgrammaticLimitCardProps) {
+  const { t } = useLingui();
   const { programmaticUsageLimit, isProgrammaticUsageLimitLoading } =
     useProgrammaticUsageLimit({ workspaceId });
   const { doUpdateProgrammaticUsageLimit } = useUpdateProgrammaticUsageLimit({
@@ -51,26 +50,26 @@ export function UsageProgrammaticLimitCard({
     <Page.Vertical gap="sm" align="stretch">
       <div className="flex flex-col gap-0.5">
         <span className="heading-base text-foreground">
-          {PROGRAMMATIC_USAGE_SECTION_LABEL}
+          <Trans>Programmatic usage</Trans>
         </span>
       </div>
       <SettingsList>
         <SettingsList.Row
-          title={PROGRAMMATIC_MONTHLY_LIMIT_LABEL}
+          title={t`Programmatic monthly limit`}
           description={
-            <>
+            <Trans>
               Maximum credits allowed for programmatic usage per month.{" "}
-              <strong> Set to 0 to block all programmatic access. </strong>
-            </>
+              <strong>Set to 0 to block all programmatic access.</strong>
+            </Trans>
           }
           action={
             <div className="w-52">
               <InputWithSave
                 inputMode="numeric"
                 pattern="[0-9]*"
-                placeholder="No access"
+                placeholder={t`No access`}
                 value={currentLimit === 0 ? "" : formatNumber(currentLimit)}
-                unit={currentLimit === 0 && !isEditing ? undefined : "credits"}
+                unit={currentLimit === 0 && !isEditing ? undefined : t`credits`}
                 normalizeValue={(value) => value.replace(/[^\d]/g, "")}
                 formatValue={(value) =>
                   value ? formatNumber(Number(value)) : value

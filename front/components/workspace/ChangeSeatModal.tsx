@@ -35,7 +35,6 @@ import {
 } from "@app/types/memberships";
 import { isSubscriptionCancellationScheduled } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
   AlertCircle,
@@ -50,6 +49,7 @@ import {
   DialogTitle,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useRef, useState } from "react";
 
 function toCheckoutParams(
@@ -105,6 +105,7 @@ export function ChangeSeatModal({
   onSaved,
   seatManagedByGroup = false,
 }: ChangeSeatModalProps) {
+  const { t } = useLingui();
   const { subscription } = useAuth();
   const router = useAppRouter();
   const useCheckoutPath = isFreePlan(subscription.plan.code);
@@ -285,24 +286,36 @@ export function ChangeSeatModal({
     info: SeatTypeInfo
   ): React.ReactNode {
     if (seatType === currentSeatType) {
-      return <Chip size="xs" color="highlight" label="Current" />;
+      return <Chip size="xs" color="highlight" label={t`Current`} />;
     }
     if (isSeatAtCap(seatType, info)) {
+      const assignedCount = formatNumber(info.assignedCount);
+      const maxSeats =
+        info.maxSeats !== null ? formatNumber(info.maxSeats) : "";
       return (
         <span className="text-xs text-warning-600">
-          Seat limit reached ({formatNumber(info.assignedCount)}/
-          {info.maxSeats !== null && formatNumber(info.maxSeats)})
+          <Trans>
+            Seat limit reached ({assignedCount}/{maxSeats})
+          </Trans>
         </span>
       );
     }
+    const monthlyPrice = formatPriceCents(
+      info.priceCents / 12,
+      info.currency,
+      "monthly",
+      t
+    );
     const price =
       info.billingFrequency === "annual" ? (
-        <>
-          {formatPriceCents(info.priceCents / 12, info.currency, "monthly")} ·
-          billed annually
-        </>
+        <Trans>{monthlyPrice} · billed annually</Trans>
       ) : (
-        formatPriceCents(info.priceCents, info.currency, info.billingFrequency)
+        formatPriceCents(
+          info.priceCents,
+          info.currency,
+          info.billingFrequency,
+          t
+        )
       );
     // Workspace seats draw from the shared credit pool rather than the
     // plan's per-seat committed count, so the included-seats framing below
@@ -310,17 +323,29 @@ export function ChangeSeatModal({
     if (toBaseSeatType(seatType) === "workspace") {
       return (
         <span className="text-xs text-foreground">
-          {price} · User can spend credits from the workspace pool.
+          <Trans>
+            {price} · User can spend credits from the workspace pool.
+          </Trans>
         </span>
       );
     }
     const openCount = includedSeatsOpen(info);
     return (
       <span className="text-xs text-foreground">
-        {price} ·{" "}
-        {openCount > 0
-          ? `${openCount} included seat${pluralize(openCount)} open`
-          : "No included seats left — this will add a new billed seat"}
+        {openCount > 0 ? (
+          <Trans>
+            {price} ·{" "}
+            <Plural
+              value={openCount}
+              one="# included seat open"
+              other="# included seats open"
+            />
+          </Trans>
+        ) : (
+          <Trans>
+            {price} · No included seats left — this will add a new billed seat
+          </Trans>
+        )}
       </span>
     );
   }
@@ -399,6 +424,8 @@ export function ChangeSeatModal({
     selectedSeat !== currentSeatType &&
     (selectedAwuCredits < currentAwuCredits || isMonthlyToYearlySwitch);
 
+  const scheduledSeatType = displayedMember?.scheduledSeatType;
+
   const displayedFirstName =
     displayedMember?.name?.trim().split(/\s+/)[0] ?? null;
 
@@ -433,11 +460,11 @@ export function ChangeSeatModal({
             <div className="flex flex-col gap-1">
               <DialogTitle>
                 {displayedFirstName
-                  ? `Change seat for ${displayedFirstName}`
-                  : "Change seat"}
+                  ? t`Change seat for ${displayedFirstName}`
+                  : t`Change seat`}
               </DialogTitle>
               <p className="text-sm text-muted-foreground">
-                Choose a new plan to continue
+                <Trans>Choose a new plan to continue</Trans>
               </p>
             </div>
           </div>
@@ -449,23 +476,29 @@ export function ChangeSeatModal({
             </div>
           ) : isSeatPlanError || seatTypes.length === 0 ? (
             <ContentMessage
-              title="No seat plans available"
+              title={t`No seat plans available`}
               icon={AlertCircle}
               variant="warning"
             >
-              <p>We couldn&apos;t load the seat plans for this workspace.</p>
+              <p>
+                <Trans>
+                  We couldn&apos;t load the seat plans for this workspace.
+                </Trans>
+              </p>
             </ContentMessage>
           ) : (
             <div className="flex flex-col gap-3">
               {seatManagedByGroup && (
                 <ContentMessage
-                  title="Seat managed by group"
+                  title={t`Seat managed by group`}
                   icon={AlertCircle}
                   variant="info"
                 >
                   <p>
-                    This member&apos;s seat is set by their group membership.
-                    Change it from the group-seat mapping in Usage settings.
+                    <Trans>
+                      This member&apos;s seat is set by their group membership.
+                      Change it from the group-seat mapping in Usage settings.
+                    </Trans>
                   </p>
                 </ContentMessage>
               )}
@@ -507,23 +540,27 @@ export function ChangeSeatModal({
 
               {isSubscriptionCancelled ? (
                 <p className="mt-1 text-xs text-warning-600">
-                  Your subscription is scheduled to end and seats can&apos;t be
-                  changed until it&apos;s reactivated.
+                  <Trans>
+                    Your subscription is scheduled to end and seats can&apos;t
+                    be changed until it&apos;s reactivated.
+                  </Trans>
                 </p>
               ) : (
                 isDeferredChange && (
                   <p className="mt-1 text-xs text-info-600">
-                    The change will take effect at the next credit refresh.
+                    <Trans>
+                      The change will take effect at the next credit refresh.
+                    </Trans>
                   </p>
                 )
               )}
               {isCancellingScheduledChange && (
                 <p className="mt-1 text-xs text-info-600">
-                  Scheduled change to{" "}
-                  <span className="capitalize">
-                    {displayedMember?.scheduledSeatType}
-                  </span>{" "}
-                  will be cancelled.
+                  <Trans>
+                    Scheduled change to{" "}
+                    <span className="capitalize">{scheduledSeatType}</span> will
+                    be cancelled.
+                  </Trans>
                 </p>
               )}
               {!isSubscriptionCancelled &&
@@ -531,7 +568,7 @@ export function ChangeSeatModal({
                 selectedSeat !== currentSeatType &&
                 (isInvoicePreviewLoading ? (
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Estimating invoice impact…
+                    <Trans>Estimating invoice impact…</Trans>
                   </p>
                 ) : (
                   invoicePreview && (
@@ -552,12 +589,12 @@ export function ChangeSeatModal({
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             onClick: onClose,
           }}
           rightButtonProps={{
-            label: useCheckoutPath ? "Continue to checkout" : "Validate",
+            label: useCheckoutPath ? t`Continue to checkout` : t`Validate`,
             variant: "primary",
             disabled:
               isSeatPlanLoading ||

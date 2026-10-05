@@ -2,12 +2,12 @@ import {
   MAX_INACTIVITY_THRESHOLD_DAYS,
   MIN_INACTIVITY_THRESHOLD_DAYS,
 } from "@app/lib/api/assistant/inactivity/policy";
+import { formatDate } from "@app/lib/i18n/format";
 import {
   useArchiveInactiveAgents,
   usePreviewInactiveAgents,
 } from "@app/lib/swr/assistants";
 import type { PreviewInactiveAgentsResponseBody } from "@app/types/api/assistant/configuration";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -19,6 +19,8 @@ import {
   DialogTitle,
   Input,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 // What the picker starts from when the workspace has set no threshold of its own.
@@ -39,6 +41,7 @@ function ArchiveUnusedAgentsForm({
   initialThresholdDays,
   onArchived,
 }: Readonly<ArchiveUnusedAgentsFormProps>) {
+  const { t } = useLingui();
   const previewInactiveAgents = usePreviewInactiveAgents({ owner });
   const archiveInactiveAgents = useArchiveInactiveAgents({ owner });
 
@@ -61,6 +64,11 @@ function ArchiveUnusedAgentsForm({
   const activeScheduleCount =
     preview?.skippedCountByReason.active_schedule ?? 0;
 
+  const eligibleCount = preview?.eligibleCount ?? 0;
+  const cutoffDate = preview
+    ? formatDate(new Date(preview.cutoffAt), { dateStyle: "medium" })
+    : null;
+
   const onPreview = async () => {
     setIsPreviewing(true);
     setPreview(await previewInactiveAgents(parsedThresholdDays));
@@ -81,11 +89,13 @@ function ArchiveUnusedAgentsForm({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Archive unused agents</DialogTitle>
+        <DialogTitle>
+          <Trans>Archive unused agents</Trans>
+        </DialogTitle>
         <p className="text-sm text-muted-foreground">
           {step === "pick"
-            ? "Choose how long an agent has to go unmentioned to be archived."
-            : "Review what would be archived before archiving it."}
+            ? t`Choose how long an agent has to go unmentioned to be archived.`
+            : t`Review what would be archived before archiving it.`}
         </p>
       </DialogHeader>
       <DialogContainer>
@@ -94,7 +104,7 @@ function ArchiveUnusedAgentsForm({
             <div className="flex flex-row items-start gap-4">
               <Input
                 name="inactivity-threshold-days"
-                label="Unmentioned for"
+                label={t`Unmentioned for`}
                 value={thresholdDays}
                 onChange={(e) => setThresholdDays(e.target.value)}
                 type="text"
@@ -103,19 +113,21 @@ function ArchiveUnusedAgentsForm({
                 size="sm"
                 className="w-32"
                 containerClassName="w-auto shrink-0"
-                suffix="days"
+                suffix={t`days`}
                 disabled={isPreviewing}
                 message={
                   isThresholdValid
                     ? undefined
-                    : `Between ${MIN_INACTIVITY_THRESHOLD_DAYS} and ${MAX_INACTIVITY_THRESHOLD_DAYS}`
+                    : t`Between ${MIN_INACTIVITY_THRESHOLD_DAYS} and ${MAX_INACTIVITY_THRESHOLD_DAYS}`
                 }
                 messageStatus="error"
               />
             </div>
             <p className="text-sm text-muted-foreground">
-              Nothing is archived until you have seen the count. Agents with a
-              schedule are excluded.
+              <Trans>
+                Nothing is archived until you have seen the count. Agents with a
+                schedule are excluded.
+              </Trans>
             </p>
           </div>
         ) : (
@@ -123,25 +135,31 @@ function ArchiveUnusedAgentsForm({
             <div className="flex flex-col gap-3 text-sm text-foreground">
               <span className="font-semibold">
                 {preview.eligibleCount > 0
-                  ? `${preview.eligibleCount} agent${pluralize(preview.eligibleCount)} would be archived`
-                  : "No agent would be archived"}
+                  ? t`${plural(eligibleCount, {
+                      one: "# agent would be archived",
+                      other: "# agents would be archived",
+                    })}`
+                  : t`No agent would be archived`}
               </span>
               <span className="text-muted-foreground">
                 {preview.eligibleCount > 0
-                  ? `Nobody has mentioned them since ${new Date(preview.cutoffAt).toDateString()}.`
-                  : `No agent has gone unmentioned since ${new Date(preview.cutoffAt).toDateString()}.`}
+                  ? t`Nobody has mentioned them since ${cutoffDate}.`
+                  : t`No agent has gone unmentioned since ${cutoffDate}.`}
               </span>
               {activeScheduleCount > 0 && (
                 <span className="text-muted-foreground">
-                  {activeScheduleCount} agent{pluralize(activeScheduleCount)}{" "}
-                  with a schedule. Agents with a schedule are excluded from
-                  archival.
+                  {t`${plural(activeScheduleCount, {
+                    one: "# agent with a schedule.",
+                    other: "# agents with a schedule.",
+                  })} Agents with a schedule are excluded from archival.`}
                 </span>
               )}
               {preview.eligibleCount > 0 && (
                 <span className="text-muted-foreground">
-                  Archiving will cancel their pending runs and suspend their
-                  editors&apos; access. It can be undone one agent at a time.
+                  <Trans>
+                    Archiving will cancel their pending runs and suspend their
+                    editors&apos; access. It can be undone one agent at a time.
+                  </Trans>
                 </span>
               )}
             </div>
@@ -150,14 +168,14 @@ function ArchiveUnusedAgentsForm({
       </DialogContainer>
       <DialogFooter>
         <Button
-          label={step === "pick" ? "Cancel" : "Back"}
+          label={step === "pick" ? t`Cancel` : t`Back`}
           variant="outline"
           disabled={isArchiving}
           onClick={step === "pick" ? onClose : () => setPreview(null)}
         />
         {step === "pick" ? (
           <Button
-            label="Preview"
+            label={t`Preview`}
             variant="primary"
             disabled={!isThresholdValid || isPreviewing}
             isLoading={isPreviewing}
@@ -165,7 +183,7 @@ function ArchiveUnusedAgentsForm({
           />
         ) : (
           <Button
-            label="Archive them"
+            label={t`Archive them`}
             variant="warning"
             disabled={isArchiving || preview?.eligibleCount === 0}
             isLoading={isArchiving}

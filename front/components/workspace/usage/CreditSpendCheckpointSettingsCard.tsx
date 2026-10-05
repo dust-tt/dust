@@ -5,9 +5,7 @@ import {
   useUsageSettings,
 } from "@app/lib/swr/usage_settings";
 import { Page, SettingsList, SliderToggle } from "@dust-tt/sparkle";
-
-export const COST_MANAGEMENT_SECTION_LABEL = "Cost management";
-export const CREDIT_SPEND_CHECKPOINT_LABEL = "Credit spend checkpoint";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface CreditSpendCheckpointSettingsCardProps {
   workspaceId: string;
@@ -16,6 +14,7 @@ interface CreditSpendCheckpointSettingsCardProps {
 export function CreditSpendCheckpointSettingsCard({
   workspaceId,
 }: CreditSpendCheckpointSettingsCardProps) {
+  const { t } = useLingui();
   const { usageSettings, isUsageSettingsLoading } = useUsageSettings({
     workspaceId,
   });
@@ -28,15 +27,19 @@ export function CreditSpendCheckpointSettingsCard({
     });
   };
 
+  const thresholdCredits = formatNumber(
+    CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS
+  );
+
   return (
     <Page.Vertical gap="sm" align="stretch">
       <span className="heading-base text-foreground">
-        {COST_MANAGEMENT_SECTION_LABEL}
+        <Trans>Cost management</Trans>
       </span>
       <SettingsList>
         <SettingsList.Row
-          title={CREDIT_SPEND_CHECKPOINT_LABEL}
-          description={`Pause the agent and ask the user to confirm continuing once a single message's LLM token spend reaches ${formatNumber(CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS)} credits.`}
+          title={t`Credit spend checkpoint`}
+          description={t`Pause the agent and ask the user to confirm continuing once a single message's LLM token spend reaches ${thresholdCredits} credits.`}
           action={
             <SliderToggle
               selected={usageSettings.creditSpendCheckpointEnabled}

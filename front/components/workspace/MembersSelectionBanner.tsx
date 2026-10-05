@@ -1,6 +1,7 @@
 import { BulkSelectionBar } from "@app/components/shared/BulkSelectionBar";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { Button } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface MembersSelectionBannerProps {
   selectedCount: number;
@@ -26,6 +27,7 @@ export function MembersSelectionBanner({
   onBatchChangeSeat,
   disabled = false,
 }: MembersSelectionBannerProps) {
+  const { t } = useLingui();
   return (
     <BulkSelectionBar
       selectedCount={selectedCount}
@@ -45,7 +47,7 @@ export function MembersSelectionBanner({
         <Button
           size="sm"
           variant="primary"
-          label="Change seat"
+          label={t`Change seat`}
           onClick={onBatchChangeSeat}
           disabled={disabled}
         />
@@ -53,7 +55,7 @@ export function MembersSelectionBanner({
       <Button
         size="sm"
         variant="primary"
-        label="Edit spend limit"
+        label={t`Edit spend limit`}
         onClick={onBatchEditSpendLimit}
         disabled={disabled}
       />

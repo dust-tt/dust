@@ -11,7 +11,6 @@ import {
   useRemoveMemberFromGroup,
 } from "@app/lib/swr/groups";
 import type { GroupType } from "@app/types/groups";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -25,6 +24,7 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 
 // Only manually-managed groups can be assigned from Dust: provisioned group membership is owned
@@ -42,6 +42,7 @@ export function MemberGroupsSection({
   userId,
   disabled,
 }: MemberGroupsSectionProps) {
+  const { t } = useLingui();
   const { isManager } = useAuth();
   const provisionedGroupTooltip = useProvisionedGroupTooltip();
   const [groupSearch, setGroupSearch] = useState("");
@@ -118,7 +119,9 @@ export function MemberGroupsSection({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
-        <div className="heading-base text-foreground">Groups</div>
+        <div className="heading-base text-foreground">
+          <Trans>Groups</Trans>
+        </div>
         {editableGroupIds.size > 0 && (
           <DropdownMenu
             onOpenChange={(open) => {
@@ -132,33 +135,40 @@ export function MemberGroupsSection({
                 variant="outline"
                 size="xs"
                 icon={Plus}
-                label="Add to group"
+                label={t`Add to group`}
                 isSelect
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="min-w-[320px]" collisionPadding={8}>
               <DropdownMenuSearchbar
                 name="group-search"
-                placeholder="Search groups"
+                placeholder={t`Search groups`}
                 value={groupSearch}
                 onChange={setGroupSearch}
                 autoFocus
               />
-              {selectableGroups.map((group) => (
-                <DropdownMenuItem
-                  key={group.sId}
-                  label={group.name}
-                  endComponent={
-                    <span className="text-sm text-muted-foreground">
-                      {group.memberCount} member{pluralize(group.memberCount)}
-                    </span>
-                  }
-                  onClick={() => void onAdd(group)}
-                />
-              ))}
+              {selectableGroups.map((group) => {
+                const memberCount = group.memberCount;
+                return (
+                  <DropdownMenuItem
+                    key={group.sId}
+                    label={group.name}
+                    endComponent={
+                      <span className="text-sm text-muted-foreground">
+                        <Plural
+                          value={memberCount}
+                          one="# member"
+                          other="# members"
+                        />
+                      </span>
+                    }
+                    onClick={() => void onAdd(group)}
+                  />
+                );
+              })}
               {selectableGroups.length === 0 && (
                 <DropdownMenuItem
-                  label={groupSearch ? "No groups found" : "All groups added"}
+                  label={groupSearch ? t`No groups found` : t`All groups added`}
                   disabled
                 />
               )}
@@ -207,7 +217,7 @@ export function MemberGroupsSection({
           )}
           {displayedGroups.length === 0 && (
             <div className="text-sm text-muted-foreground">
-              This member is not part of any group.
+              <Trans>This member is not part of any group.</Trans>
             </div>
           )}
         </div>

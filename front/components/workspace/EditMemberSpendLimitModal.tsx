@@ -177,7 +177,7 @@ function MemberSpendLimitForm({
     }
 
     const personalResult = parseCreditsInput(personalLimitInput);
-    setValidationMessage(personalResult.ok ? null : personalResult.message);
+    setValidationMessage(personalResult.ok ? null : t(personalResult.message));
 
     const groupResults = memberGroupRows
       .filter((row) => !editableGroupIds || editableGroupIds.has(row.groupId))
@@ -189,7 +189,7 @@ function MemberSpendLimitForm({
       Object.fromEntries(
         groupResults.map(({ row, result }) => [
           row.groupId,
-          result.ok ? null : result.message,
+          result.ok ? null : t(result.message),
         ])
       )
     );

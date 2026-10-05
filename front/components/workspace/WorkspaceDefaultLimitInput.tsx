@@ -23,6 +23,7 @@ export function useWorkspaceDefaultLimitField({
   defaultUserSpendLimit: DefaultUserSpendLimitState;
   canEdit: boolean;
 }) {
+  const { t } = useLingui();
   const loadedAwuCredits =
     defaultUserSpendLimit.status === "ready"
       ? defaultUserSpendLimit.awuCredits
@@ -43,7 +44,7 @@ export function useWorkspaceDefaultLimitField({
     }
     const result = parseDefaultLimitInput(value);
     if (!result.ok) {
-      setValidationMessage(result.message);
+      setValidationMessage(t(result.message));
       return "invalid";
     }
     setValidationMessage(null);

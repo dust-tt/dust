@@ -13,8 +13,8 @@ import { SEAT_PRODUCT_YEARLY_SUFFIX } from "@app/lib/metronome/constants";
 import type { SupportedCurrency } from "@app/types/currency";
 import { CURRENCY_SYMBOLS } from "@app/types/currency";
 import type { MembershipSeatType } from "@app/types/memberships";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   AlertCircle,
   Card,
@@ -25,6 +25,9 @@ import {
   LayersThree01,
   LayersTwo01,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 
 // Per-seat-type display icon, matching the plan-selection pages
 // (SubscriptionPlans.tsx). The label / name comes from the API
@@ -99,27 +102,37 @@ export function getAvailableFrequencies(
   return SEAT_BILLING_FREQUENCIES.filter((f) => byFrequency[f].length > 0);
 }
 
-// Shared across price formatting and invoice-impact messaging so both stay
-// consistent when a new cadence is added.
-const BILLING_FREQUENCY_SUFFIX: Record<SeatBillingFrequency, string> = {
-  weekly: "/wk",
-  monthly: "/mo",
-  quarterly: "/qtr",
-  annual: "/yr",
-};
-
-export function formatPriceCents(
+export function formatSeatAmountCents(
   cents: number,
-  currency: SupportedCurrency,
-  billingFrequency: SeatBillingFrequency
+  currency: SupportedCurrency
 ): string {
   const symbol = CURRENCY_SYMBOLS[currency];
   const amount = (cents / 100).toFixed(2).replace(/\.00$/, "");
   // EUR is the only currency we render with a trailing symbol (e.g. "30€");
   // USD and GBP are prefix currencies ("$30", "£30").
-  return currency === "eur"
-    ? `${amount}${symbol}${BILLING_FREQUENCY_SUFFIX[billingFrequency]}`
-    : `${symbol}${amount}${BILLING_FREQUENCY_SUFFIX[billingFrequency]}`;
+  return currency === "eur" ? `${amount}${symbol}` : `${symbol}${amount}`;
+}
+
+export function formatPriceCents(
+  cents: number,
+  currency: SupportedCurrency,
+  billingFrequency: SeatBillingFrequency,
+  t: (descriptor: MessageDescriptor) => string
+): string {
+  const amount = formatSeatAmountCents(cents, currency);
+  switch (billingFrequency) {
+    case "weekly":
+      return t(msg`${amount}/wk`);
+    case "monthly":
+      return t(msg`${amount}/mo`);
+    case "quarterly":
+      return t(msg`${amount}/qtr`);
+    case "annual":
+      return t(msg`${amount}/yr`);
+    default:
+      assertNeverAndIgnore(billingFrequency);
+      return amount;
+  }
 }
 
 // Seats already committed in the plan's billing floor (`minSeats`) that aren't
@@ -130,17 +143,51 @@ export function includedSeatsOpen(info: SeatTypeInfo): number {
   return Math.max(0, info.minSeats - info.assignedCount);
 }
 
-function formatAwuCredits(info: SeatTypeInfo): string {
-  const periodLabel: Record<SeatTypeInfo["awuCreditsPeriod"], string> = {
-    weekly: "per week",
-    monthly: "per month",
-    quarterly: "per quarter",
-    annual: "per year",
-    lifetime: "lifetime",
-  };
-  return `${formatNumber(info.awuCredits)} credits ${
-    periodLabel[info.awuCreditsPeriod]
-  }`;
+function formatAwuCredits(
+  info: SeatTypeInfo,
+  t: (descriptor: MessageDescriptor) => string
+): string {
+  const credits = info.awuCredits;
+  switch (info.awuCreditsPeriod) {
+    case "weekly":
+      return t(
+        msg`${plural(credits, {
+          one: "# credit per week",
+          other: "# credits per week",
+        })}`
+      );
+    case "monthly":
+      return t(
+        msg`${plural(credits, {
+          one: "# credit per month",
+          other: "# credits per month",
+        })}`
+      );
+    case "quarterly":
+      return t(
+        msg`${plural(credits, {
+          one: "# credit per quarter",
+          other: "# credits per quarter",
+        })}`
+      );
+    case "annual":
+      return t(
+        msg`${plural(credits, {
+          one: "# credit per year",
+          other: "# credits per year",
+        })}`
+      );
+    case "lifetime":
+      return t(
+        msg`${plural(credits, {
+          one: "# credit lifetime",
+          other: "# credits lifetime",
+        })}`
+      );
+    default:
+      assertNeverAndIgnore(info.awuCreditsPeriod);
+      return formatNumber(credits);
+  }
 }
 
 // Preview endpoints return a monthly-equivalent figure for every cadence
@@ -155,14 +202,6 @@ const PERIOD_PRICE_MULTIPLIER: Record<SeatBillingFrequency, number> = {
   monthly: 1,
   quarterly: 3,
   annual: 12,
-};
-
-// Human label for "your current X" in invoice-impact copy.
-const BILLING_PERIOD_LABEL: Record<SeatBillingFrequency, string> = {
-  weekly: "weekly term",
-  monthly: "monthly billing period",
-  quarterly: "quarterly term",
-  annual: "annual term",
 };
 
 // Prorates a full-period amount for the days remaining in the current
@@ -188,6 +227,205 @@ function prorateAmountForCurrentPeriod({
     amountCents: Math.round(amountCents * (daysRemaining / totalDays)),
     daysRemaining: Math.round(daysRemaining),
   };
+}
+
+interface InvoiceChangeStartingNextPeriodProps {
+  amount: string;
+  billingFrequency: SeatBillingFrequency;
+}
+
+function InvoiceAdditionStartingNextPeriod({
+  amount,
+  billingFrequency,
+}: InvoiceChangeStartingNextPeriodProps) {
+  switch (billingFrequency) {
+    case "weekly":
+      return (
+        <Trans>
+          This will add an estimated{" "}
+          <span className="font-semibold text-foreground">{amount}/wk</span> to
+          your invoice starting next weekly term.
+        </Trans>
+      );
+    case "monthly":
+      return (
+        <Trans>
+          This will add an estimated{" "}
+          <span className="font-semibold text-foreground">{amount}/mo</span> to
+          your invoice starting next monthly billing period.
+        </Trans>
+      );
+    case "quarterly":
+      return (
+        <Trans>
+          This will add an estimated{" "}
+          <span className="font-semibold text-foreground">{amount}/qtr</span> to
+          your invoice starting next quarterly term.
+        </Trans>
+      );
+    case "annual":
+      return (
+        <Trans>
+          This will add an estimated{" "}
+          <span className="font-semibold text-foreground">{amount}/yr</span> to
+          your invoice starting next annual term.
+        </Trans>
+      );
+    default:
+      assertNeverAndIgnore(billingFrequency);
+      return null;
+  }
+}
+
+function InvoiceRemovalStartingNextPeriod({
+  amount,
+  billingFrequency,
+}: InvoiceChangeStartingNextPeriodProps) {
+  switch (billingFrequency) {
+    case "weekly":
+      return (
+        <Trans>
+          This will remove an estimated{" "}
+          <span className="font-semibold text-foreground">{amount}/wk</span>{" "}
+          from your invoice starting next weekly term.
+        </Trans>
+      );
+    case "monthly":
+      return (
+        <Trans>
+          This will remove an estimated{" "}
+          <span className="font-semibold text-foreground">{amount}/mo</span>{" "}
+          from your invoice starting next monthly billing period.
+        </Trans>
+      );
+    case "quarterly":
+      return (
+        <Trans>
+          This will remove an estimated{" "}
+          <span className="font-semibold text-foreground">{amount}/qtr</span>{" "}
+          from your invoice starting next quarterly term.
+        </Trans>
+      );
+    case "annual":
+      return (
+        <Trans>
+          This will remove an estimated{" "}
+          <span className="font-semibold text-foreground">{amount}/yr</span>{" "}
+          from your invoice starting next annual term.
+        </Trans>
+      );
+    default:
+      assertNeverAndIgnore(billingFrequency);
+      return null;
+  }
+}
+
+interface ProratedInvoiceAdditionProps {
+  proratedPrice: string;
+  daysRemaining: number;
+  price: string;
+  billingFrequency: SeatBillingFrequency;
+}
+
+function ProratedInvoiceAddition({
+  proratedPrice,
+  daysRemaining,
+  price,
+  billingFrequency,
+}: ProratedInvoiceAdditionProps) {
+  switch (billingFrequency) {
+    case "weekly":
+      return (
+        <Trans>
+          This will add an estimated{" "}
+          <span className="font-semibold text-foreground">{proratedPrice}</span>
+          , prorated for the{" "}
+          <Plural value={daysRemaining} one="# day" other="# days" /> left in
+          your current weekly term (full price: {price}/wk).
+        </Trans>
+      );
+    case "monthly":
+      return (
+        <Trans>
+          This will add an estimated{" "}
+          <span className="font-semibold text-foreground">{proratedPrice}</span>
+          , prorated for the{" "}
+          <Plural value={daysRemaining} one="# day" other="# days" /> left in
+          your current monthly billing period (full price: {price}/mo).
+        </Trans>
+      );
+    case "quarterly":
+      return (
+        <Trans>
+          This will add an estimated{" "}
+          <span className="font-semibold text-foreground">{proratedPrice}</span>
+          , prorated for the{" "}
+          <Plural value={daysRemaining} one="# day" other="# days" /> left in
+          your current quarterly term (full price: {price}/qtr).
+        </Trans>
+      );
+    case "annual":
+      return (
+        <Trans>
+          This will add an estimated{" "}
+          <span className="font-semibold text-foreground">{proratedPrice}</span>
+          , prorated for the{" "}
+          <Plural value={daysRemaining} one="# day" other="# days" /> left in
+          your current annual term (full price: {price}/yr).
+        </Trans>
+      );
+    default:
+      assertNeverAndIgnore(billingFrequency);
+      return null;
+  }
+}
+
+interface InvoiceAdditionUpToPeriodPriceProps {
+  price: string;
+  billingFrequency: SeatBillingFrequency;
+}
+
+function InvoiceAdditionUpToPeriodPrice({
+  price,
+  billingFrequency,
+}: InvoiceAdditionUpToPeriodPriceProps) {
+  switch (billingFrequency) {
+    case "weekly":
+      return (
+        <Trans>
+          This will add up to{" "}
+          <span className="font-semibold text-foreground">{price}/wk</span>,
+          prorated for the remainder of your current weekly term.
+        </Trans>
+      );
+    case "monthly":
+      return (
+        <Trans>
+          This will add up to{" "}
+          <span className="font-semibold text-foreground">{price}/mo</span>,
+          prorated for the remainder of your current monthly billing period.
+        </Trans>
+      );
+    case "quarterly":
+      return (
+        <Trans>
+          This will add up to{" "}
+          <span className="font-semibold text-foreground">{price}/qtr</span>,
+          prorated for the remainder of your current quarterly term.
+        </Trans>
+      );
+    case "annual":
+      return (
+        <Trans>
+          This will add up to{" "}
+          <span className="font-semibold text-foreground">{price}/yr</span>,
+          prorated for the remainder of your current annual term.
+        </Trans>
+      );
+    default:
+      assertNeverAndIgnore(billingFrequency);
+      return null;
+  }
 }
 
 // Renders the "this will add/remove $X" line shown under a seat picker or a
@@ -228,8 +466,10 @@ export function getInvoiceImpactMessage({
     return null;
   }
   const { billingFrequency, priceCents, currentBillingPeriod } = targetSeatInfo;
-  const periodSuffix = BILLING_FREQUENCY_SUFFIX[billingFrequency];
-  const periodLabel = BILLING_PERIOD_LABEL[billingFrequency];
+  const price = formatCurrencyAmountCents({
+    amountCents: priceCents,
+    currency,
+  });
 
   // A deferred move onto an annual seat commits to a fresh annual term,
   // billed as a lump sum at the next credit refresh. This is never framed
@@ -241,18 +481,18 @@ export function getInvoiceImpactMessage({
   // tiny, or even net negative, while a large one-time charge is coming.
   if (isDeferred && billingFrequency === "annual") {
     const extraCents = Math.round((priceCents * 11) / 12);
+    const extra = formatCurrencyAmountCents({
+      amountCents: extraCents,
+      currency,
+    });
     return (
-      <>
+      <Trans>
         This will add an estimated{" "}
-        <span className="font-semibold text-foreground">
-          {formatCurrencyAmountCents({ amountCents: extraCents, currency })}
-        </span>{" "}
-        to your next invoice — you&apos;ll be billed{" "}
-        <span className="font-semibold text-foreground">
-          {formatCurrencyAmountCents({ amountCents: priceCents, currency })}
-        </span>{" "}
-        upfront for the year starting next annual term.
-      </>
+        <span className="font-semibold text-foreground">{extra}</span> to your
+        next invoice — you&apos;ll be billed{" "}
+        <span className="font-semibold text-foreground">{price}</span> upfront
+        for the year starting next annual term.
+      </Trans>
     );
   }
 
@@ -267,39 +507,35 @@ export function getInvoiceImpactMessage({
     // applies, unconditionally, starting the next period.
     if (hasAnnualOrigin) {
       if (priceCents === 0) {
-        return "This will not change your invoice.";
+        return <Trans>This will not change your invoice.</Trans>;
       }
       return (
-        <>
-          This will add an estimated{" "}
-          <span className="font-semibold text-foreground">
-            {formatCurrencyAmountCents({ amountCents: priceCents, currency })}
-            {periodSuffix}
-          </span>{" "}
-          to your invoice starting next {periodLabel}.
-        </>
+        <InvoiceAdditionStartingNextPeriod
+          amount={price}
+          billingFrequency={billingFrequency}
+        />
       );
     }
 
     if (deltaCents === 0) {
-      return "This will not change your invoice.";
+      return <Trans>This will not change your invoice.</Trans>;
     }
-    const verb = deltaCents > 0 ? "add" : "remove";
     const deltaPeriodCents =
       Math.abs(deltaCents) * PERIOD_PRICE_MULTIPLIER[billingFrequency];
-    return (
-      <>
-        This will {verb} an estimated{" "}
-        <span className="font-semibold text-foreground">
-          {formatCurrencyAmountCents({
-            amountCents: deltaPeriodCents,
-            currency,
-          })}
-          {periodSuffix}
-        </span>{" "}
-        {deltaCents > 0 ? "to" : "from"} your invoice starting next{" "}
-        {periodLabel}.
-      </>
+    const delta = formatCurrencyAmountCents({
+      amountCents: deltaPeriodCents,
+      currency,
+    });
+    return deltaCents > 0 ? (
+      <InvoiceAdditionStartingNextPeriod
+        amount={delta}
+        billingFrequency={billingFrequency}
+      />
+    ) : (
+      <InvoiceRemovalStartingNextPeriod
+        amount={delta}
+        billingFrequency={billingFrequency}
+      />
     );
   }
 
@@ -313,14 +549,8 @@ export function getInvoiceImpactMessage({
     moveCount - includedSeatsOpen(targetSeatInfo)
   );
   if (chargeableCount === 0) {
-    return "This will not change your invoice.";
+    return <Trans>This will not change your invoice.</Trans>;
   }
-  const fullPrice = (
-    <>
-      {formatCurrencyAmountCents({ amountCents: priceCents, currency })}
-      {periodSuffix}
-    </>
-  );
   const proration = currentBillingPeriod
     ? prorateAmountForCurrentPeriod({
         amountCents: priceCents,
@@ -328,27 +558,24 @@ export function getInvoiceImpactMessage({
       })
     : null;
   if (proration) {
+    const proratedPrice = formatCurrencyAmountCents({
+      amountCents: proration.amountCents,
+      currency,
+    });
     return (
-      <>
-        This will add an estimated{" "}
-        <span className="font-semibold text-foreground">
-          {formatCurrencyAmountCents({
-            amountCents: proration.amountCents,
-            currency,
-          })}
-        </span>
-        , prorated for the {proration.daysRemaining} day
-        {pluralize(proration.daysRemaining)} left in your current {periodLabel}{" "}
-        (full price: {fullPrice}).
-      </>
+      <ProratedInvoiceAddition
+        proratedPrice={proratedPrice}
+        daysRemaining={proration.daysRemaining}
+        price={price}
+        billingFrequency={billingFrequency}
+      />
     );
   }
   return (
-    <>
-      This will add up to{" "}
-      <span className="font-semibold text-foreground">{fullPrice}</span>,
-      prorated for the remainder of your current {periodLabel}.
-    </>
+    <InvoiceAdditionUpToPeriodPrice
+      price={price}
+      billingFrequency={billingFrequency}
+    />
   );
 }
 
@@ -380,6 +607,7 @@ export function SeatCard({
   onClick,
   disabled = false,
 }: SeatCardProps) {
+  const { t } = useLingui();
   const seatIcon = SEAT_TYPE_ICONS[seatType];
   // Same treatment as PlanCard (SubscriptionPlans.tsx): seat tiers without a
   // colored bar track map to the muted track, which matches the card
@@ -428,7 +656,7 @@ export function SeatCard({
             size="xs"
             className="text-muted-foreground"
           />
-          <span className="text-xs">{formatAwuCredits(info)}</span>
+          <span className="text-xs">{formatAwuCredits(info, t)}</span>
         </div>
       )}
     </Card>
