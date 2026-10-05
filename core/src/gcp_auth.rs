@@ -3,6 +3,17 @@ use serde::Deserialize;
 use std::sync::{Arc, Mutex};
 use tokio::time::{Duration, Instant};
 
+/// Canonical Google OAuth2 token endpoints for service-account JWT exchange.
+pub const GOOGLE_OAUTH_TOKEN_URIS: &[&str] = &[
+    "https://oauth2.googleapis.com/token",
+    "https://www.googleapis.com/oauth2/v4/token",
+];
+
+/// Returns true when `token_uri` is one of Google's canonical OAuth token endpoints.
+pub fn is_google_oauth_token_uri(token_uri: &str) -> bool {
+    GOOGLE_OAUTH_TOKEN_URIS.contains(&token_uri)
+}
+
 static GCP_TOKEN_CACHE: Lazy<Arc<Mutex<Option<(String, Instant)>>>> =
     Lazy::new(|| Arc::new(Mutex::new(None)));
 

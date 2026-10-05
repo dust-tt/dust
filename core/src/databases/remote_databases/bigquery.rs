@@ -27,9 +27,13 @@ use crate::{
     search_filter::Filterable,
 };
 
+use super::bigquery_auth::ProxiedServiceAccountAuthenticator;
 use super::remote_database::{
     QueryIdentityContext, RemoteDatabase, RemoteTableSchema, QUERY_TIMEOUT,
 };
+
+/// Matches `ClientBuilder::build_from_service_account_key(..., readonly: false)`.
+const BIGQUERY_AUTH_SCOPE: &str = "https://www.googleapis.com/auth/bigquery";
 
 const SERVICE_ACCOUNT_REQUIRED_FIELDS: [&str; 3] = ["private_key", "client_email", "token_uri"];
 
@@ -931,9 +935,8 @@ async fn create_bigquery_client(
         .collect();
 
     let mut builder = ClientBuilder::new();
-    if let Some(http_client) = build_static_ip_proxied_http_client()? {
-        builder.with_client(http_client);
-    }
+    let http_client = build_bigquery_http_client()?;
+    builder.with_client(http_client.clone());
 
     if has_service_account_field {
         if !missing_service_account_fields.is_empty() {
@@ -953,8 +956,20 @@ async fn create_bigquery_client(
             ))
         })?;
 
+        // Mint tokens with the same HTTP client as BigQuery API traffic so OAuth
+        // exchange also uses PROXY_* when configured. token_uri is pinned to Google's
+        // canonical endpoints inside ProxiedServiceAccountAuthenticator.
+        let authenticator =
+            ProxiedServiceAccountAuthenticator::new(sa_key, BIGQUERY_AUTH_SCOPE, http_client)
+                .map_err(|e| {
+                    QueryDatabaseError::GenericError(anyhow!(
+                        "Error creating BigQuery service account authenticator: {}",
+                        e
+                    ))
+                })?;
+
         return builder
-            .build_from_service_account_key(sa_key, false)
+            .build_from_authenticator(authenticator)
             .await
             .map_err(|e| {
                 QueryDatabaseError::GenericError(anyhow!(
@@ -964,6 +979,9 @@ async fn create_bigquery_client(
             });
     }
 
+    // ADC / workload-identity minting talks to the GCE metadata server (link-local),
+    // which must not go through the static egress proxy. Only BigQuery API calls use
+    // the proxied client attached above.
     builder
         .build_from_application_default_credentials()
         .await
@@ -975,17 +993,19 @@ async fn create_bigquery_client(
         })
 }
 
-/// When `PROXY_*` is configured, route BigQuery API calls through the static IP proxy
-/// (same allowlisted egress as Snowflake). OAuth token minting still uses yup-oauth2's
-/// own hyper client; API traffic to `bigquery.googleapis.com` goes through this client.
-fn build_static_ip_proxied_http_client() -> Result<Option<reqwest::Client>, QueryDatabaseError> {
+/// Builds the HTTP client used for BigQuery REST API calls and (for service-account
+/// credentials) OAuth token minting. When `PROXY_*` is configured, routes through
+/// Dust's static IP proxy (same allowlisted egress as Snowflake).
+fn build_bigquery_http_client() -> Result<reqwest::Client, QueryDatabaseError> {
     let (Ok(proxy_host), Ok(proxy_port), Ok(proxy_user_name), Ok(proxy_user_password)) = (
         env::var("PROXY_HOST"),
         env::var("PROXY_PORT"),
         env::var("PROXY_USER_NAME"),
         env::var("PROXY_USER_PASSWORD"),
     ) else {
-        return Ok(None);
+        return reqwest::Client::builder().build().map_err(|e| {
+            QueryDatabaseError::GenericError(anyhow!("Error creating BigQuery HTTP client: {}", e))
+        });
     };
 
     let proxy_url = format!(
@@ -1007,5 +1027,5 @@ fn build_static_ip_proxied_http_client() -> Result<Option<reqwest::Client>, Quer
         })?;
 
     info!("Using static IP proxy for BigQuery remote database client");
-    Ok(Some(client))
+    Ok(client)
 }

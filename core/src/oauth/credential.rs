@@ -287,6 +287,18 @@ impl Credential {
             }
         }
 
+        if provider == CredentialProvider::Bigquery {
+            let token_uri = content
+                .get("token_uri")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| anyhow::anyhow!("Missing a value for 'token_uri' key in content"))?;
+            if !crate::gcp_auth::is_google_oauth_token_uri(token_uri) {
+                return Err(anyhow::anyhow!(
+                    "Invalid BigQuery credentials: token_uri must be a Google OAuth token endpoint"
+                ));
+            }
+        }
+
         // Encrypt for database
         let encrypted_content = seal_str(&serde_json::to_string(&content)?)?;
 
