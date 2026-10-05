@@ -1,0 +1,69 @@
+Created 10000 documents in /tmp/vfs-h8000/corpus/docs (seed=42)
+Report: /tmp/vfs-h8000
+Untar: 1.894s
+Tool versions
++-----------+-----------------------------------------------------+------------------+
+| Tool      | Version                                             | Executable       |
++-----------+-----------------------------------------------------+------------------+
+| Python    | CPython 3.13.5                                      | /usr/bin/python3 |
+| ripgrep   | ripgrep 14.1.1                                      | /usr/bin/rg      |
+| OS kernel | Linux 7.0.11-orbstack-00360-gc9bc4d96ac70 (aarch64) | -                |
++-----------+-----------------------------------------------------+------------------+
+
+Benchmark results
+dfs: metadata | scandir + stat (100 dirs, 10,000 files) | first | 712.03 | OK
+dfs: metadata | scandir + stat (100 dirs, 10,000 files) | warm | 347.54 | OK
+dfs: metadata | rg --files (10,000 files) | first | 251.24 | OK
+dfs: metadata | rg --files (10,000 files) | warm | 7.63 | OK
+dfs: metadata | open + fstat + close (10,000 files) | first | 687.61 | OK
+dfs: metadata | open + fstat + close (10,000 files) | warm | 215.92 | OK
+dfs: metadata | stat missing (256 paths) | first | 365.22 | OK
+dfs: metadata | stat missing (256 paths) | warm | 8.96 | OK
+dfs: page cache | rg no-match scan (10,000 files, 177.5 MB) | first | 685.49 | OK
+dfs: page cache | rg no-match scan (10,000 files, 177.5 MB) | warm | 324.19 | OK
+dfs: search | rg rare literal (10,000 files, 4 matches) | first | 888.41 | OK
+dfs: search | rg rare literal (10,000 files, 4 matches) | warm | 333.94 | OK
+dfs: path pruning | rg branch glob (981 candidate files) | first | 450.21 | OK
+dfs: path pruning | rg branch glob (981 candidate files) | warm | 148.54 | OK
+dfs: path pruning | rg depth-10 subtree (136 files) | first | 86.69 | OK
+dfs: path pruning | rg depth-10 subtree (136 files) | warm | 47.84 | OK
+dfs: page cache | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 1,793.61 | OK
+dfs: page cache | open + read + SHA-256 (10,000 files, 177.5 MB) | warm | 403.49 | OK
+dfs: random I/O | open + pread tail (256 files x 4 KiB) | first | 778.20 | OK
+dfs: random I/O | open + pread tail (256 files x 4 KiB) | warm | 8.45 | OK
+dfs: write | create + write (32 x 32 KiB files) | once | 1.36 | OK
+dfs: file sync | fsync (32 files) | once | 0.08 | OK
+dfs: write | close (32 files) | once | 0.13 | OK
+dfs: write | unlink (32 files) | once | 0.34 | OK
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 712.03    | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 347.54    | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 251.24    | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 7.63      | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 687.61    | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 215.92    | OK     |
+| metadata     | stat missing (256 paths)                       | first | 365.22    | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 8.96      | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 685.49    | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 324.19    | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 888.41    | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 333.94    | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 450.21    | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 148.54    | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 86.69     | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 47.84     | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 1,793.61  | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 403.49    | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 778.20    | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 8.45      | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 1.36      | OK     |
+| file sync    | fsync (32 files)                               | once  | 0.08      | OK     |
+| write        | close (32 files)                               | once  | 0.13      | OK     |
+| write        | unlink (32 files)                              | once  | 0.34      | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+First = first measured invocation, not guaranteed cold OS cache; warm = median repeat.
+Final result comparisons are outside timings; in-loop checks are included.
+Run on a fresh mount for first-touch comparisons.
+Validated report: /tmp/vfs-h8000

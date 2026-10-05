@@ -1,0 +1,2 @@
+Created 10000 documents in /tmp/untar-h1000/corpus/docs (seed=42)
+Validated 1000 files; untar 0.157s; report: /tmp/untar-h1000
