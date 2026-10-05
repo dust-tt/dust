@@ -148,8 +148,6 @@ const FRAME_CONTENT_TYPES = new Set([
   frameSlideshowContentType,
 ]);
 
-const FRAME_FUNCTION_DELETE_BATCH_SIZE = 1_000;
-
 export interface FileUploadedRequestResponseBody {
   file: FileType & {
     /** Scoped mount path when the file is on GCS (same shape as `GCSMountEntryBase.path`). */
@@ -669,21 +667,14 @@ export class FileResource extends BaseResource<FileModel> {
   private static async deleteAllFrameFunctionsForWorkspace(
     workspaceModelId: ModelId
   ): Promise<void> {
-    for (;;) {
-      const sandboxFunctions = await SandboxFunctionModel.findAll({
-        attributes: ["id"],
-        where: { workspaceId: workspaceModelId },
-        limit: FRAME_FUNCTION_DELETE_BATCH_SIZE,
-      });
-      if (sandboxFunctions.length === 0) {
-        return;
-      }
-
-      await this.deleteFrameFunctionModelIds(
-        workspaceModelId,
-        sandboxFunctions.map(({ id }) => id)
-      );
-    }
+    await destroyAllForWorkspaceInBatches(SandboxFunctionModel, {
+      workspaceModelId,
+      beforeDestroyBatch: async (sandboxFunctionModelIds) => {
+        await SandboxFunctionInvocationResource.deleteAllForSandboxFunctionModelIds(
+          { workspaceModelId, sandboxFunctionModelIds }
+        );
+      },
+    });
   }
 
   private async deleteFrameFunctions(auth: Authenticator): Promise<void> {
