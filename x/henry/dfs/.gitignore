@@ -1,0 +1,4 @@
+*.log
+!bench/results/*.log
+__pycache__/
+.baseline/

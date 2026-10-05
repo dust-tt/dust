@@ -1,0 +1,183 @@
+python3:unset:2: no such hash table element: python3
+Created 10000 documents in /tmp/spolu-vfs-1/corpus/docs (seed=42)
+Report: /tmp/spolu-vfs-1
+Tool versions
++-----------+-----------------------------------------------------+------------------+
+| Tool      | Version                                             | Executable       |
++-----------+-----------------------------------------------------+------------------+
+| Python    | CPython 3.13.5                                      | /usr/bin/python3 |
+| ripgrep   | ripgrep 14.1.1                                      | /usr/bin/rg      |
+| OS kernel | Linux 7.0.11-orbstack-00360-gc9bc4d96ac70 (aarch64) | -                |
++-----------+-----------------------------------------------------+------------------+
+
+Benchmark results
+local: scandir + stat (100 dirs, 10,000 files) (first)
+metadata | scandir + stat (100 dirs, 10,000 files) | first | 140.79 | OK
+local: scandir + stat (100 dirs, 10,000 files) (warm)
+metadata | scandir + stat (100 dirs, 10,000 files) | warm | 136.48 | OK
+local: rg --files (10,000 files) (first)
+metadata | rg --files (10,000 files) | first | 4.70 | OK
+local: rg --files (10,000 files) (warm)
+metadata | rg --files (10,000 files) | warm | 4.50 | OK
+local: open + fstat + close (10,000 files) (first)
+metadata | open + fstat + close (10,000 files) | first | 47.08 | OK
+local: open + fstat + close (10,000 files) (warm)
+metadata | open + fstat + close (10,000 files) | warm | 47.66 | OK
+local: stat missing (256 paths) (first)
+metadata | stat missing (256 paths) | first | 2.63 | OK
+local: stat missing (256 paths) (warm)
+metadata | stat missing (256 paths) | warm | 1.84 | OK
+local: rg no-match scan (10,000 files, 177.5 MB) (first)
+page cache | rg no-match scan (10,000 files, 177.5 MB) | first | 19.86 | OK
+local: rg no-match scan (10,000 files, 177.5 MB) (warm)
+page cache | rg no-match scan (10,000 files, 177.5 MB) | warm | 15.78 | OK
+local: rg rare literal (10,000 files, 4 matches) (first)
+search | rg rare literal (10,000 files, 4 matches) | first | 13.75 | OK
+local: rg rare literal (10,000 files, 4 matches) (warm)
+search | rg rare literal (10,000 files, 4 matches) | warm | 13.84 | OK
+local: rg branch glob (981 candidate files) (first)
+path pruning | rg branch glob (981 candidate files) | first | 6.38 | OK
+local: rg branch glob (981 candidate files) (warm)
+path pruning | rg branch glob (981 candidate files) | warm | 6.69 | OK
+local: rg depth-10 subtree (136 files) (first)
+path pruning | rg depth-10 subtree (136 files) | first | 3.39 | OK
+local: rg depth-10 subtree (136 files) (warm)
+path pruning | rg depth-10 subtree (136 files) | warm | 4.75 | OK
+local: open + read + SHA-256 (10,000 files, 177.5 MB) (first)
+page cache | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 161.92 | OK
+local: open + read + SHA-256 (10,000 files, 177.5 MB) (warm)
+page cache | open + read + SHA-256 (10,000 files, 177.5 MB) | warm | 156.88 | OK
+local: open + pread tail (256 files x 4 KiB) (first)
+random I/O | open + pread tail (256 files x 4 KiB) | first | 1.83 | OK
+local: open + pread tail (256 files x 4 KiB) (warm)
+random I/O | open + pread tail (256 files x 4 KiB) | warm | 1.35 | OK
+local: create + write (32 x 32 KiB files) (once)
+write | create + write (32 x 32 KiB files) | once | 0.96 | OK
+local: fsync (32 files) (once)
+file sync | fsync (32 files) | once | 52.59 | OK
+local: close (32 files) (once)
+write | close (32 files) | once | 0.04 | OK
+local: unlink (32 files) (once)
+write | unlink (32 files) | once | 0.39 | OK
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 140.79    | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 136.48    | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 4.70      | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 4.50      | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 47.08     | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 47.66     | OK     |
+| metadata     | stat missing (256 paths)                       | first | 2.63      | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 1.84      | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 19.86     | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 15.78     | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 13.75     | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 13.84     | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 6.38      | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 6.69      | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 3.39      | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 4.75      | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 161.92    | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 156.88    | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 1.83      | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 1.35      | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 0.96      | OK     |
+| file sync    | fsync (32 files)                               | once  | 52.59     | OK     |
+| write        | close (32 files)                               | once  | 0.04      | OK     |
+| write        | unlink (32 files)                              | once  | 0.39      | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+First = first measured invocation, not guaranteed cold OS cache; warm = median repeat.
+Final result comparisons are outside timings; in-loop checks are included.
+Run on a fresh mount for first-touch comparisons.
+Untar: 65.581s
+Tool versions
++-----------+-----------------------------------------------------+------------------+
+| Tool      | Version                                             | Executable       |
++-----------+-----------------------------------------------------+------------------+
+| Python    | CPython 3.13.5                                      | /usr/bin/python3 |
+| ripgrep   | ripgrep 14.1.1                                      | /usr/bin/rg      |
+| OS kernel | Linux 7.0.11-orbstack-00360-gc9bc4d96ac70 (aarch64) | -                |
++-----------+-----------------------------------------------------+------------------+
+
+Benchmark results
+dfs: scandir + stat (100 dirs, 10,000 files) (first)
+metadata | scandir + stat (100 dirs, 10,000 files) | first | 9,266.70 | OK
+dfs: scandir + stat (100 dirs, 10,000 files) (warm)
+metadata | scandir + stat (100 dirs, 10,000 files) | warm | 2,383.34 | OK
+dfs: rg --files (10,000 files) (first)
+metadata | rg --files (10,000 files) | first | 639.23 | OK
+dfs: rg --files (10,000 files) (warm)
+metadata | rg --files (10,000 files) | warm | 5.07 | OK
+dfs: open + fstat + close (10,000 files) (first)
+metadata | open + fstat + close (10,000 files) | first | 34,487.36 | OK
+dfs: open + fstat + close (10,000 files) (warm)
+metadata | open + fstat + close (10,000 files) | warm | 776.36 | OK
+dfs: stat missing (256 paths) (first)
+metadata | stat missing (256 paths) | first | 643.56 | OK
+dfs: stat missing (256 paths) (warm)
+metadata | stat missing (256 paths) | warm | 4.48 | OK
+dfs: rg no-match scan (10,000 files, 177.5 MB) (first)
+page cache | rg no-match scan (10,000 files, 177.5 MB) | first | 7,411.73 | OK
+dfs: rg no-match scan (10,000 files, 177.5 MB) (warm)
+page cache | rg no-match scan (10,000 files, 177.5 MB) | warm | 57.92 | OK
+dfs: rg rare literal (10,000 files, 4 matches) (first)
+search | rg rare literal (10,000 files, 4 matches) | first | 6,245.37 | OK
+dfs: rg rare literal (10,000 files, 4 matches) (warm)
+search | rg rare literal (10,000 files, 4 matches) | warm | 51.39 | OK
+dfs: rg branch glob (981 candidate files) (first)
+path pruning | rg branch glob (981 candidate files) | first | 1,170.31 | OK
+dfs: rg branch glob (981 candidate files) (warm)
+path pruning | rg branch glob (981 candidate files) | warm | 11.57 | OK
+dfs: rg depth-10 subtree (136 files) (first)
+path pruning | rg depth-10 subtree (136 files) | first | 262.93 | OK
+dfs: rg depth-10 subtree (136 files) (warm)
+path pruning | rg depth-10 subtree (136 files) | warm | 4.36 | OK
+dfs: open + read + SHA-256 (10,000 files, 177.5 MB) (first)
+page cache | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 47,275.43 | OK
+dfs: open + read + SHA-256 (10,000 files, 177.5 MB) (warm)
+page cache | open + read + SHA-256 (10,000 files, 177.5 MB) | warm | 11,480.91 | OK
+dfs: open + pread tail (256 files x 4 KiB) (first)
+random I/O | open + pread tail (256 files x 4 KiB) | first | 1,378.98 | OK
+dfs: open + pread tail (256 files x 4 KiB) (warm)
+random I/O | open + pread tail (256 files x 4 KiB) | warm | 7.33 | OK
+dfs: create + write (32 x 32 KiB files) (once)
+write | create + write (32 x 32 KiB files) | once | 210.56 | OK
+dfs: fsync (32 files) (once)
+file sync | fsync (32 files) | once | 562.48 | OK
+dfs: close (32 files) (once)
+write | close (32 files) | once | 0.78 | OK
+dfs: unlink (32 files) (once)
+write | unlink (32 files) | once | 268.27 | OK
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 9,266.70  | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 2,383.34  | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 639.23    | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 5.07      | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 34,487.36 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 776.36    | OK     |
+| metadata     | stat missing (256 paths)                       | first | 643.56    | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 4.48      | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 7,411.73  | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 57.92     | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 6,245.37  | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 51.39     | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 1,170.31  | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 11.57     | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 262.93    | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 4.36      | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 47,275.43 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 11,480.91 | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 1,378.98  | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 7.33      | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 210.56    | OK     |
+| file sync    | fsync (32 files)                               | once  | 562.48    | OK     |
+| write        | close (32 files)                               | once  | 0.78      | OK     |
+| write        | unlink (32 files)                              | once  | 268.27    | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+First = first measured invocation, not guaranteed cold OS cache; warm = median repeat.
+Final result comparisons are outside timings; in-loop checks are included.
+Run on a fresh mount for first-touch comparisons.
+Validated report: /tmp/spolu-vfs-1

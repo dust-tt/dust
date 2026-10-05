@@ -1,0 +1,555 @@
+{
+  "label": "dfs henry [FoundationDB]",
+  "manifest_sha256": "67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1",
+  "profile": "release",
+  "linux": "Linux-7.0.11-orbstack-00360-gc9bc4d96ac70-aarch64-with-glibc2.41",
+  "cpu_count": 12,
+  "server_binary_sha256": "9ac49fa697bc0704fc3b9dc7a56ff283a8a2db817509b1b6a2f40c39acc9af76",
+  "mount_binary_sha256": "9afbe578ac723d05ab64ff150a7a18aa423a974f5e9a87f053209facf5cbe5ce",
+  "fdb_client_knobs": {},
+  "durability": "create/rename/unlink/close/fsync return after the FDB commit",
+  "fuse_threads": 8,
+  "kernel_writeback": false,
+  "max_background": 32,
+  "read_ahead_requested_kib": 1024,
+  "files": 10000,
+  "warm_runs": 1,
+  "server_restarted_per_first_case": true,
+  "cold_scope": "new dfs-server/session/mount; backend caches retained",
+  "untar_seconds": 103.73952769500102,
+  "population_client_writeback_seconds": 0.003080133999901591,
+  "population_shutdown_seconds": 0.0081607609972707,
+  "results": [
+    [
+      "metadata",
+      "scandir + stat (100 dirs, 10,000 files)",
+      "first",
+      "503.11",
+      "OK"
+    ],
+    [
+      "metadata",
+      "scandir + stat (100 dirs, 10,000 files)",
+      "warm",
+      "158.42",
+      "OK"
+    ],
+    [
+      "metadata",
+      "rg --files (10,000 files)",
+      "first",
+      "155.83",
+      "OK"
+    ],
+    [
+      "metadata",
+      "rg --files (10,000 files)",
+      "warm",
+      "8.31",
+      "OK"
+    ],
+    [
+      "metadata",
+      "open + fstat + close (10,000 files)",
+      "first",
+      "883.31",
+      "OK"
+    ],
+    [
+      "metadata",
+      "open + fstat + close (10,000 files)",
+      "warm",
+      "467.51",
+      "OK"
+    ],
+    [
+      "metadata",
+      "stat missing (256 paths)",
+      "first",
+      "327.54",
+      "OK"
+    ],
+    [
+      "metadata",
+      "stat missing (256 paths)",
+      "warm",
+      "2.16",
+      "OK"
+    ],
+    [
+      "page cache",
+      "rg no-match scan (10,000 files, 177.5 MB)",
+      "first",
+      "2,188.52",
+      "OK"
+    ],
+    [
+      "page cache",
+      "rg no-match scan (10,000 files, 177.5 MB)",
+      "warm",
+      "46.19",
+      "OK"
+    ],
+    [
+      "search",
+      "rg rare literal (10,000 files, 4 matches)",
+      "first",
+      "2,354.26",
+      "OK"
+    ],
+    [
+      "search",
+      "rg rare literal (10,000 files, 4 matches)",
+      "warm",
+      "55.37",
+      "OK"
+    ],
+    [
+      "path pruning",
+      "rg branch glob (981 candidate files)",
+      "first",
+      "487.55",
+      "OK"
+    ],
+    [
+      "path pruning",
+      "rg branch glob (981 candidate files)",
+      "warm",
+      "20.77",
+      "OK"
+    ],
+    [
+      "path pruning",
+      "rg depth-10 subtree (136 files)",
+      "first",
+      "81.45",
+      "OK"
+    ],
+    [
+      "path pruning",
+      "rg depth-10 subtree (136 files)",
+      "warm",
+      "4.38",
+      "OK"
+    ],
+    [
+      "page cache",
+      "open + read + SHA-256 (10,000 files, 177.5 MB)",
+      "first",
+      "19,988.14",
+      "OK"
+    ],
+    [
+      "page cache",
+      "open + read + SHA-256 (10,000 files, 177.5 MB)",
+      "warm",
+      "2,032.42",
+      "OK"
+    ],
+    [
+      "random I/O",
+      "open + pread tail (256 files x 4 KiB)",
+      "first",
+      "943.98",
+      "OK"
+    ],
+    [
+      "random I/O",
+      "open + pread tail (256 files x 4 KiB)",
+      "warm",
+      "3.70",
+      "OK"
+    ],
+    [
+      "write",
+      "create + write (32 x 32 KiB files)",
+      "once",
+      "171.47",
+      "OK"
+    ],
+    [
+      "file sync",
+      "fsync (32 files)",
+      "once",
+      "176.01",
+      "OK"
+    ],
+    [
+      "write",
+      "close (32 files)",
+      "once",
+      "0.56",
+      "OK"
+    ],
+    [
+      "write",
+      "unlink (32 files)",
+      "once",
+      "226.96",
+      "OK"
+    ]
+  ],
+  "resets": 11,
+  "server_lifetimes": [
+    {
+      "phase": "populate",
+      "shutdown_seconds": 0.0081607609972707,
+      "server": {
+        "calls": {
+          "close": {
+            "calls": 1,
+            "total_ms": 0.753
+          },
+          "create": {
+            "calls": 10103,
+            "total_ms": 48152.085
+          },
+          "flush": {
+            "calls": 10001,
+            "total_ms": 45167.739
+          },
+          "getattr": {
+            "calls": 1,
+            "total_ms": 0.296
+          },
+          "readdir": {
+            "calls": 1,
+            "total_ms": 2.319
+          },
+          "renew": {
+            "calls": 10,
+            "total_ms": 0.01
+          },
+          "setattr": {
+            "calls": 202,
+            "total_ms": 952.393
+          }
+        },
+        "commits": 20307,
+        "fresh_versions": 108,
+        "message": "server totals",
+        "retries": 0,
+        "zero_read_flushes": 10001
+      }
+    },
+    {
+      "phase": "case-1",
+      "shutdown_seconds": 0.017653613998845685,
+      "server": {
+        "calls": {
+          "close": {
+            "calls": 1,
+            "total_ms": 0.004
+          },
+          "getattr": {
+            "calls": 1,
+            "total_ms": 0.977
+          },
+          "read": {
+            "calls": 24,
+            "total_ms": 33.06
+          },
+          "readdir": {
+            "calls": 2,
+            "total_ms": 4.147
+          }
+        },
+        "commits": 1,
+        "fresh_versions": 30,
+        "message": "server totals",
+        "retries": 0,
+        "zero_read_flushes": 0
+      }
+    },
+    {
+      "phase": "case-2",
+      "shutdown_seconds": 0.0042310639983043075,
+      "server": {
+        "calls": {
+          "close": {
+            "calls": 1,
+            "total_ms": 0.352
+          },
+          "getattr": {
+            "calls": 1,
+            "total_ms": 0.46
+          },
+          "readdir": {
+            "calls": 103,
+            "total_ms": 310.823
+          }
+        },
+        "commits": 1,
+        "fresh_versions": 107,
+        "message": "server totals",
+        "retries": 0,
+        "zero_read_flushes": 0
+      }
+    },
+    {
+      "phase": "case-3",
+      "shutdown_seconds": 0.017354954001348233,
+      "server": {
+        "calls": {
+          "close": {
+            "calls": 1,
+            "total_ms": 0.376
+          },
+          "getattr": {
+            "calls": 1,
+            "total_ms": 0.383
+          },
+          "readdir": {
+            "calls": 103,
+            "total_ms": 1083.102
+          }
+        },
+        "commits": 1,
+        "fresh_versions": 107,
+        "message": "server totals",
+        "retries": 0,
+        "zero_read_flushes": 0
+      }
+    },
+    {
+      "phase": "case-4",
+      "shutdown_seconds": 0.004106274998775916,
+      "server": {
+        "calls": {
+          "close": {
+            "calls": 1,
+            "total_ms": 0.455
+          },
+          "getattr": {
+            "calls": 1,
+            "total_ms": 1.485
+          },
+          "readdir": {
+            "calls": 103,
+            "total_ms": 270.359
+          }
+        },
+        "commits": 1,
+        "fresh_versions": 107,
+        "message": "server totals",
+        "retries": 0,
+        "zero_read_flushes": 0
+      }
+    },
+    {
+      "phase": "case-5",
+      "shutdown_seconds": 0.01791402500020922,
+      "server": {
+        "calls": {
+          "close": {
+            "calls": 1,
+            "total_ms": 0.673
+          },
+          "getattr": {
+            "calls": 1,
+            "total_ms": 1.106
+          },
+          "readdir": {
+            "calls": 102,
+            "total_ms": 300.85
+          }
+        },
+        "commits": 1,
+        "fresh_versions": 106,
+        "message": "server totals",
+        "retries": 0,
+        "zero_read_flushes": 0
+      }
+    },
+    {
+      "phase": "case-6",
+      "shutdown_seconds": 0.003555413000867702,
+      "server": {
+        "calls": {
+          "close": {
+            "calls": 1,
+            "total_ms": 0.461
+          },
+          "getattr": {
+            "calls": 1,
+            "total_ms": 0.613
+          },
+          "read": {
+            "calls": 20000,
+            "total_ms": 13915.84
+          },
+          "readdir": {
+            "calls": 103,
+            "total_ms": 1248.925
+          }
+        },
+        "commits": 1,
+        "fresh_versions": 20107,
+        "message": "server totals",
+        "retries": 0,
+        "zero_read_flushes": 0
+      }
+    },
+    {
+      "phase": "case-7",
+      "shutdown_seconds": 0.017879983002785593,
+      "server": {
+        "calls": {
+          "close": {
+            "calls": 1,
+            "total_ms": 0.46
+          },
+          "getattr": {
+            "calls": 1,
+            "total_ms": 1.605
+          },
+          "read": {
+            "calls": 20000,
+            "total_ms": 15388.805
+          },
+          "readdir": {
+            "calls": 103,
+            "total_ms": 1032.329
+          }
+        },
+        "commits": 1,
+        "fresh_versions": 20107,
+        "message": "server totals",
+        "retries": 0,
+        "zero_read_flushes": 0
+      }
+    },
+    {
+      "phase": "case-8",
+      "shutdown_seconds": 0.016906173001189018,
+      "server": {
+        "calls": {
+          "close": {
+            "calls": 1,
+            "total_ms": 0.594
+          },
+          "getattr": {
+            "calls": 1,
+            "total_ms": 1.319
+          },
+          "read": {
+            "calls": 1962,
+            "total_ms": 2256.409
+          },
+          "readdir": {
+            "calls": 103,
+            "total_ms": 1165.979
+          }
+        },
+        "commits": 1,
+        "fresh_versions": 2069,
+        "message": "server totals",
+        "retries": 0,
+        "zero_read_flushes": 0
+      }
+    },
+    {
+      "phase": "case-9",
+      "shutdown_seconds": 0.017858317998616258,
+      "server": {
+        "calls": {
+          "close": {
+            "calls": 1,
+            "total_ms": 0.05
+          },
+          "getattr": {
+            "calls": 1,
+            "total_ms": 0.379
+          },
+          "read": {
+            "calls": 272,
+            "total_ms": 202.958
+          },
+          "readdir": {
+            "calls": 13,
+            "total_ms": 43.789
+          }
+        },
+        "commits": 1,
+        "fresh_versions": 289,
+        "message": "server totals",
+        "retries": 0,
+        "zero_read_flushes": 0
+      }
+    },
+    {
+      "phase": "case-10",
+      "shutdown_seconds": 0.017194791998917935,
+      "server": {
+        "calls": {
+          "close": {
+            "calls": 1,
+            "total_ms": 0.671
+          },
+          "getattr": {
+            "calls": 1,
+            "total_ms": 0.366
+          },
+          "read": {
+            "calls": 10398,
+            "total_ms": 15788.759
+          },
+          "readdir": {
+            "calls": 103,
+            "total_ms": 579.752
+          },
+          "renew": {
+            "calls": 2,
+            "total_ms": 0.001
+          }
+        },
+        "commits": 1,
+        "fresh_versions": 10505,
+        "message": "server totals",
+        "retries": 0,
+        "zero_read_flushes": 0
+      }
+    },
+    {
+      "phase": "case-11",
+      "shutdown_seconds": 0.017733695000060834,
+      "server": {
+        "calls": {
+          "close": {
+            "calls": 1,
+            "total_ms": 1.421
+          },
+          "create": {
+            "calls": 33,
+            "total_ms": 163.934
+          },
+          "flush": {
+            "calls": 32,
+            "total_ms": 162.415
+          },
+          "getattr": {
+            "calls": 33,
+            "total_ms": 46.396
+          },
+          "read": {
+            "calls": 256,
+            "total_ms": 476.437
+          },
+          "readdir": {
+            "calls": 102,
+            "total_ms": 411.098
+          },
+          "remove": {
+            "calls": 33,
+            "total_ms": 172.361
+          }
+        },
+        "commits": 99,
+        "fresh_versions": 394,
+        "message": "server totals",
+        "retries": 0,
+        "zero_read_flushes": 32
+      }
+    }
+  ]
+}
