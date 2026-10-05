@@ -4,7 +4,13 @@ import { serializeFilterHash } from "@app/components/shared/filter_panel/filterH
 import { getModelFilterDisplayName } from "@app/components/shared/filter_panel/searchFilter";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { AuthContext } from "@app/lib/auth/AuthContext";
+import {
+  useBatchUpdateAgentModel,
+  useBatchUpdateAgentTags,
+} from "@app/lib/swr/assistants";
 import { FetcherProvider } from "@app/lib/swr/FetcherContext";
+import { trackEvent } from "@app/lib/tracking";
+import { ManageTrackingContext } from "@app/lib/tracking/manageTracking";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { SearchAgentsResponseBody } from "@app/types/agent_search/agent_search";
@@ -15,6 +21,7 @@ import {
   act,
   fireEvent,
   render,
+  renderHook,
   screen,
   waitFor,
   within,
@@ -23,6 +30,11 @@ import userEvent from "@testing-library/user-event";
 import assert from "assert";
 import { SWRConfig } from "swr";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/tracking", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@app/lib/tracking")>();
+  return { ...actual, trackEvent: vi.fn() };
+});
 
 // The full table renders slower on shared CI runners than the default 1s wait.
 const CI_RENDER_TIMEOUT_MS = 5_000;
@@ -257,6 +269,83 @@ function lastSearchBody(fetcherWithBody: ReturnType<typeof vi.fn>) {
 }
 
 describe("search-backed Manage Agents", () => {
+  it("tracks only confirmed batch updates and ignores rejected requests", async () => {
+    const { context } = await setup();
+    const tracking = {
+      entity_type: "agent" as const,
+      manage_session_id: "visit-1",
+      search_id: "search-1",
+      tab: "all",
+      has_search: false,
+      filter_count: 0,
+      filter_categories: "",
+      show_hidden: false,
+    };
+    const { result } = renderHook(
+      () => ({
+        updateTags: useBatchUpdateAgentTags({ owner: context.workspace }),
+        updateModel: useBatchUpdateAgentModel({ owner: context.workspace }),
+      }),
+      {
+        wrapper: ({ children }) => (
+          <ManageTrackingContext.Provider value={tracking}>
+            {children}
+          </ManageTrackingContext.Provider>
+        ),
+      }
+    );
+    for (const update of [
+      () =>
+        result.current.updateTags(["updated", "skipped"], {
+          addTagIds: ["tag-1"],
+        }),
+      () =>
+        result.current.updateModel(["updated", "skipped"], {
+          modelId: "model-1",
+        }),
+    ]) {
+      patch.mockResolvedValueOnce(
+        Response.json({
+          success: true,
+          updatedAgentIds: ["updated"],
+          skippedAgentIds: ["skipped"],
+        })
+      );
+      await act(async () => {
+        await update();
+      });
+    }
+    expect(
+      vi.mocked(trackEvent).mock.calls.map(([event]) => event.extra)
+    ).toEqual([
+      {
+        ...tracking,
+        operation: "set_tags",
+        outcome: "success",
+        target_ids: "updated",
+        target_id: "updated",
+        target_count: 1,
+        skipped_count: 1,
+      },
+      {
+        ...tracking,
+        operation: "set_model",
+        outcome: "success",
+        target_ids: "updated",
+        target_id: "updated",
+        target_count: 1,
+        skipped_count: 1,
+      },
+    ]);
+    patch.mockResolvedValueOnce(
+      Response.json({ error: { message: "Rejected" } }, { status: 403 })
+    );
+    await act(async () => {
+      await result.current.updateTags(["updated"], { addTagIds: ["tag-1"] });
+    });
+    expect(trackEvent).toHaveBeenCalledTimes(2);
+  });
+
   it("lets admins enable disabled defaults and disable them again", async () => {
     const { globalAgent, context, mount } = await setup();
     patch.mockImplementation(async (_url: string, options: RequestInit) => {
@@ -416,6 +505,27 @@ describe("search-backed Manage Agents", () => {
     expect(fetchedUrls(fetcher)).not.toContainEqual(
       expect.stringContaining(`/agent_configurations/${agent.sId}`)
     );
+    const results = vi
+      .mocked(trackEvent)
+      .mock.calls.find(([event]) => event.object === "manage_results")?.[0];
+    expect(results?.extra).toEqual(
+      expect.objectContaining({
+        entity_type: "agent",
+        result_count: 1,
+        has_search: false,
+      })
+    );
+    expect(trackEvent).toHaveBeenCalledWith({
+      area: "builder",
+      object: "manage_details",
+      action: "open",
+      extra: expect.objectContaining({
+        entity_type: "agent",
+        target_id: agent.sId,
+        manage_session_id: results?.extra?.manage_session_id,
+        search_id: results?.extra?.search_id,
+      }),
+    });
   });
 
   it("requests each tab with its own filters", async () => {
@@ -890,6 +1000,11 @@ describe("Poke Manage Agents", () => {
         "POST",
       ])
     );
+    expect(
+      vi
+        .mocked(trackEvent)
+        .mock.calls.filter(([event]) => event.object.startsWith("manage_"))
+    ).toEqual([]);
   });
 
   it("keeps agent tabs separate from skill filters in the hash", async () => {
