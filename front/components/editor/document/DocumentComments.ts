@@ -1,8 +1,9 @@
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { cn } from "@dust-tt/sparkle";
 import type { Editor, JSONContent } from "@tiptap/core";
-import { Extension, Mark } from "@tiptap/core";
+import { Extension, isMacOS, Mark } from "@tiptap/core";
 import type { Node } from "@tiptap/pm/model";
+import { Fragment, Slice } from "@tiptap/pm/model";
 import type { Transaction } from "@tiptap/pm/state";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import {
@@ -232,9 +233,24 @@ declare module "@tiptap/core" {
  */
 /**
  * @cc [owner:tdraier,label:product] document-comment-not-pasted
- * Comment marks MUST come only from the file's anchors, never from parsed HTML, so pasted
- * text cannot widen a comment or anchor one that has no thread.
+ * Comment marks MUST come only from the file's anchors, never from parsed HTML, pasted content
+ * or a copy dropped from a drag, so a copy cannot widen a comment to everything between it and
+ * its source or anchor one that has no thread. Text moved by a drag MUST keep its marks.
  */
+const withoutCommentMarks = (fragment: Fragment): Fragment => {
+  const nodes: Node[] = [];
+  fragment.forEach((node) => {
+    nodes.push(
+      node.isText
+        ? node.mark(
+            node.marks.filter((mark) => mark.type.name !== COMMENT_MARK_NAME)
+          )
+        : node.copy(withoutCommentMarks(node.content))
+    );
+  });
+  return Fragment.fromArray(nodes);
+};
+
 export const DocumentCommentMark = Mark.create({
   name: COMMENT_MARK_NAME,
   inclusive: false,
@@ -250,6 +266,31 @@ export const DocumentCommentMark = Mark.create({
   }),
   parseHTML: () => [],
   renderHTML: ({ HTMLAttributes }) => ["span", HTMLAttributes, 0],
+  addProseMirrorPlugins: () => {
+    // ProseMirror runs transformPasted before deciding whether a drop moves or copies; the drop
+    // event arrives first, with the copy modifier ProseMirror itself reads.
+    let dropCopies = false;
+    return [
+      new Plugin({
+        props: {
+          handleDOMEvents: {
+            drop: (_view, event) => {
+              dropCopies = event[isMacOS() ? "altKey" : "ctrlKey"];
+              return false;
+            },
+          },
+          transformPasted: (slice, view) =>
+            view.dragging && !dropCopies
+              ? slice
+              : new Slice(
+                  withoutCommentMarks(slice.content),
+                  slice.openStart,
+                  slice.openEnd
+                ),
+        },
+      }),
+    ];
+  },
 });
 
 /**

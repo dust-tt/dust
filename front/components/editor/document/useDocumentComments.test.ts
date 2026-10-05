@@ -3,6 +3,7 @@ import { useDocumentComments } from "@app/components/editor/document/useDocument
 import { useDocumentEditor } from "@app/components/editor/document/useDocumentEditor";
 import { Ok } from "@app/types/shared/result";
 import { act, renderHook, waitFor } from "@testing-library/react";
+import type { Slice } from "@tiptap/pm/model";
 import { describe, expect, it, vi } from "vitest";
 
 const AT = "2026-09-25T14:16:32.380Z";
@@ -149,6 +150,70 @@ describe("useDocumentComments", () => {
         editor.commands.undo();
       });
       expect(highlighted(editor)).toBe("there");
+    });
+  });
+
+  describe("pasted and dropped content", () => {
+    type MountedEditor = NonNullable<
+      ReturnType<typeof useDocumentEditor>["editor"]
+    >;
+    const commentIds = (slice: Slice) => {
+      const ids: string[] = [];
+      slice.content.descendants((node) => {
+        for (const mark of node.marks) {
+          if (mark.type.name === "comment") {
+            ids.push(mark.attrs.id);
+          }
+        }
+      });
+      return ids;
+    };
+    const transformPasted = (editor: MountedEditor, slice: Slice) => {
+      let transformed = slice;
+      editor.view.someProp("transformPasted", (transform) => {
+        transformed = transform(transformed, editor.view, false);
+      });
+      return transformed;
+    };
+    const drop = (editor: MountedEditor, { copy }: { copy: boolean }) => {
+      const event = new Event("drop", { bubbles: true });
+      Object.assign(event, { altKey: copy, ctrlKey: copy });
+      editor.view.dom.dispatchEvent(event);
+    };
+
+    const mounted = async () => {
+      const { result } = await renderCommentedEditor(SOURCE);
+      const editor = result.current.document.editor;
+      if (!editor) {
+        throw new Error("Editor did not mount.");
+      }
+      // "there", the commented word.
+      return { editor, slice: editor.state.doc.slice(4, 9) };
+    };
+
+    it("drops comment marks from pasted content", async () => {
+      const { editor, slice } = await mounted();
+      expect(commentIds(slice)).toEqual(["c1"]);
+
+      expect(commentIds(transformPasted(editor, slice))).toEqual([]);
+    });
+
+    it("drops comment marks from a copy dropped from a drag", async () => {
+      const { editor, slice } = await mounted();
+
+      drop(editor, { copy: true });
+      editor.view.dragging = { slice, move: false };
+
+      expect(commentIds(transformPasted(editor, slice))).toEqual([]);
+    });
+
+    it("keeps comment marks on text moved by a drag", async () => {
+      const { editor, slice } = await mounted();
+
+      drop(editor, { copy: false });
+      editor.view.dragging = { slice, move: true };
+
+      expect(commentIds(transformPasted(editor, slice))).toEqual(["c1"]);
     });
   });
 });
