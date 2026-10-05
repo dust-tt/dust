@@ -90,7 +90,8 @@ pub struct Local {
     /// Ops in the log (queued or in flight) that change this object.
     pub pending: u32,
     pub writers: u32,
-    /// Since when nothing of it is pending or unsealed. A quiet `Local` is served for at most
+    /// Since when nothing of it is pending or unsealed (for a `Local` promoted from the cache, when
+    /// the data it was promoted from was requested). A quiet `Local` is served for at most
     /// `budget.ttl` more (other mounts' changes must show through an idle open-for-write file).
     pub quiet_since: Option<Instant>,
     /// Its `Create` has not committed: the server knows nothing of it.
@@ -98,7 +99,7 @@ pub struct Local {
 }
 
 impl Local {
-    pub fn new(attr: Attr) -> Self {
+    pub fn new(attr: Attr, fresh: Instant) -> Self {
         Self {
             attr,
             image: None,
@@ -109,7 +110,7 @@ impl Local {
             dirty_since: None,
             pending: 0,
             writers: 0,
-            quiet_since: Some(Instant::now()),
+            quiet_since: Some(fresh),
             unborn: false,
         }
     }
@@ -197,6 +198,8 @@ pub struct Log {
     pub dirty: HashSet<Id>,
     pub dirty_bytes: usize,
     pub in_flight: bool,
+    /// Acknowledgment instant of the oldest op of the batch in flight.
+    pub in_flight_since: Option<Instant>,
     /// First op failure since the last drain barrier.
     pub failed: Option<Errno>,
     pub stats: CommitStats,
@@ -254,6 +257,7 @@ impl State {
                 dirty: HashSet::new(),
                 dirty_bytes: 0,
                 in_flight: false,
+                in_flight_since: None,
                 failed: None,
                 stats: CommitStats::default(),
             },
@@ -285,10 +289,15 @@ impl State {
     }
 
     pub fn attr(&self, id: Id) -> Option<Attr> {
+        self.attr_stamped(id).map(|(attr, _)| attr)
+    }
+
+    /// `attr` with the instant its data was requested (now for a `Local` with changes in flight).
+    pub fn attr_stamped(&self, id: Id) -> Option<(Attr, Instant)> {
         if let Some(local) = self.visible(id) {
-            return Some(local.attr.clone());
+            return Some((local.attr.clone(), local.quiet_since.unwrap_or_else(Instant::now)));
         }
-        self.attrs.get(&id).filter(|c| self.live(c)).map(|c| c.value.clone())
+        self.attrs.get(&id).filter(|c| self.live(c)).map(|c| (c.value.clone(), c.stamp))
     }
 
     /// What `name` in `parent` names in this mount's view; `None` when unknown.
@@ -398,8 +407,20 @@ impl State {
         })
     }
 
-    pub fn local(&mut self, attr: Attr) -> &mut Local {
-        self.locals.entry(attr.id).or_insert_with(|| Local::new(attr))
+    /// @cc [owner:fontanierh,label:product] local-keeps-freshness
+    /// A `Local` created from cached data MUST be stamped with that data's request instant
+    /// (`fresh`), never with the promotion instant: promoting MUST NOT extend how long stale
+    /// data is served.
+    pub fn local(&mut self, attr: Attr, fresh: Instant) -> &mut Local {
+        self.locals.entry(attr.id).or_insert_with(|| Local::new(attr, fresh))
+    }
+
+    /// A read saw `id` at `rev`: a cached attribute of an older revision is dropped, so `stat`
+    /// stops reporting a size the content no longer has.
+    pub fn observe_rev(&mut self, id: Id, rev: u64) {
+        if self.attrs.get(&id).is_some_and(|c| c.value.rev < rev) {
+            self.attrs.remove(&id);
+        }
     }
 
     pub fn bind(&mut self, parent: Id, name: &str, seq: u64, value: Name) {
@@ -523,13 +544,13 @@ impl State {
     }
 
     /// Whether a new mutation must wait: the next batch could not carry everything acknowledged,
-    /// or the oldest acknowledged mutation has already used half its commit window.
+    /// or the oldest uncommitted mutation (in flight included) has already used half its window.
     pub fn backlogged(&self) -> bool {
         let log = &self.log;
         if log.queue.len() >= BATCH_OPS || log.cost + log.dirty_bytes >= BATCH_BYTES {
             return true;
         }
-        let oldest = log.queue.front().map(|p| p.acked);
+        let oldest = log.in_flight_since.or(log.queue.front().map(|p| p.acked));
         let oldest = log.dirty.iter().filter_map(|id| self.locals.get(id)?.dirty_since).chain(oldest).min();
         oldest.is_some_and(|at| at.elapsed() > self.budget.window / 2)
     }
@@ -552,6 +573,7 @@ impl State {
             self.log.last.clear();
         }
         self.log.in_flight = !batch.is_empty();
+        self.log.in_flight_since = batch.iter().map(|p| p.acked).min();
         batch
     }
 
@@ -643,6 +665,7 @@ impl State {
             self.log.done = last.seq + 1;
         }
         self.log.in_flight = false;
+        self.log.in_flight_since = None;
         failures
     }
 

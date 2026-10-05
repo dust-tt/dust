@@ -275,13 +275,17 @@ impl Fs {
     }
 
     fn attr(&self, id: Id) -> Result<Attr, Errno> {
+        self.attr_stamped(id).map(|(attr, _)| attr)
+    }
+
+    fn attr_stamped(&self, id: Id) -> Result<(Attr, Instant), Errno> {
         self.resolve(
-            |state| state.attr(id),
+            |state| state.attr_stamped(id),
             || {
                 let (reply, sent) = self.call("getattr", Request::GetAttr { id })?;
                 let Response::Attr(attr) = reply.result.map_err(errno)? else { return Err(Errno::EIO) };
                 let installed = self.state.lock().install_attr(attr.clone(), sent, reply.version);
-                Ok((attr, installed))
+                Ok(((attr, sent), installed))
             },
         )
     }
@@ -418,19 +422,21 @@ impl Fs {
         let demanded = files.iter().find(|(file, ..)| *file == id).map(|(.., bytes)| bytes.clone());
         // Content is keyed by revision and only served under a live attribute of that revision.
         for (id, rev, bytes) in files {
+            state.observe_rev(id, rev);
             state.content.insert(id, rev, bytes);
         }
         Ok(demanded)
     }
 
-    /// The whole content of `id` at one revision, with the attribute it was read under.
-    fn materialize(&self, id: Id) -> Result<(Attr, Vec<u8>), Errno> {
-        let attr = self.attr(id)?;
+    /// The whole content of `id` at one revision, with the attribute it was read under and the
+    /// instant that attribute was requested.
+    fn materialize(&self, id: Id) -> Result<(Attr, Vec<u8>, Instant), Errno> {
+        let (attr, fresh) = self.attr_stamped(id)?;
         if attr.kind != Kind::File {
             return Err(Errno::EISDIR);
         }
         if let Some(bytes) = self.state.lock().content.get(id, attr.rev) {
-            return Ok((attr, bytes.to_vec()));
+            return Ok((attr, bytes.to_vec(), fresh));
         }
         'restart: for _ in 0..TRIES {
             let mut bytes = Vec::new();
@@ -447,7 +453,7 @@ impl Fs {
                     let mut attr = attr.clone();
                     attr.size = bytes.len() as u64;
                     attr.rev = at;
-                    return Ok((attr, bytes));
+                    return Ok((attr, bytes, fresh));
                 }
             }
         }
@@ -497,7 +503,10 @@ impl Fs {
             };
             let fetched = match (present, fresh) {
                 (true, _) => None,
-                (false, true) => Some((self.attr(id)?, Vec::new())),
+                (false, true) => {
+                    let (attr, fresh) = self.attr_stamped(id)?;
+                    Some((attr, Vec::new(), fresh))
+                }
                 (false, false) => Some(self.materialize(id)?),
             };
             let mut state = self.state.lock();
@@ -506,13 +515,17 @@ impl Fs {
                 (true, fetched) => {
                     let local = state.locals.get_mut(&id).ok_or(Errno::EIO)?;
                     if local.image.is_none() {
-                        let Some((_, bytes)) = fetched else { continue };
+                        let Some((attr, bytes, _)) = fetched else { continue };
+                        // Only metadata changes are buffered without an image: size and revision
+                        // come with the content.
+                        local.attr.size = attr.size;
+                        local.attr.rev = attr.rev;
                         local.image = Some(bytes);
                     }
                     local
                 }
-                (false, Some((attr, bytes))) => {
-                    let local = state.local(attr);
+                (false, Some((attr, bytes, fresh))) => {
+                    let local = state.local(attr, fresh);
                     local.image = Some(bytes);
                     local
                 }
@@ -598,7 +611,7 @@ impl Fs {
         let now = now_ns();
         let size = target.as_ref().map_or(0, |t| t.len() as u64);
         let attr = Attr { id, kind, mode: mode & 0o7777, size, mtime_ns: now, ctime_ns: now, rev: 1, writable: true };
-        let local = state.local(attr.clone());
+        let local = state.local(attr.clone(), Instant::now());
         local.unborn = true;
         local.writers = writers;
         local.target = target.clone();
@@ -674,10 +687,10 @@ impl Fs {
     }
 
     fn set_attr(&self, id: Id, mode: Option<u32>, mtime_ns: Option<i64>) -> Result<(), Errno> {
-        let attr = self.attr(id)?;
+        let (attr, fresh) = self.attr_stamped(id)?;
         let mut state = self.state.lock();
         self.admit(&mut state)?;
-        let local = state.local(attr);
+        let local = state.local(attr, fresh);
         if let Some(mode) = mode {
             local.attr.mode = mode;
         }
@@ -1038,7 +1051,10 @@ impl Filesystem for Mount {
                 }
                 let (reply, _) = fs.call("read", Request::Read { id, offset, len: size.min(MAX_IO_BYTES) })?;
                 match reply.result {
-                    Ok(Response::Data { bytes, .. }) => Ok(bytes),
+                    Ok(Response::Data { rev, bytes, .. }) => {
+                        fs.state.lock().observe_rev(id, rev);
+                        Ok(bytes)
+                    }
                     Ok(_) => Err(Errno::EIO),
                     Err(e) => Err(errno(e)),
                 }
@@ -1094,11 +1110,11 @@ impl Filesystem for Mount {
         reply.ok();
     }
 
-    fn fsync(&self, _req: &FuseRequest, ino: INodeNo, _fh: FileHandle, _datasync: bool, reply: ReplyEmpty) {
-        // Buffered: sealed into the next batch, committed within the window, not durable on return.
+    fn fsync(&self, _req: &FuseRequest, _ino: INodeNo, _fh: FileHandle, _datasync: bool, reply: ReplyEmpty) {
+        // Durable: the log is committed in order, so draining it commits this file's changes (and
+        // every mutation acknowledged before them) before returning.
         self.0.stats.local("op.fsync");
-        self.0.seal(self.0.id(ino));
-        reply.ok();
+        self.serve(reply, move |fs, reply| answer(reply, fs.drain(), |reply, ()| reply.ok()));
     }
 
     fn opendir(&self, req: &FuseRequest, ino: INodeNo, _flags: OpenFlags, reply: ReplyOpen) {
@@ -1131,10 +1147,11 @@ impl Filesystem for Mount {
         self.serve(reply, move |fs, mut reply| {
             let dir = fs.id(ino);
             let ttl = fs.state.lock().budget.ttl;
-            // A handle whose listing outlived the TTL is rebuilt, resuming after the last name listed.
+            // A handle whose listing outlived the TTL is rebuilt, resuming after the last name listed;
+            // so is one rewound before the entries it still holds.
             let stale = fs.dirs.lock().get(&fh.0).map(|h| {
                 let resume = offset.checked_sub(h.base + 1).and_then(|i| h.entries.get(i as usize)).map(|e| e.0.clone());
-                (h.stamp.elapsed() >= ttl && offset >= h.base, resume)
+                (h.stamp.elapsed() >= ttl || (h.base > 2 && offset < h.base), resume)
             });
             let Some((stale, resume)) = stale else {
                 reply.fail(Errno::EBADF);

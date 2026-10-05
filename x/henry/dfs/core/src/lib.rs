@@ -1230,7 +1230,7 @@ async fn truncate<T: Txn>(txn: &mut T, id: Id, old_size: u64, size: u64) -> Step
     }
     let keep = size.div_ceil(BLOCK_BYTES) as u32;
     txn.clear_range(&records::blocks(id, keep, u32::MAX));
-    if size % BLOCK_BYTES != 0 {
+    if !size.is_multiple_of(BLOCK_BYTES) {
         let index = (size / BLOCK_BYTES) as u32;
         if let Some(mut block) = txn.get(&records::block(id, index)).await? {
             block.truncate((size % BLOCK_BYTES) as usize);

@@ -2,7 +2,8 @@
 """Two mounts of one tenant. For each mutation made through A, B polls continuously; no poll that
 starts more than MAX_DELAY after the mutation was acknowledged may observe the old state. Also
 checks that a revoked reader loses access within MAX_DELAY, and that every read returns a whole
-state the writer produced (never a mix of two)."""
+state the writer produced (never a mix of two). Also covers a directory handle held open across the
+mutation (rewound each poll) and a file opened for writing just before its cached state expires."""
 import os
 from pathlib import Path
 import sys
@@ -14,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'bench'))
 from harness import MAX_DELAY_MS, Stack  # noqa: E402
 
 MAX = MAX_DELAY_MS / 1000
+TTL = MAX - min(MAX / 4, 1.0)
 WARM = 0.3
 # Every content of d/f the writer produces, in order.
 STATES = {b'one', b'two!', b'two!+3', b'tw', 'EACCES'}
@@ -21,6 +23,8 @@ STATES = {b'one', b'two!', b'two!+3', b'tw', 'EACCES'}
 
 def observe(path, how):
     try:
+        if callable(how):
+            return how()
         if how == 'content':
             with open(path, 'rb') as f:
                 return f.read()
@@ -73,6 +77,32 @@ def check(name, path, how, mutate, expect):
     return status == 'ok'
 
 
+def check_promoted_writer(a, b):
+    """B caches d/f, A overwrites it, then B opens d/f for writing just before its cached state
+    expires: reads through that handle must still see A's write within the budget."""
+    time.sleep(TTL + 0.1)
+    started = time.monotonic()
+    (b / 'd' / 'f').read_bytes()
+    (a / 'd' / 'f').write_bytes(b'one')
+    acked = time.monotonic()
+    time.sleep(max(0.0, started + TTL - 0.05 - time.monotonic()))
+    fd = os.open(b / 'd' / 'f', os.O_RDWR)
+    polls = []
+    try:
+        while time.monotonic() < acked + MAX + TTL + 0.3:
+            at = time.monotonic()
+            polls.append((at, os.pread(fd, 64, 0)))
+            time.sleep(0.002)
+    finally:
+        os.close(fd)
+    late = [p for p in polls if p[0] > acked + MAX and p[1] != b'one']
+    status = 'FAIL' if late or not polls else 'ok'
+    print(f'{status:4} {"open-for-write near expiry":28} {len(polls)} polls', flush=True)
+    if late:
+        print(f'     late stale observation: {late[0][1]!r} at +{(late[0][0] - acked) * 1000:.0f} ms')
+    return status == 'ok'
+
+
 def main():
     work = Path(tempfile.mkdtemp(prefix='dfs-visibility-'))
     stack = Stack(work, port=7404)
@@ -102,6 +132,14 @@ def main():
         ]
         for case in cases:
             ok &= check(*case)
+        handle = os.open(b / 'd', os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            # `listdir` of a descriptor rewinds the same open directory before each read.
+            ok &= check('held directory handle', b / 'd', lambda: tuple(sorted(os.listdir(handle))),
+                        lambda: (a / 'd' / 'k').write_bytes(b'k'), ('f', 'k', 'new'))
+        finally:
+            os.close(handle)
+        ok &= check_promoted_writer(a, b)
         ino = os.stat(a / 'd').st_ino
         ok &= check('revoke read', b / 'd' / 'f', 'content',
                     lambda: (stack.admin_op('boundary', str(ino)), stack.admin_op('grant', str(ino), 'alice', 'write'),

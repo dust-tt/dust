@@ -27,9 +27,10 @@ lease contract):
 
 Defaults chosen where the contract was silent (flagged for confirmation):
 
-* `fsync(2)` on a file is buffered like any other write. `fsync` of a **directory** is the drain
-  barrier: it returns once every mutation this mount acknowledged before it has committed, and
-  reports the first failure since the previous barrier.
+* `fsync(2)` is **durable**; other writes and metadata changes stay buffered. `fsync` of a file or a
+  directory is the drain barrier: it returns once every mutation this mount acknowledged before it
+  (the file's own changes included) has committed, and reports the first failure since the previous
+  barrier.
 * Read-your-writes holds within one mount (the overlay below); across mounts, only the delay bound.
 * Revocation of read access is time-bounded: a mount may serve content it fetched before the
   revocation for at most `MAX_EVENTUAL_CONSISTENCY_DELAY`.
@@ -118,7 +119,10 @@ This took open+fstat+close (10k files) from 20.1 s to 2.0 s and read+SHA from 43
 whole content image for files, symlink target) and a pending name per `(dir, name)`; reads in this
 mount see them at once. A file opened for writing without `O_TRUNC` is materialized whole first. A
 `Local` with nothing pending is dropped (re-fetched on demand) once its TTL lapses, so an idle open
-writer does not freeze other mounts' updates out of view.
+writer does not freeze other mounts' updates out of view. A `Local` built from cached data keeps
+that data's request time, so promoting it does not extend its life (`local-keeps-freshness`). A
+read that returns a newer revision than the cached attribute drops that attribute, so `stat` does
+not keep reporting the old size.
 
 **Log and committer.** Mutations become ops in an ordered log. A `SetAttr` folds into the latest
 queued op on the same object; a sealed `Write` merges into the latest queued `Write` while it stays
@@ -126,12 +130,14 @@ under the block limit. One committer sends one `Apply` at a time (`ordered-commi
 / 2 MiB, sealing every dirty file into the batch it forms. On success it installs the returned
 attributes and names at the commit version, raises the floor, and drops the overlay entries the
 batch carried. On failure (another mount won a race) it invalidates what the ops touched, counts
-them as dropped, logs each, and reports the first failure at the next directory fsync.
+them as dropped, logs each, and reports the first failure at the next fsync.
 
 **Admission.** A new mutation waits while the queue is full (512 ops), the queued plus dirty bytes
-exceed 2 MiB, or the oldest unsent op is older than `window / 2` — this is what keeps every commit
-inside the window. Measured: 0 missed windows in every run, worst commit lag 42 ms against a 250 ms
-window.
+exceed 2 MiB, or the oldest uncommitted op (the batch in flight included) is older than
+`window / 2`. A commit therefore lands within the window unless one `Apply` takes longer than
+`window / 2` (a stalled server); such a commit is counted as a missed window, and the benchmark
+harness rejects any run with one. Measured: 0 missed windows in every run, worst commit lag
+LAG_PLACEHOLDER.
 
 **Inline-or-defer (`serve-inline-or-defer`).** The kernel round-robins requests across idle FUSE
 threads; with 8 threads every request paid a cross-CPU wakeup (36 µs per cached stat vs 5 µs on one
@@ -140,8 +146,8 @@ can answer from memory inline. A request that reaches a blocking point (an RPC, 
 a wait on another thread's fetch, a drain) before changing anything returns its reply object and is
 rerun on a blocking pool, so a slow request never stalls the others (checked: a 128 MiB uncached
 read in one client leaves another client's cached stats under 2 ms). A mutation passes admission
-before its first change; from then on it waits in place instead of deferring. `flush`, `fsync` and
-`release` never block and always run inline, in kernel order.
+before its first change; from then on it waits in place instead of deferring. `flush` and `release`
+never block and always run inline, in kernel order.
 
 **Permissions.** No `default_permissions` (the kernel would check bits it may not cache): the mount
 checks `writable` and mode bits itself (`local-permissions`); the server re-checks grants at commit.
@@ -152,18 +158,22 @@ absent; `fsck` clean).
 
 ## Disclosures
 
-* fsync is buffered; directory fsync is the barrier (fuser has no `FUSE_SYNCFS`, so `syncfs(2)` is a
-  no-op and the harness fsyncs the mount root).
+* Writes and metadata changes are buffered; fsync (file or directory) is the durability barrier
+  (fuser has no `FUSE_SYNCFS`, so `syncfs(2)` is a no-op and the harness fsyncs the mount root).
+* A failed op is reported by the next fsync of any object on the mount, not only its own.
 * Revocation is time-bounded by `MAX_EVENTUAL_CONSISTENCY_DELAY`, not immediate.
 * A concurrent conflicting mutation is acknowledged locally and dropped at commit if another mount
   won; this mount masks the other's name for at most the window. Dropped ops are logged and
-  counted; directory fsync reports them.
+  counted; the next fsync reports them.
 * Any local uid acts as the session principal (mode bits are honoured for non-root callers).
 * No reconnect: on a lost connection pending ops fail (`EIO` at the barrier, counted as dropped).
 * Opening an existing file for writing without `O_TRUNC` reads it whole first.
 * A `read(2)` the kernel splits into several FUSE reads may span two revisions of a file being
   rewritten elsewhere; each FUSE read returns bytes of one revision.
-* `MAP_PRIVATE` mmap goes through the page cache (direct I/O); shared writable mmap is refused.
+* `MAP_PRIVATE` mmap goes through the page cache (the kernel's direct-I/O path); shared mmap is
+  refused. The kernel drops the file's page cache on every `open` and every `mmap` (no
+  `FOPEN_KEEP_CACHE`), so a mapping only ever holds pages faulted after the latest of them; POSIX
+  leaves it unspecified whether a private mapping sees later changes to the file.
 * Search indexing, hard links, xattrs, locks, TLS: out of scope.
 * In-place 64 KiB block map instead of an immutable chunk tree.
 
@@ -172,14 +182,14 @@ absent; `fsck` clean).
 Directory (`CONTRACTS`): `tenant-and-principal-from-session`, `store-trait-boundary`.
 Declarations: `write-stop-boundaries`, `read-version-reuse`, `auth-cache-epoch`, `fresh-reads`,
 `apply-batch`, `session-principal`, `ordered-commit`, `own-commit-floor`, `ttl-at-serve`,
-`local-permissions`, `serve-inline-or-defer`.
+`local-permissions`, `serve-inline-or-defer`, `local-keeps-freshness`.
 
 ## Checks (`local/`)
 
 | script | checks |
 | --- | --- |
 | `smoke.bash` | end-to-end ops; unmount with 0 dropped ops; remount and verify content, listing; `fsck` |
-| `visibility.py` | two mounts; for create, overwrite, append, truncate, chmod, utime, rename, unlink, mkdir, rmdir and read revocation, no poll starting later than ack + MAX sees the old state, and every read returns a whole written state |
+| `visibility.py` | two mounts; for create, overwrite, append, truncate, chmod, utime, rename, unlink, mkdir, rmdir, a directory handle held open and rewound, a file opened for writing just before its cache expires, and read revocation, no poll starting later than ack + MAX sees the old state, and every read returns a whole written state |
 | `crash.py` | SIGKILL the mount mid-untar; every file complete, a prefix, or absent; `fsck` clean |
 | `stall.py` | cached requests are not delayed by another client's slow uncached reads |
 | `bigdir.py` | lookup hits and misses in a directory above and below the listing cap |
@@ -196,7 +206,8 @@ machine (OrbStack, 12 vCPU, Linux 7.0), FDB 7.3 `single ssd` with **FDB's defaul
 Two Spolu references:
 
 * **Spolu pinned** — his v2 `90f9932` run by us on this machine against the same FDB settings
-  (`bench/results/spolu-vfs-native.log`). Like for like.
+  (`bench/results/spolu-vfs-native.log`). Same FDB settings. Our untar time excludes the final
+  drain, as his harness does; the drain is recorded separately (≈ 20–30 ms).
 * **Spolu latest** — his own `RESULTS.md` run (revision `2717953273`), on FDB tuned with four of
   his five knobs (commit batch intervals, server and client busy-wait). Same machine class, faster
   FDB settings than ours.

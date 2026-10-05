@@ -102,9 +102,14 @@ class Stack:
     def unmount(self, path):
         process = self.mounts.pop(path)
         process.send_signal(signal.SIGTERM)
-        process.wait(timeout=120)
+        code = process.wait(timeout=120)
         path.rmdir()
-        return totals(self.work / f'{self.phase}-mount-{path.name}.log', 'mount totals')
+        summary = totals(self.work / f'{self.phase}-mount-{path.name}.log', 'mount totals')
+        # A run counts only if the mount drained cleanly with every op committed inside its window.
+        commit = (summary or {}).get('commit', {})
+        if code != 0 or commit.get('dropped_ops') != 0 or commit.get('missed_windows') != 0:
+            raise RuntimeError(f'mount {path.name} exited {code} with commit stats {commit}')
+        return summary
 
     def stop(self):
         mounts = {path.name: self.unmount(path) for path in list(self.mounts)}
