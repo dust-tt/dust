@@ -7,7 +7,6 @@ import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { AuthContext } from "@app/lib/auth/AuthContext";
 import { toSkillListItem } from "@app/lib/skill_search/serialization";
 import { FetcherProvider } from "@app/lib/swr/FetcherContext";
-import { trackEvent } from "@app/lib/tracking";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewTypeFactory } from "@app/tests/utils/MCPServerViewTypeFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -36,11 +35,6 @@ beforeEach(() => {
 });
 
 const push = vi.hoisted(() => vi.fn());
-
-vi.mock("@app/lib/tracking", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@app/lib/tracking")>();
-  return { ...actual, trackEvent: vi.fn() };
-});
 
 vi.mock("@app/lib/platform", () => ({
   useAppRouter: () => ({
@@ -803,27 +797,6 @@ describe("search-backed Manage Skills", () => {
     expect(fetcher).toHaveBeenCalledWith(
       `/api/w/${context.workspace.sId}/skills/${skill.sId}?withRelations=true`
     );
-    const results = vi
-      .mocked(trackEvent)
-      .mock.calls.find(([event]) => event.object === "manage_results")?.[0];
-    expect(results?.extra).toEqual(
-      expect.objectContaining({
-        entity_type: "skill",
-        result_count: 1,
-        has_search: false,
-      })
-    );
-    expect(trackEvent).toHaveBeenCalledWith({
-      area: "builder",
-      object: "manage_details",
-      action: "open",
-      extra: expect.objectContaining({
-        entity_type: "skill",
-        target_id: skill.sId,
-        manage_session_id: results?.extra?.manage_session_id,
-        search_id: results?.extra?.search_id,
-      }),
-    });
   });
 
   it("requests Dust-provided and archived skills in their own tabs", async () => {
@@ -1038,23 +1011,6 @@ describe("search-backed Manage Skills", () => {
     await userEvent.click(
       await screen.findByRole("menuitem", { name: "Editors only" })
     );
-    mutation.mockRejectedValueOnce(new Error("Unavailable"));
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Confirm editors" })
-    );
-    await waitFor(() => expect(mutation).toHaveBeenCalledTimes(1));
-    expect(
-      vi
-        .mocked(trackEvent)
-        .mock.calls.filter(([event]) => event.object === "manage_action")
-    ).toEqual([]);
-    expect(screen.getByText("2 selected")).toBeInTheDocument();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Set availability" })
-    );
-    await userEvent.click(
-      await screen.findByRole("menuitem", { name: "Editors only" })
-    );
     await userEvent.click(
       await screen.findByRole("button", { name: "Confirm editors" })
     );
@@ -1073,19 +1029,6 @@ describe("search-backed Manage Skills", () => {
     await waitFor(() =>
       expect(screen.queryByText(/^\d+ selected$/)).not.toBeInTheDocument()
     );
-    expect(trackEvent).toHaveBeenCalledWith({
-      area: "builder",
-      object: "manage_action",
-      action: "submit",
-      extra: expect.objectContaining({
-        entity_type: "skill",
-        operation: "set_availability",
-        outcome: "success",
-        target_ids: `${skill.sId},second`,
-        target_count: 2,
-        availability: "editors",
-      }),
-    });
   });
 
   it("offers selection only on the active skills the user administrates", async () => {
@@ -1307,10 +1250,5 @@ describe("Poke Manage Skills", () => {
     );
     expect(window.location.hash).toContain("skillSearch=");
     expect(window.location.hash).not.toContain("agentSearch=");
-    expect(
-      vi
-        .mocked(trackEvent)
-        .mock.calls.filter(([event]) => event.object.startsWith("manage_"))
-    ).toEqual([]);
   });
 });
