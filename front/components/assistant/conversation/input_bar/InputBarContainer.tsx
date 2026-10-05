@@ -16,6 +16,7 @@ import {
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { useInputBarOverlayTracker } from "@app/components/assistant/conversation/input_bar/useInputBarOverlayTracker";
+import { EditorContent } from "@app/components/editor/EditorContent";
 import { EditorSelectionToolbar } from "@app/components/editor/EditorSelectionToolbar";
 import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import {
@@ -118,7 +119,6 @@ import {
   VoicePicker,
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
-import { EditorContent } from "@tiptap/react";
 import type { BezierDefinition } from "framer-motion";
 import { animate, useReducedMotion } from "framer-motion";
 import type React from "react";

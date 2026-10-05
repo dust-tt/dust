@@ -288,6 +288,11 @@
                     "message": "Format dates with the functions of @app/lib/i18n/format instead of date-fns."
                   },
                   {
+                    "group": ["@tiptap/react"],
+                    "importNamePattern": "EditorContent",
+                    "message": "Import EditorContent from @app/components/editor/EditorContent so the editor is masked from session replay."
+                  },
+                  {
                     "group": ["dayjs", "dayjs/**", "luxon", "luxon/**"],
                     "message": "Format dates with the functions of @app/lib/i18n/format instead of dayjs or luxon."
                   }
