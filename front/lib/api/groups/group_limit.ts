@@ -21,6 +21,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import {
   addFixedWindowCount,
@@ -435,17 +436,19 @@ export async function resyncGroupLimitCountersFromEsUsage(
     cycle.cycleStart,
     cycle.cycleEnd
   );
-  let updatedGroupCount = 0;
-  for (const group of groups) {
-    const setResult = await setFixedWindowCount({
-      key: makeGroupLimitAwuCreditsRateLimitKeyForGroup(workspace, group),
-      bounds,
-      value: consumedByGroupId.get(group.sId) ?? 0,
-      logger,
-    });
-    if (setResult.isOk()) {
-      updatedGroupCount++;
-    }
-  }
-  return new Ok({ updatedGroupCount });
+  const results = await concurrentExecutor(
+    groups,
+    async (group) => {
+      const setResult = await setFixedWindowCount({
+        key: makeGroupLimitAwuCreditsRateLimitKeyForGroup(workspace, group),
+        bounds,
+        value: consumedByGroupId.get(group.sId) ?? 0,
+        logger,
+      });
+      return setResult.isOk();
+    },
+    { concurrency: 8 }
+  );
+
+  return new Ok({ updatedGroupCount: results.filter(Boolean).length });
 }
