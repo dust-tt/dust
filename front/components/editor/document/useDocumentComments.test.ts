@@ -12,13 +12,14 @@ const SOURCE = `Hi :comment-start{id=c1}there:comment-end{id=c1}\n\n:::annotatio
 
 const nextTick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-async function renderCommentedEditor(initialContent: string) {
+async function renderCommentedEditor(content: string) {
   const onSave = vi.fn().mockResolvedValue(new Ok(undefined));
   const rendered = renderHook(() => {
     const document = useDocumentEditor({
-      initialContent,
+      content,
       readOnly: false,
       autosaveDebounceMs: 60_000,
+      externalChangeAnimationMs: 0,
       onSave,
       onStateChange: undefined,
     });

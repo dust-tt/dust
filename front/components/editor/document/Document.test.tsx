@@ -18,14 +18,10 @@ const hasEditor = (
 ): element is HTMLElement & { editor: Editor } =>
   element !== null && "editor" in element && element.editor !== undefined;
 
-async function renderDocument(initialContent: string) {
+async function renderDocument(content: string) {
   const onSave = vi.fn().mockResolvedValue(new Ok(undefined));
   const { container } = render(
-    <Document
-      initialContent={initialContent}
-      onSave={onSave}
-      autosaveDebounceMs={60_000}
-    />
+    <Document content={content} onSave={onSave} autosaveDebounceMs={60_000} />
   );
   const dom = await waitFor(() => {
     const element = container.querySelector(".tiptap");
