@@ -64,14 +64,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { OpenUserAnalyticsEvent } from "@app/lib/analytics/events";
-import {
-  FILES_COPY_ACTION_NAME,
-  FILES_CREATE_ACTION_NAME,
-  FILES_DELETE_ACTION_NAME,
-  FILES_EDIT_ACTION_NAME,
-  FILES_MOVE_ACTION_NAME,
-  FILES_UPLOAD_FROM_URL_ACTION_NAME,
-} from "@app/lib/api/actions/servers/files/metadata";
+import { isFilesWritingTool } from "@app/lib/api/actions/servers/files/metadata";
 import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -163,16 +156,6 @@ import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { mutate } from "swr";
-
-/** The files tools that change a file, so an open preview of it must refetch. */
-const FILES_WRITING_TOOL_NAMES = new Set<string>([
-  FILES_CREATE_ACTION_NAME,
-  FILES_EDIT_ACTION_NAME,
-  FILES_DELETE_ACTION_NAME,
-  FILES_COPY_ACTION_NAME,
-  FILES_MOVE_ACTION_NAME,
-  FILES_UPLOAD_FROM_URL_ACTION_NAME,
-]);
 
 interface MessageInfoChipProps {
   children: ReactNode;
@@ -519,7 +502,7 @@ export function AgentMessage({
             // draft otherwise. Same reliable per-message stream as the plan revalidation.
             if (
               action.internalMCPServerName === "files" &&
-              FILES_WRITING_TOOL_NAMES.has(action.toolName)
+              isFilesWritingTool(action.toolName)
             ) {
               // The tools name the canonical scoped path every preview keys on.
               const paths = [
