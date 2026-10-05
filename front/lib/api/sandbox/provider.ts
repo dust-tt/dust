@@ -194,8 +194,10 @@ export interface SandboxProvider {
    */
   /**
    * @cc [owner:fontanierh,label:security;performance] read-file-bounded
-   * At most `readOpts.maxBytes` bytes MUST be buffered in front. A larger file fails the read
-   * (rejects) instead of being truncated, whatever size the file reported before the read.
+   * The read MUST stop receiving the file once more than `readOpts.maxBytes` bytes have arrived and
+   * reject instead of truncating, whatever size the file reported before the read. Memory held for
+   * the read is therefore O(`maxBytes`) (received chunks plus their concatenated copy), never
+   * proportional to the file size.
    */
   readFile(
     providerId: string,
