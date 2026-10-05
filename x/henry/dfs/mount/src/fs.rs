@@ -818,8 +818,8 @@ impl Mount {
     /// worker pool, so one slow request never stalls the others. `op` MUST NOT change anything
     /// before its first blocking point other than idempotent cache installs, and a mutation
     /// MUST pass `Fs::admit` (after which blocking points wait in place) before its first change.
-    /// Requests the kernel does not wait for in order (`flush`, `fsync`, `release`,
-    /// `releasedir`) MUST NOT go through `serve`: they never block and run in kernel order.
+    /// `flush`, `release` and `releasedir` MUST NOT go through `serve`: they never block and run
+    /// in kernel order. `fsync` and `fsyncdir` drain through it (a drain may be rerun).
     fn serve<R: Send + 'static>(&self, reply: R, op: impl Fn(&Fs, R) -> Option<R> + Send + 'static) {
         INLINE.set(true);
         let deferred = op(&self.0, reply);
