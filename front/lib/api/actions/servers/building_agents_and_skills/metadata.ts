@@ -370,12 +370,16 @@ export const SUGGEST_DESCRIPTION =
 // Bounded by the `batch_suggestions.analysis` column.
 const BATCH_SUGGESTION_ANALYSIS_MAX_LENGTH = 255;
 
+const BATCH_SUGGESTION_TITLE_MAX_LENGTH = 40;
+// Advertised below the actual limit so models aiming at the limit don't overshoot it.
+export const BATCH_SUGGESTION_TITLE_ADVERTISED_MAX_LENGTH = 38;
+
 export const SUGGEST_INPUT_SCHEMA = z.object({
   title: z
     .string()
-    .max(25)
+    .max(BATCH_SUGGESTION_TITLE_MAX_LENGTH)
     .describe(
-      "A short, action-oriented user-facing title for these suggestions (at most 25 characters)."
+      `A short user-facing title clearly describing the action of these suggestions (at most ${BATCH_SUGGESTION_TITLE_ADVERTISED_MAX_LENGTH} characters).`
     ),
   analysis: z
     .string()

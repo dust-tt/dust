@@ -11,6 +11,7 @@ import {
 import { UserHandle } from "@app/components/assistant/conversation/UserHandle";
 import { UserMessageMarkdown } from "@app/components/assistant/UserMessageMarkdown";
 import { ConfirmContext } from "@app/components/Confirm";
+import { EditorContent } from "@app/components/editor/EditorContent";
 import { EditorSelectionToolbar } from "@app/components/editor/EditorSelectionToolbar";
 import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
@@ -57,7 +58,6 @@ import {
   Zap,
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
-import { EditorContent } from "@tiptap/react";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { cva } from "class-variance-authority";
 import type React from "react";

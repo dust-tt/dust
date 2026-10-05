@@ -1,4 +1,5 @@
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
+import { EditorContent } from "@app/components/editor/EditorContent";
 import { EditorSelectionToolbar } from "@app/components/editor/EditorSelectionToolbar";
 import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
 import { LinkExtension } from "@app/components/editor/extensions/LinkExtension";
@@ -7,7 +8,7 @@ import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { cn, markdownStyles, Toolbar } from "@dust-tt/sparkle";
 import type { Extensions } from "@tiptap/core";
 import { generateHTML, generateJSON } from "@tiptap/html";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useMemo, useRef } from "react";
 

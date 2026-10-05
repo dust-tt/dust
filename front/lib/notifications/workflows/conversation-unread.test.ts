@@ -6,16 +6,18 @@ import {
 } from "@app/lib/notifications";
 import type { ConversationDetailsType } from "@app/lib/notifications/helpers";
 import { getEmailSummary } from "@app/lib/notifications/helpers";
-import type { ConversationUnreadPayloadType } from "@app/lib/notifications/workflows/conversation-unread";
+import type { ConversationUnreadPayloadType } from "@app/lib/notifications/triggers/conversation-unread";
 import {
   filterParticipantsByNotifyCondition,
-  getMessagePreviewSlack,
-  getMessagePreviewText,
   shouldSendNotificationForAgentAnswer,
   shouldSkipConversation,
   shouldSkipConversationExternalNotification,
   shouldSkipNewProjectConversation,
   triggerConversationUnreadNotifications,
+} from "@app/lib/notifications/triggers/conversation-unread";
+import {
+  getMessagePreviewSlack,
+  getMessagePreviewText,
 } from "@app/lib/notifications/workflows/conversation-unread";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -57,14 +59,8 @@ vi.mock("@app/lib/api/assistant/call_llm", () => ({
   runMultiActionsAgent: vi.fn(),
 }));
 
-// Mock renderConversationForModel to avoid tokenization issues in tests
-vi.mock("@app/lib/api/assistant/conversation_rendering", () => ({
-  renderConversationForModel: vi.fn(),
-}));
-
 // Import the mocked functions
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
-import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -1501,25 +1497,6 @@ describe("getEmailSummary", () => {
         lastReadAt: new Date(new Date().getTime() - 100 * 24 * 60 * 60 * 1000), // Set lastReadAt to 100 days ago to ensure messages are unread
       });
     }
-
-    // Set up consistent mock for renderConversationForModel
-    vi.mocked(renderConversationForModel).mockResolvedValue(
-      new Ok({
-        modelConversation: {
-          messages: [
-            {
-              role: "user",
-              name: "Test User",
-              content: [
-                { type: "text", text: "This is an unread message for testing" },
-              ],
-            },
-          ],
-        },
-        tokensUsed: 100,
-        prunedContext: false,
-      })
-    );
 
     vi.clearAllMocks();
   });

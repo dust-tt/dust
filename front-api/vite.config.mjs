@@ -1,3 +1,5 @@
+import { lingui } from "@lingui/vite-plugin";
+import react from "@vitejs/plugin-react";
 import path from "path";
 import { defineConfig } from "vitest/config";
 
@@ -6,6 +8,10 @@ import { defineConfig } from "vitest/config";
 // tests. The @app alias still points at front/ because most factories and
 // resources live there.
 export default defineConfig({
+  plugins: [
+    react({ babel: { plugins: ["@lingui/babel-plugin-lingui-macro"] } }),
+    lingui(),
+  ],
   test: {
     globals: true,
     root: new URL(".", import.meta.url).pathname,

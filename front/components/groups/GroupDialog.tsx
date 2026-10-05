@@ -2,7 +2,7 @@ import { GroupManagersField } from "@app/components/groups/GroupManagersField";
 import { useGroupManagerAppointmentReview } from "@app/components/groups/useGroupManagerAppointmentReview";
 import type { SearchMemberType } from "@app/components/members/MemberSelectionTable";
 import { MemberSelectionTable } from "@app/components/members/MemberSelectionTable";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useCreateGroup, useGroup, useUpdateGroup } from "@app/lib/swr/groups";
 import type { GroupWithAllowedActions } from "@app/types/api/groups";
 import type { GroupType } from "@app/types/groups";
@@ -48,7 +48,7 @@ export function GroupDialog({
 
   // Managing the membership of a group that grants the admin role is restricted
   // to admins: adding a member escalates them to admin. Managers can view but
-  // not edit such a group.
+  // not edit such a group's membership.
   const isReadOnlyForManager =
     isEdit && group?.allowedActions?.canEditMembers !== true;
 
@@ -113,6 +113,7 @@ function GroupForm({
   onClose,
 }: GroupFormProps) {
   const { hasFeature } = useFeatureFlags();
+  const { isManager } = useAuth();
   const [name, setName] = useState(initialName);
   const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(
     () => new Set(initialMembers.map((m) => m.sId))
@@ -125,9 +126,16 @@ function GroupForm({
   const isSubmitting = isCreating || isUpdating;
   const canEditDetails =
     !groupId || group?.allowedActions?.canEditDetails === true;
-  const canAssignManagers = group?.allowedActions?.canAssignManagers === true;
+  const canAssignManagers = groupId
+    ? group?.allowedActions?.canAssignManagers === true
+    : isManager && hasFeature("group_management");
+  const managerGroup = group ?? {
+    name: name.trim() || "this group",
+    kind: "regular_manual" as const,
+    grantedRole: null,
+  };
   const { confirmAppointment } = useGroupManagerAppointmentReview({
-    group,
+    group: managerGroup,
     initialManagers,
     selectedManagers,
     initialMembers,
@@ -146,7 +154,7 @@ function GroupForm({
     (selectedManagers.length !== initialManagerIds.size ||
       selectedManagers.some((manager) => !initialManagerIds.has(manager.sId)));
   const shouldDisableButton =
-    readOnly ||
+    (readOnly && !canAssignManagers) ||
     isSubmitting ||
     name.trim().length === 0 ||
     (!groupId && selectedMemberIds.size === 0) ||
@@ -192,9 +200,15 @@ function GroupForm({
       return;
     }
 
+    if (!(await confirmAppointment())) {
+      return;
+    }
     const result = await doCreateGroup({
       name: name.trim(),
       memberIds: Array.from(selectedMemberIds),
+      managerIds: canAssignManagers
+        ? selectedManagers.map((manager) => manager.sId)
+        : undefined,
     });
     if (result) {
       onCreated?.(result.group);
@@ -226,22 +240,6 @@ function GroupForm({
             disabled={readOnly || !canEditDetails}
             autoFocus
           />
-          {group && canAssignManagers && (
-            <GroupManagersField
-              owner={owner}
-              group={group}
-              managers={selectedManagers}
-              groupMemberIds={
-                new Set(
-                  [...initialMemberIds].filter((id) =>
-                    selectedMemberIds.has(id)
-                  )
-                )
-              }
-              onChange={setSelectedManagers}
-              disabled={isSubmitting}
-            />
-          )}
           <div className="flex flex-col gap-2">
             {hasFeature("group_management") && (
               <h3 className="text-sm font-semibold">
@@ -256,6 +254,22 @@ function GroupForm({
               disabled={readOnly || isSubmitting}
             />
           </div>
+          {canAssignManagers && (
+            <GroupManagersField
+              owner={owner}
+              group={managerGroup}
+              managers={selectedManagers}
+              groupMemberIds={
+                new Set(
+                  [...initialMemberIds].filter((id) =>
+                    selectedMemberIds.has(id)
+                  )
+                )
+              }
+              onChange={setSelectedManagers}
+              disabled={isSubmitting}
+            />
+          )}
         </div>
       </DialogContainer>
       <DialogFooter

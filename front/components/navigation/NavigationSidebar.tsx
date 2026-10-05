@@ -30,6 +30,7 @@ import {
   NavTabPillTrigger,
   XClose,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import React, { useCallback, useContext, useMemo } from "react";
 
 interface NavigationSidebarProps {
@@ -56,6 +57,7 @@ export const NavigationSidebar = React.forwardRef<
   }: NavigationSidebarProps,
   ref
 ) {
+  const { t } = useLingui();
   const router = useAppRouter();
   const activePath = useMemo(() => {
     if (router.isReady && router.pathname) {
@@ -88,9 +90,10 @@ export const NavigationSidebar = React.forwardRef<
         owner,
         spaceMenuButtonRef,
         showAdminSection,
-        adminSectionHref
+        adminSectionHref,
+        t
       ),
-    [owner, spaceMenuButtonRef, showAdminSection, adminSectionHref]
+    [owner, spaceMenuButtonRef, showAdminSection, adminSectionHref, t]
   );
 
   const currentTab = useMemo(
@@ -153,7 +156,7 @@ export const NavigationSidebar = React.forwardRef<
                     ) : (
                       <NavigationList>
                         {subNavigation.map((nav) => (
-                          <React.Fragment key={`nav-${nav.label}`}>
+                          <React.Fragment key={`nav-${nav.id}`}>
                             {nav.label && (
                               <NavigationListCompactLabel label={nav.label} />
                             )}

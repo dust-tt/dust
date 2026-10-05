@@ -1,3 +1,7 @@
+import type {
+  PokeGetMemberModelTiers,
+  PokeMemberModelTier,
+} from "@app/lib/api/poke/model_tiers";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type {
@@ -30,5 +34,25 @@ export function usePokeAllowedModelTiers({
     maxTierName: data?.maxTierName ?? null,
     isAllowedModelTiersLoading: !error && !data && !disabled,
     isAllowedModelTiersError: !!error,
+  };
+}
+
+export function usePokeMemberModelTiers({
+  owner,
+  disabled,
+}: PokeConditionalFetchProps) {
+  const { fetcher } = useFetcher();
+  const memberModelTiersFetcher: Fetcher<PokeGetMemberModelTiers> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    disabled ? null : `/api/poke/workspaces/${owner.sId}/model_tiers/members`,
+    memberModelTiersFetcher
+  );
+
+  return {
+    members: data?.members ?? emptyArray<PokeMemberModelTier>(),
+    workspaceMaxTierName: data?.workspaceMaxTierName ?? null,
+    isMemberModelTiersLoading: !error && !data && !disabled,
+    isMemberModelTiersError: !!error,
   };
 }

@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 
 interface UserToolsDialogProps {
   open: boolean;
@@ -25,7 +26,9 @@ export function UserToolsDialog({
        * closes. The table's SWR hooks need no `disabled` gating. */}
       <DialogContent size="2xl" height="xl">
         <DialogHeader>
-          <DialogTitle>Tools</DialogTitle>
+          <DialogTitle>
+            <Trans>Tools</Trans>
+          </DialogTitle>
         </DialogHeader>
         <DialogContainer>
           <UserToolsTable owner={owner} />

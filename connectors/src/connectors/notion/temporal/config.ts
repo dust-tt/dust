@@ -24,6 +24,11 @@ export const PROCESS_ALL_DISCOVERED_RESOURCES = false;
 
 export const DATABASE_TO_CSV_MAX_SIZE = 256 * 1024 * 1024; // 256MB
 
+// Blocks nested deeper than this (top-level page blocks are at depth 0) are neither cached nor
+// rendered. Real pages are far shallower; this bounds the per-level child workflows and the
+// rendering recursion on pathologically nested pages.
+export const MAX_BLOCK_NESTING_DEPTH = 100;
+
 // the garbageCollect function will be stopped if it runs longer than this
 // (a bit less than 2 hours). This includes retries.
 export const GARBAGE_COLLECT_MAX_DURATION_MS = Math.floor(

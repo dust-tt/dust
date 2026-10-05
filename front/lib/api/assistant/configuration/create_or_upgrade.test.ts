@@ -2,10 +2,30 @@ import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/config
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { AgentConfigurationAssistantPayload } from "@app/types/api/agent_configuration";
+import { CLAUDE_SONNET_5_MODEL_ID } from "@app/types/assistant/models/anthropic";
+import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import type { ModelIdType } from "@app/types/assistant/models/types";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const CUSTOM_MODEL_ID = vi.hoisted(() => "custom-model-for-agent-save-test");
+// Null keeps the member's real tier grants.
+const allowedTiers = vi.hoisted(() => ({
+  value: null as ModelsTierName[] | null,
+}));
+
+vi.mock("@app/lib/model_tiers/allowed_tiers", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/model_tiers/allowed_tiers")>();
+  return {
+    ...actual,
+    resolveAllowedTierNames: async (
+      ...args: Parameters<typeof actual.resolveAllowedTierNames>
+    ) =>
+      allowedTiers.value
+        ? { tiers: allowedTiers.value }
+        : actual.resolveAllowedTierNames(...args),
+  };
+});
 
 vi.mock("@app/types/assistant/models/custom_models.generated", async () => {
   const { GEMINI_3_8_FLASH_MODEL_CONFIG } = await vi.importActual<
@@ -47,6 +67,10 @@ function agentBody(modelId: ModelIdType): AgentConfigurationAssistantPayload {
 }
 
 describe("createOrUpgradeAgentConfiguration", () => {
+  beforeEach(() => {
+    allowedTiers.value = null;
+  });
+
   it("rejects a custom model, even for a workspace with its flag", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     await FeatureFlagFactory.basic(authenticator, "custom_model_feature");
@@ -69,5 +93,51 @@ describe("createOrUpgradeAgentConfiguration", () => {
     });
 
     expect(res.isOk()).toBe(true);
+  });
+
+  describe("without a reasoning effort", () => {
+    function sonnet5Body(): AgentConfigurationAssistantPayload {
+      const body = agentBody(CLAUDE_SONNET_5_MODEL_ID);
+      return {
+        ...body,
+        model: {
+          providerId: "anthropic",
+          modelId: CLAUDE_SONNET_5_MODEL_ID,
+          temperature: 0.7,
+        },
+      };
+    }
+
+    it("pins the model's default effort when the member's tiers allow it", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+      allowedTiers.value = ["cost_efficient", "balanced", "premium"];
+
+      const res = await createOrUpgradeAgentConfiguration({
+        auth: authenticator,
+        assistant: sonnet5Body(),
+      });
+
+      expect(res.isOk()).toBe(true);
+      if (res.isOk()) {
+        expect(res.value.agent.modelConfiguration.reasoningEffort).toBe("high");
+      }
+    });
+
+    it("pins the highest allowed effort when the default is above the member's tiers", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+      allowedTiers.value = ["cost_efficient", "balanced"];
+
+      const res = await createOrUpgradeAgentConfiguration({
+        auth: authenticator,
+        assistant: sonnet5Body(),
+      });
+
+      expect(res.isOk()).toBe(true);
+      if (res.isOk()) {
+        expect(res.value.agent.modelConfiguration.reasoningEffort).toBe(
+          "medium"
+        );
+      }
+    });
   });
 });

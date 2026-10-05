@@ -449,8 +449,9 @@ export function useSkillsWithRelations({
 /**
  * @cc [owner:aubin-tchoi,label:react] invalidate-workspace-skill-lists
  * Revalidate string-keyed skill lists and array-keyed skill searches for the
- * given workspace, regardless of query parameters or search body. Do not
- * revalidate other workspaces or individual skill detail endpoints.
+ * given workspace, regardless of query parameters or search body, plus its
+ * reinforcement settings.
+ * Do not revalidate other workspaces or individual skill detail endpoints.
  */
 export function useInvalidateSkills({ workspaceId }: { workspaceId: string }) {
   const { mutate } = useSWRConfig();
@@ -461,7 +462,8 @@ export function useInvalidateSkills({ workspaceId }: { workspaceId: string }) {
     () =>
       mutate((key) =>
         isString(key)
-          ? key.split("?")[0] === skillsUrl
+          ? key.split("?")[0] === skillsUrl ||
+            key === `${skillsUrl}/reinforcement_settings`
           : Array.isArray(key) && key[0] === searchUrl
       ),
     [mutate, skillsUrl, searchUrl]
@@ -695,6 +697,11 @@ type SkillReinforcementUpdate = {
   selfImprovementCostsCapAwuCredits?: number | null;
 };
 
+/**
+ * @cc [owner:aubin-tchoi,label:react] reinforcement-settings-invalidation
+ * Successful reinforcement updates revalidate only the workspace's settings
+ * list. Search results do not contain reinforcement settings.
+ */
 export function useUpdateSkillReinforcement({
   owner,
 }: {
@@ -702,7 +709,7 @@ export function useUpdateSkillReinforcement({
 }) {
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
-  const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
+  const { mutate } = useSWRConfig();
 
   const updateSkillReinforcement = useCallback(
     async (skillId: string, update: SkillReinforcementUpdate) => {
@@ -712,7 +719,7 @@ export function useUpdateSkillReinforcement({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(update),
         });
-        void invalidateSkills();
+        void mutate(`/api/w/${owner.sId}/skills/reinforcement_settings`);
         return true;
       } catch (err) {
         sendNotification({
@@ -725,7 +732,7 @@ export function useUpdateSkillReinforcement({
         return false;
       }
     },
-    [owner.sId, fetcher, invalidateSkills, sendNotification]
+    [owner.sId, fetcher, mutate, sendNotification]
   );
 
   return { updateSkillReinforcement };

@@ -18,6 +18,7 @@ import type {
   SandboxExecUser,
   SandboxHandle,
   SandboxProvider,
+  SandboxReadFileOptions,
 } from "@app/lib/api/sandbox/provider";
 import {
   isSandboxExecUser,
@@ -92,6 +93,30 @@ function getRootSafeSandboxCommand(command: RootCommand): string {
     "/bin/bash --noprofile --norc -c",
     shellEscape(renderRootCommand(command)),
   ].join(" ");
+}
+
+/**
+ * Buffer `stream` whole, or return null (cancelling the stream) as soon as it exceeds `maxBytes`.
+ */
+async function readStreamWithinLimit(
+  stream: ReadableStream<Uint8Array>,
+  maxBytes: number
+): Promise<Buffer | null> {
+  const reader = stream.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      return Buffer.concat(chunks, totalBytes);
+    }
+    totalBytes += value.byteLength;
+    if (totalBytes > maxBytes) {
+      await reader.cancel().catch(() => undefined);
+      return null;
+    }
+    chunks.push(value);
+  }
 }
 
 function getNonRootSafeSandboxCommand(
@@ -908,18 +933,41 @@ export class E2BSandboxProvider implements SandboxProvider {
   async readFile(
     providerId: string,
     path: string,
+    { user, maxBytes }: SandboxReadFileOptions,
     tracingOpts: { workspaceId: string }
   ): Promise<Buffer> {
     return traceSandboxOperation(
       "readFile",
       async () => {
+        // Streamed so that the cap bounds what front buffers: envd serves whatever the path is
+        // when it is opened (a sparse multi-GB file, a FIFO), not what a prior stat reported.
         const bytes = await this.withConnection(
           providerId,
-          (sandbox) => sandbox.files.read(path, { format: "bytes" }),
+          async (sandbox) =>
+            readStreamWithinLimit(
+              await sandbox.files.read(path, { format: "stream", user }),
+              maxBytes
+            ),
           { retryOnStaleConnection: true }
         );
+        if (bytes === null) {
+          logger.warn(
+            {
+              providerId,
+              workspaceId: tracingOpts.workspaceId,
+              path,
+              user,
+              maxBytes,
+            },
+            "Sandbox file read exceeded its byte cap"
+          );
+          // Thrown outside withConnection: an oversized file is not a stale connection.
+          throw new Error(
+            `Sandbox file ${path} is larger than ${maxBytes} bytes.`
+          );
+        }
 
-        return Buffer.from(bytes);
+        return bytes;
       },
       {
         provider_id: providerId,

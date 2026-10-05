@@ -91,7 +91,7 @@ async function getTemporalWorkflowArguments({
 
   // Fetch the first event.
   const response = await client.workflowService.getWorkflowExecutionHistory({
-    namespace: process.env.TEMPORAL_NAMESPACE,
+    namespace: client.options.namespace,
     execution: { workflowId },
     maximumPageSize: 1,
   });

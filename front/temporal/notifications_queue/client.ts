@@ -1,6 +1,6 @@
 import { isUserMessageOrigin } from "@app/lib/api/analytics/source_labels";
 import type { AuthenticatorType } from "@app/lib/auth";
-import { shouldSendNotificationForAgentAnswer } from "@app/lib/notifications/workflows/conversation-unread";
+import { shouldSendNotificationForAgentAnswer } from "@app/lib/notifications/triggers/conversation-unread";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/notifications_queue/config";

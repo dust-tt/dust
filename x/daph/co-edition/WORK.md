@@ -20,7 +20,15 @@ Update this file in the same PR as the work it describes. Dates are absolute.
 
 ## In progress
 
-- Editor PR 1 (`dfm-editor`): push and open as draft.
+- Editor M1 as three stacked drafts: #34027 (Sparkle copy), #34038 (DFM persistence and unmount save), #34029 (host mount behind the flag). Done in them after review: the editor choice depends only on the
+  flag and the file (a file the editor cannot load is shown read-only with the reason), one last
+  save on unmount, files above the preview limit stay in the plain editor, the dialog holds
+  close, Prev and Next while edits are unsaved (lifted once a save has failed), a clean editor
+  reopens on content written by someone else while a dirty one keeps its draft and refuses to
+  save over it, an unmount save queues behind the save in flight. Still to do from M1: raw bytes, revision-aware save,
+  Source toggle, Pod tab parity, Storybook tests ported, rename the copied "block" files
+  (`blocks.ts`, `DocumentBlockMenu`) after the slash menu they are, since "block" reads as a
+  block model the product doc rules out.
 
 ## Plan, as milestones
 
@@ -36,11 +44,10 @@ ship behind `co_edition` until M7. The order is the dependency order, not a spri
 
 ### M1. A human edits a `.md` in the rich editor (stream 2, single human)
 
-- Editor PR 1 (`dfm-editor`) pushed as a draft, then hardened: load the raw file bytes, not
-  the truncated and trimmed preview text; save through the revision-aware PUT the Frames
-  client uses and keep the draft on 412; a Source toggle that also shows front matter; Pod
-  file tab parity (`PodFileTabPreview.tsx` is a third Markdown editor copy); Storybook tests
-  ported to vitest; a Flavify pass.
+- Editor PRs #34027, #34038, #34029 as drafts, then hardened: load the raw file bytes, not the truncated
+  and trimmed preview text; save through the revision-aware PUT the Frames client uses and
+  keep the draft on 412; a Source toggle that also shows front matter; Pod file tab parity
+  (`PodFileTabPreview.tsx` is a third Markdown editor copy); Storybook tests ported to vitest.
 - `.txt` keeps the plain editor. `.md` detection relies on the `text/markdown` content type;
   check what files created by agents and by upload actually carry.
 - Outcome: open, edit, reload, close and reopen a `.md` from the conversation panel, the

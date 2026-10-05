@@ -8,6 +8,7 @@ import {
 import { useAppRouter } from "@app/lib/platform";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { hasGroupManagementScope } from "@app/types/api/auth_context";
+import { useLingui } from "@lingui/react/macro";
 import type { ReactElement } from "react";
 import { useMemo } from "react";
 
@@ -16,6 +17,7 @@ interface AdminLayoutProps {
 }
 
 export function AdminLayout({ children }: AdminLayoutProps) {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const { subscription, groupManagement } = useAuth();
 
@@ -35,6 +37,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         hasManagedGroups:
           featureFlags.includes("group_management") &&
           hasGroupManagementScope(groupManagement?.read_usage),
+        t,
       }),
     [
       owner,
@@ -43,6 +46,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       subscription,
       hasPermission,
       groupManagement,
+      t,
     ]
   );
 
