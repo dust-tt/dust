@@ -54,6 +54,16 @@ export const S = {
     alignItems: "center" as const,
     gap: 4,
   }),
+  dockedSelect: (active: boolean) => ({
+    padding: "2px 4px",
+    fontSize: 11,
+    border: active ? "1px solid #00897B" : "1px solid transparent",
+    borderRadius: 4,
+    cursor: "pointer" as const,
+    background: active ? "#00897B22" : "transparent",
+    color: active ? "#00897B" : "inherit",
+    fontWeight: 500,
+  }),
   dockedIconBtn: {
     background: "none",
     border: "none",

@@ -1,11 +1,19 @@
 import { ToolbarControls } from "@app/components/dev/ToolbarControls";
 import { isSseVerbose, setSseVerbose } from "@app/lib/client/sse_verbose";
+import {
+  getLocaleOverride,
+  setLocaleOverride,
+} from "@app/lib/i18n/locale_override";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock(import("@app/components/sparkle/ThemeContext"), () => ({
   useTheme: () => ({ theme: "light", isDark: false, setTheme: vi.fn() }),
+}));
+
+vi.mock("@app/components/dev/devModeConstants", () => ({
+  DEV_MODE_ACTIVE: true,
 }));
 
 vi.mock("@app/components/dev/devFeatureFlagOverrides", () => ({
@@ -20,10 +28,14 @@ const metrics = {
 };
 
 describe("ToolbarControls", () => {
-  beforeEach(() => setSseVerbose(false));
+  beforeEach(() => {
+    setSseVerbose(false);
+    setLocaleOverride(null);
+  });
   afterEach(() => {
     cleanup();
     setSseVerbose(false);
+    setLocaleOverride(null);
   });
 
   it("toggles SSE logs and keeps the choice when switching toolbar mode", async () => {
@@ -57,5 +69,25 @@ describe("ToolbarControls", () => {
     await user.click(compactButton);
     expect(isSseVerbose()).toBe(false);
     expect(compactButton).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("overrides the UI locale and clears it back to the account locale", async () => {
+    const user = userEvent.setup();
+    render(
+      <ToolbarControls
+        metrics={metrics}
+        expanded={null}
+        onTogglePanel={vi.fn()}
+      />
+    );
+    const select = screen.getByRole("combobox", { name: "UI locale" });
+
+    await user.selectOptions(select, "fr-FR");
+    expect(getLocaleOverride()).toBe("fr-FR");
+    expect(select).toHaveValue("fr-FR");
+
+    await user.selectOptions(select, "Account locale");
+    expect(getLocaleOverride()).toBeNull();
+    expect(select).toHaveValue("");
   });
 });
