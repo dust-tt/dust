@@ -221,3 +221,46 @@ Both use server binary SHA-256
 `f6d64759bf19182f2eb4340f214616b7a07d058334bc6c51227546185a08413d`.
 Intermediate runs with publication failures are excluded. Reproduce with the measured source and
 the earlier command, adding `DFS_PROFILE=1` and `--untar-only`.
+
+## Block retention comparison
+
+The following full runs use the RAM-optimized baseline (`047a7e84cc`) and `DFS_PROFILE=1`.
+Same configuration and corpus as above. The 1s baseline and both block-reuse runs are still pending.
+
+### dfs v3 [RAM optimized, no block reuse, D = 8s]
+
+Untar: **48.014 s**; remaining FDB drain: **20 ms**. All 24 checks passed, including full SHA-256
+verification; zero publication failures. Population server CPU: 23.140 s; client CPU: 20.220 s.
+
+```text
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 66,001.26 | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 66,371.70 | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 332.80    | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 118.97    | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 72,723.34 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 74,468.55 | OK     |
+| metadata     | stat missing (256 paths)                       | first | 1,630.80  | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 1,186.51  | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 7,592.94  | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 7,588.90  | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 7,710.45  | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 7,559.71  | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 6,680.69  | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 6,706.87  | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 1,695.71  | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 1,600.47  | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 85,315.73 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 85,656.08 | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 2,308.37  | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 1,313.96  | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 224.19    | OK     |
+| file sync    | fsync (32 files)                               | once  | 12.71     | OK     |
+| write        | close (32 files)                               | once  | 0.67      | OK     |
+| write        | unlink (32 files)                              | once  | 101.90    | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+```
+
+Report: `/tmp/dfs-v3-benchmark-3q09nh8a/run.json` in the development container.
