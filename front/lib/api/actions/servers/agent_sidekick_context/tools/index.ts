@@ -1,7 +1,10 @@
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { isToolWithKnowledge } from "@app/lib/actions/mcp_helper";
-import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  ToolHandlerExtra,
+  ToolHandlers,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type {
   InstructionsSuggestionSchema,
@@ -392,6 +395,24 @@ async function createSkillsSuggestions({
   return new Ok(createdSuggestions);
 }
 
+// The agent under edit comes from the server configuration, never from the model.
+function getTargetAgentConfigurationId(
+  runContext: ToolHandlerExtra["runContext"]
+): Result<string, MCPError> {
+  const agentConfigurationId = getAgentConfigurationIdFromContext({
+    runContext,
+  });
+  if (!agentConfigurationId) {
+    return new Err(
+      new MCPError(
+        "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
+        { tracked: false }
+      )
+    );
+  }
+  return new Ok(agentConfigurationId);
+}
+
 const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
   get_available_models: async ({ providerId }, { auth }) => {
     const models = await getSelectableModelsForAuth(auth, { providerId });
@@ -525,18 +546,11 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
   },
 
   get_agent_feedback: async (input, { auth, runContext }) => {
-    const agentConfigurationId = getAgentConfigurationIdFromContext({
-      runContext,
-    });
-
-    if (!agentConfigurationId) {
-      return new Err(
-        new MCPError(
-          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          { tracked: false }
-        )
-      );
+    const agentConfigurationIdRes = getTargetAgentConfigurationId(runContext);
+    if (agentConfigurationIdRes.isErr()) {
+      return agentConfigurationIdRes;
     }
+    const agentConfigurationId = agentConfigurationIdRes.value;
 
     return getAgentFeedbackToolResult(auth, {
       ...input,
@@ -545,18 +559,11 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
   },
 
   get_agent_insights: async (input, { auth, runContext }) => {
-    const agentConfigurationId = getAgentConfigurationIdFromContext({
-      runContext,
-    });
-
-    if (!agentConfigurationId) {
-      return new Err(
-        new MCPError(
-          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          { tracked: false }
-        )
-      );
+    const agentConfigurationIdRes = getTargetAgentConfigurationId(runContext);
+    if (agentConfigurationIdRes.isErr()) {
+      return agentConfigurationIdRes;
     }
+    const agentConfigurationId = agentConfigurationIdRes.value;
 
     return getAgentInsightsToolResult(auth, {
       ...input,
@@ -566,18 +573,11 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
 
   // Suggestion handlers
   suggest_prompt_edits: async (params, { auth, runContext }) => {
-    const agentConfigurationId = getAgentConfigurationIdFromContext({
-      runContext,
-    });
-
-    if (!agentConfigurationId) {
-      return new Err(
-        new MCPError(
-          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          { tracked: false }
-        )
-      );
+    const agentConfigurationIdRes = getTargetAgentConfigurationId(runContext);
+    if (agentConfigurationIdRes.isErr()) {
+      return agentConfigurationIdRes;
     }
+    const agentConfigurationId = agentConfigurationIdRes.value;
 
     try {
       const result = await createInstructionSuggestions({
@@ -611,18 +611,11 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
   },
 
   suggest_tools: async (params, { auth, runContext }) => {
-    const agentConfigurationId = getAgentConfigurationIdFromContext({
-      runContext,
-    });
-
-    if (!agentConfigurationId) {
-      return new Err(
-        new MCPError(
-          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          { tracked: false }
-        )
-      );
+    const agentConfigurationIdRes = getTargetAgentConfigurationId(runContext);
+    if (agentConfigurationIdRes.isErr()) {
+      return agentConfigurationIdRes;
     }
+    const agentConfigurationId = agentConfigurationIdRes.value;
 
     try {
       const result = await createToolsSuggestions({
@@ -656,18 +649,11 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
   },
 
   suggest_sub_agent: async (params, { auth, runContext }) => {
-    const agentConfigurationId = getAgentConfigurationIdFromContext({
-      runContext,
-    });
-
-    if (!agentConfigurationId) {
-      return new Err(
-        new MCPError(
-          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          { tracked: false }
-        )
-      );
+    const agentConfigurationIdRes = getTargetAgentConfigurationId(runContext);
+    if (agentConfigurationIdRes.isErr()) {
+      return agentConfigurationIdRes;
     }
+    const agentConfigurationId = agentConfigurationIdRes.value;
 
     // Validate that the sub-agent exists and is accessible, and that an added one is one the
     // builder offers (see `suggestable-sub-agents-match-builder`).
@@ -781,18 +767,11 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
   },
 
   suggest_skills: async (params, { auth, runContext }) => {
-    const agentConfigurationId = getAgentConfigurationIdFromContext({
-      runContext,
-    });
-
-    if (!agentConfigurationId) {
-      return new Err(
-        new MCPError(
-          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          { tracked: false }
-        )
-      );
+    const agentConfigurationIdRes = getTargetAgentConfigurationId(runContext);
+    if (agentConfigurationIdRes.isErr()) {
+      return agentConfigurationIdRes;
     }
+    const agentConfigurationId = agentConfigurationIdRes.value;
 
     try {
       const result = await createSkillsSuggestions({
@@ -840,18 +819,11 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    const agentConfigurationId = getAgentConfigurationIdFromContext({
-      runContext,
-    });
-
-    if (!agentConfigurationId) {
-      return new Err(
-        new MCPError(
-          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          { tracked: false }
-        )
-      );
+    const agentConfigurationIdRes = getTargetAgentConfigurationId(runContext);
+    if (agentConfigurationIdRes.isErr()) {
+      return agentConfigurationIdRes;
     }
+    const agentConfigurationId = agentConfigurationIdRes.value;
 
     // Fetch the latest version of the agent configuration.
     const agent = await AgentResource.fetchById(auth, agentConfigurationId);
@@ -924,18 +896,11 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
   },
 
   suggest_knowledge: async (params, { auth, runContext }) => {
-    const agentConfigurationId = getAgentConfigurationIdFromContext({
-      runContext,
-    });
-
-    if (!agentConfigurationId) {
-      return new Err(
-        new MCPError(
-          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          { tracked: false }
-        )
-      );
+    const agentConfigurationIdRes = getTargetAgentConfigurationId(runContext);
+    if (agentConfigurationIdRes.isErr()) {
+      return agentConfigurationIdRes;
     }
+    const agentConfigurationId = agentConfigurationIdRes.value;
 
     // Validate that the data source view exists and is accessible.
     const { action, method, dataSourceViewId, nodeIds, description } =
@@ -1025,18 +990,11 @@ const handlers: ToolHandlers<typeof AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA> = {
   },
 
   list_suggestions: async (params, { auth, runContext }) => {
-    const agentConfigurationId = getAgentConfigurationIdFromContext({
-      runContext,
-    });
-
-    if (!agentConfigurationId) {
-      return new Err(
-        new MCPError(
-          "Agent configuration ID not found in tool configuration. This tool requires the agentConfigurationId to be set in additionalConfiguration.",
-          { tracked: false }
-        )
-      );
+    const agentConfigurationIdRes = getTargetAgentConfigurationId(runContext);
+    if (agentConfigurationIdRes.isErr()) {
+      return agentConfigurationIdRes;
     }
+    const agentConfigurationId = agentConfigurationIdRes.value;
 
     // Lists suggestions across all versions of this agent.
     const suggestions =
