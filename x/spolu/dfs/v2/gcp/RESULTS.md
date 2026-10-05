@@ -4,9 +4,13 @@
 server/client revisions are recorded with each run. The xattrs runs change the shared FUSE client.
 See [setup and reproduction](README.md) and the [localhost results](../bench/RESULTS.md).
 
-Latest: [server writeback](#server-writeback) completed the full 10k untar in **309.769 s**, plus
-**0.058 s** of remaining persistence. This is **12.4% slower** than the previous xattrs run.
-The full filesystem suite and the separate deep-grant 10k import passed; all corpora remain.
+Latest: [per-object publication locks](#per-object-publication-locks) completed the full 10k untar in
+**189.538 s**, plus **0.973 s** of remaining persistence: **38.8% faster** than workspace-locked
+server writeback. The deep-grant 10k import took **233.714 s**, plus **1.402 s** of remaining
+persistence. Both populations and the full filesystem suite passed; all corpora remain.
+
+Earlier: [server writeback](#server-writeback) completed the full 10k untar in **309.769 s**, plus
+**0.058 s** of remaining persistence, **12.4% slower** than the previous xattrs run.
 
 Previous: [xattr filtering and caching](#xattrs-client-filtering-and-caching) completed 10k untar in
 **304.889 s** with filtering only and **275.600 s** with filtering plus caching; the previous client
