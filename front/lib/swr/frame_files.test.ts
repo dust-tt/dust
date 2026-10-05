@@ -29,47 +29,28 @@ beforeEach(() => {
 
 describe("Frame file access", () => {
   it.each([
-    ["fil_existing", "/api/w/w_test/files/fil_existing?action=view"],
-    [
-      "conversation-c_other/notes.json",
-      "/api/w/w_test/files/path/conversation-c_other/notes.json",
-    ],
-    [
-      "pod-p_other/draft notes.json",
-      "/api/w/w_test/files/path/pod-p_other/draft%20notes.json",
-    ],
-    [
-      "conversation/notes.json",
-      "/api/w/w_test/files/path/conversation-c_test/notes.json",
-    ],
-    ["pod/notes.json", "/api/w/w_test/files/path/pod-p_test/notes.json"],
-    ["project/notes.json", "/api/w/w_test/files/path/pod-p_test/notes.json"],
-  ])(
-    "preserves reads by %s without granting writes outside the package",
-    async (path, url) => {
-      clientFetch.mockResolvedValue(
-        new Response("{}", {
-          headers: {
-            [DUST_FILE_REVISION_HEADER]: "123",
-            [DUST_FILE_CAN_WRITE_HEADER]: "true",
-          },
-        })
-      );
-      const { result } = renderHook(() =>
-        useFrameFiles({
-          ...options,
-          conversationId: "c_test",
-          spaceId: "p_test",
-        })
-      );
+    "fil_existing",
+    "conversation-c_other/notes.json",
+    "pod-p_other/draft notes.json",
+    "conversation/notes.json",
+    "pod/notes.json",
+    "project/notes.json",
+    "/api/w/w_test/files/fil_existing?action=view",
+    "../outside.json",
+  ])("rejects reads outside the Frame package: %s", async (path) => {
+    const { result } = renderHook(() =>
+      useFrameFiles({
+        ...options,
+        conversationId: "c_test",
+        spaceId: "p_test",
+      })
+    );
 
-      await expect(result.current.readFile(path)).resolves.toMatchObject({
-        fileBlob: expect.any(Blob),
-        canWrite: false,
-      });
-      expect(clientFetch).toHaveBeenCalledExactlyOnceWith(url);
-    }
-  );
+    await expect(result.current.readFile(path)).resolves.toMatchObject({
+      fileBlob: null,
+    });
+    expect(clientFetch).not.toHaveBeenCalled();
+  });
 
   it("requires a package root for package-relative reads and writes", async () => {
     const { result } = renderHook(() =>

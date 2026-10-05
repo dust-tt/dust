@@ -46,44 +46,22 @@ const resolveFilePath = (filePath: string, packageRoot: string | null) => {
 interface FrameReadUrlParams {
   fileId: string;
   workspaceId: string;
-  conversationId: string | null;
-  spaceId?: string;
   packageRoot: string | null;
 }
 
 const resolveReadUrl = ({
   fileId,
   workspaceId,
-  conversationId,
-  spaceId,
   packageRoot,
 }: FrameReadUrlParams): string | null => {
-  if (fileId.startsWith("conversation-") || fileId.startsWith("pod-")) {
-    return getFilePathContentApiPath({ sId: workspaceId }, fileId);
+  if (!isFramePackageRelativePath(fileId)) {
+    return null;
   }
 
-  if (fileId.startsWith("conversation/")) {
-    const relativePath = fileId.slice("conversation/".length);
-    return conversationId
-      ? `/api/w/${workspaceId}/files/path/conversation-${conversationId}/${relativePath}`
-      : null;
-  }
-
-  if (fileId.startsWith("pod/") || fileId.startsWith("project/")) {
-    const relativePath = fileId.slice(fileId.indexOf("/") + 1);
-    return spaceId
-      ? `/api/w/${workspaceId}/files/path/pod-${spaceId}/${relativePath}`
-      : null;
-  }
-
-  if (isFramePackageRelativePath(fileId)) {
-    const filePath = resolveFilePath(fileId, packageRoot);
-    return filePath
-      ? getFilePathContentApiPath({ sId: workspaceId }, filePath)
-      : null;
-  }
-
-  return `/api/w/${workspaceId}/files/${fileId}?action=view`;
+  const filePath = resolveFilePath(fileId, packageRoot);
+  return filePath
+    ? getFilePathContentApiPath({ sId: workspaceId }, filePath)
+    : null;
 };
 
 /**
@@ -94,8 +72,6 @@ const resolveReadUrl = ({
  */
 export const useFrameFiles = ({
   workspaceId,
-  conversationId = null,
-  spaceId,
   packageRoot = null,
   canWrite,
 }: FrameFilesOptions) => {
@@ -104,8 +80,6 @@ export const useFrameFiles = ({
       const url = resolveReadUrl({
         fileId,
         workspaceId,
-        conversationId,
-        spaceId,
         packageRoot,
       });
       if (!url) {
@@ -144,7 +118,7 @@ export const useFrameFiles = ({
           response.headers.get(DUST_FILE_CAN_WRITE_HEADER) === "true",
       };
     },
-    [canWrite, conversationId, packageRoot, spaceId, workspaceId]
+    [canWrite, packageRoot, workspaceId]
   );
 
   const writeFile = useCallback(
