@@ -10,3 +10,10 @@ A method that fetches or lists such resources MUST either:
 - carry `dangerously` in its name (`dangerouslyFetchByModelIds`), or take an option whose name or
   value carries it (`permissionFiltering: "dangerously_skip"`), and say in a comment which check is
   skipped and why.
+
+@cc [owner:fontanierh,label:performance;backend] batched-workspace-deletes
+A method deleting every row of a workspace from a table that can hold more than 100k rows for a
+single workspace MUST delete them through `destroyAllForWorkspaceInBatches` (or an equivalent bound
+on rows per statement) and MUST NOT wrap the whole deletion in one transaction. In production, this
+covers at least `files`, `runs`, `run_usages`, and the conversation tables (`messages`,
+`agent_messages`, `agent_mcp_actions`, `agent_step_contents`, ...).
