@@ -35,7 +35,7 @@ def main():
         stack.mount(mount, token)
         tar = subprocess.Popen(['/usr/bin/tar', '--no-same-owner', '-xf', str(work / 'src.tar'), '-C', str(mount)],
                                stderr=subprocess.DEVNULL)
-        time.sleep(float(os.environ.get('CRASH_AFTER', '2')))
+        time.sleep(float(os.environ.get('CRASH_AFTER', '0.4')))
         process = stack.mounts.pop(mount)
         process.send_signal(signal.SIGKILL)
         process.wait()

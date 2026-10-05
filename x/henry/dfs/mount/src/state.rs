@@ -90,6 +90,9 @@ pub struct Local {
     /// Ops in the log (queued or in flight) that change this object.
     pub pending: u32,
     pub writers: u32,
+    /// Since when nothing of it is pending or unsealed. A quiet `Local` is served for at most
+    /// `budget.ttl` more (other mounts' changes must show through an idle open-for-write file).
+    pub quiet_since: Option<Instant>,
     /// Its `Create` has not committed: the server knows nothing of it.
     pub unborn: bool,
 }
@@ -106,6 +109,7 @@ impl Local {
             dirty_since: None,
             pending: 0,
             writers: 0,
+            quiet_since: Some(Instant::now()),
             unborn: false,
         }
     }
@@ -131,6 +135,7 @@ impl Local {
         }
         self.dirty_bytes += data.len();
         self.dirty_since.get_or_insert(now);
+        self.quiet_since = None;
         self.attr.size = image.len() as u64;
         self.attr.mtime_ns = now_ns;
         self.attr.ctime_ns = now_ns;
@@ -141,6 +146,7 @@ impl Local {
         image.resize(size as usize, 0);
         self.dirty.push(Change::Truncate(size));
         self.dirty_since.get_or_insert(now);
+        self.quiet_since = None;
         self.attr.size = size;
         self.attr.mtime_ns = now_ns;
         self.attr.ctime_ns = now_ns;
@@ -211,6 +217,8 @@ pub struct State {
     pub floor: HashMap<Id, u64>,
     /// Directory and name an object was last looked up under (prefetch hint).
     pub places: HashMap<Id, (Id, String)>,
+    /// Entry count of each directory's last fetched listing.
+    pub sizes: HashMap<Id, usize>,
     /// Siblings the next read miss in a directory prefetches.
     pub windows: HashMap<Id, usize>,
     pub content: Content,
@@ -231,6 +239,7 @@ impl State {
             links: HashMap::new(),
             floor: HashMap::new(),
             places: HashMap::new(),
+            sizes: HashMap::new(),
             windows: HashMap::new(),
             content: Content::default(),
             locals: HashMap::new(),
@@ -263,8 +272,20 @@ impl State {
         version >= self.floor.get(&id).copied().unwrap_or(0)
     }
 
+    /// `id`'s `Local` unless it has been quiet for longer than the TTL.
+    pub fn visible(&self, id: Id) -> Option<&Local> {
+        self.locals.get(&id).filter(|l| l.quiet_since.is_none_or(|t| t.elapsed() < self.budget.ttl))
+    }
+
+    /// Forgets `id`'s `Local` if it is no longer `visible` (its image is fetched again if needed).
+    pub fn expire(&mut self, id: Id) {
+        if self.locals.contains_key(&id) && self.visible(id).is_none() {
+            self.locals.remove(&id);
+        }
+    }
+
     pub fn attr(&self, id: Id) -> Option<Attr> {
-        if let Some(local) = self.locals.get(&id) {
+        if let Some(local) = self.visible(id) {
             return Some(local.attr.clone());
         }
         self.attrs.get(&id).filter(|c| self.live(c)).map(|c| c.value.clone())
@@ -413,6 +434,7 @@ impl State {
             self.log.last.insert(id, seq);
             if let Some(local) = self.locals.get_mut(&id) {
                 local.pending += 1;
+                local.quiet_since = None;
             }
         }
         for (parent, name, value) in &names {
@@ -558,6 +580,11 @@ impl State {
             }
             match result {
                 None => {
+                    // A directory this mount created was empty at its commit, but for what later
+                    // ops of the batch (patched in below) put in it.
+                    if let Op::Create { id, kind: Kind::Dir, .. } = &pending.op {
+                        self.listings.insert(*id, Cached { value: Listing::new(), stamp: sent, version });
+                    }
                     for (parent, name, value) in &pending.names {
                         self.names.insert((*parent, name.clone()), Cached { value: *value, stamp: sent, version });
                         if let Some(listing) = self.listings.get_mut(parent).filter(|c| c.version <= version) {
@@ -600,6 +627,9 @@ impl State {
                 && let Some(local) = self.locals.get_mut(&id)
             {
                 local.pending = local.pending.saturating_sub(1);
+                if local.pending == 0 && local.dirty.is_empty() {
+                    local.quiet_since = Some(now);
+                }
                 locals.push(id);
             }
         }

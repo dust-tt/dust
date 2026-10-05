@@ -30,9 +30,18 @@ const SIBLING_FILE: u64 = 256 << 10;
 const MIN_WINDOW: usize = 16;
 const MAX_WINDOW: usize = 256;
 const PAGE: u32 = 16_384;
+/// Directories up to this many entries are listed whole on a lookup miss.
+const LIST_ON_MISS: usize = 4096;
 /// Fetches a reply rejected by `own-commit-floor` is retried before it is served uncached.
 const TRIES: usize = 3;
 const NO_TTL: Duration = Duration::ZERO;
+
+/// A file's id, content revision, and whole content.
+type Fetched = (Id, u64, Arc<[u8]>);
+/// A directory's entries and attribute, with the request send time and read version.
+type FetchedListing = (Vec<dfs_proto::Entry>, Attr, Instant, u64);
+/// A listing in this mount's view, with the send time of the request it came from.
+type Snapshot = (Listing, Instant);
 
 #[derive(Default)]
 pub struct Stats {
@@ -241,10 +250,17 @@ impl Fs {
         )
     }
 
+    /// What `name` in `parent` names. A miss fetches the whole listing of `parent` (one RPC
+    /// answers every later lookup there for the TTL) unless it is known to be large.
     fn name(&self, parent: Id, name: &str) -> Result<Name, Errno> {
         self.resolve(
             |state| state.name(parent, name),
             || {
+                if self.state.lock().sizes.get(&parent).is_none_or(|n| *n <= LIST_ON_MISS)
+                    && let Some(((listing, _), installed)) = self.fetch_listing_installed(parent, Some(LIST_ON_MISS))?
+                {
+                    return Ok((listing.get(name).copied(), installed));
+                }
                 let (reply, sent) = self.call("lookup", Request::Lookup { parent, name: name.to_string() });
                 let Response::Entry(attr) = reply.result.map_err(errno)? else { return Err(Errno::EIO) };
                 let value = attr.as_ref().map(|a| (a.id, a.kind));
@@ -262,32 +278,42 @@ impl Fs {
     fn listing(&self, dir: Id) -> Result<(Listing, Instant), Errno> {
         self.resolve(
             |state| state.listing(dir),
-            || {
-                let (entries, dir_attr, sent, version) = self.fetch_listing(dir)?;
-                let mut state = self.state.lock();
-                let mut listing = Listing::new();
-                for entry in entries {
-                    listing.insert(entry.name.clone(), (entry.attr.id, entry.attr.kind));
-                    state.places.insert(entry.attr.id, (dir, entry.name));
-                    state.install_attr(entry.attr, sent, version);
-                }
-                state.install_attr(dir_attr, sent, version);
-                let installed = state.install_listing(dir, listing.clone(), sent, version);
-                state.overlay_listing(dir, &mut listing);
-                Ok(((listing, sent), installed))
-            },
+            || self.fetch_listing_installed(dir, None)?.ok_or(Errno::EIO),
         )
     }
 
+    /// Fetches and installs `dir`'s listing; returns it in this mount's view, and whether it was
+    /// installed. `None` when `dir` has more than `cap` entries.
+    fn fetch_listing_installed(&self, dir: Id, cap: Option<usize>) -> Result<Option<(Snapshot, bool)>, Errno> {
+        let Some((entries, dir_attr, sent, version)) = self.fetch_listing(dir, cap)? else {
+            self.state.lock().sizes.insert(dir, usize::MAX);
+            return Ok(None);
+        };
+        let mut state = self.state.lock();
+        let mut listing = Listing::new();
+        for entry in entries {
+            listing.insert(entry.name.clone(), (entry.attr.id, entry.attr.kind));
+            state.places.insert(entry.attr.id, (dir, entry.name));
+            state.install_attr(entry.attr, sent, version);
+        }
+        state.install_attr(dir_attr, sent, version);
+        state.sizes.insert(dir, listing.len());
+        let installed = state.install_listing(dir, listing.clone(), sent, version);
+        state.overlay_listing(dir, &mut listing);
+        Ok(Some(((listing, sent), installed)))
+    }
+
     /// Every page of `dir` at the version of its first page.
-    fn fetch_listing(&self, dir: Id) -> Result<(Vec<dfs_proto::Entry>, Attr, Instant, u64), Errno> {
+    /// `dir`'s entries at one version; `None` when there are more than `cap`.
+    fn fetch_listing(&self, dir: Id, cap: Option<usize>) -> Result<Option<FetchedListing>, Errno> {
         'restart: for _ in 0..TRIES {
             let mut entries: Vec<dfs_proto::Entry> = Vec::new();
             let mut first: Option<(Instant, u64)> = None;
             loop {
                 let after = entries.last().map(|e| e.name.clone());
                 let at = first.map(|(_, version)| version);
-                let (reply, sent) = self.call("readdir", Request::ReadDir { dir, after, limit: PAGE, at });
+                let limit = cap.map_or(PAGE, |cap| u32::try_from(cap).unwrap_or(PAGE).min(PAGE));
+                let (reply, sent) = self.call("readdir", Request::ReadDir { dir, after, limit, at });
                 let (dir_attr, page, more) = match reply.result {
                     Ok(Response::Listing { dir, entries, more }) => (dir, entries, more),
                     Ok(_) => return Err(Errno::EIO),
@@ -297,7 +323,10 @@ impl Fs {
                 let (sent, version) = *first.get_or_insert((sent, reply.version));
                 entries.extend(page);
                 if !more {
-                    return Ok((entries, dir_attr, sent, version));
+                    return Ok(Some((entries, dir_attr, sent, version)));
+                }
+                if cap.is_some_and(|cap| entries.len() >= cap) {
+                    return Ok(None);
                 }
             }
         }
@@ -337,7 +366,7 @@ impl Fs {
         state.content.fetching.extend(ids.iter().copied());
         drop(state);
         let (reply, _) = self.call("read_files", Request::ReadFiles { ids: ids.clone(), budget: MAX_IO_BYTES });
-        let files: Result<Vec<(Id, u64, Arc<[u8]>)>, Errno> = match reply.result {
+        let files: Result<Vec<Fetched>, Errno> = match reply.result {
             Ok(Response::Files(files)) => Ok(files.into_iter().map(|f| (f.id, f.rev, f.bytes.into())).collect()),
             Ok(_) => Err(Errno::EIO),
             Err(e) => Err(errno(e)),
@@ -419,7 +448,11 @@ impl Fs {
     /// which starts it empty), then accounts for what it buffered.
     fn with_image(&self, id: Id, fresh: bool, change: impl Fn(&mut Local, Instant, i64)) -> Result<(), Errno> {
         for _ in 0..TRIES {
-            let present = self.state.lock().locals.get(&id).is_some_and(|l| l.image.is_some());
+            let present = {
+                let mut state = self.state.lock();
+                state.expire(id);
+                state.locals.get(&id).is_some_and(|l| l.image.is_some())
+            };
             let fetched = match (present, fresh) {
                 (true, _) => None,
                 (false, true) => Some((self.attr(id)?, Vec::new())),
@@ -904,7 +937,7 @@ impl Filesystem for Mount {
             let start = (offset as usize).min(bytes.len());
             bytes[start..start.saturating_add(size as usize).min(bytes.len())].to_vec()
         };
-        let local = fs.state.lock().locals.get(&id).and_then(|l| l.image.as_deref().map(slice));
+        let local = fs.state.lock().visible(id).and_then(|l| l.image.as_deref().map(slice));
         if let Some(bytes) = local {
             reply.data(&bytes);
             return;
@@ -1101,7 +1134,8 @@ impl Filesystem for Mount {
         self.0.stats.local("op.create");
         let fs = &self.0;
         let parent = fs.id(parent);
-        let result = name_of(name).and_then(|name| match fs.make(req, parent, name, Kind::File, mode, None, 1) {
+        let write = flags & libc::O_ACCMODE != libc::O_RDONLY;
+        let result = name_of(name).and_then(|name| match fs.make(req, parent, name, Kind::File, mode, None, u32::from(write)) {
             Err(e) if e == Errno::EEXIST && flags & libc::O_EXCL == 0 => {
                 // Lost a race with another creator of `name`: open what is there.
                 let (id, _) = fs.name(parent, name)?.ok_or(Errno::ENOENT)?;
@@ -1109,10 +1143,12 @@ impl Filesystem for Mount {
                 if attr.kind == Kind::Dir {
                     return Err(Errno::EISDIR);
                 }
-                if !fs.allowed(req, &attr, libc::W_OK) {
+                if !fs.allowed(req, &attr, mask(!write || flags & libc::O_ACCMODE == libc::O_RDWR, write, false)) {
                     return Err(Errno::EACCES);
                 }
-                fs.open_writer(id, flags & libc::O_TRUNC != 0)?;
+                if write {
+                    fs.open_writer(id, flags & libc::O_TRUNC != 0)?;
+                }
                 fs.attr(id)
             }
             result => result,
