@@ -1,5 +1,4 @@
-//! Multiplexed client: any number of concurrent calls over one connection; invalidations are
-//! delivered on a channel and acknowledged explicitly once the caller has applied them.
+//! Multiplexed client: any number of concurrent calls over one connection.
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -9,17 +8,14 @@ use tokio::io::{AsyncWriteExt, BufReader, BufWriter};
 use tokio::net::TcpStream;
 use tokio::sync::{mpsc, oneshot};
 
-use crate::{ClientFrame, Errno, Invalidation, Request, Response, ServerFrame, frame};
+use crate::{ClientFrame, Errno, Request, Response, ServerFrame, frame};
 
 #[derive(Debug)]
 pub struct Reply {
     pub result: Result<Response, Errno>,
-    pub invalidations: Vec<Invalidation>,
-    pub cacheable: bool,
+    /// Read version the server read at (0 for calls that are not reads).
+    pub version: u64,
 }
-
-/// One pushed invalidation; `Client::ack(id)` once applied.
-pub type Pushed = (u64, Vec<Invalidation>);
 
 type Pending = Arc<Mutex<Option<HashMap<u64, oneshot::Sender<Reply>>>>>;
 
@@ -31,8 +27,7 @@ pub struct Client {
 }
 
 impl Client {
-    /// Connects; pushed invalidations go to `pushed`. The channel closes when the connection ends.
-    pub async fn connect(addr: &str, pushed: mpsc::UnboundedSender<Pushed>) -> std::io::Result<Client> {
+    pub async fn connect(addr: &str) -> std::io::Result<Client> {
         let stream = TcpStream::connect(addr).await?;
         stream.set_nodelay(true)?;
         let (reader, writer) = stream.into_split();
@@ -53,16 +48,10 @@ impl Client {
         tokio::spawn(async move {
             let mut reader = BufReader::new(reader);
             while let Ok(frame) = frame::read::<_, ServerFrame>(&mut reader).await {
-                match frame {
-                    ServerFrame::Reply { id, result, invalidations, cacheable } => {
-                        let waiter = replies.lock().ok().and_then(|mut p| p.as_mut().and_then(|p| p.remove(&id)));
-                        if let Some(waiter) = waiter {
-                            let _ = waiter.send(Reply { result, invalidations, cacheable });
-                        }
-                    }
-                    ServerFrame::Invalidate { invalidation, items } => {
-                        let _ = pushed.send((invalidation, items));
-                    }
+                let ServerFrame::Reply { id, result, version } = frame;
+                let waiter = replies.lock().ok().and_then(|mut p| p.as_mut().and_then(|p| p.remove(&id)));
+                if let Some(waiter) = waiter {
+                    let _ = waiter.send(Reply { result, version });
                 }
             }
             // Fail every in-flight and future call.
@@ -75,7 +64,7 @@ impl Client {
 
     /// Sends one call and waits for its reply; a lost connection yields `EIO`.
     pub async fn call(&self, request: Request) -> Reply {
-        let lost = || Reply { result: Err(Errno::EIO), invalidations: Vec::new(), cacheable: false };
+        let lost = || Reply { result: Err(Errno::EIO), version: 0 };
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         let seq = if request.is_mutation() { self.next_seq.fetch_add(1, Ordering::Relaxed) } else { 0 };
         let (tx, rx) = oneshot::channel();
@@ -88,10 +77,6 @@ impl Client {
             return lost();
         }
         rx.await.unwrap_or_else(|_| lost())
-    }
-
-    pub fn ack(&self, invalidation: u64) {
-        let _ = self.out.send(ClientFrame::Ack { invalidation });
     }
 
     pub fn is_connected(&self) -> bool {

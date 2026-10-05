@@ -20,12 +20,26 @@ pub fn node(id: Id) -> Vec<u8> {
     key(b"n/", &[&id.to_be_bytes()])
 }
 
+pub fn all_nodes() -> KeyRange {
+    KeyRange::prefix(b"n/")
+}
+
+/// Object id of a node, entry, or block key (the 8 bytes after the 2-byte tag).
+pub fn key_id(key: &[u8]) -> Result<Id, Errno> {
+    let bytes = key.get(2..10).ok_or(Errno::EIO)?;
+    Ok(Id::from_be_bytes(bytes.try_into().map_err(|_| Errno::EIO)?))
+}
+
 pub fn entry(dir: Id, name: &str) -> Vec<u8> {
     key(b"e/", &[&dir.to_be_bytes(), b"/", name.as_bytes()])
 }
 
 pub fn entries(dir: Id) -> KeyRange {
     KeyRange::prefix(&key(b"e/", &[&dir.to_be_bytes(), b"/"]))
+}
+
+pub fn all_entries() -> KeyRange {
+    KeyRange::prefix(b"e/")
 }
 
 /// Name of the entry stored at `key`, which must come from `entries(dir)`.
@@ -46,6 +60,10 @@ pub fn block(id: Id, index: u32) -> Vec<u8> {
 /// Blocks `first..=last` of one object.
 pub fn blocks(id: Id, first: u32, last: u32) -> KeyRange {
     KeyRange::new(block(id, first), KeyRange::single(&block(id, last)).end)
+}
+
+pub fn all_blocks() -> KeyRange {
+    KeyRange::prefix(b"b/")
 }
 
 pub fn block_index(key: &[u8]) -> Result<u32, Errno> {
@@ -85,6 +103,11 @@ pub fn session(session: u128) -> Vec<u8> {
 
 pub fn receipt(session: u128, seq: u64) -> Vec<u8> {
     key(b"r/", &[&session.to_be_bytes(), &seq.to_be_bytes()])
+}
+
+/// Principal that owns id chunk `chunk` (see `Fs::alloc_ids`).
+pub fn id_chunk(chunk: u64) -> Vec<u8> {
+    key(b"a/", &[&chunk.to_be_bytes()])
 }
 
 pub fn index_job(id: Id) -> Vec<u8> {

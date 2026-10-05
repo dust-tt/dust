@@ -3,29 +3,30 @@
 pub mod auth;
 pub mod records;
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use dfs_proto::{
-    Attr, BLOCK_BYTES, Entry, Errno, File, Id, Invalidation, Kind, MAX_FILE_BYTES, MAX_FLUSH_BLOCKS, MAX_IO_BYTES, MAX_NAME_BYTES, ROOT, Response, Right,
+    Attr, BLOCK_BYTES, Change, Entry, Errno, File, Id, Kind, MAX_APPLY_OPS, MAX_FILE_BYTES, MAX_FLUSH_BLOCKS, MAX_IO_BYTES, MAX_NAME_BYTES, Op, ROOT,
+    Response, Right,
 };
 use dfs_store::{Key, Store, StoreError, Txn, TxnOptions, Value};
 use futures::FutureExt;
 use futures::future::BoxFuture;
 use parking_lot::Mutex;
-use serde::{Deserialize, Serialize};
 
 use crate::auth::{Access, Principal, evaluate};
 use crate::records::{EntryRecord, Node, Policy, SessionRecord, TokenRecord, decode, encode, le_u64};
 
 /// A cached read version is reused for at most this long (FDB rejects versions older than 5 s).
 const GRV_REUSE: Duration = Duration::from_millis(1000);
-/// A node written by this server can seed a zero-read flush for this long.
-const RECENT_REUSE: Duration = Duration::from_millis(4000);
-const RECENT_LIMIT: usize = 65_536;
 const MAX_DEPTH: usize = 4096;
+/// Ids `alloc_ids` reserves at once; chunk `n` holds ids `n * ID_CHUNK..(n + 1) * ID_CHUNK`.
+const ID_CHUNK: u64 = 1024;
+/// Most entries one `readdir` page returns.
+const MAX_LISTING: u32 = 16_384;
 const ATTEMPTS: usize = 64;
 /// Most files one `read_files` call considers.
 const MAX_READ_FILES: usize = 1024;
@@ -75,20 +76,14 @@ pub struct Caller {
     pub resent: bool,
 }
 
-/// Result of a committed mutation and what other lease holders must drop before it is
-/// acknowledged.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Mutation {
-    pub response: Response,
-    pub invalidations: Vec<Invalidation>,
-}
-
 #[derive(Default)]
 pub struct Stats {
     pub commits: AtomicU64,
     pub retries: AtomicU64,
     pub fresh_versions: AtomicU64,
-    pub zero_read_flushes: AtomicU64,
+    /// Ops applied and ops that failed inside `apply` batches.
+    pub ops: AtomicU64,
+    pub failed_ops: AtomicU64,
 }
 
 #[derive(Default)]
@@ -106,21 +101,10 @@ struct AuthCache {
     groups: HashMap<String, Vec<String>>,
 }
 
-#[derive(Clone)]
-struct Recent {
-    node: Node,
-    version: u64,
-    epoch: u64,
-    at: Instant,
-}
-
 #[derive(Default)]
 struct Shared {
     versions: Mutex<Versions>,
     auth: Mutex<AuthCache>,
-    recent: Mutex<HashMap<Id, Recent>>,
-    ids: Mutex<(u64, u64)>,
-    refill: tokio::sync::Mutex<()>,
     stats: Stats,
 }
 
@@ -182,9 +166,10 @@ impl<S: Store> Fs<S> {
     /// @cc [owner:fontanierh,label:backend;concurrency] read-version-reuse
     /// A non-fresh attempt MAY start from `max(cached GRV younger than GRV_REUSE, this server's
     /// last commit version)` only if every read that influences its outcome is conflict-tracked
-    /// and every successful outcome is returned only after its transaction commits (a receipt
-    /// write guarantees the commit validates). Error outcomes MUST be re-derived by a fresh
-    /// attempt before they are returned (`run` enforces this for `Failure::Fs`).
+    /// and every outcome it returns, per-op failures inside an `apply` batch included, is
+    /// returned only after its transaction commits (a receipt write guarantees the commit
+    /// validates). A whole-call error MUST be re-derived by a fresh attempt before it is returned
+    /// (`run` enforces this for `Failure::Fs`).
     async fn begin(&self, attempt: Attempt) -> Step<S::Txn> {
         if !attempt.fresh {
             let reuse = {
@@ -268,14 +253,15 @@ impl<S: Store> Fs<S> {
 
     /// Policies from the root down to directory `dir` (inclusive). `known` is `dir`'s node when
     /// already read in this transaction. Uncached ancestors are read (conflict-tracked) in `txn`.
-    async fn dir_chain(&self, txn: &S::Txn, dir: Id, known: Option<&Node>, epoch: u64) -> Step<Vec<Option<Policy>>> {
+    /// Nodes in `written` (changed by this uncommitted transaction) are never cached.
+    async fn dir_chain(&self, txn: &S::Txn, dir: Id, known: Option<&Node>, epoch: u64, written: &HashSet<Id>) -> Step<Vec<Option<Policy>>> {
         let mut chain = Vec::new();
         let mut id = dir;
         let mut known = known.cloned();
         for _ in 0..MAX_DEPTH {
             let node = match known.take() {
                 Some(node) => node,
-                None => match self.cached(epoch, |c| c.dirs.get(&id).cloned()) {
+                None => match self.cached(epoch, |c| c.dirs.get(&id).cloned()).filter(|_| !written.contains(&id)) {
                     Some(node) => node,
                     None => node_of(txn.get(&records::node(id)).await?)?.ok_or(Errno::ENOENT)?,
                 },
@@ -285,7 +271,9 @@ impl<S: Store> Fs<S> {
             }
             chain.push(self.policy_of(txn, id, &node, epoch).await?);
             let parent = node.parent;
-            self.cached(epoch, |c| c.dirs.insert(id, node));
+            if !written.contains(&id) {
+                self.cached(epoch, |c| c.dirs.insert(id, node));
+            }
             if id == ROOT {
                 chain.reverse();
                 return Ok(chain);
@@ -305,11 +293,11 @@ impl<S: Store> Fs<S> {
         Ok(groups)
     }
 
-    async fn access(&self, txn: &S::Txn, principal: &Principal, id: Id, node: &Node, epoch: u64) -> Step<Access> {
+    async fn access(&self, txn: &S::Txn, principal: &Principal, id: Id, node: &Node, epoch: u64, written: &HashSet<Id>) -> Step<Access> {
         let chain = if node.kind == Kind::Dir {
-            self.dir_chain(txn, id, Some(node), epoch).await?
+            self.dir_chain(txn, id, Some(node), epoch, written).await?
         } else {
-            let mut chain = self.dir_chain(txn, node.parent, None, epoch).await?;
+            let mut chain = self.dir_chain(txn, node.parent, None, epoch, written).await?;
             chain.push(self.policy_of(txn, id, node, epoch).await?);
             chain
         };
@@ -324,57 +312,14 @@ impl<S: Store> Fs<S> {
         evaluate(principal, groups, &refs)
     }
 
-    async fn next_id(&self) -> Step<Id> {
-        loop {
-            {
-                let mut ids = self.shared.ids.lock();
-                if ids.0 < ids.1 {
-                    ids.0 += 1;
-                    return Ok(ids.0 - 1);
-                }
-            }
-            let _refill = self.shared.refill.lock().await;
-            {
-                let ids = self.shared.ids.lock();
-                if ids.0 < ids.1 {
-                    continue;
-                }
-            }
-            let block = 4096;
-            let first = self
-                .run(Attempt::READ, |_| {
-                    async move {
-                        let mut txn = self.store.begin(TxnOptions::default()).await?;
-                        let next = le_u64(txn.get(records::NEXT_ID).await?.as_ref()).max(1024);
-                        txn.set(records::NEXT_ID, &(next + block).to_le_bytes());
-                        txn.commit().await?;
-                        Ok(next)
-                    }
-                    .boxed()
-                })
-                .await
-                .map_err(Failure::Fs)?;
-            *self.shared.ids.lock() = (first, first + block);
-        }
-    }
-
-    fn remember(&self, id: Id, node: &Node, version: u64, epoch: u64) {
-        let mut recent = self.shared.recent.lock();
-        if recent.len() >= RECENT_LIMIT {
-            recent.retain(|_, r| r.at.elapsed() < RECENT_REUSE);
-        }
-        recent.insert(id, Recent { node: node.clone(), version, epoch, at: Instant::now() });
-    }
-
-    /// Write the receipt for `caller` and return the mutation.
-    fn finish(txn: &mut S::Txn, caller: &Caller, response: Response, invalidations: Vec<Invalidation>) -> Mutation {
-        let mutation = Mutation { response, invalidations };
-        txn.set(&records::receipt(caller.session, caller.seq), &encode(&mutation));
-        mutation
+    /// Write the receipt for `caller` and return the response.
+    fn finish(txn: &mut S::Txn, caller: &Caller, response: Response) -> Response {
+        txn.set(&records::receipt(caller.session, caller.seq), &encode(&response));
+        response
     }
 
     /// After an uncertain commit, the receipt decides whether the earlier attempt applied.
-    async fn replay(txn: &S::Txn, caller: &Caller, attempt: Attempt) -> Step<Option<Mutation>> {
+    async fn replay(txn: &S::Txn, caller: &Caller, attempt: Attempt) -> Step<Option<Response>> {
         if !attempt.uncertain {
             return Ok(None);
         }
@@ -458,23 +403,22 @@ impl<S: Store> Fs<S> {
         if caller.principal.admin { Ok(()) } else { Err(Errno::EPERM) }
     }
 
-    /// Commits an authorization-changing administrative mutation: bumps the authorization epoch
-    /// and invalidates every lease.
-    async fn administer(&self, mut txn: S::Txn, caller: &Caller, response: Response) -> Step<Mutation> {
+    /// Commits an authorization-changing administrative mutation: bumps the authorization epoch.
+    async fn administer(&self, mut txn: S::Txn, caller: &Caller, response: Response) -> Step<Response> {
         let epoch = le_u64(txn.get(records::TOPO).await?.as_ref());
         txn.set(records::TOPO, &(epoch + 1).to_le_bytes());
-        let mutation = Self::finish(&mut txn, caller, response, vec![Invalidation::All]);
+        let response = Self::finish(&mut txn, caller, response);
         self.commit(txn).await?;
-        Ok(mutation)
+        Ok(response)
     }
 
-    pub async fn grant(&self, caller: &Caller, id: Id, subject: &str, right: Right, granted: bool) -> Result<Mutation, Errno> {
+    pub async fn grant(&self, caller: &Caller, id: Id, subject: &str, right: Right, granted: bool) -> Result<Response, Errno> {
         Self::require_admin(caller)?;
         self.run(Attempt { fresh: true, uncertain: caller.resent }, |attempt| {
             async move {
                 let mut txn = self.begin(attempt).await?;
-                if let Some(mutation) = Self::replay(&txn, caller, attempt).await? {
-                    return Ok(mutation);
+                if let Some(response) = Self::replay(&txn, caller, attempt).await? {
+                    return Ok(response);
                 }
                 let mut node = live(txn.get(&records::node(id)).await?)?;
                 let mut policy: Policy = txn.get(&records::policy(id)).await?.map(|v| decode(&v)).transpose()?.unwrap_or_default();
@@ -492,13 +436,13 @@ impl<S: Store> Fs<S> {
         .await
     }
 
-    pub async fn set_boundary(&self, caller: &Caller, id: Id, boundary: bool) -> Result<Mutation, Errno> {
+    pub async fn set_boundary(&self, caller: &Caller, id: Id, boundary: bool) -> Result<Response, Errno> {
         Self::require_admin(caller)?;
         self.run(Attempt { fresh: true, uncertain: caller.resent }, |attempt| {
             async move {
                 let mut txn = self.begin(attempt).await?;
-                if let Some(mutation) = Self::replay(&txn, caller, attempt).await? {
-                    return Ok(mutation);
+                if let Some(response) = Self::replay(&txn, caller, attempt).await? {
+                    return Ok(response);
                 }
                 let mut node = live(txn.get(&records::node(id)).await?)?;
                 let mut policy: Policy = txn.get(&records::policy(id)).await?.map(|v| decode(&v)).transpose()?.unwrap_or_default();
@@ -513,13 +457,13 @@ impl<S: Store> Fs<S> {
         .await
     }
 
-    pub async fn set_members(&self, caller: &Caller, group: &str, members: &[String]) -> Result<Mutation, Errno> {
+    pub async fn set_members(&self, caller: &Caller, group: &str, members: &[String]) -> Result<Response, Errno> {
         Self::require_admin(caller)?;
         self.run(Attempt { fresh: true, uncertain: caller.resent }, |attempt| {
             async move {
                 let mut txn = self.begin(attempt).await?;
-                if let Some(mutation) = Self::replay(&txn, caller, attempt).await? {
-                    return Ok(mutation);
+                if let Some(response) = Self::replay(&txn, caller, attempt).await? {
+                    return Ok(response);
                 }
                 let old: Vec<String> = txn.get(&records::group(group)).await?.map(|v| decode(&v)).transpose()?.unwrap_or_default();
                 for member in &old {
@@ -536,14 +480,14 @@ impl<S: Store> Fs<S> {
         .await
     }
 
-    pub async fn create_token(&self, caller: &Caller, principal: &str, admin: bool) -> Result<Mutation, Errno> {
+    pub async fn create_token(&self, caller: &Caller, principal: &str, admin: bool) -> Result<Response, Errno> {
         Self::require_admin(caller)?;
         let token = &random_token();
         self.run(Attempt { fresh: true, uncertain: caller.resent }, |attempt| {
             async move {
                 let mut txn = self.begin(attempt).await?;
-                if let Some(mutation) = Self::replay(&txn, caller, attempt).await? {
-                    return Ok(mutation);
+                if let Some(response) = Self::replay(&txn, caller, attempt).await? {
+                    return Ok(response);
                 }
                 let record = TokenRecord { principal: principal.to_string(), admin };
                 txn.set(&records::token(&token_hash(token)), &encode(&record));
@@ -556,96 +500,115 @@ impl<S: Store> Fs<S> {
 
     // ---------------------------------------------------------------- reads (fresh versions)
 
-    pub async fn getattr(&self, principal: &Principal, id: Id) -> Result<Attr, Errno> {
+    /// @cc [owner:fontanierh,label:product;concurrency] fresh-reads
+    /// Every read MUST run at a read version obtained after the call arrived (`Attempt::READ`,
+    /// never a reused one) and MUST return that version, so its reply includes every commit
+    /// acknowledged before the mount sent the call. Only a `readdir` continuation (`at`) reads at
+    /// the version its first page returned.
+    pub async fn getattr(&self, principal: &Principal, id: Id) -> Result<(Attr, u64), Errno> {
+        let none = &HashSet::new();
         self.run(Attempt::READ, |attempt| {
             async move {
                 let txn = self.begin(attempt).await?;
                 let values = txn.get_many(&[records::node(id), records::TOPO.to_vec(), records::dir_time(id)]).await?;
                 let node = node_of(values[0].clone())?.ok_or(Errno::ESTALE)?;
-                let access = self.access(&txn, principal, id, &node, le_u64(values[1].as_ref())).await?;
+                let access = self.access(&txn, principal, id, &node, le_u64(values[1].as_ref()), none).await?;
                 if !access.read {
                     return Err(Errno::EACCES.into());
                 }
-                Ok(attr(id, &node, access.write, le_u64(values[2].as_ref())))
+                Ok((attr(id, &node, access.write, le_u64(values[2].as_ref())), txn.read_version()))
             }
             .boxed()
         })
         .await
     }
 
-    pub async fn lookup(&self, principal: &Principal, parent: Id, name: &str) -> Result<Option<Attr>, Errno> {
+    pub async fn lookup(&self, principal: &Principal, parent: Id, name: &str) -> Result<(Option<Attr>, u64), Errno> {
         valid_name(name)?;
+        let none = &HashSet::new();
         self.run(Attempt::READ, |attempt| {
             async move {
                 let txn = self.begin(attempt).await?;
                 let values = txn.get_many(&[records::node(parent), records::TOPO.to_vec(), records::entry(parent, name)]).await?;
                 let dir = live(values[0].clone())?;
                 let epoch = le_u64(values[1].as_ref());
-                let chain = self.dir_chain(&txn, parent, Some(&dir), epoch).await?;
+                let chain = self.dir_chain(&txn, parent, Some(&dir), epoch, none).await?;
                 let groups = self.groups(&txn, principal, epoch).await?;
                 if !Self::inherited(principal, &groups, &chain, None).read {
                     return Err(Errno::EACCES.into());
                 }
                 let Some(entry) = values[2].as_ref().map(|v| decode::<EntryRecord>(v)).transpose()? else {
-                    return Ok(None);
+                    return Ok((None, txn.read_version()));
                 };
                 let child = txn.get_many(&[records::node(entry.id), records::dir_time(entry.id)]).await?;
                 let node = live(child[0].clone())?;
                 let own = self.policy_of(&txn, entry.id, &node, epoch).await?;
                 let access = Self::inherited(principal, &groups, &chain, own.as_ref());
-                Ok(Some(attr(entry.id, &node, access.write, le_u64(child[1].as_ref()))))
+                Ok((Some(attr(entry.id, &node, access.write, le_u64(child[1].as_ref()))), txn.read_version()))
             }
             .boxed()
         })
         .await
     }
 
-    pub async fn readdir(&self, principal: &Principal, dir: Id, after: Option<&str>, limit: u32) -> Result<Response, Errno> {
-        let limit = limit.clamp(1, 4096) as usize;
+    /// Lists `dir` after `after`; `at` (the version an earlier page returned) continues a listing
+    /// at that version, failing with `EAGAIN` once the store no longer serves it.
+    pub async fn readdir(&self, principal: &Principal, dir: Id, after: Option<&str>, limit: u32, at: Option<u64>) -> Result<(Response, u64), Errno> {
+        let limit = limit.clamp(1, MAX_LISTING) as usize;
+        let none = &HashSet::new();
         self.run(Attempt::READ, |attempt| {
             async move {
-                let txn = self.begin(attempt).await?;
-                let values = txn.get_many(&[records::node(dir), records::TOPO.to_vec(), records::dir_time(dir)]).await?;
-                let node = live(values[0].clone())?;
-                let epoch = le_u64(values[1].as_ref());
-                let chain = self.dir_chain(&txn, dir, Some(&node), epoch).await?;
-                let groups = self.groups(&txn, principal, epoch).await?;
-                let access = Self::inherited(principal, &groups, &chain, None);
-                if !access.read {
-                    return Err(Errno::EACCES.into());
+                let txn = match at {
+                    Some(version) => self.store.begin(TxnOptions { read_version: Some(version) }).await?,
+                    None => self.begin(attempt).await?,
+                };
+                let listing = async {
+                    let values = txn.get_many(&[records::node(dir), records::TOPO.to_vec(), records::dir_time(dir)]).await?;
+                    let node = live(values[0].clone())?;
+                    let epoch = le_u64(values[1].as_ref());
+                    let chain = self.dir_chain(&txn, dir, Some(&node), epoch, none).await?;
+                    let groups = self.groups(&txn, principal, epoch).await?;
+                    let access = Self::inherited(principal, &groups, &chain, None);
+                    if !access.read {
+                        return Err(Errno::EACCES.into());
+                    }
+                    let mut range = records::entries(dir);
+                    if let Some(after) = after {
+                        range.start = dfs_store::KeyRange::single(&records::entry(dir, after)).end;
+                    }
+                    let rows = txn.scan(&range, limit).await?;
+                    let more = rows.len() == limit;
+                    let mut keys: Vec<Key> = Vec::with_capacity(rows.len() * 2);
+                    let mut names = Vec::with_capacity(rows.len());
+                    for (key, value) in &rows {
+                        let entry: EntryRecord = decode(value)?;
+                        names.push((records::entry_name(key)?, entry.id));
+                        keys.push(records::node(entry.id));
+                        keys.push(records::dir_time(entry.id));
+                    }
+                    let children = txn.get_many(&keys).await?;
+                    let mut entries = Vec::with_capacity(names.len());
+                    for (i, (name, id)) in names.into_iter().enumerate() {
+                        let Some(child) = node_of(children[2 * i].clone())?.filter(|n| !n.detached) else { continue };
+                        let own = self.policy_of(&txn, id, &child, epoch).await?;
+                        let write = if own.is_some() { Self::inherited(principal, &groups, &chain, own.as_ref()).write } else { access.write };
+                        entries.push(Entry { name, attr: attr(id, &child, write, le_u64(children[2 * i + 1].as_ref())) });
+                    }
+                    Ok(Response::Listing { dir: attr(dir, &node, access.write, le_u64(values[2].as_ref())), entries, more })
+                };
+                match (at, listing.await) {
+                    (Some(_), Err(Failure::Store(StoreError::TooOld))) => Err(Errno::EAGAIN.into()),
+                    (_, listing) => Ok((listing?, txn.read_version())),
                 }
-                let mut range = records::entries(dir);
-                if let Some(after) = after {
-                    range.start = dfs_store::KeyRange::single(&records::entry(dir, after)).end;
-                }
-                let rows = txn.scan(&range, limit).await?;
-                let more = rows.len() == limit;
-                let mut keys: Vec<Key> = Vec::with_capacity(rows.len() * 2);
-                let mut names = Vec::with_capacity(rows.len());
-                for (key, value) in &rows {
-                    let entry: EntryRecord = decode(value)?;
-                    names.push((records::entry_name(key)?, entry.id));
-                    keys.push(records::node(entry.id));
-                    keys.push(records::dir_time(entry.id));
-                }
-                let children = txn.get_many(&keys).await?;
-                let mut entries = Vec::with_capacity(names.len());
-                for (i, (name, id)) in names.into_iter().enumerate() {
-                    // A concurrently removed child is simply absent from this listing.
-                    let Some(child) = node_of(children[2 * i].clone())?.filter(|n| !n.detached) else { continue };
-                    let own = self.policy_of(&txn, id, &child, epoch).await?;
-                    let write = if own.is_some() { Self::inherited(principal, &groups, &chain, own.as_ref()).write } else { access.write };
-                    entries.push(Entry { name, attr: attr(id, &child, write, le_u64(children[2 * i + 1].as_ref())) });
-                }
-                Ok(Response::Listing { dir: attr(dir, &node, access.write, le_u64(values[2].as_ref())), entries, more })
             }
             .boxed()
         })
         .await
     }
 
-    pub async fn read(&self, principal: &Principal, id: Id, offset: u64, len: u32) -> Result<Response, Errno> {
+    pub async fn read(&self, principal: &Principal, id: Id, offset: u64, len: u32) -> Result<(Response, u64), Errno> {
         let len = len.min(MAX_IO_BYTES);
+        let none = &HashSet::new();
         self.run(Attempt::READ, |attempt| {
             async move {
                 let txn = self.begin(attempt).await?;
@@ -654,21 +617,18 @@ impl<S: Store> Fs<S> {
                 if node.kind != Kind::File {
                     return Err(Errno::EISDIR.into());
                 }
-                if !self.access(&txn, principal, id, &node, le_u64(values[1].as_ref())).await?.read {
+                if !self.access(&txn, principal, id, &node, le_u64(values[1].as_ref()), none).await?.read {
                     return Err(Errno::EACCES.into());
                 }
                 let end = node.size.min(offset.saturating_add(len as u64));
-                if offset >= end {
-                    return Ok(Response::Data { rev: node.rev, size: node.size, bytes: Vec::new() });
+                let mut bytes = vec![0u8; end.saturating_sub(offset) as usize];
+                if offset < end {
+                    let (first, last) = ((offset / BLOCK_BYTES) as u32, ((end - 1) / BLOCK_BYTES) as u32);
+                    for (key, block) in txn.scan(&records::blocks(id, first, last), (last - first + 1) as usize).await? {
+                        copy_overlap(&mut bytes, offset, &block, records::block_index(&key)? as u64 * BLOCK_BYTES);
+                    }
                 }
-                let (first, last) = ((offset / BLOCK_BYTES) as u32, ((end - 1) / BLOCK_BYTES) as u32);
-                let rows = txn.scan(&records::blocks(id, first, last), (last - first + 1) as usize).await?;
-                let mut bytes = vec![0u8; (end - offset) as usize];
-                for (key, block) in rows {
-                    let start = records::block_index(&key)? as u64 * BLOCK_BYTES;
-                    copy_overlap(&mut bytes, offset, &block, start);
-                }
-                Ok(Response::Data { rev: node.rev, size: node.size, bytes })
+                Ok((Response::Data { rev: node.rev, size: node.size, bytes }, txn.read_version()))
             }
             .boxed()
         })
@@ -677,9 +637,10 @@ impl<S: Store> Fs<S> {
 
     /// Whole contents of the readable files among `ids` that fit, in order, in `budget` bytes, all
     /// at one read version; objects that are missing, not files, unreadable, or too large are left out.
-    pub async fn read_files(&self, principal: &Principal, ids: &[Id], budget: u32) -> Result<Vec<File>, Errno> {
+    pub async fn read_files(&self, principal: &Principal, ids: &[Id], budget: u32) -> Result<(Vec<File>, u64), Errno> {
         let ids = &ids[..ids.len().min(MAX_READ_FILES)];
         let budget = u64::from(budget.min(MAX_IO_BYTES));
+        let none = &HashSet::new();
         self.run(Attempt::READ, |attempt| {
             async move {
                 let txn = self.begin(attempt).await?;
@@ -694,7 +655,7 @@ impl<S: Store> Fs<S> {
                     if node.kind != Kind::File || node.size > left {
                         continue;
                     }
-                    match self.access(&txn, principal, *id, &node, epoch).await {
+                    match self.access(&txn, principal, *id, &node, epoch, none).await {
                         Ok(access) if access.read => {}
                         Ok(_) | Err(Failure::Fs(_)) => continue,
                         Err(failure) => return Err(failure),
@@ -722,23 +683,24 @@ impl<S: Store> Fs<S> {
                     }
                     files.push(File { id, rev: node.rev, bytes });
                 }
-                Ok(files)
+                Ok((files, txn.read_version()))
             }
             .boxed()
         })
         .await
     }
 
-    pub async fn readlink(&self, principal: &Principal, id: Id) -> Result<String, Errno> {
+    pub async fn readlink(&self, principal: &Principal, id: Id) -> Result<(String, u64), Errno> {
+        let none = &HashSet::new();
         self.run(Attempt::READ, |attempt| {
             async move {
                 let txn = self.begin(attempt).await?;
                 let values = txn.get_many(&[records::node(id), records::TOPO.to_vec()]).await?;
                 let node = node_of(values[0].clone())?.ok_or(Errno::ESTALE)?;
-                if !self.access(&txn, principal, id, &node, le_u64(values[1].as_ref())).await?.read {
+                if !self.access(&txn, principal, id, &node, le_u64(values[1].as_ref()), none).await?.read {
                     return Err(Errno::EACCES.into());
                 }
-                node.target.ok_or(Errno::EINVAL.into())
+                Ok((node.target.ok_or(Errno::EINVAL)?, txn.read_version()))
             }
             .boxed()
         })
@@ -747,307 +709,202 @@ impl<S: Store> Fs<S> {
 
     // ---------------------------------------------------------------- mutations
 
-    pub async fn create(
-        &self,
-        caller: &Caller,
-        parent: Id,
-        name: &str,
-        kind: Kind,
-        mode: u32,
-        exclusive: bool,
-        target: Option<&str>,
-    ) -> Result<Mutation, Errno> {
-        valid_name(name)?;
+    /// Reserves `ID_CHUNK` object ids for `principal`'s `Create` ops.
+    pub async fn alloc_ids(&self, principal: &Principal) -> Result<(Id, u32), Errno> {
+        self.run(Attempt::READ, |attempt| {
+            async move {
+                let mut txn = self.begin(attempt).await?;
+                let next = le_u64(txn.get(records::NEXT_ID).await?.as_ref()).max(ID_CHUNK);
+                let first = next.div_ceil(ID_CHUNK) * ID_CHUNK;
+                txn.set(records::NEXT_ID, &(first + ID_CHUNK).to_le_bytes());
+                txn.set(&records::id_chunk(first / ID_CHUNK), principal.name.as_bytes());
+                self.commit(txn).await?;
+                Ok((first, ID_CHUNK as u32))
+            }
+            .boxed()
+        })
+        .await
+    }
+
+    /// @cc [owner:fontanierh,label:backend;concurrency] apply-batch
+    /// `ops` MUST commit in order in one transaction. Each op MUST be fully validated before it
+    /// writes anything: a failing op (`results[i]`) leaves no effect and later ops still apply
+    /// over the effects of the earlier successful ones. A file's size and its blocks MUST change
+    /// in the same op.
+    pub async fn apply(&self, caller: &Caller, ops: &[Op]) -> Result<Response, Errno> {
+        if ops.len() > MAX_APPLY_OPS {
+            return Err(Errno::EINVAL);
+        }
         self.run(Attempt::mutation(caller), |attempt| {
             async move {
                 let mut txn = self.begin(attempt).await?;
-                if let Some(mutation) = Self::replay(&txn, caller, attempt).await? {
-                    return Ok(mutation);
+                if let Some(response) = Self::replay(&txn, caller, attempt).await? {
+                    // The original commit version is not stored; this later read version is a safe
+                    // upper bound for it.
+                    return Ok(match response {
+                        Response::Applied { results, attrs, .. } => Response::Applied { version: txn.read_version(), results, attrs },
+                        other => other,
+                    });
                 }
-                let values = txn.get_many(&[records::node(parent), records::TOPO.to_vec(), records::entry(parent, name)]).await?;
-                let dir = live(values[0].clone()).map_err(|_| Errno::ENOENT)?;
-                let epoch = le_u64(values[1].as_ref());
-                let chain = self.dir_chain(&txn, parent, Some(&dir), epoch).await?;
-                let groups = self.groups(&txn, &caller.principal, epoch).await?;
-                let access = Self::inherited(&caller.principal, &groups, &chain, None);
-                if let Some(existing) = values[2].as_ref().map(|v| decode::<EntryRecord>(v)).transpose()? {
-                    if exclusive || kind != Kind::File || existing.kind != Kind::File {
-                        return Err(Errno::EEXIST.into());
+                txn.get_many(&prefetch_keys(ops)).await?;
+                let epoch = le_u64(txn.get(records::TOPO).await?.as_ref());
+                let mut batch = Batch { epoch, now: now_ns(), written: HashSet::new(), touched: BTreeMap::new(), moved_dir: false };
+                let mut results = Vec::with_capacity(ops.len());
+                for op in ops {
+                    match self.apply_op(&mut txn, caller, &mut batch, op).await {
+                        Ok(()) => results.push(None),
+                        Err(Failure::Fs(errno)) => results.push(Some(errno)),
+                        Err(failure) => return Err(failure),
                     }
-                    let node = live(txn.get(&records::node(existing.id)).await?)?;
-                    let own = self.policy_of(&txn, existing.id, &node, epoch).await?;
-                    let access = Self::inherited(&caller.principal, &groups, &chain, own.as_ref());
-                    if !access.read {
-                        return Err(Errno::EACCES.into());
-                    }
-                    let response = Response::Created { attr: attr(existing.id, &node, access.write, 0), parent_mtime_ns: 0, existed: true };
-                    let mutation = Self::finish(&mut txn, caller, response, Vec::new());
-                    self.commit(txn).await?;
-                    return Ok(mutation);
                 }
-                if !access.write {
+                if batch.moved_dir {
+                    txn.set(records::TOPO, &(epoch + 1).to_le_bytes());
+                }
+                // The receipt omits attributes to stay far below the store's value size limit.
+                let receipt = Response::Applied { version: 0, results: results.clone(), attrs: Vec::new() };
+                txn.set(&records::receipt(caller.session, caller.seq), &encode(&receipt));
+                let version = self.commit(txn).await?;
+                let failed = results.iter().filter(|r| r.is_some()).count() as u64;
+                self.shared.stats.ops.fetch_add(ops.len() as u64 - failed, Ordering::Relaxed);
+                self.shared.stats.failed_ops.fetch_add(failed, Ordering::Relaxed);
+                let attrs = batch.touched.iter().filter(|(_, (node, _))| !node.detached).map(|(id, (node, time))| attr(*id, node, true, *time)).collect();
+                Ok(Response::Applied { version, results, attrs })
+            }
+            .boxed()
+        })
+        .await
+    }
+
+    async fn apply_op(&self, txn: &mut S::Txn, caller: &Caller, b: &mut Batch, op: &Op) -> Step<()> {
+        let who = &caller.principal;
+        match op {
+            Op::Create { parent, name, id, kind, mode, mtime_ns, target } => {
+                let (parent, id) = (*parent, *id);
+                valid_name(name)?;
+                if (*kind == Kind::Symlink) != target.is_some() {
+                    return Err(Errno::EINVAL.into());
+                }
+                let values = txn.get_many(&[records::node(parent), records::entry(parent, name), records::node(id), records::id_chunk(id / ID_CHUNK)]).await?;
+                if values[3].as_deref() != Some(who.name.as_bytes()) {
+                    return Err(Errno::EPERM.into());
+                }
+                if values[2].is_some() {
+                    return Err(Errno::EEXIST.into());
+                }
+                let dir = live(values[0].clone())?;
+                if dir.kind != Kind::Dir {
+                    return Err(Errno::ENOTDIR.into());
+                }
+                if !self.access(txn, who, parent, &dir, b.epoch, &b.written).await?.write {
                     return Err(Errno::EACCES.into());
                 }
-                let id = self.next_id().await?;
-                let now = now_ns();
+                if values[1].is_some() {
+                    return Err(Errno::EEXIST.into());
+                }
                 let node = Node {
                     parent,
-                    name: name.to_string(),
-                    kind,
+                    name: name.clone(),
+                    kind: *kind,
                     mode: mode & 0o7777,
-                    size: target.map_or(0, |t| t.len() as u64),
-                    mtime_ns: now,
-                    ctime_ns: now,
-                    mtime_set_ns: now,
+                    size: target.as_ref().map_or(0, |t| t.len() as u64),
+                    mtime_ns: *mtime_ns,
+                    ctime_ns: b.now,
+                    mtime_set_ns: b.now,
                     rev: 1,
-                    target: target.map(str::to_string),
+                    target: target.clone(),
                     policy: false,
                     detached: false,
                 };
                 txn.set(&records::node(id), &encode(&node));
-                txn.set(&records::entry(parent, name), &encode(&EntryRecord { id, kind }));
-                txn.max_u64(&records::dir_time(parent), now as u64);
+                txn.set(&records::entry(parent, name), &encode(&EntryRecord { id, kind: *kind }));
+                txn.max_u64(&records::dir_time(parent), b.now as u64);
                 txn.set(&records::index_job(id), b"");
-                let response = Response::Created { attr: attr(id, &node, true, 0), parent_mtime_ns: now, existed: false };
-                let mutation = Self::finish(&mut txn, caller, response, vec![Invalidation::Name { parent, name: name.to_string() }]);
-                let version = self.commit(txn).await?;
-                self.remember(id, &node, version, epoch);
-                if kind == Kind::Dir {
-                    self.cached(epoch, |c| c.dirs.insert(id, node));
-                }
-                Ok(mutation)
+                b.write(id, node);
+                b.child_changed(parent, dir);
             }
-            .boxed()
-        })
-        .await
-    }
-
-    /// @cc [owner:fontanierh,label:backend;concurrency] zero-read-flush
-    /// A flush MAY skip all reads only when this server committed the file's node at version `v`
-    /// less than RECENT_REUSE ago under the current authorization epoch: it then reads at `v` and
-    /// MUST add read conflicts on the node and the epoch, so the commit fails if either changed
-    /// after `v`. The node it assumes MUST be exactly the value committed at `v`.
-    pub async fn flush(&self, caller: &Caller, id: Id, writes: &[(u64, Vec<u8>)], mtime_ns: Option<i64>) -> Result<Mutation, Errno> {
-        self.run(Attempt::mutation(caller), |attempt| {
-            async move {
-                let recent = if attempt.fresh || attempt.uncertain {
-                    None
-                } else {
-                    let recent = self.shared.recent.lock().get(&id).cloned();
-                    let epoch = self.shared.auth.lock().epoch;
-                    recent.filter(|r| r.at.elapsed() < RECENT_REUSE && r.epoch == epoch)
-                };
-                let (mut txn, node, epoch) = match recent {
-                    Some(recent) => {
-                        let mut txn = self.store.begin(TxnOptions { read_version: Some(recent.version) }).await?;
-                        txn.add_read_conflict_range(&dfs_store::KeyRange::single(&records::node(id)));
-                        txn.add_read_conflict_range(&dfs_store::KeyRange::single(records::TOPO));
-                        self.shared.stats.zero_read_flushes.fetch_add(1, Ordering::Relaxed);
-                        (txn, recent.node, recent.epoch)
-                    }
-                    None => {
-                        let txn = self.begin(attempt).await?;
-                        if let Some(mutation) = Self::replay(&txn, caller, attempt).await? {
-                            return Ok(mutation);
-                        }
-                        let values = txn.get_many(&[records::node(id), records::TOPO.to_vec()]).await?;
-                        let node = node_of(values[0].clone())?.ok_or(Errno::ESTALE)?;
-                        (txn, node, le_u64(values[1].as_ref()))
-                    }
-                };
-                if node.kind != Kind::File {
-                    return Err(Errno::EISDIR.into());
+            Op::Remove { parent, name, id } => {
+                let (parent, id) = (*parent, *id);
+                valid_name(name)?;
+                let values = txn.get_many(&[records::node(parent), records::entry(parent, name), records::node(id)]).await?;
+                let dir = live(values[0].clone())?;
+                if decode::<EntryRecord>(values[1].as_ref().ok_or(Errno::ENOENT)?)?.id != id {
+                    return Err(Errno::ENOENT.into());
                 }
-                if !self.access(&txn, &caller.principal, id, &node, epoch).await?.write {
+                let mut child = live(values[2].clone())?;
+                if !self.access(txn, who, parent, &dir, b.epoch, &b.written).await?.write
+                    || !self.access(txn, who, id, &child, b.epoch, &b.written).await?.write
+                {
                     return Err(Errno::EACCES.into());
                 }
-                let mut node = node;
-                let mut new_size = node.size;
-                for (offset, data) in writes.iter().filter(|(_, data)| !data.is_empty()) {
-                    match offset.checked_add(data.len() as u64) {
-                        Some(end) if end <= MAX_FILE_BYTES => new_size = new_size.max(end),
-                        _ => return Err(Errno::EFBIG.into()),
-                    }
-                }
-                let blocks = patch_blocks(&txn, id, node.size, new_size, writes).await?;
-                for (index, block) in &blocks {
-                    txn.set(&records::block(id, *index), block);
-                }
-                let now = now_ns();
-                node.size = new_size;
-                node.rev += 1;
-                node.mtime_ns = mtime_ns.unwrap_or(if writes.is_empty() { node.mtime_ns } else { now });
-                node.ctime_ns = now;
-                txn.set(&records::node(id), &encode(&node));
-                txn.set(&records::index_job(id), b"");
-                let response = Response::Attr(attr(id, &node, true, 0));
-                let mutation = Self::finish(&mut txn, caller, response, vec![Invalidation::Node(id)]);
-                let version = self.commit(txn).await?;
-                self.remember(id, &node, version, epoch);
-                Ok(mutation)
-            }
-            .boxed()
-        })
-        .await
-    }
-
-    pub async fn setattr(&self, caller: &Caller, id: Id, mode: Option<u32>, size: Option<u64>, mtime_ns: Option<i64>) -> Result<Mutation, Errno> {
-        self.run(Attempt::mutation(caller), |attempt| {
-            async move {
-                let mut txn = self.begin(attempt).await?;
-                if let Some(mutation) = Self::replay(&txn, caller, attempt).await? {
-                    return Ok(mutation);
-                }
-                let values = txn.get_many(&[records::node(id), records::TOPO.to_vec(), records::dir_time(id)]).await?;
-                let mut node = node_of(values[0].clone())?.ok_or(Errno::ESTALE)?;
-                let epoch = le_u64(values[1].as_ref());
-                if !self.access(&txn, &caller.principal, id, &node, epoch).await?.write {
-                    return Err(Errno::EACCES.into());
-                }
-                let now = now_ns();
-                if let Some(size) = size {
-                    if node.kind != Kind::File {
-                        return Err(Errno::EISDIR.into());
-                    }
-                    if size > MAX_FILE_BYTES {
-                        return Err(Errno::EFBIG.into());
-                    }
-                    truncate(&mut txn, id, node.size, size).await?;
-                    node.size = size;
-                    node.rev += 1;
-                    node.mtime_ns = now;
-                }
-                if let Some(mode) = mode {
-                    node.mode = mode & 0o7777;
-                }
-                if let Some(mtime) = mtime_ns {
-                    node.mtime_ns = mtime;
-                    node.mtime_set_ns = now;
-                }
-                node.ctime_ns = now;
-                txn.set(&records::node(id), &encode(&node));
-                let response = Response::Attr(attr(id, &node, true, le_u64(values[2].as_ref())));
-                let mutation = Self::finish(&mut txn, caller, response, vec![Invalidation::Node(id)]);
-                let version = self.commit(txn).await?;
-                self.remember(id, &node, version, epoch);
-                Ok(mutation)
-            }
-            .boxed()
-        })
-        .await
-    }
-
-    pub async fn remove(&self, caller: &Caller, parent: Id, name: &str, dir: bool) -> Result<Mutation, Errno> {
-        valid_name(name)?;
-        self.run(Attempt::mutation(caller), |attempt| {
-            async move {
-                let mut txn = self.begin(attempt).await?;
-                if let Some(mutation) = Self::replay(&txn, caller, attempt).await? {
-                    return Ok(mutation);
-                }
-                let values = txn.get_many(&[records::node(parent), records::TOPO.to_vec(), records::entry(parent, name)]).await?;
-                let parent_node = live(values[0].clone())?;
-                let epoch = le_u64(values[1].as_ref());
-                let entry: EntryRecord = decode(values[2].as_ref().ok_or(Errno::ENOENT)?)?;
-                let mut child = live(txn.get(&records::node(entry.id)).await?)?;
-                match (dir, child.kind) {
-                    (true, Kind::Dir) | (false, Kind::File | Kind::Symlink) => {}
-                    (true, _) => return Err(Errno::ENOTDIR.into()),
-                    (false, _) => return Err(Errno::EISDIR.into()),
-                }
-                let parent_access = self.access(&txn, &caller.principal, parent, &parent_node, epoch).await?;
-                let child_access = self.access(&txn, &caller.principal, entry.id, &child, epoch).await?;
-                if !parent_access.write || !child_access.write {
-                    return Err(Errno::EACCES.into());
-                }
-                if dir && !txn.scan(&records::entries(entry.id), 1).await?.is_empty() {
+                if child.kind == Kind::Dir && !txn.scan(&records::entries(id), 1).await?.is_empty() {
                     return Err(Errno::ENOTEMPTY.into());
                 }
-                let now = now_ns();
                 child.detached = true;
-                child.ctime_ns = now;
+                child.ctime_ns = b.now;
                 txn.clear(&records::entry(parent, name));
-                txn.set(&records::node(entry.id), &encode(&child));
-                txn.max_u64(&records::dir_time(parent), now as u64);
-                txn.set(&records::index_job(entry.id), b"");
-                let invalidations = vec![Invalidation::Name { parent, name: name.to_string() }, Invalidation::Node(entry.id)];
-                let mutation = Self::finish(&mut txn, caller, Response::Done, invalidations);
-                let version = self.commit(txn).await?;
-                self.remember(entry.id, &child, version, epoch);
-                Ok(mutation)
+                txn.set(&records::node(id), &encode(&child));
+                txn.max_u64(&records::dir_time(parent), b.now as u64);
+                txn.set(&records::index_job(id), b"");
+                b.write(id, child);
+                b.child_changed(parent, dir);
             }
-            .boxed()
-        })
-        .await
-    }
-
-    pub async fn rename(&self, caller: &Caller, parent: Id, name: &str, new_parent: Id, new_name: &str, no_replace: bool) -> Result<Mutation, Errno> {
-        valid_name(name)?;
-        valid_name(new_name)?;
-        self.run(Attempt::mutation(caller), |attempt| {
-            async move {
-                let mut txn = self.begin(attempt).await?;
-                if let Some(mutation) = Self::replay(&txn, caller, attempt).await? {
-                    return Ok(mutation);
-                }
+            Op::Rename { parent, name, id, new_parent, new_name, no_replace } => {
+                let (parent, id, new_parent) = (*parent, *id, *new_parent);
+                valid_name(name)?;
+                valid_name(new_name)?;
                 let values = txn
                     .get_many(&[
                         records::node(parent),
                         records::node(new_parent),
-                        records::TOPO.to_vec(),
                         records::entry(parent, name),
                         records::entry(new_parent, new_name),
+                        records::node(id),
                     ])
                     .await?;
                 let from_dir = live(values[0].clone())?;
                 let to_dir = live(values[1].clone())?;
-                let epoch = le_u64(values[2].as_ref());
-                let entry: EntryRecord = decode(values[3].as_ref().ok_or(Errno::ENOENT)?)?;
-                let replaced = values[4].as_ref().map(|v| decode::<EntryRecord>(v)).transpose()?;
+                let entry: EntryRecord = decode(values[2].as_ref().ok_or(Errno::ENOENT)?)?;
+                if entry.id != id {
+                    return Err(Errno::ENOENT.into());
+                }
+                let replaced = values[3].as_ref().map(|v| decode::<EntryRecord>(v)).transpose()?;
                 if from_dir.kind != Kind::Dir || to_dir.kind != Kind::Dir {
                     return Err(Errno::ENOTDIR.into());
                 }
-                let mut child = live(txn.get(&records::node(entry.id)).await?)?;
-                for (id, node) in [(parent, &from_dir), (new_parent, &to_dir), (entry.id, &child)] {
-                    if !self.access(&txn, &caller.principal, id, node, epoch).await?.write {
+                let mut child = live(values[4].clone())?;
+                for (id, node) in [(parent, &from_dir), (new_parent, &to_dir), (id, &child)] {
+                    if !self.access(txn, who, id, node, b.epoch, &b.written).await?.write {
                         return Err(Errno::EACCES.into());
                     }
                 }
-                if replaced.is_some_and(|r| r.id == entry.id) {
-                    let mutation = Self::finish(&mut txn, caller, Response::Done, Vec::new());
-                    self.commit(txn).await?;
-                    return Ok(mutation);
+                if replaced.is_some_and(|r| r.id == id) {
+                    return Ok(());
                 }
                 let moves_dir = child.kind == Kind::Dir && parent != new_parent;
                 if moves_dir {
                     // No subtree policy marker yet: moving a directory that carries its own policy
                     // needs tenant administration; policies deeper below are a documented gap.
-                    if child.policy && !caller.principal.admin {
+                    if child.policy && !who.admin {
                         return Err(Errno::EPERM.into());
                     }
-                    let mut id = new_parent;
+                    let mut at = new_parent;
                     for _ in 0..MAX_DEPTH {
-                        if id == entry.id {
+                        if at == id {
                             return Err(Errno::EINVAL.into());
                         }
-                        if id == ROOT {
+                        if at == ROOT {
                             break;
                         }
-                        id = live(txn.get(&records::node(id)).await?)?.parent;
+                        at = live(txn.get(&records::node(at)).await?)?.parent;
                     }
                 }
-                let now = now_ns();
-                let mut invalidations = vec![
-                    Invalidation::Name { parent, name: name.to_string() },
-                    Invalidation::Name { parent: new_parent, name: new_name.to_string() },
-                    Invalidation::Node(entry.id),
-                ];
+                let mut old = None;
                 if let Some(replaced) = replaced {
-                    if no_replace {
+                    if *no_replace {
                         return Err(Errno::EEXIST.into());
                     }
-                    let mut old = live(txn.get(&records::node(replaced.id)).await?)?;
-                    match (child.kind, old.kind) {
+                    let node = live(txn.get(&records::node(replaced.id)).await?)?;
+                    match (child.kind, node.kind) {
                         (Kind::Dir, Kind::Dir) => {
                             if !txn.scan(&records::entries(replaced.id), 1).await?.is_empty() {
                                 return Err(Errno::ENOTEMPTY.into());
@@ -1057,38 +914,234 @@ impl<S: Store> Fs<S> {
                         (_, Kind::Dir) => return Err(Errno::EISDIR.into()),
                         _ => {}
                     }
-                    if !self.access(&txn, &caller.principal, replaced.id, &old, epoch).await?.write {
+                    if !self.access(txn, who, replaced.id, &node, b.epoch, &b.written).await?.write {
                         return Err(Errno::EACCES.into());
                     }
-                    old.detached = true;
-                    old.ctime_ns = now;
-                    txn.set(&records::node(replaced.id), &encode(&old));
-                    invalidations.push(Invalidation::Node(replaced.id));
+                    old = Some((replaced.id, node));
+                }
+                if let Some((old_id, mut node)) = old {
+                    node.detached = true;
+                    node.ctime_ns = b.now;
+                    txn.set(&records::node(old_id), &encode(&node));
+                    b.write(old_id, node);
                 }
                 child.parent = new_parent;
-                child.name = new_name.to_string();
-                child.ctime_ns = now;
+                child.name = new_name.clone();
+                child.ctime_ns = b.now;
                 txn.clear(&records::entry(parent, name));
                 txn.set(&records::entry(new_parent, new_name), &encode(&entry));
-                txn.set(&records::node(entry.id), &encode(&child));
-                txn.max_u64(&records::dir_time(parent), now as u64);
-                txn.max_u64(&records::dir_time(new_parent), now as u64);
-                txn.set(&records::index_job(entry.id), b"");
-                if moves_dir {
-                    txn.set(records::TOPO, &(epoch + 1).to_le_bytes());
-                    invalidations.push(Invalidation::All);
-                }
-                let mutation = Self::finish(&mut txn, caller, Response::Done, invalidations);
-                let version = self.commit(txn).await?;
-                if !moves_dir {
-                    self.remember(entry.id, &child, version, epoch);
-                }
-                Ok(mutation)
+                txn.set(&records::node(id), &encode(&child));
+                txn.max_u64(&records::dir_time(parent), b.now as u64);
+                txn.max_u64(&records::dir_time(new_parent), b.now as u64);
+                txn.set(&records::index_job(id), b"");
+                // Its writability may differ under the new parent: the mount refetches it.
+                b.written.insert(id);
+                b.child_changed(parent, from_dir);
+                b.child_changed(new_parent, to_dir);
+                b.moved_dir |= moves_dir;
             }
-            .boxed()
-        })
-        .await
+            Op::Write { id, changes, mtime_ns } => {
+                let id = *id;
+                let mut node = node_of(txn.get(&records::node(id)).await?)?.ok_or(Errno::ESTALE)?;
+                if node.kind != Kind::File {
+                    return Err(Errno::EISDIR.into());
+                }
+                if !self.access(txn, who, id, &node, b.epoch, &b.written).await?.write {
+                    return Err(Errno::EACCES.into());
+                }
+                let mut touched = BTreeSet::new();
+                for change in changes {
+                    let end = match change {
+                        Change::Write { offset, bytes } if !bytes.is_empty() => {
+                            let end = offset.checked_add(bytes.len() as u64).ok_or(Errno::EFBIG)?;
+                            touched.extend((offset / BLOCK_BYTES) as u32..=((end - 1) / BLOCK_BYTES) as u32);
+                            end
+                        }
+                        Change::Write { .. } => 0,
+                        Change::Truncate(size) => *size,
+                    };
+                    if end > MAX_FILE_BYTES {
+                        return Err(Errno::EFBIG.into());
+                    }
+                }
+                if touched.len() > MAX_FLUSH_BLOCKS {
+                    return Err(Errno::EFBIG.into());
+                }
+                let mut size = node.size;
+                let mut changes = changes.iter().peekable();
+                while let Some(change) = changes.next() {
+                    match change {
+                        Change::Truncate(to) => {
+                            truncate(txn, id, size, *to).await?;
+                            size = *to;
+                        }
+                        Change::Write { offset, bytes } => {
+                            let mut writes = vec![(*offset, bytes.as_slice())];
+                            while let Some(Change::Write { offset, bytes }) = changes.peek() {
+                                writes.push((*offset, bytes.as_slice()));
+                                changes.next();
+                            }
+                            writes.retain(|(_, bytes)| !bytes.is_empty());
+                            let new_size = writes.iter().fold(size, |s, (offset, bytes)| s.max(offset + bytes.len() as u64));
+                            for (index, block) in patch_blocks(txn, id, size, new_size, &writes).await? {
+                                txn.set(&records::block(id, index), &block);
+                            }
+                            size = new_size;
+                        }
+                    }
+                }
+                node.size = size;
+                node.rev += 1;
+                node.mtime_ns = mtime_ns.unwrap_or(b.now);
+                node.ctime_ns = b.now;
+                txn.set(&records::node(id), &encode(&node));
+                txn.set(&records::index_job(id), b"");
+                b.write(id, node);
+            }
+            Op::SetAttr { id, mode, mtime_ns } => {
+                let id = *id;
+                let mut node = node_of(txn.get(&records::node(id)).await?)?.ok_or(Errno::ESTALE)?;
+                if !self.access(txn, who, id, &node, b.epoch, &b.written).await?.write {
+                    return Err(Errno::EACCES.into());
+                }
+                if let Some(mode) = mode {
+                    node.mode = mode & 0o7777;
+                }
+                if let Some(mtime) = mtime_ns {
+                    node.mtime_ns = *mtime;
+                    node.mtime_set_ns = b.now;
+                }
+                node.ctime_ns = b.now;
+                txn.set(&records::node(id), &encode(&node));
+                b.write(id, node);
+            }
+        }
+        Ok(())
     }
+
+    // ---------------------------------------------------------------- consistency check
+
+    /// Checks the durable invariants of a quiesced store: every entry names a live node whose
+    /// parent, name and kind match it; every live node but the root has exactly that entry; every
+    /// block lies below its file's size and does not extend past it. Returns the violations found.
+    pub async fn fsck(&self) -> Result<Vec<String>, Errno> {
+        let mut problems = Vec::new();
+        let mut nodes: HashMap<Id, Node> = HashMap::new();
+        for (key, value) in self.scan_all(records::all_nodes()).await? {
+            nodes.insert(records::key_id(&key)?, decode(&value)?);
+        }
+        let mut named: HashMap<Id, (Id, String)> = HashMap::new();
+        for (key, value) in self.scan_all(records::all_entries()).await? {
+            let (dir, name) = (records::key_id(&key)?, records::entry_name(&key)?);
+            let entry: EntryRecord = decode(&value)?;
+            match nodes.get(&entry.id) {
+                Some(node) if !node.detached && node.parent == dir && node.name == name && node.kind == entry.kind => {}
+                other => problems.push(format!("entry {dir}/{name} -> {} does not match node {other:?}", entry.id)),
+            }
+            if !nodes.get(&dir).is_some_and(|d| d.kind == Kind::Dir && !d.detached) {
+                problems.push(format!("entry {dir}/{name} is in a missing or non-directory parent"));
+            }
+            if named.insert(entry.id, (dir, name.clone())).is_some() {
+                problems.push(format!("node {} has several entries", entry.id));
+            }
+        }
+        for (id, node) in &nodes {
+            if !node.detached && *id != ROOT && !named.contains_key(id) {
+                problems.push(format!("live node {id} ({}/{}) has no entry", node.parent, node.name));
+            }
+            if node.kind == Kind::Symlink && node.target.as_ref().map(|t| t.len() as u64) != Some(node.size) {
+                problems.push(format!("symlink {id} size does not match its target"));
+            }
+        }
+        for (key, block) in self.scan_all(records::all_blocks()).await? {
+            let (id, index) = (records::key_id(&key)?, records::block_index(&key)?);
+            let start = index as u64 * BLOCK_BYTES;
+            match nodes.get(&id) {
+                Some(node) if node.kind == Kind::File => {
+                    let bound = node.size.saturating_sub(start).min(BLOCK_BYTES);
+                    if block.is_empty() || block.len() as u64 > bound {
+                        problems.push(format!("file {id} block {index} holds {} bytes; size {} allows {bound}", block.len(), node.size));
+                    }
+                }
+                other => problems.push(format!("block {index} of {id} belongs to no file ({other:?})")),
+            }
+        }
+        Ok(problems)
+    }
+
+    /// Every pair in `range`, in pages of fresh transactions (not one snapshot).
+    async fn scan_all(&self, mut range: dfs_store::KeyRange) -> Result<Vec<(Key, Value)>, Errno> {
+        const PAGE: usize = 10_000;
+        let mut out = Vec::new();
+        loop {
+            let page = self
+                .run(Attempt::READ, |attempt| {
+                    let range = range.clone();
+                    async move { Ok(self.begin(attempt).await?.scan(&range, PAGE).await?) }.boxed()
+                })
+                .await?;
+            let done = page.len() < PAGE;
+            if let Some((last, _)) = page.last() {
+                range.start = dfs_store::KeyRange::single(last).end;
+            }
+            out.extend(page);
+            if done {
+                return Ok(out);
+            }
+        }
+    }
+}
+
+/// Mutable state of one `apply` transaction.
+struct Batch {
+    epoch: u64,
+    now: i64,
+    /// Nodes this uncommitted transaction wrote; never served from or added to the auth cache.
+    written: HashSet<Id>,
+    /// Committed-to-be node and child-change time of every object whose attributes the reply reports.
+    touched: BTreeMap<Id, (Node, u64)>,
+    moved_dir: bool,
+}
+
+impl Batch {
+    fn write(&mut self, id: Id, node: Node) {
+        self.written.insert(id);
+        let time = self.touched.get(&id).map_or(0, |(_, time)| *time);
+        self.touched.insert(id, (node, time));
+    }
+
+    /// `dir` (as read before this op unless written earlier in the batch) gained or lost a child.
+    fn child_changed(&mut self, dir: Id, node: Node) {
+        self.touched.entry(dir).or_insert((node, 0)).1 = self.now as u64;
+    }
+}
+
+/// Keys `ops` read first, fetched together so the per-op reads hit the transaction's cache.
+fn prefetch_keys(ops: &[Op]) -> Vec<Key> {
+    let mut keys = BTreeSet::new();
+    for op in ops {
+        match op {
+            Op::Create { parent, name, id, .. } => {
+                keys.extend([records::node(*parent), records::entry(*parent, name), records::node(*id), records::id_chunk(id / ID_CHUNK)]);
+            }
+            Op::Remove { parent, name, id } => {
+                keys.extend([records::node(*parent), records::entry(*parent, name), records::node(*id)]);
+            }
+            Op::Rename { parent, name, id, new_parent, new_name, .. } => {
+                keys.extend([
+                    records::node(*parent),
+                    records::node(*new_parent),
+                    records::entry(*parent, name),
+                    records::entry(*new_parent, new_name),
+                    records::node(*id),
+                ]);
+            }
+            Op::Write { id, .. } | Op::SetAttr { id, .. } => {
+                keys.insert(records::node(*id));
+            }
+        }
+    }
+    keys.into_iter().collect()
 }
 
 /// Copies the part of `block` (starting at file offset `start`) that overlaps `out` (starting at
@@ -1103,7 +1156,7 @@ fn copy_overlap(out: &mut [u8], offset: u64, block: &[u8], start: u64) {
 
 /// New contents of every block touched by `writes`, applied in order. Blocks that existed before
 /// (start below `old_size`) and are not fully overwritten are read and patched.
-async fn patch_blocks<T: Txn>(txn: &T, id: Id, old_size: u64, new_size: u64, writes: &[(u64, Vec<u8>)]) -> Step<BTreeMap<u32, Vec<u8>>> {
+async fn patch_blocks<T: Txn>(txn: &T, id: Id, old_size: u64, new_size: u64, writes: &[(u64, &[u8])]) -> Step<BTreeMap<u32, Vec<u8>>> {
     let mut covered: BTreeMap<u32, Vec<(u64, u64)>> = BTreeMap::new();
     for (offset, data) in writes {
         if data.is_empty() {
