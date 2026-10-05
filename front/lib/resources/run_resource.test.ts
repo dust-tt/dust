@@ -3,8 +3,8 @@ import { USAGE_TYPE_FREE, USAGE_TYPE_USER } from "@app/lib/metronome/constants";
 import { EUROPE } from "@app/lib/model_constructors/types/regions";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
-import { RunFactory } from "@app/tests/utils/RunFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { RunFactory } from "@app/tests/utils/RunFactory";
 import {
   GPT_5_4_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,

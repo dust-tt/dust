@@ -1,11 +1,11 @@
-import { ConfirmContext } from "@app/components/Confirm";
-import { MCPServerDetailsSheet } from "@app/components/actions/mcp/MCPServerDetailsSheet";
 import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import {
   diffMCPServerForm,
   getMCPServerFormDefaults,
   getMCPServerFormSchema,
 } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
+import { MCPServerDetailsSheet } from "@app/components/actions/mcp/MCPServerDetailsSheet";
+import { ConfirmContext } from "@app/components/Confirm";
 import { useSensitivityLabelsController } from "@app/components/shared/labels/useSensitivityLabelsController";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";

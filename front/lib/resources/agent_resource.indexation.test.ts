@@ -4,10 +4,10 @@ import { GroupPermissionResource } from "@app/lib/resources/group_permission_res
 import logger from "@app/logger/logger";
 import { launchIndexAgentSearchWorkflow } from "@app/temporal/es_indexation/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { describe, expect, it, vi } from "vitest";

@@ -1,4 +1,3 @@
-import type { InboundEmailDkimResult } from "./inbound_auth";
 import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
 import {
   createConversation,
@@ -39,6 +38,7 @@ import sanitizeHtml from "sanitize-html";
 import { Op } from "sequelize";
 import { Readable } from "stream";
 import { toFileContentFragment } from "../conversation/content_fragment";
+import type { InboundEmailDkimResult } from "./inbound_auth";
 
 // Redis configuration for email reply context storage.
 const REDIS_ORIGIN: RedisUsageTagsType = "email_context";

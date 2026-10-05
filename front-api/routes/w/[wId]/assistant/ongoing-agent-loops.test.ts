@@ -1,7 +1,7 @@
 import { upsertOngoingAgentLoop } from "@app/lib/api/assistant/ongoing_agent_loops";
-import { UserFactory } from "@app/tests/utils/UserFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { redisMock } from "@app/tests/utils/mocks/redis";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

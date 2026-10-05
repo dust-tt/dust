@@ -1,7 +1,7 @@
 import { makePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/pod_configuration_uri";
 import { getProjectConversationFolderInternalId } from "@app/lib/api/projects/context";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";

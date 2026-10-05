@@ -1,8 +1,8 @@
-import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { SkillCard } from "@app/components/agent_builder/capabilities/capabilities_sheet/SkillCard";
 import { MCPServerCard } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
 import type { SheetState } from "@app/components/agent_builder/skills/types";
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { CapabilityFilterButtons } from "@app/components/shared/tools_picker/CapabilityFilterButtons";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { CapabilityFilterType } from "@app/components/shared/tools_picker/types";

@@ -1,4 +1,3 @@
-import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
 import type { BlockChange } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import {
@@ -14,6 +13,7 @@ import {
 } from "@app/components/editor/extensions/instructions/BlockIdExtension";
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/instructions/InstructionsDocumentExtension";
 import { InstructionsRootExtension } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
+import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { SkillNode } from "@app/components/editor/extensions/skill_builder/SkillNode";
 import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
 import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";

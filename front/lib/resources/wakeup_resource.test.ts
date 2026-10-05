@@ -2,8 +2,8 @@ import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import * as wakeUpClient from "@app/temporal/triggers/wakeup_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { WakeUpFactory } from "@app/tests/utils/WakeUpFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { WakeUpFactory } from "@app/tests/utils/WakeUpFactory";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

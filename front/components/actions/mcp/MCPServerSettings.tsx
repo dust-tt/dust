@@ -1,10 +1,10 @@
+import { ConnectMCPServerDialog } from "@app/components/actions/mcp/create/ConnectMCPServerDialog";
+import { submitConnectMCPServerDialogForm } from "@app/components/actions/mcp/forms/submitConnectMCPServerDialogForm";
+import { canRefreshMCPAuthWithoutDialog } from "@app/components/actions/mcp/forms/utils";
 import {
   OAUTH_USE_CASE_TO_DESCRIPTION,
   OAUTH_USE_CASE_TO_LABEL,
 } from "@app/components/actions/mcp/MCPServerAuthConnection";
-import { ConnectMCPServerDialog } from "@app/components/actions/mcp/create/ConnectMCPServerDialog";
-import { submitConnectMCPServerDialogForm } from "@app/components/actions/mcp/forms/submitConnectMCPServerDialogForm";
-import { canRefreshMCPAuthWithoutDialog } from "@app/components/actions/mcp/forms/utils";
 import { SensitivityLabelsConfig } from "@app/components/shared/labels/SensitivityLabelsConfig";
 import type { SensitivityLabelsController } from "@app/components/shared/labels/types";
 import { useSendNotification } from "@app/hooks/useNotification";

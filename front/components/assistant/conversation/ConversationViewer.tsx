@@ -1,19 +1,18 @@
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { getWorkspaceLimitForSubmitError } from "@app/components/app/ReachedLimitPopup";
-import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
 import {
   parseDataAsMessageIdAndActionId,
   useConversationSidePanelContext,
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { MessageItem } from "@app/components/assistant/conversation/MessageItem";
 import type { PendingConversationMessage } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import {
   createPlaceholderAgentMessage,
   createPlaceholderUserMessage,
 } from "@app/components/assistant/conversation/lib";
+import { MessageItem } from "@app/components/assistant/conversation/MessageItem";
 import { handlePlanUpdatedEvent } from "@app/components/assistant/conversation/plan_mode/handle_plan_updated";
 import type {
   AgentMessageWithStreaming,
@@ -34,6 +33,7 @@ import {
   reconcileAgentMessage,
   reconcileCachedAgentMessage,
 } from "@app/components/assistant/conversation/types";
+import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
 import {
   CONVERSATION_MESSAGES_PAGE_LIMIT,
   requestConversationMarkAsRead,

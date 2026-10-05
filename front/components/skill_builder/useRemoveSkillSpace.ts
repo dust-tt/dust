@@ -1,7 +1,7 @@
 import { useBlockedSkillSpaceRemovalConfirm } from "@app/components/shared/RemoveSpaceDialog";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import { useSkillSpaceRestrictionsContext } from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
+import { useSkillSpaceRestrictionsContext } from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
 import type { SpaceType } from "@app/types/space";
 import { useCallback } from "react";
 import { useController } from "react-hook-form";

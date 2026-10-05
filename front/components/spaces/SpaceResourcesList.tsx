@@ -1,4 +1,3 @@
-import { ViewFolderAPIModal } from "@app/components/ViewFolderAPIModal";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { ConnectorPermissionsModal } from "@app/components/data_source/ConnectorPermissionsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
@@ -8,10 +7,11 @@ import type { DataSourceIntegration } from "@app/components/spaces/AddConnection
 import { AddConnectionMenu } from "@app/components/spaces/AddConnectionMenu";
 import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
 import { EditSpaceStaticDatasourcesViews } from "@app/components/spaces/EditSpaceStaticDatasourcesViews";
+import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
-import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { ViewFolderAPIModal } from "@app/components/ViewFolderAPIModal";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import {

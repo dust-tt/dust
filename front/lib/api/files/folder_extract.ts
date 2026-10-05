@@ -1,3 +1,4 @@
+import path from "node:path";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { readZipEntryData } from "@app/lib/utils/zip";
 import type { DustFileSystemError } from "@app/types/file_system";
@@ -8,7 +9,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { IZipEntry } from "adm-zip";
 import AdmZip from "adm-zip";
-import path from "node:path";
 
 // Entry types the upload API rejects are still written as-is: the pod file system already holds
 // arbitrary agent-written files, and silently dropping entries the user can see in their archive

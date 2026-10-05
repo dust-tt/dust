@@ -8,8 +8,8 @@ import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_res
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
-import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { MISTRAL_LARGE_MODEL_ID } from "@app/types/assistant/models/mistral";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";

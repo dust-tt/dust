@@ -5,8 +5,8 @@ import {
 import { fetchRemoteServerMetaDataByServerId } from "@app/lib/actions/mcp_metadata";
 import type { MCPServerType, MCPToolType } from "@app/lib/api/mcp";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
-import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";

@@ -1,12 +1,12 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import type { Profile } from "../profile";
 import {
   DEFAULT_LIST_DIR_DEPTH,
   DEFAULT_LIST_LIMIT,
   MAX_LIST_DIR_DEPTH,
 } from "../constants";
+import type { Profile } from "../profile";
 import { parseIntArg, parseToolArgs, wantsHelp } from "../shared/args";
 import { paginate, printPaginatedOutput } from "../shared/output";
 

@@ -5,13 +5,13 @@ import {
   PokeTableCell,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
+import type { SubscriptionsDisplayType } from "@app/components/poke/subscriptions/columns";
+import { makeColumnsForSubscriptions } from "@app/components/poke/subscriptions/columns";
 import DowngradeToNoPlanButton from "@app/components/poke/subscriptions/DowngradeToNoPlanButton";
 import EnterpriseUpgradeDialog from "@app/components/poke/subscriptions/EnterpriseUpgradeDialog";
 import FreePlanUpgradeDialog from "@app/components/poke/subscriptions/FreePlanUpgradeDialog";
 import SeatLimitScheduleDialog from "@app/components/poke/subscriptions/SeatLimitScheduleDialog";
 import SwitchContractDialog from "@app/components/poke/subscriptions/SwitchContractDialog";
-import type { SubscriptionsDisplayType } from "@app/components/poke/subscriptions/columns";
-import { makeColumnsForSubscriptions } from "@app/components/poke/subscriptions/columns";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";

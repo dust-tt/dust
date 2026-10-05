@@ -19,9 +19,9 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {

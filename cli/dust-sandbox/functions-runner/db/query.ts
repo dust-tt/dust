@@ -1,6 +1,6 @@
-import { Err, Ok, type Result } from "#result.ts";
 import { Database, type Statement } from "bun:sqlite";
 import { existsSync } from "node:fs";
+import { Err, Ok, type Result } from "#result.ts";
 import { applyWritePragmas, DbCommandError } from "./common.ts";
 
 export const QUERY_ROW_CAP = 100;

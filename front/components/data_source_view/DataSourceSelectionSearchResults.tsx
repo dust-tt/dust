@@ -1,6 +1,6 @@
+import type { ItemSelectionState } from "@app/components/data_source_view/update_selection";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { NodePathTooltip } from "@app/components/NodePathTooltip";
-import type { ItemSelectionState } from "@app/components/data_source_view/update_selection";
 import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import {

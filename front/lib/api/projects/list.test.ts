@@ -2,8 +2,8 @@ import { listPodsForScope } from "@app/lib/api/projects/list";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

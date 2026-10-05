@@ -4,7 +4,6 @@ import type { FC } from "react";
 import React, { useCallback, useState } from "react";
 
 import { CLI_VERSION } from "../utils/version.js";
-import Help from "./Help.js";
 import Auth from "./commands/Auth.js";
 import Cache from "./commands/Cache.js";
 import Chat from "./commands/Chat.js";
@@ -14,6 +13,7 @@ import NonInteractiveChat from "./commands/NonInteractiveChat.js";
 import SkillInit from "./commands/SkillInit.js";
 import Status from "./commands/Status.js";
 import UpdateInfo from "./components/UpdateInfo.js";
+import Help from "./Help.js";
 
 interface AppProps {
   cli: Result<{

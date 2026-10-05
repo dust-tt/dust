@@ -1,10 +1,10 @@
-import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
-import { SlashCommandDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import {
   buildPickModelSlashCommandItems,
   getDefaultPickModelSlashCommandItemId,
 } from "@app/components/editor/extensions/shared/slash_suggestion/buildPickModelSlashCommandItems";
 import { isSelectModelSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import { SlashCommandDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type { SlashMenuStackFrame } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import { useModelPickerModels } from "@app/components/model_picker/useModelPickerModels";

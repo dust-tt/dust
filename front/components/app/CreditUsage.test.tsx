@@ -1,6 +1,6 @@
-import type { CreditUsageState } from "./CreditUsage";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import type { CreditUsageState } from "./CreditUsage";
 import {
   CREDIT_USAGE_LEARN_MORE_LABEL,
   CreditUsage,

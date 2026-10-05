@@ -7,10 +7,10 @@ import {
   launchDeleteSkillSearchWorkflow,
   launchIndexSkillSearchWorkflow,
 } from "@app/temporal/es_indexation/client";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { describe, expect, it, vi } from "vitest";

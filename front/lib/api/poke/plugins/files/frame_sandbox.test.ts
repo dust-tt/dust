@@ -6,8 +6,8 @@ import {
 } from "@app/lib/api/poke/plugins/files/frame_sandbox";
 import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import { FileFactory } from "@app/tests/utils/FileFactory";
-import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import { frameV2ContentType } from "@app/types/files";
 import { Ok } from "@app/types/shared/result";
 import { describe, expect, it, vi } from "vitest";

@@ -1,8 +1,8 @@
+import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import {
   SkillInstructionsEditorContent,
   useSkillInstructionsEditor,
 } from "@app/components/editor/SkillInstructionsEditor";
-import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { SpacesProvider } from "@app/components/shared/SpacesContext";
 import { MCPServerViewsProvider } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { LightWorkspaceType } from "@app/types/user";

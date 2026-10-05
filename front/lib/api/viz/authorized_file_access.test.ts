@@ -22,12 +22,12 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { AuthorizedFileAccessModel } from "@app/lib/resources/storage/models/files";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {

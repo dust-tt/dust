@@ -1,13 +1,13 @@
+import { editorVariants } from "@app/components/editor/editorStyles";
 import {
   SkillDescriptionEditorContent,
   useSkillDescriptionEditor,
 } from "@app/components/editor/SkillDescriptionEditor";
-import { editorVariants } from "@app/components/editor/editorStyles";
+import { SKILL_BUILDER_AGENT_DESCRIPTION_BLUR_EVENT } from "@app/components/skill_builder/events";
 import { SimilarSkillsDisplay } from "@app/components/skill_builder/SimilarSkillsDisplay";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
-import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
-import { SKILL_BUILDER_AGENT_DESCRIPTION_BLUR_EVENT } from "@app/components/skill_builder/events";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
+import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { SKILL_INVOCATION_LABEL } from "@app/lib/skills/labels";
 import { useSimilarSkills, useSkills } from "@app/lib/swr/skill_configurations";

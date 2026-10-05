@@ -1,4 +1,3 @@
-import type { DocumentComment, DocumentCommentAuthor } from "./types";
 import type { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -9,6 +8,7 @@ import {
   getDocumentComments,
   scrollToCommentHighlight,
 } from "./DocumentComments";
+import type { DocumentComment, DocumentCommentAuthor } from "./types";
 
 const createCommentId = (): string =>
   typeof crypto !== "undefined" && "randomUUID" in crypto

@@ -3,10 +3,10 @@ import {
   getBrowsableDataSourceViewTitle,
   KNOWLEDGE_BROWSER_GROUP_LABELS,
 } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
-import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type { AttachContextSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/attachContextSlashCommand";
 import { SELECT_ATTACH_CONTEXT_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/slash_suggestion/attachContextSlashCommand";
 import type { SlashCommandSection } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { getDataSourceViewRootNode } from "@app/lib/content_nodes";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";

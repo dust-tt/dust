@@ -1,10 +1,10 @@
-import type { DocumentComment, DocumentCommentReply } from "./types";
 import { cn } from "@sparkle/lib/utils";
 import { type Editor, Extension, Mark } from "@tiptap/core";
 import type { Node } from "@tiptap/pm/model";
 import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { z } from "zod";
+import type { DocumentComment, DocumentCommentReply } from "./types";
 
 export const COMMENT_MARK_NAME = "comment";
 const COMMENTS_ATTRIBUTE = "comments";

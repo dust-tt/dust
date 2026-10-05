@@ -16,11 +16,11 @@ import {
   DEFAULT_ACTIVATION_NUDGE_MAX_UNANSWERED_COUNT,
 } from "@app/temporal/activation_scheduler/config";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { isUserMessageType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";

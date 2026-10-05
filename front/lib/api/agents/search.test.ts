@@ -29,12 +29,12 @@ import {
   buildNameAutocompleteQuery,
   buildNameSearchQuery,
 } from "@app/lib/search/agent_and_skill_queries";
+import { matchesAgentSearchFilters } from "@app/tests/utils/agent_search";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { matchesAgentSearchFilters } from "@app/tests/utils/agent_search";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { AgentSearchDocument } from "@app/types/agent_search/agent_search";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { estypes } from "@elastic/elasticsearch";

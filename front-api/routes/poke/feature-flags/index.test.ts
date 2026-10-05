@@ -1,7 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
-import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { WHITELISTABLE_FEATURES } from "@app/types/shared/feature_flags";
 import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";

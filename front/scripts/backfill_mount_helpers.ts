@@ -1,3 +1,4 @@
+import assert from "node:assert";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -12,7 +13,6 @@ import {
   getPodFilesBasePath,
   getPodSandboxFunctionsBasePath,
 } from "@app/types/mount_path";
-import assert from "node:assert";
 import { Op, UniqueConstraintError } from "sequelize";
 
 function getMountBasePath(

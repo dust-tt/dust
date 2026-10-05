@@ -3,9 +3,9 @@ import { Box, Text } from "ink";
 import type { FC } from "react";
 import React, { useState } from "react";
 
-import type { FileInfo } from "../../utils/fileHandling.js";
 import { getDustClient } from "../../utils/dustClient.js";
 import { normalizeError } from "../../utils/errors.js";
+import type { FileInfo } from "../../utils/fileHandling.js";
 import { formatFileSize, isImageFile } from "../../utils/fileHandling.js";
 
 export interface UploadedFile {

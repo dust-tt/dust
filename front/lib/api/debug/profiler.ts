@@ -1,9 +1,9 @@
-import { setTimeoutAsync } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
 import fs from "node:fs/promises";
 import inspector from "node:inspector/promises";
 import os from "node:os";
 import path from "node:path";
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 
 const CPU_PROFILE_DURATION_MS = 30_000;
 const HEAP_PROFILE_DURATION_MS = 30_000;

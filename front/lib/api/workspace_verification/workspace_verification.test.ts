@@ -3,8 +3,8 @@ import { validateVerification } from "@app/lib/api/workspace_verification/valida
 import type { Authenticator } from "@app/lib/auth";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
-import { WorkspaceVerificationAttemptFactory } from "@app/tests/utils/WorkspaceVerificationAttemptFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { WorkspaceVerificationAttemptFactory } from "@app/tests/utils/WorkspaceVerificationAttemptFactory";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockLookupPhoneNumber } = vi.hoisted(() => {

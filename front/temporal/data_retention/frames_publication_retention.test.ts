@@ -4,9 +4,9 @@ import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_res
 import { purgeStaleFramePublicationsActivity } from "@app/temporal/data_retention/activities";
 import { createTestFrameFile } from "@app/tests/utils/FrameFunctionFactory";
 import { storeTestFramePublication } from "@app/tests/utils/FramePublicationFactory";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@temporalio/activity", () => ({

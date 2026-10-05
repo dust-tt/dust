@@ -6,12 +6,6 @@ import { useBlockInsertDropdown } from "@app/components/agent_builder/instructio
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
 import { SuggestionBubbleMenu } from "@app/components/agent_builder/sidekick/SuggestionBubbleMenu";
 import { EditorContent } from "@app/components/editor/EditorContent";
-import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
-import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
-import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
-import { LinkExtension } from "@app/components/editor/extensions/LinkExtension";
-import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
-import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
 import { BlockInsertExtension } from "@app/components/editor/extensions/agent_builder/BlockInsertExtension";
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
@@ -19,10 +13,16 @@ import {
   getActiveSuggestions,
   InstructionSuggestionExtension,
 } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
+import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
+import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
+import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { BlockIdExtension } from "@app/components/editor/extensions/instructions/BlockIdExtension";
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/instructions/InstructionsDocumentExtension";
 import { InstructionsRootExtension } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
+import { LinkExtension } from "@app/components/editor/extensions/LinkExtension";
+import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
+import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import {
   cleanupPastedHTML,
   stripHtmlAttributes,

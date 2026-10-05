@@ -3,10 +3,10 @@ import {
   buildDiscoverToolsInstructions,
   discoverToolsSkill,
 } from "@app/lib/resources/skill/code_defined/system/discover_tools";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { beforeEach, describe, expect, it } from "vitest";
 
 describe("buildDiscoverToolsInstructions", () => {

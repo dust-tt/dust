@@ -9,10 +9,8 @@ import {
 import type { ReactNode } from "react";
 import { useState } from "react";
 
-import type { ExpandedPanel } from "./devModeConfig";
-import type { PerfMetrics } from "./useDevPerf";
-import { PerfBar } from "./PerfBar";
 import { getFeatureFlagOverrides } from "./devFeatureFlagOverrides";
+import type { ExpandedPanel } from "./devModeConfig";
 import { THEME_OPTIONS } from "./devModeConfig";
 import { S } from "./devPanelStyles";
 import {
@@ -21,6 +19,8 @@ import {
   readFontFamilyOverrides,
   readTypoOverrides,
 } from "./devStyleOverrides";
+import { PerfBar } from "./PerfBar";
+import type { PerfMetrics } from "./useDevPerf";
 
 interface ToolbarControlsProps {
   metrics: PerfMetrics;

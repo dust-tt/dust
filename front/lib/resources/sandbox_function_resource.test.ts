@@ -6,9 +6,9 @@ import {
   makeTestFrameFunction,
   TEST_FRAME_BUNDLE_CODE,
 } from "@app/tests/utils/FrameFunctionFactory";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { AggregateError } from "sequelize";

@@ -1,5 +1,5 @@
-import { useMarkdownStyle } from "@sparkle/components/markdown/MarkdownStyleContext";
 import { markdownHeaderClasses } from "@sparkle/components/markdown/markdownSizes";
+import { useMarkdownStyle } from "@sparkle/components/markdown/MarkdownStyleContext";
 import {
   type MarkdownNode,
   sameNodePosition,

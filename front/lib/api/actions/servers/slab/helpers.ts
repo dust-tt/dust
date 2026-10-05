@@ -1,5 +1,5 @@
-import type { SlabPost, SlabTopic } from "./types";
 import { formatDate } from "@app/lib/i18n/format";
+import type { SlabPost, SlabTopic } from "./types";
 
 export function formatPostSummary(post: SlabPost): string {
   const status = post.archivedAt

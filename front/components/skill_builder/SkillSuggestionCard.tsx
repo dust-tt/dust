@@ -1,9 +1,9 @@
+import { getSuggestionStateChip } from "@app/components/shared/getSuggestionStateChip";
 import { SuggestedEditors } from "@app/components/shared/SuggestedEditors";
 import type { SuggestionDiffLayout } from "@app/components/shared/SuggestionFieldEditSection";
 import { SuggestionFieldEditSection } from "@app/components/shared/SuggestionFieldEditSection";
 import { SuggestionInstructionsDiffBlock } from "@app/components/shared/SuggestionInstructionsDiffBlock";
 import { SuggestionNewInstructionsBlock } from "@app/components/shared/SuggestionNewInstructionsBlock";
-import { getSuggestionStateChip } from "@app/components/shared/getSuggestionStateChip";
 import { SuggestedSkillAvailability } from "@app/components/skill_builder/SuggestedSkillAvailability";
 import { SuggestedSkillName } from "@app/components/skill_builder/SuggestedSkillName";
 import { SuggestedSkillUserFacingDescription } from "@app/components/skill_builder/SuggestedSkillUserFacingDescription";

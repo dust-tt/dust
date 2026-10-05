@@ -1,6 +1,6 @@
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
+import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 

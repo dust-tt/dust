@@ -6,10 +6,10 @@ import { GroupPermissionResource } from "@app/lib/resources/group_permission_res
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";

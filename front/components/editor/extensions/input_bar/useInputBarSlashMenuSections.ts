@@ -6,11 +6,11 @@ import type {
   InputBarSlashCommand,
   InputBarSlashMenuRefs,
 } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
-import { isRunCommandSlashCommand } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
-import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type { SlashCommandSection } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
 import { buildSlashCommandSections } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { useInputBarSlashCommandCapabilities } from "@app/components/editor/extensions/shared/slash_suggestion/useSlashCommandCapabilities";
+import { isRunCommandSlashCommand } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useMemo } from "react";
 

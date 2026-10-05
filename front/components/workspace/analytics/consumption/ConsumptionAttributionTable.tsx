@@ -1,11 +1,3 @@
-import type {
-  AttributionRowData,
-  ConsumptionAttributionRowsTableProps,
-} from "./ConsumptionAttributionRowsTable";
-import type {
-  ConsumptionAttributionDimension,
-  ConsumptionDimension,
-} from "./consumptionDimensions";
 import { getModelLogoByModelId } from "@app/components/providers/types";
 import {
   getAvatarFromIcon,
@@ -77,7 +69,15 @@ import {
 } from "framer-motion";
 import type { ComponentType, Dispatch, ReactNode, SetStateAction } from "react";
 import { useCallback, useMemo, useState } from "react";
+import type {
+  AttributionRowData,
+  ConsumptionAttributionRowsTableProps,
+} from "./ConsumptionAttributionRowsTable";
 import { ConsumptionAttributionRowsTable } from "./ConsumptionAttributionRowsTable";
+import type {
+  ConsumptionAttributionDimension,
+  ConsumptionDimension,
+} from "./consumptionDimensions";
 import {
   CONSUMPTION_DIMENSION_CONFIG,
   consumptionAttributionDimensionLabel,

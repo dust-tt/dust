@@ -2,8 +2,8 @@ import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system";
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import assert from "assert";
 import { describe, expect, it } from "vitest";
 

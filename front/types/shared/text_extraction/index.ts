@@ -3,8 +3,8 @@
 import { Readable } from "stream";
 
 import type { LoggerInterface } from "../logger";
-import type { RequestInitWithDuplex } from "../utils/streams";
 import { assertNever } from "../utils/assert_never";
+import type { RequestInitWithDuplex } from "../utils/streams";
 import { readableStreamToReadable } from "../utils/streams";
 import { transformStream } from "./transform";
 import { transformStreamToCSV } from "./transformToCSV";

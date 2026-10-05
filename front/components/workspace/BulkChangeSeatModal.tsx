@@ -1,4 +1,5 @@
 import { BillingPeriodSwitch } from "@app/components/pages/onboarding/SubscriptionPlans";
+import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
 import {
   formatPriceCents,
   getAvailableFrequencies,
@@ -9,7 +10,6 @@ import {
   sortSeatTypes,
   stripYearlySuffix,
 } from "@app/components/workspace/SeatCard";
-import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import type {
   SeatBillingFrequency,

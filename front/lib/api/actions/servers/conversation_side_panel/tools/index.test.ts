@@ -2,11 +2,11 @@ import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_
 import { isInteractiveContentFileContentOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { OPEN_FRAME_TOOL_NAME } from "@app/lib/api/actions/servers/conversation_side_panel/metadata";
 import { TOOLS } from "@app/lib/api/actions/servers/conversation_side_panel/tools";
-import { FileFactory } from "@app/tests/utils/FileFactory";
 import {
   makeExtra,
   setupProjectConversation,
 } from "@app/tests/utils/conversation_test_factories";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { frameV2ContentType } from "@app/types/files";
 import { getPodFilesBasePath } from "@app/types/mount_path";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";

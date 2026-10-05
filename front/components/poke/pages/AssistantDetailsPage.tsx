@@ -1,8 +1,8 @@
 import { AgentOverviewTable } from "@app/components/poke/assistants/AgentOverviewTable";
 import { RequestedSpacesList } from "@app/components/poke/assistants/RequestedSpacesList";
 import { ConversationAgentDataTable } from "@app/components/poke/conversation/agent_table";
-import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { DatasourceRetrievalTreemapPluginChart } from "@app/components/poke/plugins/components/DatasourceRetrievalTreemapPluginChart";
+import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { SuggestionDataTable } from "@app/components/poke/suggestions/table";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useWorkspace } from "@app/lib/auth/AuthContext";

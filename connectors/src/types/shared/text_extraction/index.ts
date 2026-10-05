@@ -8,8 +8,8 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import { Readable } from "stream";
 
-import type { RequestInitWithDuplex } from "../utils/streams";
 import { withRetries } from "../retries";
+import type { RequestInitWithDuplex } from "../utils/streams";
 import { readableStreamToReadable } from "../utils/streams";
 import { transformStream } from "./transform";
 import { transformStreamToCSV } from "./transformToCSV";

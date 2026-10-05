@@ -1,8 +1,8 @@
 import * as userSpendLimit from "@app/lib/api/users/spend_limit";
 import { Authenticator } from "@app/lib/auth";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
-import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";

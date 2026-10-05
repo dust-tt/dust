@@ -4,10 +4,10 @@ import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_res
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
-import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
-import { UserFactory } from "@app/tests/utils/UserFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { WorkspaceType } from "@app/types/user";
 import assert from "assert";

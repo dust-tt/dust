@@ -4,8 +4,8 @@ import { TagModel } from "@app/lib/models/tags";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { TagFactory } from "@app/tests/utils/TagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { TagFactory } from "@app/tests/utils/TagFactory";
 import type { LightWorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it } from "vitest";
 

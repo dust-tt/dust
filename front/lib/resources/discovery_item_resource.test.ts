@@ -6,12 +6,12 @@ import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { GroupPinnedItemModel } from "@app/lib/resources/storage/models/group_pinned_items";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import assert from "assert";
 import { beforeEach, describe, expect, it } from "vitest";
 

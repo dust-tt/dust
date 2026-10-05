@@ -1,9 +1,9 @@
-import type { SupportedNonImageContentType } from "../files";
 // oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- existing usage
 import { INTERNAL_MIME_TYPES_VALUES } from "@dust-tt/client";
 import { z } from "zod";
 import { CLIENT_MESSAGE_ORIGINS } from "../assistant/conversation";
 import { ModelSelectionSchema } from "../assistant/models/types";
+import type { SupportedNonImageContentType } from "../files";
 import { getSupportedNonImageMimeTypes } from "../files";
 
 const AgentMentionSchema = z.object({

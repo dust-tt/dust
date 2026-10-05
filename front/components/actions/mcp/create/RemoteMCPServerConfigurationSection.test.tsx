@@ -2,8 +2,8 @@ import { RemoteMCPServerConfigurationSection } from "@app/components/actions/mcp
 import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/forms/types";
 import { createMCPServerDialogFormSchema } from "@app/components/actions/mcp/forms/types";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
-import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import type { FetcherFn } from "@app/lib/swr/fetcher";
+import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { FormProvider, useForm } from "react-hook-form";

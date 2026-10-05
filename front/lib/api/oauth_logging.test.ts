@@ -1,7 +1,7 @@
 import { createConnectionAndGetSetupUrl } from "@app/lib/api/oauth";
 import logger from "@app/logger/logger";
-import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import { afterEach, describe, expect, it, vi } from "vitest";
 

@@ -1,5 +1,5 @@
-import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { FeatureFlagStageChip } from "@app/components/poke/features/stage_chip";
+import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { formatDateTime } from "@app/lib/i18n/format";
 import type {
   FeatureFlagStage,

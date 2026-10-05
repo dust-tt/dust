@@ -1,5 +1,3 @@
-import { WelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuide";
-import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import {
   ConversationErrorDisplay,
@@ -11,6 +9,8 @@ import { ConversationTitle } from "@app/components/assistant/conversation/Conver
 import { FilePreviewProvider } from "@app/components/assistant/conversation/FilePreviewContext";
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { WelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuide";
+import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { ErrorBoundary } from "@app/components/error_boundary/ErrorBoundary";
 import {
   useSetHasTitle,

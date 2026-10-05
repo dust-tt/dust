@@ -1,8 +1,8 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import { DataSourceBrowserTable } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBrowserTable";
 import { DataSourceSearchResults } from "@app/components/agent_builder/capabilities/knowledge/DataSourceSearchResults";
 import { DataSourceSpaceSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceSpaceSelector";
+import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import { filterBrowsableSpaces } from "@app/components/data_source_view/browser/useBrowsableSpaces";
 import {
   getKnowledgeBrowserBreadcrumbItems,

@@ -79,10 +79,10 @@ import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_me
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";

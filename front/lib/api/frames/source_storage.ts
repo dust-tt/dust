@@ -1,9 +1,9 @@
+import path from "node:path";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import path from "node:path";
 
 const FRAME_SOURCE_COPY_CONCURRENCY = 4;
 const MAX_FRAME_SOURCE_FILE_COUNT = 1024;

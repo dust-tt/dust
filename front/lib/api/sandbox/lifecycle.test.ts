@@ -117,8 +117,8 @@ import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
-import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import { frameV2ContentType } from "@app/types/files";
 import {

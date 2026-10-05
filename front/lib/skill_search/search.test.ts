@@ -22,12 +22,12 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { buildSkillSearchQuery } from "@app/lib/skill_search/query";
 import { toSkillListItem } from "@app/lib/skill_search/serialization";
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
-import { SkillFactory } from "@app/tests/utils/SkillFactory";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { matchesSkillSearchFilters } from "@app/tests/utils/skill_search";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type {
   SkillSearchFilters,
   SkillSearchPermissionFiltering,

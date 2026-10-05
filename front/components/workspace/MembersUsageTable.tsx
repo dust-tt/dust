@@ -1,4 +1,3 @@
-import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
 import {
   seatTypeChipColor,
   seatTypeDisplayName,
@@ -7,6 +6,7 @@ import {
   buildMemberNameColumn,
   MemberNameSkeleton,
 } from "@app/components/workspace/member_name_column";
+import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
 import {
   AT_POOL_LIMIT_BAR_CLASSES,
   getSeatBarClasses,

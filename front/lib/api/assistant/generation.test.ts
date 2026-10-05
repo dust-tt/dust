@@ -11,9 +11,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { getTestStreamEndpoint } from "@app/tests/utils/models";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type {
   AgentConfigurationType,
   AgentConfigurationWithoutModelType,

@@ -1,14 +1,14 @@
-import {
-  MCPServerDetailsTools,
-  MCPServerDetailsToolsBulkBar,
-  useToolsAndStakesController,
-} from "@app/components/actions/mcp/MCPServerDetailsTools";
 import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import {
   encodeMCPToolNameForForm,
   getMCPServerFormDefaults,
   getMCPServerFormSchema,
 } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
+import {
+  MCPServerDetailsTools,
+  MCPServerDetailsToolsBulkBar,
+  useToolsAndStakesController,
+} from "@app/components/actions/mcp/MCPServerDetailsTools";
 import { MCPServerViewTypeFactory } from "@app/tests/utils/MCPServerViewTypeFactory";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import { zodResolver } from "@hookform/resolvers/zod";

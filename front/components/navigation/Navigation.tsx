@@ -1,9 +1,9 @@
 import { INPUT_BAR_COMPACT_SURFACE_CLASSES } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
+import type { SidebarNavigation } from "@app/components/navigation/config";
 import {
   NavigationSidebar,
   ToggleNavigationSidebarButton,
 } from "@app/components/navigation/NavigationSidebar";
-import type { SidebarNavigation } from "@app/components/navigation/config";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useUser } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";

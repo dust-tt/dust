@@ -16,6 +16,8 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
+import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -25,8 +27,6 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TagFactory } from "@app/tests/utils/TagFactory";
 import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,

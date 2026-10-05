@@ -1,9 +1,9 @@
-import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import type { FetchChildResources } from "@app/components/contentNodeTreeSelection";
 import {
   collectSelectableNodesForSelectAll,
   unselectVisibleNodesAndDescendants,
 } from "@app/components/contentNodeTreeSelection";
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { compareStrings } from "@app/lib/i18n/format";

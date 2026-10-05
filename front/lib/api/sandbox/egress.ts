@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+import { lookup } from "node:dns/promises";
 import config from "@app/lib/api/config";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import {
@@ -24,8 +26,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import jwt from "jsonwebtoken";
-import { randomBytes } from "node:crypto";
-import { lookup } from "node:dns/promises";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 

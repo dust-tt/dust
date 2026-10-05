@@ -1,3 +1,4 @@
+import path from "node:path";
 import { DustFileSystem } from "@app/lib/api/file_system";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -5,7 +6,6 @@ import type { FileResource } from "@app/lib/resources/file_resource";
 import { parseFrameManifest } from "@app/types/api/frame_manifest";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import path from "node:path";
 
 type FrameEntrySourceError = DustError<"file_not_found" | "invalid_file">;
 

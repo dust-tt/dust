@@ -1,9 +1,9 @@
-import { useFilePreviewContext } from "@app/components/assistant/conversation/FilePreviewContext";
 import type {
   FileCitationCardIcon,
   FileCitationCardSize,
 } from "@app/components/assistant/conversation/attachment/FileCitationCard";
 import { FileCitationCard } from "@app/components/assistant/conversation/attachment/FileCitationCard";
+import { useFilePreviewContext } from "@app/components/assistant/conversation/FilePreviewContext";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
   isFrameContentType,

@@ -1,8 +1,8 @@
-import type { DustAPI } from "../index";
-import type { AttachmentInput, FileInfo } from "./types";
 import { apiErrorToDustError, DustUnknownError } from "../errors/errors";
+import type { DustAPI } from "../index";
 import { APIErrorSchema, isSupportedFileContentType } from "../types";
 import { hasStringProperty } from "./guards";
+import type { AttachmentInput, FileInfo } from "./types";
 import {
   isBlobAttachment,
   isFileIdAttachment,

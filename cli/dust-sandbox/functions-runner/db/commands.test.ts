@@ -1,11 +1,11 @@
-import type { Result } from "#result.ts";
-import type { DbErrorKind } from "#types/db.ts";
 import { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
 import { existsSync, statSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { Result } from "#result.ts";
+import type { DbErrorKind } from "#types/db.ts";
 import { DbCommandError } from "./common.ts";
 import { reconcile } from "./reconcile.ts";
 import { generateSchemaFileText } from "./schema.ts";

@@ -2,10 +2,10 @@ import type { GetAutomationTriggerBreakdownResponse } from "@app/lib/api/analyti
 import { fetchAutomationTriggerBreakdown } from "@app/lib/api/analytics/automations/breakdown";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";

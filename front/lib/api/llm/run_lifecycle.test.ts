@@ -1,3 +1,4 @@
+import assert from "node:assert";
 import { getBatchLLM, getStreamLLM } from "@app/lib/api/llm";
 import { LLMRunLifecycle } from "@app/lib/api/llm/run_lifecycle";
 import { createLLMTraceId } from "@app/lib/api/llm/traces/buffer";
@@ -25,7 +26,6 @@ import {
   GPT_5_6_LUNA_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
-import assert from "node:assert";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 afterEach(() => {

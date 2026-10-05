@@ -1,11 +1,3 @@
-import {
-  SANDBOX_ROOT_SAFE_PATH,
-  SANDBOX_STATIC_ROOT_CONSUMED_DIRS,
-} from "@app/lib/api/sandbox/hardening";
-import { getSandboxImageFromRegistry } from "@app/lib/api/sandbox/image/registry";
-import type { Operation } from "@app/lib/api/sandbox/image/types";
-import { SANDBOX_EGRESS_CONTROLLED_UIDS } from "@app/lib/api/sandbox/image/types";
-import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
 import { spawnSync } from "node:child_process";
 import {
   chmodSync,
@@ -21,6 +13,14 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import {
+  SANDBOX_ROOT_SAFE_PATH,
+  SANDBOX_STATIC_ROOT_CONSUMED_DIRS,
+} from "@app/lib/api/sandbox/hardening";
+import { getSandboxImageFromRegistry } from "@app/lib/api/sandbox/image/registry";
+import type { Operation } from "@app/lib/api/sandbox/image/types";
+import { SANDBOX_EGRESS_CONTROLLED_UIDS } from "@app/lib/api/sandbox/image/types";
+import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
 import { describe, expect, test } from "vitest";
 
 function getDustBaseImage() {

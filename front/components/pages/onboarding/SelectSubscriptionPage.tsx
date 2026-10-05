@@ -1,10 +1,10 @@
-import { UserMenu } from "@app/components/UserMenu";
 import type { PaidPlanTier } from "@app/components/pages/onboarding/SubscriptionPlans";
 import {
   BillingPeriodSwitch,
   FreePlanCard,
   PaidPlanCards,
 } from "@app/components/pages/onboarding/SubscriptionPlans";
+import { UserMenu } from "@app/components/UserMenu";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useRedirectAwayFromCheckoutIfAlreadyPaid } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";

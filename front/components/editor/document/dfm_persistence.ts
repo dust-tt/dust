@@ -1,13 +1,13 @@
+import {
+  parseDocumentContent,
+  serializeDocumentMarkdown,
+} from "@app/components/editor/document/content";
 import { getMarkedCommentIds } from "@app/components/editor/document/DocumentCommentAnchor";
 import {
   getDocumentJSONComments,
   withDocumentJSONComments,
   withoutDocumentJSONComments,
 } from "@app/components/editor/document/DocumentComments";
-import {
-  parseDocumentContent,
-  serializeDocumentMarkdown,
-} from "@app/components/editor/document/content";
 import type { DfmError } from "@app/lib/markdown/dfm";
 import { extractAnchors, parseDfm, serializeDfm } from "@app/lib/markdown/dfm";
 import type { Result } from "@app/types/shared/result";

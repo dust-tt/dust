@@ -21,11 +21,11 @@ import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SandboxEnvVarFactory } from "@app/tests/utils/SandboxEnvVarFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { getNamespace } from "@app/tests/utils/test_cls";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { getNamespace } from "@app/tests/utils/test_cls";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("SpaceResource", () => {

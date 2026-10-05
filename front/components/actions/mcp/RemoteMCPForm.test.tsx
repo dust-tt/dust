@@ -1,5 +1,5 @@
-import { RemoteMCPForm } from "@app/components/actions/mcp/RemoteMCPForm";
 import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
+import { RemoteMCPForm } from "@app/components/actions/mcp/RemoteMCPForm";
 import type { RemoteMCPServerType } from "@app/lib/api/mcp";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { render, screen } from "@testing-library/react";

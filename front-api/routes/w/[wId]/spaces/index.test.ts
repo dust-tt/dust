@@ -1,8 +1,8 @@
 import { DustError } from "@app/lib/error";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { GetSpacesResponseBody } from "@app/types/api/spaces";
 import { Err } from "@app/types/shared/result";
 import type { SpaceKind } from "@app/types/space";

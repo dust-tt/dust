@@ -1,7 +1,7 @@
+import type { CatalogItem } from "@app/components/assistant/conversation/discover/catalog";
 import { DiscoverCatalog } from "@app/components/assistant/conversation/discover/DiscoverCatalog";
 import { DiscoverHome } from "@app/components/assistant/conversation/discover/DiscoverHome";
 import { DiscoverPinDialog } from "@app/components/assistant/conversation/discover/DiscoverPinDialog";
-import type { CatalogItem } from "@app/components/assistant/conversation/discover/catalog";
 import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";

@@ -5,8 +5,8 @@ import type { Authenticator } from "@app/lib/auth";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

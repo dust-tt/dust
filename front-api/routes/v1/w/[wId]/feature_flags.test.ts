@@ -1,7 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
-import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 

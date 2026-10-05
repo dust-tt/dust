@@ -7,9 +7,9 @@ import {
   isFolderExtractError,
 } from "@app/lib/api/files/folder_extract";
 import { Authenticator } from "@app/lib/auth";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import {
   makeZipBombBuffer,
   spyOnInflatedBytes,

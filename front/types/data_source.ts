@@ -1,9 +1,9 @@
-import type { ModelId } from "./shared/model_id";
-import type { Result } from "./shared/result";
-import type { EditedByUser } from "./user";
 import type { UsedBySkillType } from "@app/types/assistant/skill_configuration";
 import type { InternalConnectorType } from "@app/types/connectors/connectors_api";
+import type { ModelId } from "./shared/model_id";
+import type { Result } from "./shared/result";
 import { Err, Ok } from "./shared/result";
+import type { EditedByUser } from "./user";
 
 export const CONNECTOR_PROVIDERS = [
   "bigquery",

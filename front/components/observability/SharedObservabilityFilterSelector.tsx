@@ -1,5 +1,5 @@
-import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { OBSERVABILITY_TIME_RANGE } from "@app/components/agent_builder/observability/constants";
+import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { formatDateTime } from "@app/lib/i18n/format";
 import { useAgentVersionMarkers } from "@app/lib/swr/assistants";

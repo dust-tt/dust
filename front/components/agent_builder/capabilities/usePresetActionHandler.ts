@@ -1,7 +1,7 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
-import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { getDefaultMCPAction } from "@app/components/shared/tools_picker/formDefaults";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {

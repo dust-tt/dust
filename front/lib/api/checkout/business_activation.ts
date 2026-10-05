@@ -1,4 +1,3 @@
-import type { CheckoutBillingPeriod, CheckoutSeatType } from "./types";
 import { updateMembershipSeatAndTrack } from "@app/lib/api/membership";
 import { syncMetronomeSeatCountForWorkspace } from "@app/lib/api/metronome/seat_sync";
 import {
@@ -73,6 +72,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import { z } from "zod";
+import type { CheckoutBillingPeriod, CheckoutSeatType } from "./types";
 import { CheckoutBillingPeriodSchema, CheckoutSeatTypeSchema } from "./types";
 
 type BusinessActivationError =

@@ -1,7 +1,7 @@
 import { isAuthorizedForSkillSuggestion } from "@app/lib/api/skills/suggestion_authorization";
-import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { describe, expect, it } from "vitest";
 
 describe("skill suggestion authorization", () => {

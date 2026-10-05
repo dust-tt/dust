@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import type { LogicalExpression, OperationExpression } from "./types";
 import { parseMatcherExpression } from "./parser";
+import type { LogicalExpression, OperationExpression } from "./types";
 import { isLogicalExpression, isOperationExpression } from "./types";
 
 describe("parseMatcherExpression", () => {

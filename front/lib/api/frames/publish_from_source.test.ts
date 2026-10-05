@@ -12,9 +12,9 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import {
   FRAME_MANIFEST_FILE,
   FrameManifestSchema,

@@ -1,6 +1,6 @@
-import { isInsertKnowledgeSlashCommand } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
-import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { isPickModelSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import { isInsertKnowledgeSlashCommand } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { Editor, Range } from "@tiptap/core";
 
 export const ATTACH_CONTEXT_SUB_MENU_ID = "attach-context";

@@ -8,15 +8,15 @@ import {
   CreateWebhookSourceFormContent,
   CreateWebhookSourceSchema,
 } from "@app/components/triggers/CreateWebhookSourceForm";
-import { WebhookSourceDetailsInfo } from "@app/components/triggers/WebhookSourceDetailsInfo";
-import { WebhookSourceDetailsSharing } from "@app/components/triggers/WebhookSourceDetailsSharing";
-import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
 import type { WebhookSourceFormValues } from "@app/components/triggers/forms/webhookSourceFormSchema";
 import {
   diffWebhookSourceForm,
   getWebhookSourceFormDefaults,
   getWebhookSourceFormSchema,
 } from "@app/components/triggers/forms/webhookSourceFormSchema";
+import { WebhookSourceDetailsInfo } from "@app/components/triggers/WebhookSourceDetailsInfo";
+import { WebhookSourceDetailsSharing } from "@app/components/triggers/WebhookSourceDetailsSharing";
+import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";

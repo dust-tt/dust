@@ -1,3 +1,4 @@
+import { PokeMessageConsumptionInspector } from "@app/components/poke/conversation/message_consumption_inspector";
 import type { ChipColor } from "@app/components/poke/conversation/MessageMetadata";
 import {
   formatDurationMs,
@@ -9,7 +10,6 @@ import {
   ProviderPassthroughView,
 } from "@app/components/poke/conversation/ProviderPassthroughView";
 import { ToolActionView } from "@app/components/poke/conversation/ToolActionView";
-import { PokeMessageConsumptionInspector } from "@app/components/poke/conversation/message_consumption_inspector";
 import { formatDateTime } from "@app/lib/i18n/format";
 import type { AgentMessageStatus } from "@app/types/assistant/conversation";
 import type { PokeAgentMessageType } from "@app/types/poke";

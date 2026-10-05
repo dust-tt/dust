@@ -1,5 +1,5 @@
-import { connectorsSequelize } from "@connectors/resources/storage";
 import { AsyncLocalStorage } from "node:async_hooks";
+import { connectorsSequelize } from "@connectors/resources/storage";
 import { Sequelize } from "sequelize";
 import { afterEach, beforeEach, vi } from "vitest";
 

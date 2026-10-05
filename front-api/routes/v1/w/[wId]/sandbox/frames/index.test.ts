@@ -6,9 +6,9 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { createSandboxTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
 import {

@@ -1,8 +1,8 @@
 import { exportTable } from "@app/lib/api/analytics/export_tables";
 import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { Ok } from "@app/types/shared/result";
 import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";

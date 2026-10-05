@@ -1,3 +1,4 @@
+import url from "node:url";
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
@@ -55,7 +56,6 @@ import type {
 import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
 import assert from "assert";
 import uniq from "lodash/uniq";
-import url from "node:url";
 import type {
   Attributes,
   CreationAttributes,

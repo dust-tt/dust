@@ -1,7 +1,7 @@
 import config from "@app/lib/api/config";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerConnectionFactory } from "@app/tests/utils/MCPServerConnectionFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { OAuthConnectionType } from "@app/types/oauth/lib";
 import type { OAuthAPI } from "@app/types/oauth/oauth_api";
 import { Err, Ok } from "@app/types/shared/result";

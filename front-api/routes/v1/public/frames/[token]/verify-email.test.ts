@@ -1,8 +1,8 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
-import { SharingGrantFactory } from "@app/tests/utils/SharingGrantFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SharingGrantFactory } from "@app/tests/utils/SharingGrantFactory";
 import type { FileShareScope } from "@app/types/files";
 import { frameContentType } from "@app/types/files";
 import { honoApp } from "@front-api/app";

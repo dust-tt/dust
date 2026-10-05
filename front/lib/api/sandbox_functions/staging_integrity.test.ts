@@ -1,9 +1,9 @@
+import { createHash } from "node:crypto";
 import {
   splitStagingStdout,
   stagingHashCaptureLines,
   verifyStagingContent,
 } from "@app/lib/api/sandbox_functions/staging_integrity";
-import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
 const sha256Hex = (content: string): string =>

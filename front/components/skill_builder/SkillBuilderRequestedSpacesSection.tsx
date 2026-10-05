@@ -1,7 +1,7 @@
 import { SpaceChips } from "@app/components/shared/SpaceChips";
 import { SpaceSelectionSheet } from "@app/components/shared/SpaceSelectionSheet";
-import { useSkillSpaceRestrictionsContext } from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
+import { useSkillSpaceRestrictionsContext } from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
 import { useRemoveSkillSpace } from "@app/components/skill_builder/useRemoveSkillSpace";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { Button, Planet } from "@dust-tt/sparkle";

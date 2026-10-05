@@ -1,8 +1,5 @@
 import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
 import { createEmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
-import { LinkExtension } from "@app/components/editor/extensions/LinkExtension";
-import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
-import { VoicePartialNode } from "@app/components/editor/extensions/VoicePartialExtension";
 import { DataSourceLinkExtension } from "@app/components/editor/extensions/input_bar/DataSourceLinkExtension";
 import { FilePreviewExtension } from "@app/components/editor/extensions/input_bar/FilePreviewExtension";
 import {
@@ -18,9 +15,12 @@ import { PastedAttachmentExtension } from "@app/components/editor/extensions/inp
 import { SkillNode } from "@app/components/editor/extensions/input_bar/SkillNode";
 import { URLDetectionExtension } from "@app/components/editor/extensions/input_bar/URLDetectionExtension";
 import { URLStorageExtension } from "@app/components/editor/extensions/input_bar/URLStorageExtension";
+import { LinkExtension } from "@app/components/editor/extensions/LinkExtension";
+import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { KnowledgeNodeWithView } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeWithView";
 import { ToolNodeWithView } from "@app/components/editor/extensions/skill_builder/ToolNodeWithView";
+import { VoicePartialNode } from "@app/components/editor/extensions/VoicePartialExtension";
 import { BlockquoteExtension } from "@app/components/editor/input_bar/BlockquoteExtension";
 import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { emojiPluginKey } from "@app/components/editor/input_bar/emojiSuggestion";

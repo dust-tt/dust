@@ -1,8 +1,8 @@
 import type { GetSlackWorkflowsOverviewResponse } from "@app/lib/api/analytics/slack_workflows/overview";
 import { fetchSlackWorkflowsOverview } from "@app/lib/api/analytics/slack_workflows/overview";
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
-import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";

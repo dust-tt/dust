@@ -1,4 +1,3 @@
-import { EditorContent } from "@app/components/editor/EditorContent";
 import {
   DocumentBlockMenu,
   useDocumentBlockMenu,
@@ -17,6 +16,7 @@ import { DocumentSourcePreview } from "@app/components/editor/document/DocumentS
 import type { DocumentProps } from "@app/components/editor/document/types";
 import { useDocumentComments } from "@app/components/editor/document/useDocumentComments";
 import { useDocumentEditor } from "@app/components/editor/document/useDocumentEditor";
+import { EditorContent } from "@app/components/editor/EditorContent";
 import { cn } from "@dust-tt/sparkle";
 import type React from "react";
 import { useId, useRef } from "react";

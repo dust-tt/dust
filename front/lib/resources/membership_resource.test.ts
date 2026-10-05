@@ -102,10 +102,10 @@ import { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 
 function getCacheKeyForWorkspace(workspaceId: string): string {

@@ -1,4 +1,3 @@
-import type { SeedContext } from "./types";
 import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
 import { ANALYTICS_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 import {
@@ -14,6 +13,7 @@ import type {
   AgentMessageAnalyticsFeedback,
 } from "@app/types/assistant/analytics";
 import { Op } from "sequelize";
+import type { SeedContext } from "./types";
 
 /**
  * Indexes analytics documents to Elasticsearch for seeded conversations.

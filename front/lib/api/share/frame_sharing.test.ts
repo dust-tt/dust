@@ -8,9 +8,9 @@ import {
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SharingGrantFactory } from "@app/tests/utils/SharingGrantFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import { frameV2ContentType } from "@app/types/files";
 import assert from "assert";

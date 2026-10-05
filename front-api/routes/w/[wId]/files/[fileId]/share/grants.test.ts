@@ -4,11 +4,11 @@ import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource"
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SharingGrantFactory } from "@app/tests/utils/SharingGrantFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { frameContentType } from "@app/types/files";
 import type { WorkspaceSharingPolicy } from "@app/types/user";
 import { honoApp } from "@front-api/app";

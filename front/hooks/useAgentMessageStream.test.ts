@@ -1,3 +1,4 @@
+import assert from "node:assert";
 import type { PendingToolCall } from "@app/components/assistant/conversation/types";
 import { makeInitialMessageStreamState } from "@app/components/assistant/conversation/types";
 import {
@@ -14,7 +15,6 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
 import { act, renderHook } from "@testing-library/react";
-import assert from "node:assert";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockUseEventSource = vi.fn();

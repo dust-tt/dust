@@ -1,5 +1,5 @@
-import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import type { FetcherFn, FetcherWithBodyFn } from "@app/lib/swr/fetcher";
+import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import { useUpdateSkillReinforcement } from "@app/lib/swr/skill_configurations";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { act, renderHook, waitFor } from "@testing-library/react";

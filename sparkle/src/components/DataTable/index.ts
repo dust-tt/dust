@@ -1,4 +1,3 @@
-import { DataTableBase } from "./DataTable";
 import {
   BasicCellContent,
   Caption,
@@ -8,6 +7,7 @@ import {
   NumericCellContent,
   StatusCellContent,
 } from "./cells";
+import { DataTableBase } from "./DataTable";
 import { MoreButton } from "./menu";
 import { Body, Head, Header, Root, Row } from "./parts";
 

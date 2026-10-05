@@ -1,6 +1,6 @@
-import { ConfirmContext } from "@app/components/Confirm";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { extractPlanTitle } from "@app/components/assistant/conversation/plan_mode/utils";
+import { ConfirmContext } from "@app/components/Confirm";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
   useClosePlan,

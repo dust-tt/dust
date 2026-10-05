@@ -1,7 +1,7 @@
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
-import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 

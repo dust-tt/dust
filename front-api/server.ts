@@ -4,12 +4,12 @@ import "./lib/startup-log";
 import "./lib/tracer-config";
 import "./lib/instrumentation-config";
 
+import { Server } from "node:http";
+import { performance } from "node:perf_hooks";
 import logger from "@app/logger/logger";
 import { isDevelopment } from "@app/types/shared/env";
 import { setupGlobalErrorHandler } from "@app/types/shared/utils/global_error_handler";
 import { serve } from "@hono/node-server";
-import { Server } from "node:http";
-import { performance } from "node:perf_hooks";
 import { honoApp } from "./app";
 
 const KEEP_ALIVE_TIMEOUT_MS = 5000;

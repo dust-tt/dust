@@ -1,8 +1,8 @@
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import assert from "assert";
 import { describe, expect, it } from "vitest";
 

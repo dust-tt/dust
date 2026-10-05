@@ -33,8 +33,8 @@ import {
   indexSkillDocument,
   updateSkillSearchActiveUsers,
 } from "@app/lib/skill_search";
-import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { Err } from "@app/types/shared/result";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 

@@ -1,9 +1,12 @@
-import { ConfirmContext } from "@app/components/Confirm";
 import { ToolGeneratedFileDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
+import { InlineActivitySteps } from "@app/components/assistant/conversation/actions/inline/InlineActivitySteps";
 import { AgentHandle } from "@app/components/assistant/conversation/AgentHandle";
 import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
+import { getAgentMessageHeaderTimestampMs } from "@app/components/assistant/conversation/agentMessageTiming";
+import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
+import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import { BlockedAction } from "@app/components/assistant/conversation/BlockedAction";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { CreditCostPopover } from "@app/components/assistant/conversation/CreditCostPopover";
@@ -13,10 +16,6 @@ import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessag
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { InlineActivitySteps } from "@app/components/assistant/conversation/actions/inline/InlineActivitySteps";
-import { getAgentMessageHeaderTimestampMs } from "@app/components/assistant/conversation/agentMessageTiming";
-import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
-import { markdownCitationToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type {
   AgentMessageStateWithControlEvent,
@@ -32,6 +31,7 @@ import {
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
 import { useAutoOpenSidePanel } from "@app/components/assistant/conversation/useAutoOpenSidePanel";
+import { ConfirmContext } from "@app/components/Confirm";
 import { getActionCardPlugin } from "@app/components/markdown/ActionCardDirective";
 import {
   CitationsContext,
@@ -39,13 +39,13 @@ import {
 } from "@app/components/markdown/CiteBlock";
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
 import { getQuickReplyPlugin } from "@app/components/markdown/QuickReplyBlock";
+import { extractSuggestionPile } from "@app/components/markdown/suggestion/suggestion_directives";
+import { ConversationSuggestionPile } from "@app/components/markdown/suggestion/SuggestionPile";
+import { getToolSetupPlugin } from "@app/components/markdown/tool/tool";
 import {
   getVisualizationPlugin,
   sanitizeVisualizationContent,
 } from "@app/components/markdown/VisualizationBlock";
-import { ConversationSuggestionPile } from "@app/components/markdown/suggestion/SuggestionPile";
-import { extractSuggestionPile } from "@app/components/markdown/suggestion/suggestion_directives";
-import { getToolSetupPlugin } from "@app/components/markdown/tool/tool";
 import { getModelWithReasoningEffortLabel } from "@app/components/model_picker/modelPickerUtils";
 import {
   CONVERSATION_MESSAGES_PAGE_LIMIT,

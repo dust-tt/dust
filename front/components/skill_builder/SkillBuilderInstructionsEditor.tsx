@@ -1,25 +1,25 @@
-import {
-  SkillInstructionsEditorContent,
-  useSkillInstructionsEditor,
-} from "@app/components/editor/SkillInstructionsEditor";
 import { editorVariants } from "@app/components/editor/editorStyles";
 import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/input_bar/SkillNode";
 import type { SlashCommandSkillSuggestion } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { TOOL_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/ToolNode";
+import {
+  SkillInstructionsEditorContent,
+  useSkillInstructionsEditor,
+} from "@app/components/editor/SkillInstructionsEditor";
 import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
-import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { getDefaultMCPAction } from "@app/components/shared/tools_picker/formDefaults";
-import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
-import type { ReferenceSummaryItem } from "@app/components/skill_builder/SkillBuilderInstructionsReferenceSummary";
-import { SkillBuilderInstructionsReferenceSummary } from "@app/components/skill_builder/SkillBuilderInstructionsReferenceSummary";
-import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT } from "@app/components/skill_builder/events";
+import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type {
   ReferencedSkillFormData,
   SkillBuilderFormData,
 } from "@app/components/skill_builder/skillBuilderFormSchema";
+import type { ReferenceSummaryItem } from "@app/components/skill_builder/SkillBuilderInstructionsReferenceSummary";
+import { SkillBuilderInstructionsReferenceSummary } from "@app/components/skill_builder/SkillBuilderInstructionsReferenceSummary";
+import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import {
   useAreSkillSuggestionsEnabled,
   useSkillSuggestions,

@@ -3,8 +3,8 @@ import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetail
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { AuthContext } from "@app/lib/auth/AuthContext";
 import { FetcherProvider } from "@app/lib/swr/FetcherContext";
-import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 import {
   act,

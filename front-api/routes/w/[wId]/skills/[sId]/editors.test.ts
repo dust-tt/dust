@@ -3,11 +3,11 @@ import { GroupPermissions } from "@app/lib/resources/group_permission_registry";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { launchIndexSkillSearchWorkflow } from "@app/temporal/es_indexation/client";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

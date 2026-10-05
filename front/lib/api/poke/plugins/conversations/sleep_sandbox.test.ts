@@ -3,8 +3,8 @@ import { sleepConversationSandboxPlugin } from "@app/lib/api/poke/plugins/conver
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import { Ok } from "@app/types/shared/result";
 import { describe, expect, it, vi } from "vitest";
 

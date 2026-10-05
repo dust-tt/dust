@@ -2,9 +2,9 @@ import { Authenticator } from "@app/lib/auth";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ActivationRecommendationResource } from "@app/lib/resources/activation_recommendation_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { ModelId } from "@app/types/shared/model_id";
 import { describe, expect, it } from "vitest";
 

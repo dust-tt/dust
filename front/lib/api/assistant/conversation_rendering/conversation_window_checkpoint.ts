@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import { gunzipSync, gzipSync } from "node:zlib";
 import type { ConversationWindowStateSnapshot } from "@app/lib/api/assistant/conversation_rendering/checkpointed_window_state";
 import { ConversationWindowStateSnapshotSchema } from "@app/lib/api/assistant/conversation_rendering/checkpointed_window_state";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -15,8 +17,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
-import { createHash } from "node:crypto";
-import { gunzipSync, gzipSync } from "node:zlib";
 import { z } from "zod";
 import { fromError } from "zod-validation-error";
 

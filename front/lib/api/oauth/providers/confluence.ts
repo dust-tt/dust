@@ -1,3 +1,4 @@
+import type { ParsedUrlQuery } from "node:querystring";
 import config from "@app/lib/api/config";
 import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import {
@@ -9,7 +10,6 @@ import type {
   OAuthConnectionType,
   OAuthUseCase,
 } from "@app/types/oauth/lib";
-import type { ParsedUrlQuery } from "node:querystring";
 
 export class ConfluenceOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({

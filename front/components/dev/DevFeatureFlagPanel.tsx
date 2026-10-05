@@ -8,15 +8,12 @@ import {
   useState,
 } from "react";
 
-import type { DockMode, ExpandedPanel } from "./devModeConfig";
 import { ColorOverridePanel } from "./ColorOverridePanel";
-import { FeatureFlagPanel } from "./FeatureFlagPanel";
-import { ToolbarControls } from "./ToolbarControls";
-import { TypoOverridePanel } from "./TypoOverridePanel";
 import {
   getFeatureFlagOverrides,
   writeFeatureFlagOverrides,
 } from "./devFeatureFlagOverrides";
+import type { DockMode, ExpandedPanel } from "./devModeConfig";
 import { DOCK_BAR_HEIGHT } from "./devModeConfig";
 import { DEV_MODE_STORAGE_KEY } from "./devModeConstants";
 import { S } from "./devPanelStyles";
@@ -34,6 +31,9 @@ import {
   readPosition,
   readTypoOverrides,
 } from "./devStyleOverrides";
+import { FeatureFlagPanel } from "./FeatureFlagPanel";
+import { ToolbarControls } from "./ToolbarControls";
+import { TypoOverridePanel } from "./TypoOverridePanel";
 import { useDevPerf } from "./useDevPerf";
 import { useDrag } from "./useDrag";
 

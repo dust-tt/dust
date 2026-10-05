@@ -13,14 +13,11 @@ import path from "path";
 import type { FC } from "react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
-import type { FileInfo } from "../../utils/fileHandling.js";
-import type { ConversationItem } from "../components/Conversation.js";
-import type { UploadedFile } from "../components/FileUpload.js";
-import type { InlineSelectorItem } from "../components/InlineSelector.js";
 import { useFileSystemServer } from "../../mcp/servers/fsServer.js";
 import AuthService from "../../utils/authService.js";
 import { getDustClient } from "../../utils/dustClient.js";
 import { normalizeError } from "../../utils/errors.js";
+import type { FileInfo } from "../../utils/fileHandling.js";
 import {
   formatFileSize,
   getFileExtension,
@@ -33,8 +30,11 @@ import { useMe } from "../../utils/hooks/use_me.js";
 import { clearTerminal } from "../../utils/terminal.js";
 import { toolsCache } from "../../utils/toolsCache.js";
 import AgentSelector from "../components/AgentSelector.js";
+import type { ConversationItem } from "../components/Conversation.js";
 import Conversation from "../components/Conversation.js";
+import type { UploadedFile } from "../components/FileUpload.js";
 import { FileUpload } from "../components/FileUpload.js";
+import type { InlineSelectorItem } from "../components/InlineSelector.js";
 import { resolveSpaceId, validateProjectFlags } from "./chat/nonInteractive.js";
 import { createCommands } from "./types.js";
 

@@ -12,15 +12,15 @@ import React, {
   useState,
 } from "react";
 
-import type { Command } from "../commands/types.js";
-import type { UploadedFile } from "./FileUpload.js";
-import type { InlineSelectorItem } from "./InlineSelector.js";
 import { formatFileSize, isImageFile } from "../../utils/fileHandling.js";
 import { useTerminalSize } from "../../utils/hooks/use_terminal_size.js";
 import { describeSandbox } from "../../utils/sandbox.js";
 import { clearTerminal } from "../../utils/terminal.js";
 import { CLI_VERSION } from "../../utils/version.js";
+import type { Command } from "../commands/types.js";
 import { CommandSelector } from "./CommandSelector.js";
+import type { UploadedFile } from "./FileUpload.js";
+import type { InlineSelectorItem } from "./InlineSelector.js";
 import { InlineSelector } from "./InlineSelector.js";
 import { InputBox } from "./InputBox.js";
 

@@ -1,8 +1,8 @@
+import type { Readable } from "node:stream";
 import { FILE_OFFLOAD_TEXT_SIZE_BYTES } from "@app/lib/actions/action_output_limits";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { Readable } from "node:stream";
 import { RE2 } from "re2-wasm";
 
 export const GREP_LINE_MAX_BYTES = 1024 * 1024;

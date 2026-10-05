@@ -7,10 +7,10 @@ import { ChromeExtensionWrapper } from "@extension/platforms/chrome/ChromeExtens
 import { PortProvider } from "@extension/platforms/chrome/context/PortContext";
 import { ChromePlatformService } from "@extension/platforms/chrome/services/platform";
 import { AuthenticatedImage } from "@extension/shared/AuthenticatedImage";
-import { ReactRouterLinkWrapper } from "@extension/shared/ReactRouterLinkWrapper";
 import { PlatformProvider } from "@extension/shared/context/PlatformContext";
 import { useCaptureActions } from "@extension/shared/hooks/useCaptureActions";
 import { ExtensionFetcherProvider } from "@extension/shared/lib/ExtensionFetcherProvider";
+import { ReactRouterLinkWrapper } from "@extension/shared/ReactRouterLinkWrapper";
 import { ExtensionAuthProvider } from "@extension/ui/components/auth/AuthProvider";
 import { routes } from "@extension/ui/pages/routes";
 import { I18nProvider } from "@lingui/react";

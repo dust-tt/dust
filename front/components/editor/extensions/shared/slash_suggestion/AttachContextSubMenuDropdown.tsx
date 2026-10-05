@@ -5,17 +5,12 @@ import {
   navigateToKnowledgeBrowserItem,
   useKnowledgeBrowserNavigation,
 } from "@app/components/data_source_view/browser/useKnowledgeBrowserNavigation";
-import { AttachContextSlashMenuItemIcon } from "@app/components/editor/extensions/shared/slash_suggestion/AttachContextSlashMenuItemIcon";
-import type {
-  SlashCommand,
-  SlashCommandDropdownRef,
-} from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
-import { SlashCommandDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type { AttachContextSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/attachContextSlashCommand";
 import {
   isAttachContextSlashCommand,
   SELECT_ATTACH_CONTEXT_SLASH_COMMAND_ACTION,
 } from "@app/components/editor/extensions/shared/slash_suggestion/attachContextSlashCommand";
+import { AttachContextSlashMenuItemIcon } from "@app/components/editor/extensions/shared/slash_suggestion/AttachContextSlashMenuItemIcon";
 import type { SlashCommandSection } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
 import type {
   ContextSlashSearchSelection,
@@ -28,6 +23,11 @@ import {
   isLoadMoreKnowledgeBrowserSlashCommand,
   isNavigateKnowledgeBrowserSlashCommand,
 } from "@app/components/editor/extensions/shared/slash_suggestion/knowledgeBrowserSlashCommands";
+import type {
+  SlashCommand,
+  SlashCommandDropdownRef,
+} from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import { SlashCommandDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type { SlashMenuStackFrame } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import { useAttachContextSearchSections } from "@app/components/editor/extensions/shared/slash_suggestion/useAttachContextSearchSections";
 import type { AttachContextSlashMenuItem } from "@app/components/editor/extensions/shared/slash_suggestion/useAttachContextSlashMenuItems";

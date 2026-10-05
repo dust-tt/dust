@@ -1,7 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 

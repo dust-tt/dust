@@ -1,15 +1,15 @@
 import { ContextUsageIndicator } from "@app/components/assistant/conversation/input_bar/ContextUsageIndicator";
+import type { InputBarAction } from "@app/components/assistant/conversation/input_bar/inputBarActions";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarButtons } from "@app/components/assistant/conversation/input_bar/InputBarButtons";
-import type { PendingInputText } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { InputBarModelPicker } from "@app/components/assistant/conversation/input_bar/InputBarModelPicker";
-import { InputBarSpacesPicker } from "@app/components/assistant/conversation/input_bar/InputBarSpacesPicker";
-import type { InputBarAction } from "@app/components/assistant/conversation/input_bar/inputBarActions";
 import {
   INPUT_BAR_COMPACT_CONTENT_ENTER_ANIMATION_CLASSES,
   INPUT_BAR_COMPACT_PILL_INNER_CLASSES,
   INPUT_BAR_COMPACT_PREVIEW_CLASSES,
 } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
+import type { PendingInputText } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { InputBarModelPicker } from "@app/components/assistant/conversation/input_bar/InputBarModelPicker";
+import { InputBarSpacesPicker } from "@app/components/assistant/conversation/input_bar/InputBarSpacesPicker";
 import {
   getDisplayNameFromPastedFileId,
   getPastedFileName,
@@ -24,6 +24,12 @@ import {
   getInputBarSlashMenuMode,
 } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/input_bar/SkillNode";
+import type { SelectSpacesSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/selectSpacesSlashCommand";
+import {
+  isSelectSpacesSlashCommand,
+  SELECT_SPACES_SLASH_COMMAND_ACTION,
+} from "@app/components/editor/extensions/shared/slash_suggestion/selectSpacesSlashCommand";
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type {
   RunCommandSlashCommand,
   SkillSlashCommand,
@@ -37,12 +43,6 @@ import {
   SELECT_SKILL_SLASH_COMMAND_ACTION,
   SELECT_TOOL_SLASH_COMMAND_ACTION,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
-import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
-import type { SelectSpacesSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/selectSpacesSlashCommand";
-import {
-  isSelectSpacesSlashCommand,
-  SELECT_SPACES_SLASH_COMMAND_ACTION,
-} from "@app/components/editor/extensions/shared/slash_suggestion/selectSpacesSlashCommand";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import { knowledgeNodeToItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";

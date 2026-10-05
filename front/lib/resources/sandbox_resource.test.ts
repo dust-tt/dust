@@ -61,9 +61,9 @@ import { SandboxEnvVarModel } from "@app/lib/resources/storage/models/sandbox_en
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import { frameV2ContentType } from "@app/types/files";

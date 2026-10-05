@@ -1,6 +1,6 @@
+import { apiErrorToDustError } from "../errors/errors";
 import type { DustAPI } from "../index";
 import type { ConversationInfo, CreateConversationParams } from "./types";
-import { apiErrorToDustError } from "../errors/errors";
 
 function toConversationInfo(conversation: {
   sId: string;

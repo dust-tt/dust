@@ -40,9 +40,9 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { getTestStreamEndpoint } from "@app/tests/utils/models";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { getTestStreamEndpoint } from "@app/tests/utils/models";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   AgentMessageType,

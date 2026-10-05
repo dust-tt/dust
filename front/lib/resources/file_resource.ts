@@ -1,6 +1,5 @@
 import path from "node:path";
 
-import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 import config from "@app/lib/api/config";
 import {
   SCOPED_PREFIX_CONVERSATION,
@@ -136,6 +135,7 @@ import type {
 import { Op, UniqueConstraintError } from "sequelize";
 import type { Readable, Writable } from "stream";
 import { validate } from "uuid";
+import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 
 export type FileVersion = "processed" | "original" | "public";
 

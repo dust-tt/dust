@@ -1,13 +1,14 @@
 // @vitest-environment node: ZIP inspection requires Node builtins.
 
+import assert from "node:assert";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
-import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import {
   DUST_FILE_CAN_WRITE_HEADER,
   DUST_FILE_CONTENT_TYPE_HEADER,
@@ -18,7 +19,6 @@ import {
 } from "@app/types/files";
 import { honoApp } from "@front-api/app";
 import AdmZip from "adm-zip";
-import assert from "node:assert";
 import { PassThrough } from "stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

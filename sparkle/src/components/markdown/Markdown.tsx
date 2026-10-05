@@ -1,10 +1,10 @@
 import { Chip } from "@sparkle/components/Chip";
+import { createBaseMarkdownComponents } from "@sparkle/components/markdown/createBaseMarkdownComponents";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
 import {
   MarkdownStyleContext,
   type TaskListVariant,
 } from "@sparkle/components/markdown/MarkdownStyleContext";
-import { createBaseMarkdownComponents } from "@sparkle/components/markdown/createBaseMarkdownComponents";
 import { safeRehypeKatex } from "@sparkle/components/markdown/safeRehypeKatex";
 import {
   type StreamingState,

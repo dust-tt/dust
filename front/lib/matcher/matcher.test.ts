@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import type { MatcherExpression } from "./types";
 import { matchPayload } from "./matcher";
 import { parseMatcherExpression } from "./parser";
+import type { MatcherExpression } from "./types";
 
 function parse(expression: string): MatcherExpression {
   const result = parseMatcherExpression(expression);

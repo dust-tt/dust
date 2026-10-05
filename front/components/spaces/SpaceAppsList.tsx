@@ -1,6 +1,6 @@
+import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { SpaceCreateAppModal } from "@app/components/spaces/SpaceCreateAppModal";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
-import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useQueryParams } from "@app/hooks/useQueryParams";

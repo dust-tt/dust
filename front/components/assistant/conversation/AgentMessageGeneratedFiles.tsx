@@ -1,5 +1,5 @@
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { getCollapseAnimationStyle } from "@app/components/assistant/conversation/actions/inline/utils";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { formatCalendarDate } from "@app/lib/client/calendar_date";
 import { formatTime } from "@app/lib/i18n/format";
 import type { LightAgentMessageType } from "@app/types/assistant/conversation";

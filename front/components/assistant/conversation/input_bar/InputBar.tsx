@@ -1,17 +1,17 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
-import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
-import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
-import InputBarContainer from "@app/components/assistant/conversation/input_bar/InputBarContainer";
-import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { InputBarUsageBanner } from "@app/components/assistant/conversation/input_bar/InputBarUsageBanner";
 import { INPUT_BAR_ACTIONS } from "@app/components/assistant/conversation/input_bar/inputBarActions";
+import { InputBarAttachments } from "@app/components/assistant/conversation/input_bar/InputBarAttachments";
 import {
   INPUT_BAR_COMPACT_ENTER_ANIMATION_CLASSES,
   INPUT_BAR_COMPACT_MORPH_TRANSITION_CLASSES,
   INPUT_BAR_COMPACT_PILL_CLASSES,
 } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
+import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
+import InputBarContainer from "@app/components/assistant/conversation/input_bar/InputBarContainer";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { InputBarUsageBanner } from "@app/components/assistant/conversation/input_bar/InputBarUsageBanner";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
 import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";

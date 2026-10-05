@@ -1,14 +1,5 @@
 import { randomUUID } from "node:crypto";
 
-import type {
-  MetronomeBalance,
-  MetronomeEvent,
-  MetronomePackageTier,
-  MetronomeSeatBalance,
-  MetronomeStripeCollectionMethod,
-  MetronomeUsageListResponse,
-  MetronomeUsageWithGroupsResponse,
-} from "./types";
 import config from "@app/lib/api/config";
 import type { ContractCreditType } from "@app/lib/metronome/constants";
 import {
@@ -51,6 +42,15 @@ import type { ContractEditParams } from "@metronome/sdk/resources/v2/contracts";
 import type { IncomingHttpHeaders } from "http";
 import chunk from "lodash/chunk";
 import { z } from "zod";
+import type {
+  MetronomeBalance,
+  MetronomeEvent,
+  MetronomePackageTier,
+  MetronomeSeatBalance,
+  MetronomeStripeCollectionMethod,
+  MetronomeUsageListResponse,
+  MetronomeUsageWithGroupsResponse,
+} from "./types";
 import {
   classifyMetronomePackageBillingAnchorByName,
   classifyMetronomePackageByName,

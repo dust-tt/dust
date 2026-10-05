@@ -1,5 +1,5 @@
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { getActionStepIcon } from "@app/components/assistant/conversation/actions/inline/utils";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
 import { useAgentMessageConsumption } from "@app/hooks/conversations/useAgentMessageConsumption";
 import { formatCreditValue, toolUsageLabel } from "@app/lib/client/credits";

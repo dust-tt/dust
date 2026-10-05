@@ -8,7 +8,6 @@ import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { createHash } from "crypto";
 
-import type { MetronomeEvent, UsageType } from "./types";
 import { getMetronomeIngestAlias } from "./client";
 import {
   toFreeMetronomeUserId,
@@ -17,6 +16,7 @@ import {
   USAGE_TYPE_PROGRAMMATIC,
   USAGE_TYPE_USER,
 } from "./constants";
+import type { MetronomeEvent, UsageType } from "./types";
 
 export {
   computeRunKey,

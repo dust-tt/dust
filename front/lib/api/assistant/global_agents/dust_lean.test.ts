@@ -13,10 +13,10 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
-import { SkillFactory } from "@app/tests/utils/SkillFactory";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { getTestStreamEndpoint } from "@app/tests/utils/models";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { describe, expect, it } from "vitest";
 

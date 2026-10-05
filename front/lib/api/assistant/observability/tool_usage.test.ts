@@ -1,7 +1,7 @@
 import { resolveServerDisplayNames } from "@app/lib/api/assistant/observability/tool_usage";
 import logger from "@app/logger/logger";
-import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 describe("resolveServerDisplayNames", () => {

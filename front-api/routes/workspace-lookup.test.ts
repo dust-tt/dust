@@ -1,6 +1,6 @@
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
 

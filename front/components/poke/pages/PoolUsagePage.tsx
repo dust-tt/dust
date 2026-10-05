@@ -1,18 +1,18 @@
 import { PokeChangeSeatModal } from "@app/components/poke/credits/PokeChangeSeatModal";
 import { PokeTopUpsHistoryTable } from "@app/components/poke/credits/PokeTopUpsHistoryTable";
+import {
+  SEAT_TYPE_ICONS,
+  seatTypeDisplayName,
+} from "@app/components/workspace/billing/seatTypeUtils";
 import { EditMemberSpendLimitModal } from "@app/components/workspace/EditMemberSpendLimitModal";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
+import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
 import {
   CreditPoolCardsFromCycleData,
   toCreditPoolFetchStatus,
   useCycleHistoryLimit,
 } from "@app/components/workspace/WorkspaceCreditPoolCards";
 import type { DefaultUserSpendLimitState } from "@app/components/workspace/WorkspaceDefaultLimitInput";
-import {
-  SEAT_TYPE_ICONS,
-  seatTypeDisplayName,
-} from "@app/components/workspace/billing/seatTypeUtils";
-import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { expandMaxTierName } from "@app/lib/client/model_tiers";

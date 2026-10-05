@@ -3,13 +3,13 @@ import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/glob
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import * as skillIndex from "@app/lib/skill_search";
 import { indexSkillSearchActivity } from "@app/temporal/es_indexation/activities";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";

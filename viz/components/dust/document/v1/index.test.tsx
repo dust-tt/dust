@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { File as NodeFile } from "node:buffer";
 import type {
   DocumentComment,
   DocumentCommentReply,
@@ -19,7 +20,6 @@ import type {
   VisualizationDataAPI,
 } from "@viz/app/lib/visualization-api";
 import type { WriteFileResult } from "@viz/app/types";
-import { File as NodeFile } from "node:buffer";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Document, type DocumentProps } from ".";
 

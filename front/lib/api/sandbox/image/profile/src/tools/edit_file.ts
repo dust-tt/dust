@@ -2,12 +2,12 @@ import * as fs from "node:fs";
 
 import { createTwoFilesPatch } from "diff";
 
-import type { Profile } from "../profile";
 import {
   MAX_DIFF_BYTES,
   MAX_DIFF_LINES,
   MAX_EDIT_FILE_BYTES,
 } from "../constants";
+import type { Profile } from "../profile";
 import { usageError, wantsHelp } from "../shared/args";
 import { isBinary } from "../shared/binary";
 import { countOutputLines, safeOutput } from "../shared/output";

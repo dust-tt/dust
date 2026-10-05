@@ -3,8 +3,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { MentionResource } from "@app/lib/resources/mention_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { MentionFactory } from "@app/tests/utils/MentionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MentionFactory } from "@app/tests/utils/MentionFactory";
 import { describe, expect, it } from "vitest";
 
 async function createMessage(

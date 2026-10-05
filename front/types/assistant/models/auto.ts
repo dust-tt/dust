@@ -1,9 +1,4 @@
 import type { WhitelistableFeature } from "../../shared/feature_flags";
-import type {
-  ModelConfigurationType,
-  ModelProviderIdType,
-  ReasoningEffort,
-} from "./types";
 import {
   CLAUDE_OPUS_5_5_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
@@ -25,6 +20,11 @@ import {
   GPT_6_LUNA_MODEL_ID,
 } from "./openai";
 import { SIMULATED_FAILURE_MODEL_ID } from "./simulated_failure_model";
+import type {
+  ModelConfigurationType,
+  ModelProviderIdType,
+  ReasoningEffort,
+} from "./types";
 import { GROK_3_MINI_MODEL_ID, GROK_4_6_MODEL_ID } from "./xai";
 
 // Auto-routing meta-models: sentinels that never name a concrete model but are

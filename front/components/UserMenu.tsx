@@ -1,6 +1,3 @@
-import { UserAnalyticsPopover } from "@app/components/UserAnalyticsPopover";
-import { UserSettingsPopover } from "@app/components/UserSettingsPopover";
-import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
 import type { CreditUsageState } from "@app/components/app/CreditUsage";
 import {
   CreditUsage,
@@ -10,6 +7,9 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
 import { UserAutomationsDialog } from "@app/components/me/UserAutomationsDialog";
 import { UserToolsDialog } from "@app/components/me/UserToolsDialog";
+import { UserAnalyticsPopover } from "@app/components/UserAnalyticsPopover";
+import { UserSettingsPopover } from "@app/components/UserSettingsPopover";
+import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useDevMode } from "@app/hooks/useDevMode";
 import { useSendNotification } from "@app/hooks/useNotification";

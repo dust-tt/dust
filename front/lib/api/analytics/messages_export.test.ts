@@ -1,8 +1,8 @@
 import { fetchMessageExportRows } from "@app/lib/api/analytics/messages_export";
 import type { ElasticsearchBaseDocument } from "@app/lib/api/elasticsearch";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
-import { TagFactory } from "@app/tests/utils/TagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { TagFactory } from "@app/tests/utils/TagFactory";
 import { Ok } from "@app/types/shared/result";
 import { describe, expect, it, vi } from "vitest";
 

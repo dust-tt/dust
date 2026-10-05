@@ -4,8 +4,8 @@ import { wakeConversationSandboxPlugin } from "@app/lib/api/poke/plugins/convers
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import { describe, expect, it } from "vitest";
 
 async function setup() {

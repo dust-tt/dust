@@ -5,12 +5,12 @@ import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_functio
 import { SandboxFunctionInvocationModel } from "@app/lib/resources/storage/models/sandbox_function";
 import { FRAME_FUNCTION_INVOCATION_RETENTION_MS } from "@app/temporal/data_retention/config";
 import { createTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SandboxFunctionMCPActionFactory } from "@app/tests/utils/SandboxFunctionMCPActionFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import type { ModelId } from "@app/types/shared/model_id";
 import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";

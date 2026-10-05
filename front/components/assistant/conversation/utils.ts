@@ -1,4 +1,3 @@
-import type { VirtuosoMessage } from "./types";
 import { compareStrings } from "@app/lib/i18n/format";
 import { removeDiacritics, subFilter } from "@app/lib/utils";
 import type { RelativeDateBucket } from "@app/lib/utils/timestamps";
@@ -17,6 +16,7 @@ import {
 } from "@app/types/assistant/conversation";
 import { truncate } from "@app/types/shared/utils/string_utils";
 import type { PodListItemType } from "@app/types/space";
+import type { VirtuosoMessage } from "./types";
 import { isZeroHeightMessage } from "./types";
 
 const MAX_SOURCE_CONVERSATION_TITLE_LENGTH = 50;

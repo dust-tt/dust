@@ -1,4 +1,3 @@
-import type { TBaseData } from "./DataTable";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,6 +9,7 @@ import { Tooltip } from "@sparkle/components/Tooltip";
 import { cn } from "@sparkle/lib/utils";
 import type { Column } from "@tanstack/react-table";
 import React, { type ReactNode, useState } from "react";
+import type { TBaseData } from "./DataTable";
 import {
   DENSITY_HEADER_HEIGHT_CLASS,
   SCROLL_COLUMN_MIN_WIDTH_CLASS,

@@ -8,8 +8,8 @@ import {
 } from "@app/temporal/data_retention/activities";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { assert, describe, expect, it, vi } from "vitest";
 
 vi.mock("@temporalio/activity", () => ({

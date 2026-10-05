@@ -11,7 +11,6 @@ import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { CHART_HEIGHT, CHART_MARGIN } from "@app/components/charts/constants";
-import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import type { AnalyticsFilter } from "@app/components/workspace/analytics/analyticsFilter";
 import {
   isScopeDimension,
@@ -21,6 +20,7 @@ import {
   scopeFilterToIds,
   toggleScopeEntity,
 } from "@app/components/workspace/analytics/analyticsFilter";
+import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
 import type { AwuUsageAnalyticsResponse } from "@app/lib/api/analytics/awu_usage_analytics";
 import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";

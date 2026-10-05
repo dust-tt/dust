@@ -17,6 +17,7 @@ import {
   ContentNodeMentionBlock,
   contentNodeMentionDirective,
 } from "@app/components/markdown/ContentNodeMentionBlock";
+import { createTextDirective } from "@app/components/markdown/directives";
 import {
   filePreviewDirective,
   getFilePreviewPlugin,
@@ -29,7 +30,6 @@ import {
   getTaskDirectiveBlock,
   taskDirective,
 } from "@app/components/markdown/TaskDirectiveBlock";
-import { createTextDirective } from "@app/components/markdown/directives";
 import {
   KNOWLEDGE_TAG_REGEX,
   parseKnowledgeTag,

@@ -1,8 +1,8 @@
-import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import {
   formatMicroUsdToUsd,
   makeColumnsForCredits,
 } from "@app/components/poke/credits/columns";
+import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import type { PokeStripeSubscriptionWire } from "@app/lib/api/poke/workspace_info";
 import { LoadingBlock, safeLazy, Tooltip } from "@dust-tt/sparkle";
 import { Suspense } from "react";

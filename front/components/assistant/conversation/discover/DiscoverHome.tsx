@@ -1,9 +1,3 @@
-import {
-  CatalogRow,
-  CatalogRowsSkeleton,
-  ItemAuthor,
-  SkillCatalogAvatar,
-} from "@app/components/assistant/conversation/discover/DiscoverCatalog";
 import type {
   CatalogItem,
   DiscoverSkill,
@@ -15,6 +9,12 @@ import {
   toHydratedAgentCatalogItem,
   toHydratedSkillCatalogItem,
 } from "@app/components/assistant/conversation/discover/catalog";
+import {
+  CatalogRow,
+  CatalogRowsSkeleton,
+  ItemAuthor,
+  SkillCatalogAvatar,
+} from "@app/components/assistant/conversation/discover/DiscoverCatalog";
 import type { DiscoverySuggestionSection } from "@app/components/assistant/conversation/discover/discoveryTracking";
 import {
   trackDiscoverItemDetailsOpen,

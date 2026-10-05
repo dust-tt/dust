@@ -17,13 +17,6 @@ import {
   ConversationalSuggestionCard,
   RestrictedSuggestionCard,
 } from "@app/components/markdown/suggestion/ConversationalSuggestionCard";
-import { makeDirective } from "@app/components/markdown/suggestion/suggestionDirective";
-import {
-  trackSuggestionCardDecision,
-  trackSuggestionDetailsOpen,
-  trackSuggestionTargetPreviewOpen,
-  useTrackSuggestionCardViews,
-} from "@app/components/markdown/suggestion/suggestionTracking";
 import {
   DISABLED_CONVERSATION_AGENT_SUGGESTION_KINDS,
   isAgentActionCardSuggestion,
@@ -32,6 +25,13 @@ import {
   sortAgentSuggestionsByBuilderOrder,
   sortSkillSuggestionsByBuilderOrder,
 } from "@app/components/markdown/suggestion/suggestion_order";
+import { makeDirective } from "@app/components/markdown/suggestion/suggestionDirective";
+import {
+  trackSuggestionCardDecision,
+  trackSuggestionDetailsOpen,
+  trackSuggestionTargetPreviewOpen,
+  useTrackSuggestionCardViews,
+} from "@app/components/markdown/suggestion/suggestionTracking";
 import { getIcon } from "@app/components/resources/resources_icons";
 import {
   PendingSkillSuggestionDetails,

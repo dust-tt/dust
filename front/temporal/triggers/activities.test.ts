@@ -11,8 +11,8 @@ import {
   runWakeUpActivity,
 } from "@app/temporal/triggers/activities";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

@@ -1,9 +1,9 @@
-import { ConfirmContext } from "@app/components/Confirm";
 import type { DataSourceListItem } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
 import {
   DataSourceList,
   toDataSourceListItem,
 } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
+import { ConfirmContext } from "@app/components/Confirm";
 import {
   buildSpaceItems,
   KNOWLEDGE_BROWSER_GROUP_LABELS,

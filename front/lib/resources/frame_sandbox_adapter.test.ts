@@ -45,9 +45,9 @@ import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_res
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { FileFactory } from "@app/tests/utils/FileFactory";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import { frameV2ContentType } from "@app/types/files";
 import { getPodFilesBasePath } from "@app/types/mount_path";

@@ -8,14 +8,14 @@ import type { GroupResource as GroupResourceType } from "@app/lib/resources/grou
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
+import { saveAgentConfiguration } from "@app/tests/utils/saveAgentConfiguration";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TagFactory } from "@app/tests/utils/TagFactory";
 import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { saveAgentConfiguration } from "@app/tests/utils/saveAgentConfiguration";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { describe, expect, it } from "vitest";
 

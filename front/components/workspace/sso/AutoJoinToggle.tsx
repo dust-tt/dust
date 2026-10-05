@@ -1,5 +1,5 @@
-import { UpgradePlanDialog } from "@app/components/workspace/UpgradePlanDialog";
 import { MultiDomainAutoJoinModal } from "@app/components/workspace/sso/MultiDomainAutoJoinModal";
+import { UpgradePlanDialog } from "@app/components/workspace/UpgradePlanDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { isUpgraded } from "@app/lib/plans/plan_codes";

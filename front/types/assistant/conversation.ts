@@ -1,6 +1,14 @@
+import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { ActionGeneratedFileType } from "@app/lib/actions/types";
+import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
+import { formatDate } from "@app/lib/i18n/format";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
+import { isSameDay } from "date-fns";
 import type { ContentFragmentType } from "../content_fragment";
 import type { AllSupportedWithDustSpecificFileContentType } from "../files";
 import type { ModelId } from "../shared/model_id";
+import { assertNeverAndIgnore } from "../shared/utils/assert_never";
 import type { EnrichedSpaceType } from "../space";
 import type { UserType, WorkspaceType } from "../user";
 import type {
@@ -14,14 +22,6 @@ import type {
   ModelSelectionType,
   ResolvedRequestedModel,
 } from "./models/types";
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { ActionGeneratedFileType } from "@app/lib/actions/types";
-import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
-import { formatDate } from "@app/lib/i18n/format";
-import type { AgentMCPActionWithOutputType } from "@app/types/actions";
-import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
-import { isSameDay } from "date-fns";
-import { assertNeverAndIgnore } from "../shared/utils/assert_never";
 
 export type MessageVisibility = "visible" | "deleted" | "pending";
 

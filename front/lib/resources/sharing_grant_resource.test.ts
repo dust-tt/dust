@@ -5,10 +5,10 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SharingGrantFactory } from "@app/tests/utils/SharingGrantFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { frameContentType } from "@app/types/files";
 import { assert, describe, expect, it, vi } from "vitest";
 

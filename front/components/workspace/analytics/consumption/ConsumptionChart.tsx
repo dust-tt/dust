@@ -1,4 +1,3 @@
-import type { ConsumptionDimension } from "./consumptionDimensions";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
@@ -46,6 +45,7 @@ import {
 import type { Props as RechartsLabelProps } from "recharts/types/component/Label";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 import { ConsumptionBurnUpChart } from "./ConsumptionBurnUpChart";
+import type { ConsumptionDimension } from "./consumptionDimensions";
 
 const CURRENT_BUCKET_LABELS: Record<ConsumptionGranularity, string> = {
   day: "Today",

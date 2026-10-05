@@ -1,9 +1,9 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
 import { AgentBuilderSidekick } from "@app/components/agent_builder/AgentBuilderSidekick";
-import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
-import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import { EmptyPlaceholder } from "@app/components/agent_builder/observability/shared/EmptyPlaceholder";
+import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
+import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
 import { AgentInsightsTab } from "@app/components/assistant/details/tabs/AgentInsightsTab";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";

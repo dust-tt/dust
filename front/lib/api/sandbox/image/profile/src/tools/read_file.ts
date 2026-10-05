@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 
-import type { Profile } from "../profile";
 import { DEFAULT_READ_LIMIT, MAX_OUTPUT_BYTES } from "../constants";
+import type { Profile } from "../profile";
 import { parseIntArg, usageError, wantsHelp } from "../shared/args";
 import { isBinary } from "../shared/binary";
 import { readFileWindow } from "../shared/stream";

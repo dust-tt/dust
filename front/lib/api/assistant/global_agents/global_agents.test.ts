@@ -6,12 +6,12 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { setUserMaxAllowedTier } from "@app/lib/model_tiers/allowed_tiers";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { TestWorkspacePlan } from "@app/tests/utils/WorkspaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   CLAUDE_OPUS_5_MODEL_ID,

@@ -1,6 +1,6 @@
+import { getGovernancePermissionMetadata } from "@app/components/pages/workspace/governance/capabilityMetadata";
 import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
 import { GroupSelector } from "@app/components/pages/workspace/governance/GroupSelector";
-import { getGovernancePermissionMetadata } from "@app/components/pages/workspace/governance/capabilityMetadata";
 import type {
   GovernancePermission,
   GovernancePermissionConfiguration,

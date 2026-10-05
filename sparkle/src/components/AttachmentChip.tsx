@@ -1,9 +1,9 @@
 import { cn } from "@sparkle/lib/utils";
 import React from "react";
 
-import type { LinkWrapperProps } from "./LinkWrapper";
 import { type CHIP_COLORS, type CHIP_SIZES, Chip } from "./Chip";
 import { DoubleIcon, type DoubleIconProps, Icon, type IconProps } from "./Icon";
+import type { LinkWrapperProps } from "./LinkWrapper";
 
 const attachmentChipOverrides = cn(
   "rounded-lg px-2 py-1 heading-sm gap-1.5",

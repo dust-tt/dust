@@ -3,11 +3,11 @@ import type {
   AgentBuilderTriggerType,
   AgentBuilderWebhookTriggerType,
 } from "@app/components/agent_builder/agentBuilderFormSchema";
-import type { SheetMode } from "@app/components/agent_builder/triggers/TriggerViewsSheet";
 import {
   formValuesToScheduleTriggerData,
   getScheduleFormDefaultValues,
 } from "@app/components/agent_builder/triggers/schedule/scheduleEditionFormSchema";
+import type { SheetMode } from "@app/components/agent_builder/triggers/TriggerViewsSheet";
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { TriggerViewsSheetFormSchema } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import {

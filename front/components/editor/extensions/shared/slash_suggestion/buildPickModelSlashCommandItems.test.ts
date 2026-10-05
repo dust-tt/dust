@@ -1,8 +1,8 @@
-import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import {
   buildPickModelSlashCommandItems,
   getDefaultPickModelSlashCommandItemId,
 } from "@app/components/editor/extensions/shared/slash_suggestion/buildPickModelSlashCommandItems";
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type {
   EnabledModelConfigurationType,
   ModelStreamResolutionType,

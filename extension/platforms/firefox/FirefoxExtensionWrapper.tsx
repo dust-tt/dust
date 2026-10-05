@@ -1,8 +1,8 @@
-import type { FirefoxPlatformService } from "./services/platform";
 import { Button, cn, DustLogo, Page } from "@dust-tt/sparkle";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import { compare } from "compare-versions";
 import React from "react";
+import type { FirefoxPlatformService } from "./services/platform";
 
 export const FirefoxExtensionWrapper = ({
   children,

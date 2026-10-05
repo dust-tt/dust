@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 import type { SlackConfigurationType } from "./slack";
-import type { WebCrawlerConfigurationType } from "./webcrawler";
 import { SlackConfigurationTypeSchema } from "./slack";
+import type { WebCrawlerConfigurationType } from "./webcrawler";
 import { WebCrawlerConfigurationTypeSchema } from "./webcrawler";
 
 export const ConnectorConfigurationTypeSchema = z.union([

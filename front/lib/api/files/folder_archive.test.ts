@@ -1,5 +1,6 @@
 // @vitest-environment node: ZIP inspection requires Node builtins.
 
+import { PassThrough, Readable } from "node:stream";
 import type { FolderArchiveFileSystem } from "@app/lib/api/files/folder_archive";
 import {
   planFolderArchive,
@@ -9,7 +10,6 @@ import type { FileSystemEntry } from "@app/types/api/file_system/types";
 import type { FileSystemMount } from "@app/types/file_system";
 import { Ok } from "@app/types/shared/result";
 import AdmZip from "adm-zip";
-import { PassThrough, Readable } from "node:stream";
 import { describe, expect, it } from "vitest";
 
 const mount: FileSystemMount = {

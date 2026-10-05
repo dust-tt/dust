@@ -9,12 +9,12 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import type { Output } from "./protocol.ts";
 import {
   applyResultSpillPolicy,
   RESULT_HARD_CAP_BYTES,
   RESULT_INLINE_CAP_BYTES,
 } from "./emit.ts";
+import type { Output } from "./protocol.ts";
 
 function outputOfSerializedBytes(targetBytes: number): Output {
   // {"ok":true,"output":{"big":"…"}} — pad `big` so the serialized envelope

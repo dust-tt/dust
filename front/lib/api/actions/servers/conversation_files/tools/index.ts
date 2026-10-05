@@ -1,3 +1,4 @@
+import { Readable } from "node:stream";
 import { FILE_OFFLOAD_TEXT_SIZE_BYTES } from "@app/lib/actions/action_output_limits";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getDataSourceURI } from "@app/lib/actions/mcp_internal_actions/input_configuration";
@@ -49,7 +50,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
-import { Readable } from "node:stream";
 
 const MAX_CONTENT_SIZE_FOR_LIST_FILES = 1024 * 256; // 256KB.
 

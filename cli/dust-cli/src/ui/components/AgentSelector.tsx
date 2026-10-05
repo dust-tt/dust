@@ -4,8 +4,8 @@ import Spinner from "ink-spinner";
 import type { FC, ReactNode } from "react";
 import React, { useCallback, useEffect } from "react";
 
-import type { BaseItem } from "./Select.js";
 import { useAgents } from "../../utils/hooks/use_agents.js";
+import type { BaseItem } from "./Select.js";
 import { Select } from "./Select.js";
 
 type AgentConfiguration =

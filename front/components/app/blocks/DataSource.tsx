@@ -1,8 +1,8 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import DataSourcePicker from "@app/components/data_source/DataSourcePicker";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import { shallowBlockClone } from "@app/lib/utils";
 import type {
   AppType,

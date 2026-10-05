@@ -1,5 +1,3 @@
-import { ConfirmContext } from "@app/components/Confirm";
-import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import { DataSourceBuilderSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceBuilderSelector";
 import { transformTreeToSelectionConfigurations } from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import {
@@ -22,11 +20,13 @@ import {
 import { ProcessingMethodSection } from "@app/components/agent_builder/capabilities/shared/ProcessingMethodSection";
 import { SelectedDataSources } from "@app/components/agent_builder/capabilities/shared/SelectedDataSources";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
+import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
 import {
   CONFIGURATION_SHEET_PAGE_IDS,
   capabilityFormSchema,
 } from "@app/components/agent_builder/types";
+import { ConfirmContext } from "@app/components/Confirm";
 import { DataSourceBuilderProvider } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import {
   KnowledgePageProvider,

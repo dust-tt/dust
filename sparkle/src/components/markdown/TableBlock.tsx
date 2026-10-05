@@ -1,9 +1,9 @@
-import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
 import { ContentBlockWrapper } from "@sparkle/components/markdown/ContentBlockWrapper";
 import {
   type MarkdownNode,
   sameNodePosition,
 } from "@sparkle/components/markdown/utils";
+import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
 import React, { memo, type ReactNode, useMemo } from "react";
 
 const getNodeText = (node: ReactNode): string => {

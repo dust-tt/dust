@@ -1,8 +1,8 @@
 #!/usr/bin/env tsx
+import { parseArgs } from "node:util";
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
 import { Sandbox } from "e2b";
-import { parseArgs } from "node:util";
 
 async function pauseSandbox(sandboxId: string): Promise<void> {
   logger.info({ sandboxId }, "Pausing sandbox");

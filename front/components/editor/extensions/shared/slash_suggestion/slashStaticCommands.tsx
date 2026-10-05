@@ -1,10 +1,10 @@
-import { INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
-import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type { PickModelSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
 import { PICK_MODEL_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
 import type { SelectSpacesSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/selectSpacesSlashCommand";
 import { SELECT_SPACES_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/slash_suggestion/selectSpacesSlashCommand";
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { getSlashCommandAvatarIcon } from "@app/components/editor/extensions/shared/slash_suggestion/slashCommandIcons";
+import { INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { BookOpen01, Brain, Planet } from "@dust-tt/sparkle";
 
 export function createAttachKnowledgeSlashCommand(): SlashCommand {

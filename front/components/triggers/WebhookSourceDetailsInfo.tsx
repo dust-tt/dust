@@ -1,6 +1,6 @@
 import { getIcon } from "@app/components/resources/resources_icons";
-import { WebhookEndpointUsageInfo } from "@app/components/triggers/WebhookEndpointUsageInfo";
 import type { WebhookSourceFormValues } from "@app/components/triggers/forms/webhookSourceFormSchema";
+import { WebhookEndpointUsageInfo } from "@app/components/triggers/WebhookEndpointUsageInfo";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
 import { formatDate } from "@app/lib/i18n/format";

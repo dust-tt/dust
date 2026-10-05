@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
 import config from "@app/lib/api/config";
 import {
   getWorkspaceOAuthConnectionForMCPServer,
@@ -18,7 +19,6 @@ import {
   isValidShopifyStoreDomain,
   normalizeShopifyStoreDomain,
 } from "@app/types/oauth/lib";
-import { createHmac, timingSafeEqual } from "node:crypto";
 import type { ParsedUrlQuery } from "querystring";
 
 const SHOPIFY_SCOPES = [

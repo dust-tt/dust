@@ -1,12 +1,12 @@
+import {
+  DEFAULT_RIGHT_PANEL_SIZE,
+  getDefaultRightPanelSize,
+} from "@app/components/assistant/conversation/constant";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import {
   useConversationSidePanelContext,
   useRegisterSidePanelConversation,
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import {
-  DEFAULT_RIGHT_PANEL_SIZE,
-  getDefaultRightPanelSize,
-} from "@app/components/assistant/conversation/constant";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useLockDocumentScroll } from "@app/hooks/useLockDocumentScroll";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";

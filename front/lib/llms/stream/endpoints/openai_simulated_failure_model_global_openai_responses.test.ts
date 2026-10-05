@@ -7,8 +7,8 @@ import { DustOpenAISimulatedFailureModelGlobalOpenAIResponsesStream } from "@app
 import { streamErrorToErrorEvent } from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import { ModelDegradationResource } from "@app/lib/resources/model_degradation_resource";
-import { ModelDegradationFactory } from "@app/tests/utils/ModelDegradationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { ModelDegradationFactory } from "@app/tests/utils/ModelDegradationFactory";
 import type {
   ResponseCreateParamsStreaming,
   ResponseStreamEvent,

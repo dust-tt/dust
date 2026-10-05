@@ -2,8 +2,8 @@ import type { RequestHandler } from "express";
 import express from "express";
 import { error } from "firebase-functions/logger";
 
-import type { SecretManager } from "../secrets.js";
 import { WebhookForwarder } from "../forwarder.js";
+import type { SecretManager } from "../secrets.js";
 import { ALL_CELLS } from "../webhook-router-config.js";
 
 export function createTeamsRoutes(

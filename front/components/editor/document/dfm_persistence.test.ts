@@ -1,11 +1,11 @@
 import {
-  getDocumentJSONComments,
-  withDocumentJSONComments,
-} from "@app/components/editor/document/DocumentComments";
-import {
   loadDfm,
   saveDfm,
 } from "@app/components/editor/document/dfm_persistence";
+import {
+  getDocumentJSONComments,
+  withDocumentJSONComments,
+} from "@app/components/editor/document/DocumentComments";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { parseDfm } from "@app/lib/markdown/dfm";
 import { FIXTURE } from "@app/lib/markdown/dfm/tests/dfm.test_utils";

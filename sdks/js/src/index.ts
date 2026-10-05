@@ -1,7 +1,12 @@
 import { createParser } from "eventsource-parser";
 import type { z } from "zod";
 
+import { errorToString, normalizeError } from "./error_utils";
+import { AgentsAPI } from "./high_level/agents";
+import { ConversationsAPI } from "./high_level/conversations";
+import { FilesAPI } from "./high_level/files";
 import type { DustAPIOptions } from "./high_level/types";
+import { encodeUtf8HeaderValue } from "./http_headers";
 import type {
   AgentConfigurationViewType,
   AgentMessageEventData,
@@ -51,11 +56,6 @@ import type {
   ValidateActionRequestBodyType,
   ValidateActionResponseType,
 } from "./types";
-import { errorToString, normalizeError } from "./error_utils";
-import { AgentsAPI } from "./high_level/agents";
-import { ConversationsAPI } from "./high_level/conversations";
-import { FilesAPI } from "./high_level/files";
-import { encodeUtf8HeaderValue } from "./http_headers";
 import {
   AnswerUserQuestionResponseSchema,
   APIErrorSchema,

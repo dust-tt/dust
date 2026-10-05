@@ -30,9 +30,9 @@ import {
   MAX_SKILL_SEARCH_WINDOW,
 } from "@app/lib/skill_search/query";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
-import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { matchesSkillSearchFilters } from "@app/tests/utils/skill_search";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { SkillSearchFilters } from "@app/types/api/skills";
 import type { estypes } from "@elastic/elasticsearch";
 import assert from "assert";

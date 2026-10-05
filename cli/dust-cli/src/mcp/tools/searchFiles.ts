@@ -3,10 +3,10 @@ import { glob } from "glob";
 import path from "path";
 import { z } from "zod";
 
-import type { McpTool } from "../types/tools.js";
 import { concurrentExecutor } from "../../utils/concurrentExecutor.js";
 import { normalizeError } from "../../utils/errors.js";
 import { resolveInSandbox } from "../../utils/sandbox.js";
+import type { McpTool } from "../types/tools.js";
 
 export class SearchFilesTool implements McpTool {
   name = "search_files";

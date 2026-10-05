@@ -1,8 +1,8 @@
+import { z } from "zod";
 import type { BlockType } from "./run";
 import type { ModelId } from "./shared/model_id";
-import type { EnrichedSpaceType, SpaceType } from "./space";
-import { z } from "zod";
 import { DbModelIdSchema } from "./shared/model_id";
+import type { EnrichedSpaceType, SpaceType } from "./space";
 
 export type AppVisibility = "private" | "deleted";
 

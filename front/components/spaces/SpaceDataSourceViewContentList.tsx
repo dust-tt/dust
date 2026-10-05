@@ -12,9 +12,9 @@ import {
 } from "@app/components/spaces/ContentActions";
 import { EditSpaceManagedDataSourcesViews } from "@app/components/spaces/EditSpaceManagedDatasourcesViews";
 import { FoldersHeaderMenu } from "@app/components/spaces/FoldersHeaderMenu";
+import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { WebsitesHeaderMenu } from "@app/components/spaces/WebsitesHeaderMenu";
-import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
 import { useHashParam } from "@app/hooks/useHashParams";

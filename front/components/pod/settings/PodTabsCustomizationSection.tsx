@@ -1,6 +1,6 @@
 import { getScopedRelativePath } from "@app/components/file_explorer/utils";
-import { EditPodFileTabDialog } from "@app/components/pod/files/EditPodFileTabDialog";
 import { listAddablePodTabFiles } from "@app/components/pod/files/addablePodTabFiles";
+import { EditPodFileTabDialog } from "@app/components/pod/files/EditPodFileTabDialog";
 import type { AddablePodTabFile } from "@app/components/pod/settings/AddPodFileMenu";
 import { AddPodFileMenu } from "@app/components/pod/settings/AddPodFileMenu";
 import { getIcon } from "@app/components/resources/resources_icons";

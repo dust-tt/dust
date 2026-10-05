@@ -1,5 +1,5 @@
-import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
 import {
   Avatar,
   DropdownMenu,

@@ -1,24 +1,24 @@
 // @vitest-environment node: adm-zip requires Node builtins (Buffer, zlib)
 // This directive makes them available in the test environment.
 
-import { importSkillsFromFiles } from "@app/lib/api/skills/detection/files/import_skills";
-import { Authenticator } from "@app/lib/auth";
-import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
-import { SkillFactory } from "@app/tests/utils/SkillFactory";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { UserFactory } from "@app/tests/utils/UserFactory";
-import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
-import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
-import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
-import { honoApp } from "@front-api/app";
-import AdmZip from "adm-zip";
-import type formidable from "formidable";
 import { randomUUID } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { importSkillsFromFiles } from "@app/lib/api/skills/detection/files/import_skills";
+import { Authenticator } from "@app/lib/auth";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
+import { honoApp } from "@front-api/app";
+import AdmZip from "adm-zip";
+import type formidable from "formidable";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/skills/icon_suggestion", () => ({

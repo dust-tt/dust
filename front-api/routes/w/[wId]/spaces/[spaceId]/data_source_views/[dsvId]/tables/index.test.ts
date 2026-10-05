@@ -1,6 +1,6 @@
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 

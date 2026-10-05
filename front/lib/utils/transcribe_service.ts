@@ -1,3 +1,4 @@
+import type { ReadStream } from "node:fs";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import logger from "@app/logger/logger";
 import { dustManagedServiceCredentials } from "@app/types/api/credentials";
@@ -9,7 +10,6 @@ import type { SpeechToTextChunkResponseModel } from "@elevenlabs/elevenlabs-js/a
 import { ElevenLabsEnvironment } from "@elevenlabs/elevenlabs-js/environments";
 import type formidable from "formidable";
 import fs from "fs";
-import type { ReadStream } from "node:fs";
 
 const TRANSCRIPTION_TIMEOUT_SECONDS = 5 * 60; // 5 minutes.
 

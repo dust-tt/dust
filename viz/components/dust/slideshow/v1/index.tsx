@@ -1,5 +1,5 @@
-import { SlideThumbnail } from "@viz/components/dust/slideshow/SlideThumbnail";
 import { SlideshowGrid } from "@viz/components/dust/slideshow/SlideshowGrid";
+import { SlideThumbnail } from "@viz/components/dust/slideshow/SlideThumbnail";
 import { SlideshowNavigation } from "@viz/components/dust/slideshow/v1/navigation";
 import {
   Sidebar,

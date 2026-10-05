@@ -1,7 +1,7 @@
 import { SKILL_SEARCH_ALIAS_NAME } from "@app/lib/api/elasticsearch";
-import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { matchesSkillSearchFilters } from "@app/tests/utils/skill_search";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { estypes } from "@elastic/elasticsearch";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";

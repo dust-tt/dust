@@ -1,7 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
+import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { expectArrayOfObjectsWithSpecificLength } from "@app/tests/utils/utils";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";

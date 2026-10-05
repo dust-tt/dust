@@ -1,4 +1,3 @@
-import type { MenuItem } from "./menu";
 import type { DropdownMenu } from "@sparkle/components/Dropdown";
 import { LoadMore } from "@sparkle/components/LoadMore";
 import { Pagination } from "@sparkle/components/Pagination";
@@ -37,6 +36,7 @@ import {
   type DataTableLayout,
   DataTableLayoutContext,
 } from "./layout";
+import type { MenuItem } from "./menu";
 import { Body, Head, Header, Root, Row } from "./parts";
 import { ALIGN_JUSTIFY_CLASS, getDataTableColumnPresets } from "./presets";
 

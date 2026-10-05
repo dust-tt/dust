@@ -1,10 +1,10 @@
 import { z } from "zod";
 
-import type { McpTool } from "../types/tools.js";
 import { normalizeError } from "../../utils/errors.js";
 import { MAX_LINE_LENGTH_TEXT_FILE } from "../../utils/fileHandling.js";
 import { formatGrepRes, performGrep } from "../../utils/grep.js";
 import { resolveInSandbox } from "../../utils/sandbox.js";
+import type { McpTool } from "../types/tools.js";
 
 export class SearchContentTool implements McpTool {
   name = "search_content";

@@ -7,8 +7,8 @@ import {
 } from "@app/lib/api/files/file_system_ops";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { FileFactory } from "@app/tests/utils/FileFactory";
 import { setupProjectConversation } from "@app/tests/utils/conversation_test_factories";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { getPodFilesBasePath } from "@app/types/mount_path";
 import assert from "assert";

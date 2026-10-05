@@ -1,6 +1,6 @@
 import { Icon } from "@sparkle/components/Icon";
-import { useMarkdownStyle } from "@sparkle/components/markdown/MarkdownStyleContext";
 import { markdownParagraphSize } from "@sparkle/components/markdown/markdownSizes";
+import { useMarkdownStyle } from "@sparkle/components/markdown/MarkdownStyleContext";
 import {
   type MarkdownNode,
   sameNodePosition,

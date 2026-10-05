@@ -1,8 +1,8 @@
 import { Authenticator } from "@app/lib/auth";
 import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
-import { OnboardingTaskFactory } from "@app/tests/utils/OnboardingTaskFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { OnboardingTaskFactory } from "@app/tests/utils/OnboardingTaskFactory";
 import type { WorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it } from "vitest";
 

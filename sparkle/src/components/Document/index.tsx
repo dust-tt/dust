@@ -1,6 +1,5 @@
 "use client";
 
-import type { DocumentProps } from "./types";
 import { Button } from "@sparkle/components/Button";
 import { MessageTextCircle01 } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
@@ -14,6 +13,7 @@ import { DocumentSaveStatus } from "./DocumentSaveStatus";
 import { DocumentSelectionToolbar } from "./DocumentSelectionToolbar";
 import { DocumentSourcePreview } from "./DocumentSourcePreview";
 import { DocumentVisualsContext } from "./DocumentVisual";
+import type { DocumentProps } from "./types";
 import { useDocumentComments } from "./useDocumentComments";
 import { useDocumentEditor } from "./useDocumentEditor";
 

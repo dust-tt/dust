@@ -5,10 +5,10 @@ import {
 } from "@app/lib/api/assistant/skills_rendering";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { mockFullAgentMessage } from "@app/tests/utils/conversation_test_factories";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { AttachmentCapabilityContext } from "@app/types/api/assistant/conversation/attachments";
 import type { TextContent } from "@app/types/assistant/generation";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";

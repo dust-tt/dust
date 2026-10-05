@@ -1,4 +1,3 @@
-import type { DataTableProps, TBaseData } from "./DataTable";
 import { Spinner } from "@sparkle/components/Spinner";
 import { cn } from "@sparkle/lib/utils";
 import {
@@ -12,8 +11,9 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useWindowSize } from "../WindowUtility";
-import { shouldRenderColumn } from "./DataTable";
 import { Cell } from "./cells";
+import type { DataTableProps, TBaseData } from "./DataTable";
+import { shouldRenderColumn } from "./DataTable";
 import {
   DATA_TABLE_ROW_HEIGHT_PX,
   type DataTableLayout,

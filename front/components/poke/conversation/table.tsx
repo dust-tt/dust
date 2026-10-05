@@ -1,5 +1,5 @@
-import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { makeColumnsForConversations } from "@app/components/poke/conversation/columns";
+import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { PokeConversationsFetchProps } from "@app/poke/swr/conversation";
 import { usePokeConversations } from "@app/poke/swr/conversation";

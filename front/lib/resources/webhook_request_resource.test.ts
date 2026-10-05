@@ -1,8 +1,8 @@
 import type { WebhookRequestStatus } from "@app/lib/models/agent/triggers/webhook_request";
 import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_request";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
-import { WebhookSourceFactory } from "@app/tests/utils/WebhookSourceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { WebhookSourceFactory } from "@app/tests/utils/WebhookSourceFactory";
 import { describe, expect, it } from "vitest";
 
 describe("WebhookRequestResource", () => {

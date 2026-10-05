@@ -1,6 +1,6 @@
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { expectArrayOfObjectsWithSpecificLength } from "@app/tests/utils/utils";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";

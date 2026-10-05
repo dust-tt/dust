@@ -1,7 +1,7 @@
 import { ConnectWorkspaceGitHubMessage } from "@app/components/skills/import/ConnectWorkspaceGitHubMessage";
 import { DetectedSkillsList } from "@app/components/skills/import/DetectedSkillsList";
-import { GitHubConnectionRow } from "@app/components/skills/import/GitHubConnectionRow";
 import type { RepositoryImportFormValues } from "@app/components/skills/import/formSchema";
+import { GitHubConnectionRow } from "@app/components/skills/import/GitHubConnectionRow";
 import { isImportableSkillStatus } from "@app/lib/skill_detection";
 import { useWorkspaceGitHubConnection } from "@app/lib/swr/github_connection";
 import { useDetectSkillsFromRepo } from "@app/lib/swr/skill_configurations";

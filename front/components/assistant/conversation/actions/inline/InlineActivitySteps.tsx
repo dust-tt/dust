@@ -1,6 +1,6 @@
 import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ActivityTimeline } from "@app/components/assistant/conversation/actions/inline/ActivityTimeline";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import type {
   AgentStateClassification,
   PendingToolCall,

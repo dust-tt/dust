@@ -1,16 +1,16 @@
 import express from "express";
 import { error } from "firebase-functions/logger";
 
-import type { SecretManager } from "./secrets.js";
-import type { WebhookRouterConfigManager } from "./webhook-router-config.js";
 import { createTeamsRoutes } from "./microsoft/routes.js";
 import { createTeamsVerificationMiddleware } from "./microsoft/verification.js";
 import { createNotionRoutes } from "./notion/routes.js";
+import type { SecretManager } from "./secrets.js";
 import { createShopifyRoutes } from "./shopify/routes.js";
 import {
   createSlackBotRoutes,
   createSlackDataSyncRoutes,
 } from "./slack/routes.js";
+import type { WebhookRouterConfigManager } from "./webhook-router-config.js";
 
 // Webhook secret validation middleware (shared by all platforms)
 function createWebhookSecretMiddleware(secretManager: SecretManager) {

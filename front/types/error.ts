@@ -1,11 +1,11 @@
 // Okay to use public API types because it's front/connectors communication.
 
-import type { CellInfo } from "./cell";
 import { CONVERSATION_ERROR_TYPES } from "@app/types/assistant/conversation";
 import type { CoreAPIError } from "@app/types/core/core_api";
 // oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- existing usage
 import type { ConnectorsAPIError } from "@dust-tt/client";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
+import type { CellInfo } from "./cell";
 
 const API_ERROR_TYPES = [
   "not_authenticated",

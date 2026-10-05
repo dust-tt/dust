@@ -1,8 +1,8 @@
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { launchAgentSearchIndexation } from "@app/lib/resources/agent_resource_indexation";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import assert from "assert";
 import { describe, expect, it, vi } from "vitest";
 

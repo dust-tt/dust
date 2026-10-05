@@ -1,4 +1,3 @@
-import type { DocumentProps, DocumentSaveResult } from "./types";
 import { cn } from "@sparkle/lib/utils";
 import { useEditor } from "@tiptap/react";
 import {
@@ -11,6 +10,7 @@ import {
 import { parseDocumentContent, serializeDocumentMarkdown } from "./content";
 import { documentExtensions } from "./extensions";
 import { recoverCommentAdditions } from "./recoverCommentAdditions";
+import type { DocumentProps, DocumentSaveResult } from "./types";
 
 const SAVE_ERROR_MESSAGE =
   "Could not save. Your changes are still here. Try again.";

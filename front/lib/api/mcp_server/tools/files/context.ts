@@ -1,4 +1,3 @@
-import type { FilesScope } from "./schemas";
 import {
   DustFileSystem,
   SCOPED_PREFIX_CONVERSATION,
@@ -9,6 +8,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { FilesScope } from "./schemas";
 
 export function scopedPrefixForScope(scope: FilesScope): string {
   if (scope.type === "conversation") {

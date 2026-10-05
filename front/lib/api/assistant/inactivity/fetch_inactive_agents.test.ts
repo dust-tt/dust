@@ -2,11 +2,11 @@ import { fetchArchivableAgents } from "@app/lib/api/assistant/inactivity/fetch_i
 import { ONE_DAY_MS } from "@app/lib/api/assistant/inactivity/policy";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { MentionFactory } from "@app/tests/utils/MentionFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { LightWorkspaceType } from "@app/types/user";
 import { describe, expect, it } from "vitest";
 

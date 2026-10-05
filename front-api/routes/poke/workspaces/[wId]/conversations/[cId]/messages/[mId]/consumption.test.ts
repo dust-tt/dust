@@ -4,8 +4,8 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { RunFactory } from "@app/tests/utils/RunFactory";
 import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
+import { RunFactory } from "@app/tests/utils/RunFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 

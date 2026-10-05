@@ -12,8 +12,6 @@ vi.mock("@app/lib/api/audit/workos_audit", async () => {
 });
 
 import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import {
   connectSlackBot,
@@ -24,6 +22,8 @@ import {
   SLACK_WORKFLOW_BOT_NAME,
   SLACK_WORKFLOW_CREATED_AT_MS,
 } from "@app/tests/utils/slack_workflows";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err } from "@app/types/shared/result";

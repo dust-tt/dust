@@ -18,8 +18,8 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { UserType } from "@app/types/user";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
-import { SpaceFactory } from "./SpaceFactory";
 import { createResourceTest } from "./generic_resource_tests";
+import { SpaceFactory } from "./SpaceFactory";
 
 export function makeExtra(
   auth: Authenticator,

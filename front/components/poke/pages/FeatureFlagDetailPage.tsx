@@ -1,6 +1,6 @@
-import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { FeatureFlagStageChip } from "@app/components/poke/features/stage_chip";
 import { RunPluginDialog } from "@app/components/poke/plugins/RunPluginDialog";
+import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { PokeFeatureFlagWorkspaceWithCell } from "@app/hooks/usePokeFeatureFlagWorkspaces";
 import { usePokeFeatureFlagWorkspacesAllCells } from "@app/hooks/usePokeFeatureFlagWorkspaces";

@@ -1,5 +1,3 @@
-import { InfiniteScroll } from "@app/components/InfiniteScroll";
-import { CreateAgentDropdownContent } from "@app/components/assistant/CreateAgentDropdown";
 import { useIsAgentLoopStreaming } from "@app/components/assistant/conversation/AgentLoopStreamContext";
 import {
   ConversationMenu,
@@ -19,6 +17,8 @@ import {
   getGroupConversationsByUnreadAndActionRequired,
   groupUnreadConversations,
 } from "@app/components/assistant/conversation/utils";
+import { CreateAgentDropdownContent } from "@app/components/assistant/CreateAgentDropdown";
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import {

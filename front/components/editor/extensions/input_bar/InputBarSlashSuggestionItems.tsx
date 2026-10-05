@@ -1,8 +1,3 @@
-import type {
-  InputBarSlashCommand,
-  InputBarSlashCommandId,
-} from "./InputBarSlashSuggestionTypes";
-import { RUN_COMMAND_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { getSlashCommandAvatarIcon } from "@app/components/editor/extensions/shared/slash_suggestion/slashCommandIcons";
 import {
@@ -10,6 +5,11 @@ import {
   createPickModelSlashCommand,
   createSelectSpacesSlashCommand,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashStaticCommands";
+import { RUN_COMMAND_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import type {
+  InputBarSlashCommand,
+  InputBarSlashCommandId,
+} from "./InputBarSlashSuggestionTypes";
 import { INPUT_BAR_SLASH_COMMAND_ORDER } from "./InputBarSlashSuggestionTypes";
 
 const ATTACH_KNOWLEDGE_SLASH_COMMAND = createAttachKnowledgeSlashCommand();

@@ -1,9 +1,9 @@
 import fs from "fs";
 import { z } from "zod";
 
-import type { McpTool } from "../types/tools.js";
 import { normalizeError } from "../../utils/errors.js";
 import { resolveInSandbox } from "../../utils/sandbox.js";
+import type { McpTool } from "../types/tools.js";
 import { ReadFileTool } from "./readFile.js";
 
 export class EditFileTool implements McpTool {

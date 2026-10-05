@@ -5,8 +5,8 @@ import {
 import { fetchDiscoveryForYouCandidates } from "@app/lib/search_usage/for_you";
 import { fetchDiscoveryTrendingCandidates } from "@app/lib/search_usage/trending";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

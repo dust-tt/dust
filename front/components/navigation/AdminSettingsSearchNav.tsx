@@ -1,6 +1,6 @@
 import { useCommandPalette } from "@app/components/command_palette/CommandPaletteContext";
-import { NavItemKeyboardShortcut } from "@app/components/navigation/NavItemKeyboardShortcut";
 import type { SidebarNavigation } from "@app/components/navigation/config";
+import { NavItemKeyboardShortcut } from "@app/components/navigation/NavItemKeyboardShortcut";
 import { useIsMac } from "@app/hooks/useKeyboardShortcutLabel";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";

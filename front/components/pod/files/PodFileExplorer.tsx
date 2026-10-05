@@ -1,8 +1,8 @@
-import { ConfirmContext } from "@app/components/Confirm";
 import {
   FileDropProvider,
   useFileDrop,
 } from "@app/components/assistant/conversation/FileUploaderContext";
+import { ConfirmContext } from "@app/components/Confirm";
 import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
 import type { RenameMountItem } from "@app/components/file_explorer/RenameFileDialog";
 import { RenameFileDialog } from "@app/components/file_explorer/RenameFileDialog";
@@ -19,11 +19,11 @@ import { joinMountRelativePath } from "@app/components/file_explorer/utils";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { CreateFolderDialog } from "@app/components/pod/files/CreateFolderDialog";
 import { EditPodFileTabDialog } from "@app/components/pod/files/EditPodFileTabDialog";
-import { PodFrameSheet } from "@app/components/pod/files/PodFrameSheet";
 import {
   ARCHIVE_FILE_EXTENSION,
   partitionArchiveFiles,
 } from "@app/components/pod/files/podArchiveUpload";
+import { PodFrameSheet } from "@app/components/pod/files/PodFrameSheet";
 import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useFolderPathUrlState } from "@app/hooks/useFolderPathUrlState";

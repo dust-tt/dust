@@ -1,11 +1,7 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { BulkSelectionBar } from "@app/components/shared/BulkSelectionBar";
-import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import { AutomationsFilterPanel } from "@app/components/workspace/analytics/automations/AutomationsFilterPanel";
 import { AutomationsFilterSummary } from "@app/components/workspace/analytics/automations/AutomationsFilterSummary";
-import type { TriggerRowData as BaseTriggerRowData } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
-import { AutomationsTriggersRowsTable } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
-import { BulkTriggerPoolModal } from "@app/components/workspace/analytics/automations/BulkTriggerPoolModal";
 import type { PoolRowFields } from "@app/components/workspace/analytics/automations/automationsTriggerColumns";
 import {
   agentColumn,
@@ -15,8 +11,12 @@ import {
   poolColumn,
   typeColumn,
 } from "@app/components/workspace/analytics/automations/automationsTriggerColumns";
+import type { TriggerRowData as BaseTriggerRowData } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
+import { AutomationsTriggersRowsTable } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
+import { BulkTriggerPoolModal } from "@app/components/workspace/analytics/automations/BulkTriggerPoolModal";
 import type { AutomationsFilter } from "@app/components/workspace/analytics/automationsFilter";
 import { toAutomationsTriggersFilter } from "@app/components/workspace/analytics/automationsFilter";
+import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import { useAutomationsTriggers } from "@app/hooks/useAutomationsTriggers";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useDownloadCsv } from "@app/hooks/useDownloadCsv";

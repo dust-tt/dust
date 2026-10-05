@@ -7,8 +7,8 @@ import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contr
 import * as capNotification from "@app/lib/notifications/triggers/programmatic-cap-reached";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import type {
   TriggerExecutionMode,
   TriggerStatus,

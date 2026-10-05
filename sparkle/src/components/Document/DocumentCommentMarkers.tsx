@@ -1,5 +1,3 @@
-import type { DocumentComment } from "./types";
-import type { DocumentCommentsController } from "./useDocumentComments";
 import { Icon } from "@sparkle/components/Icon";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { MessageTextCircle01 } from "@sparkle/icons/v2-stroke";
@@ -7,6 +5,8 @@ import { cn } from "@sparkle/lib/utils";
 import type { Editor } from "@tiptap/core";
 import React, { type RefObject, useLayoutEffect, useState } from "react";
 import { getCommentHighlights } from "./DocumentComments";
+import type { DocumentComment } from "./types";
+import type { DocumentCommentsController } from "./useDocumentComments";
 import { useEditorLayoutVersion } from "./useEditorLayoutVersion";
 
 // Anchors closer than this share one marker.

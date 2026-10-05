@@ -8,8 +8,8 @@ import { Authenticator } from "@app/lib/auth";
 import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
-import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { describe, expect, it } from "vitest";
 
 describe("isExemptFromCreditSpendCheckpoint", () => {

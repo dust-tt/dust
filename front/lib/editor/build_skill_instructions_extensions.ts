@@ -1,12 +1,12 @@
+import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
 import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
-import { LinkExtension } from "@app/components/editor/extensions/LinkExtension";
-import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
-import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { SkillNode } from "@app/components/editor/extensions/input_bar/SkillNode";
 import { BlockIdExtension } from "@app/components/editor/extensions/instructions/BlockIdExtension";
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/instructions/InstructionsDocumentExtension";
 import { InstructionsRootExtension } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
+import { LinkExtension } from "@app/components/editor/extensions/LinkExtension";
+import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { KnowledgeNodeWithView } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeWithView";
 import {
   RawMarkdownBlock,

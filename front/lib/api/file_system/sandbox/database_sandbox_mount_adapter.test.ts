@@ -3,8 +3,8 @@ import { DatabaseSandboxMountAdapter } from "@app/lib/api/file_system/sandbox/da
 import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import type { RootCommand } from "@app/lib/api/sandbox/root_command";
 import { renderRootCommand } from "@app/lib/api/sandbox/root_command";
-import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import { setupPlainConversation } from "@app/tests/utils/conversation_test_factories";
+import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
 import type { FileSystemMount, SandboxOnlyMount } from "@app/types/file_system";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";

@@ -1,9 +1,9 @@
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
-import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import {
   SKILL_BUILDER_AGENT_DESCRIPTION_BLUR_EVENT,
   SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT,
 } from "@app/components/skill_builder/events";
+import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
 import { getSkillDescriptionSuggestion } from "@app/components/skill_builder/utils";
 import { useAutoGenerateOnBlur } from "@app/hooks/useAutoGenerateOnBlur";

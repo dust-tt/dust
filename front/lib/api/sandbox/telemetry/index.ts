@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import config from "@app/lib/api/config";
 import { traceSandboxStartupPhase } from "@app/lib/api/sandbox/instrumentation";
 import type { SandboxRuntimeOwner } from "@app/lib/api/sandbox/owner";
@@ -11,7 +12,6 @@ import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { randomBytes } from "node:crypto";
 
 const FLUENT_BIT_ENV_PATH = "/run/dust/fluent-bit.env";
 const DD_HOST = "http-intake.logs.datadoghq.eu";

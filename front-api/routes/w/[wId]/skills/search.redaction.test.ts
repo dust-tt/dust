@@ -4,11 +4,11 @@ import {
   MAX_SKILL_SEARCH_WINDOW,
 } from "@app/lib/skill_search/query";
 import { toSkillListItem } from "@app/lib/skill_search/serialization";
-import { SkillFactory } from "@app/tests/utils/SkillFactory";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { matchesSkillSearchFilters } from "@app/tests/utils/skill_search";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { SkillListItemSchema } from "@app/types/assistant/skill_configuration";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 import type { estypes } from "@elastic/elasticsearch";

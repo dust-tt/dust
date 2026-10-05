@@ -1,8 +1,8 @@
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
-import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { REDACTED_HEADER_VALUES_ERROR_MESSAGE } from "@app/types/shared/utils/http_headers";
 import { honoApp } from "@front-api/app";

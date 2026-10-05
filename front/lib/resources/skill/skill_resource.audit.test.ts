@@ -1,10 +1,10 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { UpdateSkillParams } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

@@ -1,9 +1,9 @@
-import type { SubscriptionStatus } from "./SubscriptionStatusChip";
 import { Spinner } from "@dust-tt/sparkle";
+import { formatAmount } from "./seatTypeUtils";
 import { SubscriptionActionButtons } from "./SubscriptionActionButtons";
 import { useSubscriptionContext } from "./SubscriptionContext";
+import type { SubscriptionStatus } from "./SubscriptionStatusChip";
 import { SubscriptionStatusChip } from "./SubscriptionStatusChip";
-import { formatAmount } from "./seatTypeUtils";
 
 function formatBillingPeriod(period: string): string {
   return period.charAt(0).toUpperCase() + period.slice(1);

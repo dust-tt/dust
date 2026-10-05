@@ -1,6 +1,6 @@
-import { WelcomeTourGuideProvider } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { AgentLoopStreamProvider } from "@app/components/assistant/conversation/AgentLoopStreamProvider";
 import { InputBarProvider } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { WelcomeTourGuideProvider } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { CommandPaletteProvider } from "@app/components/command_palette/CommandPaletteContext";
 import { DesktopNavigationProvider } from "@app/components/navigation/DesktopNavigationContext";
 import { useAppHeadSetup } from "@app/hooks/useAppHeadSetup";

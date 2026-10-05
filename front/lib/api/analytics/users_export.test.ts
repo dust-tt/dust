@@ -1,9 +1,9 @@
 import { fetchUserExportRows } from "@app/lib/api/analytics/users_export";
 import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

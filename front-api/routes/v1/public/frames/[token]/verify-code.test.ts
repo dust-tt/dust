@@ -7,8 +7,8 @@ import {
 } from "@app/lib/resources/storage/models/files";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
-import { SharingGrantFactory } from "@app/tests/utils/SharingGrantFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SharingGrantFactory } from "@app/tests/utils/SharingGrantFactory";
 import { frameContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";

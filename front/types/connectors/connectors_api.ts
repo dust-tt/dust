@@ -1,16 +1,16 @@
-import type { ContentNodeType } from "../core/content_node";
-import type { ConnectorProvider, DataSourceType } from "../data_source";
-import type { LoggerInterface } from "../shared/logger";
-import type { Result } from "../shared/result";
-import type { AdminCommandType, AdminResponseType } from "./admin/cli";
-import type { ConnectorConfiguration } from "./configuration";
-import type { ContentNodesViewType } from "./content_nodes";
 // oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- existing usage
 import type { ConnectorsAPIError } from "@dust-tt/client";
 // oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- existing usage
 import { isConnectorsAPIError } from "@dust-tt/client";
 import { z } from "zod";
+import type { ContentNodeType } from "../core/content_node";
+import type { ConnectorProvider, DataSourceType } from "../data_source";
+import type { LoggerInterface } from "../shared/logger";
+import type { Result } from "../shared/result";
 import { Err, Ok } from "../shared/result";
+import type { AdminCommandType, AdminResponseType } from "./admin/cli";
+import type { ConnectorConfiguration } from "./configuration";
+import type { ContentNodesViewType } from "./content_nodes";
 import { SlackConfigurationTypeSchema } from "./slack";
 import { WebCrawlerConfigurationTypeSchema } from "./webcrawler";
 

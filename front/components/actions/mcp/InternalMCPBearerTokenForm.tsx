@@ -1,5 +1,5 @@
-import { MCPServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
 import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
+import { MCPServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
 import { getTokenFieldLabel } from "@app/lib/actions/mcp_internal_actions/server_token_labels";
 import {
   Collapsible,

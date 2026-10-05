@@ -1,10 +1,10 @@
 import { useAttachContextSlashMenuItems } from "@app/components/editor/extensions/shared/slash_suggestion/useAttachContextSlashMenuItems";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
-import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import { fetcher, fetcherWithBody } from "@app/lib/swr/fetcher";
+import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import { useUnifiedSearch } from "@app/lib/swr/search";
-import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { makeContentNodeFixture } from "@app/tests/utils/content_node_test_fixtures";
+import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { createElement, StrictMode, useMemo } from "react";

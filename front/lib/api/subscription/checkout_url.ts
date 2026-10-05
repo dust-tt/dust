@@ -1,3 +1,4 @@
+import assert from "node:assert";
 import type {
   CheckoutBillingPeriod,
   CheckoutSeatType,
@@ -30,7 +31,6 @@ import {
 import type { BillingPeriod, CheckoutUrlResult } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import assert from "node:assert";
 import { z } from "zod";
 
 export const PostSubscriptionRequestBody = z.object({

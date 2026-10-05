@@ -1,7 +1,7 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import config from "@app/lib/api/config";
 import type { DataSourceType } from "@app/types/data_source";
 import { assertNever } from "@app/types/shared/utils/assert_never";

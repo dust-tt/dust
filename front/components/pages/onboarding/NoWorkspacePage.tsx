@@ -1,5 +1,5 @@
-import WorkspacePicker from "@app/components/WorkspacePicker";
 import Custom404 from "@app/components/pages/Custom404";
+import WorkspacePicker from "@app/components/WorkspacePicker";
 import config from "@app/lib/api/config";
 import { useSearchParam } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";

@@ -3,9 +3,9 @@ import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_m
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { runSandboxFunctionToolActivity } from "@app/temporal/sandbox_functions/activities/run_sandbox_function_tool";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SandboxFunctionMCPActionFactory } from "@app/tests/utils/SandboxFunctionMCPActionFactory";
 import { createPersistedSandboxFunctionInvocationTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
-import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import type { AgentPauseOutputResourceType } from "@dust-tt/client";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";

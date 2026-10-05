@@ -6,9 +6,9 @@ import { launchIndexAgentSearchWorkflow } from "@app/temporal/es_indexation/clie
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { ModelId } from "@app/types/shared/model_id";
 import { describe, expect, it, vi } from "vitest";
 

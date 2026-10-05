@@ -1,7 +1,7 @@
-import type { DfmDocument, DfmError, DfmMessage } from "@app/lib/markdown/dfm";
-import type { Result } from "@app/types/shared/result";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
+import type { DfmDocument, DfmError, DfmMessage } from "@app/lib/markdown/dfm";
+import type { Result } from "@app/types/shared/result";
 import { expect } from "vitest";
 
 const FIXTURES_DIR = path.join(__dirname, "fixtures");

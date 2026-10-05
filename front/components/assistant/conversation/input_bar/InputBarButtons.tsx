@@ -3,14 +3,14 @@ import {
   CapabilitiesPicker,
   CapabilitySetupDialog,
 } from "@app/components/assistant/CapabilitiesPicker";
-import { InputBarModelPicker } from "@app/components/assistant/conversation/input_bar/InputBarModelPicker";
-import type { InputBarPlusMenuSlashMenu } from "@app/components/assistant/conversation/input_bar/InputBarPlusMenu";
-import { InputBarPlusMenu } from "@app/components/assistant/conversation/input_bar/InputBarPlusMenu";
 import type { InputBarAction } from "@app/components/assistant/conversation/input_bar/inputBarActions";
+import { InputBarModelPicker } from "@app/components/assistant/conversation/input_bar/InputBarModelPicker";
 import {
   INPUT_BAR_PILL_HOVER_CLASSNAME,
   INPUT_BAR_PILL_SURFACE_CLASSNAME,
 } from "@app/components/assistant/conversation/input_bar/inputBarPillStyles";
+import type { InputBarPlusMenuSlashMenu } from "@app/components/assistant/conversation/input_bar/InputBarPlusMenu";
+import { InputBarPlusMenu } from "@app/components/assistant/conversation/input_bar/InputBarPlusMenu";
 import { getInputBarSlashMenuMode } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import type useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   EMAIL_WEBHOOK_RELAY_HEADER,
   EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
@@ -8,7 +9,6 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { honoApp } from "@front-api/app";
-import { randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/cells/config", async (importOriginal) => {
