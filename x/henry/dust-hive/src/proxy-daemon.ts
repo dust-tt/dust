@@ -21,7 +21,8 @@ import type { ServerWebSocket } from "bun";
 
 import { logger } from "./lib/logger";
 
-const PROXY_IDLE_TIMEOUT_SECONDS = 60;
+// Zero disables Bun's idle timeout (10 seconds by default).
+const PROXY_IDLE_TIMEOUT_SECONDS = 0;
 
 type Target = "front-api" | "marketing";
 
@@ -116,8 +117,10 @@ function safeClose(
 }
 
 /**
- * @cc [owner:id13,label:performance] proxy-long-poll-deadline
- * The proxy MUST allow the API's 25-second long polls to finish without an idle timeout.
+ * @cc [owner:id13;PopDaph,label:performance] proxy-long-poll-deadline
+ * The proxy MUST NOT close an idle connection: the API's long polls take up to 25 seconds to
+ * answer, and its server-sent event streams send nothing between events for as long as an
+ * agent runs.
  */
 export function startProxy(listenPort: number, ports: Record<Target, number>) {
   return Bun.serve<WsClientData>({
