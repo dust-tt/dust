@@ -28,6 +28,8 @@ interface CreatePodModalProps {
   onClose: () => void;
   onCreated: (pod: SpaceType) => void;
   owner: LightWorkspaceType;
+  // Members added to the Pod on creation, alongside its creator.
+  initialMemberIds?: string[];
 }
 
 const OPEN_PODS_DISABLED_TOOLTIP =
@@ -38,6 +40,7 @@ export function CreatePodModal({
   onClose,
   onCreated,
   owner,
+  initialMemberIds,
 }: CreatePodModalProps) {
   const areWorkspaceOpenPodsAllowed = areOpenPodsAllowed(owner);
   const [podName, setPodName] = useState<string>("");
@@ -95,7 +98,7 @@ export function CreatePodModal({
       {
         name: trimmedName,
         isRestricted: !isPodOpen,
-        memberIds: [],
+        memberIds: initialMemberIds ?? [],
         spaceKind: "project",
       },
       {
@@ -115,6 +118,7 @@ export function CreatePodModal({
     podName,
     isNameAvailable,
     isPodOpen,
+    initialMemberIds,
     doCreate,
     onCreated,
     handleClose,

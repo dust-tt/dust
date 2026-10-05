@@ -1,6 +1,7 @@
 import { EditableTaskItem } from "@app/components/pod/tasks/EditableTaskItem";
 import { usePodTasksPanel } from "@app/components/pod/tasks/PodTasksPanelContext";
 import { SuggestedTaskItem } from "@app/components/pod/tasks/SuggestedTaskItem";
+import { useOpenUserProfile } from "@app/hooks/useOpenUserProfile";
 import type { PodTaskAssigneeType, PodTaskType } from "@app/types/project_task";
 import { POD_TASK_NO_ASSIGNEE_LABEL } from "@app/types/project_task";
 import { Avatar, Button, Card, Icon, Stars02 } from "@dust-tt/sparkle";
@@ -29,6 +30,10 @@ export function PodTaskUserSection({
     onApproveAllSuggestedForAssignee,
     onRejectAllSuggestedForAssignee,
   } = usePodTasksPanel();
+
+  const openUserProfile = useOpenUserProfile("pod_tasks");
+  const onUserClick =
+    user && openUserProfile ? () => openUserProfile(user.sId) : undefined;
 
   const [bulkAction, setBulkAction] = useState<"approve" | "reject" | null>(
     null
@@ -64,13 +69,24 @@ export function PodTaskUserSection({
               visual={user.image}
               size="xs"
               isRounded
+              onClick={onUserClick}
             />
           ) : (
             <Avatar size="xs" isRounded />
           )}
           <div className="flex flex-1 flex-col">
             <h4 className="heading-base text-muted-foreground">
-              {displayName}
+              {onUserClick ? (
+                <button
+                  type="button"
+                  className="cursor-pointer hover:text-foreground"
+                  onClick={onUserClick}
+                >
+                  {displayName}
+                </button>
+              ) : (
+                displayName
+              )}
               {user !== null && isYou ? " (you)" : ""}
             </h4>
           </div>

@@ -2,8 +2,10 @@ import { AgentSidebarMenu } from "@app/components/assistant/conversation/Sidebar
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { MemberDetails } from "@app/components/assistant/details/MemberDetails";
 import { useSetNavChildren } from "@app/components/sparkle/AppLayoutContext";
+import { UserProfileSheet } from "@app/components/user_profile/UserProfileSheet";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -43,6 +45,7 @@ export function AssistantLayout({
   user,
 }: AssistantLayoutProps) {
   const router = useAppRouter();
+  const { hasFeature } = useFeatureFlags();
   const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
   const { onOpenChange: onOpenChangeUserModal } = useURLSheet("userDetails");
 
@@ -70,11 +73,20 @@ export function AssistantLayout({
         agentId={agentId}
         onClose={() => onOpenChangeAgentModal(false)}
       />
-      <MemberDetails
-        owner={owner}
-        userId={userId}
-        onClose={() => onOpenChangeUserModal(false)}
-      />
+      {hasFeature("user_profile") ? (
+        <UserProfileSheet
+          owner={owner}
+          currentUserId={user.sId}
+          userId={userId}
+          onClose={() => onOpenChangeUserModal(false)}
+        />
+      ) : (
+        <MemberDetails
+          owner={owner}
+          userId={userId}
+          onClose={() => onOpenChangeUserModal(false)}
+        />
+      )}
       {children}
     </>
   );

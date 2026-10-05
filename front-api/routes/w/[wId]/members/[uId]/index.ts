@@ -24,6 +24,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import groups from "./groups";
+import profile from "./profile";
 import seatType from "./seat-type";
 import spendLimit from "./spend_limit";
 
@@ -40,6 +41,7 @@ const ParamsSchema = z.object({
 const app = workspaceApp();
 
 app.route("/groups", groups);
+app.route("/profile", profile);
 app.route("/seat-type", seatType);
 app.route("/spend_limit", spendLimit);
 

@@ -937,6 +937,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "workspace_default_agent"
   | "whitelabel_frames"
   | "user_memory"
+  | "user_profile"
   | "similar_agents_check"
   | "enforce_premium_model_message_limit"
   | "editable_tool_inputs"
