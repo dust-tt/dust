@@ -2,10 +2,11 @@
 //! whose entries expire `budget.ttl` after their request was sent, overlaid with its own
 //! acknowledged mutations, which the committer (`commit.rs`) applies within `budget.window`.
 
+use std::cell::Cell;
 use std::collections::HashMap;
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::ops::Bound;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -35,6 +36,40 @@ const LIST_ON_MISS: usize = 4096;
 /// Fetches a reply rejected by `own-commit-floor` is retried before it is served uncached.
 const TRIES: usize = 3;
 const NO_TTL: Duration = Duration::ZERO;
+
+thread_local! {
+    /// Set while a request runs on the FUSE thread and may still be deferred (`Mount::serve`).
+    static INLINE: Cell<bool> = const { Cell::new(false) };
+}
+
+/// The error a blocking point returns on the FUSE thread before any side effect; `Mount::serve`
+/// then reruns the request on the worker pool. Never sent to the kernel.
+fn deferred() -> Errno {
+    Errno::from_i32(libc::ERESTART)
+}
+
+/// Fails with `deferred()` when the request runs inline and may still be deferred.
+fn may_block() -> Result<(), Errno> {
+    if INLINE.get() { Err(deferred()) } else { Ok(()) }
+}
+
+/// The current request has taken effect: its later blocking points wait in place.
+fn effective() {
+    INLINE.set(false);
+}
+
+/// The identity a request runs as.
+#[derive(Clone, Copy)]
+struct Caller {
+    uid: u32,
+    gid: u32,
+}
+
+impl Caller {
+    fn of(req: &FuseRequest) -> Self {
+        Self { uid: req.uid(), gid: req.gid() }
+    }
+}
 
 /// A file's id, content revision, and whole content.
 type Fetched = (Id, u64, Arc<[u8]>);
@@ -169,11 +204,12 @@ impl Fs {
         if ino.0 == 1 { self.root } else if ino.0 == self.root { 1 } else { ino.0 }
     }
 
-    fn call(&self, kind: &'static str, request: Request) -> (Reply, Instant) {
+    fn call(&self, kind: &'static str, request: Request) -> Result<(Reply, Instant), Errno> {
+        may_block()?;
         let sent = Instant::now();
         let reply = self.rt.block_on(self.client.call(request));
         self.stats.rpc(kind, sent.elapsed());
-        (reply, sent)
+        Ok((reply, sent))
     }
 
     fn file_attr(&self, attr: &Attr) -> FileAttr {
@@ -205,17 +241,17 @@ impl Fs {
     /// writing and every namespace mutation MUST be refused here (EACCES) unless the object is
     /// `writable` for the session principal, and mode bits are honoured for non-root callers. The
     /// server re-checks grants at commit.
-    fn allowed(&self, req: &FuseRequest, attr: &Attr, want: i32) -> bool {
+    fn allowed(&self, caller: Caller, attr: &Attr, want: i32) -> bool {
         if want & libc::W_OK != 0 && !attr.writable {
             return false;
         }
         let mode = attr.mode as i32;
-        if req.uid() == 0 {
+        if caller.uid == 0 {
             return want & libc::X_OK == 0 || attr.kind == Kind::Dir || mode & 0o111 != 0;
         }
-        let bits = if req.uid() == self.uid {
+        let bits = if caller.uid == self.uid {
             mode >> 6
-        } else if req.gid() == self.gid {
+        } else if caller.gid == self.gid {
             mode >> 3
         } else {
             mode
@@ -242,7 +278,7 @@ impl Fs {
         self.resolve(
             |state| state.attr(id),
             || {
-                let (reply, sent) = self.call("getattr", Request::GetAttr { id });
+                let (reply, sent) = self.call("getattr", Request::GetAttr { id })?;
                 let Response::Attr(attr) = reply.result.map_err(errno)? else { return Err(Errno::EIO) };
                 let installed = self.state.lock().install_attr(attr.clone(), sent, reply.version);
                 Ok((attr, installed))
@@ -261,7 +297,7 @@ impl Fs {
                 {
                     return Ok((listing.get(name).copied(), installed));
                 }
-                let (reply, sent) = self.call("lookup", Request::Lookup { parent, name: name.to_string() });
+                let (reply, sent) = self.call("lookup", Request::Lookup { parent, name: name.to_string() })?;
                 let Response::Entry(attr) = reply.result.map_err(errno)? else { return Err(Errno::EIO) };
                 let value = attr.as_ref().map(|a| (a.id, a.kind));
                 let mut state = self.state.lock();
@@ -303,7 +339,6 @@ impl Fs {
         Ok(Some(((listing, sent), installed)))
     }
 
-    /// Every page of `dir` at the version of its first page.
     /// `dir`'s entries at one version; `None` when there are more than `cap`.
     fn fetch_listing(&self, dir: Id, cap: Option<usize>) -> Result<Option<FetchedListing>, Errno> {
         'restart: for _ in 0..TRIES {
@@ -313,7 +348,7 @@ impl Fs {
                 let after = entries.last().map(|e| e.name.clone());
                 let at = first.map(|(_, version)| version);
                 let limit = cap.map_or(PAGE, |cap| u32::try_from(cap).unwrap_or(PAGE).min(PAGE));
-                let (reply, sent) = self.call("readdir", Request::ReadDir { dir, after, limit, at });
+                let (reply, sent) = self.call("readdir", Request::ReadDir { dir, after, limit, at })?;
                 let (dir_attr, page, more) = match reply.result {
                     Ok(Response::Listing { dir, entries, more }) => (dir, entries, more),
                     Ok(_) => return Err(Errno::EIO),
@@ -337,7 +372,7 @@ impl Fs {
         self.resolve(
             |state| state.link(id),
             || {
-                let (reply, sent) = self.call("readlink", Request::ReadLink { id });
+                let (reply, sent) = self.call("readlink", Request::ReadLink { id })?;
                 let Response::Link(target) = reply.result.map_err(errno)? else { return Err(Errno::EIO) };
                 self.state.lock().install_link(id, target.clone(), sent, reply.version);
                 Ok((target, true))
@@ -360,12 +395,15 @@ impl Fs {
             if !state.content.fetching.contains(&id) {
                 break attr.size;
             }
+            may_block()?;
             self.fetched.wait(&mut state);
         };
+        // Before `fetching` is marked: a deferral after it would leave the mark for good.
+        may_block()?;
         let ids = if offset == 0 { prefetch(&mut state, id, size) } else { vec![id] };
         state.content.fetching.extend(ids.iter().copied());
         drop(state);
-        let (reply, _) = self.call("read_files", Request::ReadFiles { ids: ids.clone(), budget: MAX_IO_BYTES });
+        let (reply, _) = self.call("read_files", Request::ReadFiles { ids: ids.clone(), budget: MAX_IO_BYTES })?;
         let files: Result<Vec<Fetched>, Errno> = match reply.result {
             Ok(Response::Files(files)) => Ok(files.into_iter().map(|f| (f.id, f.rev, f.bytes.into())).collect()),
             Ok(_) => Err(Errno::EIO),
@@ -398,7 +436,7 @@ impl Fs {
             let mut bytes = Vec::new();
             let mut rev = None;
             loop {
-                let (reply, _) = self.call("read", Request::Read { id, offset: bytes.len() as u64, len: MAX_IO_BYTES });
+                let (reply, _) = self.call("read", Request::Read { id, offset: bytes.len() as u64, len: MAX_IO_BYTES })?;
                 let Response::Data { rev: at, size, bytes: chunk } = reply.result.map_err(errno)? else { return Err(Errno::EIO) };
                 if *rev.get_or_insert(at) != at {
                     continue 'restart;
@@ -416,13 +454,15 @@ impl Fs {
         Err(Errno::EAGAIN)
     }
 
-    /// Waits until a new mutation may be acknowledged (`State::backlogged`).
+    /// Waits until a new mutation may be acknowledged (`State::backlogged`); the request then
+    /// counts as having taken effect.
     fn admit(&self, state: &mut MutexGuard<'_, State>) -> Result<(), Errno> {
         let mut waited = false;
         while state.backlogged() {
             if !self.client.is_connected() {
                 return Err(Errno::EIO);
             }
+            may_block()?;
             waited = true;
             self.wake.notify_one();
             self.progress.wait_for(state, Duration::from_millis(5));
@@ -430,6 +470,8 @@ impl Fs {
         if waited {
             self.stats.local("admission_waits");
         }
+        // Every mutation is admitted before it changes anything; from here it must not be rerun.
+        effective();
         Ok(())
     }
 
@@ -437,7 +479,7 @@ impl Fs {
         if let Some(id) = self.state.lock().take_id() {
             return Ok(id);
         }
-        let (reply, _) = self.call("alloc_ids", Request::AllocIds);
+        let (reply, _) = self.call("alloc_ids", Request::AllocIds)?;
         let Response::Ids { first, count } = reply.result.map_err(errno)? else { return Err(Errno::EIO) };
         let mut state = self.state.lock();
         state.ids = (first, first + Id::from(count));
@@ -515,6 +557,9 @@ impl Fs {
             state.seal(id);
         }
         let target = state.log.next;
+        if state.log.done < target {
+            may_block()?;
+        }
         while state.log.done < target {
             if !self.client.is_connected() && !state.log.in_flight {
                 return Err(Errno::EIO);
@@ -526,12 +571,12 @@ impl Fs {
     }
 
     /// The directory `parent`, checked writable and searchable by `req`.
-    fn writable_dir(&self, req: &FuseRequest, parent: Id) -> Result<Attr, Errno> {
+    fn writable_dir(&self, caller: Caller, parent: Id) -> Result<Attr, Errno> {
         let attr = self.attr(parent)?;
         if attr.kind != Kind::Dir {
             return Err(Errno::ENOTDIR);
         }
-        if !self.allowed(req, &attr, mask(false, true, true)) {
+        if !self.allowed(caller, &attr, mask(false, true, true)) {
             return Err(Errno::EACCES);
         }
         Ok(attr)
@@ -539,8 +584,8 @@ impl Fs {
 
     /// Binds the free `name` in `parent` to a new object, acknowledged before its commit.
     #[allow(clippy::too_many_arguments)]
-    fn make(&self, req: &FuseRequest, parent: Id, name: &str, kind: Kind, mode: u32, target: Option<String>, writers: u32) -> Result<Attr, Errno> {
-        self.writable_dir(req, parent)?;
+    fn make(&self, caller: Caller, parent: Id, name: &str, kind: Kind, mode: u32, target: Option<String>, writers: u32) -> Result<Attr, Errno> {
+        self.writable_dir(caller, parent)?;
         if self.name(parent, name)?.is_some() {
             return Err(Errno::EEXIST);
         }
@@ -568,8 +613,8 @@ impl Fs {
         Ok(attr)
     }
 
-    fn remove(&self, req: &FuseRequest, parent: Id, name: &str, dir: bool) -> Result<(), Errno> {
-        self.writable_dir(req, parent)?;
+    fn remove(&self, caller: Caller, parent: Id, name: &str, dir: bool) -> Result<(), Errno> {
+        self.writable_dir(caller, parent)?;
         let (id, found) = self.name(parent, name)?.ok_or(Errno::ENOENT)?;
         match (dir, found) {
             (true, Kind::Dir) => {
@@ -592,9 +637,9 @@ impl Fs {
         Ok(())
     }
 
-    fn rename(&self, req: &FuseRequest, parent: Id, name: &str, new_parent: Id, new_name: &str, no_replace: bool) -> Result<(), Errno> {
-        self.writable_dir(req, parent)?;
-        self.writable_dir(req, new_parent)?;
+    fn rename(&self, caller: Caller, parent: Id, name: &str, new_parent: Id, new_name: &str, no_replace: bool) -> Result<(), Errno> {
+        self.writable_dir(caller, parent)?;
+        self.writable_dir(caller, new_parent)?;
         let (id, moved) = self.name(parent, name)?.ok_or(Errno::ENOENT)?;
         if let Some((replaced, kind)) = self.name(new_parent, new_name)? {
             if replaced == id {
@@ -718,7 +763,63 @@ fn prefetch(state: &mut State, id: Id, size: u64) -> Vec<Id> {
     ids
 }
 
+/// A FUSE reply that can carry an error.
+trait Fail {
+    fn fail(self, e: Errno);
+}
+
+macro_rules! fail {
+    ($($reply:ty),*) => {$(
+        impl Fail for $reply {
+            fn fail(self, e: Errno) {
+                debug_assert!(e != deferred(), "a deferral reached the kernel");
+                self.error(if e == deferred() { Errno::EIO } else { e });
+            }
+        }
+    )*};
+}
+
+fail!(ReplyAttr, ReplyCreate, ReplyData, ReplyDirectory, ReplyEmpty, ReplyEntry, ReplyOpen, ReplyWrite);
+
+/// Sends `result` through `reply`, or hands `reply` back when the request was deferred.
+fn answer<R: Fail, T>(reply: R, result: Result<T, Errno>, ok: impl FnOnce(R, T)) -> Option<R> {
+    match result {
+        Err(e) if e == deferred() => Some(reply),
+        Err(e) => {
+            reply.fail(e);
+            None
+        }
+        Ok(value) => {
+            ok(reply, value);
+            None
+        }
+    }
+}
+
 pub struct Mount(pub Arc<Fs>);
+
+impl Mount {
+    /// @cc [owner:fontanierh,label:performance;concurrency] serve-inline-or-defer
+    /// `op` first runs on the FUSE thread; if it reaches a blocking point (an RPC, an admission
+    /// or fetch wait, a drain) before taking effect, it returns its reply and is rerun on the
+    /// worker pool, so one slow request never stalls the others. `op` MUST NOT change anything
+    /// before its first blocking point other than idempotent cache installs, and a mutation
+    /// MUST pass `Fs::admit` (after which blocking points wait in place) before its first change.
+    /// Requests the kernel does not wait for in order (`flush`, `fsync`, `release`,
+    /// `releasedir`) MUST NOT go through `serve`: they never block and run in kernel order.
+    fn serve<R: Send + 'static>(&self, reply: R, op: impl Fn(&Fs, R) -> Option<R> + Send + 'static) {
+        INLINE.set(true);
+        let deferred = op(&self.0, reply);
+        INLINE.set(false);
+        if let Some(reply) = deferred {
+            self.0.stats.local("deferred");
+            let fs = self.0.clone();
+            self.0.rt.spawn_blocking(move || {
+                let _ = op(&fs, reply);
+            });
+        }
+    }
+}
 
 impl Filesystem for Mount {
     fn init(&mut self, _req: &FuseRequest, config: &mut KernelConfig) -> std::io::Result<()> {
@@ -734,34 +835,32 @@ impl Filesystem for Mount {
 
     fn lookup(&self, _req: &FuseRequest, parent: INodeNo, name: &OsStr, reply: ReplyEntry) {
         self.0.stats.local("op.lookup");
-        let fs = &self.0;
-        let parent = fs.id(parent);
-        let result = name_of(name).and_then(|name| {
-            let (id, _) = fs.name(parent, name)?.ok_or(Errno::ENOENT)?;
-            let attr = fs.attr(id)?;
-            let mut state = fs.state.lock();
-            if state.places.get(&id).is_none_or(|(p, n)| *p != parent || n != name) {
-                state.places.insert(id, (parent, name.to_string()));
-            }
-            Ok(attr)
+        let name = name.to_owned();
+        self.serve(reply, move |fs, reply| {
+            let parent = fs.id(parent);
+            let result = name_of(&name).and_then(|name| {
+                let (id, _) = fs.name(parent, name)?.ok_or(Errno::ENOENT)?;
+                let attr = fs.attr(id)?;
+                let mut state = fs.state.lock();
+                if state.places.get(&id).is_none_or(|(p, n)| *p != parent || n != name) {
+                    state.places.insert(id, (parent, name.to_string()));
+                }
+                Ok(attr)
+            });
+            answer(reply, result, |reply, attr| reply.entry(&NO_TTL, &fs.file_attr(&attr), Generation(0)))
         });
-        match result {
-            Ok(attr) => reply.entry(&NO_TTL, &fs.file_attr(&attr), Generation(0)),
-            Err(e) => reply.error(e),
-        }
     }
 
     fn getattr(&self, _req: &FuseRequest, ino: INodeNo, _fh: Option<FileHandle>, reply: ReplyAttr) {
         self.0.stats.local("op.getattr");
-        match self.0.attr(self.0.id(ino)) {
-            Ok(attr) => reply.attr(&NO_TTL, &self.0.file_attr(&attr)),
-            Err(e) => reply.error(e),
-        }
+        self.serve(reply, move |fs, reply| {
+            answer(reply, fs.attr(fs.id(ino)), |reply, attr| reply.attr(&NO_TTL, &fs.file_attr(&attr)))
+        });
     }
 
     fn setattr(
         &self,
-        req: &FuseRequest,
+        _req: &FuseRequest,
         ino: INodeNo,
         mode: Option<u32>,
         _uid: Option<u32>,
@@ -778,39 +877,34 @@ impl Filesystem for Mount {
         reply: ReplyAttr,
     ) {
         self.0.stats.local("op.setattr");
-        let fs = &self.0;
-        let id = fs.id(ino);
-        let result = (|| {
-            let attr = fs.attr(id)?;
-            if (mode.is_some() || size.is_some() || mtime.is_some()) && !attr.writable {
-                return Err(Errno::EACCES);
-            }
-            if let Some(size) = size {
-                if attr.kind == Kind::Dir {
-                    return Err(Errno::EISDIR);
+        let mtime = mtime.map(ns);
+        self.serve(reply, move |fs, reply| {
+            let id = fs.id(ino);
+            let result = (|| {
+                let attr = fs.attr(id)?;
+                if (mode.is_some() || size.is_some() || mtime.is_some()) && !attr.writable {
+                    return Err(Errno::EACCES);
                 }
-                if size > dfs_proto::MAX_FILE_BYTES {
-                    return Err(Errno::EFBIG);
+                if let Some(size) = size {
+                    if attr.kind == Kind::Dir {
+                        return Err(Errno::EISDIR);
+                    }
+                    if size > dfs_proto::MAX_FILE_BYTES {
+                        return Err(Errno::EFBIG);
+                    }
+                    fs.with_image(id, size == 0, |local, now, now_ns| local.truncate(size, now, now_ns))?;
                 }
-                fs.with_image(id, size == 0, |local, now, now_ns| local.truncate(size, now, now_ns))?;
-            }
-            if mode.is_some() || mtime.is_some() {
-                fs.set_attr(id, mode.map(|m| m & 0o7777), mtime.map(ns))?;
-            }
-            fs.attr(id)
-        })();
-        let _ = req;
-        match result {
-            Ok(attr) => reply.attr(&NO_TTL, &fs.file_attr(&attr)),
-            Err(e) => reply.error(e),
-        }
+                if mode.is_some() || mtime.is_some() {
+                    fs.set_attr(id, mode.map(|m| m & 0o7777), mtime)?;
+                }
+                fs.attr(id)
+            })();
+            answer(reply, result, |reply, attr| reply.attr(&NO_TTL, &fs.file_attr(&attr)))
+        });
     }
 
     fn readlink(&self, _req: &FuseRequest, ino: INodeNo, reply: ReplyData) {
-        match self.0.link(self.0.id(ino)) {
-            Ok(target) => reply.data(target.as_bytes()),
-            Err(e) => reply.error(e),
-        }
+        self.serve(reply, move |fs, reply| answer(reply, fs.link(fs.id(ino)), |reply, target| reply.data(target.as_bytes())));
     }
 
     fn mknod(&self, req: &FuseRequest, parent: INodeNo, name: &OsStr, mode: u32, _umask: u32, _rdev: u32, reply: ReplyEntry) {
@@ -818,51 +912,50 @@ impl Filesystem for Mount {
             reply.error(Errno::from_i32(libc::EOPNOTSUPP));
             return;
         }
-        let fs = &self.0;
-        match name_of(name).and_then(|name| fs.make(req, fs.id(parent), name, Kind::File, mode, None, 0)) {
-            Ok(attr) => reply.entry(&NO_TTL, &fs.file_attr(&attr), Generation(0)),
-            Err(e) => reply.error(e),
-        }
+        let (caller, name) = (Caller::of(req), name.to_owned());
+        self.serve(reply, move |fs, reply| {
+            let result = name_of(&name).and_then(|name| fs.make(caller, fs.id(parent), name, Kind::File, mode, None, 0));
+            answer(reply, result, |reply, attr| reply.entry(&NO_TTL, &fs.file_attr(&attr), Generation(0)))
+        });
     }
 
     fn mkdir(&self, req: &FuseRequest, parent: INodeNo, name: &OsStr, mode: u32, _umask: u32, reply: ReplyEntry) {
         self.0.stats.local("op.mkdir");
-        let fs = &self.0;
-        match name_of(name).and_then(|name| fs.make(req, fs.id(parent), name, Kind::Dir, mode, None, 0)) {
-            Ok(attr) => reply.entry(&NO_TTL, &fs.file_attr(&attr), Generation(0)),
-            Err(e) => reply.error(e),
-        }
+        let (caller, name) = (Caller::of(req), name.to_owned());
+        self.serve(reply, move |fs, reply| {
+            let result = name_of(&name).and_then(|name| fs.make(caller, fs.id(parent), name, Kind::Dir, mode, None, 0));
+            answer(reply, result, |reply, attr| reply.entry(&NO_TTL, &fs.file_attr(&attr), Generation(0)))
+        });
     }
 
     fn unlink(&self, req: &FuseRequest, parent: INodeNo, name: &OsStr, reply: ReplyEmpty) {
         self.0.stats.local("op.unlink");
-        let fs = &self.0;
-        match name_of(name).and_then(|name| fs.remove(req, fs.id(parent), name, false)) {
-            Ok(()) => reply.ok(),
-            Err(e) => reply.error(e),
-        }
+        let (caller, name) = (Caller::of(req), name.to_owned());
+        self.serve(reply, move |fs, reply| {
+            let result = name_of(&name).and_then(|name| fs.remove(caller, fs.id(parent), name, false));
+            answer(reply, result, |reply, ()| reply.ok())
+        });
     }
 
     fn rmdir(&self, req: &FuseRequest, parent: INodeNo, name: &OsStr, reply: ReplyEmpty) {
         self.0.stats.local("op.rmdir");
-        let fs = &self.0;
-        match name_of(name).and_then(|name| fs.remove(req, fs.id(parent), name, true)) {
-            Ok(()) => reply.ok(),
-            Err(e) => reply.error(e),
-        }
+        let (caller, name) = (Caller::of(req), name.to_owned());
+        self.serve(reply, move |fs, reply| {
+            let result = name_of(&name).and_then(|name| fs.remove(caller, fs.id(parent), name, true));
+            answer(reply, result, |reply, ()| reply.ok())
+        });
     }
 
     fn symlink(&self, req: &FuseRequest, parent: INodeNo, link_name: &OsStr, target: &Path, reply: ReplyEntry) {
-        let fs = &self.0;
-        let result = match (name_of(link_name), target.to_str()) {
-            (Ok(name), Some(target)) => fs.make(req, fs.id(parent), name, Kind::Symlink, 0o777, Some(target.to_string()), 0),
-            (Err(e), _) => Err(e),
-            _ => Err(Errno::EINVAL),
-        };
-        match result {
-            Ok(attr) => reply.entry(&NO_TTL, &fs.file_attr(&attr), Generation(0)),
-            Err(e) => reply.error(e),
-        }
+        let (caller, link_name, target): (Caller, OsString, PathBuf) = (Caller::of(req), link_name.to_owned(), target.to_owned());
+        self.serve(reply, move |fs, reply| {
+            let result = match (name_of(&link_name), target.to_str()) {
+                (Ok(name), Some(target)) => fs.make(caller, fs.id(parent), name, Kind::Symlink, 0o777, Some(target.to_string()), 0),
+                (Err(e), _) => Err(e),
+                _ => Err(Errno::EINVAL),
+            };
+            answer(reply, result, |reply, attr| reply.entry(&NO_TTL, &fs.file_attr(&attr), Generation(0)))
+        });
     }
 
     fn rename(
@@ -876,47 +969,46 @@ impl Filesystem for Mount {
         reply: ReplyEmpty,
     ) {
         self.0.stats.local("op.rename");
-        let fs = &self.0;
         if flags.intersects(RenameFlags::RENAME_EXCHANGE | RenameFlags::RENAME_WHITEOUT) {
             reply.error(Errno::EINVAL);
             return;
         }
-        let result = name_of(name).and_then(|name| {
-            let newname = name_of(newname)?;
-            fs.rename(req, fs.id(parent), name, fs.id(newparent), newname, flags.contains(RenameFlags::RENAME_NOREPLACE))
+        let (caller, name, newname) = (Caller::of(req), name.to_owned(), newname.to_owned());
+        let no_replace = flags.contains(RenameFlags::RENAME_NOREPLACE);
+        self.serve(reply, move |fs, reply| {
+            let result = name_of(&name).and_then(|name| {
+                let newname = name_of(&newname)?;
+                fs.rename(caller, fs.id(parent), name, fs.id(newparent), newname, no_replace)
+            });
+            answer(reply, result, |reply, ()| reply.ok())
         });
-        match result {
-            Ok(()) => reply.ok(),
-            Err(e) => reply.error(e),
-        }
     }
 
     fn open(&self, req: &FuseRequest, ino: INodeNo, flags: OpenFlags, reply: ReplyOpen) {
         self.0.stats.local("op.open");
-        let fs = &self.0;
-        let id = fs.id(ino);
+        let caller = Caller::of(req);
         let accmode = flags.0 & libc::O_ACCMODE;
         let write = accmode != libc::O_RDONLY;
-        let result = (|| {
-            let attr = fs.attr(id)?;
-            if !fs.allowed(req, &attr, mask(accmode != libc::O_WRONLY, write, false)) {
-                return Err(Errno::EACCES);
-            }
-            if write {
-                fs.open_writer(id, flags.0 & libc::O_TRUNC != 0)?;
-            }
-            Ok(())
-        })();
-        match result {
-            Ok(()) => {
+        self.serve(reply, move |fs, reply| {
+            let id = fs.id(ino);
+            let result = (|| {
+                let attr = fs.attr(id)?;
+                if !fs.allowed(caller, &attr, mask(accmode != libc::O_WRONLY, write, false)) {
+                    return Err(Errno::EACCES);
+                }
+                if write {
+                    fs.open_writer(id, flags.0 & libc::O_TRUNC != 0)?;
+                }
+                Ok(())
+            })();
+            answer(reply, result, |reply, ()| {
                 let mut open = FopenFlags::FOPEN_DIRECT_IO;
                 if !write {
                     open |= FopenFlags::FOPEN_NOFLUSH;
                 }
                 reply.opened(FileHandle(0), open);
-            }
-            Err(e) => reply.error(e),
-        }
+            })
+        });
     }
 
     fn read(
@@ -931,34 +1023,28 @@ impl Filesystem for Mount {
         reply: ReplyData,
     ) {
         self.0.stats.local("op.read");
-        let fs = &self.0;
-        let id = fs.id(ino);
-        let slice = |bytes: &[u8]| {
-            let start = (offset as usize).min(bytes.len());
-            bytes[start..start.saturating_add(size as usize).min(bytes.len())].to_vec()
-        };
-        let local = fs.state.lock().visible(id).and_then(|l| l.image.as_deref().map(slice));
-        if let Some(bytes) = local {
-            reply.data(&bytes);
-            return;
-        }
-        match fs.read_whole(id, offset) {
-            Ok(Some(bytes)) => {
-                reply.data(&slice(&bytes));
-                return;
-            }
-            Ok(None) => {}
-            Err(e) => {
-                reply.error(e);
-                return;
-            }
-        }
-        let (result, _) = fs.call("read", Request::Read { id, offset, len: size.min(MAX_IO_BYTES) });
-        match result.result {
-            Ok(Response::Data { bytes, .. }) => reply.data(&bytes),
-            Ok(_) => reply.error(Errno::EIO),
-            Err(e) => reply.error(errno(e)),
-        }
+        self.serve(reply, move |fs, reply| {
+            let id = fs.id(ino);
+            let slice = |bytes: &[u8]| {
+                let start = (offset as usize).min(bytes.len());
+                bytes[start..start.saturating_add(size as usize).min(bytes.len())].to_vec()
+            };
+            let result = (|| {
+                if let Some(bytes) = fs.state.lock().visible(id).and_then(|l| l.image.as_deref().map(slice)) {
+                    return Ok(bytes);
+                }
+                if let Some(bytes) = fs.read_whole(id, offset)? {
+                    return Ok(slice(&bytes));
+                }
+                let (reply, _) = fs.call("read", Request::Read { id, offset, len: size.min(MAX_IO_BYTES) })?;
+                match reply.result {
+                    Ok(Response::Data { bytes, .. }) => Ok(bytes),
+                    Ok(_) => Err(Errno::EIO),
+                    Err(e) => Err(errno(e)),
+                }
+            })();
+            answer(reply, result, |reply, bytes| reply.data(&bytes))
+        });
     }
 
     fn write(
@@ -974,15 +1060,15 @@ impl Filesystem for Mount {
         reply: ReplyWrite,
     ) {
         self.0.stats.local("op.write");
-        let fs = &self.0;
         if offset.saturating_add(data.len() as u64) > dfs_proto::MAX_FILE_BYTES {
             reply.error(Errno::EFBIG);
             return;
         }
-        match fs.with_image(fs.id(ino), false, |local, now, now_ns| local.write(offset, data, now, now_ns)) {
-            Ok(()) => reply.written(data.len() as u32),
-            Err(e) => reply.error(e),
-        }
+        let data = data.to_vec();
+        self.serve(reply, move |fs, reply| {
+            let result = fs.with_image(fs.id(ino), false, |local, now, now_ns| local.write(offset, &data, now, now_ns));
+            answer(reply, result, |reply, ()| reply.written(data.len() as u32))
+        });
     }
 
     fn flush(&self, _req: &FuseRequest, ino: INodeNo, _fh: FileHandle, _lock_owner: LockOwner, reply: ReplyEmpty) {
@@ -1017,80 +1103,77 @@ impl Filesystem for Mount {
 
     fn opendir(&self, req: &FuseRequest, ino: INodeNo, _flags: OpenFlags, reply: ReplyOpen) {
         self.0.stats.local("op.opendir");
-        let fs = &self.0;
-        let dir = fs.id(ino);
-        let result = (|| {
-            let attr = fs.attr(dir)?;
-            if attr.kind != Kind::Dir {
-                return Err(Errno::ENOTDIR);
-            }
-            if !fs.allowed(req, &attr, libc::R_OK) {
-                return Err(Errno::EACCES);
-            }
-            let (listing, stamp) = fs.listing(dir)?;
-            let entries = listing.into_iter().map(|(name, (id, kind))| (name, id, kind)).collect();
-            Ok(DirHandle { entries, base: 2, stamp })
-        })();
-        match result {
-            Ok(handle) => {
+        let caller = Caller::of(req);
+        self.serve(reply, move |fs, reply| {
+            let dir = fs.id(ino);
+            let result = (|| {
+                let attr = fs.attr(dir)?;
+                if attr.kind != Kind::Dir {
+                    return Err(Errno::ENOTDIR);
+                }
+                if !fs.allowed(caller, &attr, libc::R_OK) {
+                    return Err(Errno::EACCES);
+                }
+                let (listing, stamp) = fs.listing(dir)?;
+                let entries = listing.into_iter().map(|(name, (id, kind))| (name, id, kind)).collect();
+                Ok(DirHandle { entries, base: 2, stamp })
+            })();
+            answer(reply, result, |reply, handle| {
                 let fh = fs.next_fh.fetch_add(1, Ordering::Relaxed);
                 fs.dirs.lock().insert(fh, handle);
                 reply.opened(FileHandle(fh), FopenFlags::empty());
-            }
-            Err(e) => reply.error(e),
-        }
+            })
+        });
     }
 
-    fn readdir(&self, _req: &FuseRequest, ino: INodeNo, fh: FileHandle, offset: u64, mut reply: ReplyDirectory) {
+    fn readdir(&self, _req: &FuseRequest, ino: INodeNo, fh: FileHandle, offset: u64, reply: ReplyDirectory) {
         self.0.stats.local("op.readdir");
-        let fs = &self.0;
-        let dir = fs.id(ino);
-        let ttl = fs.state.lock().budget.ttl;
-        // A handle whose listing outlived the TTL is rebuilt, resuming after the last name listed.
-        let stale = fs.dirs.lock().get(&fh.0).map(|h| {
-            let resume = offset.checked_sub(h.base + 1).and_then(|i| h.entries.get(i as usize)).map(|e| e.0.clone());
-            (h.stamp.elapsed() >= ttl && offset >= h.base, resume)
+        self.serve(reply, move |fs, mut reply| {
+            let dir = fs.id(ino);
+            let ttl = fs.state.lock().budget.ttl;
+            // A handle whose listing outlived the TTL is rebuilt, resuming after the last name listed.
+            let stale = fs.dirs.lock().get(&fh.0).map(|h| {
+                let resume = offset.checked_sub(h.base + 1).and_then(|i| h.entries.get(i as usize)).map(|e| e.0.clone());
+                (h.stamp.elapsed() >= ttl && offset >= h.base, resume)
+            });
+            let Some((stale, resume)) = stale else {
+                reply.fail(Errno::EBADF);
+                return None;
+            };
+            if stale {
+                let (listing, stamp) = match fs.listing(dir) {
+                    Ok(listed) => listed,
+                    Err(e) => return answer(reply, Err::<(), _>(e), |_, ()| {}),
+                };
+                let after = match &resume {
+                    Some(name) => listing.range::<str, _>((Bound::Excluded(name.as_str()), Bound::Unbounded)),
+                    None => listing.range::<str, _>(..),
+                };
+                let entries = after.map(|(name, (id, kind))| (name.clone(), *id, *kind)).collect();
+                fs.dirs.lock().insert(fh.0, DirHandle { entries, base: offset.max(2), stamp });
+            }
+            let dirs = fs.dirs.lock();
+            let Some(handle) = dirs.get(&fh.0) else {
+                reply.fail(Errno::EBADF);
+                return None;
+            };
+            let dots = [(1, ".", ino, FileType::Directory), (2, "..", ino, FileType::Directory)];
+            let listed = handle
+                .entries
+                .iter()
+                .enumerate()
+                .map(|(i, (name, id, k))| (handle.base + i as u64 + 1, name.as_str(), fs.ino(*id), kind(*k)));
+            for (next, name, child, file_type) in dots.into_iter().chain(listed) {
+                if next <= offset {
+                    continue;
+                }
+                if reply.add(child, next, file_type, name) {
+                    break;
+                }
+            }
+            reply.ok();
+            None
         });
-        let Some((stale, resume)) = stale else {
-            reply.error(Errno::EBADF);
-            return;
-        };
-        if stale {
-            match fs.listing(dir) {
-                Ok((listing, stamp)) => {
-                    let after = match &resume {
-                        Some(name) => listing.range::<str, _>((Bound::Excluded(name.as_str()), Bound::Unbounded)),
-                        None => listing.range::<str, _>(..),
-                    };
-                    let entries = after.map(|(name, (id, kind))| (name.clone(), *id, *kind)).collect();
-                    fs.dirs.lock().insert(fh.0, DirHandle { entries, base: offset.max(2), stamp });
-                }
-                Err(e) => {
-                    reply.error(e);
-                    return;
-                }
-            }
-        }
-        let dirs = fs.dirs.lock();
-        let Some(handle) = dirs.get(&fh.0) else {
-            reply.error(Errno::EBADF);
-            return;
-        };
-        let dots = [(1, ".", ino, FileType::Directory), (2, "..", ino, FileType::Directory)];
-        let listed = handle
-            .entries
-            .iter()
-            .enumerate()
-            .map(|(i, (name, id, k))| (handle.base + i as u64 + 1, name.as_str(), fs.ino(*id), kind(*k)));
-        for (next, name, child, file_type) in dots.into_iter().chain(listed) {
-            if next <= offset {
-                continue;
-            }
-            if reply.add(child, next, file_type, name) {
-                break;
-            }
-        }
-        reply.ok();
     }
 
     fn releasedir(&self, _req: &FuseRequest, _ino: INodeNo, fh: FileHandle, _flags: OpenFlags, reply: ReplyEmpty) {
@@ -1102,10 +1185,7 @@ impl Filesystem for Mount {
         // The drain barrier (fuser has no `syncfs`): every mutation acknowledged before it has
         // committed when it returns.
         self.0.stats.local("op.fsyncdir");
-        match self.0.drain() {
-            Ok(()) => reply.ok(),
-            Err(e) => reply.error(e),
-        }
+        self.serve(reply, move |fs, reply| answer(reply, fs.drain(), |reply, ()| reply.ok()));
     }
 
     fn statfs(&self, _req: &FuseRequest, _ino: INodeNo, reply: ReplyStatfs) {
@@ -1123,39 +1203,40 @@ impl Filesystem for Mount {
 
     fn access(&self, req: &FuseRequest, ino: INodeNo, mask: AccessFlags, reply: ReplyEmpty) {
         self.0.stats.local("op.access");
-        match self.0.attr(self.0.id(ino)) {
-            Ok(attr) if self.0.allowed(req, &attr, mask.bits()) => reply.ok(),
-            Ok(_) => reply.error(Errno::EACCES),
-            Err(e) => reply.error(e),
-        }
+        let caller = Caller::of(req);
+        self.serve(reply, move |fs, reply| {
+            let result = fs.attr(fs.id(ino)).and_then(|attr| if fs.allowed(caller, &attr, mask.bits()) { Ok(()) } else { Err(Errno::EACCES) });
+            answer(reply, result, |reply, ()| reply.ok())
+        });
     }
 
     fn create(&self, req: &FuseRequest, parent: INodeNo, name: &OsStr, mode: u32, _umask: u32, flags: i32, reply: ReplyCreate) {
         self.0.stats.local("op.create");
-        let fs = &self.0;
-        let parent = fs.id(parent);
+        let (caller, name) = (Caller::of(req), name.to_owned());
         let write = flags & libc::O_ACCMODE != libc::O_RDONLY;
-        let result = name_of(name).and_then(|name| match fs.make(req, parent, name, Kind::File, mode, None, u32::from(write)) {
-            Err(e) if e == Errno::EEXIST && flags & libc::O_EXCL == 0 => {
-                // Lost a race with another creator of `name`: open what is there.
-                let (id, _) = fs.name(parent, name)?.ok_or(Errno::ENOENT)?;
-                let attr = fs.attr(id)?;
-                if attr.kind == Kind::Dir {
-                    return Err(Errno::EISDIR);
+        self.serve(reply, move |fs, reply| {
+            let parent = fs.id(parent);
+            let result = name_of(&name).and_then(|name| match fs.make(caller, parent, name, Kind::File, mode, None, u32::from(write)) {
+                Err(e) if e == Errno::EEXIST && flags & libc::O_EXCL == 0 => {
+                    // Lost a race with another creator of `name`: open what is there.
+                    let (id, _) = fs.name(parent, name)?.ok_or(Errno::ENOENT)?;
+                    let attr = fs.attr(id)?;
+                    if attr.kind == Kind::Dir {
+                        return Err(Errno::EISDIR);
+                    }
+                    if !fs.allowed(caller, &attr, mask(!write || flags & libc::O_ACCMODE == libc::O_RDWR, write, false)) {
+                        return Err(Errno::EACCES);
+                    }
+                    if write {
+                        fs.open_writer(id, flags & libc::O_TRUNC != 0)?;
+                    }
+                    fs.attr(id)
                 }
-                if !fs.allowed(req, &attr, mask(!write || flags & libc::O_ACCMODE == libc::O_RDWR, write, false)) {
-                    return Err(Errno::EACCES);
-                }
-                if write {
-                    fs.open_writer(id, flags & libc::O_TRUNC != 0)?;
-                }
-                fs.attr(id)
-            }
-            result => result,
+                result => result,
+            });
+            answer(reply, result, |reply, attr| {
+                reply.created(&NO_TTL, &fs.file_attr(&attr), Generation(0), FileHandle(0), FopenFlags::FOPEN_DIRECT_IO)
+            })
         });
-        match result {
-            Ok(attr) => reply.created(&NO_TTL, &fs.file_attr(&attr), Generation(0), FileHandle(0), FopenFlags::FOPEN_DIRECT_IO),
-            Err(e) => reply.error(e),
-        }
     }
 }
