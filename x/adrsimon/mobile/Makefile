@@ -18,7 +18,7 @@ PROJECT   := Dust.xcodeproj
 SCHEME    := Dust
 BUNDLE_ID := com.dust.mobile
 BUILD_DIR := build
-SIMULATOR ?= iPhone 17 Pro
+SIMULATOR ?= iPhone 18 Pro
 ENV       ?= dev
 
 # Map ENV -> Xcode build configuration.
@@ -82,7 +82,7 @@ build: generate
 run: build
 	@echo "==> Booting $(SIMULATOR)"
 	@xcrun simctl boot "$(SIMULATOR)" 2>/dev/null || true
-	@open -a Simulator
+	@open -a DeviceHub 2>/dev/null || open -a Simulator
 	@echo "==> Installing $(APP_PATH)"
 	@xcrun simctl install "$(SIMULATOR)" "$(APP_PATH)"
 	@echo "==> Launching $(BUNDLE_ID) ($(CONFIG))"
