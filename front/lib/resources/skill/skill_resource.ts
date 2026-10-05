@@ -5198,7 +5198,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    * Discovery targets MUST identify code-defined skills and skills with no
    * editing user as Dust-provided, matching the skill list's attribution.
    */
-  toDiscoveryJSON(): DiscoverySkillType {
+  toDiscoveryJSON({
+    authors,
+  }: {
+    authors?: string[];
+  } = {}): DiscoverySkillType {
     return {
       sId: this.sId,
       name: this.name,
@@ -5206,6 +5210,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       icon: this.icon ?? null,
       isDustProvided:
         this.codeDefinedSkillId !== null || this.editedBy === null,
+      ...(authors !== undefined ? { authors } : {}),
     };
   }
 

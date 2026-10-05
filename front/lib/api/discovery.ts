@@ -4,7 +4,6 @@ import { DustError } from "@app/lib/error";
 import type { PinnedDiscoveryItemInput } from "@app/lib/resources/discovery_item_resource";
 import { DiscoveryItemResource } from "@app/lib/resources/discovery_item_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { fetchDiscoveryForYouCandidates } from "@app/lib/search_usage/for_you";
 import { fetchDiscoveryTrendingCandidates } from "@app/lib/search_usage/trending";
 import type { SearchUsageDimension } from "@app/lib/search_usage/usage";
@@ -42,28 +41,9 @@ export async function listFeaturedDiscoveryItems(
         viewerCanWrite: auth.can("write", item.target),
       })
   );
-  const editorsBySkillId = await SkillResource.batchListEditors(
-    auth,
-    items.filter((item) => item.type === "skill").map((item) => item.target)
-  );
+  const serializedItems = await DiscoveryItemResource.batchToJSON(auth, items);
 
-  return {
-    items: items.map((item) => {
-      const serialized = DiscoveryItemResource.toJSON(item);
-      if (serialized.type !== "skill") {
-        return serialized;
-      }
-      return {
-        ...serialized,
-        target: {
-          ...serialized.target,
-          authors: (editorsBySkillId.get(item.target.sId) ?? []).map((editor) =>
-            editor.fullName()
-          ),
-        },
-      };
-    }),
-  };
+  return { items: serializedItems };
 }
 
 export async function listGroupDiscoveryPins(
@@ -193,40 +173,26 @@ async function resolveViewerVisibleItems(
       )
       .map((skill) => [skill.sId, skill])
   );
-  const editorsBySkillId = await SkillResource.batchListEditors(auth, [
-    ...visibleSkillsById.values(),
-  ]);
-
-  return removeNulls(
-    candidates.map(
-      ({ resourceType, resourceId }): DiscoveryRankedItemType | null => {
-        switch (resourceType) {
-          case "agent": {
-            const agent = agentsById.get(resourceId);
-            return agent && auth.can("read", agent)
-              ? { type: "agent", target: agent.toDiscoveryJSON() }
-              : null;
-          }
-          case "skill": {
-            const skill = visibleSkillsById.get(resourceId);
-            return skill
-              ? {
-                  type: "skill",
-                  target: {
-                    ...skill.toDiscoveryJSON(),
-                    authors: (editorsBySkillId.get(skill.sId) ?? []).map(
-                      (editor) => editor.fullName()
-                    ),
-                  },
-                }
-              : null;
-          }
-          default:
-            return assertNever(resourceType);
+  const items = removeNulls(
+    candidates.map(({ resourceType, resourceId }) => {
+      switch (resourceType) {
+        case "agent": {
+          const agent = agentsById.get(resourceId);
+          return agent && auth.can("read", agent)
+            ? { type: resourceType, target: agent }
+            : null;
         }
+        case "skill": {
+          const skill = visibleSkillsById.get(resourceId);
+          return skill ? { type: resourceType, target: skill } : null;
+        }
+        default:
+          return assertNever(resourceType);
       }
-    )
+    })
   );
+  const serializedItems = await DiscoveryItemResource.batchToJSON(auth, items);
+  return serializedItems;
 }
 
 export async function listDiscoveryTrendingItems(
