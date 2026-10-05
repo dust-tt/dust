@@ -47,7 +47,7 @@ export function AdminSettingsSearchNav({
           )}
         />
         {subNavigation.map((nav) => (
-          <React.Fragment key={`nav-${nav.label}`}>
+          <React.Fragment key={`nav-${nav.id}`}>
             {nav.label && <NavigationListCompactLabel label={nav.label} />}
             {nav.menus
               .filter(

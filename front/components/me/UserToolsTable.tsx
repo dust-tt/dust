@@ -33,6 +33,7 @@ import {
   LoadingBlock,
   SearchInput,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ColumnDef } from "@tanstack/react-table";
 import keyBy from "lodash/keyBy";
 import { useCallback, useMemo, useState } from "react";
@@ -67,60 +68,66 @@ const USER_TOOL_SKELETON_ROWS: UserToolSkeletonRow[] = Array.from(
   })
 );
 
-const USER_TOOL_SKELETON_COLUMNS: ColumnDef<UserToolSkeletonRow>[] = [
-  {
-    accessorKey: "name",
-    header: "Name",
-    cell: ({ row }) => (
-      <DataTable.CellContent grow>
-        <div className="flex flex-row items-center gap-3 py-3">
-          <LoadingBlock className="h-9 w-9 shrink-0 rounded-lg" />
-          <div className="flex min-w-0 flex-grow flex-col overflow-hidden">
-            <div className="flex h-5 items-center">
-              <LoadingBlock
-                className={classNames(
-                  "h-4 max-w-full",
-                  ["w-28", "w-36", "w-24", "w-32", "w-40"][row.index]
-                )}
-              />
+function getUserToolSkeletonColumns(
+  nameHeader: string
+): ColumnDef<UserToolSkeletonRow>[] {
+  return [
+    {
+      accessorKey: "name",
+      header: nameHeader,
+      cell: ({ row }) => (
+        <DataTable.CellContent grow>
+          <div className="flex flex-row items-center gap-3 py-3">
+            <LoadingBlock className="h-9 w-9 shrink-0 rounded-lg" />
+            <div className="flex min-w-0 flex-grow flex-col overflow-hidden">
+              <div className="flex h-5 items-center">
+                <LoadingBlock
+                  className={classNames(
+                    "h-4 max-w-full",
+                    ["w-28", "w-36", "w-24", "w-32", "w-40"][row.index]
+                  )}
+                />
+              </div>
+              <div className="flex h-5 items-center">
+                <LoadingBlock
+                  className={classNames(
+                    "h-4 max-w-full",
+                    ["w-64", "w-52", "w-72", "w-60", "w-56"][row.index]
+                  )}
+                />
+              </div>
             </div>
-            <div className="flex h-5 items-center">
-              <LoadingBlock
-                className={classNames(
-                  "h-4 max-w-full",
-                  ["w-64", "w-52", "w-72", "w-60", "w-56"][row.index]
-                )}
-              />
-            </div>
+            <LoadingBlock className="h-6 w-20 shrink-0 rounded-[9px]" />
           </div>
-          <LoadingBlock className="h-6 w-20 shrink-0 rounded-[9px]" />
-        </div>
-      </DataTable.CellContent>
-    ),
-    meta: {
-      className: "w-full",
+        </DataTable.CellContent>
+      ),
+      meta: {
+        className: "w-full",
+      },
     },
-  },
-  {
-    accessorKey: "actions",
-    header: "",
-    cell: () => (
-      <DataTable.CellContent>
-        <LoadingBlock className="h-8 w-8 rounded-xl" />
-      </DataTable.CellContent>
-    ),
-    meta: {
-      className: "w-12",
+    {
+      accessorKey: "actions",
+      header: "",
+      cell: () => (
+        <DataTable.CellContent>
+          <LoadingBlock className="h-8 w-8 rounded-xl" />
+        </DataTable.CellContent>
+      ),
+      meta: {
+        className: "w-12",
+      },
     },
-  },
-];
+  ];
+}
 
 function UserToolsTableSkeleton() {
+  const { t } = useLingui();
+  const columns = useMemo(() => getUserToolSkeletonColumns(t`Name`), [t]);
   return (
     <div aria-hidden="true">
       <DataTable
         data={USER_TOOL_SKELETON_ROWS}
-        columns={USER_TOOL_SKELETON_COLUMNS}
+        columns={columns}
         sorting={[{ id: "name", desc: false }]}
       />
     </div>
@@ -128,6 +135,7 @@ function UserToolsTableSkeleton() {
 }
 
 export function UserToolsTable({ owner }: UserToolsTableProps) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -160,8 +168,8 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
       const response = await deleteToolApproval(owner, mcpServerId);
       if (response && !response.ok) {
         sendNotification({
-          title: "Error",
-          description: "Failed to delete tool approbation history.",
+          title: t`Error`,
+          description: t`Failed to delete tool approbation history.`,
           type: "error",
         });
         return;
@@ -169,12 +177,12 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
 
       await mutateApprovals();
       sendNotification({
-        title: "Success!",
-        description: "Tool approbation history deleted.",
+        title: t`Success!`,
+        description: t`Tool approbation history deleted.`,
         type: "success",
       });
     },
-    [sendNotification, deleteToolApproval, mutateApprovals, owner]
+    [sendNotification, deleteToolApproval, mutateApprovals, owner, t]
   );
 
   const { deleteMCPServerConnection } = useDeleteMCPServerConnection({
@@ -205,7 +213,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
         if (!result.success && result.error) {
           sendNotification({
             type: "error",
-            title: "Failed to connect provider",
+            title: t`Failed to connect provider`,
             description: result.error,
           });
         }
@@ -213,7 +221,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
         setConnectingServerId(null);
       }
     },
-    [createPersonalConnection, sendNotification]
+    [createPersonalConnection, sendNotification, t]
   );
 
   // Prepare data for the actions table
@@ -266,7 +274,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
     () => [
       {
         accessorKey: "name",
-        header: "Name",
+        header: t`Name`,
         sortingFn: (rowA, rowB) => {
           return compareStrings(rowA.original.name, rowB.original.name);
         },
@@ -287,7 +295,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
 
               {row.original.connection && (
                 <Chip color="success" size="xs">
-                  Connected
+                  <Trans>Connected</Trans>
                 </Chip>
               )}
               {!row.original.connection && row.original.canConnect && (
@@ -295,7 +303,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
                   icon={CloudArrowLeftRight}
                   size="xs"
                   variant="outline"
-                  label="Connect"
+                  label={t`Connect`}
                   disabled={connectingServerId !== null}
                   isLoading={
                     connectingServerId === row.original.serverView.server.sId
@@ -332,7 +340,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
                   <DropdownMenuGroup>
                     {row.original.hasApproval && (
                       <DropdownMenuItem
-                        label="Clear confirmation preferences"
+                        label={t`Clear confirmation preferences`}
                         onClick={() =>
                           handleDeleteToolMetadata(
                             row.original.serverView.server.sId
@@ -342,7 +350,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
                     )}
                     {row.original.connection && (
                       <DropdownMenuItem
-                        label="Disconnect"
+                        label={t`Disconnect`}
                         onClick={() =>
                           deleteMCPServerConnection({
                             connection: row.original.connection!,
@@ -366,6 +374,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
       handleDeleteToolMetadata,
       handleConnect,
       connectingServerId,
+      t,
     ]
   );
 
@@ -374,7 +383,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
       <div className="relative my-4">
         <SearchInput
           name="search"
-          placeholder="Search tools"
+          placeholder={t`Search tools`}
           value={searchQuery}
           onChange={setSearchQuery}
         />
@@ -393,7 +402,9 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
         />
       ) : (
         <p className="py-8 text-center text-muted-foreground">
-          {searchQuery ? "No matching tools found" : "No tools available yet."}
+          {searchQuery
+            ? t`No matching tools found`
+            : t`No tools available yet.`}
         </p>
       )}
     </>

@@ -24,6 +24,7 @@ import type {
   LightUserTypeWithWorkspace,
   LightWorkspaceType,
 } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
 const MAX_DISPLAYED_AGENTS = 3;
@@ -263,6 +264,7 @@ function useCommandPaletteSettings({
   hasMoreSettings: boolean;
   canSearchSettings: boolean;
 } {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const {
     subscription,
@@ -288,6 +290,7 @@ function useCommandPaletteSettings({
       hasManagedGroups:
         featureFlags.includes("group_management") &&
         hasGroupManagementScope(groupManagement?.read_usage),
+      t,
     });
     return accessibleAdminMenus(subNavigation, hasFeature);
   }, [
@@ -299,6 +302,7 @@ function useCommandPaletteSettings({
     hasPermission,
     groupManagement,
     hasFeature,
+    t,
   ]);
 
   const { settings, hasMoreSettings } = useMemo(() => {
