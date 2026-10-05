@@ -3,12 +3,6 @@ import type { SparkleCatalogLocale } from "@sparkle/lib/i18n/locales";
 import { SPARKLE_SOURCE_LOCALE } from "@sparkle/lib/i18n/locales";
 import { messages as sourceLocaleMessages } from "@sparkle/locales/en-US/messages";
 
-export {
-  SPARKLE_CATALOG_LOCALES,
-  SPARKLE_SOURCE_LOCALE,
-  type SparkleCatalogLocale,
-} from "@sparkle/lib/i18n/locales";
-
 // Synchronous, so that a consumer can activate its source locale before the first render.
 export const sparkleSourceLocaleMessages: Messages = sourceLocaleMessages;
 

@@ -13,13 +13,7 @@ export default defineConfig({
     {
       path: "<rootDir>/src/locales/{locale}/messages",
       include: ["<rootDir>/src"],
-      exclude: [
-        "**/node_modules/**",
-        "**/*.test.ts",
-        "**/*.test.tsx",
-        "**/*.stories.tsx",
-        "<rootDir>/src/stories/**",
-      ],
+      exclude: ["**/node_modules/**", "<rootDir>/src/stories/**"],
     },
   ],
   // Macros resolve to sparkle's own hook and component, which fall back to English when the
