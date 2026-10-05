@@ -1,3 +1,4 @@
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { honoApp } from "@front-api/app";
@@ -30,6 +31,24 @@ describe("POST /api/stripe/portal", () => {
       method: "POST",
       role: "user",
     });
+
+    const response = await post({ workspaceId: workspace.sId });
+
+    expect(response.status).toBe(403);
+    expect(vi.mocked(createCustomerPortalSession)).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 for a revoked admin", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+    const revokeRes = await MembershipResource.revokeMembership({
+      user,
+      workspace,
+      allowLastAdminRevocation: true,
+    });
+    expect(revokeRes.isOk()).toBe(true);
 
     const response = await post({ workspaceId: workspace.sId });
 

@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import {
   sendAdminSubscriptionPaymentFailedEmail,
   sendCancelSubscriptionEmail,
@@ -5,7 +6,7 @@ import {
 } from "@app/lib/api/email";
 import { storeStripeCheckoutSessionStatus } from "@app/lib/api/stripe/checkout_status";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
-import { getMembers } from "@app/lib/api/workspace";
+import { getActiveAdminEmails, getMembers } from "@app/lib/api/workspace";
 import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -41,7 +42,6 @@ import {
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
   assertStripeSubscriptionIsValid,
-  createCustomerPortalSession,
   getStripeSubscription,
   isAwuPurchaseInvoice,
   isCreditPurchaseInvoice,
@@ -459,8 +459,22 @@ async function enableSepaOnFinalizedEnterpriseInvoice(
 /**
  * Shared payment-failure handling for a workspace subscription. Skips
  * enterprise plans (paid by wire on 30-day terms), flags the subscription as
- * payment-failing, and emails admins + the Stripe customer email.
+ * payment-failing, and emails the active admins a link to the workspace's
+ * subscription management page, which opens the Stripe billing portal once
+ * they are authenticated.
  * Used by both the Stripe-subscription and Metronome-subscription paths.
+ */
+/**
+ * @cc [owner:rfrenoy,label:security;product] payment-failure-email-recipients
+ * The payment-failure email MUST only be sent to the workspace's currently active admins.
+ * Addresses carried by the Stripe invoice (such as `customer_email`) MUST NOT be used as
+ * recipients: they reflect who initiated checkout, not who holds billing access today.
+ */
+/**
+ * @cc [owner:rfrenoy,label:security] payment-failure-email-no-portal-session
+ * The payment-failure email MUST NOT contain a Stripe billing-portal session URL. It MUST link to
+ * the workspace's `/subscription/manage` page, which requires authentication and obtains the portal
+ * through `POST /api/stripe/portal` and its billing-permission check, for every billing rail.
  */
 async function notifyAdminsOfPaymentFailure({
   auth,
@@ -499,21 +513,13 @@ async function notifyAdminsOfPaymentFailure({
       paymentFailingSince: now,
     });
   }
-  const { members } = await getMembers(auth, {
-    roles: ["admin"],
-    activeOnly: true,
-  });
-  const adminEmails = members.map((u) => u.email);
-  const customerEmail = invoice.customer_email;
-  if (customerEmail && !adminEmails.includes(customerEmail)) {
-    adminEmails.push(customerEmail);
-  }
-  const portalUrl = await createCustomerPortalSession({
-    owner,
-    subscription: subscriptionType,
-  });
+  const adminEmails = await getActiveAdminEmails(auth);
+  const manageSubscriptionUrl = `${config.getAppUrl()}/w/${owner.sId}/subscription/manage`;
   for (const adminEmail of adminEmails) {
-    await sendAdminSubscriptionPaymentFailedEmail(adminEmail, portalUrl);
+    await sendAdminSubscriptionPaymentFailedEmail(
+      adminEmail,
+      manageSubscriptionUrl
+    );
   }
 }
 

@@ -424,7 +424,14 @@ export async function setStripeCustomerDefaultPaymentMethod({
 
 /**
  * Calls the Stripe API to create a customer portal session for a given workspace/plan.
- * This allows the user to access her Stripe dashbaord without having to log in on Stripe.
+ * This allows the user to access her Stripe dashboard without having to log in on Stripe.
+ */
+/**
+ * @cc [owner:rfrenoy,label:security;backend] portal-session-only-to-billing-admins
+ * The returned URL is a short-lived bearer capability on the workspace's Stripe Customer: anyone
+ * holding it can act on the billing portal without authenticating. It MUST only be returned to an
+ * authenticated caller that passed `hasWorkspacePermission("admin", "billing")` for `owner`, and
+ * MUST NOT be emailed, logged, or persisted.
  */
 export const createCustomerPortalSession = async ({
   owner,
