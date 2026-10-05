@@ -9,6 +9,7 @@ import type {
   ZipDetectedSkillAttachment,
   ZipEntry,
 } from "@app/lib/api/skills/detection/zip/types";
+import { readZipEntryData } from "@app/lib/utils/zip";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -18,7 +19,7 @@ import AdmZip from "adm-zip";
 export const MAX_ZIP_SIZE_BYTES = 5 * 1024 * 1024;
 // Total uncompressed size limit (prevents issues with small zip but
 // super large uncompressed data).
-const MAX_DECOMPRESSED_SIZE_BYTES = 10 * 1024 * 1024;
+export const MAX_DECOMPRESSED_SIZE_BYTES = 10 * 1024 * 1024;
 // Entry count cap. The SKILL.md scanner is O(entries × skill-dirs); without
 // this a 5 MB zip with ~80 k tiny entries would cause quadratic CPU work that
 // blocks the shared front-api event loop for all tenants. With the cap, the
@@ -82,7 +83,7 @@ function readZipFileContent(
   if (!entry) {
     return new Err(new Error(`Entry not found in ZIP: "${originalPath}"`));
   }
-  const buffer = entry.getData();
+  const buffer = readZipEntryData(entry);
 
   return new Ok(buffer.toString("utf-8"));
 }
@@ -90,6 +91,14 @@ function readZipFileContent(
 /**
  * Validates zip size limits and extracts entries + the AdmZip instance.
  * Shared between detection and attachment reading.
+ */
+/**
+ * @cc [owner:sfriquet,label:security;performance] zip-declared-size-cap
+ * MUST return Err when the sum of the entries' declared `header.size` exceeds
+ * `MAX_DECOMPRESSED_SIZE_BYTES` (10 MB). Combined with
+ * `zip-entry-read-bounded-by-declared-size`, reading each entry of a returned
+ * archive once MUST NOT decompress more than `MAX_DECOMPRESSED_SIZE_BYTES` in
+ * total, whatever sizes its headers declare.
  */
 function openAndValidateZip(
   zipBuffer: Buffer
@@ -229,6 +238,6 @@ export function createZipAttachmentReader(
     if (!entry) {
       return new Err(new Error(`ZIP entry not found: "${originalEntryName}"`));
     }
-    return new Ok(entry.getData());
+    return new Ok(readZipEntryData(entry));
   });
 }
