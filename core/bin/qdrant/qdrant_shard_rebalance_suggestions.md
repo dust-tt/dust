@@ -64,7 +64,68 @@ $0<s<R_a-R_b$. Both $s$ and $R_a-R_b-s$ must exceed $10^{-9}$ times the initial
 maximum modeled load, with a one-byte minimum scale. This excludes roundoff
 that could make equal-load swaps appear improving.
 
+The `--minimize-max-memory` mode uses the same fitted costs to suggest up to ten
+moves with a different objective, described below.
+
+## Placement model
+
+Let $x_{ij}=1$ if node $i$ hosts a replica of shard $j$, and $0$ otherwise.
+The modeled RAM of node $i$ is $R_i = \sum_j x_{ij}r_j$.
+
+Introduce $T$ for maximum node RAM. This gives a mixed-integer linear model:
+
+$$
+\begin{aligned}
+\min_{x,T}\quad & T \\
+\text{subject to}\quad
+& \sum_j x_{ij}r_j \le T && \forall i \\
+& \sum_i x_{ij} = k_j && \forall j \\
+& x_{ij} \in \{0,1\} \\
+& 0 \le T \le T_0
+\end{aligned}
+$$
+
+$T_0$ is the current placement's modeled maximum RAM. The constraints preserve
+replica counts and prevent two replicas of the same shard sharing a node.
+
+## Greedy search
+
+For each candidate move of a replica with weight $s$ from node $a$ to node $b$:
+
+$$
+R'_a = R_a-s, \qquad R'_b = R_b+s
+$$
+
+Other nodes keep their loads. The projected maximum is:
+
+$$
+M' = \max\left(R_a-s,\ R_b+s,\ \max_{i\notin\{a,b\}} R_i\right)
+$$
+
+The planner checks every source replica and destination that does not already
+host the same collection/shard. It accepts moves with $0<s<R_a-R_b$, which
+reduce the squared-load sum by:
+
+$$
+\Delta = 2s(R_a-R_b-s) > 0
+$$
+
+Such a move cannot increase the maximum load. Among these moves, it chooses the
+smallest $M'$, breaking ties by the largest $\Delta$. This allows progress when
+several nodes share the maximum: one move can improve their balance without
+immediately changing the cluster-wide maximum.
+
+The planner updates the simulated placement and repeats, stopping after ten
+moves or when no admissible improving move remains. With roughly 140 replicas
+and 30 nodes, each iteration evaluates about 4,200 candidate moves. Only the
+three highest node loads are needed to find the unaffected maximum, so each
+candidate is scored in constant time.
+
 ## Limits
+
+The minimax search is a greedy heuristic. It does not search swaps or coordinated
+moves and cannot guarantee the globally optimal placement. There is no solver
+dependency or time-limit flag.
 
 Fitted costs assume equal RAM across replicas. They include overhead but do not
 measure individual payload indexes. Modeled node loads can differ from measured
