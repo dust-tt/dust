@@ -108,6 +108,14 @@ export async function getAgentFeedbackToolResult(
   ]);
 }
 
+/**
+ * @cc [owner:tdraier,label:security;product] agent-insights-for-fetchable-agents
+ * The insights (usage overview and feedback counts) MUST be returned to every caller
+ * `AgentResource.fetchById` returns the agent to, including a workspace manager who only holds
+ * `list` on a hidden agent, and MUST fail with an `MCPError` otherwise. They MUST NOT include
+ * anything beyond these aggregates and the agent's core fields, such as feedback content or the
+ * agent's instructions.
+ */
 export async function getAgentInsightsToolResult(
   auth: Authenticator,
   {
@@ -115,10 +123,7 @@ export async function getAgentInsightsToolResult(
     days,
   }: AgentInsightsInput & { agentConfigurationId: string }
 ): Promise<ToolHandlerResult> {
-  const agent = await AgentResource.fetchByIdForReaderOrWorkspaceAdmin(
-    auth,
-    agentConfigurationId
-  );
+  const agent = await AgentResource.fetchById(auth, agentConfigurationId);
   if (!agent) {
     return new Err(
       new MCPError(`Agent configuration not found: ${agentConfigurationId}`, {
