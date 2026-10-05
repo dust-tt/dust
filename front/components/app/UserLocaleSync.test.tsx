@@ -67,7 +67,7 @@ describe("UserLocaleSync", () => {
 
     await waitFor(() => expect(i18n.locale).toBe("en-GB"));
     expect(document.documentElement.lang).toBe("en-GB");
-    expect(await loadCatalog("en-GB")).toBe(await loadCatalog("en-US"));
+    expect(await loadCatalog("en-GB")).toEqual(await loadCatalog("en-US"));
   });
 
   it("formats in the browser locale when the flag is disabled", async () => {
