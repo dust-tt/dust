@@ -18,6 +18,7 @@ struct MainContainerView: View {
     // List is the nav root; compose is pushed so we land on compose and swipe-back reveals the list.
     @State private var navigationPath = NavigationPath([ConversationDestination.compose])
     @State private var showCatchUp = false
+    @State private var showPodBrowser = false
 
     private let tokenProvider: TokenProvider
 
@@ -65,6 +66,20 @@ struct MainContainerView: View {
                 )
             }
         }
+        .sheet(isPresented: $showPodBrowser) {
+            if let workspaceId = viewModel.workspace?.sId {
+                PodBrowserSheet(
+                    workspaceId: workspaceId,
+                    tokenProvider: tokenProvider,
+                    onOpen: { pod in
+                        navigationPath.append(ConversationDestination.pod(pod))
+                    },
+                    onJoined: { _ in
+                        Task { await viewModel.podJoined() }
+                    }
+                )
+            }
+        }
         .fullScreenCover(isPresented: Binding(
             get: { authViewModel.pendingFrameToken != nil },
             set: { if !$0 { authViewModel.pendingFrameToken = nil } }
@@ -85,9 +100,10 @@ struct MainContainerView: View {
     private var conversationList: some View {
         ConversationListView(
             searchText: $viewModel.searchText,
+            inboxConversations: viewModel.inboxConversations,
             groupedConversations: viewModel.groupedConversations,
             pods: viewModel.pods,
-            isPodsExpanded: $viewModel.isPodsExpanded,
+            showsAllPods: $viewModel.showsAllPods,
             user: user,
             currentWorkspace: viewModel.workspace,
             workspaces: viewModel.workspaces,
@@ -101,6 +117,9 @@ struct MainContainerView: View {
             onSelectPod: { pod in
                 navigationPath.append(ConversationDestination.pod(pod))
             },
+            onBrowsePods: {
+                showPodBrowser = true
+            },
             onSwitchWorkspace: { workspace in
                 navigationPath = NavigationPath()
                 Task { await viewModel.switchWorkspace(workspace) }
@@ -112,7 +131,7 @@ struct MainContainerView: View {
                 Task { await viewModel.deleteConversation(conversation) }
             },
             onLogout: onLogout,
-            onCatchUp: viewModel.unreadConversations.isEmpty ? nil : {
+            onCatchUp: {
                 showCatchUp = true
             },
             onRefresh: {
