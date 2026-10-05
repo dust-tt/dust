@@ -29,6 +29,13 @@ Update this file in the same PR as the work it describes. Dates are absolute.
   Source toggle, Pod tab parity, Storybook tests ported, rename the copied "block" files
   (`blocks.ts`, `DocumentBlockMenu`) after the slash menu they are, since "block" reads as a
   block model the product doc rules out.
+- 2026-10-05 M4 editor comments (tdraier), two PRs stacked on #34029: #34126 shows comments
+  (`editor-dfm-comments`), the next one writes them (`editor-dfm-comment-authoring`).
+  Sparkle's comment UI ported to `front/components/editor/document/`, on DFM threads. Anchors
+  load as comment marks through a Markdown tokenizer that reads directives with the codec's new
+  `readAnchorDirective`, and save back as one pair per comment; a file with an anchor the editor
+  cannot highlight stays read-only. Not in it: authorship enforcement (comments are signed
+  client-side), agent tools, the document conversation, Markdown rendering of message bodies.
 
 ## Plan, as milestones
 

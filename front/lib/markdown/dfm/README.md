@@ -99,10 +99,21 @@ Import from `@app/lib/markdown/dfm` in front and front-api, and from
 | `serializeDfm(document)` | Document to canonical source, or the reason it cannot be written. |
 | `extractAnchors(body)` | The body without anchor directives plus `{ id, start, end }` offsets into it in document order, for the editor and search. |
 | `anchorComment({ body, id, quote, nth })` | Wraps the nth occurrence of `quote` in a new anchor pair, for agents that quote words instead of computing offsets. |
+| `dfmCommentSchema` | The zod schema of a `DfmComment`, exactly, refusing unknown keys, for callers that keep threads outside the codec and read them back. |
 
-Every function returns a `Result` from `@app/types/shared/result`. Nothing here touches the
-network, the database or React: the module runs on the server and in the browser, next to the
-`:preview_file` directive codec in `lib/markdown/file_preview.ts`.
+Every function above returns a `Result` from `@app/types/shared/result`; `dfmCommentSchema` is
+a schema, not a function. The editor's Markdown
+parser and serializer read and write anchors one at a time, with three helpers that keep the
+directive's spelling in this module:
+
+| Function | Purpose |
+| --- | --- |
+| `readAnchorDirective(source)` | The well-formed anchor directive at the very start of `source` with its `kind`, `id` and `length`, or null. |
+| `findAnchorDirective(source)` | Index of the first anchor directive syntax in `source`, or -1. |
+| `anchorDirective(kind, id)` | The directive text for one end of an anchor pair. |
+
+Nothing here touches the network, the database or React: the module runs on the server and in
+the browser, next to the `:preview_file` directive codec in `lib/markdown/file_preview.ts`.
 
 ## Module map
 
