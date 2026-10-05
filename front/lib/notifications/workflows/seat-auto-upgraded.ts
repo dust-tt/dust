@@ -10,7 +10,7 @@ import {
 } from "@app/types/notification_preferences";
 import { isDevelopment } from "@app/types/shared/env";
 import type { I18n } from "@lingui/core";
-import { msg } from "@lingui/core/macro";
+import { msg, plural } from "@lingui/core/macro";
 import { workflow } from "@novu/framework";
 
 const isSeatAutoUpgradedPayload = (
@@ -35,7 +35,12 @@ export function buildSeatAutoUpgradedEmailCopy(
 
   const subject =
     count > 1
-      ? i18n._(msg`[Dust] ${count} members were auto-upgraded to higher seats`)
+      ? i18n._(
+          msg`[Dust] ${plural(count, {
+            one: "# member was auto-upgraded to a higher seat",
+            other: "# members were auto-upgraded to higher seats",
+          })}`
+        )
       : i18n._(
           msg`[Dust] ${member} was auto-upgraded to a ${newSeatType} seat`
         );
@@ -43,7 +48,11 @@ export function buildSeatAutoUpgradedEmailCopy(
   const intro =
     count > 1
       ? i18n._(
-          msg`${count} members reached their credit limit and were automatically upgraded to higher seats so they can keep working:`
+          msg`${plural(count, {
+            one: "# member reached their credit limit and was automatically upgraded to a higher seat so they can keep working:",
+            other:
+              "# members reached their credit limit and were automatically upgraded to higher seats so they can keep working:",
+          })}`
         )
       : i18n._(
           msg`${member} reached their credit limit and was automatically upgraded from a ${previousSeatType} seat to a ${newSeatType} seat so they can keep working.`

@@ -27,4 +27,23 @@ describe("buildSeatAutoUpgradedEmailCopy", () => {
     );
     expect(en.subject).toBe("[Dust] Ada was auto-upgraded to a max seat");
   });
+
+  it("pluralizes the digest copy for several members", async () => {
+    const members = [MEMBER, { ...MEMBER, memberName: "Grace" }];
+    const fr = buildSeatAutoUpgradedEmailCopy(
+      await getNotificationI18n("fr-FR"),
+      members
+    );
+    const en = buildSeatAutoUpgradedEmailCopy(
+      await getNotificationI18n("en-US"),
+      members
+    );
+
+    expect(fr.subject).toBe(
+      "[Dust] 2 membres sont passés automatiquement à des sièges supérieurs"
+    );
+    expect(en.subject).toBe(
+      "[Dust] 2 members were auto-upgraded to higher seats"
+    );
+  });
 });
