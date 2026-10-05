@@ -4,11 +4,29 @@ import type {
   ConversationConsumptionToolDetails,
 } from "@app/types/assistant/conversation_consumption";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import userEvent from "@testing-library/user-event";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/components/sparkle/ThemeContext", () => ({
   useTheme: () => ({ isDark: false }),
 }));
+
+beforeEach(() => {
+  for (const observer of ["ResizeObserver", "IntersectionObserver"]) {
+    vi.stubGlobal(
+      observer,
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      }
+    );
+  }
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 function makeTool(
   toolName: string,
@@ -27,7 +45,7 @@ function makeTool(
 }
 
 describe("ConversationCreditUsageBreakdown", () => {
-  it("shows the largest tools and groups the rest", () => {
+  it("shows the largest tools and groups the rest", async () => {
     const details: ConversationConsumptionDetails = {
       agentWorkCredits: 4.5,
       tools: [
@@ -65,9 +83,14 @@ describe("ConversationCreditUsageBreakdown", () => {
     expect(
       screen.getByRole("heading", { name: "Total credits consumed" })
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "By model" })
-    ).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "By tools" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    expect(screen.getByRole("tab", { name: "By models" })).toHaveAttribute(
+      "aria-selected",
+      "false"
+    );
     expect(screen.getByText("Context and reasoning")).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -83,12 +106,21 @@ describe("ConversationCreditUsageBreakdown", () => {
     expect(screen.queryByText("Title tool")).not.toBeInTheDocument();
     expect(screen.getByText("Other tools")).toBeInTheDocument();
     expect(screen.getByText("2 uses")).toBeInTheDocument();
-    expect(screen.getByText("GPT-5 Mini")).toBeInTheDocument();
-    expect(screen.getByText("15 credits")).toBeInTheDocument();
+    expect(screen.queryByText("GPT-5 Mini")).not.toBeInTheDocument();
     expect(screen.queryByText("Research agent")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: "Per Agents" })
     ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("tab", { name: "By models" }));
+
+    expect(screen.getByRole("tab", { name: "By models" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    expect(screen.queryByText("Calendar tool")).not.toBeInTheDocument();
+    expect(screen.getByText("GPT-5 Mini")).toBeInTheDocument();
+    expect(screen.getByText("15 credits")).toBeInTheDocument();
   });
 
   it("collapses agent breakdowns by default and expands them from the row", () => {

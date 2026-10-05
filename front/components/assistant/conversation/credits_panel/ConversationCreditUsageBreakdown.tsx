@@ -20,8 +20,14 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  CpuChip01,
   DustLogoSquare,
   Icon,
+  ShapesPlus,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 import { useState } from "react";
@@ -161,18 +167,15 @@ function ModelsBreakdown({ isDark, models }: ModelsBreakdownProps) {
   }
 
   return (
-    <section className="mt-6 space-y-4 border-t border-border pt-6">
-      <h3 className="text-base font-semibold text-foreground">By model</h3>
-      <div className="space-y-2">
-        {models.map((model) => (
-          <ModelRow
-            key={`${model.providerId}:${model.modelId}`}
-            isDark={isDark}
-            model={model}
-          />
-        ))}
-      </div>
-    </section>
+    <div className="space-y-2">
+      {models.map((model) => (
+        <ModelRow
+          key={`${model.providerId}:${model.modelId}`}
+          isDark={isDark}
+          model={model}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -268,13 +271,24 @@ export function ConversationCreditUsageBreakdown({
             </span>
           </div>
         </div>
-        <ToolBreakdownCards
-          agentWorkCredits={details.agentWorkCredits}
-          tools={details.tools}
-        />
+        <Tabs defaultValue="tools">
+          <TabsList>
+            <TabsTrigger value="tools" label="By tools" icon={ShapesPlus} />
+            <TabsTrigger value="models" label="By models" icon={CpuChip01} />
+          </TabsList>
+          <div className="mt-4">
+            <TabsContent value="tools">
+              <ToolBreakdownCards
+                agentWorkCredits={details.agentWorkCredits}
+                tools={details.tools}
+              />
+            </TabsContent>
+            <TabsContent value="models">
+              <ModelsBreakdown isDark={isDark} models={details.models} />
+            </TabsContent>
+          </div>
+        </Tabs>
       </section>
-
-      <ModelsBreakdown isDark={isDark} models={details.models} />
 
       <AgentsBreakdown agents={details.agents} />
     </div>
