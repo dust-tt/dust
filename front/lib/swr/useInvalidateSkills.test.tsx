@@ -35,6 +35,10 @@ describe("useInvalidateSkills", () => {
           [`${skillsUrl}/search`, { query: "report", offset: 25 }],
           fetcher
         ).data,
+        lookup: useSWR(
+          [`${skillsUrl}/lookup`, { skillIds: ["skill-a"] }, "POST"],
+          fetcher
+        ).data,
         otherWorkspace: useSWR(
           "/api/w/workspace-b/skills?status=active",
           fetcher
@@ -49,7 +53,7 @@ describe("useInvalidateSkills", () => {
     );
 
     await waitFor(() => {
-      expect(fetcher).toHaveBeenCalledTimes(9);
+      expect(fetcher).toHaveBeenCalledTimes(10);
       expect(result.current.detail).toBe("initial");
     });
     fetcher.mockResolvedValue("updated");
@@ -64,6 +68,7 @@ describe("useInvalidateSkills", () => {
     expect(result.current.custom).toBe("updated");
     expect(result.current.search).toBe("updated");
     expect(result.current.nextPage).toBe("updated");
+    expect(result.current.lookup).toBe("updated");
     expect(result.current.otherWorkspace).toBe("initial");
     expect(result.current.otherSearch).toBe("initial");
     expect(result.current.detail).toBe("initial");

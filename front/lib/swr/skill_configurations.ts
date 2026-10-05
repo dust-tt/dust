@@ -135,6 +135,41 @@ export function useSkill({
   };
 }
 
+export function useSkillsByIds({
+  owner,
+  skillIds,
+  disabled = false,
+}: {
+  owner: LightWorkspaceType;
+  skillIds: string[];
+  disabled?: boolean;
+}) {
+  const { fetcherWithBody } = useFetcher();
+  const ids = [...new Set(skillIds)].sort();
+  const key: [string, { skillIds: string[] }, string] = [
+    `/api/w/${owner.sId}/skills/lookup`,
+    { skillIds: ids },
+    "POST",
+  ];
+  const skillsFetcher: Fetcher<GetSkillsResponseBody, typeof key> =
+    fetcherWithBody;
+  const isDisabled = disabled || ids.length === 0;
+  const { data, error, isLoading, mutate } = useSWRWithDefaults(
+    key,
+    skillsFetcher,
+    { disabled: isDisabled }
+  );
+
+  return {
+    skills:
+      (isDisabled ? undefined : data?.skills) ??
+      emptyArray<SkillWithoutInstructionsAndToolsType>(),
+    isSkillsLoading: !isDisabled && isLoading,
+    isSkillsError: !!error,
+    mutateSkills: mutate,
+  };
+}
+
 export function useSkills({
   owner,
   disabled,
@@ -456,15 +491,16 @@ export function useInvalidateSkills({ workspaceId }: { workspaceId: string }) {
   const { mutate } = useSWRConfig();
   const skillsUrl = `/api/w/${workspaceId}/skills`;
   const searchUrl = `${skillsUrl}/search`;
+  const lookupUrl = `${skillsUrl}/lookup`;
 
   return useCallback(
     () =>
       mutate((key) =>
         isString(key)
           ? key.split("?")[0] === skillsUrl
-          : Array.isArray(key) && key[0] === searchUrl
+          : Array.isArray(key) && (key[0] === searchUrl || key[0] === lookupUrl)
       ),
-    [mutate, skillsUrl, searchUrl]
+    [mutate, skillsUrl, searchUrl, lookupUrl]
   );
 }
 
