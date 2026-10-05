@@ -310,10 +310,7 @@ mod tests {
             "myorg-myaccount.privatelink",
             "company_name-prod",
         ] {
-            assert!(
-                SnowflakeConnectionProvider::get_token_endpoint(account).is_ok(),
-                "{account}"
-            );
+            assert!(SnowflakeConnectionProvider::get_token_endpoint(account).is_ok());
         }
     }
 
@@ -332,10 +329,7 @@ mod tests {
             "abc 123",
             "%2F",
         ] {
-            assert!(
-                SnowflakeConnectionProvider::get_token_endpoint(account).is_err(),
-                "{account}"
-            );
+            assert!(SnowflakeConnectionProvider::get_token_endpoint(account).is_err());
         }
     }
 
