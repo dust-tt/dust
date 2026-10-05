@@ -31,7 +31,7 @@ PIDS=($!)
 until grep -q listening "$STATE/server.log"; do sleep 0.1; done
 
 mount_it() {
-    DFS_TOKEN=$(cat "$STATE/token") "$BIN/dfs-mount" --profile "${PROFILE:-matched}" --addr "127.0.0.1:$PORT" "$MNT" >"$STATE/mount.log" 2>&1 &
+    DFS_TOKEN=$(cat "$STATE/token") "$BIN/dfs-mount" --max-delay-ms "${DFS_MAX_DELAY_MS:-1000}" --addr "127.0.0.1:$PORT" "$MNT" >"$STATE/mount.log" 2>&1 &
     MOUNT_PID=$!
     until grep -q mounted "$STATE/mount.log"; do sleep 0.1; done
 }

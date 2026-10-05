@@ -13,12 +13,10 @@ import uuid
 BIN = Path(os.environ.get('DFS_BIN', '/target/release'))
 BASELINE = Path(__file__).resolve().parents[1] / '.baseline/x/spolu/dfs/v2'
 MANIFEST_SHA256 = '67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1'
-# `strict` (agreed contract) or `matched` (close acknowledged before its commit, like Spolu's RAM writeback).
-PROFILE = os.environ.get('DFS_PROFILE', 'strict')
-DURABILITY = {
-    'strict': 'create/rename/unlink/close/fsync return after the FDB commit',
-    'matched': 'create/rename/unlink/fsync return after the FDB commit; close returns before it (fsyncdir waits)',
-}
+# MAX_EVENTUAL_CONSISTENCY_DELAY: commit window min(MAX/4, 1s), daemon cache TTL the rest.
+MAX_DELAY_MS = int(os.environ.get('DFS_MAX_DELAY_MS', '1000'))
+DURABILITY = ('every mutation (including fsync) is acknowledged before its commit and committed within '
+              'the window; fsync of a directory waits for every earlier mutation to commit')
 KNOBS = ('DFS_FDB_GRV_BATCH_TIMEOUT_SECONDS', 'DFS_FDB_CLIENT_BUSY_WAIT_SECONDS')
 
 
@@ -38,9 +36,8 @@ def metadata():
             'server_binary_sha256': hashlib.sha256((BIN / 'dfs-server').read_bytes()).hexdigest(),
             'mount_binary_sha256': hashlib.sha256((BIN / 'dfs-mount').read_bytes()).hexdigest(),
             'fdb_client_knobs': {k: os.environ[k] for k in KNOBS if k in os.environ},
-            'mount_profile': PROFILE, 'durability': DURABILITY[PROFILE],
-            'fuse_threads': 8, 'kernel_writeback': False, 'max_background': 32,
-            'read_ahead_requested_kib': 1024}
+            'max_delay_ms': MAX_DELAY_MS, 'durability': DURABILITY, 'fsync': 'buffered',
+            'kernel_caching': 'none (TTL 0, direct I/O)', 'fuse_threads': 8, 'max_background': 32}
 
 
 def totals(path, message):
@@ -91,7 +88,7 @@ class Stack:
     def mount(self, path, token, root=None):
         path.mkdir(parents=True, exist_ok=True)
         log = open(self.work / f'{self.phase}-mount-{path.name}.log', 'w')
-        command = [str(BIN / 'dfs-mount'), '--profile', PROFILE, '--addr', self.addr, '--token', token, str(path)]
+        command = [str(BIN / 'dfs-mount'), '--max-delay-ms', str(MAX_DELAY_MS), '--addr', self.addr, '--token', token, str(path)]
         if root is not None:
             command[1:1] = ['--root', str(root)]
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=log, text=True)
@@ -108,8 +105,7 @@ class Stack:
         return totals(self.work / f'{self.phase}-mount-{path.name}.log', 'mount totals')
 
     def stop(self):
-        for path in list(self.mounts):
-            self.unmount(path)
+        mounts = {path.name: self.unmount(path) for path in list(self.mounts)}
         if self.server is None:
             return None
         started = time.monotonic()
@@ -118,7 +114,7 @@ class Stack:
         self.server = None
         summary = totals(self.work / f'{self.phase}-server.log', 'server totals')
         self.lifetimes.append({'phase': self.phase, 'shutdown_seconds': time.monotonic() - started,
-                               'server': summary})
+                               'server': summary, 'mounts': mounts})
         return summary
 
     def wipe(self):
