@@ -361,8 +361,8 @@ async function resolveSkillCreation(
   const { name, userFacingDescription, agentFacingDescription, instructions } =
     parsed.data.suggestion;
 
-  // The placeholder is empty, so the suggested skill is resolved as an edit of every field: the
-  // instructions are HTML and replace the whole (empty) document.
+  // The pending skill holds only its name, so the suggested skill is resolved as an edit of every
+  // field: the instructions are HTML and replace the whole (empty) document.
   const update = await resolveSkillFieldEdits(auth, skill, {
     name,
     userFacingDescription,

@@ -7,8 +7,8 @@
 // importers keep their import path.
 
 // `suggested`: a complete skill proposed to the workspace, that members can adopt as is.
-// `pending`: an empty placeholder holding a conversational creation suggestion, until the
-// suggestion is accepted and the skill becomes `active`.
+// `pending`: a skill with only its suggested name, that a conversational creation suggestion is
+// recorded on, until the suggestion is accepted and the skill becomes `active`.
 export const SKILL_STATUSES = [
   "active",
   "archived",
