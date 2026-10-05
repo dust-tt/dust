@@ -24,6 +24,8 @@ import {
   LoadingBlock,
   Page,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 
 // A credit is active if it has started and has not expired.
@@ -71,8 +73,11 @@ function CreditCategoryBar({
       <div className="text-lg font-semibold text-foreground">
         {consumedFormatted}
         <span className="text-sm font-normal text-muted-foreground">
-          / {totalFormatted}
-          {isCap ? " cap" : ""}
+          {isCap ? (
+            <Trans>/ {totalFormatted} cap</Trans>
+          ) : (
+            `/ ${totalFormatted}`
+          )}
         </span>
       </div>
       <ConsumptionProgressBar consumed={consumed} total={total} />
@@ -103,22 +108,6 @@ function formatDateShort(date: Date): string {
   });
 }
 
-function formatExpirationDate(timestamp: number | null): string | null {
-  if (!timestamp) {
-    return null;
-  }
-  const date = new Date(timestamp);
-  return `Expires ${formatDateShort(date)}`;
-}
-
-function formatRenewalDate(timestamp: number | null): string | null {
-  if (!timestamp) {
-    return null;
-  }
-  const date = new Date(timestamp);
-  return `Renews ${formatDateShort(date)}`;
-}
-
 function UsageSection({
   subscription,
   isEnterprise,
@@ -129,6 +118,7 @@ function UsageSection({
   isLoading,
   setShowBuyCreditDialog,
 }: UsageSectionProps) {
+  const { t } = useLingui();
   const billingCycle = useMemo(() => {
     if (!subscription.startDate) {
       return null;
@@ -155,11 +145,29 @@ function UsageSection({
     priceInMicroUsd: totalCredits,
   });
 
+  const formatExpirationDate = (timestamp: number | null): string | null => {
+    if (!timestamp) {
+      return null;
+    }
+    const date = formatDateShort(new Date(timestamp));
+    return t`Expires ${date}`;
+  };
+
+  const formatRenewalDate = (timestamp: number | null): string | null => {
+    if (!timestamp) {
+      return null;
+    }
+    const date = formatDateShort(new Date(timestamp));
+    return t`Renews ${date}`;
+  };
+
   return (
     <div className="flex flex-col gap-6">
       {/* Usage Header */}
       <div className="flex items-center justify-between">
-        <Page.H variant="h5">Available credits</Page.H>
+        <Page.H variant="h5">
+          <Trans>Available credits</Trans>
+        </Page.H>
         {billingCycle && (
           <Page.P variant="secondary">
             {formatDateShort(billingCycle.cycleStart)} →{" "}
@@ -181,7 +189,7 @@ function UsageSection({
       {/* Credit Categories */}
       <div className="grid grid-cols-3 gap-8 border-t border-border pt-6">
         <CreditCategoryBar
-          title="Free credits"
+          title={t`Free credits`}
           consumed={creditsByType.free.consumed}
           total={creditsByType.free.total}
           renewalDate={formatRenewalDate(
@@ -189,7 +197,7 @@ function UsageSection({
           )}
         />
         <CreditCategoryBar
-          title="Purchased credits"
+          title={t`Purchased credits`}
           consumed={creditsByType.committed.consumed}
           total={creditsByType.committed.total}
           renewalDate={formatExpirationDate(
@@ -197,7 +205,7 @@ function UsageSection({
           )}
           action={
             <Button
-              label="Buy credits"
+              label={t`Buy credits`}
               variant="outline"
               size="xs"
               onClick={() => setShowBuyCreditDialog(true)}
@@ -206,7 +214,7 @@ function UsageSection({
         />
         {isEnterprise && (
           <CreditCategoryBar
-            title="Pay-as-you-go"
+            title={t`Pay-as-you-go`}
             consumed={creditsByType.payg.consumed}
             total={creditsByType.payg.total}
             renewalDate={formatRenewalDate(creditsByType.payg.expirationDate)}
@@ -219,6 +227,7 @@ function UsageSection({
 }
 
 export function CreditsUsagePage() {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const { subscription } = useAuth();
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
@@ -328,20 +337,22 @@ export function CreditsUsagePage() {
 
         <Page.Vertical gap="xl" align="stretch">
           <Page.Header
-            title={"Programmatic Usage"}
+            title={t`Programmatic Usage`}
             description={
               <div>
                 <p>
-                  Monitor usage and credits for programmatic usage (API keys,
-                  automated workflows, etc.). Learn more in the{" "}
-                  <Hoverable
-                    href="https://docs.dust.tt/docs/programmatic-usage"
-                    target="_blank"
-                    variant="primary"
-                  >
-                    usage documentation
-                  </Hoverable>
-                  .
+                  <Trans>
+                    Monitor usage and credits for programmatic usage (API keys,
+                    automated workflows, etc.). Learn more in the{" "}
+                    <Hoverable
+                      href="https://docs.dust.tt/docs/programmatic-usage"
+                      target="_blank"
+                      variant="primary"
+                    >
+                      usage documentation
+                    </Hoverable>
+                    .
+                  </Trans>
                 </p>
               </div>
             }
@@ -349,15 +360,21 @@ export function CreditsUsagePage() {
 
           {shouldShowLowCreditsWarning && (
             <ContentMessage
-              title={`You're ${totalConsumed < totalCredits ? "almost" : ""} out of credits.`}
+              title={
+                totalConsumed < totalCredits
+                  ? t`You're almost out of credits.`
+                  : t`You're out of credits.`
+              }
               variant="warning"
               size="lg"
               icon={AlertCircle}
             >
               <div className="flex items-end justify-between">
-                <p>Add credits to ensure uninterrupted usage.</p>
+                <p>
+                  <Trans>Add credits to ensure uninterrupted usage.</Trans>
+                </p>
                 <Button
-                  label="Buy credits"
+                  label={t`Buy credits`}
                   variant="primary"
                   onClick={() => setShowBuyCreditDialog(true)}
                 />
@@ -369,19 +386,23 @@ export function CreditsUsagePage() {
           {creditPurchaseLimits &&
             !creditPurchaseLimits.canPurchase &&
             creditPurchaseLimits.reason === "trialing" && (
-              <ContentMessage title="Available after trial" variant="info">
-                Credit purchases are available once you upgrade to a paid plan.
-                If you would like to purchase credits before upgrading, please
-                contact support.
+              <ContentMessage title={t`Available after trial`} variant="info">
+                <Trans>
+                  Credit purchases are available once you upgrade to a paid
+                  plan. If you would like to purchase credits before upgrading,
+                  please contact support.
+                </Trans>
               </ContentMessage>
             )}
 
           {creditPurchaseLimits &&
             !creditPurchaseLimits.canPurchase &&
             creditPurchaseLimits.reason === "payment_issue" && (
-              <ContentMessage title="Subscription issue" variant="warning">
-                Credit purchases require an active subscription. Please ensure
-                your payment method is up to date.
+              <ContentMessage title={t`Subscription issue`} variant="warning">
+                <Trans>
+                  Credit purchases require an active subscription. Please ensure
+                  your payment method is up to date.
+                </Trans>
               </ContentMessage>
             )}
 
@@ -392,9 +413,15 @@ export function CreditsUsagePage() {
                 0
               );
               const isSingle = pendingCredits.length === 1;
-              const title = isSingle
-                ? `You have a pending ${getPriceAsString({ currency: "usd", priceInMicroUsd: totalPendingMicroUsd })} credit purchase awaiting payment.`
-                : `You have ${pendingCredits.length} pending credit purchases totaling ${getPriceAsString({ currency: "usd", priceInMicroUsd: totalPendingMicroUsd })} awaiting payment.`;
+              const pendingCount = pendingCredits.length;
+              const totalPending = getPriceAsString({
+                currency: "usd",
+                priceInMicroUsd: totalPendingMicroUsd,
+              });
+              const title = t`${plural(pendingCount, {
+                one: `You have a pending ${totalPending} credit purchase awaiting payment.`,
+                other: `You have # pending credit purchases totaling ${totalPending} awaiting payment.`,
+              })}`;
 
               return (
                 <ContentMessage
@@ -404,9 +431,15 @@ export function CreditsUsagePage() {
                   icon={AlertCircle}
                 >
                   <div className="flex items-end justify-between">
-                    <p>Complete your payment to activate your credits.</p>
+                    <p>
+                      <Trans>
+                        Complete your payment to activate your credits.
+                      </Trans>
+                    </p>
                     <Button
-                      label={isSingle ? "Complete payment" : "Manage invoices"}
+                      label={
+                        isSingle ? t`Complete payment` : t`Manage invoices`
+                      }
                       variant="primary"
                       onClick={() => {
                         window.open(
@@ -437,15 +470,19 @@ export function CreditsUsagePage() {
             <div className="flex w-full items-start justify-between">
               <Page.Vertical gap="sm" sizing="grow">
                 <div className="flex w-full items-center justify-between">
-                  <Page.H variant="h5">Current credits</Page.H>
+                  <Page.H variant="h5">
+                    <Trans>Current credits</Trans>
+                  </Page.H>
                   <CreditHistorySheet
                     credits={expiredCredits}
                     isLoading={isCreditsLoading}
                   />
                 </div>
                 <Page.P variant="secondary">
-                  Active credits for programmatic usage. Credits invoices are
-                  sent by email at time of purchase.
+                  <Trans>
+                    Active credits for programmatic usage. Credits invoices are
+                    sent by email at time of purchase.
+                  </Trans>
                 </Page.P>
               </Page.Vertical>
             </div>

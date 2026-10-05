@@ -18,11 +18,13 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 const INTEGRATIONS_TABS = ["messaging", "email", "clients"] as const;
 type IntegrationsTab = (typeof INTEGRATIONS_TABS)[number];
 
 export function IntegrationsPage() {
+  const { t } = useLingui();
   const owner = useWorkspace();
   const { tab, setTab } = useAdminPageTab<IntegrationsTab>(
     INTEGRATIONS_TABS,
@@ -33,22 +35,22 @@ export function IntegrationsPage() {
     <AdminPageContainer>
       <div className="flex flex-col gap-6">
         <Page.Header
-          title="Integrations"
-          description="Connect Dust to the tools where your team already works."
+          title={t`Integrations`}
+          description={t`Connect Dust to the tools where your team already works.`}
         />
         <Tabs
           value={tab}
           onValueChange={(value) => setTab(value as IntegrationsTab)}
         >
           <TabsList className="mb-6">
-            <TabsTrigger value="messaging" label="Messaging" />
-            <TabsTrigger value="email" label="Email" />
-            <TabsTrigger value="clients" label="Clients" />
+            <TabsTrigger value="messaging" label={t`Messaging`} />
+            <TabsTrigger value="email" label={t`Email`} />
+            <TabsTrigger value="clients" label={t`Clients`} />
           </TabsList>
           <TabsContent value="messaging" className="flex flex-col gap-8">
             <GovernanceSettingSection
               sectionId={ADMIN_SECTION_IDS.integrations.messaging}
-              label="Messaging apps"
+              label={t`Messaging apps`}
               icon={CloudArrowLeftRight}
             >
               <MessagingAppToggles owner={owner} />
@@ -58,7 +60,7 @@ export function IntegrationsPage() {
           <TabsContent value="email" className="flex flex-col gap-8">
             <GovernanceSettingSection
               sectionId={ADMIN_SECTION_IDS.integrations.email}
-              label="Email"
+              label={t`Email`}
               icon={Mail01}
             >
               <EmailAgentsToggle owner={owner} />
@@ -67,7 +69,7 @@ export function IntegrationsPage() {
           <TabsContent value="clients" className="flex flex-col gap-8">
             <GovernanceSettingSection
               sectionId={ADMIN_SECTION_IDS.integrations.clients}
-              label="Clients"
+              label={t`Clients`}
               icon={PuzzlePiece01}
             >
               <DustMcpServerSettingsItem owner={owner} />
