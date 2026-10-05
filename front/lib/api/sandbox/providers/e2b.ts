@@ -951,6 +951,16 @@ export class E2BSandboxProvider implements SandboxProvider {
           { retryOnStaleConnection: true }
         );
         if (bytes === null) {
+          logger.warn(
+            {
+              providerId,
+              workspaceId: tracingOpts.workspaceId,
+              path,
+              user,
+              maxBytes,
+            },
+            "Sandbox file read exceeded its byte cap"
+          );
           // Thrown outside withConnection: an oversized file is not a stale connection.
           throw new Error(
             `Sandbox file ${path} is larger than ${maxBytes} bytes.`

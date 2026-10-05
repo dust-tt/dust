@@ -9,6 +9,7 @@ const {
   mockKill,
   mockLoggerError,
   mockLoggerInfo,
+  mockLoggerWarn,
   mockRun,
   mockSendStdin,
   mockCloseStdin,
@@ -21,6 +22,7 @@ const {
   mockKill: vi.fn(),
   mockLoggerError: vi.fn(),
   mockLoggerInfo: vi.fn(),
+  mockLoggerWarn: vi.fn(),
   mockRun: vi.fn(),
   mockSendStdin: vi.fn(),
   mockCloseStdin: vi.fn(),
@@ -31,6 +33,7 @@ vi.mock("@app/logger/logger", () => ({
   default: {
     error: mockLoggerError,
     info: mockLoggerInfo,
+    warn: mockLoggerWarn,
   },
 }));
 
@@ -991,6 +994,10 @@ describe("E2BSandboxProvider", () => {
           workspaceId: "workspace-id",
         })
       ).rejects.toThrow("larger than 1024 bytes");
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
+        expect.objectContaining({ path: "/tmp/a", maxBytes: 1024 }),
+        "Sandbox file read exceeded its byte cap"
+      );
       expect(cancel).toHaveBeenCalledTimes(1);
       expect(pulledBytes).toBeLessThanOrEqual(4 * 512);
       expect(mockFilesRead).toHaveBeenCalledTimes(1);
