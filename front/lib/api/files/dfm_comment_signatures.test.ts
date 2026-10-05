@@ -262,4 +262,19 @@ describe("validateCommentSignatures", () => {
 
     expect(result.isOk()).toBe(true);
   });
+
+  it("returns the new messages with the text their comment quotes", () => {
+    const stored = file(TOM);
+    const reply = signedMessage("c1", TOM, {
+      author: { kind: "user", id: "usr_tom", name: "Tom Draier" },
+      createdAt: "2026-10-05T12:05:00.000Z",
+      body: "Ping :mention[dust]{sId=dust}",
+    });
+
+    const result = validate(stored, file(TOM, reply));
+
+    expect(result.isOk() && result.value).toEqual([
+      { commentId: "c1", quote: "there", message: reply },
+    ]);
+  });
 });

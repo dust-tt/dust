@@ -47,6 +47,8 @@ export interface DocumentProps {
   ) => Promise<Result<DfmMessage, string>>;
   /** Checks a message's signature; without it, messages are shown without a verification mark. */
   verifyCommentMessage?: DfmMessageVerifier;
+  /** Renders a comment message's Markdown body, mentions included; without it, plain text. */
+  renderCommentBody?: (body: string) => ReactNode;
 }
 
 export interface DocumentDraftState {

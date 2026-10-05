@@ -61,6 +61,16 @@ write, such as one with a line starting with `::`, is refused before it reaches 
 Message bodies show as plain text for now. The host renders authors' avatars through
 `renderCommentAuthorAvatar`, which the panel calls only once it has been opened.
 
+## Mentions
+
+Message bodies are Markdown. With `renderCommentBody`, the host renders them, and the file
+preview shows agent and user mention directives as mention chips. When a save brings a new
+message that mentions agents or users, the file API posts it as a user message in the
+document's conversation (`front/lib/api/files/dfm_comment_mentions.ts`): the file's own
+conversation, or for a pod file a conversation created in the pod on first use and found
+again by path. Mentioned agents then answer there and mentioned users are notified, as for
+any conversation message.
+
 ## Signatures
 
 The editor never signs anything. With `signCommentMessage`, posting a comment or a reply asks the

@@ -1,5 +1,6 @@
 import config from "@app/lib/api/config";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import { dispatchCommentMentions } from "@app/lib/api/files/dfm_comment_mentions";
 import { validateMarkdownCommentsForWrite } from "@app/lib/api/files/dfm_comment_signatures";
 import {
   convertCanonicalFileToPdf,
@@ -79,7 +80,8 @@ const ParamsSchema = z.object({
  * positive generation strings, independent of HTTP ETags. Backends without revision
  * support reject conditional writes.
  * GET and HEAD expose current mount write permission in X-Dust-File-Can-Write.
- * A PUT of a Markdown file bringing a comment the server did not sign for the caller is refused.
+ * A PUT of a Markdown file bringing a comment the server did not sign for the caller is refused;
+ * a new comment that mentions agents or users is posted to the document's conversation.
  */
 const app = workspaceApp();
 
@@ -750,6 +752,11 @@ app.put(
       }
       return apiError(ctx, mapDustFsError(error));
     }
+
+    await dispatchCommentMentions(auth, {
+      scopedPath: canonicalPath,
+      newMessages: comments.value.newMessages,
+    });
 
     return new Response(null, {
       status: writeResult.value.created ? 201 : 200,

@@ -11,6 +11,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import type { DfmMessage } from "@app/lib/markdown/dfm";
 import {
+  extractAnchors,
   messageSignaturePayload,
   parseDfm,
   serializeDfm,
@@ -276,6 +277,27 @@ const messageKey = (commentId: string, message: DfmMessage) =>
     message.body,
   ]);
 
+/** A message a save brings that the stored file did not have. */
+export interface NewCommentMessage {
+  commentId: string;
+  /** The text the comment's anchors cover, or null for a thread without anchors. */
+  quote: string | null;
+  message: DfmMessage;
+}
+
+/** The anchor-free text each comment's anchors cover in `body`. */
+function commentQuotes(body: string): Map<string, string> {
+  const anchors = extractAnchors(body);
+  return anchors.isOk()
+    ? new Map(
+        anchors.value.anchors.map(({ id, start, end }) => [
+          id,
+          anchors.value.text.slice(start, end),
+        ])
+      )
+    : new Map();
+}
+
 interface ValidationContext {
   workspaceId: string;
   /** The scoped path of the file being written, which signatures bind. */
@@ -318,16 +340,19 @@ const verifiesInPlace = (
  * repeated. Any other message MUST be attributed to `user:<sId>` of the saving user and, with a
  * signing key, verify at its place for this file. Deleting threads or the last messages of a
  * thread, changing statuses and anchors, and a source the codec cannot read MUST be accepted.
- * Validation MUST NOT change the content.
+ * Validation MUST NOT change the content, and MUST return the accepted new messages, with their
+ * comment and quoted text.
  */
 export function validateCommentSignatures(
   { previous, next }: { previous: string | null; next: string },
   context: ValidationContext
-): Result<void, DfmCommentSignatureError> {
+): Result<NewCommentMessage[], DfmCommentSignatureError> {
   const parsed = parseDfm(next);
   if (parsed.isErr() || parsed.value.comments.length === 0) {
-    return new Ok(undefined);
+    return new Ok([]);
   }
+  const quotes = commentQuotes(parsed.value.body);
+  const newMessages: NewCommentMessage[] = [];
 
   const stored = new Map<
     string,
@@ -399,10 +424,15 @@ export function validateCommentSignatures(
           )
         );
       }
+      newMessages.push({
+        commentId: comment.id,
+        quote: quotes.get(comment.id) ?? null,
+        message,
+      });
     }
   }
 
-  return new Ok(undefined);
+  return new Ok(newMessages);
 }
 
 /** The stored text of a file with its storage revision, or null when the file does not exist. */
@@ -445,7 +475,7 @@ const ABSENT_FILE_REVISION = "0";
  * request content type or stored content type is `text/markdown`, in a workspace with
  * `co_edition`, against the file as stored right before the write, and MUST NOT run anywhere else
  * until the codec bounds its input before parsing. It MUST return the revision it validated
- * against, when storage has one, so the write can be conditional on it. A write it does not
+ * against, when storage has one, so the write can be conditional on it, and the accepted new messages. A write it does not
  * validate MUST be bound to the stored state it was classified against: it MUST return the stored
  * file's revision, or for an absent file the revision that only matches an absent file, and MUST
  * validate the write instead when storage has no revision. A stored file that cannot be read MUST
@@ -461,10 +491,15 @@ export async function validateMarkdownCommentsForWrite(
   scopedPath: string,
   content: Uint8Array,
   requestContentType: string | undefined
-): Promise<Result<{ revision: string | undefined }, DfmCommentSignatureError>> {
+): Promise<
+  Result<
+    { revision: string | undefined; newMessages: NewCommentMessage[] },
+    DfmCommentSignatureError
+  >
+> {
   const resolvedPath = DustFileSystem.resolveScopedPath(scopedPath);
   if (resolvedPath.isErr() || !(await hasFeatureFlag(auth, "co_edition"))) {
-    return new Ok({ revision: undefined });
+    return new Ok({ revision: undefined, newMessages: [] });
   }
 
   const read = await readCanonicalFileContent(dustFs, scopedPath);
@@ -490,7 +525,7 @@ export async function validateMarkdownCommentsForWrite(
         // The content of a write that is not validated is never read, nor the errors of its stream.
         stored.stream.on("error", () => undefined).destroy();
       }
-      return new Ok({ revision: classifiedRevision });
+      return new Ok({ revision: classifiedRevision, newMessages: [] });
     }
   }
 
@@ -525,7 +560,9 @@ export async function validateMarkdownCommentsForWrite(
         : null,
     }
   );
-  return validated.isErr() ? validated : new Ok({ revision: stored?.revision });
+  return validated.isErr()
+    ? validated
+    : new Ok({ revision: stored?.revision, newMessages: validated.value });
 }
 
 const unreadableFileError = () =>

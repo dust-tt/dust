@@ -59,6 +59,7 @@ export const Document = ({
   renderCommentAuthorAvatar,
   signCommentMessage,
   verifyCommentMessage,
+  renderCommentBody,
 }: DocumentProps) => {
   const {
     editor,
@@ -204,6 +205,7 @@ export const Document = ({
         <DocumentCommentsPanel
           id={panelId}
           comments={comments}
+          renderCommentBody={renderCommentBody}
           mountPortalContainer={mountPortalContainer}
           renderAuthorAvatar={renderCommentAuthorAvatar}
         />

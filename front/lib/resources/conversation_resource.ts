@@ -2595,6 +2595,30 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return unreadConversations.map((c) => c.sId);
   }
 
+  /**
+   * @cc [owner:tdraier,label:backend] document-conversation-lookup
+   * MUST return the most recently updated conversation of `space`, readable by `auth`, whose
+   * metadata links it to the document at `documentPath`, or null when there is none.
+   */
+  static async fetchLatestForDocument(
+    auth: Authenticator,
+    { space, documentPath }: { space: SpaceResource; documentPath: string }
+  ): Promise<ConversationResource | null> {
+    const [conversation] = await this.baseFetchWithAuthorization(
+      auth,
+      undefined,
+      {
+        where: {
+          spaceId: space.id,
+          metadata: { dfmDocumentPath: documentPath },
+        },
+        order: [["updatedAt", "DESC"]],
+        limit: 1,
+      }
+    );
+    return conversation ?? null;
+  }
+
   static async listConversationsInSpace(
     auth: Authenticator,
     {
