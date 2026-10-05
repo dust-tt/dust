@@ -1,2 +1,2 @@
 Created 10000 documents in /tmp/untar-h8000/corpus/docs (seed=42)
-Validated 1000 files; untar 0.147s; report: /tmp/untar-h8000
+Validated 1000 files; untar 0.148s; report: /tmp/untar-h8000

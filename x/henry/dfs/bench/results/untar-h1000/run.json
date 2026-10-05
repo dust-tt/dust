@@ -4,12 +4,12 @@
   "profile": "release",
   "linux": "Linux-7.0.11-orbstack-00360-gc9bc4d96ac70-aarch64-with-glibc2.41",
   "cpu_count": 12,
-  "server_binary_sha256": "bfbd93d317737c7cdb7e82196823ea839b4a3a8c9df5e477e9c135fde307418d",
-  "mount_binary_sha256": "48e272b8a47c05aeb4e514b62538f83bf76e13eb2e93c56fb4dd87d14c12fc99",
+  "server_binary_sha256": "3676dbff4c04deb240eb0de179e78dabef4cf39590b6dce988f600f22465b29d",
+  "mount_binary_sha256": "32bad3a9bc5e31cea71e6b1119e365952cc56343a77c6c1dfe6caa6b01c25c1b",
   "fdb_client_knobs": {},
   "max_delay_ms": 1000,
-  "durability": "every mutation (including fsync) is acknowledged before its commit and committed within the window; fsync of a directory waits for every earlier mutation to commit",
-  "fsync": "buffered",
+  "durability": "every mutation is acknowledged before its commit and committed within the window; fsync of a file or directory waits for every earlier mutation to commit",
+  "fsync": "durable (drains the mount log)",
   "kernel_caching": "none (TTL 0, direct I/O)",
   "fuse_threads": 1,
   "max_background": 32,
@@ -17,21 +17,21 @@
   "outer_depth": 6,
   "depth_below_grant": 6,
   "corpus_selection": "first manifest paths",
-  "untar_seconds": 0.15736196199941332,
-  "remaining_client_writeback_seconds": 0.0295382120020804,
+  "untar_seconds": 0.15484732299955795,
+  "remaining_client_writeback_seconds": 0.023805077998986235,
   "mount": {
     "budget": {
       "ttl_ms": 750.0,
       "window_ms": 250.0
     },
     "commit": {
-      "apply_ms": 178.189323,
+      "apply_ms": 170.766391,
       "batches": 11,
       "dropped_ops": 0,
-      "max_apply_ms": 20.645773,
-      "max_lag_ms": 38.99303,
+      "max_apply_ms": 23.310161,
+      "max_lag_ms": 39.947145000000006,
       "missed_windows": 0,
-      "ops": 2022
+      "ops": 2021
     },
     "local": {
       "admission_waits": 8,
@@ -50,15 +50,15 @@
     "rpcs": {
       "alloc_ids": {
         "calls": 1,
-        "total_ms": 6.248
+        "total_ms": 5.771
       },
       "apply": {
         "calls": 11,
-        "total_ms": 178.158
+        "total_ms": 170.755
       },
       "readdir": {
         "calls": 7,
-        "total_ms": 12.791
+        "total_ms": 22.037
       }
     }
   },
@@ -66,30 +66,30 @@
     "calls": {
       "alloc_ids": {
         "calls": 2,
-        "total_ms": 8.843
+        "total_ms": 8.81
       },
       "apply": {
         "calls": 13,
-        "total_ms": 157.972
+        "total_ms": 156.758
       },
       "close": {
         "calls": 3,
-        "total_ms": 0.0
+        "total_ms": 0.001
       },
       "grant": {
         "calls": 1,
-        "total_ms": 3.941
+        "total_ms": 9.089
       },
       "readdir": {
         "calls": 8,
-        "total_ms": 12.547
+        "total_ms": 22.096
       }
     },
     "commits": 19,
     "failed_ops": 0,
     "fresh_versions": 19,
     "message": "server totals",
-    "ops": 2035,
+    "ops": 2034,
     "retries": 0
   },
   "validated_after_server_restart": true,

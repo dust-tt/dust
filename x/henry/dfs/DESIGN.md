@@ -1,4 +1,4 @@
-# dfs (henry) — design and tradeoffs
+# dfs (henry): design and tradeoffs
 
 Living document, updated with every design change and benchmark finding. The source specification is
 the "Dust filesystem specification" (2026-10-05); this file records what the prototype implements,
@@ -137,7 +137,7 @@ exceed 2 MiB, or the oldest uncommitted op (the batch in flight included) is old
 `window / 2`. A commit therefore lands within the window unless one `Apply` takes longer than
 `window / 2` (a stalled server); such a commit is counted as a missed window, and the benchmark
 harness rejects any run with one. Measured: 0 missed windows in every run, worst commit lag
-LAG_PLACEHOLDER.
+58 ms at 1 s (250 ms window), 53 ms at 8 s.
 
 **Inline-or-defer (`serve-inline-or-defer`).** The kernel round-robins requests across idle FUSE
 threads; with 8 threads every request paid a cross-CPU wakeup (36 µs per cached stat vs 5 µs on one
@@ -195,7 +195,7 @@ Declarations: `write-stop-boundaries`, `read-version-reuse`, `auth-cache-epoch`,
 | `bigdir.py` | lookup hits and misses in a directory above and below the listing cap |
 | `profile.py` | per-phase op/RPC counts for the open+fstat and read workloads |
 
-All pass at 1 s and 8 s (visibility worst case 646 ms at 1 s, 6.7 s at 8 s).
+All pass at 1 s and 8 s.
 
 ## Benchmark protocol
 
@@ -205,41 +205,44 @@ machine (OrbStack, 12 vCPU, Linux 7.0), FDB 7.3 `single ssd` with **FDB's defaul
 
 Two Spolu references:
 
-* **Spolu pinned** — his v2 `90f9932` run by us on this machine against the same FDB settings
+* **Spolu pinned**: his v2 `90f9932` run by us on this machine against the same FDB settings
   (`bench/results/spolu-vfs-native.log`). Same FDB settings. Our untar time excludes the final
   drain, as his harness does; the drain is recorded separately (≈ 20–30 ms).
-* **Spolu latest** — his own `RESULTS.md` run (revision `2717953273`), on FDB tuned with four of
+* **Spolu latest**: his own `RESULTS.md` run (revision `2717953273`), on FDB tuned with four of
   his five knobs (commit batch intervals, server and client busy-wait). Same machine class, faster
   FDB settings than ours.
 
 ## Results (2026-10-05)
 
-10k-file untar (then drain): **1.96 s at 1 s, 1.89 s at 8 s**, vs Spolu pinned 65.6 s and Spolu
-latest 37.2 s. Deep-grant untar (1000 files): 0.157 s / 0.147 s (first build of this design: 1.73 s;
+10k-file untar (then drain): **1.98 s at 1 s, 1.94 s at 8 s**, vs Spolu pinned 65.6 s and Spolu
+latest 37.2 s. Deep-grant untar (1000 files): 0.155 s / 0.148 s (first build of this design: 1.73 s;
 lease design: 11.27 s).
 
 jd's rows, ms, `first / warm`:
 
 | row | ours, 1 s | ours, 8 s | Spolu pinned | Spolu latest |
 | --- | ---: | ---: | ---: | ---: |
-| scandir + stat | 683 / 307 | 712 / 348 | 9,267 / 2,383 | 1,708 / 132 |
-| rg --files | 123 / 7.7 | 251 / 7.6 | 639 / 5.1 | 264 / 6.0 |
-| open + fstat + close | 619 / 232 | 688 / 216 | 34,487 / 776 | 6,053 / 852 |
-| stat missing | 319 / 8.4 | 365 / 9.0 | 644 / 4.5 | 184 / 1.8 |
-| rg no-match | 659 / 496 | 685 / 324 | 7,412 / 58 | 5,426 / 189 |
-| rg rare | 1,399 / 421 | 888 / 334 | 6,245 / 51 | 5,363 / 190 |
-| rg branch glob | 345 / 153 | 450 / 149 | 1,170 / 12 | 768 / 31 |
-| rg depth-10 | 89 / 40 | 87 / 48 | 263 / 4.4 | 129 / 6.9 |
-| open + read + SHA-256 | 1,840 / 833 | 1,794 / 403 | 47,275 / 11,481 | 12,313 / 1,212 |
-| open + pread tail | 825 / 109 | 778 / 8.5 | 1,379 / 7.3 | 359 / 16 |
-| create + write / fsync / close / unlink | 1.6 / 0.06 / 0.12 / 0.44 | 1.4 / 0.08 / 0.13 / 0.34 | 211 / 562 / 0.78 / 268 | 59 / 19 / 0.69 / 35 |
+| scandir + stat | 658 / 303 | 728 / 298 | 9,267 / 2,383 | 1,708 / 132 |
+| rg --files | 139 / 7.5 | 260 / 7.5 | 639 / 5.1 | 264 / 6.0 |
+| open + fstat + close | 581 / 232 | 725 / 216 | 34,487 / 776 | 6,053 / 852 |
+| stat missing | 359 / 8.5 | 356 / 7.9 | 644 / 4.5 | 184 / 1.8 |
+| rg no-match | 624 / 669 | 775 / 328 | 7,412 / 58 | 5,426 / 189 |
+| rg rare | 1,027 / 385 | 883 / 328 | 6,245 / 51 | 5,363 / 190 |
+| rg branch glob | 447 / 145 | 481 / 149 | 1,170 / 12 | 768 / 31 |
+| rg depth-10 | 87 / 36 | 91 / 39 | 263 / 4.4 | 129 / 6.9 |
+| open + read + SHA-256 | 1,962 / 1,032 | 1,823 / 416 | 47,275 / 11,481 | 12,313 / 1,212 |
+| open + pread tail | 796 / 42 | 810 / 12 | 1,379 / 7.3 | 359 / 16 |
+| create + write / fsync / close / unlink | 1.5 / 21 / 0.22 / 0.54 | 2.2 / 19 / 0.23 / 0.81 | 211 / 562 / 0.78 / 268 | 59 / 19 / 0.69 / 35 |
+
+fsync is durable: the first of the 32 drains the mount's log (one `Apply`), the rest find nothing
+left to commit.
 
 Reading the table:
 
 * Against Spolu pinned (same FDB), we win every `first` row and every write row, and lose the `warm`
   rg scans, globs, stat missing and pread.
 * Against Spolu latest (tuned FDB), we win every `first` row except `stat missing` and `pread`, and
-  lose most `warm` rows. Sparse first-touch lookups pay one listing fetch per directory.
+  lose most `warm` rows; fsync is about even (21 vs 19 ms). Sparse first-touch lookups pay one listing fetch per directory.
 * Warm rows are bounded by FUSE round trips: every path component is a `LOOKUP` (TTL 0), every read
   a FUSE `READ` (direct I/O). At ≈ 3–5 µs per request on one thread, rg's warm scans cost
   ≈ 10 requests per file.
@@ -249,5 +252,5 @@ Reading the table:
 ## History
 
 * Lease design (v1): durable create/close, server-pushed invalidations, kernel caching under
-  leases. Untar 103.7 s (strict) — two durable commits per file was the floor.
+  leases. Untar 103.7 s (strict); two durable commits per file was the floor.
 * 2026-10-05: contract changed to bounded staleness without kernel caching; this design.

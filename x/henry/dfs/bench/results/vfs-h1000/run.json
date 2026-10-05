@@ -4,12 +4,12 @@
   "profile": "release",
   "linux": "Linux-7.0.11-orbstack-00360-gc9bc4d96ac70-aarch64-with-glibc2.41",
   "cpu_count": 12,
-  "server_binary_sha256": "bfbd93d317737c7cdb7e82196823ea839b4a3a8c9df5e477e9c135fde307418d",
-  "mount_binary_sha256": "48e272b8a47c05aeb4e514b62538f83bf76e13eb2e93c56fb4dd87d14c12fc99",
+  "server_binary_sha256": "3676dbff4c04deb240eb0de179e78dabef4cf39590b6dce988f600f22465b29d",
+  "mount_binary_sha256": "32bad3a9bc5e31cea71e6b1119e365952cc56343a77c6c1dfe6caa6b01c25c1b",
   "fdb_client_knobs": {},
   "max_delay_ms": 1000,
-  "durability": "every mutation (including fsync) is acknowledged before its commit and committed within the window; fsync of a directory waits for every earlier mutation to commit",
-  "fsync": "buffered",
+  "durability": "every mutation is acknowledged before its commit and committed within the window; fsync of a file or directory waits for every earlier mutation to commit",
+  "fsync": "durable (drains the mount log)",
   "kernel_caching": "none (TTL 0, direct I/O)",
   "fuse_threads": 1,
   "max_background": 32,
@@ -17,176 +17,176 @@
   "warm_runs": 1,
   "server_restarted_per_first_case": true,
   "cold_scope": "new dfs-server/session/mount; backend caches retained",
-  "untar_seconds": 1.9558678649991634,
-  "population_client_writeback_seconds": 0.020773940999788465,
-  "population_shutdown_seconds": 0.01862030000120285,
+  "untar_seconds": 1.9788981919991784,
+  "population_client_writeback_seconds": 0.020238574001268717,
+  "population_shutdown_seconds": 0.009518098999251379,
   "results": [
     [
       "metadata",
       "scandir + stat (100 dirs, 10,000 files)",
       "first",
-      "683.47",
+      "658.43",
       "OK"
     ],
     [
       "metadata",
       "scandir + stat (100 dirs, 10,000 files)",
       "warm",
-      "306.83",
+      "302.55",
       "OK"
     ],
     [
       "metadata",
       "rg --files (10,000 files)",
       "first",
-      "123.08",
+      "139.07",
       "OK"
     ],
     [
       "metadata",
       "rg --files (10,000 files)",
       "warm",
-      "7.68",
+      "7.54",
       "OK"
     ],
     [
       "metadata",
       "open + fstat + close (10,000 files)",
       "first",
-      "618.53",
+      "580.95",
       "OK"
     ],
     [
       "metadata",
       "open + fstat + close (10,000 files)",
       "warm",
-      "231.95",
+      "232.16",
       "OK"
     ],
     [
       "metadata",
       "stat missing (256 paths)",
       "first",
-      "319.05",
+      "358.93",
       "OK"
     ],
     [
       "metadata",
       "stat missing (256 paths)",
       "warm",
-      "8.36",
+      "8.47",
       "OK"
     ],
     [
       "page cache",
       "rg no-match scan (10,000 files, 177.5 MB)",
       "first",
-      "658.83",
+      "623.50",
       "OK"
     ],
     [
       "page cache",
       "rg no-match scan (10,000 files, 177.5 MB)",
       "warm",
-      "495.76",
+      "668.76",
       "OK"
     ],
     [
       "search",
       "rg rare literal (10,000 files, 4 matches)",
       "first",
-      "1,399.18",
+      "1,027.09",
       "OK"
     ],
     [
       "search",
       "rg rare literal (10,000 files, 4 matches)",
       "warm",
-      "421.44",
+      "384.64",
       "OK"
     ],
     [
       "path pruning",
       "rg branch glob (981 candidate files)",
       "first",
-      "344.87",
+      "447.46",
       "OK"
     ],
     [
       "path pruning",
       "rg branch glob (981 candidate files)",
       "warm",
-      "153.12",
+      "145.13",
       "OK"
     ],
     [
       "path pruning",
       "rg depth-10 subtree (136 files)",
       "first",
-      "89.08",
+      "87.09",
       "OK"
     ],
     [
       "path pruning",
       "rg depth-10 subtree (136 files)",
       "warm",
-      "40.48",
+      "35.52",
       "OK"
     ],
     [
       "page cache",
       "open + read + SHA-256 (10,000 files, 177.5 MB)",
       "first",
-      "1,840.12",
+      "1,962.49",
       "OK"
     ],
     [
       "page cache",
       "open + read + SHA-256 (10,000 files, 177.5 MB)",
       "warm",
-      "832.71",
+      "1,031.84",
       "OK"
     ],
     [
       "random I/O",
       "open + pread tail (256 files x 4 KiB)",
       "first",
-      "825.33",
+      "795.76",
       "OK"
     ],
     [
       "random I/O",
       "open + pread tail (256 files x 4 KiB)",
       "warm",
-      "108.71",
+      "41.99",
       "OK"
     ],
     [
       "write",
       "create + write (32 x 32 KiB files)",
       "once",
-      "1.62",
+      "1.52",
       "OK"
     ],
     [
       "file sync",
       "fsync (32 files)",
       "once",
-      "0.06",
+      "21.07",
       "OK"
     ],
     [
       "write",
       "close (32 files)",
       "once",
-      "0.12",
+      "0.22",
       "OK"
     ],
     [
       "write",
       "unlink (32 files)",
       "once",
-      "0.44",
+      "0.54",
       "OK"
     ]
   ],
@@ -194,31 +194,31 @@
   "server_lifetimes": [
     {
       "phase": "populate",
-      "shutdown_seconds": 0.01862030000120285,
+      "shutdown_seconds": 0.009518098999251379,
       "server": {
         "calls": {
           "alloc_ids": {
             "calls": 10,
-            "total_ms": 52.919
+            "total_ms": 67.347
           },
           "apply": {
             "calls": 91,
-            "total_ms": 1731.64
+            "total_ms": 1773.092
           },
           "close": {
             "calls": 1,
-            "total_ms": 0.0
+            "total_ms": 0.001
           },
           "readdir": {
             "calls": 5,
-            "total_ms": 9.591
+            "total_ms": 10.251
           }
         },
         "commits": 102,
         "failed_ops": 0,
         "fresh_versions": 18,
         "message": "server totals",
-        "ops": 20290,
+        "ops": 20293,
         "retries": 0
       },
       "mounts": {
@@ -228,13 +228,13 @@
             "window_ms": 250.0
           },
           "commit": {
-            "apply_ms": 1959.191304,
+            "apply_ms": 1982.6017789999999,
             "batches": 91,
             "dropped_ops": 0,
-            "max_apply_ms": 78.154185,
-            "max_lag_ms": 103.05832199999999,
+            "max_apply_ms": 31.285923,
+            "max_lag_ms": 58.377799,
             "missed_windows": 0,
-            "ops": 20290
+            "ops": 20293
           },
           "local": {
             "admission_waits": 88,
@@ -253,15 +253,15 @@
           "rpcs": {
             "alloc_ids": {
               "calls": 10,
-              "total_ms": 61.203
+              "total_ms": 72.904
             },
             "apply": {
               "calls": 91,
-              "total_ms": 1959.065
+              "total_ms": 1982.499
             },
             "readdir": {
               "calls": 5,
-              "total_ms": 14.368
+              "total_ms": 12.334
             }
           }
         }
@@ -269,7 +269,7 @@
     },
     {
       "phase": "case-1",
-      "shutdown_seconds": 0.010303740000381367,
+      "shutdown_seconds": 0.0169068180002796,
       "server": {
         "calls": {
           "close": {
@@ -278,11 +278,11 @@
           },
           "read": {
             "calls": 4,
-            "total_ms": 13.808
+            "total_ms": 11.278
           },
           "readdir": {
             "calls": 2,
-            "total_ms": 3.963
+            "total_ms": 3.11
           }
         },
         "commits": 1,
@@ -319,11 +319,11 @@
           "rpcs": {
             "read": {
               "calls": 4,
-              "total_ms": 18.605
+              "total_ms": 16.226
             },
             "readdir": {
               "calls": 2,
-              "total_ms": 4.089
+              "total_ms": 3.193
             }
           }
         }
@@ -331,7 +331,7 @@
     },
     {
       "phase": "case-2",
-      "shutdown_seconds": 0.008654687000671402,
+      "shutdown_seconds": 0.008390221002628095,
       "server": {
         "calls": {
           "close": {
@@ -340,7 +340,7 @@
           },
           "readdir": {
             "calls": 106,
-            "total_ms": 319.137
+            "total_ms": 332.844
           }
         },
         "commits": 1,
@@ -376,7 +376,7 @@
           "rpcs": {
             "readdir": {
               "calls": 106,
-              "total_ms": 324.674
+              "total_ms": 337.584
             }
           }
         }
@@ -384,7 +384,7 @@
     },
     {
       "phase": "case-3",
-      "shutdown_seconds": 0.009451317997445585,
+      "shutdown_seconds": 0.01667494299908867,
       "server": {
         "calls": {
           "close": {
@@ -393,7 +393,7 @@
           },
           "readdir": {
             "calls": 103,
-            "total_ms": 1088.788
+            "total_ms": 1216.366
           }
         },
         "commits": 1,
@@ -430,7 +430,7 @@
           "rpcs": {
             "readdir": {
               "calls": 103,
-              "total_ms": 1100.32
+              "total_ms": 1227.288
             }
           }
         }
@@ -438,7 +438,7 @@
     },
     {
       "phase": "case-4",
-      "shutdown_seconds": 0.017598417998669902,
+      "shutdown_seconds": 0.008331928998813964,
       "server": {
         "calls": {
           "close": {
@@ -447,7 +447,7 @@
           },
           "readdir": {
             "calls": 106,
-            "total_ms": 325.805
+            "total_ms": 312.12
           }
         },
         "commits": 1,
@@ -483,7 +483,7 @@
           "rpcs": {
             "readdir": {
               "calls": 106,
-              "total_ms": 332.843
+              "total_ms": 325.113
             }
           }
         }
@@ -491,7 +491,7 @@
     },
     {
       "phase": "case-5",
-      "shutdown_seconds": 0.03349215699927299,
+      "shutdown_seconds": 0.017629109999688808,
       "server": {
         "calls": {
           "close": {
@@ -500,7 +500,7 @@
           },
           "readdir": {
             "calls": 102,
-            "total_ms": 288.154
+            "total_ms": 331.834
           }
         },
         "commits": 1,
@@ -533,7 +533,7 @@
           "rpcs": {
             "readdir": {
               "calls": 102,
-              "total_ms": 296.045
+              "total_ms": 339.829
             }
           }
         }
@@ -541,24 +541,20 @@
     },
     {
       "phase": "case-6",
-      "shutdown_seconds": 0.003929653998056892,
+      "shutdown_seconds": 0.008586013998865383,
       "server": {
         "calls": {
           "close": {
             "calls": 1,
             "total_ms": 0.001
           },
-          "read": {
-            "calls": 5,
-            "total_ms": 40.886
-          },
           "read_files": {
             "calls": 200,
-            "total_ms": 1866.696
+            "total_ms": 1322.693
           },
           "readdir": {
-            "calls": 246,
-            "total_ms": 3259.376
+            "calls": 251,
+            "total_ms": 5289.392
           }
         },
         "commits": 1,
@@ -584,7 +580,7 @@
             "ops": 0
           },
           "local": {
-            "deferred": 520,
+            "deferred": 569,
             "op.access": 2,
             "op.getattr": 208,
             "op.lookup": 129112,
@@ -593,21 +589,17 @@
             "op.read": 60000,
             "op.readdir": 504,
             "op.release": 20000,
-            "read": 59795
+            "read": 59800
           },
           "message": "mount totals",
           "rpcs": {
-            "read": {
-              "calls": 5,
-              "total_ms": 41.428
-            },
             "read_files": {
               "calls": 200,
-              "total_ms": 2285.098
+              "total_ms": 1678.026
             },
             "readdir": {
-              "calls": 246,
-              "total_ms": 3301.4
+              "calls": 251,
+              "total_ms": 5327.043
             }
           }
         }
@@ -615,29 +607,25 @@
     },
     {
       "phase": "case-7",
-      "shutdown_seconds": 0.004341071999078849,
+      "shutdown_seconds": 0.016859610001120018,
       "server": {
         "calls": {
           "close": {
             "calls": 1,
             "total_ms": 0.001
           },
-          "read": {
-            "calls": 1,
-            "total_ms": 0.646
-          },
           "read_files": {
             "calls": 200,
-            "total_ms": 5150.341
+            "total_ms": 4467.859
           },
           "readdir": {
-            "calls": 294,
-            "total_ms": 7124.87
+            "calls": 231,
+            "total_ms": 3761.988
           }
         },
         "commits": 1,
         "failed_ops": 0,
-        "fresh_versions": 498,
+        "fresh_versions": 434,
         "message": "server totals",
         "ops": 0,
         "retries": 0
@@ -658,7 +646,7 @@
             "ops": 0
           },
           "local": {
-            "deferred": 581,
+            "deferred": 535,
             "op.access": 2,
             "op.getattr": 208,
             "op.lookup": 129340,
@@ -667,21 +655,17 @@
             "op.read": 59992,
             "op.readdir": 504,
             "op.release": 20000,
-            "read": 59791
+            "read": 59792
           },
           "message": "mount totals",
           "rpcs": {
-            "read": {
-              "calls": 1,
-              "total_ms": 1.438
-            },
             "read_files": {
               "calls": 200,
-              "total_ms": 5659.474
+              "total_ms": 4906.965
             },
             "readdir": {
-              "calls": 294,
-              "total_ms": 7203.34
+              "calls": 231,
+              "total_ms": 3796.415
             }
           }
         }
@@ -689,20 +673,20 @@
     },
     {
       "phase": "case-8",
-      "shutdown_seconds": 0.01790491999781807,
+      "shutdown_seconds": 0.035374930001125904,
       "server": {
         "calls": {
           "close": {
             "calls": 1,
-            "total_ms": 0.0
+            "total_ms": 0.001
           },
           "read_files": {
             "calls": 20,
-            "total_ms": 320.55
+            "total_ms": 368.622
           },
           "readdir": {
             "calls": 103,
-            "total_ms": 2211.288
+            "total_ms": 3015.162
           }
         },
         "commits": 1,
@@ -728,7 +712,7 @@
             "ops": 0
           },
           "local": {
-            "deferred": 146,
+            "deferred": 152,
             "op.access": 2,
             "op.getattr": 208,
             "op.lookup": 98668,
@@ -743,11 +727,11 @@
           "rpcs": {
             "read_files": {
               "calls": 20,
-              "total_ms": 347.077
+              "total_ms": 398.41
             },
             "readdir": {
               "calls": 103,
-              "total_ms": 2229.332
+              "total_ms": 3026.324
             }
           }
         }
@@ -755,7 +739,7 @@
     },
     {
       "phase": "case-9",
-      "shutdown_seconds": 0.018103712998708943,
+      "shutdown_seconds": 0.01736540199999581,
       "server": {
         "calls": {
           "close": {
@@ -764,11 +748,11 @@
           },
           "read_files": {
             "calls": 2,
-            "total_ms": 15.77
+            "total_ms": 9.64
           },
           "readdir": {
             "calls": 13,
-            "total_ms": 42.886
+            "total_ms": 43.546
           }
         },
         "commits": 1,
@@ -794,7 +778,7 @@
             "ops": 0
           },
           "local": {
-            "deferred": 25,
+            "deferred": 28,
             "op.access": 2,
             "op.getattr": 8,
             "op.lookup": 27012,
@@ -809,11 +793,11 @@
           "rpcs": {
             "read_files": {
               "calls": 2,
-              "total_ms": 21.162
+              "total_ms": 13.445
             },
             "readdir": {
               "calls": 13,
-              "total_ms": 43.575
+              "total_ms": 44.198
             }
           }
         }
@@ -821,20 +805,20 @@
     },
     {
       "phase": "case-10",
-      "shutdown_seconds": 0.004229863003274659,
+      "shutdown_seconds": 0.017153567998320796,
       "server": {
         "calls": {
           "close": {
             "calls": 1,
-            "total_ms": 0.0
+            "total_ms": 0.001
           },
           "read_files": {
             "calls": 200,
-            "total_ms": 724.083
+            "total_ms": 796.638
           },
           "readdir": {
             "calls": 212,
-            "total_ms": 696.141
+            "total_ms": 747.752
           }
         },
         "commits": 1,
@@ -872,11 +856,11 @@
           "rpcs": {
             "read_files": {
               "calls": 200,
-              "total_ms": 927.684
+              "total_ms": 1003.16
             },
             "readdir": {
               "calls": 212,
-              "total_ms": 708.849
+              "total_ms": 769.162
             }
           }
         }
@@ -884,33 +868,33 @@
     },
     {
       "phase": "case-11",
-      "shutdown_seconds": 0.018127921997802332,
+      "shutdown_seconds": 0.01785348600242287,
       "server": {
         "calls": {
           "alloc_ids": {
             "calls": 1,
-            "total_ms": 6.873
+            "total_ms": 6.943
           },
           "apply": {
-            "calls": 2,
-            "total_ms": 25.061
+            "calls": 4,
+            "total_ms": 32.935
           },
           "close": {
             "calls": 1,
             "total_ms": 0.001
           },
           "read_files": {
-            "calls": 256,
-            "total_ms": 371.769
+            "calls": 258,
+            "total_ms": 320.153
           },
           "readdir": {
-            "calls": 119,
-            "total_ms": 431.647
+            "calls": 115,
+            "total_ms": 439.043
           }
         },
-        "commits": 4,
+        "commits": 6,
         "failed_ops": 0,
-        "fresh_versions": 379,
+        "fresh_versions": 377,
         "message": "server totals",
         "ops": 98,
         "retries": 0
@@ -922,16 +906,16 @@
             "window_ms": 250.0
           },
           "commit": {
-            "apply_ms": 27.149569,
-            "batches": 2,
+            "apply_ms": 35.217012,
+            "batches": 4,
             "dropped_ops": 0,
-            "max_apply_ms": 19.600557000000002,
-            "max_lag_ms": 26.818359,
+            "max_apply_ms": 17.611652,
+            "max_lag_ms": 22.46741,
             "missed_windows": 0,
             "ops": 98
           },
           "local": {
-            "deferred": 376,
+            "deferred": 375,
             "op.create": 32,
             "op.flush": 32,
             "op.fsync": 32,
@@ -946,25 +930,25 @@
             "op.rmdir": 1,
             "op.unlink": 32,
             "op.write": 32,
-            "read": 256
+            "read": 318
           },
           "message": "mount totals",
           "rpcs": {
             "alloc_ids": {
               "calls": 1,
-              "total_ms": 6.999
+              "total_ms": 7.093
             },
             "apply": {
-              "calls": 2,
-              "total_ms": 27.147
+              "calls": 4,
+              "total_ms": 35.212
             },
             "read_files": {
-              "calls": 256,
-              "total_ms": 390.781
+              "calls": 258,
+              "total_ms": 343.385
             },
             "readdir": {
-              "calls": 119,
-              "total_ms": 439.563
+              "calls": 115,
+              "total_ms": 448.19
             }
           }
         }
