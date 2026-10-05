@@ -2,10 +2,11 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-// Checks the built ESM output after `npm run build`: the Lingui macros must be compiled away, and
-// every message descriptor must keep its English `message`, which the provider-less fallback
-// renders. A leftover macro import throws at runtime; a stripped message renders an id.
-// Usage: `npm run check:i18n`.
+// Checks the built ESM output after `npm run build`: the Lingui macros must be compiled away,
+// every message descriptor must keep its English `message` (the runtime's safety net for a message
+// missing from the catalogs), and the compiled catalogs must ship with the build. A leftover macro
+// import throws at runtime; a stripped message renders an id.
+// Usage: `npm run check:i18n-dist`.
 //
 // use-application-logger note: console is used deliberately — this is a standalone Node script
 // where the app logger is not available, matching the sibling build-cjs.mjs.
@@ -14,8 +15,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.resolve(__dirname, "../dist/esm");
 
 const MACRO_IMPORT = /from\s*["']@lingui\/(core|react)\/macro["']/;
-// Descriptors the macro generates start with their id; `message` follows when it is kept.
-const DESCRIPTOR_WITHOUT_MESSAGE = /\bid:\s*"[^"]*"(?!,\s*message:)/;
+// The macro marks every descriptor it generates with an `i18n` comment; the descriptor starts
+// with its id and `message` follows when it is kept.
+const DESCRIPTOR = /\/\*\*? ?i18n ?\*\/\s*\{\s*id:\s*"[^"]*"(,\s*message:)?/g;
 
 function listJsFiles(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -39,7 +41,11 @@ for (const file of listJsFiles(distDir)) {
     continue;
   }
   translatedFileCount++;
-  if (DESCRIPTOR_WITHOUT_MESSAGE.test(source)) {
+  const descriptors = [...source.matchAll(DESCRIPTOR)];
+  if (descriptors.length === 0) {
+    errors.push(`${relativePath}: imports the Sparkle Lingui runtime but has no message descriptor`);
+  }
+  if (descriptors.some((descriptor) => descriptor[1] === undefined)) {
     errors.push(`${relativePath}: message descriptor without its English message`);
   }
 }
@@ -48,8 +54,20 @@ if (translatedFileCount === 0) {
   errors.push("no file imports the Sparkle Lingui runtime: the macros did not run");
 }
 
+const localesDir = path.join(distDir, "locales");
+const compiledCatalogs = fs.existsSync(localesDir)
+  ? fs.readdirSync(localesDir).filter((locale) =>
+      fs.existsSync(path.join(localesDir, locale, "messages.json"))
+    )
+  : [];
+if (compiledCatalogs.length === 0) {
+  errors.push("locales/*/messages.json: no compiled catalog in the build output");
+}
+
 if (errors.length > 0) {
   console.error(`Sparkle i18n build check failed:\n${errors.join("\n")}`);
   process.exit(1);
 }
-console.log(`Sparkle i18n build check passed (${translatedFileCount} files).`);
+console.log(
+  `Sparkle i18n build check passed (${translatedFileCount} files, catalogs: ${compiledCatalogs.join(", ")}).`
+);

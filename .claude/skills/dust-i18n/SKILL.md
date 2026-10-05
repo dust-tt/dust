@@ -71,17 +71,24 @@ render(<MyComponent />);
 ## Sparkle components
 
 Sparkle uses the same macros, compiled at build time (`npm run build:i18n`) against its own runtime
-`sparkle/src/lib/i18n.tsx`. Its strings have no catalog of their own: `npm run i18n:extract` in
-`front/` collects them from `sparkle/src` into front's catalogs, so translate them there.
+`sparkle/src/lib/i18n.tsx`, and has its own catalogs in `sparkle/src/locales/{locale}/messages.po`
+(config: `sparkle/lingui.config.ts`). The compiled `messages.json` next to each catalog is
+committed and bundled into Sparkle, so apps never provide Sparkle's strings.
 
 - Allowed: `useLingui` and `Trans` from `@lingui/react/macro`; `msg`, `plural` and `select` from
   `@lingui/core/macro`, the last two only inside a `t` template. Biome rejects every other Lingui
   import, including `t` from `@lingui/core/macro` and the `@sparkle/lib/i18n` module: they would use
-  the provider-less English instance instead of the app's.
-- Without an `I18nProvider` (the extension, Storybook, Sparkle tests) Sparkle renders English, so
-  Sparkle components stay usable everywhere. Under front's provider they render the active locale.
+  the provider-less English instance instead of the app's locale.
+- Under an app's `I18nProvider`, Sparkle renders its catalog for the provider's locale (a locale
+  without a catalog, such as `en-GB`, gets the catalog of its language, else `en-US`). Without a
+  provider (marketing, viz, the extension, Storybook, Sparkle tests) it renders English, so Sparkle
+  components stay usable in apps that do not use Lingui.
 - Keep an existing label prop as an override of the translated default (`label ?? t\`Load more\``).
 - Format dates and numbers with `useLingui().i18n.locale`.
+- Workflow, from `sparkle/`: `npm run i18n:extract` (extracts and compiles), translate the empty
+  `msgstr` entries with the `dust-translate` skill, `npm run i18n:compile`, then `npm run i18n:check`
+  (also run in CI: it fails on stale catalogs or compiled files and on missing translations).
+  Commit the `.po` and `.json` files with the code.
 - After changing Sparkle strings, rebuild Sparkle before testing them in front: front consumes
   `sparkle/dist`.
 

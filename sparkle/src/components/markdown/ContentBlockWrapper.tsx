@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import { Button } from "@sparkle/components/Button";
 import { useCopyToClipboard } from "@sparkle/hooks";
 import {
@@ -93,6 +94,7 @@ export function ContentBlockWrapper({
   getContentToDownload,
   buttonDisplay = "outside",
 }: ContentBlockWrapperProps) {
+  const { t } = useLingui();
   const [isCopied, copyToClipboard] = useCopyToClipboard();
 
   const handleCopyToClipboard = useCallback(
@@ -159,7 +161,7 @@ export function ContentBlockWrapper({
                 size="xs"
                 icon={Download01}
                 onClick={handleDownload}
-                tooltip="Download"
+                tooltip={t`Download`}
               />
             )}
             {content && (
@@ -168,7 +170,7 @@ export function ContentBlockWrapper({
                 size="xs"
                 icon={isCopied ? ClipboardCheck : Clipboard}
                 onClick={handleCopyToClipboard}
-                tooltip="Copy"
+                tooltip={t`Copy`}
               />
             )}
           </div>

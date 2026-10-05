@@ -3,8 +3,8 @@ import { LoadMore } from "@dust-tt/sparkle";
 import { act, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-// Sparkle's strings live in front's catalogs and render through front's I18nProvider. This fails
-// when `@lingui/react` is duplicated: Sparkle would then read another context and stay English.
+// Sparkle ships its own catalogs and follows the locale of front's I18nProvider. This fails when
+// `@lingui/react` is duplicated: Sparkle would then read another context and stay English.
 describe("Sparkle translations", () => {
   it("renders Sparkle strings in the active locale", async () => {
     const messages = await loadCatalog("fr-FR");

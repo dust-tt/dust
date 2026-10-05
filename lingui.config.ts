@@ -13,8 +13,6 @@ export default defineConfig({
         "<rootDir>/front/components",
         "<rootDir>/front/hooks",
         "<rootDir>/front/lib",
-        // Sparkle has no catalog of its own: its strings ship in front's.
-        "<rootDir>/sparkle/src",
       ],
       exclude: [
         "**/node_modules/**",
@@ -22,11 +20,6 @@ export default defineConfig({
         "**/*.test.tsx",
         "**/*.stories.tsx",
         "<rootDir>/front/components/poke/**",
-        "<rootDir>/sparkle/src/lib/i18n.tsx",
-        "<rootDir>/sparkle/src/stories/**",
-        "<rootDir>/sparkle/src/icons/**",
-        "<rootDir>/sparkle/src/logo/**",
-        "<rootDir>/sparkle/tests/**",
       ],
     },
   ],
