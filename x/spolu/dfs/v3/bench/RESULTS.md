@@ -1,9 +1,9 @@
 # Benchmark results — dfs v3 localhost
 
-Latest focused comparisons: [create-stat reuse](#create-stat-reuse) and
-[batched directory listings](#batched-directory-listings).
-Latest full suite: [block-retention comparison](#block-retention-comparison) and its
-[timing breakdown](#where-latest-version-time-is-spent). Original baselines are preserved below.
+Latest: [both full suites with untar timings](#latest-full-suites) and
+[their timing breakdown](#where-latest-full-suite-time-is-spent), source `f858a9ebb5`.
+Separate optimization comparisons: [create-stat reuse](#create-stat-reuse) and
+[batched directory listings](#batched-directory-listings). Original results are preserved below.
 
 2026-10-05. First baselines, before revision-validated block retention. Both runs use revision
 `a090704e0f`, with identical server and FUSE binaries. All **24 checks per run passed**, including
@@ -624,3 +624,122 @@ Both use FUSE SHA-256 `175a6cf51e4b9121ef4957e877943f9ae7879cf39ae526badb3b815d7
 Reproduce with the profiled benchmark command and
 `--workload-prefix 'scandir +' --workload-prefix 'rg '`.
 `DFS_BENCH_SERVER_BINARY` selects a separately built baseline or candidate server.
+
+## Latest full suites
+
+2026-10-05, source `f858a9ebb5`: retained block reuse, create-stat reuse, and batched directory
+listings. Fresh full runs on the same 10,000-file, 100-directory, 177.5 MB deep corpus, with
+`DFS_PROFILE=1`. The 1s run precedes the 8s run; identical binaries, no concurrent builds or tests.
+All **24 checks per run passed**, including every-file SHA-256 in both first and warm passes.
+Both populations and all subsequent phases recorded **zero publication failures**.
+
+Each first read starts a new server/session/mount; FDB/OS caches remain. Warm is one repeat.
+Client caching remains disabled. Writes/fsync acknowledge server RAM; untar's remaining FDB
+publication drain is measured separately after admission stops. These single-run measurements
+are not statistical estimates. Earlier full suites and focused comparisons are preserved above.
+
+### dfs v3 [latest, D = 1s]
+
+Untar: **50.662s**, followed by **22ms** remaining drain.
+
+```text
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| population   | untar (10,000 files, 177.5 MB)                 | once  | 50,662.01 | OK     |
+| persistence  | remaining FDB drain after untar                | once  |     22.00 | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 65,831.86 | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 66,032.10 | OK     |
+| metadata     | rg --files (10,000 files)                      | first |    200.13 | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  |    103.89 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 77,030.05 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 78,624.54 | OK     |
+| metadata     | stat missing (256 paths)                       | first |  1,748.74 | OK     |
+| metadata     | stat missing (256 paths)                       | warm  |  1,670.71 | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first |  7,721.64 | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  |  7,328.03 | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first |  7,478.03 | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  |  7,335.91 | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first |  6,580.58 | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  |  6,574.00 | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first |  1,648.54 | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  |  1,619.67 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 91,710.85 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 85,181.48 | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first |  2,239.12 | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  |  2,094.09 | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  |    207.82 | OK     |
+| file sync    | fsync (32 files)                               | once  |     20.23 | OK     |
+| write        | close (32 files)                               | once  |      0.60 | OK     |
+| write        | unlink (32 files)                              | once  |    101.73 | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+```
+
+### dfs v3 [latest, D = 8s]
+
+Untar: **47.788s**, followed by **24ms** remaining drain.
+
+```text
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| population   | untar (10,000 files, 177.5 MB)                 | once  | 47,788.28 | OK     |
+| persistence  | remaining FDB drain after untar                | once  |     24.00 | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 58,789.81 | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 59,979.57 | OK     |
+| metadata     | rg --files (10,000 files)                      | first |    192.30 | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  |     98.63 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 75,446.04 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 73,944.01 | OK     |
+| metadata     | stat missing (256 paths)                       | first |  1,644.38 | OK     |
+| metadata     | stat missing (256 paths)                       | warm  |  1,147.90 | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first |  7,374.77 | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  |  7,439.42 | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first |  7,341.98 | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  |  7,353.61 | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first |  6,521.51 | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  |  6,545.40 | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first |  1,647.92 | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  |  1,599.62 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 87,186.69 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 82,716.45 | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first |  2,298.22 | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  |  1,308.39 | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  |    155.02 | OK     |
+| file sync    | fsync (32 files)                               | once  |      3.67 | OK     |
+| write        | close (32 files)                               | once  |      0.57 | OK     |
+| write        | unlink (32 files)                              | once  |    176.14 | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+```
+
+### Where latest full-suite time is spent
+
+CPU covers FUSE and DFS (including the native FDB client), excluding the FDB server and benchmark
+process. Read rows combine first + warm and small untimed setup; untar includes fixture setup.
+Elapsed columns are cumulative, nested, and sometimes concurrent: **do not add them as wall time**.
+Untar FDB timings include concurrent background publication. Process CPU is sampled before drain.
+
+| Workload | D | FUSE CPU (s) | DFS CPU (s) | Client RPC elapsed (s) | Handler elapsed (s) | FDB get elapsed (s) | FDB commit elapsed (s) |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Untar | 1s | 18.270 | 20.640 | 45.673 | 27.218 | 72.203 | 17.890 |
+| Untar | 8s | 18.040 | 20.620 | 42.693 | 24.254 | 69.670 | 18.474 |
+| Scandir + stat | 1s | 65.770 | 38.710 | 113.053 | 44.550 | 40.137 | 0.000 |
+| Scandir + stat | 8s | 64.540 | 36.620 | 100.453 | 33.431 | 27.218 | 0.000 |
+| Open + fstat + close | 1s | 68.520 | 41.210 | 135.747 | 64.912 | 55.192 | 0.000 |
+| Open + fstat + close | 8s | 67.220 | 39.970 | 129.825 | 60.310 | 49.480 | 0.000 |
+| rg no-match | 1s | 31.700 | 33.860 | 115.287 | 36.005 | 32.412 | 0.000 |
+| rg no-match | 8s | 31.940 | 34.320 | 113.343 | 33.559 | 25.417 | 0.000 |
+| Open + read + SHA-256 | 1s | 72.410 | 44.650 | 154.683 | 79.732 | 68.521 | 0.000 |
+| Open + read + SHA-256 | 8s | 75.280 | 47.460 | 147.060 | 68.889 | 55.274 | 0.000 |
+
+Reports: `/tmp/dfs-v3-latest-full-9ug8wopu/{1000,8000}/run.json` inside the development container.
+Server SHA-256: `e9fa79ca5a6f67190b2964946e11bf8ae626639c0f09628bcde533edf940708a`.
+FUSE SHA-256: `175a6cf51e4b9121ef4957e877943f9ae7879cf39ae526badb3b815d7f2721ea`.
+Both reports match the same corpus manifest and record all 24 rows without workload filtering.
+
+Reproduce after building source `f858a9ebb5`:
+
+```sh
+v3/local/run exec env DFS_PROFILE=1 MAX_EVENTUAL_CONSISTENCY_DELAY_MS=1000 DFS_BENCH_REVISION=f858a9ebb5 python3 /dfs/v3/bench/run.py
+v3/local/run exec env DFS_PROFILE=1 MAX_EVENTUAL_CONSISTENCY_DELAY_MS=8000 DFS_BENCH_REVISION=f858a9ebb5 python3 /dfs/v3/bench/run.py
+```
