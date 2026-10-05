@@ -322,7 +322,7 @@ See [GCP results](gcp/RESULTS.md#server-writeback) for full tables, batch counte
 Fresh FDB reads and synchronous namespace commits remain on the foreground path. The project removes
 commit waits for file writes/updates, not all network latency; speedup must be measured.
 
-## Project: per-object publication locks
+## Project: per-object publication locks (completed)
 
 - [x] Replace the process-local workspace gate with sorted object locks. Keep xattrs, FUSE/API,
       batching/debounce, FDB conflict checks, and native FDB/kernel settings unchanged.
@@ -332,8 +332,14 @@ commit waits for file writes/updates, not all network latency; speedup must be m
       test publication during listing discovery and retain independent-writer/error/crash tests.
 - [x] Handle exhausted, definitely uncommitted FDB conflicts by splitting multi-file publication
       batches. The first GCP attempt exposed parent-record contention; never split ambiguous outcomes.
-- [ ] Run the existing GCP 10k full suite and deep
-      untar sequentially. Keep prior corpora/results and compare retries, batches, and remaining drain.
+- [x] Run the existing GCP 10k full suite and deep untar sequentially. Keep prior corpora/results
+      and compare retries, batches, and remaining drain.
+
+The full-suite untar improved 309.769 → 189.538 s; deep untar improved 384.546 → 233.714 s.
+Remaining persistence took 0.973 / 1.402 s. All 24 DFS + 24 local checks and 10k post-restart hashes passed.
+Both final populations had zero terminal publication failures. Cold open/stat and SHA-256 traversal
+regressed 7.9% / 9.0%; preserve the full tables and failed first attempt in
+[GCP results](gcp/RESULTS.md#per-object-publication-locks).
 
 ## Future work: after the networked experiment
 

@@ -811,3 +811,125 @@ Reports: `/var/log/dfs-bench/vfs-10k-writeback` and
 | write        | unlink (32 files)                              | once  | 466.01    | OK     |
 +--------------+------------------------------------------------+-------+-----------+--------+
 ```
+
+## Per-object publication locks
+
+Measured 2026-10-05. Replaced the process-local workspace gate with sorted object locks (`b15a0c70f8`),
+then added safe splitting after exhausted, definitely uncommitted FDB conflicts (`4a7e333b9e`).
+The API, FUSE binary, xattr filtering/cache, debounce/batch limits, and FDB/kernel settings are unchanged.
+File fsync remains durable; ordinary file edits acknowledge server RAM.
+
+**Full-suite untar is 38.8% faster; deep untar is 39.2% faster.**
+All 24 DFS and 24 local checks passed. The deep run verified all 10,000 hashes after restarting the
+server and remounting. Both populations committed every buffered operation, with zero terminal failures.
+
+| 10,000-file population | Previous untar (s) | New untar (s) | New ms/file | Remaining server persistence (s) |
+| --- | ---: | ---: | ---: | ---: |
+| Full-suite corpus | 309.769 | 189.538 | 18.9538 | 0.973092 |
+| Deep granted subtree | 384.546 | 233.714 | 23.3714 | 1.402250 |
+
+Remaining kernel writeback was 0.000194 s / 0.000229 s;
+total server shutdown was 1.016084 s / 1.467537 s, respectively.
+Persistence is measured immediately after kernel writeback and includes in-flight publication.
+It is part of shutdown: do not add both intervals. Previous remaining persistence was 0.058452 s /
+0.027768 s. The full suite still uses eleven server/mount resets; FDB/ES/OS caches stay warm.
+The deep archive uses the same six-level granted subtree and manifest ordering as its previous run;
+compare each population against its own prior measurement.
+
+### Contention and batching
+
+| Population | Buffered operations | Publication commits | Files/batch | Ops/batch | All FDB commits/attempts | Retries | Conflict splits | Peak queue MiB |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Full-suite population | 30,005 | 206 | 48.55 | 145.66 | 10,887 / 11,525 | 614 | 24 | 6.834 |
+| Deep granted subtree | 30,000 | 183 | 54.65 | 163.93 | 10,976 / 11,443 | 460 | 7 | 5.833 |
+
+The previous full run needed 10,000 file-publication commits; the new run needs 206.
+All FDB commits fell from 20,917 to 10,887. Those totals include namespace operations,
+search maintenance, setup, and version reservation. Queue bytes are accounting estimates, not RSS.
+Foreground operations can now overlap publication. Files accumulate into larger batches while the
+single background publisher per workspace is busy; workers across workspaces remain concurrent.
+
+Sibling creation still changes parent records read by publication authorization, so FDB conflicts
+increase. Multi-file preparation is sequential. Definitive conflicts that exhaust the normal eight
+attempts can split the batch; each smaller attempt reauthorizes against current state. Ambiguous
+outcomes never split/replay. Terminal publication time sums to 157.205 s /
+224.171 s; discarded split attempts add 31.155 s /
+4.753 s. These publisher durations overlap foreground work; do not add them to untar.
+
+The first attempt, without conflict splitting, was stopped after terminal publication failures:
+2,703 buffered operations failed across 18 batches. Its partial corpus/logs remain in
+`/var/log/dfs-bench/vfs-10k-object-locks`; it is not a valid performance result. Final measurements
+use the separate `*-object-locks-2` fixtures above.
+
+| Population RPC | Calls | Workspace lock (ms/call) | Object locks (ms/call) |
+| --- | ---: | ---: | ---: |
+| create | 10,102 | 8.549 | 5.938 |
+| lookup | 10,204 | 5.337 | 2.906 |
+| stat | 1 | 3.767 | 2.214 |
+| update | 20,204 | 5.125 | 3.066 |
+| write | 10,003 | 5.688 | 3.114 |
+
+Read results are mixed: cold open/fstat increased from 58.835 to 63.466 s (+7.9%), and full SHA-256
+traversal from 92.121 to 100.402 s (+9.0%). Unknown lookup/list targets now require a second FDB view
+after acquiring their object locks, preventing an old snapshot from losing its pending overlay.
+For SHA-256, mean Lookup rose 4.847 → 6.168 ms while Read fell 3.678 → 3.195 ms, with unchanged
+RPC counts. The 32-file fsync workload improved 1.367 → 0.854 s. These are single-run comparisons;
+backend cache/placement and run variation remain confounders, not a general read-speed claim.
+
+### Fixture and validation
+
+Same preferred transaction-node topology: 18 processes; transaction roles remain on `10.84.0.21`.
+Before/after status confirms healthy two-replica data and tolerance of one zone failure. Previous
+corpora, the interrupted attempt, and both completed new corpora remain in the shared cluster.
+The interactive mount/server were stopped during timing and restored afterward.
+
+Client/kernel settings stayed at eight FUSE workers, 32 background requests, congestion threshold 24,
+16 MiB xattr cache, effectively unlimited metadata TTL, and retained content cache. The observed
+backing-device readahead is 128 KiB (1 MiB requested), with `max_ratio=1`; host dirty ratios are
+10%/20%. No caching/writeback knob was changed. See [available knobs](README.md#per-object-publication-locks).
+
+Rust/backend, Linux FUSE crash/overwrite/unlink, and ES fault tests passed. New tests pause real FDB
+publication, prove sibling progress, revalidate listing discovery, force eight real conflicts before
+splitting, and lose a real multi-file commit reply without replay. GCP xattrs checks passed (200 rounds,
+two Stat RPCs); Docker Desktop's capability probe fails before reaching FUSE, so that local check
+cannot validate this path.
+
+Corpus: 10,000 files, 100 directories, 177,499,149 bytes; manifest SHA-256
+`67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1`. Server SHA-256
+`a8179b656ab87f9d9696dc334710dd931f1e854b6cf3c4eb2ab7897a92ad7089`; unchanged FUSE SHA-256
+`c901df927194b8f87b8e651b3d2187b3c4561c75819862e727c25839182e253e`.
+Reports: `/var/log/dfs-bench/vfs-10k-object-locks-2` and
+`/var/log/dfs-bench/deep-10k-object-locks-2`. Raw JSON/logs/credentials remain outside Git.
+
+### dfs v2 [dust-dev, 10,000 files — per-object locks]
+
+```text
++--------------+------------------------------------------------+-------+------------+--------+
+| Feature      | Workload                                       | Phase | Time (ms)  | Result |
++--------------+------------------------------------------------+-------+------------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 10,801.87  | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 358.41     | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 2,361.70   | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 9.16       | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 63,466.02  | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 795.64     | OK     |
+| metadata     | stat missing (256 paths)                       | first | 1,165.03   | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 4.81       | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 12,487.28  | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 121.20     | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 12,193.87  | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 118.42     | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 2,896.33   | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 24.81      | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 417.67     | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 8.16       | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 100,401.94 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 1,510.69   | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 2,907.49   | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 17.72      | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 306.98     | OK     |
+| file sync    | fsync (32 files)                               | once  | 853.61     | OK     |
+| write        | close (32 files)                               | once  | 0.93       | OK     |
+| write        | unlink (32 files)                              | once  | 391.23     | OK     |
++--------------+------------------------------------------------+-------+------------+--------+
+```
