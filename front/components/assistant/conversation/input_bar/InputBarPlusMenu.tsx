@@ -83,17 +83,19 @@ export function InputBarPlusMenu({
   );
 }
 
+interface InputBarPlusMenuContentProps {
+  anchorRef: RefObject<HTMLDivElement | null>;
+  onClose: () => void;
+  owner: LightWorkspaceType;
+  slashMenu: InputBarPlusMenuSlashMenu;
+}
+
 function InputBarPlusMenuContent({
   anchorRef,
   onClose,
   owner,
   slashMenu,
-}: {
-  anchorRef: RefObject<HTMLDivElement | null>;
-  onClose: () => void;
-  owner: LightWorkspaceType;
-  slashMenu: InputBarPlusMenuSlashMenu;
-}) {
+}: InputBarPlusMenuContentProps) {
   const {
     conversationIdRef,
     editorRef,
