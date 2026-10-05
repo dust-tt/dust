@@ -60,7 +60,10 @@ import {
   isConnectViaClientSideMCPServer,
   isConnectViaMCPServerId,
 } from "@app/lib/actions/mcp_metadata";
-import { MCPOAuthProviderError } from "@app/lib/actions/mcp_oauth_provider";
+import {
+  MCPOAuthProviderError,
+  resolveMCPAuthFailure,
+} from "@app/lib/actions/mcp_oauth_provider";
 import {
   classifyToolAbortSignal,
   isToolInterruptionError,
@@ -750,8 +753,13 @@ export async function* tryCallMCPTool(
       }
     }
 
+    const isOAuthError = error instanceof MCPOAuthProviderError;
     logger.error(
-      { error, ...toolLogContext },
+      {
+        error,
+        ...toolLogContext,
+        authChallenge: isOAuthError ? error.challenge : undefined,
+      },
       "Exception calling MCP tool in tryCallMCPTool()"
     );
 
@@ -759,46 +767,62 @@ export async function* tryCallMCPTool(
     // tool call (e.g., StreamableHTTP where each call is a separate HTTP
     // request), it calls unimplemented methods on MCPOAuthProvider which
     // throw MCPOAuthProviderError. Trigger re-authentication.
-    if (
-      error instanceof MCPOAuthProviderError &&
-      isServerSideMCPToolConfiguration(toolConfiguration)
-    ) {
+    if (isOAuthError && isServerSideMCPToolConfiguration(toolConfiguration)) {
       const mcpServerView = await MCPServerViewResource.fetchById(
         auth,
         toolConfiguration.mcpServerViewId,
         { includeHeavyAttributes: ["authorization"] }
       );
-      if (mcpServerView) {
-        const authorization = mcpServerView.getAuthorization();
-        if (authorization) {
-          // Invalidate the cached access token so the next connection attempt
-          // fetches a fresh token after the user re-authenticates.
-          const connectionType =
-            mcpServerView.oAuthUseCase === "personal_actions"
-              ? "personal"
-              : "workspace";
-          const connection = await MCPServerConnectionResource.findByMCPServer(
-            auth,
+      const authorization = mcpServerView?.getAuthorization();
+      const resolution = authorization
+        ? resolveMCPAuthFailure(error, authorization.scope)
+        : null;
+      if (resolution?.kind === "refused") {
+        logger.warn(
+          { ...toolLogContext, authChallenge: error.challenge },
+          "MCP tool call refused with 403, not asking for re-authentication"
+        );
+        return {
+          isError: true,
+          content: [
             {
-              mcpServerId: mcpServerView.mcpServerId,
-              connectionType,
-            }
-          );
-          if (connection.isOk() && connection.value.connectionId) {
-            invalidateOAuthConnectionAccessTokenCache(
-              connection.value.connectionId
-            );
+              type: "text",
+              text:
+                `The server refused ${toolConfiguration.originalName} (403 Forbidden): the ` +
+                "connected account is missing a required scope or lacks permission for this " +
+                "action. Re-authenticating will not fix this.",
+            },
+          ],
+        };
+      }
+      if (mcpServerView && authorization && resolution) {
+        // Invalidate the cached access token so the next connection attempt
+        // fetches a fresh token after the user re-authenticates.
+        const connectionType =
+          mcpServerView.oAuthUseCase === "personal_actions"
+            ? "personal"
+            : "workspace";
+        const connection = await MCPServerConnectionResource.findByMCPServer(
+          auth,
+          {
+            mcpServerId: mcpServerView.mcpServerId,
+            connectionType,
           }
-
-          return {
-            // Complex code path, but errors returned here are processed in getExitOrPauseEvents.
-            isError: false,
-            content: makePersonalAuthenticationError(
-              authorization.provider,
-              authorization.scope
-            ).content,
-          };
+        );
+        if (connection.isOk() && connection.value.connectionId) {
+          invalidateOAuthConnectionAccessTokenCache(
+            connection.value.connectionId
+          );
         }
+
+        return {
+          // Complex code path, but errors returned here are processed in getExitOrPauseEvents.
+          isError: false,
+          content: makePersonalAuthenticationError(
+            authorization.provider,
+            resolution.scope
+          ).content,
+        };
       }
     }
 

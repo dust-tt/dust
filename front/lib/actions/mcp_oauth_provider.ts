@@ -30,6 +30,46 @@ export class MCPOAuthProviderError extends Error {
   }
 }
 
+export type MCPAuthFailureResolution =
+  | { kind: "reauthenticate"; scope: string | undefined }
+  | { kind: "refused" };
+
+function splitScope(scope: string | undefined): string[] {
+  return (scope ?? "").split(/\s+/).filter(Boolean);
+}
+
+/**
+ * @cc [owner:pmilliotte,label:product] reauth-only-when-it-can-help
+ * A 403 MUST resolve to `reauthenticate` only when it is `insufficient_scope` and names a scope
+ * the current token does not hold; the requested scope is then the union of both. Any other 403
+ * MUST resolve to `refused`. A 401 or an unknown status MUST reauthenticate with
+ * `configuredScope`.
+ */
+export function resolveMCPAuthFailure(
+  error: MCPOAuthProviderError,
+  configuredScope: string | undefined
+): MCPAuthFailureResolution {
+  const { challenge } = error;
+  if (challenge?.status !== 403) {
+    return { kind: "reauthenticate", scope: configuredScope };
+  }
+  if (challenge.error !== "insufficient_scope") {
+    return { kind: "refused" };
+  }
+
+  const currentScopes = splitScope(error.tokenScope || configuredScope);
+  const missingScopes = splitScope(challenge.scope).filter(
+    (s) => !currentScopes.includes(s)
+  );
+  if (missingScopes.length === 0) {
+    return { kind: "refused" };
+  }
+  return {
+    kind: "reauthenticate",
+    scope: [...currentScopes, ...missingScopes].join(" "),
+  };
+}
+
 export class MCPOAuthProvider implements OAuthClientProvider {
   private token: OAuthTokens | undefined;
   private lastChallenge: MCPAuthChallenge | undefined;
