@@ -1,5 +1,6 @@
 import { useMarkdownFileEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import { writeFileContentByPath } from "@app/lib/swr/files";
+import { Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -17,7 +18,7 @@ vi.mock("@app/hooks/useNotification", () => ({
 }));
 
 vi.mock("@app/lib/swr/files", () => ({
-  writeFileContentByPath: vi.fn().mockResolvedValue(undefined),
+  writeFileContentByPath: vi.fn(),
 }));
 
 const owner: LightWorkspaceType = {
@@ -56,6 +57,7 @@ const revised = {
 describe("useMarkdownFileEditor", () => {
   beforeEach(() => {
     flags.clear();
+    vi.mocked(writeFileContentByPath).mockResolvedValue(new Ok(undefined));
   });
 
   it("keeps the plain editor when co_edition is off", () => {
@@ -69,8 +71,8 @@ describe("useMarkdownFileEditor", () => {
     let finishWrite: () => void = () => undefined;
     vi.mocked(writeFileContentByPath).mockImplementationOnce(
       () =>
-        new Promise<void>((resolve) => {
-          finishWrite = resolve;
+        new Promise((resolve) => {
+          finishWrite = () => resolve(new Ok(undefined));
         })
     );
     const { result } = renderHook(() => useMarkdownFileEditor(params));
@@ -98,8 +100,8 @@ describe("useMarkdownFileEditor", () => {
     let finishWrite: () => void = () => undefined;
     vi.mocked(writeFileContentByPath).mockImplementationOnce(
       () =>
-        new Promise<void>((resolve) => {
-          finishWrite = resolve;
+        new Promise((resolve) => {
+          finishWrite = () => resolve(new Ok(undefined));
         })
     );
     const { result } = renderHook(() => useMarkdownFileEditor(params));
@@ -224,8 +226,8 @@ describe("useMarkdownFileEditor", () => {
     let finishWrite: () => void = () => undefined;
     vi.mocked(writeFileContentByPath).mockImplementationOnce(
       () =>
-        new Promise<void>((resolve) => {
-          finishWrite = resolve;
+        new Promise((resolve) => {
+          finishWrite = () => resolve(new Ok(undefined));
         })
     );
     const { result, rerender } = renderHook(
