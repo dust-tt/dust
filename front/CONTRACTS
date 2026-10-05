@@ -725,6 +725,16 @@ with `+`: each sentence is a single string literal or a single template literal.
 exempt. In every `.tsx` file, a `+` with a string or template literal operand inside JSX props or
 children is rejected by the `noStringConcatInJsx` lint rule.
 
+@cc [owner:Nils-Fedrigo,label:error-handling;product;react] ui-api-errors-translated-by-type
+Code under `components/`, `hooks/` and `lib/swr/`, outside poke, MUST NOT show the server
+`message` of an API error (`err.error.message`, `getErrorFromResponse(...).message`, …) to users.
+API errors MUST be displayed through `useFormatAPIError` (`hooks/useFormatAPIError.ts`), which
+translates the error `type` and appends the server message as raw context only when the server
+sent one. Enforced by the `noRawApiErrorMessageInUi` lint rule; files that predate it are listed as
+exclusions in `biome.json` and MUST be removed from that list when migrated, never added to it.
+Until the browser extension compiles Lingui, modules it imports (most conversation and Pod code)
+MUST NOT use `useFormatAPIError` and keep the untranslated fallback `message ?? type`.
+
 @cc [owner:frankaloia,label:security;backend] oauth-connection-ownership-before-token
 Before calling getMCPConnectionAccessToken or otherwise using a caller-supplied OAuth
 connectionId, the code MUST call checkConnectionOwnership(auth, connectionId) and reject

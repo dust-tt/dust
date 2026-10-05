@@ -48,6 +48,32 @@ Rules:
 - Poke (`front/components/poke/**`), logs, analytics event names, keyboard symbols (`⌘`, `↵`),
   product and brand names on their own (Dust, Slack), user-generated content.
 
+## API errors
+
+Never show `err.error.message` or `getErrorFromResponse(res).message` to users: it is English-only,
+and private endpoints omit it when it only restates the type. Display API errors with
+`useFormatAPIError` (lint: `noRawApiErrorMessageInUi`):
+
+```ts
+const formatAPIError = useFormatAPIError();
+// SWR error or caught `fetcher` error:
+sendNotification({ type: "error", title: t`Failed to rename the space.`, description: formatAPIError(err) });
+// Raw `Response`:
+description: formatAPIError(await getAPIErrorFromResponse(res)),
+```
+
+It renders the translation of the error `type` from `front/lib/client/api_errors/display.ts`, then
+the server message as raw context when there is one: `Your data is incomplete. Raw message: "…".`
+
+- A new error type in `front/types/error.ts` needs its sentence in `API_ERROR_MESSAGES` (the
+  typecheck fails otherwise), translated like any other message.
+- Server side, a private route omits `message` when it only restates the type, using
+  `privateApiError` (`front-api/middlewares/utils.ts`). Public `/api/v1` routes and shared
+  middlewares keep `apiError`, which requires a message.
+- To drop a dynamic message, add a more specific error type (`column_missing` rather than
+  `invalid_request_error` + "Column foo is missing") so the translation says it all.
+- Not yet in code the browser extension imports (see below): keep `message ?? type` there.
+
 ## Where translated components can render
 
 Lingui components need an `I18nProvider`. Every front-spa entry mounts one at its root (e.g.

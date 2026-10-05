@@ -183,6 +183,10 @@ export function useSWRInfiniteWithDefaults<TKey extends Key, TData>(
   };
 }
 
+/**
+ * @deprecated Its result is only used to show the raw server message. Use
+ * `getAPIErrorFromResponse` with `useFormatAPIError` instead.
+ */
 export async function getErrorFromResponse(response: Response) {
   const errorData = await response.json();
 

@@ -1,0 +1,20 @@
+engine biome(1.0)
+language js
+
+// UI code must not show the server `message` of an API error: it is English-only and may be
+// omitted by private endpoints. Use `useFormatAPIError` from `@app/hooks/useFormatAPIError`,
+// which translates the error type and appends the message as raw context when present.
+// See CONTRACTS [ui-api-errors-translated-by-type].
+or {
+    `$obj.error.message`,
+    `$obj.error?.message`,
+    `$obj?.error?.message`,
+    `getErrorFromResponse($...)`
+} as $match where {
+    $obj <: not or { `fieldState`, `field`, r"^formState.*" },
+    register_diagnostic(
+        span = $match,
+        message = "Don't show API error messages directly (CONTRACTS [ui-api-errors-translated-by-type]). Use `useFormatAPIError()` from `@app/hooks/useFormatAPIError`.",
+        severity = "error"
+    )
+}
