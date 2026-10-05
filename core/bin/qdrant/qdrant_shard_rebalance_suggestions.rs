@@ -344,7 +344,7 @@ async fn gather_cluster_data(
                 peer_id
             );
             let info = response.result;
-            validate_cluster_info(peer_id, &info)?;
+            validate_cluster_info(peer_id, &collection, &info)?;
             let placement: BTreeSet<_> = info
                 .local_shards
                 .iter()
@@ -394,26 +394,32 @@ async fn gather_cluster_data(
     Ok((peers, shards))
 }
 
-fn validate_cluster_info(expected_peer: u64, info: &ClusterInfoResult) -> Result<()> {
+fn validate_cluster_info(
+    expected_peer: u64,
+    collection: &str,
+    info: &ClusterInfoResult,
+) -> Result<()> {
     ensure!(
         info.peer_id == expected_peer,
         "Expected peer {}, got {}",
         expected_peer,
         info.peer_id
     );
-    ensure!(
-        info.shard_transfers.is_empty()
-            && info
-                .resharding_operations
-                .as_ref()
-                .is_none_or(Vec::is_empty),
-        "Transfers or resharding in progress; wait for completion and rerun"
-    );
-    ensure!(
-        info.local_shards.iter().all(|s| s.state == "Active")
-            && info.remote_shards.iter().all(|s| s.state == "Active"),
-        "Non-active replica found; wait for recovery and rerun"
-    );
+    let resharding_count = info.resharding_operations.as_ref().map_or(0, Vec::len);
+    if !info.shard_transfers.is_empty() || resharding_count > 0 {
+        eprintln!(
+            "Warning: collection {} on peer {} has ongoing transfers ({}) or resharding operations ({}). Suggestions do not account for incoming load.",
+            collection, expected_peer, info.shard_transfers.len(), resharding_count
+        );
+    }
+    if info.local_shards.iter().any(|s| s.state != "Active")
+        || info.remote_shards.iter().any(|s| s.state != "Active")
+    {
+        eprintln!(
+            "Warning: collection {} on peer {} has non-active replicas. Suggestions may include these replicas and use incomplete point counts.",
+            collection, expected_peer
+        );
+    }
     ensure!(
         info.remote_shards
             .iter()
