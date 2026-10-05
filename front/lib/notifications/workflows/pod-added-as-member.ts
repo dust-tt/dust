@@ -1,8 +1,8 @@
 import config from "@app/lib/api/config";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
-import { getActiveSubscriberAuth, getNovuClient } from "@app/lib/notifications";
+import { getNovuClient } from "@app/lib/notifications";
 import { renderEmail } from "@app/lib/notifications/email-templates/default";
 import { fireAndForgetNotification } from "@app/lib/notifications/fire_and_forget";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -46,16 +46,14 @@ const getPodDetails = async ({
   let workspaceName: string = "A workspace";
 
   if (subscriberId) {
-    const auth = await getActiveSubscriberAuth(
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
       subscriberId,
       payload.workspaceId
     );
 
-    const pod = auth
-      ? await SpaceResource.fetchById(auth, payload.podId)
-      : null;
+    const pod = await SpaceResource.fetchById(auth, payload.podId);
 
-    if (auth && pod) {
+    if (pod) {
       workspaceName = auth.getNonNullableWorkspace().name;
       podName = pod.name;
 
@@ -83,13 +81,10 @@ const shouldSkipPod = async ({
   payload: PodAddedAsMemberPayloadType;
 }): Promise<boolean> => {
   if (subscriberId) {
-    const auth = await getActiveSubscriberAuth(
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
       subscriberId,
       payload.workspaceId
     );
-    if (!auth) {
-      return true;
-    }
 
     const pod = await SpaceResource.fetchById(auth, payload.podId);
 
@@ -135,8 +130,7 @@ export const podAddedAsMemberWorkflow = workflow(
         };
       },
       {
-        skip: async () =>
-          shouldSkipPod({ subscriberId: subscriber.subscriberId, payload }),
+        skip: async () => shouldSkipPod({ payload }),
       }
     );
 
@@ -164,10 +158,7 @@ export const podAddedAsMemberWorkflow = workflow(
       },
       {
         skip: async () => {
-          return shouldSkipPod({
-            subscriberId: subscriber.subscriberId,
-            payload,
-          });
+          return shouldSkipPod({ payload });
         },
       }
     );
