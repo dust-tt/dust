@@ -1,12 +1,14 @@
 //! dfs-mount: mounts one dfs-server session at a local directory.
 
+mod commit;
 mod fs;
+mod state;
 
 use std::os::unix::fs::MetadataExt as _;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use anyhow::{Context, bail};
 use clap::Parser;
@@ -14,9 +16,8 @@ use dfs_proto::client::Client;
 use dfs_proto::{PROTOCOL_VERSION, Request, Response};
 use fuser::{Config, MountOption, SessionACL};
 
-use crate::fs::{Fs, Job, Mount, Profile};
-
-const RENEW_EVERY: Duration = Duration::from_secs(10);
+use crate::fs::{Fs, Mount};
+use crate::state::Budget;
 
 #[derive(Parser)]
 struct Cli {
@@ -29,9 +30,10 @@ struct Cli {
     root: Option<u64>,
     #[arg(long, default_value_t = 8)]
     threads: usize,
-    /// `matched` acknowledges close before its commit (labelled, non-default).
-    #[arg(long, value_enum, default_value = "strict")]
-    profile: Profile,
+    /// MAX_EVENTUAL_CONSISTENCY_DELAY: longest between a mutation's acknowledgment here and every
+    /// other mount serving it, split between the commit window and the cache TTL.
+    #[arg(long, env = "DFS_MAX_DELAY_MS", default_value_t = 1000)]
+    max_delay_ms: u64,
     mountpoint: PathBuf,
 }
 
@@ -41,114 +43,44 @@ fn main() -> anyhow::Result<()> {
     let runtime = tokio::runtime::Builder::new_multi_thread().worker_threads(2).enable_all().build()?;
     let rt = runtime.handle().clone();
 
-    let (pushed, mut invalidations) = tokio::sync::mpsc::unbounded_channel();
-    let client = Arc::new(rt.block_on(Client::connect(&cli.addr, pushed))?);
-    let sent = Instant::now();
+    let client = Arc::new(rt.block_on(Client::connect(&cli.addr))?);
     let hello = rt.block_on(client.call(Request::Hello { version: PROTOCOL_VERSION, token: cli.token, root: cli.root }));
-    let (lease_ms, root) = match hello.result {
-        Ok(Response::Session { lease_ms, root: Some(root), .. }) => (lease_ms, root),
+    let root = match hello.result {
+        Ok(Response::Session { root: Some(root), .. }) => root,
         Ok(_) => bail!("an administrator session has no data root"),
         Err(errno) => bail!("hello failed: errno {}", errno.0),
     };
-
-    let (jobs, queue) = std::sync::mpsc::channel::<Job>();
-    let fs = Arc::new(Fs::new(
-        rt.clone(),
-        client.clone(),
-        root.id,
-        (metadata.uid(), metadata.gid()),
-        sent + Duration::from_millis(lease_ms),
-        jobs.clone(),
-        cli.profile,
-    ));
+    let budget = Budget::new(Duration::from_millis(cli.max_delay_ms));
+    let fs = Arc::new(Fs::new(rt.clone(), client.clone(), root, (metadata.uid(), metadata.gid()), budget));
+    rt.spawn(commit::run(fs.clone()));
 
     let mut config = Config::default();
-    config.mount_options = vec![
-        MountOption::FSName("dfs".into()),
-        MountOption::NoDev,
-        MountOption::NoSuid,
-        MountOption::NoAtime,
-        MountOption::DefaultPermissions,
-        MountOption::RW,
-    ];
+    // No `DefaultPermissions`: the kernel would check mode bits against attributes it may not
+    // cache; the mount checks them itself (`local-permissions`).
+    config.mount_options =
+        vec![MountOption::FSName("dfs".into()), MountOption::NoDev, MountOption::NoSuid, MountOption::NoAtime, MountOption::RW];
     config.acl = SessionACL::All;
     config.n_threads = Some(cli.threads);
     config.clone_fd = true;
     let session = fuser::Session::new(Mount(fs.clone()), &cli.mountpoint, &config)?;
-    let notifier = session.notifier();
-    let probe = session.notifier();
-
-    // Kernel notifications block on kernel locks, so they never run on a FUSE request thread.
-    let notifying = fs.clone();
-    std::thread::spawn(move || {
-        while let Ok(job) = queue.recv() {
-            match job {
-                Job::Remote(number, items) => {
-                    let kernel = notifying.apply_remote(&items);
-                    if notifying.notify(&notifier, &kernel) {
-                        notifying.client.ack(number);
-                    } else {
-                        // Never acknowledge what the kernel may still serve: stop caching and let
-                        // the server wait for this lease to expire.
-                        let kernel = notifying.lose_lease();
-                        notifying.notify(&notifier, &kernel);
-                    }
-                }
-                Job::Notify(kernel) => {
-                    if !notifying.notify(&notifier, &kernel) {
-                        let kernel = notifying.lose_lease();
-                        notifying.notify(&notifier, &kernel);
-                    }
-                }
-                Job::LeaseLost => {
-                    let kernel = notifying.lose_lease();
-                    notifying.notify(&notifier, &kernel);
-                }
-            }
-        }
-    });
-
-    let forward = jobs.clone();
-    rt.spawn(async move {
-        while let Some((number, items)) = invalidations.recv().await {
-            let _ = forward.send(Job::Remote(number, items));
-        }
-        // The connection ended: nothing can be trusted any more.
-        let _ = forward.send(Job::LeaseLost);
-    });
-
-    let renewing = fs.clone();
-    rt.spawn(async move {
-        loop {
-            tokio::time::sleep(RENEW_EVERY).await;
-            let sent = Instant::now();
-            // A renewal that does not answer in time is a lost lease, not a pending one.
-            match tokio::time::timeout(RENEW_EVERY, renewing.client.call(Request::Renew)).await.map(|r| r.result) {
-                Ok(Ok(Response::Renewed { lease_ms })) => renewing.renewed(sent + Duration::from_millis(lease_ms)),
-                _ => {
-                    let _ = jobs.send(Job::LeaseLost);
-                    break;
-                }
-            }
-        }
-    });
-
     let background = session.spawn()?;
-    fs.probe_negative(&probe, &cli.mountpoint);
-    eprintln!("{}", serde_json::json!({ "message": "mount probe", "negative_ttl": fs.negative_ttl() }));
+    eprintln!("{}", serde_json::json!({ "message": "mount budget", "window_ms": budget.window.as_millis() as u64, "ttl_ms": budget.ttl.as_millis() as u64 }));
     println!("mounted {}", cli.mountpoint.display());
 
     let stop = Arc::new(AtomicBool::new(false));
     signal_hook::flag::register(signal_hook::consts::SIGTERM, stop.clone())?;
     signal_hook::flag::register(signal_hook::consts::SIGINT, stop.clone())?;
     while !stop.load(Ordering::Relaxed) && !background.guard.is_finished() {
-        std::thread::sleep(Duration::from_millis(100));
+        std::thread::sleep(Duration::from_millis(50));
     }
-    fs.flush_all();
+    let drained = fs.drain();
     if !background.guard.is_finished() {
         background.umount_and_join()?;
     }
     rt.block_on(client.call(Request::Close));
-    eprintln!("{}", fs.stats.json());
+    eprintln!("{}", fs.stats_json());
+    if let Err(e) = drained {
+        bail!("drain failed: {e:?}");
+    }
     Ok(())
 }

@@ -25,7 +25,7 @@ TOKEN=$("$BIN/dfs-server" provision --grant alice:write --token-for alice |
 "$BIN/dfs-server" serve --listen "127.0.0.1:$PORT" >"$WORK/server.log" 2>&1 &
 SERVER_PID=$!
 until grep -q listening "$WORK/server.log"; do sleep 0.1; done
-DFS_TOKEN=$TOKEN "$BIN/dfs-mount" --profile "${PROFILE:-strict}" --addr "127.0.0.1:$PORT" "$MNT" >"$WORK/mount.log" 2>&1 &
+DFS_TOKEN=$TOKEN "$BIN/dfs-mount" --addr "127.0.0.1:$PORT" "$MNT" >"$WORK/mount.log" 2>&1 &
 MOUNT_PID=$!
 until grep -q mounted "$WORK/mount.log"; do sleep 0.1; done
 
@@ -67,4 +67,15 @@ tar --no-same-owner -C "$MNT/untar" -xf "$WORK/small.tar"
 (cd "$SRC" && find . -type f -exec sha256sum {} + | sort) >"$WORK/want"
 (cd "$MNT/untar" && find . -type f -exec sha256sum {} + | sort) >"$WORK/got"
 diff "$WORK/want" "$WORK/got"
+
+# Unmount drains every acknowledged mutation; a new mount (no cache) sees all of it.
+kill "$MOUNT_PID"; wait "$MOUNT_PID"; MOUNT_PID=
+grep -q '"dropped_ops":0' "$WORK/mount.log" || { echo "FAIL: dropped ops"; tail -n 1 "$WORK/mount.log"; exit 1; }
+DFS_TOKEN=$TOKEN "$BIN/dfs-mount" --addr "127.0.0.1:$PORT" "$MNT" >"$WORK/mount2.log" 2>&1 &
+MOUNT_PID=$!
+until grep -q mounted "$WORK/mount2.log"; do sleep 0.1; done
+(cd "$MNT/untar" && find . -type f -exec sha256sum {} + | sort) >"$WORK/got2"
+diff "$WORK/want" "$WORK/got2"
+[[ $(ls "$MNT/d" | tr '\n' ' ') == "c.txt link " ]]
+"$BIN/dfs-server" fsck
 echo "smoke ok"
