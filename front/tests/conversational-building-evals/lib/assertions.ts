@@ -326,7 +326,7 @@ function checkAgentToolReplacement(
 
 // Every recorded suggestion must edit one expected skill or move one expected agent from the old
 // tool to the new one, and every expected entity must be edited exactly once, in one call or
-// several. What the skill edits change is left to the judge.
+// several. Skill edits must edit the instructions; what they change is left to the judge.
 function validateToolReplacement(
   assertion: Extract<
     FinalToolCallAssertion,
@@ -362,6 +362,13 @@ function validateToolReplacement(
         : undefined;
     let entity: string;
     if (skillKey) {
+      // The old tool is cited in the instructions: swapping it takes an instruction edit.
+      if (!hasEdit(item, "instructionEdits")) {
+        return {
+          success: false,
+          error: `The edit of skill "${skillKey}" has no instruction edits: ${JSON.stringify(item)}`,
+        };
+      }
       entity = `skill:${skillKey}`;
     } else if (agentKey) {
       const result = checkAgentToolReplacement(item, agentKey, toolIds);

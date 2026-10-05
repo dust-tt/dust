@@ -169,7 +169,7 @@ export type FinalToolCallAssertion =
   | {
       // Every skill and agent using `fromToolKey` must be edited, and nothing else. Checks every
       // `suggest` call of the run: the edits can be separate or batched. Agent edits must swap the
-      // tools; what skill edits change is left to the judge criteria.
+      // tools; skill edits must edit the instructions, what they change is left to the judge.
       type: "suggestToolReplacement";
       fromToolKey: string;
       toToolKey: string;
