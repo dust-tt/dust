@@ -14,15 +14,16 @@ impl Keys {
         Ok(Self(key))
     }
     fn family(&self, family: u8) -> Vec<u8> {
-        let mut key = self.0.clone();
+        let mut key = Vec::with_capacity(self.0.len() + 17);
+        key.extend_from_slice(&self.0);
         key.push(family);
         key
     }
     fn object_family(&self, family: u8, id: &str) -> Result<Vec<u8>, Status> {
         let mut key = self.family(family);
-        let id = validate::id(id)?;
+        let id = validate::id_ref(id)?;
         key.extend_from_slice(
-            uuid::Uuid::parse_str(&id)
+            uuid::Uuid::parse_str(id)
                 .map_err(|_| status(ErrorCode::InvalidInput))?
                 .as_bytes(),
         );

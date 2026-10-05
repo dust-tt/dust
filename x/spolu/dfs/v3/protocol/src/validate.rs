@@ -7,6 +7,11 @@ use std::collections::{BTreeMap, BTreeSet};
 use tonic::Status;
 
 pub fn id(value: &str) -> Result<String, Status> {
+    id_ref(value).map(str::to_owned)
+}
+
+/// Validate the same URI/ID syntax without allocating its canonical ID.
+pub fn id_ref(value: &str) -> Result<&str, Status> {
     let value = if let Some(uri) = value.strip_prefix("dfs://") {
         let (name, raw) = uri
             .rsplit_once("--")
@@ -41,7 +46,7 @@ pub fn id(value: &str) -> Result<String, Status> {
     {
         return Err(status(ErrorCode::InvalidInput));
     }
-    Ok(value.to_owned())
+    Ok(value)
 }
 
 pub fn name(value: &str) -> Result<(), Status> {

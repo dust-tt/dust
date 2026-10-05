@@ -171,6 +171,9 @@ fn local_filesystem_contracts() -> Result<()> {
         create_bundles_initial_writes_without_merging_siblings()
             .await
             .context("create bundling")?;
+        sibling_publications_preserve_file_writes()
+            .await
+            .context("sibling publication conflicts")?;
         lost_commit_reply_is_not_replayed()
             .await
             .context("ambiguous publication")?;
@@ -496,6 +499,44 @@ async fn create_bundles_initial_writes_without_merging_siblings() -> Result<()> 
     f.api.0.cache.paused.store(false, Ordering::Release);
     f.api.0.cache.drain().await?;
     assert_eq!(f.read(&first.id).await?.data, b"newtwo");
+    f.clean().await
+}
+
+async fn sibling_publications_preserve_file_writes() -> Result<()> {
+    let f = Fixture::configured(cache::CacheConfig {
+        max_eventual_consistency_delay_ms: 8000,
+        ..Default::default()
+    })
+    .await?;
+    let parent = f.create(&f.tenant.root_id, "busy", true).await?;
+    let file = f.create(&parent.id, "existing", false).await?;
+    f.api.0.cache.drain().await?;
+    // Sibling creates change the parent metadata used to validate the existing file's ancestry.
+    // These are separate transactions; repeated definite conflicts must not discard valid writes.
+    for i in 0u64..300 {
+        f.create(&parent.id, &format!("sibling-{i}"), false).await?;
+        f.write(&file.id, i * 8, i.to_be_bytes().to_vec()).await?;
+        tokio::time::sleep(Duration::from_millis(1)).await;
+    }
+    f.api.0.cache.drain().await?;
+    f.sync(&file.id).await?;
+    let expected: Vec<u8> = (0u64..300).flat_map(u64::to_be_bytes).collect();
+    assert_eq!(f.read(&file.id).await?.data, expected);
+    let (peer, session) = f.peer().await?;
+    assert_eq!(
+        peer.read(request(
+            &session.session_key,
+            ReadRequest {
+                object_id: file.id,
+                offset: 0,
+                length: 2400,
+            },
+        )?)
+        .await?
+        .into_inner()
+        .data,
+        expected
+    );
     f.clean().await
 }
 

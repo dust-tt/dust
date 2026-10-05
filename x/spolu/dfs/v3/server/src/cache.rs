@@ -13,7 +13,7 @@ use parking_lot::{Mutex, RwLock};
 
 mod index;
 use std::{
-    collections::{BTreeMap, BTreeSet, VecDeque},
+    collections::{BTreeMap, BTreeSet, HashMap, VecDeque},
     ops::{Bound, RangeBounds},
     sync::{
         Arc, Weak,
@@ -110,7 +110,7 @@ struct Base {
     expires: Instant,
     invalid: AtomicBool,
     invalidated: Mutex<Vec<RangeKey>>,
-    points: Mutex<BTreeMap<Vec<u8>, PointCell>>,
+    points: RwLock<HashMap<Vec<u8>, PointCell>>,
     ranges: Mutex<BTreeMap<RangeKey, CachedRange>>,
 }
 impl Base {
@@ -620,6 +620,7 @@ impl Cache {
     /// @cc [owner:spolu,label:concurrency;security] validate-publication-dependencies
     /// Reuse an old read version only with all original conflict ranges. At a new read version,
     /// compare every cached precondition before writing. Unknown/timeout outcomes MUST NOT replay.
+    /// Definitely uncommitted conflicts MAY retry, only within the original deadline.
     async fn publish(&self, group: Vec<Arc<Entry>>) {
         let _profile = Guard::new(Phase::Publish);
         let mut batch = WriteBatch::new();
@@ -641,7 +642,8 @@ impl Cache {
         }
         let first = &group[0];
         let mut result = Err(status(ErrorCode::Unavailable));
-        for attempt in 0..3 {
+        let mut attempt = 0u32;
+        loop {
             let remaining = first.deadline.saturating_duration_since(Instant::now());
             if remaining.is_zero()
                 || group
@@ -721,6 +723,7 @@ impl Cache {
                 }
                 Err(error) if error.is_retryable_not_committed() => {
                     result = Err(storage::failed(error));
+                    attempt = attempt.saturating_add(1);
                 }
                 Err(error) => {
                     result = Err(storage::failed(error));
@@ -866,24 +869,41 @@ impl Snapshot {
         self.record(Read::Point(key.to_vec(), value.clone()))?;
         Ok(value)
     }
-    pub(crate) async fn ancestry(&self, key: Vec<u8>) -> Result<Option<Bytes>> {
+    pub(crate) async fn ancestry(&self, key: Vec<u8>) -> Result<Option<Record>> {
         let value = self.load(&key, true).await?;
-        self.record(Read::Ancestry(key, ancestry_value(value.clone())?))?;
-        Ok(value)
+        let record: Option<Record> = value.as_deref().map(storage::decode).transpose()?;
+        let ancestry = record
+            .as_ref()
+            .map(|r| (r.object.id.clone(), r.object.directory, r.parent.clone()));
+        self.record(Read::Ancestry(key, ancestry))?;
+        Ok(record)
     }
-    /// Speculative warming MAY skip initialized base cells even if RAM edits supersede them.
-    /// Semantic reads still resolve the index and validate the view; hints never authorize access.
-    pub(crate) async fn peek(&self, key: Vec<u8>) -> Result<()> {
+    /// @cc [owner:spolu,label:security;performance] hot-prefetch-is-advisory
+    /// A hot key MAY skip speculative warming, even if its value has changed or become invalid.
+    /// Semantic reads MUST still resolve the index and validate the view before using any value.
+    pub(crate) fn hot(&self, key: &[u8]) -> bool {
         if self
             .base
             .points
-            .lock()
-            .get(&key)
+            .read()
+            .get(key)
             .is_some_and(|cell| cell.get().is_some())
         {
-            return Ok(());
+            return true;
         }
-        self.load(&key, false).await.map(|_| ())
+        self.cache
+            .inner
+            .read()
+            .index
+            .point(key, self.cut, self.base.raw.version)
+            .0
+            .is_some()
+    }
+    pub(crate) async fn peek(&self, key: Vec<u8>) -> Result<()> {
+        if !self.hot(&key) {
+            self.load(&key, false).await?;
+        }
+        Ok(())
     }
     async fn load(&self, key: &[u8], consume: bool) -> Result<Option<Bytes>> {
         self.valid()?;
@@ -906,12 +926,16 @@ impl Snapshot {
             });
         }
         drop(profile);
-        let cell = {
-            let mut points = self.base.points.lock();
-            if points.len() >= MAX_READS {
-                points.clear();
+        let cached = self.base.points.read().get(key).cloned();
+        let cell = match cached {
+            Some(cell) => cell,
+            None => {
+                let mut points = self.base.points.write();
+                if points.len() >= MAX_READS {
+                    points.clear();
+                }
+                points.entry(key.to_vec()).or_default().clone()
             }
-            points.entry(key.to_vec()).or_default().clone()
         };
         if cell.get().is_some() {
             self.cache.metrics.hits.fetch_add(1, Ordering::Relaxed);

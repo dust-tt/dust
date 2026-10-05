@@ -422,12 +422,14 @@ A read pins an acceptance sequence and resolves only versions at or before that 
 its FDB base. It does not copy or scan the full journal. Listings merge indexed mutations in batch
 order; local conflict checks use the same key/range index. Pending publication and object-participant
 indexes exclude completed history. Retire only the oldest terminal entries after `P + C`, when no
-valid older snapshot can need them; account for index memory before acknowledgment. Hot hint warming
-skips initialized base cells, while semantic reads still validate the overlay and authorization.
+valid older snapshot can need them; account for index memory before acknowledgment. Resident primary
+objects skip speculative hint construction; semantic reads still validate every consumed link/grant.
+Point-cache hits borrow keys without allocation. Ancestor reads decode each record only once.
 
-Publication retries definitely uncommitted attempts after validating their original preconditions
-at a fresh read version. Authorization guards compare consumed parent links and grants, allowing
-unrelated ancestor timestamps to change. A changed target precondition rejects the tentative branch
+Publication retries definitely uncommitted attempts immediately within the original deadline,
+validating their original preconditions at a fresh read version. Authorization guards compare
+consumed parent links and grants, allowing unrelated ancestor timestamps to change. A changed target
+precondition rejects the tentative branch
 and records failure; general semantic rebasing is not implemented yet. Ambiguous outcomes are never
 replayed. Invalidating a rejected batch does not cancel unrelated object publications.
 

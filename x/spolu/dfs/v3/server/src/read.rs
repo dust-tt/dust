@@ -54,6 +54,7 @@ impl View {
     /// Hints MUST only warm the pinned snapshot. Off-chain results MUST NOT establish authority,
     /// contribute publication dependencies, or propagate errors. Semantic reads MUST consume and
     /// validate the actual chain within this same coherent view.
+    /// A resident primary object MAY skip hint construction; this MUST NOT skip semantic reads.
     pub async fn prefetch(
         snapshot: Arc<Snapshot>,
         tenant: &str,
@@ -64,11 +65,18 @@ impl View {
     ) -> Result<Self> {
         let keys = Keys::new(tenant)?;
         let _profile = Guard::new(Phase::Prefetch);
-        let primary = validate::id(object_id).ok();
+        let primary = validate::id_ref(object_id).ok();
+        if let Some(id) = primary
+            && snapshot.hot(&keys.object(id)?)
+        {
+            let mut view = Self::from_snapshot(snapshot, tenant, grants).await?;
+            view.ancestry = Some(ancestry);
+            return Ok(view);
+        }
         let warm = async {
             let mut keys_to_warm = Vec::new();
             if let Some(id) = &primary {
-                for node in ancestry.chain(&keys, id).await {
+                for node in ancestry.chain(&keys, id) {
                     keys_to_warm.push(keys.object(&node)?);
                     for grant in &grants {
                         keys_to_warm.push(keys.grant(&node, grant)?);
@@ -76,7 +84,7 @@ impl View {
                 }
                 if let Some(name) = child_name.filter(|name| validate::name(name).is_ok()) {
                     keys_to_warm.push(keys.child(id, name)?);
-                    if let Some(child) = ancestry.child(&keys, id, name).await {
+                    if let Some(child) = ancestry.child(&keys, id, name) {
                         keys_to_warm.push(keys.object(&child)?);
                     }
                 }
@@ -107,16 +115,19 @@ impl View {
     pub async fn object(&self, id: &str) -> Result<Record> {
         let id = validate::id(id)?;
         let bytes = self.get(&self.keys.object(&id)?).await?;
-        self.object_record(&id, bytes).await
+        self.object_record(&id, bytes)
     }
-    async fn object_record(&self, id: &str, bytes: Option<Bytes>) -> Result<Record> {
+    fn object_record(&self, id: &str, bytes: Option<Bytes>) -> Result<Record> {
         let bytes = bytes.ok_or_else(|| status(ErrorCode::NotFound))?;
         let record: Record = decode(&bytes)?;
+        self.check_record(id, record)
+    }
+    fn check_record(&self, id: &str, record: Record) -> Result<Record> {
         if record.object.id != id {
             return Err(status(ErrorCode::Unavailable));
         }
         if let (Some(hints), Some(parent)) = (&self.ancestry, &record.parent) {
-            hints.remember(&self.keys, id, &parent.id).await;
+            hints.remember(&self.keys, id, &parent.id);
         }
         Ok(record)
     }
@@ -169,7 +180,7 @@ impl View {
             return Err(status(ErrorCode::Unavailable));
         }
         if let Some(hints) = &self.ancestry {
-            hints.remember_child(&self.keys, parent, name, &id).await;
+            hints.remember_child(&self.keys, parent, name, &id);
         }
         Ok(Some(child))
     }
@@ -182,7 +193,10 @@ impl View {
         grants: &BTreeSet<String>,
         id: &str,
     ) -> Result<bool> {
-        stream::iter(grants.clone())
+        if let Some(grant) = grants.first().filter(|_| grants.len() == 1) {
+            return Ok(snapshot.get(keys.grant(id, grant)?).await?.is_some());
+        }
+        stream::iter(grants.iter().cloned())
             .map(|grant| async move {
                 Ok::<_, Status>(snapshot.get(keys.grant(id, &grant)?).await?.is_some())
             })
@@ -210,11 +224,12 @@ impl View {
             let Some(parent) = current.parent else {
                 return Ok(false);
             };
-            let bytes = self
+            let record = self
                 .snapshot
                 .ancestry(self.keys.object(&parent.id)?)
-                .await?;
-            current = self.object_record(&parent.id, bytes).await?;
+                .await?
+                .ok_or_else(|| status(ErrorCode::NotFound))?;
+            current = self.check_record(&parent.id, record)?;
         }
     }
     pub async fn stat(&self, id: &str) -> Result<Record> {

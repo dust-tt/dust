@@ -1,7 +1,7 @@
 use crate::keys::Keys;
 use dfs_protocol::validate;
-use std::collections::{HashMap, HashSet, VecDeque};
-use tokio::sync::Mutex;
+use parking_lot::RwLock;
+use std::collections::{HashMap, VecDeque};
 
 pub(crate) const WINDOW: usize = 16;
 const MAX_ENTRIES: usize = 16_384;
@@ -14,7 +14,7 @@ const MAX_BYTES: usize = 8 * 1024 * 1024;
 /// Cache misses MUST preserve access.
 /// The cache MUST bound total entries/bytes across tenants and each returned chain's length.
 #[derive(Default)]
-pub(crate) struct Ancestry(Mutex<Edges>);
+pub(crate) struct Ancestry(RwLock<Edges>);
 
 #[derive(Default)]
 struct Edges {
@@ -23,35 +23,35 @@ struct Edges {
     bytes: usize,
 }
 impl Ancestry {
-    pub async fn remember(&self, keys: &Keys, object: &str, parent: &str) {
-        let (Ok(key), Ok(parent)) = (keys.object(object), validate::id(parent)) else {
+    pub fn remember(&self, keys: &Keys, object: &str, parent: &str) {
+        let (Ok(key), Ok(parent)) = (keys.object(object), validate::id_ref(parent)) else {
             return;
         };
-        self.0.lock().await.insert(key, parent);
+        self.0.write().insert(key, parent);
     }
 
-    pub async fn remember_child(&self, keys: &Keys, parent: &str, name: &str, object: &str) {
+    pub fn remember_child(&self, keys: &Keys, parent: &str, name: &str, object: &str) {
         let (Ok(key), Ok(()), Ok(object)) = (
             keys.child(parent, name),
             validate::name(name),
-            validate::id(object),
+            validate::id_ref(object),
         ) else {
             return;
         };
-        self.0.lock().await.insert(key, object);
+        self.0.write().insert(key, object);
     }
 
-    pub async fn child(&self, keys: &Keys, parent: &str, name: &str) -> Option<String> {
+    pub fn child(&self, keys: &Keys, parent: &str, name: &str) -> Option<String> {
         let key = keys.child(parent, name).ok()?;
-        self.0.lock().await.targets.get(&key).cloned()
+        self.0.read().targets.get(&key).cloned()
     }
 
-    pub async fn chain(&self, keys: &Keys, first: &str) -> Vec<String> {
-        let edges = self.0.lock().await;
-        let mut chain = Vec::new();
-        let mut seen = HashSet::new();
+    pub fn chain(&self, keys: &Keys, first: &str) -> Vec<String> {
+        let edges = self.0.read();
+        let mut chain = Vec::with_capacity(WINDOW - 1);
         let mut next = first.to_owned();
-        while chain.len() < WINDOW - 1 && seen.insert(next.clone()) {
+        // The hint chain contains at most 15 IDs; avoid allocating a second set for cycle detection.
+        while chain.len() < WINDOW - 1 && !chain.contains(&next) {
             let Ok(key) = keys.object(&next) else {
                 break;
             };
@@ -69,12 +69,14 @@ impl Edges {
         // Include both key copies, the target, and conservative container/allocation overhead.
         2 * key.len() + target.len() + 128
     }
-    fn insert(&mut self, key: Vec<u8>, target: String) {
+    fn insert(&mut self, key: Vec<u8>, target: &str) {
         if let Some(previous) = self.targets.get_mut(&key) {
-            *previous = target;
+            if previous != target {
+                target.clone_into(previous);
+            }
             return;
         }
-        let charge = Self::charge(&key, &target);
+        let charge = Self::charge(&key, target);
         while self.targets.len() >= MAX_ENTRIES || self.bytes + charge > MAX_BYTES {
             let Some(oldest) = self.order.pop_front() else {
                 return;
@@ -85,6 +87,6 @@ impl Edges {
         }
         self.bytes += charge;
         self.order.push_back(key.clone());
-        self.targets.insert(key, target);
+        self.targets.insert(key, target.to_owned());
     }
 }
