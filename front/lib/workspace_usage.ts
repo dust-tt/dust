@@ -6,6 +6,7 @@ import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_me
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { ModelId } from "@app/types/shared/model_id";
+import { isString } from "@app/types/shared/utils/general";
 import type { WorkspaceType } from "@app/types/user";
 import { stringify } from "csv-stringify/sync";
 import { format } from "date-fns/format";
@@ -284,7 +285,7 @@ function generateCsvFromQueryResult(
   const headers = Object.keys(rows[0]);
   const data = rows.map((row) =>
     Object.values(row).map((value) =>
-      typeof value === "string" ? sanitizeCsvCell(value) : value
+      isString(value) ? sanitizeCsvCell(value) : value
     )
   );
 

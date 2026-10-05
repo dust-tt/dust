@@ -1,5 +1,4 @@
 import { Authenticator } from "@app/lib/auth";
-import { UserMessageModel } from "@app/lib/models/agent/conversation";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
@@ -61,13 +60,14 @@ describe("GET /api/v1/w/:wId/usage", () => {
       user.sId,
       workspace.sId
     );
-    await ConversationFactory.create(userAuth, {
+    const conversation = await ConversationFactory.create(userAuth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
       messagesCreatedAt: [new Date("2026-01-15T12:00:00Z")],
     });
-    await UserMessageModel.update(
-      { userContextFullName: "=1+1" },
-      { where: { workspaceId: workspace.id } }
+    await ConversationFactory.setUserMessagesFullNameForTest(
+      conversation.id,
+      workspace.id,
+      "=1+1"
     );
 
     const response = await honoApp.request(
