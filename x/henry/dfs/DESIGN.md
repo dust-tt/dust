@@ -155,6 +155,15 @@ of which any other create or permission check reads. Spolu's parent-record conte
   repeated miss on 7.0 kernels.
 * No kernel writeback cache (would reorder `utimensat` vs data and break invalidation of dirty
   pages). Spolu enables it; disclosed in results.
+* **Directory listings in the kernel keep `opendir`.** `opendir` grants `FOPEN_CACHE_DIR` for a
+  complete, fresh listing and `FOPEN_KEEP_CACHE` only while no change reached the directory since
+  the kernel last cached it; when it keeps, the daemon builds no snapshot unless the kernel then
+  asks (its pages were reclaimed). Rejected: answering `opendir` with `ENOSYS` (no opendir and
+  releasedir round trips; Linux then defaults every directory to keep its cache). Directory
+  invalidation only drops existing pages (`notify_inval_inode` does not bump the readdir-cache
+  version), so an invalidation processed before the kernel fills its cache from an older reply
+  leaves a stale listing cached with nothing left to drop it; the per-open flags are what heal
+  that case. Cost: two FUSE round trips per directory open (≈ 1 ms per 100 directories).
 
 ## Data path
 
