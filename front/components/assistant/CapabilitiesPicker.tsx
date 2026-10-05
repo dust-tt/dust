@@ -110,7 +110,7 @@ export function CapabilitiesPickerLoading({
           key={`capabilities-picker-loading-${i}`}
           className="flex items-center gap-2.5 p-2"
         >
-          <LoadingBlock className="h-7 w-7 shrink-0 rounded-md" />
+          <LoadingBlock className="h-9 w-9 shrink-0 rounded-lg" />
           <div className="flex min-w-0 flex-1 flex-col">
             <div className="flex h-5 items-center">
               <LoadingBlock
@@ -434,12 +434,12 @@ export function CapabilitiesPicker({
         switch (item.kind) {
           case "skill": {
             const SkillAvatar = getSkillAvatarIcon(item.skill);
-            return { ...item, icon: <SkillAvatar size="xs" /> };
+            return { ...item, icon: <SkillAvatar size="sm" /> };
           }
           case "tool":
-            return { ...item, icon: getAvatar(item.serverView.server, "xs") };
+            return { ...item, icon: getAvatar(item.serverView.server, "sm") };
           case "uninstalled_tool":
-            return { ...item, icon: getAvatar(item.server, "xs") };
+            return { ...item, icon: getAvatar(item.server, "sm") };
           default:
             return assertNever(item);
         }

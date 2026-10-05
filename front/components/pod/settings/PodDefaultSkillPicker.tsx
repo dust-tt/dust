@@ -101,7 +101,7 @@ export function PodDefaultSkillPicker({
                 kind: "skill" as const,
                 skill,
                 id: `pod-default-skills-picker-${skill.sId}`,
-                icon: <SkillAvatar size="xs" />,
+                icon: <SkillAvatar size="sm" />,
                 label: skill.name,
                 sortName: skill.name.toLowerCase(),
                 description: skill.userFacingDescription,
