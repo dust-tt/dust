@@ -14,6 +14,10 @@ import {
   toHydratedAgentCatalogItem,
   toHydratedSkillCatalogItem,
 } from "@app/components/assistant/conversation/discover/catalog";
+import {
+  trackDiscoverItemDetailsOpen,
+  trackDiscoverItemSelect,
+} from "@app/components/assistant/conversation/discover/discoveryTracking";
 import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useSearchAgents } from "@app/hooks/useSearchAgents";
@@ -124,8 +128,7 @@ interface DiscoverCatalogProps {
 }
 
 interface CatalogActions {
-  onAgentClick: (agent: RichAgentMentionCandidate) => void;
-  onSkillClick: (skill: PendingSkill) => void;
+  onUse: (item: CatalogItem) => void;
   onPin?: (item: CatalogItem) => void;
   onDetails: (item: CatalogItem) => void;
 }
@@ -236,6 +239,7 @@ function HydratedCatalog({
     >
       <CatalogResults
         items={items}
+        itemsQuery={query}
         isLoading={isAgentsLoading || isSkillsWithRelationsLoading}
         hasError={false}
         hasNextPage={false}
@@ -293,6 +297,7 @@ function SearchCatalog({
     >
       <CatalogResults
         items={catalogSearch.items}
+        itemsQuery={catalogSearch.itemsQuery}
         isLoading={
           isDebouncing || catalogSearch.isLoading || catalogSearch.isLoadingMore
         }
@@ -353,7 +358,14 @@ export function DiscoverCatalog({
     filters.kind !== "all" ||
     filters.tagId !== null ||
     searchTerm !== "";
-  const actions = { onAgentClick, onSkillClick, onPin, onDetails };
+  const actions: CatalogActions = {
+    onUse: (item) =>
+      item.kind === "agent"
+        ? onAgentClick(item.agent)
+        : onSkillClick(item.skill),
+    onPin,
+    onDetails,
+  };
 
   return useSearch ? (
     <SearchCatalog
@@ -491,6 +503,7 @@ function CatalogFiltersNav({
 
 interface CatalogResultsProps extends CatalogActions {
   items: CatalogItem[];
+  itemsQuery: CatalogQuery;
   isLoading: boolean;
   hasError: boolean;
   hasNextPage: boolean;
@@ -501,14 +514,14 @@ interface CatalogResultsProps extends CatalogActions {
 
 function CatalogResults({
   items,
+  itemsQuery,
   isLoading,
   hasError,
   hasNextPage,
   onLoadMore,
   canClearFilters,
   onClearFilters,
-  onAgentClick,
-  onSkillClick,
+  onUse,
   onPin,
   onDetails,
 }: CatalogResultsProps) {
@@ -552,13 +565,23 @@ function CatalogResults({
             <CatalogRow
               key={`${item.kind}-${getItemId(item)}`}
               item={item}
-              onUse={() =>
-                item.kind === "agent"
-                  ? onAgentClick(item.agent)
-                  : onSkillClick(item.skill)
-              }
+              onUse={() => {
+                trackDiscoverItemSelect({
+                  source: "catalog",
+                  item,
+                  catalogQuery: itemsQuery,
+                });
+                onUse(item);
+              }}
               onPin={onPin && (() => onPin(item))}
-              onDetails={() => onDetails(item)}
+              onDetails={() => {
+                trackDiscoverItemDetailsOpen({
+                  source: "catalog",
+                  item,
+                  catalogQuery: itemsQuery,
+                });
+                onDetails(item);
+              }}
             />
           ))}
           {hasError && (
