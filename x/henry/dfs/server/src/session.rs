@@ -111,6 +111,7 @@ fn name(request: &Request) -> &'static str {
         Request::GetAttr { .. } => "getattr",
         Request::ReadDir { .. } => "readdir",
         Request::Read { .. } => "read",
+        Request::ReadFiles { .. } => "read_files",
         Request::ReadLink { .. } => "readlink",
         Request::Create { .. } => "create",
         Request::Flush { .. } => "flush",
@@ -213,6 +214,12 @@ impl<S: Store> Server<S> {
                 let len = len.min(dfs_proto::MAX_IO_BYTES);
                 self.read(session, || fs.read(principal, id, offset, len), |_| vec![Holdable::Node(id)], |data| data).await
             }
+            // Contents are keyed by revision, so they need no holds: the mount trusts a revision only
+            // through an attribute that a hold covers.
+            Request::ReadFiles { ids, budget } => match fs.read_files(principal, &ids, budget).await {
+                Ok(files) => (Ok(Response::Files(files)), Vec::new(), false),
+                Err(errno) => failed(errno),
+            },
             Request::ReadLink { id } => self.read(session, || fs.readlink(principal, id), |_| vec![Holdable::Node(id)], Response::Link).await,
             Request::Create { parent, name, kind, mode, exclusive, target } => {
                 let created = |response: &Response| match response {

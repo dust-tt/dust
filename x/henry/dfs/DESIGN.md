@@ -5,8 +5,9 @@ the "Dust filesystem specification" (2026-10-05); this file records what the pro
 where it deviates, and why.
 
 Status: **prototype runs end to end (server, mount, benchmarks); hill-climbing.** Reviews: design
-(Codex gpt-6-astra xhigh + Fable), code review 1 (Codex) fixed, review 2 (Codex + Fable) fixed.
-Smoke and two-mount coherence tests pass.
+(Codex gpt-6-astra xhigh + Fable), code review 1 (Codex) fixed, review 2 (Codex + Fable) fixed,
+advice 2 (matched profile) and 3 (content prefetch) applied. Smoke and two-mount coherence tests
+pass in both profiles.
 
 ## Goal
 
@@ -125,9 +126,13 @@ of which any other create or permission check reads. Spolu's parent-record conte
   held across the ack wait.**
 * Directory move across parents and every policy/membership change ⇒ `All`: every session drops
   everything, including the mutating mount.
-* Mount: a global invalidation generation, bumped on every received invalidation and on every own
-  mutation reply. A reply whose request was sent under an older generation (or flagged
-  uncacheable) is passed to the kernel with TTL 0 and not cached. Kernel notifications run on a
+* Mount: **per-object freshness.** A generation counter is bumped by every applied invalidation and
+  own mutation reply, which stamp it on each node they change (`All` and lease loss raise a floor
+  instead). A reply may install cached state only if none of the nodes it installs or names was
+  stamped after the generation read when its request was sent; otherwise it reaches the kernel with
+  TTL 0. (A first, global generation made every concurrent background commit invalidate every
+  in-flight lookup: 988 lookup + 1,644 getattr RPCs in a 1,000-file untar; per-object: none.)
+  Kernel notifications run on a
   dedicated thread that acks only after the kernel calls return; `ENOENT` from
   `notify_inval_entry` is ignored. Kernel TTL = remaining lease validity. On lease loss or
   disconnect the daemon drops its caches and invalidates every known inode.
@@ -159,15 +164,29 @@ of which any other create or permission check reads. Spolu's parent-record conte
 * `flush` (every close) and `fsync` commit the inode's buffered prefix: blocks + node in one
   transaction. Whole-block writes need no block reads; partial blocks are patched server-side inside
   the transaction.
-* Content caching is the kernel page cache: `open` returns `FOPEN_KEEP_CACHE` only when the
-  daemon's lease-covered attributes carry the same content rev the kernel was last given; any
-  `Node` invalidation purges the inode's pages (`notify_inval_inode`).
+* Warm content is the kernel page cache: `open` returns `FOPEN_KEEP_CACHE` only when the daemon's
+  lease-covered attributes carry the same content rev the kernel was last given; any `Node`
+  invalidation purges the inode's pages (`notify_inval_inode`).
+* **First-touch content: demand-triggered sibling prefetch** (advice 3). A read miss on a file of at
+  most 1 MiB sends one `ReadFiles` with the file plus the next *W* small (≤ 256 KiB) siblings in
+  its directory's cached listing that are not cached or in flight; *W* starts at 4 and doubles with
+  every miss in that directory up to 256, within a 4 MiB reply. Contents land in a 256 MiB
+  daemon cache keyed by `(id, rev)`: since every content change bumps `rev` and ids are never
+  reused, a cached `(id, rev)` is an immutable fact and needs no lease hold — a READ is served from
+  it only when the lease-covered attribute currently says `rev`. Other threads missing on a file in
+  flight wait for that call. Metadata-only workloads never trigger it (rg --files, scandir).
+  Security: `All` invalidations and lease loss empty the cache, and a reply is installed only if no
+  such drop happened since its request was sent — otherwise a principal whose read was revoked
+  could be served bytes fetched before the revocation under an attribute re-listed after it
+  (`readdir` returns a child's attributes without checking the child's own read grant).
 * Unlink: remove entry, mark node detached; v1 never collects detached content (open-unlinked
   files keep working; space is not reclaimed — collection with durable pins is deferred).
 
 ## Protocol
 
 * One TCP connection per mount session, length-prefixed postcard frames, calls multiplexed by id.
+* `ReadFiles { ids, budget }` returns whole contents of the readable files among `ids` that fit in
+  order, at one fresh read version; it registers no holds (see Data path).
 * Every reply carries `invalidations` (what this call changed, applied to the caller's own caches
   instead of a push) and `cacheable` (false when the touch check failed three times, or the call
   invalidated everything).
@@ -175,6 +194,23 @@ of which any other create or permission check reads. Spolu's parent-record conte
 * **Resends are not supported in v1**: a reconnect is a new session. The receipt (`r/<session>/<seq>`)
   is still written in every mutation and consulted when FDB reports `commit_unknown_result`, which is
   what makes an uncertain commit exactly-once inside the server's retry loop.
+
+## Durability profiles
+
+| profile | create/mkdir/rename/unlink | close | fsync | fsyncdir / syncfs |
+| --- | --- | --- | --- | --- |
+| `strict` (default, the agreed contract) | durable before return | durable before return | durable | — |
+| `matched` (labelled, Spolu-equivalent) | durable before return | returns at once, commit in background | waits for that file's commits, reports their failure | `fsync` of a directory waits for every background commit |
+
+`matched` exists only to compare like with like: Spolu acknowledges close (data and `utimensat`)
+from server RAM. Our background commit is a durable FDB transaction launched at close (≤ 64 in
+flight), so the RAM window is the commit latency, not a drain interval. A failed background commit
+keeps its batch buffered (it is retried by the next close/fsync) and is reported once by the
+file's next close or fsync and by the next directory fsync. Known gaps: `fuser` 0.18 has no
+`FUSE_SYNCFS`, so `syncfs(2)` is a no-op and the harness fsyncs the mount's directory instead; an
+unmount waits for every background commit, but a crashed daemon loses unacknowledged closes —
+exactly Spolu's exposure. (Fable suggested a sticky per-inode error instead of re-buffering: we do
+both — the batch stays, and the error is sticky until reported.)
 
 ## Contract deviations (flagged)
 

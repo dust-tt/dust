@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use dfs_proto::{
-    Attr, BLOCK_BYTES, Entry, Errno, Id, Invalidation, Kind, MAX_FILE_BYTES, MAX_FLUSH_BLOCKS, MAX_IO_BYTES, MAX_NAME_BYTES, ROOT, Response, Right,
+    Attr, BLOCK_BYTES, Entry, Errno, File, Id, Invalidation, Kind, MAX_FILE_BYTES, MAX_FLUSH_BLOCKS, MAX_IO_BYTES, MAX_NAME_BYTES, ROOT, Response, Right,
 };
 use dfs_store::{Key, Store, StoreError, Txn, TxnOptions, Value};
 use futures::FutureExt;
@@ -27,6 +27,8 @@ const RECENT_REUSE: Duration = Duration::from_millis(4000);
 const RECENT_LIMIT: usize = 65_536;
 const MAX_DEPTH: usize = 4096;
 const ATTEMPTS: usize = 64;
+/// Most files one `read_files` call considers.
+const MAX_READ_FILES: usize = 1024;
 
 enum Failure {
     Store(StoreError),
@@ -667,6 +669,60 @@ impl<S: Store> Fs<S> {
                     copy_overlap(&mut bytes, offset, &block, start);
                 }
                 Ok(Response::Data { rev: node.rev, size: node.size, bytes })
+            }
+            .boxed()
+        })
+        .await
+    }
+
+    /// Whole contents of the readable files among `ids` that fit, in order, in `budget` bytes, all
+    /// at one read version; objects that are missing, not files, unreadable, or too large are left out.
+    pub async fn read_files(&self, principal: &Principal, ids: &[Id], budget: u32) -> Result<Vec<File>, Errno> {
+        let ids = &ids[..ids.len().min(MAX_READ_FILES)];
+        let budget = u64::from(budget.min(MAX_IO_BYTES));
+        self.run(Attempt::READ, |attempt| {
+            async move {
+                let txn = self.begin(attempt).await?;
+                let mut keys: Vec<Key> = ids.iter().map(|id| records::node(*id)).collect();
+                keys.push(records::TOPO.to_vec());
+                let values = txn.get_many(&keys).await?;
+                let epoch = le_u64(values[ids.len()].as_ref());
+                let mut left = budget;
+                let mut chosen = Vec::new();
+                for (id, value) in ids.iter().zip(&values) {
+                    let Some(node) = node_of(value.clone())? else { continue };
+                    if node.kind != Kind::File || node.size > left {
+                        continue;
+                    }
+                    match self.access(&txn, principal, *id, &node, epoch).await {
+                        Ok(access) if access.read => {}
+                        Ok(_) | Err(Failure::Fs(_)) => continue,
+                        Err(failure) => return Err(failure),
+                    }
+                    left -= node.size;
+                    chosen.push((*id, node));
+                }
+                let ranges: Vec<_> = chosen
+                    .iter()
+                    .filter(|(_, node)| node.size > 0)
+                    .map(|(id, node)| {
+                        let last = ((node.size - 1) / BLOCK_BYTES) as u32;
+                        (records::blocks(*id, 0, last), last as usize + 1)
+                    })
+                    .collect();
+                let scans = ranges.iter().map(|(range, blocks)| txn.scan(range, *blocks));
+                let mut rows = futures::future::try_join_all(scans).await?.into_iter();
+                let mut files = Vec::with_capacity(chosen.len());
+                for (id, node) in chosen {
+                    let mut bytes = vec![0u8; node.size as usize];
+                    if node.size > 0 {
+                        for (key, block) in rows.next().unwrap_or_default() {
+                            copy_overlap(&mut bytes, 0, &block, records::block_index(&key)? as u64 * BLOCK_BYTES);
+                        }
+                    }
+                    files.push(File { id, rev: node.rev, bytes });
+                }
+                Ok(files)
             }
             .boxed()
         })

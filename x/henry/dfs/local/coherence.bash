@@ -71,4 +71,7 @@ admin grant "$D" alice write
 if (echo nope >"$B/d/e/w") 2>/dev/null; then echo "FAIL: bob wrote below a boundary"; exit 1; fi
 echo yes >"$A/d/e/w"; settle "$A"
 expect "$(cat "$B/d/e/w")" yes "bob can still read below the boundary"
+# Leaving the team revokes bob's read at once, including content his mount has cached.
+admin members team alice
+if cat "$B/d/e/w" >/dev/null 2>&1; then echo "FAIL: bob read after losing access"; exit 1; fi
 echo "coherence ok"

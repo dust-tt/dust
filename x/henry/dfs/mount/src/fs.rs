@@ -1,7 +1,8 @@
 //! FUSE adapter: lease-validated metadata caches, buffered writes, durable close.
 
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
 use std::ffi::OsStr;
+use std::ops::Bound;
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -27,6 +28,16 @@ const MIN_TTL: Duration = Duration::from_secs(1);
 const MAX_BACKGROUND: usize = 64;
 /// Root name the mount looks up at start to learn whether the kernel can drop negative dentries.
 const PROBE: &str = ".dfs-negative-probe";
+/// Largest file a read miss fetches whole (with siblings); larger files are read by range.
+const WHOLE_FILE: u64 = 1 << 20;
+/// Largest sibling a read miss prefetches.
+const SIBLING_FILE: u64 = 256 << 10;
+/// Siblings the first read miss in a directory prefetches; later misses there prefetch up to
+/// `MAX_WINDOW` (within the reply budget).
+const MIN_WINDOW: usize = 16;
+const MAX_WINDOW: usize = 256;
+const CONTENT_BYTES: usize = 256 << 20;
+const CONTENT_FILES: usize = 1 << 16;
 
 #[derive(Default)]
 struct Dirty {
@@ -86,6 +97,10 @@ struct Node {
     kernel_listing: bool,
     /// Generation of the last invalidation or own mutation that changed this node or its names.
     touched: u64,
+    /// Directory and name this node was last listed, looked up, or created under.
+    place: Option<(Id, String)>,
+    /// Siblings the next read miss in this directory prefetches.
+    window: usize,
 }
 
 impl Node {
@@ -110,6 +125,54 @@ struct State {
     floor: u64,
     lease_until: Option<Instant>,
     nodes: HashMap<Id, Node>,
+    /// @cc [owner:fontanierh,label:security;concurrency] content-by-rev
+    /// A kernel READ MUST be served from `content` only when the cached, lease-valid attribute of
+    /// the file has the same `rev` as the content. Every `All` invalidation and lease loss MUST
+    /// empty it, and a `ReadFiles` reply MUST be installed only if no such drop happened after its
+    /// request was sent: a revoked principal must never be served bytes it read before revocation.
+    content: Content,
+}
+
+/// Whole file contents by content revision, evicted oldest first beyond `CONTENT_BYTES`.
+#[derive(Default)]
+struct Content {
+    files: HashMap<Id, (u64, Arc<[u8]>)>,
+    order: VecDeque<(Id, u64)>,
+    bytes: usize,
+    /// Files a `ReadFiles` call in flight will install.
+    fetching: HashSet<Id>,
+}
+
+impl Content {
+    fn get(&self, id: Id, rev: u64) -> Option<Arc<[u8]>> {
+        self.files.get(&id).filter(|(r, _)| *r == rev).map(|(_, bytes)| bytes.clone())
+    }
+
+    fn insert(&mut self, id: Id, rev: u64, bytes: Arc<[u8]>) {
+        self.bytes += bytes.len();
+        if let Some((_, old)) = self.files.insert(id, (rev, bytes)) {
+            self.bytes -= old.len();
+        }
+        self.order.push_back((id, rev));
+        while self.bytes > CONTENT_BYTES || self.files.len() > CONTENT_FILES {
+            let Some((id, rev)) = self.order.pop_front() else { break };
+            if self.files.get(&id).is_some_and(|(r, _)| *r == rev) {
+                self.remove(id);
+            }
+        }
+    }
+
+    fn remove(&mut self, id: Id) {
+        if let Some((_, bytes)) = self.files.remove(&id) {
+            self.bytes -= bytes.len();
+        }
+    }
+
+    fn clear(&mut self) {
+        self.files.clear();
+        self.order.clear();
+        self.bytes = 0;
+    }
 }
 
 /// Nodes whose cached state `invalidations` changes.
@@ -164,6 +227,7 @@ impl State {
                         node.link = None;
                         node.kernel_rev = None;
                     }
+                    self.content.remove(*id);
                     kernel.push(Kernel::Inode(*id, 0, 0));
                 }
                 Invalidation::Name { parent, name } => {
@@ -187,6 +251,7 @@ impl State {
     fn drop_all(&mut self) -> Vec<Kernel> {
         self.generation += 1;
         self.floor = self.generation;
+        self.content.clear();
         let mut kernel = Vec::new();
         for (id, node) in &mut self.nodes {
             if let Some(dir) = &node.dir {
@@ -196,6 +261,34 @@ impl State {
             node.drop_cache();
         }
         kernel
+    }
+}
+
+impl State {
+    /// `id` followed by the siblings whose content a read miss of `id` should prefetch: trusted
+    /// small files not cached or being fetched, in its directory's cached listing order from `id`
+    /// on, wrapping around (parallel walkers do not read in listing order).
+    fn prefetch(&mut self, id: Id, size: u64) -> Vec<Id> {
+        let mut ids = vec![id];
+        let Some((parent, name)) = self.nodes.get(&id).and_then(|n| n.place.clone()) else { return ids };
+        let Some(dir) = self.nodes.get_mut(&parent) else { return ids };
+        let window = if dir.window == 0 { MIN_WINDOW } else { MAX_WINDOW };
+        dir.window = window;
+        let Some(listing) = self.nodes.get(&parent).and_then(|n| n.dir.as_ref()) else { return ids };
+        let mut left = u64::from(MAX_IO_BYTES).saturating_sub(size);
+        let after = listing.names.range::<str, _>((Bound::Excluded(name.as_str()), Bound::Unbounded));
+        let before = listing.names.range::<str, _>((Bound::Unbounded, Bound::Excluded(name.as_str())));
+        for sibling in after.chain(before).filter_map(|(_, id)| *id) {
+            if ids.len() > window {
+                break;
+            }
+            let Some(attr) = self.attr(sibling).filter(|a| a.kind == Kind::File && a.size <= SIBLING_FILE.min(left)) else { continue };
+            if self.content.get(sibling, attr.rev).is_none() && !self.content.fetching.contains(&sibling) {
+                left -= attr.size;
+                ids.push(sibling);
+            }
+        }
+        ids
     }
 }
 
@@ -266,7 +359,8 @@ pub struct Fs {
     gid: u32,
     state: Mutex<State>,
     flushing: Mutex<HashMap<Id, Arc<Mutex<()>>>>,
-    dirs: Mutex<HashMap<u64, Snapshot>>,
+    /// Open directory handles; `None` until the kernel reads a listing it was told to keep cached.
+    dirs: Mutex<HashMap<u64, Option<Arc<Snapshot>>>>,
     next_fh: AtomicU64,
     jobs: std::sync::mpsc::Sender<Job>,
     /// @cc [owner:fontanierh,label:concurrency] negative-ttl
@@ -279,6 +373,8 @@ pub struct Fs {
     profile: Profile,
     background: Mutex<Background>,
     background_done: Condvar,
+    /// Signalled (with `state`) when a `ReadFiles` call ends.
+    fetched: Condvar,
 }
 
 #[derive(Default)]
@@ -336,7 +432,13 @@ impl Fs {
             root,
             uid: owner.0,
             gid: owner.1,
-            state: Mutex::new(State { generation: 0, floor: 0, lease_until: Some(lease_until), nodes: HashMap::new() }),
+            state: Mutex::new(State {
+                generation: 0,
+                floor: 0,
+                lease_until: Some(lease_until),
+                nodes: HashMap::new(),
+                content: Content::default(),
+            }),
             flushing: Mutex::default(),
             dirs: Mutex::default(),
             next_fh: AtomicU64::new(1),
@@ -347,6 +449,7 @@ impl Fs {
             profile,
             background: Mutex::default(),
             background_done: Condvar::new(),
+            fetched: Condvar::new(),
         }
     }
 
@@ -365,6 +468,101 @@ impl Fs {
         let reply = self.rt.block_on(self.client.call(request));
         self.stats.rpc(kind, started.elapsed());
         (reply, sent)
+    }
+
+    /// The whole content of small file `id` at its trusted revision, from the content cache or one
+    /// `ReadFiles` call (which also prefetches siblings when the read starts at `offset` 0, as
+    /// sequential readers do); `None` when it must be read by range (no trusted attribute, too
+    /// large, or left out by the server, which then reports why).
+    fn read_whole(&self, id: Id, offset: u64) -> Result<Option<Arc<[u8]>>, Errno> {
+        let mut state = self.state.lock();
+        let size = loop {
+            let Some(attr) = state.attr(id).filter(|a| a.size <= WHOLE_FILE) else { return Ok(None) };
+            if let Some(bytes) = state.content.get(id, attr.rev) {
+                drop(state);
+                self.stats.local("read");
+                return Ok(Some(bytes));
+            }
+            if !state.content.fetching.contains(&id) {
+                break attr.size;
+            }
+            self.fetched.wait(&mut state);
+        };
+        let ids = if offset == 0 { state.prefetch(id, size) } else { vec![id] };
+        state.content.fetching.extend(ids.iter().copied());
+        let sent = state.generation;
+        drop(state);
+        let started = Instant::now();
+        let reply = self.rt.block_on(self.client.call(Request::ReadFiles { ids: ids.clone(), budget: MAX_IO_BYTES }));
+        self.stats.rpc("read_files", started.elapsed());
+        let files: Result<Vec<(Id, u64, Arc<[u8]>)>, Errno> = match reply.result {
+            Ok(Response::Files(files)) => Ok(files.into_iter().map(|f| (f.id, f.rev, f.bytes.into())).collect()),
+            Ok(_) => Err(Errno::EIO),
+            Err(e) => Err(errno(e)),
+        };
+        let mut state = self.state.lock();
+        for id in &ids {
+            state.content.fetching.remove(id);
+        }
+        self.fetched.notify_all();
+        let files = files?;
+        let demanded = files.iter().find(|(file, ..)| *file == id).map(|(.., bytes)| bytes.clone());
+        // Deliberately not `usable()`: contents are keyed by revision and need no hold, only the
+        // absence of an `All` drop since the request was sent (content-by-rev).
+        if sent >= state.floor {
+            for (id, rev, bytes) in files {
+                state.content.insert(id, rev, bytes);
+            }
+        }
+        Ok(demanded)
+    }
+
+    /// What a new handle on `dir` lists: the cached listing when complete and every entry's
+    /// attributes are cached, else a fresh fetch; and whether it is complete.
+    fn snapshot(&self, dir: Id) -> Result<(Snapshot, bool), Errno> {
+        let cached = {
+            let state = self.state.lock();
+            let node = state.nodes.get(&dir);
+            match (state.ttl(), node.and_then(|n| n.dir.as_ref()).filter(|d| d.complete), node.and_then(|n| n.attr.clone())) {
+                (Some(_), Some(listing), Some(dir_attr)) => listing
+                    .names
+                    .iter()
+                    .filter_map(|(name, id)| id.map(|id| (name, id)))
+                    .map(|(name, id)| state.attr(id).map(|attr| Listed { name: name.clone(), id, attr: attr.clone() }))
+                    .collect::<Option<Vec<_>>>()
+                    .map(|listed| Snapshot { listed, dir: dir_attr, generation: Some(state.generation) }),
+                _ => None,
+            }
+        };
+        if let Some(snapshot) = cached {
+            self.stats.local("opendir");
+            return Ok((snapshot, true));
+        }
+        let (entries, complete, dir_attr, generation) = self.fetch_dir(dir, usize::MAX)?;
+        let listed = entries.into_iter().map(|e| Listed { name: e.name, id: e.attr.id, attr: e.attr }).collect();
+        Ok((Snapshot { listed, dir: dir_attr, generation }, complete))
+    }
+
+    /// The listing of handle `fh` on `dir`, built on first use when opened as kept.
+    fn listing(&self, dir: Id, fh: FileHandle) -> Result<Arc<Snapshot>, Errno> {
+        match self.dirs.lock().get(&fh.0) {
+            None => return Err(Errno::EBADF),
+            Some(Some(snapshot)) => return Ok(snapshot.clone()),
+            Some(None) => {}
+        }
+        let (snapshot, complete) = self.snapshot(dir)?;
+        let mut state = self.state.lock();
+        // The kernel caches what this handle lists: unless that is a complete listing nothing changed
+        // since, the next open must not keep it.
+        if !(complete && snapshot.generation.is_some_and(|g| state.fresh(g, [dir]))) {
+            state.node(dir).kernel_listing = false;
+        }
+        drop(state);
+        let snapshot = Arc::new(snapshot);
+        if let Some(slot) = self.dirs.lock().get_mut(&fh.0) {
+            *slot = Some(snapshot.clone());
+        }
+        Ok(snapshot)
     }
 
     fn file_attr(&self, attr: &Attr, node: Option<&Node>) -> FileAttr {
@@ -472,7 +670,9 @@ impl Fs {
             let mut names = BTreeMap::new();
             for entry in &entries {
                 names.insert(entry.name.clone(), Some(entry.attr.id));
-                state.node(entry.attr.id).attr = Some(entry.attr.clone());
+                let node = state.node(entry.attr.id);
+                node.attr = Some(entry.attr.clone());
+                node.place = Some((dir, entry.name.clone()));
             }
             state.node(dir).dir = Some(DirCache { complete, names });
         }
@@ -520,7 +720,9 @@ impl Fs {
             let dir = state.node(parent).dir.get_or_insert_with(DirCache::default);
             dir.names.insert(name.to_string(), attr.as_ref().map(|a| a.id));
             if let Some(attr) = &attr {
-                state.node(attr.id).attr = Some(attr.clone());
+                let node = state.node(attr.id);
+                node.attr = Some(attr.clone());
+                node.place = Some((parent, name.to_string()));
             }
         }
         let ttl = if usable { state.ttl().unwrap_or_default() } else { Duration::ZERO };
@@ -666,7 +868,7 @@ impl Fs {
         move |state: &mut State| {
             let parent_node = state.node(parent);
             if let Some(dir) = parent_node.dir.as_mut() {
-                dir.names.insert(name, Some(attr.id));
+                dir.names.insert(name.clone(), Some(attr.id));
             }
             if let Some(parent_attr) = parent_node.attr.as_mut().filter(|_| !existed) {
                 parent_attr.mtime_ns = parent_attr.mtime_ns.max(parent_mtime_ns);
@@ -677,6 +879,7 @@ impl Fs {
                 node.dir = Some(DirCache { complete: true, names: BTreeMap::new() });
             }
             node.attr = Some(attr);
+            node.place = Some((parent, name));
         }
     }
 
@@ -719,18 +922,20 @@ impl Fs {
         Ok(())
     }
 
-    fn open_handle(&self, id: Id, attr_rev: u64, read_only: bool) -> (FileHandle, FopenFlags) {
+    /// `attr_rev` is the content revision of a trusted attribute; `None` (untrusted) never keeps
+    /// the kernel's pages.
+    fn open_handle(&self, id: Id, attr_rev: Option<u64>, read_only: bool) -> (FileHandle, FopenFlags) {
         let mut state = self.state.lock();
         let node = state.node(id);
         let mut flags = FopenFlags::empty();
-        if node.kernel_rev == Some(attr_rev) {
+        if attr_rev.is_some() && node.kernel_rev == attr_rev {
             flags |= FopenFlags::FOPEN_KEEP_CACHE;
         }
         // Closing a read-only descriptor has nothing to publish.
         if read_only {
             flags |= FopenFlags::FOPEN_NOFLUSH;
         }
-        node.kernel_rev = Some(attr_rev);
+        node.kernel_rev = attr_rev;
         node.open += 1;
         (FileHandle(self.next_fh.fetch_add(1, Ordering::Relaxed)), flags)
     }
@@ -846,6 +1051,7 @@ impl Filesystem for Mount {
     }
 
     fn lookup(&self, _req: &FuseRequest, parent: INodeNo, name: &OsStr, reply: ReplyEntry) {
+        self.0.stats.local("op.lookup");
         let fs = &self.0;
         if parent.0 == 1 && name == PROBE && fs.probing.load(Ordering::SeqCst) {
             fs.probe_lookups.fetch_add(1, Ordering::SeqCst);
@@ -863,6 +1069,7 @@ impl Filesystem for Mount {
     }
 
     fn getattr(&self, _req: &FuseRequest, ino: INodeNo, _fh: Option<FileHandle>, reply: ReplyAttr) {
+        self.0.stats.local("op.getattr");
         match self.0.do_getattr(self.0.id(ino)) {
             Ok((attr, ttl)) => reply.attr(&ttl, &attr),
             Err(e) => reply.error(e),
@@ -1038,6 +1245,7 @@ impl Filesystem for Mount {
     }
 
     fn open(&self, _req: &FuseRequest, ino: INodeNo, flags: OpenFlags, reply: ReplyOpen) {
+        self.0.stats.local("op.open");
         let fs = &self.0;
         let id = fs.id(ino);
         let attr = if flags.0 & libc::O_TRUNC != 0 {
@@ -1047,10 +1255,10 @@ impl Filesystem for Mount {
         };
         let rev = attr.and_then(|_| {
             if let Some(attr) = fs.state.lock().attr(id) {
-                return Ok(attr.rev);
+                return Ok(Some(attr.rev));
             }
             fs.do_getattr(id)?;
-            Ok(fs.state.lock().nodes.get(&id).and_then(|n| n.attr.as_ref()).map_or(u64::MAX, |a| a.rev))
+            Ok(fs.state.lock().attr(id).map(|a| a.rev))
         });
         match rev {
             Ok(rev) => {
@@ -1072,11 +1280,24 @@ impl Filesystem for Mount {
         _lock_owner: Option<LockOwner>,
         reply: ReplyData,
     ) {
+        self.0.stats.local("op.read");
         let fs = &self.0;
         let id = fs.id(ino);
         if let Err(e) = fs.flush_inode(id) {
             reply.error(e);
             return;
+        }
+        match fs.read_whole(id, offset) {
+            Ok(Some(bytes)) => {
+                let start = (offset as usize).min(bytes.len());
+                reply.data(&bytes[start..start.saturating_add(size as usize).min(bytes.len())]);
+                return;
+            }
+            Ok(None) => {}
+            Err(e) => {
+                reply.error(e);
+                return;
+            }
         }
         let (result, _) = fs.call("read", Request::Read { id, offset, len: size.min(MAX_IO_BYTES) });
         match result.result {
@@ -1125,6 +1346,7 @@ impl Filesystem for Mount {
     }
 
     fn flush(&self, _req: &FuseRequest, ino: INodeNo, _fh: FileHandle, _lock_owner: LockOwner, reply: ReplyEmpty) {
+        self.0.stats.local("op.flush");
         match Fs::close_inode(&self.0, self.0.id(ino)) {
             Ok(()) => reply.ok(),
             Err(e) => reply.error(e),
@@ -1141,6 +1363,7 @@ impl Filesystem for Mount {
         _flush: bool,
         reply: ReplyEmpty,
     ) {
+        self.0.stats.local("op.release");
         let fs = &self.0;
         let id = fs.id(ino);
         let last = {
@@ -1165,33 +1388,25 @@ impl Filesystem for Mount {
     }
 
     fn opendir(&self, _req: &FuseRequest, ino: INodeNo, _flags: OpenFlags, reply: ReplyOpen) {
+        self.0.stats.local("op.opendir");
         let fs = &self.0;
         let dir = fs.id(ino);
-        let cached = {
+        // The kernel keeps a listing it cached under a lease while nothing changed it since; it then
+        // never asks for one, so none is built.
+        let kept = {
             let state = fs.state.lock();
             let node = state.nodes.get(&dir);
-            match (state.ttl(), node.and_then(|n| n.dir.as_ref()).filter(|d| d.complete), node.and_then(|n| n.attr.clone())) {
-                (Some(_), Some(listing), Some(dir_attr)) => listing
-                    .names
-                    .iter()
-                    .filter_map(|(name, id)| id.map(|id| (name, id)))
-                    .map(|(name, id)| state.attr(id).map(|attr| Listed { name: name.clone(), id, attr: attr.clone() }))
-                    .collect::<Option<Vec<_>>>()
-                    .map(|listed| (Snapshot { listed, dir: dir_attr, generation: Some(state.generation) }, true)),
-                _ => None,
-            }
+            state.ttl().is_some()
+                && node.is_some_and(|n| n.kernel_listing && n.attr.is_some() && n.dir.as_ref().is_some_and(|d| d.complete))
         };
-        let listing = match cached {
-            Some(listing) => {
-                fs.stats.local("opendir");
-                Ok(listing)
-            }
-            None => fs.fetch_dir(dir, usize::MAX).map(|(entries, complete, dir_attr, generation)| {
-                let listed = entries.into_iter().map(|e| Listed { name: e.name, id: e.attr.id, attr: e.attr }).collect();
-                (Snapshot { listed, dir: dir_attr, generation }, complete)
-            }),
-        };
-        match listing {
+        if kept {
+            fs.stats.local("opendir");
+            let fh = fs.next_fh.fetch_add(1, Ordering::Relaxed);
+            fs.dirs.lock().insert(fh, None);
+            reply.opened(FileHandle(fh), FopenFlags::FOPEN_CACHE_DIR | FopenFlags::FOPEN_KEEP_CACHE);
+            return;
+        }
+        match fs.snapshot(dir) {
             Ok((snapshot, complete)) => {
                 // The kernel may cache a complete, lease-covered listing; remote changes purge it
                 // (`notify_inval_inode` on the directory) and own changes reset it in the kernel.
@@ -1208,7 +1423,7 @@ impl Filesystem for Mount {
                     }
                 }
                 let fh = fs.next_fh.fetch_add(1, Ordering::Relaxed);
-                fs.dirs.lock().insert(fh, snapshot);
+                fs.dirs.lock().insert(fh, Some(Arc::new(snapshot)));
                 reply.opened(FileHandle(fh), flags);
             }
             Err(e) => reply.error(e),
@@ -1216,11 +1431,14 @@ impl Filesystem for Mount {
     }
 
     fn readdir(&self, _req: &FuseRequest, ino: INodeNo, fh: FileHandle, offset: u64, mut reply: ReplyDirectory) {
+        self.0.stats.local("op.readdir");
         let fs = &self.0;
-        let dirs = fs.dirs.lock();
-        let Some(snapshot) = dirs.get(&fh.0) else {
-            reply.error(Errno::EBADF);
-            return;
+        let snapshot = match fs.listing(fs.id(ino), fh) {
+            Ok(snapshot) => snapshot,
+            Err(e) => {
+                reply.error(e);
+                return;
+            }
         };
         let dots = [(".", ino, FileType::Directory), ("..", ino, FileType::Directory)];
         let all = dots.into_iter().chain(snapshot.listed.iter().map(|l| (l.name.as_str(), fs.ino(l.id), kind(l.attr.kind))));
@@ -1233,11 +1451,14 @@ impl Filesystem for Mount {
     }
 
     fn readdirplus(&self, _req: &FuseRequest, ino: INodeNo, fh: FileHandle, offset: u64, mut reply: ReplyDirectoryPlus) {
+        self.0.stats.local("op.readdirplus");
         let fs = &self.0;
-        let dirs = fs.dirs.lock();
-        let Some(snapshot) = dirs.get(&fh.0) else {
-            reply.error(Errno::EBADF);
-            return;
+        let snapshot = match fs.listing(fs.id(ino), fh) {
+            Ok(snapshot) => snapshot,
+            Err(e) => {
+                reply.error(e);
+                return;
+            }
         };
         let state = fs.state.lock();
         // An entry changed since the snapshot is still listed, but never cached.
@@ -1258,6 +1479,7 @@ impl Filesystem for Mount {
     }
 
     fn releasedir(&self, _req: &FuseRequest, _ino: INodeNo, fh: FileHandle, _flags: OpenFlags, reply: ReplyEmpty) {
+        self.0.stats.local("op.releasedir");
         self.0.dirs.lock().remove(&fh.0);
         reply.ok();
     }
@@ -1291,10 +1513,11 @@ impl Filesystem for Mount {
         let result = result.and_then(|(attr, ttl, existed)| {
             if existed && flags & libc::O_TRUNC != 0 {
                 let (truncated, ttl) = fs.setattr_remote(attr.id, None, Some(0), None)?;
-                return Ok((attr.id, truncated, ttl, attr.rev));
+                return Ok((attr.id, truncated, ttl, fs.state.lock().attr(attr.id).map(|a| a.rev)));
             }
             let state = fs.state.lock();
-            Ok((attr.id, fs.visible(&state, &attr), ttl, attr.rev))
+            let rev = state.attr(attr.id).map(|a| a.rev);
+            Ok((attr.id, fs.visible(&state, &attr), ttl, rev))
         });
         match result {
             Ok((id, attr, ttl, rev)) => {

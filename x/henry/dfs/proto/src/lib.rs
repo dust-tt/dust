@@ -71,6 +71,14 @@ pub struct Entry {
     pub attr: Attr,
 }
 
+/// The whole content of a file at content revision `rev`.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct File {
+    pub id: Id,
+    pub rev: u64,
+    pub bytes: Vec<u8>,
+}
+
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Right {
     Read,
@@ -90,6 +98,9 @@ pub enum Request {
     /// Lists `dir` after `after` (exclusive) with attributes of every child.
     ReadDir { dir: Id, after: Option<String>, limit: u32 },
     Read { id: Id, offset: u64, len: u32 },
+    /// Whole contents of the files among `ids` that are readable and fit, in order, in `budget`
+    /// bytes (at most `MAX_IO_BYTES`); the others are left out.
+    ReadFiles { ids: Vec<Id>, budget: u32 },
     ReadLink { id: Id },
     Create { parent: Id, name: String, kind: Kind, mode: u32, exclusive: bool, target: Option<String> },
     /// Publishes buffered writes and buffered times of one file in one durable transaction.
@@ -132,6 +143,7 @@ pub enum Response {
     Attr(Attr),
     Listing { dir: Attr, entries: Vec<Entry>, more: bool },
     Data { rev: u64, size: u64, bytes: Vec<u8> },
+    Files(Vec<File>),
     Link(String),
     /// `existed` is set when a non-exclusive create found a file already bound to the name.
     Created { attr: Attr, parent_mtime_ns: i64, existed: bool },
