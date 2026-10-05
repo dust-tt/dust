@@ -11,7 +11,8 @@ import { validateCommentThread } from "@app/components/editor/document/dfm_persi
 import type { DfmAuthor, DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import type { Editor } from "@tiptap/core";
+import type { ChainedCommands, Editor, JSONContent } from "@tiptap/core";
+import type { Node } from "@tiptap/pm/model";
 import { useEditorState } from "@tiptap/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -20,6 +21,8 @@ interface UseDocumentCommentsProps {
   /** The document is editable. */
   canComment: boolean;
   author: DfmAuthor | undefined;
+  /** Whether the document, as TipTap JSON, would save. */
+  isSavable: (document: JSONContent) => boolean;
 }
 
 interface EditorCommentsState {
@@ -44,6 +47,27 @@ const EMPTY_STATE: EditorCommentsState = {
 };
 
 const UNAVAILABLE_MESSAGE = "Commenting is unavailable.";
+const UNANCHORED_MESSAGE =
+  "The selected text can no longer take a comment. Select other text to comment.";
+const UNSAVABLE_MESSAGE =
+  "The document could not be saved with this comment. Try a shorter one.";
+
+/** The document the commands would produce, or null when one of them refuses. */
+const previewDocument = (
+  editor: Editor,
+  apply: (chain: ChainedCommands) => ChainedCommands
+): Node | null => {
+  let next: Node | null = null;
+  const applied = apply(editor.chain())
+    .command(({ tr }) => {
+      next = tr.doc;
+      // TipTap drops a chain's transaction carrying this meta instead of dispatching it.
+      tr.setMeta("preventDispatch", true);
+      return true;
+    })
+    .run();
+  return applied ? next : null;
+};
 
 /** Where the panel should move focus once it has rendered. */
 export interface PanelFocusRequest {
@@ -57,7 +81,8 @@ export interface PanelFocusRequest {
  * Starting, submitting, replying to, resolving and deleting comments MUST require canComment
  * and an author. A pending draft MUST be cancelled when commenting becomes unavailable. New
  * comments and replies MUST carry the current author and creation time, and MUST be refused
- * with a reason, leaving the document unchanged, when the codec cannot write the thread.
+ * with a reason, leaving the document unchanged, when the codec cannot write the thread or the
+ * document would no longer save with it.
  */
 /**
  * @cc [owner:flvndvd;tdraier,label:react] document-comment-navigation
@@ -70,6 +95,7 @@ export const useDocumentComments = ({
   editor,
   canComment,
   author,
+  isSavable,
 }: UseDocumentCommentsProps) => {
   const state =
     useEditorState({
@@ -203,6 +229,8 @@ export const useDocumentComments = ({
       if (!canWrite || !editor || !editor.commands.startCommentDraft()) {
         return false;
       }
+      // The draft card takes focus; an older request would steal it when the panel opens.
+      setFocusRequest(null);
       setPanelOpen(true);
       return true;
     },
@@ -222,6 +250,15 @@ export const useDocumentComments = ({
       const writable = validateCommentThread(comment);
       if (writable.isErr()) {
         return writable;
+      }
+      const next = previewDocument(editor, (chain) =>
+        chain.addComment(comment)
+      );
+      if (!next) {
+        return new Err(UNANCHORED_MESSAGE);
+      }
+      if (!isSavable(next.toJSON())) {
+        return new Err(UNSAVABLE_MESSAGE);
       }
       editor
         .chain()
@@ -244,6 +281,12 @@ export const useDocumentComments = ({
       });
       if (writable.isErr()) {
         return writable;
+      }
+      const next = previewDocument(editor, (chain) =>
+        chain.replyToComment(id, reply)
+      );
+      if (!next || !isSavable(next.toJSON())) {
+        return new Err(UNSAVABLE_MESSAGE);
       }
       editor.commands.replyToComment(id, reply);
       return new Ok(undefined);

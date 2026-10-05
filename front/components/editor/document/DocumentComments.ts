@@ -656,10 +656,11 @@ export const DocumentCommentMark = Mark.create({
  */
 /**
  * @cc [owner:flvndvd;tdraier,label:product] document-comment-draft-range
- * A draft MUST start only when some selected text can carry a comment mark, so every
- * submitted thread has an anchor. A pending draft range MUST follow document edits around
- * it without growing from text inserted at its edges. A draft whose range collapses MUST
- * be dropped. Starting a draft MUST collapse the selection to the end of the range.
+ * A draft MUST start only when some selected text can carry a comment mark, and its submission
+ * MUST be refused once no text in its range can, so every submitted thread has an anchor. A
+ * pending draft range MUST follow document edits around it without growing from text inserted
+ * at its edges. A draft whose range collapses MUST be dropped. Starting a draft MUST collapse
+ * the selection to the end of the range.
  */
 /**
  * @cc [owner:flvndvd;tdraier,label:product] document-comment-history
@@ -721,7 +722,10 @@ export const DocumentComments = Extension.create({
       (comment) =>
       ({ state, tr, dispatch }) => {
         const draft = documentCommentsPluginKey.getState(state)?.draft;
-        if (!draft) {
+        if (
+          !draft ||
+          !rangeAcceptsCommentMark(state.doc, draft.from, draft.to)
+        ) {
           return false;
         }
 

@@ -57,19 +57,28 @@ export const Document = ({
   badge,
   commentAuthor,
 }: DocumentProps) => {
-  const { editor, editable, unsupported, dirty, saving, error, save } =
-    useDocumentEditor({
-      initialContent,
-      readOnly,
-      autosaveDebounceMs,
-      onSave,
-      onStateChange,
-    });
+  const {
+    editor,
+    editable,
+    unsupported,
+    dirty,
+    saving,
+    error,
+    save,
+    isSavable,
+  } = useDocumentEditor({
+    initialContent,
+    readOnly,
+    autosaveDebounceMs,
+    onSave,
+    onStateChange,
+  });
   const blockMenu = useDocumentBlockMenu(editor, editable);
   const comments = useDocumentComments({
     editor,
     canComment: editable,
     author: commentAuthor,
+    isSavable,
   });
   const contentRef = useRef<HTMLDivElement>(null);
   const panelId = useId();

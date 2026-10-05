@@ -29,6 +29,7 @@ async function renderCommentedEditor(initialContent: string) {
       editor: document.editor,
       canComment: document.editable,
       author: AUTHOR,
+      isSavable: document.isSavable,
     });
     return { document, comments };
   });
@@ -142,6 +143,46 @@ describe("useDocumentComments", () => {
         expect.objectContaining({ author: AUTHOR, body: "Too bold?" }),
       ]);
     }
+  });
+
+  it("refuses a draft whose text can no longer take a comment", async () => {
+    const { result } = await renderCommentedEditor("Hello brave world.\n");
+    const editor = result.current.document.editor;
+    if (!editor) {
+      throw new Error("Editor did not mount.");
+    }
+
+    act(() => {
+      select(editor, "brave");
+      result.current.comments.startDraft();
+    });
+    act(() => {
+      editor.commands.setCodeBlock();
+    });
+    const before = JSON.stringify(editor.getJSON());
+
+    act(() => {
+      expect(result.current.comments.submitDraft("Too bold?").isErr()).toBe(
+        true
+      );
+    });
+    expect(result.current.comments.comments).toHaveLength(0);
+    expect(JSON.stringify(editor.getJSON())).toBe(before);
+  });
+
+  it("refuses a reply the document could not be saved with", async () => {
+    const { result } = await renderCommentedEditor(
+      `${"a".repeat(100_000)}\n\n${SOURCE}`
+    );
+
+    act(() => {
+      expect(
+        result.current.comments.reply("c1", "b".repeat(170_000)).isErr()
+      ).toBe(true);
+    });
+
+    expect(result.current.comments.comments[0].messages).toHaveLength(1);
+    expect(result.current.document.dirty).toBe(false);
   });
 
   it("replies, resolves and deletes through the thread in the file", async () => {

@@ -160,6 +160,20 @@ describe("Document comments", () => {
     ).toContain("Too bold?");
   });
 
+  it("focuses a new comment's field after the panel was opened and closed", async () => {
+    const { dom, editor } = await renderDocument("Hello brave world.\n");
+
+    fireEvent.click(screen.getByRole("button", { name: "Comments" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close comments" }));
+    startComment(dom, editor, "brave");
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("textbox", { name: "Comment" })
+      )
+    );
+  });
+
   it("cancels the draft on Escape and keeps the document unchanged", async () => {
     const { dom, editor } = await renderDocument("Hello brave world.\n");
     const before = JSON.stringify(editor.getJSON());

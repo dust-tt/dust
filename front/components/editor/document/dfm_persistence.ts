@@ -122,8 +122,8 @@ export function saveDfm(
 
 /**
  * @cc [owner:tdraier,label:product] document-comment-writable
- * A thread MUST be accepted only when the codec can write it and read it back unchanged, so a
- * posted comment or reply can never make the document unsavable.
+ * A thread MUST be accepted only when the codec can write it on its own and read it back
+ * unchanged.
  */
 export function validateCommentThread(
   comment: DfmComment
