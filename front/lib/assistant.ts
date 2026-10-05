@@ -3,6 +3,7 @@ import {
   isCreditPricedPlanPrefix,
   isUpgraded,
 } from "@app/lib/plans/plan_codes";
+import { isModelStreamId } from "@app/types/assistant/models/auto";
 import { isStaticModelId } from "@app/types/assistant/models/models";
 import { isByokProviderId } from "@app/types/assistant/models/providers";
 import type {
@@ -81,6 +82,11 @@ function checkModelSpecificAccessRules(
 }
 
 /**
+ * @cc [owner:Nils-Fedrigo,label:product;security] byok-streams-available
+ * On a BYOK plan, a routing stream (auto, auto_fast, auto_complex) MUST NOT be reported unavailable
+ * because of its provider id; any other model whose provider is not a BYOK provider MUST be.
+ */
+/**
  * @cc [owner:Nils-Fedrigo,label:product] unavailable-feature-flag-vetoes-availability
  * A model must be reported unavailable whenever it satisfies one of its
  * `unavailableIfOneOf` conditions, whatever `availableIfOneOf`, `plan`, `region` or
@@ -110,7 +116,13 @@ export function isModelAvailable(
     return false;
   }
 
-  if (plan?.isByok && !isByokProviderId(m.providerId)) {
+  // Streams are not served by any provider: they resolve at message time to a
+  // concrete model, which goes through these same checks.
+  if (
+    plan?.isByok &&
+    !isByokProviderId(m.providerId) &&
+    !isModelStreamId(m.providerId)
+  ) {
     return false;
   }
 

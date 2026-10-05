@@ -16,6 +16,11 @@ import {
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import {
+  AUTO_COMPLEX_MODEL_CONFIG,
+  AUTO_FAST_MODEL_CONFIG,
+  AUTO_MODEL_CONFIG,
+} from "@app/types/assistant/models/auto";
 import { FIREWORKS_GLM_5P3_MODEL_ID } from "@app/types/assistant/models/fireworks";
 import {
   GPT_5_6_LUNA_MODEL_CONFIG,
@@ -133,6 +138,28 @@ describe("isModelAvailable", () => {
         region: TEST_REGION,
       })
     ).toBe(true);
+  });
+
+  it("should keep streams available on a BYOK plan, but not non-BYOK providers", () => {
+    const byokPlan = createMockPlan(FREE_BYOK_PLAN_CODE, {
+      isByok: true,
+      hasAdvancedModelAccess: true,
+    });
+    const context = {
+      featureFlags: [],
+      plan: byokPlan,
+      regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
+      region: TEST_REGION,
+    };
+
+    for (const stream of [
+      AUTO_MODEL_CONFIG,
+      AUTO_FAST_MODEL_CONFIG,
+      AUTO_COMPLEX_MODEL_CONFIG,
+    ]) {
+      expect(isModelAvailable(stream, context)).toBe(true);
+    }
+    expect(isModelAvailable(createFireworksGlmModel(), context)).toBe(false);
   });
 
   it("should return true when featureFlag is enabled", () => {
