@@ -50,6 +50,7 @@ describe("getLlmCredentials", () => {
       GOOGLE_AI_STUDIO_API_KEY: "",
       DEEPSEEK_API_KEY: "",
       FIREWORKS_API_KEY: "",
+      BLACKFUEL_API_KEY: "",
       XAI_API_KEY: "",
     });
   });
