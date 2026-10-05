@@ -2,10 +2,24 @@ import { useUserLocale } from "@app/hooks/useUserLocale";
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { setFormatLocale } from "@app/lib/i18n/format";
 import { i18n, loadCatalog } from "@app/lib/i18n/i18n";
+import type { LocaleOverride } from "@app/lib/i18n/locale_override";
 import { useLocaleOverride } from "@app/lib/i18n/locale_override";
 import logger from "@app/logger/logger";
-import { DEFAULT_LOCALE } from "@app/types/locale";
+import { DEFAULT_LOCALE, PSEUDO_LOCALE } from "@app/types/locale";
+import type { Messages } from "@lingui/core";
 import { useEffect } from "react";
+
+async function loadUiCatalog(locale: LocaleOverride): Promise<Messages> {
+  if (locale !== PSEUDO_LOCALE) {
+    return loadCatalog(locale);
+  }
+  // Loaded on demand to keep pseudo-localization out of the main bundle and of front-api, which
+  // bundles `lib/i18n/i18n.ts`.
+  const { pseudoLocalizeMessages } = await import(
+    "@app/lib/i18n/pseudo_locale"
+  );
+  return pseudoLocalizeMessages(await loadCatalog(DEFAULT_LOCALE));
+}
 
 interface UserLocaleSyncProps {
   onReady?: () => void;
@@ -22,7 +36,8 @@ interface UserLocaleSyncProps {
 /**
  * @cc [owner:sfriquet,label:product] format-locale-follows-user-locale
  * Once the catalog of the resolved locale has loaded, the format locale set with `setFormatLocale`
- * MUST be the locale override when non-null. Otherwise it MUST be `undefined` (the browser's
+ * MUST be `DEFAULT_LOCALE` when the locale override is `PSEUDO_LOCALE`, and the locale override
+ * when it is another non-null locale. Otherwise it MUST be `undefined` (the browser's
  * locale) when the `localisation` flag is disabled, and the `userLocale` of `useUserLocale`
  * otherwise. It MUST be set before the UI locale is activated.
  */
@@ -48,13 +63,15 @@ export function UserLocaleSync({ onReady }: UserLocaleSyncProps) {
   const locale =
     localeOverride ?? (hasLocalisation ? userLocale : DEFAULT_LOCALE);
   const formatLocale =
-    localeOverride ?? (hasLocalisation ? userLocale : undefined);
+    localeOverride === PSEUDO_LOCALE
+      ? DEFAULT_LOCALE
+      : (localeOverride ?? (hasLocalisation ? userLocale : undefined));
 
   // Syncs the format locale, the external Lingui instance and the document language with the
   // resolved locale.
   useEffect(() => {
     let isCurrent = true;
-    loadCatalog(locale)
+    loadUiCatalog(locale)
       .then((messages) => {
         if (isCurrent) {
           setFormatLocale(formatLocale);
