@@ -206,6 +206,36 @@ export const anchorsToMarks = (
 /** Private-use characters, which the Markdown serializer neither escapes nor encodes. */
 const PLACEHOLDER_OPEN = "\uE000";
 const PLACEHOLDER_CLOSE = "\uE001";
+const PLACEHOLDER_PATTERN = new RegExp(
+  `${PLACEHOLDER_OPEN}\\d+${PLACEHOLDER_CLOSE}`,
+  "g"
+);
+
+/**
+ * @cc [owner:tdraier,label:product] document-anchor-substitution
+ * Each placeholder `marksToAnchors` produced MUST be replaced by its directive exactly once, in
+ * one pass over the Markdown. A placeholder missing from the Markdown, written twice, or not
+ * produced for this document MUST fail, since the text then held the placeholder characters.
+ */
+export const substituteAnchorDirectives = (
+  markdown: string,
+  directives: Map<string, string>
+): Result<string, string> => {
+  const substituted = new Set<string>();
+  let ambiguous = false;
+  const written = markdown.replace(PLACEHOLDER_PATTERN, (placeholder) => {
+    const directive = directives.get(placeholder);
+    if (directive === undefined || substituted.has(placeholder)) {
+      ambiguous = true;
+      return placeholder;
+    }
+    substituted.add(placeholder);
+    return directive;
+  });
+  return ambiguous || substituted.size !== directives.size
+    ? new Err("The document could not be written as Markdown.")
+    : new Ok(written);
+};
 
 export interface AnchoredDocument {
   /** The document with each anchor as a placeholder text run. */
@@ -264,7 +294,12 @@ export const marksToAnchors = (
   const byText = (positions: Map<string, number>) => {
     const ids = new Map<number, string[]>();
     for (const [id, at] of positions) {
-      ids.set(at, [...(ids.get(at) ?? []), id]);
+      const bucket = ids.get(at);
+      if (bucket) {
+        bucket.push(id);
+      } else {
+        ids.set(at, [id]);
+      }
     }
     return ids;
   };

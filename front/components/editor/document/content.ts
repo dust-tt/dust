@@ -2,10 +2,11 @@ import type { MarkedDocument } from "@app/components/editor/document/DocumentCom
 import {
   anchorsToMarks,
   marksToAnchors,
+  substituteAnchorDirectives,
 } from "@app/components/editor/document/DocumentCommentAnchor";
 import { documentExtensions } from "@app/components/editor/document/extensions";
 import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
 import type {
   ExtendableConfig,
   JSONContent,
@@ -94,16 +95,10 @@ const serializeWithAnchors = (
     document,
     anchorOrder
   );
-  let markdown = documentMarkdown.serialize(anchored);
-  for (const [placeholder, directive] of directives) {
-    const parts = markdown.split(placeholder);
-    // Text already holding the placeholder characters would make the substitution ambiguous.
-    if (parts.length !== 2) {
-      return new Err("The document could not be written as Markdown.");
-    }
-    markdown = parts.join(directive);
-  }
-  return new Ok(markdown);
+  return substituteAnchorDirectives(
+    documentMarkdown.serialize(anchored),
+    directives
+  );
 };
 
 /** Compares in the editor's form, comment marks included, as the user would reopen it. */

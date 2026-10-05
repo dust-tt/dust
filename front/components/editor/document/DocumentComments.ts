@@ -188,7 +188,10 @@ const buildDecorations = (doc: Node, activeId: string | null) => {
       }
 
       const comment = commentsById.get(mark.attrs.id);
-      if (!comment || comment.status === "resolved") {
+      if (
+        !comment ||
+        (comment.status === "resolved" && comment.id !== activeId)
+      ) {
         continue;
       }
 
@@ -317,9 +320,10 @@ export const DocumentCommentMark = Mark.create({
  */
 /**
  * @cc [owner:flvndvd;tdraier,label:react] document-comment-highlights
- * Open comments MUST render as highlights over their marked text. Resolved comments and
- * comments without a thread MUST render as plain text. The active comment MUST render with
- * the emphasized highlight.
+ * Open comments MUST render as highlights over their marked text. Resolved comments, unless
+ * active, and comments without a thread MUST render as plain text. The active comment, resolved
+ * or not, MUST render with the emphasized highlight, so selecting a resolved thread still shows
+ * its text.
  */
 export const DocumentComments = Extension.create({
   name: "documentComments",

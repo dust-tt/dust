@@ -227,4 +227,31 @@ describe("useDocumentComments", () => {
       "run npm test now and then"
     );
   });
+
+  it("highlights a resolved comment while its thread is selected", async () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    window.matchMedia = vi.fn().mockReturnValue({ matches: false });
+    const { result } = await renderCommentedEditor(
+      SOURCE.replace("status=open", "status=resolved")
+    );
+    const editor = result.current.document.editor;
+    if (!editor) {
+      throw new Error("Editor did not mount.");
+    }
+    const highlight = () =>
+      editor.view.dom.querySelector('[data-comment-highlight="c1"]');
+    expect(highlight()).toBeNull();
+
+    act(() => {
+      result.current.comments.jumpTo("c1");
+    });
+    expect(highlight()?.textContent).toBe("there");
+    expect(scrollIntoView).toHaveBeenCalled();
+
+    act(() => {
+      result.current.comments.select(null);
+    });
+    expect(highlight()).toBeNull();
+  });
 });
