@@ -94,21 +94,36 @@ export const getMarkedCommentIds = (document: JSONContent): Set<string> => {
   return ids;
 };
 
+/** An anchor directive as `start:<id>` or `end:<id>`, to remember the order a file has them in. */
+const markerKey = (kind: AnchorKind, id: string) => `${kind}:${id}`;
+
+export interface MarkedDocument {
+  document: JSONContent;
+  /** The anchor directives in the order the file has them, by `markerKey`. */
+  anchorOrder: string[];
+}
+
 /**
  * @cc [owner:tdraier,label:product] document-anchors-to-marks
  * Each anchor pair MUST become a comment mark on every text node between its start and its end
  * that can carry one, and the anchor nodes MUST be removed. An end without its start, a
- * duplicate start, a start never closed, or a pair covering no text that can carry a mark MUST
- * fail, so a file never opens with a comment the editor would drop on save.
+ * duplicate start, a start never closed, a pair covering no text that can carry a mark, or a
+ * pair whose first or last covered text cannot carry one MUST fail, so a file never opens with
+ * a comment the editor would drop or shrink on save. The anchors' order in the file MUST be
+ * returned.
  */
 export const anchorsToMarks = (
   document: JSONContent,
   schema: Schema
-): Result<JSONContent, string> => {
+): Result<MarkedDocument, string> => {
   const markType = schema.marks[COMMENT_MARK_NAME];
   const open: string[] = [];
   const started = new Set<string>();
   const marked = new Set<string>();
+  // Covered text the mark cannot carry, before a comment's first marked text or after its last.
+  const unmarkedLead = new Set<string>();
+  const unmarkedTail = new Set<string>();
+  const anchorOrder: string[] = [];
   let error: string | null = null;
 
   const canCarryMark = (text: JSONContent, parent: JSONContent) =>
@@ -117,6 +132,9 @@ export const anchorsToMarks = (
     !(text.marks ?? []).some((mark) =>
       schema.marks[mark.type]?.excludes(markType)
     );
+
+  const shrinks = (id: string) =>
+    `Comment "${id}" starts or ends on text the editor cannot highlight.`;
 
   const rebuild = (node: JSONContent): JSONContent => {
     if (!node.content) {
@@ -129,29 +147,39 @@ export const anchorsToMarks = (
         if (kind === "start" && !started.has(id)) {
           started.add(id);
           open.push(id);
+          anchorOrder.push(markerKey(kind, id));
         } else if (kind === "end" && open.includes(id)) {
           open.splice(open.indexOf(id), 1);
+          anchorOrder.push(markerKey(kind, id));
+          if (unmarkedTail.has(id)) {
+            error ??= shrinks(id);
+          }
         } else {
           error ??= `Comment anchor "${id}" is not paired where the editor reads it.`;
         }
         continue;
       }
-      if (
-        child.type === "text" &&
-        open.length > 0 &&
-        canCarryMark(child, node)
-      ) {
-        for (const id of open) {
-          marked.add(id);
+      if (child.type === "text" && open.length > 0) {
+        if (canCarryMark(child, node)) {
+          for (const id of open) {
+            if (unmarkedLead.has(id) && !marked.has(id)) {
+              error ??= shrinks(id);
+            }
+            marked.add(id);
+            unmarkedTail.delete(id);
+          }
+          content.push({
+            ...child,
+            marks: [
+              ...(child.marks ?? []),
+              ...open.map((id) => ({ type: COMMENT_MARK_NAME, attrs: { id } })),
+            ],
+          });
+          continue;
         }
-        content.push({
-          ...child,
-          marks: [
-            ...(child.marks ?? []),
-            ...open.map((id) => ({ type: COMMENT_MARK_NAME, attrs: { id } })),
-          ],
-        });
-        continue;
+        for (const id of open) {
+          (marked.has(id) ? unmarkedTail : unmarkedLead).add(id);
+        }
       }
       content.push(rebuild(child));
     }
@@ -166,7 +194,9 @@ export const anchorsToMarks = (
   if (error === null && unmarked !== undefined) {
     error = `Comment "${unmarked}" covers no text the editor can highlight.`;
   }
-  return error === null ? new Ok(converted) : new Err(error);
+  return error === null
+    ? new Ok({ document: converted, anchorOrder })
+    : new Err(error);
 };
 
 /** Private-use characters, which the Markdown serializer neither escapes nor encodes. */
@@ -196,15 +226,24 @@ const sharedMarks = (
   );
 };
 
+interface Marker {
+  kind: AnchorKind;
+  id: string;
+}
+
 /**
  * @cc [owner:tdraier,label:product] document-marks-to-anchors
  * Each comment id carried by marks MUST become exactly one anchor pair: the start right before
  * the first text node carrying it and the end right after the last, in document order, with
- * comment marks removed from the text. Each anchor MUST carry exactly the marks shared by the
- * text on both sides of it, so formatting that crosses a comment's edge is written as one run
- * and reads back the same.
+ * comment marks removed from the text. Each anchor MUST carry the marks shared by the text on
+ * both sides of it, so formatting that crosses a comment's edge is written as one run. Anchors meeting between the same two texts MUST keep the order `anchorOrder` gives
+ * them when it knows them all; otherwise ends MUST come first, the latest opened closing first,
+ * then starts, the longest opening first.
  */
-export const marksToAnchors = (document: JSONContent): AnchoredDocument => {
+export const marksToAnchors = (
+  document: JSONContent,
+  anchorOrder: string[] = []
+): AnchoredDocument => {
   const firstText = new Map<string, number>();
   const lastText = new Map<string, number>();
   let index = 0;
@@ -227,21 +266,55 @@ export const marksToAnchors = (document: JSONContent): AnchoredDocument => {
   };
   const startsAt = byText(firstText);
   const endsAt = byText(lastText);
+  const fileRank = new Map(anchorOrder.map((key, rank) => [key, rank]));
+  const openingRank = new Map(
+    [...firstText.keys()].map((id, rank) => [id, rank])
+  );
+
+  const ordered = (markers: Marker[]): Marker[] => {
+    if (markers.every(({ kind, id }) => fileRank.has(markerKey(kind, id)))) {
+      return [...markers].sort(
+        (a, b) =>
+          (fileRank.get(markerKey(a.kind, a.id)) ?? 0) -
+          (fileRank.get(markerKey(b.kind, b.id)) ?? 0)
+      );
+    }
+    const rank = (id: string) => openingRank.get(id) ?? 0;
+    const ends = markers
+      .filter(({ kind }) => kind === "end")
+      .sort(
+        (a, b) =>
+          (firstText.get(b.id) ?? 0) - (firstText.get(a.id) ?? 0) ||
+          rank(b.id) - rank(a.id)
+      );
+    const starts = markers
+      .filter(({ kind }) => kind === "start")
+      .sort(
+        (a, b) =>
+          (lastText.get(b.id) ?? 0) - (lastText.get(a.id) ?? 0) ||
+          rank(a.id) - rank(b.id)
+      );
+    return [...ends, ...starts];
+  };
 
   const directives = new Map<string, string>();
   // The serializer closes every mark around a non-text node, which would split `*foo bar*`
   // around an anchor into `*foo *` and `*bar*`. A text run carrying the shared marks does not.
-  const anchor = (
-    kind: AnchorKind,
-    id: string,
+  const placeholders = (
+    markers: Marker[],
     marks: JSONContent["marks"]
-  ): JSONContent => {
-    const placeholder = `${PLACEHOLDER_OPEN}${directives.size}${PLACEHOLDER_CLOSE}`;
-    directives.set(placeholder, anchorDirective(kind, id));
-    return marks && marks.length > 0
-      ? { type: "text", text: placeholder, marks }
-      : { type: "text", text: placeholder };
-  };
+  ): JSONContent[] =>
+    ordered(markers).map(({ kind, id }) => {
+      const placeholder = `${PLACEHOLDER_OPEN}${directives.size}${PLACEHOLDER_CLOSE}`;
+      directives.set(placeholder, anchorDirective(kind, id));
+      return marks && marks.length > 0
+        ? { type: "text", text: placeholder, marks }
+        : { type: "text", text: placeholder };
+    });
+  const starting = (at: number): Marker[] =>
+    (startsAt.get(at) ?? []).map((id) => ({ kind: "start", id }));
+  const ending = (at: number): Marker[] =>
+    (endsAt.get(at) ?? []).map((id) => ({ kind: "end", id }));
 
   let position = 0;
   const rebuild = (node: JSONContent): JSONContent => {
@@ -256,16 +329,20 @@ export const marksToAnchors = (document: JSONContent): AnchoredDocument => {
         continue;
       }
       const at = position++;
-      const before = sharedMarks(siblings[i - 1], child);
-      const after = sharedMarks(child, siblings[i + 1]);
-      content.push(
-        ...(startsAt.get(at) ?? []).map((id) => anchor("start", id, before))
-      );
+      const previous = siblings[i - 1];
+      const next = siblings[i + 1];
+      // Anchors between two texts are written once, after the first, as one ordered group.
+      if (previous?.type !== "text") {
+        content.push(...placeholders(starting(at), []));
+      }
       const { marks: _marks, ...text } = child;
       const kept = nonCommentMarks(child);
       content.push(kept.length > 0 ? { ...text, marks: kept } : text);
       content.push(
-        ...(endsAt.get(at) ?? []).map((id) => anchor("end", id, after))
+        ...placeholders(
+          [...ending(at), ...(next?.type === "text" ? starting(at + 1) : [])],
+          sharedMarks(child, next)
+        )
       );
     }
     return { ...node, content };

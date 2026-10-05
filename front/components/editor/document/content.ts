@@ -1,3 +1,4 @@
+import type { MarkedDocument } from "@app/components/editor/document/DocumentCommentAnchor";
 import {
   anchorsToMarks,
   marksToAnchors,
@@ -86,9 +87,13 @@ const withoutTrailingParagraphs = (document: JSONContent): JSONContent => {
 
 /** Markdown for an editor document, comment marks written as anchor directives. */
 const serializeWithAnchors = (
-  document: JSONContent
+  document: JSONContent,
+  anchorOrder: string[]
 ): Result<string, string> => {
-  const { document: anchored, directives } = marksToAnchors(document);
+  const { document: anchored, directives } = marksToAnchors(
+    document,
+    anchorOrder
+  );
   let markdown = documentMarkdown.serialize(anchored);
   for (const [placeholder, directive] of directives) {
     const parts = markdown.split(placeholder);
@@ -113,7 +118,9 @@ const canRoundTripMarkdown = (document: JSONContent, markdown: string) => {
       documentSchema.nodeFromJSON(withoutTrailingParagraphs(document))
     ).eq(
       normalizeTextNodes(
-        documentSchema.nodeFromJSON(withoutTrailingParagraphs(reopened.value))
+        documentSchema.nodeFromJSON(
+          withoutTrailingParagraphs(reopened.value.document)
+        )
       )
     )
   );
@@ -132,7 +139,7 @@ export const normalizeTextNodes = (node: Node): Node => {
  */
 export const parseDocumentContent = (
   content: string
-): Result<JSONContent, string> => {
+): Result<MarkedDocument, string> => {
   if (!hasSupportedMarkdown(content)) {
     return new Err("The Markdown uses formatting the editor cannot keep.");
   }
@@ -144,26 +151,22 @@ export const parseDocumentContent = (
     return new Err("The Markdown could not be parsed.");
   }
 
-  const document = anchorsToMarks(parsed, documentSchema);
-  if (document.isErr()) {
-    return document;
+  const marked = anchorsToMarks(parsed, documentSchema);
+  if (marked.isErr()) {
+    return marked;
   }
 
-  // Opening is only safe when saving the untouched document would write the same content.
-  let serialized: Result<string, string>;
-  try {
-    serialized = serializeWithAnchors(document.value);
-  } catch {
-    return new Err("The Markdown could not be parsed.");
-  }
+  // Opening is only safe when saving the untouched document goes through.
   if (
-    serialized.isErr() ||
-    !canRoundTripMarkdown(document.value, serialized.value)
+    serializeDocumentMarkdown(
+      marked.value.document,
+      marked.value.anchorOrder
+    ).isErr()
   ) {
     return new Err("The Markdown would not read back the same after editing.");
   }
 
-  return document;
+  return marked;
 };
 
 /**
@@ -172,13 +175,14 @@ export const parseDocumentContent = (
  * paragraphs. A failed conversion MUST NOT reach persistence or acknowledge the draft.
  */
 export const serializeDocumentMarkdown = (
-  document: JSONContent
+  document: JSONContent,
+  anchorOrder: string[] = []
 ): Result<string, string> => {
   const content = withoutTrailingParagraphs(document);
 
   // Serializing or re-reading an unknown node throws; either way the document is not writable.
   try {
-    const markdown = serializeWithAnchors(content);
+    const markdown = serializeWithAnchors(content, anchorOrder);
     if (markdown.isErr()) {
       return markdown;
     }

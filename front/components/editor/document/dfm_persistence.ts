@@ -20,6 +20,8 @@ import type { JSONContent } from "@tiptap/core";
  */
 export interface DfmEnvelope {
   frontMatter: string | null;
+  /** The file's anchor directives in their order, so saves keep it where nothing changed. */
+  anchorOrder: string[];
 }
 
 const CODEC_SAVE_ERROR_MESSAGE =
@@ -64,28 +66,30 @@ export function loadDfm(source: string): Result<LoadedDfm, string> {
   if (content.isErr()) {
     return content;
   }
+  const { document, anchorOrder } = content.value;
 
   // An anchor the codec reads but the Markdown parser does not, such as one inside a link
   // destination, would be dropped on save.
   if (
     !sameIds(
       new Set(anchors.value.anchors.map((anchor) => anchor.id)),
-      getMarkedCommentIds(content.value)
+      getMarkedCommentIds(document)
     )
   ) {
     return new Err("A comment is anchored where the editor cannot show it.");
   }
 
   return new Ok({
-    envelope: { frontMatter },
-    content: withDocumentJSONComments(content.value, comments),
+    envelope: { frontMatter, anchorOrder },
+    content: withDocumentJSONComments(document, comments),
   });
 }
 
 /**
  * @cc [owner:PopDaph;tdraier,label:product] document-dfm-save
  * Saving MUST write the editor's body and its comment threads back into the file's envelope,
- * with front matter exactly as loaded and each comment mark written as one anchor pair. A body
+ * with front matter exactly as loaded and each comment mark written as one anchor pair, anchors
+ * meeting at one place in the order the file had them. A body
  * the editor cannot express as Markdown, or a file the codec refuses to write, MUST fail
  * without reaching persistence.
  */
@@ -94,7 +98,8 @@ export function saveDfm(
   content: JSONContent
 ): Result<string, string> {
   const markdown = serializeDocumentMarkdown(
-    withoutDocumentJSONComments(content)
+    withoutDocumentJSONComments(content),
+    envelope.anchorOrder
   );
   if (markdown.isErr()) {
     return new Err(
