@@ -1,3 +1,4 @@
+import type { SandboxReadFileOptions } from "@app/lib/api/sandbox/provider";
 import type {
   NormalizedSandboxFunctionOutcome,
   SandboxFunctionResultSpillPointer,
@@ -7,7 +8,8 @@ import {
   extractResultEnvelopeTimings,
   extractResultSpillPointer,
   normalizeSandboxFunctionResult,
-  SANDBOX_FUNCTION_RESULT_SPILL_DIR,
+  SANDBOX_FUNCTION_RESULT_MAX_BYTES,
+  SANDBOX_FUNCTION_RESULT_SPILL_FILE_PATTERN,
 } from "@app/lib/api/sandbox_functions/result_envelope";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -109,27 +111,33 @@ function spillReadFailure(
 /**
  * Read back a spilled result and normalize its content, exactly as an inline
  * outcome would have been. `readFile` is the sandbox read (the caller binds
- * the provider, e.g. `(path) => sandbox.readFile(auth, path)`). Never throws:
- * any read or parse failure becomes an invocation_failed outcome naming the
- * file, so a spill failure is loud instead of silently losing the result.
+ * the provider, e.g. `(path, opts) => sandbox.readFile(auth, path, opts)`).
+ * Never throws: any read or parse failure becomes an invocation_failed outcome
+ * naming the file, so a spill failure is loud instead of silently losing the
+ * result.
+ */
+/**
+ * @cc [owner:fontanierh,label:security] spill-pointer-is-untrusted
+ * The pointer rides the exec's stdout, which untrusted function code can also write to. The file
+ * MUST only be read when its path matches the runner's `<uuid>.json` spill file pattern, MUST be
+ * read as the workload user (`agent-proxied`) and MUST be bounded by the runner's hard result cap
+ * (`SANDBOX_FUNCTION_RESULT_MAX_BYTES`), independently of the pointer's `resultBytes`.
  */
 export async function resolveSpilledResult(
   spill: SandboxFunctionResultSpillPointer,
-  readFile: (path: string) => Promise<Result<Buffer, Error>>
+  readFile: (
+    path: string,
+    opts: SandboxReadFileOptions
+  ) => Promise<Result<Buffer, Error>>
 ): Promise<NormalizedSandboxFunctionOutcome> {
-  // The pointer rides the exec's stdout, which untrusted function code can
-  // also write to: only paths in the runner's dedicated scratch directory are
-  // ever read back, so a forged pointer cannot name an arbitrary sandbox
-  // file. (Content is additionally normalized below, which fails closed on
-  // anything that is not a runner result envelope.)
-  if (
-    !spill.resultFile.startsWith(SANDBOX_FUNCTION_RESULT_SPILL_DIR) ||
-    spill.resultFile.includes("..")
-  ) {
+  if (!SANDBOX_FUNCTION_RESULT_SPILL_FILE_PATTERN.test(spill.resultFile)) {
     return spillReadFailure(spill, "unexpected result file path");
   }
 
-  const read = await readFile(spill.resultFile);
+  const read = await readFile(spill.resultFile, {
+    user: "agent-proxied",
+    maxBytes: SANDBOX_FUNCTION_RESULT_MAX_BYTES,
+  });
   if (read.isErr()) {
     return spillReadFailure(spill, read.error.message);
   }

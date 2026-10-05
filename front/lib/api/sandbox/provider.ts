@@ -61,6 +61,11 @@ export function isSandboxExecUser(user: string): user is SandboxExecUser {
   return SANDBOX_EXEC_USERS.some((execUser) => execUser === user);
 }
 
+export interface SandboxReadFileOptions {
+  user: SandboxExecUser;
+  maxBytes: number;
+}
+
 export interface ExecOptions {
   /** Working directory for command execution. */
   workingDirectory?: string;
@@ -182,9 +187,20 @@ export interface SandboxProvider {
     tracingOpts: { workspaceId: string }
   ): Promise<Result<void, Error>>;
 
+  /**
+   * @cc [owner:fontanierh,label:security] read-file-as-workload-user
+   * The file MUST be opened as `readOpts.user`, never as root: sandbox files are workload-writable,
+   * so a symlink planted at `path` must not resolve to a root-only file.
+   */
+  /**
+   * @cc [owner:fontanierh,label:security;performance] read-file-bounded
+   * At most `readOpts.maxBytes` bytes MUST be buffered in front. A larger file fails the read
+   * (rejects) instead of being truncated, whatever size the file reported before the read.
+   */
   readFile(
     providerId: string,
     path: string,
+    readOpts: SandboxReadFileOptions,
     tracingOpts: { workspaceId: string }
   ): Promise<Buffer>;
 
