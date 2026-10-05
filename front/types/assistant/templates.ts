@@ -1,8 +1,10 @@
 import * as t from "io-ts";
-import { NonEmptyString } from "io-ts-types/lib/NonEmptyString";
-import { nonEmptyArray } from "io-ts-types/lib/nonEmptyArray";
 
-import { ioTsEnum } from "../shared/utils/iots_utils";
+import {
+  ioTsEnum,
+  NonEmptyStringCodec,
+  nonEmptyArrayCodec,
+} from "../shared/utils/iots_utils";
 import { TimeframeUnitCodec } from "../shared/utils/time_frame";
 
 // TAGS
@@ -138,9 +140,9 @@ const MultiActionPresetCodec = ioTsEnum<MultiActionPreset>(
 );
 const TemplateActionTypePreset = t.type({
   type: MultiActionPresetCodec,
-  name: NonEmptyString,
-  description: NonEmptyString,
-  help: NonEmptyString,
+  name: NonEmptyStringCodec,
+  description: NonEmptyStringCodec,
+  help: NonEmptyStringCodec,
 });
 
 export type TemplateActionPreset = t.TypeOf<typeof TemplateActionTypePreset>;
@@ -163,11 +165,11 @@ const TemplateVisibilityCodec = ioTsEnum<TemplateVisibility>(
 // FORM SCHEMA
 
 export const CreateTemplateFormSchema = t.type({
-  backgroundColor: NonEmptyString,
+  backgroundColor: NonEmptyStringCodec,
   userFacingDescription: t.union([t.string, t.undefined]),
   agentFacingDescription: t.union([t.string, t.undefined]),
-  emoji: NonEmptyString,
-  handle: NonEmptyString,
+  emoji: NonEmptyStringCodec,
+  handle: NonEmptyStringCodec,
   timeFrameDuration: t.union([t.string, t.undefined]),
   timeFrameUnit: t.union([TimeframeUnitCodec, t.literal(""), t.undefined]),
   helpActions: t.union([t.string, t.undefined]),
@@ -176,7 +178,7 @@ export const CreateTemplateFormSchema = t.type({
   presetActions: TemplateActionsPreset,
   presetInstructions: t.union([t.string, t.undefined]),
   presetModelId: t.string,
-  tags: nonEmptyArray(TemplateTagCodeTypeCodec),
+  tags: nonEmptyArrayCodec(TemplateTagCodeTypeCodec),
   visibility: TemplateVisibilityCodec,
 });
 
