@@ -111,13 +111,20 @@ export function useRichMarkdownEditor({
   const [resetKey, setResetKey] = useState({ isActive, path: entryPath });
   // The content this hook wrote last, so the fetch catching up with it is not a foreign change.
   const writtenRef = useRef<Written | null>(null);
-  // The revision the next save must name. A ref, because the editor's last save on unmount runs
-  // through the `save` it captured, after the save in flight has moved the revision on.
-  const expectedRevisionRef = useRef<string | null>(null);
+  // The revision the next save of `path` must name. A ref, because the editor's last save on
+  // unmount runs through the `save` it captured, after the save in flight has moved the revision
+  // on. Keyed by path and kept across a close, since that last save runs after the reset.
+  const expectedRevisionRef = useRef<Written | null>(null);
 
   useEffect(() => {
-    expectedRevisionRef.current = opened?.revision ?? null;
-  }, [opened?.revision]);
+    if (opened !== null) {
+      expectedRevisionRef.current = {
+        path: entryPath,
+        content: opened.content,
+        revision: opened.revision,
+      };
+    }
+  }, [opened, entryPath]);
 
   if (isActive !== resetKey.isActive || entryPath !== resetKey.path) {
     setResetKey({ isActive, path: entryPath });
@@ -189,7 +196,13 @@ export function useRichMarkdownEditor({
     if (conflict) {
       return new Err(CONFLICT_MESSAGE);
     }
-    const result = await writeFile(content, expectedRevisionRef.current);
+    const expected = expectedRevisionRef.current;
+    const result = await writeFile(
+      content,
+      expected !== null && expected.path === entryPath
+        ? expected.revision
+        : (opened?.revision ?? null)
+    );
     if (result.isErr()) {
       if (result.error.code === "conflict") {
         // The server saw a newer revision than ours; fetch it so the editor learns of it.
@@ -199,7 +212,11 @@ export function useRichMarkdownEditor({
       return new Err(result.error.message);
     }
     // Recorded before the cache changes, so the refetch it triggers reads as our own write.
-    expectedRevisionRef.current = result.value.revision;
+    expectedRevisionRef.current = {
+      path: entryPath,
+      content,
+      revision: result.value.revision,
+    };
     writtenRef.current = {
       path: entryPath,
       content,

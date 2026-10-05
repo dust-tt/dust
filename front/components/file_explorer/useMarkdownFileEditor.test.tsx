@@ -541,6 +541,38 @@ describe("useMarkdownFileEditor", () => {
     expect(stored).toBe("3");
   });
 
+  it("keeps the revision guard on the last save made after the file closed", async () => {
+    flags.add("co_edition");
+    const initialProps: Parameters<typeof useMarkdownFileEditor>[0] = params;
+    const { result, rerender } = renderHook(
+      (props) => useMarkdownFileEditor(props),
+      { initialProps }
+    );
+    const onSave = result.current.richEditor?.onSave;
+    await act(async () => {
+      await onSave?.("# Notes, first\n");
+    });
+    // The cache echoes the write back.
+    rerender({ ...params, rawContent: "# Notes, first\n", revision: "2" });
+
+    // The preview closes, which also disables its fetch, then the editor's unmount flush saves
+    // through the captured onSave.
+    rerender({
+      ...params,
+      rawContent: null,
+      revision: null,
+      processedContent: null,
+      isActive: false,
+    });
+    await act(async () => {
+      await onSave?.("# Notes, last\n");
+    });
+
+    expect(vi.mocked(putFileContentByPath)).toHaveBeenLastCalledWith(
+      expect.objectContaining({ content: "# Notes, last\n", revision: "2" })
+    );
+  });
+
   it("refuses to save when the server reports a newer revision", async () => {
     flags.add("co_edition");
     vi.mocked(putFileContentByPath).mockResolvedValueOnce(
