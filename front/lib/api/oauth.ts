@@ -111,7 +111,9 @@ export function getProviderStrategy(
  */
 /**
  * @cc [owner:spolu,label:security;logging] no-oauth-setup-config-values-in-logs
- * Setup validation failures MUST log only extraConfig key names, never configuration values.
+ * Setup validation failures MUST NOT log extraConfig values, except extraConfig.mcp_server_id,
+ * which MAY be logged as a non-secret diagnostic identifier. Configuration payloads MUST be
+ * logged as key names only, never as raw objects.
  */
 export async function createConnectionAndGetSetupUrl(
   auth: Authenticator,

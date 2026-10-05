@@ -34,6 +34,41 @@ describe("OAuth setup validation logging", () => {
     );
   });
 
+  it("keeps the MCP server identifier without logging secrets in either preflight failure log", async () => {
+    const { workspace, authenticator } = await createResourceTest({
+      role: "admin",
+    });
+    const server = await RemoteMCPServerFactory.create(workspace);
+    const logInfo = vi.spyOn(logger, "info");
+    const createConnection = vi.spyOn(OAuthAPI.prototype, "createConnection");
+
+    const res = await createConnectionAndGetSetupUrl(
+      authenticator,
+      "mcp",
+      "personal_actions",
+      {
+        mcp_server_id: server.sId,
+        client_secret: "test-client-secret",
+        code_verifier: "test-pkce-verifier",
+      }
+    );
+
+    expect(res.isErr()).toBe(true);
+    expect(createConnection).not.toHaveBeenCalled();
+    expect(logInfo).toHaveBeenCalledTimes(2);
+    expect(logInfo).toHaveBeenCalledWith(
+      expect.objectContaining({ mcpServerId: server.sId }),
+      "OAuth: workspace connection lookup failed during preflight"
+    );
+    expect(logInfo).toHaveBeenCalledWith(
+      expect.objectContaining({ mcpServerId: server.sId }),
+      "OAuth: Workspace connection missing or invalid for personal connection setup"
+    );
+    const loggedValues = JSON.stringify(logInfo.mock.calls);
+    expect(loggedValues).not.toContain("test-client-secret");
+    expect(loggedValues).not.toContain("test-pkce-verifier");
+  });
+
   it("logs only configuration keys when validation after credential retrieval fails", async () => {
     const { workspace, authenticator } = await createResourceTest({
       role: "admin",
