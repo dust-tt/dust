@@ -21,7 +21,7 @@ import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";
 import { generateJSON } from "@tiptap/html/server";
 import { MarkdownManager } from "@tiptap/markdown";
-import { unescape } from "html-escaper";
+import unescape from "lodash/unescape";
 import { Op } from "sequelize";
 
 const SKILL_EDITOR_EXTENSIONS = buildSkillInstructionsExtensions(true);

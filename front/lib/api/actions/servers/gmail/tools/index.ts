@@ -42,7 +42,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
-import { unescape } from "html-escaper";
+import unescape from "lodash/unescape";
 
 // Validates email addresses to prevent header injection attacks.
 function validateEmailAddresses(

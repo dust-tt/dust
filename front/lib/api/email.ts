@@ -12,7 +12,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
 import sgMail from "@sendgrid/mail";
-import { escape } from "html-escaper";
+import escape from "lodash/escape";
 
 let sgMailClient: typeof sgMail | null = null;
 

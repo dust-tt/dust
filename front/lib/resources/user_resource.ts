@@ -38,8 +38,8 @@ import type {
   UserType,
 } from "@app/types/user";
 import type { UserSearchDocument } from "@app/types/user_search/user_search";
-import { escape } from "html-escaper";
 import chunk from "lodash/chunk";
+import escape from "lodash/escape";
 import fromPairs from "lodash/fromPairs";
 import sortBy from "lodash/sortBy";
 import type {

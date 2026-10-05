@@ -6,7 +6,7 @@ import logger from "@app/logger/logger";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { escape } from "html-escaper";
+import escape from "lodash/escape";
 import { z } from "zod";
 
 const PostRequestAccessBodySchema = z.object({
