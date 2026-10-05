@@ -488,7 +488,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   unified_search: {
     description:
       "Enable unified search with sidebar button triggering the command palette",
-    stage: "dust_only",
+    stage: "self_serve",
     owner: "fraggle",
   },
 } as const satisfies Record<string, FeatureFlag>;
