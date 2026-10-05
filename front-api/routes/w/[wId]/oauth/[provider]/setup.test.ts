@@ -186,6 +186,20 @@ describe("OAuth setup handler", () => {
       "workspace-client"
     );
     expect(authorizationUrl.searchParams.get("state")).toBe("con_personal");
+    expect(
+      response.headers
+        .getSetCookie()
+        .some(
+          (c) => c.startsWith("dust_oauth_finalize_") && c.includes("HttpOnly")
+        )
+    ).toBe(true);
+    expect(mocks.createConnection.mock.calls[0][0].metadata).toEqual(
+      expect.objectContaining({
+        finalize_nonce: expect.any(String),
+        user_id: expect.any(String),
+        workspace_id: workspace.sId,
+      })
+    );
   });
 
   it.each([
