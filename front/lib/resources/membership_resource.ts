@@ -280,10 +280,6 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     };
   }
 
-  /**
-   * @cc [owner:avervaet,label:security] filter-active-members
-   * Returns the subset of `users` with an active membership in `workspace`, in their input order.
-   */
   static async filterActiveMembers({
     users,
     workspace,
