@@ -1,8 +1,27 @@
+import { CONTENTFUL_REVALIDATE_SECONDS } from "@marketing/lib/contentful/client";
+import { fetchLogoLists } from "@marketing/lib/logo_bars_server";
 import { HomeTrustedMarqueeCompact } from "@marketing/components/home/content/Product/HomeTrustedSection";
+import { LogoListsProvider } from "@marketing/components/home/LogoListsContext";
 import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import { PublicWebsiteLogo } from "@marketing/components/home/PublicWebsiteLogo";
+import type { LogoListMap } from "@marketing/lib/logo_bars";
 import { Button, Download01 } from "@dust-tt/sparkle";
 import Image from "next/image";
+
+interface EbookDownloadProps {
+  logoLists: LogoListMap;
+}
+
+export async function getStaticProps() {
+  return {
+    props: {
+      logoLists: await fetchLogoLists(),
+    },
+    // The logo bar is editor-managed in Contentful, so the page has to
+    // revalidate for a GTM change to go live without a deploy.
+    revalidate: CONTENTFUL_REVALIDATE_SECONDS,
+  };
+}
 
 // Ungated public endpoint that streams the canonical PDF as an attachment (see
 // pages/api/home/ebook/ai-enterprise-playbook.ts).
@@ -14,10 +33,13 @@ const BOOK_DEMO_URL = "/home/contact";
 
 // Standalone page: rendered bare, without LandingLayout, so there is no nav,
 // footer, or cookie/promo banner — just the Dust logo and the ebook hero.
+// LogoListsProvider is the one piece of LandingLayout it still needs: without
+// it the marquee has no Contentful lists to read and falls back to the
+// hardcoded lineup, which is what every other page moved off.
 // biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
-export default function EbookDownload() {
+export default function EbookDownload({ logoLists }: EbookDownloadProps) {
   return (
-    <>
+    <LogoListsProvider logoLists={logoLists}>
       <PageMetadata
         title="The Multiplayer AI Playbook | Dust"
         description="Download the AI Enterprise Playbook for free. A leader's guide to building, deploying, and scaling AI agents, based on insights from 100+ companies using Dust."
@@ -83,6 +105,6 @@ export default function EbookDownload() {
           </div>
         </main>
       </div>
-    </>
+    </LogoListsProvider>
   );
 }

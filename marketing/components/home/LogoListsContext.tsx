@@ -16,6 +16,16 @@ import { createContext, useContext, useMemo } from "react";
 // this would be worse than the drift it replaces.
 const LogoListsContext = createContext<LogoListMap>({});
 
+/**
+ * @cc [owner:radjakahoul,label:product] logo-bar-page-wiring
+ * Every page that renders a logo bar must put `fetchLogoLists()` in its
+ * `getStaticProps` / `getServerSideProps` and revalidate at
+ * `CONTENTFUL_REVALIDATE_SECONDS`, so that a provider without `logoLists` only
+ * ever means "this page has no bar". A page that renders a bar but skips the
+ * fetch still renders — it silently serves the hardcoded lineup — so the
+ * failure is invisible in review and shows up as one page disagreeing with the
+ * rest about who Dust's customers are.
+ */
 export function LogoListsProvider({
   logoLists,
   children,
