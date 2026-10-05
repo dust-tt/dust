@@ -72,6 +72,10 @@ export const useDocumentEditor = ({
   onStateChange,
 }: UseDocumentEditorProps) => {
   const [initial] = useState(() => loadDfm(initialContent));
+  // Captured with the parse: a later source must not show under the reason this one was refused.
+  const [unsupported] = useState(() =>
+    initial.isErr() ? { reason: initial.error, source: initialContent } : null
+  );
   const [baseline, setBaseline] = useState<string | null>(null);
   const [draft, setDraft] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -238,9 +242,7 @@ export const useDocumentEditor = ({
     editor,
     editable,
     /** Why the file cannot be edited, with its source, or null when it opened. */
-    unsupported: initial.isErr()
-      ? { reason: initial.error, source: initialContent }
-      : null,
+    unsupported,
     dirty,
     saving,
     error,

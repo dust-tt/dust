@@ -7,16 +7,19 @@ import { describe, expect, it, vi } from "vitest";
 const nextTick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 function renderEditor(
-  onSave: (content: string) => Promise<DocumentSaveResult>
+  onSave: (content: string) => Promise<DocumentSaveResult>,
+  initialContent = "# Title\n"
 ) {
-  return renderHook(() =>
-    useDocumentEditor({
-      initialContent: "# Title\n",
-      readOnly: false,
-      autosaveDebounceMs: 60_000,
-      onSave,
-      onStateChange: undefined,
-    })
+  return renderHook(
+    (props: { initialContent: string }) =>
+      useDocumentEditor({
+        initialContent: props.initialContent,
+        readOnly: false,
+        autosaveDebounceMs: 60_000,
+        onSave,
+        onStateChange: undefined,
+      }),
+    { initialProps: { initialContent } }
   );
 }
 
@@ -68,6 +71,17 @@ describe("useDocumentEditor", () => {
     release(new Ok(undefined));
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(2));
     expect(onSave.mock.calls[1][0]).toContain("Second");
+  });
+
+  it("keeps the refused source and reason when the content prop changes", () => {
+    const table = "| a | b |\n|---|---|\n| 1 | 2 |\n";
+    const { result, rerender } = renderEditor(vi.fn(), table);
+    const refused = result.current.unsupported;
+    expect(refused?.source).toBe(table);
+
+    rerender({ initialContent: "# Plain\n" });
+
+    expect(result.current.unsupported).toEqual(refused);
   });
 
   it("does not save on unmount when nothing changed", async () => {
