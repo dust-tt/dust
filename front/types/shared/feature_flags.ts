@@ -75,6 +75,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "Nils-Fedrigo",
   },
+  blackfuel_inference: {
+    description: "Route Kimi K3 to Blackfuel's EU hosting",
+    stage: "dust_only",
+    owner: "pmilliotte",
+  },
   use_vertex_for_supported_models: {
     description:
       "Route LLM calls through Vertex AI when supported instead of the direct provider's API",
