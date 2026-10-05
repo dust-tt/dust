@@ -40,7 +40,7 @@ describe("GET /api/w/:wId/skills/reinforcement_settings", () => {
           name: skill.name,
           userFacingDescription: skill.userFacingDescription,
           icon: skill.icon,
-          isDustProvided: false,
+          editedBy: skill.editedBy,
           reinforcement: "off",
           selfImprovementLock: true,
           selfImprovementCostsCapMicroUsd: 2_000_000,

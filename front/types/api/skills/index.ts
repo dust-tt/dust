@@ -20,7 +20,6 @@ export type GetSkillsResponseBody = {
 
 export type SkillReinforcementSettings =
   SkillWithoutInstructionsAndToolsType & {
-    isDustProvided: boolean;
     editors: UserType[] | null;
   };
 

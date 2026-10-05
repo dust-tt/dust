@@ -37,16 +37,12 @@ app.get(
     );
 
     return ctx.json({
-      skills: visibleSkills.map((skill) => {
-        const serializedSkill = skill.toJSON(auth);
-        return {
-          ...serializedSkill,
-          isDustProvided: serializedSkill.editedBy === null,
-          editors:
-            editorsBySkillId.get(skill.sId)?.map((editor) => editor.toJSON()) ??
-            null,
-        };
-      }),
+      skills: visibleSkills.map((skill) => ({
+        ...skill.toJSON(auth),
+        editors:
+          editorsBySkillId.get(skill.sId)?.map((editor) => editor.toJSON()) ??
+          null,
+      })),
     });
   }
 );

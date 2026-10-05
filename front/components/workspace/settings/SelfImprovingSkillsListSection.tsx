@@ -43,7 +43,7 @@ type RowData = {
   sId: string;
   name: string;
   icon: string | null;
-  isDustProvided: boolean;
+  editedBy: SkillReinforcementSettings["editedBy"];
   editors: SkillReinforcementSettings["editors"];
   enabled: boolean;
   pendingEnabled: boolean | null;
@@ -410,7 +410,7 @@ export function SelfImprovingSkillsListSection({
           sId: skill.sId,
           name: skill.name,
           icon: skill.icon,
-          isDustProvided: skill.isDustProvided,
+          editedBy: skill.editedBy,
           editors: skill.editors,
           enabled,
           pendingEnabled: pendingEnabledBySkillId[skill.sId] ?? null,
