@@ -141,9 +141,10 @@ export function useRichMarkdownEditor({
     if (result.isErr()) {
       return result;
     }
-    // Recorded before the cache changes, so the refetch it triggers reads as our own write.
-    writtenRef.current = { path: entryPath, content };
-    await adoptWritten(content);
+    // Recorded before the cache changes, so the refetch it triggers reads as our own write. The
+    // stored content may differ from what was sent, once the server signs new comments.
+    writtenRef.current = { path: entryPath, content: result.value };
+    await adoptWritten(result.value);
     return result;
   };
 

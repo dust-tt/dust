@@ -1,10 +1,14 @@
 // Shared by Document and its hook to avoid circular type imports.
+import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import type { DfmAuthor } from "@app/lib/markdown/dfm";
 import type { Result } from "@app/types/shared/result";
 import type { ReactNode } from "react";
 
-/** Ok once the content is stored, Err with a message the editor shows next to Retry. */
-export type DocumentSaveResult = Result<void, string>;
+/**
+ * Ok with the content as stored once it is, which the server may have rewritten to sign new
+ * comments; Err with a message the editor shows next to Retry.
+ */
+export type DocumentSaveResult = Result<string, string>;
 
 export type DocumentCommentAvatarSize = "xxs" | "3xs";
 
@@ -34,6 +38,8 @@ export interface DocumentProps {
     author: DfmAuthor,
     size: DocumentCommentAvatarSize
   ) => ReactNode;
+  /** Checks a message's signature; without it, messages are shown without a verification mark. */
+  verifyCommentMessage?: DfmMessageVerifier;
 }
 
 export interface DocumentDraftState {

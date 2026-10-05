@@ -61,6 +61,17 @@ write, such as one with a line starting with `::`, is refused before it reaches 
 Message bodies show as plain text for now. The host renders authors' avatars through
 `renderCommentAuthorAvatar`, which the panel calls only once it has been opened.
 
+## Signatures
+
+The editor never signs anything. Saving goes through the file API, which signs each new message
+written by the saving user and refuses new ones attributed to anyone else
+(`front/lib/api/files/dfm_comment_signatures.ts`). `onSave` resolves with the file as stored,
+and the editor adopts the stored threads, so the next save carries the signatures and the saved
+state matches the disk. Messages added while a save was in flight keep their local form until
+the next save. With `verifyCommentMessage`, the panel marks each message whose signature does
+not check out as Unverified, such as one written from a sandbox or by an agent; without it, no
+message is marked.
+
 ## Layout
 
 | File | Owns |

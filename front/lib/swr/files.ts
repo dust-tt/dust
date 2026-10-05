@@ -2,23 +2,26 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { usePeriodicRefresh } from "@app/hooks/usePeriodicRefresh";
 import config from "@app/lib/api/config";
 import type {
-  UpsertFileToDataSourceRequestBody,
-  UpsertFileToDataSourceResponseBody,
+	UpsertFileToDataSourceRequestBody,
+	UpsertFileToDataSourceResponseBody,
 } from "@app/lib/api/files/upsert";
+import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
+import { createDfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import { clientFetch } from "@app/lib/egress/client";
 import type { ShareFileResponseBody } from "@app/lib/resources/file_resource";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import {
-  getErrorFromResponse,
-  useFetcher,
-  useSWRWithDefaults,
+	getErrorFromResponse,
+	useFetcher,
+	useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type { GetDfmCommentSigningKeyResponseBody } from "@app/types/api/file_system/types";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { FileShareScope, FileTypeWithMetadata } from "@app/types/files";
 import {
-  DUST_FILE_CAN_WRITE_HEADER,
-  DUST_FILE_CONTENT_TYPE_HEADER,
-  DUST_FILE_ID_HEADER,
+	DUST_FILE_CAN_WRITE_HEADER,
+	DUST_FILE_CONTENT_TYPE_HEADER,
+	DUST_FILE_ID_HEADER,
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -29,93 +32,93 @@ import type { Fetcher, SWRConfiguration } from "swr";
 import { useSWRConfig } from "swr";
 
 export const getFileProcessedUrl = (
-  owner: LightWorkspaceType,
-  fileId: string | null | undefined
+	owner: LightWorkspaceType,
+	fileId: string | null | undefined,
 ) =>
-  `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=view&version=processed`;
+	`${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=view&version=processed`;
 
 export const getProcessedFileDownloadUrl = (
-  owner: LightWorkspaceType,
-  fileId: string
+	owner: LightWorkspaceType,
+	fileId: string,
 ) =>
-  `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=download&version=processed`;
+	`${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=download&version=processed`;
 
 export const getFileDownloadUrl = (owner: LightWorkspaceType, fileId: string) =>
-  `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=download`;
+	`${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=download`;
 
 export const getFileViewUrl = (
-  owner: LightWorkspaceType,
-  fileId: string | null | undefined
+	owner: LightWorkspaceType,
+	fileId: string | null | undefined,
 ) => `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=view`;
 
 export const getFilePathViewUrl = (
-  owner: LightWorkspaceType,
-  filePath: string
+	owner: LightWorkspaceType,
+	filePath: string,
 ) => {
-  const encoded = filePath.split("/").map(encodeURIComponent).join("/");
-  return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/path/${encoded}`;
+	const encoded = filePath.split("/").map(encodeURIComponent).join("/");
+	return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/path/${encoded}`;
 };
 
 /** Relative API path for fetching file text content (for use with clientFetch / useFileContentByUrl). */
 export function getFilePathContentApiPath(
-  owner: Pick<LightWorkspaceType, "sId">,
-  canonicalPath: string
+	owner: Pick<LightWorkspaceType, "sId">,
+	canonicalPath: string,
 ): string {
-  const encoded = canonicalPath.split("/").map(encodeURIComponent).join("/");
-  return `/api/w/${owner.sId}/files/path/${encoded}`;
+	const encoded = canonicalPath.split("/").map(encodeURIComponent).join("/");
+	return `/api/w/${owner.sId}/files/path/${encoded}`;
 }
 
 function getFilePathMetadataApiPath(
-  owner: LightWorkspaceType,
-  canonicalPath: string
+	owner: LightWorkspaceType,
+	canonicalPath: string,
 ): string {
-  return `${getFilePathContentApiPath(owner, canonicalPath)}?metadata=1`;
+	return `${getFilePathContentApiPath(owner, canonicalPath)}?metadata=1`;
 }
 
 export interface FilePathHeadMetadata {
-  fileId: string | null;
-  contentType: string | null;
+	fileId: string | null;
+	contentType: string | null;
 }
 
 export async function fetchFileHeadMetadataFromPath({
-  owner,
-  filePath,
+	owner,
+	filePath,
 }: {
-  owner: LightWorkspaceType;
-  filePath: string;
+	owner: LightWorkspaceType;
+	filePath: string;
 }): Promise<FilePathHeadMetadata | null> {
-  const response = await clientFetch(
-    getFilePathMetadataApiPath(owner, filePath),
-    { method: "HEAD" }
-  );
-  if (response.status === 404) {
-    return null;
-  }
-  if (!response.ok) {
-    throw new Error(`Failed to fetch file metadata (HTTP ${response.status}).`);
-  }
+	const response = await clientFetch(
+		getFilePathMetadataApiPath(owner, filePath),
+		{ method: "HEAD" },
+	);
+	if (response.status === 404) {
+		return null;
+	}
+	if (!response.ok) {
+		throw new Error(`Failed to fetch file metadata (HTTP ${response.status}).`);
+	}
 
-  return {
-    fileId: response.headers.get(DUST_FILE_ID_HEADER),
-    contentType: response.headers.get(DUST_FILE_CONTENT_TYPE_HEADER),
-  };
+	return {
+		fileId: response.headers.get(DUST_FILE_ID_HEADER),
+		contentType: response.headers.get(DUST_FILE_CONTENT_TYPE_HEADER),
+	};
 }
 
 export async function fetchFileIdFromPath({
-  owner,
-  filePath,
+	owner,
+	filePath,
 }: {
-  owner: LightWorkspaceType;
-  filePath: string;
+	owner: LightWorkspaceType;
+	filePath: string;
 }): Promise<string | null> {
-  const metadata = await fetchFileHeadMetadataFromPath({ owner, filePath });
-  return metadata?.fileId ?? null;
+	const metadata = await fetchFileHeadMetadataFromPath({ owner, filePath });
+	return metadata?.fileId ?? null;
 }
 
 export type FilePathMetadata = {
-  fileId: string | null;
-  contentType: string;
-  sizeBytes: number;
+	fileId: string | null;
+	contentType: string;
+	sizeBytes: number;
 };
 
 /**
@@ -124,32 +127,32 @@ export type FilePathMetadata = {
  * Content-Type. Returns null when the path is not found.
  */
 export async function fetchFileMetadataFromPath({
-  owner,
-  filePath,
+	owner,
+	filePath,
 }: {
-  owner: LightWorkspaceType;
-  filePath: string;
+	owner: LightWorkspaceType;
+	filePath: string;
 }): Promise<FilePathMetadata | null> {
-  const response = await clientFetch(
-    getFilePathMetadataApiPath(owner, filePath),
-    { method: "HEAD" }
-  );
-  if (response.status === 404) {
-    return null;
-  }
-  if (!response.ok) {
-    throw new Error(`Failed to fetch file metadata (HTTP ${response.status}).`);
-  }
+	const response = await clientFetch(
+		getFilePathMetadataApiPath(owner, filePath),
+		{ method: "HEAD" },
+	);
+	if (response.status === 404) {
+		return null;
+	}
+	if (!response.ok) {
+		throw new Error(`Failed to fetch file metadata (HTTP ${response.status}).`);
+	}
 
-  const contentLength = response.headers.get("Content-Length");
-  return {
-    fileId: response.headers.get(DUST_FILE_ID_HEADER),
-    contentType:
-      response.headers.get(DUST_FILE_CONTENT_TYPE_HEADER) ??
-      response.headers.get("Content-Type") ??
-      "application/octet-stream",
-    sizeBytes: contentLength ? Number(contentLength) : 0,
-  };
+	const contentLength = response.headers.get("Content-Length");
+	return {
+		fileId: response.headers.get(DUST_FILE_ID_HEADER),
+		contentType:
+			response.headers.get(DUST_FILE_CONTENT_TYPE_HEADER) ??
+			response.headers.get("Content-Type") ??
+			"application/octet-stream",
+		sizeBytes: contentLength ? Number(contentLength) : 0,
+	};
 }
 
 /**
@@ -158,673 +161,708 @@ export async function fetchFileMetadataFromPath({
  * the path is not found; callers can use `isFileIdNotFound` to distinguish loading.
  */
 export function useFileIdFromPath({
-  owner,
-  filePath,
-  disabled,
+	owner,
+	filePath,
+	disabled,
 }: {
-  owner: LightWorkspaceType;
-  filePath: string | null | undefined;
-  disabled?: boolean;
+	owner: LightWorkspaceType;
+	filePath: string | null | undefined;
+	disabled?: boolean;
 }) {
-  const path = filePath ?? null;
-  const swrKey =
-    disabled || path === null
-      ? null
-      : (`file-head-metadata-from-path:${owner.sId}:${path}` as const);
+	const path = filePath ?? null;
+	const swrKey =
+		disabled || path === null
+			? null
+			: (`file-head-metadata-from-path:${owner.sId}:${path}` as const);
 
-  const { data, error } = useSWRWithDefaults(
-    swrKey,
-    async (): Promise<FilePathHeadMetadata | null> => {
-      if (path === null) {
-        return null;
-      }
-      return fetchFileHeadMetadataFromPath({ owner, filePath: path });
-    },
-    { disabled: swrKey === null }
-  );
+	const { data, error } = useSWRWithDefaults(
+		swrKey,
+		async (): Promise<FilePathHeadMetadata | null> => {
+			if (path === null) {
+				return null;
+			}
+			return fetchFileHeadMetadataFromPath({ owner, filePath: path });
+		},
+		{ disabled: swrKey === null },
+	);
 
-  const isLoading = swrKey !== null && !error && data === undefined;
+	const isLoading = swrKey !== null && !error && data === undefined;
 
-  return {
-    fileId: data?.fileId ?? null,
-    fileContentType: data?.contentType ?? null,
-    isFileIdLoading: isLoading,
-    isFileIdNotFound:
-      swrKey !== null && !isLoading && (data === null || data?.fileId === null),
-    fileIdError: error ? normalizeError(error) : null,
-  };
+	return {
+		fileId: data?.fileId ?? null,
+		fileContentType: data?.contentType ?? null,
+		isFileIdLoading: isLoading,
+		isFileIdNotFound:
+			swrKey !== null && !isLoading && (data === null || data?.fileId === null),
+		fileIdError: error ? normalizeError(error) : null,
+	};
 }
 
 export function useFileMetadataFromPath({
-  owner,
-  filePath,
-  disabled,
+	owner,
+	filePath,
+	disabled,
 }: {
-  owner: LightWorkspaceType;
-  filePath: string | null | undefined;
-  disabled?: boolean;
+	owner: LightWorkspaceType;
+	filePath: string | null | undefined;
+	disabled?: boolean;
 }) {
-  const path = filePath ?? null;
-  const swrKey =
-    disabled || path === null
-      ? null
-      : (`file-metadata-from-path:${owner.sId}:${path}` as const);
+	const path = filePath ?? null;
+	const swrKey =
+		disabled || path === null
+			? null
+			: (`file-metadata-from-path:${owner.sId}:${path}` as const);
 
-  const { data, error } = useSWRWithDefaults(
-    swrKey,
-    async (): Promise<FilePathMetadata | null> => {
-      if (path === null) {
-        return null;
-      }
-      return fetchFileMetadataFromPath({ owner, filePath: path });
-    },
-    { disabled: swrKey === null }
-  );
+	const { data, error } = useSWRWithDefaults(
+		swrKey,
+		async (): Promise<FilePathMetadata | null> => {
+			if (path === null) {
+				return null;
+			}
+			return fetchFileMetadataFromPath({ owner, filePath: path });
+		},
+		{ disabled: swrKey === null },
+	);
 
-  const isLoading = swrKey !== null && !error && data === undefined;
+	const isLoading = swrKey !== null && !error && data === undefined;
 
-  return {
-    metadata: data ?? null,
-    isFileMetadataLoading: isLoading,
-    isFileMetadataNotFound: swrKey !== null && !isLoading && data === null,
-    fileMetadataError: error ? normalizeError(error) : null,
-  };
+	return {
+		metadata: data ?? null,
+		isFileMetadataLoading: isLoading,
+		isFileMetadataNotFound: swrKey !== null && !isLoading && data === null,
+		fileMetadataError: error ? normalizeError(error) : null,
+	};
 }
 
 type FileContentByUrlData =
-  | {
-      kind: "loaded";
-      content: string;
-      /** False when the mount refuses writes for this user; absent when the route says nothing. */
-      canWrite?: boolean;
-    }
-  | { kind: "not_found" };
+	| {
+			kind: "loaded";
+			content: string;
+			/** False when the mount refuses writes for this user; absent when the route says nothing. */
+			canWrite?: boolean;
+	  }
+	| { kind: "not_found" };
 
 export function useFileContentByUrl({
-  url,
-  disabled,
+	url,
+	disabled,
 }: {
-  url: string | null;
-  disabled?: boolean;
+	url: string | null;
+	disabled?: boolean;
 }) {
-  const isDisabled = disabled || !url;
+	const isDisabled = disabled || !url;
 
-  const { data, error } = useSWRWithDefaults<
-    string | null,
-    FileContentByUrlData
-  >(
-    url,
-    async (u: string) => {
-      const response = await clientFetch(u);
-      if (response.status === 404) {
-        return { kind: "not_found" };
-      }
-      if (!response.ok) {
-        const errorData = await getErrorFromResponse(response);
-        throw new Error(errorData.message);
-      }
-      return {
-        kind: "loaded",
-        content: await response.text(),
-        canWrite: response.headers.get(DUST_FILE_CAN_WRITE_HEADER) !== "false",
-      };
-    },
-    { disabled: isDisabled }
-  );
+	const { data, error } = useSWRWithDefaults<
+		string | null,
+		FileContentByUrlData
+	>(
+		url,
+		async (u: string) => {
+			const response = await clientFetch(u);
+			if (response.status === 404) {
+				return { kind: "not_found" };
+			}
+			if (!response.ok) {
+				const errorData = await getErrorFromResponse(response);
+				throw new Error(errorData.message);
+			}
+			return {
+				kind: "loaded",
+				content: await response.text(),
+				canWrite: response.headers.get(DUST_FILE_CAN_WRITE_HEADER) !== "false",
+			};
+		},
+		{ disabled: isDisabled },
+	);
 
-  const isNotFound = data?.kind === "not_found";
+	const isNotFound = data?.kind === "not_found";
 
-  return {
-    fileContent: data?.kind === "loaded" ? data.content : null,
-    /** Whether the mount accepts writes from this user; true until the file is loaded. */
-    fileCanWrite: data?.kind === "loaded" ? (data.canWrite ?? true) : true,
-    isNotFound,
-    isFileContentLoading: !error && data === undefined && !isDisabled,
-    fileContentError: error ? normalizeError(error) : null,
-  };
+	return {
+		fileContent: data?.kind === "loaded" ? data.content : null,
+		/** Whether the mount accepts writes from this user; true until the file is loaded. */
+		fileCanWrite: data?.kind === "loaded" ? (data.canWrite ?? true) : true,
+		isNotFound,
+		isFileContentLoading: !error && data === undefined && !isDisabled,
+		fileContentError: error ? normalizeError(error) : null,
+	};
 }
 
+/**
+ * Writes the file and resolves with its content as stored: the server rewrites a Markdown file
+ * whose new comments it signs, and returns the result in the response body.
+ */
 export async function writeFileContentByPath({
-  owner,
-  canonicalPath,
-  content,
-  contentType = "text/plain",
+	owner,
+	canonicalPath,
+	content,
+	contentType = "text/plain",
 }: {
-  owner: LightWorkspaceType;
-  canonicalPath: string;
-  content: string;
-  contentType?: string;
-}): Promise<Result<void, Error>> {
-  const url = getFilePathContentApiPath(owner, canonicalPath);
-  let response: Response;
-  try {
-    response = await clientFetch(url, {
-      method: "PUT",
-      headers: { "Content-Type": contentType },
-      body: content,
-    });
-  } catch (e) {
-    return new Err(normalizeError(e));
-  }
+	owner: LightWorkspaceType;
+	canonicalPath: string;
+	content: string;
+	contentType?: string;
+}): Promise<Result<string, Error>> {
+	const url = getFilePathContentApiPath(owner, canonicalPath);
+	let response: Response;
+	try {
+		response = await clientFetch(url, {
+			method: "PUT",
+			headers: { "Content-Type": contentType },
+			body: content,
+		});
+	} catch (e) {
+		return new Err(normalizeError(e));
+	}
 
-  if (!response.ok) {
-    const errorData = await getErrorFromResponse(response);
-    return new Err(new Error(errorData.message));
-  }
-  return new Ok(undefined);
+	if (!response.ok) {
+		const errorData = await getErrorFromResponse(response);
+		return new Err(new Error(errorData.message));
+	}
+
+	const stored = await response.text();
+	return new Ok(stored === "" ? content : stored);
+}
+
+/**
+ * Checks DFM comment signatures with the server's public key. Null while the key loads, or
+ * when the server has none, so callers do not mark messages they cannot check.
+ */
+export function useDfmMessageVerifier({
+	owner,
+	disabled,
+}: {
+	owner: LightWorkspaceType | undefined;
+	disabled?: boolean;
+}): DfmMessageVerifier | null {
+	const { fetcher } = useFetcher();
+	const swrKey =
+		disabled || !owner ? null : `/api/w/${owner.sId}/files/comment-signing-key`;
+	const { data } = useSWRWithDefaults(
+		swrKey,
+		async (url: string): Promise<DfmMessageVerifier | null> => {
+			const { publicKey }: GetDfmCommentSigningKeyResponseBody =
+				await fetcher(url);
+			return owner && publicKey
+				? createDfmMessageVerifier({ publicKey, workspaceId: owner.sId })
+				: null;
+		},
+		{ disabled: swrKey === null },
+	);
+
+	return data ?? null;
 }
 
 /** Delete the file or folder at `canonicalPath`; Frame manifests run the package-aware deletion. */
 export function useDeleteFileByPath({ owner }: { owner: LightWorkspaceType }) {
-  const sendNotification = useSendNotification();
+	const sendNotification = useSendNotification();
 
-  return async (canonicalPath: string): Promise<Result<void, Error>> => {
-    try {
-      const encoded = canonicalPath
-        .split("/")
-        .map(encodeURIComponent)
-        .join("/");
-      const res = await clientFetch(
-        `/api/w/${owner.sId}/files/path/${encoded}`,
-        { method: "DELETE" }
-      );
+	return async (canonicalPath: string): Promise<Result<void, Error>> => {
+		try {
+			const encoded = canonicalPath
+				.split("/")
+				.map(encodeURIComponent)
+				.join("/");
+			const res = await clientFetch(
+				`/api/w/${owner.sId}/files/path/${encoded}`,
+				{ method: "DELETE" },
+			);
 
-      if (!res.ok) {
-        const errorData = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
-          title: "Failed to delete file",
-          description: errorData.message,
-        });
-        return new Err(new Error(errorData.message));
-      }
+			if (!res.ok) {
+				const errorData = await getErrorFromResponse(res);
+				sendNotification({
+					type: "error",
+					title: "Failed to delete file",
+					description: errorData.message,
+				});
+				return new Err(new Error(errorData.message));
+			}
 
-      sendNotification({
-        type: "success",
-        title: "File deleted",
-      });
+			sendNotification({
+				type: "success",
+				title: "File deleted",
+			});
 
-      return new Ok(undefined);
-    } catch (e) {
-      const errorMessage = normalizeError(e).message;
-      sendNotification({
-        type: "error",
-        title: "Failed to delete file",
-        description: errorMessage,
-      });
-      return new Err(new Error(errorMessage));
-    }
-  };
+			return new Ok(undefined);
+		} catch (e) {
+			const errorMessage = normalizeError(e).message;
+			sendNotification({
+				type: "error",
+				title: "Failed to delete file",
+				description: errorMessage,
+			});
+			return new Err(new Error(errorMessage));
+		}
+	};
 }
 
 export function useRenameFileByPath({ owner }: { owner: LightWorkspaceType }) {
-  const sendNotification = useSendNotification();
+	const sendNotification = useSendNotification();
 
-  return async (
-    canonicalPath: string,
-    newFileName: string
-  ): Promise<Result<void, Error>> => {
-    try {
-      const encoded = canonicalPath
-        .split("/")
-        .map(encodeURIComponent)
-        .join("/");
-      const res = await clientFetch(
-        `/api/w/${owner.sId}/files/path/${encoded}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "rename", fileName: newFileName }),
-        }
-      );
+	return async (
+		canonicalPath: string,
+		newFileName: string,
+	): Promise<Result<void, Error>> => {
+		try {
+			const encoded = canonicalPath
+				.split("/")
+				.map(encodeURIComponent)
+				.join("/");
+			const res = await clientFetch(
+				`/api/w/${owner.sId}/files/path/${encoded}`,
+				{
+					method: "PATCH",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ action: "rename", fileName: newFileName }),
+				},
+			);
 
-      if (!res.ok) {
-        const errorData = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
-          title: "Failed to rename",
-          description: errorData.message,
-        });
-        return new Err(new Error(errorData.message));
-      }
+			if (!res.ok) {
+				const errorData = await getErrorFromResponse(res);
+				sendNotification({
+					type: "error",
+					title: "Failed to rename",
+					description: errorData.message,
+				});
+				return new Err(new Error(errorData.message));
+			}
 
-      sendNotification({
-        type: "success",
-        title: `Renamed to "${newFileName}"`,
-      });
+			sendNotification({
+				type: "success",
+				title: `Renamed to "${newFileName}"`,
+			});
 
-      return new Ok(undefined);
-    } catch (e) {
-      const errorMessage = normalizeError(e).message;
-      sendNotification({
-        type: "error",
-        title: "Failed to rename",
-        description: errorMessage,
-      });
-      return new Err(new Error(errorMessage));
-    }
-  };
+			return new Ok(undefined);
+		} catch (e) {
+			const errorMessage = normalizeError(e).message;
+			sendNotification({
+				type: "error",
+				title: "Failed to rename",
+				description: errorMessage,
+			});
+			return new Err(new Error(errorMessage));
+		}
+	};
 }
 
 export function useWriteFileContentByPath({
-  owner,
+	owner,
 }: {
-  owner: LightWorkspaceType;
+	owner: LightWorkspaceType;
 }) {
-  const sendNotification = useSendNotification();
-  const { mutate } = useSWRConfig();
+	const sendNotification = useSendNotification();
+	const { mutate } = useSWRConfig();
 
-  return async ({
-    canonicalPath,
-    content,
-    contentType = "text/plain",
-    showSuccessNotification = false,
-  }: {
-    canonicalPath: string;
-    content: string;
-    contentType?: string;
-    showSuccessNotification?: boolean;
-  }): Promise<Result<void, Error>> => {
-    const url = getFilePathContentApiPath(owner, canonicalPath);
+	return async ({
+		canonicalPath,
+		content,
+		contentType = "text/plain",
+		showSuccessNotification = false,
+	}: {
+		canonicalPath: string;
+		content: string;
+		contentType?: string;
+		showSuccessNotification?: boolean;
+	}): Promise<Result<void, Error>> => {
+		const url = getFilePathContentApiPath(owner, canonicalPath);
 
-    const result = await writeFileContentByPath({
-      owner,
-      canonicalPath,
-      content,
-      contentType,
-    });
-    if (result.isErr()) {
-      sendNotification({
-        type: "error",
-        title: "Failed to save file",
-        description: result.error.message,
-      });
-      return result;
-    }
+		const result = await writeFileContentByPath({
+			owner,
+			canonicalPath,
+			content,
+			contentType,
+		});
+		if (result.isErr()) {
+			sendNotification({
+				type: "error",
+				title: "Failed to save file",
+				description: result.error.message,
+			});
+			return new Err(result.error);
+		}
 
-    await mutate<FileContentByUrlData>(
-      url,
-      { kind: "loaded", content },
-      { revalidate: false }
-    );
+		await mutate<FileContentByUrlData>(
+			url,
+			{ kind: "loaded", content: result.value },
+			{ revalidate: false },
+		);
 
-    if (showSuccessNotification) {
-      sendNotification({
-        type: "success",
-        title: "File saved",
-      });
-    }
+		if (showSuccessNotification) {
+			sendNotification({
+				type: "success",
+				title: "File saved",
+			});
+		}
 
-    return new Ok(undefined);
-  };
+		return new Ok(undefined);
+	};
 }
 
 export const getFilePathDownloadUrl = (
-  owner: LightWorkspaceType,
-  filePath: string,
-  { lastModifiedMs }: { lastModifiedMs?: number | null } = {}
+	owner: LightWorkspaceType,
+	filePath: string,
+	{ lastModifiedMs }: { lastModifiedMs?: number | null } = {},
 ) => {
-  const encoded = filePath.split("/").map(encodeURIComponent).join("/");
-  const version = lastModifiedMs ? `&v=${lastModifiedMs}` : "";
-  return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/path/${encoded}?download=1${version}`;
+	const encoded = filePath.split("/").map(encodeURIComponent).join("/");
+	const version = lastModifiedMs ? `&v=${lastModifiedMs}` : "";
+	return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/path/${encoded}?download=1${version}`;
 };
 
 export async function prepareFolderArchiveDownload({
-  owner,
-  canonicalPath,
+	owner,
+	canonicalPath,
 }: {
-  owner: LightWorkspaceType;
-  canonicalPath: string;
+	owner: LightWorkspaceType;
+	canonicalPath: string;
 }): Promise<string> {
-  const url = `${getFilePathViewUrl(owner, canonicalPath)}?archive=zip`;
-  const response = await clientFetch(url, { method: "HEAD" });
-  if (!response.ok) {
-    throw new Error(
-      `Failed to prepare folder archive (HTTP ${response.status}).`
-    );
-  }
-  return url;
+	const url = `${getFilePathViewUrl(owner, canonicalPath)}?archive=zip`;
+	const response = await clientFetch(url, { method: "HEAD" });
+	if (!response.ok) {
+		throw new Error(
+			`Failed to prepare folder archive (HTTP ${response.status}).`,
+		);
+	}
+	return url;
 }
 
 export async function downloadFile(
-  owner: LightWorkspaceType,
-  canonicalPath: string
+	owner: LightWorkspaceType,
+	canonicalPath: string,
 ): Promise<Response> {
-  const encoded = canonicalPath.split("/").map(encodeURIComponent).join("/");
-  const url = `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/path/${encoded}?download=1`;
+	const encoded = canonicalPath.split("/").map(encodeURIComponent).join("/");
+	const url = `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/path/${encoded}?download=1`;
 
-  const res = await clientFetch(url);
-  if (!res.ok) {
-    const errorData = await getErrorFromResponse(res);
-    throw new Error(errorData.message);
-  }
+	const res = await clientFetch(url);
+	if (!res.ok) {
+		const errorData = await getErrorFromResponse(res);
+		throw new Error(errorData.message);
+	}
 
-  return res;
+	return res;
 }
 
 export function useFileProcessedContent({
-  owner,
-  fileId,
-  config,
+	owner,
+	fileId,
+	config,
 }: {
-  owner: LightWorkspaceType;
-  fileId: string | null | undefined;
-  config?: SWRConfiguration & {
-    disabled?: boolean;
-  };
+	owner: LightWorkspaceType;
+	fileId: string | null | undefined;
+	config?: SWRConfiguration & {
+		disabled?: boolean;
+	};
 }) {
-  const isDisabled = !fileId || config?.disabled === true;
-  const swrKey = fileId ? getFileProcessedUrl(owner, fileId) : null;
+	const isDisabled = !fileId || config?.disabled === true;
+	const swrKey = fileId ? getFileProcessedUrl(owner, fileId) : null;
 
-  const {
-    data: response,
-    error,
-    mutate,
-  } = useSWRWithDefaults(
-    swrKey,
-    // Stream fetcher -> don't try to parse the stream.
-    // Wait for initial response to trigger swr error handling.
-    async (...args) => {
-      const response = await clientFetch(...args, { redirect: "manual" });
+	const {
+		data: response,
+		error,
+		mutate,
+	} = useSWRWithDefaults(
+		swrKey,
+		// Stream fetcher -> don't try to parse the stream.
+		// Wait for initial response to trigger swr error handling.
+		async (...args) => {
+			const response = await clientFetch(...args, { redirect: "manual" });
 
-      // File is not safe to display -> opaque redirect response. Return null.
-      if (response.type === "opaqueredirect") {
-        return null;
-      }
+			// File is not safe to display -> opaque redirect response. Return null.
+			if (response.type === "opaqueredirect") {
+				return null;
+			}
 
-      if (!response.ok) {
-        throw new Error(`Error reading the file content: ${response.status}`);
-      }
+			if (!response.ok) {
+				throw new Error(`Error reading the file content: ${response.status}`);
+			}
 
-      return response;
-    },
-    { ...config, disabled: isDisabled }
-  );
+			return response;
+		},
+		{ ...config, disabled: isDisabled },
+	);
 
-  return {
-    // Do not extract text from the response -> Allows streaming on client side
-    content: () => response ?? null,
-    isContentLoading: isDisabled ? false : !error && !response,
-    isContentError: isDisabled ? false : error,
-    mutateFileProcessedContent: mutate,
-  };
+	return {
+		// Do not extract text from the response -> Allows streaming on client side
+		content: () => response ?? null,
+		isContentLoading: isDisabled ? false : !error && !response,
+		isContentError: isDisabled ? false : error,
+		mutateFileProcessedContent: mutate,
+	};
 }
 
 export function useUpsertFileAsDatasourceEntry(
-  owner: LightWorkspaceType,
-  dataSourceView: DataSourceViewType
+	owner: LightWorkspaceType,
+	dataSourceView: DataSourceViewType,
 ) {
-  // Used only for cache invalidation
-  const { mutateRegardlessOfQueryParams: mutateContentNodes } =
-    useDataSourceViewContentNodes({
-      owner,
-      dataSourceView,
-      disabled: true,
-    });
+	// Used only for cache invalidation
+	const { mutateRegardlessOfQueryParams: mutateContentNodes } =
+		useDataSourceViewContentNodes({
+			owner,
+			dataSourceView,
+			disabled: true,
+		});
 
-  const sendNotification = useSendNotification();
-  const { startPeriodicRefresh } = usePeriodicRefresh(mutateContentNodes);
+	const sendNotification = useSendNotification();
+	const { startPeriodicRefresh } = usePeriodicRefresh(mutateContentNodes);
 
-  const doCreate = async (body: UpsertFileToDataSourceRequestBody) => {
-    const upsertUrl = `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.sId}/files`;
-    const res = await clientFetch(upsertUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
-        title: "Failed to upload the file.",
-        description: `Error: ${errorData.message}`,
-      });
-      return null;
-    } else {
-      void mutateContentNodes();
-      startPeriodicRefresh();
+	const doCreate = async (body: UpsertFileToDataSourceRequestBody) => {
+		const upsertUrl = `/api/w/${owner.sId}/data_sources/${dataSourceView.dataSource.sId}/files`;
+		const res = await clientFetch(upsertUrl, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify(body),
+		});
+		if (!res.ok) {
+			const errorData = await getErrorFromResponse(res);
+			sendNotification({
+				type: "error",
+				title: "Failed to upload the file.",
+				description: `Error: ${errorData.message}`,
+			});
+			return null;
+		} else {
+			void mutateContentNodes();
+			startPeriodicRefresh();
 
-      sendNotification({
-        type: "success",
-        title: "File processing",
-        description: "Your file is processing and will appear shortly.",
-      });
+			sendNotification({
+				type: "success",
+				title: "File processing",
+				description: "Your file is processing and will appear shortly.",
+			});
 
-      const response: UpsertFileToDataSourceResponseBody = await res.json();
-      return response.file;
-    }
-  };
+			const response: UpsertFileToDataSourceResponseBody = await res.json();
+			return response.file;
+		}
+	};
 
-  return doCreate;
+	return doCreate;
 }
 
 export function useFileMetadata({
-  fileId,
-  owner,
-  cacheKey,
-  disabled = false,
+	fileId,
+	owner,
+	cacheKey,
+	disabled = false,
 }: {
-  fileId: string | null;
-  owner: LightWorkspaceType;
-  cacheKey?: string | null;
-  disabled?: boolean;
+	fileId: string | null;
+	owner: LightWorkspaceType;
+	cacheKey?: string | null;
+	disabled?: boolean;
 }) {
-  const { fetcher } = useFetcher();
-  const fileMetadataFetcher: Fetcher<FileTypeWithMetadata> = fetcher;
+	const { fetcher } = useFetcher();
+	const fileMetadataFetcher: Fetcher<FileTypeWithMetadata> = fetcher;
 
-  // Include cacheKey in the SWR key if provided to force cache invalidation.
-  const swrKey = fileId
-    ? cacheKey
-      ? `/api/w/${owner.sId}/files/${fileId}/metadata?v=${cacheKey}`
-      : `/api/w/${owner.sId}/files/${fileId}/metadata`
-    : null;
+	// Include cacheKey in the SWR key if provided to force cache invalidation.
+	const swrKey = fileId
+		? cacheKey
+			? `/api/w/${owner.sId}/files/${fileId}/metadata?v=${cacheKey}`
+			: `/api/w/${owner.sId}/files/${fileId}/metadata`
+		: null;
 
-  const { data, error, mutateRegardlessOfQueryParams } = useSWRWithDefaults(
-    swrKey,
-    fileMetadataFetcher,
-    { disabled: disabled || swrKey === null }
-  );
+	const { data, error, mutateRegardlessOfQueryParams } = useSWRWithDefaults(
+		swrKey,
+		fileMetadataFetcher,
+		{ disabled: disabled || swrKey === null },
+	);
 
-  return {
-    fileMetadata: data,
-    isFileMetadataLoading: !disabled && swrKey !== null && !error && !data,
-    isFileMetadataError: error,
-    mutateFileMetadata: mutateRegardlessOfQueryParams,
-  };
+	return {
+		fileMetadata: data,
+		isFileMetadataLoading: !disabled && swrKey !== null && !error && !data,
+		isFileMetadataError: error,
+		mutateFileMetadata: mutateRegardlessOfQueryParams,
+	};
 }
 
 export function useFileContent({
-  fileId,
-  owner,
-  cacheKey,
-  config,
+	fileId,
+	owner,
+	cacheKey,
+	config,
 }: {
-  fileId: string | null | undefined;
-  owner: LightWorkspaceType;
-  cacheKey?: string;
-  config?: SWRConfiguration & {
-    disabled?: boolean;
-  };
+	fileId: string | null | undefined;
+	owner: LightWorkspaceType;
+	cacheKey?: string;
+	config?: SWRConfiguration & {
+		disabled?: boolean;
+	};
 }) {
-  // Include cacheKey in the SWR key if provided to force cache invalidation.
-  const swrKey = cacheKey
-    ? `/api/w/${owner.sId}/files/${fileId}?action=view&v=${cacheKey}`
-    : `/api/w/${owner.sId}/files/${fileId}?action=view`;
+	// Include cacheKey in the SWR key if provided to force cache invalidation.
+	const swrKey = cacheKey
+		? `/api/w/${owner.sId}/files/${fileId}?action=view&v=${cacheKey}`
+		: `/api/w/${owner.sId}/files/${fileId}?action=view`;
 
-  const { data, error, mutate } = useSWRWithDefaults<string, string>(
-    swrKey,
-    async (url: string) => {
-      // Use custom fetcher to parse as text.
-      const response = await clientFetch(url);
-      if (!response.ok) {
-        const errorData = await getErrorFromResponse(response);
-        throw new Error(errorData.message);
-      }
-      return response.text();
-    },
-    { disabled: !fileId || config?.disabled, ...config }
-  );
+	const { data, error, mutate } = useSWRWithDefaults<string, string>(
+		swrKey,
+		async (url: string) => {
+			// Use custom fetcher to parse as text.
+			const response = await clientFetch(url);
+			if (!response.ok) {
+				const errorData = await getErrorFromResponse(response);
+				throw new Error(errorData.message);
+			}
+			return response.text();
+		},
+		{ disabled: !fileId || config?.disabled, ...config },
+	);
 
-  // SWR's error can be an Error object, which React cannot render as a child.
-  // Normalize it to so FrameRenderer can safely render it.
-  const normalizedError = error ? normalizeError(error) : null;
+	// SWR's error can be an Error object, which React cannot render as a child.
+	// Normalize it to so FrameRenderer can safely render it.
+	const normalizedError = error ? normalizeError(error) : null;
 
-  return {
-    error: normalizedError,
-    fileContent: data,
-    isFileContentLoading: !error && !data && !config?.disabled,
-    mutateFileContent: mutate,
-  };
+	return {
+		error: normalizedError,
+		fileContent: data,
+		isFileContentLoading: !error && !data && !config?.disabled,
+		mutateFileContent: mutate,
+	};
 }
 
 export function useShareInteractiveContentFile({
-  fileId,
-  owner,
-  cacheKey,
+	fileId,
+	owner,
+	cacheKey,
 }: {
-  fileId: string;
-  owner: LightWorkspaceType;
-  cacheKey?: string | null;
+	fileId: string;
+	owner: LightWorkspaceType;
+	cacheKey?: string | null;
 }) {
-  const { fetcher } = useFetcher();
-  const sendNotification = useSendNotification();
+	const { fetcher } = useFetcher();
+	const sendNotification = useSendNotification();
 
-  const fileShareFetcher: Fetcher<ShareFileResponseBody> = fetcher;
+	const fileShareFetcher: Fetcher<ShareFileResponseBody> = fetcher;
 
-  const swrKey = cacheKey
-    ? `/api/w/${owner.sId}/files/${fileId}/share?v=${cacheKey}`
-    : `/api/w/${owner.sId}/files/${fileId}/share`;
+	const swrKey = cacheKey
+		? `/api/w/${owner.sId}/files/${fileId}/share?v=${cacheKey}`
+		: `/api/w/${owner.sId}/files/${fileId}/share`;
 
-  const { data, error, mutate } = useSWRWithDefaults(swrKey, fileShareFetcher);
+	const { data, error, mutate } = useSWRWithDefaults(swrKey, fileShareFetcher);
 
-  const doShare = async (
-    shareScope: FileShareScope
-  ): Promise<
-    | { success: true; response: ShareFileResponseBody }
-    | { success: false; message: string; unverifiableRefs?: string[] }
-  > => {
-    const res = await clientFetch(`/api/w/${owner.sId}/files/${fileId}/share`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ shareScope }),
-    });
+	const doShare = async (
+		shareScope: FileShareScope,
+	): Promise<
+		| { success: true; response: ShareFileResponseBody }
+		| { success: false; message: string; unverifiableRefs?: string[] }
+	> => {
+		const res = await clientFetch(`/api/w/${owner.sId}/files/${fileId}/share`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({ shareScope }),
+		});
 
-    if (!res.ok) {
-      const errorData = await getErrorFromResponse(res);
-      const unverifiableRefs =
-        "unverifiableRefs" in errorData &&
-        Array.isArray(errorData.unverifiableRefs)
-          ? errorData.unverifiableRefs
-          : undefined;
+		if (!res.ok) {
+			const errorData = await getErrorFromResponse(res);
+			const unverifiableRefs =
+				"unverifiableRefs" in errorData &&
+				Array.isArray(errorData.unverifiableRefs)
+					? errorData.unverifiableRefs
+					: undefined;
 
-      sendNotification({
-        type: "error",
-        title: "Failed to update frame sharing",
-        description: errorData.message,
-      });
+			sendNotification({
+				type: "error",
+				title: "Failed to update frame sharing",
+				description: errorData.message,
+			});
 
-      return {
-        success: false,
-        message: errorData.message,
-        unverifiableRefs,
-      };
-    }
+			return {
+				success: false,
+				message: errorData.message,
+				unverifiableRefs,
+			};
+		}
 
-    await mutate();
+		await mutate();
 
-    const response: ShareFileResponseBody = await res.json();
+		const response: ShareFileResponseBody = await res.json();
 
-    return { success: true, response };
-  };
+		return { success: true, response };
+	};
 
-  return {
-    doShare,
-    fileShare: data,
-    isFileShareLoading: !error && !data,
-    isFileShareError: error,
-    mutateFileShare: mutate,
-  };
+	return {
+		doShare,
+		fileShare: data,
+		isFileShareLoading: !error && !data,
+		isFileShareError: error,
+		mutateFileShare: mutate,
+	};
 }
 
 export function useSharingGrants({
-  fileId,
-  owner,
-  cacheKey,
-  disabled,
+	fileId,
+	owner,
+	cacheKey,
+	disabled,
 }: {
-  fileId: string;
-  owner: LightWorkspaceType;
-  cacheKey?: string | null;
-  disabled?: boolean;
+	fileId: string;
+	owner: LightWorkspaceType;
+	cacheKey?: string | null;
+	disabled?: boolean;
 }) {
-  const { fetcher } = useFetcher();
-  const sendNotification = useSendNotification();
+	const { fetcher } = useFetcher();
+	const sendNotification = useSendNotification();
 
-  const grantsFetcher: Fetcher<SharingGrantsResponse> = fetcher;
+	const grantsFetcher: Fetcher<SharingGrantsResponse> = fetcher;
 
-  const swrKey = cacheKey
-    ? `/api/w/${owner.sId}/files/${fileId}/share/grants?v=${cacheKey}`
-    : `/api/w/${owner.sId}/files/${fileId}/share/grants`;
+	const swrKey = cacheKey
+		? `/api/w/${owner.sId}/files/${fileId}/share/grants?v=${cacheKey}`
+		: `/api/w/${owner.sId}/files/${fileId}/share/grants`;
 
-  const { data, error, mutate } = useSWRWithDefaults(swrKey, grantsFetcher, {
-    disabled,
-  });
+	const { data, error, mutate } = useSWRWithDefaults(swrKey, grantsFetcher, {
+		disabled,
+	});
 
-  const doAddGrants = async (recipients: {
-    emails?: string[];
-    domains?: string[];
-  }): Promise<boolean> => {
-    const res = await clientFetch(swrKey, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(recipients),
-    });
+	const doAddGrants = async (recipients: {
+		emails?: string[];
+		domains?: string[];
+	}): Promise<boolean> => {
+		const res = await clientFetch(swrKey, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(recipients),
+		});
 
-    if (!res.ok) {
-      const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
-        title: "Failed to add access.",
-        description: `Error: ${errorData.message}`,
-      });
-      return false;
-    }
+		if (!res.ok) {
+			const errorData = await getErrorFromResponse(res);
+			sendNotification({
+				type: "error",
+				title: "Failed to add access.",
+				description: `Error: ${errorData.message}`,
+			});
+			return false;
+		}
 
-    await mutate();
-    return true;
-  };
+		await mutate();
+		return true;
+	};
 
-  const doRevokeGrant = async (grantId: string) => {
-    const res = await clientFetch(swrKey, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ grantId }),
-    });
+	const doRevokeGrant = async (grantId: string) => {
+		const res = await clientFetch(swrKey, {
+			method: "DELETE",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ grantId }),
+		});
 
-    if (!res.ok) {
-      const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
-        title: "Failed to revoke access.",
-        description: `Error: ${errorData.message}`,
-      });
-      return false;
-    }
+		if (!res.ok) {
+			const errorData = await getErrorFromResponse(res);
+			sendNotification({
+				type: "error",
+				title: "Failed to revoke access.",
+				description: `Error: ${errorData.message}`,
+			});
+			return false;
+		}
 
-    await mutate();
-    return true;
-  };
+		await mutate();
+		return true;
+	};
 
-  return {
-    sharing: data,
-    isGrantsError: error,
-    mutateGrants: mutate,
-    isGrantsLoading: disabled ? false : !error && !data,
-    doAddGrants,
-    doRevokeGrant,
-  };
+	return {
+		sharing: data,
+		isGrantsError: error,
+		mutateGrants: mutate,
+		isGrantsLoading: disabled ? false : !error && !data,
+		doAddGrants,
+		doRevokeGrant,
+	};
 }

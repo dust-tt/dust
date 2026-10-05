@@ -10,6 +10,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import file from "./[fileId]";
+import commentSigningKey from "./comment-signing-key";
 import canonicalPath from "./path/[...canonicalPath]";
 
 const FileUploadUrlRequestSchema = z.discriminatedUnion("useCase", [
@@ -228,6 +229,7 @@ app.post("/", validate("json", FileUploadUrlRequestSchema), async (ctx) => {
   return ctx.json({ file: newFile.toJSONWithUploadUrl(auth) });
 });
 
+app.route("/comment-signing-key", commentSigningKey);
 app.route("/path", canonicalPath);
 app.route("/:fileId", file);
 

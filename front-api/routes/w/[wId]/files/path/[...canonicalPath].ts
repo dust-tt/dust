@@ -1,5 +1,6 @@
 import config from "@app/lib/api/config";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import { signMarkdownCommentsForWrite } from "@app/lib/api/files/dfm_comment_signatures";
 import {
   convertCanonicalFileToPdf,
   deleteCanonicalFile,
@@ -78,6 +79,8 @@ const ParamsSchema = z.object({
  * positive generation strings, independent of HTTP ETags. Backends without revision
  * support reject conditional writes.
  * GET and HEAD expose current mount write permission in X-Dust-File-Can-Write.
+ * A PUT of a Markdown file whose comments the server signed returns the stored content as its
+ * body; any other successful PUT has an empty body.
  */
 const app = workspaceApp();
 
@@ -672,11 +675,27 @@ app.put(
       return putContentTooLargeError(ctx);
     }
 
+    const signed = await signMarkdownCommentsForWrite(
+      auth,
+      dustFs,
+      canonicalPath,
+      new Uint8Array(contentBuffer)
+    );
+    if (signed.isErr()) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: signed.error.message,
+        },
+      });
+    }
+
     const writeResult = await writeCanonicalFileContent(
       auth,
       dustFs,
       canonicalPath,
-      new Uint8Array(contentBuffer),
+      signed.value.content,
       ctx.req.header("content-type") ?? undefined,
       ctx.req.valid("header")["x-dust-if-revision-match"]
     );
@@ -718,12 +737,21 @@ app.put(
       return apiError(ctx, mapDustFsError(error));
     }
 
-    return new Response(null, {
+    const revisionHeaders: Record<string, string> =
+      writeResult.value.revision !== undefined
+        ? { [DUST_FILE_REVISION_HEADER]: writeResult.value.revision }
+        : {};
+    const storedText = signed.value.rewritten
+      ? new TextDecoder().decode(signed.value.content)
+      : null;
+    return new Response(storedText, {
       status: writeResult.value.created ? 201 : 200,
-      headers:
-        writeResult.value.revision !== undefined
-          ? { [DUST_FILE_REVISION_HEADER]: writeResult.value.revision }
-          : undefined,
+      headers: signed.value.rewritten
+        ? {
+            ...revisionHeaders,
+            "Content-Type": "text/markdown; charset=utf-8",
+          }
+        : revisionHeaders,
     });
   }
 );

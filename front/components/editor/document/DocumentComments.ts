@@ -419,6 +419,8 @@ declare module "@tiptap/core" {
       setCommentResolved: (id: string, resolved: boolean) => ReturnType;
       /** Removes the comment and every mark that anchors it. */
       deleteComment: (id: string) => ReturnType;
+      /** Replaces the threads, outside text history, such as with the server's signed copy. */
+      setDocumentComments: (comments: DfmComment[]) => ReturnType;
       setActiveComment: (id: string | null) => ReturnType;
     };
   }
@@ -806,6 +808,15 @@ export const DocumentComments = Extension.create({
             COMMENTS_ATTRIBUTE,
             comments.filter((comment) => comment.id !== id)
           );
+          tr.setMeta("addToHistory", false);
+        }
+        return true;
+      },
+    setDocumentComments:
+      (comments) =>
+      ({ tr, dispatch }) => {
+        if (dispatch) {
+          tr.setDocAttribute(COMMENTS_ATTRIBUTE, comments);
           tr.setMeta("addToHistory", false);
         }
         return true;

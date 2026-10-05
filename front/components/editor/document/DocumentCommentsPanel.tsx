@@ -9,6 +9,7 @@ import { formatDateTime } from "@app/lib/i18n/format";
 import type { DfmAuthor, DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
 import type { Result } from "@app/types/shared/result";
 import {
+  AlertCircle,
   Button,
   Check,
   Collapsible,
@@ -69,18 +70,42 @@ interface MessageBylineProps {
   message: DfmMessage;
   size: DocumentCommentAvatarSize;
   renderAuthorAvatar: RenderAuthorAvatar;
+  /** False marks the message as unverified; null shows no mark. */
+  verified: boolean | null;
+  mountPortalContainer?: HTMLElement;
 }
 
+/**
+ * @cc [owner:tdraier,label:security] document-unverified-mark
+ * A message whose signature did not verify MUST show an Unverified mark next to its author,
+ * since its author and text may not be what they claim. A verified message, or one whose check
+ * is unknown, MUST NOT show it.
+ */
 const MessageByline = ({
   message,
   size,
   renderAuthorAvatar,
+  verified,
+  mountPortalContainer,
 }: MessageBylineProps) => (
   <div className="flex min-w-0 flex-1 items-center gap-2">
     <span aria-hidden="true">{renderAuthorAvatar(message.author, size)}</span>
     <span className="min-w-0 truncate text-sm font-medium">
       {message.author.name}
     </span>
+    {verified === false && (
+      <Tooltip
+        label="Dust cannot confirm who wrote this message. It may come from an agent or an edit made outside the editor."
+        tooltipTriggerAsChild
+        mountPortalContainer={mountPortalContainer}
+        trigger={
+          <span className="inline-flex shrink-0 items-center gap-1 text-xs text-warning-500">
+            <Icon visual={AlertCircle} size="xs" />
+            Unverified
+          </span>
+        }
+      />
+    )}
     <time
       dateTime={message.createdAt}
       title={formatDateTime(new Date(message.createdAt))}
@@ -200,6 +225,7 @@ interface CommentThreadProps {
   active: boolean;
   canWrite: boolean;
   author: DfmAuthor | undefined;
+  isVerified: (index: number) => boolean | null;
   onSelect: () => void;
   onReply: (body: string) => Result<void, string>;
   onSetResolved: (resolved: boolean) => void;
@@ -215,6 +241,7 @@ const CommentThread = ({
   active,
   canWrite,
   author,
+  isVerified,
   onSelect,
   onReply,
   onSetResolved,
@@ -262,6 +289,8 @@ const CommentThread = ({
             message={first}
             size="xxs"
             renderAuthorAvatar={renderAuthorAvatar}
+            verified={isVerified(0)}
+            mountPortalContainer={mountPortalContainer}
           />
           {canWrite && (
             <div className="-mr-1.5 flex shrink-0">
@@ -309,6 +338,8 @@ const CommentThread = ({
                   message={reply}
                   size="3xs"
                   renderAuthorAvatar={renderAuthorAvatar}
+                  verified={isVerified(index + 1)}
+                  mountPortalContainer={mountPortalContainer}
                 />
                 <p className="text-sm whitespace-pre-wrap wrap-anywhere">
                   {reply.body}
@@ -391,6 +422,7 @@ export const DocumentCommentsPanel = ({
     starts,
     submitDraft,
     cancelDraft,
+    isVerified,
   } = comments;
   const [hasOpened, setHasOpened] = useState(panelOpen);
   if (panelOpen && !hasOpened) {
@@ -437,6 +469,7 @@ export const DocumentCommentsPanel = ({
         active={comment.id === activeId}
         canWrite={canWrite}
         author={author}
+        isVerified={(index) => isVerified(comment.id, index)}
         onSelect={() => jumpTo(comment.id)}
         onReply={(body) => reply(comment.id, body)}
         onSetResolved={(value) =>

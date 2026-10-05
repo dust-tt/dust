@@ -13,6 +13,7 @@ import { extractAnchors, parseDfm, serializeDfm } from "@app/lib/markdown/dfm";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { JSONContent } from "@tiptap/core";
+import isEqual from "lodash/isEqual";
 
 /**
  * The editor edits the body and the comment threads of a DFM file. Front matter rides along
@@ -138,4 +139,42 @@ export function validateCommentThread(
         'This comment cannot be saved as written. Check for lines starting with "::" or an unclosed code block.'
       )
     : new Ok(undefined);
+}
+
+/** The comment threads of a stored DFM source, or null when it does not parse. */
+export function storedComments(source: string): DfmComment[] | null {
+  const parsed = parseDfm(source);
+  return parsed.isOk() ? parsed.value.comments : null;
+}
+
+/**
+ * @cc [owner:tdraier,label:product] document-adopt-stored-comments
+ * After a save, each current message identical to the one sent at the same thread and position
+ * MUST be replaced by the stored message there, which carries the server's name, timestamp and
+ * signature. Messages added or changed since the save was sent, and thread statuses, MUST be
+ * kept as they are in the editor.
+ */
+export function adoptStoredComments({
+  current,
+  sent,
+  stored,
+}: {
+  current: DfmComment[];
+  sent: DfmComment[];
+  stored: DfmComment[];
+}): DfmComment[] {
+  const sentById = new Map(sent.map((comment) => [comment.id, comment]));
+  const storedById = new Map(stored.map((comment) => [comment.id, comment]));
+  return current.map((comment) => {
+    const sentMessages = sentById.get(comment.id)?.messages ?? [];
+    const storedMessages = storedById.get(comment.id)?.messages ?? [];
+    return {
+      ...comment,
+      messages: comment.messages.map((message, index) =>
+        isEqual(message, sentMessages[index]) && storedMessages[index]
+          ? storedMessages[index]
+          : message
+      ),
+    };
+  });
 }

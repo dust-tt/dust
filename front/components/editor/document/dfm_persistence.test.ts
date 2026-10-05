@@ -9,7 +9,7 @@ import {
 } from "@app/components/editor/document/DocumentComments";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { parseDfm } from "@app/lib/markdown/dfm";
-import { FIXTURE } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
+import { FIXTURE, FIXTURES } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
 import type { JSONContent } from "@tiptap/core";
 import { describe, expect, it } from "vitest";
 
@@ -234,6 +234,15 @@ describe("saveDfm", () => {
       expect(roundTrip(source)).toBe(source);
     }
   );
+
+  it("keeps message signatures through load and save", () => {
+    const signed = FIXTURES.find(({ name }) => name === "signed_comments.md");
+    if (!signed) {
+      throw new Error("Missing signed_comments.md fixture.");
+    }
+
+    expect(roundTrip(signed.source)).toBe(signed.source);
+  });
 
   it("writes anchors inside formatting without splitting it", () => {
     const source = `Some **bo:comment-start{id=c1}ld** and *it:comment-end{id=c1}alic* text.\n\n${OPEN_THREAD}`;

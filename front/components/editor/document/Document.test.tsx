@@ -1,4 +1,5 @@
 import { Document } from "@app/components/editor/document/Document";
+import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import type { DfmAuthor } from "@app/lib/markdown/dfm";
 import { Ok } from "@app/types/shared/result";
 import {
@@ -21,8 +22,11 @@ const hasEditor = (
 ): element is HTMLElement & { editor: Editor } =>
   element !== null && "editor" in element && element.editor !== undefined;
 
-async function renderDocument(initialContent: string) {
-  const onSave = vi.fn().mockResolvedValue(new Ok(undefined));
+async function renderDocument(
+  initialContent: string,
+  verifyCommentMessage?: DfmMessageVerifier
+) {
+  const onSave = vi.fn(async (content: string) => new Ok(content));
   const { container } = render(
     <Document
       initialContent={initialContent}
@@ -30,6 +34,7 @@ async function renderDocument(initialContent: string) {
       autosaveDebounceMs={60_000}
       commentAuthor={AUTHOR}
       renderCommentAuthorAvatar={() => null}
+      verifyCommentMessage={verifyCommentMessage}
     />
   );
   const dom = await waitFor(() => {
@@ -268,5 +273,18 @@ describe("Document comments", () => {
         "avatar:usr_tom:xxs"
       )
     ).toBeDefined();
+  });
+
+  it.each([
+    [false, 1],
+    [true, 0],
+  ])("marks a message as unverified only when its check fails (verified: %s)", async (verified, marks) => {
+    const { dom } = await renderDocument(SOURCE, async () => verified);
+
+    fireEvent.click(highlight(dom, "c1"));
+
+    await waitFor(() =>
+      expect(screen.queryAllByText("Unverified")).toHaveLength(marks)
+    );
   });
 });

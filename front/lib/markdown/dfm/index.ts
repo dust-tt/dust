@@ -16,6 +16,7 @@ export {
 } from "@app/lib/markdown/dfm/annotations";
 export { parseDfm, serializeDfm } from "@app/lib/markdown/dfm/document";
 export { anchorComment } from "@app/lib/markdown/dfm/operations";
+export { messageSignaturePayload } from "@app/lib/markdown/dfm/signatures";
 export type {
   DfmAnchor,
   DfmAnchorDirective,

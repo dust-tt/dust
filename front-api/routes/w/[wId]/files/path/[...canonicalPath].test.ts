@@ -1,9 +1,13 @@
 // @vitest-environment node: ZIP inspection requires Node builtins.
 
 import assert from "node:assert";
+import { generateKeyPairSync, verify } from "node:crypto";
 import { createConversation } from "@app/lib/api/assistant/conversation";
+import config from "@app/lib/api/config";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { messageSignaturePayload, parseDfm } from "@app/lib/markdown/dfm";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
@@ -20,7 +24,7 @@ import {
 import { honoApp } from "@front-api/app";
 import AdmZip from "adm-zip";
 import { PassThrough } from "stream";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/lock", () => ({
   executeWithLock: vi.fn(async (_lockName: string, fn: () => unknown) => fn()),
@@ -1119,5 +1123,130 @@ describe("conditional updates through Files paths", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get(DUST_FILE_REVISION_HEADER)).toBeTruthy();
     expect(fileStorageMock.getObject(mountPath)).toBe('{"overwrite":true}');
+  });
+});
+
+describe("comment signatures on Markdown saves", () => {
+  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+  const AT = "2026-10-05T11:59:58.000Z";
+  const file = (author: string) =>
+    `Hi :comment-start{id=c1}there:comment-end{id=c1}\n\n:::annotations\n::comment{id=c1 status=open}\n\n::message{author=${author} name="Someone" at=${AT}}\n\nLooks good.\n:::\n`;
+
+  // EnvironmentConfig caches variables, so the key is stubbed on config rather than the env.
+  beforeEach(() => {
+    vi.spyOn(config, "getDfmCommentSigningKey").mockReturnValue(
+      privateKey.export({ format: "der", type: "pkcs8" }).toString("base64")
+    );
+    fileStorageMock.enableVersioning();
+    fileStorageMock.setFileExists(
+      (path) => fileStorageMock.getObject(path) !== undefined
+    );
+    fileStorageMock.setFileMetadata(() => ({
+      contentType: "text/markdown",
+      size: "7",
+    }));
+  });
+
+  afterEach(() => {
+    vi.mocked(config.getDfmCommentSigningKey).mockRestore();
+  });
+
+  const setupMarkdown = async ({ coEdition }: { coEdition: boolean }) => {
+    const { workspace, auth, user } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    if (coEdition) {
+      await FeatureFlagFactory.basic(auth, "co_edition");
+    }
+    const conversation = await createConversation(auth, {
+      title: null,
+      visibility: "unlisted",
+      spaceId: null,
+    });
+    const path = `conversation-${conversation.sId}/notes.md`;
+    const mountPath = `w/${workspace.sId}/conversations/${conversation.sId}/files/notes.md`;
+    fileStorageMock.setObject(mountPath, "Hi there\n");
+    return { workspace, user, path, mountPath };
+  };
+
+  it("signs a new comment from the saving user and returns the stored file", async () => {
+    const { workspace, user, path, mountPath } = await setupMarkdown({
+      coEdition: true,
+    });
+
+    const response = await request(workspace, path, {
+      method: "PUT",
+      headers: { "Content-Type": "text/markdown" },
+      body: file(`user:${user.sId}`),
+    });
+
+    expect(response.status).toBe(200);
+    const stored = await response.text();
+    expect(fileStorageMock.getObject(mountPath)).toBe(stored);
+    const parsed = parseDfm(stored);
+    assert(parsed.isOk());
+    const [message] = parsed.value.comments[0].messages;
+    expect(message.author).toEqual({
+      kind: "user",
+      id: user.sId,
+      name: user.fullName(),
+    });
+    expect(message.createdAt).not.toBe(AT);
+    assert(message.signature);
+    expect(
+      verify(
+        null,
+        Buffer.from(
+          messageSignaturePayload({
+            workspaceId: workspace.sId,
+            commentId: "c1",
+            message,
+          }),
+          "utf8"
+        ),
+        publicKey,
+        Buffer.from(message.signature, "base64url")
+      )
+    ).toBe(true);
+
+    const resaved = await request(workspace, path, {
+      method: "PUT",
+      body: stored,
+    });
+    expect(resaved.status).toBe(200);
+    expect(await resaved.text()).toBe("");
+    expect(fileStorageMock.getObject(mountPath)).toBe(stored);
+  });
+
+  it("refuses a new comment attributed to someone else", async () => {
+    const { workspace, path, mountPath } = await setupMarkdown({
+      coEdition: true,
+    });
+
+    const response = await request(workspace, path, {
+      method: "PUT",
+      body: file("user:usr_someone_else"),
+    });
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.message).toContain("not yours");
+    expect(fileStorageMock.getObject(mountPath)).toBe("Hi there\n");
+  });
+
+  it("writes Markdown as sent without co_edition", async () => {
+    const { workspace, path, mountPath } = await setupMarkdown({
+      coEdition: false,
+    });
+
+    const response = await request(workspace, path, {
+      method: "PUT",
+      body: file("user:usr_someone_else"),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("");
+    expect(fileStorageMock.getObject(mountPath)).toBe(
+      file("user:usr_someone_else")
+    );
   });
 });

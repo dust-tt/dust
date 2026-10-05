@@ -25,7 +25,7 @@ function renderEditor(
 
 describe("useDocumentEditor", () => {
   it("saves unsaved content once on unmount", async () => {
-    const onSave = vi.fn().mockResolvedValue(new Ok(undefined));
+    const onSave = vi.fn(async (content: string) => new Ok(content));
     const { result, unmount } = renderEditor(onSave);
     await waitFor(() => expect(result.current.editor).not.toBeNull());
     await act(nextTick);
@@ -48,7 +48,7 @@ describe("useDocumentEditor", () => {
     const onSave = vi
       .fn()
       .mockReturnValueOnce(inFlight)
-      .mockResolvedValue(new Ok(undefined));
+      .mockImplementation(async (content: string) => new Ok(content));
     const { result, unmount } = renderEditor(onSave);
     await waitFor(() => expect(result.current.editor).not.toBeNull());
     await act(nextTick);
@@ -68,7 +68,7 @@ describe("useDocumentEditor", () => {
     await nextTick();
     expect(onSave).toHaveBeenCalledTimes(1);
 
-    release(new Ok(undefined));
+    release(new Ok(onSave.mock.calls[0][0]));
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(2));
     expect(onSave.mock.calls[1][0]).toContain("Second");
   });
@@ -85,7 +85,7 @@ describe("useDocumentEditor", () => {
   });
 
   it("does not save on unmount when nothing changed", async () => {
-    const onSave = vi.fn().mockResolvedValue(new Ok(undefined));
+    const onSave = vi.fn(async (content: string) => new Ok(content));
     const { result, unmount } = renderEditor(onSave);
     await waitFor(() => expect(result.current.editor).not.toBeNull());
     await act(nextTick);

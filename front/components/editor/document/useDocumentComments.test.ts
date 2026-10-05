@@ -1,8 +1,9 @@
 import { getDocumentComments } from "@app/components/editor/document/DocumentComments";
 import { useDocumentComments } from "@app/components/editor/document/useDocumentComments";
 import { useDocumentEditor } from "@app/components/editor/document/useDocumentEditor";
+import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import type { DfmAuthor } from "@app/lib/markdown/dfm";
-import { parseDfm } from "@app/lib/markdown/dfm";
+import { parseDfm, serializeDfm } from "@app/lib/markdown/dfm";
 import { Ok } from "@app/types/shared/result";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { Slice } from "@tiptap/pm/model";
@@ -15,8 +16,18 @@ const SOURCE = `Hi :comment-start{id=c1}there:comment-end{id=c1}\n\n:::annotatio
 
 const nextTick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-async function renderCommentedEditor(initialContent: string) {
-  const onSave = vi.fn().mockResolvedValue(new Ok(undefined));
+async function renderCommentedEditor(
+  initialContent: string,
+  {
+    store = (content: string) => content,
+    verify,
+  }: {
+    /** What the server stores for the content sent. */
+    store?: (content: string) => string;
+    verify?: DfmMessageVerifier;
+  } = {}
+) {
+  const onSave = vi.fn(async (content: string) => new Ok(store(content)));
   const rendered = renderHook(() => {
     const document = useDocumentEditor({
       initialContent,
@@ -30,6 +41,7 @@ async function renderCommentedEditor(initialContent: string) {
       canComment: document.editable,
       author: AUTHOR,
       isSavable: document.isSavable,
+      verify,
     });
     return { document, comments };
   });
@@ -52,6 +64,36 @@ function select(
     }
   });
   editor.commands.setTextSelection({ from, to: from + text.length });
+}
+
+const SIGNED_AT = "2026-10-05T12:00:00.000Z";
+
+/** Stores the content as the server does: signs new messages with its own name and time. */
+function signLikeTheServer(content: string): string {
+  const parsed = parseDfm(content);
+  if (parsed.isErr()) {
+    throw new Error(parsed.error.message);
+  }
+  const serialized = serializeDfm({
+    ...parsed.value,
+    comments: parsed.value.comments.map((comment) => ({
+      ...comment,
+      messages: comment.messages.map((message) =>
+        message.signature === undefined && message.author.id === AUTHOR.id
+          ? {
+              ...message,
+              author: { ...message.author, name: "Tom Draier" },
+              createdAt: SIGNED_AT,
+              signature: "server-signature",
+            }
+          : message
+      ),
+    })),
+  });
+  if (serialized.isErr()) {
+    throw new Error(serialized.error.message);
+  }
+  return serialized.value;
 }
 
 describe("useDocumentComments", () => {
@@ -264,6 +306,85 @@ describe("useDocumentComments", () => {
 
     expect(result.current.comments.comments[0].messages).toHaveLength(1);
     expect(result.current.document.dirty).toBe(false);
+  });
+
+  it("adopts the server's signed thread after a save and stays saved", async () => {
+    const { result, onSave } = await renderCommentedEditor(SOURCE, {
+      store: signLikeTheServer,
+    });
+
+    act(() => {
+      expect(result.current.comments.reply("c1", "Agreed.").isOk()).toBe(true);
+    });
+    await act(() => result.current.document.save());
+
+    const [, reply] = result.current.comments.comments[0].messages;
+    expect(reply).toEqual({
+      author: { ...AUTHOR, name: "Tom Draier" },
+      createdAt: SIGNED_AT,
+      body: "Agreed.",
+      signature: "server-signature",
+    });
+    expect(result.current.document.dirty).toBe(false);
+
+    act(() => {
+      result.current.document.editor?.commands.insertContentAt(1, "Well, ");
+    });
+    await act(() => result.current.document.save());
+
+    expect(onSave).toHaveBeenCalledTimes(2);
+    expect(onSave.mock.calls[1][0]).toContain("sig=server-signature");
+  });
+
+  it("keeps a reply posted while its save was in flight", async () => {
+    const { result } = await renderCommentedEditor(SOURCE, {
+      store: signLikeTheServer,
+    });
+
+    act(() => {
+      result.current.comments.reply("c1", "First.");
+    });
+    const saving = result.current.document.save();
+    act(() => {
+      result.current.comments.reply("c1", "Second.");
+    });
+    await act(() => saving);
+
+    const messages = result.current.comments.comments[0].messages;
+    expect(messages.map((message) => message.body)).toEqual([
+      "Note.",
+      "First.",
+      "Second.",
+    ]);
+    expect(messages[1].signature).toBe("server-signature");
+    expect(messages[2].signature).toBeUndefined();
+    expect(result.current.document.dirty).toBe(true);
+  });
+
+  it("reads each message as verified or not from the verifier", async () => {
+    const signedSource = SOURCE.replace(
+      `at=${AT}}`,
+      `at=${AT} sig=good}`
+    ).replace(
+      "Note.\n:::",
+      `Note.\n\n::message{author=agent:dust name="@dust" at=${AT}}\n\nUnsigned.\n:::`
+    );
+    const verify = vi.fn(
+      async (_commentId: string, message: { signature?: string }) =>
+        message.signature === "good"
+    );
+    const { result } = await renderCommentedEditor(signedSource, { verify });
+
+    await waitFor(() =>
+      expect(result.current.comments.isVerified("c1", 0)).toBe(true)
+    );
+    expect(result.current.comments.isVerified("c1", 1)).toBe(false);
+  });
+
+  it("reads every message as unknown without a verifier", async () => {
+    const { result } = await renderCommentedEditor(SOURCE);
+
+    expect(result.current.comments.isVerified("c1", 0)).toBeNull();
   });
 
   it("reuses the parsed threads across cursor moves", async () => {

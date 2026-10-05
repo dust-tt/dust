@@ -8,6 +8,7 @@ import {
   getDocumentComments,
   scrollToCommentHighlight,
 } from "@app/components/editor/document/DocumentComments";
+import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import type { DfmAuthor, DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -23,10 +24,17 @@ interface UseDocumentCommentsProps {
   author: DfmAuthor | undefined;
   /** Whether the document, as TipTap JSON, would save. */
   isSavable: (document: JSONContent) => boolean;
+  verify?: DfmMessageVerifier;
+}
+
+interface Verification {
+  /** The threads the results belong to; results for older threads are stale. */
+  comments: DfmComment[];
+  /** Whether each message verified, by `${commentId}:${index}`. */
+  results: Map<string, boolean>;
 }
 
 interface EditorCommentsState {
-  comments: DfmComment[];
   /** Commented text by comment id, in document order. */
   quotes: Map<string, string>;
   /** Position of the first commented text by comment id. */
@@ -37,8 +45,9 @@ interface EditorCommentsState {
   draftQuote: string;
 }
 
+const EMPTY_COMMENTS: DfmComment[] = [];
+
 const EMPTY_STATE: EditorCommentsState = {
-  comments: [],
   quotes: new Map(),
   starts: new Map(),
   activeId: null,
@@ -91,11 +100,18 @@ export interface PanelFocusRequest {
  * Opening the panel from its toggle MUST request focus on the panel. Closing the panel while
  * focus is inside it MUST return focus to the toggle.
  */
+/**
+ * @cc [owner:tdraier,label:security] document-comment-verification
+ * With a verifier, each message MUST read as verified or unverified from the verifier's answer
+ * for the threads currently shown, and as unknown while that answer is pending. Without a
+ * verifier, every message MUST read as unknown, never as verified.
+ */
 export const useDocumentComments = ({
   editor,
   canComment,
   author,
   isSavable,
+  verify,
 }: UseDocumentCommentsProps) => {
   const state =
     useEditorState({
@@ -107,7 +123,6 @@ export const useDocumentComments = ({
         const pluginState = documentCommentsPluginKey.getState(editor.state);
         const draft = pluginState?.draft ?? null;
         return {
-          comments: getDocumentComments(editor.state.doc),
           quotes: getCommentedTexts(editor.state.doc),
           starts: getCommentStarts(editor.state.doc),
           activeId: pluginState?.activeId ?? null,
@@ -118,18 +133,53 @@ export const useDocumentComments = ({
         };
       },
     }) ?? EMPTY_STATE;
+  // Selected apart so the threads keep their identity while only the selection or draft moves.
+  const comments =
+    useEditorState({
+      editor,
+      selector: ({ editor }): DfmComment[] =>
+        editor ? getDocumentComments(editor.state.doc) : EMPTY_COMMENTS,
+    }) ?? EMPTY_COMMENTS;
   const [panelOpen, setPanelOpen] = useState(false);
   const [focusRequest, setFocusRequest] = useState<PanelFocusRequest | null>(
     null
   );
+  const [verification, setVerification] = useState<Verification | null>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const canWrite = canComment && author !== undefined;
   // Stable identity matters: the markers re-measure the DOM whenever this array changes.
   const unresolved = useMemo(
-    () => state.comments.filter((comment) => comment.status === "open"),
-    [state.comments]
+    () => comments.filter((comment) => comment.status === "open"),
+    [comments]
   );
+
+  // Signature checks are asynchronous WebCrypto calls; results are kept with the threads they
+  // checked, so an edit never shows a stale answer.
+  useEffect(() => {
+    if (!verify) {
+      return;
+    }
+    let cancelled = false;
+    void Promise.all(
+      comments.flatMap((comment) =>
+        comment.messages.map(
+          async (message, index) =>
+            [
+              `${comment.id}:${index}`,
+              await verify(comment.id, message),
+            ] as const
+        )
+      )
+    ).then((entries) => {
+      if (!cancelled) {
+        setVerification({ comments, results: new Map(entries) });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [comments, verify]);
 
   useEffect(() => {
     if (!canWrite && state.draft && editor) {
@@ -160,7 +210,12 @@ export const useDocumentComments = ({
   });
 
   return {
-    comments: state.comments,
+    /** Whether a message's signature checked out, or null while unknown. */
+    isVerified: (commentId: string, index: number): boolean | null =>
+      verify && verification?.comments === comments
+        ? (verification.results.get(`${commentId}:${index}`) ?? null)
+        : null,
+    comments,
     unresolved,
     quotes: state.quotes,
     starts: state.starts,
@@ -270,7 +325,7 @@ export const useDocumentComments = ({
       return new Ok(undefined);
     },
     reply: (id: string, body: string): Result<void, string> => {
-      const thread = state.comments.find((comment) => comment.id === id);
+      const thread = comments.find((comment) => comment.id === id);
       if (!canWrite || !editor || !author || !thread) {
         return new Err(UNAVAILABLE_MESSAGE);
       }

@@ -44,3 +44,8 @@ export type PostExtractArchiveResponseBody = {
   filesWritten: number;
   skippedEntryCount: number;
 };
+
+/** The key checking DFM comment signatures, as base64url SPKI DER, or null when unset. */
+export type GetDfmCommentSigningKeyResponseBody = {
+  publicKey: string | null;
+};

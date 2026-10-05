@@ -9,7 +9,11 @@ import type { MarkdownRichEditor } from "@app/components/file_explorer/useMarkdo
 import { AuthContext } from "@app/lib/auth/AuthContext";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
-import { getFileProcessedUrl, useFileContentByUrl } from "@app/lib/swr/files";
+import {
+  getFileProcessedUrl,
+  useDfmMessageVerifier,
+  useFileContentByUrl,
+} from "@app/lib/swr/files";
 import type { FilePreviewCategory } from "@app/types/file_preview";
 import { getFilePreviewConfig } from "@app/types/file_preview";
 import { stripMimeParameters } from "@app/types/files";
@@ -308,6 +312,32 @@ interface FilePreviewContentProps {
   processedContent: ProcessedContent | null;
 }
 
+interface RichMarkdownDocumentProps {
+  editor: MarkdownRichEditor;
+  owner: LightWorkspaceType;
+}
+
+function RichMarkdownDocument({ editor, owner }: RichMarkdownDocumentProps) {
+  const user = useContext(AuthContext)?.user;
+  const verifyCommentMessage = useDfmMessageVerifier({ owner });
+
+  return (
+    <Document
+      initialContent={editor.initialContent}
+      onSave={editor.onSave}
+      onStateChange={editor.onStateChange}
+      commentAuthor={
+        user ? { kind: "user", id: user.sId, name: user.fullName } : undefined
+      }
+      verifyCommentMessage={verifyCommentMessage ?? undefined}
+      badge={<CoEditionBadge />}
+      renderCommentAuthorAvatar={(author, size) => (
+        <CommentAuthorAvatar owner={owner} author={author} size={size} />
+      )}
+    />
+  );
+}
+
 export function FilePreviewContent({
   category,
   entry,
@@ -324,8 +354,6 @@ export function FilePreviewContent({
   owner,
   processedContent,
 }: FilePreviewContentProps) {
-  const user = useContext(AuthContext)?.user;
-
   if (isContentLoading) {
     return (
       <div
@@ -390,24 +418,10 @@ export function FilePreviewContent({
       if (markdownRichEditor && owner) {
         return (
           <div className="min-h-0 flex-1 overflow-y-auto">
-            <Document
+            <RichMarkdownDocument
               key={markdownRichEditor.mountKey}
-              initialContent={markdownRichEditor.initialContent}
-              onSave={markdownRichEditor.onSave}
-              onStateChange={markdownRichEditor.onStateChange}
-              commentAuthor={
-                user
-                  ? { kind: "user", id: user.sId, name: user.fullName }
-                  : undefined
-              }
-              badge={<CoEditionBadge />}
-              renderCommentAuthorAvatar={(author, size) => (
-                <CommentAuthorAvatar
-                  owner={owner}
-                  author={author}
-                  size={size}
-                />
-              )}
+              editor={markdownRichEditor}
+              owner={owner}
             />
           </div>
         );
