@@ -27,6 +27,8 @@ export const PatchGroupBodySchema = z.object({
   name: z.string().min(1).optional(),
   memberIds: z.array(z.string()).optional(),
   managerIds: z.array(z.string()).optional(),
+  expectedMemberIds: z.array(z.string()).optional(),
+  expectedManagerIds: z.array(z.string()).optional(),
 });
 
 export type PatchGroupResponseBody = {

@@ -801,7 +801,8 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
    * @cc [owner:philipperolet,label:security;backend] replace-grant-users-atomically
    * Replacing the users holding one grant MUST serialize with other changes to that grant and
    * either apply every addition/removal or apply none. Callers MUST validate that the supplied
-   * users are active members of the workspace before invoking this method.
+   * users are active members of the workspace before invoking this method. With expectedUserIds,
+   * a changed active user list MUST return null without changing the grant.
    */
   static async replaceUsersForGrant(
     auth: Authenticator,
@@ -810,8 +811,9 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       grantType,
       resourceType,
       resourceId,
-    }: Omit<UsersGrantSpec, "transaction">
-  ): Promise<{ addedUsers: UserType[]; removedUsers: UserType[] }> {
+      expectedUserIds,
+    }: Omit<UsersGrantSpec, "transaction"> & { expectedUserIds?: string[] }
+  ): Promise<{ addedUsers: UserType[]; removedUsers: UserType[] } | null> {
     return withTransaction(async (transaction) => {
       await this.getGrantLock(
         auth,
@@ -848,6 +850,16 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
           )
           .map((membership) => membership.userId)
       );
+      if (expectedUserIds !== undefined) {
+        const expectedIds = new Set(expectedUserIds);
+        const activeUsers = currentUsers.filter((user) => activeIds.has(user.id));
+        if (
+          expectedIds.size !== activeUsers.length ||
+          activeUsers.some((user) => !expectedIds.has(user.sId))
+        ) {
+          return null;
+        }
+      }
       const addedUsers = users.filter((user) => !activeIds.has(user.id));
       const removedUsers = currentUsers
         .filter((user) => !requestedIds.has(user.id))

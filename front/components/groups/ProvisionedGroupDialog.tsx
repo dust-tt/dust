@@ -96,8 +96,9 @@ function ProvisionedGroupDetails({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
   });
+  const [initialManagers] = useState(managers);
   const [selectedManagers, setSelectedManagers] =
-    useState<SearchMemberType[]>(managers);
+    useState<SearchMemberType[]>(initialManagers);
   const { doUpdateGroup, isUpdating } = useUpdateGroup({
     owner,
     groupId: group.sId,
@@ -153,6 +154,7 @@ function ProvisionedGroupDetails({
   const saveManagers = async () => {
     const result = await doUpdateGroup({
       managerIds: selectedManagers.map((manager) => manager.sId),
+      expectedManagerIds: initialManagers.map((manager) => manager.sId),
     });
     if (result) {
       onClose();

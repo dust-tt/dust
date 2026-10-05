@@ -107,14 +107,20 @@ function GroupForm({
   owner,
   groupId,
   group,
-  initialName,
-  initialMembers,
-  initialManagers,
+  initialName: loadedName,
+  initialMembers: loadedMembers,
+  initialManagers: loadedManagers,
   readOnly = false,
   onCreated,
   onClose,
 }: GroupFormProps) {
   const { t } = useLingui();
+  // Keep the version the selection was seeded from, even if SWR refreshes the group.
+  const [{ initialName, initialMembers, initialManagers }] = useState(() => ({
+    initialName: loadedName,
+    initialMembers: loadedMembers,
+    initialManagers: loadedManagers,
+  }));
   const { hasFeature } = useFeatureFlags();
   const { isManager } = useAuth();
   const [name, setName] = useState(initialName);
@@ -177,6 +183,7 @@ function GroupForm({
       const result = await doUpdateGroup({
         name: name.trim() !== initialName ? name.trim() : undefined,
         memberIds: Array.from(selectedMemberIds),
+        expectedMemberIds: Array.from(initialMemberIds),
       });
       if (!result) {
         return false;
@@ -185,6 +192,7 @@ function GroupForm({
     if (hasManagerChanges) {
       const result = await doUpdateGroup({
         managerIds: selectedManagers.map((manager) => manager.sId),
+        expectedManagerIds: Array.from(initialManagerIds),
       });
       if (!result) {
         return false;

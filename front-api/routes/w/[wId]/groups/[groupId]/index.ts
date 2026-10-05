@@ -142,7 +142,13 @@ app.patch(
   async (ctx): HandlerResult<PatchGroupResponseBody> => {
     const auth = ctx.get("auth");
     const { groupId } = ctx.req.valid("param");
-    const { name, memberIds, managerIds } = ctx.req.valid("json");
+    const {
+      name,
+      memberIds,
+      managerIds,
+      expectedMemberIds,
+      expectedManagerIds,
+    } = ctx.req.valid("json");
 
     if (
       name === undefined &&
@@ -223,7 +229,21 @@ app.patch(
           },
         });
       }
-      const assignment = await replaceGroupManagers(auth, group, managerIds);
+      const assignment = await replaceGroupManagers(
+        auth,
+        group,
+        managerIds,
+        expectedManagerIds
+      );
+      if (assignment.kind === "conflict") {
+        return apiError(ctx, {
+          status_code: 409,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Group managers changed. Reopen the group and try again.",
+          },
+        });
+      }
       if (assignment.kind !== "ok") {
         return apiError(ctx, {
           status_code: assignment.kind === "unauthorized" ? 403 : 400,
@@ -264,6 +284,7 @@ app.patch(
     const updateRes = await group.updateRegularManualGroup(auth, {
       name,
       memberIds,
+      expectedMemberIds,
     });
     if (updateRes.isErr()) {
       switch (updateRes.error.code) {
@@ -275,6 +296,7 @@ app.patch(
               message: updateRes.error.message,
             },
           });
+        case "conflict":
         case "name_conflict":
           return apiError(ctx, {
             status_code: 409,

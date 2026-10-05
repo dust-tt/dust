@@ -483,10 +483,14 @@ export function useUpdateGroup({
       name,
       memberIds,
       managerIds,
+      expectedMemberIds,
+      expectedManagerIds,
     }: {
       name?: string;
       memberIds?: string[];
       managerIds?: string[];
+      expectedMemberIds?: string[];
+      expectedManagerIds?: string[];
     }): Promise<PatchGroupResponseBody | null> => {
       if (!groupId) {
         return null;
@@ -496,7 +500,13 @@ export function useUpdateGroup({
         const res = await clientFetch(`/api/w/${owner.sId}/groups/${groupId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, memberIds, managerIds }),
+          body: JSON.stringify({
+            name,
+            memberIds,
+            managerIds,
+            expectedMemberIds,
+            expectedManagerIds,
+          }),
         });
 
         if (!res.ok) {

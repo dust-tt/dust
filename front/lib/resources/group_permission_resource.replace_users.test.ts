@@ -31,6 +31,7 @@ it("replaces the users holding a group-manager grant and removes an empty grant"
     ...grant,
     users: [bob.toJSON()],
   });
+  assert(replacement);
   expect(replacement.addedUsers.map((user) => user.sId)).toEqual([bob.sId]);
   expect(replacement.removedUsers.map((user) => user.sId)).toEqual([alice.sId]);
 

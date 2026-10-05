@@ -66,9 +66,10 @@ export async function getGroupManagersForGroups(
 export async function replaceGroupManagers(
   auth: Authenticator,
   group: GroupResource,
-  managerIds: string[]
+  managerIds: string[],
+  expectedManagerIds?: string[]
 ): Promise<
-  | { kind: "unauthorized" | "invalid_managers" }
+  | { kind: "unauthorized" | "invalid_managers" | "conflict" }
   | {
       kind: "ok";
       managers: UserType[];
@@ -99,15 +100,18 @@ export async function replaceGroupManagers(
     return { kind: "invalid_managers" };
   }
 
-  const { addedUsers, removedUsers } =
+  const replacement =
     await GroupPermissionResource.replaceUsersForGrant(auth, {
       users: users.map((user) => user.toJSON()),
       ...managerGrant(group),
+      expectedUserIds: expectedManagerIds,
     });
+  if (!replacement) {
+    return { kind: "conflict" };
+  }
   return {
     kind: "ok",
     managers: users.map((user) => user.toJSON()),
-    addedUsers,
-    removedUsers,
+    ...replacement,
   };
 }
