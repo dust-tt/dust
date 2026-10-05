@@ -36,3 +36,6 @@
 | email | e-mail | |
 | settings | paramètres | |
 | sign in | se connecter | |
+| programmatic usage | utilisation via l’API | Never "programmatique": reword around "via l’API" |
+| programmatic credits | crédits API | |
+| programmatic API | API | "programmatic" adds nothing in French |
