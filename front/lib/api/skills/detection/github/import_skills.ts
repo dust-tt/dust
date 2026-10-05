@@ -114,6 +114,14 @@ export async function importSkillsFromGitHub(
       requestedNames.has(skill.name) && skill.name && skill.instructions.trim()
   );
 
+  const duplicateNamesError = getDuplicateNamesError(selectedSkills);
+  if (duplicateNamesError) {
+    return new Err({
+      type: "validation_error",
+      message: duplicateNamesError,
+    });
+  }
+
   const nameValidation = SkillNameSchema.array().safeParse(
     selectedSkills.map((skill) => skill.name)
   );
@@ -121,14 +129,6 @@ export async function importSkillsFromGitHub(
     return new Err({
       type: "validation_error",
       message: fromError(nameValidation.error).toString(),
-    });
-  }
-
-  const duplicateNamesError = getDuplicateNamesError(selectedSkills);
-  if (duplicateNamesError) {
-    return new Err({
-      type: "validation_error",
-      message: duplicateNamesError,
     });
   }
 
