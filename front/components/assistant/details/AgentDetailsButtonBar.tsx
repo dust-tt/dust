@@ -1,6 +1,10 @@
 import { DeleteAgentDialog } from "@app/components/assistant/DeleteAgentDialog";
 import { useAgentSuggestionPreviewBatchId } from "@app/components/assistant/details/SuggestionPreviewContext";
 import { trackSuggestionPreviewEdit } from "@app/components/markdown/suggestion/suggestionTracking";
+import {
+  trackManageItemAction,
+  useManageTracking,
+} from "@app/components/pages/builder/manageTracking";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
@@ -47,6 +51,7 @@ export function AgentDetailsButtonBar({
   isAgentConfigurationValidating,
   owner,
 }: AgentDetailsButtonBarProps) {
+  const tracking = useManageTracking();
   const { user, providersHealth } = useAuth();
   const router = useAppRouter();
   const previewBatchId = useAgentSuggestionPreviewBatchId();
@@ -77,6 +82,7 @@ export function AgentDetailsButtonBar({
   const agentIsFavorite = agentConfiguration.userFavorite || isFavoriteDisabled;
 
   const handleNewConversation = async () => {
+    trackManageItemAction(tracking, "try", agentConfiguration.sId);
     // Navigate only — closing the sheet first does a separate router.push that
     // races this navigation when opening a new conversation with ?agent=.
     await router.push(
@@ -117,6 +123,7 @@ export function AgentDetailsButtonBar({
           }
           disabled={!canEditAgent || !hasHealthyProviders(providersHealth)}
           onClick={() => {
+            trackManageItemAction(tracking, "edit", agentConfiguration.sId);
             if (previewBatchId) {
               trackSuggestionPreviewEdit({
                 batchId: previewBatchId,
@@ -164,6 +171,7 @@ export function AgentDetailsDropdownMenu({
   const { providersHealth } = useAuth();
   const noHealthyProviders = !hasHealthyProviders(providersHealth);
 
+  const tracking = useManageTracking();
   const [showDeletionModal, setShowDeletionModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -239,6 +247,7 @@ export function AgentDetailsDropdownMenu({
             disabled={noHealthyProviders}
             onClick={(e) => {
               e.stopPropagation();
+              trackManageItemAction(tracking, "edit", agentConfiguration.sId);
               void router.push(
                 getAgentBuilderRoute(owner.sId, agentConfiguration.sId)
               );
@@ -280,6 +289,11 @@ export function AgentDetailsDropdownMenu({
               onClick={async (e) => {
                 e.stopPropagation();
                 onClose?.();
+                trackManageItemAction(
+                  tracking,
+                  "duplicate",
+                  agentConfiguration.sId
+                );
                 await router.push(
                   getAgentBuilderRoute(
                     owner.sId,

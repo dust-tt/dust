@@ -1,3 +1,9 @@
+import {
+  ManageTrackingContext,
+  trackManageDetails,
+  useManageTracking,
+  useTrackManageResults,
+} from "@app/components/pages/builder/manageTracking";
 import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
 import {
   clearFilterCategory,
@@ -54,7 +60,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { PaginationState } from "@tanstack/react-table";
 import type { ReactNode } from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 const SKILL_SEARCH_PAGE_SIZE = 50;
 
@@ -65,6 +71,7 @@ function canBatchEditSkill(skill: SkillListItemType) {
 }
 
 interface SkillsListProps {
+  isFilterLoading: boolean;
   readOnly?: boolean;
   searchEndpoint?: string;
   searchTerm: string;
@@ -74,6 +81,7 @@ interface SkillsListProps {
 }
 
 function SkillsList({
+  isFilterLoading,
   readOnly = false,
   searchEndpoint,
   searchTerm,
@@ -81,6 +89,14 @@ function SkillsList({
   permissionFiltering,
   onSelect,
 }: SkillsListProps) {
+  const tracking = useManageTracking();
+  const handleSelect = useCallback(
+    (skillId: string) => {
+      trackManageDetails(tracking, skillId);
+      onSelect(skillId);
+    },
+    [tracking, onSelect]
+  );
   const owner = useWorkspace();
   const { hasPermission } = useWorkspacePermissions();
   const canSetAvailability = hasPermission("publish", "skill");
@@ -133,6 +149,17 @@ function SkillsList({
       sortBy,
       sortOrder,
     });
+
+  useTrackManageResults({
+    queryKey,
+    searchTerm,
+    total,
+    disabled:
+      isFilterLoading ||
+      isSkillsLoading ||
+      isSkillsError ||
+      tablePagination.pageIndex !== 0,
+  });
 
   // Prefer the freshly loaded row so batch actions see the skill's current state.
   const pageSkillsById = new Map(skills.map((skill) => [skill.sId, skill]));
@@ -212,7 +239,7 @@ function SkillsList({
           owner={owner}
           readOnly={readOnly}
           skills={skills}
-          onSelect={onSelect}
+          onSelect={handleSelect}
           onRefresh={mutate}
           pagination={tablePagination}
           setPagination={(next) => {
@@ -366,8 +393,14 @@ export function ManageSkillsPage({
     </div>
   );
 
+  const tracking = useMemo(
+    () =>
+      readOnly ? null : { entity_type: "skill" as const, tab: selectedTab },
+    [readOnly, selectedTab]
+  );
+
   return (
-    <>
+    <ManageTrackingContext.Provider value={tracking}>
       <div className="flex w-full flex-col gap-6 pb-4">
         {showHeader && (
           <Page.Header
@@ -460,6 +493,7 @@ export function ManageSkillsPage({
             }}
           />
           <SkillsList
+            isFilterLoading={isSelectionLoading}
             readOnly={readOnly}
             searchEndpoint={searchEndpoint}
             key={`${owner.sId}-${activeTab.id}`}
@@ -485,6 +519,6 @@ export function ManageSkillsPage({
           showFavoriteButton
         />
       )}
-    </>
+    </ManageTrackingContext.Provider>
   );
 }
