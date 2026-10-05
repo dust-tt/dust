@@ -57,6 +57,10 @@ interface WorkspaceGroupsListProps {
   owner: WorkspaceType;
 }
 
+/**
+ * @cc [owner:philipperolet,label:product] group-manager-avatars
+ * Manager avatar circles MUST remain fully visible, including when the stack expands on hover.
+ */
 const columns: ColumnDef<GroupRowData>[] = [
   {
     id: "name",
@@ -85,21 +89,21 @@ const columns: ColumnDef<GroupRowData>[] = [
         return <DataTable.CellContent>-</DataTable.CellContent>;
       }
       return (
-        <DataTable.CellContent>
-          <div className="flex items-center gap-2">
-            <Avatar.Stack
-              avatars={managers.map(({ fullName, image }) => ({
-                name: fullName,
-                visual: image ?? undefined,
-                isRounded: true,
-              }))}
-              nbVisibleItems={4}
-              size="xs"
-              hasMagnifier={false}
-            />
-            {managers.length === 1 && managers[0].fullName}
-          </div>
-        </DataTable.CellContent>
+        <div className="flex items-center gap-2 text-sm">
+          <Avatar.Stack
+            avatars={managers.map(({ fullName, image }) => ({
+              name: fullName,
+              visual: image ?? undefined,
+              isRounded: true,
+            }))}
+            nbVisibleItems={4}
+            size="xs"
+            hasMagnifier={false}
+          />
+          {managers.length === 1 && (
+            <span className="truncate">{managers[0].fullName}</span>
+          )}
+        </div>
       );
     },
   },
