@@ -1,6 +1,8 @@
 import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import type { ConsumptionBreakdownDimension } from "@app/lib/api/analytics/consumption/timeseries";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 
 export type ConsumptionDimension = ConsumptionBreakdownDimension;
 
@@ -60,80 +62,80 @@ export function getConsumptionAttributionDimensions(
 }
 
 interface ConsumptionDimensionConfig {
-  label: string;
+  label: MessageDescriptor;
   breakdownLabel: string;
   hasAvatar: boolean;
-  countLabel: string;
-  avgLabel: string;
+  countLabel: MessageDescriptor;
+  avgLabel: MessageDescriptor;
 }
 
-export const MESSAGE_COUNT_LABEL = "Messages";
-const INVOCATION_COUNT_LABEL = "Invocations";
-const MESSAGE_AVG_LABEL = "Credits / message";
-const INVOCATION_AVG_LABEL = "Credits / invocation";
+export const MESSAGE_COUNT_LABEL = msg`Messages`;
+const INVOCATION_COUNT_LABEL = msg`Invocations`;
+const MESSAGE_AVG_LABEL = msg`Credits / message`;
+const INVOCATION_AVG_LABEL = msg`Credits / invocation`;
 
 export const CONSUMPTION_DIMENSION_CONFIG: Record<
   ConsumptionDimension,
   ConsumptionDimensionConfig
 > = {
   agent: {
-    label: "Agents",
+    label: msg`Agents`,
     breakdownLabel: "agent",
     hasAvatar: true,
     countLabel: MESSAGE_COUNT_LABEL,
     avgLabel: MESSAGE_AVG_LABEL,
   },
   user: {
-    label: "Members",
+    label: msg`Members`,
     breakdownLabel: "member",
     hasAvatar: true,
     countLabel: MESSAGE_COUNT_LABEL,
     avgLabel: MESSAGE_AVG_LABEL,
   },
   group: {
-    label: "Groups",
+    label: msg`Groups`,
     breakdownLabel: "group",
     hasAvatar: false,
     countLabel: MESSAGE_COUNT_LABEL,
     avgLabel: MESSAGE_AVG_LABEL,
   },
   model: {
-    label: "Models",
+    label: msg`Models`,
     breakdownLabel: "model",
     hasAvatar: true,
     countLabel: MESSAGE_COUNT_LABEL,
     avgLabel: MESSAGE_AVG_LABEL,
   },
   tool: {
-    label: "Tools",
+    label: msg`Tools`,
     breakdownLabel: "tool",
     hasAvatar: true,
     countLabel: INVOCATION_COUNT_LABEL,
     avgLabel: INVOCATION_AVG_LABEL,
   },
   skill: {
-    label: "Skills",
+    label: msg`Skills`,
     breakdownLabel: "skill",
     hasAvatar: true,
     countLabel: INVOCATION_COUNT_LABEL,
     avgLabel: INVOCATION_AVG_LABEL,
   },
   source: {
-    label: "Sources",
+    label: msg`Sources`,
     breakdownLabel: "source",
     hasAvatar: false,
     countLabel: MESSAGE_COUNT_LABEL,
     avgLabel: MESSAGE_AVG_LABEL,
   },
   trigger: {
-    label: "Triggers",
+    label: msg`Triggers`,
     breakdownLabel: "trigger",
     hasAvatar: false,
     countLabel: MESSAGE_COUNT_LABEL,
     avgLabel: MESSAGE_AVG_LABEL,
   },
   api_key: {
-    label: "API keys",
+    label: msg`API keys`,
     breakdownLabel: "API key",
     hasAvatar: false,
     countLabel: MESSAGE_COUNT_LABEL,
@@ -155,9 +157,9 @@ export function isConsumptionAttributionDimension(
 
 export function consumptionAttributionDimensionLabel(
   dimension: ConsumptionAttributionDimension
-): string {
+): MessageDescriptor {
   return dimension === "conversation"
-    ? "Conversations"
+    ? msg`Conversations`
     : CONSUMPTION_DIMENSION_CONFIG[dimension].label;
 }
 

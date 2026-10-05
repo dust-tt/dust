@@ -17,7 +17,6 @@ import {
   toConsumptionScopeFilter,
   USAGE_FILTER_AGENT_SCOPES,
   USAGE_FILTER_CATEGORIES,
-  USAGE_FILTER_CATEGORY_LABEL,
 } from "@app/components/workspace/analytics/usageFilter";
 import { UsageFilterAgentScopeControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls";
 import { UsageFilterMemberGroupsControls } from "@app/components/workspace/analytics/usageFilterPanel/UsageFilterMemberGroupsControls";
@@ -39,7 +38,34 @@ import {
   PopoverTrigger,
   SearchInput,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
+
+const CATEGORY_LABEL: Record<UsageFilterCategory, MessageDescriptor> = {
+  agent: msg`Agents`,
+  member: msg`Members`,
+  group: msg`Groups`,
+  model: msg`Models`,
+  tool: msg`Tools`,
+  skill: msg`Skills`,
+  source: msg`Sources`,
+  trigger: msg`Triggers`,
+  api_key: msg`API keys`,
+};
+
+const SEARCH_PLACEHOLDER: Record<UsageFilterCategory, MessageDescriptor> = {
+  agent: msg`Search agents`,
+  member: msg`Search members`,
+  group: msg`Search groups`,
+  model: msg`Search models`,
+  tool: msg`Search tools`,
+  skill: msg`Search skills`,
+  source: msg`Search sources`,
+  trigger: msg`Search triggers`,
+  api_key: msg`Search API keys`,
+};
 
 export interface UsageFilterPanelProps {
   owner: LightWorkspaceType;
@@ -203,6 +229,7 @@ export function UsageFilterPanelView({
   isFacetsError,
   isFacetsValidating,
 }: UsageFilterPanelViewProps) {
+  const { t } = useLingui();
   const {
     isOpen,
     setIsOpen,
@@ -228,6 +255,21 @@ export function UsageFilterPanelView({
   const activeCategory = categories.includes(selectedCategory)
     ? selectedCategory
     : (categories[0] ?? "agent");
+
+  const categoryLabels = useMemo<Record<UsageFilterCategory, string>>(
+    () => ({
+      agent: t(CATEGORY_LABEL.agent),
+      member: t(CATEGORY_LABEL.member),
+      group: t(CATEGORY_LABEL.group),
+      model: t(CATEGORY_LABEL.model),
+      tool: t(CATEGORY_LABEL.tool),
+      skill: t(CATEGORY_LABEL.skill),
+      source: t(CATEGORY_LABEL.source),
+      trigger: t(CATEGORY_LABEL.trigger),
+      api_key: t(CATEGORY_LABEL.api_key),
+    }),
+    [t]
+  );
 
   const activeOptions = categoryOptions[activeCategory];
   const filteredOptions = useMemo(() => {
@@ -321,7 +363,7 @@ export function UsageFilterPanelView({
       <PopoverTrigger asChild>
         <Button
           icon={FilterFunnel01}
-          label="Filters"
+          label={t`Filters`}
           size="sm"
           variant="outline"
           isCounter={appliedSelectionCount > 0}
@@ -332,17 +374,17 @@ export function UsageFilterPanelView({
         <div className="flex h-96 flex-row divide-x divide-border">
           <FilterCategoryNav
             categories={categories}
-            categoryLabels={USAGE_FILTER_CATEGORY_LABEL}
+            categoryLabels={categoryLabels}
             selectionCounts={categorySelectionCounts}
             activeCategory={activeCategory}
             onCategoryChange={handleCategoryChange}
           />
           <div className="flex h-full w-80 flex-col gap-3 p-2">
             <FilterSection
-              title={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
+              title={categoryLabels[activeCategory]}
               action={
                 <Button
-                  label="Clear"
+                  label={t`Clear`}
                   size="xmini"
                   variant="ghost-secondary"
                   onClick={() => clearCategory(activeCategory)}
@@ -357,7 +399,7 @@ export function UsageFilterPanelView({
                 name="usage-filter-search"
                 value={searchText}
                 onChange={handleSearchChange}
-                placeholder={`Search ${USAGE_FILTER_CATEGORY_LABEL[activeCategory].toLowerCase()}`}
+                placeholder={t(SEARCH_PLACEHOLDER[activeCategory])}
               />
             </FilterSection>
             <div
@@ -384,13 +426,13 @@ export function UsageFilterPanelView({
               )}
               {isFacetsError ? (
                 <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
-                  Failed to load filters.
+                  <Trans>Failed to load filters.</Trans>
                 </div>
               ) : (
                 <FilterOptionCheckboxList
                   key={optionListKey}
                   idPrefix={`usage-filter-option-${activeCategory}`}
-                  categoryLabel={USAGE_FILTER_CATEGORY_LABEL[activeCategory]}
+                  categoryLabel={categoryLabels[activeCategory]}
                   options={filteredOptions}
                   selectedIds={selectedIdsForActiveCategory}
                   onToggleOption={(option) =>
@@ -399,7 +441,7 @@ export function UsageFilterPanelView({
                   onSelectAll={() =>
                     selectAllFiltered(activeCategory, unselectedEnabledOptions)
                   }
-                  selectAllLabel="Select all"
+                  selectAllLabel={t`Select all`}
                   hasSelectableOptions={unselectedEnabledOptions.length > 0}
                   renderIcon={(option) => (
                     <UsageFilterOptionIcon option={option} />
@@ -418,7 +460,7 @@ export function UsageFilterPanelView({
           </div>
           <FilterSelectionSummary<UsageFilterCategory, UsageFilterOption>
             categoriesWithSelection={categoriesWithSelection}
-            categoryLabels={USAGE_FILTER_CATEGORY_LABEL}
+            categoryLabels={categoryLabels}
             filter={draftFilter}
             onClearCategory={clearCategory}
             onRemoveOption={removeOption}

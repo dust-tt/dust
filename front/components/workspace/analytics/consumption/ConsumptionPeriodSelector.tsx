@@ -6,10 +6,8 @@ import {
   CONSUMPTION_GRANULARITY_OPTIONS,
   CONSUMPTION_PERIOD_OPTIONS,
   consumptionGranularityFromKey,
-  consumptionGranularityLabel,
   consumptionPeriodFromKey,
   consumptionPeriodKey,
-  consumptionPeriodLabel,
 } from "@app/lib/analytics/consumption_period";
 import {
   Button,
@@ -19,6 +17,28 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
+
+export const CONSUMPTION_GRANULARITY_MESSAGES: Record<
+  ConsumptionGranularity,
+  MessageDescriptor
+> = {
+  day: msg`Daily`,
+  week: msg`Weekly`,
+  month: msg`Monthly`,
+};
+
+function consumptionPeriodMessage(
+  selection: ConsumptionPeriodSelection
+): MessageDescriptor {
+  if (selection.kind === "cycle") {
+    return msg`This cycle`;
+  }
+  const days = selection.days;
+  return msg`Last ${days} days`;
+}
 
 interface ConsumptionPeriodSelectorProps {
   period: ConsumptionPeriodSelection;
@@ -29,11 +49,12 @@ export function ConsumptionPeriodSelector({
   period,
   onPeriodChange,
 }: ConsumptionPeriodSelectorProps) {
+  const { t } = useLingui();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          label={consumptionPeriodLabel(period)}
+          label={t(consumptionPeriodMessage(period))}
           size="sm"
           variant="outline"
           isSelect
@@ -53,7 +74,7 @@ export function ConsumptionPeriodSelector({
             <DropdownMenuRadioItem
               key={consumptionPeriodKey(option)}
               value={consumptionPeriodKey(option)}
-              label={consumptionPeriodLabel(option)}
+              label={t(consumptionPeriodMessage(option))}
             />
           ))}
         </DropdownMenuRadioGroup>
@@ -71,11 +92,12 @@ export function ConsumptionGranularitySelector({
   granularity,
   onGranularityChange,
 }: ConsumptionGranularitySelectorProps) {
+  const { t } = useLingui();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          label={consumptionGranularityLabel(granularity)}
+          label={t(CONSUMPTION_GRANULARITY_MESSAGES[granularity])}
           size="sm"
           variant="outline"
           isSelect
@@ -95,7 +117,7 @@ export function ConsumptionGranularitySelector({
             <DropdownMenuRadioItem
               key={option}
               value={option}
-              label={consumptionGranularityLabel(option)}
+              label={t(CONSUMPTION_GRANULARITY_MESSAGES[option])}
             />
           ))}
         </DropdownMenuRadioGroup>

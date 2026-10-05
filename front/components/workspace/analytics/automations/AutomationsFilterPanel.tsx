@@ -29,6 +29,9 @@ import {
   PopoverTrigger,
   SearchInput,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 
 // The panel only shows agents and members, so it skips the other dimensions
@@ -38,19 +41,13 @@ const AUTOMATIONS_FACET_DIMENSIONS: ConsumptionScopeDimension[] = [
   "user",
 ];
 
-const TYPE_OPTIONS: AutomationsFilterOption[] = [
-  { id: "schedule", name: "Schedule", disabled: false, category: "type" },
-  { id: "webhook", name: "Webhook", disabled: false, category: "type" },
-];
-
-const POOL_FILTER_OPTIONS: AutomationsFilterOption[] = POOL_OPTIONS.map(
-  ({ value, label }) => ({
-    id: value,
-    name: label,
-    disabled: false,
-    category: "pool",
-  })
-);
+const SEARCH_PLACEHOLDER: Record<AutomationsFilterCategory, MessageDescriptor> =
+  {
+    agent: msg`Search agents`,
+    member: msg`Search members`,
+    type: msg`Search type`,
+    pool: msg`Search pool`,
+  };
 
 interface AutomationsFilterPanelProps {
   owner: LightWorkspaceType;
@@ -69,6 +66,7 @@ export function AutomationsFilterPanel({
   categories = AUTOMATIONS_FILTER_CATEGORIES,
   agentOptions,
 }: AutomationsFilterPanelProps) {
+  const { t } = useLingui();
   const [isOpen, setIsOpen] = useState(false);
   const {
     draftFilter,
@@ -129,10 +127,32 @@ export function AutomationsFilterPanel({
         image: option.image,
         category: "member",
       })),
-      type: TYPE_OPTIONS,
-      pool: POOL_FILTER_OPTIONS,
+      type: [
+        {
+          id: "schedule",
+          name: t`Schedule`,
+          disabled: false,
+          category: "type",
+        },
+        { id: "webhook", name: t`Webhook`, disabled: false, category: "type" },
+      ],
+      pool: POOL_OPTIONS.map(({ value, label }) => ({
+        id: value,
+        name: t(label),
+        disabled: false,
+        category: "pool",
+      })),
     }),
-    [agentOptions, facetOptions]
+    [agentOptions, facetOptions, t]
+  );
+  const categoryLabels = useMemo<Record<AutomationsFilterCategory, string>>(
+    () => ({
+      agent: t(AUTOMATIONS_FILTER_CATEGORY_LABEL.agent),
+      member: t(AUTOMATIONS_FILTER_CATEGORY_LABEL.member),
+      type: t(AUTOMATIONS_FILTER_CATEGORY_LABEL.type),
+      pool: t(AUTOMATIONS_FILTER_CATEGORY_LABEL.pool),
+    }),
+    [t]
   );
 
   const isFacetBackedCategory =
@@ -206,7 +226,7 @@ export function AutomationsFilterPanel({
       <PopoverTrigger asChild>
         <Button
           icon={FilterFunnel01}
-          label="Filters"
+          label={t`Filters`}
           size="sm"
           variant="outline"
           isCounter={appliedSelectionCount > 0}
@@ -217,18 +237,18 @@ export function AutomationsFilterPanel({
         <div className="flex h-96 flex-row divide-x divide-border">
           <FilterCategoryNav
             categories={categories}
-            categoryLabels={AUTOMATIONS_FILTER_CATEGORY_LABEL}
+            categoryLabels={categoryLabels}
             selectionCounts={categorySelectionCounts}
             activeCategory={activeCategory}
             onCategoryChange={handleCategoryChange}
           />
           <div className="flex h-full w-72 flex-col gap-2 p-2">
             <NavigationListLabel
-              label={AUTOMATIONS_FILTER_CATEGORY_LABEL[activeCategory]}
+              label={categoryLabels[activeCategory]}
               className="bg-transparent pt-1.5 pb-0 font-medium"
               action={
                 <Button
-                  label="Clear"
+                  label={t`Clear`}
                   size="xmini"
                   variant="ghost-secondary"
                   onClick={() => clearCategory(activeCategory)}
@@ -243,7 +263,7 @@ export function AutomationsFilterPanel({
               name="automations-filter-search"
               value={searchText}
               onChange={handleSearchChange}
-              placeholder={`Search ${AUTOMATIONS_FILTER_CATEGORY_LABEL[activeCategory].toLowerCase()}`}
+              placeholder={t(SEARCH_PLACEHOLDER[activeCategory])}
             />
             <div
               ref={setContentScrollContainer}
@@ -251,15 +271,13 @@ export function AutomationsFilterPanel({
             >
               {isFacetBackedCategory && isFacetsError ? (
                 <div className="flex h-24 items-center justify-center text-sm text-muted-foreground">
-                  Failed to load filters.
+                  <Trans>Failed to load filters.</Trans>
                 </div>
               ) : (
                 <FilterOptionCheckboxList
                   key={`${isOpen}|${activeCategory}|${searchText}`}
                   idPrefix={`automations-filter-option-${activeCategory}`}
-                  categoryLabel={
-                    AUTOMATIONS_FILTER_CATEGORY_LABEL[activeCategory]
-                  }
+                  categoryLabel={categoryLabels[activeCategory]}
                   options={filteredOptions}
                   selectedIds={selectedIdsForActiveCategory}
                   onToggleOption={(option) =>
@@ -268,7 +286,7 @@ export function AutomationsFilterPanel({
                   onSelectAll={() =>
                     selectAllFiltered(activeCategory, unselectedEnabledOptions)
                   }
-                  selectAllLabel="Select all"
+                  selectAllLabel={t`Select all`}
                   hasSelectableOptions={unselectedEnabledOptions.length > 0}
                   renderIcon={(option) => (
                     <AutomationsFilterOptionIcon option={option} />
@@ -290,7 +308,7 @@ export function AutomationsFilterPanel({
             AutomationsFilterOption
           >
             categoriesWithSelection={categoriesWithSelection}
-            categoryLabels={AUTOMATIONS_FILTER_CATEGORY_LABEL}
+            categoryLabels={categoryLabels}
             filter={draftFilter}
             onClearCategory={clearCategory}
             onRemoveOption={removeOption}

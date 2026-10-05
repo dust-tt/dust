@@ -741,8 +741,8 @@ export function ConsumptionAttributionRowsView({
         dimension,
         hasAvatar,
         isAvatarRounded: dimension === "user",
-        countLabel,
-        avgLabel,
+        countLabel: t(countLabel),
+        avgLabel: t(avgLabel),
         totalCredits,
         totalActiveMembers,
         isDark,
@@ -761,6 +761,7 @@ export function ConsumptionAttributionRowsView({
       expandedRowId,
       selectedIdSet,
       columnLabels,
+      t,
     ]
   );
 
@@ -1050,7 +1051,7 @@ export function ConsumptionAttributionTableView({
                 <TabsTrigger
                   key={tabDimension}
                   value={tabDimension}
-                  label={consumptionAttributionDimensionLabel(tabDimension)}
+                  label={t(consumptionAttributionDimensionLabel(tabDimension))}
                   className={
                     tabDimension === "conversation" ? "ml-auto" : undefined
                   }

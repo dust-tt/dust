@@ -4,7 +4,12 @@ import type {
   AutomationsFilter,
   AutomationsFilterCategory,
 } from "@app/components/workspace/analytics/automationsFilter";
-import { getAutomationsFilterSummaries } from "@app/components/workspace/analytics/automationsFilter";
+import {
+  AUTOMATIONS_FILTER_CATEGORY_SINGULAR_LABEL,
+  getAutomationsFilterSummaries,
+} from "@app/components/workspace/analytics/automationsFilter";
+import { useLingui } from "@lingui/react/macro";
+import { useMemo } from "react";
 
 interface AutomationsFilterSummaryProps {
   filter: AutomationsFilter;
@@ -17,9 +22,23 @@ export function AutomationsFilterSummary({
   onFilterChange,
   categories,
 }: AutomationsFilterSummaryProps) {
+  const { t } = useLingui();
+  const categoryLabels = useMemo<Record<AutomationsFilterCategory, string>>(
+    () => ({
+      agent: t(AUTOMATIONS_FILTER_CATEGORY_SINGULAR_LABEL.agent),
+      member: t(AUTOMATIONS_FILTER_CATEGORY_SINGULAR_LABEL.member),
+      type: t(AUTOMATIONS_FILTER_CATEGORY_SINGULAR_LABEL.type),
+      pool: t(AUTOMATIONS_FILTER_CATEGORY_SINGULAR_LABEL.pool),
+    }),
+    [t]
+  );
   return (
     <FilterSummaryChips
-      summaries={getAutomationsFilterSummaries(filter, categories)}
+      summaries={getAutomationsFilterSummaries(
+        filter,
+        categoryLabels,
+        categories
+      )}
       onClearCategory={(category) =>
         onFilterChange(clearFilterCategory(filter, category))
       }

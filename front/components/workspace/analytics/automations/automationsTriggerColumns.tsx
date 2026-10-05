@@ -28,6 +28,7 @@ import {
   Icon,
   Tooltip,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { ComponentType } from "react";
 
@@ -55,12 +56,14 @@ interface TypeCellProps {
 }
 
 export function TypeCell({ trigger }: TypeCellProps) {
+  const { t } = useLingui();
+  const webhookSourceName = trigger.webhookSourceName;
   switch (trigger.kind) {
     case "schedule":
       return (
         <TypeLabel
           visual={Clock}
-          label={trigger.scheduleDescription || "Schedule"}
+          label={trigger.scheduleDescription || t`Schedule`}
         />
       );
     case "webhook":
@@ -68,7 +71,7 @@ export function TypeCell({ trigger }: TypeCellProps) {
         return (
           <TypeLabel
             visual={getIcon("ActionLockIcon")}
-            label="This webhook lives in a space you don't have access to."
+            label={t`This webhook lives in a space you don't have access to.`}
           />
         );
       }
@@ -76,9 +79,7 @@ export function TypeCell({ trigger }: TypeCellProps) {
         <TypeLabel
           visual={getIcon(normalizeWebhookIcon(trigger.webhookIcon))}
           label={
-            trigger.webhookSourceName
-              ? `${trigger.webhookSourceName} webhook`
-              : "Webhook"
+            webhookSourceName ? t`${webhookSourceName} webhook` : t`Webhook`
           }
         />
       );
@@ -92,7 +93,7 @@ export function nameColumn<T extends TriggerRowData>(): ColumnDef<T> {
   return {
     id: "name",
     accessorKey: "name",
-    header: "Name",
+    header: () => <Trans>Name</Trans>,
     enableSorting: false,
     meta: { className: "truncate", headerAlign: "left" },
     cell: (info) => (
@@ -176,7 +177,7 @@ function AgentCell({ agent, onClick }: AgentCellProps) {
 export function agentColumn<T extends TriggerRowData>(): ColumnDef<T> {
   return {
     id: "agent",
-    header: "Agent",
+    header: () => <Trans>Agent</Trans>,
     enableSorting: false,
     meta: { className: "w-44", headerAlign: "left" },
     cell: (info) => (
@@ -193,7 +194,7 @@ export function agentColumn<T extends TriggerRowData>(): ColumnDef<T> {
 export function typeColumn<T extends TriggerRowData>(): ColumnDef<T> {
   return {
     id: "type",
-    header: "Type",
+    header: () => <Trans>Type</Trans>,
     enableSorting: false,
     meta: { className: "w-8", headerAlign: "center" },
     cell: (info) => (
@@ -208,7 +209,7 @@ export function creditsColumn<T extends TriggerRowData>(): ColumnDef<T> {
   return {
     id: "credits",
     accessorKey: "credits",
-    header: "Credits",
+    header: () => <Trans>Credits</Trans>,
     meta: { className: "w-24", headerAlign: "right" },
     cell: (info) => (
       <DataTable.CellContent className="w-full justify-end text-right">
@@ -216,6 +217,33 @@ export function creditsColumn<T extends TriggerRowData>(): ColumnDef<T> {
       </DataTable.CellContent>
     ),
   };
+}
+
+interface DetailsButtonProps {
+  row: TriggerRowData;
+  isExpanded: boolean;
+}
+
+function DetailsButton({ row, isExpanded }: DetailsButtonProps) {
+  const { t } = useLingui();
+  const name = row.name;
+  return (
+    <Button
+      icon={isExpanded ? ChevronUp : ChevronDown}
+      variant="ghost-secondary"
+      size="xs"
+      aria-label={
+        isExpanded
+          ? t`Collapse breakdown for ${name}`
+          : t`Expand breakdown for ${name}`
+      }
+      aria-expanded={isExpanded}
+      onClick={(event) => {
+        event.stopPropagation();
+        row.onClick();
+      }}
+    />
+  );
 }
 
 export function detailsColumn<T extends TriggerRowData>(
@@ -228,19 +256,11 @@ export function detailsColumn<T extends TriggerRowData>(
     meta: { className: "w-12" },
     cell: (info) => {
       const row = info.row.original;
-      const isExpanded = expandedRowId === row.triggerId;
       return (
         <DataTable.CellContent className="w-full justify-end">
-          <Button
-            icon={isExpanded ? ChevronUp : ChevronDown}
-            variant="ghost-secondary"
-            size="xs"
-            aria-label={`${isExpanded ? "Collapse" : "Expand"} breakdown for ${row.name}`}
-            aria-expanded={isExpanded}
-            onClick={(event) => {
-              event.stopPropagation();
-              row.onClick();
-            }}
+          <DetailsButton
+            row={row}
+            isExpanded={expandedRowId === row.triggerId}
           />
         </DataTable.CellContent>
       );
@@ -254,7 +274,12 @@ export interface PoolRowFields {
   onSetExecutionMode: (executionMode: TriggerExecutionMode) => void;
 }
 
-function PoolCell({ row }: { row: TriggerRowData & PoolRowFields }) {
+interface PoolCellProps {
+  row: TriggerRowData & PoolRowFields;
+}
+
+function PoolCell({ row }: PoolCellProps) {
+  const { t } = useLingui();
   const { hasPermission } = useWorkspacePermissions();
   const { canUseExecutionMode } = useTriggerExecutionModes();
   const isWorkspacePool = row.displayExecutionMode === "workspace_pool";
@@ -269,14 +294,14 @@ function PoolCell({ row }: { row: TriggerRowData & PoolRowFields }) {
           isSelect
           disabled={row.isExecutionModePending || !canSetPool}
           className={isWorkspacePool ? "text-highlight" : undefined}
-          label={isWorkspacePool ? "Workspace" : "Member"}
+          label={isWorkspacePool ? t`Workspace` : t`Member`}
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         {POOL_OPTIONS.map(({ value, label }) => (
           <DropdownMenuItem
             key={value}
-            label={label}
+            label={t(label)}
             disabled={!canUseExecutionMode(value)}
             tooltip={
               canUseExecutionMode(value)
@@ -296,7 +321,7 @@ export function poolColumn<
 >(): ColumnDef<T> {
   return {
     id: "pool",
-    header: "Pool",
+    header: () => <Trans>Pool</Trans>,
     enableSorting: false,
     meta: { className: "w-32" },
     cell: (info) => (
