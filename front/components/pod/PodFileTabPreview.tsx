@@ -189,16 +189,13 @@ export function PodFileTabPreview({
         });
         return;
       }
-      await mutate(
-        contentApiPath,
-        { kind: "loaded", content: markdownDraft },
-        { revalidate: false }
-      );
-      await mutate(
-        fileUrl,
-        { kind: "loaded", content: markdownDraft },
-        { revalidate: false }
-      );
+      const loaded = {
+        kind: "loaded",
+        content: markdownDraft,
+        revision: result.value.revision,
+      } as const;
+      await mutate(contentApiPath, loaded, { revalidate: false });
+      await mutate(fileUrl, loaded, { revalidate: false });
       setMarkdownSavedContent(markdownDraft);
       if (entry?.path) {
         markdownInitKeyRef.current = `${entry.path}:${markdownDraft}`;
