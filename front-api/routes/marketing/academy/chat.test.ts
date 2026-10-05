@@ -1,5 +1,12 @@
+import { rateLimiter } from "@app/lib/utils/rate_limiter";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock(import("@app/lib/utils/rate_limiter"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  rateLimiter: vi.fn(),
+}));
 
 // The chat route allows a request whose Origin OR Referer starts with the
 // static website URL. In this test environment the `Origin` header is stripped
@@ -52,6 +59,67 @@ describe("POST /api/marketing/academy/chat", () => {
     correctAnswers: 0,
     totalQuestions: 0,
   };
+
+  beforeEach(async () => {
+    // Mocked by generic_private_api_tests; import lazily so the mock applies.
+    const { getWorkOSSessionWithSetCookies } = await import(
+      "@app/lib/api/workos/user"
+    );
+    vi.mocked(getWorkOSSessionWithSetCookies).mockResolvedValue({
+      session: undefined,
+      setCookies: [],
+    });
+    vi.mocked(rateLimiter).mockReset().mockResolvedValue(5);
+  });
+
+  async function postChat(
+    body: unknown,
+    extraHeaders: Record<string, string> = {}
+  ) {
+    const csrfToken = await getCsrfToken();
+    return honoApp.request("/api/marketing/academy/chat", {
+      method: "POST",
+      headers: {
+        referer: ALLOWED_REFERER,
+        "content-type": "application/json",
+        "x-csrf-token": csrfToken,
+        ...extraHeaders,
+      },
+      body: JSON.stringify(body),
+    });
+  }
+
+  it("charges all anonymous requests to one bucket, whatever their IP headers", async () => {
+    await postChat(validBody, { "cf-connecting-ip": "1.1.1.1" });
+    await postChat(validBody, { "x-forwarded-for": "2.2.2.2" });
+
+    const keys = vi.mocked(rateLimiter).mock.calls.map(([args]) => args.key);
+    expect(keys).toEqual(["academy_chat:anonymous", "academy_chat:anonymous"]);
+  });
+
+  it("charges a logged-in user's requests to that user's bucket", async () => {
+    const { user } = await createPrivateApiMockRequest();
+
+    await postChat(validBody);
+
+    expect(vi.mocked(rateLimiter)).toHaveBeenCalledWith(
+      expect.objectContaining({ key: `academy_chat:user:${user.sId}` })
+    );
+  });
+
+  it("returns 429 once the anonymous bucket is exhausted", async () => {
+    vi.mocked(rateLimiter).mockResolvedValue(0);
+
+    const response = await postChat(validBody);
+
+    expect(response.status).toBe(429);
+  });
+
+  it("rejects an oversized title before calling the model", async () => {
+    const response = await postChat({ ...validBody, title: "x".repeat(501) });
+
+    expect(response.status).toBe(400);
+  });
 
   it("rejects a chat request with a disallowed referer", async () => {
     const response = await honoApp.request("/api/marketing/academy/chat", {
