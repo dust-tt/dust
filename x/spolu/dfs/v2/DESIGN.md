@@ -4,35 +4,47 @@ Replace SlateDB/GCS with a shared FoundationDB cluster and LanceDB with a shared
 cluster. Preserve [v1 filesystem semantics](../v1/DESIGN.md) and
 [v1 search semantics](../v1/DESIGN-SEARCH.md), except for the explicit changes below.
 Implement locally and benchmark before moving to `dust-dev`. [PLAN.md](PLAN.md) tracks the work.
+The local milestone is complete; [gcp/README.md](gcp/README.md) describes the next three-zone FDB
+experiment, using manually provisioned private VMs and the unchanged API/client.
 
 ## Non-negotiable constraints
 
 **The purpose of FoundationDB is to eliminate the single-writer requirement.** Independent
 dfs-server processes MUST be able to mutate the same workspace correctly through FDB transactions.
-No exclusive workspace owner, workspace writer lease, or authoritative RAM overlay with asynchronous FDB
-publication. Process-local locks/caches MUST NOT be required for correctness across server writers.
-Successful mutations continue to await normal FDB commit.
+No exclusive workspace owner or workspace writer lease. Process-local locks coordinate only local
+requests; correctness across servers relies on FDB. The server-writeback project permits bounded RAM
+acceptance for file edits, with fresh transactional reauthorization and durable file fsync below.
 
-**This optimization phase preserves the exact existing API and v1 client behavior.** The sole client
-change is raising the live inode cap from 100,000 to 1,000,000 for larger filesystem benchmarks.
-Compound or bulk RPCs, client-side operation batching, and additional deferred publication are out of scope.
-Optimize server/database work within each existing operation while preserving authorization,
-expected versions, visibility, errors, and durability. Optimizations must work for deep paths and
-grants anywhere in the tree; do not rely on workspace-root shortcuts.
+**This optimization phase preserves the exact existing API.** Approved client changes are raising
+the live inode cap from 100,000 to 1,000,000 and the xattr filtering/cache described in
+[v1's FUSE design](../v1/DESIGN.md#fuse-and-transport). Benchmark these client changes explicitly.
+Compound or bulk RPCs and additional client batching are out of scope. Server writeback explicitly
+changes file acknowledgment/overwrite semantics without changing gRPC messages or the client.
+Preserve live authority, atomic persisted state, namespace preconditions, and deferred errors.
+Optimizations must work for deep paths and grants anywhere in the tree; do not rely on workspace-root
+shortcuts.
 
 ## Compatibility
 
-- Reuse the **v1 protocol, Rust client, CLI, and Linux FUSE client**, with only the inode-cap change
+- Reuse the **v1 protocol, Rust client, CLI, and Linux FUSE client**, with the approved client changes
   above. Keep the `dfs.v1`
   protobuf package, RPCs, messages, errors, authentication, limits, and client cache/writeback behavior.
 - Preserve UUIDs/URIs, per-object versions, metadata/MIME/binary xattrs, sparse 64 KiB blocks,
   inherited grants, dual grant indexes, sessions with at most 512 grants, and unlink-to-`ENOENT`.
+- Versions are opaque equality tokens in the existing `uint64` field, not numeric increments.
+  New objects start at 1; every changed existing object receives a never-reused token. Servers
+  durably reserve disjoint ranges of 1,048,576 tokens in FDB and consume them from RAM. This counter
+  allocates identities only: it is not a workspace revision, cache invalidation signal, or commit
+  order. Crashes can waste reserved tokens. The unchanged client uses equality comparisons.
 - Preserve search filters, extraction limits, excerpts, status, bounded candidate expansion, and
   per-search authorization caches. No subscriptions, global permission cache, or replicated grants.
-- Changes: `/shared` stops suppressing reachable entries; successful mutations await FDB commit;
+- Changes: `/shared` stops suppressing reachable entries; file edits can acknowledge RAM acceptance;
   ES supplies relevance ranking, so exact LanceDB scores/order are not a compatibility promise.
-- Keep v1 intact except for that inode cap. Use a fresh v2 FDB subspace and ES index; data migration
+- Keep v1 intact except for those client changes. Use a fresh v2 FDB subspace and ES index; data migration
   is outside this iteration.
+
+The server-writeback foundation uses FDB format `dfs-v2-fdb-2` to prevent old binaries from mixing
+numeric increments with reserved tokens. Use a fresh prefix; existing benchmark data remains intact.
 
 ## Architecture and localhost
 
@@ -77,7 +89,8 @@ synthetic entries retain v1 behavior.
 Retain v1's logical key families under one configured application prefix followed by workspace:
 `objects`, `children`, `grants_by_object`, `objects_by_grant`, `data`, `workspace`, and the search
 pending/status/backfill keys. Reuse unambiguous component encoding and ordered block suffixes.
-There is no global or workspace object-version counter.
+There is no workspace coherence revision. A separate application-wide counter reserves token ranges;
+it does not advance for every mutation or invalidate caches.
 
 FDB limits values to 100,000 bytes and transactions to 10,000,000 affected bytes, with a roughly
 five-second transaction lifetime. The existing 65,536-byte content blocks fit. Metadata encoding
@@ -86,35 +99,80 @@ MUST support every v1-valid xattr payload. Keep compact Postcard records: at mos
 conflict ranges in the transaction budget. Never split an atomic filesystem mutation across commits
 or lower public limits to hide a storage-format problem. See [FDB limits](https://apple.github.io/foundationdb/known-limitations.html).
 
-Each mutation runs authorization, expected-version/namespace checks, block patches, related index
-updates, and pending-search changes in **one serializable FDB transaction**. Authorization and
+Each durable publication runs authorization, applicable namespace/version checks, block patches,
+related index updates, and pending-search changes in **one serializable FDB transaction**. Buffered
+file edits reapply semantic operations to current records, permitting concurrent overwrites. Authorization and
 precondition reads MUST participate in conflict detection, including ancestor/grant reads. Retain
-session-close/publication coordination within the server. Recheck session activity on each retry.
-Reads return related metadata/content from one transaction read version.
+session-close/publication coordination within the server. Recheck active sessions on synchronous retries; accepted queued edits retain their original grants
+through session expiry and recheck live file authorization at persistence.
+FDB reads use one transaction read version; accepting-server filesystem reads also apply local
+pending edits under the publication gate.
 
 Retry only attempts known not to have committed, within a bounded deadline, using the original
-client-supplied expected versions. A retried transaction MUST reauthorize and revalidate; an object
-version mismatch is still a client-visible conflict. Ambiguous commit outcomes return the existing
-error without automatic replay or retry receipts. Only advisory ancestry hints may be learned inside
-transaction retries; keep other external side effects outside them.
+client-supplied expected versions for strict operations. Buffered file operations instead reapply
+to current state. A retried transaction MUST reauthorize and revalidate; read/namespace version
+mismatches remain client-visible conflicts. Ambiguous commit outcomes return the existing
+error without automatic replay or retry receipts. Only advisory ancestry hints and never-reused token reservations may escape transaction retries;
+keep other external side effects outside them.
 See [FDB transaction errors](https://apple.github.io/foundationdb/developer-guide.html#the-commit-unknown-result-error).
 
 Shrink trims the surviving tail and range-clears later blocks; unlink range-clears content and removes
 metadata, entries, and both grant directions atomically. Reverse-grant cleanup still needs bounded
 enumeration. Preserve zero-fill after re-extension and existing capacity errors for oversized edits.
 
-Await normal FDB commit before acknowledging mutations, including workspace creation. This provides
-stronger durability than v1's minimum server-visibility guarantee: FDB acknowledges after its log
-durability boundary. `fsync` still drains client writeback and checks access; successful write RPCs
-have already committed. No application WAL, deferred FDB writes, or server staging cache.
+### Server writeback
+
+Positioned file writes and file updates (size, times, mode, MIME, xattrs) acknowledge bounded RAM
+acceptance. Their expected mutation versions are advisory: concurrent writes may overwrite overlapping
+bytes/fields in commit order. Preserve unspecified fields and bytes. Create/mkdir, rename/remove,
+grants, directory updates, and append remain synchronous and keep strict expected-version checks.
+The unchanged client's directory fsync sends no RPC, so namespace operations remain durable.
+
+Retain ordered semantic operations per file, with acceptance timestamps and originating grants.
+Local stat/lookup/list/read include pending edits after fresh authorization. Other servers see only
+committed FDB state. No whole-file buffer, local recovery log, global permission cache, or exclusive
+workspace owner. A crash may lose unflushed acknowledgments; reopening starts from committed FDB.
+
+Defaults: 256 MiB conservative queue accounting, 16,384 dirty files, 32,768 session/file receipts,
+64 operations per file, 50 ms debounce, 500 ms maximum dirty age, 4 MiB / 64-file batches, and eight
+workers across workspaces. Memory, delays, batch limits, and concurrency are configurable through
+`DFS_WRITEBACK_*`; zero `DFS_WRITEBACK_MIB` retains the previous strict synchronous mode. Thresholds
+trigger pressure flushing before accepting more work. FDB's own transaction-size/deadline checks
+remain final guards. Dirty-age limits schedule flushing; they do not bound backend outage duration.
+
+Acceptance and local reads lock only affected objects. Publication locks its batch's files in sorted
+ID order through commit and queue removal; unrelated files and sibling creates remain concurrent.
+Stat/read acquire the object lock before their FDB snapshot. Lookup/list re-read a fresh snapshot if
+discovery finds a file not already locked (at most four attempts); advisory child hints avoid a
+second pass on repeated lookups. Namespace mutations lock declared participants; FDB validates the
+actual participant set and protects ancestry/grants. No workspace lock spans I/O. Background batches
+still run one per workspace, with independent workspaces concurrent; forced flushes of disjoint files
+may also proceed concurrently. Independent servers still commit concurrently through FDB.
+Replay operations against fresh FDB state, reauthorize each originating grant set, and publish
+blocks/metadata/search work atomically. Preserve the acknowledged token if its base is unchanged;
+a rebase receives a distinct token. Unlink never recreates records.
+
+File fsync takes its object's fair gate, freezing a finite prefix including earlier in-flight work,
+flushes that file's pending operations, reports sticky session/file errors, and rechecks authority.
+Later writes cannot extend this barrier. Successful fsync includes normal FDB log durability;
+ordinary close remains cheap. Session close and graceful shutdown drain accepted work. A failed or
+ambiguous batch cannot silently disappear: retain its errors until session closure/expiry. Only
+known-uncommitted FDB attempts may retry; ambiguous outcomes never replay automatically. An
+uncommitted application failure or exhausted FDB `not_committed` conflict can split a multi-file
+batch to reduce contention. Only that definite conflict outcome permits splitting an unavailable
+transaction; timeouts and ambiguous commits never do. Single-file failures remain sticky.
+
+Search indexes committed FDB only. Suppress locally dirty search candidates and include RAM files
+in index-status pending counts, deduplicated against FDB work. Status is diagnostic: concurrent
+acceptance/publication can change its counts during the scan. Fsync never waits for ES.
 See [FDB commit path](https://github.com/apple/foundationdb/wiki/Transaction-Commit-Path).
 
 ### Ancestry read hints
 
-Filesystem authorization retains workspace-scoped object-to-parent ID hints, bounded to 16,384
-entries and an 8 MiB accounting budget per server. Object reads and successful creates/moves
-populate them, including newly extracted files and directories. They contain no grants,
-authorization decisions, or authoritative metadata.
+Filesystem reads retain workspace-scoped object-to-parent and `(parent, name)`-to-object ID hints,
+sharing a bound of 16,384 entries and an 8 MiB accounting budget per server. Object/child reads and
+successful creates/moves populate them, including newly extracted files and directories. They contain
+no grants, authorization decisions, or authoritative metadata.
 
 Hints schedule live object/grant reads for up to 16 nodes concurrently in the current transaction.
 Follow only the parent chain verified by those live records; discard off-chain results/errors and
@@ -123,27 +181,35 @@ Stale hints and hints learned during aborted attempts are harmless: moves and gr
 no invalidation or expiry delay. The same algorithm applies at every depth. Search keeps its existing
 per-request cache; the client and API are unchanged.
 
+A name hint schedules the child record alongside its live name-index lookup. Consume that record
+only if the current index still names the hinted ID and the record's parent/name match. Missing or
+changed entries discard the speculative result, including errors; no invalidation messages are needed.
+
 ### Transaction read scheduling
 
 Every transaction attempt obtains its read version normally from FDB, including mutations, read-only
 APIs, and search. Do not cache or reuse commit versions. Conflicts/expiry retry with a fresh transaction;
 ambiguous commits never replay. All dependency reads retain conflict tracking.
 
-The local FDB deployment retains FDB's default 5 ms read-version batching timeout, reduces commit
-batching delays, and busy-waits briefly for short timers. The earlier 1 µs GRV cap is disabled.
-This trades CPU for latency while retaining normal log durability and conflict resolution; validate
-filesystem latency and independent writers after tuning. See [settings](README.md).
+Client and server latency settings use native FDB defaults in local and networked deployments.
+The networked benchmark did not reproduce the large localhost tuning benefit. Nondefault settings
+require an explicit experiment; retain normal log durability and conflict resolution and validate
+filesystem latency and independent writers. See [settings](README.md).
 
 Filesystem requests start workspace, primary object, hinted ancestor/grant reads, and optional
-child-name lookup concurrently. Retain at most 16 object/grant results and one child entry, only
-within the current transaction. Create also overlaps authorization with UUID collision checks.
+child-name lookup concurrently. Retain at most 16 object/grant results and one child entry/object, only
+within the current transaction. Create checks its candidate UUID alongside this entire first wave.
 Consume results/errors in the original validation order and use only the verified live parent chain;
 speculative reads cannot expose hidden objects or authorize through a stale parent hint.
+
+Content reads prefetch at most the first requested block alongside the same metadata/authorization
+wave. Consume its bytes or error only after live authorization, type/version checks, and size establish
+that the block is needed; empty/beyond-EOF reads ignore it. Additional blocks remain bounded and parallel.
 
 Block patches read up to 16 blocks concurrently. Skip the old-block read only when live object size
 proves the block is beyond EOF or the patch replaces every existing logical byte in it. Other bytes
 are preserved and holes remain zero-filled. The object read stays conflict-tracked, including when
-the block read is omitted. Version increments, pending search work, and commit boundaries stay intact.
+the block read is omitted. Distinct state tokens, pending search work, and commit boundaries stay intact.
 
 ## Shared Elasticsearch index
 

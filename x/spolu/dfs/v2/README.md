@@ -2,8 +2,10 @@
 
 The local server serves the filesystem and keyword search through shared FoundationDB and
 Elasticsearch; see [benchmark results](bench/RESULTS.md) and [PLAN.md](PLAN.md) for future work.
-Reuse v1's protocol/client/FUSE, with only the live inode cap raised to 1,000,000 for larger corpora.
+Reuse v1's protocol/client/FUSE, including the larger inode cap and xattr filtering/cache.
 Start with local Docker; no GCS credentials.
+
+For the manually provisioned three-zone `dust-dev` FDB fixture, see [gcp/README.md](gcp/README.md).
 
 From `v2/`:
 
@@ -25,24 +27,23 @@ The images support native Linux ARM64 on this Mac. FDB uses single-node SSD stor
 primary and no replicas for application/test indexes. Defaults: 3 GiB container memory each, with
 1 GiB ES heap. Configure `DFS_V2_FDB_MEMORY`, `DFS_V2_ES_MEMORY`, and `DFS_V2_ES_JAVA_OPTS` before `up`.
 
-The server's FDB client uses FDB's default 5 ms read-version batching timeout and busy-waits for
-timers up to 100 µs. The earlier 1 µs GRV cap is disabled after the tuning ablation.
-The FDB node uses 10 µs minimum/idle commit batch intervals and the same busy-wait threshold.
-These pinned-version settings favor latency at increased CPU cost; conflict checks and normal log
-synchronization are unchanged. `local/fdb.bash` preserves the official image's startup/volume setup.
+Client and server latency settings use FDB's native defaults: 5 ms read-version batching,
+1 ms / 500 µs minimum/idle commit batching, and no busy-waiting. The networked comparison did not
+reproduce the large localhost tuning benefit; see [results](gcp/RESULTS.md#fdb-latency-tuning-disabled).
+Conflict checks and normal log synchronization are unchanged. `local/fdb.bash` preserves the
+official image's startup/volume setup; nondefault settings remain available for explicit experiments.
 Run `local/run up` after changing these settings so Compose recreates the node with its data intact.
 
 The five settings below are in **seconds**. Client settings apply before the native FDB
-network starts; server settings apply at node startup. They are experimental local latency defaults,
-not a validated production scaling profile.
+network starts; server settings apply at node startup. Defaults match the pinned FDB release.
 
-| Environment variable | Local default | FDB 7.3.69 default |
-| --- | ---: | ---: |
-| `DFS_FDB_GRV_BATCH_TIMEOUT_SECONDS` | 0.005 | 0.005 |
-| `DFS_FDB_CLIENT_BUSY_WAIT_SECONDS` | 0.0001 | 0 |
-| `DFS_FDB_COMMIT_BATCH_MIN_SECONDS` | 0.00001 | 0.001 |
-| `DFS_FDB_COMMIT_BATCH_IDLE_SECONDS` | 0.00001 | 0.0005 |
-| `DFS_FDB_SERVER_BUSY_WAIT_SECONDS` | 0.0001 | 0 |
+| Environment variable | Default (FDB 7.3.69) |
+| --- | ---: |
+| `DFS_FDB_GRV_BATCH_TIMEOUT_SECONDS` | 0.005 |
+| `DFS_FDB_CLIENT_BUSY_WAIT_SECONDS` | 0 |
+| `DFS_FDB_COMMIT_BATCH_MIN_SECONDS` | 0.001 |
+| `DFS_FDB_COMMIT_BATCH_IDLE_SECONDS` | 0.0005 |
+| `DFS_FDB_SERVER_BUSY_WAIT_SECONDS` | 0 |
 
 The development container reads FDB's cluster file from a shared volume and connects over the private
 Compose network, independently of database restarts. ES is reachable as `http://es:9200`.
@@ -59,23 +60,40 @@ Build/run the server inside the development container:
 ```sh
 local/run exec cargo build --release
 local/run exec python3 -c 'import os,secrets; f=os.open("/tmp/dfs-server.key",os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600); os.write(f,secrets.token_hex(32).encode()); os.close(f)'
-local/run exec /target/release/dfs-server-v2 --listen 0.0.0.0:8080 --allow-insecure --server-key-file /tmp/dfs-server.key
+local/run exec /target/release/dfs-server-v2 --listen 0.0.0.0:8080 --allow-insecure --server-key-file /tmp/dfs-server.key --fdb-prefix dfs-v2-writeback-local --es-index dfs-v2-writeback-local
 ```
 
 The compose environment supplies `DFS_FDB_CLUSTER_FILE`, `DFS_FDB_PREFIX`, `DFS_ES_URL`, and
 `DFS_ES_INDEX`. Use the unchanged v1 `dfs` CLI and `dfs-fuse` against this gRPC endpoint.
 The server creates its ES index lazily; an ES outage retains indexing work in FDB and leaves
-filesystem operations available. All acknowledged writes have already committed to FDB.
+filesystem operations available. Use a fresh prefix for format `dfs-v2-fdb-2`; existing format-1
+benchmark data stays intact. Distinct object-state tokens replace numeric version increments.
+
+File writes and file metadata updates now acknowledge server RAM. `fsync` waits for FDB durability;
+ordinary close does not. Other servers see committed state. Namespace operations and append remain
+synchronous. See [writeback semantics](DESIGN.md#server-writeback).
+
+| Setting | Default |
+| --- | ---: |
+| `DFS_WRITEBACK_MIB` | 256; zero selects strict synchronous mode |
+| `DFS_WRITEBACK_DEBOUNCE_MS` | 50 |
+| `DFS_WRITEBACK_MAX_AGE_MS` | 500 |
+| `DFS_WRITEBACK_CONCURRENCY` | 8 workspaces |
+| `DFS_WRITEBACK_BATCH_KIB` | 4096 |
+| `DFS_WRITEBACK_BATCH_FILES` | 64 |
 
 Run Linux mount coverage after building the unchanged client:
 
 ```sh
 local/run exec cargo build --release --manifest-path /dfs/v1/Cargo.toml -p dfs-client -p dfs-fuse --bins --example search_bench
 local/run exec python3 /dfs/v2/tests/fuse_e2e.py
+local/run exec python3 /dfs/v2/tests/writeback.py
 ```
 
-This runs v1's two-mount workload, checks duplicate main-tree/shared aliases, then kills and restarts
-dfs-server to verify durable file recovery and session loss. Successful runs clean their own fixtures.
+The first fixture explicitly selects strict synchronous mode for v1's conflict/durability contracts.
+The second tests writeback through the unchanged FUSE client: cheap close, same-server visibility,
+shared aliases, fsync durability across a real server kill, concurrent overwrites, and unlink errors.
+It extends debounce to control persistence timing. Successful runs clean their own fixtures.
 
 Inject transport failures around the real ES node (no database mocks):
 
@@ -84,7 +102,8 @@ local/run exec python3 /dfs/v2/tests/search_failures.py
 python3 local/restarts.py
 ```
 
-`restarts.py` restarts both local databases during writes while keeping dfs-server alive, verifies
+`restarts.py` explicitly selects strict synchronous mode and restarts both local databases during writes,
+keeping dfs-server alive. It verifies
 acknowledged metadata/content and search recovery, and cleans its own fixture. Run it without any
 other workload using these databases.
 
@@ -103,8 +122,9 @@ by Git; retain text reports and publish summary tables in [bench/RESULTS.md](ben
 The search runner reuses v1's Rust population/query helper and all
 eight query cases. The filesystem runner imports jd's unmodified benchmark and checks the pinned
 manifest for the standard 10,000-file corpus. It restarts dfs-server and remounts before each `first`
-read case. FDB, ES, and OS caches stay warm across these restarts. Native FDB commit durability is
-included in foreground writes.
+read case. FDB, ES, and OS caches stay warm across these restarts. Historical synchronous runs include
+FDB durability in foreground writes. New writeback runs must report remaining server publication
+separately; their benchmark harness update and measurements are pending.
 `vfs.py --files 100000` multiplies the standard directory allocations by ten, preserving the same
 100 directories, depth, seed, document format, and four rare matches (about 1.8 GB total). It selects
 256 tails across the larger corpus and retains every workload's validation and timing boundaries.

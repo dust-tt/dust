@@ -194,6 +194,12 @@ Use native Linux kernel caching, with no userspace content cache or freshness de
   and orders truncate against writeback; send positioned writes. Never replay failed queued writes.
 - Request 1 MiB read-ahead, capped by the kernel, with asynchronous reads, 32 background requests,
   and eight FUSE workers. `--read-ahead-kib`, `--max-background`, and `--threads` configure these bounds.
+- Reject non-`user.*` xattr probes before any RPC. Cache complete user xattr maps (values, absence,
+  and listings) by object ID under the same TTL as inode attributes. The mount budget is 16 MiB and
+  16,384 objects; `--xattr-cache-mib` / `DFS_XATTR_CACHE_MIB=0` disables caching for comparison.
+  Serialize fills and invalidation with local mutations across aliases; fills never adopt a new
+  file version or clear errors. Failed RPCs are not cached. Fixed-category counters identify common
+  kernel xattr probes without recording user attribute names.
 
 Cached data can remain accessible after remote edits, unlink, grant revocation, or session expiry
 until an RPC observes it or the cache is discarded. Reopening does not guarantee freshness. Every

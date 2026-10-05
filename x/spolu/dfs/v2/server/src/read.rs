@@ -38,6 +38,7 @@ struct PrefetchedChild {
     parent: String,
     name: String,
     bytes: Result<Option<Bytes>>,
+    object: Option<(String, Result<Option<Bytes>>)>,
 }
 impl View {
     pub async fn new(storage: &Storage, workspace: &str, grants: BTreeSet<String>) -> Result<Self> {
@@ -67,7 +68,7 @@ impl View {
         })
     }
     /// @cc [owner:spolu,label:concurrency;security] transaction-local-prefetch
-    /// Prefetch at most WINDOW object/grant results and one child entry alongside the workspace.
+    /// Prefetch at most WINDOW object/grant results and one child entry/object with the workspace.
     /// All reads MUST use this same conflict-tracked transaction. Consume workspace errors first;
     /// defer speculative results/errors until needed and only use grants on the live verified chain.
     /// Results MUST NOT escape this view or be reused in another transaction. Invalid request fields
@@ -110,10 +111,20 @@ impl View {
                 let parent = primary.as_ref()?;
                 let name = child_name.filter(|name| validate::name(name).is_ok())?;
                 let key = keys.child(parent, name).ok()?;
+                let hinted = ancestry.child(&keys, parent, name).await;
+                let (bytes, object) = tokio::join!(snapshot.get(key), async {
+                    let id = hinted?;
+                    let bytes = measured("prefetch_child_object", async {
+                        snapshot.get(keys.object(&id)?).await
+                    })
+                    .await;
+                    Some((id, bytes))
+                });
                 Some(PrefetchedChild {
                     parent: parent.clone(),
                     name: name.to_owned(),
-                    bytes: snapshot.get(key).await,
+                    bytes,
+                    object,
                 })
             },
         );
@@ -131,14 +142,17 @@ impl View {
         let bytes = match self.prefetched.get(&id) {
             Some(node) => node.bytes.clone()?,
             _ => self.get(&self.keys.object(&id)?).await?,
-        }
-        .ok_or_else(|| status(ErrorCode::NotFound))?;
+        };
+        self.object_record(&id, bytes).await
+    }
+    async fn object_record(&self, id: &str, bytes: Option<Bytes>) -> Result<Record> {
+        let bytes = bytes.ok_or_else(|| status(ErrorCode::NotFound))?;
         let record: Record = decode(&bytes)?;
         if record.object.id != id {
             return Err(status(ErrorCode::Unavailable));
         }
         if let (Some(hints), Some(parent)) = (&self.ancestry, &record.parent) {
-            hints.remember(&self.keys, &id, &parent.id).await;
+            hints.remember(&self.keys, id, &parent.id).await;
         }
         Ok(record)
     }
@@ -173,9 +187,18 @@ impl View {
         }
         Ok(rows)
     }
+    /// @cc [owner:spolu,label:security;concurrency] validate-hinted-child
+    /// A name hint MUST NOT establish existence or authority. Consume a hinted object's result or
+    /// error only after this transaction's live child index resolves to the hinted ID. Missing or
+    /// changed entries MUST ignore unused speculative results. The object's ID, parent, and name
+    /// MUST match the live index; all reads MUST retain this transaction's conflict tracking.
     pub async fn child(&self, parent: &str, name: &str) -> Result<Option<Record>> {
-        let value = match &self.prefetched_child {
-            Some(child) if child.parent == parent && child.name == name => child.bytes.clone()?,
+        let prefetched = self
+            .prefetched_child
+            .as_ref()
+            .filter(|child| child.parent == parent && child.name == name);
+        let value = match prefetched {
+            Some(child) => child.bytes.clone()?,
             _ => self.get(&self.keys.child(parent, name)?).await?,
         };
         let Some(value) = value else {
@@ -185,13 +208,22 @@ impl View {
             .map_err(failed)?
             .simple()
             .to_string();
-        let child = self.object(&id).await?;
+        let hinted = prefetched
+            .and_then(|child| child.object.as_ref())
+            .filter(|(hint, _)| hint == &id);
+        let child = match hinted {
+            Some((_, bytes)) => self.object_record(&id, bytes.clone()?).await?,
+            None => self.object(&id).await?,
+        };
         if !child
             .parent
             .as_ref()
             .is_some_and(|p| p.id == parent && p.name == name)
         {
             return Err(status(ErrorCode::Unavailable));
+        }
+        if let Some(hints) = &self.ancestry {
+            hints.remember_child(&self.keys, parent, name, &id).await;
         }
         Ok(Some(child))
     }
@@ -514,7 +546,7 @@ fn shared_name(record: &Record) -> Result<String> {
     }
     Ok(format!("{}--{}", &name[..end], record.object.id))
 }
-fn entry_size(entry: &Entry) -> usize {
+pub(crate) fn entry_size(entry: &Entry) -> usize {
     entry.name.len()
         + entry.object.as_ref().map_or(0, |o| {
             o.mime_type.len()

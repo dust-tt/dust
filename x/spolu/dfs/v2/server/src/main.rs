@@ -6,6 +6,7 @@ use dfs_server_v2::{
     api::Api,
     search::{Search, SearchConfig},
     storage::{Storage, StorageConfig},
+    writeback::WritebackConfig,
 };
 use std::{
     net::SocketAddr,
@@ -39,6 +40,8 @@ struct Config {
     storage: StorageConfig,
     #[command(flatten)]
     search: SearchConfig,
+    #[command(flatten)]
+    writeback: WritebackConfig,
 }
 fn main() -> Result<()> {
     dfs_server_v2::network::run(run())
@@ -59,7 +62,7 @@ async fn run() -> Result<()> {
     );
     let key = read_key(&config.server_key_file).context("read server key")?;
     let storage = Storage::open(&config.storage).await?;
-    let state = State::new(storage, &key)?;
+    let state = State::with_writeback(storage, &key, config.writeback)?;
     let search = Search::open(config.search)?;
     state
         .search
