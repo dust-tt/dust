@@ -1,6 +1,5 @@
 import type { WhitelistableFeature } from "../../shared/feature_flags";
 import {
-  CLAUDE_OPUS_4_8_MODEL_ID,
   CLAUDE_OPUS_5_5_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
   CLAUDE_SONNET_5_MODEL_ID,
@@ -159,11 +158,6 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
         providerId: "openai",
         modelId: GPT_6_1_SOL_MODEL_ID,
         reasoningEffort: "xhigh",
-      },
-      {
-        providerId: "anthropic",
-        modelId: CLAUDE_OPUS_4_8_MODEL_ID,
-        reasoningEffort: "high",
       },
       {
         providerId: "google_ai_studio",
