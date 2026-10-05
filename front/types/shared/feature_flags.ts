@@ -1,10 +1,4 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
-  group_management: {
-    description:
-      "Delegate group membership and usage management to group managers",
-    stage: "ask_owner",
-    owner: "philipperolet",
-  },
   dust_lean_agent: {
     description:
       "Enable @dust-lean, a Dust agent that starts without tools, skills, or company knowledge",

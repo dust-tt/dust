@@ -1,5 +1,4 @@
 import { Authenticator } from "@app/lib/auth";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -104,11 +103,10 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
   });
 
   it("updates managers without changing a provisioned group's members", async () => {
-    const { workspace, auth } = await createPrivateApiMockRequest({
+    const { workspace } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "manager",
     });
-    await FeatureFlagFactory.basic(auth, "group_management");
     const alice = await UserFactory.basic();
     const bob = await UserFactory.basic();
     await MembershipFactory.associate(workspace, alice, { role: "user" });
@@ -145,7 +143,6 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
       method: "PATCH",
       role: "admin",
     });
-    await FeatureFlagFactory.basic(auth, "group_management");
     const alice = await UserFactory.basic();
     await MembershipFactory.associate(workspace, alice, { role: "user" });
     const outsider = await UserFactory.basic();
@@ -167,8 +164,8 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
     expect(body.managers).toEqual([]);
   });
 
-  it("rejects ordinary users and keeps assignments behind the feature flag", async () => {
-    const { workspace, auth } = await createPrivateApiMockRequest({
+  it("rejects ordinary users appointing group managers", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "admin",
     });
@@ -176,12 +173,6 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
     const alice = await UserFactory.basic();
     await MembershipFactory.associate(workspace, alice, { role: "user" });
 
-    const disabled = await patchGroupRequest(workspace.sId, group.sId, {
-      managerDiff: { add: [alice.sId], remove: [] },
-    });
-    expect(disabled.status).toBe(403);
-
-    await FeatureFlagFactory.basic(auth, "group_management");
     await createPrivateApiMockRequest({
       method: "PATCH",
       role: "user",

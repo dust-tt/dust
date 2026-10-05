@@ -2,7 +2,6 @@ import { updateGroupManagers } from "@app/lib/api/groups/manager_assignments";
 import { Authenticator } from "@app/lib/auth";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -470,8 +469,6 @@ describe("managed People reads", () => {
       limit: "1",
       offset: "1",
     });
-    expect((await honoApp.request(managedUrl)).status).toBe(403);
-    await FeatureFlagFactory.basic(adminAuth, "group_management");
     const page = await (await honoApp.request(managedUrl)).json();
     expect(page.total).toBe(2);
     expect(page.members).toHaveLength(1);
@@ -539,7 +536,6 @@ describe("managed People reads", () => {
     );
     const group = await GroupFactory.provisioned(workspace, "Empty");
     await updateGroupManagers(adminAuth, group, [user.sId], []);
-    await FeatureFlagFactory.basic(adminAuth, "group_management");
     const response = await honoApp.request(
       searchUrl(workspace.sId, { managedOnly: "true" })
     );

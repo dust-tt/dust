@@ -4,7 +4,6 @@ import type {
   MemberRowData,
   SearchMemberType,
 } from "@app/components/members/MemberSelectionTable";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useGroup, useUpdateGroup } from "@app/lib/swr/groups";
 import type { GroupWithAllowedActions } from "@app/types/api/groups";
 import type { LightUserType, LightWorkspaceType } from "@app/types/user";
@@ -91,7 +90,6 @@ function ProvisionedGroupDetails({
   onClose: () => void;
 }) {
   const { t } = useLingui();
-  const { hasFeature } = useFeatureFlags();
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
@@ -172,11 +170,9 @@ function ProvisionedGroupDetails({
           <p className="text-sm italic text-muted-foreground">
             {t(PROVISIONED_GROUP_TOOLTIP)}
           </p>
-          {hasFeature("group_management") && (
-            <h3 className="text-sm font-semibold">
-              <Trans>Group members ({memberCount})</Trans>
-            </h3>
-          )}
+          <h3 className="text-sm font-semibold">
+            <Trans>Group members ({memberCount})</Trans>
+          </h3>
           {rows.length > 0 ? (
             <DataTable
               data={rows}

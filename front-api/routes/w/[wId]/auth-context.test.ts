@@ -3,14 +3,13 @@ import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { USER_LOCALE_METADATA_KEY } from "@app/types/locale";
 import { honoApp } from "@front-api/app";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 describe("GET /api/w/:wId/auth-context group management", () => {
-  it("returns only eligible managed groups when enabled", async () => {
+  it("returns only eligible managed groups", async () => {
     const { workspace, user } = await createPrivateApiMockRequest();
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
@@ -37,11 +36,6 @@ describe("GET /api/w/:wId/auth-context group management", () => {
     }
 
     const url = `/api/w/${workspace.sId}/auth-context`;
-    expect(
-      (await (await honoApp.request(url)).json()).groupManagement
-    ).toBeUndefined();
-
-    await FeatureFlagFactory.basic(adminAuth, "group_management");
     const response = await honoApp.request(url);
     expect(response.status).toBe(200);
     const { groupManagement } = await response.json();

@@ -1,7 +1,6 @@
 import { updateGroupManagers } from "@app/lib/api/groups/manager_assignments";
 import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -296,7 +295,7 @@ describe("DELETE /api/w/:wId/members/:uId/groups/:groupId", () => {
 });
 
 describe("delegated membership writes", () => {
-  it("allows scoped membership edits but rejects disabled, unrelated, and restricted edits", async () => {
+  it("allows scoped membership edits but rejects unrelated and restricted edits", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       role: "user",
     });
@@ -326,8 +325,6 @@ describe("delegated membership writes", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-    expect((await addSelf(manual.sId)).status).toBe(403);
-    await FeatureFlagFactory.basic(adminAuth, "group_management");
     expect((await addSelf(other.sId)).status).toBe(403);
     expect((await addSelf(provisioned.sId)).status).toBe(404);
     expect((await addSelf(admins.sId)).status).toBe(403);
@@ -389,7 +386,6 @@ describe("delegated membership writes", () => {
       grantedRole: "manager",
     });
     await updateGroupManagers(adminAuth, group, [user.sId], []);
-    await FeatureFlagFactory.basic(adminAuth, "group_management");
     expect(
       (await postMemberGroup(workspace, user.sId, { groupId: group.sId }))
         .status
