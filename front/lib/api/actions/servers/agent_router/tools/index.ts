@@ -4,10 +4,14 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { AGENT_ROUTER_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_router/metadata";
 import { getSuggestedAgentsForContent } from "@app/lib/api/assistant/agent_suggestion";
 import apiConfig from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
 import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { getHeadersFromRequestedGroupIds } from "@app/types/groups";
+import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { getHeaderFromUserEmail } from "@app/types/user";
 import { DustAPI } from "@dust-tt/client";
@@ -19,13 +23,18 @@ const handlers: ToolHandlers<typeof AGENT_ROUTER_TOOLS_METADATA> = {
     const owner = auth.getNonNullableWorkspace();
     const user = auth.user();
 
+    const scopeHeadersRes = await getScopeHeaders(auth);
+    if (scopeHeadersRes.isErr()) {
+      return scopeHeadersRes;
+    }
+
     const prodCredentials = await prodAPICredentialsForOwner(owner);
     const api = new DustAPI(
       apiConfig.getDustAPIConfig(),
       {
         ...prodCredentials,
         extraHeaders: {
-          ...getHeaderFromUserEmail(user?.email),
+          ...scopeHeadersRes.value,
           ...getApiKeyNameHeader(auth),
         },
       },
@@ -65,13 +74,18 @@ const handlers: ToolHandlers<typeof AGENT_ROUTER_TOOLS_METADATA> = {
     const owner = auth.getNonNullableWorkspace();
     const user = auth.user();
 
+    const scopeHeadersRes = await getScopeHeaders(auth);
+    if (scopeHeadersRes.isErr()) {
+      return scopeHeadersRes;
+    }
+
     const prodCredentials = await prodAPICredentialsForOwner(owner);
     const api = new DustAPI(
       apiConfig.getDustAPIConfig(),
       {
         ...prodCredentials,
         extraHeaders: {
-          ...getHeaderFromUserEmail(user?.email),
+          ...scopeHeadersRes.value,
           ...getApiKeyNameHeader(auth),
         },
       },
@@ -133,3 +147,29 @@ const handlers: ToolHandlers<typeof AGENT_ROUTER_TOOLS_METADATA> = {
 };
 
 export const TOOLS = buildTools(AGENT_ROUTER_TOOLS_METADATA, handlers);
+
+// Scopes the system-key call to the caller: a user through the email exchange, a userless (API key)
+// caller through its own groups and role.
+async function getScopeHeaders(
+  auth: Authenticator
+): Promise<Result<Record<string, string> | undefined, MCPError>> {
+  const user = auth.user();
+  if (user) {
+    return new Ok(getHeaderFromUserEmail(user.email));
+  }
+
+  const owner = auth.getNonNullableWorkspace();
+  const groupModelIds = await auth.listPrincipalGroupModelIds();
+  const groupHeaders = getHeadersFromRequestedGroupIds(
+    groupModelIds.map((id) =>
+      GroupResource.modelIdToSId({ id, workspaceId: owner.id })
+    ),
+    auth.role()
+  );
+  if (!groupHeaders) {
+    return new Err(
+      new MCPError("No group to list agents for.", { tracked: false })
+    );
+  }
+  return new Ok(groupHeaders);
+}
