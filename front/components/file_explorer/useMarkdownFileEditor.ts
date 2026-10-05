@@ -79,8 +79,6 @@ export function useMarkdownFileEditor({
       : null;
   const canOpenEditor =
     category === "markdown" && !!editablePath && !isTooLarge;
-  // The plain editor edits the preview text; saving it after a cut would truncate the file.
-  const canEdit = canOpenEditor && !isTruncated;
 
   if (isActive !== resetKey.isActive || entryPath !== resetKey.path) {
     setResetKey({ isActive, path: entryPath });
@@ -92,6 +90,9 @@ export function useMarkdownFileEditor({
   }
 
   const isPlainDirty = draft !== savedContent;
+  // The plain editor edits the preview text; saving it after a cut would truncate the file. A
+  // draft already open stays on screen when the file grows past the cut, and `save` refuses it.
+  const canEdit = canOpenEditor && (!isTruncated || isPlainDirty);
 
   useEffect(() => {
     if (
@@ -164,6 +165,15 @@ export function useMarkdownFileEditor({
 
   const save = async () => {
     if (!isPlainDirty || isSaving) {
+      return;
+    }
+    if (isTruncated) {
+      sendNotification({
+        type: "error",
+        title: "File too long to save here",
+        description:
+          "It grew past what the preview can edit. Copy your changes, then reopen the file.",
+      });
       return;
     }
     setIsSaving(true);

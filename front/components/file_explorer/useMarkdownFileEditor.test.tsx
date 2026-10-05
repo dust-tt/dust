@@ -150,6 +150,26 @@ describe("useMarkdownFileEditor", () => {
     expect(result.current.canEdit).toBe(false);
   });
 
+  it("keeps a dirty plain draft when the file grows past the cut, and refuses to save it", async () => {
+    const { result, rerender } = renderHook(
+      (props) => useMarkdownFileEditor(props),
+      { initialProps: params }
+    );
+    act(() => {
+      result.current.setDraft("# Notes\n\nMine");
+    });
+
+    rerender({ ...revised, isTruncated: true });
+    expect(result.current.canEdit).toBe(true);
+    expect(result.current.content).toBe("# Notes\n\nMine");
+
+    const writes = vi.mocked(writeFileContentByPath).mock.calls.length;
+    await act(async () => {
+      await result.current.save();
+    });
+    expect(vi.mocked(writeFileContentByPath).mock.calls.length).toBe(writes);
+  });
+
   it("reopens a clean editor on content written by someone else", () => {
     flags.add("co_edition");
     const { result, rerender } = renderHook(
