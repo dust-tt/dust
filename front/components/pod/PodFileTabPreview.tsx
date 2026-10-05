@@ -1,11 +1,11 @@
 import {
-  CUT_TEXT_SAVE_REFUSED,
   FilePreviewContent,
   useFilePreviewContent,
 } from "@app/components/file_explorer/FilePreviewContent";
 import { FilePreviewFallback } from "@app/components/file_explorer/FilePreviewFallback";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import { MarkdownFilePreviewViewModeSwitch } from "@app/components/file_explorer/MarkdownFilePreview";
+import { CUT_TEXT_SAVE_REFUSED } from "@app/components/file_explorer/previewText";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import { MissingPodFileTabCallout } from "@app/components/pod/MissingPodFileTabCallout";
 import { useSendNotification } from "@app/hooks/useNotification";
