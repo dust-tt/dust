@@ -65,7 +65,8 @@ untouched.
 **3. Annotations** is a `:::annotations` container at the very end of the file. It holds one
 `::comment{id status}` per thread, `status` being `open` or `resolved`, followed by one
 `::message{author name at}` per message. `author` is `user:<id>` or `agent:<id>`, so a thread
-always says whether a human or an agent wrote each message; `name` is the display name in
+always says whether a human or an agent wrote each message; `assistant:<id>` is accepted as well
+for an agent and kept as written; `name` is the display name in
 quotes; `at` is an ISO 8601 timestamp with seconds and a zone. A message body is the Markdown
 that follows until the next directive, and may have several paragraphs. The first message is
 the comment itself, the rest are replies. A thread may exist with no anchor in the body, for

@@ -41,6 +41,7 @@ const TIMESTAMP_PATTERN =
 const AUTHOR_KINDS = [
   "user",
   "agent",
+  "assistant",
 ] as const satisfies readonly DfmAuthorKind[];
 const COMMENT_STATUSES = [
   "open",

@@ -1,4 +1,4 @@
-export type DfmAuthorKind = "user" | "agent";
+export type DfmAuthorKind = "user" | "agent" | "assistant";
 
 export interface DfmAuthor {
   kind: DfmAuthorKind;

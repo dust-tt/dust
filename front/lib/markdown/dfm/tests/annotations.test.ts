@@ -45,6 +45,21 @@ describe("annotations block parsing", () => {
     );
   });
 
+  it("accepts an assistant author and writes it back as written", () => {
+    const directive =
+      '::message{author=assistant:dust name="dust" at=2026-10-05T15:39:30Z}';
+    const document = unwrap(
+      parseDfm(withBlock("::comment{id=c1 status=open}", directive, "Done."))
+    );
+
+    expect(document.comments[0].messages[0].author).toEqual({
+      kind: "assistant",
+      id: "dust",
+      name: "dust",
+    });
+    expect(unwrap(serializeDfm(document))).toContain(directive);
+  });
+
   it("round-trips a message whose code span crosses lines with a directive inside", () => {
     const document = withMessage({
       body: "Example `text\n::comment{id=example status=open}\nmore`",
