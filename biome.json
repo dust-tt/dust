@@ -147,6 +147,7 @@
         "front/lib/api/**/*.ts",
         "front/types/**/*.ts",
         "front/temporal/**/*.ts",
+        "!front-api/esbuild*.ts",
         "!**/*.{test,spec}.{ts,tsx}"
       ],
       "plugins": ["./.grit/patterns/noClientImportsInServer.grit"]
