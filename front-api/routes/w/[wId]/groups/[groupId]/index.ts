@@ -296,7 +296,7 @@ app.patch(
               message: updateRes.error.message,
             },
           });
-        case "conflict":
+        case "group_changed":
         case "name_conflict":
           return apiError(ctx, {
             status_code: 409,

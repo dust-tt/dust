@@ -2194,7 +2194,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       return new Err(new Error("Only admins can update group names."));
     }
 
-    await this.update({ name: newName }, { transaction });
+    await this.update({ name: newName }, transaction);
     return new Ok(undefined);
   }
 
@@ -2242,7 +2242,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     Result<
       { addedUsers: UserType[]; removedUsers: UserType[] },
       DustError<
-        | "conflict"
+        | "group_changed"
         | "unauthorized"
         | "name_conflict"
         | "user_not_found"
@@ -2290,7 +2290,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         ) {
           return new Err(
             new DustError(
-              "conflict",
+              "group_changed",
               "Group members changed. Reopen the group and try again."
             )
           );
