@@ -2,7 +2,7 @@ import type {
   DocumentDraftState,
   DocumentSaveResult,
 } from "@app/components/editor/document";
-import type { PutFileContentError } from "@app/lib/swr/files";
+import type { WriteFileContentError } from "@app/lib/swr/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { useEffect, useRef, useState } from "react";
@@ -19,7 +19,7 @@ export interface MarkdownRichEditor {
 /** The outcome of a conditional file write: the stored revision, or why nothing was written. */
 export type FileWriteResult = Result<
   { revision: string | null },
-  PutFileContentError
+  WriteFileContentError
 >;
 
 interface UseRichMarkdownEditorParams {

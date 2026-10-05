@@ -163,7 +163,7 @@ export function useMarkdownFileEditor({
         message: "This file cannot be edited.",
       });
     }
-    return putFileContentByPath({
+    return writeFileContentByPath({
       owner,
       canonicalPath: editablePath,
       content,

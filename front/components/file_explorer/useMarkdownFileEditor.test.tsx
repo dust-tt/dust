@@ -1,5 +1,5 @@
 import { useMarkdownFileEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
-import { putFileContentByPath } from "@app/lib/swr/files";
+import { writeFileContentByPath } from "@app/lib/swr/files";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { act, renderHook } from "@testing-library/react";
@@ -59,8 +59,8 @@ const revised = {
 describe("useMarkdownFileEditor", () => {
   beforeEach(() => {
     flags.clear();
-    vi.mocked(putFileContentByPath).mockReset();
-    vi.mocked(putFileContentByPath).mockResolvedValue(
+    vi.mocked(writeFileContentByPath).mockReset();
+    vi.mocked(writeFileContentByPath).mockResolvedValue(
       new Ok({ revision: "2" })
     );
   });
@@ -415,14 +415,14 @@ describe("useMarkdownFileEditor", () => {
       await result.current.richEditor?.onSave("# Notes, mine\n");
     });
 
-    expect(vi.mocked(putFileContentByPath)).toHaveBeenCalledWith(
+    expect(vi.mocked(writeFileContentByPath)).toHaveBeenCalledWith(
       expect.objectContaining({ content: "# Notes, mine\n", revision: "1" })
     );
     rerender({ ...params, rawContent: "# Notes, mine\n", revision: "2" });
     await act(async () => {
       await result.current.richEditor?.onSave("# Notes, more\n");
     });
-    expect(vi.mocked(putFileContentByPath)).toHaveBeenLastCalledWith(
+    expect(vi.mocked(writeFileContentByPath)).toHaveBeenLastCalledWith(
       expect.objectContaining({ content: "# Notes, more\n", revision: "2" })
     );
   });
@@ -436,7 +436,7 @@ describe("useMarkdownFileEditor", () => {
       await result.current.save();
     });
 
-    expect(vi.mocked(putFileContentByPath)).toHaveBeenLastCalledWith(
+    expect(vi.mocked(writeFileContentByPath)).toHaveBeenLastCalledWith(
       expect.objectContaining({ content: "# Notes\n\nMine", revision: null })
     );
   });
@@ -459,7 +459,7 @@ describe("useMarkdownFileEditor", () => {
       await result.current.save();
     });
 
-    expect(vi.mocked(putFileContentByPath)).toHaveBeenLastCalledWith(
+    expect(vi.mocked(writeFileContentByPath)).toHaveBeenLastCalledWith(
       expect.objectContaining({ content: "# Notes\n\nMine", revision: "1" })
     );
   });
@@ -480,7 +480,7 @@ describe("useMarkdownFileEditor", () => {
       await result.current.richEditor?.onSave("# Notes, more\n");
     });
 
-    expect(vi.mocked(putFileContentByPath)).toHaveBeenLastCalledWith(
+    expect(vi.mocked(writeFileContentByPath)).toHaveBeenLastCalledWith(
       expect.objectContaining({ content: "# Notes, more\n", revision: "2" })
     );
   });
@@ -502,7 +502,7 @@ describe("useMarkdownFileEditor", () => {
       await result.current.save();
     });
 
-    expect(vi.mocked(putFileContentByPath)).toHaveBeenLastCalledWith(
+    expect(vi.mocked(writeFileContentByPath)).toHaveBeenLastCalledWith(
       expect.objectContaining({ revision: "2" })
     );
   });
@@ -519,7 +519,7 @@ describe("useMarkdownFileEditor", () => {
       await result.current.richEditor?.onSave("# Notes, mine\n");
     });
 
-    expect(vi.mocked(putFileContentByPath)).toHaveBeenLastCalledWith(
+    expect(vi.mocked(writeFileContentByPath)).toHaveBeenLastCalledWith(
       expect.objectContaining({ revision: "2" })
     );
   });
@@ -528,13 +528,19 @@ describe("useMarkdownFileEditor", () => {
     flags.add("co_edition");
     // A write mock that checks revisions like the route does.
     let stored = "1";
-    vi.mocked(putFileContentByPath).mockImplementation(async ({ revision }) => {
-      if (revision !== null && revision !== undefined && revision !== stored) {
-        return new Err({ code: "conflict", message: "changed" });
+    vi.mocked(writeFileContentByPath).mockImplementation(
+      async ({ revision }) => {
+        if (
+          revision !== null &&
+          revision !== undefined &&
+          revision !== stored
+        ) {
+          return new Err({ code: "conflict", message: "changed" });
+        }
+        stored = String(Number(stored) + 1);
+        return new Ok({ revision: stored });
       }
-      stored = String(Number(stored) + 1);
-      return new Ok({ revision: stored });
-    });
+    );
     const { result } = renderHook(() => useMarkdownFileEditor(params));
     // The editor captures onSave once, as its unmount flush does.
     const onSave = result.current.richEditor?.onSave;
@@ -578,14 +584,14 @@ describe("useMarkdownFileEditor", () => {
       await onSave?.("# Notes, last\n");
     });
 
-    expect(vi.mocked(putFileContentByPath)).toHaveBeenLastCalledWith(
+    expect(vi.mocked(writeFileContentByPath)).toHaveBeenLastCalledWith(
       expect.objectContaining({ content: "# Notes, last\n", revision: "2" })
     );
   });
 
   it("refuses to save when the server reports a newer revision", async () => {
     flags.add("co_edition");
-    vi.mocked(putFileContentByPath).mockResolvedValueOnce(
+    vi.mocked(writeFileContentByPath).mockResolvedValueOnce(
       new Err({
         code: "conflict",
         message: "This file changed since it was loaded.",

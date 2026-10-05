@@ -175,7 +175,7 @@ export function PodFileTabPreview({
 
     setIsMarkdownSaving(true);
     try {
-      const result = await putFileContentByPath({
+      const result = await writeFileContentByPath({
         owner,
         canonicalPath: editableMarkdownFilePath,
         content: markdownDraft,

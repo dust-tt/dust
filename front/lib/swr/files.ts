@@ -19,6 +19,9 @@ import {
   DUST_FILE_CAN_WRITE_HEADER,
   DUST_FILE_CONTENT_TYPE_HEADER,
   DUST_FILE_ID_HEADER,
+  DUST_FILE_REVISION_HEADER,
+  DUST_IF_REVISION_MATCH_HEADER,
+  FileRevisionSchema,
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -286,29 +289,50 @@ export function useFileContentByUrl({
   };
 }
 
+export type WriteFileContentError =
+  /** The file changed since `revision` was read; nothing was written. */
+  { code: "conflict"; message: string } | { code: "failed"; message: string };
+
+/**
+ * Writes `content` at `canonicalPath`. With `revision`, the write is conditional: the server
+ * refuses it when the stored revision moved, and the caller gets `conflict` instead of
+ * overwriting. The returned revision is the one just stored, when the backend reports one.
+ */
 export async function writeFileContentByPath({
   owner,
   canonicalPath,
   content,
   contentType = "text/plain",
+  revision = null,
 }: {
   owner: LightWorkspaceType;
   canonicalPath: string;
   content: string;
   contentType?: string;
-}): Promise<Result<void, Error>> {
+  revision?: string | null;
+}): Promise<Result<{ revision: string | null }, WriteFileContentError>> {
   const url = getFilePathContentApiPath(owner, canonicalPath);
+  const headers: Record<string, string> = { "Content-Type": contentType };
+  if (revision !== null) {
+    headers[DUST_IF_REVISION_MATCH_HEADER] = revision;
+  }
   let response: Response;
   try {
     response = await clientFetch(url, {
       method: "PUT",
-      headers: { "Content-Type": contentType },
+      headers,
       body: content,
     });
   } catch (e) {
-    return new Err(normalizeError(e));
+    return new Err({ code: "failed", message: normalizeError(e).message });
   }
 
+  if (response.status === 412) {
+    return new Err({
+      code: "conflict",
+      message: "This file changed since it was loaded.",
+    });
+  }
   if (!response.ok) {
     const errorData = await getErrorFromResponse(response);
     return new Err({ code: "failed", message: errorData.message });
@@ -444,7 +468,7 @@ export function useWriteFileContentByPath({
         title: "Failed to save file",
         description: result.error.message,
       });
-      return result;
+      return new Err(new Error(result.error.message));
     }
 
     await mutate<FileContentByUrlData>(
