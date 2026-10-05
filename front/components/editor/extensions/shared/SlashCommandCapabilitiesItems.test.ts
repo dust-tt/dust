@@ -381,9 +381,13 @@ describe("getToolSlashCommandItem", () => {
 });
 
 describe("buildCapabilitySlashCommandItems", () => {
-  it("reranks search results by autocomplete relevance", () => {
+  it.each([
+    "guide",
+    "",
+    "   ",
+  ])("preserves search result order for query %j", (query) => {
     const result = buildCapabilitySlashCommandItems({
-      query: "guide",
+      query,
       useSearchRanking: true,
       skills: [
         skillSuggestion({ name: "Create detailed guide", sId: "a" }),
@@ -391,29 +395,31 @@ describe("buildCapabilitySlashCommandItems", () => {
       ],
       tools: [],
     });
-    expect(result.map((item) => item.id)).toEqual(["b", "a"]);
+    expect(result.map((item) => item.id)).toEqual(["a", "b"]);
   });
 
-  it("ranks skills and locally matched tools together", () => {
+  it("interleaves matching tools without reordering skills", () => {
     const result = buildCapabilitySlashCommandItems({
       query: "guide",
       useSearchRanking: true,
       skills: [
-        skillSuggestion({ name: "Guide builder", sId: "prefix" }),
+        skillSuggestion({ name: "Guide", sId: "exact" }),
         {
           ...skillSuggestion({ name: "A guide", sId: "substring" }),
           isFavorite: true,
         },
+        skillSuggestion({ name: "Guide builder", sId: "prefix" }),
       ],
       tools: [
-        toolSuggestion({ label: "Guide", sId: "tool" }),
+        toolSuggestion({ label: "Guide helper", sId: "tool" }),
         toolSuggestion({ label: "Unrelated", sId: "unrelated-tool" }),
       ],
     });
     expect(result.map((item) => item.id)).toEqual([
+      "exact",
       "tool",
-      "prefix",
       "substring",
+      "prefix",
     ]);
   });
 
@@ -429,8 +435,8 @@ describe("buildCapabilitySlashCommandItems", () => {
       tools: [],
     });
     expect(result.map((item) => item.id)).toEqual([
-      "go-deep",
       "custom",
+      "go-deep",
       "unrelated",
     ]);
   });

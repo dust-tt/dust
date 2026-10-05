@@ -78,7 +78,7 @@ describe.each([
   it.each([
     "",
     "   ",
-  ])("uses only the search endpoint for alphabetical favorites with query %j", async (query) => {
+  ])("preserves the search endpoint's favorite order with query %j", async (query) => {
     const { owner, fetcher, fetcherWithBody, wrapper } = await setup();
     const { result } = renderHook(() => useCapabilities({ owner, query }), {
       wrapper,
@@ -86,8 +86,8 @@ describe.each([
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.capabilityItems.map((item) => item.id)).toEqual([
-      "beta",
       "zulu",
+      "beta",
     ]);
     expect(fetcherWithBody).toHaveBeenCalledOnce();
     expect(fetcher.mock.calls.some(([url]) => url.includes("/skills"))).toBe(

@@ -38,9 +38,9 @@ export function filterSlashCommandItems(
 
 /**
  * @cc [owner:aubin-tchoi,label:product] slash-search-alias-ranking
- * Search-backed skills MUST remain in the candidate list even when their names do not match
- * locally. Exact aliases MUST rank like names, and partial aliases below matching names.
- * Suggestions MUST display the skill's canonical name.
+ * Search-backed skills MUST retain their server order and MUST NOT be filtered by the local
+ * query. Tools MAY be interleaved by local relevance without changing the relative order of
+ * skills. Empty queries MUST place tools after skills. Suggestions MUST display canonical names.
  */
 export function buildCapabilitySlashCommandItems<
   V extends MCPServerViewLightType,
@@ -84,35 +84,42 @@ export function buildCapabilitySlashCommandItems<
   ];
 
   const normalizedQuery = query.trim().toLowerCase();
-  const matches = useSearchRanking
-    ? [
-        ...items.filter((item) => item.kind === "skill"),
-        ...searchCapabilityIndex({
-          query,
-          items: items.filter((item) => item.kind === "tool"),
-        }),
-      ]
-        .toSorted((a, b) => {
-          if (normalizedQuery.length === 0 && a.kind !== b.kind) {
-            return a.kind === "skill" ? -1 : 1;
-          }
-          const aMatch = getBestMatchingName({ item: a, normalizedQuery });
-          const bMatch = getBestMatchingName({ item: b, normalizedQuery });
-          return (
-            (aMatch && bMatch
-              ? Number(aMatch.isLowPriorityAlias) -
-                Number(bMatch.isLowPriorityAlias)
-              : 0) ||
+  let matches: typeof items;
+  if (useSearchRanking) {
+    const skillItems = items.filter((item) => item.kind === "skill");
+    const toolItems = searchCapabilityIndex({
+      query,
+      items: items.filter((item) => item.kind === "tool"),
+    });
+    matches = [];
+    let toolIndex = 0;
+    for (const skill of skillItems) {
+      const skillMatch = getBestMatchingName({ item: skill, normalizedQuery });
+      while (normalizedQuery.length > 0 && toolIndex < toolItems.length) {
+        const tool = toolItems[toolIndex];
+        const toolMatch = getBestMatchingName({ item: tool, normalizedQuery });
+        if (
+          !toolMatch ||
+          (skillMatch &&
+            !skillMatch.isLowPriorityAlias &&
             compareForAutocompleteSort(
               normalizedQuery,
-              aMatch?.name ?? a.sortName,
-              bMatch?.name ?? b.sortName
-            ) ||
-            compareForAutocompleteSort(normalizedQuery, a.sortName, b.sortName)
-          );
-        })
-        .slice(0, MAX_RENDERED_CAPABILITY_ITEMS)
-    : searchCapabilityIndex({ query, items });
+              toolMatch.name,
+              skillMatch.name
+            ) >= 0)
+        ) {
+          break;
+        }
+        matches.push(tool);
+        toolIndex++;
+      }
+      matches.push(skill);
+    }
+    matches.push(...toolItems.slice(toolIndex));
+    matches = matches.slice(0, MAX_RENDERED_CAPABILITY_ITEMS);
+  } else {
+    matches = searchCapabilityIndex({ query, items });
+  }
 
   return removeNulls(
     matches.map((match) => {
