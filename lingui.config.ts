@@ -23,6 +23,6 @@ export default defineConfig({
       ],
     },
   ],
-  orderBy: "messageId",
+  orderBy: "origin",
   format: formatter({ lineNumbers: false }),
 });
