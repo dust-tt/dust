@@ -10,6 +10,7 @@ import { GroupPinnedItemModel } from "@app/lib/resources/storage/models/group_pi
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { DiscoveryItemType } from "@app/types/api/discovery";
 import { isSkillVisibleToViewer } from "@app/types/assistant/skill_configuration";
@@ -87,7 +88,7 @@ function resolvedDiscoveryItem(
   pin: DiscoveryItemResource,
   agentsById: Map<string, AgentResource>,
   skillsById: Map<string, SkillResource>,
-  skillAuthorsById: Map<string, string[]>
+  skillEditorsById: Map<string, UserResource[] | null>
 ): ResolvedDiscoveryItem | null {
   switch (pin.type) {
     case "agent": {
@@ -119,7 +120,7 @@ function resolvedDiscoveryItem(
           type: "skill",
           pin: discoveryPinJSON(pin),
           target: target.toDiscoveryJSON({
-            authors: skillAuthorsById.get(target.sId),
+            editors: skillEditorsById.get(target.sId),
           }),
         }),
       };
@@ -178,8 +179,8 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
   /**
    * @cc [owner:aubin-tchoi,label:security;performance] discovery-target-authors
    * Load editors in one batch only for fetched skills that are readable and
-   * satisfy editor visibility. Make their display names available as authors
-   * before serialization, without fetching editors during serialization.
+   * satisfy editor visibility. Return the loaded editor resources for synchronous
+   * serialization, without fetching editors during serialization.
    */
   static async loadTargets(
     auth: Authenticator,
@@ -187,7 +188,7 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
   ): Promise<{
     agentsById: Map<string, AgentResource>;
     skillsById: Map<string, SkillResource>;
-    skillAuthorsById: Map<string, string[]>;
+    skillEditorsById: Map<string, UserResource[] | null>;
   }> {
     const agentIds = items
       .filter((item) => item.type === "agent")
@@ -215,7 +216,7 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
           viewerCanWrite: auth.can("write", skill),
         })
     );
-    const editorsBySkillId = await SkillResource.batchListEditors(
+    const skillEditorsById = await SkillResource.batchListEditors(
       auth,
       visibleSkills
     );
@@ -231,12 +232,7 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
           .map((agent) => [agent.sId, agent])
       ),
       skillsById: new Map(skills.map((skill) => [skill.sId, skill])),
-      skillAuthorsById: new Map(
-        [...editorsBySkillId].map(([skillId, editors]) => [
-          skillId,
-          (editors ?? []).map((editor) => editor.fullName()),
-        ])
-      ),
+      skillEditorsById,
     };
   }
 
@@ -244,13 +240,13 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
     auth: Authenticator,
     items: DiscoveryItemResource[]
   ): Promise<ResolvedDiscoveryItem[]> {
-    const { agentsById, skillsById, skillAuthorsById } = await this.loadTargets(
+    const { agentsById, skillsById, skillEditorsById } = await this.loadTargets(
       auth,
       items
     );
     return removeNulls(
       items.map((pin) =>
-        resolvedDiscoveryItem(pin, agentsById, skillsById, skillAuthorsById)
+        resolvedDiscoveryItem(pin, agentsById, skillsById, skillEditorsById)
       )
     );
   }
@@ -415,7 +411,7 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
     }
 
     const workspaceModelId = auth.getNonNullableWorkspace().id;
-    const { agentsById, skillsById, skillAuthorsById } = await this.loadTargets(
+    const { agentsById, skillsById, skillEditorsById } = await this.loadTargets(
       auth,
       [item]
     );
@@ -500,7 +496,7 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
         new this(this.model, row.get()),
         agentsById,
         skillsById,
-        skillAuthorsById
+        skillEditorsById
       );
       if (!resolved) {
         return new Err(

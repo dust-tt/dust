@@ -153,7 +153,7 @@ async function resolveViewerVisibleItems(
   auth: Authenticator,
   candidates: { resourceType: SearchUsageDimension; resourceId: string }[]
 ): Promise<DiscoveryRankedItemType[]> {
-  const { agentsById, skillsById, skillAuthorsById } =
+  const { agentsById, skillsById, skillEditorsById } =
     await DiscoveryItemResource.loadTargets(
       auth,
       candidates.map(({ resourceType, resourceId }) => ({
@@ -190,7 +190,7 @@ async function resolveViewerVisibleItems(
               ? {
                   type: "skill",
                   target: skill.toDiscoveryJSON({
-                    authors: skillAuthorsById.get(skill.sId),
+                    editors: skillEditorsById.get(skill.sId),
                   }),
                 }
               : null;

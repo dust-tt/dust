@@ -5199,9 +5199,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    * editing user as Dust-provided, matching the skill list's attribution.
    */
   toDiscoveryJSON({
-    authors,
+    editors,
   }: {
-    authors?: string[];
+    editors?: UserResource[] | null;
   } = {}): DiscoverySkillType {
     return {
       sId: this.sId,
@@ -5210,7 +5210,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       icon: this.icon ?? null,
       isDustProvided:
         this.codeDefinedSkillId !== null || this.editedBy === null,
-      ...(authors !== undefined ? { authors } : {}),
+      ...(editors !== undefined
+        ? { authors: (editors ?? []).map((editor) => editor.fullName()) }
+        : {}),
     };
   }
 
