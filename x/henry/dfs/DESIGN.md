@@ -201,8 +201,6 @@ Two Spolu references:
   his five knobs (commit batch intervals, server and client busy-wait). Same machine class, faster
   FDB settings than ours.
 
-Both use kernel caching (attribute/entry TTLs, page cache, writeback); we use none.
-
 ## Results (2026-10-05)
 
 10k-file untar (then drain): **1.96 s at 1 s, 1.89 s at 8 s**, vs Spolu pinned 65.6 s and Spolu
@@ -227,12 +225,10 @@ jd's rows, ms, `first / warm`:
 
 Reading the table:
 
-* Against Spolu pinned (same FDB), we win every `first` row and every write row; we lose the
-  `warm` rows that his kernel page cache and dentry cache serve without a FUSE round trip (rg scans,
-  globs, stat missing, pread).
-* Against Spolu latest (tuned FDB), we win every `first` row except `stat missing` and `pread`
-  (sparse lookups: one listing fetch per directory costs more than his per-name lookup on tuned
-  FDB), and lose most `warm` rows for the same kernel-cache reason.
+* Against Spolu pinned (same FDB), we win every `first` row and every write row, and lose the `warm`
+  rg scans, globs, stat missing and pread.
+* Against Spolu latest (tuned FDB), we win every `first` row except `stat missing` and `pread`, and
+  lose most `warm` rows. Sparse first-touch lookups pay one listing fetch per directory.
 * Warm rows are bounded by FUSE round trips: every path component is a `LOOKUP` (TTL 0), every read
   a FUSE `READ` (direct I/O). At ≈ 3–5 µs per request on one thread, rg's warm scans cost
   ≈ 10 requests per file.
