@@ -1,5 +1,6 @@
 // Shared by Document and its hook to avoid circular type imports.
 import type { Result } from "@app/types/shared/result";
+import type { ReactNode } from "react";
 
 /** Ok once the content is stored, Err with a message the editor shows next to Retry. */
 export type DocumentSaveResult = Result<void, string>;
@@ -18,6 +19,8 @@ export interface DocumentProps {
   onSave?: (content: string) => Promise<DocumentSaveResult>;
   /** Reports the draft state, so the host can hold navigation while edits are unsaved. */
   onStateChange?: (state: DocumentDraftState) => void;
+  /** Shown at the left of the status row, the save status at its right: a marker from the host. */
+  badge?: ReactNode;
 }
 
 export interface DocumentDraftState {

@@ -2,7 +2,10 @@ import {
   DocumentBlockMenu,
   useDocumentBlockMenu,
 } from "@app/components/editor/document/DocumentBlockMenu";
-import { DocumentSaveStatus } from "@app/components/editor/document/DocumentSaveStatus";
+import {
+  DocumentSaveStatus,
+  StatusRow,
+} from "@app/components/editor/document/DocumentSaveStatus";
 import { DocumentSelectionToolbar } from "@app/components/editor/document/DocumentSelectionToolbar";
 import { DocumentSourcePreview } from "@app/components/editor/document/DocumentSourcePreview";
 import type { DocumentProps } from "@app/components/editor/document/types";
@@ -41,6 +44,7 @@ export const Document = ({
   autosaveDebounceMs = DEFAULT_AUTOSAVE_DEBOUNCE_MS,
   onSave,
   onStateChange,
+  badge,
 }: DocumentProps) => {
   const { editor, editable, unsupported, dirty, saving, error, save } =
     useDocumentEditor({
@@ -77,11 +81,17 @@ export const Document = ({
 
   if (unsupported !== null) {
     return (
-      <DocumentSourcePreview
-        source={unsupported.source}
-        reason={unsupported.reason}
-        className={className}
-      />
+      <div className={className}>
+        {badge && (
+          <div className="mx-auto max-w-[50rem] px-5 pt-8">
+            <StatusRow badge={badge} />
+          </div>
+        )}
+        <DocumentSourcePreview
+          source={unsupported.source}
+          reason={unsupported.reason}
+        />
+      </div>
     );
   }
 
@@ -101,14 +111,17 @@ export const Document = ({
           editable ? "pt-5 @sm:pt-8" : "pt-8 @sm:pt-18"
         )}
       >
-        {(editable || dirty || saving) && (
+        {editable || dirty || saving ? (
           <DocumentSaveStatus
             dirty={dirty}
             saving={saving}
             error={saveError}
             onRetry={editable ? save : undefined}
             autosaveDebounceMs={autosaveDebounceMs}
+            badge={badge}
           />
+        ) : (
+          badge && <StatusRow badge={badge} />
         )}
         {editor && editable && (
           <>
