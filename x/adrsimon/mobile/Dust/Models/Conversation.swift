@@ -126,11 +126,31 @@ private extension ConversationPreview {
     }
 }
 
+private let citeDirectiveRegex = #/:cite\[[^\]]*\](?:\{[^}]*\})?/#
+private let labeledDirectiveRegex = #/:{1,3}[a-z_]+\[(?<label>[^\]]*)\](?:\{[^}]*\})?/#
+private let htmlTagRegex = #/<[^>]*>/#
+private let markdownLinkRegex = #/!?\[(?<text>[^\]]*)\]\([^)]*\)/#
+private let markdownEmphasisRegex = #/\*\*|__|~~|`/#
+
 private extension String {
     static let leadingMarkdownMarkers = "#>-*` "
 
+    /**
+     * @cc [owner:adrsimon,label:product] snippet-is-plain-text
+     * The snippet MUST NOT contain raw directives, tags, or markdown syntax: skill tags become the
+     * skill name, mentions become `@Name`, pasted directives become `📎 title`, citations are
+     * removed, other `:directive[label]{…}` become their label, links become their text.
+     */
     var strippedSnippet: String {
-        let collapsed = split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        let plain = replacing(skillTagRegex) { skillTagName($0.output.attributes).map { "\($0) " } ?? "" }
+            .replacing(mentionDirectiveRegex) { "@\($0.output.name)" }
+            .replacing(pastedDirectiveRegex) { "📎 \($0.output.title) " }
+            .replacing(citeDirectiveRegex, with: "")
+            .replacing(labeledDirectiveRegex) { String($0.output.label) }
+            .replacing(htmlTagRegex, with: "")
+            .replacing(markdownLinkRegex) { String($0.output.text) }
+            .replacing(markdownEmphasisRegex, with: "")
+        let collapsed = plain.split(whereSeparator: \.isWhitespace).joined(separator: " ")
         return String(collapsed.drop(while: { Self.leadingMarkdownMarkers.contains($0) }))
     }
 }
