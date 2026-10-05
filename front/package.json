@@ -188,6 +188,7 @@
     "posthog-js": "^1.266.1",
     "posthog-node": "^5.8.5",
     "prosemirror-changeset": "^2.3.1",
+    "pseudolocale": "^2.3.0",
     "re2-wasm": "^1.0.2",
     "react": "^18.3.1",
     "react-cookie": "^7.2.2",

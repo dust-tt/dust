@@ -36,7 +36,12 @@ function renderUserLocaleSync(onReady?: () => void) {
   return render(
     <>
       <UserLocaleSync onReady={onReady} />
-      <Trans>Untranslated probe</Trans>
+      <span>
+        <Trans>Untranslated probe</Trans>
+      </span>
+      <span>
+        <Trans>Save</Trans>
+      </span>
     </>
   );
 }
@@ -165,5 +170,17 @@ describe("UserLocaleSync", () => {
 
     await waitFor(() => expect(document.documentElement.lang).toBe("en-GB"));
     expect(i18n.locale).toBe("en-GB");
+  });
+
+  it("activates the bracketed pseudo locale with default formatting", async () => {
+    state.hasLocalisation = true;
+    state.userLocale = "fr-FR";
+    setLocaleOverride("pseudo");
+
+    renderUserLocaleSync();
+
+    await waitFor(() => expect(i18n.locale).toBe("pseudo"));
+    expect(screen.getByText("[Śàvē]")).toBeDefined();
+    expect(formatNumber(1234.5)).toBe("1,234.5");
   });
 });
