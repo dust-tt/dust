@@ -417,17 +417,34 @@ describe("useMarkdownFileEditor", () => {
     );
   });
 
+  it("saves a plain draft without a revision when co_edition is off", async () => {
+    const { result } = renderHook(() => useMarkdownFileEditor(params));
+    act(() => {
+      result.current.setDraft("# Notes\n\nMine");
+    });
+    await act(async () => {
+      await result.current.save();
+    });
+
+    expect(vi.mocked(putFileContentByPath)).toHaveBeenLastCalledWith(
+      expect.objectContaining({ content: "# Notes\n\nMine", revision: null })
+    );
+  });
+
+  // With co_edition on, the plain editor still opens files above the write limit.
   it("saves a plain draft against the revision it was loaded from, not a later fetch", async () => {
+    flags.add("co_edition");
+    const large = { ...params, exceedsWriteLimit: true };
     const { result, rerender } = renderHook(
       (props) => useMarkdownFileEditor(props),
-      { initialProps: params }
+      { initialProps: large }
     );
     act(() => {
       result.current.setDraft("# Notes\n\nMine");
     });
 
     // Someone else wrote revision 2 while the draft was dirty.
-    rerender({ ...revised, revision: "2" });
+    rerender({ ...revised, exceedsWriteLimit: true, revision: "2" });
     await act(async () => {
       await result.current.save();
     });
@@ -459,13 +476,15 @@ describe("useMarkdownFileEditor", () => {
   });
 
   it("follows a revision that moved under the same text, in the plain editor", async () => {
+    flags.add("co_edition");
+    const large = { ...params, exceedsWriteLimit: true };
     const { result, rerender } = renderHook(
       (props) => useMarkdownFileEditor(props),
-      { initialProps: params }
+      { initialProps: large }
     );
 
     // Someone else saved identical content as revision 2.
-    rerender({ ...params, revision: "2" });
+    rerender({ ...large, revision: "2" });
     act(() => {
       result.current.setDraft("# Notes\n\nMine");
     });

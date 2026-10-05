@@ -203,7 +203,11 @@ export function useMarkdownFileEditor({
     }
     setIsSaving(true);
     try {
-      const result = await writeFile(draft, savedRevision);
+      // The revision check rolls out with co-edition; without the flag a save overwrites as before.
+      const result = await writeFile(
+        draft,
+        hasFeature("co_edition") ? savedRevision : null
+      );
       if (result.isOk()) {
         await adoptWritten(draft, result.value.revision);
         sendNotification({ type: "success", title: "File saved" });
