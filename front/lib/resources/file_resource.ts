@@ -2891,6 +2891,12 @@ export class FileResource extends BaseResource<FileModel> {
    * scope: callers MUST authorize them through the conversation instead.
    */
   canAccessUnattachedConversationFile(auth: Authenticator): boolean {
+    assert(
+      isConversationFileUseCase(this.useCase) &&
+        !this.useCaseMetadata?.conversationId,
+      "Only unattached conversation files are authorized by their uploader."
+    );
+
     if (auth.isSystemKey()) {
       return true;
     }
