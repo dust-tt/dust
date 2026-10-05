@@ -2,9 +2,12 @@ import {
   makeGroupLimitAwuCreditsRateLimitKeyForGroup,
   makeSpendLimitCycleWindowBounds,
 } from "@app/lib/api/assistant/rate_limits";
-import * as workosAudit from "@app/lib/api/audit/workos_audit";
-import * as membersUsage from "@app/lib/api/credits/members_usage";
-import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
+import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
+import { resolveMetronomeCycle } from "@app/lib/api/credits/members_usage";
+import {
+  ElasticsearchError,
+  searchConsumptionAnalytics,
+} from "@app/lib/api/elasticsearch";
 import {
   areGroupLimitsEnabled,
   MAX_GROUP_LIMIT_AWU_CREDITS,
@@ -16,13 +19,12 @@ import {
 } from "@app/lib/api/groups/group_limit";
 import { Authenticator } from "@app/lib/auth";
 import { microCreditsToCredits } from "@app/lib/credits/units";
-import * as planType from "@app/lib/metronome/plan_type";
-import type * as seatTypes from "@app/lib/metronome/seat_types";
+import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { UserResource } from "@app/lib/resources/user_resource";
-import * as cycle from "@app/lib/spend_limits/cycle";
+import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
 import {
   expireRateLimiterKey,
   getFixedWindowCount,
@@ -51,45 +53,38 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.unmock("@app/lib/api/redis");
 
-vi.mock("@app/lib/metronome/plan_type", async () => {
-  const actual = await vi.importActual<typeof planType>(
-    "@app/lib/metronome/plan_type"
-  );
-  return { ...actual, getActiveContract: vi.fn() };
-});
+vi.mock(import("@app/lib/metronome/plan_type"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  getActiveContract: vi.fn(),
+}));
 
-vi.mock("@app/lib/metronome/seat_types", async () => {
-  const actual = await vi.importActual<typeof seatTypes>(
-    "@app/lib/metronome/seat_types"
-  );
-  return { ...actual, getProductSeatTypes: vi.fn() };
-});
+vi.mock(import("@app/lib/metronome/seat_types"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  getProductSeatTypes: vi.fn(),
+}));
 
-vi.mock("@app/lib/api/audit/workos_audit", async () => {
-  const actual = await vi.importActual<typeof workosAudit>(
-    "@app/lib/api/audit/workos_audit"
-  );
-  return { ...actual, emitAuditLogEvent: vi.fn() };
-});
+vi.mock(import("@app/lib/api/audit/workos_audit"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  emitAuditLogEvent: vi.fn(),
+}));
 
-vi.mock("@app/lib/spend_limits/cycle", async () => {
-  const actual = await vi.importActual<typeof cycle>(
-    "@app/lib/spend_limits/cycle"
-  );
-  return { ...actual, resolveSpendLimitCycleBounds: vi.fn() };
-});
+vi.mock(import("@app/lib/spend_limits/cycle"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  resolveSpendLimitCycleBounds: vi.fn(),
+}));
 
 vi.mock(import("@app/lib/api/elasticsearch"), async (orig) => {
   const mod = await orig();
   return { ...mod, searchConsumptionAnalytics: vi.fn() };
 });
 
-vi.mock("@app/lib/api/credits/members_usage", async () => {
-  const actual = await vi.importActual<typeof membersUsage>(
-    "@app/lib/api/credits/members_usage"
-  );
-  return { ...actual, resolveMetronomeCycle: vi.fn() };
-});
+vi.mock(
+  import("@app/lib/api/credits/members_usage"),
+  async (importOriginal) => ({
+    ...(await importOriginal()),
+    resolveMetronomeCycle: vi.fn(),
+  })
+);
 
 const AUDIT_CONTEXT = { location: "127.0.0.1" };
 
@@ -105,9 +100,9 @@ const BOUNDS = makeSpendLimitCycleWindowBounds(
 
 beforeEach(() => {
   mockActiveContract(POOL_ONLY_SEATS);
-  vi.mocked(workosAudit.emitAuditLogEvent).mockResolvedValue(undefined);
-  vi.mocked(cycle.resolveSpendLimitCycleBounds).mockResolvedValue(BOUNDS);
-  vi.mocked(membersUsage.resolveMetronomeCycle).mockResolvedValue(CYCLE);
+  vi.mocked(emitAuditLogEvent).mockResolvedValue(undefined);
+  vi.mocked(resolveSpendLimitCycleBounds).mockResolvedValue(BOUNDS);
+  vi.mocked(resolveMetronomeCycle).mockResolvedValue(CYCLE);
   mockConsumedByLimitGroup([]);
 });
 
@@ -116,6 +111,10 @@ function mockConsumedByLimitGroup(
 ) {
   vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
     new Ok({
+      took: 1,
+      timed_out: false,
+      _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
+      hits: { total: { value: 0, relation: "eq" }, hits: [] },
       aggregations: {
         by_limit_group: {
           buckets: consumed.map(({ group, microCredits }) => ({
@@ -124,15 +123,13 @@ function mockConsumedByLimitGroup(
           })),
         },
       },
-    }) as Awaited<ReturnType<typeof searchConsumptionAnalytics>>
+    })
   );
 }
 
 function mockConsumptionReadFailure() {
   vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
-    new Err(new Error("es down")) as unknown as Awaited<
-      ReturnType<typeof searchConsumptionAnalytics>
-    >
+    new Err(new ElasticsearchError("connection_error", "es down"))
   );
 }
 
@@ -315,7 +312,7 @@ describe("areGroupLimitsEnabled", () => {
   });
 
   it("is disabled when the active contract cannot be resolved", async () => {
-    vi.mocked(planType.getActiveContract).mockResolvedValue(null);
+    vi.mocked(getActiveContract).mockResolvedValue(null);
     const { auth } = await setup();
 
     expect(await areGroupLimitsEnabled(auth)).toBe(false);
@@ -327,7 +324,7 @@ describe("areGroupLimitsEnabled", () => {
     await FeatureFlagFactory.basic(auth, "group_limits");
 
     expect(await areGroupLimitsEnabled(auth)).toBe(false);
-    expect(planType.getActiveContract).not.toHaveBeenCalled();
+    expect(getActiveContract).not.toHaveBeenCalled();
   });
 });
 
@@ -554,7 +551,7 @@ describe("setGroupLimit", () => {
 
     await setLimit(auth, engineering, { kind: "limited", awuCredits: 12_000 });
 
-    expect(workosAudit.emitAuditLogEvent).toHaveBeenLastCalledWith(
+    expect(emitAuditLogEvent).toHaveBeenLastCalledWith(
       expect.objectContaining({
         action: "group.group_limit_updated",
         metadata: {
@@ -870,7 +867,7 @@ describe("recordGroupLimitUsage", () => {
       [user],
       10_000
     );
-    vi.mocked(cycle.resolveSpendLimitCycleBounds).mockResolvedValue(null);
+    vi.mocked(resolveSpendLimitCycleBounds).mockResolvedValue(null);
 
     await recordGroupLimitUsage(auth, { user, agentMessageId, incrementBy: 3 });
 
