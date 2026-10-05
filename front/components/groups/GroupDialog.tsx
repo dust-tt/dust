@@ -189,11 +189,17 @@ function GroupForm({
       if (!result) {
         return false;
       }
-      setInitialGroup((previous) => ({
-        ...previous,
-        initialName: result.group.name,
-        initialMembers: result.members,
-      }));
+      // The response may already include another edit; only advance to the selection we saved.
+      if (
+        result.members.length === selectedMemberIds.size &&
+        result.members.every((member) => selectedMemberIds.has(member.sId))
+      ) {
+        setInitialGroup((previous) => ({
+          ...previous,
+          initialName: name.trim(),
+          initialMembers: result.members,
+        }));
+      }
     }
     if (hasManagerChanges) {
       const result = await doUpdateGroup({
