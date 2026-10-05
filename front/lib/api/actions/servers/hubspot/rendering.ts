@@ -58,32 +58,24 @@ function formatHubSpotObject(
       case "contacts":
         return object.properties.firstname && object.properties.lastname
           ? `${object.properties.firstname} ${object.properties.lastname}`
-          : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            object.properties.email ||
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          : object.properties.email ||
               object.properties.firstname ||
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               object.properties.lastname ||
               "Unnamed Contact";
       case "companies":
         return (
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           object.properties.name ||
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           object.properties.domain ||
           "Unnamed Company"
         );
       case "deals":
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         return object.properties.dealname || "Unnamed Deal";
       case "tickets":
         return object.properties.subject ?? "Unnamed Ticket";
 
       default:
         return (
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           object.properties.name ||
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           object.properties.title ||
           `${type.slice(0, -1)} #${object.id}`
         );
@@ -122,9 +114,7 @@ function formatHubSpotObject(
     title: getTitleField(objectType),
     url: hubSpotUrl,
     properties: cleanProperties,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     created_at: object.properties.createdate || undefined,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     updated_at: object.properties.lastmodifieddate || undefined,
   };
 }

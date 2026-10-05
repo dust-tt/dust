@@ -117,7 +117,6 @@ export class ZendeskWebhookService implements RemoteWebhookService<"zendesk"> {
       },
     };
 
-    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(
       `https://${zendeskSubdomain}.zendesk.com/api/v2/webhooks`,
       {
@@ -182,7 +181,6 @@ export class ZendeskWebhookService implements RemoteWebhookService<"zendesk"> {
       return new Err(new Error("Webhook ID not found in remote metadata"));
     }
 
-    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(
       `https://${zendeskSubdomain}.zendesk.com/api/v2/webhooks/${webhookId}`,
       {

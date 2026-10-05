@@ -259,7 +259,6 @@ export async function getContentNodesForDataSourceView(
           index,
           parentInternalId,
         ] of node.parentInternalIds.entries()) {
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           const parentsInSet = new Set(dataSourceView.parentsIn || []);
           if (parentsInSet.has(parentInternalId)) {
             deepestValidIndex = index;
