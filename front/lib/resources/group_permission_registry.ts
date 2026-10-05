@@ -62,6 +62,13 @@ interface RoleDefinition {
  * comparing a grant type.
  */
 /**
+ * @cc [owner:rfrenoy,label:security] admin-reserved-capabilities-use-admin-grant-type
+ * A type-level role that hands out access the product reserves for workspace admins MUST use the
+ * `admin` grant type (`ADMIN_ONLY_GRANT_TYPE`), and a type-level `admin` role MUST NOT be declared
+ * for access that non-admins may hand out: the Governance delegation gate and the group membership
+ * guard both derive "admin-only" from that grant type alone (`admin-grant-type-is-admin-only`).
+ */
+/**
  * @cc [owner:zmarouf,label:security;product] billing-admin-verb
  * `admin` on `billing` means managing what the workspace pays for: plan and subscription, checkout,
  * invoices, payment methods and coupons. A route or function that shows or changes these MUST

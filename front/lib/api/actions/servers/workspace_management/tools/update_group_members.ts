@@ -72,7 +72,7 @@ export async function updateGroupMembers(
   if (!(await group.canManageMembers(auth))) {
     return new Err(
       new MCPError(
-        `Group ${group.name} [${group.sId}] grants the admin role or an admin-only capability (billing, security); only workspace admins can manage its members.`,
+        `Group ${group.name} [${group.sId}] grants the admin role or an admin-only capability such as billing or security; only workspace admins can manage its members.`,
         { tracked: false }
       )
     );

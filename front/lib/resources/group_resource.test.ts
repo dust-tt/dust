@@ -2008,6 +2008,10 @@ describe("GroupResource", () => {
         grantType: "admin",
         resourceType: "billing",
       });
+      const { group: apps } = await makeCapabilityGroup("Apps", {
+        grantType: "admin",
+        resourceType: "dust_app",
+      });
       const { group: builders } = await makeCapabilityGroup("Builders", {
         grantType: "create",
         resourceType: "agent",
@@ -2019,12 +2023,12 @@ describe("GroupResource", () => {
         kind: "regular_manual",
         grantedRole: "admin",
       });
-      const groups = [security, billing, builders, plain, admins];
+      const groups = [security, billing, apps, builders, plain, admins];
       const { auth } = await actorWithRole("manager");
 
       expect(
         await GroupResource.listAdminOnlyMembershipGroupModelIds(auth, groups)
-      ).toEqual(new Set([security.id, billing.id, admins.id]));
+      ).toEqual(new Set([security.id, billing.id, apps.id, admins.id]));
       expect(
         await GroupResource.listAdminOnlyMembershipGroupModelIds(
           authenticator,

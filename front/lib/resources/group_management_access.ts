@@ -12,7 +12,7 @@ export type GroupMemberVerb = Exclude<GroupManagementVerb, "write">;
  * @cc [owner:philipperolet;rfrenoy,label:security;backend] managed-group-scope
  * Results MUST be in the caller's workspace, be manual or provisioned groups, and grant the
  * requested verb. `write` MUST exclude provisioned groups and, for non-admins, admin-only
- * membership groups (admin-granting or holding an admin-only governance capability, see
+ * membership groups (admin-granting or holding a type-wide `admin` capability, see
  * `GroupResource.listAdminOnlyMembershipGroupModelIds`). A type-wide group grant MUST be checked
  * against each eligible group.
  * Use when a page or API needs the actual groups to show or edit: for example, Usage group

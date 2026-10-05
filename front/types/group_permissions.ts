@@ -224,34 +224,29 @@ export const GOVERNANCE_CAPABILITIES = {
 } satisfies Record<string, CapabilitySpec[]>;
 
 /**
- * @cc [owner:rfrenoy,label:security] admin-only-governance-capabilities
- * A governance capability whose holders gain admin-reserved access (today `admin` on `billing`
- * and `admin` on `security`) MUST be listed in `ADMIN_ONLY_GOVERNANCE_CAPABILITIES`. The
- * Governance page delegation gate (`governanceCapabilitiesForRole`) and the group membership
- * guard (`GroupResource.listAdminOnlyMembershipGroupModelIds`) MUST both derive the set of
- * capabilities non-admins may not hand out from this list, so the two gates cannot drift.
+ * @cc [owner:rfrenoy,label:security] admin-grant-type-is-admin-only
+ * A type-wide capability whose grant type is `admin` (`ADMIN_ONLY_GRANT_TYPE`) MUST be treated as
+ * admin-only by both gates that hand it out: `governanceCapabilitiesForRole` MUST exclude it for
+ * every role but `admin`, and `GroupResource.listAdminOnlyMembershipGroupModelIds` MUST flag a
+ * group holding it. Neither gate MAY rely on a hand-maintained list of resource types, so a new
+ * `admin` capability is covered by both without further code.
  */
-export const ADMIN_ONLY_GOVERNANCE_CAPABILITIES: CapabilitySpec[] =
-  GOVERNANCE_CAPABILITIES.billingAndSecurity;
+export const ADMIN_ONLY_GRANT_TYPE = "admin" satisfies GrantType;
 
-export function isAdminOnlyGovernanceCapability({
-  grantType,
-  resourceType,
-}: CapabilitySpec): boolean {
-  return ADMIN_ONLY_GOVERNANCE_CAPABILITIES.some(
-    (c) => c.grantType === grantType && c.resourceType === resourceType
-  );
+export function isAdminOnlyCapability({ grantType }: CapabilitySpec): boolean {
+  return grantType === ADMIN_ONLY_GRANT_TYPE;
 }
 
-const MANAGER_GOVERNANCE_CAPABILITIES: CapabilitySpec[] = Object.values(
+const ALL_GOVERNANCE_CAPABILITIES: CapabilitySpec[] = Object.values(
   GOVERNANCE_CAPABILITIES
-)
-  .flat()
-  .filter((c) => !isAdminOnlyGovernanceCapability(c));
+).flat();
+
+const MANAGER_GOVERNANCE_CAPABILITIES: CapabilitySpec[] =
+  ALL_GOVERNANCE_CAPABILITIES.filter((c) => !isAdminOnlyCapability(c));
 
 const ADMIN_GOVERNANCE_CAPABILITIES: CapabilitySpec[] = [
   ...MANAGER_GOVERNANCE_CAPABILITIES,
-  ...ADMIN_ONLY_GOVERNANCE_CAPABILITIES,
+  ...ALL_GOVERNANCE_CAPABILITIES.filter(isAdminOnlyCapability),
 ];
 
 /**

@@ -36,7 +36,7 @@ import { launchMetronomeSeatCountSyncWorkflow } from "@app/temporal/usage_queue/
 import { launchSyncWorkOSITContactsWorkflow } from "@app/temporal/workos_events_queue/client";
 import type { GrantVerb } from "@app/types/group_permissions";
 import {
-  ADMIN_ONLY_GOVERNANCE_CAPABILITIES,
+  ADMIN_ONLY_GRANT_TYPE,
   WHOLE_TYPE_RESOURCE_ID,
 } from "@app/types/group_permissions";
 import type {
@@ -88,7 +88,7 @@ import { col, fn, Op, QueryTypes } from "sequelize";
 const LAST_GROUP_MEMBER_ERROR_MESSAGE =
   "A group must always keep at least one member. To remove everyone, delete the group instead.";
 const ADMIN_ONLY_MEMBERSHIP_ERROR_MESSAGE =
-  "Only workspace admins can manage members of a group that grants the admin role or an admin-only capability (billing, security).";
+  "Only workspace admins can manage members of a group that grants the admin role or an admin-only capability such as billing or security.";
 
 type CachedGroup = {
   id: ModelId;
@@ -2743,11 +2743,11 @@ export class GroupResource extends BaseResource<GroupModel> {
    * @cc [owner:tdraier;rfrenoy,label:security] admin-group-membership-admin-only
    * Membership of an admin-only group MUST only be mutated by workspace admins. A group is
    * admin-only when it grants the admin role (`grantedRole === "admin"`) or holds a type-wide
-   * grant (`resourceId === WHOLE_TYPE_RESOURCE_ID`) for a capability in
-   * `ADMIN_ONLY_GOVERNANCE_CAPABILITIES` (today `admin` on `billing` or `security`). Adding a
-   * member to such a group hands them admin-reserved access, so managers and delegated group
-   * managers (who otherwise have `write` on manual groups) MUST NOT be able to add or remove its
-   * members. Callers MUST still enforce `auth.can("write", group)`.
+   * grant (`resourceId === WHOLE_TYPE_RESOURCE_ID`) whose grant type is `admin`
+   * (`ADMIN_ONLY_GRANT_TYPE`, today on `billing`, `security` and `dust_app`), whatever the
+   * resource type. Adding a member to such a group hands them admin-reserved access, so managers
+   * and delegated group managers (who otherwise have `write` on manual groups) MUST NOT be able
+   * to add or remove its members. Callers MUST still enforce `auth.can("write", group)`.
    */
   async canManageMembers(auth: Authenticator): Promise<boolean> {
     const adminOnlyGroupModelIds =
@@ -2783,9 +2783,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         workspaceId: auth.getNonNullableWorkspace().id,
         groupId: candidateGroupModelIds,
         resourceId: WHOLE_TYPE_RESOURCE_ID,
-        [Op.or]: ADMIN_ONLY_GOVERNANCE_CAPABILITIES.map(
-          ({ grantType, resourceType }) => ({ grantType, resourceType })
-        ),
+        grantType: ADMIN_ONLY_GRANT_TYPE,
       },
     });
     for (const grant of grants) {
