@@ -29,12 +29,13 @@ Keep v1/v2 unchanged. Commit and push each verified milestone.
 - [x] RAM fsync, rollback, publication deadlines, cache expiry, and cold recovery tests.
 - [x] Create + initial-write bundling, separate sibling transactions, capacity before acknowledgment.
 - [x] Lost commit reply: report deferred failure and reload without replay; independent writes continue.
-- [ ] Local deep-subtree untar and filesystem benchmark with cold/warm results and drain.
-- [ ] Record commands, configuration, corpus, measurements, and remaining limitations.
+- [x] Local deep-subtree untar and filesystem benchmark with cold/warm results and drain.
+- [x] Record commands, configuration, corpus, measurements, and remaining limitations.
 
 ## 5. Revision-validated block reuse
 
-- [ ] Finish baseline deep untar + full benchmark at `D = 1000 ms` and `D = 8000 ms`.
+- [x] Finish baseline deep untar + full benchmark at `D = 1000 ms` and `D = 8000 ms`.
+- [ ] Profile why untar is slower at 8s before attributing the difference to mutation-history scans.
 - [ ] Retain blocks across snapshot expiry within the existing RAM budget; require a validated
       matching object revision and current authorization before serving them.
 - [ ] Test reuse, changed revisions, truncate/extend, permission refresh, and eviction.
