@@ -932,9 +932,6 @@ describe("conversation-unread workflow business logic", () => {
     });
 
     it("should not notify participants whose membership was revoked", async () => {
-      const { ConversationParticipantModel } = await import(
-        "@app/lib/models/agent/conversation"
-      );
       const conversation = await ConversationResource.fetchById(
         auth,
         conversationId
@@ -943,12 +940,11 @@ describe("conversation-unread workflow business logic", () => {
         throw new Error("Conversation should exist");
       }
 
-      await ConversationParticipantModel.upsert({
-        conversationId: conversation.id,
-        userId: user2.id,
-        workspaceId: workspace.id,
+      await ConversationResource.upsertParticipation(auth, {
+        conversation,
         action: "posted",
-        actionRequired: false,
+        user: user2.toJSON(),
+        lastReadAt: null,
       });
       const revokeResult = await MembershipResource.revokeMembership({
         user: user2,
