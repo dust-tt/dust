@@ -6,7 +6,7 @@ Implementation: [work streams and PRs](group-management-plan.md). Validation: [Q
 
 ## Goal
 
-Let admins appoint group managers so team leads can manage membership and credit allowances for
+Let workspace admins and managers appoint group managers so team leads can manage membership and credit allowances for
 selected groups. They can do this without workspace-wide authority or asking an admin each time.
 A team is an existing manual or provisioned group. Spending rules stay the same; provisioned
 membership remains managed by the identity provider.
@@ -15,7 +15,7 @@ membership remains managed by the identity provider.
 
 ### Assign group managers
 
-Workspace admins appoint and remove managers in the **Group managers** section of the existing
+Workspace admins and managers appoint and remove managers in the **Group managers** section of the existing
 manual and provisioned group dialogs. A group can have several managers, and a person can manage
 several groups. Managers must be active workspace members but need not belong to the groups they manage.
 
@@ -42,7 +42,7 @@ edit Sales or change limits for someone who belongs only to Sales.
 
 ### Confirm appointments outside the group
 
-When appointing someone outside a manual group, confirm that the admin trusts them to grant the
+When appointing someone outside a manual group, confirm that the person appointing them trusts them to grant the
 group's access. This applies only when the appointment allows membership editing. Follow the
 [Figma design](https://www.figma.com/design/dhYmzTjBXjtmNOkjSfwumG/?node-id=108-39122):
 
@@ -168,7 +168,7 @@ No new permission table or budget fields are needed.
 
 Extend the existing GET/PATCH `/api/w/:wId/groups/:groupId` management API with `managerIds`.
 PATCH changes only supplied fields: `managerIds` replaces the manager list, omission leaves it alone,
-and an empty list revokes all assignments. Only workspace admins may change this field. Validate
+and an empty list revokes all assignments. Only workspace admins and managers may change this field. Validate
 active workspace membership and apply additions/removals through the grant resource in a transaction.
 Keep this path separate from manual membership updates so provisioned groups can also have managers.
 Save `managerIds` in its own PATCH; combining it with a name or membership change is rejected.
@@ -269,7 +269,7 @@ Before submitting manager additions, compare them with current active group memb
 confirmation described above. Treat someone removed in the same edit as a non-member too; adding them
 in the unsaved form does not make them an existing member. Use the existing group and member data
 for the confirmation. The modal is an explanation, not an authorization check:
-assignment writes remain admin-only and the server validates every submitted field.
+assignment writes require a workspace admin or manager and the server validates every submitted field.
 
 Pass explicit edit permissions to the personal-limit modal. Each group field needs its own check:
 authority over a member does not grant authority over every group that member belongs to. Server
@@ -301,7 +301,7 @@ Membership management therefore delegates who receives the group's privileges, w
 for each change. A group that contains admins does not necessarily grant Admin: only groups that
 grant that role have admin-only membership. Their managers can still manage usage.
 
-Admins should account for these effects when appointing managers:
+Workspace admins and managers should account for these effects when appointing group managers:
 
 - **Managers can grant themselves access.** They can add themselves to groups granting billing/security
   access or the workspace Manager role. Appoint only people trusted with those privileges.
