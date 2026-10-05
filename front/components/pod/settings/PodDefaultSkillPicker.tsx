@@ -89,7 +89,7 @@ export function PodDefaultSkillPicker({
       >
         {/* Keep the previous results visible while the next query loads. */}
         {isSkillsLoading && searchSkills.length === 0 ? (
-          <CapabilitiesPickerLoading />
+          <CapabilitiesPickerLoading count={8} />
         ) : addableSkills.length > 0 || !hasMore ? (
           <CapabilitiesPickerItemsList
             emptyMessage={
@@ -122,7 +122,7 @@ export function PodDefaultSkillPicker({
             hasMore={hasMore}
             options={{ root: scrollRoot }}
             showLoader={isSkillsLoading && searchSkills.length > 0}
-            loader={<CapabilitiesPickerLoading count={3} />}
+            loader={<CapabilitiesPickerLoading count={8} />}
           />
         )}
       </DropdownMenuContent>
