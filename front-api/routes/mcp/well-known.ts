@@ -120,6 +120,7 @@ mcpWellKnownApp.get(
 );
 
 // CIMD client identity for remote MCP servers Dust connects to as a client.
+/** @ignoreswagger */
 mcpWellKnownApp.get("/.well-known/oauth-client.json", (c) =>
   c.json(getMcpClientIdMetadataDocument())
 );
