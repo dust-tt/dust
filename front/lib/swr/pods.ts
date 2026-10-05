@@ -14,7 +14,6 @@ import { clientFetch } from "@app/lib/egress/client";
 import { compareStrings } from "@app/lib/i18n/format";
 import { flattenPodTasksWithStableAssigneeOrder } from "@app/lib/project_task/display_order";
 import type { PostSeedInitialPodTasksResponseBody } from "@app/lib/project_task/seed_initial_pod_tasks";
-import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import {
   emptyArray,
@@ -989,6 +988,7 @@ export function usePodMetadata({
 
   return {
     podMetadata: data?.projectMetadata ?? null,
+    defaultSkills: data?.defaultSkills ?? emptyArray(),
     isPodMetadataLoading: !error && !data && !disabled,
     isPodMetadataError: error,
     mutatePodMetadata: mutate,
@@ -1004,31 +1004,15 @@ export function usePodDefaultSkills({
   podId: string;
   disabled?: boolean;
 }) {
-  const { podMetadata, isPodMetadataLoading } = usePodMetadata({
+  const { defaultSkills, isPodMetadataLoading } = usePodMetadata({
     workspaceId: owner.sId,
     podId,
     disabled,
   });
-  const { skills, isSkillsLoading } = useSkills({
-    owner,
-    status: "active",
-    disabled,
-  });
-
-  const defaultSkills = useMemo(() => {
-    const skillById = new Map(skills.map((skill) => [skill.sId, skill]));
-    // Preserve the stored order.
-    return (podMetadata?.defaultSkillIds ?? []).flatMap((skillId) => {
-      const skill = skillById.get(skillId);
-      return skill
-        ? [{ sId: skill.sId, name: skill.name, icon: skill.icon }]
-        : [];
-    });
-  }, [skills, podMetadata?.defaultSkillIds]);
 
   return {
     defaultSkills,
-    isDefaultSkillsLoading: isPodMetadataLoading || isSkillsLoading,
+    isDefaultSkillsLoading: isPodMetadataLoading,
   };
 }
 
@@ -1155,8 +1139,8 @@ export function useUpdatePodMetadata({
           async (current) => {
             patched = await patchRequest();
             void mutatePodMetadata(
-              { projectMetadata: patched },
-              { revalidate: false }
+              (current) => ({ ...current, projectMetadata: patched }),
+              { revalidate: updates.defaultSkillIds !== undefined }
             );
             return applySpaceFromMetadata(current, patched);
           },
@@ -1177,7 +1161,9 @@ export function useUpdatePodMetadata({
         void mutateSpaceInfoRegardlessOfQueryParams();
       } else {
         projectMetadata = await patchRequest();
-        void mutatePodMetadata({ projectMetadata }, { revalidate: false });
+        void mutatePodMetadata((current) => ({ ...current, projectMetadata }), {
+          revalidate: updates.defaultSkillIds !== undefined,
+        });
         void mutateSpaceInfoRegardlessOfQueryParams();
       }
 

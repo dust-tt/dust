@@ -7,6 +7,7 @@ import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
+import type { GetPodMetadataResponseBody } from "@app/types/api/projects/metadata";
 import { frameContentType } from "@app/types/files";
 import {
   DEFAULT_POD_FILE_TAB_ICON,
@@ -67,6 +68,35 @@ describe("GET /api/w/:wId/spaces/:spaceId/project_metadata", () => {
 
     expect(response.status).toBe(400);
     expect((await response.json()).error.type).toBe("invalid_request_error");
+  });
+
+  it("returns only readable active defaults in their stored order", async () => {
+    const { workspace, auth, user } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    const projectSpace = await SpaceFactory.project(workspace, user.id);
+    const privateSpace = await SpaceFactory.regular(workspace);
+    const first = await SkillFactory.create(auth, { name: "First" });
+    const second = await SkillFactory.create(auth, { name: "Second" });
+    const archived = await SkillFactory.create(auth, { status: "archived" });
+    const unreadable = await SkillFactory.create(auth, {
+      requestedSpaceIds: [privateSpace.id],
+    });
+    await SkillFactory.create(auth, { name: "Not a default" });
+    const metadata = await ProjectMetadataResource.makeNew(
+      auth,
+      projectSpace,
+      {}
+    );
+    await metadata.setDefaultSkills([second, unreadable, archived, first]);
+
+    const response = await getMetadata(workspace, projectSpace.sId);
+    expect(response.status).toBe(200);
+    const data: GetPodMetadataResponseBody = await response.json();
+    expect(data.defaultSkills?.map((skill) => skill.sId)).toEqual([
+      second.sId,
+      first.sId,
+    ]);
   });
 });
 
@@ -240,9 +270,17 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
 
     // GET reflects the stored set.
     const getResponse = await getMetadata(workspace, projectSpace.sId);
-    expect(
-      (await getResponse.json()).projectMetadata.defaultSkillIds.sort()
-    ).toEqual([skillA.sId, skillB.sId, globalSkillId].sort());
+    const data: GetPodMetadataResponseBody = await getResponse.json();
+    expect(data.projectMetadata?.defaultSkillIds).toEqual([
+      skillA.sId,
+      skillB.sId,
+      globalSkillId,
+    ]);
+    expect(data.defaultSkills?.map((skill) => skill.sId)).toEqual([
+      skillA.sId,
+      skillB.sId,
+      globalSkillId,
+    ]);
 
     // Replacing drops the omitted skills; keep one custom + the global one.
     const replaceResponse = await patchMetadata(workspace, projectSpace.sId, {

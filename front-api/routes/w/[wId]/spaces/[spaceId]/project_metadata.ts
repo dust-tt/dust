@@ -10,6 +10,7 @@ import type {
 } from "@app/types/api/projects/metadata";
 import { PatchPodMetadataBodySchema } from "@app/types/api/spaces";
 import { resolveCanonicalScopedPath } from "@app/types/mount_path";
+import { removeNulls } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -39,8 +40,25 @@ app.get(
     }
 
     const metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
+    const skills = await SkillResource.fetchByIds(
+      auth,
+      metadata?.defaultSkillIds ?? [],
+      {
+        onlyActive: true,
+        withInstructions: false,
+        withTools: false,
+        withFileAttachments: false,
+      }
+    );
+    const skillsById = new Map(skills.map((skill) => [skill.sId, skill]));
+
     return ctx.json({
       projectMetadata: metadata ? metadata.toJSON() : null,
+      defaultSkills: removeNulls(
+        (metadata?.defaultSkillIds ?? []).map(
+          (skillId) => skillsById.get(skillId) ?? null
+        )
+      ).map((skill) => skill.toJSON(auth)),
     });
   }
 );
