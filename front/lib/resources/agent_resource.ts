@@ -3392,11 +3392,14 @@ export class AgentResource
     };
   }
 
-  toSearchModelJSON(): NonNullable<AgentSearchListItemType["model"]> {
+  toSearchModelJSON(): Pick<AgentSearchListItemType, "model" | "status"> {
     return {
-      providerId: this.modelConfiguration.providerId,
-      modelId: this.modelConfiguration.modelId,
-      reasoningEffort: getEffectiveReasoningEffort(this.modelConfiguration),
+      model: {
+        providerId: this.modelConfiguration.providerId,
+        modelId: this.modelConfiguration.modelId,
+        reasoningEffort: getEffectiveReasoningEffort(this.modelConfiguration),
+      },
+      status: this.status,
     };
   }
 
