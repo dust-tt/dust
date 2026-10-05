@@ -40,13 +40,16 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   }
 
   // Check permissions based on useCase and useCaseMetadata.
-  if (isConversationFileUseCase(useCase) && useCaseMetadata?.conversationId) {
-    const conversation = await ConversationResource.fetchById(
-      auth,
-      useCaseMetadata.conversationId
-    );
+  if (isConversationFileUseCase(useCase)) {
+    // Files not attached to a conversation yet are only accessible to their uploader.
+    const hasAccess = useCaseMetadata?.conversationId
+      ? !!(await ConversationResource.fetchById(
+          auth,
+          useCaseMetadata.conversationId
+        ))
+      : fileResource.canAccessUnattachedConversationFile(auth);
 
-    if (!conversation) {
+    if (!hasAccess) {
       return apiError(ctx, {
         status_code: 404,
         api_error: { type: "file_not_found", message: "File not found." },
