@@ -109,6 +109,10 @@ export function getProviderStrategy(
  * extraConfig MUST NOT override the callback used for creation, authorization, or
  * finalization.
  */
+/**
+ * @cc [owner:spolu,label:security;logging] no-oauth-setup-config-values-in-logs
+ * Setup validation failures MUST log only extraConfig key names, never configuration values.
+ */
 export async function createConnectionAndGetSetupUrl(
   auth: Authenticator,
   provider: OAuthProvider,
@@ -122,7 +126,7 @@ export async function createConnectionAndGetSetupUrl(
 
   if (!providerStrategy.isExtraConfigValid(extraConfig, useCase)) {
     logger.error(
-      { provider, useCase, extraConfig },
+      { provider, useCase, extraConfigKeys: Object.keys(extraConfig) },
       "OAuth: Invalid extraConfig before getting related credential"
     );
     return new Err({
@@ -215,7 +219,7 @@ export async function createConnectionAndGetSetupUrl(
         )
       ) {
         logger.error(
-          { provider, useCase, extraConfig },
+          { provider, useCase, extraConfigKeys: Object.keys(extraConfig) },
           "OAuth: Invalid extraConfig after getting related credential"
         );
         return new Err({
