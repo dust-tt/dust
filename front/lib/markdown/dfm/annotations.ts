@@ -8,7 +8,11 @@ import {
   requiredString,
   validateAttributes,
 } from "@app/lib/markdown/dfm/grammar";
-import { codeLines, endsInsideFence } from "@app/lib/markdown/dfm/parser";
+import {
+  checkInputBounds,
+  codeLines,
+  endsInsideFence,
+} from "@app/lib/markdown/dfm/parser";
 import type {
   DfmAuthor,
   DfmAuthorKind,
@@ -339,6 +343,12 @@ function validateMessage(
   if (body.includes("\r")) {
     return {
       message: `Message body on comment "${commentId}" cannot contain a carriage return.`,
+    };
+  }
+  const bounds = checkInputBounds(body);
+  if (bounds) {
+    return {
+      message: `Message body on comment "${commentId}": ${bounds.message}`,
     };
   }
   const lines = body.split("\n");

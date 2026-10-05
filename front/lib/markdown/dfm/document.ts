@@ -85,10 +85,6 @@ function frontMatterClose(lines: string[]): number {
  * comment thread without an anchor is valid. An anchor without a comment thread is not.
  */
 export function parseDfm(source: string): Result<DfmDocument, DfmError> {
-  const bounds = checkInputBounds(source);
-  if (bounds) {
-    return new Err(bounds);
-  }
   const lines = source
     .replace(/^\uFEFF/, "")
     .replace(/\r\n/g, "\n")
@@ -114,10 +110,20 @@ export function parseDfm(source: string): Result<DfmDocument, DfmError> {
     }
   }
 
-  // Front matter is YAML, so code is only tracked from the body on.
+  // Front matter is YAML, so only the lines from the body on reach the parser. They are the
+  // text to bound: a byte order mark that opens them is skipped like one opening the file.
+  const parsedLines = lines.slice(bodyStart);
+  const bounds = checkInputBounds(parsedLines.join("\n"));
+  if (bounds) {
+    return new Err(
+      bounds.line === undefined
+        ? bounds
+        : { ...bounds, line: bounds.line + bodyStart }
+    );
+  }
   const inCode = [
     ...new Array<boolean>(bodyStart).fill(false),
-    ...codeLines(lines.slice(bodyStart)),
+    ...codeLines(parsedLines),
   ];
 
   let bodyEnd = lines.length;
@@ -216,7 +222,7 @@ function validateForSerialization(document: DfmDocument): DfmError | null {
   }
   const bounds = checkInputBounds(body);
   if (bounds) {
-    return bounds;
+    return { message: bounds.message };
   }
   const bodyLines = body.split("\n");
   if (annotationOpeners(bodyLines, codeLines(bodyLines)).length > 0) {
@@ -287,9 +293,13 @@ export function serializeDfm(document: DfmDocument): Result<string, DfmError> {
     });
   }
 
-  // The guards above give precise messages; this is the contract itself, checked last.
+  // The guards above give precise messages; this is the contract itself, checked last. The
+  // reparse also bounds body and messages together, which the guards bound one by one.
   const reparsed = parseDfm(source);
-  if (reparsed.isErr() || !isEqual(reparsed.value, document)) {
+  if (reparsed.isErr()) {
+    return reparsed;
+  }
+  if (!isEqual(reparsed.value, document)) {
     return new Err({
       message: "Document cannot be written so that it reads back unchanged.",
     });

@@ -14,52 +14,73 @@ export interface Range {
 }
 
 /**
- * Bounds checked before any text reaches the parser. micromark is superlinear on three shapes:
- * a single line of nested containers, and documents made of emphasis delimiters or unclosed
- * link openers, both quadratic in their count. Within these bounds one parse stays around a
- * second on a laptop; beyond them it reaches minutes. Callers on a request path still own
- * their latency: these bounds make the worst case finite, not small.
+ * Bounds checked before any text reaches the parser. micromark is superlinear on four shapes:
+ * a single line of nested containers, documents made of emphasis delimiters or of link
+ * brackets, both quadratic in their count, and lists, quadratic in their number of items.
+ * Within these bounds one parse stays around a second on a laptop; beyond them it reaches
+ * minutes. Callers on a request path still own their latency: these bounds make the worst
+ * case finite, not small.
  */
 export const INPUT_LIMITS = {
-  /** UTF-16 code units of a body or whole source: half the file write limit. */
+  /**
+   * UTF-16 code units, not bytes: 256 KB to 768 KB of UTF-8, against the 512 KB file write
+   * limit. A cap on linear work, since the slowest linear shape costs about 1.5 s per 256k.
+   */
   length: 256 * 1024,
-  /** Leading spaces, tabs and `>` on one line: the nesting depth of blockquotes and lists. */
+  /** Leading spaces, tabs, `>` and list markers on one line: the nesting depth of containers. */
   linePrefix: 256,
-  /** `*`, `_`, `[` and backtick characters in the text, which drive emphasis and link resolution. */
+  /** `*`, `_`, `[`, `]` and backtick characters, which drive emphasis and link resolution. */
   delimiters: 15_000,
+  /** List markers opening lines, each the start of a list item. */
+  listItems: 15_000,
 } as const;
 
-const LINE_PREFIX_PATTERN = /^[ \t>]*/;
+/** A list marker, `-`, `+`, `*`, `1.` or `1)`, followed by whitespace or the end of the line. */
+const LIST_MARKER = String.raw`(?:[-+*]|\d{1,9}[.)])(?:[ \t]|$)`;
+/** The containers a line opens before its content: indentation, quotes and list markers. */
+const LINE_PREFIX_PATTERN = new RegExp(String.raw`^(?:[ \t>]|${LIST_MARKER})*`);
+const LIST_MARKER_PATTERN = new RegExp(LIST_MARKER, "g");
 
-/** The reason `text` is out of bounds for the parser, or null. Linear in the text. */
+const DELIMITER_PATTERN = /[*_[\]`]/g;
+const LINE_ENDING_PATTERN = /\r\n|\r|\n/;
+
+/**
+ * The reason `text` is out of bounds for the parser, or null. Linear in the text. Reads the
+ * text as the parser does: a leading byte order mark is skipped and `\r`, `\n` and `\r\n` all
+ * end a line. A count error names the line where the count crossed its limit. Callers must
+ * check the exact string they hand to the parser, not a string it is derived from, since any
+ * transformation in between can join what the check saw apart.
+ */
 export function checkInputBounds(text: string): DfmError | null {
   if (text.length > INPUT_LIMITS.length) {
     return {
       message: `Text exceeds ${INPUT_LIMITS.length} characters.`,
+      line: text.slice(0, INPUT_LIMITS.length).split(LINE_ENDING_PATTERN)
+        .length,
     };
   }
   let delimiters = 0;
-  for (const character of text) {
-    if (
-      character === "*" ||
-      character === "_" ||
-      character === "[" ||
-      character === "`"
-    ) {
-      delimiters++;
-    }
-  }
-  if (delimiters > INPUT_LIMITS.delimiters) {
-    return {
-      message: `Text has more than ${INPUT_LIMITS.delimiters} emphasis, link or code delimiters.`,
-    };
-  }
-  const lines = text.split("\n");
+  let listItems = 0;
+  const lines = text.replace(/^\uFEFF/, "").split(LINE_ENDING_PATTERN);
   for (const [index, line] of lines.entries()) {
-    const prefix = LINE_PREFIX_PATTERN.exec(line);
-    if (prefix !== null && prefix[0].length > INPUT_LIMITS.linePrefix) {
+    const prefix = LINE_PREFIX_PATTERN.exec(line)?.[0] ?? "";
+    if (prefix.length > INPUT_LIMITS.linePrefix) {
       return {
-        message: `Line nests deeper than ${INPUT_LIMITS.linePrefix} characters of quotes or indentation.`,
+        message: `Line nests deeper than ${INPUT_LIMITS.linePrefix} characters of quotes, list markers or indentation.`,
+        line: index + 1,
+      };
+    }
+    delimiters += line.match(DELIMITER_PATTERN)?.length ?? 0;
+    if (delimiters > INPUT_LIMITS.delimiters) {
+      return {
+        message: `Text has more than ${INPUT_LIMITS.delimiters} emphasis, link or code delimiters.`,
+        line: index + 1,
+      };
+    }
+    listItems += prefix.match(LIST_MARKER_PATTERN)?.length ?? 0;
+    if (listItems > INPUT_LIMITS.listItems) {
+      return {
+        message: `Text has more than ${INPUT_LIMITS.listItems} list items.`,
         line: index + 1,
       };
     }
@@ -130,18 +151,26 @@ export function endsInsideFence(text: string): boolean {
 }
 
 /**
- * The node types of `text` with their depth, in document order, text nodes aside. Inserting
- * plain text into a body splits or merges text nodes and nothing else, so two bodies with
- * equal structures render the same way around the insertion.
+ * The nodes of `text` in document order, text nodes aside, each as its depth, type and own
+ * properties (a link's url, a heading's depth, a code block's lang). Inserting plain text into
+ * a body splits or merges text nodes and nothing else, so two bodies with equal structures
+ * render the same way around the insertion; a change in a property means the insertion landed
+ * in Markdown syntax, such as a link destination.
  */
 export function structure(text: string): string[] {
-  const types: string[] = [];
+  const entries: string[] = [];
   for (const { node, depth } of nodes(text)) {
-    if (node.type !== "text") {
-      types.push(`${depth}:${node.type}`);
+    if (node.type === "text") {
+      continue;
     }
+    const properties = Object.entries(node).filter(
+      ([key]) => key !== "type" && key !== "position" && key !== "children"
+    );
+    entries.push(
+      `${depth}:${node.type}:${JSON.stringify(Object.fromEntries(properties))}`
+    );
   }
-  return types;
+  return entries;
 }
 
 /** Flags the lines whose first character lies inside code, so a directive there is text. */

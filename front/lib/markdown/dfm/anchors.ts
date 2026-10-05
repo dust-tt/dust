@@ -119,15 +119,6 @@ export function scanAnchors(
   let last = 0;
   let line = lineOffset + 1;
 
-  const bounds = checkInputBounds(body);
-  if (bounds) {
-    return new Err(
-      bounds.line === undefined
-        ? bounds
-        : { ...bounds, line: bounds.line + lineOffset }
-    );
-  }
-
   for (const { index, attributes: raw, kind, length } of anchorMatches(body)) {
     const gap = body.slice(last, index);
     for (const character of gap) {
@@ -203,6 +194,10 @@ export function scanAnchors(
 export function extractAnchors(
   body: string
 ): Result<{ text: string; anchors: DfmAnchor[] }, DfmError> {
+  const bounds = checkInputBounds(body);
+  if (bounds) {
+    return new Err(bounds);
+  }
   const scanned = scanAnchors(body, 0);
   if (scanned.isErr()) {
     return scanned;

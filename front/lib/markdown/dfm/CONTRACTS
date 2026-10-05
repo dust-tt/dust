@@ -20,7 +20,11 @@ A new directive gets its own fixture file rather than extending an existing one.
 
 @cc [owner:PopDaph,label:performance] dfm-bounded-input
 Every public function MUST refuse text outside `INPUT_LIMITS` (length, leading container run
-per line, inline delimiter count) with a located error before handing it to the Markdown
-parser, so no input can hold the parser for more than about a second per parse. Callers on a
-request path MUST NOT rely on these bounds for latency and SHOULD isolate the codec (a worker
-or a timeout) once it is reachable from untrusted input.
+per line, inline delimiter count, list item count) with a located error before any of its
+parser calls, checking the exact text each call receives: the lines after the front matter in
+`parseDfm`, the body, each comment message and the serialized source in `serializeDfm`, and in
+`anchorComment` the body, the anchor-free text and the anchored result. No input can then hold
+the parser for more than about a second per parse. `tests/bounds.test.ts` MUST check this
+against a spied parser for every public function and every bound. Callers on a request path
+MUST NOT rely on these bounds for latency and SHOULD isolate the codec (a worker or a timeout)
+once it is reachable from untrusted input.

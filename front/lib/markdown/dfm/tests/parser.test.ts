@@ -37,15 +37,15 @@ describe("endsInsideFence", () => {
 });
 
 describe("structure", () => {
-  it("lists node types with their depth, text aside", () => {
+  it("lists nodes with their depth, type and properties, text aside", () => {
     expect(structure("# Title\n\n- *a* `b`")).toEqual([
-      "0:root",
-      "1:heading",
-      "1:list",
-      "2:listItem",
-      "3:paragraph",
-      "4:emphasis",
-      "4:inlineCode",
+      "0:root:{}",
+      '1:heading:{"depth":1}',
+      '1:list:{"ordered":false,"start":null,"spread":false}',
+      '2:listItem:{"spread":false,"checked":null}',
+      "3:paragraph:{}",
+      "4:emphasis:{}",
+      '4:inlineCode:{"value":"b"}',
     ]);
   });
 
@@ -60,19 +60,29 @@ describe("structure", () => {
 });
 
 describe("checkInputBounds", () => {
-  it("accepts a large plain document", () => {
-    const prose = "lorem ipsum dolor sit amet, ".repeat(9000);
-
-    expect(prose.length).toBeGreaterThan(200_000);
-    expect(checkInputBounds(prose)).toBeNull();
+  it.each([
+    ["a large plain document", "lorem ipsum dolor sit amet, ".repeat(9000)],
+    [
+      "a long formatted list",
+      "- **Name** [link](http://x) `code`\n  - sub _em_\n    - sub2\n".repeat(
+        1000
+      ),
+    ],
+    [
+      "a line nested as deep as the bound allows",
+      `${">".repeat(INPUT_LIMITS.linePrefix - 1)} deep`,
+    ],
+    ["a flat list at the bound", "1. a\n".repeat(INPUT_LIMITS.listItems)],
+  ])("accepts %s", (_, text) => {
+    expect(checkInputBounds(text)).toBeNull();
   });
 
   it.each([
     [
       "text over the length limit",
-      "x".repeat(INPUT_LIMITS.length + 1),
+      `a\n${"x".repeat(INPUT_LIMITS.length)}`,
       `exceeds ${INPUT_LIMITS.length} characters`,
-      undefined,
+      2,
     ],
     [
       "a line nested deeper than the parser handles quickly",
@@ -81,15 +91,74 @@ describe("checkInputBounds", () => {
       2,
     ],
     [
-      "more inline delimiters than the parser resolves quickly",
-      "*a_b*c_".repeat(INPUT_LIMITS.delimiters / 4 + 1),
-      "emphasis, link or code delimiters",
-      undefined,
+      "a line nesting quotes inside a list item",
+      `- ${">".repeat(INPUT_LIMITS.linePrefix)} deep`,
+      "nests deeper than",
+      1,
     ],
-  ])("refuses %s", (_, text, message, line) => {
+    [
+      "a line nesting ordered list items",
+      "1. ".repeat(INPUT_LIMITS.linePrefix / 3 + 1),
+      "nests deeper than",
+      1,
+    ],
+    [
+      "more inline delimiters than the parser resolves quickly",
+      `a\n${"*a_b*c_".repeat(INPUT_LIMITS.delimiters / 4 + 1)}`,
+      "emphasis, link or code delimiters",
+      2,
+    ],
+    [
+      "more closing brackets than the parser resolves quickly",
+      "]".repeat(INPUT_LIMITS.delimiters + 1),
+      "emphasis, link or code delimiters",
+      1,
+    ],
+    [
+      "more list items than the parser handles quickly",
+      "1. a\n".repeat(INPUT_LIMITS.listItems + 1),
+      `more than ${INPUT_LIMITS.listItems} list items`,
+      INPUT_LIMITS.listItems + 1,
+    ],
+    [
+      "empty list items",
+      "-\n".repeat(INPUT_LIMITS.listItems + 1),
+      `more than ${INPUT_LIMITS.listItems} list items`,
+      INPUT_LIMITS.listItems + 1,
+    ],
+    [
+      "a deep line behind a byte order mark",
+      `\uFEFF${">".repeat(INPUT_LIMITS.linePrefix + 1)} deep`,
+      "nests deeper than",
+      1,
+    ],
+    [
+      "a deep line after a bare carriage return",
+      `fine\r${">".repeat(INPUT_LIMITS.linePrefix + 1)} deep`,
+      "nests deeper than",
+      2,
+    ],
+    [
+      "nested list items counted across lines",
+      `${"- ".repeat(8)}a\n`.repeat(INPUT_LIMITS.listItems / 8 + 1),
+      `more than ${INPUT_LIMITS.listItems} list items`,
+      INPUT_LIMITS.listItems / 8 + 1,
+    ],
+  ])("refuses %s on the line where it crosses the bound", (_, text, message, line) => {
     const error = checkInputBounds(text);
 
     expect(error?.message).toContain(message);
     expect(error?.line).toBe(line);
+  });
+});
+
+describe("structure", () => {
+  it("tells a link whose destination changed from one whose text did", () => {
+    const [link] = structure("[a](b)").filter((entry) =>
+      entry.includes("link")
+    );
+
+    expect(structure("[ab](b)")).toContain(link);
+    expect(structure("[a](bb)")).not.toContain(link);
   });
 });

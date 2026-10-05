@@ -217,6 +217,11 @@ describe("anchorComment", () => {
       "changing the document structure",
     ],
     [
+      "a quote inside a link destination",
+      { body: "aaaa [x](aaaa)", id: "c1", quote: "aa", nth: 3 },
+      "a link would change",
+    ],
+    [
       "a quote right after a backslash",
       { body: "a\\b", id: "c1", quote: "b" },
       "right after a backslash",

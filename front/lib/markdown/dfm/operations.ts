@@ -3,6 +3,7 @@ import { anchorDirective, scanAnchors } from "@app/lib/markdown/dfm/anchors";
 import { isValidId } from "@app/lib/markdown/dfm/grammar";
 import type { Range } from "@app/lib/markdown/dfm/parser";
 import {
+  checkInputBounds,
   codeRanges,
   endsInsideFence,
   isEscaped,
@@ -85,6 +86,10 @@ export function anchorComment({
   if (body.includes("\r")) {
     return new Err({ message: "Body cannot contain a carriage return." });
   }
+  const bounds = checkInputBounds(body);
+  if (bounds) {
+    return new Err(bounds);
+  }
   if (endsInsideFence(body)) {
     return new Err({ message: "Body ends inside a code fence." });
   }
@@ -93,6 +98,11 @@ export function anchorComment({
     return scanned;
   }
   const { text, anchors, markers } = scanned.value;
+  // Removing the anchors can join runs they kept apart, so the anchor-free text has its own bounds.
+  const textBounds = checkInputBounds(text);
+  if (textBounds) {
+    return new Err(textBounds);
+  }
   if (anchors.some((anchor) => anchor.id === id)) {
     return new Err({ message: `Comment anchor "${id}" already exists.` });
   }
@@ -130,6 +140,11 @@ export function anchorComment({
     body.slice(startIndex, endIndex) +
     anchorDirective("end", id) +
     body.slice(endIndex);
+
+  const anchoredBounds = checkInputBounds(anchored);
+  if (anchoredBounds) {
+    return new Err(anchoredBounds);
+  }
 
   // Re-scanning is the one check that cannot drift from the parser. The body was valid, so any
   // failure here comes from the insertion: it created or broke a code span. The anchor-free
@@ -170,8 +185,12 @@ export function anchorComment({
   if (changed !== -1 || after.length !== before.length) {
     const was = before[changed]?.split(":")[1] ?? "nothing";
     const became = after[changed]?.split(":")[1] ?? "nothing";
+    const change =
+      was === became
+        ? `a ${was} would change`
+        : `${was} would become ${became}`;
     return new Err({
-      message: `Quote cannot be anchored without changing the document structure: ${was} would become ${became}. Quote the text without its Markdown syntax.`,
+      message: `Quote cannot be anchored without changing the document structure: ${change}. Quote the text without its Markdown syntax.`,
     });
   }
 

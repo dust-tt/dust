@@ -78,14 +78,6 @@ describe("parseDfm", () => {
     expect(unwrap(parseDfm(source)).body).toBe(body);
   });
 
-  it("refuses a source outside the input bounds before parsing it", () => {
-    expectError(
-      parseDfm(`Body\n${">".repeat(300)} deep`),
-      "nests deeper than",
-      2
-    );
-  });
-
   it("drops a leading byte order mark", () => {
     const document = unwrap(parseDfm(`\uFEFF${FIXTURE}`));
 
