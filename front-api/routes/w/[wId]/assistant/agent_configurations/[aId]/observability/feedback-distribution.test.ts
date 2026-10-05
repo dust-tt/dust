@@ -115,7 +115,7 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId/observability/feed
     });
   });
 
-  it("returns 404 to a manager for a hidden agent they cannot read", async () => {
+  it("lets a manager read a hidden agent they cannot read", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "GET",
       role: "manager",
@@ -128,7 +128,8 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId/observability/feed
 
     const response = await getFeedbackDistribution(workspace, agent.sId);
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ points: [] });
   });
 
   it("lets an admin read a hidden agent they cannot read", async () => {

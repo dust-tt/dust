@@ -40,12 +40,20 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId/observability/over
     });
   });
 
-  it("returns 404 to a manager for a hidden agent they cannot read", async () => {
-    const { workspace, agent } = await setupHiddenAgent("manager");
+  it("returns 404 to a member for a hidden agent they cannot fetch", async () => {
+    const { workspace, agent } = await setupHiddenAgent("user");
 
     const response = await getOverview(workspace, agent.sId);
 
     expect(response.status).toBe(404);
+  });
+
+  it("lets a manager read a hidden agent they cannot read", async () => {
+    const { workspace, agent } = await setupHiddenAgent("manager");
+
+    const response = await getOverview(workspace, agent.sId);
+
+    expect(response.status).toBe(200);
   });
 
   it("lets an admin read a hidden agent they cannot read", async () => {

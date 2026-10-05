@@ -147,8 +147,26 @@ describe("POST /api/w/:wId/analytics/consumption/overview", () => {
     );
   });
 
-  it("returns 404 to a manager for a hidden agent they cannot read", async () => {
+  it("lets a manager read a hidden agent's consumption they cannot read", async () => {
+    vi.mocked(fetchConsumptionOverview).mockResolvedValue(new Ok(OVERVIEW));
     const { workspace } = await setupTest({ role: "manager" });
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { scope: "hidden" }
+    );
+
+    const response = await postAgentOverviewRequest(workspace.sId, agent.sId);
+
+    expect(response.status).toBe(200);
+    expect(vi.mocked(fetchConsumptionOverview)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ filter: { agents: [agent.sId] } })
+    );
+  });
+
+  it("returns 404 to a member for a hidden agent they cannot fetch", async () => {
+    const { workspace } = await setupTest({ role: "user" });
     const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
     const agent = await AgentConfigurationFactory.createTestAgent(
       agentOwnerAuth,
