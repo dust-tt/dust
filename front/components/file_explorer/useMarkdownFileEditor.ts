@@ -77,7 +77,10 @@ export function useMarkdownFileEditor({
     entryPath && owner && parseCanonicalScopedPath(entryPath)
       ? entryPath
       : null;
-  const canEdit = category === "markdown" && !!editablePath && !isTooLarge;
+  const canOpenEditor =
+    category === "markdown" && !!editablePath && !isTooLarge;
+  // The plain editor edits the preview text; saving it after a cut would truncate the file.
+  const canEdit = canOpenEditor && !isTruncated;
 
   if (isActive !== resetKey.isActive || entryPath !== resetKey.path) {
     setResetKey({ isActive, path: entryPath });
@@ -182,7 +185,8 @@ export function useMarkdownFileEditor({
   };
 
   const rich = useRichMarkdownEditor({
-    enabled: hasFeature("co_edition") && canEdit,
+    // Not `canEdit`: an open rich editor must not unmount under a draft when the file grows.
+    enabled: hasFeature("co_edition") && canOpenEditor,
     entryPath,
     isActive,
     rawContent,

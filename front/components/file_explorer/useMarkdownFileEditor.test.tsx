@@ -131,7 +131,7 @@ describe("useMarkdownFileEditor", () => {
     expect(result.current.richEditor?.initialContent).toBe("# Notes\n");
   });
 
-  it("keeps the plain editor when the preview text was truncated", () => {
+  it("opens no editor for writing when the preview text was cut", () => {
     flags.add("co_edition");
 
     const { result } = renderHook(() =>
@@ -139,6 +139,15 @@ describe("useMarkdownFileEditor", () => {
     );
 
     expect(result.current.richEditor).toBeNull();
+    expect(result.current.canEdit).toBe(false);
+  });
+
+  it("does not open the plain editor on cut preview text when co_edition is off", () => {
+    const { result } = renderHook(() =>
+      useMarkdownFileEditor({ ...params, isTruncated: true })
+    );
+
+    expect(result.current.canEdit).toBe(false);
   });
 
   it("reopens a clean editor on content written by someone else", () => {

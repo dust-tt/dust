@@ -108,6 +108,7 @@ export function PodFileTabPreview({
     hasError,
     isContentLoading,
     isTooLarge,
+    isTruncated,
     sizeBytes,
   } = useFilePreviewContent({
     entry,
@@ -119,8 +120,12 @@ export function PodFileTabPreview({
     entry && canEdit && parseCanonicalScopedPath(entry.path)
       ? entry.path
       : null;
+  // The editor edits the preview text; saving it after a cut would truncate the file.
   const canEditMarkdown =
-    category === "markdown" && !!editableMarkdownFilePath && !isTooLarge;
+    category === "markdown" &&
+    !!editableMarkdownFilePath &&
+    !isTooLarge &&
+    !isTruncated;
   const isMarkdownDirty = markdownDraft !== markdownSavedContent;
 
   useEffect(() => {
