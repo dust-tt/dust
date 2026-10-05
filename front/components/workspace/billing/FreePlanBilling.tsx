@@ -30,7 +30,7 @@ export function FreePlanBilling({ owner, subscription }: FreePlanBillingProps) {
             label="Upgrade a member"
             size="sm"
             variant="highlight"
-            href={`/w/${owner.sId}/usage`}
+            href={`/w/${owner.sId}/credits`}
           />
         }
       />

@@ -39,12 +39,18 @@ interface WorkspaceAccessPanelProps {
   workspaceVerifiedDomains: WorkspaceDomain[];
   owner: LightWorkspaceType;
   plan: PlanType;
+  showAutoJoin?: boolean;
+  showProvisioning?: boolean;
+  showAuditLogs?: boolean;
 }
 
 export default function WorkspaceAccessPanel({
   workspaceVerifiedDomains,
   owner,
   plan,
+  showAutoJoin = true,
+  showProvisioning = true,
+  showAuditLogs: showAuditLogsProp = true,
 }: WorkspaceAccessPanelProps) {
   const { addDomainLink, domains, isDomainsLoading } = useWorkspaceDomains({
     owner,
@@ -55,7 +61,10 @@ export default function WorkspaceAccessPanel({
   const hasAuditLogsAccess =
     plan.isAuditLogsAllowed || hasFeature("audit_logs");
   const showAuditLogs =
-    hasAuditLogsAccess && workspace.metadata?.disableAuditLogs !== true;
+    showAuditLogsProp &&
+    hasAuditLogsAccess &&
+    workspace.metadata?.disableAuditLogs !== true;
+  const showProvisioningSection = showProvisioning && scimEnabled;
 
   return (
     <div className="flex flex-col gap-6">
@@ -68,14 +77,18 @@ export default function WorkspaceAccessPanel({
       />
       <Separator />
       <SSOConnection domains={domains} plan={plan} owner={owner} />
-      <AutoJoinToggle
-        domains={domains}
-        workspaceVerifiedDomains={workspaceVerifiedDomains}
-        owner={owner}
-        plan={plan}
-      />
-      {scimEnabled && <Separator />}
-      {scimEnabled && <UserProvisioning owner={owner} plan={plan} />}
+      {showAutoJoin && (
+        <AutoJoinToggle
+          domains={domains}
+          workspaceVerifiedDomains={workspaceVerifiedDomains}
+          owner={owner}
+          plan={plan}
+        />
+      )}
+      {showProvisioningSection && <Separator />}
+      {showProvisioningSection && (
+        <UserProvisioning owner={owner} plan={plan} />
+      )}
       {showAuditLogs && <Separator />}
       {showAuditLogs && <AuditLogsSection owner={owner} />}
     </div>

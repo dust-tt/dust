@@ -255,7 +255,7 @@ function WorkspaceUsageStatusBanner({
   // warning, which is why "Your credit balance is running low" never shows
   // alongside it.
   const manageCreditsFooter = (
-    <LinkWrapper href={`/w/${owner.sId}/usage`} className="underline">
+    <LinkWrapper href={`/w/${owner.sId}/credits`} className="underline">
       Manage credits
     </LinkWrapper>
   );
@@ -286,7 +286,7 @@ function WorkspaceUsageStatusBanner({
             ? "Your workspace has exhausted its monthly programmatic API credit cap. Programmatic API calls are blocked until the billing cycle resets or the cap is raised."
             : "Your workspace has used 80% of its monthly programmatic API credit cap. Consider raising the cap to avoid interruptions.",
         footer: (
-          <LinkWrapper href={`/w/${owner.sId}/usage`} className="underline">
+          <LinkWrapper href={`/w/${owner.sId}/credits`} className="underline">
             Manage usage
           </LinkWrapper>
         ),

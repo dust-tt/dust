@@ -14,6 +14,15 @@ export function buildAdminSettingHref(
   return `${path}${query ? `?${query}` : ""}#${entry.sectionId}`;
 }
 
+function assertHashForHighlight(sectionId: string): void {
+  const nextHash = `#${sectionId}`;
+  // Clearing first guarantees a `hashchange` even when the hash is unchanged.
+  if (window.location.hash === nextHash) {
+    window.location.hash = "";
+  }
+  window.location.hash = sectionId;
+}
+
 /**
  * Navigate to an admin setting. Same-page jumps set `location.hash` so the
  * highlight hook's `hashchange` listener re-runs (React Router hash updates
@@ -26,18 +35,22 @@ export function navigateToAdminSetting(
 ): void {
   const href = buildAdminSettingHref(pageHref, entry);
   const target = new URL(href, window.location.origin);
-  const samePage =
-    target.pathname === window.location.pathname &&
-    target.search === window.location.search;
+  const samePathname = target.pathname === window.location.pathname;
+  const samePage = samePathname && target.search === window.location.search;
 
   if (samePage) {
-    const nextHash = `#${entry.sectionId}`;
-    if (window.location.hash === nextHash) {
-      window.location.hash = "";
-    }
-    window.location.hash = entry.sectionId;
+    assertHashForHighlight(entry.sectionId);
     return;
   }
 
   push(href);
+
+  // Same pathname + different search (e.g. Credits `?tab=`) keeps the page
+  // mounted, so the highlight effect does not re-run and RR won't emit
+  // `hashchange`. Re-assert the hash after the navigation commits.
+  if (samePathname) {
+    window.setTimeout(() => {
+      assertHashForHighlight(entry.sectionId);
+    }, 0);
+  }
 }

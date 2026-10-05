@@ -12,14 +12,19 @@ export const AUTOMATIONS_SLACK_WORKFLOWS_TAB_LABEL = "Slack workflows";
  * Search entries for Automations. Slack workflows use `?tab=slack-workflows`.
  */
 export const AUTOMATIONS_SEARCH_ENTRIES: AdminSettingEntry[] = [
-  ...adminSearchEntries(PAGE, A.triggers, [
+  ...adminSearchEntries(
+    PAGE,
+    A.triggers,
     [
-      AUTOMATIONS_TRIGGERS_TAB_LABEL,
-      "schedule webhook owner agent credits pool enabled",
+      [
+        AUTOMATIONS_TRIGGERS_TAB_LABEL,
+        "schedule webhook owner agent credits pool enabled",
+      ],
+      ["Set pool", "workspace pool member pool"],
+      ["Filters", "type pool enabled"],
     ],
-    ["Set pool", "workspace pool member pool"],
-    ["Filters", "type pool enabled"],
-  ]),
+    "triggers"
+  ),
   ...adminSearchEntries(
     PAGE,
     A.slackWorkflows,

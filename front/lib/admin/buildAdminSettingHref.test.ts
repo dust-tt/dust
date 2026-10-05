@@ -1,5 +1,8 @@
-import { buildAdminSettingHref } from "@app/lib/admin/buildAdminSettingHref";
-import { describe, expect, it } from "vitest";
+import {
+  buildAdminSettingHref,
+  navigateToAdminSetting,
+} from "@app/lib/admin/buildAdminSettingHref";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 describe("buildAdminSettingHref", () => {
   it("appends the section hash", () => {
@@ -24,5 +27,45 @@ describe("buildAdminSettingHref", () => {
         tab: "groups",
       })
     ).toBe("/w/ws/members?foo=1&tab=groups#roles");
+  });
+});
+
+describe("navigateToAdminSetting", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    window.history.pushState({}, "", "/");
+  });
+
+  it("toggles hash on fully same-page jumps so hashchange fires", () => {
+    window.history.pushState(
+      {},
+      "",
+      "/w/ws/credits?tab=settings#usage-programmatic"
+    );
+    const push = vi.fn();
+    navigateToAdminSetting(push, "/w/ws/credits", {
+      sectionId: "usage-programmatic",
+      tab: "settings",
+    });
+    expect(push).not.toHaveBeenCalled();
+    expect(window.location.hash).toBe("#usage-programmatic");
+  });
+
+  it("re-asserts hash after same-pathname tab changes", () => {
+    vi.useFakeTimers();
+    window.history.pushState({}, "", "/w/ws/credits#usage-add-credits");
+    const push = vi.fn((href: string) => {
+      window.history.pushState({}, "", href);
+    });
+    navigateToAdminSetting(push, "/w/ws/credits", {
+      sectionId: "usage-programmatic",
+      tab: "settings",
+    });
+    expect(push).toHaveBeenCalledWith(
+      "/w/ws/credits?tab=settings#usage-programmatic"
+    );
+    vi.runAllTimers();
+    expect(window.location.hash).toBe("#usage-programmatic");
+    vi.useRealTimers();
   });
 });

@@ -24,8 +24,8 @@ export interface ConsumptionSummaryProps {
 export function ConsumptionSummary({
   workspaceId,
   period: periodSelection,
-  usageHref = `/w/${workspaceId}/usage`,
-  usageLinkLabel = "Manage in Usage",
+  usageHref = `/w/${workspaceId}/credits`,
+  usageLinkLabel = "Manage in Credits",
   analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
   disabled,
 }: ConsumptionSummaryProps) {
