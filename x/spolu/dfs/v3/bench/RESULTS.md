@@ -516,3 +516,30 @@ v3/local/run exec cargo build --workspace --release
 v3/local/run exec env DFS_PROFILE=1 MAX_EVENTUAL_CONSISTENCY_DELAY_MS=8000 DFS_BENCH_REVISION=a479054e1e python3 /dfs/v3/bench/run.py
 v3/local/run exec env DFS_PROFILE=1 MAX_EVENTUAL_CONSISTENCY_DELAY_MS=1000 DFS_BENCH_REVISION=a479054e1e python3 /dfs/v3/bench/run.py
 ```
+
+## Create-stat reuse
+
+**Keep.** A successful create now initializes its handle from the metadata returned in the same
+callback. Ordinary opens still stat; no attributes or permissions are cached on the client.
+This removes exactly **10,001 stat RPCs** per 10k untar (documents plus the manifest).
+
+Fresh paired `--untar-only` runs, same deep corpus and `DFS_PROFILE=1`; identical server binaries.
+Order: before/after at 1s, after/before at 8s. No builds or tests overlapped timing.
+
+| D | Untar before (s) | After (s) | Change | Drain before / after (ms) | Stat RPCs before / after |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1s | 51.819 | 50.479 | -2.6% | 27 / 26 | 106,075 / 96,074 |
+| 8s | 48.544 | 46.868 | -3.5% | 24 / 23 | 106,075 / 96,074 |
+
+All four populations completed with zero publication failures. These focused timings are not
+full-suite reruns or statistical estimates. Mounted checks passed at both bounds, including
+read-only creation, subsequent ordinary opens, truncate/append, and cross-server refresh.
+FUSE unit tests, formatting, Clippy, and contract syntax/discovery checks also passed.
+
+Reports: `/tmp/dfs-v3-create-stat-comparison-1vignogn/{before,after}-{1000,8000}/run.json`
+inside the development container. Baseline FUSE is from `a479054e1e`; candidate reports are
+labelled `075f80fc78+create-stat`, the isolated change committed with this section.
+Server SHA-256 remains `d6b3f1975eba393615f2511763b17e9bd9800df4e32883318ffaebda01f691eb`.
+Candidate FUSE SHA-256: `175a6cf51e4b9121ef4957e877943f9ae7879cf39ae526badb3b815d7f2721ea`.
+Reproduce with the earlier profiled benchmark command plus `--untar-only`;
+`DFS_BENCH_FUSE_BINARY` selects a separately built baseline or candidate client.

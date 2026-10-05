@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Exercise the actual uncached Linux mount against real local FDB."""
+import errno
 import os
 from pathlib import Path
 import tempfile
@@ -18,6 +19,23 @@ def main():
         support.rpc(endpoint, owner['session_key'], 'create', {'parent_id': tenant['root_id'], 'name': 'work', 'directory': True, 'mode': 493})
         with support.mounted(endpoint, owner['session_key'], work / 'mount'):
             root = work / 'mount/work'
+            # Create initializes its handle from the response, including read-only access flags.
+            created = root / 'created-readonly'
+            fd = os.open(created, os.O_CREAT | os.O_EXCL | os.O_RDONLY, 0o600)
+            try:
+                assert os.read(fd, 1) == b''
+                try:
+                    os.write(fd, b'x')
+                except OSError as error:
+                    assert error.errno == errno.EBADF, error
+                else:
+                    raise AssertionError('Read-only created handle allowed a write')
+            finally:
+                os.close(fd)
+            with created.open('wb') as f:
+                f.write(b'existing open still works')
+            assert created.read_bytes() == b'existing open still works'
+            created.unlink()
             (root / 'dir').mkdir()
             target = root / 'dir/file'
             content = b'abc' * 500_000

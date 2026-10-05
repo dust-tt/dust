@@ -126,6 +126,9 @@ Use tenant terminology throughout the v3 API and storage model: `CreateTenant`, 
 Every callback needing filesystem state calls the server. Read RPCs return size with bytes; the
 client MUST NOT clip reads using an earlier `stat` result. Bound I/O to 1 MiB per RPC and stream large
 files. No automatic mutation replay after transport errors. Append chooses EOF on the server.
+The create callback may initialize its handle from that same create response, without a second stat.
+Those attributes do not survive the callback; ordinary opens still stat and later I/O still calls
+the server.
 Shared writable `mmap` is out of scope; do not enable mappings that reintroduce uncontrolled caching.
 
 Use opaque server directory cookies mapped to FUSE offsets. Each page is independently consistent;

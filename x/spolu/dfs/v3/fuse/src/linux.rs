@@ -137,7 +137,10 @@ impl Filesystem {
         }
         Ok(file)
     }
-    fn open_file(&self, ino: INodeNo, flags: i32) -> Result<FileHandle> {
+    /// @cc [owner:spolu,label:concurrency;security] create-response-handle
+    /// Supplied metadata MUST be the successful create response from this callback for this inode.
+    /// It MUST NOT survive the callback or authorize later operations. Ordinary opens MUST stat.
+    fn open_file(&self, ino: INodeNo, flags: i32, created: Option<&Object>) -> Result<FileHandle> {
         let write = flags & libc::O_ACCMODE != libc::O_RDONLY;
         let read = flags & libc::O_ACCMODE != libc::O_WRONLY;
         if flags & libc::O_ACCMODE == libc::O_ACCMODE || flags & O_PATH != 0 {
@@ -146,7 +149,16 @@ impl Filesystem {
         if write || flags & libc::O_TRUNC != 0 {
             self.parent(ino)?;
         }
-        if self.stat(ino)?.directory {
+        let directory = match created {
+            Some(object) => {
+                if object.id != self.object(ino)? {
+                    return Err(Errno::ESTALE);
+                }
+                object.directory
+            }
+            None => self.stat(ino)?.directory,
+        };
+        if directory {
             return Err(Errno::EISDIR);
         }
         let fh = self.handle_number()?;
@@ -665,7 +677,7 @@ impl fuser::Filesystem for Filesystem {
     }
     fn open(&self, _req: &Request, ino: INodeNo, flags: OpenFlags, reply: ReplyOpen) {
         self.client.record_fuse_call("fuse.open");
-        match self.open_file(ino, flags.0) {
+        match self.open_file(ino, flags.0, None) {
             Ok(fh) => reply.opened(fh, FopenFlags::FOPEN_DIRECT_IO),
             Err(error) => reply.error(error),
         }
@@ -728,8 +740,8 @@ impl fuser::Filesystem for Filesystem {
         self.client.record_fuse_call("fuse.create");
         let result = (|| {
             let object = self.create_file(parent, name, mode & !umask, false)?;
-            let attr = self.entry(parent, object)?;
-            match self.open_file(attr.ino, flags & !libc::O_TRUNC) {
+            let attr = self.entry(parent, object.clone())?;
+            match self.open_file(attr.ino, flags & !libc::O_TRUNC, Some(&object)) {
                 Ok(fh) => Ok((attr, fh)),
                 Err(error) => {
                     self.inodes.lock().forget(attr.ino.0, 1);

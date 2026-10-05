@@ -58,6 +58,14 @@ Completed and verified before resuming the full benchmark suites below.
 - [x] Compare like-for-like profiled runs and retain block reuse only if measurements improve.
 - [x] Record the latest client/server/FDB timing breakdown for both bounds.
 
+## 7. Create and directory-listing optimizations
+
+- [x] Reuse create response metadata only within that FUSE callback; preserve fresh ordinary opens.
+- [x] Test handle modes and mounted behavior; benchmark 10k untar at both bounds and decide.
+- [ ] Use scanned child IDs and bounded concurrent metadata reads within each listing snapshot.
+- [ ] Test pagination, namespace changes, and grants; benchmark listings at both bounds and decide.
+- [ ] Record separate comparisons and retain only justified changes; commit and push each milestone.
+
 ## Local follow-up
 
 - [ ] Retain grant facts across refresh after validating their object revisions.
