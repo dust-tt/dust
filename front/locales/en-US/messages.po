@@ -198,6 +198,7 @@ msgid "Last name"
 msgstr "Last name"
 
 #: front/components/UserSettingsPopover.tsx
+#: front/components/assistant/details/MemberDetails.tsx
 #: front/components/me/NotificationPreferences.tsx
 #: front/components/members/MembersList.tsx
 msgid "Email"
@@ -382,6 +383,43 @@ msgstr "New conversation"
 #: front/components/navigation/AdminSettingsSearchNav.tsx
 msgid "Search"
 msgstr "Search"
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "Not available"
+msgstr "Not available"
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "This user is not available."
+msgstr "This user is not available."
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "User avatar"
+msgstr "User avatar"
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "Former member"
+msgstr "Former member"
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "Left the workspace: {leftDate}"
+msgstr "Left the workspace: {leftDate}"
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "Joined the workspace: {joinedDate}"
+msgstr "Joined the workspace: {joinedDate}"
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "Username"
+msgstr "Username"
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "Full name"
+msgstr "Full name"
+
+#: front/components/assistant/details/MemberDetails.tsx
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Close"
+msgstr "Close"
 
 #: front/components/command_palette/CommandPaletteActionPhase.tsx
 msgid "New conversation in pod"
@@ -586,10 +624,6 @@ msgstr "More settings available. Type to filter."
 msgid "Actions"
 msgstr "Actions"
 
-#: front/components/command_palette/CommandPaletteSearchPhase.tsx
-msgid "Close"
-msgstr "Close"
-
 #: front/components/groups/GroupDialog.tsx
 msgid "Edit group"
 msgstr "Edit group"
@@ -623,6 +657,7 @@ msgstr "Group members ({selectedMemberCount})"
 #: front/components/groups/ProvisionedGroupDialog.tsx
 #: front/components/me/UserAutomationsTable.tsx
 #: front/components/members/InviteEmailButtonWithModal.tsx
+#: front/components/workspace/ChangeMemberModal.tsx
 #: front/components/workspace/settings/WorkspaceNameEditor.tsx
 msgid "Cancel"
 msgstr "Cancel"
@@ -1069,8 +1104,8 @@ msgid "No members found"
 msgstr "No members found"
 
 #: front/components/members/EditInvitationModal.tsx
-msgid "The role defines the rights of a member for the workspace."
-msgstr "The role defines the rights of a member for the workspace."
+msgid "The role defines the rights of a member for the workspace. {roleDescription}"
+msgstr "The role defines the rights of a member for the workspace. {roleDescription}"
 
 #: front/components/members/EditInvitationModal.tsx
 msgid "Edit invitation"
@@ -1086,6 +1121,7 @@ msgid "(expired)"
 msgstr "(expired)"
 
 #: front/components/members/EditInvitationModal.tsx
+#: front/components/workspace/ChangeMemberModal.tsx
 msgid "Role:"
 msgstr "Role:"
 
@@ -1098,6 +1134,7 @@ msgid "Revoke invitation"
 msgstr "Revoke invitation"
 
 #: front/components/members/EditInvitationModal.tsx
+#: front/components/workspace/ChangeMemberModal.tsx
 msgid "Update role"
 msgstr "Update role"
 
@@ -1261,6 +1298,66 @@ msgstr "Status"
 #: front/components/members/MembersList.tsx
 msgid "Groups"
 msgstr "Groups"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role"
+msgid "Admin"
+msgstr "Admin"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role"
+msgid "Manager"
+msgstr "Manager"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role"
+msgid "Member"
+msgstr "Member"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role"
+msgid "None"
+msgstr "None"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role, inside a sentence"
+msgid "admin"
+msgstr "admin"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role, inside a sentence"
+msgid "manager"
+msgstr "manager"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role, inside a sentence"
+msgid "member"
+msgstr "member"
+
+#: front/components/members/Roles.ts
+msgctxt "workspace role, inside a sentence"
+msgid "none"
+msgstr "none"
+
+#: front/components/members/Roles.ts
+msgid "All roles"
+msgstr "All roles"
+
+#: front/components/members/Roles.ts
+msgid "Can use agents in conversations. Building permissions are set by admins."
+msgstr "Can use agents in conversations. Building permissions are set by admins."
+
+#: front/components/members/Roles.ts
+msgid "Can manage members, groups, roles, and workspace analytics."
+msgstr "Can manage members, groups, roles, and workspace analytics."
+
+#: front/components/members/Roles.ts
+msgid "Full administrative control, including settings, connections, billing, and governance."
+msgstr "Full administrative control, including settings, connections, billing, and governance."
+
+#: front/components/members/Roles.ts
+msgid "Roles are managed through group-to-role mappings configured in Settings & Governance. To change a role, update the member's group membership."
+msgstr "Roles are managed through group-to-role mappings configured in Settings & Governance. To change a role, update the member's group membership."
 
 #: front/components/members/WorkspaceMembersSection.tsx
 msgid "Search members (email)"
@@ -1475,6 +1572,10 @@ msgstr "Datasets"
 msgid "Logs"
 msgstr "Logs"
 
+#: front/components/pages/workspace/governance/RoleProvisioningSection.tsx
+msgid "Roles"
+msgstr "Roles"
+
 #: front/components/plans/PlansTables.tsx
 #: front/components/plans/SubscriptionPlanCards.tsx
 msgid "From 1 user"
@@ -1657,6 +1758,38 @@ msgstr "Lora"
 msgctxt "font name"
 msgid "OpenDyslexic"
 msgstr "OpenDyslexic"
+
+#: front/components/workspace/ChangeMemberModal.tsx
+msgid "The role defines the rights of a member of the workspace. {roleDescription}"
+msgstr "The role defines the rights of a member of the workspace. {roleDescription}"
+
+#: front/components/workspace/ChangeMemberModal.tsx
+msgid "Unreachable"
+msgstr "Unreachable"
+
+#: front/components/workspace/ChangeMemberModal.tsx
+msgid "Revoke member access"
+msgstr "Revoke member access"
+
+#: front/components/workspace/ChangeMemberModal.tsx
+msgid "This user is managed by your identity provider."
+msgstr "This user is managed by your identity provider."
+
+#: front/components/workspace/ChangeMemberModal.tsx
+msgid "Confirm deletion"
+msgstr "Confirm deletion"
+
+#: front/components/workspace/ChangeMemberModal.tsx
+msgid "Revoke access for user <0>{memberFullName}</0>?"
+msgstr "Revoke access for user <0>{memberFullName}</0>?"
+
+#: front/components/workspace/ChangeMemberModal.tsx
+msgid "Yes, revoke"
+msgstr "Yes, revoke"
+
+#: front/components/workspace/ChangeMemberModal.tsx
+msgid "Deleting a member will remove them from the workspace. They will be able to rejoin if they have an invitation link."
+msgstr "Deleting a member will remove them from the workspace. They will be able to rejoin if they have an invitation link."
 
 #: front/components/workspace/settings/BotToggle.tsx
 msgid "Failed to enable {name}."

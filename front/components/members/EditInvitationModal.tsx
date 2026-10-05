@@ -1,7 +1,7 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import {
   GROUP_ROLE_MANAGED_MESSAGE,
-  getRoleDescription,
+  ROLE_DESCRIPTIONS,
 } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -25,22 +25,6 @@ import {
 } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useContext, useEffect, useState } from "react";
-
-function getInvitationRoleMessage({
-  isRoleManagedByGroup,
-  role,
-  roleIntroduction,
-}: {
-  isRoleManagedByGroup: boolean;
-  role: ActiveRoleType;
-  roleIntroduction: string;
-}): string {
-  if (isRoleManagedByGroup) {
-    return GROUP_ROLE_MANAGED_MESSAGE;
-  }
-
-  return `${roleIntroduction} ${getRoleDescription(role)}`;
-}
 
 export function EditInvitationModal({
   owner,
@@ -72,13 +56,15 @@ export function EditInvitationModal({
   const isRoleManagedByGroup =
     selectedRole !== undefined && grantedRoles.some((r) => r === selectedRole);
 
-  const roleMessage = invitation
-    ? getInvitationRoleMessage({
-        isRoleManagedByGroup,
-        role: invitation.initialRole,
-        roleIntroduction: t`The role defines the rights of a member for the workspace.`,
-      })
-    : "";
+  const roleDescription = invitation
+    ? t(ROLE_DESCRIPTIONS[invitation.initialRole])
+    : null;
+  let roleMessage = "";
+  if (roleDescription !== null) {
+    roleMessage = isRoleManagedByGroup
+      ? t(GROUP_ROLE_MANAGED_MESSAGE)
+      : t`The role defines the rights of a member for the workspace. ${roleDescription}`;
+  }
 
   const sentDate = invitation ? formatDate(invitation.createdAt) : "";
 

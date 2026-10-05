@@ -1,5 +1,8 @@
 import { ConfirmContext } from "@app/components/Confirm";
-import { displayRole, getRoleDescription } from "@app/components/members/Roles";
+import {
+  ROLE_DESCRIPTIONS,
+  ROLE_NAMES_IN_SENTENCE,
+} from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { BillingPeriodSwitch } from "@app/components/pages/onboarding/SubscriptionPlans";
 import {
@@ -30,6 +33,7 @@ import { isMembershipSeatType, toBaseSeatType } from "@app/types/memberships";
 import type { SubscriptionPerSeatPricing } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
+import { isRoleType } from "@app/types/user";
 import {
   Button,
   Chip,
@@ -292,7 +296,7 @@ export function InviteEmailButtonWithModal({
 
     const { notInWorkspace, activeDifferentRole } = invitesByCase;
     const activeDifferentRoleCount = activeDifferentRole.length;
-    const newRole = displayRole(invitationRole);
+    const newRole = t(ROLE_NAMES_IN_SENTENCE[invitationRole]);
 
     const ReinviteUsersMessage = (
       <div className="mt-6 flex flex-col gap-6 px-2">
@@ -320,7 +324,10 @@ export function InviteEmailButtonWithModal({
             <div className="mt-2 flex max-h-48 flex-col gap-1 overflow-y-auto rounded border p-2 text-xs">
               {activeDifferentRole.map((user) => {
                 const fullName = user.fullName;
-                const currentRole = displayRole(user.workspace.role);
+                const role = user.workspace.role;
+                const currentRole = isRoleType(role)
+                  ? t(ROLE_NAMES_IN_SENTENCE[role])
+                  : role;
                 return (
                   <div
                     key={user.email}
@@ -434,7 +441,7 @@ export function InviteEmailButtonWithModal({
                 />
               </div>
               <div className="text-muted-foreground">
-                {getRoleDescription(invitationRole)}
+                {t(ROLE_DESCRIPTIONS[invitationRole])}
               </div>
             </div>
             {hasSeatSelection && (

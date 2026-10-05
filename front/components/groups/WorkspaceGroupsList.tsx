@@ -2,10 +2,7 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { GroupDialog } from "@app/components/groups/GroupDialog";
 import { getGroupKindChip } from "@app/components/groups/GroupKinds";
 import { ProvisionedGroupDialog } from "@app/components/groups/ProvisionedGroupDialog";
-import {
-  displayRoleCapitalized,
-  ROLES_DATA,
-} from "@app/components/members/Roles";
+import { ROLE_LABELS, ROLES_DATA } from "@app/components/members/Roles";
 import { LinkedSectionNotice } from "@app/components/workspace/LinkedSectionNotice";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isSCIMEnabled } from "@app/lib/plans/scim";
@@ -154,7 +151,7 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
                   <Chip
                     size="xs"
                     color={ROLES_DATA[grantedRole].color}
-                    label={displayRoleCapitalized(grantedRole)}
+                    label={t(ROLE_LABELS[grantedRole])}
                   />
                 )}
               </div>

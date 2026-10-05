@@ -1,9 +1,6 @@
 import type { SearchMemberWithWorkspaceType } from "@app/components/members/MemberSelectionTable";
 import { isFullUserType } from "@app/components/members/MemberSelectionTable";
-import {
-  displayRoleCapitalized,
-  ROLES_DATA,
-} from "@app/components/members/Roles";
+import { ROLE_LABELS, ROLES_DATA } from "@app/components/members/Roles";
 import type { SearchMembersAdminResponseBody } from "@app/lib/api/workspace";
 import assert from "@app/lib/utils/assert";
 import type { MembershipOriginType } from "@app/types/memberships";
@@ -39,10 +36,11 @@ type RowData = {
 type Info = CellContext<RowData, string>;
 
 function RoleCell({ role }: { role: RoleType }) {
+  const { t } = useLingui();
   return (
     <DataTable.CellContent>
       <Chip
-        label={displayRoleCapitalized(role)}
+        label={t(ROLE_LABELS[role])}
         color={role !== "none" ? ROLES_DATA[role]["color"] : undefined}
       />
     </DataTable.CellContent>

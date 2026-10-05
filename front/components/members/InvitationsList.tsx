@@ -1,15 +1,12 @@
 import { EditInvitationModal } from "@app/components/members/EditInvitationModal";
-import {
-  displayRoleCapitalized,
-  ROLES_DATA,
-} from "@app/components/members/Roles";
+import { ROLE_LABELS, ROLES_DATA } from "@app/components/members/Roles";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { compareStrings } from "@app/lib/i18n/format";
 import { sendInvitations } from "@app/lib/invitations";
 import { useWorkspaceInvitations } from "@app/lib/swr/memberships";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import type { WorkspaceType } from "@app/types/user";
+import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
@@ -30,6 +27,17 @@ import { useMemo, useState } from "react";
 type RowData = MembershipInvitationType & {
   onClick: () => void;
 };
+
+function InitialRoleCell({ role }: { role: ActiveRoleType }) {
+  const { t } = useLingui();
+  return (
+    <DataTable.CellContent>
+      <Chip size="xs" color={ROLES_DATA[role]["color"]}>
+        {t(ROLE_LABELS[role])}
+      </Chip>
+    </DataTable.CellContent>
+  );
+}
 
 function getColumns({
   owner,
@@ -91,16 +99,9 @@ function getColumns({
       id: "initialRole" as const,
       header: labels.role,
       accessorFn: (row: RowData) => row.initialRole,
-      cell: (info: CellContext<RowData, string>) => {
-        const role = info.row.original.initialRole;
-        return (
-          <DataTable.CellContent>
-            <Chip size="xs" color={ROLES_DATA[role]["color"]}>
-              {displayRoleCapitalized(role)}
-            </Chip>
-          </DataTable.CellContent>
-        );
-      },
+      cell: (info: CellContext<RowData, string>) => (
+        <InitialRoleCell role={info.row.original.initialRole} />
+      ),
       meta: {
         className: "w-32",
       },

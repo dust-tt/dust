@@ -100,14 +100,14 @@ export function WorkspaceMembersSection({
                 variant="outline"
                 isSelect
                 className="w-32 shrink-0 justify-between"
-                label={getRoleFilterLabel(roleFilter)}
+                label={t(getRoleFilterLabel(roleFilter))}
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-48">
               {ROLE_FILTER_OPTIONS.map((option) => (
                 <DropdownMenuItem
                   key={option.value}
-                  label={option.label}
+                  label={t(option.label)}
                   onClick={() => setRoleFilter(option.value)}
                 />
               ))}
