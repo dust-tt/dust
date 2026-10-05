@@ -9,7 +9,6 @@ import type {
   ConfigurationState,
   SheetState,
 } from "@app/components/agent_builder/skills/types";
-import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { getDefaultMCPAction } from "@app/components/shared/tools_picker/formDefaults";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
@@ -17,15 +16,23 @@ import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { nameToStorageFormat } from "@app/lib/actions/default_mcp_action";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
+import { useSearchSkillsInfinite } from "@app/lib/swr/skill_configurations";
+import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
+import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useMemo, useState } from "react";
 
+const SKILL_SEARCH_PAGE_SIZE = 20;
+
 type UseSkillSelectionProps = {
+  owner: LightWorkspaceType;
+  disabled: boolean;
   alreadyAddedSkillIds: Set<string>;
   searchQuery: string;
 };
 
 export const useSkillSelection = ({
+  owner,
+  disabled,
   alreadyAddedSkillIds,
   searchQuery,
 }: UseSkillSelectionProps) => {
@@ -37,28 +44,28 @@ export const useSkillSelection = ({
     setLocalSelectedSkills([]);
   }, []);
 
-  const { skills, isSkillsLoading } = useSkillsContext();
+  const {
+    skills: searchSkills,
+    resolvedSearchTerm,
+    isSkillsLoading,
+    hasMore,
+    loadMore,
+  } = useSearchSkillsInfinite({
+    owner,
+    searchTerm: searchQuery,
+    limit: SKILL_SEARCH_PAGE_SIZE,
+    disabled,
+  });
 
   const selectedSkillIds = useMemo(
     () => new Set(localSelectedSkills.map((s) => s.sId)),
     [localSelectedSkills]
   );
 
-  const filteredSkills = useMemo(() => {
-    const notAlreadyAddedSkills = skills.filter(
-      (skill) => !alreadyAddedSkillIds.has(skill.sId)
-    );
-
-    if (!searchQuery.trim()) {
-      return notAlreadyAddedSkills;
-    }
-    const query = searchQuery.toLowerCase();
-    return notAlreadyAddedSkills.filter(
-      (skill) =>
-        skill.name.toLowerCase().includes(query) ||
-        skill.userFacingDescription.toLowerCase().includes(query)
-    );
-  }, [skills, searchQuery, alreadyAddedSkillIds]);
+  const filteredSkills = useMemo(
+    () => searchSkills.filter((skill) => !alreadyAddedSkillIds.has(skill.sId)),
+    [searchSkills, alreadyAddedSkillIds]
+  );
 
   const unselectSkill = useCallback((skill: AgentBuilderSkillsType) => {
     setLocalSelectedSkills((prev) =>
@@ -66,16 +73,12 @@ export const useSkillSelection = ({
     );
   }, []);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
-  const handleSkillToggle = useCallback(
-    (skill: SkillWithoutInstructionsAndToolsType) => {
-      if (selectedSkillIds.has(skill.sId)) {
-        setLocalSelectedSkills((prev) =>
-          prev.filter((s) => s.sId !== skill.sId)
-        );
-        return;
-      }
-
+  const handleSkillToggle = (skill: SkillListItemType) => {
+    if (selectedSkillIds.has(skill.sId)) {
+      setLocalSelectedSkills((prev) =>
+        prev.filter((selected) => selected.sId !== skill.sId)
+      );
+    } else {
       setLocalSelectedSkills((prev) => [
         ...prev,
         {
@@ -87,9 +90,8 @@ export const useSkillSelection = ({
           canWrite: skill.canWrite,
         },
       ]);
-    },
-    [selectedSkillIds, setLocalSelectedSkills]
-  );
+    }
+  };
 
   return {
     localSelectedSkills,
@@ -97,6 +99,12 @@ export const useSkillSelection = ({
     handleSkillToggle,
     filteredSkills,
     isSkillsLoading,
+    resolvedSearchQuery: resolvedSearchTerm ?? "",
+    skillPagination: {
+      hasMore,
+      loadMore,
+      loadedCount: searchSkills.length,
+    },
     selectedSkillIds,
     resetLocalState,
   };

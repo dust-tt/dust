@@ -3,11 +3,11 @@ import {
   SKILL_AVATAR_BACKGROUND_COLOR,
   SKILL_AVATAR_ICON_COLOR,
 } from "@app/lib/skill";
-import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
+import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
 import { ActionCard } from "@dust-tt/sparkle";
 
 interface SkillCardProps {
-  skill: SkillWithoutInstructionsAndToolsType;
+  skill: SkillListItemType;
   isSelected: boolean;
   onClick: () => void;
   onMoreInfoClick: () => void;
