@@ -64,7 +64,7 @@ them comes in the next pull request. Message bodies show as plain text for now.
 | `extensions.ts` | The schema: StarterKit, Markdown, placeholders and heading anchors. |
 | `blocks.ts`, `DocumentBlockMenu.tsx` | The `/` block menu. |
 | `DocumentSelectionToolbar.tsx` | Formatting controls on a text selection. |
-| `DocumentSaveStatus.tsx` | Saved, saving, unsaved and error line with Retry. |
+| `DocumentSaveStatus.tsx` | The status row, the save status with Retry, and the save error under it. |
 | `DocumentSourcePreview.tsx` | Read-only source for a file that cannot open. |
 | `DocumentAnchors.ts` | In-document heading links. |
 | `DocumentComments.ts` | The `comment` mark, the threads attribute and the highlights. |

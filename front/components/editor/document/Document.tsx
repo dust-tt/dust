@@ -5,6 +5,7 @@ import {
 import { DocumentCommentMarkers } from "@app/components/editor/document/DocumentCommentMarkers";
 import { DocumentCommentsPanel } from "@app/components/editor/document/DocumentCommentsPanel";
 import {
+  DocumentSaveError,
   DocumentSaveStatus,
   StatusRow,
 } from "@app/components/editor/document/DocumentSaveStatus";
@@ -146,6 +147,7 @@ export const Document = ({
   }
 
   const unresolvedCount = comments.unresolved.length;
+  const showSaveStatus = editable || dirty || saving;
   const saveError =
     !editable && dirty && !saving
       ? "Saving is unavailable. Your unsaved changes are still here. Copy them before reopening."
@@ -190,21 +192,22 @@ export const Document = ({
             editable || showCommentsToggle ? "pt-5 @sm:pt-8" : "pt-8 @sm:pt-18"
           )}
         >
-          {editable || dirty || saving ? (
-            <DocumentSaveStatus
-              dirty={dirty}
-              saving={saving}
-              error={saveError}
-              onRetry={editable ? save : undefined}
-              autosaveDebounceMs={autosaveDebounceMs}
-              badge={badge}
-            >
+          {(showSaveStatus || badge || showCommentsToggle) && (
+            <StatusRow badge={badge}>
+              {showSaveStatus && (
+                <DocumentSaveStatus
+                  dirty={dirty}
+                  saving={saving}
+                  error={saveError}
+                  onRetry={editable ? save : undefined}
+                  autosaveDebounceMs={autosaveDebounceMs}
+                />
+              )}
               {commentsToggle}
-            </DocumentSaveStatus>
-          ) : (
-            (badge || showCommentsToggle) && (
-              <StatusRow badge={badge}>{commentsToggle}</StatusRow>
-            )
+            </StatusRow>
+          )}
+          {showSaveStatus && saveError && (
+            <DocumentSaveError error={saveError} />
           )}
           {editor && editable && (
             <>
