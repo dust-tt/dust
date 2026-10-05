@@ -29,6 +29,20 @@ enum FileContentService {
         }
     }
 
+    static func fetchPodFiles(
+        workspaceId: String,
+        spaceId: String,
+        tokenProvider: TokenProvider
+    ) async throws -> [PodFileEntry] {
+        let endpoint = AppConfig.Endpoints.spaceFiles(workspaceId: workspaceId, spaceId: spaceId)
+        let response: PodFilesResponse = try await APIClient.authenticatedGet(
+            endpoint,
+            tokenProvider: tokenProvider,
+            snakeCase: false
+        )
+        return response.files
+    }
+
     static func fetchConversationAttachments(
         workspaceId: String,
         conversationId: String,

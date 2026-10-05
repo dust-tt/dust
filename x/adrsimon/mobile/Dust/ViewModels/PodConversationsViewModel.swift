@@ -53,8 +53,7 @@ final class PodConversationsViewModel: ObservableObject {
             spaceId: space.sId,
             tokenProvider: tokenProvider
         )
-        // Hide conversations without a visible first message (e.g. compaction-only), as front does.
-        conversations = response.conversations.filter { $0.preview != nil }
+        conversations = response.conversations.map(Conversation.init(podItem:))
         state = .loaded
     }
 

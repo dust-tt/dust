@@ -87,6 +87,10 @@ enum AppConfig {
             "/api/w/\(workspaceId)/frames/\(frameId)/permissions"
         }
 
+        static func spaceFiles(workspaceId: String, spaceId: String) -> String {
+            "/api/w/\(workspaceId)/spaces/\(spaceId)/files"
+        }
+
         static func conversationAttachments(workspaceId: String, conversationId: String) -> String {
             "/api/w/\(workspaceId)/assistant/conversations/\(conversationId)/attachments"
         }
