@@ -112,6 +112,29 @@ export async function withModelSelectability(
   );
 }
 
+/**
+ * @cc [owner:Nils-Fedrigo,label:product] tiered-default-reasoning-effort
+ * Returns the effort an agent set to `model` without an explicit effort is saved with: the model's
+ * `defaultReasoningEffort` if the caller's tiers allow it, otherwise the highest effort they allow
+ * (`none` if they allow none).
+ */
+export async function getTieredDefaultReasoningEffort(
+  auth: Authenticator,
+  {
+    model,
+    allowedTierNamesOverride,
+  }: {
+    model: ModelConfigurationType;
+    allowedTierNamesOverride?: ModelsTierName[] | null;
+  }
+): Promise<ReasoningEffort> {
+  const [restricted] = await withModelSelectability(auth, {
+    models: [model],
+    allowedTierNamesOverride,
+  });
+  return restricted.defaultReasoningEffort;
+}
+
 export async function getEnabledModelsForAuth(
   auth: Authenticator,
   {
