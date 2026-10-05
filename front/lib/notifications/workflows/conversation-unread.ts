@@ -20,7 +20,6 @@ import {
   getEmailSummary,
 } from "@app/lib/notifications/helpers";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -765,19 +764,9 @@ export const triggerConversationUnreadNotifications = async (
   }
   const { authorUserId } = detailsResult.value;
   // Get all participants to determine total count (for single-participant exception).
-  // Revoked members keep their participant rows, so only active members are kept.
-  const participantsIncludingRevoked =
-    await conversation.listParticipants(auth);
-  const activeMembers = await MembershipResource.filterActiveMembers({
-    users: await UserResource.fetchByModelIds(
-      participantsIncludingRevoked.map((p) => p.id)
-    ),
-    workspace: auth.getNonNullableWorkspace(),
+  const totalParticipants = await conversation.listParticipants(auth, {
+    onlyActiveMembers: true,
   });
-  const activeUserIds = new Set(activeMembers.map((u) => u.id));
-  const totalParticipants = participantsIncludingRevoked.filter((p) =>
-    activeUserIds.has(p.id)
-  );
   const allParticipants = totalParticipants.filter((p) => {
     if (userToNotifyId && p.sId !== userToNotifyId) {
       return false;
