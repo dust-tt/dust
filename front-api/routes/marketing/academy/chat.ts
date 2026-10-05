@@ -18,7 +18,7 @@ import { z } from "zod";
 
 const CSRF_TOKEN_EXPIRY = "30m";
 
-const RATE_LIMIT_TIMEFRAME_SECONDS = 60 * 60;
+const ONE_HOUR_IN_SECONDS = 60 * 60;
 const MAX_REQUESTS_PER_USER_PER_HOUR = 60;
 // All anonymous visitors share this budget. Sized at ~3x the peak hourly
 // traffic observed in Oct 2026 (~100 requests/hour, all users combined).
@@ -178,7 +178,7 @@ async function consumeChatRateLimit(
     maxPerTimeframe: isAnonymous
       ? MAX_ANONYMOUS_REQUESTS_PER_HOUR
       : MAX_REQUESTS_PER_USER_PER_HOUR,
-    timeframeSeconds: RATE_LIMIT_TIMEFRAME_SECONDS,
+    timeframeSeconds: ONE_HOUR_IN_SECONDS,
     logger,
     onStoreError: "deny",
   });
