@@ -37,14 +37,15 @@ export const DocumentSelectionToolbar = ({
       editor={editor}
       options={{ placement: "top" }}
       className="relative z-50 font-sans text-foreground antialiased print:hidden"
-      shouldShow={({ editor, state, from, to }) =>
+      shouldShow={({ editor, view, state, from, to }) =>
         editor.isEditable &&
         isTextSelection(state.selection) &&
         !state.selection.empty &&
         state.doc.textBetween(from, to).length > 0 &&
         (editor.isFocused ||
-          // The editor's own document: TipTap fires this from a timer that can outlive the page.
-          !!editor.view.dom.ownerDocument.activeElement?.closest(
+          // The view's own document: TipTap fires this from a timer that can outlive the page and
+          // the editor, whose `view` getter throws once destroyed.
+          !!view.dom.ownerDocument.activeElement?.closest(
             "[data-document-selection]"
           ))
       }
