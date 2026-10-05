@@ -20,7 +20,6 @@ import {
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Avatar,
   Button,
   Chip,
   DataTable,
@@ -57,10 +56,6 @@ interface WorkspaceGroupsListProps {
   owner: WorkspaceType;
 }
 
-/**
- * @cc [owner:philipperolet,label:product] group-manager-avatars
- * Manager avatar circles MUST remain fully visible, including when the stack expands on hover.
- */
 const columns: ColumnDef<GroupRowData>[] = [
   {
     id: "name",
@@ -89,21 +84,20 @@ const columns: ColumnDef<GroupRowData>[] = [
         return <DataTable.CellContent>-</DataTable.CellContent>;
       }
       return (
-        <div className="flex items-center gap-2 text-sm">
-          <Avatar.Stack
-            avatars={managers.map(({ fullName, image }) => ({
+        <DataTable.CellContent
+          className="gap-2"
+          avatarStack={{
+            items: managers.map(({ fullName, image }) => ({
               name: fullName,
               visual: image ?? undefined,
               isRounded: true,
-            }))}
-            nbVisibleItems={4}
-            size="xs"
-            hasMagnifier={false}
-          />
-          {managers.length === 1 && (
-            <span className="truncate">{managers[0].fullName}</span>
-          )}
-        </div>
+            })),
+            nbVisibleItems: 4,
+            hasMagnifier: false,
+          }}
+        >
+          {managers.length === 1 && managers[0].fullName}
+        </DataTable.CellContent>
       );
     },
   },

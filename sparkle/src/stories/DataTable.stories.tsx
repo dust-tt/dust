@@ -1274,8 +1274,12 @@ const avatarStackColumns: ColumnDef<Data>[] = [
         avatarStack={
           info.row.original.avatarStack
             ? {
-                items: info.row.original.avatarStack,
+                items: info.row.original.avatarStack.map((avatar) => ({
+                  ...avatar,
+                  isRounded: info.row.original.roundedAvatar,
+                })),
                 nbVisibleItems: 3,
+                hasMagnifier: false,
               }
             : undefined
         }
