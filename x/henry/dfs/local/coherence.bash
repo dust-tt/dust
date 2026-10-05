@@ -33,22 +33,24 @@ until grep -q listening "$WORK/server.log"; do sleep 0.1; done
 admin() { "$BIN/dfs-server" admin --addr "127.0.0.1:$PORT" --token "$ADMIN" "$@" >/dev/null; }
 admin members team alice bob
 mount_as() {
-    DFS_TOKEN=$1 "$BIN/dfs-mount" --addr "127.0.0.1:$PORT" "$2" >"$WORK/$(basename "$2").log" 2>&1 &
+    DFS_TOKEN=$1 "$BIN/dfs-mount" --profile "${PROFILE:-strict}" --addr "127.0.0.1:$PORT" "$2" >"$WORK/$(basename "$2").log" 2>&1 &
     PIDS+=($!)
     until grep -q mounted "$WORK/$(basename "$2").log"; do sleep 0.1; done
 }
 mount_as "$ALICE" "$A"
 mount_as "$BOB" "$B"
 
+# The matched profile acknowledges close before its commit: other mounts see content after fsyncdir.
+settle() { if [[ ${PROFILE:-strict} == matched ]]; then python3 -c "import os, sys; os.fsync(os.open(sys.argv[1], os.O_RDONLY))" "$1"; fi; }
 expect() { if [[ "$1" != "$2" ]]; then echo "FAIL: $3: got '$1', want '$2'"; exit 1; fi; }
 
 mkdir "$A/d"
 expect "$(ls "$B/d" | wc -l)" 0 "B lists the empty directory (caches a complete listing)"
 [[ ! -e $B/d/x ]]                     # B caches a negative entry
-echo one >"$A/d/x"
+echo one >"$A/d/x"; settle "$A"
 expect "$(cat "$B/d/x")" one "B sees A's new file"
 expect "$(ls "$B/d")" x "B's cached listing was invalidated"
-echo two >"$A/d/x"
+echo two >"$A/d/x"; settle "$A"
 expect "$(cat "$B/d/x")" two "B sees A's overwrite (page cache purged)"
 expect "$(stat -c %s "$B/d/x")" 4 "B sees the new size"
 mv "$A/d/x" "$A/d/y"
@@ -59,7 +61,7 @@ expect "$(stat -c %a "$B/d/y")" 600 "B sees A's chmod"
 rm "$A/d/y"
 [[ ! -e $B/d/y ]] || { echo "FAIL: stale entry after unlink"; exit 1; }
 mkdir "$A/d/e"
-echo z >"$B/d/e/z"
+echo z >"$B/d/e/z"; settle "$B"
 expect "$(cat "$A/d/e/z")" z "A sees B's file in a directory A created"
 
 # Authorization changes invalidate everything: revoking bob's write stops him at once.
@@ -67,6 +69,6 @@ D=$(stat -c %i "$A/d")
 admin boundary "$D"
 admin grant "$D" alice write
 if (echo nope >"$B/d/e/w") 2>/dev/null; then echo "FAIL: bob wrote below a boundary"; exit 1; fi
-echo yes >"$A/d/e/w"
+echo yes >"$A/d/e/w"; settle "$A"
 expect "$(cat "$B/d/e/w")" yes "bob can still read below the boundary"
 echo "coherence ok"

@@ -14,7 +14,7 @@ use fuser::{
     LockOwner, Notifier, OpenFlags, RenameFlags, ReplyAttr, ReplyCreate, ReplyData, ReplyDirectory, ReplyDirectoryPlus, ReplyEmpty,
     ReplyEntry, ReplyOpen, ReplyStatfs, ReplyWrite, ReplyXattr, Request as FuseRequest, TimeOrNow, WriteFlags,
 };
-use parking_lot::Mutex;
+use parking_lot::{Condvar, Mutex};
 
 /// Buffered bytes per file before a write forces a (durable) flush.
 const DIRTY_BYTES: usize = 4 << 20;
@@ -22,6 +22,9 @@ const DIRTY_BLOCKS: usize = MAX_FLUSH_BLOCKS - 8;
 const PAGE: u32 = 4096;
 /// Below this remaining lease, nothing is cached or handed to the kernel with a TTL.
 const MIN_TTL: Duration = Duration::from_secs(1);
+/// Matched profile: close commits running in the background at once (bounds memory with
+/// `DIRTY_BYTES`).
+const MAX_BACKGROUND: usize = 64;
 /// Root name the mount looks up at start to learn whether the kernel can drop negative dentries.
 const PROBE: &str = ".dfs-negative-probe";
 
@@ -49,6 +52,16 @@ impl Dirty {
     }
 }
 
+/// What close guarantees.
+#[derive(Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub enum Profile {
+    /// The agreed contract: close returns after its commit.
+    Strict,
+    /// Spolu-equivalent: close returns at once and commits in the background; fsync and fsyncdir
+    /// wait for it and report its failure.
+    Matched,
+}
+
 #[derive(Default)]
 struct DirCache {
     complete: bool,
@@ -62,11 +75,17 @@ struct Node {
     dir: Option<DirCache>,
     link: Option<String>,
     dirty: Option<Dirty>,
+    /// Size and times of the batch being committed (its writes are in the request).
+    inflight: Option<Dirty>,
+    /// A background commit of this node failed; reported by its next close or fsync.
+    failed: Option<Errno>,
     open: u32,
     /// Content revision the kernel page cache may hold.
     kernel_rev: Option<u64>,
     /// The kernel may hold this directory's listing (`FOPEN_CACHE_DIR`).
     kernel_listing: bool,
+    /// Generation of the last invalidation or own mutation that changed this node or its names.
+    touched: u64,
 }
 
 impl Node {
@@ -81,13 +100,24 @@ impl Node {
 
 struct State {
     /// @cc [owner:fontanierh,label:concurrency] cache-generation
-    /// Bumped (under the state lock) by every applied invalidation, every own mutation reply,
-    /// and lease loss. A reply MUST update caches only if `generation` still equals its value when the
-    /// request was sent, the server marked it cacheable, and the lease is valid; otherwise it is
-    /// handed to the kernel with TTL 0.
+    /// Increases (under the state lock) with every applied invalidation, own mutation reply, and
+    /// lease loss, which record it in `touched` of every node they change (`All` and lease loss: in
+    /// `floor`). A reply MUST update caches only if no node whose state it installs, nor any node its
+    /// invalidations name, was touched after the generation read when its request was sent, that
+    /// generation is at least `floor`, the server marked it cacheable, and the lease is valid;
+    /// otherwise it reaches the kernel with TTL 0.
     generation: u64,
+    floor: u64,
     lease_until: Option<Instant>,
     nodes: HashMap<Id, Node>,
+}
+
+/// Nodes whose cached state `invalidations` changes.
+fn changed(invalidations: &[Invalidation]) -> impl Iterator<Item = Id> + '_ {
+    invalidations.iter().filter_map(|item| match item {
+        Invalidation::Node(id) | Invalidation::Name { parent: id, .. } => Some(*id),
+        Invalidation::All => None,
+    })
 }
 
 impl State {
@@ -96,8 +126,21 @@ impl State {
         (left >= MIN_TTL).then_some(left)
     }
 
-    fn usable(&self, sent: u64, reply: &Reply) -> bool {
-        self.generation == sent && reply.cacheable && self.ttl().is_some()
+    /// Nothing changed `ids` since generation `sent`.
+    fn fresh(&self, sent: u64, ids: impl IntoIterator<Item = Id>) -> bool {
+        sent >= self.floor && ids.into_iter().all(|id| self.nodes.get(&id).is_none_or(|n| n.touched <= sent))
+    }
+
+    fn usable(&self, sent: u64, reply: &Reply, ids: impl IntoIterator<Item = Id>) -> bool {
+        reply.cacheable && self.ttl().is_some() && self.fresh(sent, ids.into_iter().chain(changed(&reply.invalidations)))
+    }
+
+    fn touch(&mut self, ids: impl IntoIterator<Item = Id>) {
+        self.generation += 1;
+        let generation = self.generation;
+        for id in ids {
+            self.node(id).touched = generation;
+        }
     }
 
     fn node(&mut self, id: Id) -> &mut Node {
@@ -111,7 +154,7 @@ impl State {
 
     /// Drops what `items` names; returns the kernel notifications to send.
     fn invalidate(&mut self, items: &[Invalidation]) -> Vec<Kernel> {
-        self.generation += 1;
+        self.touch(changed(items).collect::<Vec<_>>());
         let mut kernel = Vec::new();
         for item in items {
             match item {
@@ -143,6 +186,7 @@ impl State {
 
     fn drop_all(&mut self) -> Vec<Kernel> {
         self.generation += 1;
+        self.floor = self.generation;
         let mut kernel = Vec::new();
         for (id, node) in &mut self.nodes {
             if let Some(dir) = &node.dir {
@@ -232,6 +276,16 @@ pub struct Fs {
     negative_ttl: AtomicBool,
     probing: AtomicBool,
     probe_lookups: AtomicU64,
+    profile: Profile,
+    background: Mutex<Background>,
+    background_done: Condvar,
+}
+
+#[derive(Default)]
+struct Background {
+    running: usize,
+    /// First background commit failure since the last barrier.
+    failed: Option<Errno>,
 }
 
 fn errno(e: dfs_proto::Errno) -> Errno {
@@ -273,6 +327,7 @@ impl Fs {
         owner: (u32, u32),
         lease_until: Instant,
         jobs: std::sync::mpsc::Sender<Job>,
+        profile: Profile,
     ) -> Self {
         Self {
             rt,
@@ -281,7 +336,7 @@ impl Fs {
             root,
             uid: owner.0,
             gid: owner.1,
-            state: Mutex::new(State { generation: 0, lease_until: Some(lease_until), nodes: HashMap::new() }),
+            state: Mutex::new(State { generation: 0, floor: 0, lease_until: Some(lease_until), nodes: HashMap::new() }),
             flushing: Mutex::default(),
             dirs: Mutex::default(),
             next_fh: AtomicU64::new(1),
@@ -289,6 +344,9 @@ impl Fs {
             negative_ttl: AtomicBool::new(false),
             probing: AtomicBool::new(false),
             probe_lookups: AtomicU64::new(0),
+            profile,
+            background: Mutex::default(),
+            background_done: Condvar::new(),
         }
     }
 
@@ -309,10 +367,10 @@ impl Fs {
         (reply, sent)
     }
 
-    fn file_attr(&self, attr: &Attr, dirty: Option<&Dirty>) -> FileAttr {
+    fn file_attr(&self, attr: &Attr, node: Option<&Node>) -> FileAttr {
         let mut size = attr.size;
         let mut mtime = attr.mtime_ns;
-        if let Some(dirty) = dirty {
+        for dirty in node.into_iter().flat_map(|n| n.inflight.iter().chain(n.dirty.iter())) {
             size = size.max(dirty.end);
             mtime = dirty.mtime.unwrap_or(if dirty.bytes > 0 { dirty.written_ns } else { mtime });
         }
@@ -340,7 +398,7 @@ impl Fs {
     }
 
     fn visible(&self, state: &State, attr: &Attr) -> FileAttr {
-        self.file_attr(attr, state.nodes.get(&attr.id).and_then(|n| n.dirty.as_ref()))
+        self.file_attr(attr, state.nodes.get(&attr.id))
     }
 
     fn negative(&self) -> FileAttr {
@@ -363,21 +421,22 @@ impl Fs {
         }
     }
 
-    /// Applies an own mutation's reply: `apply` updates caches in place when the reply is usable;
-    /// otherwise its invalidations are dropped. Either way the generation moves.
-    fn mutated(&self, sent: u64, reply: &Reply, apply: impl FnOnce(&mut State)) -> Option<Duration> {
+    /// Applies an own mutation's reply: `apply` updates the caches of `ids` (and of what the reply's
+    /// invalidations name) in place when the reply is usable; otherwise those are dropped. Either way
+    /// they are touched.
+    fn mutated(&self, sent: u64, reply: &Reply, ids: &[Id], apply: impl FnOnce(&mut State)) -> Option<Duration> {
         let mut state = self.state.lock();
         let all = reply.invalidations.contains(&Invalidation::All);
-        let applied = !all && state.usable(sent, reply);
+        let applied = !all && state.usable(sent, reply, ids.iter().copied());
         if applied {
             apply(&mut state);
+            state.touch(ids.iter().copied().chain(changed(&reply.invalidations)).collect::<Vec<_>>());
         } else {
             let kernel = state.invalidate(&reply.invalidations);
             if all {
                 let _ = self.jobs.send(Job::Notify(kernel));
             }
         }
-        state.generation += 1;
         if applied { state.ttl() } else { None }
     }
 
@@ -406,7 +465,8 @@ impl Fs {
         }
         let dir_attr = dir_attr.ok_or(Errno::EIO)?;
         let mut state = self.state.lock();
-        let ttl = if state.generation == sent && cacheable { state.ttl() } else { None };
+        let fresh = state.fresh(sent, std::iter::once(dir).chain(entries.iter().map(|e| e.attr.id)));
+        let ttl = if fresh && cacheable { state.ttl() } else { None };
         if ttl.is_some() {
             state.node(dir).attr = Some(dir_attr.clone());
             let mut names = BTreeMap::new();
@@ -455,7 +515,7 @@ impl Fs {
         let (reply, sent) = self.call("lookup", Request::Lookup { parent, name: name.to_string() });
         let Response::Entry(attr) = reply.result.clone().map_err(errno)? else { return Err(Errno::EIO) };
         let mut state = self.state.lock();
-        let usable = state.usable(sent, &reply);
+        let usable = state.usable(sent, &reply, std::iter::once(parent).chain(attr.as_ref().map(|a| a.id)));
         if usable {
             let dir = state.node(parent).dir.get_or_insert_with(DirCache::default);
             dir.names.insert(name.to_string(), attr.as_ref().map(|a| a.id));
@@ -478,7 +538,7 @@ impl Fs {
         let (reply, sent) = self.call("getattr", Request::GetAttr { id });
         let Response::Attr(attr) = reply.result.clone().map_err(errno)? else { return Err(Errno::EIO) };
         let mut state = self.state.lock();
-        let usable = state.usable(sent, &reply);
+        let usable = state.usable(sent, &reply, [id]);
         if usable {
             state.node(id).attr = Some(attr.clone());
         }
@@ -493,11 +553,22 @@ impl Fs {
     fn flush_inode(&self, id: Id) -> Result<(), Errno> {
         let lock = self.flushing.lock().entry(id).or_default().clone();
         let _serial = lock.lock();
-        let dirty = self.state.lock().nodes.get_mut(&id).and_then(|n| n.dirty.take());
-        let Some(dirty) = dirty else { return Ok(()) };
-        if dirty.writes.is_empty() && dirty.mtime.is_none() {
-            return Ok(());
-        }
+        self.flush_locked(id)
+    }
+
+    /// `flush_inode` under the node's flush lock.
+    fn flush_locked(&self, id: Id) -> Result<(), Errno> {
+        let dirty = {
+            let mut state = self.state.lock();
+            let node = state.node(id);
+            match node.dirty.take() {
+                Some(dirty) if !dirty.writes.is_empty() || dirty.mtime.is_some() => {
+                    node.inflight = Some(Dirty { writes: Vec::new(), blocks: BTreeSet::new(), ..dirty });
+                    dirty
+                }
+                _ => return Ok(()),
+            }
+        };
         let (reply, sent) = self.call("flush", Request::Flush { id, writes: dirty.writes.clone(), mtime_ns: dirty.mtime });
         let attr = match reply.result.clone() {
             Ok(Response::Attr(attr)) => attr,
@@ -505,6 +576,7 @@ impl Fs {
                 // Keep the batch ahead of newer writes: the next flush retries it, in order.
                 let mut state = self.state.lock();
                 let node = state.node(id);
+                node.inflight = None;
                 node.dirty = Some(match node.dirty.take() {
                     Some(newer) => dirty.then(newer),
                     None => dirty,
@@ -512,12 +584,81 @@ impl Fs {
                 return Err(failed.err().map_or(Errno::EIO, errno));
             }
         };
-        self.mutated(sent, &reply, |state| {
+        self.mutated(sent, &reply, &[id], |state| {
             let node = state.node(id);
             node.attr = Some(attr.clone());
             node.kernel_rev = Some(attr.rev);
         });
+        self.state.lock().node(id).inflight = None;
         Ok(())
+    }
+
+    /// Close-time commit. Strict: `flush_inode`. Matched: returns at once and commits in the
+    /// background.
+    ///
+    /// @cc [owner:fontanierh,label:product;error-handling] matched-close
+    /// Under `Profile::Matched`, a background commit failure MUST be reported (once) by the node's
+    /// next close or fsync and by the next `fsyncdir` of the mount; its batch stays buffered ahead
+    /// of newer writes. `fsync` MUST wait for the node's in-flight commit, and `fsyncdir` for every
+    /// background commit started before it.
+    fn close_inode(fs: &Arc<Self>, id: Id) -> Result<(), Errno> {
+        if fs.profile == Profile::Strict {
+            return fs.flush_inode(id);
+        }
+        {
+            let mut state = fs.state.lock();
+            let node = state.node(id);
+            if let Some(e) = node.failed.take() {
+                return Err(e);
+            }
+            if node.dirty.is_none() {
+                return Ok(());
+            }
+        }
+        let mut background = fs.background.lock();
+        while background.running >= MAX_BACKGROUND {
+            fs.background_done.wait(&mut background);
+        }
+        background.running += 1;
+        drop(background);
+        let committing = fs.clone();
+        fs.rt.spawn_blocking(move || committing.commit_background(id));
+        Ok(())
+    }
+
+    fn commit_background(&self, id: Id) {
+        let lock = self.flushing.lock().entry(id).or_default().clone();
+        let result = {
+            let _serial = lock.lock();
+            let result = self.flush_locked(id);
+            // Recorded before the flush lock is released, so the node's next fsync sees it.
+            if let Err(e) = result {
+                self.state.lock().node(id).failed = Some(e);
+            }
+            result
+        };
+        let mut background = self.background.lock();
+        if let Err(e) = result {
+            background.failed.get_or_insert(e);
+        }
+        background.running -= 1;
+        self.background_done.notify_all();
+    }
+
+    /// Waits for every background commit; returns the first failure since the last barrier.
+    fn barrier(&self) -> Result<(), Errno> {
+        let mut background = self.background.lock();
+        while background.running > 0 {
+            self.background_done.wait(&mut background);
+        }
+        background.failed.take().map_or(Ok(()), Err)
+    }
+
+    /// fsync: commits what is buffered (after any background commit of this node) and reports a
+    /// background failure of this node.
+    fn sync_inode(&self, id: Id) -> Result<(), Errno> {
+        self.flush_inode(id)?;
+        self.state.lock().node(id).failed.take().map_or(Ok(()), Err)
     }
 
     fn created(&self, parent: Id, name: &str, attr: &Attr, parent_mtime_ns: i64, existed: bool) -> impl FnOnce(&mut State) {
@@ -544,7 +685,7 @@ impl Fs {
         let (reply, sent) = self.call("create", request);
         let Response::Created { attr, parent_mtime_ns, existed } = reply.result.clone().map_err(errno)? else { return Err(Errno::EIO) };
         let apply = self.created(parent, name, &attr, parent_mtime_ns, existed);
-        let ttl = self.mutated(sent, &reply, |state| {
+        let ttl = self.mutated(sent, &reply, &[parent, attr.id], |state| {
             apply(state);
             if let Some(target) = target {
                 state.node(attr.id).link = Some(target);
@@ -567,7 +708,7 @@ impl Fs {
     fn remove(&self, parent: Id, name: &str, dir: bool) -> Result<(), Errno> {
         let (reply, sent) = self.call("remove", Request::Remove { parent, name: name.to_string(), dir });
         reply.result.clone().map_err(errno)?;
-        self.mutated(sent, &reply, |state| {
+        self.mutated(sent, &reply, &[parent], |state| {
             let parent_node = state.node(parent);
             parent_node.attr = None;
             let child = parent_node.dir.as_mut().and_then(|d| d.names.insert(name.to_string(), None)).flatten();
@@ -595,12 +736,11 @@ impl Fs {
     }
 
     fn setattr_remote(&self, id: Id, mode: Option<u32>, size: Option<u64>, mtime_ns: Option<i64>) -> Result<(FileAttr, Duration), Errno> {
-        if size.is_some() {
-            self.flush_inode(id)?;
-        }
+        // Buffered or in-flight writes and times commit first, so they never land after this.
+        self.flush_inode(id)?;
         let (reply, sent) = self.call("setattr", Request::SetAttr { id, mode: mode.map(|m| m & 0o7777), size, mtime_ns });
         let Response::Attr(attr) = reply.result.clone().map_err(errno)? else { return Err(Errno::EIO) };
-        let ttl = self.mutated(sent, &reply, |state| {
+        let ttl = self.mutated(sent, &reply, &[id], |state| {
             let node = state.node(id);
             if size.is_some() {
                 node.kernel_rev = Some(attr.rev);
@@ -671,6 +811,9 @@ impl Fs {
 
     /// Commits every buffered write (used before unmount).
     pub fn flush_all(&self) {
+        if let Err(e) = self.barrier() {
+            eprintln!("background commit failed: {e:?}");
+        }
         let dirty: Vec<Id> = self.state.lock().nodes.iter().filter(|(_, n)| n.dirty.is_some()).map(|(id, _)| *id).collect();
         for id in dirty {
             let _ = self.flush_inode(id);
@@ -791,7 +934,7 @@ impl Filesystem for Mount {
         match result.result.clone() {
             Ok(Response::Link(link)) => {
                 let mut state = fs.state.lock();
-                if state.usable(sent, &result) {
+                if state.usable(sent, &result, [id]) {
                     state.node(id).link = Some(link.clone());
                 }
                 reply.data(link.as_bytes());
@@ -874,7 +1017,7 @@ impl Filesystem for Mount {
             reply.error(errno(e));
             return;
         }
-        fs.mutated(sent, &result, |state| {
+        fs.mutated(sent, &result, &[parent, new_parent], |state| {
             let moved = state.node(parent).dir.as_mut().and_then(|d| d.names.insert(name.to_string(), None)).flatten();
             state.node(parent).attr = None;
             let target = state.node(new_parent);
@@ -982,7 +1125,7 @@ impl Filesystem for Mount {
     }
 
     fn flush(&self, _req: &FuseRequest, ino: INodeNo, _fh: FileHandle, _lock_owner: LockOwner, reply: ReplyEmpty) {
-        match self.0.flush_inode(self.0.id(ino)) {
+        match Fs::close_inode(&self.0, self.0.id(ino)) {
             Ok(()) => reply.ok(),
             Err(e) => reply.error(e),
         }
@@ -1007,7 +1150,7 @@ impl Filesystem for Mount {
             node.open == 0 && node.dirty.is_some()
         };
         // Buffered state left after the last close (e.g. utimensat after flush) is committed now.
-        let result = if last { fs.flush_inode(id) } else { Ok(()) };
+        let result = if last { Fs::close_inode(fs, id) } else { Ok(()) };
         match result {
             Ok(()) => reply.ok(),
             Err(e) => reply.error(e),
@@ -1015,7 +1158,7 @@ impl Filesystem for Mount {
     }
 
     fn fsync(&self, _req: &FuseRequest, ino: INodeNo, _fh: FileHandle, _datasync: bool, reply: ReplyEmpty) {
-        match self.0.flush_inode(self.0.id(ino)) {
+        match self.0.sync_inode(self.0.id(ino)) {
             Ok(()) => reply.ok(),
             Err(e) => reply.error(e),
         }
@@ -1055,7 +1198,7 @@ impl Filesystem for Mount {
                 let mut flags = FopenFlags::empty();
                 if complete && snapshot.generation.is_some() {
                     let mut state = fs.state.lock();
-                    if state.generation == snapshot.generation.unwrap_or_default() {
+                    if state.fresh(snapshot.generation.unwrap_or_default(), [dir]) {
                         let node = state.node(dir);
                         flags = FopenFlags::FOPEN_CACHE_DIR;
                         if node.kernel_listing {
@@ -1097,16 +1240,16 @@ impl Filesystem for Mount {
             return;
         };
         let state = fs.state.lock();
-        // A snapshot taken before any later invalidation is still listed, but never cached.
-        let ttl = match snapshot.generation {
-            Some(generation) if generation == state.generation => state.ttl().unwrap_or_default(),
+        // An entry changed since the snapshot is still listed, but never cached.
+        let ttl = |id: Id| match snapshot.generation {
+            Some(generation) if state.fresh(generation, [snapshot.dir.id, id]) => state.ttl().unwrap_or_default(),
             _ => Duration::ZERO,
         };
         let dir = fs.visible(&state, &snapshot.dir);
         let dots = [(".", dir), ("..", dir)];
         let all = dots.into_iter().chain(snapshot.listed.iter().map(|l| (l.name.as_str(), fs.visible(&state, &l.attr))));
         for (index, (name, attr)) in all.enumerate().skip(offset as usize) {
-            let entry_ttl = if index < 2 { Duration::ZERO } else { ttl };
+            let entry_ttl = if index < 2 { Duration::ZERO } else { ttl(fs.id(attr.ino)) };
             if reply.add(if index < 2 { ino } else { attr.ino }, index as u64 + 1, name, &entry_ttl, &attr, Generation(0)) {
                 break;
             }
@@ -1120,8 +1263,12 @@ impl Filesystem for Mount {
     }
 
     fn fsyncdir(&self, _req: &FuseRequest, _ino: INodeNo, _fh: FileHandle, _datasync: bool, reply: ReplyEmpty) {
-        // Every namespace mutation is durable before it returns.
-        reply.ok();
+        // Every namespace mutation is durable before it returns; this is the matched profile's
+        // barrier for background close commits (fuser has no `syncfs`).
+        match self.0.barrier() {
+            Ok(()) => reply.ok(),
+            Err(e) => reply.error(e),
+        }
     }
 
     fn statfs(&self, _req: &FuseRequest, _ino: INodeNo, reply: ReplyStatfs) {

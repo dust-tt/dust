@@ -25,7 +25,7 @@ TOKEN=$("$BIN/dfs-server" provision --grant alice:write --token-for alice |
 "$BIN/dfs-server" serve --listen "127.0.0.1:$PORT" >"$WORK/server.log" 2>&1 &
 SERVER_PID=$!
 until grep -q listening "$WORK/server.log"; do sleep 0.1; done
-DFS_TOKEN=$TOKEN "$BIN/dfs-mount" --addr "127.0.0.1:$PORT" "$MNT" >"$WORK/mount.log" 2>&1 &
+DFS_TOKEN=$TOKEN "$BIN/dfs-mount" --profile "${PROFILE:-strict}" --addr "127.0.0.1:$PORT" "$MNT" >"$WORK/mount.log" 2>&1 &
 MOUNT_PID=$!
 until grep -q mounted "$WORK/mount.log"; do sleep 0.1; done
 

@@ -14,7 +14,7 @@ use dfs_proto::client::Client;
 use dfs_proto::{PROTOCOL_VERSION, Request, Response};
 use fuser::{Config, MountOption, SessionACL};
 
-use crate::fs::{Fs, Job, Mount};
+use crate::fs::{Fs, Job, Mount, Profile};
 
 const RENEW_EVERY: Duration = Duration::from_secs(10);
 
@@ -29,6 +29,9 @@ struct Cli {
     root: Option<u64>,
     #[arg(long, default_value_t = 8)]
     threads: usize,
+    /// `matched` acknowledges close before its commit (labelled, non-default).
+    #[arg(long, value_enum, default_value = "strict")]
+    profile: Profile,
     mountpoint: PathBuf,
 }
 
@@ -56,6 +59,7 @@ fn main() -> anyhow::Result<()> {
         (metadata.uid(), metadata.gid()),
         sent + Duration::from_millis(lease_ms),
         jobs.clone(),
+        cli.profile,
     ));
 
     let mut config = Config::default();
