@@ -41,9 +41,9 @@ export async function listFeaturedDiscoveryItems(
         viewerCanWrite: auth.can("write", item.target),
       })
   );
-  const serializedItems = await DiscoveryItemResource.batchToJSON(auth, items);
-
-  return { items: serializedItems };
+  return {
+    items: items.map((item) => DiscoveryItemResource.toJSON(item)),
+  };
 }
 
 export async function listGroupDiscoveryPins(
@@ -153,13 +153,14 @@ async function resolveViewerVisibleItems(
   auth: Authenticator,
   candidates: { resourceType: SearchUsageDimension; resourceId: string }[]
 ): Promise<DiscoveryRankedItemType[]> {
-  const { agentsById, skillsById } = await DiscoveryItemResource.loadTargets(
-    auth,
-    candidates.map(({ resourceType, resourceId }) => ({
-      type: resourceType,
-      itemId: resourceId,
-    }))
-  );
+  const { agentsById, skillsById, skillAuthorsById } =
+    await DiscoveryItemResource.loadTargets(
+      auth,
+      candidates.map(({ resourceType, resourceId }) => ({
+        type: resourceType,
+        itemId: resourceId,
+      }))
+    );
 
   const visibleSkillsById = new Map(
     [...skillsById.values()]
@@ -173,26 +174,33 @@ async function resolveViewerVisibleItems(
       )
       .map((skill) => [skill.sId, skill])
   );
-  const items = removeNulls(
-    candidates.map(({ resourceType, resourceId }) => {
-      switch (resourceType) {
-        case "agent": {
-          const agent = agentsById.get(resourceId);
-          return agent && auth.can("read", agent)
-            ? { type: resourceType, target: agent }
-            : null;
+  return removeNulls(
+    candidates.map(
+      ({ resourceType, resourceId }): DiscoveryRankedItemType | null => {
+        switch (resourceType) {
+          case "agent": {
+            const agent = agentsById.get(resourceId);
+            return agent && auth.can("read", agent)
+              ? { type: "agent", target: agent.toDiscoveryJSON() }
+              : null;
+          }
+          case "skill": {
+            const skill = visibleSkillsById.get(resourceId);
+            return skill
+              ? {
+                  type: "skill",
+                  target: skill.toDiscoveryJSON({
+                    authors: skillAuthorsById.get(skill.sId),
+                  }),
+                }
+              : null;
+          }
+          default:
+            return assertNever(resourceType);
         }
-        case "skill": {
-          const skill = visibleSkillsById.get(resourceId);
-          return skill ? { type: resourceType, target: skill } : null;
-        }
-        default:
-          return assertNever(resourceType);
       }
-    })
+    )
   );
-  const serializedItems = await DiscoveryItemResource.batchToJSON(auth, items);
-  return serializedItems;
 }
 
 export async function listDiscoveryTrendingItems(

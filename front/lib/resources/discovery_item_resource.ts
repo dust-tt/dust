@@ -11,10 +11,8 @@ import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import type {
-  DiscoveryItemType,
-  DiscoveryRankedItemType,
-} from "@app/types/api/discovery";
+import type { DiscoveryItemType } from "@app/types/api/discovery";
+import { isSkillVisibleToViewer } from "@app/types/assistant/skill_configuration";
 import type { GroupPinnedItemType } from "@app/types/discovery";
 import { GROUP_PINNED_ITEM_TYPES } from "@app/types/discovery";
 import type { GrantType } from "@app/types/group_permissions";
@@ -34,14 +32,19 @@ export type PinnedDiscoveryItemInput = {
   position: number;
 };
 
-type DiscoveryTarget =
-  | { type: "agent"; target: AgentResource }
-  | { type: "skill"; target: SkillResource };
-
-export type ResolvedDiscoveryItem = DiscoveryTarget & {
-  pin: DiscoveryItemResource;
-  toJSON: (authors?: string[]) => DiscoveryItemType;
-};
+export type ResolvedDiscoveryItem =
+  | {
+      type: "agent";
+      pin: DiscoveryItemResource;
+      target: AgentResource;
+      toJSON: () => DiscoveryItemType;
+    }
+  | {
+      type: "skill";
+      pin: DiscoveryItemResource;
+      target: SkillResource;
+      toJSON: () => DiscoveryItemType;
+    };
 
 function discoveryPinJSON(pin: DiscoveryItemResource) {
   return {
@@ -83,7 +86,8 @@ function hasReadableDiscoveryTarget(
 function resolvedDiscoveryItem(
   pin: DiscoveryItemResource,
   agentsById: Map<string, AgentResource>,
-  skillsById: Map<string, SkillResource>
+  skillsById: Map<string, SkillResource>,
+  skillAuthorsById: Map<string, string[]>
 ): ResolvedDiscoveryItem | null {
   switch (pin.type) {
     case "agent": {
@@ -111,10 +115,12 @@ function resolvedDiscoveryItem(
         type: "skill",
         pin,
         target,
-        toJSON: (authors) => ({
+        toJSON: () => ({
           type: "skill",
           pin: discoveryPinJSON(pin),
-          target: target.toDiscoveryJSON({ authors }),
+          target: target.toDiscoveryJSON({
+            authors: skillAuthorsById.get(target.sId),
+          }),
         }),
       };
     }
@@ -169,12 +175,19 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
    * read. Callers MUST check `auth.can("read", target)` before exposing a target to a user, unless
    * a documented admin exception applies, such as [pinned-items-group-read].
    */
+  /**
+   * @cc [owner:aubin-tchoi,label:security;performance] discovery-target-authors
+   * Load editors in one batch only for fetched skills that are readable and
+   * satisfy editor visibility. Make their display names available as authors
+   * before serialization, without fetching editors during serialization.
+   */
   static async loadTargets(
     auth: Authenticator,
     items: Array<{ type: GroupPinnedItemType; itemId: string }>
   ): Promise<{
     agentsById: Map<string, AgentResource>;
     skillsById: Map<string, SkillResource>;
+    skillAuthorsById: Map<string, string[]>;
   }> {
     const agentIds = items
       .filter((item) => item.type === "agent")
@@ -194,6 +207,19 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       }),
     ]);
 
+    const visibleSkills = skills.filter(
+      (skill) =>
+        auth.can("read", skill) &&
+        isSkillVisibleToViewer({
+          availability: skill.availability,
+          viewerCanWrite: auth.can("write", skill),
+        })
+    );
+    const editorsBySkillId = await SkillResource.batchListEditors(
+      auth,
+      visibleSkills
+    );
+
     return {
       agentsById: new Map(
         agents
@@ -205,6 +231,12 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
           .map((agent) => [agent.sId, agent])
       ),
       skillsById: new Map(skills.map((skill) => [skill.sId, skill])),
+      skillAuthorsById: new Map(
+        [...editorsBySkillId].map(([skillId, editors]) => [
+          skillId,
+          (editors ?? []).map((editor) => editor.fullName()),
+        ])
+      ),
     };
   }
 
@@ -212,60 +244,19 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
     auth: Authenticator,
     items: DiscoveryItemResource[]
   ): Promise<ResolvedDiscoveryItem[]> {
-    const { agentsById, skillsById } = await this.loadTargets(auth, items);
+    const { agentsById, skillsById, skillAuthorsById } = await this.loadTargets(
+      auth,
+      items
+    );
     return removeNulls(
-      items.map((pin) => resolvedDiscoveryItem(pin, agentsById, skillsById))
+      items.map((pin) =>
+        resolvedDiscoveryItem(pin, agentsById, skillsById, skillAuthorsById)
+      )
     );
   }
 
   static toJSON(item: ResolvedDiscoveryItem): DiscoveryItemType {
     return item.toJSON();
-  }
-
-  static async batchToJSON(
-    auth: Authenticator,
-    items: ResolvedDiscoveryItem[]
-  ): Promise<DiscoveryItemType[]>;
-  static async batchToJSON(
-    auth: Authenticator,
-    items: DiscoveryTarget[]
-  ): Promise<DiscoveryRankedItemType[]>;
-  /**
-   * @cc [owner:aubin-tchoi,label:security;performance] discovery-target-authors
-   * Callers MUST supply viewer-visible targets. Load editors in one batch only
-   * for the supplied skill targets and include their display names as authors.
-   */
-  static async batchToJSON(
-    auth: Authenticator,
-    items: (ResolvedDiscoveryItem | DiscoveryTarget)[]
-  ): Promise<(DiscoveryItemType | DiscoveryRankedItemType)[]> {
-    const editorsBySkillId = await SkillResource.batchListEditors(
-      auth,
-      items.filter((item) => item.type === "skill").map((item) => item.target)
-    );
-
-    return items.map((item) => {
-      const authors =
-        item.type === "skill"
-          ? (editorsBySkillId.get(item.target.sId) ?? []).map((editor) =>
-              editor.fullName()
-            )
-          : undefined;
-      if ("pin" in item) {
-        return item.toJSON(authors);
-      }
-      switch (item.type) {
-        case "agent":
-          return { type: "agent", target: item.target.toDiscoveryJSON() };
-        case "skill":
-          return {
-            type: "skill",
-            target: item.target.toDiscoveryJSON({ authors }),
-          };
-        default:
-          return assertNever(item);
-      }
-    });
   }
 
   /**
@@ -424,7 +415,10 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
     }
 
     const workspaceModelId = auth.getNonNullableWorkspace().id;
-    const { agentsById, skillsById } = await this.loadTargets(auth, [item]);
+    const { agentsById, skillsById, skillAuthorsById } = await this.loadTargets(
+      auth,
+      [item]
+    );
     const target =
       item.type === "agent"
         ? agentsById.get(item.itemId)
@@ -505,7 +499,8 @@ export class DiscoveryItemResource extends BaseResource<GroupPinnedItemModel> {
       const resolved = resolvedDiscoveryItem(
         new this(this.model, row.get()),
         agentsById,
-        skillsById
+        skillsById,
+        skillAuthorsById
       );
       if (!resolved) {
         return new Err(
