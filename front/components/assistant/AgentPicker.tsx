@@ -128,7 +128,7 @@ export function AgentPicker({
             <DropdownMenuSearchbar
               autoFocus={!isMobile}
               name="search-agents"
-              placeholder="Search Agents"
+              placeholder="Search for agents"
               value={searchText}
               onChange={setSearchText}
               onKeyDown={(e) => {
@@ -148,6 +148,7 @@ export function AgentPicker({
                   <CreateAgentDropdown
                     owner={owner}
                     dataGtmLocation="homepage"
+                    label="Create"
                   />
                 )
               }
