@@ -3,7 +3,17 @@ import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { AuthContext } from "@app/lib/auth/AuthContext";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import type React from "react";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/platform", () => ({
+  useAppRouter: () => ({ push: vi.fn() }),
+  LinkWrapper: ({ children }: { children: React.ReactNode }) => children,
+}));
+
+vi.mock("@app/hooks/useURLSheet", () => ({
+  useURLSheet: () => ({ onOpenChange: vi.fn() }),
+}));
 
 describe("CommentBodyMarkdown", () => {
   it("renders agent and user mentions as mention chips", async () => {
