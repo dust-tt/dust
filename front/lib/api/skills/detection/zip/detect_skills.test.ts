@@ -181,7 +181,7 @@ describe("detectSkillsFromZip", () => {
 
     const result = detectSkillsFromZip({ zipBuffer });
     expect(result.isOk()).toBe(true);
-    expect(inflated.total).toBeLessThanOrEqual(MAX_DECOMPRESSED_SIZE_BYTES);
+    expect(inflated.total).toBe(0);
   });
 
   test("detects a small archive with more than 50 skill directories", () => {
@@ -226,6 +226,6 @@ describe("createZipAttachmentReader", () => {
       const readResult = readerResult.value("skills/foo/data.txt");
       expect(readResult.isOk()).toBe(true);
     }
-    expect(inflated.total).toBeLessThanOrEqual(MAX_DECOMPRESSED_SIZE_BYTES);
+    expect(inflated.total).toBe(0);
   });
 });

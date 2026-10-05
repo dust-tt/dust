@@ -357,7 +357,7 @@ describe("extractArchiveToFolder", () => {
     );
 
     assert(result.isOk());
-    expect(inflated.total).toBeLessThanOrEqual(limits.maxUncompressedSizeBytes);
+    expect(inflated.total).toBe(0);
     expect(savedFile(`${filesRoot}/bomb.txt`)?.content).toEqual(
       Buffer.alloc(0)
     );
