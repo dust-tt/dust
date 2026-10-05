@@ -1,5 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissions } from "@app/lib/resources/group_permission_registry";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { launchIndexSkillSearchWorkflow } from "@app/temporal/es_indexation/client";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -63,7 +64,7 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
     expect(await response.json()).toEqual({
       error: {
         type: "invalid_request_error",
-        message: "An archived skill cannot be updated. Restore it first.",
+        message: "This skill is archived; its editors cannot be changed.",
       },
     });
 
@@ -197,6 +198,9 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
     const { workspace, user, auth } = await setup();
 
     const skill = await SkillFactory.create(auth);
+    const peer = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, peer, { role: "user" });
+    await skill.addEditors(auth, [peer]);
 
     const response = await patch(workspace, skill.sId, {
       removeEditorIds: [user.sId],
@@ -204,7 +208,69 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
 
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data.editors).toHaveLength(0);
+    expect(data.editors.map((e: { sId: string }) => e.sId)).toEqual([peer.sId]);
+  });
+
+  it("refuses to remove the last editor", async () => {
+    const { workspace, user, auth } = await setup();
+
+    const skill = await SkillFactory.create(auth);
+
+    const response = await patch(workspace, skill.sId, {
+      removeEditorIds: [user.sId],
+    });
+
+    expect(response.status).toBe(400);
+    const { error } = await response.json();
+    expect(error.type).toBe("invalid_request_error");
+    expect(error.message).toContain("without any editor");
+
+    const editorsResponse = await get(workspace, skill.sId);
+    const editors = (await editorsResponse.json()).editors;
+    expect(editors.map((e: { sId: string }) => e.sId)).toEqual([user.sId]);
+  });
+
+  it("refuses a user both added and removed", async () => {
+    const { workspace, user, auth } = await setup();
+
+    const skill = await SkillFactory.create(auth);
+    const peer = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, peer, { role: "user" });
+
+    const response = await patch(workspace, skill.sId, {
+      addEditorIds: [peer.sId],
+      removeEditorIds: [peer.sId],
+    });
+
+    expect(response.status).toBe(400);
+    const { error } = await response.json();
+    expect(error.type).toBe("invalid_request_error");
+    expect(error.message).toContain("both added and removed");
+
+    const editorsResponse = await get(workspace, skill.sId);
+    const editors = (await editorsResponse.json()).editors;
+    expect(editors.map((e: { sId: string }) => e.sId)).toEqual([user.sId]);
+  });
+
+  it("removes an editor who left the workspace, who is no longer an editor after rejoining", async () => {
+    const { workspace, user, auth } = await setup();
+
+    const skill = await SkillFactory.create(auth);
+    const departed = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, departed, { role: "user" });
+    await skill.addEditors(auth, [departed]);
+    await MembershipResource.revokeMembership({ user: departed, workspace });
+
+    const response = await patch(workspace, skill.sId, {
+      removeEditorIds: [departed.sId],
+    });
+
+    expect(response.status).toBe(200);
+
+    await MembershipFactory.associate(workspace, departed, { role: "user" });
+    const editorsResponse = await get(workspace, skill.sId);
+    const editors = (await editorsResponse.json()).editors;
+    expect(editors.map((e: { sId: string }) => e.sId)).toEqual([user.sId]);
   });
 
   it("rejects adding an editor that cannot access a restricted space the skill requires", async () => {

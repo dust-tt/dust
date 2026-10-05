@@ -1710,10 +1710,12 @@ export class GroupResource extends BaseResource<GroupModel> {
       users,
       transaction,
       allowProvisionedGroups = false,
+      allowDepartedMembers = false,
     }: {
       users: UserType[];
       transaction?: Transaction;
       allowProvisionedGroups?: boolean;
+      allowDepartedMembers?: boolean;
     }
   ): Promise<
     Result<
@@ -1749,21 +1751,23 @@ export class GroupResource extends BaseResource<GroupModel> {
         )
       );
     }
-    const { total } = await MembershipResource.getActiveMemberships({
-      users: userResources,
-      workspace: owner,
-      transaction,
-    });
+    if (!allowDepartedMembers) {
+      const { total } = await MembershipResource.getActiveMemberships({
+        users: userResources,
+        workspace: owner,
+        transaction,
+      });
 
-    if (total !== userIds.length) {
-      return new Err(
-        new DustError(
-          "user_not_member",
-          userIds.length === 1
-            ? "Cannot remove: user is not a member of the workspace"
-            : "Cannot remove: users are not members of the workspace"
-        )
-      );
+      if (total !== userIds.length) {
+        return new Err(
+          new DustError(
+            "user_not_member",
+            userIds.length === 1
+              ? "Cannot remove: user is not a member of the workspace"
+              : "Cannot remove: users are not members of the workspace"
+          )
+        );
+      }
     }
 
     // Check if all requested users are active members of the group.
