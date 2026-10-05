@@ -225,7 +225,7 @@ the earlier command, adding `DFS_PROFILE=1` and `--untar-only`.
 ## Block retention comparison
 
 The following full runs use the RAM-optimized baseline (`047a7e84cc`) and `DFS_PROFILE=1`.
-Same configuration and corpus as above. The 1s baseline and both block-reuse runs are still pending.
+Same configuration and corpus as above. Both full baselines passed; block-reuse runs are pending.
 
 ### dfs v3 [RAM optimized, no block reuse, D = 8s]
 
@@ -264,3 +264,72 @@ verification; zero publication failures. Population server CPU: 23.140 s; client
 ```
 
 Report: `/tmp/dfs-v3-benchmark-3q09nh8a/run.json` in the development container.
+
+### dfs v3 [RAM optimized, no block reuse, D = 1s]
+
+Untar: **50.797 s**; remaining FDB drain: **21 ms**. All 24 checks passed, including full SHA-256
+verification; zero publication failures. Population server CPU: 20.860 s.
+
+```text
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 78,458.09 | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 77,146.23 | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 355.94    | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 161.01    | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 78,370.99 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 76,673.63 | OK     |
+| metadata     | stat missing (256 paths)                       | first | 1,688.24  | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 1,652.22  | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 7,690.31  | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 7,628.79  | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 7,731.53  | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 7,936.64  | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 6,775.27  | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 6,750.50  | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 1,721.74  | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 1,668.91  | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 88,792.83 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 88,873.88 | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 2,155.13  | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 2,356.58  | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 173.60    | OK     |
+| file sync    | fsync (32 files)                               | once  | 3.80      | OK     |
+| write        | close (32 files)                               | once  | 0.59      | OK     |
+| write        | unlink (32 files)                              | once  | 101.88    | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+```
+
+Report: `/tmp/dfs-v3-benchmark-z356lspm/run.json` in the development container.
+
+### Where baseline time is spent
+
+CPU is process CPU for the FUSE client and DFS server, excluding Python/tar and the FDB server.
+Elapsed columns are cumulative, include waits, and overlap; they MUST NOT be added as wall time.
+Read rows combine first + warm plus their small untimed setup; untar includes fixture setup.
+
+| Workload | D | FUSE CPU (s) | DFS CPU (s) | Client RPC elapsed (s) | Handler elapsed (s) | FDB get elapsed (s) |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| Untar | 1s | 18.370 | 20.860 | 46.237 | 27.501 | 69.508 |
+| Untar | 8s | 20.220 | 23.140 | 42.649 | 21.749 | 71.333 |
+| Scandir + stat | 1s | 66.200 | 40.650 | 136.732 | 68.479 | 58.842 |
+| Scandir + stat | 8s | 67.020 | 39.660 | 113.108 | 43.656 | 32.548 |
+| Open + fstat + close | 1s | 68.770 | 41.340 | 134.986 | 63.829 | 53.931 |
+| Open + fstat + close | 8s | 69.450 | 41.800 | 127.092 | 55.148 | 43.672 |
+| rg no-match | 1s | 31.910 | 35.410 | 117.331 | 39.728 | 23.744 |
+| rg no-match | 8s | 32.290 | 35.600 | 116.140 | 36.480 | 18.157 |
+| Open + read + SHA-256 | 1s | 74.960 | 47.020 | 154.840 | 77.560 | 66.425 |
+| Open + read + SHA-256 | 8s | 74.750 | 46.540 | 148.344 | 70.900 | 58.539 |
+
+The client/handler gap includes channel queueing, serialization, runtime scheduling, and loopback
+transport; it is not a measurement of network latency alone. During untar, FDB reads also include
+parallel publication validation, which explains why their cumulative duration exceeds wall time.
+FDB commit durations total 17.9 s (1s) / 17.7 s (8s), mostly overlapping foreground work.
+
+For directory traversal, server CPU is similar at both bounds, but the shorter cache window causes
+99,496 FDB gets versus 65,292. This explains the direction of the remaining bound-dependent cost.
+The paired SHA workload makes about 736k RPCs; its block-read phase totals only 10.5–10.9 s.
+Block retention targets repeated byte fetches, while metadata refresh and the many uncached FUSE
+round trips remain. The current timers cannot separate FDB server processing from native-client
+scheduling and its network wait.
