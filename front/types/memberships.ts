@@ -1,4 +1,7 @@
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
 
 export const MEMBERSHIP_ROLE_TYPES = ["admin", "manager", "user"] as const;
 
@@ -102,7 +105,10 @@ export function toBaseSeatType(seatType: MembershipSeatType): BaseSeatType {
     case "max_yearly":
       return "max";
     default:
-      assertNever(seatType);
+      // Seat types reach the browser from the API: pass unknown values through
+      // rather than throw, so display fallbacks keep working.
+      assertNeverAndIgnore(seatType);
+      return seatType;
   }
 }
 
