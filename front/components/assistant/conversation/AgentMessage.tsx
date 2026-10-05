@@ -64,6 +64,14 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { OpenUserAnalyticsEvent } from "@app/lib/analytics/events";
+import {
+  FILES_COPY_ACTION_NAME,
+  FILES_CREATE_ACTION_NAME,
+  FILES_DELETE_ACTION_NAME,
+  FILES_EDIT_ACTION_NAME,
+  FILES_MOVE_ACTION_NAME,
+  FILES_UPLOAD_FROM_URL_ACTION_NAME,
+} from "@app/lib/api/actions/servers/files/metadata";
 import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -77,6 +85,7 @@ import { getFilePreviewDirectivePaths } from "@app/lib/markdown/file_preview";
 import { extractFromString } from "@app/lib/mentions/format";
 import { LinkWrapper } from "@app/lib/platform";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import { getFilePathViewUrl } from "@app/lib/swr/files";
 import { useModels } from "@app/lib/swr/models";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
@@ -154,6 +163,16 @@ import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { mutate } from "swr";
+
+/** The files tools that change a file, so an open preview of it must refetch. */
+const FILES_WRITING_TOOL_NAMES = new Set<string>([
+  FILES_CREATE_ACTION_NAME,
+  FILES_EDIT_ACTION_NAME,
+  FILES_DELETE_ACTION_NAME,
+  FILES_COPY_ACTION_NAME,
+  FILES_MOVE_ACTION_NAME,
+  FILES_UPLOAD_FROM_URL_ACTION_NAME,
+]);
 
 interface MessageInfoChipProps {
   children: ReactNode;
@@ -498,25 +517,19 @@ export function AgentMessage({
             // An agent wrote a file; an open preview or editor of it must learn now rather
             // than on the next window focus. The editor reopens when clean and holds its
             // draft otherwise. Same reliable per-message stream as the plan revalidation.
-            if (action.internalMCPServerName === "files") {
-              // The tools name the canonical scoped path the previews key on, encoded the
-              // same way as the file content URL.
-              const encodedPaths = [
+            if (
+              action.internalMCPServerName === "files" &&
+              FILES_WRITING_TOOL_NAMES.has(action.toolName)
+            ) {
+              // The tools name the canonical scoped path every preview keys on.
+              const paths = [
                 action.params.path,
                 action.params.source,
                 action.params.dest,
-              ]
-                .filter(isString)
-                .map((path) =>
-                  path.split("/").map(encodeURIComponent).join("/")
-                );
-              void mutate(
-                (key) =>
-                  typeof key === "string" &&
-                  encodedPaths.some((path) =>
-                    key.includes(`/files/path/${path}`)
-                  )
-              );
+              ].filter(isString);
+              for (const path of paths) {
+                void mutate(getFilePathViewUrl(owner, path));
+              }
             } else if (action.internalMCPServerName === "sandbox") {
               // A shell command names no files; anything under the mount may have changed.
               void mutate(
