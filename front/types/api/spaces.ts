@@ -3,6 +3,7 @@ import type { GroupKind } from "@app/types/groups";
 import type { PodFileTab } from "@app/types/pod_file_tab";
 import { PodFileTabsSchema, PodTabsOrderSchema } from "@app/types/pod_file_tab";
 import type { EnrichedSpaceType, PodType, SpaceType } from "@app/types/space";
+import { MAX_POD_NAME_LENGTH } from "@app/types/space";
 import type { SpaceUserType } from "@app/types/user";
 import { z } from "zod";
 
@@ -12,7 +13,13 @@ export const ContentSchema = z.object({
 });
 
 export const PatchSpaceRequestBodySchema = z.object({
-  name: z.string().optional(),
+  name: z
+    .string()
+    .max(
+      MAX_POD_NAME_LENGTH,
+      `Pod name must be at most ${MAX_POD_NAME_LENGTH} characters.`
+    )
+    .optional(),
   content: z.array(ContentSchema).optional(),
 });
 
@@ -58,7 +65,12 @@ export type PatchPodMetadataBodyType = z.infer<
 // `PatchSpaceMembersRequestBodySchema` for the same shape on update).
 export const PostSpaceRequestBodySchema = z.object({
   isRestricted: z.boolean(),
-  name: z.string(),
+  name: z
+    .string()
+    .max(
+      MAX_POD_NAME_LENGTH,
+      `Pod name must be at most ${MAX_POD_NAME_LENGTH} characters.`
+    ),
   spaceKind: z.enum(["regular", "project"]),
   memberIds: z.array(z.string()).optional(),
   groupIds: z.array(z.string()).optional(),

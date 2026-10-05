@@ -121,6 +121,7 @@ const app = publicApiApp();
  *                 properties:
  *                   title:
  *                     type: string
+ *                     maxLength: 512
  *     responses:
  *       200:
  *         description: Conversation updated successfully.

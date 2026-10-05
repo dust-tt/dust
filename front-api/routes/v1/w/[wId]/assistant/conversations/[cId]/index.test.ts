@@ -272,4 +272,14 @@ describe("PATCH /api/v1/w/[wId]/assistant/conversations/[cId]", () => {
     expect(getResponse.status, JSON.stringify(getData)).toBe(200);
     expect(getData.conversation.title).toBe("Updated Conversation Title");
   });
+
+  it("rejects a conversation title longer than 512 characters", async () => {
+    const { workspace, key, conversation } = await setupGetRequest();
+
+    const response = await patchConversation(workspace, key, conversation.sId, {
+      title: "a".repeat(513),
+    });
+
+    expect(response.status).toBe(400);
+  });
 });

@@ -14,6 +14,11 @@ export const SPACE_KINDS = [
 
 export type SpaceKind = (typeof SPACE_KINDS)[number];
 
+// Pod (project space) names are copied onto audit-log targets. Cap them so a
+// create/rename cannot skip audit emission by overflowing the WorkOS payload
+// limit.
+export const MAX_POD_NAME_LENGTH = 256;
+
 type UniqueSpaceKind = (typeof UNIQUE_SPACE_KINDS)[number];
 /**
  * A space's whole desired membership. Every dimension is optional, and one the request leaves out

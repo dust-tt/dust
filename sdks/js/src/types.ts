@@ -2456,7 +2456,9 @@ export const PatchConversationRequestSchema = z.union([
     read: z.boolean(),
   }),
   z.object({
-    title: z.string(),
+    title: z
+      .string()
+      .max(512, "Conversation title must be at most 512 characters."),
   }),
 ]);
 

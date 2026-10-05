@@ -84,6 +84,10 @@ export const AGENT_CONFIGURATION_SCOPES = [
 export type AgentConfigurationScope =
   (typeof AGENT_CONFIGURATION_SCOPES)[number];
 
+// Agent names are copied onto audit-log targets. Cap them so a create/update
+// cannot skip audit emission by overflowing the WorkOS payload limit.
+export const AGENT_NAME_MAX_LENGTH = 512;
+
 /**
  * Defines strategies for fetching agent configurations based on various
  * 'views':
