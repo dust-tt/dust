@@ -23,6 +23,7 @@ import { KillPage } from "@dust-tt/front/components/poke/pages/KillPage";
 import { LLMTracePage } from "@dust-tt/front/components/poke/pages/LLMTracePage";
 import { MCPServerViewPage } from "@dust-tt/front/components/poke/pages/MCPServerViewPage";
 import { MembershipsPage } from "@dust-tt/front/components/poke/pages/MembershipsPage";
+import { ModelTiersPage } from "@dust-tt/front/components/poke/pages/ModelTiersPage";
 import { NotionRequestsPage } from "@dust-tt/front/components/poke/pages/NotionRequestsPage";
 import { PlansPage } from "@dust-tt/front/components/poke/pages/PlansPage";
 import { PluginsPage } from "@dust-tt/front/components/poke/pages/PluginsPage";
@@ -108,6 +109,7 @@ export const routes: RouteObject[] = [
           { index: true, element: <WorkspacePage /> },
           { path: "analytics", element: <AnalyticsPage /> },
           { path: "pool-usage", element: <PoolUsagePage /> },
+          { path: "model-tiers", element: <ModelTiersPage /> },
           { path: "memberships", element: <MembershipsPage /> },
           { path: "llm-traces/:runId", element: <LLMTracePage /> },
           {

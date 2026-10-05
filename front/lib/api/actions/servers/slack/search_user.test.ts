@@ -21,11 +21,6 @@ vi.mock("@slack/web-api", () => {
   };
 });
 
-// Mock Redis cache
-vi.mock("@app/lib/cache/redis", () => ({
-  cacheWithRedis: (fn: any) => fn,
-}));
-
 // Import after mocking
 import {
   cleanUserPayload,

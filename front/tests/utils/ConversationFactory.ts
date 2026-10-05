@@ -188,6 +188,17 @@ export class ConversationFactory {
     );
   }
 
+  static async setUserMessagesFullNameForTest(
+    conversationId: ModelId,
+    workspaceId: ModelId,
+    userContextFullName: string
+  ): Promise<void> {
+    await UserMessageModel.update(
+      { userContextFullName },
+      { where: { conversationId, workspaceId } }
+    );
+  }
+
   static async setRequestedSpaceIdsForTest(
     conversationId: ModelId,
     workspaceId: ModelId,

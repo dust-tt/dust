@@ -156,7 +156,7 @@ describe("workspace_management tools", () => {
   });
 
   describe("search tools", () => {
-    it("registers search tools without exhaustive agent or skill listings", async () => {
+    it("registers search tools instead of the agent and skill listing tools", async () => {
       const { authenticator } = await createResourceTest({ role: "user" });
       const names = await toolNamesFor(authenticator);
 
@@ -164,12 +164,76 @@ describe("workspace_management tools", () => {
       expect(names).toContain("search_skills");
       expect(names).not.toContain("list_agents");
       expect(names).not.toContain("list_skills");
+    });
 
-      for (const name of ["search_agents", "search_skills"]) {
-        const schema = z.object(getToolByName(name).schema);
-        expect(schema.safeParse({}).success).toBe(false);
-        expect(schema.safeParse({ query: " " }).success).toBe(false);
-      }
+    it("returns the listed agents with an empty query", async () => {
+      const { authenticator, user } = await createResourceTest({
+        role: "user",
+      });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Meeting Recap" }
+      );
+      const resource = await AgentResource.fetchById(authenticator, agent.sId);
+      expect(resource).not.toBeNull();
+      const document = resource!.toSearchDocument(authenticator, {
+        activeUsersCount: 0,
+        editors: [user],
+        favoriteCount: 0,
+        feedbackNegativeCount: 0,
+        feedbackPositiveCount: 0,
+        lastEditedByUser: user,
+        mcpServerViewIds: [],
+        skillIds: [],
+        tagIds: [],
+      });
+      mockSearch.mockResolvedValue({
+        hits: {
+          hits: [{ _source: document }],
+          total: { value: 1, relation: "eq" },
+        },
+      });
+
+      const lines = await callToolLines(
+        "search_agents",
+        { query: "" },
+        authenticator
+      );
+
+      expect(lines[0]).toContain(`Meeting Recap [${agent.sId}]`);
+      expect(lines[1]).toBe("Showing 1 of 1.");
+      expect(mockSearch.mock.lastCall?.[0].query.bool.must).toEqual([
+        { match_all: {} },
+      ]);
+    });
+
+    it("returns the listed skills with an empty query", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await SkillFactory.create(authenticator, {
+        name: "Meeting Recap",
+      });
+      const [document] = await SkillFactory.createSearchDocuments(
+        authenticator,
+        [skill]
+      );
+      mockSearch.mockResolvedValue({
+        hits: {
+          hits: [{ _source: document }],
+          total: { value: 1, relation: "eq" },
+        },
+      });
+
+      const lines = await callToolLines(
+        "search_skills",
+        { query: "" },
+        authenticator
+      );
+
+      expect(lines[0]).toContain(`Meeting Recap [${skill.sId}]`);
+      expect(lines[1]).toBe("Showing 1 of 1.");
+      expect(mockSearch.mock.lastCall?.[0].query.bool.must).toEqual([
+        { match_all: {} },
+      ]);
     });
 
     it("supports skill search without an interactive user", async () => {

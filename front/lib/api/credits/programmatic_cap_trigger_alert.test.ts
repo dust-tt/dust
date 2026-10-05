@@ -4,7 +4,7 @@ import { syncProgrammaticUsageLimit } from "@app/lib/api/credits/programmatic_us
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
-import * as capNotification from "@app/lib/notifications/workflows/programmatic-cap-reached";
+import * as capNotification from "@app/lib/notifications/triggers/programmatic-cap-reached";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -18,10 +18,10 @@ import { Err, Ok } from "@app/types/shared/result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock(
-  "@app/lib/notifications/workflows/programmatic-cap-reached",
+  "@app/lib/notifications/triggers/programmatic-cap-reached",
   async () => {
     const actual = await vi.importActual<typeof capNotification>(
-      "@app/lib/notifications/workflows/programmatic-cap-reached"
+      "@app/lib/notifications/triggers/programmatic-cap-reached"
     );
     return { ...actual, triggerProgrammaticCapReachedNotifications: vi.fn() };
   }

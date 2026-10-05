@@ -672,10 +672,19 @@ export async function deletePluginRunsActivity({
   await PluginRunResource.deleteAllForWorkspace(auth);
 }
 
+/**
+ * @cc [owner:Nils-Fedrigo,label:product;security] relocated-keeps-metronome-contract
+ * When `workspaceHasBeenRelocated` is true, the activity MUST NOT end or otherwise modify the
+ * workspace's Metronome contract: the relocated copy in the destination region shares the same
+ * `metronomeCustomerId` and `metronomeContractId`, and ending it would end the live tenant's
+ * subscription.
+ */
 export async function deleteWorkspaceActivity({
   workspaceId,
+  workspaceHasBeenRelocated = false,
 }: {
   workspaceId: string;
+  workspaceHasBeenRelocated?: boolean;
 }) {
   let auth: Authenticator;
   try {
@@ -689,8 +698,14 @@ export async function deleteWorkspaceActivity({
   }
   const workspace = auth.getNonNullableWorkspace();
 
-  // End the Metronome contract if one exists.
-  if (workspace.metronomeCustomerId) {
+  // End the Metronome contract if one exists. A relocated workspace shares its contract with the
+  // live copy in the destination region, so it must be left untouched.
+  if (workspaceHasBeenRelocated) {
+    hardDeleteLogger.info(
+      { workspaceId },
+      "Skipping Metronome contract end for workspace that has been relocated."
+    );
+  } else if (workspace.metronomeCustomerId) {
     const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
     const subscription = workspaceResource
       ? await SubscriptionResource.fetchActiveByWorkspaceModelId(

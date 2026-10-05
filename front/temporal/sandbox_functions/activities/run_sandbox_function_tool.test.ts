@@ -37,7 +37,6 @@ vi.mock("@temporalio/activity", () => ({
   Context: {
     current: () => ({ cancellationSignal: new AbortController().signal }),
   },
-  heartbeat: vi.fn(),
 }));
 
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";

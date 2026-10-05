@@ -176,7 +176,10 @@ function constructToolsSection({
       "is about and why the user's answer will help. Ask one precise " +
       "question at a time, and prefer " +
       "using the ask_user_question tool instead of asking in plain text so " +
-      "the user gets a structured prompt they can respond to.\n";
+      "the user gets a structured prompt they can respond to. " +
+      "Prefer omitting option descriptions. Only include them when labels " +
+      "alone are not clear enough, and then include a description for every " +
+      "option.\n";
   }
 
   return toolsSection;

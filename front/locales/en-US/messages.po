@@ -14,73 +14,63 @@ msgstr ""
 "Plural-Forms: \n"
 
 #: front/components/UserSettingsPopover.tsx
+msgid "First name is required."
+msgstr "First name is required."
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Last name is required."
+msgstr "Last name is required."
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Personal Information"
+msgstr "Personal Information"
+
+#: front/components/UserSettingsPopover.tsx
 msgid "How you appear to other members of the workspace"
 msgstr "How you appear to other members of the workspace"
 
-#: front/components/assistant/conversation/sidebar/UnifiedSearchNav.tsx
-msgid "New conversation"
-msgstr "New conversation"
-
-#: front/components/me/NotificationPreferences.tsx
-msgid "Error updating notification preferences"
-msgstr "Error updating notification preferences"
-
-#: front/components/me/PendingInvitationsTable.tsx
-msgid "Join"
-msgstr "Join"
-
 #: front/components/UserSettingsPopover.tsx
-msgid "Enable Memory"
-msgstr "Enable Memory"
-
-#: front/components/command_palette/CommandPaletteSearchPhase.tsx
-msgid "Type to search agents."
-msgstr "Type to search agents."
-
-#: front/components/UserSettingsPopover.tsx
-msgid "Last name"
-msgstr "Last name"
-
-#: front/components/me/NotificationPreferences.tsx
-msgid "In-app popup"
-msgstr "In-app popup"
-
-#: front/components/UserSettingsPopover.tsx
-msgid "About you"
-msgstr "About you"
-
-#: front/components/me/PendingInvitationsTable.tsx
-msgctxt "workspace role"
-msgid "user"
-msgstr "user"
-
-#: front/components/me/NotificationPreferences.tsx
-msgid "A direct message in Slack"
-msgstr "A direct message in Slack"
+msgid "Save"
+msgstr "Save"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Profile picture"
 msgstr "Profile picture"
 
 #: front/components/UserSettingsPopover.tsx
-msgid "Show your agents on the home page"
-msgstr "Show your agents on the home page"
-
-#: front/components/me/PendingInvitationsTable.tsx
-msgid "Role: {role}"
-msgstr "Role: {role}"
-
-#: front/components/command_palette/CommandPaletteSearchPhase.tsx
-msgid "Type to search."
-msgstr "Type to search."
-
-#: front/components/me/NotificationPreferences.tsx
-msgid "Email and Slack notifications are turned off for this workspace by an admin."
-msgstr "Email and Slack notifications are turned off for this workspace by an admin."
+msgid "Managed by your identity provider"
+msgstr "Managed by your identity provider"
 
 #: front/components/UserSettingsPopover.tsx
-msgid "Personal Information"
-msgstr "Personal Information"
+msgid "Shown next to your messages"
+msgstr "Shown next to your messages"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "First name"
+msgstr "First name"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Last name"
+msgstr "Last name"
+
+#: front/components/UserSettingsPopover.tsx
+#: front/components/me/NotificationPreferences.tsx
+msgid "Email"
+msgstr "Email"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Used to sign in and receive notifications"
+msgstr "Used to sign in and receive notifications"
+
+#: front/components/UserSettingsPopover.tsx
+msgctxt "theme"
+msgid "Light"
+msgstr "Light"
+
+#: front/components/UserSettingsPopover.tsx
+msgctxt "theme"
+msgid "Dark"
+msgstr "Dark"
 
 #: front/components/UserSettingsPopover.tsx
 msgctxt "theme"
@@ -88,33 +78,68 @@ msgid "Auto"
 msgstr "Auto"
 
 #: front/components/UserSettingsPopover.tsx
-msgid "Font used for agent answers in conversations"
-msgstr "Font used for agent answers in conversations"
+msgid "Cmd + Enter (⌘ + ↵)"
+msgstr "Cmd + Enter (⌘ + ↵)"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Ctrl + Enter"
+msgstr "Ctrl + Enter"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Cmd + Enter"
+msgstr "Cmd + Enter"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Could not save the conversation font"
+msgstr "Could not save the conversation font"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "It applies on this device, but could not be saved to your account."
 msgstr "It applies on this device, but could not be saved to your account."
 
-#: front/components/assistant/conversation/sidebar/UnifiedSearchNav.tsx
-#: front/components/navigation/AdminSettingsSearchNav.tsx
-msgid "Search"
-msgstr "Search"
+#: front/components/UserSettingsPopover.tsx
+msgid "Customization"
+msgstr "Customization"
 
 #: front/components/UserSettingsPopover.tsx
-msgid "Other channels"
-msgstr "Other channels"
+msgid "Adjust how Dust looks and behaves for you."
+msgstr "Adjust how Dust looks and behaves for you."
 
 #: front/components/UserSettingsPopover.tsx
-msgid "Cmd + Enter (⌘ + ↵)"
-msgstr "Cmd + Enter (⌘ + ↵)"
+msgid "Language"
+msgstr "Language"
 
-#: front/components/me/SoundNotificationPreferences.tsx
-msgid "Agent waiting sound alert"
-msgstr "Agent waiting sound alert"
+#: front/components/UserSettingsPopover.tsx
+msgid "Language used by Dust for you, across all your workspaces"
+msgstr "Language used by Dust for you, across all your workspaces"
 
-#: front/components/me/NotificationPreferences.tsx
-msgid "All activity"
-msgstr "All activity"
+#: front/components/UserSettingsPopover.tsx
+msgid "Theme"
+msgstr "Theme"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Choose how Dust looks on this device"
+msgstr "Choose how Dust looks on this device"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Conversation font"
+msgstr "Conversation font"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Font used for agent answers in conversations"
+msgstr "Font used for agent answers in conversations"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Send message"
+msgstr "Send message"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Keyboard shortcut to send a message"
+msgstr "Keyboard shortcut to send a message"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Enter (↵)"
+msgstr "Enter (↵)"
 
 #: front/components/UserSettingsPopover.tsx
 msgctxt "keyboard key"
@@ -122,301 +147,173 @@ msgid "Enter"
 msgstr "Enter"
 
 #: front/components/UserSettingsPopover.tsx
-msgid "Could not save the conversation font"
-msgstr "Could not save the conversation font"
-
-#: front/components/me/PendingInvitationsTable.tsx
-msgid "Invited"
-msgstr "Invited"
-
-#: front/components/me/NotificationPreferences.tsx
-msgid "How often to send email notification summaries"
-msgstr "How often to send email notification summaries"
-
-#: front/components/command_palette/CommandPaletteSearchPhase.tsx
-msgid "Type to search skills."
-msgstr "Type to search skills."
+msgid "Show your agents on the home page"
+msgstr "Show your agents on the home page"
 
 #: front/components/UserSettingsPopover.tsx
-msgid "We couldn't load your notification settings. Please try again later."
-msgstr "We couldn't load your notification settings. Please try again later."
+msgid "Access your favorite and most-used agents, or search for one from the home page."
+msgstr "Access your favorite and most-used agents, or search for one from the home page."
 
 #: front/components/UserSettingsPopover.tsx
-msgid "Workspaces you've been invited to join"
-msgstr "Workspaces you've been invited to join"
-
-#: front/components/me/NotificationPreferences.tsx
-msgid "Email frequency"
-msgstr "Email frequency"
-
-#: front/components/UserSettingsPopover.tsx
-msgid "Theme"
-msgstr "Theme"
-
-#: front/components/me/SoundNotificationPreferences.tsx
-msgid "Notification sound"
-msgstr "Notification sound"
-
-#: front/components/UserSettingsPopover.tsx
-msgid "Used to sign in and receive notifications"
-msgstr "Used to sign in and receive notifications"
-
-#: front/components/me/NotificationPreferences.tsx
-msgid "Once a day"
-msgstr "Once a day"
-
-#: front/components/sparkle/ConversationFontContext.tsx
-msgctxt "font name"
-msgid "OpenDyslexic"
-msgstr "OpenDyslexic"
-
-#: front/components/me/NotificationPreferences.tsx
-msgid "Show a popup inside Dust"
-msgstr "Show a popup inside Dust"
-
-#: front/components/UserSettingsPopover.tsx
-msgid "Language used by Dust for you, across all your workspaces"
-msgstr "Language used by Dust for you, across all your workspaces"
-
-#: front/components/me/PendingInvitationsTable.tsx
-msgctxt "workspace role"
-msgid "manager"
-msgstr "manager"
-
-#: front/components/UserSettingsPopover.tsx
-msgid "Conversation font"
-msgstr "Conversation font"
-
-#: front/hooks/useUserLocale.ts
-msgid "Could not save the language"
-msgstr "Could not save the language"
+msgid "Notification preferences saved"
+msgstr "Notification preferences saved"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Notifications"
 msgstr "Notifications"
 
 #: front/components/UserSettingsPopover.tsx
-msgid "Managed by your identity provider"
-msgstr "Managed by your identity provider"
+msgid "Control how and when Dust notifies you"
+msgstr "Control how and when Dust notifies you"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Inbox notifications"
+msgstr "Inbox notifications"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Sound alerts for items that need your attention"
 msgstr "Sound alerts for items that need your attention"
 
 #: front/components/UserSettingsPopover.tsx
-msgctxt "theme"
-msgid "Dark"
-msgstr "Dark"
-
-#: front/components/me/NotificationPreferences.tsx
-msgid "Every 15 minutes"
-msgstr "Every 15 minutes"
+msgid "We couldn't load your notification settings. Please try again later."
+msgstr "We couldn't load your notification settings. Please try again later."
 
 #: front/components/UserSettingsPopover.tsx
-msgid "First name is required."
-msgstr "First name is required."
-
-#: front/components/me/PendingInvitationsTable.tsx
-msgctxt "workspace role"
-msgid "admin"
-msgstr "admin"
-
-#: front/components/me/NotificationPreferences.tsx
-msgid "Receive a summary by email"
-msgstr "Receive a summary by email"
-
-#: front/components/UserSettingsPopover.tsx
-msgid "Ctrl + Enter"
-msgstr "Ctrl + Enter"
-
-#: front/components/UserSettingsPopover.tsx
-msgid "Shown next to your messages"
-msgstr "Shown next to your messages"
-
-#: front/components/UserSettingsPopover.tsx
-msgid "Enter (↵)"
-msgstr "Enter (↵)"
-
-#: front/components/assistant/conversation/InAppBanner.tsx
-msgid "A message asking Dust to improve an agent, next to the modified agent"
-msgstr "A message asking Dust to improve an agent, next to the modified agent"
-
-#: front/components/me/SoundNotificationPreferences.tsx
-msgid "Error updating sound notification preferences"
-msgstr "Error updating sound notification preferences"
-
-#: front/components/me/PendingInvitationsTable.tsx
-msgid "Expired"
-msgstr "Expired"
-
-#: front/components/UserSettingsPopover.tsx
-msgid "Last name is required."
-msgstr "Last name is required."
-
-#: front/components/me/NotificationPreferences.tsx
-msgid "Once a week"
-msgstr "Once a week"
-
-#: front/components/UserSettingsPopover.tsx
-msgid "Cmd + Enter"
-msgstr "Cmd + Enter"
-
-#: front/components/command_palette/CommandPaletteSearchPhase.tsx
-msgid "Type to search settings."
-msgstr "Type to search settings."
-
-#: front/components/assistant/conversation/InAppBanner.tsx
-msgid "You can now build and edit skills and agents directly in conversations."
-msgstr "You can now build and edit skills and agents directly in conversations."
-
-#: front/components/command_palette/CommandPaletteSearchPhase.tsx
-msgid "Type to search members."
-msgstr "Type to search members."
-
-#: front/components/me/NotificationPreferences.tsx
-msgid "Mentions only"
-msgstr "Mentions only"
-
-#: front/components/me/NotificationPreferences.tsx
-#: front/components/UserSettingsPopover.tsx
-msgid "Email"
-msgstr "Email"
-
-#: front/components/UserSettingsPopover.tsx
-msgctxt "theme"
-msgid "Light"
-msgstr "Light"
-
-#: front/components/command_palette/CommandPaletteSearchPhase.tsx
-msgid "Type to search conversations."
-msgstr "Type to search conversations."
-
-#: front/components/UserSettingsPopover.tsx
-msgid "Keyboard shortcut to send a message"
-msgstr "Keyboard shortcut to send a message"
-
-#: front/components/UserSettingsPopover.tsx
-msgid "Send message"
-msgstr "Send message"
-
-#: front/components/me/NotificationPreferences.tsx
-msgid "Nothing"
-msgstr "Nothing"
-
-#: front/components/me/PendingInvitationsTable.tsx
-msgid "Workspace"
-msgstr "Workspace"
-
-#: front/components/me/NotificationPreferences.tsx
-msgid "Every 5 minutes"
-msgstr "Every 5 minutes"
+msgid "Other channels"
+msgstr "Other channels"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Choose where else to receive notifications"
 msgstr "Choose where else to receive notifications"
 
 #: front/components/UserSettingsPopover.tsx
-msgid "Customization"
-msgstr "Customization"
-
-#: front/hooks/useUserLocale.ts
-msgid "Your language could not be saved to your account."
-msgstr "Your language could not be saved to your account."
-
-#: front/components/command_palette/CommandPaletteSearchPhase.tsx
-msgid "Create new conversation in pod"
-msgstr "Create new conversation in pod"
+msgid "Invitations"
+msgstr "Invitations"
 
 #: front/components/UserSettingsPopover.tsx
-msgid "Access your favorite and most-used agents, or search for one from the home page."
-msgstr "Access your favorite and most-used agents, or search for one from the home page."
-
-#: front/components/command_palette/CommandPaletteSearchPhase.tsx
-msgid "Create new conversation"
-msgstr "Create new conversation"
-
-#: front/components/assistant/conversation/InAppBanner.tsx
-msgid "Try it"
-msgstr "Try it"
-
-#: front/components/UserSettingsPopover.tsx
-msgid "Save"
-msgstr "Save"
-
-#: front/components/me/SoundNotificationPreferences.tsx
-msgctxt "verb, play a sound"
-msgid "Play"
-msgstr "Play"
-
-#: front/components/UserSettingsPopover.tsx
-msgid "Inbox notifications"
-msgstr "Inbox notifications"
-
-#: front/components/command_palette/CommandPaletteSearchPhase.tsx
-msgid "Create new Pod"
-msgstr "Create new Pod"
-
-#: front/components/UserSettingsPopover.tsx
-msgid "First name"
-msgstr "First name"
+msgid "Workspaces you've been invited to join"
+msgstr "Workspaces you've been invited to join"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Memory"
 msgstr "Memory"
 
 #: front/components/UserSettingsPopover.tsx
-msgid "Adjust how Dust looks and behaves for you."
-msgstr "Adjust how Dust looks and behaves for you."
-
-#: front/components/command_palette/CommandPaletteSearchPhase.tsx
-msgid "Type to search pods."
-msgstr "Type to search pods."
-
-#: front/components/UserSettingsPopover.tsx
-msgid "The content of your saved memory may appear in responses sent to Slack and other external integrations."
-msgstr "The content of your saved memory may appear in responses sent to Slack and other external integrations."
-
-#: front/components/me/SoundNotificationPreferences.tsx
-msgid "Play a sound when an agent needs your input to continue"
-msgstr "Play a sound when an agent needs your input to continue"
-
-#: front/components/UserSettingsPopover.tsx
-msgid "Language"
-msgstr "Language"
-
-#: front/components/UserSettingsPopover.tsx
-msgid "Choose how Dust looks on this device"
-msgstr "Choose how Dust looks on this device"
-
-#: front/components/UserSettingsPopover.tsx
-msgid "Control how and when Dust notifies you"
-msgstr "Control how and when Dust notifies you"
-
-#: front/components/UserSettingsPopover.tsx
-msgid "Notification preferences saved"
-msgstr "Notification preferences saved"
-
-#: front/components/me/SoundNotificationPreferences.tsx
-msgid "Pick your alert sound"
-msgstr "Pick your alert sound"
-
-#: front/components/me/NotificationPreferences.tsx
-msgid "Every hour"
-msgstr "Every hour"
-
-#: front/components/sparkle/ConversationFontContext.tsx
-msgctxt "font name"
-msgid "Lora"
-msgstr "Lora"
+msgid "Enable Memory"
+msgstr "Enable Memory"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Dust builds a personal memory from your conversations and uses it to tailor future responses."
 msgstr "Dust builds a personal memory from your conversations and uses it to tailor future responses."
 
-#: front/components/sparkle/ConversationFontContext.tsx
-msgctxt "conversation font"
-msgid "Default"
-msgstr "Default"
+#: front/components/UserSettingsPopover.tsx
+msgid "The content of your saved memory may appear in responses sent to Slack and other external integrations."
+msgstr "The content of your saved memory may appear in responses sent to Slack and other external integrations."
+
+#: front/components/UserSettingsPopover.tsx
+msgid "About you"
+msgstr "About you"
+
+#: front/components/assistant/conversation/InAppBanner.tsx
+msgid "A message asking Dust to improve an agent, next to the modified agent"
+msgstr "A message asking Dust to improve an agent, next to the modified agent"
+
+#: front/components/assistant/conversation/InAppBanner.tsx
+msgid "You can now build and edit skills and agents directly in conversations."
+msgstr "You can now build and edit skills and agents directly in conversations."
+
+#: front/components/assistant/conversation/InAppBanner.tsx
+msgid "Try it"
+msgstr "Try it"
+
+#: front/components/assistant/conversation/sidebar/UnifiedSearchNav.tsx
+msgid "New conversation"
+msgstr "New conversation"
+
+#: front/components/assistant/conversation/sidebar/UnifiedSearchNav.tsx
+#: front/components/navigation/AdminSettingsSearchNav.tsx
+msgid "Search"
+msgstr "Search"
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Create new conversation in pod"
+msgstr "Create new conversation in pod"
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Create new conversation"
+msgstr "Create new conversation"
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Create new Pod"
+msgstr "Create new Pod"
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search."
+msgstr "Type to search."
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search conversations."
+msgstr "Type to search conversations."
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search pods."
+msgstr "Type to search pods."
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search agents."
+msgstr "Type to search agents."
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search members."
+msgstr "Type to search members."
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search skills."
+msgstr "Type to search skills."
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search settings."
+msgstr "Type to search settings."
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Every 5 minutes"
+msgstr "Every 5 minutes"
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Every 15 minutes"
+msgstr "Every 15 minutes"
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Every 30 minutes"
+msgstr "Every 30 minutes"
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Every hour"
+msgstr "Every hour"
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Once a day"
+msgstr "Once a day"
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Once a week"
+msgstr "Once a week"
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "All activity"
+msgstr "All activity"
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Mentions only"
+msgstr "Mentions only"
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Nothing"
+msgstr "Nothing"
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Error updating notification preferences"
+msgstr "Error updating notification preferences"
 
 #: front/components/me/NotificationPreferences.tsx
 msgid "Notify me about"
@@ -427,13 +324,116 @@ msgid "Applies to in-app popups, email, and Slack"
 msgstr "Applies to in-app popups, email, and Slack"
 
 #: front/components/me/NotificationPreferences.tsx
-msgid "Every 30 minutes"
-msgstr "Every 30 minutes"
+msgid "In-app popup"
+msgstr "In-app popup"
 
-#: front/components/UserSettingsPopover.tsx
-msgid "Invitations"
-msgstr "Invitations"
+#: front/components/me/NotificationPreferences.tsx
+msgid "Show a popup inside Dust"
+msgstr "Show a popup inside Dust"
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Email and Slack notifications are turned off for this workspace by an admin."
+msgstr "Email and Slack notifications are turned off for this workspace by an admin."
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "A direct message in Slack"
+msgstr "A direct message in Slack"
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Receive a summary by email"
+msgstr "Receive a summary by email"
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "Email frequency"
+msgstr "Email frequency"
+
+#: front/components/me/NotificationPreferences.tsx
+msgid "How often to send email notification summaries"
+msgstr "How often to send email notification summaries"
+
+#: front/components/me/PendingInvitationsTable.tsx
+msgctxt "workspace role"
+msgid "admin"
+msgstr "admin"
+
+#: front/components/me/PendingInvitationsTable.tsx
+msgctxt "workspace role"
+msgid "manager"
+msgstr "manager"
+
+#: front/components/me/PendingInvitationsTable.tsx
+msgctxt "workspace role"
+msgid "user"
+msgstr "user"
+
+#: front/components/me/PendingInvitationsTable.tsx
+msgid "Workspace"
+msgstr "Workspace"
+
+#: front/components/me/PendingInvitationsTable.tsx
+msgid "Role: {role}"
+msgstr "Role: {role}"
+
+#: front/components/me/PendingInvitationsTable.tsx
+msgid "Invited"
+msgstr "Invited"
+
+#: front/components/me/PendingInvitationsTable.tsx
+msgid "Expired"
+msgstr "Expired"
+
+#: front/components/me/PendingInvitationsTable.tsx
+msgid "Join"
+msgstr "Join"
 
 #: front/components/me/PendingInvitationsTable.tsx
 msgid "No pending invitations found."
 msgstr "No pending invitations found."
+
+#: front/components/me/SoundNotificationPreferences.tsx
+msgid "Error updating sound notification preferences"
+msgstr "Error updating sound notification preferences"
+
+#: front/components/me/SoundNotificationPreferences.tsx
+msgid "Agent waiting sound alert"
+msgstr "Agent waiting sound alert"
+
+#: front/components/me/SoundNotificationPreferences.tsx
+msgid "Play a sound when an agent needs your input to continue"
+msgstr "Play a sound when an agent needs your input to continue"
+
+#: front/components/me/SoundNotificationPreferences.tsx
+msgid "Notification sound"
+msgstr "Notification sound"
+
+#: front/components/me/SoundNotificationPreferences.tsx
+msgid "Pick your alert sound"
+msgstr "Pick your alert sound"
+
+#: front/components/me/SoundNotificationPreferences.tsx
+msgctxt "verb, play a sound"
+msgid "Play"
+msgstr "Play"
+
+#: front/components/sparkle/ConversationFontContext.tsx
+msgctxt "conversation font"
+msgid "Default"
+msgstr "Default"
+
+#: front/components/sparkle/ConversationFontContext.tsx
+msgctxt "font name"
+msgid "Lora"
+msgstr "Lora"
+
+#: front/components/sparkle/ConversationFontContext.tsx
+msgctxt "font name"
+msgid "OpenDyslexic"
+msgstr "OpenDyslexic"
+
+#: front/hooks/useUserLocale.ts
+msgid "Could not save the language"
+msgstr "Could not save the language"
+
+#: front/hooks/useUserLocale.ts
+msgid "Your language could not be saved to your account."
+msgstr "Your language could not be saved to your account."

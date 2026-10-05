@@ -14,10 +14,6 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
-vi.mock(import("@app/components/sparkle/ThemeContext"), () => ({
-  useTheme: () => ({ theme: "light", isDark: false, setTheme: vi.fn() }),
-}));
-
 const MODEL: ModelConfigurationType = CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG;
 
 interface TestMenuProps {

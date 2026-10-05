@@ -2,18 +2,21 @@ import { cn } from "@dust-tt/sparkle";
 
 interface DocumentSourcePreviewProps {
   source: string;
+  /** Why editing is disabled, shown above the source. */
+  reason: string;
   className?: string;
 }
 
 export const DocumentSourcePreview = ({
   source,
+  reason,
   className,
 }: DocumentSourcePreviewProps) => (
   <article className={className}>
     <div className="mx-auto max-w-[50rem] px-5 py-8 text-foreground">
       <p role="alert" className="mb-6 text-muted-foreground copy-sm">
-        This document includes formatting that isn't supported yet. The original
-        Markdown is shown below and editing is disabled to preserve it.
+        {reason} The original Markdown is shown below and editing is disabled to
+        preserve it.
       </p>
       <pre
         className={cn(

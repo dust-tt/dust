@@ -43,9 +43,9 @@ type MembersTab = (typeof MEMBERS_TABS)[number];
 
 /**
  * @cc [owner:philipperolet,label:security;react] scoped-people-page
- * Delegated callers MUST use managed-only lists and MUST NOT mount workspace invitation, pricing,
- * seat availability, or verified-domain data hooks. Their editable groups may be fewer than their
- * visible groups; provisioned and admin-granting groups remain visible.
+ * Delegated callers MUST see all workspace members but only managed groups. They MUST NOT mount
+ * workspace invitation, pricing, seat availability, or verified-domain data hooks. Their editable
+ * groups may be fewer than their visible groups; provisioned and admin-granting groups remain visible.
  */
 export function MembersPage() {
   const owner = useWorkspace();

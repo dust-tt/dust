@@ -42,14 +42,21 @@ type RateLimiterArgs = {
   maxPerTimeframe: number;
   timeframeSeconds: number;
   incrementBy?: number;
+  onStoreError?: "allow" | "deny";
 };
 
+/**
+ * @cc [owner:fontanierh,label:performance;security] store-error-outcome
+ * When the Redis store fails, returns `1` (allow, nothing recorded) by default, or `0` (deny) when
+ * `onStoreError` is `"deny"`.
+ */
 export async function rateLimiter({
   key,
   maxPerTimeframe,
   timeframeSeconds,
   logger,
   incrementBy = 1,
+  onStoreError = "allow",
 }: RateLimiterArgs): Promise<number> {
   const now = new Date();
   const redisKey = makeRateLimiterKey(key);
@@ -132,11 +139,12 @@ export async function rateLimiter({
         maxPerTimeframe,
         timeframeSeconds,
         incrementBy,
+        onStoreError,
         error: e,
       },
       `RateLimiter error`
     );
-    return 1; // Allow request if error is on our side
+    return onStoreError === "deny" ? 0 : 1;
   }
 }
 

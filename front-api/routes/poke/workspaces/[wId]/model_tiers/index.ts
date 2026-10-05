@@ -4,6 +4,7 @@ import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
 import allowed from "./allowed";
+import members from "./members";
 
 // Mounted at /api/poke/workspaces/:wId/model_tiers. Read-only mirror of
 // /api/w/:wId/model_tiers for the Poke Pool Usage page's models tier column.
@@ -21,5 +22,6 @@ app.get("/", async (ctx): HandlerResult<GetModelTiersResponseBody> => {
 });
 
 app.route("/allowed", allowed);
+app.route("/members", members);
 
 export default app;
