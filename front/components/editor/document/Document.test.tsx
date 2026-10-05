@@ -58,6 +58,11 @@ describe("Document comments", () => {
     expect(
       screen.getByRole("complementary", { name: "Comments" }).dataset.state
     ).toBe("open");
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("article", { name: "Comment by Daph" })
+      )
+    );
   });
 
   it("keeps a selection on commented text in the editor", async () => {

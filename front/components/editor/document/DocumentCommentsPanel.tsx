@@ -79,6 +79,7 @@ interface CommentThreadProps {
   quote: string | undefined;
   active: boolean;
   onSelect: () => void;
+  onElement: (element: HTMLElement | null) => void;
 }
 
 const CommentThread = ({
@@ -86,8 +87,9 @@ const CommentThread = ({
   quote,
   active,
   onSelect,
+  onElement,
 }: CommentThreadProps) => {
-  const ref = useRef<HTMLElement>(null);
+  const ref = useRef<HTMLElement | null>(null);
   const [first, ...replies] = comment.messages;
   const resolved = comment.status === "resolved";
 
@@ -99,9 +101,11 @@ const CommentThread = ({
 
   return (
     <article
-      ref={ref}
+      ref={(element) => {
+        ref.current = element;
+        onElement(element);
+      }}
       tabIndex={-1}
-      data-thread-id={comment.id}
       aria-label={`Comment by ${first.author.name}`}
       aria-current={active ? "true" : undefined}
       onClick={onSelect}
@@ -179,6 +183,7 @@ export const DocumentCommentsPanel = ({
     jumpTo,
   } = comments;
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const threadElements = useRef(new Map<string, HTMLElement>());
   const order = new Map(
     Array.from(quotes.keys()).map((commentId, index) => [commentId, index])
   );
@@ -195,12 +200,10 @@ export const DocumentCommentsPanel = ({
       return;
     }
     const thread = focusRequest.threadId
-      ? panelRef.current?.querySelector<HTMLElement>(
-          `[data-thread-id="${focusRequest.threadId.replace(/["\\]/g, "\\$&")}"]`
-        )
-      : null;
+      ? threadElements.current.get(focusRequest.threadId)
+      : undefined;
     (thread ?? headingRef.current)?.focus();
-  }, [panelOpen, focusRequest, panelRef]);
+  }, [panelOpen, focusRequest]);
 
   const renderThread = (comment: DfmComment) => (
     <CommentThread
@@ -209,6 +212,13 @@ export const DocumentCommentsPanel = ({
       quote={quotes.get(comment.id)}
       active={comment.id === activeId}
       onSelect={() => jumpTo(comment.id)}
+      onElement={(element) => {
+        if (element) {
+          threadElements.current.set(comment.id, element);
+        } else {
+          threadElements.current.delete(comment.id);
+        }
+      }}
     />
   );
 
