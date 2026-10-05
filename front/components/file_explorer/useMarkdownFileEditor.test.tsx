@@ -131,7 +131,7 @@ describe("useMarkdownFileEditor", () => {
     expect(result.current.richEditor?.initialContent).toBe("# Notes\n");
   });
 
-  it("keeps the plain editor when the preview text was truncated", () => {
+  it("opens no editor for writing when the preview text was cut", () => {
     flags.add("co_edition");
 
     const { result } = renderHook(() =>
@@ -139,6 +139,35 @@ describe("useMarkdownFileEditor", () => {
     );
 
     expect(result.current.richEditor).toBeNull();
+    expect(result.current.canEdit).toBe(false);
+  });
+
+  it("does not open the plain editor on cut preview text when co_edition is off", () => {
+    const { result } = renderHook(() =>
+      useMarkdownFileEditor({ ...params, isTruncated: true })
+    );
+
+    expect(result.current.canEdit).toBe(false);
+  });
+
+  it("keeps a dirty plain draft when the file grows past the cut, and refuses to save it", async () => {
+    const { result, rerender } = renderHook(
+      (props) => useMarkdownFileEditor(props),
+      { initialProps: params }
+    );
+    act(() => {
+      result.current.setDraft("# Notes\n\nMine");
+    });
+
+    rerender({ ...revised, isTruncated: true });
+    expect(result.current.canEdit).toBe(true);
+    expect(result.current.content).toBe("# Notes\n\nMine");
+
+    const writes = vi.mocked(writeFileContentByPath).mock.calls.length;
+    await act(async () => {
+      await result.current.save();
+    });
+    expect(vi.mocked(writeFileContentByPath).mock.calls.length).toBe(writes);
   });
 
   it("reopens a clean editor on content written by someone else", () => {

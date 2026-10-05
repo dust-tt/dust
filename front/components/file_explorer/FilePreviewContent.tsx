@@ -27,6 +27,12 @@ const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
 export const MAX_PREVIEW_BYTES = 10 * 1024 * 1024;
 
+export const CUT_TEXT_SAVE_REFUSED = {
+  title: "File too long to save here",
+  description:
+    "It grew too long to edit here. Copy your changes, then reopen the file.",
+};
+
 const EXTENSION_TO_LANGUAGE: Record<string, string> = {
   py: "python",
   js: "javascript",
