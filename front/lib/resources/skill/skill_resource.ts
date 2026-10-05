@@ -2007,6 +2007,34 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
+   * List the workspace's pending skills created before `createdBefore`, oldest first, for the
+   * hard-delete cron. Skips read filtering so no row is missed; the caller must be an admin.
+   */
+  static async listExpiredPending(
+    auth: Authenticator,
+    { createdBefore, limit }: { createdBefore: Date; limit: number }
+  ): Promise<SkillResource[]> {
+    assert(auth.isAdmin(), "Only admins can list expired pending skills.");
+
+    return this.baseFetch(
+      auth,
+      {
+        where: {
+          status: "pending",
+          createdAt: { [Op.lt]: createdBefore },
+        },
+        onlyCustom: true,
+        order: [["createdAt", "ASC"]],
+        limit,
+        withInstructions: false,
+        withTools: false,
+        withFileAttachments: false,
+      },
+      { permissionFiltering: "dangerously_skip" }
+    );
+  }
+
+  /**
    * List discoverable skills: custom default skills + regular global skills.
    */
   static async listDiscoverable(

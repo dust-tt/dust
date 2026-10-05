@@ -29,9 +29,19 @@ export function getRunExecutionsDeletionCutoffDate(): number {
 
 export const PENDING_AGENTS_RETENTION_HOURS = 72;
 
+// Pending skills share the pending agents retention.
+export const PENDING_SKILLS_RETENTION_HOURS = PENDING_AGENTS_RETENTION_HOURS;
+
 export function getPendingAgentsDeletionCutoffDate(): Date {
   const cutoffDate = new Date();
   cutoffDate.setHours(cutoffDate.getHours() - PENDING_AGENTS_RETENTION_HOURS);
+
+  return cutoffDate;
+}
+
+export function getPendingSkillsDeletionCutoffDate(): Date {
+  const cutoffDate = new Date();
+  cutoffDate.setHours(cutoffDate.getHours() - PENDING_SKILLS_RETENTION_HOURS);
 
   return cutoffDate;
 }
