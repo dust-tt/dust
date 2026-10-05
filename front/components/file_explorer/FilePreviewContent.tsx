@@ -1,4 +1,5 @@
 import { Document } from "@app/components/editor/document";
+import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import { MarkdownFilePreview } from "@app/components/file_explorer/MarkdownFilePreview";
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
@@ -13,14 +14,12 @@ import { stripMimeParameters } from "@app/types/files";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  Chip,
   CodeBlock,
   cn,
   DataTable,
   Markdown,
   ScrollableDataTable,
   Spinner,
-  Tooltip,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 
@@ -377,21 +376,7 @@ export function FilePreviewContent({
               initialContent={markdownRichEditor.initialContent}
               onSave={markdownRichEditor.onSave}
               onStateChange={markdownRichEditor.onStateChange}
-              badge={
-                <Tooltip
-                  tooltipTriggerAsChild
-                  label="This editor for Markdown files is work in progress from the Co-edition initiative. It is only enabled on the Dust workspace while we build it."
-                  trigger={
-                    <span>
-                      <Chip
-                        size="mini"
-                        color="info"
-                        label="Co-edition · WIP · Dust only"
-                      />
-                    </span>
-                  }
-                />
-              }
+              badge={<CoEditionBadge />}
             />
           </div>
         );

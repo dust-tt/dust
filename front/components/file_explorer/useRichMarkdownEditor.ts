@@ -84,7 +84,8 @@ export function useRichMarkdownEditor({
 }: UseRichMarkdownEditorParams): RichMarkdownEditorState {
   const [draft, setDraft] = useState<DocumentDraftState>(IDLE_DRAFT);
   const [opened, setOpened] = useState<Opened | null>(null);
-  // How many times the editor reopened on foreign content; part of the mount key.
+  // How many times the editor reopened on foreign content; part of the mount key. Reopening
+  // loses the scroll position; the next step applies foreign changes in place instead.
   const [version, setVersion] = useState(0);
   const [resetKey, setResetKey] = useState({ isActive, path: entryPath });
   // The content this hook wrote last, so the fetch catching up with it is not a foreign change.

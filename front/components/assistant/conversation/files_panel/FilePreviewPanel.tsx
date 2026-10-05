@@ -162,7 +162,8 @@ export function FilePreviewPanel({
   return (
     <div className="flex h-panel min-h-0 flex-col">
       <ConversationSidePanelHeader
-        onClose={markdown.holdsNavigation ? undefined : closePanel}
+        onClose={closePanel}
+        closeDisabled={markdown.holdsNavigation}
       >
         <div className="flex min-w-0 items-center gap-1.5">
           <Icon visual={FileIcon} size="sm" className="shrink-0" />
