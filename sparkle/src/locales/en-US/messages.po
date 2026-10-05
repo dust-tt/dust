@@ -1,0 +1,659 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-05 10:47+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgid "Switch to Mermaid"
+msgstr "Switch to Mermaid"
+
+#: src/components/MultiPageDialog.tsx
+#: src/components/MultiPageSheet.tsx
+msgid "Next page"
+msgstr "Next page"
+
+#: src/components/DataTable/selection.tsx
+msgid "Select all rows"
+msgstr "Select all rows"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "empty list"
+msgstr "empty list"
+
+#: src/components/ConversationListItem.tsx
+msgid "({replyCount, plural, one {# reply} other {# replies}})."
+msgstr "({replyCount, plural, one {# reply} other {# replies}})."
+
+#: src/components/ConversationMessage.tsx
+msgid "Message actions"
+msgstr "Message actions"
+
+#: src/components/Document/DocumentSourcePreview.tsx
+msgid "This document includes formatting that isn't supported yet. The original Markdown is shown below and editing is disabled to preserve it."
+msgstr "This document includes formatting that isn't supported yet. The original Markdown is shown below and editing is disabled to preserve it."
+
+#: src/components/DataTable/cells.tsx
+msgid "Trending up"
+msgstr "Trending up"
+
+#: src/components/FaviconIcon.tsx
+msgid "Website icon"
+msgstr "Website icon"
+
+#: src/components/MessageCard.tsx
+msgid "Dismiss"
+msgstr "Dismiss"
+
+#: src/components/markdown/ActionCardBlock.tsx
+msgid "Reject"
+msgstr "Reject"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "No"
+msgstr "No"
+
+#: src/components/Document/DocumentCommentsPanel.tsx
+msgid "Resolve"
+msgstr "Resolve"
+
+#: src/components/Document/index.tsx
+msgid "Saving is unavailable. Your unsaved changes are still here. Copy them before reopening."
+msgstr "Saving is unavailable. Your unsaved changes are still here. Copy them before reopening."
+
+#: src/components/Document/DocumentSaveStatus.tsx
+msgid "Retry"
+msgstr "Retry"
+
+#: src/components/Document/DocumentCommentsPanel.tsx
+msgid "Resolved ({resolvedCount})"
+msgstr "Resolved ({resolvedCount})"
+
+#: src/components/DiffBlock.tsx
+#: src/components/LoadMore.tsx
+#: src/components/TruncatedContent.tsx
+msgid "Show less"
+msgstr "Show less"
+
+#: src/components/Document/DocumentCommentsPanel.tsx
+#: src/components/Document/index.tsx
+msgid "Comments, {unresolvedCount} unresolved"
+msgstr "Comments, {unresolvedCount} unresolved"
+
+#: src/components/MessageCard.tsx
+msgid "New on Dust"
+msgstr "New on Dust"
+
+#: src/components/ConversationListItem.tsx
+msgid "{mentionCount, plural, one {# Mention} other {# Mentions}}"
+msgstr "{mentionCount, plural, one {# Mention} other {# Mentions}}"
+
+#: src/components/ConversationListItem.tsx
+msgid "{unreadCount} Unread"
+msgstr "{unreadCount} Unread"
+
+#: src/components/Document/blocks.ts
+msgid "Separate sections"
+msgstr "Separate sections"
+
+#: src/components/Document/blocks.ts
+msgid "A block of code"
+msgstr "A block of code"
+
+#: src/components/DataTable/selection.tsx
+msgid "Select row"
+msgstr "Select row"
+
+#: src/components/Pagination.tsx
+msgid "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plural, one {#+ item} other {#+ items}}"
+msgstr "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plural, one {#+ item} other {#+ items}}"
+
+#: src/components/SearchDropdownMenu.tsx
+#: src/components/SearchInput.tsx
+msgid "Search"
+msgstr "Search"
+
+#: src/components/Document/DocumentCommentComposer.tsx
+msgid "Add a comment…"
+msgstr "Add a comment…"
+
+#: src/components/MultiPageDialog.tsx
+#: src/components/MultiPageSheet.tsx
+msgid "Previous page"
+msgstr "Previous page"
+
+#: src/components/Document/blocks.ts
+msgid "Make a passage stand out"
+msgstr "Make a passage stand out"
+
+#: src/components/Document/DocumentCommentMarkers.tsx
+msgid "Show comment by {authorName}"
+msgstr "Show comment by {authorName}"
+
+#: src/components/Document/DocumentCommentComposer.tsx
+msgid "New comment"
+msgstr "New comment"
+
+#: src/components/Document/DocumentCommentMarkers.tsx
+msgid "Comment by unknown"
+msgstr "Comment by unknown"
+
+#: src/components/LoadMore.tsx
+msgid "Showing {rowCount} of {totalRowCount, plural, one {# item} other {# items}}"
+msgstr "Showing {rowCount} of {totalRowCount, plural, one {# item} other {# items}}"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "{hiddenPropertyCount, plural, one {# more property} other {# more properties}}"
+msgstr "{hiddenPropertyCount, plural, one {# more property} other {# more properties}}"
+
+#: src/components/DataTable/cells.tsx
+msgid "Trending down"
+msgstr "Trending down"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "expand"
+msgstr "expand"
+
+#: src/components/Document/DocumentCommentMarkers.tsx
+msgid "Show {commentCount, plural, one {# comment} other {# comments}}"
+msgstr "Show {commentCount, plural, one {# comment} other {# comments}}"
+
+#: src/components/VoicePicker.tsx
+msgid "Click, or Press & Hold to record"
+msgstr "Click, or Press & Hold to record"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "Item {itemNumber}"
+msgstr "Item {itemNumber}"
+
+#: src/components/Bar.tsx
+msgid "Delete"
+msgstr "Delete"
+
+#: src/components/ProgressBar.tsx
+msgid "Progress"
+msgstr "Progress"
+
+#: src/components/DataTable/cells.tsx
+msgid "No change"
+msgstr "No change"
+
+#: src/components/markdown/ActionCardBlock.tsx
+msgid "Apply"
+msgstr "Apply"
+
+#: src/components/Document/DocumentBlockMenu.tsx
+msgid "Navigate"
+msgstr "Navigate"
+
+#: src/components/markdown/ContentBlockWrapper.tsx
+msgctxt "verb, button tooltip"
+msgid "Copy"
+msgstr "Copy"
+
+#: src/components/Toolbar.tsx
+msgid "Cancel"
+msgstr "Cancel"
+
+#: src/components/Notification.tsx
+msgid "Dismiss notification"
+msgstr "Dismiss notification"
+
+#: src/components/Document/useDocumentEditor.ts
+msgid "Start writing, or type / for elements…"
+msgstr "Start writing, or type / for elements…"
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgid "Switch to Markdown"
+msgstr "Switch to Markdown"
+
+#: src/components/markdown/List.tsx
+msgid "Done"
+msgstr "Done"
+
+#: src/components/Document/useDocumentEditor.ts
+msgid "Could not save. Your changes are still here. Try again."
+msgstr "Could not save. Your changes are still here. Try again."
+
+#: src/components/VoicePicker.tsx
+msgid "Transcribing…"
+msgstr "Transcribing…"
+
+#: src/components/Document/blocks.ts
+msgid "Heading 2"
+msgstr "Heading 2"
+
+#: src/components/Document/blocks.ts
+msgid "Code"
+msgstr "Code"
+
+#: src/components/ConversationListItem.tsx
+msgid "in {unreadCount, plural, one {# unread} other {# unreads}}"
+msgstr "in {unreadCount, plural, one {# unread} other {# unreads}}"
+
+#: src/components/DiffBlock.tsx
+#: src/components/TruncatedContent.tsx
+msgid "Show more"
+msgstr "Show more"
+
+#: src/components/Document/DocumentBlockMenu.tsx
+msgid "Add a block"
+msgstr "Add a block"
+
+#: src/components/Toolbar.tsx
+msgid "Add a link to your message with custom text."
+msgstr "Add a link to your message with custom text."
+
+#: src/components/Document/blocks.ts
+msgid "A small section heading"
+msgstr "A small section heading"
+
+#: src/components/Document/useDocumentEditor.ts
+msgid "Type / for elements…"
+msgstr "Type / for elements…"
+
+#: src/components/ConversationListItem.tsx
+msgid "Last by {lastMessageByName}."
+msgstr "Last by {lastMessageByName}."
+
+#: src/components/Toolbar.tsx
+msgid "Insert Link"
+msgstr "Insert Link"
+
+#: src/components/Document/useDocumentEditor.ts
+msgid "Document content"
+msgstr "Document content"
+
+#: src/components/Document/DocumentSaveStatus.tsx
+msgid "Saved"
+msgstr "Saved"
+
+#: src/components/Bar.tsx
+msgid "Back"
+msgstr "Back"
+
+#: src/components/Document/DocumentCommentsPanel.tsx
+msgid "Reply"
+msgstr "Reply"
+
+#: src/components/Document/DocumentSelectionToolbar.tsx
+msgid "Format selection"
+msgstr "Format selection"
+
+#: src/components/Breadcrumbs.tsx
+msgid "Breadcrumb"
+msgstr "Breadcrumb"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "expand ({hiddenCharacterCount, plural, one {# more character} other {# more characters}})"
+msgstr "expand ({hiddenCharacterCount, plural, one {# more character} other {# more characters}})"
+
+#: src/components/Document/DocumentCommentMarkers.tsx
+msgid "Show comment by unknown"
+msgstr "Show comment by unknown"
+
+#: src/components/Document/DocumentCommentInput.tsx
+msgid "Send"
+msgstr "Send"
+
+#: src/components/ConversationListItem.tsx
+msgid "{replyCount, plural, one {# Reply} other {# Replies}}"
+msgstr "{replyCount, plural, one {# Reply} other {# Replies}}"
+
+#: src/components/Document/index.tsx
+msgid "This document could not be opened. Its saved content has not been changed."
+msgstr "This document could not be opened. Its saved content has not been changed."
+
+#: src/components/Document/DocumentSaveStatus.tsx
+msgid "Saving…"
+msgstr "Saving…"
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgid "Raw JSON"
+msgstr "Raw JSON"
+
+#: src/components/Document/DocumentSelectionToolbar.tsx
+msgid "Bold"
+msgstr "Bold"
+
+#: src/components/DataTableSkeleton.tsx
+msgid "Loading table"
+msgstr "Loading table"
+
+#: src/components/ImageGenerationPlaceholder.tsx
+msgid "Generated image"
+msgstr "Generated image"
+
+#: src/components/ActionCard.tsx
+msgid "ADDED"
+msgstr "ADDED"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "Yes"
+msgstr "Yes"
+
+#: src/components/Document/DocumentCommentsPanel.tsx
+msgid "Commented text:"
+msgstr "Commented text:"
+
+#: src/components/SearchInput.tsx
+msgid "{itemCount, plural, one {# search results} other {# search results}}."
+msgstr "{itemCount, plural, one {# search results} other {# search results}}."
+
+#: src/components/Document/blocks.ts
+msgid "Heading 1"
+msgstr "Heading 1"
+
+#: src/components/NavigationList.tsx
+msgid "Show all"
+msgstr "Show all"
+
+#: src/components/ActionCard.tsx
+msgid "Add"
+msgstr "Add"
+
+#: src/components/Document/blocks.ts
+msgid "Numbered list"
+msgstr "Numbered list"
+
+#: src/components/Document/DocumentCommentsPanel.tsx
+msgid "Reopen"
+msgstr "Reopen"
+
+#: src/components/Document/DocumentCommentsPanel.tsx
+msgid "No comments yet"
+msgstr "No comments yet"
+
+#: src/components/Document/DocumentCommentsPanel.tsx
+msgid "Reply…"
+msgstr "Reply…"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "Maximum depth reached"
+msgstr "Maximum depth reached"
+
+#: src/components/Document/DocumentCommentsPanel.tsx
+msgid "Close comments"
+msgstr "Close comments"
+
+#: src/components/ImagePreview.tsx
+#: src/components/ImageZoomDialog.tsx
+#: src/components/markdown/ContentBlockWrapper.tsx
+msgid "Download"
+msgstr "Download"
+
+#: src/components/Document/DocumentCommentComposer.tsx
+msgid "Comment"
+msgstr "Comment"
+
+#: src/components/Document/blocks.ts
+msgid "A simple list of ideas"
+msgstr "A simple list of ideas"
+
+#: src/components/Document/DocumentCommentsPanel.tsx
+msgid "Delete comment"
+msgstr "Delete comment"
+
+#: src/components/markdown/ActionCardBlock.tsx
+msgid "Always allow"
+msgstr "Always allow"
+
+#: src/components/ComposerInput.tsx
+msgid "Get work done"
+msgstr "Get work done"
+
+#: src/components/markdown/Markdown.tsx
+msgid "There was an error parsing this markdown content"
+msgstr "There was an error parsing this markdown content"
+
+#: src/components/Document/DocumentSelectionToolbar.tsx
+msgid "Inline code"
+msgstr "Inline code"
+
+#: src/components/Document/DocumentBlockMenu.tsx
+msgid "No matching blocks"
+msgstr "No matching blocks"
+
+#: src/components/Document/DocumentCommentsPanel.tsx
+msgid "Select some text and choose Comment to start a thread."
+msgstr "Select some text and choose Comment to start a thread."
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgid "Pretty JSON"
+msgstr "Pretty JSON"
+
+#: src/components/VoicePicker.tsx
+msgid "Stop recording"
+msgstr "Stop recording"
+
+#: src/components/DataTable/selection.tsx
+msgid "Select {label}"
+msgstr "Select {label}"
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgid "Switch to Pretty View"
+msgstr "Switch to Pretty View"
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgid "Switch to Raw JSON"
+msgstr "Switch to Raw JSON"
+
+#: src/components/Document/DocumentSelectionToolbar.tsx
+msgid "Italic"
+msgstr "Italic"
+
+#: src/components/Document/DocumentVisual.tsx
+msgid "Visual “{name}” is unavailable."
+msgstr "Visual “{name}” is unavailable."
+
+#: src/components/Document/DocumentCommentMarkers.tsx
+msgid "{commentCount, plural, one {# comment} other {# comments}}"
+msgstr "{commentCount, plural, one {# comment} other {# comments}}"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "empty"
+msgstr "empty"
+
+#: src/components/Document/DocumentSaveStatus.tsx
+msgid "Not saved"
+msgstr "Not saved"
+
+#: src/components/Document/DocumentSelectionToolbar.tsx
+msgctxt "verb, button label"
+msgid "Comment"
+msgstr "Comment"
+
+#: src/components/Document/blocks.ts
+msgid "Divider"
+msgstr "Divider"
+
+#: src/components/Pagination.tsx
+msgid "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plural, one {# item} other {# items}}"
+msgstr "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plural, one {# item} other {# items}}"
+
+#: src/components/markdown/List.tsx
+msgid "To do"
+msgstr "To do"
+
+#: src/components/ImageGenerationPlaceholder.tsx
+msgid "Creating image"
+msgstr "Creating image"
+
+#: src/components/Document/DocumentBlockMenu.tsx
+msgid "Insert"
+msgstr "Insert"
+
+#: src/components/Document/blocks.ts
+msgid "Heading 3"
+msgstr "Heading 3"
+
+#: src/components/Chip.tsx
+#: src/components/ImagePreview.tsx
+msgid "Remove"
+msgstr "Remove"
+
+#: src/components/Document/useDocumentEditor.ts
+msgid "This formatting cannot be saved as Markdown yet. Your changes are still here. Undo the last edit to try again."
+msgstr "This formatting cannot be saved as Markdown yet. Your changes are still here. Undo the last edit to try again."
+
+#: src/components/markdown/List.tsx
+msgid "Step {number}"
+msgstr "Step {number}"
+
+#: src/components/SearchInput.tsx
+msgid "{itemCount, plural, one {# search results} other {# search results}} (out of {totalItems})."
+msgstr "{itemCount, plural, one {# search results} other {# search results}} (out of {totalItems})."
+
+#: src/components/InputWithSave.tsx
+#: src/components/LegacyInputWithSave.tsx
+#: src/components/Toolbar.tsx
+msgid "Save"
+msgstr "Save"
+
+#: src/components/Document/DocumentSaveStatus.tsx
+msgid "Changes save automatically after {autosaveDelaySeconds}s of inactivity"
+msgstr "Changes save automatically after {autosaveDelaySeconds}s of inactivity"
+
+#: src/components/Document/blocks.ts
+msgid "Keep things in order"
+msgstr "Keep things in order"
+
+#: src/components/Document/DocumentCommentsPanel.tsx
+msgid "The commented text was removed."
+msgstr "The commented text was removed."
+
+#: src/components/markdown/ActionCardBlock.tsx
+msgid "Details"
+msgstr "Details"
+
+#: src/components/Document/DocumentCommentsPanel.tsx
+#: src/components/Document/index.tsx
+msgid "Comments"
+msgstr "Comments"
+
+#: src/components/NavigationList.tsx
+msgid "Hide"
+msgstr "Hide"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "{hiddenItemCount, plural, one {# more item} other {# more items}}"
+msgstr "{hiddenItemCount, plural, one {# more item} other {# more items}}"
+
+#: src/components/SearchInput.tsx
+msgid "Select all"
+msgstr "Select all"
+
+#: src/components/Document/DocumentSelectionToolbar.tsx
+msgid "Strikethrough"
+msgstr "Strikethrough"
+
+#: src/components/Document/useDocumentEditor.ts
+msgid "Untitled"
+msgstr "Untitled"
+
+#: src/components/DataTable/ScrollableDataTable.tsx
+msgid "Loading more data..."
+msgstr "Loading more data..."
+
+#: src/components/Document/DocumentSaveStatus.tsx
+msgid "Changes pending"
+msgstr "Changes pending"
+
+#: src/components/Document/blocks.ts
+msgid "A big section heading"
+msgstr "A big section heading"
+
+#: src/components/Document/blocks.ts
+#: src/components/Toolbar.tsx
+msgid "Text"
+msgstr "Text"
+
+#: src/components/Document/blocks.ts
+msgid "A medium section heading"
+msgstr "A medium section heading"
+
+#: src/components/Document/DocumentCommentsPanel.tsx
+msgid "just now"
+msgstr "just now"
+
+#: src/components/ConversationListItem.tsx
+msgid "({replyCount, plural, one {# reply} other {# replies}})"
+msgstr "({replyCount, plural, one {# reply} other {# replies}})"
+
+#: src/components/LoadMore.tsx
+#: src/components/Pagination.tsx
+msgid "{rowCount, plural, one {# item} other {# items}}"
+msgstr "{rowCount, plural, one {# item} other {# items}}"
+
+#: src/components/LoadMore.tsx
+msgid "Showing {rowCount} of {totalRowCount, plural, one {#+ item} other {#+ items}}"
+msgstr "Showing {rowCount} of {totalRowCount, plural, one {#+ item} other {#+ items}}"
+
+#: src/components/Document/DocumentCommentMarkers.tsx
+#: src/components/Document/DocumentCommentsPanel.tsx
+msgid "Comment by {authorName}"
+msgstr "Comment by {authorName}"
+
+#: src/components/VoicePicker.tsx
+msgid "Stop"
+msgstr "Stop"
+
+#: src/components/Document/blocks.ts
+msgid "Bulleted list"
+msgstr "Bulleted list"
+
+#: src/components/LoadMore.tsx
+msgid "Load more"
+msgstr "Load more"
+
+#: src/components/LoadMore.tsx
+#: src/components/Spinner.tsx
+msgid "Loading"
+msgstr "Loading"
+
+#: src/components/Bar.tsx
+#: src/components/Document/DocumentBlockMenu.tsx
+msgid "Close"
+msgstr "Close"
+
+#: src/components/Document/blocks.ts
+msgid "Start writing with plain text"
+msgstr "Start writing with plain text"
+
+#: src/components/VoicePicker.tsx
+msgid "Release to stop"
+msgstr "Release to stop"
+
+#: src/components/Bar.tsx
+msgid "Share"
+msgstr "Share"
+
+#: src/components/Document/useDocumentEditor.ts
+msgid "Heading"
+msgstr "Heading"
+
+#: src/components/Document/blocks.ts
+msgid "Quote"
+msgstr "Quote"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "collapse"
+msgstr "collapse"
+
+#: src/components/Toolbar.tsx
+msgctxt "noun, URL input label"
+msgid "Link"
+msgstr "Link"
+
+#: src/components/MessageCard.tsx
+msgid "Learn more"
+msgstr "Learn more"
