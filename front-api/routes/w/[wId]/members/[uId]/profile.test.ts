@@ -32,6 +32,31 @@ describe("GET /api/w/:wId/members/:uId/profile", () => {
     expect(profile.jobTitle).toBe("Designer");
   });
 
+  it("shows the identity provider job title over the user-entered one", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    await FeatureFlagFactory.basic(auth, "user_profile");
+    const { agentOwner: colleague, agentOwnerAuth: colleagueAuth } =
+      await setupAgentOwner(workspace, "user");
+    await updateUserProfile(colleagueAuth, colleague, {
+      pronouns: null,
+      jobTitle: "Self-declared title",
+    });
+    await colleague.setMetadata(
+      "workos:job_title",
+      "VP Sales, France & Benelux",
+      auth.getNonNullableWorkspace().id
+    );
+
+    const response = await getProfile(workspace.sId, colleague.sId);
+
+    expect(response.status).toBe(200);
+    const { profile }: GetUserProfileResponseBody = await response.json();
+    expect(profile.jobTitle).toBe("VP Sales, France & Benelux");
+    expect(profile.isJobTitleManaged).toBe(true);
+  });
+
   it("returns 404 for a user outside the workspace", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
       role: "user",

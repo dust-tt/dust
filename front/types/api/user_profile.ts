@@ -15,6 +15,9 @@ export type UserProfileGroupType = {
 export type UserProfileType = {
   pronouns: string | null;
   jobTitle: string | null;
+  // True when the job title comes from the workspace's identity provider (SCIM directory sync or
+  // SSO). It is then read-only for the user.
+  isJobTitleManaged: boolean;
   groups: UserProfileGroupType[];
 };
 
@@ -24,7 +27,8 @@ export type GetUserProfileResponseBody = {
 
 export const PatchMyProfileBodySchema = z.object({
   pronouns: z.string().trim().max(MAX_PRONOUNS_LENGTH).nullable(),
-  jobTitle: z.string().trim().max(MAX_JOB_TITLE_LENGTH).nullable(),
+  // Omitted when the job title is managed by the identity provider.
+  jobTitle: z.string().trim().max(MAX_JOB_TITLE_LENGTH).nullable().optional(),
 });
 export type PatchMyProfileBody = z.infer<typeof PatchMyProfileBodySchema>;
 

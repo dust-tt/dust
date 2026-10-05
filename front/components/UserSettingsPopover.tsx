@@ -208,6 +208,10 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
     useCase: "avatar",
   });
 
+  const isJobTitleManaged = profile?.isJobTitleManaged ?? false;
+  // A job title synced from the identity provider is read-only, so it stays out of the form.
+  const editableJobTitle = isJobTitleManaged ? "" : (profile?.jobTitle ?? "");
+
   const form = useForm<PersonalInfoType>({
     resolver: zodResolver(personalInfoSchema),
     defaultValues: {
@@ -215,7 +219,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
       lastName: user?.lastName ?? "",
       profilePictureUrl: user?.image ?? null,
       pronouns: profile?.pronouns ?? "",
-      jobTitle: profile?.jobTitle ?? "",
+      jobTitle: editableJobTitle,
     },
   });
 
@@ -232,10 +236,10 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
         lastName: user.lastName ?? "",
         profilePictureUrl: user.image ?? null,
         pronouns: profile?.pronouns ?? "",
-        jobTitle: profile?.jobTitle ?? "",
+        jobTitle: editableJobTitle,
       });
     }
-  }, [user, profile, form]);
+  }, [user, profile, editableJobTitle, form]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -268,7 +272,9 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
     if (hasUserProfile && (dirtyFields.pronouns || dirtyFields.jobTitle)) {
       await patchMyProfile({
         pronouns: data.pronouns.trim() || null,
-        jobTitle: data.jobTitle.trim() || null,
+        ...(isJobTitleManaged
+          ? {}
+          : { jobTitle: data.jobTitle.trim() || null }),
       });
     }
   };
@@ -399,23 +405,35 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
                 }
               />
 
-              <SettingsList.Row
-                title={t`Job title`}
-                description={t`Optional`}
-                action={
-                  <div className="w-64">
-                    <Input
-                      {...form.register("jobTitle")}
-                      placeholder={t`e.g. Software Engineer`}
-                      isError={!!form.formState.errors.jobTitle}
-                      message={form.formState.errors.jobTitle?.message}
-                      messageStatus={
-                        form.formState.errors.jobTitle ? "error" : undefined
-                      }
-                    />
-                  </div>
-                }
-              />
+              {isJobTitleManaged ? (
+                <SettingsList.Row
+                  title={t`Job title`}
+                  description={t`Managed by your identity provider`}
+                  action={
+                    <span className="copy-sm text-muted-foreground">
+                      {profile?.jobTitle}
+                    </span>
+                  }
+                />
+              ) : (
+                <SettingsList.Row
+                  title={t`Job title`}
+                  description={t`Optional`}
+                  action={
+                    <div className="w-64">
+                      <Input
+                        {...form.register("jobTitle")}
+                        placeholder={t`e.g. Software Engineer`}
+                        isError={!!form.formState.errors.jobTitle}
+                        message={form.formState.errors.jobTitle?.message}
+                        messageStatus={
+                          form.formState.errors.jobTitle ? "error" : undefined
+                        }
+                      />
+                    </div>
+                  }
+                />
+              )}
             </>
           )}
 

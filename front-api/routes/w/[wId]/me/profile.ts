@@ -3,6 +3,7 @@ import type { PatchMyProfileResponseBody } from "@app/types/api/user_profile";
 import { PatchMyProfileBodySchema } from "@app/types/api/user_profile";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
 
@@ -20,7 +21,16 @@ app.patch(
     const user = auth.getNonNullableUser();
     const body = ctx.req.valid("json");
 
-    await updateUserProfile(auth, user, body);
+    const result = await updateUserProfile(auth, user, body);
+    if (result.isErr()) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: result.error.message,
+        },
+      });
+    }
     const profile = await getUserProfile(auth, user);
 
     return ctx.json({ profile });

@@ -51,6 +51,36 @@ describe("PATCH /api/w/:wId/me/profile", () => {
     expect(clearedProfile.jobTitle).toBeNull();
   });
 
+  it("keeps a job title managed by the identity provider read-only", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    await FeatureFlagFactory.basic(auth, "user_profile");
+    await auth
+      .getNonNullableUser()
+      .setMetadata(
+        "workos:job_title",
+        "Account Executive",
+        auth.getNonNullableWorkspace().id
+      );
+
+    const override = await patchMyProfile(workspace.sId, {
+      pronouns: null,
+      jobTitle: "CEO",
+    });
+    expect(override.status).toBe(400);
+
+    // Pronouns can still be saved when the job title is omitted.
+    const response = await patchMyProfile(workspace.sId, {
+      pronouns: "they/them",
+    });
+    expect(response.status).toBe(200);
+    const { profile }: PatchMyProfileResponseBody = await response.json();
+    expect(profile.pronouns).toBe("they/them");
+    expect(profile.jobTitle).toBe("Account Executive");
+    expect(profile.isJobTitleManaged).toBe(true);
+  });
+
   it("rejects a job title over the length limit", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
       role: "user",
