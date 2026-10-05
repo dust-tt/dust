@@ -137,11 +137,11 @@ export function getProviderStrategy(
  */
 /**
  * @cc [owner:flvndvd,label:security] oauth-setup-binds-finalize-nonce
- * Connection creation MUST stamp a random `finalize_nonce` on connection metadata
- * (after spreading caller extraConfig so it cannot be overwritten) and return it
- * so the setup route can set a matching HttpOnly cookie. Finalize MUST reject
- * when the cookie does not match — see `oauth-finalize-requires-ownership`.
- * Connection metadata MUST store `hashOAuthFinalizeNonce(nonce)`, never the
+ * Connection creation MUST stamp `hashOAuthFinalizeNonce(nonce)` on connection
+ * metadata (after spreading caller extraConfig so it cannot be overwritten) and
+ * return the plaintext nonce so the setup route can set a matching HttpOnly
+ * cookie. Finalize MUST reject when the cookie does not match — see
+ * `oauth-finalize-requires-ownership`. Connection metadata MUST never store the
  * plaintext cookie value.
  */
 export async function createConnectionAndGetSetupUrl(
@@ -369,11 +369,6 @@ export async function createConnectionAndGetSetupUrl(
 }
 
 /**
- * Verifies that the session finalizing an OAuth connection owns it (user +
- * workspace) and presents the setup-time finalize nonce. Fails closed when
- * identity cannot be established — including cross-region callbacks that lack a
- * session workspace claim.
- *
  * @cc [owner:flvndvd,label:security] oauth-finalize-requires-ownership
  * Before exchanging the authorization code, `finalizeConnection` MUST verify
  * that `connection.metadata.user_id` and `workspace_id` match the authenticated
@@ -383,6 +378,8 @@ export async function createConnectionAndGetSetupUrl(
  * It MUST NOT call the OAuth service finalize API when any of those checks fail,
  * and MUST NOT skip checks when auth/workspace is missing. On success it MUST
  * scrub `finalize_nonce_hash` from the returned connection metadata.
+ * Fails closed when identity cannot be established — including cross-region
+ * callbacks that lack a session workspace claim.
  */
 function assertFinalizeOwnership({
   auth,
