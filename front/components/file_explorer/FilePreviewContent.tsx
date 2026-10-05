@@ -5,7 +5,6 @@ import { MarkdownFilePreview } from "@app/components/file_explorer/MarkdownFileP
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import type { MarkdownRichEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
-import { AuthContext } from "@app/lib/auth/AuthContext";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
 import { getFileProcessedUrl, useFileContentByUrl } from "@app/lib/swr/files";
@@ -23,7 +22,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useContext } from "react";
 
 const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
@@ -309,8 +307,6 @@ export function FilePreviewContent({
   owner,
   processedContent,
 }: FilePreviewContentProps) {
-  const user = useContext(AuthContext)?.user;
-
   if (isContentLoading) {
     return (
       <div
@@ -380,11 +376,6 @@ export function FilePreviewContent({
               initialContent={markdownRichEditor.initialContent}
               onSave={markdownRichEditor.onSave}
               onStateChange={markdownRichEditor.onStateChange}
-              commentAuthor={
-                user
-                  ? { kind: "user", id: user.sId, name: user.fullName }
-                  : undefined
-              }
               badge={<CoEditionBadge />}
             />
           </div>
