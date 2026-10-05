@@ -59,7 +59,8 @@ Message bodies show as plain text for now.
 
 | File | Owns |
 | --- | --- |
-| `index.tsx` | The component: layout, shortcuts, read-only and unsupported states. |
+| `Document.tsx` | The component: layout, shortcuts, read-only and unsupported states. |
+| `index.ts` | The public surface: `Document` and its types. |
 | `useDocumentEditor.ts` | The TipTap editor, dirty tracking, autosave and the save lifecycle. |
 | `dfm_persistence.ts` | `loadDfm` and `saveDfm`, between DFM source and the editor's document. |
 | `content.ts` | Markdown parse and serialize for the body, with the round-trip checks. |

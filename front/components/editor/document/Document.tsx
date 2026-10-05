@@ -19,12 +19,6 @@ import { Button, cn, MessageTextCircle01 } from "@dust-tt/sparkle";
 import type React from "react";
 import { useId, useRef } from "react";
 
-export type {
-  DocumentDraftState,
-  DocumentProps,
-  DocumentSaveResult,
-} from "@app/components/editor/document/types";
-
 const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
 
 /** Comment ids of every highlight wrapping the clicked element. */
