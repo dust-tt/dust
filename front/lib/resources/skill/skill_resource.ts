@@ -5195,8 +5195,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   /**
    * @cc [owner:aubin-tchoi,label:product] discovery-skill-attribution
-   * Discovery targets MUST identify code-defined skills and skills with no
-   * editing user as Dust-provided, matching the skill list's attribution.
+   * Discovery targets MUST serialize editedBy as null for code-defined skills
+   * and preserve the editing user id for custom skills, matching skill JSON.
    */
   toDiscoveryJSON({
     editors,
@@ -5208,8 +5208,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       name: this.name,
       description: this.userFacingDescription,
       icon: this.icon ?? null,
-      isDustProvided:
-        this.codeDefinedSkillId !== null || this.editedBy === null,
+      editedBy: this.codeDefinedSkillId ? null : this.editedBy,
       ...(editors !== undefined
         ? { authors: (editors ?? []).map((editor) => editor.fullName()) }
         : {}),

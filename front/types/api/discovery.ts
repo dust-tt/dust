@@ -14,7 +14,7 @@ export type DiscoverySkillType = {
   description: string;
   icon: string | null;
   authors?: string[];
-  isDustProvided?: boolean;
+  editedBy: number | null;
 };
 
 type DiscoveryPinType = {

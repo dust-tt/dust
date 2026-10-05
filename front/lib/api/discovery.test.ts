@@ -196,7 +196,7 @@ describe("discovery ranked sections", () => {
     expect(result.value).toEqual([]);
   });
 
-  it("identifies code-defined skill targets as Dust-provided without editors", async () => {
+  it("returns code-defined skill targets without an editing user or editors", async () => {
     const { auth } = await createPrivateApiMockRequest();
     const definition = GLOBAL_SKILLS_ARRAY[0];
     mockedFetchForYou.mockResolvedValue(
@@ -217,7 +217,7 @@ describe("discovery ranked sections", () => {
           description: definition.userFacingDescription,
           icon: definition.icon,
           authors: [],
-          isDustProvided: true,
+          editedBy: null,
         },
       },
     ]);

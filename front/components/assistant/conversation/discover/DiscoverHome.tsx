@@ -19,7 +19,7 @@ import {
   trackDiscoverySuggestionView,
 } from "@app/components/assistant/conversation/discover/discoveryTracking";
 import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { getSkillIcon } from "@app/lib/skill";
+import { getSkillIcon, isDustProvidedSkill } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useDiscoveryFeatured,
@@ -81,7 +81,7 @@ function resolveCatalogItems(
             userFacingDescription: target.description,
           },
           authors: target.authors ?? [],
-          isDustProvided: target.isDustProvided ?? false,
+          isDustProvided: isDustProvidedSkill(target),
           activeUsersCount: null,
         });
         break;

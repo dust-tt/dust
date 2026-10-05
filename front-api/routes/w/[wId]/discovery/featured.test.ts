@@ -90,7 +90,7 @@ describe("GET /api/w/:wId/discovery/featured", () => {
             description: published.userFacingDescription,
             icon: published.icon,
             authors: [auth.getNonNullableUser().fullName()],
-            isDustProvided: false,
+            editedBy: published.editedBy,
           },
         },
       ],
