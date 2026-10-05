@@ -2,7 +2,6 @@ import {
   DocumentBlockMenu,
   useDocumentBlockMenu,
 } from "@app/components/editor/document/DocumentBlockMenu";
-import { DocumentCommentComposer } from "@app/components/editor/document/DocumentCommentComposer";
 import { DocumentCommentMarkers } from "@app/components/editor/document/DocumentCommentMarkers";
 import {
   DocumentCommentsPanel,
@@ -183,16 +182,6 @@ export const Document = ({
               comments={comments}
               containerRef={contentRef}
               mountPortalContainer={mountPortalContainer}
-            />
-          )}
-          {editor && commentAuthor && comments.draft && (
-            <DocumentCommentComposer
-              // A new range is a new draft: reset the typed text and position.
-              key={`${comments.draft.from}:${comments.draft.to}`}
-              editor={editor}
-              author={commentAuthor}
-              comments={comments}
-              containerRef={contentRef}
             />
           )}
         </div>

@@ -190,6 +190,21 @@ const getCommentRanges = (doc: Node): Map<string, CommentRange> => {
   return ranges;
 };
 
+const commentStarts = new WeakMap<Node, Map<string, number>>();
+
+/** Position of the first text each comment covers. */
+export const getCommentStarts = (doc: Node): Map<string, number> => {
+  const cached = commentStarts.get(doc);
+  if (cached) {
+    return cached;
+  }
+  const starts = new Map(
+    [...getCommentRanges(doc)].map(([id, { from }]) => [id, from])
+  );
+  commentStarts.set(doc, starts);
+  return starts;
+};
+
 const commentedTexts = new WeakMap<Node, Map<string, string>>();
 
 /**

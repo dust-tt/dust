@@ -54,7 +54,8 @@ editor cannot highlight in full, such as one inside a link destination or starti
 code, keeps the file read-only, since a save would drop or shrink it.
 
 Pass `commentAuthor` to let the current user comment; without it, or read-only, comments stay
-browsable. Selected text shows a Comment action, also reachable with Cmd/Ctrl+Alt+M. Posting,
+browsable. Selected text shows a Comment action, also reachable with Cmd/Ctrl+Alt+M, which
+opens the panel on a new comment card at the text's place among the open threads. Posting,
 replying, resolving and deleting stay out of text undo history. A message the codec cannot
 write, such as one with a line starting with `::`, is refused before it reaches the document.
 Message bodies show as plain text for now.
@@ -77,7 +78,7 @@ Message bodies show as plain text for now.
 | `DocumentComments.ts` | The `comment` mark, the thread commands and the highlights. |
 | `DocumentCommentAnchor.ts` | Anchor directives in Markdown, and anchors to marks and back. |
 | `useDocumentComments.ts` | Comment state and actions for the components below. |
-| `DocumentCommentsPanel.tsx`, `DocumentCommentComposer.tsx`, `DocumentCommentInput.tsx`, `DocumentCommentMarkers.tsx` | The threads panel, the new comment card, the message field and the gutter markers. |
+| `DocumentCommentsPanel.tsx`, `DocumentCommentInput.tsx`, `DocumentCommentMarkers.tsx` | The threads panel with the new comment card, the message field and the gutter markers. |
 
 Tests: `dfm_persistence.test.ts` for the load and save boundary, `useDocumentEditor.test.ts`
 for the save on unmount, `useDocumentComments.test.ts` for comments through the editor. The editor's interaction tests lived in Sparkle stories and are not

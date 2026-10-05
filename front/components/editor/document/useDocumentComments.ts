@@ -3,6 +3,7 @@ import {
   documentCommentsPluginKey,
   getClickedCommentIds,
   getCommentedTexts,
+  getCommentStarts,
   getDocumentComments,
   scrollToCommentHighlight,
 } from "@app/components/editor/document/DocumentComments";
@@ -25,15 +26,21 @@ interface EditorCommentsState {
   comments: DfmComment[];
   /** Commented text by comment id, in document order. */
   quotes: Map<string, string>;
+  /** Position of the first commented text by comment id. */
+  starts: Map<string, number>;
   activeId: string | null;
   draft: DocumentCommentDraft | null;
+  /** The text the pending draft covers. */
+  draftQuote: string;
 }
 
 const EMPTY_STATE: EditorCommentsState = {
   comments: [],
   quotes: new Map(),
+  starts: new Map(),
   activeId: null,
   draft: null,
+  draftQuote: "",
 };
 
 const UNAVAILABLE_MESSAGE = "Commenting is unavailable.";
@@ -72,11 +79,16 @@ export const useDocumentComments = ({
           return EMPTY_STATE;
         }
         const pluginState = documentCommentsPluginKey.getState(editor.state);
+        const draft = pluginState?.draft ?? null;
         return {
           comments: getDocumentComments(editor.state.doc),
           quotes: getCommentedTexts(editor.state.doc),
+          starts: getCommentStarts(editor.state.doc),
           activeId: pluginState?.activeId ?? null,
-          draft: pluginState?.draft ?? null,
+          draft,
+          draftQuote: draft
+            ? editor.state.doc.textBetween(draft.from, draft.to, " ")
+            : "",
         };
       },
     }) ?? EMPTY_STATE;
@@ -125,8 +137,10 @@ export const useDocumentComments = ({
     comments: state.comments,
     unresolved,
     quotes: state.quotes,
+    starts: state.starts,
     activeId: state.activeId,
     draft: canWrite ? state.draft : null,
+    draftQuote: state.draftQuote,
     canWrite,
     author,
     panelOpen,
@@ -135,6 +149,9 @@ export const useDocumentComments = ({
     panelRef,
     select,
     closePanel: () => {
+      if (state.draft) {
+        editor?.commands.cancelCommentDraft();
+      }
       if (panelRef.current?.contains(document.activeElement)) {
         toggleRef.current?.focus();
       }
@@ -143,6 +160,8 @@ export const useDocumentComments = ({
     togglePanel: () => {
       if (!panelOpen) {
         requestFocus(null);
+      } else if (state.draft) {
+        editor?.commands.cancelCommentDraft();
       }
       setPanelOpen((open) => !open);
     },
@@ -179,8 +198,14 @@ export const useDocumentComments = ({
         scrollToCommentHighlight(editor, id);
       }
     },
-    startDraft: () =>
-      canWrite && editor ? editor.commands.startCommentDraft() : false,
+    /** Starts a comment on the selection and opens the panel on its card. */
+    startDraft: () => {
+      if (!canWrite || !editor || !editor.commands.startCommentDraft()) {
+        return false;
+      }
+      setPanelOpen(true);
+      return true;
+    },
     cancelDraft: () => {
       editor?.chain().cancelCommentDraft().focus().run();
     },

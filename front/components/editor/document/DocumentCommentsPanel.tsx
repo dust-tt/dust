@@ -119,6 +119,76 @@ const ReplyComposer = ({ author, onReply, onCancel }: ReplyComposerProps) => {
   );
 };
 
+interface DraftCardProps {
+  author: DfmAuthor;
+  quote: string;
+  /** The panel is visible, so the field can take focus. */
+  visible: boolean;
+  onSubmit: (body: string) => Result<void, string>;
+  onCancel: () => void;
+}
+
+const DraftCard = ({
+  author,
+  quote,
+  visible,
+  onSubmit,
+  onCancel,
+}: DraftCardProps) => {
+  const [body, setBody] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const ref = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      if (
+        event.target instanceof Node &&
+        !ref.current?.contains(event.target)
+      ) {
+        onCancel();
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    return () =>
+      document.removeEventListener("pointerdown", handlePointerDown, true);
+  }, [onCancel]);
+
+  useEffect(() => {
+    if (visible) {
+      ref.current?.scrollIntoView({ block: "nearest" });
+    }
+  }, [visible]);
+
+  return (
+    <article
+      ref={ref}
+      aria-label="New comment"
+      className="flex flex-col gap-2.5 rounded-xl border border-golden-500/60 bg-background p-3 ring-1 ring-golden-500/40"
+    >
+      <p className="line-clamp-2 rounded-r-md border-l-2 border-golden-400 py-0.5 pl-2 text-xs text-muted-foreground">
+        <span className="sr-only">Commented text: </span>
+        {quote}
+      </p>
+      <DocumentCommentInput
+        label="Comment"
+        placeholder="Add a comment…"
+        author={author}
+        value={body}
+        onChange={setBody}
+        onSubmit={(trimmed) => {
+          const submitted = onSubmit(trimmed);
+          setError(submitted.isErr() ? submitted.error : null);
+        }}
+        onCancel={onCancel}
+        error={error}
+        // Hidden elements ignore focus(), so wait until the panel shows.
+        autoFocus={visible}
+      />
+    </article>
+  );
+};
+
 interface CommentThreadProps {
   comment: DfmComment;
   quote: string | undefined;
@@ -257,6 +327,14 @@ const neighbourId = (list: DfmComment[], id: string): string | null => {
 };
 
 /**
+ * @cc [owner:tdraier,label:react] document-comment-draft-card
+ * While a draft is pending and the user can comment, the panel MUST show a new comment card
+ * among the open threads at the draft's place in document order, with its field focused once
+ * the panel is visible. Escape in the field, a pointer press outside the card and closing the
+ * panel MUST cancel the draft. Enter MUST submit the trimmed text. A refused submission MUST
+ * keep the typed text and show the reason.
+ */
+/**
  * @cc [owner:flvndvd;tdraier,label:react] document-comments-panel
  * The panel MUST list open threads in document order, then resolved threads in a collapsed
  * group. Reply and moderation controls MUST render only when canWrite, and replies only on the
@@ -284,6 +362,11 @@ export const DocumentCommentsPanel = ({
     reply,
     setResolved,
     remove,
+    draft,
+    draftQuote,
+    starts,
+    submitDraft,
+    cancelDraft,
   } = comments;
   const headingRef = useRef<HTMLHeadingElement>(null);
   const threadElements = useRef(new Map<string, HTMLElement>());
@@ -297,6 +380,13 @@ export const DocumentCommentsPanel = ({
   );
   const unresolved = sorted.filter((comment) => comment.status === "open");
   const resolved = sorted.filter((comment) => comment.status === "resolved");
+  // Threads whose text was removed have no start and stay after the draft.
+  const draftIndex = draft
+    ? unresolved.filter(
+        (comment) =>
+          (starts.get(comment.id) ?? Number.MAX_SAFE_INTEGER) < draft.from
+      ).length
+    : -1;
 
   useEffect(() => {
     if (!panelOpen || !focusRequest) {
@@ -384,7 +474,7 @@ export const DocumentCommentsPanel = ({
         />
       </header>
       <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-3">
-        {threads.length === 0 && (
+        {threads.length === 0 && !draft && (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 px-4 text-center text-muted-foreground">
             <Icon visual={MessageTextCircle01} size="md" />
             <p className="text-sm font-medium text-foreground">
@@ -395,7 +485,17 @@ export const DocumentCommentsPanel = ({
             </p>
           </div>
         )}
-        {unresolved.map(renderThread)}
+        {unresolved.slice(0, Math.max(draftIndex, 0)).map(renderThread)}
+        {draft && author && (
+          <DraftCard
+            author={author}
+            quote={draftQuote}
+            visible={panelOpen}
+            onSubmit={submitDraft}
+            onCancel={cancelDraft}
+          />
+        )}
+        {unresolved.slice(Math.max(draftIndex, 0)).map(renderThread)}
         {resolved.length > 0 && (
           <Collapsible className="mt-1">
             <CollapsibleTrigger
