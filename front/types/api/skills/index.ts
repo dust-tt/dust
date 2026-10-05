@@ -18,19 +18,11 @@ export type GetSkillsResponseBody = {
   })[];
 };
 
-export type SkillReinforcementSettings = Pick<
-  SkillWithoutInstructionsAndToolsType,
-  | "sId"
-  | "name"
-  | "icon"
-  | "reinforcement"
-  | "selfImprovementLock"
-  | "selfImprovementCostsCapMicroUsd"
-  | "selfImprovementCostsCapAwuCredits"
-> & {
-  isDustProvided: boolean;
-  editors: SkillListItemType["editors"] | null;
-};
+export type SkillReinforcementSettings =
+  SkillWithoutInstructionsAndToolsType & {
+    isDustProvided: boolean;
+    editors: UserType[] | null;
+  };
 
 export type GetSkillsReinforcementSettingsResponseBody = {
   skills: SkillReinforcementSettings[];

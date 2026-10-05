@@ -4,13 +4,11 @@ import { isSkillVisibleToViewer } from "@app/types/assistant/skill_configuration
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-import pick from "lodash/pick";
 
 /**
  * @cc [owner:aubin-tchoi,label:api] reinforcement-settings-visibility
  * Only workspace admins can list settings. Return active custom skills visible
- * under the standard space and editor permissions, with settings and editor
- * avatars only. Editor identities use sIds.
+ * under the standard space and editor permissions, serialized with their editors.
  */
 const app = workspaceApp();
 
@@ -42,22 +40,11 @@ app.get(
       skills: visibleSkills.map((skill) => {
         const serializedSkill = skill.toJSON(auth);
         return {
-          ...pick(serializedSkill, [
-            "sId",
-            "name",
-            "icon",
-            "reinforcement",
-            "selfImprovementLock",
-            "selfImprovementCostsCapMicroUsd",
-            "selfImprovementCostsCapAwuCredits",
-          ]),
+          ...serializedSkill,
           isDustProvided: serializedSkill.editedBy === null,
           editors:
-            editorsBySkillId
-              .get(skill.sId)
-              ?.map((editor) =>
-                pick(editor.toJSON(), ["sId", "fullName", "image"])
-              ) ?? null,
+            editorsBySkillId.get(skill.sId)?.map((editor) => editor.toJSON()) ??
+            null,
         };
       }),
     });

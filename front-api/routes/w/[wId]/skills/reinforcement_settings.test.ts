@@ -13,7 +13,7 @@ function get(workspace: { sId: string }) {
 }
 
 describe("GET /api/w/:wId/skills/reinforcement_settings", () => {
-  it("returns compact settings and editor avatars for active custom skills", async () => {
+  it("returns serialized settings and editors for active custom skills", async () => {
     const { auth, workspace } = await createPrivateApiMockRequest({
       role: "admin",
     });
@@ -35,9 +35,10 @@ describe("GET /api/w/:wId/skills/reinforcement_settings", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       skills: [
-        {
+        expect.objectContaining({
           sId: skill.sId,
           name: skill.name,
+          userFacingDescription: skill.userFacingDescription,
           icon: skill.icon,
           isDustProvided: false,
           reinforcement: "off",
@@ -45,13 +46,14 @@ describe("GET /api/w/:wId/skills/reinforcement_settings", () => {
           selfImprovementCostsCapMicroUsd: 2_000_000,
           selfImprovementCostsCapAwuCredits: 100,
           editors: [
-            {
+            expect.objectContaining({
               sId: auth.getNonNullableUser().sId,
               fullName: auth.getNonNullableUser().fullName(),
+              username: auth.getNonNullableUser().username,
               image: auth.getNonNullableUser().imageUrl,
-            },
+            }),
           ],
-        },
+        }),
       ],
     });
   });
