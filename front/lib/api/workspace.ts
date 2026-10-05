@@ -32,6 +32,7 @@ import type {
 import type {
   MembershipOriginType,
   MembershipRoleType,
+  MembershipSeatType,
 } from "@app/types/memberships";
 import type { SubscriptionType } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
@@ -172,7 +173,7 @@ export async function getMembers(
   } = {},
   paginationParams?: MembershipsPaginationParams
 ): Promise<{
-  members: UserTypeWithWorkspaces[];
+  members: (UserTypeWithWorkspaces & { seatType: MembershipSeatType })[];
   total: number;
   nextPageParams?: MembershipsPaginationParams;
 }> {
