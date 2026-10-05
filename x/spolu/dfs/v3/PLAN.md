@@ -34,7 +34,7 @@ Keep v1/v2 unchanged. Commit and push each verified milestone.
 
 ## 5. RAM access optimization (priority)
 
-Full benchmark suites are stopped until this work is optimized and verified.
+Completed and verified before resuming the full benchmark suites below.
 
 - [x] Attribute the longer-window slowdown with client/server/FDB profiles.
 - [x] Index key history and file-scoped clears; pin sequence cuts without copying the journal.
@@ -53,9 +53,10 @@ Full benchmark suites are stopped until this work is optimized and verified.
 - [x] Retain blocks across snapshot expiry within the existing RAM budget; require a validated
       matching object revision and current authorization before serving them.
 - [x] Test reuse, changed revisions, truncate/extend, permission refresh, and eviction.
-- [ ] Commit/push the verified optimization, then rerun untar + the full benchmark at both bounds.
-- [ ] Keep all four untar timings and complete tables in `bench/RESULTS.md`, including drain times.
-- [ ] Compare like-for-like profiled runs and retain block reuse only if measurements improve.
+- [x] Commit/push the verified optimization, then rerun untar + the full benchmark at both bounds.
+- [x] Keep all four untar timings and complete tables in `bench/RESULTS.md`, including drain times.
+- [x] Compare like-for-like profiled runs and retain block reuse only if measurements improve.
+- [x] Record the latest client/server/FDB timing breakdown for both bounds.
 
 ## Local follow-up
 

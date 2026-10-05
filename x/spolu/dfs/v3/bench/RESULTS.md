@@ -1,5 +1,8 @@
 # Benchmark results — dfs v3 localhost
 
+Latest: [four-run block-retention comparison](#block-retention-comparison) and
+[current timing breakdown](#where-latest-version-time-is-spent). Original baselines are preserved below.
+
 2026-10-05. First baselines, before revision-validated block retention. Both runs use revision
 `a090704e0f`, with identical server and FUSE binaries. All **24 checks per run passed**, including
 SHA-256 verification of every file; no background publication failures were recorded.
@@ -173,7 +176,7 @@ Profile reports remain outside Git: `/tmp/dfs-v3-benchmark-w4ifis7y` (1s) and
 `/tmp/dfs-v3-benchmark-wp7sltav` (8s), inside the development container. The 8s full suite passed all
 24 checks. The 1s suite was stopped at the user's request after five complete rows, to prioritize
 RAM access optimization. Its untar/profile above completed before that interruption. Full-suite
-reruns and block reuse are deferred until the memory-access work is validated.
+reruns and block reuse were deferred until the memory-access work was validated.
 
 ## RAM access optimization — focused untar only
 
@@ -210,7 +213,7 @@ preconditions reject the tentative edit; uncertain commit outcomes are never rep
 Correctness validation: real FDB contract tests (including concurrent sibling publication, pinned
 views, truncation, remote moves/revocations, and ambiguous commits) and mounted checks at both bounds.
 These focused runs do not substitute for the full benchmark's content/SHA validation. Full suites
-and revision-validated block reuse remain deferred.
+and revision-validated block reuse were deferred at this milestone; their completed runs follow.
 
 Reports remain in the development container, outside Git:
 
@@ -224,8 +227,22 @@ the earlier command, adding `DFS_PROFILE=1` and `--untar-only`.
 
 ## Block retention comparison
 
-The following full runs use the RAM-optimized baseline (`047a7e84cc`) and `DFS_PROFILE=1`.
-Same configuration and corpus as above. Both full baselines passed; block-reuse runs are pending.
+Compare the RAM-optimized baseline (`047a7e84cc`) with revision-validated block reuse
+(`a479054e1e`), both using `DFS_PROFILE=1`, identical FUSE binaries, and the same configuration
+and corpus as above. All **96 checks across the four full suites passed**, including SHA-256
+verification of every file. All four runs recorded zero publication failures.
+
+| Implementation | D | Untar (s) | Remaining FDB drain (ms) | DFS CPU during population (s) |
+| --- | --- | ---: | ---: | ---: |
+| RAM optimized, no block reuse | 1s | 50.797 | 21 | 20.860 |
+| RAM optimized, no block reuse | 8s | 48.014 | 20 | 23.140 |
+| Revision-validated block reuse | 1s | 52.065 | 22 | 20.960 |
+| Revision-validated block reuse | 8s | 46.802 | 24 | 21.330 |
+
+Block reuse recorded **zero hits and zero misses during either untar**: newly written content
+was served by the RAM journal. The small mixed changes in untar time are not evidence of a
+retention benefit. The earlier RAM indexing optimization removed the pathological 8s slowdown;
+retention targets repeated reads after the short-lived FDB base expires.
 
 ### dfs v3 [RAM optimized, no block reuse, D = 8s]
 
@@ -333,3 +350,169 @@ The paired SHA workload makes about 736k RPCs; its block-read phase totals only 
 Block retention targets repeated byte fetches, while metadata refresh and the many uncached FUSE
 round trips remain. The current timers cannot separate FDB server processing from native-client
 scheduling and its network wait.
+
+### dfs v3 [block reuse, D = 8s]
+
+Source `a479054e1e`, same configuration and `DFS_PROFILE=1`. Untar: **46.802 s**;
+remaining FDB drain: **24 ms**. Population server CPU: **21.330 s**, with 47,642 accepted
+edits, 10,225 commits, and zero publication failures. Retained-block hits and misses were both
+zero during population: this untar difference is not evidence of a block-reuse benefit.
+
+All **24 checks passed**, including full SHA-256 verification, with zero publication failures
+across all server lifetimes.
+
+```text
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 67,533.70 | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 66,884.55 | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 347.27    | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 103.81    | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 75,677.47 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 75,766.66 | OK     |
+| metadata     | stat missing (256 paths)                       | first | 1,607.24  | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 1,151.57  | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 7,572.16  | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 7,450.91  | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 7,512.54  | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 7,364.62  | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 6,919.30  | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 6,713.40  | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 1,733.44  | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 1,583.62  | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 84,574.70 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 82,294.06 | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 2,252.28  | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 1,278.27  | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 144.37    | OK     |
+| file sync    | fsync (32 files)                               | once  | 3.56      | OK     |
+| write        | close (32 files)                               | once  | 0.55      | OK     |
+| write        | unlink (32 files)                              | once  | 100.14    | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+```
+
+For the paired no-match scans, cumulative block-read time fell from **4.541 s to 2.529 s**
+and FDB gets from **100,400 to 93,317**. Retention recorded 30,001 hits, 10,000 misses, and
+no evictions. Overall scan time fell only 1.0%; these single-run results still show metadata
+and RPC costs dominating. Warm read-and-SHA time fell 3.9%, from 85.656 s to 82.294 s.
+Across its two passes, block-read time fell from 10.876 s to 5.303 s, with 10,000 retention hits.
+
+Report: `/tmp/dfs-v3-benchmark-a5y2h1ng/run.json` in the development container. Server binary
+SHA-256: `d6b3f1975eba393615f2511763b17e9bd9800df4e32883318ffaebda01f691eb`.
+The FUSE binary is unchanged from both RAM-optimized baselines:
+`d9bdf18dd6dec399e6562595de37c91cda5a10af3c1a820466318c7f456b35c6`.
+
+### dfs v3 [block reuse, D = 1s]
+
+Source `a479054e1e`, same configuration, corpus, profiling, and binaries as the 8s run.
+Untar: **52.065 s**; remaining FDB drain: **22 ms**. Population server CPU: **20.960 s**.
+All **24 checks passed**, including full SHA-256 verification; zero publication failures.
+
+```text
++--------------+------------------------------------------------+-------+-----------+--------+
+| Feature      | Workload                                       | Phase | Time (ms) | Result |
++--------------+------------------------------------------------+-------+-----------+--------+
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | first | 76,772.59 | OK     |
+| metadata     | scandir + stat (100 dirs, 10,000 files)        | warm  | 77,238.99 | OK     |
+| metadata     | rg --files (10,000 files)                      | first | 347.37    | OK     |
+| metadata     | rg --files (10,000 files)                      | warm  | 152.01    | OK     |
+| metadata     | open + fstat + close (10,000 files)            | first | 77,179.21 | OK     |
+| metadata     | open + fstat + close (10,000 files)            | warm  | 77,363.61 | OK     |
+| metadata     | stat missing (256 paths)                       | first | 1,702.46  | OK     |
+| metadata     | stat missing (256 paths)                       | warm  | 1,665.75  | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | first | 7,697.88  | OK     |
+| page cache   | rg no-match scan (10,000 files, 177.5 MB)      | warm  | 7,664.85  | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | first | 7,732.92  | OK     |
+| search       | rg rare literal (10,000 files, 4 matches)      | warm  | 7,505.73  | OK     |
+| path pruning | rg branch glob (981 candidate files)           | first | 6,783.22  | OK     |
+| path pruning | rg branch glob (981 candidate files)           | warm  | 6,754.28  | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | first | 1,692.57  | OK     |
+| path pruning | rg depth-10 subtree (136 files)                | warm  | 1,671.79  | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | first | 88,939.95 | OK     |
+| page cache   | open + read + SHA-256 (10,000 files, 177.5 MB) | warm  | 85,248.42 | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | first | 2,436.43  | OK     |
+| random I/O   | open + pread tail (256 files x 4 KiB)          | warm  | 2,272.96  | OK     |
+| write        | create + write (32 x 32 KiB files)             | once  | 163.49    | OK     |
+| file sync    | fsync (32 files)                               | once  | 3.82      | OK     |
+| write        | close (32 files)                               | once  | 0.67      | OK     |
+| write        | unlink (32 files)                              | once  | 151.82    | OK     |
++--------------+------------------------------------------------+-------+-----------+--------+
+```
+
+Report: `/tmp/dfs-v3-benchmark-2w077yoi/run.json` in the development container.
+
+### Where latest-version time is spent
+
+Revision `a479054e1e`, with block reuse. CPU columns measure the FUSE and DFS processes,
+including the native FDB client inside DFS, but exclude Python/tar and the FDB server.
+Read rows combine first + warm and their small untimed setup; untar includes fixture setup.
+Elapsed columns are cumulative, nested, and sometimes concurrent: **do not add them as wall time**.
+
+| Workload | D | FUSE CPU (s) | DFS CPU (s) | Client RPC elapsed (s) | Handler elapsed (s) | FDB get elapsed (s) | FDB commit elapsed (s) |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Untar | 1s | 18.580 | 20.960 | 47.125 | 28.333 | 70.363 | 18.123 |
+| Untar | 8s | 18.400 | 21.330 | 42.075 | 23.027 | 66.786 | 17.858 |
+| Scandir + stat | 1s | 66.960 | 41.430 | 134.809 | 65.602 | 55.796 | 0.000 |
+| Scandir + stat | 8s | 65.650 | 38.340 | 115.837 | 47.809 | 37.064 | 0.000 |
+| Open + fstat + close | 1s | 67.540 | 41.070 | 136.191 | 66.854 | 57.117 | 0.000 |
+| Open + fstat + close | 8s | 67.960 | 41.010 | 131.673 | 61.048 | 49.905 | 0.000 |
+| rg no-match | 1s | 32.160 | 35.020 | 117.638 | 38.739 | 23.023 | 0.000 |
+| rg no-match | 8s | 32.020 | 34.380 | 114.933 | 35.517 | 15.949 | 0.000 |
+| Open + read + SHA-256 | 1s | 75.500 | 47.550 | 151.241 | 72.974 | 61.186 | 0.000 |
+| Open + read + SHA-256 | 8s | 75.220 | 47.060 | 144.099 | 66.568 | 52.864 | 0.000 |
+
+The client/handler gap includes queueing, protobuf, runtime scheduling, and loopback transport;
+it is not pure network time. During untar, FDB reads and commits largely serve concurrent
+background publication, so their totals can exceed foreground handler time. Neither these
+timers nor process CPU separate FDB server execution from native-client/network waiting.
+
+### Retention decision
+
+**Keep block reuse.** It cuts repeated block-fetch work at both freshness bounds while preserving
+current-view authorization and revision checks. Warm read-and-SHA improves about 4% in both
+runs; this is a modest content-read improvement, not a general filesystem speedup.
+
+| Workload | D | Warm before (s) | Warm after (s) | Change |
+| --- | --- | ---: | ---: | ---: |
+| rg no-match | 1s | 7.629 | 7.665 | +0.5% |
+| rg no-match | 8s | 7.589 | 7.451 | -1.8% |
+| Read + SHA-256 | 1s | 88.874 | 85.248 | -4.1% |
+| Read + SHA-256 | 8s | 85.656 | 82.294 | -3.9% |
+
+Block timings and FDB counts below cover the paired first + warm lifetimes, including setup.
+FDB counts include metadata/authorization reads as well as blocks.
+
+| Workload | D | Block-read time before (s) | After (s) | FDB gets before | After |
+| --- | --- | ---: | ---: | ---: | ---: |
+| rg no-match | 1s | 4.618 | 2.469 | 125,357 | 115,431 |
+| rg no-match | 8s | 4.541 | 2.529 | 100,400 | 93,317 |
+| Read + SHA-256 | 1s | 10.459 | 5.591 | 96,017 | 85,659 |
+| Read + SHA-256 | 8s | 10.876 | 5.303 | 82,468 | 72,514 |
+
+The retained cache recorded roughly 30k hits / 10k misses for each no-match pair and
+10k hits / 10k misses for each SHA pair, with no evictions in these workloads. Metadata
+and authorization still refresh on the original schedule: directory traversal performs
+98,347 FDB gets at 1s versus 64,987 at 8s. The paired SHA passes still issue about 736k RPCs,
+and process CPU stays around 75 s in FUSE / 47 s in DFS. Retaining blocks does not remove
+that metadata, authorization, serialization, or scheduling work.
+
+These are single runs, with mixed changes outside the target read path. For example, 1s
+first tail reads increased from 2.155 s to 2.436 s and unlink from 0.102 s to 0.152 s.
+Repeated runs would be needed to establish the variability of these differences. Untar recorded
+no block-retention activity and showed no consistent improvement. The large 8s untar
+regression was fixed by RAM history indexing, before this comparison.
+
+Validation before timing: formatting, Clippy, the full Rust workspace tests against real FDB,
+and mounted checks at both bounds passed. Retention tests cover unchanged revisions, peer
+writes, holes, truncate/re-extend, inherited-grant revocation, partial-write publication
+conflicts, and eviction/reload. No code changes occurred between the measured builds and
+these results; no builds or tests overlapped timed workloads.
+
+To reproduce the retained-block runs, build source `a479054e1e`, then run from the dfs directory:
+
+```sh
+v3/local/run exec cargo build --workspace --release
+v3/local/run exec env DFS_PROFILE=1 MAX_EVENTUAL_CONSISTENCY_DELAY_MS=8000 DFS_BENCH_REVISION=a479054e1e python3 /dfs/v3/bench/run.py
+v3/local/run exec env DFS_PROFILE=1 MAX_EVENTUAL_CONSISTENCY_DELAY_MS=1000 DFS_BENCH_REVISION=a479054e1e python3 /dfs/v3/bench/run.py
+```
