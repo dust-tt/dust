@@ -45,7 +45,6 @@ export type AgentFeedbackDayPoint = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-
 export interface AgentMessageFeedbackResource
   extends ReadonlyAttributesType<AgentMessageFeedbackModel> {}
 export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedbackModel> {

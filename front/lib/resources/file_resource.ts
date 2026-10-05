@@ -1,6 +1,3 @@
-// Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// This design will be moved up to BaseResource once we transition away from Sequelize.
-
 import path from "node:path";
 
 import config from "@app/lib/api/config";
@@ -185,6 +182,8 @@ export type LegacyFrameFields = Pick<
   | "useCaseMetadata"
 >;
 
+// Attributes are marked as read-only to reflect the stateless nature of our Resource.
+// This design will be moved up to BaseResource once we transition away from Sequelize.
 export interface FileResource extends ReadonlyAttributesType<FileModel> {}
 export class FileResource extends BaseResource<FileModel> {
   static model: ModelStaticWorkspaceAware<FileModel> = FileModel;

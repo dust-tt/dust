@@ -1,6 +1,3 @@
-// Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// This design will be moved up to BaseResource once we transition away from Sequelize.
-
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -84,6 +81,8 @@ function isAllowedSearchColumn(column: string): column is AllowedSearchColumns {
   );
 }
 
+// Attributes are marked as read-only to reflect the stateless nature of our Resource.
+// This design will be moved up to BaseResource once we transition away from Sequelize.
 export interface DataSourceViewResource
   extends ReadonlyAttributesType<DataSourceViewModel> {}
 export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewModel> {

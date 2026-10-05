@@ -29,7 +29,6 @@ export type GetTagsUsageResponseBody = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-
 export interface TagResource extends ReadonlyAttributesType<TagModel> {}
 export class TagResource extends BaseResource<TagModel> {
   static model: ModelStatic<TagModel> = TagModel;
