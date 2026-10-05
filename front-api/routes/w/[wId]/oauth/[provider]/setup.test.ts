@@ -438,4 +438,67 @@ describe("OAuth setup handler", () => {
       },
     });
   });
+
+  it.each([
+    "https://attacker.example",
+    "https://evil.com",
+    "https://dust.tt.evil.com",
+    "https://app.dust.tt/callback",
+    "https://docs.dust.tt",
+  ])("rejects attacker-controlled openerOrigin %s", async (openerOrigin) => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+
+    const params = new URLSearchParams({
+      useCase: "connection",
+      openerOrigin,
+    });
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/oauth/github/setup?${params}`
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message:
+          "Invalid openerOrigin: must be an explicitly trusted Dust origin.",
+      },
+    });
+    expect(mocks.createConnection).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    "https://app.dust.tt",
+    "https://dust.tt",
+    "https://eu.dust.tt",
+  ])("persists a legitimate Dust openerOrigin %s", async (openerOrigin) => {
+    vi.spyOn(config, "getOAuthGoogleDriveClientId").mockReturnValue(
+      "drive-client"
+    );
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+
+    const params = new URLSearchParams({
+      useCase: "connection",
+      openerOrigin,
+    });
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/oauth/google_drive/setup?${params}`
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.createConnection).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          opener_origin: openerOrigin,
+          use_case: "connection",
+        }),
+      })
+    );
+  });
 });
