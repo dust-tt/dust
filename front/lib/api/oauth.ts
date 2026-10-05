@@ -5,8 +5,10 @@ import {
 import config from "@app/lib/api/config";
 import {
   generateOAuthFinalizeNonce,
+  hashOAuthFinalizeNonce,
   OAUTH_FINALIZE_NONCE_METADATA_KEY,
   oauthFinalizeNoncesMatch,
+  scrubFinalizeNonceFromMetadata,
 } from "@app/lib/api/oauth/finalize_binding";
 import { verifyWorkspaceOAuthConnectionForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
 import type {
@@ -139,6 +141,8 @@ export function getProviderStrategy(
  * (after spreading caller extraConfig so it cannot be overwritten) and return it
  * so the setup route can set a matching HttpOnly cookie. Finalize MUST reject
  * when the cookie does not match — see `oauth-finalize-requires-ownership`.
+ * Connection metadata MUST store `hashOAuthFinalizeNonce(nonce)`, never the
+ * plaintext cookie value.
  */
 export async function createConnectionAndGetSetupUrl(
   auth: Authenticator,
@@ -282,7 +286,7 @@ export async function createConnectionAndGetSetupUrl(
 
   // Identity and finalize binding MUST be written after spreading caller
   // extraConfig so a malicious client cannot overwrite user_id / workspace_id /
-  // finalize_nonce via setup query params.
+  // finalize_nonce_hash via setup query params.
 
   // Defense in depth: only persist opener origins that are trusted Dust
   // surfaces. The setup route also rejects untrusted query values with 400.
@@ -303,7 +307,7 @@ export async function createConnectionAndGetSetupUrl(
     ...connectionExtraConfig,
     workspace_id: auth.getNonNullableWorkspace().sId,
     user_id: auth.getNonNullableUser().sId,
-    [OAUTH_FINALIZE_NONCE_METADATA_KEY]: finalizeNonce,
+    [OAUTH_FINALIZE_NONCE_METADATA_KEY]: hashOAuthFinalizeNonce(finalizeNonce),
     // Store opener origin for postMessage after OAuth finalize (cross-origin popup communication)
     ...(trustedOpenerOrigin && { opener_origin: trustedOpenerOrigin }),
   };
@@ -375,9 +379,10 @@ export async function createConnectionAndGetSetupUrl(
  * that `connection.metadata.user_id` and `workspace_id` match the authenticated
  * session user and workspace (using `sessionWorkspaceId` when
  * `auth.workspace()` is null for cross-region), and that the presented
- * finalize nonce matches `connection.metadata.finalize_nonce`. It MUST NOT
- * call the OAuth service finalize API when any of those checks fail, and MUST
- * NOT skip checks when auth/workspace is missing.
+ * finalize nonce hashes to `connection.metadata.finalize_nonce_hash`.
+ * It MUST NOT call the OAuth service finalize API when any of those checks fail,
+ * and MUST NOT skip checks when auth/workspace is missing. On success it MUST
+ * scrub `finalize_nonce_hash` from the returned connection metadata.
  */
 function assertFinalizeOwnership({
   auth,
@@ -602,7 +607,12 @@ export async function finalizeConnection(
     );
   }
 
-  return new Ok(cRes.value.connection);
+  // Do not return the finalize-nonce hash to callers; it is only needed for the
+  // ownership check above and should not circulate after a successful finalize.
+  return new Ok({
+    ...cRes.value.connection,
+    metadata: scrubFinalizeNonceFromMetadata(cRes.value.connection.metadata),
+  });
 }
 
 export async function checkConnectionOwnership(

@@ -1,4 +1,5 @@
 import {
+  hashOAuthFinalizeNonce,
   OAUTH_FINALIZE_NONCE_METADATA_KEY,
   oauthFinalizeNonceCookieName,
 } from "@app/lib/api/oauth/finalize_binding";
@@ -50,7 +51,8 @@ function pendingConnection({
       user_id: userId,
       workspace_id: workspaceId,
       use_case: "connection",
-      [OAUTH_FINALIZE_NONCE_METADATA_KEY]: finalizeNonce,
+      [OAUTH_FINALIZE_NONCE_METADATA_KEY]:
+        hashOAuthFinalizeNonce(finalizeNonce),
     },
     redirect_uri: "https://dust.tt/oauth/github/finalize",
   };
@@ -141,6 +143,12 @@ describe("GET /api/oauth/:provider/finalize", () => {
     );
 
     expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      connection: OAuthConnectionType;
+    };
+    expect(body.connection.metadata).not.toHaveProperty(
+      OAUTH_FINALIZE_NONCE_METADATA_KEY
+    );
     expect(mocks.finalizeConnection).toHaveBeenCalledOnce();
     const setCookies = response.headers.getSetCookie();
     expect(

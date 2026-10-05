@@ -2,7 +2,10 @@ import {
   createConnectionAndGetSetupUrl,
   finalizeConnection,
 } from "@app/lib/api/oauth";
-import { OAUTH_FINALIZE_NONCE_METADATA_KEY } from "@app/lib/api/oauth/finalize_binding";
+import {
+  hashOAuthFinalizeNonce,
+  OAUTH_FINALIZE_NONCE_METADATA_KEY,
+} from "@app/lib/api/oauth/finalize_binding";
 import { GithubOAuthProvider } from "@app/lib/api/oauth/providers/github";
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissions } from "@app/lib/resources/group_permission_registry";
@@ -52,20 +55,24 @@ function pendingConnection({
   workspaceId: string;
   finalizeNonce?: string;
   extraMetadata?: Record<string, string>;
-}): OAuthConnectionType {
+}): { connection: OAuthConnectionType; finalizeNonce: string } {
   return {
-    connection_id: connectionId,
-    created: Date.now(),
-    provider: "github",
-    status: "pending",
-    metadata: {
-      user_id: userId,
-      workspace_id: workspaceId,
-      use_case: "connection",
-      [OAUTH_FINALIZE_NONCE_METADATA_KEY]: finalizeNonce,
-      ...extraMetadata,
+    finalizeNonce,
+    connection: {
+      connection_id: connectionId,
+      created: Date.now(),
+      provider: "github",
+      status: "pending",
+      metadata: {
+        user_id: userId,
+        workspace_id: workspaceId,
+        use_case: "connection",
+        [OAUTH_FINALIZE_NONCE_METADATA_KEY]:
+          hashOAuthFinalizeNonce(finalizeNonce),
+        ...extraMetadata,
+      },
+      redirect_uri: "https://dust.tt/oauth/github/finalize",
     },
-    redirect_uri: "https://dust.tt/oauth/github/finalize",
   };
 }
 
@@ -108,7 +115,7 @@ describe("finalizeConnection", () => {
       workspace.sId
     );
 
-    const connection = pendingConnection({
+    const { connection, finalizeNonce } = pendingConnection({
       userId: owner.sId,
       workspaceId: workspace.sId,
     });
@@ -120,7 +127,7 @@ describe("finalizeConnection", () => {
       { code: "victim-code", state: connection.connection_id },
       {
         sessionWorkspaceId: workspace.sId,
-        finalizeNonce: connection.metadata[OAUTH_FINALIZE_NONCE_METADATA_KEY],
+        finalizeNonce,
       }
     );
 
@@ -143,7 +150,7 @@ describe("finalizeConnection", () => {
       otherWorkspace.sId
     );
 
-    const connection = pendingConnection({
+    const { connection, finalizeNonce } = pendingConnection({
       userId: user.sId,
       workspaceId: ownerWorkspace.sId,
     });
@@ -155,7 +162,7 @@ describe("finalizeConnection", () => {
       { code: "auth-code", state: connection.connection_id },
       {
         sessionWorkspaceId: otherWorkspace.sId,
-        finalizeNonce: connection.metadata[OAUTH_FINALIZE_NONCE_METADATA_KEY],
+        finalizeNonce,
       }
     );
 
@@ -171,7 +178,7 @@ describe("finalizeConnection", () => {
       role: "admin",
     });
 
-    const connection = pendingConnection({
+    const { connection } = pendingConnection({
       userId: user.sId,
       workspaceId: workspace.sId,
     });
@@ -209,7 +216,7 @@ describe("finalizeConnection", () => {
     const { user, workspace } = await createResourceTest({ role: "admin" });
     const finalizeNonce = "matching-finalize-nonce-value-ok!";
 
-    const connection = pendingConnection({
+    const { connection } = pendingConnection({
       userId: user.sId,
       workspaceId: workspace.sId,
       finalizeNonce,
@@ -242,11 +249,16 @@ describe("finalizeConnection", () => {
     );
 
     expect(res.isOk()).toBe(true);
+    if (res.isOk()) {
+      expect(res.value.metadata).not.toHaveProperty(
+        OAUTH_FINALIZE_NONCE_METADATA_KEY
+      );
+    }
     expect(mocks.finalizeConnection).toHaveBeenCalledOnce();
   });
 
   it("fails closed when auth is null even if a nonce is presented", async () => {
-    const connection = pendingConnection({
+    const { connection, finalizeNonce } = pendingConnection({
       userId: "user_owner",
       workspaceId: "ws_owner",
     });
@@ -258,7 +270,7 @@ describe("finalizeConnection", () => {
       { code: "auth-code", state: connection.connection_id },
       {
         sessionWorkspaceId: "ws_owner",
-        finalizeNonce: connection.metadata[OAUTH_FINALIZE_NONCE_METADATA_KEY],
+        finalizeNonce,
       }
     );
 
@@ -276,13 +288,13 @@ describe("createConnectionAndGetSetupUrl", () => {
     vi.restoreAllMocks();
   });
 
-  it("stamps finalize_nonce and keeps identity over extraConfig overrides", async () => {
+  it("stamps finalize_nonce_hash and keeps identity over extraConfig overrides", async () => {
     const { authenticator, workspace, user } = await createResourceTest({
       role: "admin",
     });
 
     // Bypass provider extraConfig shape checks so we can assert identity wins
-    // over a malicious client-supplied user_id / workspace_id / finalize_nonce.
+    // over a malicious client-supplied user_id / workspace_id / finalize_nonce_hash.
     vi.spyOn(
       GithubOAuthProvider.prototype,
       "isExtraConfigValid"
@@ -312,7 +324,7 @@ describe("createConnectionAndGetSetupUrl", () => {
       {
         user_id: "user_attacker",
         workspace_id: "ws_attacker",
-        finalize_nonce: "attacker-nonce",
+        finalize_nonce_hash: "attacker-nonce",
       }
     );
 
@@ -329,6 +341,9 @@ describe("createConnectionAndGetSetupUrl", () => {
     expect(createdMetadata.user_id).toBe(user.sId);
     expect(createdMetadata.workspace_id).toBe(workspace.sId);
     expect(createdMetadata[OAUTH_FINALIZE_NONCE_METADATA_KEY]).toBe(
+      hashOAuthFinalizeNonce(res.value.finalizeNonce)
+    );
+    expect(createdMetadata[OAUTH_FINALIZE_NONCE_METADATA_KEY]).not.toBe(
       res.value.finalizeNonce
     );
     expect(createdMetadata[OAUTH_FINALIZE_NONCE_METADATA_KEY]).not.toBe(

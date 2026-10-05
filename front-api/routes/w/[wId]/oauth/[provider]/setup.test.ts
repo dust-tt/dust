@@ -195,7 +195,7 @@ describe("OAuth setup handler", () => {
     ).toBe(true);
     expect(mocks.createConnection.mock.calls[0][0].metadata).toEqual(
       expect.objectContaining({
-        finalize_nonce: expect.any(String),
+        finalize_nonce_hash: expect.any(String),
         user_id: expect.any(String),
         workspace_id: workspace.sId,
       })

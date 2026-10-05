@@ -1,7 +1,10 @@
 import {
   generateOAuthFinalizeNonce,
+  hashOAuthFinalizeNonce,
+  OAUTH_FINALIZE_NONCE_METADATA_KEY,
   oauthFinalizeNonceCookieName,
   oauthFinalizeNoncesMatch,
+  scrubFinalizeNonceFromMetadata,
 } from "@app/lib/api/oauth/finalize_binding";
 import { describe, expect, it } from "vitest";
 
@@ -22,13 +25,29 @@ describe("oauth finalize binding helpers", () => {
     expect(oauthFinalizeNonceCookieName("con_other-secret")).not.toBe(name);
   });
 
-  it("matches equal nonces and rejects missing or mismatched values", () => {
+  it("matches a stored hash against the plaintext cookie nonce", () => {
     const nonce = generateOAuthFinalizeNonce();
-    expect(oauthFinalizeNoncesMatch(nonce, nonce)).toBe(true);
-    expect(oauthFinalizeNoncesMatch(nonce, undefined)).toBe(false);
+    const hash = hashOAuthFinalizeNonce(nonce);
+    expect(hash).not.toEqual(nonce);
+    expect(oauthFinalizeNoncesMatch(hash, nonce)).toBe(true);
+    expect(oauthFinalizeNoncesMatch(hash, undefined)).toBe(false);
     expect(oauthFinalizeNoncesMatch(undefined, nonce)).toBe(false);
-    expect(oauthFinalizeNoncesMatch(nonce, "x".repeat(nonce.length))).toBe(
+    expect(oauthFinalizeNoncesMatch(hash, "x".repeat(nonce.length))).toBe(
       false
     );
+    // Comparing hash to itself (as if plaintext leaked into the cookie) fails.
+    expect(oauthFinalizeNoncesMatch(hash, hash)).toBe(false);
+  });
+
+  it("scrubs the finalize nonce hash from connection metadata", () => {
+    const metadata = {
+      user_id: "user_1",
+      [OAUTH_FINALIZE_NONCE_METADATA_KEY]: "abc",
+      workspace_id: "ws_1",
+    };
+    expect(scrubFinalizeNonceFromMetadata(metadata)).toEqual({
+      user_id: "user_1",
+      workspace_id: "ws_1",
+    });
   });
 });

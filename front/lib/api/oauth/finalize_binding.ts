@@ -2,8 +2,12 @@ import config from "@app/lib/api/config";
 import { isDevelopment, isTest } from "@app/types/shared/env";
 import { createHash, randomBytes, timingSafeEqual } from "crypto";
 
-/** Metadata key storing the per-connection finalize nonce set at setup. */
-export const OAUTH_FINALIZE_NONCE_METADATA_KEY = "finalize_nonce";
+/**
+ * Metadata key storing the SHA-256 hash of the per-connection finalize nonce.
+ * The plaintext nonce lives only in the HttpOnly cookie, never in connection
+ * metadata (password-hash hygiene).
+ */
+export const OAUTH_FINALIZE_NONCE_METADATA_KEY = "finalize_nonce_hash";
 
 /** Lifetime of the HttpOnly finalize-nonce cookie (matches WorkOS login nonce). */
 export const OAUTH_FINALIZE_NONCE_MAX_AGE_SECONDS = 600;
@@ -16,6 +20,11 @@ const COOKIE_PREFIX = "dust_oauth_finalize_";
  */
 export function generateOAuthFinalizeNonce(): string {
   return randomBytes(32).toString("base64url");
+}
+
+/** SHA-256 digest of a finalize nonce, suitable for connection metadata. */
+export function hashOAuthFinalizeNonce(nonce: string): string {
+  return createHash("sha256").update(nonce).digest("base64url");
 }
 
 /**
@@ -49,20 +58,32 @@ export function oauthFinalizeNonceCookieOptions() {
 }
 
 /**
- * Constant-time compare of the expected finalize nonce (from connection
- * metadata) and the value presented by the browser cookie.
+ * Constant-time compare of the expected finalize nonce hash (from connection
+ * metadata) and the SHA-256 of the plaintext value presented by the browser
+ * cookie.
  */
 export function oauthFinalizeNoncesMatch(
-  expected: string | undefined | null,
-  presented: string | undefined | null
+  expectedHash: string | undefined | null,
+  presentedNonce: string | undefined | null
 ): boolean {
-  if (!expected || !presented) {
+  if (!expectedHash || !presentedNonce) {
     return false;
   }
-  const a = Buffer.from(expected);
-  const b = Buffer.from(presented);
+  const a = Buffer.from(expectedHash);
+  const b = Buffer.from(hashOAuthFinalizeNonce(presentedNonce));
   if (a.length !== b.length) {
     return false;
   }
   return timingSafeEqual(a, b);
+}
+
+/** Returns connection metadata without the finalize-nonce hash key. */
+export function scrubFinalizeNonceFromMetadata(
+  metadata: Record<string, string>
+): Record<string, string> {
+  if (!(OAUTH_FINALIZE_NONCE_METADATA_KEY in metadata)) {
+    return metadata;
+  }
+  const { [OAUTH_FINALIZE_NONCE_METADATA_KEY]: _removed, ...rest } = metadata;
+  return rest;
 }
