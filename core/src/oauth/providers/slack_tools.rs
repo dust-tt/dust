@@ -138,10 +138,108 @@ impl Provider for SlackToolsConnectionProvider {
 
     fn scrubbed_raw_json(&self, raw_json: &serde_json::Value) -> Result<serde_json::Value> {
         let mut scrubbed = raw_json.clone();
-        if let Some(obj) = scrubbed.as_object_mut() {
-            obj.remove("access_token");
-            obj.remove("refresh_token");
-        }
+        scrub_oauth_token_fields(&mut scrubbed);
         Ok(scrubbed)
+    }
+}
+
+/// Recursively remove `access_token` / `refresh_token` from provider raw JSON.
+///
+/// Slack `oauth.v2.access` returns tokens both at the top level (bot) and under
+/// `authed_user` (user). Only scrubbing top-level keys leaves live user tokens in
+/// scrubbed metadata. The canonical connection credential is stored separately via
+/// `FinalizeResult.access_token` and must not be read from scrubbed raw JSON.
+fn scrub_oauth_token_fields(value: &mut serde_json::Value) {
+    match value {
+        serde_json::Value::Object(map) => {
+            map.remove("access_token");
+            map.remove("refresh_token");
+            for child in map.values_mut() {
+                scrub_oauth_token_fields(child);
+            }
+        }
+        serde_json::Value::Array(items) => {
+            for item in items {
+                scrub_oauth_token_fields(item);
+            }
+        }
+        _ => {}
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn scrubbed_raw_json_removes_top_level_tokens_and_keeps_metadata() {
+        let provider = SlackToolsConnectionProvider::new();
+        let scrubbed = provider
+            .scrubbed_raw_json(&json!({
+                "ok": true,
+                "access_token": "xoxb-top-level-secret",
+                "refresh_token": "xoxe-top-level-refresh",
+                "token_type": "bot",
+                "scope": "chat:write",
+                "team": { "id": "T123", "name": "Dust" },
+                "app_id": "A09361B9ULB"
+            }))
+            .unwrap();
+
+        assert!(scrubbed.get("access_token").is_none());
+        assert!(scrubbed.get("refresh_token").is_none());
+        assert_eq!(scrubbed["ok"], json!(true));
+        assert_eq!(scrubbed["token_type"], json!("bot"));
+        assert_eq!(scrubbed["scope"], json!("chat:write"));
+        assert_eq!(scrubbed["team"]["id"], json!("T123"));
+        assert_eq!(scrubbed["team"]["name"], json!("Dust"));
+        assert_eq!(scrubbed["app_id"], json!("A09361B9ULB"));
+    }
+
+    #[test]
+    fn scrubbed_raw_json_removes_nested_authed_user_tokens_and_keeps_metadata() {
+        let provider = SlackToolsConnectionProvider::new();
+        let scrubbed = provider
+            .scrubbed_raw_json(&json!({
+                "ok": true,
+                "access_token": "xoxb-bot-secret",
+                "token_type": "bot",
+                "scope": "chat:write",
+                "bot_user_id": "U_BOT",
+                "app_id": "A09361B9ULB",
+                "team": { "id": "T123", "name": "Dust" },
+                "authed_user": {
+                    "id": "U_USER",
+                    "scope": "search:read,chat:write",
+                    "access_token": "xoxp-user-secret",
+                    "refresh_token": "xoxe-user-refresh",
+                    "token_type": "user"
+                }
+            }))
+            .unwrap();
+
+        assert!(scrubbed.get("access_token").is_none());
+        assert!(scrubbed["authed_user"].get("access_token").is_none());
+        assert!(scrubbed["authed_user"].get("refresh_token").is_none());
+
+        assert_eq!(scrubbed["ok"], json!(true));
+        assert_eq!(scrubbed["token_type"], json!("bot"));
+        assert_eq!(scrubbed["scope"], json!("chat:write"));
+        assert_eq!(scrubbed["bot_user_id"], json!("U_BOT"));
+        assert_eq!(scrubbed["app_id"], json!("A09361B9ULB"));
+        assert_eq!(scrubbed["team"]["id"], json!("T123"));
+        assert_eq!(scrubbed["team"]["name"], json!("Dust"));
+        assert_eq!(scrubbed["authed_user"]["id"], json!("U_USER"));
+        assert_eq!(
+            scrubbed["authed_user"]["scope"],
+            json!("search:read,chat:write")
+        );
+        assert_eq!(scrubbed["authed_user"]["token_type"], json!("user"));
+
+        let scrubbed_str = scrubbed.to_string();
+        assert!(!scrubbed_str.contains("xoxb-bot-secret"));
+        assert!(!scrubbed_str.contains("xoxp-user-secret"));
+        assert!(!scrubbed_str.contains("xoxe-user-refresh"));
     }
 }
