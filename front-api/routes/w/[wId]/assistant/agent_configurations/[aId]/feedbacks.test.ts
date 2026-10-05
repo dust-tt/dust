@@ -24,6 +24,21 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId/feedbacks", () => 
     expect(response.status).toBe(404);
   });
 
+  it("returns not found to a manager for a hidden agent they do not edit", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      role: "manager",
+    });
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { scope: "hidden" }
+    );
+
+    const response = await getFeedbacks(workspace, agent.sId);
+
+    expect(response.status).toBe(404);
+  });
+
   it("returns the feedbacks to an admin for a hidden agent they do not edit", async () => {
     const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
     const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");

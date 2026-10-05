@@ -210,8 +210,11 @@ export async function getAgentFeedbacks({
 > {
   const owner = auth.getNonNullableWorkspace();
 
-  const agent = await AgentResource.fetchById(auth, agentConfigurationId);
-  if (!agent || (!auth.can("read", agent) && !auth.isAdmin())) {
+  const agent = await AgentResource.fetchByIdForReaderOrWorkspaceAdmin(
+    auth,
+    agentConfigurationId
+  );
+  if (!agent) {
     return new Err(new Error("agent_configuration_not_found"));
   }
 

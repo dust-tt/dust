@@ -111,6 +111,80 @@ describe("POST /api/w/:wId/triggers (agent access)", () => {
   });
 });
 
+describe("GET/DELETE/PATCH /api/w/:wId/triggers (hidden agent access)", () => {
+  async function setupHiddenAgentTrigger(role: "manager" | "admin") {
+    const { workspace } = await createPrivateApiMockRequest({
+      plan: "creditPriced",
+      role,
+    });
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { scope: "hidden" }
+    );
+    const trigger = await TriggerFactory.schedule(agentOwnerAuth, {
+      agentConfigurationId: agent.sId,
+      configuration: { type: "cron", cron: "0 9 * * *", timezone: "UTC" },
+    });
+    return { workspace, agentOwnerAuth, agent, trigger };
+  }
+
+  it("returns 404 to a manager listing triggers of a hidden agent", async () => {
+    const { workspace, agent } = await setupHiddenAgentTrigger("manager");
+
+    const response = await getTriggers(workspace, agent.sId);
+
+    expect(response.status).toBe(404);
+  });
+
+  it("lets an admin list triggers of a hidden agent they cannot read", async () => {
+    const { workspace, agent, trigger } =
+      await setupHiddenAgentTrigger("admin");
+
+    const response = await getTriggers(workspace, agent.sId);
+
+    expect(response.status).toBe(200);
+    const { triggers } = await response.json();
+    expect(triggers.map((t: { sId: string }) => t.sId)).toEqual([trigger.sId]);
+  });
+
+  it("returns 404 to a manager deleting triggers of a hidden agent", async () => {
+    const { workspace, agentOwnerAuth, agent, trigger } =
+      await setupHiddenAgentTrigger("manager");
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/triggers?aId=${agent.sId}`,
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ triggerIds: [trigger.sId] }),
+      }
+    );
+
+    expect(response.status).toBe(404);
+    expect(
+      await TriggerResource.fetchById(agentOwnerAuth, trigger.sId)
+    ).not.toBeNull();
+  });
+
+  it("returns 404 to a manager updating triggers of a hidden agent", async () => {
+    const { workspace, agentOwnerAuth, agent, trigger } =
+      await setupHiddenAgentTrigger("manager");
+    const [body] = scheduleTriggerBody(null).triggers;
+
+    const response = await patchTriggers(workspace, agent.sId, {
+      triggers: [{ ...body, sId: trigger.sId }],
+    });
+
+    expect(response.status).toBe(404);
+    const unchanged = await TriggerResource.fetchById(
+      agentOwnerAuth,
+      trigger.sId
+    );
+    expect(unchanged?.name).toBe(trigger.name);
+  });
+});
+
 describe("POST/PATCH /api/w/:wId/triggers (webhookSourceViewId)", () => {
   async function setup() {
     const { workspace, user, globalSpace } = await createPrivateApiMockRequest({
