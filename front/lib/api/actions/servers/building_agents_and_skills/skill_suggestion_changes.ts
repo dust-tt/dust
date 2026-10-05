@@ -10,6 +10,7 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   pruneConflictingSkillEditorsSuggestions,
   pruneConflictingSkillEditSuggestions,
+  pruneConflictingSkillFilesSuggestions,
   pruneSupersededSingletonSkillSuggestions,
 } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import type { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
@@ -35,6 +36,7 @@ import type {
 import {
   isEditorsSkillSuggestion,
   isEditSkillSuggestion,
+  isFilesSkillSuggestion,
 } from "@app/types/suggestions/skill_suggestion";
 
 // Validators shared by the single-change `suggest_skill_*` tools and the `suggest` tool. They run
@@ -236,6 +238,11 @@ export async function pruneSupersededSkillSuggestions(
     case "editors":
       if (isEditorsSkillSuggestion(created)) {
         await pruneConflictingSkillEditorsSuggestions(auth, skill, [created]);
+      }
+      return;
+    case "files":
+      if (isFilesSkillSuggestion(created)) {
+        await pruneConflictingSkillFilesSuggestions(auth, skill, [created]);
       }
       return;
     case "create":

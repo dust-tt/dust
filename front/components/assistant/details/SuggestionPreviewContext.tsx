@@ -138,6 +138,8 @@ export function getEditedSkillSections(
         break;
       case "create":
       case "delete":
+      // TODO(skill-files): mark the files section as edited.
+      case "files":
         break;
       default:
         assertNeverAndIgnore(suggestion);

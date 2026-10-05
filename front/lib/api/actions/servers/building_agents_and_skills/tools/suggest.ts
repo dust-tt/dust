@@ -1006,6 +1006,7 @@ function resolveSkillRow(
     case "name":
     case "delete":
     case "availability":
+    case "files":
       return row;
     default:
       assertNever(row);
