@@ -19,10 +19,8 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface CouponRedemptionResource
   extends ReadonlyAttributesType<CouponRedemptionModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class CouponRedemptionResource extends BaseResource<CouponRedemptionModel> {
   static model: ModelStaticWorkspaceAware<CouponRedemptionModel> =
     CouponRedemptionModel;

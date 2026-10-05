@@ -79,6 +79,12 @@ export const EmailLayout = ({
   );
 };
 
+// Greets the recipient by first name, or with a generic greeting when we don't know it. Keep both
+// greetings as whole sentences so translators never have to compose "Hi" with a stand-in name.
+export const EmailGreeting = ({ name }: { name?: string }) => {
+  return name ? <Trans>Hi {name},</Trans> : <Trans>Hi there,</Trans>;
+};
+
 // Every email renders inside `EmailLayout`, which needs a Lingui context: pass the recipient's
 // instance from `getNotificationI18n`.
 export function renderEmailWithI18n(i18n: I18n, email: React.ReactElement) {

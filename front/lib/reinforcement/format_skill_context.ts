@@ -22,10 +22,20 @@ export function formatSkillContext(
       )}</instructions>`
     : "";
 
+  const filesBlock =
+    content === "full" && skill.fileAttachments.length > 0
+      ? `<files>${skill.fileAttachments
+          .map(
+            (file) =>
+              `<file ID="${file.fileId}" name="${escapeXml(file.fileName)}"/>`
+          )
+          .join("")}</files>`
+      : "";
+
   const settingsAttrs =
     content === "full"
       ? ` availability="${skill.availability}" reinforcement="${skill.reinforcement}"`
       : "";
 
-  return `<skill ID="${escapeXml(skill.sId)}" name="${escapeXml(skill.name)}"${settingsAttrs}>${userDescBlock}${descBlock}${instructionsBlock}</skill>`;
+  return `<skill ID="${escapeXml(skill.sId)}" name="${escapeXml(skill.name)}"${settingsAttrs}>${userDescBlock}${descBlock}${instructionsBlock}${filesBlock}</skill>`;
 }

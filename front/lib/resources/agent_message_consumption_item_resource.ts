@@ -82,7 +82,6 @@ type ConsumptionItemEvidenceAttributes = Pick<
 type ConsumptionItemCreationAttributes =
   CreationAttributes<AgentMessageConsumptionItemModel>;
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentMessageConsumptionItemResource
   extends ReadonlyAttributesType<AgentMessageConsumptionItemModel> {}
 
@@ -103,7 +102,6 @@ export interface AgentMessageToolConsumptionItemResource
   readonly agentMCPActionId: ModelId;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessageConsumptionItemModel> {
   static model: ModelStaticWorkspaceAware<AgentMessageConsumptionItemModel> =
     AgentMessageConsumptionItemModel;

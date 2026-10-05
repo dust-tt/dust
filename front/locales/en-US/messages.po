@@ -979,6 +979,7 @@ msgid "After 3 attempts, your workspace will be downgraded to the free plan. Con
 msgstr "After 3 attempts, your workspace will be downgraded to the free plan. Connections will be deleted and members will be revoked. Details <0>here</0>."
 
 #: front/components/navigation/AppStatusBanner.tsx
+#: front/lib/notifications/workflows/balance-threshold-reached.ts
 msgid "Manage credits"
 msgstr "Manage credits"
 
@@ -1233,9 +1234,282 @@ msgstr "This is an automated email. Please do not reply."
 msgid "You can manage your notification preferences from <0>your workspace</0>."
 msgstr "You can manage your notification preferences from <0>your workspace</0>."
 
-#: front/lib/notifications/email-templates/default.tsx
+#: front/lib/notifications/email-templates/_layout.tsx
 msgid "Hi {name},"
 msgstr "Hi {name},"
+
+#: front/lib/notifications/email-templates/_layout.tsx
+msgid "Hi there,"
+msgstr "Hi there,"
+
+#: front/lib/notifications/email-templates/agent-message-feedback-digest.tsx
+msgid "{feedbackCount, plural, one {You received # feedback on your agents today:} other {You received # feedbacks on your agents today:}}"
+msgstr "{feedbackCount, plural, one {You received # feedback on your agents today:} other {You received # feedbacks on your agents today:}}"
+
+#: front/lib/notifications/email-templates/agent-message-feedback-digest.tsx
+msgid "👍 {positiveCount} positive • 👎 {negativeCount} negative"
+msgstr "👍 {positiveCount} positive • 👎 {negativeCount} negative"
+
+#: front/lib/notifications/email-templates/agent-message-feedback-digest.tsx
+msgctxt "feedback author"
+msgid "by {userName} in <0>{conversationTitle}</0>"
+msgstr "by {userName} in <0>{conversationTitle}</0>"
+
+#: front/lib/notifications/email-templates/agent-message-feedback-digest.tsx
+msgctxt "feedback author"
+msgid "by {userName}"
+msgstr "by {userName}"
+
+#: front/lib/notifications/email-templates/agent-message-feedback-digest.tsx
+msgctxt "quoted feedback"
+msgid "\"{feedbackContent}\""
+msgstr "\"{feedbackContent}\""
+
+#: front/lib/notifications/email-templates/conversations-unread.tsx
+msgid "{mentionCount, plural, one {You have been mentioned in the following conversation:} other {You have been mentioned in the following conversations:}}"
+msgstr "{mentionCount, plural, one {You have been mentioned in the following conversation:} other {You have been mentioned in the following conversations:}}"
+
+#: front/lib/notifications/email-templates/conversations-unread.tsx
+msgid "{unreadCount, plural, one {You have unread message(s) in the following conversation:} other {You have unread message(s) in the following conversations:}}"
+msgstr "{unreadCount, plural, one {You have unread message(s) in the following conversation:} other {You have unread message(s) in the following conversations:}}"
+
+#: front/lib/notifications/email-templates/conversations-unread.tsx
+msgid "{newProjectConversationCount, plural, one {There's a new conversation in {singleProjectName}:} other {There are # new conversations in {singleProjectName}:}}"
+msgstr "{newProjectConversationCount, plural, one {There's a new conversation in {singleProjectName}:} other {There are # new conversations in {singleProjectName}:}}"
+
+#: front/lib/notifications/email-templates/conversations-unread.tsx
+msgid "{newProjectConversationCount, plural, one {There is # new conversation in your Pods:} other {There are # new conversations in your Pods:}}"
+msgstr "{newProjectConversationCount, plural, one {There is # new conversation in your Pods:} other {There are # new conversations in your Pods:}}"
+
+#: front/lib/notifications/email-templates/conversations-unread.tsx
+#: front/lib/notifications/workflows/agent-message-feedback.ts
+#: front/lib/notifications/workflows/pod-added-as-member.ts
+msgid "Someone"
+msgstr "Someone"
+
+#: front/lib/notifications/email-templates/conversations-unread.tsx
+msgid "{createdBy} started \"{conversationTitle}\""
+msgstr "{createdBy} started \"{conversationTitle}\""
+
+#: front/lib/notifications/email-templates/conversations-unread.tsx
+msgid "{createdBy} started \"{conversationTitle}\" in {projectName}"
+msgstr "{createdBy} started \"{conversationTitle}\" in {projectName}"
+
+#: front/lib/notifications/helpers.ts
+msgid "Summary not generated due to data retention policy on conversations in this workspace."
+msgstr "Summary not generated due to data retention policy on conversations in this workspace."
+
+#: front/lib/notifications/helpers.ts
+msgid "Summary not generated due to data retention policy on agents in this conversation."
+msgstr "Summary not generated due to data retention policy on agents in this conversation."
+
+#: front/lib/notifications/workflows/agent-message-feedback.ts
+msgid "an agent"
+msgstr "an agent"
+
+#: front/lib/notifications/workflows/agent-message-feedback.ts
+#: front/lib/notifications/workflows/pod-added-as-member.ts
+msgid "A workspace"
+msgstr "A workspace"
+
+#: front/lib/notifications/workflows/agent-message-feedback.ts
+msgid "New feedback on {agentName}"
+msgstr "New feedback on {agentName}"
+
+#: front/lib/notifications/workflows/agent-message-feedback.ts
+msgid "{userWhoGaveFeedbackFullName} left a positive feedback on {agentName}."
+msgstr "{userWhoGaveFeedbackFullName} left a positive feedback on {agentName}."
+
+#: front/lib/notifications/workflows/agent-message-feedback.ts
+msgid "{userWhoGaveFeedbackFullName} left a negative feedback on {agentName}."
+msgstr "{userWhoGaveFeedbackFullName} left a negative feedback on {agentName}."
+
+#: front/lib/notifications/workflows/agent-message-feedback.ts
+#: front/lib/notifications/workflows/conversation-unread.ts
+#: front/lib/notifications/workflows/pod-added-as-member.ts
+msgctxt "action"
+msgid "View"
+msgstr "View"
+
+#: front/lib/notifications/workflows/agent-message-feedback.ts
+msgid "[Dust] {feedbackCount, plural, one {# feedback on your agents} other {# feedbacks on your agents}} (👍 {positiveCount} - 👎 {negativeCount})"
+msgstr "[Dust] {feedbackCount, plural, one {# feedback on your agents} other {# feedbacks on your agents}} (👍 {positiveCount} - 👎 {negativeCount})"
+
+#: front/lib/notifications/workflows/agent-suggestions-ready.ts
+#: front/lib/notifications/workflows/skill-suggestions-ready.ts
+msgid "{suggestionCount, plural, one {# new improvement suggestion ready for review.} other {# new improvement suggestions ready for review.}}"
+msgstr "{suggestionCount, plural, one {# new improvement suggestion ready for review.} other {# new improvement suggestions ready for review.}}"
+
+#: front/lib/notifications/workflows/agent-suggestions-ready.ts
+#: front/lib/notifications/workflows/skill-suggestions-ready.ts
+msgctxt "action"
+msgid "Review"
+msgstr "Review"
+
+#: front/lib/notifications/workflows/balance-threshold-reached.ts
+msgid "[Dust] Credit balance alert - your workspace balance dropped below {threshold} credits"
+msgstr "[Dust] Credit balance alert - your workspace balance dropped below {threshold} credits"
+
+#: front/lib/notifications/workflows/balance-threshold-reached.ts
+msgid "Your workspace's remaining credit balance has dropped below the threshold you configured."
+msgstr "Your workspace's remaining credit balance has dropped below the threshold you configured."
+
+#: front/lib/notifications/workflows/balance-threshold-reached.ts
+msgid "Alert threshold: {threshold} credits"
+msgstr "Alert threshold: {threshold} credits"
+
+#: front/lib/notifications/workflows/balance-threshold-reached.ts
+msgid "Remaining balance: {remaining} credits"
+msgstr "Remaining balance: {remaining} credits"
+
+#: front/lib/notifications/workflows/balance-threshold-reached.ts
+msgid "To avoid running out of credits, please reach out to your Dust representative."
+msgstr "To avoid running out of credits, please reach out to your Dust representative."
+
+#: front/lib/notifications/workflows/balance-threshold-reached.ts
+msgid "To avoid running out of credits, you can purchase more from your workspace usage page."
+msgstr "To avoid running out of credits, you can purchase more from your workspace usage page."
+
+#: front/lib/notifications/workflows/balance-threshold-reached.ts
+msgid "See usage details"
+msgstr "See usage details"
+
+#: front/lib/notifications/workflows/consumption-export-ready.ts
+msgid "Your consumption export is ready"
+msgstr "Your consumption export is ready"
+
+#: front/lib/notifications/workflows/consumption-export-ready.ts
+msgid "The raw consumption data you requested has finished generating and is ready to download."
+msgstr "The raw consumption data you requested has finished generating and is ready to download."
+
+#: front/lib/notifications/workflows/consumption-export-ready.ts
+msgctxt "action"
+msgid "Download"
+msgstr "Download"
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "[Dust] {count, plural, one {New conversation in \"{projectName}\"} other {New conversations in \"{projectName}\"}}"
+msgstr "[Dust] {count, plural, one {New conversation in \"{projectName}\"} other {New conversations in \"{projectName}\"}}"
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "[Dust] New conversations in your Pods"
+msgstr "[Dust] New conversations in your Pods"
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "New unread message(s) in conversation"
+msgstr "New unread message(s) in conversation"
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "[Dust] New unread messages in {count} conversations"
+msgstr "[Dust] New unread messages in {count} conversations"
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "New conversation in {projectName}"
+msgstr "New conversation in {projectName}"
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "{author} created \"{conversationTitle}\""
+msgstr "{author} created \"{conversationTitle}\""
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "New message from {author}"
+msgstr "New message from {author}"
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "{author} replied in the conversation \"{conversationTitle}\"."
+msgstr "{author} replied in the conversation \"{conversationTitle}\"."
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "You have a new message from {author} in the conversation \"{conversationTitle}\"."
+msgstr "You have a new message from {author} in the conversation \"{conversationTitle}\"."
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "There is a new conversation in \"{projectName}\": {author} started \"{conversationTitle}\""
+msgstr "There is a new conversation in \"{projectName}\": {author} started \"{conversationTitle}\""
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "{author} replied in \"{conversationTitle}\""
+msgstr "{author} replied in \"{conversationTitle}\""
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "New message from {author} in \"{conversationTitle}\""
+msgstr "New message from {author} in \"{conversationTitle}\""
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "View conversation"
+msgstr "View conversation"
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "Preview not available due to data retention policy on conversations in this workspace."
+msgstr "Preview not available due to data retention policy on conversations in this workspace."
+
+#: front/lib/notifications/workflows/conversation-unread.ts
+msgid "Preview not available due to data retention policy on agents in this conversation."
+msgstr "Preview not available due to data retention policy on agents in this conversation."
+
+#: front/lib/notifications/workflows/pod-added-as-member.ts
+msgid "A Pod"
+msgstr "A Pod"
+
+#: front/lib/notifications/workflows/pod-added-as-member.ts
+msgid "[Dust] You were added to Pod \"{podName}\""
+msgstr "[Dust] You were added to Pod \"{podName}\""
+
+#: front/lib/notifications/workflows/pod-added-as-member.ts
+msgid "{userThatAddedYouFullname} added you to Pod \"{podName}\"."
+msgstr "{userThatAddedYouFullname} added you to Pod \"{podName}\"."
+
+#: front/lib/notifications/workflows/pod-added-as-member.ts
+msgid "View Pod"
+msgstr "View Pod"
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "[Dust] Your workspace has used 80% of its programmatic API credit cap in {workspaceName}"
+msgstr "[Dust] Your workspace has used 80% of its programmatic API credit cap in {workspaceName}"
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "Your workspace \"{workspaceName}\" has used 80% of its monthly programmatic API credit cap of {cap} credits."
+msgstr "Your workspace \"{workspaceName}\" has used 80% of its monthly programmatic API credit cap of {cap} credits."
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "Your workspace \"{workspaceName}\" has used 80% of its monthly programmatic API credit cap."
+msgstr "Your workspace \"{workspaceName}\" has used 80% of its monthly programmatic API credit cap."
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "Once the cap is fully reached, programmatic API calls will be blocked. Consider raising the cap before that happens."
+msgstr "Once the cap is fully reached, programmatic API calls will be blocked. Consider raising the cap before that happens."
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "[Dust] Your workspace has reached its programmatic API credit cap in {workspaceName}"
+msgstr "[Dust] Your workspace has reached its programmatic API credit cap in {workspaceName}"
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "Your workspace \"{workspaceName}\" has exhausted its monthly programmatic API credit cap of {cap} credits."
+msgstr "Your workspace \"{workspaceName}\" has exhausted its monthly programmatic API credit cap of {cap} credits."
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "Your workspace \"{workspaceName}\" has exhausted its monthly programmatic API credit cap."
+msgstr "Your workspace \"{workspaceName}\" has exhausted its monthly programmatic API credit cap."
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "Programmatic API calls are now blocked until the billing cycle resets or the cap is raised."
+msgstr "Programmatic API calls are now blocked until the billing cycle resets or the cap is raised."
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "[Dust] Your programmatic triggers are paused in {workspaceName}"
+msgstr "[Dust] Your programmatic triggers are paused in {workspaceName}"
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "A programmatic trigger in your Dust workspace \"{workspaceName}\" could not run because the workspace's monthly programmatic usage limit is set to 0 credits."
+msgstr "A programmatic trigger in your Dust workspace \"{workspaceName}\" could not run because the workspace's monthly programmatic usage limit is set to 0 credits."
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "Programmatic triggers will remain blocked until you set a positive limit in workspace usage settings."
+msgstr "Programmatic triggers will remain blocked until you set a positive limit in workspace usage settings."
+
+#: front/lib/notifications/workflows/programmatic-cap-reached.ts
+msgid "Manage workspace usage"
+msgstr "Manage workspace usage"
 
 #: front/lib/notifications/workflows/seat-auto-upgraded.ts
 msgid "[Dust] {count, plural, one {# member was auto-upgraded to a higher seat} other {# members were auto-upgraded to higher seats}}"
@@ -1258,12 +1532,92 @@ msgid "This might increase your subscription cost. You can turn off automatic se
 msgstr "This might increase your subscription cost. You can turn off automatic seat upgrades from your workspace usage settings."
 
 #: front/lib/notifications/workflows/seat-auto-upgraded.ts
-msgid "there"
-msgstr "there"
-
-#: front/lib/notifications/workflows/seat-auto-upgraded.ts
 msgid "Go to workspace usage"
 msgstr "Go to workspace usage"
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "• {requester} (reason: {reason})"
+msgstr "• {requester} (reason: {reason})"
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "[Dust] {count} members requested a spend-limit upgrade"
+msgstr "[Dust] {count} members requested a spend-limit upgrade"
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "{count} members have reached their per-user spend limit and are requesting an upgrade:"
+msgstr "{count} members have reached their per-user spend limit and are requesting an upgrade:"
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "Review the requests and adjust their limits from your workspace usage page."
+msgstr "Review the requests and adjust their limits from your workspace usage page."
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "Review requests"
+msgstr "Review requests"
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "[Dust] {requester} requested a spend-limit upgrade"
+msgstr "[Dust] {requester} requested a spend-limit upgrade"
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "{requester} has reached their per-user spend limit and is requesting an upgrade (reason: {reason})."
+msgstr "{requester} has reached their per-user spend limit and is requesting an upgrade (reason: {reason})."
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "{requester} has reached their per-user spend limit and is requesting an upgrade."
+msgstr "{requester} has reached their per-user spend limit and is requesting an upgrade."
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "Review the request and adjust their limit from your workspace usage page."
+msgstr "Review the request and adjust their limit from your workspace usage page."
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "Review request"
+msgstr "Review request"
+
+#: front/lib/notifications/workflows/user-awu-cap-reached.ts
+msgid "You've reached your usage limit"
+msgstr "You've reached your usage limit"
+
+#: front/lib/notifications/workflows/user-awu-cap-reached.ts
+msgid "You have reached your {cap} credits limit in workspace \"{workspaceName}\" and can no longer run agents. Contact your admin to increase your limit."
+msgstr "You have reached your {cap} credits limit in workspace \"{workspaceName}\" and can no longer run agents. Contact your admin to increase your limit."
+
+#: front/lib/notifications/workflows/user-awu-cap-reached.ts
+msgid "You've used 80% of your usage limit"
+msgstr "You've used 80% of your usage limit"
+
+#: front/lib/notifications/workflows/user-awu-cap-reached.ts
+msgid "You have used 80% of your {cap} credits limit in workspace \"{workspaceName}\". Contact your admin to increase your limit before you are blocked."
+msgstr "You have used 80% of your {cap} credits limit in workspace \"{workspaceName}\". Contact your admin to increase your limit before you are blocked."
+
+#: front/lib/notifications/workflows/user-awu-cap-reached.ts
+msgid "[Dust] You've reached your usage limit in {workspaceName}"
+msgstr "[Dust] You've reached your usage limit in {workspaceName}"
+
+#: front/lib/notifications/workflows/user-awu-cap-reached.ts
+msgid "You have reached your {cap} credits usage limit in the Dust workspace {workspaceName} and can no longer run agents."
+msgstr "You have reached your {cap} credits usage limit in the Dust workspace {workspaceName} and can no longer run agents."
+
+#: front/lib/notifications/workflows/user-awu-cap-reached.ts
+msgid "Please contact your workspace admin to increase your limit."
+msgstr "Please contact your workspace admin to increase your limit."
+
+#: front/lib/notifications/workflows/user-awu-cap-reached.ts
+msgid "[Dust] You've used 80% of your usage limit in {workspaceName}"
+msgstr "[Dust] You've used 80% of your usage limit in {workspaceName}"
+
+#: front/lib/notifications/workflows/user-awu-cap-reached.ts
+msgid "You have used 80% of your {cap} credits usage limit in the Dust workspace {workspaceName}."
+msgstr "You have used 80% of your {cap} credits usage limit in the Dust workspace {workspaceName}."
+
+#: front/lib/notifications/workflows/user-awu-cap-reached.ts
+msgid "Once you reach 100%, you won't be able to run agents until your limit is increased. Please contact your workspace admin."
+msgstr "Once you reach 100%, you won't be able to run agents until your limit is increased. Please contact your workspace admin."
+
+#: front/lib/notifications/workflows/user-awu-cap-reached.ts
+msgid "Go to workspace"
+msgstr "Go to workspace"
 
 #: front/lib/swr/user_profile.ts
 msgid "Could not update your profile"

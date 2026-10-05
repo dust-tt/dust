@@ -26,11 +26,9 @@ export type ProjectMetadataBlob = Omit<
   "workspaceId" | "spaceId"
 >;
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ProjectMetadataResource
   extends ReadonlyAttributesType<ProjectMetadataModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> {
   static model: typeof ProjectMetadataModel = ProjectMetadataModel;
 

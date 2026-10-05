@@ -24,10 +24,19 @@ def identity(work, kind='test'):
     return prefix, key, key_path
 
 
-def start(work, phase, prefix, key_path, es_url=None, binary='/target/release/dfs-server-v2'):
+def server_binary(binary=None):
+    """@cc [owner:spolu,label:testing] selected-server-binary
+    Explicit binary paths MUST override DFS_BENCH_SERVER_BINARY and the existing release default.
+    Server launches and benchmark hashes MUST resolve the same path without changing client binaries.
+    """
+    return binary if binary is not None else os.environ.get(
+        'DFS_BENCH_SERVER_BINARY', '/target/release/dfs-server-v2')
+
+
+def start(work, phase, prefix, key_path, es_url=None, binary=None):
     path = work / f'{phase}-server.log'
     with path.open('w') as log:
-        process = subprocess.Popen([binary, '--listen', '127.0.0.1:0',
+        process = subprocess.Popen([server_binary(binary), '--listen', '127.0.0.1:0',
             '--server-key-file', str(key_path), '--fdb-prefix', prefix, '--es-index', prefix,
             *(['--es-url', es_url] if es_url else [])],
             stdout=log, stderr=log)

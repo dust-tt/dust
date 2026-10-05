@@ -76,7 +76,6 @@ export class DefaultRemoteMCPServerInMemoryResource {
               }
             : null,
       tools: [], // There are no predefined tools for default remote servers
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       documentationUrl: this.config.documentationUrl || null,
       availability: "manual" as const,
       allowMultipleInstances: true,

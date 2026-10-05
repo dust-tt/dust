@@ -81,12 +81,14 @@ interface CreateAgentDropdownProps {
   owner: LightWorkspaceType;
   dataGtmLocation: string;
   isCompact?: boolean;
+  label?: string;
 }
 
 export const CreateAgentDropdown = ({
   owner,
   dataGtmLocation,
   isCompact = false,
+  label = "Create agent",
 }: CreateAgentDropdownProps) => {
   const { hasPermission } = useWorkspacePermissions();
 
@@ -100,7 +102,7 @@ export const CreateAgentDropdown = ({
         <Button
           variant="primary"
           icon={Plus}
-          label={isCompact ? undefined : "Create agent"}
+          label={isCompact ? undefined : label}
           tooltip={isCompact ? "Create agent" : undefined}
           data-gtm-label="assistantCreationButton"
           data-gtm-location={dataGtmLocation}

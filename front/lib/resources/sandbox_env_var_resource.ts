@@ -85,11 +85,9 @@ function formatAllowedDomainsForAudit(
 // Pod-scoped rows would break if a pod ever moved across workspaces with a
 // workspace-derived key; hence the per-scope key, NOT the workspace sId.
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SandboxEnvVarResource
   extends ReadonlyAttributesType<SandboxEnvVarModel> {}
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SandboxEnvVarResource extends BaseResource<SandboxEnvVarModel> {
   static model: ModelStaticWorkspaceAware<SandboxEnvVarModel> =
     SandboxEnvVarModel;

@@ -55,11 +55,11 @@ pub(crate) fn new_object(directory: bool, mode: u32) -> Result<Object, Status> {
         ctime: Some(time),
     })
 }
-pub(crate) fn bumped(mut object: Object, content: bool) -> Result<Object, Status> {
-    object.version = object
-        .version
-        .checked_add(1)
-        .ok_or_else(|| status(ErrorCode::Capacity))?;
+/// @cc [owner:spolu,label:concurrency] object-state-identity
+/// Every changed existing object MUST receive an unused storage-issued token. Callers MUST NOT
+/// derive tokens by incrementing an object's previous value or infer ordering from their magnitude.
+pub(crate) fn bumped(mut object: Object, content: bool, version: u64) -> Result<Object, Status> {
+    object.version = version;
     let time = now()?;
     object.ctime = Some(time);
     if content {

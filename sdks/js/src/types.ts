@@ -4184,8 +4184,17 @@ export interface GetSpaceMembersResponseBody {
   users: Pick<UserType, "sId" | "email">[];
 }
 
+// Seat type with `_yearly` variants collapsed onto their base tier.
+export const BaseSeatTypeSchema = FlexibleEnumSchema<
+  "none" | "free" | "workspace" | "pro" | "max"
+>();
+
+export type BaseSeatType = z.infer<typeof BaseSeatTypeSchema>;
+
 export interface GetWorkspaceMembersResponseBody {
-  users: Pick<UserType, "sId" | "id" | "email">[];
+  users: (Pick<UserType, "sId" | "id" | "email"> & {
+    seatType?: BaseSeatType;
+  })[];
 }
 
 const RichMentionSchema = z.object({

@@ -17,8 +17,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Icon,
+  LoadingBlock,
   Robot,
-  Spinner,
   XClose,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -128,7 +128,7 @@ export function AgentPicker({
             <DropdownMenuSearchbar
               autoFocus={!isMobile}
               name="search-agents"
-              placeholder="Search Agents"
+              placeholder="Search for agents"
               value={searchText}
               onChange={setSearchText}
               onKeyDown={(e) => {
@@ -148,6 +148,7 @@ export function AgentPicker({
                   <CreateAgentDropdown
                     owner={owner}
                     dataGtmLocation="homepage"
+                    label="Create"
                   />
                 )
               }
@@ -157,12 +158,20 @@ export function AgentPicker({
         }
       >
         {isAgentsLoading ? (
-          <div
-            role="status"
-            aria-label="Loading agents"
-            className="flex items-center justify-center py-4"
-          >
-            <Spinner size="sm" />
+          <div role="status" aria-label="Loading agents">
+            <div aria-hidden="true">
+              {Array.from({ length: 10 }).map((_, i) => (
+                <div
+                  key={`agent-picker-loading-${i}`}
+                  className="flex items-center gap-2.5 px-2 py-1"
+                >
+                  <LoadingBlock className="h-7 w-7 shrink-0 rounded-md" />
+                  <LoadingBlock
+                    className={i % 2 === 0 ? "h-4 w-2/3" : "h-4 w-1/2"}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         ) : isAgentsError ? (
           <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">

@@ -4,7 +4,10 @@ import { clientFetch } from "@app/lib/egress/client";
 import type { FileUploadRequestResponseBody } from "@app/types/api/files/upload_metadata";
 import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { normalizeError } from "@extension/shared/lib/utils";
+import {
+  getTabNotOnDomainError,
+  normalizeError,
+} from "@extension/shared/lib/utils";
 import type { CaptureService } from "@extension/shared/services/capture";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
@@ -106,10 +109,12 @@ async function uploadPdf(
  */
 export async function takeScreenshotOrAttachFileTool({
   tabIds,
+  domainToFetch,
   captureService,
   workspaceId,
 }: {
   tabIds: number[];
+  domainToFetch: string;
   captureService: CaptureService | null;
   workspaceId: string;
 }): Promise<ToolHandlerResult> {
@@ -133,6 +138,16 @@ export async function takeScreenshotOrAttachFileTool({
 
       if (result.isErr()) {
         errors.push(new MCPError(`Error: ${result.error.message}`));
+        continue;
+      }
+
+      const domainError = getTabNotOnDomainError({
+        tabId,
+        tabUrl: result.value.url ?? "",
+        domainToFetch,
+      });
+      if (domainError) {
+        errors.push(new MCPError(domainError));
         continue;
       }
 

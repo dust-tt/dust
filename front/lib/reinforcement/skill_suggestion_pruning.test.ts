@@ -4,6 +4,7 @@ import {
   instructionEditSetsConflict,
   pruneConflictingSkillEditorsSuggestions,
   pruneConflictingSkillEditSuggestions,
+  pruneConflictingSkillFilesSuggestions,
   pruneOutdatedSkillEditSuggestions,
   pruneSupersededSingletonSkillSuggestions,
 } from "@app/lib/reinforcement/skill_suggestion_pruning";
@@ -17,6 +18,7 @@ import {
   isAvailabilitySkillSuggestion,
   isEditorsSkillSuggestion,
   isEditSkillSuggestion,
+  isFilesSkillSuggestion,
   isNameSkillSuggestion,
   isUserFacingDescriptionSkillSuggestion,
 } from "@app/types/suggestions/skill_suggestion";
@@ -571,6 +573,78 @@ describe("pruneConflictingSkillEditorsSuggestions", () => {
 
     expect(await stateOf(edit.sId)).toBe("pending");
     expect(await stateOf(approved.sId)).toBe("approved");
+  });
+});
+
+describe("pruneConflictingSkillFilesSuggestions", () => {
+  let authenticator: Awaited<
+    ReturnType<typeof createResourceTest>
+  >["authenticator"];
+
+  beforeEach(async () => {
+    ({ authenticator } = await createResourceTest({ role: "admin" }));
+  });
+
+  const createFileRemoval = async (
+    skill: Awaited<ReturnType<typeof SkillFactory.create>>,
+    removeFileIds: string[]
+  ) => {
+    const created = await SkillSuggestionFactory.create(authenticator, skill, {
+      kind: "files",
+      suggestion: { removeFileIds },
+      source: "conversational",
+    });
+    if (!isFilesSkillSuggestion(created)) {
+      throw new Error("The factory did not create a files suggestion.");
+    }
+
+    return created;
+  };
+
+  const stateOf = async (sId: string) =>
+    (await SkillSuggestionResource.fetchById(authenticator, sId))?.state;
+
+  it("outdates a pending suggestion removing one of the same files", async () => {
+    const skill = await SkillFactory.create(authenticator);
+    const older = await createFileRemoval(skill, ["fil_a"]);
+    const newer = await createFileRemoval(skill, ["fil_a", "fil_b"]);
+
+    await pruneConflictingSkillFilesSuggestions(authenticator, skill, [newer]);
+
+    expect(await stateOf(older.sId)).toBe("outdated");
+    expect(await stateOf(newer.sId)).toBe("pending");
+  });
+
+  it("keeps suggestions about other files and other skills", async () => {
+    const skill = await SkillFactory.create(authenticator);
+    const otherSkill = await SkillFactory.create(authenticator, {
+      name: "Other Test Skill",
+    });
+    const otherFile = await createFileRemoval(skill, ["fil_b"]);
+    const sameFileOtherSkill = await createFileRemoval(otherSkill, ["fil_a"]);
+    const newer = await createFileRemoval(skill, ["fil_a"]);
+
+    await pruneConflictingSkillFilesSuggestions(authenticator, skill, [newer]);
+
+    expect(await stateOf(otherFile.sId)).toBe("pending");
+    expect(await stateOf(sameFileOtherSkill.sId)).toBe("pending");
+  });
+
+  it("leaves edit suggestions and non-pending files suggestions alone", async () => {
+    const skill = await SkillFactory.create(authenticator);
+    const edit = await SkillSuggestionFactory.createEdit(authenticator, skill);
+    const rejected = await createFileRemoval(skill, ["fil_a"]);
+    await SkillSuggestionResource.bulkUpdateState(
+      authenticator,
+      [rejected],
+      "rejected"
+    );
+    const newer = await createFileRemoval(skill, ["fil_a"]);
+
+    await pruneConflictingSkillFilesSuggestions(authenticator, skill, [newer]);
+
+    expect(await stateOf(edit.sId)).toBe("pending");
+    expect(await stateOf(rejected.sId)).toBe("rejected");
   });
 });
 

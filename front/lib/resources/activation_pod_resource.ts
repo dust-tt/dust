@@ -15,10 +15,8 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { col, fn } from "sequelize";
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ActivationPodResource
   extends ReadonlyAttributesType<ActivationPodModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ActivationPodResource extends BaseResource<ActivationPodModel> {
   static model: ModelStaticWorkspaceAware<ActivationPodModel> =
     ActivationPodModel;

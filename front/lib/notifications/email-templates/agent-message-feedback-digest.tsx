@@ -1,14 +1,16 @@
 import config from "@app/lib/api/config";
 import {
+  EmailGreeting,
   EmailLayout,
   renderEmailWithI18n,
 } from "@app/lib/notifications/email-templates/_layout";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { I18n } from "@lingui/core";
+import { Plural, Trans } from "@lingui/react/macro";
 import { z } from "zod";
 
 const AgentMessageFeedbackDigestEmailTemplatePropsSchema = z.object({
-  name: z.string(),
+  name: z.string().optional(),
   workspace: z.object({
     id: z.string(),
     name: z.string(),
@@ -39,6 +41,7 @@ const AgentMessageFeedbackDigestEmailTemplate = ({
   workspace,
   feedbacks,
 }: AgentMessageFeedbackDigestEmailTemplateProps) => {
+  const feedbackCount = feedbacks.length;
   const positiveCount = feedbacks.filter(
     (f) => f.thumbDirection === "up"
   ).length;
@@ -48,66 +51,77 @@ const AgentMessageFeedbackDigestEmailTemplate = ({
 
   return (
     <EmailLayout workspace={workspace}>
-      <h3>Hi {name},</h3>
+      <h3>
+        <EmailGreeting name={name} />
+      </h3>
       <p>
-        You received {feedbacks.length} feedback
-        {feedbacks.length > 1 ? "s" : ""} on your agents today:
+        <Plural
+          value={feedbackCount}
+          one="You received # feedback on your agents today:"
+          other="You received # feedbacks on your agents today:"
+        />
       </p>
       <p style={{ marginBottom: "20px" }}>
-        👍 {positiveCount} positive • 👎 {negativeCount} negative
+        <Trans>
+          👍 {positiveCount} positive • 👎 {negativeCount} negative
+        </Trans>
       </p>
       <ul style={{ listStyle: "none", padding: 0 }}>
-        {feedbacks.map((feedback, index) => (
-          <li
-            key={index}
-            style={{
-              marginBottom: "20px",
-              borderBottom: "1px solid #e0e0e0",
-              paddingBottom: "15px",
-            }}
-          >
-            <div>
-              <strong>
-                {feedback.thumbDirection === "up" ? "👍" : "👎"}{" "}
-                {feedback.agentName}
-              </strong>
-            </div>
-            <div style={{ color: "#666", fontSize: "14px", marginTop: "5px" }}>
-              by {feedback.userWhoGaveFeedbackFullName}
-              {feedback.conversation && (
-                <>
-                  {" "}
-                  in{" "}
-                  <a
-                    href={
-                      config.getAppUrl() +
-                      getConversationRoute(
-                        workspace.id,
-                        feedback.conversation.id
-                      )
-                    }
-                    target="_blank"
-                  >
-                    {feedback.conversation.title}
-                  </a>
-                </>
-              )}
-            </div>
-            {feedback.feedbackContent && (
-              <div
-                style={{
-                  marginTop: "8px",
-                  padding: "10px",
-                  backgroundColor: "#f5f5f5",
-                  borderRadius: "4px",
-                  fontStyle: "italic",
-                }}
-              >
-                "{feedback.feedbackContent}"
+        {feedbacks.map((feedback, index) => {
+          const userName = feedback.userWhoGaveFeedbackFullName;
+          const { conversation, feedbackContent } = feedback;
+          const conversationTitle = conversation?.title;
+          return (
+            <li
+              key={index}
+              style={{
+                marginBottom: "20px",
+                borderBottom: "1px solid #e0e0e0",
+                paddingBottom: "15px",
+              }}
+            >
+              <div>
+                <strong>
+                  {feedback.thumbDirection === "up" ? "👍" : "👎"}{" "}
+                  {feedback.agentName}
+                </strong>
               </div>
-            )}
-          </li>
-        ))}
+              <div
+                style={{ color: "#666", fontSize: "14px", marginTop: "5px" }}
+              >
+                {conversation ? (
+                  <Trans context="feedback author">
+                    by {userName} in{" "}
+                    <a
+                      href={
+                        config.getAppUrl() +
+                        getConversationRoute(workspace.id, conversation.id)
+                      }
+                      target="_blank"
+                    >
+                      {conversationTitle}
+                    </a>
+                  </Trans>
+                ) : (
+                  <Trans context="feedback author">by {userName}</Trans>
+                )}
+              </div>
+              {feedbackContent && (
+                <div
+                  style={{
+                    marginTop: "8px",
+                    padding: "10px",
+                    backgroundColor: "#f5f5f5",
+                    borderRadius: "4px",
+                    fontStyle: "italic",
+                  }}
+                >
+                  <Trans context="quoted feedback">"{feedbackContent}"</Trans>
+                </div>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </EmailLayout>
   );

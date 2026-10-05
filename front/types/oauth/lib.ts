@@ -705,6 +705,12 @@ function isValidOptionalResource(s: unknown): s is string {
   return typeof s === "string";
 }
 
+/**
+ * @cc [owner:fontanierh,label:security] account-is-host-labels
+ * The trimmed value MUST be rejected unless it contains only ASCII letters, digits, `.`, `_` and
+ * `-`, with no empty dot-separated label. It is interpolated into Snowflake URL hosts, so any
+ * character that can end the host (`/`, `?`, `#`, `@`, `:`, `\`, whitespace) MUST be rejected.
+ */
 export function isValidSnowflakeAccount(s: unknown): s is string {
   // Snowflake account identifiers can be in formats like:
   // - abc123 (legacy locator)

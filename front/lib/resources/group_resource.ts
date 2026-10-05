@@ -101,9 +101,7 @@ type CachedGroup = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface GroupResource extends ReadonlyAttributesType<GroupModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 /**
  * @cc [owner:philipperolet,label:security;product] group-verbs
  * The verbs a caller holds on a group mean:
@@ -523,7 +521,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       })
     ).map((group) => new this(GroupModel, group.get()));
     const systemGroup =
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       existingGroups.find((v) => v.kind === "system") ||
       (await GroupResource.makeNew(
         {
@@ -534,7 +531,6 @@ export class GroupResource extends BaseResource<GroupModel> {
         { transaction }
       ));
     const globalGroup =
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       existingGroups.find((v) => v.kind === "global") ||
       (await GroupResource.makeNew(
         {
@@ -688,7 +684,6 @@ export class GroupResource extends BaseResource<GroupModel> {
     { includes, limit, order, where }: ResourceFindOptions<GroupModel> = {},
     transaction?: Transaction
   ) {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const includeClauses: Includeable[] = includes || [];
 
     const groupModels = await this.model.findAll({
@@ -972,7 +967,6 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     // Single combined query to fetch both the global group (implicit membership for all workspace members)
     // and groups the user explicitly belongs to via group_memberships.
-    // eslint-disable-next-line dust/no-raw-sql -- Raw query to optimize memory usage as people may have a lot of groups.
     // biome-ignore lint/plugin: Raw query to optimize memory usage as people may have a lot of groups.
     const groups = await frontSequelize.query<{ id: ModelId; kind: string }>(
       `

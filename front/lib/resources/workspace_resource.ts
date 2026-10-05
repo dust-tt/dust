@@ -79,7 +79,6 @@ type WorkspaceModelIdBatchRow = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface WorkspaceResource
   extends ReadonlyAttributesType<WorkspaceModel> {}
 
@@ -133,7 +132,6 @@ function validatePlanLimitOverride(
   return new Ok(undefined);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   static model: ModelStatic<WorkspaceModel> = WorkspaceModel;
   private static workspaceDomainModel: ModelStaticWorkspaceAware<WorkspaceHasDomainModel> =

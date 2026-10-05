@@ -19,10 +19,8 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ActivationRecommendationResource
   extends ReadonlyAttributesType<ActivationRecommendationModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ActivationRecommendationResource extends BaseResource<ActivationRecommendationModel> {
   static model: ModelStatic<ActivationRecommendationModel> =
     ActivationRecommendationModel;

@@ -344,6 +344,56 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - non-editor adm
   });
 });
 
+describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - hidden agent", () => {
+  it("returns 404 to a manager who can list but not read the agent", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      role: "manager",
+      method: "PATCH",
+    });
+
+    const { agentOwner, agentOwnerAuth } = await setupAgentOwner(
+      workspace,
+      "user"
+    );
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { scope: "hidden" }
+    );
+
+    const response = await patch(workspace, agent.sId, {
+      assistant: {
+        name: agent.name,
+        description: agent.description,
+        instructions: "Instructions rewritten by a manager",
+        pictureUrl: agent.pictureUrl,
+        status: "active",
+        scope: agent.scope,
+        model: {
+          providerId: agent.model.providerId,
+          modelId: agent.model.modelId,
+          temperature: agent.model.temperature,
+        },
+        actions: [],
+        templateId: null,
+        tags: [],
+        editors: [{ sId: agentOwner.sId }],
+        skills: [],
+        additionalRequestedSpaceIds: [],
+      },
+    });
+
+    expect(response.status).toBe(404);
+
+    const unchanged = await AgentConfigurationFactory.refetch(
+      agentOwnerAuth,
+      agent.sId
+    );
+    expect((await unchanged?.fetchInstructions())?.instructions).toBe(
+      agent.instructions
+    );
+  });
+});
+
 describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - archived agent", () => {
   it("rejects updates until the agent is restored", async () => {
     const { workspace, user, auth } = await createPrivateApiMockRequest({

@@ -29,7 +29,6 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentSuggestionResource
   extends ReadonlyAttributesType<AgentSuggestionModel> {}
 
@@ -45,7 +44,6 @@ export interface AgentSuggestionResource
  * require the caller to be authorized for its kind by `isAuthorizedForAgentSuggestionKind`, the
  * check applying it requires.
  */
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> {
   static model: ModelStatic<AgentSuggestionModel> = AgentSuggestionModel;
 
