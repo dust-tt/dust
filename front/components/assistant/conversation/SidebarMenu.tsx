@@ -1100,6 +1100,7 @@ export function AgentSidebarMenu({
                             icon={getSpaceIcon(pod)}
                             label={pod.name}
                             truncateText
+                            tooltip={pod.name}
                             onClick={() => moveSelectionToPod(pod)}
                           />
                         ))
