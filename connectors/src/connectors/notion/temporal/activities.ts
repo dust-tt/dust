@@ -32,6 +32,7 @@ import { sendDeletionCrawlSignal } from "@connectors/connectors/notion/temporal/
 import {
   DATABASE_PROCESSING_INTERVAL_MS,
   DATABASE_TO_CSV_MAX_SIZE,
+  MAX_BLOCK_NESTING_DEPTH,
 } from "@connectors/connectors/notion/temporal/config";
 import type { NotionDeletionCrawlSignal } from "@connectors/connectors/notion/temporal/signals";
 import { connectorsConfig } from "@connectors/connectors/shared/config";
@@ -1815,6 +1816,13 @@ export async function cachePage({
   };
 }
 
+/**
+ * @cc [owner:davidebbo,label:performance;security] bounded-nesting-depth
+ * When `depth` is set, it is the nesting depth of the blocks being cached (0 for the page's
+ * top-level blocks). If `depth + 1 >= MAX_BLOCK_NESTING_DEPTH`, `blocksWithChildren` MUST be empty,
+ * so callers never cache blocks at depth `MAX_BLOCK_NESTING_DEPTH` or deeper. `depth` is undefined
+ * only for workflows started before depth tracking, which are not bounded.
+ */
 export async function cacheBlockChildren({
   connectorId,
   pageId,
@@ -1823,6 +1831,7 @@ export async function cacheBlockChildren({
   currentIndexInParent,
   loggerArgs,
   topLevelWorkflowId,
+  depth,
 }: {
   connectorId: ModelId;
   pageId: string;
@@ -1831,6 +1840,7 @@ export async function cacheBlockChildren({
   currentIndexInParent: number;
   loggerArgs: Record<string, string | number>;
   topLevelWorkflowId: string;
+  depth?: number;
 }): Promise<{
   nextCursor: string | null;
   blocksWithChildren: string[];
@@ -1945,9 +1955,25 @@ export async function cacheBlockChildren({
     return true;
   });
 
-  const blocksWithChildren = parsedBlocks
+  let blocksWithChildren = parsedBlocks
     .filter((b) => b.hasChildren)
     .map((b) => b.id);
+
+  if (
+    depth !== undefined &&
+    depth + 1 >= MAX_BLOCK_NESTING_DEPTH &&
+    blocksWithChildren.length > 0
+  ) {
+    localLogger.warn(
+      {
+        depth,
+        maxBlockNestingDepth: MAX_BLOCK_NESTING_DEPTH,
+        skippedBlocksWithChildrenCount: blocksWithChildren.length,
+      },
+      "Max block nesting depth reached, not caching deeper blocks."
+    );
+    blocksWithChildren = [];
+  }
 
   localLogger.info(
     {
@@ -2811,27 +2837,29 @@ async function renderPageSection({
   // for that we need to traverse with a topological sort, leafs treated first
   const orderedParentIds: string[] = [];
   const visitedNodes = new Set<string>();
-  const addNode = (nodeId: string) => {
-    // Prevent infinite recursion on circular references
+  // Iterative pre-order DFS: an explicit stack keeps deep block trees from overflowing the call
+  // stack. Children are pushed in reverse so they are visited in their original order.
+  const nodesToVisit = ["root"];
+  let nodeId: string | undefined;
+  while ((nodeId = nodesToVisit.pop()) !== undefined) {
+    // Prevent infinite loops on circular references
     if (visitedNodes.has(nodeId)) {
       localLogger.warn(
         `Circular reference detected in block hierarchy at node: ${nodeId}`
       );
-      return;
+      continue;
     }
     visitedNodes.add(nodeId);
 
     const children = blocksByParentId[nodeId];
     if (!children) {
-      return;
+      continue;
     }
     orderedParentIds.push(nodeId);
-    for (const child of children) {
-      addNode(child.notionBlockId);
+    for (const child of [...children].reverse()) {
+      nodesToVisit.push(child.notionBlockId);
     }
-  };
-
-  addNode("root");
+  }
   orderedParentIds.reverse();
 
   localLogger.info(
