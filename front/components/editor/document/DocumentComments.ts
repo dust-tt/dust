@@ -1,4 +1,4 @@
-import type { DfmComment } from "@app/lib/markdown/dfm";
+import type { DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
 import { dfmCommentsSchema } from "@app/lib/markdown/dfm";
 import { cn } from "@dust-tt/sparkle";
 import type { Editor, JSONContent } from "@tiptap/core";
@@ -6,7 +6,7 @@ import { Extension, isMacOS, Mark } from "@tiptap/core";
 import type { Node } from "@tiptap/pm/model";
 import { Fragment, Slice } from "@tiptap/pm/model";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
-import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
 import { AddMarkStep, RemoveMarkStep } from "@tiptap/pm/transform";
 import type { EditorView } from "@tiptap/pm/view";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
@@ -26,12 +26,22 @@ const ACTIVE_HIGHLIGHT_CLASS = cn(
   "dark:border-golden-400 dark:bg-golden-400/40 dark:hover:bg-golden-400/40"
 );
 
+export interface DocumentCommentDraft {
+  from: number;
+  to: number;
+}
+
 interface DocumentCommentsState {
   activeId: string | null;
+  draft: DocumentCommentDraft | null;
   decorations: DecorationSet;
 }
 
-type DocumentCommentsMeta = { type: "active"; id: string | null };
+type DocumentCommentsMeta =
+  | { type: "draft"; from: number; to: number }
+  | { type: "cancelDraft" }
+  | { type: "commit"; id: string }
+  | { type: "active"; id: string | null };
 
 export const documentCommentsPluginKey = new PluginKey<DocumentCommentsState>(
   "documentComments"
@@ -123,6 +133,27 @@ export const scrollToCommentHighlight = (editor: Editor, id: string) => {
         ? "instant"
         : "smooth",
     });
+};
+
+/**
+ * True when some text in the range can carry a comment mark, mirroring what addMark
+ * would do. Code blocks declare `marks: ""` and the inline code mark excludes every other
+ * mark, so a selection made only of those would save a thread with nothing to anchor it.
+ */
+const rangeAcceptsCommentMark = (doc: Node, from: number, to: number) => {
+  const markType = doc.type.schema.marks[COMMENT_MARK_NAME];
+  let accepts = false;
+  doc.nodesBetween(from, to, (node, _pos, parent) => {
+    if (
+      node.isText &&
+      parent?.type.allowsMarkType(markType) &&
+      !node.marks.some((mark) => mark.type.excludes(markType))
+    ) {
+      accepts = true;
+    }
+    return !accepts;
+  });
+  return accepts;
 };
 
 interface CommentRange {
@@ -267,11 +298,30 @@ const highlightsBetween = (
   return decorations;
 };
 
-const buildDecorations = (doc: Node, activeId: string | null) =>
-  DecorationSet.create(
-    doc,
-    highlightsBetween(doc, 0, doc.content.size, commentsById(doc), activeId)
-  );
+const DRAFT_SPEC = { draft: true };
+
+const buildDecorations = (
+  doc: Node,
+  activeId: string | null,
+  draft: DocumentCommentDraft | null
+) =>
+  DecorationSet.create(doc, [
+    ...highlightsBetween(doc, 0, doc.content.size, commentsById(doc), activeId),
+    ...(draft
+      ? [
+          Decoration.inline(
+            draft.from,
+            draft.to,
+            {
+              nodeName: "span",
+              class: cn(HIGHLIGHT_CLASS, ACTIVE_HIGHLIGHT_CLASS),
+              "data-comment-draft": "",
+            },
+            DRAFT_SPEC
+          ),
+        ]
+      : []),
+  ]);
 
 /** Where the transactions changed content or marks, in the last one's document. */
 const changedRanges = (transactions: readonly Transaction[]) => {
@@ -315,8 +365,9 @@ const toTextblocks = (doc: Node, { from, to }: CommentRange): CommentRange => {
 
 /**
  * @cc [owner:tdraier,label:performance] document-comment-highlights-local
- * Unless the threads or the active comment change, a transaction MUST only rebuild the
- * highlights of the textblocks it changes, content or marks, and map the others.
+ * Unless a comments command runs or the threads or the active comment change, a transaction
+ * MUST only rebuild the comment highlights of the textblocks it changes, content or marks, and
+ * map the others and the draft highlight.
  */
 const updateDecorations = (
   previous: DecorationSet,
@@ -329,15 +380,30 @@ const updateDecorations = (
   for (const changed of changedRanges([transaction])) {
     const { from, to } = toTextblocks(doc, changed);
     decorations = decorations
-      .remove(decorations.find(from, to))
+      .remove(decorations.find(from, to, (spec) => spec !== DRAFT_SPEC))
       .add(doc, highlightsBetween(doc, from, to, comments, activeId));
   }
   return decorations;
 };
 
+const updateComment = (
+  comments: DfmComment[],
+  id: string,
+  update: (comment: DfmComment) => DfmComment
+) => comments.map((comment) => (comment.id === id ? update(comment) : comment));
+
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     documentComments: {
+      /** Marks the current text selection as the range of a comment being written. */
+      startCommentDraft: () => ReturnType;
+      cancelCommentDraft: () => ReturnType;
+      /** Attaches the comment to the draft range and makes it the active comment. */
+      addComment: (comment: DfmComment) => ReturnType;
+      replyToComment: (id: string, message: DfmMessage) => ReturnType;
+      setCommentResolved: (id: string, resolved: boolean) => ReturnType;
+      /** Removes the comment and every mark that anchors it. */
+      deleteComment: (id: string) => ReturnType;
       setActiveComment: (id: string | null) => ReturnType;
     };
   }
@@ -350,10 +416,11 @@ declare module "@tiptap/core" {
  */
 /**
  * @cc [owner:tdraier,label:product] document-comment-not-pasted
- * Comment marks MUST come only from the file's anchors, never from parsed HTML, pasted content
- * or a copy dropped from a drag, so a copy cannot widen a comment to everything between it and
- * its source or anchor one that has no thread. Text moved by a drag MUST keep the marks of the
- * comments it moves whole and lose the others, so a comment is never split in two.
+ * Comment marks MUST come only from the file's anchors and the comment commands, never from
+ * parsed HTML, pasted content or a copy dropped from a drag, so a copy cannot widen a comment
+ * to everything between it and its source or anchor one that has no thread. Text moved by a
+ * drag MUST keep the marks of the comments it moves whole and lose the others, so a comment is
+ * never split in two.
  */
 const withoutCommentMarks = (
   fragment: Fragment,
@@ -534,14 +601,27 @@ export const DocumentCommentMark = Mark.create({
  * @cc [owner:tdraier,label:product] document-comments-in-doc
  * While the document is open, comment threads MUST live in the document's `comments`
  * attribute as DFM threads and anchor to text through comment marks, so dirty tracking and
- * autosave cover comment changes.
+ * autosave cover comment changes. Deleting a comment MUST remove its marks. Resolving MUST keep
+ * them so the thread can be reopened in place.
  */
 /**
  * @cc [owner:flvndvd;tdraier,label:react] document-comment-highlights
  * Open comments MUST render as highlights over their marked text. Resolved comments, unless
  * active, and comments without a thread MUST render as plain text. The active comment, resolved
- * or not, MUST render with the emphasized highlight, so selecting a resolved thread still shows
- * its text.
+ * or not, and a pending draft MUST render with the emphasized highlight, so selecting a resolved
+ * thread still shows its text.
+ */
+/**
+ * @cc [owner:flvndvd;tdraier,label:product] document-comment-draft-range
+ * A draft MUST start only when some selected text can carry a comment mark, so every
+ * submitted thread has an anchor. A pending draft range MUST follow document edits around
+ * it without growing from text inserted at its edges. A draft whose range collapses MUST
+ * be dropped. Starting a draft MUST collapse the selection to the end of the range.
+ */
+/**
+ * @cc [owner:flvndvd;tdraier,label:product] document-comment-history
+ * Posting, replying to, resolving and deleting comments MUST stay out of text undo history.
+ * Undoing text MUST NOT restore an old comments array or remove another user's replies.
  */
 export const DocumentComments = Extension.create({
   name: "documentComments",
@@ -560,6 +640,129 @@ export const DocumentComments = Extension.create({
     },
   ],
   addCommands: () => ({
+    startCommentDraft:
+      () =>
+      ({ state, tr, dispatch }) => {
+        const { selection } = state;
+        if (
+          !(selection instanceof TextSelection) ||
+          selection.empty ||
+          !rangeAcceptsCommentMark(state.doc, selection.from, selection.to)
+        ) {
+          return false;
+        }
+
+        if (dispatch) {
+          // The draft highlight now marks the range. Collapsing the selection also lets
+          // the selection toolbar notice the draft and hide.
+          tr.setSelection(TextSelection.create(tr.doc, selection.to));
+          tr.setMeta(documentCommentsPluginKey, {
+            type: "draft",
+            from: selection.from,
+            to: selection.to,
+          } satisfies DocumentCommentsMeta);
+        }
+        return true;
+      },
+    cancelCommentDraft:
+      () =>
+      ({ tr, dispatch }) => {
+        if (dispatch) {
+          tr.setMeta(documentCommentsPluginKey, {
+            type: "cancelDraft",
+          } satisfies DocumentCommentsMeta);
+        }
+        return true;
+      },
+    addComment:
+      (comment) =>
+      ({ state, tr, dispatch }) => {
+        const draft = documentCommentsPluginKey.getState(state)?.draft;
+        if (!draft) {
+          return false;
+        }
+
+        if (dispatch) {
+          tr.addMark(
+            draft.from,
+            draft.to,
+            state.schema.marks[COMMENT_MARK_NAME].create({ id: comment.id })
+          );
+          tr.setDocAttribute(COMMENTS_ATTRIBUTE, [
+            ...getDocumentComments(state.doc),
+            comment,
+          ]);
+          tr.setMeta(documentCommentsPluginKey, {
+            type: "commit",
+            id: comment.id,
+          } satisfies DocumentCommentsMeta);
+          tr.setMeta("addToHistory", false);
+        }
+        return true;
+      },
+    replyToComment:
+      (id, message) =>
+      ({ state, tr, dispatch }) => {
+        const comments = getDocumentComments(state.doc);
+        if (!comments.some((comment) => comment.id === id)) {
+          return false;
+        }
+
+        if (dispatch) {
+          tr.setDocAttribute(
+            COMMENTS_ATTRIBUTE,
+            updateComment(comments, id, (comment) => ({
+              ...comment,
+              messages: [...comment.messages, message],
+            }))
+          );
+          tr.setMeta("addToHistory", false);
+        }
+        return true;
+      },
+    setCommentResolved:
+      (id, resolved) =>
+      ({ state, tr, dispatch }) => {
+        const comments = getDocumentComments(state.doc);
+        if (!comments.some((comment) => comment.id === id)) {
+          return false;
+        }
+
+        if (dispatch) {
+          tr.setDocAttribute(
+            COMMENTS_ATTRIBUTE,
+            updateComment(comments, id, (comment) => ({
+              ...comment,
+              status: resolved ? "resolved" : "open",
+            }))
+          );
+          tr.setMeta("addToHistory", false);
+        }
+        return true;
+      },
+    deleteComment:
+      (id) =>
+      ({ state, tr, dispatch }) => {
+        const comments = getDocumentComments(state.doc);
+        if (!comments.some((comment) => comment.id === id)) {
+          return false;
+        }
+
+        if (dispatch) {
+          // With a mark instance, removeMark strips only marks equal to it.
+          tr.removeMark(
+            0,
+            state.doc.content.size,
+            state.schema.marks[COMMENT_MARK_NAME].create({ id })
+          );
+          tr.setDocAttribute(
+            COMMENTS_ATTRIBUTE,
+            comments.filter((comment) => comment.id !== id)
+          );
+          tr.setMeta("addToHistory", false);
+        }
+        return true;
+      },
     setActiveComment:
       (id) =>
       ({ tr, dispatch }) => {
@@ -578,7 +781,8 @@ export const DocumentComments = Extension.create({
       state: {
         init: (_, state) => ({
           activeId: null,
-          decorations: buildDecorations(state.doc, null),
+          draft: null,
+          decorations: buildDecorations(state.doc, null, null),
         }),
         apply: (transaction, previous, oldState, newState) => {
           const meta: DocumentCommentsMeta | undefined = transaction.getMeta(
@@ -588,10 +792,34 @@ export const DocumentComments = Extension.create({
             return previous;
           }
 
+          let { activeId, draft } = previous;
+          if (draft && transaction.docChanged) {
+            const from = transaction.mapping.map(draft.from, 1);
+            const to = transaction.mapping.map(draft.to, -1);
+            draft = from < to ? { from, to } : null;
+          }
+
+          switch (meta?.type) {
+            case "draft":
+              draft = { from: meta.from, to: meta.to };
+              break;
+            case "cancelDraft":
+              draft = null;
+              break;
+            case "commit":
+              draft = null;
+              activeId = meta.id;
+              break;
+            case "active":
+              activeId = meta.id;
+              break;
+            case undefined:
+              break;
+          }
+
           const threadsChanged =
             oldState.doc.attrs[COMMENTS_ATTRIBUTE] !==
             newState.doc.attrs[COMMENTS_ATTRIBUTE];
-          let activeId = meta ? meta.id : previous.activeId;
           if (
             threadsChanged &&
             activeId !== null &&
@@ -604,9 +832,13 @@ export const DocumentComments = Extension.create({
 
           return {
             activeId,
+            draft,
+            // A draft's range maps like its highlight: neither grows at its edges.
             decorations:
-              threadsChanged || activeId !== previous.activeId
-                ? buildDecorations(newState.doc, activeId)
+              meta !== undefined ||
+              threadsChanged ||
+              activeId !== previous.activeId
+                ? buildDecorations(newState.doc, activeId, draft)
                 : updateDecorations(
                     previous.decorations,
                     transaction,

@@ -1,4 +1,5 @@
 // Shared by Document and its hook to avoid circular type imports.
+import type { DfmAuthor } from "@app/lib/markdown/dfm";
 import type { Result } from "@app/types/shared/result";
 import type { ReactNode } from "react";
 
@@ -21,6 +22,11 @@ export interface DocumentProps {
   onStateChange?: (state: DocumentDraftState) => void;
   /** Shown at the left of the status row, the save status at its right: a marker from the host. */
   badge?: ReactNode;
+  /**
+   * Signs new comments and replies. Commenting requires an editable document and an author;
+   * existing comments stay readable without one.
+   */
+  commentAuthor?: DfmAuthor;
 }
 
 export interface DocumentDraftState {

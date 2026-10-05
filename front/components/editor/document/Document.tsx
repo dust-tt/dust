@@ -2,6 +2,7 @@ import {
   DocumentBlockMenu,
   useDocumentBlockMenu,
 } from "@app/components/editor/document/DocumentBlockMenu";
+import { DocumentCommentComposer } from "@app/components/editor/document/DocumentCommentComposer";
 import { DocumentCommentMarkers } from "@app/components/editor/document/DocumentCommentMarkers";
 import {
   DocumentCommentsPanel,
@@ -39,11 +40,12 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
  */
 /**
  * @cc [owner:flvndvd;tdraier,label:product] document-comments-availability
- * Existing comments MUST remain visible and browsable, through highlights, markers and the
- * panel, whether the document is editable or read-only. Clicking a highlight without selecting
- * text MUST reveal its comment; a click that ends a text selection MUST NOT, so the selection
- * keeps the editor's focus and its controls. Overlapping comments MUST reveal the one covering
- * the least text first, then cycle outward on repeated clicks.
+ * Commenting MUST require an editable document and commentAuthor. Existing comments MUST
+ * remain visible and browsable, through highlights, markers and the panel, in read-only
+ * documents and without an author. Clicking a highlight without selecting text MUST reveal its
+ * comment; a click that ends a text selection MUST NOT, so the selection keeps the editor's
+ * focus and its controls. Overlapping comments MUST reveal the one covering the least text
+ * first, then cycle outward on repeated clicks.
  */
 export const Document = ({
   initialContent,
@@ -54,6 +56,7 @@ export const Document = ({
   onSave,
   onStateChange,
   badge,
+  commentAuthor,
 }: DocumentProps) => {
   const { editor, editable, unsupported, dirty, saving, error, save } =
     useDocumentEditor({
@@ -64,10 +67,14 @@ export const Document = ({
       onStateChange,
     });
   const blockMenu = useDocumentBlockMenu(editor, editable);
-  const comments = useDocumentComments({ editor });
+  const comments = useDocumentComments({
+    editor,
+    canComment: editable,
+    author: commentAuthor,
+  });
   const contentRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
-  const showCommentsToggle = comments.comments.length > 0;
+  const showCommentsToggle = comments.comments.length > 0 || comments.canWrite;
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
     if (
@@ -86,6 +93,18 @@ export const Document = ({
     ) {
       event.preventDefault();
       void save();
+      return;
+    }
+
+    if (
+      (event.metaKey || event.ctrlKey) &&
+      event.altKey &&
+      !event.shiftKey &&
+      event.code === "KeyM"
+    ) {
+      if (comments.startDraft()) {
+        event.preventDefault();
+      }
       return;
     }
 
@@ -145,6 +164,7 @@ export const Document = ({
               <DocumentSelectionToolbar
                 editor={editor}
                 mountPortalContainer={mountPortalContainer}
+                onComment={comments.canWrite ? comments.startDraft : undefined}
               />
               <DocumentBlockMenu editor={editor} menu={blockMenu} />
             </>
@@ -163,6 +183,16 @@ export const Document = ({
               comments={comments}
               containerRef={contentRef}
               mountPortalContainer={mountPortalContainer}
+            />
+          )}
+          {editor && commentAuthor && comments.draft && (
+            <DocumentCommentComposer
+              // A new range is a new draft: reset the typed text and position.
+              key={`${comments.draft.from}:${comments.draft.to}`}
+              editor={editor}
+              author={commentAuthor}
+              comments={comments}
+              containerRef={contentRef}
             />
           )}
         </div>
