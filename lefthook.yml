@@ -181,7 +181,7 @@ pre-commit:
 
     # Formatting (all JS/TS files in monorepo)
     oxfmt:
-      glob: "*.{js,jsx,ts,tsx}"
+      glob: "*.{js,jsx,ts,tsx,css,scss}"
       run: npm run format:lefthook -- {staged_files}
       stage_fixed: true
 
