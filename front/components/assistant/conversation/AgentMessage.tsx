@@ -64,6 +64,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { OpenUserAnalyticsEvent } from "@app/lib/analytics/events";
+import { isFilesWritingTool } from "@app/lib/api/actions/servers/files/metadata";
 import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -77,6 +78,7 @@ import { getFilePreviewDirectivePaths } from "@app/lib/markdown/file_preview";
 import { extractFromString } from "@app/lib/mentions/format";
 import { LinkWrapper } from "@app/lib/platform";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import { getFilePathViewUrl } from "@app/lib/swr/files";
 import { useModels } from "@app/lib/swr/models";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
@@ -109,6 +111,7 @@ import {
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { isString } from "@app/types/shared/utils/general";
 import type {
   LightWorkspaceType,
   UserType,
@@ -493,6 +496,28 @@ export function AgentMessage({
               action.generatedFiles.length > 0
             ) {
               void mutateSandboxFiles();
+            }
+            // An agent wrote a file; an open preview or editor of it must learn now rather
+            // than on the next window focus. The editor reopens when clean and holds its
+            // draft otherwise. Same reliable per-message stream as the plan revalidation.
+            if (
+              action.internalMCPServerName === "files" &&
+              isFilesWritingTool(action.toolName)
+            ) {
+              // The tools name the canonical scoped path every preview keys on.
+              const paths = [
+                action.params.path,
+                action.params.source,
+                action.params.dest,
+              ].filter(isString);
+              for (const path of paths) {
+                void mutate(getFilePathViewUrl(owner, path));
+              }
+            } else if (action.internalMCPServerName === "sandbox") {
+              // A shell command names no files; anything under the mount may have changed.
+              void mutate(
+                (key) => typeof key === "string" && key.includes("/files/path/")
+              );
             }
             if (action.internalMCPServerName === "plan_mode") {
               // The conversation-channel `plan_updated` event can be lost (flaky SSE + small replay
