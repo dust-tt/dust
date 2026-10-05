@@ -6109,7 +6109,6 @@ export const tailoredEnrichments: Record<
     ],
     relatedIntegrations: ["spendesk", "netsuite", "stripe"],
   },
-  // Clay: 19 real tools.
   clay: {
     seoTitle: "Enrich companies and contacts with Clay from Dust",
     seoSubtitle:
