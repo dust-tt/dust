@@ -1039,6 +1039,21 @@ export class AgentResource
     return resource ?? null;
   }
 
+  /**
+   * @cc [owner:avervaet,label:security] fetch-for-reader-or-workspace-admin
+   * Returns `null` unless the caller holds `read` on the agent or is a workspace admin.
+   */
+  static async fetchByIdForReaderOrWorkspaceAdmin(
+    auth: Authenticator,
+    agentId: string
+  ): Promise<AgentResource | null> {
+    const agent = await this.fetchById(auth, agentId);
+    if (!agent || (!auth.can("read", agent) && !auth.isAdmin())) {
+      return null;
+    }
+    return agent;
+  }
+
   // -- Versions: the configuration versions of an already-resolved agent --
 
   /**
