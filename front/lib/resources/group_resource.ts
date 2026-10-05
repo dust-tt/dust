@@ -2197,8 +2197,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Changing the members of an admin-only group hands out or takes away admin-reserved
-    // access, so it is restricted to workspace admins.
+    // Changing the members of an admin-only group escalates/de-escalates
+    // admin access, so it is restricted to workspace admins.
     if (memberIds !== undefined && !(await this.canManageMembers(auth))) {
       return new Err(
         new DustError("unauthorized", ADMIN_ONLY_MEMBERSHIP_ERROR_MESSAGE)
@@ -2300,8 +2300,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Changing the members of an admin-only group hands out or takes away admin-reserved
-    // access, so it is restricted to workspace admins.
+    // Changing the members of an admin-only group escalates/de-escalates
+    // admin access, so it is restricted to workspace admins.
     if (!(await this.canManageMembers(auth))) {
       return new Err(
         new DustError("unauthorized", ADMIN_ONLY_MEMBERSHIP_ERROR_MESSAGE)

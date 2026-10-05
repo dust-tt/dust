@@ -1839,29 +1839,13 @@ describe("GroupResource", () => {
       return (await group.getActiveMembers(authenticator)).map((m) => m.sId);
     }
 
-    it("blocks a manager from adding themselves to a group holding admin on security", async () => {
-      const { group, member } = await makeCapabilityGroup("Security", {
+    it.each([
+      "security",
+      "billing",
+    ] as const)("blocks a manager from adding themselves to a group holding admin on %s", async (resourceType) => {
+      const { group, member } = await makeCapabilityGroup("Admin-only", {
         grantType: "admin",
-        resourceType: "security",
-      });
-      const { actor, auth } = await actorWithRole("manager");
-
-      const res = await group.updateRegularManualGroupMembers(auth, {
-        addUserIds: [actor.sId],
-        removeUserIds: [],
-      });
-
-      expect(res.isErr()).toBe(true);
-      if (res.isErr()) {
-        expect(res.error.code).toBe("unauthorized");
-      }
-      expect(await memberIdsOf(group)).toEqual([member.sId]);
-    });
-
-    it("blocks a manager from adding themselves to a group holding admin on billing", async () => {
-      const { group, member } = await makeCapabilityGroup("Billing", {
-        grantType: "admin",
-        resourceType: "billing",
+        resourceType,
       });
       const { actor, auth } = await actorWithRole("manager");
 

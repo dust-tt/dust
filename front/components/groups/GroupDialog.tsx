@@ -46,10 +46,11 @@ export function GroupDialog({
     disabled: !isOpen,
   });
 
-  // Membership of an admin-only group (granting the admin role or an admin-only
-  // capability such as billing or security) is restricted to admins: the member
-  // list is read-only for everyone else, independently of the group details.
-  const areMembersReadOnly =
+  // Managing the membership of an admin-only group (admin role or admin-only
+  // capability such as billing or security) is restricted to admins: adding a
+  // member hands them that access. Managers can view but not edit such a
+  // group's membership.
+  const isReadOnlyForManager =
     isEdit && group?.allowedActions?.canEditMembers !== true;
 
   // In edit mode we wait for the group and its members before mounting the
@@ -71,7 +72,7 @@ export function GroupDialog({
             initialName={group?.name ?? ""}
             initialMembers={members}
             initialManagers={managers}
-            membersReadOnly={areMembersReadOnly}
+            membersReadOnly={isReadOnlyForManager}
             onCreated={onCreated}
             onClose={() => onOpenChange(false)}
           />
@@ -94,8 +95,8 @@ interface GroupFormProps {
   initialName: string;
   initialMembers: SearchMemberType[];
   initialManagers: SearchMemberType[];
-  // When true, the current user may not change this group's members (see the
-  // admin-only membership contract); the group details follow `canEditDetails`.
+  // When true, the group is admin-only and the current user is not an admin:
+  // membership is read-only (see the admin-only membership contract).
   membersReadOnly?: boolean;
   onCreated?: (group: GroupType) => void;
   onClose: () => void;
@@ -157,7 +158,6 @@ function GroupForm({
   const shouldDisableButton =
     isSubmitting ||
     name.trim().length === 0 ||
-    (membersReadOnly && !canEditDetails && !canAssignManagers) ||
     (!groupId && selectedMemberIds.size === 0) ||
     (hasMemberChanges && selectedMemberIds.size === 0);
 
@@ -225,7 +225,7 @@ function GroupForm({
             <ContentMessage
               variant="warning"
               icon={InfoCircle}
-              title="Read-only members"
+              title="Managed by admins"
               size="sm"
             >
               {group?.grantedRole === "admin"

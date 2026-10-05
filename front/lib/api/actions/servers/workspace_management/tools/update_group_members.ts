@@ -65,14 +65,13 @@ export async function updateGroupMembers(
     );
   }
 
-  // Being a manager is not enough for an admin-only group (one granting the admin role or an
-  // admin-only capability such as billing or security administration): changing its members hands
-  // out or takes away admin-reserved access. The resource re-checks this; refusing here gives a
-  // clear reason.
+  // Being a manager is not enough for an admin-only group (admin role or admin-only capability):
+  // changing its members promotes or demotes admin access. The resource re-checks this; refusing
+  // here gives a clear reason.
   if (!(await group.canManageMembers(auth))) {
     return new Err(
       new MCPError(
-        `Group ${group.name} [${group.sId}] grants the admin role or an admin-only capability such as billing or security; only workspace admins can manage its members.`,
+        `Group ${group.name} [${group.sId}] grants the admin role or an admin-only capability; only workspace admins can manage its members.`,
         { tracked: false }
       )
     );
