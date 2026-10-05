@@ -16,7 +16,7 @@ import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import { usePokeAssistantTemplate } from "@app/poke/swr";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { TAILWIND_BACKGROUND_COLORS } from "@app/types/assistant/avatar";
-import { CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import { CLAUDE_SONNET_5_5_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import type {
   CreateTemplateFormType,
   TemplateTagCodeType,
@@ -551,7 +551,7 @@ export function TemplateDetailPage() {
       agentFacingDescription: "",
       handle: "",
       presetInstructions: "",
-      presetModelId: CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG.modelId,
+      presetModelId: CLAUDE_SONNET_5_5_DEFAULT_MODEL_CONFIG.modelId,
       helpInstructions: "",
       helpActions: "",
       sidekickInstructions: "",
