@@ -761,3 +761,12 @@ In UI served with Datadog RUM (Real User Monitoring) session replay (`front-spa`
 "mask-user-input"`), any credential rendered as DOM text outside a form input (API keys, URL
 secrets, signing secrets, tokens, or a URL embedding one) MUST be inside an element carrying the
 `dd-privacy-mask` class.
+
+@cc [owner:nfedrigo,label:architecture;performance] novu-workflows-only-imported-by-bridge
+Modules under `front/lib/notifications/workflows/` MUST only be imported by
+`front-api/routes/novu/index.ts` (the Novu bridge) and by their own tests. Code that triggers
+notifications MUST import from `front/lib/notifications/triggers/`, and modules under
+`front/lib/notifications/triggers/` MUST NOT import (directly or transitively) any workflow module.
+
+Rationale: workflow definitions render translated text with Lingui macros and `.po` catalogs that
+only the front-api bundle compiles; Temporal workers and tsx scripts crash when loading them.

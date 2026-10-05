@@ -63,7 +63,7 @@ import { listPodsForScope } from "@app/lib/api/projects/list";
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
-import { notifyPodMembersAdded } from "@app/lib/notifications/workflows/pod-added-as-member";
+import { notifyPodMembersAdded } from "@app/lib/notifications/triggers/pod-added-as-member";
 import { seedInitialPodTasks } from "@app/lib/project_task/seed_initial_pod_tasks";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";

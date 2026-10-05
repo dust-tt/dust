@@ -1,44 +1,28 @@
-import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { Authenticator } from "@app/lib/auth";
-import { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
-import { getActiveSubscriberAuth, getNovuClient } from "@app/lib/notifications";
+import { getActiveSubscriberAuth } from "@app/lib/notifications";
 import { renderEmail as renderDigestEmail } from "@app/lib/notifications/email-templates/agent-message-feedback-digest";
+import type { AgentMessageFeedbackPayloadType } from "@app/lib/notifications/triggers/agent-message-feedback";
+import {
+  AGENT_MESSAGE_FEEDBACK_TRIGGER_ID,
+  AgentMessageFeedbackPayloadSchema,
+} from "@app/lib/notifications/triggers/agent-message-feedback";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
-import logger from "@app/logger/logger";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import { isDevelopment } from "@app/types/shared/env";
-import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
 import { workflow } from "@novu/framework";
 import z from "zod";
-
-const AgentMessageFeedbackPayloadSchema = z.object({
-  workspaceId: z.string(),
-  conversationId: z.string(),
-  messageId: z.string(),
-  agentConfigurationId: z.string(),
-  userWhoGaveFeedbackId: z.string(),
-  thumbDirection: z.union([z.literal("up"), z.literal("down")]),
-  feedbackId: z.string(),
-});
-
-type AgentMessageFeedbackPayloadType = z.infer<
-  typeof AgentMessageFeedbackPayloadSchema
->;
 
 const isAgentMessageFeedbackPayload = (
   payload: unknown
 ): payload is AgentMessageFeedbackPayloadType => {
   return AgentMessageFeedbackPayloadSchema.safeParse(payload).success;
 };
-
-const AGENT_MESSAGE_FEEDBACK_TRIGGER_ID = "agent-message-feedback";
 
 const FeedbackDetailsSchema = z.object({
   userWhoGaveFeedbackFullName: z.string(),
@@ -347,117 +331,3 @@ export const agentMessageFeedbackWorkflow = workflow(
     tags: ["conversations"] as NotificationAllowedTags,
   }
 );
-
-export const triggerAgentMessageFeedbackNotification = async (
-  auth: Authenticator,
-  {
-    conversationId,
-    messageId,
-    agentConfigurationId,
-    thumbDirection,
-    feedbackId,
-  }: {
-    conversationId: string;
-    messageId: string;
-    agentConfigurationId: string;
-    thumbDirection: AgentMessageFeedbackDirection;
-    feedbackId: string;
-  }
-): Promise<Result<void, DustError<"internal_error">>> => {
-  const userWhoGaveFeedback = auth.user();
-
-  if (!userWhoGaveFeedback) {
-    return new Ok(undefined);
-  }
-
-  const conversation = await ConversationResource.fetchById(
-    auth,
-    conversationId
-  );
-
-  if (!conversation) {
-    return new Err(new DustError("internal_error", "Conversation not found"));
-  }
-
-  if (conversation.depth > 0) {
-    logger.info(
-      { conversationDepth: conversation.depth },
-      "Skipping notification for sub-conversation"
-    );
-    return new Ok(undefined);
-  }
-
-  const agent = await AgentResource.fetchById(auth, agentConfigurationId);
-
-  if (!agent) {
-    return new Err(
-      new DustError("internal_error", "Agent configuration not found")
-    );
-  }
-
-  const editors = (await agent.listEditors(auth)) ?? [];
-
-  if (editors.length === 0) {
-    logger.info(
-      { agentConfigurationId },
-      "No editors found for agent, skipping notification"
-    );
-    return new Ok(undefined);
-  }
-
-  // In development, allow sending notifications to yourself for debugging
-  const editorsToNotify = isDevelopment()
-    ? editors
-    : editors.filter((editor) => editor.sId !== userWhoGaveFeedback.sId);
-
-  if (editorsToNotify.length === 0) {
-    return new Ok(undefined);
-  }
-
-  try {
-    const novuClient = await getNovuClient();
-
-    const payload: AgentMessageFeedbackPayloadType = {
-      workspaceId: auth.getNonNullableWorkspace().sId,
-      conversationId,
-      messageId,
-      agentConfigurationId,
-      userWhoGaveFeedbackId: userWhoGaveFeedback.sId,
-      thumbDirection,
-      feedbackId,
-    };
-
-    const r = await novuClient.triggerBulk({
-      events: editorsToNotify.map((editor) => ({
-        workflowId: AGENT_MESSAGE_FEEDBACK_TRIGGER_ID,
-        to: {
-          subscriberId: editor.sId,
-          email: editor.email,
-          firstName: editor.firstName ?? undefined,
-          lastName: editor.lastName ?? undefined,
-        },
-        payload,
-      })),
-    });
-
-    if (r.result.some((res) => !!res.error?.length)) {
-      const eventErrors = r.result
-        .filter((res) => !!res.error?.length)
-        .map(({ error }) => error?.join("; "))
-        .join("; ");
-      return new Err({
-        name: "dust_error",
-        code: "internal_error",
-        message: `Failed to trigger agent message feedback notification: errors: ${eventErrors}`,
-      });
-    }
-  } catch {
-    return new Err({
-      name: "dust_error",
-      code: "internal_error",
-      message: "Failed to trigger agent message feedback notification",
-    });
-  }
-
-  return new Ok(undefined);
-};

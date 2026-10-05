@@ -13,7 +13,7 @@ import {
 } from "@app/lib/llms/agent_message_content_parser";
 import type { UserBlockedReason } from "@app/lib/metronome/user_block";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
-import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
+import { notifyManualActionRequired } from "@app/lib/notifications/triggers/manual-action-required";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
