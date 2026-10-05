@@ -2,6 +2,7 @@ import { DUST_STREAM_ENDPOINTS } from "@app/lib/llms/stream";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
 import { ORDERED_REASONING_EFFORTS } from "@app/lib/model_constructors/types/reasoning_efforts";
+import { CLAUDE_SONNET_4_6_MODEL_ID } from "@app/types/assistant/models/anthropic";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { describe, expect, it } from "vitest";
 
@@ -36,11 +37,13 @@ describe.each(Object.values(DUST_STREAM_ENDPOINTS))("$id", (endpoint) => {
     expect(supportedReasoningEfforts[defaultReasoningEffort]).toBe(true);
   });
 
-  it("defaults to the effort the provider documents as its default", () => {
+  it("uses the provider default unless overridden by Dust", () => {
     const providerDefault = endpoint.configSchema.parse({}).reasoning?.effort;
 
     expect(endpoint.modelConfig.defaultReasoningEffort).toBe(
-      providerDefault ?? "none"
+      endpoint.modelConfig.modelId === CLAUDE_SONNET_4_6_MODEL_ID
+        ? "medium"
+        : (providerDefault ?? "none")
     );
   });
 });
