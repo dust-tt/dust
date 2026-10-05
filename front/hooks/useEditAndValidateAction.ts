@@ -54,7 +54,7 @@ export function useEditAndValidateAction({
       } catch (err) {
         onError(
           isAPIErrorResponse(err)
-            ? err.error.message
+            ? (err.error.message ?? err.error.type)
             : "Failed to edit and approve action. Please try again."
         );
         return { success: false };

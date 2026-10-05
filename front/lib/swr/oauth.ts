@@ -5,7 +5,7 @@ import type {
   GetOAuthRedirectUriResponseBody,
   GetOAuthSetupResponseBody,
 } from "@app/types/api/oauth";
-import type { APIError, WithAPIErrorResponse } from "@app/types/error";
+import type { PrivateAPIError, WithAPIErrorResponse } from "@app/types/error";
 import { isAPIErrorResponse } from "@app/types/error";
 import type {
   OAuthConnectionType,
@@ -21,7 +21,7 @@ export const useFinalize = () => {
   const doFinalize = async (
     provider: OAuthProvider,
     queryParams: Record<string, string | string[] | undefined>
-  ): Promise<Result<OAuthConnectionType, APIError>> => {
+  ): Promise<Result<OAuthConnectionType, PrivateAPIError>> => {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(queryParams)) {
       if (Array.isArray(value)) {

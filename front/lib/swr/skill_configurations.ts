@@ -888,7 +888,7 @@ export function useDetectSkillsFromRepo({
             setDetectError(
               err.error.type === "skill_github_repository_not_found"
                 ? null
-                : err.error.message
+                : (err.error.message ?? err.error.type)
             );
           } else {
             setDetectError("Failed to detect skills from this repository.");
@@ -1051,7 +1051,7 @@ export function useDetectSkillsFromFiles({
       } catch (err) {
         setDetectError(
           isAPIErrorResponse(err)
-            ? err.error.message
+            ? (err.error.message ?? err.error.type)
             : "Failed to detect skills from the uploaded files."
         );
       } finally {

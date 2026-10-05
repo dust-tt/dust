@@ -201,15 +201,29 @@ export type APIError = {
   unverifiableRefs?: string[];
 };
 
-export function isAPIError(obj: unknown): obj is APIError {
+/**
+ * @cc [owner:Nils-Fedrigo,label:error-handling;api] private-api-error-message-adds-information
+ * Errors sent by private endpoints (everything outside `/api/v1`) may omit `message`. When present,
+ * the UI shows it verbatim after the translation of `type`, so new private error paths MUST NOT
+ * send a message that only restates the type ("User not found."): they omit it with
+ * `privateApiError`. Clients MUST handle a missing `message`.
+ */
+export type PrivateAPIError = Omit<APIError, "message"> & { message?: string };
+
+export function isAPIErrorType(value: string): value is APIErrorType {
+  return API_ERROR_TYPES.some((type) => type === value);
+}
+
+export function isAPIError(obj: unknown): obj is PrivateAPIError {
   return (
     typeof obj === "object" &&
     obj !== null &&
-    "message" in obj &&
-    typeof obj.message === "string" &&
+    (!("message" in obj) ||
+      obj.message === undefined ||
+      typeof obj.message === "string") &&
     "type" in obj &&
     typeof obj.type === "string" &&
-    API_ERROR_TYPES.includes(obj.type as APIErrorType)
+    isAPIErrorType(obj.type)
   );
 }
 
@@ -232,7 +246,7 @@ export type APIErrorWithContentfulStatusCode =
   APIErrorWithStatusCode<ContentfulStatusCode>;
 
 export type APIErrorResponse = {
-  error: APIError;
+  error: PrivateAPIError;
 };
 
 export function isAPIErrorResponse(obj: unknown): obj is APIErrorResponse {

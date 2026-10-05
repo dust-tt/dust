@@ -81,7 +81,12 @@ async function patchCreditUsageConfiguration(
     );
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
-      return { ok: false, message: errorData.message };
+      return {
+        ok: false,
+        message:
+          errorData.message ??
+          ("type" in errorData ? errorData.type : "An error occurred"),
+      };
     }
     return { ok: true };
   } catch (e) {

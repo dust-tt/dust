@@ -1026,12 +1026,13 @@ export const VisualizationActionIframe = forwardRef<
 
         if (!response.ok) {
           const error = await getErrorFromResponse(response);
+          // Forward the API error type verbatim. Re-deriving a code here would collapse every
+          // failure but one into `invocation_failed` and drop the only classification the
+          // endpoint produced.
+          const code = isAPIError(error) ? error.type : "invocation_failed";
           return new Err({
-            // Forward the API error type verbatim. Re-deriving a code here would collapse every
-            // failure but one into `invocation_failed` and drop the only classification the
-            // endpoint produced.
-            code: isAPIError(error) ? error.type : "invocation_failed",
-            message: error.message,
+            code,
+            message: error.message ?? code,
             status: response.status,
           });
         }

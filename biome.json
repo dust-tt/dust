@@ -210,6 +210,16 @@
     },
     {
       "includes": [
+        "front-api/routes/v1/**/*.ts",
+        "front-api/middlewares/**/*.ts",
+        "front-api/lib/**/*.ts",
+        "!front-api/middlewares/utils.ts",
+        "!**/*.test.ts"
+      ],
+      "plugins": ["./.grit/patterns/noPrivateApiErrorInShared.grit"]
+    },
+    {
+      "includes": [
         "connectors/src/lib/models/**/*.ts",
         "connectors/src/resources/storage/models/**/*.ts",
         "front/lib/models/**/*.ts",

@@ -7,6 +7,7 @@ import type {
   APIErrorResponse,
   APIErrorType,
   APIErrorWithContentfulStatusCode,
+  PrivateAPIError,
 } from "@app/types/error";
 import { EXPECTED_API_ERROR_TYPES } from "@app/types/error";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -14,6 +15,7 @@ import { getClientIpFromContext } from "@front-api/lib/request";
 import type { Context, ErrorHandler, TypedResponse } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { routePath } from "hono/route";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 /**
  * Return type for a Hono JSON handler. Wraps the success body type with the
@@ -32,14 +34,39 @@ export type HandlerResult<T> = Promise<TypedResponse<T | APIErrorResponse>>;
  * Pass `error` when forwarding an underlying exception so its message and
  * stack are captured in the log instead of the synthetic one.
  */
+/**
+ * @cc [owner:Nils-Fedrigo,label:api;error-handling] api-error-requires-message
+ * `apiError` MUST only accept errors carrying a `message`: it serves the public API (`/api/v1`)
+ * and the middlewares and helpers shared with it, whose clients rely on `message`. Omitting
+ * `message` is only allowed through `privateApiError`.
+ */
 export function apiError(
   ctx: Context,
   err: APIErrorWithContentfulStatusCode,
   error?: Error
 ) {
+  return privateApiError(ctx, err, error);
+}
+
+/**
+ * Same as `apiError`, but `message` is optional, so private endpoints can omit messages that only
+ * restate the error type (the UI translates the type on its own).
+ */
+/**
+ * @cc [owner:Nils-Fedrigo,label:api;error-handling] private-api-error-only-in-private-routes
+ * `privateApiError` MUST only be called from private route files (`front-api/routes/**` outside
+ * `routes/v1/**`). Middlewares and helpers under `front-api/middlewares` and `front-api/lib` are
+ * shared with the public API and MUST use `apiError`. Enforced by the `noPrivateApiErrorInShared`
+ * Biome plugin.
+ */
+export function privateApiError(
+  ctx: Context,
+  err: { status_code: ContentfulStatusCode; api_error: PrivateAPIError },
+  error?: Error
+) {
   const callstack = new Error().stack;
   const errorAttrs = {
-    message: error?.message ?? err.api_error.message,
+    message: error?.message ?? err.api_error.message ?? err.api_error.type,
     kind: err.api_error.type,
     stack: error?.stack ?? callstack,
   };

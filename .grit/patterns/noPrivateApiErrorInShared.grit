@@ -1,0 +1,14 @@
+engine biome(1.0)
+language js
+
+// `privateApiError` lets a handler omit `message`. Only private route files may call it:
+// public API routes (`front-api/routes/v1/**`) and the middlewares and helpers shared with them
+// must use `apiError`, whose type requires `message`.
+// See [private-api-error-only-in-private-routes] in front-api/middlewares/utils.ts.
+`privateApiError($...)` as $call where {
+    register_diagnostic(
+        span = $call,
+        message = "`privateApiError` is only allowed in private route files ([private-api-error-only-in-private-routes]). Use `apiError` with a `message` here: the public API and code shared with it must always send one.",
+        severity = "error"
+    )
+}

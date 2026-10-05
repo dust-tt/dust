@@ -177,7 +177,10 @@ export function useRunPokePlugin({
     } else {
       const errorData = await getErrorFromResponse(res);
 
-      return new Err(errorData.message);
+      return new Err(
+        errorData.message ??
+          ("type" in errorData ? errorData.type : "Unknown error")
+      );
     }
   };
 

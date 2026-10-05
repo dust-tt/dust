@@ -705,15 +705,18 @@ export function useShareInteractiveContentFile({
           ? errorData.unverifiableRefs
           : undefined;
 
+      const message =
+        errorData.message ??
+        ("type" in errorData ? errorData.type : "An error occurred");
       sendNotification({
         type: "error",
         title: "Failed to update frame sharing",
-        description: errorData.message,
+        description: message,
       });
 
       return {
         success: false,
-        message: errorData.message,
+        message,
         unverifiableRefs,
       };
     }

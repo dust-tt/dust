@@ -55,7 +55,7 @@ export function useRequestUpgrade({ workspaceId }: { workspaceId: string }) {
             description: errorData.message,
           });
         }
-        return new Err({ errorType, message: errorData.message });
+        return new Err({ errorType, message: errorData.message ?? errorType });
       }
 
       await mutate();
