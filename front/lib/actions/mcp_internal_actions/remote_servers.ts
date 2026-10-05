@@ -4976,6 +4976,263 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10044,
+    name: "ClickUp",
+    description:
+      "ClickUp tools for searching and managing tasks, comments, time tracking, lists, folders, Docs and Chat.",
+    url: "https://mcp.clickup.com/mcp",
+    icon: "ClickUpLogo",
+    documentationUrl:
+      "https://developer.clickup.com/docs/connect-an-ai-assistant-to-clickups-mcp-server",
+    connectionInstructions:
+      "ClickUp uses OAuth. You will be prompted to sign in with your ClickUp account and choose the workspace to connect.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      search_workspace: "never_ask",
+      search_tasks_by_type: "never_ask",
+      search_tasks_by_tag: "never_ask",
+      get_task: "never_ask",
+      get_task_comments: "never_ask",
+      get_threaded_replies: "never_ask",
+      get_task_time_entries: "never_ask",
+      get_time_entries_multiple: "never_ask",
+      get_current_time_entry: "never_ask",
+      get_workspace_hierarchy: "never_ask",
+      get_list: "never_ask",
+      get_folder: "never_ask",
+      get_workspace_members: "never_ask",
+      find_member_by_name: "never_ask",
+      resolve_assignees: "never_ask",
+      get_chat_channels: "never_ask",
+      list_document_pages: "never_ask",
+      get_document_pages: "never_ask",
+      get_time_in_status_task: "never_ask",
+      get_time_in_status_list: "never_ask",
+      create_task: "low",
+      update_task: "low",
+      set_custom_fields: "low",
+      attach_file_to_task: "low",
+      add_tag_to_task: "low",
+      remove_tag_from_task: "low",
+      add_task_link: "low",
+      add_dependency: "low",
+      move_task_to_list: "low",
+      add_task_to_list: "low",
+      start_time_tracking: "low",
+      stop_time_tracking: "low",
+      add_time_entry: "low",
+      create_list: "low",
+      create_list_in_folder: "low",
+      update_list: "low",
+      create_folder: "low",
+      update_folder: "low",
+      create_document: "low",
+      create_document_page: "low",
+      update_document_page: "low",
+      delete_task: "high",
+      create_bulk_tasks: "high",
+      update_bulk_tasks: "high",
+      remove_task_link: "high",
+      remove_dependency: "high",
+      create_task_comment: "high",
+      send_chat_message: "high",
+    },
+    toolDisplayLabels: {
+      search_workspace: {
+        running: "Searching the ClickUp workspace",
+        done: "Searched the ClickUp workspace",
+      },
+      search_tasks_by_type: {
+        running: "Searching tasks by type on ClickUp",
+        done: "Searched tasks by type on ClickUp",
+      },
+      search_tasks_by_tag: {
+        running: "Searching tasks by tag on ClickUp",
+        done: "Searched tasks by tag on ClickUp",
+      },
+      get_task: {
+        running: "Loading a task from ClickUp",
+        done: "Loaded a task from ClickUp",
+      },
+      get_task_comments: {
+        running: "Loading task comments from ClickUp",
+        done: "Loaded task comments from ClickUp",
+      },
+      get_threaded_replies: {
+        running: "Loading threaded replies from ClickUp",
+        done: "Loaded threaded replies from ClickUp",
+      },
+      get_task_time_entries: {
+        running: "Loading task time entries from ClickUp",
+        done: "Loaded task time entries from ClickUp",
+      },
+      get_time_entries_multiple: {
+        running: "Loading time entries from ClickUp",
+        done: "Loaded time entries from ClickUp",
+      },
+      get_current_time_entry: {
+        running: "Checking the running timer on ClickUp",
+        done: "Checked the running timer on ClickUp",
+      },
+      get_workspace_hierarchy: {
+        running: "Loading the workspace hierarchy from ClickUp",
+        done: "Loaded the workspace hierarchy from ClickUp",
+      },
+      get_list: {
+        running: "Loading a list from ClickUp",
+        done: "Loaded a list from ClickUp",
+      },
+      get_folder: {
+        running: "Loading a folder from ClickUp",
+        done: "Loaded a folder from ClickUp",
+      },
+      get_workspace_members: {
+        running: "Listing workspace members on ClickUp",
+        done: "Listed workspace members on ClickUp",
+      },
+      find_member_by_name: {
+        running: "Finding a member on ClickUp",
+        done: "Found a member on ClickUp",
+      },
+      resolve_assignees: {
+        running: "Resolving assignees on ClickUp",
+        done: "Resolved assignees on ClickUp",
+      },
+      get_chat_channels: {
+        running: "Listing chat channels on ClickUp",
+        done: "Listed chat channels on ClickUp",
+      },
+      list_document_pages: {
+        running: "Listing Doc pages on ClickUp",
+        done: "Listed Doc pages on ClickUp",
+      },
+      get_document_pages: {
+        running: "Loading Doc pages from ClickUp",
+        done: "Loaded Doc pages from ClickUp",
+      },
+      get_time_in_status_task: {
+        running: "Loading time in status for a task on ClickUp",
+        done: "Loaded time in status for a task on ClickUp",
+      },
+      get_time_in_status_list: {
+        running: "Loading time in status for a list on ClickUp",
+        done: "Loaded time in status for a list on ClickUp",
+      },
+      create_task: {
+        running: "Creating a task on ClickUp",
+        done: "Created a task on ClickUp",
+      },
+      update_task: {
+        running: "Updating a task on ClickUp",
+        done: "Updated a task on ClickUp",
+      },
+      set_custom_fields: {
+        running: "Setting custom fields on ClickUp",
+        done: "Set custom fields on ClickUp",
+      },
+      attach_file_to_task: {
+        running: "Attaching a file to a task on ClickUp",
+        done: "Attached a file to a task on ClickUp",
+      },
+      add_tag_to_task: {
+        running: "Adding a tag to a task on ClickUp",
+        done: "Added a tag to a task on ClickUp",
+      },
+      remove_tag_from_task: {
+        running: "Removing a tag from a task on ClickUp",
+        done: "Removed a tag from a task on ClickUp",
+      },
+      add_task_link: {
+        running: "Linking tasks on ClickUp",
+        done: "Linked tasks on ClickUp",
+      },
+      add_dependency: {
+        running: "Adding a task dependency on ClickUp",
+        done: "Added a task dependency on ClickUp",
+      },
+      move_task_to_list: {
+        running: "Moving a task to another list on ClickUp",
+        done: "Moved a task to another list on ClickUp",
+      },
+      add_task_to_list: {
+        running: "Adding a task to a list on ClickUp",
+        done: "Added a task to a list on ClickUp",
+      },
+      start_time_tracking: {
+        running: "Starting the timer on ClickUp",
+        done: "Started the timer on ClickUp",
+      },
+      stop_time_tracking: {
+        running: "Stopping the timer on ClickUp",
+        done: "Stopped the timer on ClickUp",
+      },
+      add_time_entry: {
+        running: "Adding a time entry on ClickUp",
+        done: "Added a time entry on ClickUp",
+      },
+      create_list: {
+        running: "Creating a list on ClickUp",
+        done: "Created a list on ClickUp",
+      },
+      create_list_in_folder: {
+        running: "Creating a list in a folder on ClickUp",
+        done: "Created a list in a folder on ClickUp",
+      },
+      update_list: {
+        running: "Updating a list on ClickUp",
+        done: "Updated a list on ClickUp",
+      },
+      create_folder: {
+        running: "Creating a folder on ClickUp",
+        done: "Created a folder on ClickUp",
+      },
+      update_folder: {
+        running: "Updating a folder on ClickUp",
+        done: "Updated a folder on ClickUp",
+      },
+      create_document: {
+        running: "Creating a Doc on ClickUp",
+        done: "Created a Doc on ClickUp",
+      },
+      create_document_page: {
+        running: "Creating a Doc page on ClickUp",
+        done: "Created a Doc page on ClickUp",
+      },
+      update_document_page: {
+        running: "Updating a Doc page on ClickUp",
+        done: "Updated a Doc page on ClickUp",
+      },
+      delete_task: {
+        running: "Deleting a task on ClickUp",
+        done: "Deleted a task on ClickUp",
+      },
+      create_bulk_tasks: {
+        running: "Creating multiple tasks on ClickUp",
+        done: "Created multiple tasks on ClickUp",
+      },
+      update_bulk_tasks: {
+        running: "Updating multiple tasks on ClickUp",
+        done: "Updated multiple tasks on ClickUp",
+      },
+      remove_task_link: {
+        running: "Removing a task link on ClickUp",
+        done: "Removed a task link on ClickUp",
+      },
+      remove_dependency: {
+        running: "Removing a task dependency on ClickUp",
+        done: "Removed a task dependency on ClickUp",
+      },
+      create_task_comment: {
+        running: "Commenting on a task on ClickUp",
+        done: "Commented on a task on ClickUp",
+      },
+      send_chat_message: {
+        running: "Sending a chat message on ClickUp",
+        done: "Sent a chat message on ClickUp",
+      },
+    },
+  },
 ];
 
 export const getDefaultRemoteMCPServerByURL = (

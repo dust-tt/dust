@@ -201,6 +201,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "CanvaLogo",
   "ClariLogo",
   "ClayLogo",
+  "ClickUpLogo",
   "CommandLineIcon",
   "ConfluenceLogo",
   "ContentsquareLogo",
