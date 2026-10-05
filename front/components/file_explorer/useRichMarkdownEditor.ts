@@ -127,7 +127,15 @@ export function useRichMarkdownEditor({
   // the new content; a dirty one keeps its draft, and `save` refuses to write over the newer
   // version until the editor is clean or the file reopened.
   useEffect(() => {
-    if (!opens || source === undefined || source === base) {
+    if (!opens || source === undefined) {
+      return;
+    }
+    if (source === base) {
+      // Same text, newer revision: another writer saved identical content. Nothing to reopen,
+      // but the next save must name the revision now stored.
+      if (opened !== null && revision !== opened.revision) {
+        setOpened({ ...opened, revision });
+      }
       return;
     }
     const written = writtenRef.current;
@@ -151,6 +159,7 @@ export function useRichMarkdownEditor({
     }
   }, [
     opens,
+    opened,
     source,
     base,
     revision,

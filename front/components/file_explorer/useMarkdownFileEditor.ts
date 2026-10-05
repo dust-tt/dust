@@ -140,6 +140,14 @@ export function useMarkdownFileEditor({
     revision,
   ]);
 
+  // The stored revision moved while the text did not: another writer saved the same content.
+  // The baseline is still the file, so it follows the revision, dirty or not.
+  useEffect(() => {
+    if (processedContent && processedContent.text === savedContent) {
+      setSavedRevision(revision);
+    }
+  }, [processedContent, savedContent, revision]);
+
   /** Writes the file, only if its stored revision is still `expectedRevision` when given. */
   const writeFile = async (
     content: string,

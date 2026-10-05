@@ -458,6 +458,43 @@ describe("useMarkdownFileEditor", () => {
     );
   });
 
+  it("follows a revision that moved under the same text, in the plain editor", async () => {
+    const { result, rerender } = renderHook(
+      (props) => useMarkdownFileEditor(props),
+      { initialProps: params }
+    );
+
+    // Someone else saved identical content as revision 2.
+    rerender({ ...params, revision: "2" });
+    act(() => {
+      result.current.setDraft("# Notes\n\nMine");
+    });
+    await act(async () => {
+      await result.current.save();
+    });
+
+    expect(vi.mocked(putFileContentByPath)).toHaveBeenLastCalledWith(
+      expect.objectContaining({ revision: "2" })
+    );
+  });
+
+  it("follows a revision that moved under the same text, in the rich editor", async () => {
+    flags.add("co_edition");
+    const { result, rerender } = renderHook(
+      (props) => useMarkdownFileEditor(props),
+      { initialProps: params }
+    );
+
+    rerender({ ...params, revision: "2" });
+    await act(async () => {
+      await result.current.richEditor?.onSave("# Notes, mine\n");
+    });
+
+    expect(vi.mocked(putFileContentByPath)).toHaveBeenLastCalledWith(
+      expect.objectContaining({ revision: "2" })
+    );
+  });
+
   it("refuses to save when the server reports a newer revision", async () => {
     flags.add("co_edition");
     vi.mocked(putFileContentByPath).mockResolvedValueOnce(
