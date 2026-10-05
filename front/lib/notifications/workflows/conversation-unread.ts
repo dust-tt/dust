@@ -707,11 +707,6 @@ export const filterParticipantsByNotifyCondition = async ({
   });
 };
 
-/**
- * @cc [owner:avervaet,label:security] recipients-are-active-members
- * Notification events MUST only be triggered for participants with an active membership in the
- * workspace; participants whose membership was revoked are neither notified nor counted.
- */
 export const triggerConversationUnreadNotifications = async (
   auth: Authenticator,
   {

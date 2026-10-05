@@ -78,11 +78,6 @@ export const ConversationDetailsSchema = z.object({
 
 export type ConversationDetailsType = z.infer<typeof ConversationDetailsSchema>;
 
-/**
- * @cc [owner:avervaet,label:security] subscriber-must-be-active-member
- * When called with a `subscriberId`, the result MUST be an `Err` carrying no conversation data
- * if that user is not an active member of `payload.workspaceId`.
- */
 export const getConversationDetails = async ({
   payload,
   auth: providedAuth,

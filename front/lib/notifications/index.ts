@@ -47,8 +47,7 @@ export const computeSubscriberHash = (subscriberId: string): string => {
 
 /**
  * @cc [owner:avervaet,label:security] subscriber-auth-requires-active-membership
- * MUST return `null` when `subscriberId` is not an active member of `workspaceId`, so that no
- * notification content is read on behalf of a revoked user.
+ * MUST return `null` when `subscriberId` is not an active member of `workspaceId`.
  */
 export const getActiveSubscriberAuth = async (
   subscriberId: string,
