@@ -1,4 +1,8 @@
-import { emitGroupMemberAuditLogs } from "@app/lib/api/groups/audit";
+import {
+  emitGroupManagerAuditLog,
+  emitGroupMemberAuditLogs,
+} from "@app/lib/api/groups/audit";
+import { createGroup } from "@app/lib/api/groups/create";
 import { getGroupAllowedActions } from "@app/lib/api/groups/management_actions";
 import { getGroupManagersForGroups } from "@app/lib/api/groups/manager_assignments";
 import {
@@ -122,11 +126,25 @@ app.post(
   validate("json", CreateGroupBodySchema),
   async (ctx): HandlerResult<PostGroupResponseBody> => {
     const auth = ctx.get("auth");
-    const { name, memberIds } = ctx.req.valid("json");
+    const { name, memberIds, managerIds } = ctx.req.valid("json");
 
-    const groupRes = await GroupResource.makeNewRegularManual(auth, {
+    if (
+      managerIds?.length &&
+      !(await auth.hasFeatureFlag("group_management"))
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Group management is not enabled for this workspace.",
+        },
+      });
+    }
+
+    const groupRes = await createGroup(auth, {
       name,
       memberIds,
+      managerIds,
     });
     if (groupRes.isErr()) {
       switch (groupRes.error.code) {
@@ -168,9 +186,13 @@ app.post(
           assertNever(groupRes.error.code);
       }
     }
-    const { group, addedUsers } = groupRes.value;
+    const { group, addedUsers, addedManagers } = groupRes.value;
 
     emitGroupMemberAuditLogs(auth, group, { addedUsers, removedUsers: [] });
+    emitGroupManagerAuditLog(auth, group, {
+      addedUsers: addedManagers,
+      removedUsers: [],
+    });
 
     return ctx.json({ group: await group.toJSONWithMemberCount(auth) });
   }

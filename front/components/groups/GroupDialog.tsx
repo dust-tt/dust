@@ -2,7 +2,7 @@ import { GroupManagersField } from "@app/components/groups/GroupManagersField";
 import { useGroupManagerAppointmentReview } from "@app/components/groups/useGroupManagerAppointmentReview";
 import type { SearchMemberType } from "@app/components/members/MemberSelectionTable";
 import { MemberSelectionTable } from "@app/components/members/MemberSelectionTable";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useCreateGroup, useGroup, useUpdateGroup } from "@app/lib/swr/groups";
 import type { GroupWithAllowedActions } from "@app/types/api/groups";
 import type { GroupType } from "@app/types/groups";
@@ -113,6 +113,7 @@ function GroupForm({
   onClose,
 }: GroupFormProps) {
   const { hasFeature } = useFeatureFlags();
+  const { isAdmin } = useAuth();
   const [name, setName] = useState(initialName);
   const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(
     () => new Set(initialMembers.map((m) => m.sId))
@@ -125,9 +126,16 @@ function GroupForm({
   const isSubmitting = isCreating || isUpdating;
   const canEditDetails =
     !groupId || group?.allowedActions?.canEditDetails === true;
-  const canAssignManagers = group?.allowedActions?.canAssignManagers === true;
+  const canAssignManagers = groupId
+    ? group?.allowedActions?.canAssignManagers === true
+    : isAdmin && hasFeature("group_management");
+  const managerGroup = group ?? {
+    name: name.trim() || "this group",
+    kind: "regular_manual" as const,
+    grantedRole: null,
+  };
   const { confirmAppointment } = useGroupManagerAppointmentReview({
-    group,
+    group: managerGroup,
     initialManagers,
     selectedManagers,
     initialMembers,
@@ -192,9 +200,15 @@ function GroupForm({
       return;
     }
 
+    if (!(await confirmAppointment())) {
+      return;
+    }
     const result = await doCreateGroup({
       name: name.trim(),
       memberIds: Array.from(selectedMemberIds),
+      managerIds: canAssignManagers
+        ? selectedManagers.map((manager) => manager.sId)
+        : undefined,
     });
     if (result) {
       onCreated?.(result.group);
@@ -240,10 +254,10 @@ function GroupForm({
               disabled={readOnly || isSubmitting}
             />
           </div>
-          {group && canAssignManagers && (
+          {canAssignManagers && (
             <GroupManagersField
               owner={owner}
-              group={group}
+              group={managerGroup}
               managers={selectedManagers}
               groupMemberIds={
                 new Set(

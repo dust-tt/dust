@@ -427,7 +427,8 @@ export class GroupResource extends BaseResource<GroupModel> {
    */
   static async makeNewRegularManual(
     auth: Authenticator,
-    { name, memberIds }: { name: string; memberIds: string[] }
+    { name, memberIds }: { name: string; memberIds: string[] },
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<
     Result<
       { group: GroupResource; addedUsers: UserType[] },
@@ -466,7 +467,9 @@ export class GroupResource extends BaseResource<GroupModel> {
     // Everything that can reject the request is checked before the group row exists: a rejected
     // creation must not leave an empty group behind, which would also block retrying the name.
     const uniqueMemberIds = [...new Set(memberIds)];
-    const users = await UserResource.fetchByIds(uniqueMemberIds);
+    const users = await UserResource.fetchByIds(uniqueMemberIds, {
+      transaction,
+    });
     if (users.length !== uniqueMemberIds.length) {
       return new Err(
         new DustError("user_not_found", "Some users were not found.")
@@ -476,6 +479,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       await MembershipResource.getActiveMemberships({
         users,
         workspace: owner,
+        transaction,
       });
     if (workspaceMemberships.length !== users.length) {
       return new Err(
@@ -487,16 +491,19 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
     const memberUsers = users.map((u) => u.toJSON());
 
-    const group = await GroupResource.makeNew({
-      name,
-      kind: "regular_manual",
-      workspaceId: owner.id,
-    });
+    const group = await GroupResource.makeNew(
+      { name, kind: "regular_manual", workspaceId: owner.id },
+      { transaction }
+    );
     // Cannot fail past this point: the users were validated above and the group is empty.
     const addResult = await group.dangerouslyAddMembers(auth, {
       users: memberUsers,
+      transaction,
     });
     if (addResult.isErr()) {
+      if (transaction) {
+        throw addResult.error;
+      }
       return new Err(addResult.error);
     }
 
