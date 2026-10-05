@@ -77,6 +77,7 @@ export { default as NetSuiteLogo } from "./NetSuite";
 export { default as NotionLogo } from "./Notion";
 export { default as OfficeLogo } from "./Office";
 export { default as OpenaiLogo } from "./Openai";
+export { default as PaddleLogo } from "./Paddle";
 export { default as PdfLogo } from "./Pdf";
 export { default as PowerBiLogo } from "./PowerBi";
 export { default as PraizLogo } from "./Praiz";
