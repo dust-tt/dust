@@ -55,58 +55,54 @@ export function MembersPage() {
 
   return (
     <AdminPageContainer>
-      <div className="mb-4">
-        <div className="flex flex-col gap-6">
-          <Page.Header
-            title="Members"
-            description="Manage team members and their roles."
-          />
-          <Tabs
-            value={activeTab}
-            onValueChange={(value) => setTab(value as MembersTab)}
-          >
-            <TabsList className="mb-6">
-              <TabsTrigger value="members" label="Members" />
-              <TabsTrigger value="groups" label="Groups" />
-              {isAdmin && <TabsTrigger value="roles" label="Roles" />}
-            </TabsList>
-            <TabsContent value="members" className="flex flex-col gap-4">
-              <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.people.members}>
-                {isManager ? (
-                  <WorkspacePeopleMembers />
-                ) : (
-                  <WorkspaceMembersSection
-                    currentUser={user}
-                    owner={owner}
-                    subscription={subscription}
-                    isProvisioningEnabled={false}
-                    isManualInvitationsEnabled={false}
-                    perSeatPricing={null}
-                    hasAvailableSeats={false}
-                  />
-                )}
-              </AdminSectionAnchor>
-              {isAdmin && (
-                <AdminSectionAnchor
-                  sectionId={ADMIN_SECTION_IDS.people.joining}
-                >
-                  <JoiningTheWorkspaceSection />
-                </AdminSectionAnchor>
+      <div className="flex flex-col gap-6">
+        <Page.Header
+          title="Members"
+          description="Manage team members and their roles."
+        />
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => setTab(value as MembersTab)}
+        >
+          <TabsList className="mb-6">
+            <TabsTrigger value="members" label="Members" />
+            <TabsTrigger value="groups" label="Groups" />
+            {isAdmin && <TabsTrigger value="roles" label="Roles" />}
+          </TabsList>
+          <TabsContent value="members" className="flex flex-col gap-4">
+            <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.people.members}>
+              {isManager ? (
+                <WorkspacePeopleMembers />
+              ) : (
+                <WorkspaceMembersSection
+                  currentUser={user}
+                  owner={owner}
+                  subscription={subscription}
+                  isProvisioningEnabled={false}
+                  isManualInvitationsEnabled={false}
+                  perSeatPricing={null}
+                  hasAvailableSeats={false}
+                />
               )}
-            </TabsContent>
-            <TabsContent value="groups" className="flex flex-col gap-4">
-              <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.people.groups}>
-                <WorkspaceGroupsList owner={owner} />
-              </AdminSectionAnchor>
-              {isAdmin && <DirectorySyncSection />}
-            </TabsContent>
+            </AdminSectionAnchor>
             {isAdmin && (
-              <TabsContent value="roles" className="flex flex-col gap-4">
-                <MembersRolesTab />
-              </TabsContent>
+              <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.people.joining}>
+                <JoiningTheWorkspaceSection />
+              </AdminSectionAnchor>
             )}
-          </Tabs>
-        </div>
+          </TabsContent>
+          <TabsContent value="groups" className="flex flex-col gap-4">
+            <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.people.groups}>
+              <WorkspaceGroupsList owner={owner} />
+            </AdminSectionAnchor>
+            {isAdmin && <DirectorySyncSection />}
+          </TabsContent>
+          {isAdmin && (
+            <TabsContent value="roles" className="flex flex-col gap-4">
+              <MembersRolesTab />
+            </TabsContent>
+          )}
+        </Tabs>
       </div>
     </AdminPageContainer>
   );

@@ -91,8 +91,8 @@
  *           type: array
  *           items:
  *             type: string
- *             description: List of allowed authentication providers
- *           example: ["google", "github"]
+ *             description: Whitelisted model lab (maker) IDs
+ *           example: ["openai", "zai"]
  *         defaultEmbeddingProvider:
  *           type: string
  *           nullable: true

@@ -49,23 +49,27 @@ export function streamEvents<TIn>(params: StreamEventsParams<TIn>) {
     const controller = new AbortController();
     s.onAbort(() => controller.abort());
 
-    await s.write(SSE_HANDSHAKE);
+    try {
+      await s.write(SSE_HANDSHAKE);
 
-    for await (const event of params.iterator(controller.signal)) {
-      const out: unknown = params.transform
-        ? await params.transform(event)
-        : event;
-      if (out === null) {
-        continue;
+      for await (const event of params.iterator(controller.signal)) {
+        const out: unknown = params.transform
+          ? await params.transform(event)
+          : event;
+        if (out === null) {
+          continue;
+        }
+        await s.write(`data: ${JSON.stringify(out)}\n\n`);
+        if (s.aborted || controller.signal.aborted) {
+          break;
+        }
       }
-      await s.write(`data: ${JSON.stringify(out)}\n\n`);
-      if (s.aborted || controller.signal.aborted) {
-        break;
-      }
-    }
 
-    if (params.writeDoneSentinel) {
-      await s.write("data: done\n\n");
+      if (params.writeDoneSentinel) {
+        await s.write("data: done\n\n");
+      }
+    } finally {
+      controller.abort();
     }
   });
 }

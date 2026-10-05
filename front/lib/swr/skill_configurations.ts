@@ -42,6 +42,7 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import { isAPIErrorResponse } from "@app/types/error";
 import { Ok } from "@app/types/shared/result";
+import { isString } from "@app/types/shared/utils/general";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useEffect, useState } from "react";
@@ -445,6 +446,28 @@ export function useSkillsWithRelations({
   };
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:react] invalidate-workspace-skill-lists
+ * Revalidate string-keyed skill lists and array-keyed skill searches for the
+ * given workspace, regardless of query parameters or search body. Do not
+ * revalidate other workspaces or individual skill detail endpoints.
+ */
+export function useInvalidateSkills({ workspaceId }: { workspaceId: string }) {
+  const { mutate } = useSWRConfig();
+  const skillsUrl = `/api/w/${workspaceId}/skills`;
+  const searchUrl = `${skillsUrl}/search`;
+
+  return useCallback(
+    () =>
+      mutate((key) =>
+        isString(key)
+          ? key.split("?")[0] === skillsUrl
+          : Array.isArray(key) && key[0] === searchUrl
+      ),
+    [mutate, skillsUrl, searchUrl]
+  );
+}
+
 export function useUpdateSkillsAvailability({
   owner,
 }: {
@@ -452,14 +475,7 @@ export function useUpdateSkillsAvailability({
 }) {
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
-
-  const {
-    mutateSkillsWithRelationsRegardlessOfQueryParams: mutateActiveSkills,
-  } = useSkillsWithRelations({
-    owner,
-    status: "active",
-    disabled: true,
-  });
+  const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
 
   const doUpdateAvailability = async (
     skillIds: string[],
@@ -472,7 +488,7 @@ export function useUpdateSkillsAvailability({
         body: JSON.stringify({ skillIds, availability }),
       });
 
-      void mutateActiveSkills();
+      void invalidateSkills();
 
       sendNotification({
         type: "success",
@@ -537,30 +553,7 @@ export function useArchiveSkill({
 }) {
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
-  const { mutateRegardlessOfQueryParams: mutateSkillSearch } = useSearchSkills({
-    owner,
-    searchTerm: "",
-    disabled: true,
-  });
-
-  const { mutateSkillsWithRelations: mutateArchivedSkills } =
-    useSkillsWithRelations({
-      owner,
-      status: "archived",
-      disabled: true,
-    });
-  const { mutateSkillsWithRelations: mutateActiveSkills } =
-    useSkillsWithRelations({
-      owner,
-      status: "active",
-      disabled: true,
-    });
-  const { mutateSkillsWithRelations: mutateSuggestedSkills } =
-    useSkillsWithRelations({
-      owner,
-      status: "suggested",
-      disabled: true,
-    });
+  const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
 
   const doArchive = async () => {
     if (!skill.sId) {
@@ -571,10 +564,7 @@ export function useArchiveSkill({
         method: "DELETE",
       });
 
-      void mutateArchivedSkills();
-      void mutateActiveSkills();
-      void mutateSuggestedSkills();
-      void mutateSkillSearch();
+      void invalidateSkills();
 
       sendNotification({
         type: "success",
@@ -604,13 +594,7 @@ export function useBatchArchiveSkills({
 }) {
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
-  const {
-    mutateSkillsWithRelationsRegardlessOfQueryParams: mutateSkillsWithRelations,
-  } = useSkillsWithRelations({
-    owner,
-    status: "active",
-    disabled: true,
-  });
+  const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
 
   const doArchive = async () => {
     if (skillIds.length === 0) {
@@ -624,7 +608,7 @@ export function useBatchArchiveSkills({
         body: JSON.stringify({ skillIds }),
       });
 
-      void mutateSkillsWithRelations();
+      void invalidateSkills();
 
       sendNotification({
         type: "success",
@@ -652,19 +636,8 @@ export function useUpdateSkillFavorite({
 }) {
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
+  const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
   const router = useAppRouter();
-
-  const { mutateSkills: mutateActiveSkills } = useSkills({
-    owner,
-    status: "active",
-    disabled: true,
-  });
-  const { mutateSkillsWithRelations: mutateActiveSkillsWithRelations } =
-    useSkillsWithRelations({
-      owner,
-      status: "active",
-      disabled: true,
-    });
 
   const updateSkillFavorite = useCallback(
     async (
@@ -676,8 +649,7 @@ export function useUpdateSkillFavorite({
           method: isFavorite ? "POST" : "DELETE",
         });
 
-        void mutateActiveSkills();
-        void mutateActiveSkillsWithRelations();
+        void invalidateSkills();
 
         if (isFavorite) {
           sendNotification({
@@ -710,14 +682,7 @@ export function useUpdateSkillFavorite({
         return false;
       }
     },
-    [
-      fetcher,
-      mutateActiveSkills,
-      mutateActiveSkillsWithRelations,
-      owner.sId,
-      router,
-      sendNotification,
-    ]
+    [fetcher, invalidateSkills, owner.sId, router, sendNotification]
   );
 
   return { updateSkillFavorite };
@@ -732,21 +697,12 @@ type SkillReinforcementUpdate = {
 
 export function useUpdateSkillReinforcement({
   owner,
-  onlyCustom,
 }: {
   owner: LightWorkspaceType;
-  onlyCustom?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
-
-  const { mutateSkillsWithRelations: mutateActiveSkills } =
-    useSkillsWithRelations({
-      owner,
-      status: "active",
-      onlyCustom,
-      disabled: true,
-    });
+  const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
 
   const updateSkillReinforcement = useCallback(
     async (skillId: string, update: SkillReinforcementUpdate) => {
@@ -756,7 +712,7 @@ export function useUpdateSkillReinforcement({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(update),
         });
-        void mutateActiveSkills();
+        void invalidateSkills();
         return true;
       } catch (err) {
         sendNotification({
@@ -769,7 +725,7 @@ export function useUpdateSkillReinforcement({
         return false;
       }
     },
-    [owner.sId, fetcher, mutateActiveSkills, sendNotification]
+    [owner.sId, fetcher, invalidateSkills, sendNotification]
   );
 
   return { updateSkillReinforcement };
@@ -784,24 +740,7 @@ export function useRestoreSkill({
 }) {
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
-  const { mutateRegardlessOfQueryParams: mutateSkillSearch } = useSearchSkills({
-    owner,
-    searchTerm: "",
-    disabled: true,
-  });
-
-  const { mutateSkillsWithRelations: mutateArchivedSkills } =
-    useSkillsWithRelations({
-      owner,
-      status: "archived",
-      disabled: true,
-    });
-  const { mutateSkillsWithRelations: mutateActiveSkills } =
-    useSkillsWithRelations({
-      owner,
-      status: "active",
-      disabled: true,
-    });
+  const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
 
   const doRestore = async () => {
     if (!skill.sId) {
@@ -812,9 +751,7 @@ export function useRestoreSkill({
         method: "POST",
       });
 
-      void mutateArchivedSkills();
-      void mutateActiveSkills();
-      void mutateSkillSearch();
+      void invalidateSkills();
 
       sendNotification({
         type: "success",
@@ -1011,19 +948,9 @@ function notifyImportResult(
 export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
-  const { mutateRegardlessOfQueryParams: mutateSkillSearch } = useSearchSkills({
-    owner,
-    searchTerm: "",
-    disabled: true,
-  });
+  const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
 
   const [isImporting, setIsImporting] = useState(false);
-  const { mutateSkillsWithRelations: mutateActiveSkills } =
-    useSkillsWithRelations({
-      owner,
-      status: "active",
-      disabled: true,
-    });
 
   const importSkills = useCallback(
     async (formData: ImportFormValues, files: File[]) => {
@@ -1058,11 +985,7 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
           }
         }
 
-        void mutateActiveSkills();
-
-        if (data.imported.length > 0 || data.updated.length > 0) {
-          void mutateSkillSearch();
-        }
+        void invalidateSkills();
 
         return notifyImportResult(data, sendNotification);
       } catch (err) {
@@ -1079,13 +1002,7 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
         setIsImporting(false);
       }
     },
-    [
-      owner.sId,
-      mutateActiveSkills,
-      mutateSkillSearch,
-      sendNotification,
-      fetcher,
-    ]
+    [owner.sId, sendNotification, fetcher, invalidateSkills]
   );
 
   return { importSkills, isImporting };

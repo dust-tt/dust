@@ -1,6 +1,10 @@
-import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import type {
+  ModelProviderIdType,
+  WhitelistableModelMakerIdType,
+} from "@app/types/assistant/models/types";
 
-export type ProvidersSelection = Record<ModelProviderIdType, boolean>;
+// Keyed by model lab, like the `whiteListedProviders` it edits.
+export type ProvidersSelection = Record<WhitelistableModelMakerIdType, boolean>;
 
 export const ALL_PROVIDERS_SELECTED: ProvidersSelection = {
   openai: true,
@@ -8,12 +12,15 @@ export const ALL_PROVIDERS_SELECTED: ProvidersSelection = {
   mistral: true,
   google_ai_studio: true,
   deepseek: true,
-  fireworks: true,
   xai: true,
   noop: true,
   auto: true,
   auto_fast: true,
   auto_complex: true,
+  zai: true,
+  moonshot: true,
+  minimax: true,
+  thinking_machines: true,
 };
 
 export const NO_PROVIDERS_SELECTED: ProvidersSelection = {
@@ -22,12 +29,15 @@ export const NO_PROVIDERS_SELECTED: ProvidersSelection = {
   mistral: false,
   google_ai_studio: false,
   deepseek: false,
-  fireworks: false,
   xai: false,
   noop: false,
   auto: true,
   auto_fast: true,
   auto_complex: true,
+  zai: false,
+  moonshot: false,
+  minimax: false,
+  thinking_machines: false,
 };
 
 export const PRETTIFIED_PROVIDER_NAMES: Record<ModelProviderIdType, string> = {

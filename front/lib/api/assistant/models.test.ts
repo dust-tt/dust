@@ -24,7 +24,7 @@ import {
   GPT_5_6_LUNA_MODEL_CONFIG,
   GPT_5_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
-import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
+import { WHITELISTABLE_MODEL_MAKER_IDS } from "@app/types/assistant/models/providers";
 import { SIMULATED_FAILURE_MODEL_CONFIG } from "@app/types/assistant/models/simulated_failure_model";
 import type {
   ModelConfigurationType,
@@ -62,7 +62,7 @@ describe("getWhitelistedProviders", () => {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
     const providers = getWhitelistedProviders(auth);
-    expect(providers).toEqual(new Set(MODEL_PROVIDER_IDS));
+    expect(providers).toEqual(new Set(WHITELISTABLE_MODEL_MAKER_IDS));
   });
 
   it("returns only whitelisted providers plus noop", async () => {

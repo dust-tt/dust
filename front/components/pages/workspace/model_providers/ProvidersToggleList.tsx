@@ -1,28 +1,30 @@
 import { DisableProviderDialog } from "@app/components/pages/workspace/model_providers/DisableProviderDialog";
 import { ProviderToggleContextItem } from "@app/components/pages/workspace/model_providers/ProviderToggleContextItem";
-import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import type { WhitelistableModelMakerIdType } from "@app/types/assistant/models/types";
 import type { ProvidersSelection } from "@app/types/provider_selection";
 import { ContextItem } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
 
 interface ProvidersToggleListProps {
   providersSelection: ProvidersSelection;
-  onToggleProvider: (provider: ModelProviderIdType) => void;
+  onToggleProvider: (provider: WhitelistableModelMakerIdType) => void;
   isWorkspaceValidating: boolean;
-  modelsDescriptionByProvider: Partial<Record<ModelProviderIdType, string>>;
+  modelsDescriptionByMaker: Partial<
+    Record<WhitelistableModelMakerIdType, string>
+  >;
 }
 
 export function ProvidersToggleList({
   providersSelection,
   onToggleProvider,
   isWorkspaceValidating,
-  modelsDescriptionByProvider,
+  modelsDescriptionByMaker,
 }: ProvidersToggleListProps) {
   const [pendingDisableProvider, setPendingDisableProvider] =
-    useState<ModelProviderIdType | null>(null);
+    useState<WhitelistableModelMakerIdType | null>(null);
 
   const handleToggle = useCallback(
-    (providerId: ModelProviderIdType) => {
+    (providerId: WhitelistableModelMakerIdType) => {
       if (providersSelection[providerId]) {
         setPendingDisableProvider(providerId);
       } else {
@@ -43,8 +45,8 @@ export function ProvidersToggleList({
     <>
       <ContextItem.List>
         {(
-          Object.entries(modelsDescriptionByProvider) as [
-            ModelProviderIdType,
+          Object.entries(modelsDescriptionByMaker) as [
+            WhitelistableModelMakerIdType,
             string,
           ][]
         ).map(([providerId, description]) => (

@@ -86,6 +86,10 @@ impl SqliteDatabase {
         }
     }
 
+    /// @cc [owner:frankaloia,label:security;performance] timeout-interrupts-sqlite
+    /// When the configured timeout elapses, `InterruptHandle::interrupt` MUST be called before
+    /// the error is returned, ensuring the blocking thread and connection mutex are freed rather
+    /// than pinned for the duration of the underlying SQLite statement.
     pub async fn query(
         &self,
         query: &str,
@@ -195,26 +199,26 @@ impl SqliteDatabase {
             Ok(result_rows)
         });
 
-        match timeout(std::time::Duration::from_millis(timeout_ms), query_future)
-            .await
-            .map_err(|_| SqliteDatabaseError::InternalError(anyhow!("Query timed-out")))?
-        {
-            Ok(r) => r,
-            Err(_) => {
-                let interrupt_handle =
-                    self.interrupt_handle
-                        .as_ref()
-                        .ok_or(SqliteDatabaseError::InternalError(anyhow!(
-                            "Database is not initialized"
-                        )))?;
-
-                let interrupt_handle = interrupt_handle.lock().await;
-                interrupt_handle.interrupt();
-
-                Err(SqliteDatabaseError::InternalError(anyhow!(format!(
-                    "Query execution timed out after {} ms",
-                    timeout_ms
-                ))))
+        match timeout(std::time::Duration::from_millis(timeout_ms), query_future).await {
+            Err(_elapsed) => {
+                // Timeout fired before the blocking task finished: interrupt the running SQLite
+                // statement so the connection mutex and blocking thread are released rather than
+                // pinned for the full duration of the statement.
+                if let Some(h) = self.interrupt_handle.as_ref() {
+                    h.lock().await.interrupt();
+                }
+                Err(SqliteDatabaseError::InternalError(anyhow!(
+                    "Query timed-out"
+                )))
+            }
+            Ok(Ok(r)) => r,
+            Ok(Err(_join_err)) => {
+                if let Some(h) = self.interrupt_handle.as_ref() {
+                    h.lock().await.interrupt();
+                }
+                Err(SqliteDatabaseError::InternalError(anyhow!(
+                    "Query blocking task failed (panic or cancellation)"
+                )))
             }
         }
     }

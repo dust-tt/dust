@@ -353,6 +353,7 @@ export const ConversationViewer = ({
     workspaceId: owner.sId,
     limit: CONVERSATION_MESSAGES_PAGE_LIMIT,
     disabled,
+    messageListRef: virtuosoMessageListRef,
   });
 
   const handleAgentMessageRetry = useCallback(

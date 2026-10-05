@@ -259,6 +259,21 @@ class RedisHybridManager {
    * Concurrent callers for one channel MUST share Redis setup. Aborting a caller MUST remove only
    * its callback and MUST release the channel after setup when no other subscriber uses it.
    */
+  /**
+   * @cc [owner:id13,label:concurrency;reliability] contiguous-redis-history-pages
+   * A full history page MUST close its subscription without appending newer pub/sub events.
+   * Its last event ID MUST remain the resume cursor until all intervening history is read.
+   */
+  /**
+   * @cc [owner:id13,label:concurrency;reliability] redis-history-live-deduplication
+   * For subscriptions reading history, pub/sub MUST NOT redeliver events already returned in history
+   * or at/before the resume cursor.
+   */
+  /**
+   * @cc [owner:id13,label:reliability;concurrency] failed-redis-history-does-not-advance
+   * A Redis history-read failure MUST propagate without delivering live events or advancing the
+   * caller's cursor. The failed subscription MUST release its callback and channel ownership.
+   */
   public async subscribe(
     channelName: string,
     callback: EventCallback,
@@ -298,6 +313,17 @@ class RedisHybridManager {
           subscriptionClient
         );
         const eventsDuringHistoryFetch: EventPayload[] = [];
+        const historyIds = new Set<string>();
+        const isUnseenEvent = (event: EventPayload) =>
+          !historyIds.has(event.id) &&
+          (!lastEventId ||
+            event.id.localeCompare(lastEventId, undefined, { numeric: true }) >
+              0);
+        const forwardLiveEvent: EventCallback = (event) => {
+          if (event === "close" || isUnseenEvent(event)) {
+            callback(event);
+          }
+        };
         let registeredCallback: EventCallback = skipHistory
           ? callback
           : (event) => {
@@ -359,12 +385,20 @@ class RedisHybridManager {
 
         if (!skipHistory) {
           const historyFetchStartMs = Date.now();
-          const historyResult = await this.getHistory(
-            streamClient,
-            this.getStreamName(channelName),
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            lastEventId || "0-0"
-          );
+          let historyResult:
+            | { events: EventPayload[]; hasMore: boolean }
+            | undefined;
+          try {
+            historyResult = await this.getHistory(
+              streamClient,
+              this.getStreamName(channelName),
+              lastEventId || "0-0"
+            );
+          } finally {
+            if (!historyResult) {
+              unsubscribe();
+            }
+          }
           if (signal?.aborted) {
             return { history: [], unsubscribe };
           }
@@ -376,21 +410,27 @@ class RedisHybridManager {
             historyFetchDurationMs
           );
 
+          if (historyHasMore) {
+            unsubscribe();
+            callback("close");
+            return { history: historyEvents, unsubscribe };
+          }
+
           channel.callbacks.delete(registeredCallback);
-          channel.callbacks.add(callback);
-          registeredCallback = callback;
+          channel.callbacks.add(forwardLiveEvent);
+          registeredCallback = forwardLiveEvent;
 
           // Append the events during history fetch to the history, if any
           const dedupeStartMs = Date.now();
           history.push(...historyEvents);
+          for (const event of historyEvents) {
+            historyIds.add(event.id);
+          }
           if (eventsDuringHistoryFetch.length > 0) {
-            // Use Set for O(1) deduplication instead of O(n) find
-            const historyIds = new Set(history.map((h) => h.id));
-
             for (const event of eventsDuringHistoryFetch) {
-              // deduplicate events
-              if (!historyIds.has(event.id)) {
+              if (isUnseenEvent(event)) {
                 history.push(event);
+                historyIds.add(event.id);
               }
             }
             // Sort the history just in case
@@ -403,12 +443,6 @@ class RedisHybridManager {
             "sse.subscribe.dedupe_duration_ms",
             dedupeDurationMs
           );
-
-          if (historyHasMore) {
-            // Force the client to re-subscribe with the latest event id it had in order to get more events from history.
-            // SSE routes use writeDoneSentinel so the stream ends with "done" and clients reconnect immediately.
-            callback("close");
-          }
         }
 
         active = true;
@@ -516,6 +550,24 @@ class RedisHybridManager {
     }
   }
 
+  /**
+   * @cc [owner:id13,label:concurrency;reliability] ordered-stream-page
+   * Returns only persisted events strictly after the cursor, in Redis stream order, limited to
+   * one history page. Read failures MUST propagate without producing a partial page.
+   */
+  public async readEventsAfter(
+    channel: string,
+    lastEventId: string | null
+  ): Promise<EventPayload[]> {
+    const client = await this.getStreamAndPublishClient();
+    const { events } = await this.getHistory(
+      client,
+      this.getStreamName(channel),
+      lastEventId ?? "0-0"
+    );
+    return events;
+  }
+
   private async getHistory(
     streamClient: RedisClientType,
     streamName: string,
@@ -599,7 +651,7 @@ class RedisHybridManager {
             },
             "Error fetching history from stream"
           );
-          return await Promise.resolve({ events: [], hasMore: false });
+          throw error;
         } finally {
           this.concurrentHistoryFetches--;
           statsDMetrics.gauge(

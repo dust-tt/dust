@@ -18,19 +18,26 @@ vi.mock("@app/lib/api/assistant/pubsub", async (importOriginal) => {
     await importOriginal<typeof import("@app/lib/api/assistant/pubsub")>();
   return {
     ...mod,
+    getConversationEventsBatch: vi.fn(),
     getConversationEvents: vi.fn(),
   };
 });
 
-import { getConversationEvents } from "@app/lib/api/assistant/pubsub";
+import {
+  getConversationEvents,
+  getConversationEventsBatch,
+} from "@app/lib/api/assistant/pubsub";
 
-function getEvents(workspaceId: string, conversationId: string) {
-  return honoApp.request(
-    `/api/sse/w/${workspaceId}/assistant/conversations/${conversationId}/events`
-  );
-}
+describe.each([
+  "",
+  "/poll",
+])("GET /api/sse/w/[wId]/assistant/conversations/[cId]/events%s", (suffix) => {
+  function getEvents(workspaceId: string, conversationId: string) {
+    return honoApp.request(
+      `/api/sse/w/${workspaceId}/assistant/conversations/${conversationId}/events${suffix}`
+    );
+  }
 
-describe("GET /api/sse/w/[wId]/assistant/conversations/[cId]/events", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -58,10 +65,14 @@ describe("GET /api/sse/w/[wId]/assistant/conversations/[cId]/events", () => {
       asyncIteratorFrom([titleEvent])
     );
 
+    vi.mocked(getConversationEventsBatch).mockResolvedValue([titleEvent]);
+
     const response = await getEvents(workspace.sId, conversation.sId);
 
     expect(response.status).toBe(200);
-    const payloads = parseSseDataPayloads(await response.text());
+    const payloads: string[] = suffix
+      ? (await response.json()).events
+      : parseSseDataPayloads(await response.text());
     expect(payloads.map((p) => JSON.parse(p).data.title)).toEqual(["hello"]);
   });
 });

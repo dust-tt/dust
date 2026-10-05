@@ -1,5 +1,9 @@
 import { PREFERRED_LARGE_MODEL_CONFIGS } from "@app/lib/api/assistant/model_preferences";
-import { isProviderWhitelisted } from "@app/lib/api/assistant/provider_whitelist";
+import type { ModelIdentifier } from "@app/lib/api/assistant/provider_whitelist";
+import {
+  isModelWhitelisted,
+  isProviderWhitelisted,
+} from "@app/lib/api/assistant/provider_whitelist";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { isModelEnabled } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -10,7 +14,7 @@ import { isModelId } from "@app/types/assistant/models/models";
 import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import {
   isModelProviderId,
-  MODEL_PROVIDER_IDS,
+  WHITELISTABLE_MODEL_MAKER_IDS,
 } from "@app/types/assistant/models/providers";
 import { isReasoningEffort } from "@app/types/assistant/models/reasoning";
 import type {
@@ -18,6 +22,7 @@ import type {
   ModelProviderIdType,
   ReasoningEffort,
   ResolvedRequestedModel,
+  WhitelistableModelMakerIdType,
 } from "@app/types/assistant/models/types";
 import {
   GROK_4_5_MODEL_CONFIG,
@@ -27,11 +32,11 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 export function getWhitelistedProviders(
   auth: Authenticator
-): Set<ModelProviderIdType> {
+): Set<WhitelistableModelMakerIdType> {
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();
-  const whiteListedProviders = new Set<ModelProviderIdType>(
-    owner.whiteListedProviders ?? MODEL_PROVIDER_IDS
+  const whiteListedProviders = new Set<WhitelistableModelMakerIdType>(
+    owner.whiteListedProviders ?? WHITELISTABLE_MODEL_MAKER_IDS
   );
 
   // noop never sees user data, always whitelisted.
@@ -55,16 +60,23 @@ export function getWhitelistedProviders(
 
 export function isProviderWhitelistedForAuth(
   auth: Authenticator,
-  providerId: ModelProviderIdType
+  providerId: WhitelistableModelMakerIdType
 ): boolean {
   return isProviderWhitelisted(getWhitelistedProviders(auth), providerId);
+}
+
+export function isModelWhitelistedForAuth(
+  auth: Authenticator,
+  model: ModelIdentifier
+): boolean {
+  return isModelWhitelisted(getWhitelistedProviders(auth), model);
 }
 
 type ModelEnablementContext = Parameters<typeof isModelEnabled>[1];
 
 function getModelEnablementContext(
   auth: Authenticator,
-  excludeProviders: ReadonlySet<ModelProviderIdType> = new Set(),
+  excludeProviders: ReadonlySet<WhitelistableModelMakerIdType> = new Set(),
   featureFlags: WhitelistableFeature[] = []
 ): ModelEnablementContext {
   const owner = auth.getNonNullableWorkspace();
@@ -98,7 +110,7 @@ export function selectEnabledModel(
     excludeProviders = new Set(),
   }: {
     featureFlags: WhitelistableFeature[];
-    excludeProviders?: ReadonlySet<ModelProviderIdType>;
+    excludeProviders?: ReadonlySet<WhitelistableModelMakerIdType>;
   }
 ): ModelConfigurationType | null {
   const context = getModelEnablementContext(
@@ -128,7 +140,7 @@ export function getFastestWhitelistedModel(
 
 export function getSmallWhitelistedModel(
   auth: Authenticator,
-  excludeProviders: ReadonlySet<ModelProviderIdType> = new Set(),
+  excludeProviders: ReadonlySet<WhitelistableModelMakerIdType> = new Set(),
   { featureFlags = [] }: { featureFlags?: WhitelistableFeature[] } = {}
 ): ModelConfigurationType | null {
   return _getSmallWhitelistedModel(
@@ -138,7 +150,7 @@ export function getSmallWhitelistedModel(
 
 export function getLargeWhitelistedModel(
   auth: Authenticator,
-  excludeProviders: ReadonlySet<ModelProviderIdType> = new Set(),
+  excludeProviders: ReadonlySet<WhitelistableModelMakerIdType> = new Set(),
   {
     forBatch = false,
     featureFlags = [],

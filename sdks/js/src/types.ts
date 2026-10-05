@@ -28,6 +28,24 @@ const ModelProviderIdSchema = FlexibleEnumSchema<
   | "auto_complex"
 >();
 
+// Model labs a workspace whitelists. "fireworks" is a host, not a lab.
+const WhitelistableModelMakerIdSchema = FlexibleEnumSchema<
+  | "openai"
+  | "anthropic"
+  | "mistral"
+  | "google_ai_studio"
+  | "deepseek"
+  | "xai"
+  | "noop"
+  | "auto"
+  | "auto_fast"
+  | "auto_complex"
+  | "zai"
+  | "moonshot"
+  | "minimax"
+  | "thinking_machines"
+>();
+
 export type KnownModelLLMId =
   | "gpt-3.5-turbo"
   | "gpt-4-turbo"
@@ -945,7 +963,8 @@ const LightWorkspaceSchema = z.object({
   name: z.string(),
   role: RoleSchema,
   segmentation: WorkspaceSegmentationSchema,
-  whiteListedProviders: ModelProviderIdSchema.array().nullable(),
+  // Despite the name, holds whitelisted model labs (makers), not hosts.
+  whiteListedProviders: WhitelistableModelMakerIdSchema.array().nullable(),
   defaultEmbeddingProvider: EmbeddingProviderIdSchema.nullable(),
   regionalModelsOnly: z.boolean().default(false),
 });

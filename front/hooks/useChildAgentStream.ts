@@ -6,7 +6,10 @@ import {
 import { useEventSource } from "@app/hooks/useEventSource";
 import { getActionOneLineLabel } from "@app/lib/api/assistant/activity_steps";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
-import { getAgentLoopEventId } from "@app/lib/client/agent_loop_stream";
+import {
+  getAgentLoopEventId,
+  isTerminalAgentLoopEvent,
+} from "@app/lib/client/agent_loop_stream";
 import type { InlineActivityStep } from "@app/types/assistant/conversation";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -32,7 +35,11 @@ interface ChildAgentStreamResult {
   isError: boolean;
 }
 
-type ChildAgentStreamEvent = AgentMessageEvents | { type: "end-of-stream" };
+type ChildAgentStreamEvent =
+  | AgentMessageEvents
+  | { type: "end-of-stream" }
+  | { type: "reset" }
+  | { type: "stream_error" };
 
 const initialState: ChildAgentStreamReducerState = {
   response: "",
@@ -51,6 +58,9 @@ function childAgentStreamReducer(
   event: ChildAgentStreamEvent
 ): ChildAgentStreamReducerState {
   switch (event.type) {
+    case "reset":
+      return initialState;
+
     case "generation_tokens": {
       if (event.classification === "tokens") {
         return {
@@ -161,13 +171,14 @@ function childAgentStreamReducer(
 
     case "agent_error":
     case "tool_error":
+    case "stream_error":
       return { ...state, cotBuffer: "", pendingToolCalls: [], status: "error" };
 
     case "agent_generation_cancelled":
+    case "end-of-stream":
       return { ...state, cotBuffer: "", pendingToolCalls: [], status: "done" };
 
     // Events we don't use for the child stream display.
-    case "end-of-stream":
     case "tool_notification":
     case "agent_context_pruned":
     case "agent_credit_spend_checkpoint_updated":
@@ -192,13 +203,37 @@ interface UseChildAgentStreamParams {
   disabled: boolean;
 }
 
-// Stream the child agent's conversation: textual content (CoT + generation) and tool call activity.
+/**
+ * @cc [owner:id13,label:react;concurrency] child-stream-identity-and-completion
+ * Changing the conversation or message ID MUST reset displayed stream state. An end-of-stream
+ * sentinel or terminal transport failure MUST stop the subscription.
+ */
 export function useChildAgentStream({
   childStreamIds,
   owner,
   disabled,
 }: UseChildAgentStreamParams): ChildAgentStreamResult {
-  const [state, dispatch] = useReducer(childAgentStreamReducer, initialState);
+  const streamKey = `${childStreamIds?.conversationId}:${childStreamIds?.agentMessageId}`;
+  const [streamState, dispatch] = useReducer(
+    (
+      previous: { streamKey: string; state: ChildAgentStreamReducerState },
+      event: { streamKey: string; data: ChildAgentStreamEvent }
+    ) => {
+      const isEventForStoredStream = previous.streamKey === event.streamKey;
+      const state = isEventForStoredStream ? previous.state : initialState;
+
+      return {
+        streamKey: event.streamKey,
+        state: childAgentStreamReducer(state, event.data),
+      };
+    },
+    { streamKey, state: initialState }
+  );
+  const hasStreamChanged = streamState.streamKey !== streamKey;
+  const state = hasStreamChanged ? initialState : streamState.state;
+  if (hasStreamChanged) {
+    dispatch({ streamKey, data: { type: "reset" } });
+  }
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
@@ -213,14 +248,17 @@ export function useChildAgentStream({
     [childStreamIds, owner.sId, disabled]
   );
 
-  const onEventCallback = useCallback((eventStr: string) => {
-    const eventPayload: {
-      eventId: string;
-      data: ChildAgentStreamEvent;
-    } = JSON.parse(eventStr);
+  const onEventCallback = useCallback(
+    (eventStr: string) => {
+      const eventPayload: {
+        eventId: string;
+        data: ChildAgentStreamEvent;
+      } = JSON.parse(eventStr);
 
-    dispatch(eventPayload.data);
-  }, []);
+      dispatch({ streamKey, data: eventPayload.data });
+    },
+    [streamKey]
+  );
 
   const buildLongPollURL = useCallback(
     (lastEvent: string | null) => {
@@ -242,6 +280,9 @@ export function useChildAgentStream({
     {
       workspaceId: owner.sId,
       buildLongPollURL,
+      isTerminalEvent: isTerminalAgentLoopEvent,
+      onTerminalError: () =>
+        dispatch({ streamKey, data: { type: "stream_error" } }),
       isReadyToConsumeStream:
         childStreamIds !== null && !isStreamDone && !disabled,
       telemetryContext: {

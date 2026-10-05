@@ -3,8 +3,10 @@ import {
   ANALYTICS_PANEL_SERVER_NAME,
   registerGetAnalyticsViewTool,
 } from "@app/components/workspace/analytics/tools/getAnalyticsView";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { BrowserMCPTransport } from "@app/lib/client/BrowserMCPTransport";
 import logger from "@app/logger/logger";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
@@ -27,6 +29,8 @@ export function useAnalyticsMCPServer({
   view: AnalyticsViewInput;
   workspaceId: string;
 }): AnalyticsMCPServerHandle {
+  const { hasFeature } = useFeatureFlags();
+  const forcePolling = hasFeature("agent_stream_long_polling");
   const [serverId, setServerId] = useState<string | undefined>(undefined);
   const [status, setStatus] =
     useState<AnalyticsMCPServerHandle["status"]>("idle");
@@ -49,12 +53,14 @@ export function useAnalyticsMCPServer({
     let transport: BrowserMCPTransport | null = null;
 
     const closeServer = () => {
-      if (server) {
-        void server.close();
-      }
-      if (transport) {
-        void transport.close();
-      }
+      void Promise.all([server?.close(), transport?.close()]).catch(
+        (error: unknown) => {
+          logger.error(
+            { err: normalizeError(error), workspaceId },
+            "Failed to close analytics MCP server."
+          );
+        }
+      );
     };
 
     const initializeMCPServer = async () => {
@@ -73,7 +79,8 @@ export function useAnalyticsMCPServer({
               setServerId(newServerId);
               setStatus("registered");
             }
-          }
+          },
+          forcePolling ? "immediate" : "fallback"
         );
         transport.onerror = (err) => {
           logger.error({ err }, "[useAnalyticsMCPServer] Transport error");
@@ -85,9 +92,14 @@ export function useAnalyticsMCPServer({
           closeServer();
         }
       } catch (err) {
-        logger.error({ err }, "[useAnalyticsMCPServer] Failed to initialize");
+        logger.error(
+          { err: normalizeError(err) },
+          "[useAnalyticsMCPServer] Failed to initialize"
+        );
         closeServer();
-        setStatus("failed");
+        if (!cancelled) {
+          setStatus("failed");
+        }
       }
     };
 
@@ -99,7 +111,7 @@ export function useAnalyticsMCPServer({
       setServerId(undefined);
       setStatus("idle");
     };
-  }, [enabled, workspaceId]);
+  }, [enabled, workspaceId, forcePolling]);
 
   return { serverId, status };
 }

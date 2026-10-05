@@ -1,13 +1,13 @@
 import * as capTriggerAlert from "@app/lib/api/credits/programmatic_cap_trigger_alert";
+import {
+  fetchRecentWebhookRequestTriggersWithPayload,
+  processWebhookRequest,
+} from "@app/lib/api/triggers/webhook";
 import { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import type { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
-import {
-  fetchRecentWebhookRequestTriggersWithPayload,
-  processWebhookRequest,
-} from "@app/lib/triggers/webhook";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -47,8 +47,10 @@ vi.mock(
   })
 );
 
-vi.mock("@app/lib/triggers/rate_limits", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@app/lib/triggers/rate_limits")>()),
+vi.mock("@app/lib/api/triggers/rate_limits", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("@app/lib/api/triggers/rate_limits")
+  >()),
   checkWebhookRequestForRateLimit: mockCheckWebhookRequestForRateLimit,
 }));
 
