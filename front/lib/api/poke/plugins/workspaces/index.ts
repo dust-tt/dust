@@ -15,6 +15,7 @@ export * from "./create_group";
 export * from "./create_space";
 export * from "./delete_workspace";
 export * from "./disable_sso_enforcement";
+export * from "./discovery_for_you";
 export * from "./extension_blacklist_domains";
 export * from "./grant_awu_credits";
 export * from "./grant_user_free_credits";
