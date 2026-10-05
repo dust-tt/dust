@@ -379,7 +379,10 @@ async function seedReferencesBatch(ctx: SeedContext): Promise<{
     sourceConversation: null,
   });
 
-  const decisionLog = await SkillResource.createPending(ctx.auth);
+  const decisionLog = await SkillResource.createPending(
+    ctx.auth,
+    "DecisionLog"
+  );
   if (decisionLog.isErr()) {
     throw decisionLog.error;
   }
@@ -514,7 +517,7 @@ async function seedPendingSkills(
   }
 
   for (const { skillName } of suggestions.filter((s) => s.kind === "create")) {
-    const pendingSkill = await SkillResource.createPending(ctx.auth);
+    const pendingSkill = await SkillResource.createPending(ctx.auth, skillName);
     if (pendingSkill.isErr()) {
       throw pendingSkill.error;
     }

@@ -259,14 +259,16 @@ describe("SkillResource", () => {
       expect(editors?.map((editor) => editor.sId)).toEqual([user.sId]);
     });
 
-    it("creates several pending skills in the same workspace", async () => {
+    it("creates several pending skills with the same name", async () => {
       const { authenticator: auth } = testContext;
 
-      const first = await SkillResource.createPending(auth);
-      const second = await SkillResource.createPending(auth);
+      const first = await SkillResource.createPending(auth, "Meeting Notes");
+      const second = await SkillResource.createPending(auth, "Meeting Notes");
 
       assert(first.isOk() && second.isOk());
       expect(first.value.sId).not.toBe(second.value.sId);
+      expect(first.value.name).toBe("Meeting Notes");
+      expect(second.value.name).toBe("Meeting Notes");
     });
 
     it("refuses a caller without the create capability", async () => {

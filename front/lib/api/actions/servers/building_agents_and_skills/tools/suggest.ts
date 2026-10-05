@@ -891,7 +891,7 @@ async function createPendingSkills(
   );
   const pendingSkills = await SkillResource.createPendings(
     auth,
-    skillCreations.length
+    skillCreations.map((change) => change.create.name)
   );
   if (pendingSkills.isErr()) {
     return new Err(new MCPError(pendingSkills.error.message));

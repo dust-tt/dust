@@ -3,6 +3,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import {
   DANGEROUSLY_UNBOUNDED_TEXT,
   DataTypes,
+  Op,
 } from "@app/lib/resources/storage/data_types";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
@@ -197,8 +198,10 @@ SkillConfigurationModel.init(
         concurrently: true,
       },
       {
+        name: "skill_configurations_workspace_id_name_status_non_pending",
         unique: true,
         fields: ["workspaceId", "name", "status"],
+        where: { status: { [Op.ne]: "pending" } },
         concurrently: true,
       },
     ],

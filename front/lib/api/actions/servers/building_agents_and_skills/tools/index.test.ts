@@ -1048,6 +1048,7 @@ describe("building_agents_and_skills tools", () => {
         placeholderId
       );
       expect(placeholder?.status).toBe("pending");
+      expect(placeholder?.name).toBe("Meeting Notes");
       const editors = await placeholder?.listEditors(authenticator);
       expect(editors?.map((editor) => editor.sId)).toEqual([user.sId]);
     });
