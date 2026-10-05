@@ -73,9 +73,10 @@ instance when the commented text was deleted; an anchor with no thread is an err
 
 A message may also carry `sig`, the server's Ed25519 signature in base64url over
 `messageSignaturePayload` in `signatures.ts`: workspace, comment id, author, name, timestamp and
-body, not the status. The server adds it when a signed-in user saves the file with a new message
-of their own; a message without a valid `sig`, such as one written from a sandbox or by an agent,
-is unverified. The codec carries the attribute and never checks it, so nothing here proves who
+body, not the status. The server writes and signs a message when a signed-in user posts it, and
+refuses a save through the file API that brings a new message it did not sign for the saving user;
+a message without a valid `sig`, such as one written from a sandbox or by an agent, is
+unverified. The codec carries the attribute and never checks it, so nothing here proves who
 wrote a message. `tests/fixtures/signed_comments.md` shows one.
 
 **How an agent reads it.** Text first: the body reads as Markdown with a few directives. To

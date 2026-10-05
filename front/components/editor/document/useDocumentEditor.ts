@@ -1,13 +1,6 @@
 import {
-  getDocumentComments,
-  getDocumentJSONComments,
-  withDocumentJSONComments,
-} from "@app/components/editor/document/DocumentComments";
-import {
-  adoptStoredComments,
   loadDfm,
   saveDfm,
-  storedComments,
 } from "@app/components/editor/document/dfm_persistence";
 import { documentExtensions } from "@app/components/editor/document/extensions";
 import type {
@@ -226,25 +219,8 @@ export const useDocumentEditor = ({
     }
 
     if (result.isOk()) {
-      // The server signs new comments and returns the file as stored; adopt its threads so the
-      // next save carries the signatures and the baseline describes what is on disk.
-      const stored =
-        result.value === serialized.value ? null : storedComments(result.value);
-      const persisted =
-        stored === null
-          ? content
-          : JSON.stringify(withDocumentJSONComments(document, stored));
-      if (stored !== null) {
-        editor.commands.setDocumentComments(
-          adoptStoredComments({
-            current: getDocumentComments(editor.state.doc),
-            sent: getDocumentJSONComments(document),
-            stored,
-          })
-        );
-      }
-      persistedRef.current = persisted;
-      setBaseline(persisted);
+      persistedRef.current = content;
+      setBaseline(content);
       return;
     }
 

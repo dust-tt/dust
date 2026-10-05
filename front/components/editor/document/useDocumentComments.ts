@@ -24,6 +24,11 @@ interface UseDocumentCommentsProps {
   author: DfmAuthor | undefined;
   /** Whether the document, as TipTap JSON, would save. */
   isSavable: (document: JSONContent) => boolean;
+  /** Has the server write and sign a new message; without it, messages are built locally. */
+  sign?: (
+    commentId: string,
+    body: string
+  ) => Promise<Result<DfmMessage, string>>;
   verify?: DfmMessageVerifier;
 }
 
@@ -111,6 +116,7 @@ export const useDocumentComments = ({
   canComment,
   author,
   isSavable,
+  sign,
   verify,
 }: UseDocumentCommentsProps) => {
   const state =
@@ -203,11 +209,31 @@ export const useDocumentComments = ({
     requestFocus(id);
   };
 
-  const message = (writer: DfmAuthor, body: string): DfmMessage => ({
-    author: writer,
-    createdAt: new Date().toISOString(),
-    body,
-  });
+  /**
+   * The message to add to `thread`, or to a new thread `commentId`: checked against the codec
+   * locally first, then written by the server when a signer is set.
+   */
+  const writeMessage = async (
+    writer: DfmAuthor,
+    commentId: string,
+    thread: DfmComment | undefined,
+    body: string
+  ): Promise<Result<DfmMessage, string>> => {
+    const local: DfmMessage = {
+      author: writer,
+      createdAt: new Date().toISOString(),
+      body,
+    };
+    const writable = validateCommentThread(
+      thread
+        ? { ...thread, messages: [...thread.messages, local] }
+        : { id: commentId, status: "open", messages: [local] }
+    );
+    if (writable.isErr()) {
+      return writable;
+    }
+    return sign ? sign(commentId, body) : new Ok(local);
+  };
 
   return {
     /** Whether a message's signature checked out, or null while unknown. */
@@ -292,24 +318,26 @@ export const useDocumentComments = ({
     cancelDraft: () => {
       editor?.chain().cancelCommentDraft().focus().run();
     },
-    submitDraft: (body: string): Result<void, string> => {
-      const draft = state.draft;
-      if (!canWrite || !editor || !author || !draft) {
+    submitDraft: async (body: string): Promise<Result<void, string>> => {
+      if (!canWrite || !editor || !author || !state.draft) {
         return new Err(UNAVAILABLE_MESSAGE);
       }
-      const comment: DfmComment = {
-        id: crypto.randomUUID(),
-        status: "open",
-        messages: [message(author, body)],
-      };
-      const writable = validateCommentThread(comment);
-      if (writable.isErr()) {
-        return writable;
+      const id = crypto.randomUUID();
+      const written = await writeMessage(author, id, undefined, body);
+      if (written.isErr()) {
+        return written;
       }
-      const next = previewDocument(editor, (chain) =>
-        chain.addComment(comment)
-      );
-      if (!next) {
+      const comment: DfmComment = {
+        id,
+        status: "open",
+        messages: [written.value],
+      };
+      // The draft may have moved, or been cancelled, while the server signed the message.
+      const draft = documentCommentsPluginKey.getState(editor.state)?.draft;
+      const next = draft
+        ? previewDocument(editor, (chain) => chain.addComment(comment))
+        : null;
+      if (!draft || !next) {
         return new Err(UNANCHORED_MESSAGE);
       }
       if (!isSavable(next.toJSON())) {
@@ -324,26 +352,25 @@ export const useDocumentComments = ({
       setPanelOpen(true);
       return new Ok(undefined);
     },
-    reply: (id: string, body: string): Result<void, string> => {
+    reply: async (id: string, body: string): Promise<Result<void, string>> => {
       const thread = comments.find((comment) => comment.id === id);
       if (!canWrite || !editor || !author || !thread) {
         return new Err(UNAVAILABLE_MESSAGE);
       }
-      const reply = message(author, body);
-      const writable = validateCommentThread({
-        ...thread,
-        messages: [...thread.messages, reply],
-      });
-      if (writable.isErr()) {
-        return writable;
+      const written = await writeMessage(author, id, thread, body);
+      if (written.isErr()) {
+        return written;
       }
       const next = previewDocument(editor, (chain) =>
-        chain.replyToComment(id, reply)
+        chain.replyToComment(id, written.value)
       );
-      if (!next || !isSavable(next.toJSON())) {
+      if (!next) {
+        return new Err("This comment was deleted.");
+      }
+      if (!isSavable(next.toJSON())) {
         return new Err(UNSAVABLE_MESSAGE);
       }
-      editor.commands.replyToComment(id, reply);
+      editor.commands.replyToComment(id, written.value);
       return new Ok(undefined);
     },
     /** Resolves or reopens, then focuses the given thread or the panel heading. */

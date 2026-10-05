@@ -57,6 +57,7 @@ export const Document = ({
   badge,
   commentAuthor,
   renderCommentAuthorAvatar,
+  signCommentMessage,
   verifyCommentMessage,
 }: DocumentProps) => {
   const {
@@ -81,6 +82,7 @@ export const Document = ({
     canComment: editable,
     author: commentAuthor,
     isSavable,
+    sign: signCommentMessage,
     verify: verifyCommentMessage,
   });
   const contentRef = useRef<HTMLDivElement>(null);

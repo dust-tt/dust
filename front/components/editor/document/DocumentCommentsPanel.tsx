@@ -119,7 +119,7 @@ const MessageByline = ({
 interface ReplyComposerProps {
   author: DfmAuthor | undefined;
   renderAuthorAvatar: RenderAuthorAvatar;
-  onReply: (body: string) => Result<void, string>;
+  onReply: (body: string) => Promise<Result<void, string>>;
   /** Escape clears the field and hands focus back to the thread. */
   onCancel: () => void;
 }
@@ -132,6 +132,7 @@ const ReplyComposer = ({
 }: ReplyComposerProps) => {
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
 
   return (
     <DocumentCommentInput
@@ -141,8 +142,13 @@ const ReplyComposer = ({
       renderAuthorAvatar={renderAuthorAvatar}
       value={body}
       onChange={setBody}
-      onSubmit={(trimmed) => {
-        const replied = onReply(trimmed);
+      onSubmit={async (trimmed) => {
+        if (sending) {
+          return;
+        }
+        setSending(true);
+        const replied = await onReply(trimmed);
+        setSending(false);
         if (replied.isErr()) {
           setError(replied.error);
           return;
@@ -167,7 +173,7 @@ interface DraftCardProps {
   quote: string;
   /** The panel is visible, so the field can take focus. */
   visible: boolean;
-  onSubmit: (body: string) => Result<void, string>;
+  onSubmit: (body: string) => Promise<Result<void, string>>;
   onCancel: () => void;
 }
 
@@ -181,6 +187,7 @@ const DraftCard = ({
 }: DraftCardProps) => {
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
   const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -206,8 +213,13 @@ const DraftCard = ({
         renderAuthorAvatar={renderAuthorAvatar}
         value={body}
         onChange={setBody}
-        onSubmit={(trimmed) => {
-          const submitted = onSubmit(trimmed);
+        onSubmit={async (trimmed) => {
+          if (sending) {
+            return;
+          }
+          setSending(true);
+          const submitted = await onSubmit(trimmed);
+          setSending(false);
           setError(submitted.isErr() ? submitted.error : null);
         }}
         onCancel={onCancel}
@@ -227,7 +239,7 @@ interface CommentThreadProps {
   author: DfmAuthor | undefined;
   isVerified: (index: number) => boolean | null;
   onSelect: () => void;
-  onReply: (body: string) => Result<void, string>;
+  onReply: (body: string) => Promise<Result<void, string>>;
   onSetResolved: (resolved: boolean) => void;
   onDelete: () => void;
   onElement: (element: HTMLElement | null) => void;

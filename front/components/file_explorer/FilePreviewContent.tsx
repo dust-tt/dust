@@ -13,6 +13,7 @@ import {
   getFileProcessedUrl,
   useDfmMessageVerifier,
   useFileContentByUrl,
+  useSignDfmCommentMessage,
 } from "@app/lib/swr/files";
 import type { FilePreviewCategory } from "@app/types/file_preview";
 import { getFilePreviewConfig } from "@app/types/file_preview";
@@ -319,6 +320,7 @@ interface RichMarkdownDocumentProps {
 
 function RichMarkdownDocument({ editor, owner }: RichMarkdownDocumentProps) {
   const user = useContext(AuthContext)?.user;
+  const signCommentMessage = useSignDfmCommentMessage({ owner });
   const verifyCommentMessage = useDfmMessageVerifier({ owner });
 
   return (
@@ -329,6 +331,7 @@ function RichMarkdownDocument({ editor, owner }: RichMarkdownDocumentProps) {
       commentAuthor={
         user ? { kind: "user", id: user.sId, name: user.fullName } : undefined
       }
+      signCommentMessage={signCommentMessage}
       verifyCommentMessage={verifyCommentMessage ?? undefined}
       badge={<CoEditionBadge />}
       renderCommentAuthorAvatar={(author, size) => (

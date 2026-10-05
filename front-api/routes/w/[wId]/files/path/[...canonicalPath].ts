@@ -1,6 +1,6 @@
 import config from "@app/lib/api/config";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { signMarkdownCommentsForWrite } from "@app/lib/api/files/dfm_comment_signatures";
+import { validateMarkdownCommentsForWrite } from "@app/lib/api/files/dfm_comment_signatures";
 import {
   convertCanonicalFileToPdf,
   deleteCanonicalFile,
@@ -79,8 +79,7 @@ const ParamsSchema = z.object({
  * positive generation strings, independent of HTTP ETags. Backends without revision
  * support reject conditional writes.
  * GET and HEAD expose current mount write permission in X-Dust-File-Can-Write.
- * A PUT of a Markdown file whose comments the server signed returns the stored content as its
- * body; any other successful PUT has an empty body.
+ * A PUT of a Markdown file bringing a comment the server did not sign for the caller is refused.
  */
 const app = workspaceApp();
 
@@ -675,18 +674,19 @@ app.put(
       return putContentTooLargeError(ctx);
     }
 
-    const signed = await signMarkdownCommentsForWrite(
+    const content = new Uint8Array(contentBuffer);
+    const comments = await validateMarkdownCommentsForWrite(
       auth,
       dustFs,
       canonicalPath,
-      new Uint8Array(contentBuffer)
+      content
     );
-    if (signed.isErr()) {
+    if (comments.isErr()) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: signed.error.message,
+          message: comments.error.message,
         },
       });
     }
@@ -695,7 +695,7 @@ app.put(
       auth,
       dustFs,
       canonicalPath,
-      signed.value.content,
+      content,
       ctx.req.header("content-type") ?? undefined,
       ctx.req.valid("header")["x-dust-if-revision-match"]
     );
@@ -737,21 +737,12 @@ app.put(
       return apiError(ctx, mapDustFsError(error));
     }
 
-    const revisionHeaders: Record<string, string> =
-      writeResult.value.revision !== undefined
-        ? { [DUST_FILE_REVISION_HEADER]: writeResult.value.revision }
-        : {};
-    const storedText = signed.value.rewritten
-      ? new TextDecoder().decode(signed.value.content)
-      : null;
-    return new Response(storedText, {
+    return new Response(null, {
       status: writeResult.value.created ? 201 : 200,
-      headers: signed.value.rewritten
-        ? {
-            ...revisionHeaders,
-            "Content-Type": "text/markdown; charset=utf-8",
-          }
-        : revisionHeaders,
+      headers:
+        writeResult.value.revision !== undefined
+          ? { [DUST_FILE_REVISION_HEADER]: writeResult.value.revision }
+          : undefined,
     });
   }
 );

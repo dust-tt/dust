@@ -1,11 +1,11 @@
 // @vitest-environment node: ZIP inspection requires Node builtins.
 
 import assert from "node:assert";
-import { generateKeyPairSync, verify } from "node:crypto";
+import { generateKeyPairSync, sign } from "node:crypto";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import config from "@app/lib/api/config";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import { messageSignaturePayload, parseDfm } from "@app/lib/markdown/dfm";
+import { messageSignaturePayload } from "@app/lib/markdown/dfm";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -1127,10 +1127,30 @@ describe("conditional updates through Files paths", () => {
 });
 
 describe("comment signatures on Markdown saves", () => {
-  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+  const { privateKey } = generateKeyPairSync("ed25519");
   const AT = "2026-10-05T11:59:58.000Z";
-  const file = (author: string) =>
-    `Hi :comment-start{id=c1}there:comment-end{id=c1}\n\n:::annotations\n::comment{id=c1 status=open}\n\n::message{author=${author} name="Someone" at=${AT}}\n\nLooks good.\n:::\n`;
+  const file = (author: string, signature?: string) =>
+    `Hi :comment-start{id=c1}there:comment-end{id=c1}\n\n:::annotations\n::comment{id=c1 status=open}\n\n::message{author=${author} name="Someone" at=${AT}${signature ? ` sig=${signature}` : ""}}\n\nLooks good.\n:::\n`;
+  const signatureFor = (workspaceId: string, author: string) => {
+    const [kind, id] = author.split(":");
+    assert(kind === "user" || kind === "agent");
+    return sign(
+      null,
+      Buffer.from(
+        messageSignaturePayload({
+          workspaceId,
+          commentId: "c1",
+          message: {
+            author: { kind, id, name: "Someone" },
+            createdAt: AT,
+            body: "Looks good.",
+          },
+        }),
+        "utf8"
+      ),
+      privateKey
+    ).toString("base64url");
+  };
 
   // EnvironmentConfig caches variables, so the key is stubbed on config rather than the env.
   beforeEach(() => {
@@ -1169,67 +1189,45 @@ describe("comment signatures on Markdown saves", () => {
     return { workspace, user, path, mountPath };
   };
 
-  it("signs a new comment from the saving user and returns the stored file", async () => {
+  it("saves a new comment the server signed for the saving user, as sent", async () => {
+    const { workspace, user, path, mountPath } = await setupMarkdown({
+      coEdition: true,
+    });
+    const author = `user:${user.sId}`;
+    const content = file(author, signatureFor(workspace.sId, author));
+
+    const response = await request(workspace, path, {
+      method: "PUT",
+      headers: { "Content-Type": "text/markdown" },
+      body: content,
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("");
+    expect(fileStorageMock.getObject(mountPath)).toBe(content);
+  });
+
+  it.each([
+    [
+      "an unsigned comment",
+      (_workspaceId: string, userId: string) => file(`user:${userId}`),
+    ],
+    [
+      "a comment signed for someone else",
+      (workspaceId: string) =>
+        file("user:usr_other", signatureFor(workspaceId, "user:usr_other")),
+    ],
+  ])("refuses %s", async (_, content) => {
     const { workspace, user, path, mountPath } = await setupMarkdown({
       coEdition: true,
     });
 
     const response = await request(workspace, path, {
       method: "PUT",
-      headers: { "Content-Type": "text/markdown" },
-      body: file(`user:${user.sId}`),
-    });
-
-    expect(response.status).toBe(200);
-    const stored = await response.text();
-    expect(fileStorageMock.getObject(mountPath)).toBe(stored);
-    const parsed = parseDfm(stored);
-    assert(parsed.isOk());
-    const [message] = parsed.value.comments[0].messages;
-    expect(message.author).toEqual({
-      kind: "user",
-      id: user.sId,
-      name: user.fullName(),
-    });
-    expect(message.createdAt).not.toBe(AT);
-    assert(message.signature);
-    expect(
-      verify(
-        null,
-        Buffer.from(
-          messageSignaturePayload({
-            workspaceId: workspace.sId,
-            commentId: "c1",
-            message,
-          }),
-          "utf8"
-        ),
-        publicKey,
-        Buffer.from(message.signature, "base64url")
-      )
-    ).toBe(true);
-
-    const resaved = await request(workspace, path, {
-      method: "PUT",
-      body: stored,
-    });
-    expect(resaved.status).toBe(200);
-    expect(await resaved.text()).toBe("");
-    expect(fileStorageMock.getObject(mountPath)).toBe(stored);
-  });
-
-  it("refuses a new comment attributed to someone else", async () => {
-    const { workspace, path, mountPath } = await setupMarkdown({
-      coEdition: true,
-    });
-
-    const response = await request(workspace, path, {
-      method: "PUT",
-      body: file("user:usr_someone_else"),
+      body: content(workspace.sId, user.sId),
     });
 
     expect(response.status).toBe(400);
-    expect((await response.json()).error.message).toContain("not yours");
     expect(fileStorageMock.getObject(mountPath)).toBe("Hi there\n");
   });
 
@@ -1244,7 +1242,6 @@ describe("comment signatures on Markdown saves", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(await response.text()).toBe("");
     expect(fileStorageMock.getObject(mountPath)).toBe(
       file("user:usr_someone_else")
     );

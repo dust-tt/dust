@@ -63,14 +63,14 @@ Message bodies show as plain text for now. The host renders authors' avatars thr
 
 ## Signatures
 
-The editor never signs anything. Saving goes through the file API, which signs each new message
-written by the saving user and refuses new ones attributed to anyone else
-(`front/lib/api/files/dfm_comment_signatures.ts`). `onSave` resolves with the file as stored,
-and the editor adopts the stored threads, so the next save carries the signatures and the saved
-state matches the disk. Messages added while a save was in flight keep their local form until
-the next save. With `verifyCommentMessage`, the panel marks each message whose signature does
-not check out as Unverified, such as one written from a sandbox or by an agent; without it, no
-message is marked.
+The editor never signs anything. With `signCommentMessage`, posting a comment or a reply asks the
+server to write the message, with the user's name, the server's time and a signature, and the
+editor inserts what it returns; a refusal keeps the typed text and shows the reason. Saving then
+goes through the file API, which refuses a new message it did not sign for the saving user
+(`front/lib/api/files/dfm_comment_signatures.ts`) and never rewrites the file. With
+`verifyCommentMessage`, the panel marks each message whose signature does not check out as
+Unverified, such as one written from a sandbox or by an agent; without it, no message is
+marked.
 
 ## Layout
 

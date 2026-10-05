@@ -1,174 +1,181 @@
 // @vitest-environment node: signs with node:crypto and checks with WebCrypto, as browsers do.
 
-import { generateKeyPairSync, sign } from "node:crypto";
-import { applyCommentSignatures } from "@app/lib/api/files/dfm_comment_signatures";
+import { generateKeyPairSync, sign, verify } from "node:crypto";
+import { validateCommentSignatures } from "@app/lib/api/files/dfm_comment_signatures";
 import { createDfmMessageVerifier } from "@app/lib/client/dfm_signatures";
-import type { DfmComment } from "@app/lib/markdown/dfm";
-import { parseDfm } from "@app/lib/markdown/dfm";
+import type { DfmMessage } from "@app/lib/markdown/dfm";
+import { messageSignaturePayload } from "@app/lib/markdown/dfm";
 import { describe, expect, it } from "vitest";
 
 const { privateKey, publicKey } = generateKeyPairSync("ed25519");
 const PUBLIC_KEY = publicKey
   .export({ format: "der", type: "spki" })
   .toString("base64url");
-const NOW = "2026-10-05T12:00:00.000Z";
-const CLIENT_AT = "2026-10-05T11:59:58.000Z";
-const USER = { sId: "usr_tom", fullName: "Tom Draier" };
+const AT = "2026-10-05T12:00:00.000Z";
 const CONTEXT = {
   workspaceId: "w_1",
-  user: USER,
-  now: NOW,
-  sign: (payload: string) =>
-    sign(null, Buffer.from(payload, "utf8"), privateKey).toString("base64url"),
+  userId: "usr_tom",
+  verify: (payload: string, signature: string) =>
+    verify(
+      null,
+      Buffer.from(payload, "utf8"),
+      publicKey,
+      Buffer.from(signature, "base64url")
+    ),
 };
 
-const message = (
-  author: string,
-  name: string,
-  at: string,
-  body: string,
-  sig?: string
-) =>
-  `::message{author=${author} name="${name}" at=${at}${sig ? ` sig=${sig}` : ""}}\n\n${body}\n`;
-
-const file = (...messages: string[]) =>
-  `Hi :comment-start{id=c1}there:comment-end{id=c1}\n\n:::annotations\n::comment{id=c1 status=open}\n\n${messages.join("\n")}:::\n`;
-
-function threads(source: string): DfmComment[] {
-  const parsed = parseDfm(source);
-  if (parsed.isErr()) {
-    throw new Error(parsed.error.message);
-  }
-  return parsed.value.comments;
+/** A message as the server signs it when it is posted. */
+function signedMessage(
+  commentId: string,
+  message: Omit<DfmMessage, "signature">
+): DfmMessage {
+  return {
+    ...message,
+    signature: sign(
+      null,
+      Buffer.from(
+        messageSignaturePayload({ workspaceId: "w_1", commentId, message }),
+        "utf8"
+      ),
+      privateKey
+    ).toString("base64url"),
+  };
 }
 
-function signed(previous: string | null, next: string) {
-  const result = applyCommentSignatures({ previous, next }, CONTEXT);
-  if (result.isErr()) {
-    throw new Error(result.error.message);
-  }
-  return result.value;
-}
+const TOM: DfmMessage = signedMessage("c1", {
+  author: { kind: "user", id: "usr_tom", name: "Tom Draier" },
+  createdAt: AT,
+  body: "Looks good.",
+});
 
-describe("applyCommentSignatures", () => {
-  it("signs a new message from the saving user with the server's name and time", async () => {
-    const { content, rewritten } = signed(
-      file(),
-      file(message("user:usr_tom", "Me", CLIENT_AT, "Looks good."))
-    );
+const line = ({ author, createdAt, body, signature }: DfmMessage) =>
+  `::message{author=${author.kind}:${author.id} name="${author.name}" at=${createdAt}${signature ? ` sig=${signature}` : ""}}\n\n${body}\n`;
 
-    expect(rewritten).toBe(true);
-    const [stored] = threads(content)[0].messages;
-    expect(stored).toMatchObject({
-      author: { kind: "user", id: "usr_tom", name: "Tom Draier" },
-      createdAt: NOW,
-      body: "Looks good.",
-    });
-    const verify = await createDfmMessageVerifier({
+const file = (...messages: DfmMessage[]) =>
+  `Hi :comment-start{id=c1}there:comment-end{id=c1}\n\n:::annotations\n::comment{id=c1 status=open}\n\n${messages.map(line).join("\n")}:::\n`;
+
+const validate = (previous: string | null, next: string) =>
+  validateCommentSignatures({ previous, next }, CONTEXT);
+
+describe("validateCommentSignatures", () => {
+  it("accepts a new message the server signed for the saving user", async () => {
+    expect(validate(file(), file(TOM)).isOk()).toBe(true);
+
+    const browserVerify = await createDfmMessageVerifier({
       publicKey: PUBLIC_KEY,
       workspaceId: "w_1",
     });
-    expect(await verify("c1", stored)).toBe(true);
-    expect(await verify("c1", { ...stored, body: "Looks bad." })).toBe(false);
-    expect(await verify("c2", stored)).toBe(false);
+    expect(await browserVerify("c1", TOM)).toBe(true);
+    expect(await browserVerify("c1", { ...TOM, body: "Looks bad." })).toBe(
+      false
+    );
   });
 
   it.each([
-    ["another user", "user:usr_yuka"],
-    ["an agent", "agent:dust"],
-  ])("refuses a new message attributed to %s", (_, author) => {
-    const result = applyCommentSignatures(
-      { previous: file(), next: file(message(author, "X", CLIENT_AT, "Hi")) },
-      CONTEXT
+    ["has no signature", { ...TOM, signature: undefined }],
+    ["has a signature for other text", { ...TOM, body: "Looks bad." }],
+    [
+      "has a signature from another key",
+      { ...TOM, signature: "AAAA" + TOM.signature?.slice(4) },
+    ],
+  ])("refuses a new message from the user that %s", (_, message) => {
+    const result = validate(file(), file(message));
+
+    expect(result.isErr() && result.error.code).toBe("unsigned_message");
+  });
+
+  it.each([
+    ["another user", "user", "usr_yuka"],
+    ["an agent", "agent", "dust"],
+  ] as const)("refuses a new message attributed to %s", (_, kind, id) => {
+    const result = validate(
+      file(),
+      file(
+        signedMessage("c1", {
+          author: { kind, id, name: "X" },
+          createdAt: AT,
+          body: "Hi",
+        })
+      )
     );
 
     expect(result.isErr() && result.error.code).toBe("foreign_message");
   });
 
-  it("refuses a new message when no user is saving", () => {
-    const result = applyCommentSignatures(
-      {
-        previous: null,
-        next: file(message("user:usr_tom", "Me", CLIENT_AT, "Hi")),
-      },
-      { ...CONTEXT, user: null }
+  it("refuses new messages when no user is saving", () => {
+    const result = validateCommentSignatures(
+      { previous: null, next: file(TOM) },
+      { ...CONTEXT, userId: null }
     );
 
     expect(result.isErr()).toBe(true);
   });
 
-  it("keeps stored messages with their stored signature, or none", () => {
-    const signedByServer = signed(
-      null,
-      file(message("user:usr_tom", "Me", CLIENT_AT, "Mine."))
-    ).content;
-    const [mine] = threads(signedByServer)[0].messages;
-    const agent = message("agent:dust", "@dust", CLIENT_AT, "Unsigned.");
-    const previous = file(
-      message("user:usr_tom", "Tom Draier", NOW, "Mine.", mine.signature),
-      agent
+  it("accepts stored messages as they were, signed or not", () => {
+    const agent: DfmMessage = {
+      author: { kind: "agent", id: "dust", name: "@dust" },
+      createdAt: AT,
+      body: "Unsigned.",
+    };
+    const stored = file(TOM, agent);
+
+    expect(validate(stored, stored).isOk()).toBe(true);
+  });
+
+  it("refuses a stored message whose signature changed", () => {
+    const agent: DfmMessage = {
+      author: { kind: "agent", id: "dust", name: "@dust" },
+      createdAt: AT,
+      body: "Unsigned.",
+    };
+
+    const added = validate(
+      file(TOM, agent),
+      file(TOM, { ...agent, signature: TOM.signature })
+    );
+    const removed = validate(
+      file(TOM, agent),
+      file({ ...TOM, signature: undefined }, agent)
     );
 
-    const unchanged = signed(previous, previous);
-    expect(unchanged).toEqual({ content: previous, rewritten: false });
-
-    const tampered = signed(
-      previous,
-      file(
-        message("user:usr_tom", "Tom Draier", NOW, "Mine."),
-        message("agent:dust", "@dust", CLIENT_AT, "Unsigned.", mine.signature)
-      )
-    );
-    expect(tampered.content).toBe(previous);
+    expect(added.isErr() && added.error.code).toBe("altered_message");
+    expect(removed.isErr() && removed.error.code).toBe("altered_message");
   });
 
   it("treats an edited message of someone else as new and refuses it", () => {
-    const previous = file(message("user:usr_yuka", "Yuka", CLIENT_AT, "Mine."));
+    const yuka: DfmMessage = {
+      author: { kind: "user", id: "usr_yuka", name: "Yuka" },
+      createdAt: AT,
+      body: "Mine.",
+    };
 
-    const result = applyCommentSignatures(
-      {
-        previous,
-        next: file(message("user:usr_yuka", "Yuka", CLIENT_AT, "Edited.")),
-      },
-      CONTEXT
-    );
-
-    expect(result.isErr()).toBe(true);
+    expect(
+      validate(file(yuka), file({ ...yuka, body: "Edited." })).isErr()
+    ).toBe(true);
   });
 
-  it("lets the user delete threads and keep others' messages untouched", () => {
-    const yuka = message("user:usr_yuka", "Yuka", CLIENT_AT, "Keep me.");
-    const previous = `${file(yuka).replace(
-      ":::\n",
-      `\n::comment{id=c2 status=open}\n\n${message("user:usr_yuka", "Yuka", CLIENT_AT, "Delete me.")}:::\n`
-    )}`;
+  it("accepts deleting threads and messages", () => {
+    const yuka: DfmMessage = {
+      author: { kind: "user", id: "usr_yuka", name: "Yuka" },
+      createdAt: AT,
+      body: "Keep me.",
+    };
 
-    expect(signed(previous, file(yuka))).toEqual({
-      content: file(yuka),
-      rewritten: false,
-    });
+    expect(validate(file(yuka, TOM), file(yuka)).isOk()).toBe(true);
   });
 
-  it("writes a source the codec cannot read unchanged", () => {
-    const broken = "Body\n\n:::annotations\n::comment{id=c1}\n:::\n";
-
-    expect(signed(null, broken)).toEqual({ content: broken, rewritten: false });
+  it("accepts a source the codec cannot read", () => {
+    expect(
+      validate(null, "Body\n\n:::annotations\n::comment{id=c1}\n:::\n").isOk()
+    ).toBe(true);
   });
 
-  it("saves new messages unsigned when no key is configured", () => {
-    const result = applyCommentSignatures(
-      {
-        previous: null,
-        next: file(message("user:usr_tom", "Me", CLIENT_AT, "Hi")),
-      },
-      { ...CONTEXT, sign: null }
+  it("accepts the user's unsigned messages when no key is configured", () => {
+    const result = validateCommentSignatures(
+      { previous: null, next: file({ ...TOM, signature: undefined }) },
+      { ...CONTEXT, verify: null }
     );
 
     expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      const [stored] = threads(result.value.content)[0].messages;
-      expect(stored.signature).toBeUndefined();
-      expect(stored.createdAt).toBe(NOW);
-    }
   });
 });

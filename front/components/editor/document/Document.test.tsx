@@ -26,7 +26,7 @@ async function renderDocument(
   initialContent: string,
   verifyCommentMessage?: DfmMessageVerifier
 ) {
-  const onSave = vi.fn(async (content: string) => new Ok(content));
+  const onSave = vi.fn().mockResolvedValue(new Ok(undefined));
   const { container } = render(
     <Document
       initialContent={initialContent}
@@ -160,7 +160,9 @@ describe("Document comments", () => {
     fireEvent.change(field, { target: { value: "Too bold?" } });
     fireEvent.keyDown(field, { key: "Enter" });
 
-    expect(screen.queryByRole("article", { name: "New comment" })).toBeNull();
+    await waitFor(() =>
+      expect(screen.queryByRole("article", { name: "New comment" })).toBeNull()
+    );
     expect(
       screen.getByRole("article", { name: "Comment by Tom" }).textContent
     ).toContain("Too bold?");

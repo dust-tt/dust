@@ -5,6 +5,8 @@
  * or `pod-{pId}/data.csv`. Entries always carry canonical scoped paths.
  */
 
+import type { DfmMessage } from "@app/lib/markdown/dfm";
+
 type FileSystemEntryBase = {
   fileName: string;
   /** Full scoped path, e.g. `conversation-{cId}/folder/report.pdf`. Always canonical. */
@@ -48,4 +50,14 @@ export type PostExtractArchiveResponseBody = {
 /** The key checking DFM comment signatures, as base64url SPKI DER, or null when unset. */
 export type GetDfmCommentSigningKeyResponseBody = {
   publicKey: string | null;
+};
+
+export type PostDfmCommentSignatureRequestBody = {
+  commentId: string;
+  body: string;
+};
+
+/** The message to insert in the comment: the server's author, name, timestamp and signature. */
+export type PostDfmCommentSignatureResponseBody = {
+  message: DfmMessage;
 };

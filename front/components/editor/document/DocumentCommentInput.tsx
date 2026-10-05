@@ -9,7 +9,7 @@ interface DocumentCommentInputProps {
   value: string;
   onChange: (value: string) => void;
   /** Receives the trimmed text. */
-  onSubmit: (body: string) => void;
+  onSubmit: (body: string) => void | Promise<void>;
   /** Handles Escape inside the field. Without it Escape bubbles to the parent. */
   onCancel?: () => void;
   author?: DfmAuthor;
@@ -60,7 +60,7 @@ export const DocumentCommentInput = ({
 
   const submit = () => {
     if (trimmed) {
-      onSubmit(trimmed);
+      void onSubmit(trimmed);
     }
   };
 

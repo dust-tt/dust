@@ -1,12 +1,12 @@
 import type { KeyObject } from "node:crypto";
-import { createPrivateKey, createPublicKey, sign } from "node:crypto";
+import { createPrivateKey, createPublicKey, sign, verify } from "node:crypto";
 import config from "@app/lib/api/config";
 import type { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { readCanonicalFileContent } from "@app/lib/api/files/file_system_ops";
 import { decodeBuffer } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
-import type { DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
+import type { DfmMessage } from "@app/lib/markdown/dfm";
 import {
   messageSignaturePayload,
   parseDfm,
@@ -18,15 +18,18 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 /**
- * Server-side authorship for DFM comments. Saving a Markdown file through the file API keeps
- * the messages the file already had, signs the new ones its user wrote, and refuses new ones
- * attributed to anyone else. Messages written around this path, from a sandbox or an agent
- * tool, stay unsigned and read as unverified.
+ * Server-side authorship for DFM comments. The server writes and signs each message a user
+ * posts, and a Markdown save through the file API is refused when it brings a new message the
+ * server did not sign for the saving user. Messages written around this path, from a sandbox or
+ * an agent tool, stay unsigned and read as unverified.
  */
 
 export type DfmCommentSignatureErrorCode =
+  | "not_available"
+  | "unwritable_message"
   | "foreign_message"
-  | "unwritable_comments";
+  | "unsigned_message"
+  | "altered_message";
 
 export class DfmCommentSignatureError extends Error {
   constructor(
@@ -67,6 +70,68 @@ export function getDfmCommentPublicKey(): string | null {
     : null;
 }
 
+/**
+ * @cc [owner:tdraier,label:security] dfm-comment-signing-on-post
+ * A signed message MUST take its author, name and timestamp from the server: the requesting
+ * user and the current time, never from the request. It MUST be refused when no user is signed
+ * in, outside a workspace with `co_edition`, or when the codec cannot write it. Without a
+ * signing key it MUST be returned unsigned.
+ */
+export async function signDfmCommentMessage(
+  auth: Authenticator,
+  { commentId, body }: { commentId: string; body: string }
+): Promise<Result<DfmMessage, DfmCommentSignatureError>> {
+  const user = auth.user();
+  if (!user || !(await hasFeatureFlag(auth, "co_edition"))) {
+    return new Err(
+      new DfmCommentSignatureError(
+        "not_available",
+        "Commenting is not available here."
+      )
+    );
+  }
+
+  const message: DfmMessage = {
+    author: { kind: "user", id: user.sId, name: user.fullName() },
+    createdAt: new Date().toISOString(),
+    body,
+  };
+  const writable = serializeDfm({
+    frontMatter: null,
+    body: "",
+    comments: [{ id: commentId, status: "open", messages: [message] }],
+  });
+  if (writable.isErr()) {
+    return new Err(
+      new DfmCommentSignatureError(
+        "unwritable_message",
+        "This comment cannot be saved as written."
+      )
+    );
+  }
+
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  const key = getSigningKey();
+  if (!key) {
+    logger.warn(
+      { workspaceId },
+      "DFM comment signing key is not configured; the comment is not signed."
+    );
+    return new Ok(message);
+  }
+  return new Ok({
+    ...message,
+    signature: sign(
+      null,
+      Buffer.from(
+        messageSignaturePayload({ workspaceId, commentId, message }),
+        "utf8"
+      ),
+      key
+    ).toString("base64url"),
+  });
+}
+
 const messageKey = (commentId: string, message: DfmMessage) =>
   JSON.stringify([
     commentId,
@@ -77,31 +142,28 @@ const messageKey = (commentId: string, message: DfmMessage) =>
     message.body,
   ]);
 
-interface SignatureContext {
+interface ValidationContext {
   workspaceId: string;
-  user: { sId: string; fullName: string } | null;
-  now: string;
-  /** Signs a payload, or null when no signing key is configured. */
-  sign: ((payload: string) => string) | null;
+  userId: string | null;
+  /** Checks a signature over a payload, or null when no signing key is configured. */
+  verify: ((payload: string, signature: string) => boolean) | null;
 }
 
 /**
  * @cc [owner:tdraier,label:security] dfm-comment-authorship-on-save
- * A message whose author, name, timestamp and body match one in the stored file MUST be written
- * with the stored file's signature, or none, whatever signature the request carries. Any other
- * message is new: it MUST be refused unless its author is `user:<sId>` of the saving user, and
- * when accepted MUST be written with the user's name, the server's timestamp and a fresh
- * signature over `messageSignaturePayload`. Thread status, anchors and the body text MUST NOT
- * be changed. A source the codec cannot read MUST be written unchanged, since it carries no
- * comment anyone can see.
+ * A save MUST be refused when a message matching one in the stored file by author, name,
+ * timestamp and body carries a different signature, or when any other message is not
+ * attributed to `user:<sId>` of the saving user or, with a signing key, lacks a valid signature
+ * over `messageSignaturePayload`. Deleting messages or threads, changing statuses and anchors,
+ * and a source the codec cannot read MUST be accepted. Validation MUST NOT change the content.
  */
-export function applyCommentSignatures(
+export function validateCommentSignatures(
   { previous, next }: { previous: string | null; next: string },
-  context: SignatureContext
-): Result<{ content: string; rewritten: boolean }, DfmCommentSignatureError> {
+  context: ValidationContext
+): Result<void, DfmCommentSignatureError> {
   const parsed = parseDfm(next);
   if (parsed.isErr() || parsed.value.comments.length === 0) {
-    return new Ok({ content: next, rewritten: false });
+    return new Ok(undefined);
   }
 
   const stored = new Map<string, string | undefined>();
@@ -114,27 +176,25 @@ export function applyCommentSignatures(
     }
   }
 
-  let changed = false;
-  const comments: DfmComment[] = [];
   for (const comment of parsed.value.comments) {
-    const messages: DfmMessage[] = [];
     for (const message of comment.messages) {
       const key = messageKey(comment.id, message);
       if (stored.has(key)) {
-        const { signature: requested, ...unsigned } = message;
-        const signature = stored.get(key);
-        changed ||= requested !== signature;
-        messages.push(
-          signature === undefined ? unsigned : { ...unsigned, signature }
-        );
+        if (stored.get(key) !== message.signature) {
+          return new Err(
+            new DfmCommentSignatureError(
+              "altered_message",
+              "A comment's signature was changed. Reload the file before saving."
+            )
+          );
+        }
         continue;
       }
 
-      const { user } = context;
       if (
-        user === null ||
+        context.userId === null ||
         message.author.kind !== "user" ||
-        message.author.id !== user.sId
+        message.author.id !== context.userId
       ) {
         return new Err(
           new DfmCommentSignatureError(
@@ -143,40 +203,29 @@ export function applyCommentSignatures(
           )
         );
       }
-
-      changed = true;
-      const accepted: DfmMessage = {
-        author: { kind: "user", id: user.sId, name: user.fullName },
-        createdAt: context.now,
-        body: message.body,
-      };
-      const signature = context.sign?.(
-        messageSignaturePayload({
-          workspaceId: context.workspaceId,
-          commentId: comment.id,
-          message: accepted,
-        })
-      );
-      messages.push(
-        signature === undefined ? accepted : { ...accepted, signature }
-      );
+      if (
+        context.verify &&
+        (message.signature === undefined ||
+          !context.verify(
+            messageSignaturePayload({
+              workspaceId: context.workspaceId,
+              commentId: comment.id,
+              message,
+            }),
+            message.signature
+          ))
+      ) {
+        return new Err(
+          new DfmCommentSignatureError(
+            "unsigned_message",
+            "A new comment was not posted through Dust. Reload the file before saving."
+          )
+        );
+      }
     }
-    comments.push({ ...comment, messages });
   }
 
-  if (!changed) {
-    return new Ok({ content: next, rewritten: false });
-  }
-  const serialized = serializeDfm({ ...parsed.value, comments });
-  if (serialized.isErr()) {
-    return new Err(
-      new DfmCommentSignatureError(
-        "unwritable_comments",
-        "Your comment cannot be saved with your name. Ask an admin to check your profile name."
-      )
-    );
-  }
-  return new Ok({ content: serialized.value, rewritten: true });
+  return new Ok(undefined);
 }
 
 async function readStoredText(
@@ -192,57 +241,43 @@ async function readStoredText(
 }
 
 /**
- * @cc [owner:tdraier,label:security] dfm-comment-signing-scope
- * Signing MUST run on every write of a `.md` file through the file API in a workspace with
+ * @cc [owner:tdraier,label:security] dfm-comment-validation-scope
+ * Validation MUST run on every write of a `.md` file through the file API in a workspace with
  * `co_edition`, against the file as stored right before the write, and MUST NOT run anywhere
  * else until the codec bounds its input before parsing.
  */
-export async function signMarkdownCommentsForWrite(
+export async function validateMarkdownCommentsForWrite(
   auth: Authenticator,
   dustFs: DustFileSystem,
   scopedPath: string,
   content: Uint8Array
-): Promise<
-  Result<{ content: Uint8Array; rewritten: boolean }, DfmCommentSignatureError>
-> {
+): Promise<Result<void, DfmCommentSignatureError>> {
   if (
     !scopedPath.toLowerCase().endsWith(".md") ||
     !(await hasFeatureFlag(auth, "co_edition"))
   ) {
-    return new Ok({ content, rewritten: false });
+    return new Ok(undefined);
   }
 
   const key = getSigningKey();
-  const workspaceId = auth.getNonNullableWorkspace().sId;
-  if (!key) {
-    logger.warn(
-      { workspaceId },
-      "DFM comment signing key is not configured; new comments are saved unsigned."
-    );
-  }
-  const user = auth.user();
-  const result = applyCommentSignatures(
+  const publicKey = key ? createPublicKey(key) : null;
+  return validateCommentSignatures(
     {
       previous: await readStoredText(dustFs, scopedPath),
       next: decodeBuffer(content),
     },
     {
-      workspaceId,
-      user: user ? { sId: user.sId, fullName: user.fullName() } : null,
-      now: new Date().toISOString(),
-      sign: key
-        ? (payload) =>
-            sign(null, Buffer.from(payload, "utf8"), key).toString("base64url")
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      userId: auth.user()?.sId ?? null,
+      verify: publicKey
+        ? (payload, signature) =>
+            verify(
+              null,
+              Buffer.from(payload, "utf8"),
+              publicKey,
+              Buffer.from(signature, "base64url")
+            )
         : null,
     }
   );
-  if (result.isErr()) {
-    return result;
-  }
-  return new Ok({
-    content: result.value.rewritten
-      ? Buffer.from(result.value.content, "utf8")
-      : content,
-    rewritten: result.value.rewritten,
-  });
 }
