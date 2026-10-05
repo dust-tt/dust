@@ -140,14 +140,19 @@ workers across workspaces. Memory, delays, batch limits, and concurrency are con
 trigger pressure flushing before accepting more work. FDB's own transaction-size/deadline checks
 remain final guards. Dirty-age limits schedule flushing; they do not bound backend outage duration.
 
-Acceptance and local reads take the existing workspace read gate; publication takes its fair write
-gate through queue removal. This initial implementation batches files within a workspace and runs
-independent workspaces concurrently. Independent servers still commit concurrently through FDB.
+Acceptance and local reads lock only affected objects. Publication locks its batch's files in sorted
+ID order through commit and queue removal; unrelated files and sibling creates remain concurrent.
+Stat/read acquire the object lock before their FDB snapshot. Lookup/list re-read a fresh snapshot if
+discovery finds a file not already locked (at most four attempts); advisory child hints avoid a
+second pass on repeated lookups. Namespace mutations lock declared participants; FDB validates the
+actual participant set and protects ancestry/grants. No workspace lock spans I/O. Background batches
+still run one per workspace, with independent workspaces concurrent; forced flushes of disjoint files
+may also proceed concurrently. Independent servers still commit concurrently through FDB.
 Replay operations against fresh FDB state, reauthorize each originating grant set, and publish
 blocks/metadata/search work atomically. Preserve the acknowledged token if its base is unchanged;
 a rebase receives a distinct token. Unlink never recreates records.
 
-File fsync takes the publication gate, freezing a finite prefix including earlier in-flight work,
+File fsync takes its object's fair gate, freezing a finite prefix including earlier in-flight work,
 flushes that file's pending operations, reports sticky session/file errors, and rechecks authority.
 Later writes cannot extend this barrier. Successful fsync includes normal FDB log durability;
 ordinary close remains cheap. Session close and graceful shutdown drain accepted work. A failed or
@@ -156,7 +161,8 @@ known-uncommitted FDB attempts may retry; ambiguous outcomes never replay automa
 uncommitted application failure can split a multi-file batch to isolate unrelated files.
 
 Search indexes committed FDB only. Suppress locally dirty search candidates and include RAM files
-in index-status pending counts, deduplicated against FDB work. Fsync never waits for ES.
+in index-status pending counts, deduplicated against FDB work. Status is diagnostic: concurrent
+acceptance/publication can change its counts during the scan. Fsync never waits for ES.
 See [FDB commit path](https://github.com/apple/foundationdb/wiki/Transaction-Commit-Path).
 
 ### Ancestry read hints

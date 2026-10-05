@@ -20,6 +20,7 @@ type Result<T> = std::result::Result<T, Status>;
 #[derive(Clone)]
 pub struct Api(pub Arc<State>);
 trait Visible: Sized {
+    fn files(&self) -> BTreeSet<String>;
     fn overlay(
         self,
         state: &State,
@@ -28,11 +29,26 @@ trait Visible: Sized {
     ) -> impl Future<Output = Result<Self>> + Send;
 }
 impl Visible for Object {
+    fn files(&self) -> BTreeSet<String> {
+        if self.directory {
+            BTreeSet::new()
+        } else {
+            BTreeSet::from([self.id.clone()])
+        }
+    }
     async fn overlay(self, state: &State, workspace: &str, _shared: bool) -> Result<Self> {
-        state.writeback.project(state, workspace, self).await
+        state.writeback.project_locked(state, workspace, self).await
     }
 }
 impl Visible for Page {
+    fn files(&self) -> BTreeSet<String> {
+        self.entries
+            .iter()
+            .filter_map(|e| e.object.as_ref())
+            .filter(|o| !o.directory)
+            .map(|o| o.id.clone())
+            .collect()
+    }
     /// @cc [owner:spolu,label:performance;api] pending-metadata-page-budget
     /// Pending metadata MUST retain the response-byte budget. A truncated page MUST return its last
     /// emitted name cursor, or object-ID cursor for shared, without skipping entries.
@@ -44,7 +60,12 @@ impl Visible for Page {
         let mut bytes = 0;
         for mut entry in self.entries {
             if let Some(object) = entry.object.take() {
-                entry.object = Some(state.writeback.project(state, workspace, object).await?);
+                entry.object = Some(
+                    state
+                        .writeback
+                        .project_locked(state, workspace, object)
+                        .await?,
+                );
             }
             bytes += crate::read::entry_size(&entry);
             if bytes > dfs_protocol::MAX_IO {
@@ -111,29 +132,8 @@ impl Api {
                 _ => None,
             };
             let locks = state.locks(&session.info.workspace_id).await;
-            let file = if state.writeback.enabled() {
-                None
-            } else {
-                change.file()?
-            };
-            let _topology_write = if file.is_none() {
-                Some(locks.topology.write().await)
-            } else {
-                None
-            };
-            let _topology_read = if file.is_some() {
-                Some(locks.topology.read().await)
-            } else {
-                None
-            };
-            let file_lock = match file {
-                Some(id) => Some(locks.file(&id).await),
-                None => None,
-            };
-            let _file_guard = match &file_lock {
-                Some(lock) => Some(lock.lock().await),
-                None => None,
-            };
+            let ids = change.lock_ids()?;
+            let _guards = locks.acquire(&ids).await;
             if state.writeback.enabled() && !matches!(&change, Change::Create(_)) {
                 let view = View::prefetch(
                     state.storage.snapshot().await?,
@@ -145,19 +145,9 @@ impl Api {
                 )
                 .await?;
                 view.stat(change.primary_id()).await?;
-                let mut ids = BTreeSet::new();
-                if let Ok(id) = validate::id(change.primary_id()) {
-                    ids.insert(id);
-                }
-                let expected = match &change {
-                    Change::Rename(r) => r.expected.as_slice(),
-                    Change::Remove(r) => r.expected.as_slice(),
-                    _ => &[],
-                };
-                ids.extend(expected.iter().filter_map(|e| validate::id(&e.id).ok()));
                 state
                     .writeback
-                    .flush_locked(&state, &session.info.workspace_id, Some(&ids), true)
+                    .flush_locked(&state, &session.info.workspace_id, &ids)
                     .await;
                 for id in ids {
                     state.writeback.error(&session, &id).await?;
@@ -208,6 +198,11 @@ impl Api {
         })
         .await
     }
+    /// @cc [owner:spolu,label:concurrency;security] snapshot-overlay-handoff
+    /// When combining pending edits with FDB, every returned file's lock MUST predate its snapshot
+    /// and span overlay projection. Hints grant no authority: newly discovered IDs require a fresh
+    /// view after reacquiring sorted locks.
+    /// Retry at most four times; sustained namespace churn MUST fail rather than mix snapshots.
     async fn read_call<T, U, F, Fut>(
         &self,
         request: Request<T>,
@@ -215,33 +210,55 @@ impl Api {
         operation: F,
     ) -> Result<Response<U>>
     where
-        T: Send + Sync + 'static,
+        T: Clone + Send + Sync + 'static,
         U: Visible + Send + 'static,
-        F: FnOnce(View, T) -> Fut + Send + 'static,
+        F: Fn(View, T) -> Fut + Send + 'static,
         Fut: Future<Output = Result<U>> + Send + 'static,
     {
         self.call(move |state| async move {
             let session = state.sessions.get(&request).await?;
             let _session_guard = session.gate.read().await;
             let locks = state.locks(&session.info.workspace_id).await;
-            let _gate = locks.topology.read().await;
             let (id, child_name) = target(request.get_ref());
             let shared = id == "shared";
-            let view = View::prefetch(
-                state.storage.snapshot().await?,
-                &session.info.workspace_id,
-                session.grants.clone(),
-                id,
-                child_name,
-                state.ancestry.clone(),
-            )
-            .await?;
-            let response = operation(view, request.into_inner())
-                .await?
-                .overlay(&state, &session.info.workspace_id, shared)
+            let mut ids = BTreeSet::new();
+            if state.writeback.enabled() {
+                if let Ok(id) = validate::id(id) {
+                    ids.insert(id);
+                }
+                if let Some(name) = child_name {
+                    let keys = Keys::new(&session.info.workspace_id)?;
+                    if let Some(child) = state.ancestry.child(&keys, id, name).await {
+                        ids.insert(child);
+                    }
+                }
+            }
+            for _ in 0..4 {
+                let _guards = locks.acquire(&ids).await;
+                let view = View::prefetch(
+                    state.storage.snapshot().await?,
+                    &session.info.workspace_id,
+                    session.grants.clone(),
+                    id,
+                    child_name,
+                    state.ancestry.clone(),
+                )
                 .await?;
-            session.active()?;
-            Ok(response)
+                let response = operation(view, request.get_ref().clone()).await?;
+                if state.writeback.enabled() {
+                    let files = response.files();
+                    if !files.is_subset(&ids) {
+                        ids.extend(files);
+                        continue;
+                    }
+                }
+                let response = response
+                    .overlay(&state, &session.info.workspace_id, shared)
+                    .await?;
+                session.active()?;
+                return Ok(response);
+            }
+            Err(status(ErrorCode::Unavailable))
         })
         .await
     }
@@ -374,12 +391,10 @@ impl Dfs for Api {
         self.call(move |state| async move {
             let session = state.sessions.get(&request).await?;
             let _session_guard = session.gate.write().await;
-            let locks = state.locks(&session.info.workspace_id).await;
-            let _gate = locks.topology.write().await;
             let ids = state.writeback.session_ids(&session).await;
             state
                 .writeback
-                .flush_locked(&state, &session.info.workspace_id, Some(&ids), true)
+                .flush(&state, &session.info.workspace_id, Some(&ids), true)
                 .await;
             let result = state.writeback.forget_session(&session).await;
             state.sessions.close(&request, &session).await?;
@@ -404,7 +419,9 @@ impl Dfs for Api {
                 validate::grant(after)?;
             }
             let locks = state.locks(&request.workspace_id).await;
-            let _guard = locks.topology.read().await;
+            let id = validate::id(&request.object_id)?;
+            let file = locks.file(&id).await;
+            let _guard = file.lock().await;
             let view = View::new(&state.storage, &request.workspace_id, BTreeSet::new()).await?;
             let record = view.object(&request.object_id).await?;
             let prefix = view.keys.grants(&record.object.id)?;
@@ -430,7 +447,7 @@ impl Dfs for Api {
                 next_after,
                 version: state
                     .writeback
-                    .project(&state, &request.workspace_id, record.object)
+                    .project_locked(&state, &request.workspace_id, record.object)
                     .await?
                     .version,
             })
@@ -450,18 +467,13 @@ impl Dfs for Api {
                 return Err(status(ErrorCode::InvalidInput));
             }
             let locks = state.locks(&request.workspace_id).await;
-            let _guard = locks.topology.write().await;
-            if let Ok(id) = validate::id(&request.object_id) {
-                state
-                    .writeback
-                    .flush_locked(
-                        &state,
-                        &request.workspace_id,
-                        Some(&BTreeSet::from([id])),
-                        true,
-                    )
-                    .await;
-            }
+            let id = validate::id(&request.object_id)?;
+            let file = locks.file(&id).await;
+            let _guard = file.lock().await;
+            state
+                .writeback
+                .flush_locked(&state, &request.workspace_id, &BTreeSet::from([id]))
+                .await;
             state
                 .storage
                 .transact(|snapshot| {
@@ -515,8 +527,6 @@ impl Dfs for Api {
             let _session_guard = session.gate.read().await;
             let request = request.into_inner();
             if state.writeback.enabled() {
-                let locks = state.locks(&session.info.workspace_id).await;
-                let _guard = locks.topology.read().await;
                 let response = state.writeback.read(&state, &session, request).await?;
                 session.active()?;
                 return Ok(response);
@@ -550,8 +560,9 @@ impl Dfs for Api {
                 validate::id(&id)?
             };
             let locks = state.locks(&session.info.workspace_id).await;
-            // This fair write gate freezes a finite prefix, including publication already in flight.
-            let _guard = locks.topology.write().await;
+            // The fair object gate freezes a finite prefix, including publication already in flight.
+            let file = locks.file(&id).await;
+            let _guard = file.lock().await;
             let view = View::new(
                 &state.storage,
                 &session.info.workspace_id,
@@ -564,8 +575,7 @@ impl Dfs for Api {
                 .flush_locked(
                     &state,
                     &session.info.workspace_id,
-                    Some(&BTreeSet::from([id.clone()])),
-                    true,
+                    &BTreeSet::from([id.clone()]),
                 )
                 .await;
             state.writeback.error(&session, &id).await?;
@@ -611,6 +621,261 @@ pub(crate) mod tests {
             .metadata_mut()
             .insert("authorization", format!("Bearer {key}").parse()?);
         Ok(request)
+    }
+
+    pub(crate) async fn object_locks_isolate_publication_and_revalidate_discovery()
+    -> anyhow::Result<()> {
+        use crate::writeback::{WritebackConfig, tests::PublicationPause};
+        use std::sync::atomic::{AtomicBool, Ordering};
+        use tokio::sync::Notify;
+
+        let storage = Storage::open(&StorageConfig {
+            fdb_cluster_file: std::env::var("DFS_FDB_CLUSTER_FILE")?,
+            fdb_prefix: format!("dfs-v2-object-locks-{}", uuid::Uuid::new_v4().simple()),
+        })
+        .await?;
+        let key = "ab".repeat(32);
+        let api = Api(State::with_writeback(
+            storage,
+            &key,
+            WritebackConfig {
+                writeback_debounce_ms: 60_000,
+                writeback_max_age_ms: 60_000,
+                ..Default::default()
+            },
+        )?);
+        let workspace = api
+            .create_workspace(request(
+                &key,
+                CreateWorkspaceRequest {
+                    workspace_id: "locks".into(),
+                    root_grants: vec!["owner".into()],
+                },
+            )?)
+            .await?
+            .into_inner();
+        let session = api
+            .create_session(request(
+                &workspace.workspace_key,
+                CreateSessionRequest {
+                    workspace_id: workspace.workspace_id.clone(),
+                    grants: vec!["owner".into()],
+                },
+            )?)
+            .await?
+            .into_inner();
+        let key = &session.session_key;
+        let mut parent = api
+            .stat(request(
+                key,
+                ObjectRequest {
+                    object_id: workspace.root_id,
+                },
+            )?)
+            .await?
+            .into_inner();
+        for depth in 0..4 {
+            parent = api
+                .create(request(
+                    key,
+                    CreateRequest {
+                        parent_id: parent.id,
+                        expected_parent_version: parent.version,
+                        name: format!("level-{depth}"),
+                        directory: true,
+                        mode: 0o755,
+                        ..Default::default()
+                    },
+                )?)
+                .await?
+                .into_inner()
+                .object
+                .context("directory")?;
+        }
+        let file = api
+            .create(request(
+                key,
+                CreateRequest {
+                    parent_id: parent.id.clone(),
+                    expected_parent_version: parent.version,
+                    name: "a".into(),
+                    mode: 0o600,
+                    ..Default::default()
+                },
+            )?)
+            .await?
+            .into_inner()
+            .object
+            .context("file")?;
+        api.write(request(
+            key,
+            WriteRequest {
+                object_id: file.id.clone(),
+                data: b"first".to_vec(),
+                ..Default::default()
+            },
+        )?)
+        .await?;
+        let pause = Arc::new(PublicationPause::default());
+        *api.0.writeback.pause_publication.lock().await = Some(pause.clone());
+        let syncing = {
+            let api = api.clone();
+            let request = request(
+                key,
+                ObjectRequest {
+                    object_id: file.id.clone(),
+                },
+            )?;
+            tokio::spawn(async move { api.fsync(request).await })
+        };
+        tokio::time::timeout(Duration::from_secs(2), pause.prepared.notified()).await?;
+        let same_file = api.stat(request(
+            key,
+            ObjectRequest {
+                object_id: file.id.clone(),
+            },
+        )?);
+        let mut same_file = std::pin::pin!(same_file);
+        assert!(futures::poll!(&mut same_file).is_pending());
+
+        // Publication has read the parent in FDB. A sibling create must proceed and force a retry.
+        let independent = tokio::time::timeout(Duration::from_secs(2), async {
+            let parent = api
+                .stat(request(
+                    key,
+                    ObjectRequest {
+                        object_id: parent.id.clone(),
+                    },
+                )?)
+                .await?
+                .into_inner();
+            let b = api
+                .create(request(
+                    key,
+                    CreateRequest {
+                        parent_id: parent.id,
+                        expected_parent_version: parent.version,
+                        name: "b".into(),
+                        mode: 0o600,
+                        ..Default::default()
+                    },
+                )?)
+                .await?
+                .into_inner()
+                .object
+                .context("sibling")?;
+            api.write(request(
+                key,
+                WriteRequest {
+                    object_id: b.id.clone(),
+                    data: b"independent".to_vec(),
+                    ..Default::default()
+                },
+            )?)
+            .await?;
+            let data = api
+                .read(request(
+                    key,
+                    ReadRequest {
+                        object_id: b.id.clone(),
+                        length: 100,
+                        ..Default::default()
+                    },
+                )?)
+                .await?
+                .into_inner();
+            assert_eq!(data.data, b"independent");
+            api.fsync(request(key, ObjectRequest { object_id: b.id })?)
+                .await?;
+            anyhow::Ok(())
+        })
+        .await;
+        pause.resume.notify_one();
+        independent??;
+        tokio::time::timeout(Duration::from_secs(5), syncing).await???;
+        same_file.await?;
+
+        // Force a commit/removal between directory discovery and acquisition of its child locks.
+        let accepted = api
+            .write(request(
+                key,
+                WriteRequest {
+                    object_id: file.id.clone(),
+                    data: b"second, longer".to_vec(),
+                    ..Default::default()
+                },
+            )?)
+            .await?
+            .into_inner()
+            .object
+            .context("accepted")?;
+        let discovered = Arc::new(Notify::new());
+        let resume = Arc::new(Notify::new());
+        let listing = {
+            let api = api.clone();
+            let request = request(
+                key,
+                ListRequest {
+                    directory_id: parent.id,
+                    limit: 100,
+                    ..Default::default()
+                },
+            )?;
+            let (discovered, resume) = (discovered.clone(), resume.clone());
+            let first = Arc::new(AtomicBool::new(true));
+            tokio::spawn(async move {
+                api.read_call(
+                    request,
+                    |r| (&r.directory_id, None),
+                    move |view, request| {
+                        let (first, discovered, resume) =
+                            (first.clone(), discovered.clone(), resume.clone());
+                        async move {
+                            let page = view
+                                .list(&request.directory_id, None, request.limit)
+                                .await?;
+                            if first.swap(false, Ordering::Relaxed) {
+                                discovered.notify_one();
+                                resume.notified().await;
+                            }
+                            Ok(page)
+                        }
+                    },
+                )
+                .await
+            })
+        };
+        tokio::time::timeout(Duration::from_secs(2), discovered.notified()).await?;
+        let publication = api
+            .fsync(request(
+                key,
+                ObjectRequest {
+                    object_id: file.id.clone(),
+                },
+            )?)
+            .await;
+        resume.notify_one();
+        publication?;
+        let page = tokio::time::timeout(Duration::from_secs(2), listing)
+            .await???
+            .into_inner();
+        let result = page
+            .entries
+            .iter()
+            .filter_map(|e| e.object.as_ref())
+            .find(|o| o.id == file.id)
+            .context("listed file")?;
+        assert_eq!(result, &accepted);
+        api.0.drain().await?;
+        api.0
+            .storage
+            .transact(|_| async {
+                let mut batch = WriteBatch::new();
+                batch.clear(Vec::new(), vec![255]);
+                Ok((batch, ()))
+            })
+            .await?;
+        Ok(())
     }
 
     pub(crate) async fn cancelled_write_keeps_guards_until_publication_before_close_and_revocation()
@@ -712,7 +977,7 @@ pub(crate) mod tests {
         let caller_api = api.clone();
         let caller = tokio::spawn(async move { caller_api.write(write).await });
         tokio::time::timeout(Duration::from_secs(2), async {
-            while session.gate.try_write().is_ok() || locks.topology.try_write().is_ok() {
+            while session.gate.try_write().is_ok() {
                 tokio::time::sleep(Duration::from_millis(1)).await;
             }
         })

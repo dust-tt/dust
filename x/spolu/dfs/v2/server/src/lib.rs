@@ -84,6 +84,7 @@ fn local_backend_contracts() -> anyhow::Result<()> {
             .await?;
         api::tests::cancelled_write_keeps_guards_until_publication_before_close_and_revocation()
             .await?;
+        api::tests::object_locks_isolate_publication_and_revalidate_discovery().await?;
         search::tests::run().await
     })
 }

@@ -353,8 +353,7 @@ impl Search {
         state: &State,
         workspace: &str,
     ) -> Result<IndexStatus, Status> {
-        let locks = state.locks(workspace).await;
-        let _guard = locks.topology.read().await;
+        // Status is diagnostic: concurrent acceptance/publication may change counts during this scan.
         let mut local = state.writeback.pending_ids(workspace).await;
         let view = View::new(&state.storage, workspace, BTreeSet::new()).await?;
         let meta = meta(&view).await?;

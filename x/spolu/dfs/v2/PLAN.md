@@ -322,6 +322,17 @@ See [GCP results](gcp/RESULTS.md#server-writeback) for full tables, batch counte
 Fresh FDB reads and synchronous namespace commits remain on the foreground path. The project removes
 commit waits for file writes/updates, not all network latency; speedup must be measured.
 
+## Project: per-object publication locks
+
+- [x] Replace the process-local workspace gate with sorted object locks. Keep xattrs, FUSE/API,
+      batching/debounce, FDB conflict checks, and native FDB/kernel settings unchanged.
+- [x] Protect RAM/FDB read handoff from before the snapshot; revalidate newly discovered lookup/list
+      targets. Keep file fsync finite, and coordinate synchronous mutations only with participants.
+- [x] Prove a paused file publication permits sibling create/read/write/fsync, including deep paths;
+      test publication during listing discovery and retain independent-writer/error/crash tests.
+- [ ] Run the existing GCP 10k full suite and deep
+      untar sequentially. Keep prior corpora/results and compare retries, batches, and remaining drain.
+
 ## Future work: after the networked experiment
 
 - [ ] Add replicated ES and production authentication/TLS beyond the isolated private fixture.

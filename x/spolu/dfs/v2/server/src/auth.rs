@@ -19,7 +19,7 @@ use std::{
     time::{Duration, Instant},
 };
 use subtle::ConstantTimeEq;
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::{Mutex, OwnedMutexGuard, RwLock};
 use tonic::{Request, Status};
 
 const WORKSPACE_LOCK_PURGE_THRESHOLD: usize = 1024;
@@ -104,15 +104,21 @@ impl Sessions {
 }
 
 /// @cc [owner:spolu,label:concurrency] topology-and-file-gates
-/// Namespace/grant changes and buffered publication MUST hold the topology write gate through commit.
-/// File RAM acceptance MUST hold its read gate and the object's exclusive gate. Synchronous mode MAY
-/// publish independent file edits under those read/file gates. These gates coordinate one process only.
+/// Local pending edits, their publication, and reads combining them with FDB MUST hold the object's
+/// gate from before the FDB snapshot through queue reconciliation. Multiple gates MUST be acquired in
+/// sorted ID order. No workspace gate may span I/O; FDB transactions protect namespace and authority.
 #[derive(Default)]
 pub(crate) struct WorkspaceLocks {
-    pub topology: RwLock<()>,
     files: Mutex<HashMap<String, Weak<Mutex<()>>>>,
 }
 impl WorkspaceLocks {
+    pub async fn acquire(&self, ids: &BTreeSet<String>) -> Vec<OwnedMutexGuard<()>> {
+        let mut guards = Vec::with_capacity(ids.len());
+        for id in ids {
+            guards.push(self.file(id).await.lock_owned().await);
+        }
+        guards
+    }
     pub async fn file(&self, id: &str) -> Arc<Mutex<()>> {
         let mut files = self.files.lock().await;
         if files.len() >= 1024 {
@@ -155,7 +161,7 @@ impl State {
     }
     /// @cc [owner:spolu,label:concurrency;performance] workspace-gate-retention
     /// At 1024 registry entries, lookups MUST prune entries held only by the registry. Callers MUST
-    /// retain the returned Arc while waiting for or holding workspace/file gates. Pruning MUST NOT
+    /// retain the returned Arc while waiting for or holding object gates. Pruning MUST NOT
     /// replace a lock set still held by a caller.
     pub(crate) async fn locks(&self, workspace: &str) -> Arc<WorkspaceLocks> {
         let mut locks = self.locks.lock().await;
@@ -180,13 +186,14 @@ pub(crate) mod tests {
         .await?;
         let state = State::new_durable(storage, &"ab".repeat(32))?;
         let active = state.locks("active").await;
-        let guard = active.topology.write().await;
         let file_lock = active.file("file").await;
+        let guard = file_lock.lock().await;
         let idle = Arc::downgrade(&state.locks("idle").await);
         assert!(idle.upgrade().is_some());
 
         let waiting = state.locks("active").await;
-        let mut waiter = std::pin::pin!(waiting.topology.read());
+        let waiting_file = waiting.file("file").await;
+        let mut waiter = std::pin::pin!(waiting_file.lock());
         assert!(futures::poll!(&mut waiter).is_pending());
 
         for index in 0..2 * WORKSPACE_LOCK_PURGE_THRESHOLD {
@@ -197,7 +204,7 @@ pub(crate) mod tests {
         assert!(idle.upgrade().is_none());
         let retained = state.locks("active").await;
         assert!(Arc::ptr_eq(&active, &retained));
-        assert!(retained.topology.try_read().is_err());
+        assert!(retained.file("file").await.try_lock().is_err());
         assert!(Arc::ptr_eq(&file_lock, &retained.file("file").await));
         drop(guard);
         drop(waiter.await);

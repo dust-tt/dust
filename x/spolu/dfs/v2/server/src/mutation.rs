@@ -166,12 +166,28 @@ impl Change {
             Self::Write(_) => "write",
         }
     }
-    pub fn file(&self) -> Result<Option<String>> {
-        match self {
-            Self::Update(r) => Ok(Some(validate::id(&r.object_id)?)),
-            Self::Write(r) => Ok(Some(validate::id(&r.object_id)?)),
-            _ => Ok(None),
+    /// @cc [owner:spolu,label:concurrency] declared-mutation-participants
+    /// Lock the primary object and declared namespace participants in ID order. The committing
+    /// transaction MUST verify every actual participant is declared, including a replacement.
+    /// A changed or incomplete set MUST fail, never mutate an unlocked pending file.
+    pub fn lock_ids(&self) -> Result<BTreeSet<String>> {
+        if matches!(self, Self::Update(_) | Self::Write(_)) {
+            return Ok(BTreeSet::from([validate::id(self.primary_id())?]));
         }
+        let expected = match self {
+            Self::Rename(r) => r.expected.as_slice(),
+            Self::Remove(r) => r.expected.as_slice(),
+            _ => &[],
+        };
+        if expected.len() > 4 {
+            return Err(status(ErrorCode::InvalidInput));
+        }
+        let mut ids = BTreeSet::new();
+        if let Ok(id) = validate::id(self.primary_id()) {
+            ids.insert(id);
+        }
+        ids.extend(expected.iter().filter_map(|e| validate::id(&e.id).ok()));
+        Ok(ids)
     }
     /// @cc [owner:spolu,label:concurrency] create-candidate-scope
     /// Create MUST receive the candidate prefetched for this request and this view's transaction.

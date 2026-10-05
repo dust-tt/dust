@@ -146,13 +146,15 @@ impl Queue {
 
 /// @cc [owner:spolu,label:concurrency;performance] bounded-memory-publication
 /// Retain only bounded semantic edits; never stale whole-object replacements. Local acceptance and
-/// reads MUST hold the workspace read gate; publication MUST hold its write gate through commit and
-/// queue removal. No queue mutex may span I/O. Independent processes require no shared ownership.
+/// reads MUST hold the object's gate; publication MUST hold its batch's object gates through commit
+/// and queue removal. No queue mutex may span I/O. Independent processes require no shared ownership.
 pub(crate) struct Writeback {
     config: WritebackConfig,
     queue: Mutex<Queue>,
     stop: watch::Sender<bool>,
     task: OnceCell<Mutex<Option<tokio::task::JoinHandle<()>>>>,
+    #[cfg(test)]
+    pub(crate) pause_publication: Mutex<Option<Arc<tests::PublicationPause>>>,
 }
 impl Writeback {
     pub fn new(config: WritebackConfig) -> anyhow::Result<Self> {
@@ -183,6 +185,8 @@ impl Writeback {
             queue: Mutex::new(Queue::default()),
             stop,
             task: OnceCell::new(),
+            #[cfg(test)]
+            pause_publication: Mutex::new(None),
         })
     }
     pub fn enabled(&self) -> bool {
@@ -232,22 +236,16 @@ impl Writeback {
             .collect()
     }
 
-    /// The caller holds the workspace read gate. Metadata projection never reads content blocks.
-    pub async fn project(&self, state: &State, workspace: &str, object: Object) -> Result<Object> {
-        if !self.enabled() || object.directory || matches!(object.id.as_str(), "root" | "shared") {
-            return Ok(object);
-        }
-        let locks = state.locks(workspace).await;
-        let file = locks.file(&object.id).await;
-        let _guard = file.lock().await;
-        self.project_locked(state, workspace, object).await
-    }
-    async fn project_locked(
+    /// The caller holds this object's gate from before its FDB snapshot. No content blocks are read.
+    pub async fn project_locked(
         &self,
         state: &State,
         workspace: &str,
         object: Object,
     ) -> Result<Object> {
+        if !self.enabled() || object.directory || matches!(object.id.as_str(), "root" | "shared") {
+            return Ok(object);
+        }
         let key = (workspace.to_owned(), object.id.clone());
         let pending = self.queue.lock().await.files.get(&key).cloned();
         let Some(mut pending) = pending else {
@@ -264,7 +262,7 @@ impl Writeback {
     /// @cc [owner:spolu,label:backend;security] file-memory-acceptance
     /// Validate live existence, authority, and the resulting metadata before acknowledging RAM.
     /// Positioned file writes/updates MAY overwrite stale expected versions. A capacity rejection
-    /// MUST NOT accept the operation. Pressure flushing MUST happen after releasing read/file gates.
+    /// MUST NOT accept the operation. Pressure flushing MUST happen after releasing the object gate.
     pub async fn accept(
         &self,
         state: &State,
@@ -284,7 +282,6 @@ impl Writeback {
         let started = Instant::now();
         loop {
             let locks = state.locks(workspace).await;
-            let gate = locks.topology.read().await;
             let file = locks.file(&id).await;
             let guard = file.lock().await;
             session.active()?;
@@ -390,17 +387,13 @@ impl Writeback {
             };
             drop(queue);
             drop(guard);
-            drop(gate);
             if started.elapsed() >= Duration::from_secs(10) {
                 return Err(status(ErrorCode::Capacity));
             }
             let Some(pressure_workspace) = pressure_workspace else {
                 return Err(status(ErrorCode::Capacity));
             };
-            let locks = state.locks(&pressure_workspace).await;
-            let _gate = locks.topology.write().await;
-            self.flush_locked(state, &pressure_workspace, None, true)
-                .await;
+            self.flush(state, &pressure_workspace, None, true).await;
         }
     }
 
@@ -467,7 +460,7 @@ impl Writeback {
         result.ok_or_else(|| status(ErrorCode::Internal))
     }
 
-    /// The caller holds the workspace read gate. Only the requesting session authorizes RAM reads.
+    /// Only the requesting session authorizes RAM reads; lock the object before taking the snapshot.
     pub async fn read(
         &self,
         state: &State,
@@ -547,52 +540,85 @@ impl Writeback {
         }
     }
 
-    /// @cc [owner:spolu,label:concurrency;error-handling] publication-outcomes
-    /// Flush MUST retain the workspace write gate until queued payloads and receipts reflect the
-    /// commit result. Every terminal failure MUST reach all affected sessions. Ambiguous results
-    /// MUST NOT replay; definitive application failures MAY split an uncommitted multi-file batch.
-    pub async fn flush_locked(
+    /// Select a bounded batch without holding the queue mutex across object-lock acquisition.
+    async fn select(
+        &self,
+        workspace: &str,
+        ids: &BTreeSet<String>,
+        all: bool,
+    ) -> Vec<(String, Pending)> {
+        let queue = self.queue.lock().await;
+        let now = Instant::now();
+        let mut bytes = 0;
+        let mut batch = Vec::new();
+        let mut candidates: Vec<_> = queue
+            .files
+            .iter()
+            .filter(|((w, id), _)| w == workspace && ids.contains(id))
+            .collect();
+        let pressure = candidates.len() >= self.config.writeback_batch_files
+            || candidates.iter().map(|(_, p)| p.bytes).sum::<usize>() >= self.batch_bytes();
+        candidates.sort_by_key(|(_, p)| p.first);
+        for ((_, id), pending) in candidates {
+            if !all && !pressure && !pending.due(&self.config, now) {
+                continue;
+            }
+            if batch.len() >= self.config.writeback_batch_files
+                || bytes + pending.bytes > self.batch_bytes()
+            {
+                break;
+            }
+            bytes += pending.bytes;
+            batch.push((id.clone(), pending.clone()));
+        }
+        batch
+    }
+
+    /// @cc [owner:spolu,label:concurrency] finite-flush-scope
+    /// Capture a finite set of files, then acquire only each selected batch's object gates in order.
+    /// Reselect payloads after acquisition: a competing flush may have removed or replaced them.
+    pub async fn flush(
         &self,
         state: &State,
         workspace: &str,
         ids: Option<&BTreeSet<String>>,
         all: bool,
     ) {
+        let mut remaining = match ids {
+            Some(ids) => ids.clone(),
+            None => self.pending_ids(workspace).await,
+        };
+        let locks = state.locks(workspace).await;
         loop {
-            let batch = {
-                let queue = self.queue.lock().await;
-                let now = Instant::now();
-                let mut bytes = 0;
-                let mut batch = Vec::new();
-                let mut candidates: Vec<_> = queue
-                    .files
-                    .iter()
-                    .filter(|((w, id), _)| w == workspace && ids.is_none_or(|ids| ids.contains(id)))
-                    .collect();
-                let pressure = candidates.len() >= self.config.writeback_batch_files
-                    || candidates.iter().map(|(_, p)| p.bytes).sum::<usize>() >= self.batch_bytes();
-                candidates.sort_by_key(|(_, p)| p.first);
-                for ((_, id), pending) in candidates {
-                    if !all && !pressure && !pending.due(&self.config, now) {
-                        continue;
-                    }
-                    if batch.len() >= self.config.writeback_batch_files
-                        || bytes + pending.bytes > self.batch_bytes()
-                    {
-                        break;
-                    }
-                    bytes += pending.bytes;
-                    batch.push((id.clone(), pending.clone()));
-                }
-                batch
-            };
+            let ids: BTreeSet<_> = self
+                .select(workspace, &remaining, all)
+                .await
+                .into_iter()
+                .map(|(id, _)| id)
+                .collect();
+            if ids.is_empty() {
+                break;
+            }
+            let _guards = locks.acquire(&ids).await;
+            self.flush_locked(state, workspace, &ids).await;
+            remaining.retain(|id| !ids.contains(id));
+            if !all {
+                break;
+            }
+        }
+    }
+
+    /// @cc [owner:spolu,label:concurrency;error-handling] publication-outcomes
+    /// Caller MUST hold every supplied object's gate until payloads and receipts reflect the commit
+    /// result. Every terminal failure MUST reach all affected sessions. Ambiguous results MUST NOT
+    /// replay; definitive application failures MAY split an uncommitted multi-file batch.
+    pub async fn flush_locked(&self, state: &State, workspace: &str, ids: &BTreeSet<String>) {
+        loop {
+            let batch = self.select(workspace, ids, true).await;
             if batch.is_empty() {
                 break;
             }
             self.publish(state, workspace, batch).await;
-            if !all {
-                break;
-            }
         }
     }
     async fn publish(&self, state: &State, workspace: &str, batch: Vec<(String, Pending)>) {
@@ -607,6 +633,14 @@ impl Writeback {
                         for (id, pending) in batch {
                             self.replay(state, snapshot.clone(), workspace, id, pending, None)
                                 .await?;
+                        }
+                        #[cfg(test)]
+                        {
+                            let pause = self.pause_publication.lock().await.take();
+                            if let Some(pause) = pause {
+                                pause.prepared.notify_one();
+                                pause.resume.notified().await;
+                            }
                         }
                         Ok((WriteBatch::new(), ()))
                     }
@@ -687,9 +721,7 @@ impl Writeback {
                     let state = &state;
                     let writer = &self;
                     async move {
-                        let locks = state.locks(&workspace).await;
-                        let _guard = locks.topology.write().await;
-                        writer.flush_locked(state, &workspace, None, false).await;
+                        writer.flush(state, &workspace, None, false).await;
                     }
                 })
                 .await;
@@ -740,9 +772,7 @@ impl Writeback {
                 .collect::<BTreeSet<_>>()
         };
         for workspace in workspaces {
-            let locks = state.locks(&workspace).await;
-            let _guard = locks.topology.write().await;
-            self.flush_locked(state, &workspace, None, true).await;
+            self.flush(state, &workspace, None, true).await;
         }
         let (peak_bytes, accepted, committed, commits, failures, failed) = {
             let mut queue = self.queue.lock().await;
@@ -784,6 +814,12 @@ pub(crate) mod tests {
     use anyhow::Context;
     use dfs_protocol::rpc::dfs_server::Dfs;
     use tonic::Request;
+
+    #[derive(Default)]
+    pub(crate) struct PublicationPause {
+        pub prepared: tokio::sync::Notify,
+        pub resume: tokio::sync::Notify,
+    }
 
     fn request<T>(key: &str, value: T) -> anyhow::Result<Request<T>> {
         let mut request = Request::new(value);
