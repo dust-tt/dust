@@ -321,7 +321,8 @@ const sizeClassesPx: Record<AvatarStackSizeType, number> = {
  */
 /**
  * @cc [owner:philipperolet,label:product] visible-avatar-limit
- * With maxVisibleAvatars set, show at most that many avatars and a "+N" counter for all others.
+ * With maxVisibleAvatars set, show at most that many avatars and a "+N" counter for all others
+ * ("9+" when ten or more avatars are hidden).
  */
 Avatar.Stack = function ({
   avatars,
