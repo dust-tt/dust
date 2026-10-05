@@ -211,8 +211,6 @@ export interface FilePreviewContentData {
   hasError: boolean;
   isContentLoading: boolean;
   isTooLarge: boolean;
-  /** The text was cut at MAX_TEXT_CHARS, so an editor fed with it would save a truncated file. */
-  isTruncated: boolean;
   /** The whole text as fetched, untrimmed and uncut, for the rich editor. */
   rawContent: string | null;
   /** The stored revision of `rawContent`, when the backend reports one. */
@@ -266,7 +264,8 @@ export function useFilePreviewContent({
     enabled && !!entry && !hasError && needsTextContent && isFileContentLoading;
 
   const truncatedContent = fileContent?.slice(0, MAX_TEXT_CHARS) ?? null;
-  const isTruncated = (fileContent?.length ?? 0) > MAX_TEXT_CHARS;
+  // Measured on the fetched text rather than `entry.sizeBytes`, which is the listing's size and
+  // goes stale when the file grows while it is open.
   const exceedsWriteLimit = useMemo(
     () =>
       fileContent !== null &&
@@ -294,7 +293,6 @@ export function useFilePreviewContent({
     hasError,
     isContentLoading,
     isTooLarge,
-    isTruncated,
     rawContent: fileContent,
     revision: fileRevision,
     exceedsWriteLimit,

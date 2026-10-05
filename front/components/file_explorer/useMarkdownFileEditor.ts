@@ -196,7 +196,7 @@ export function useMarkdownFileEditor({
         sendNotification({
           type: "error",
           title: "File changed since it was loaded",
-          description: "Reload it before saving.",
+          description: "Close and reopen it before saving.",
         });
       } else {
         sendNotification({
