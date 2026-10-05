@@ -159,7 +159,7 @@ export function AgentPicker({
         {isAgentsLoading ? (
           <div role="status" aria-label="Loading agents">
             <div aria-hidden="true">
-              {Array.from({ length: 5 }).map((_, i) => (
+              {Array.from({ length: 10 }).map((_, i) => (
                 <div
                   key={`agent-picker-loading-${i}`}
                   className="flex items-center gap-2.5 px-2 py-1"
