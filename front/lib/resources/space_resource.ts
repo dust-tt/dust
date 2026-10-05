@@ -432,7 +432,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }: ResourceFindOptions<SpaceModel> = {},
     t?: Transaction
   ) {
-    const includeClauses: Includeable[] = [...(includes || [])];
+    const includeClauses: Includeable[] = includes ?? [];
 
     const spacesModels = await this.model.findAll({
       where: {
