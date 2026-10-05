@@ -1,5 +1,5 @@
-import { HomeReveal } from "@marketing/components/home/content/Product/HomeReveal";
 import UTMButton from "@marketing/components/UTMButton";
+import { HomeReveal } from "@marketing/components/home/content/Product/HomeReveal";
 import { useEffect, useRef } from "react";
 
 interface FeatureItem {

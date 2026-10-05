@@ -43,32 +43,32 @@ beforeEach(() => {
 });
 
 describe("GET /api/w/:wId/search", () => {
-  it.each([
-    "application/json",
-    "text/event-stream",
-  ])("serves negotiated %s search results", async (accept) => {
-    const { workspace } = await createPrivateApiMockRequest();
-    const response = await honoApp.request(
-      `/api/w/${workspace.sId}/search?query=test`,
-      { headers: { Accept: accept } }
-    );
-    expect(response.status).toBe(200);
-    expect(response.headers.get("Content-Type")).toContain(accept);
-    expect(response.headers.get("Vary")).toContain("Accept");
-    if (accept === "application/json") {
-      expect(await response.json()).toEqual({
-        knowledgeResults,
-        toolResults: [toolResult],
-      });
-      expect(response.headers.get("Cache-Control")).toBe("no-store");
-    } else {
-      expect(
-        parseSseDataPayloads(await response.text()).map((data) =>
-          JSON.parse(data)
-        )
-      ).toEqual([{ knowledgeResults }, { toolResults: [toolResult] }]);
+  it.each(["application/json", "text/event-stream"])(
+    "serves negotiated %s search results",
+    async (accept) => {
+      const { workspace } = await createPrivateApiMockRequest();
+      const response = await honoApp.request(
+        `/api/w/${workspace.sId}/search?query=test`,
+        { headers: { Accept: accept } }
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Content-Type")).toContain(accept);
+      expect(response.headers.get("Vary")).toContain("Accept");
+      if (accept === "application/json") {
+        expect(await response.json()).toEqual({
+          knowledgeResults,
+          toolResults: [toolResult],
+        });
+        expect(response.headers.get("Cache-Control")).toBe("no-store");
+      } else {
+        expect(
+          parseSseDataPayloads(await response.text()).map((data) =>
+            JSON.parse(data)
+          )
+        ).toEqual([{ knowledgeResults }, { toolResults: [toolResult] }]);
+      }
     }
-  });
+  );
 
   it("does not search tools again while paginating JSON results", async () => {
     const { workspace } = await createPrivateApiMockRequest();

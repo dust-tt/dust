@@ -16,9 +16,9 @@ import {
   SYNTHETIC_SUGGESTIONS_RETENTION_DAYS,
 } from "@app/temporal/hard_delete/utils";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SKILL_STATUSES } from "@app/types/assistant/skill_configuration_constants";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";

@@ -1,16 +1,15 @@
 import { upsertOngoingAgentLoop } from "@app/lib/api/assistant/ongoing_agent_loops";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { redisMock } from "@app/tests/utils/mocks/redis";
-import { UserFactory } from "@app/tests/utils/UserFactory";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("GET /api/w/[wId]/assistant/ongoing-agent-loops", () => {
   beforeEach(async () => {
     redisMock.reset();
-    const { getWorkOSSessionWithSetCookies } = await import(
-      "@app/lib/api/workos/user"
-    );
+    const { getWorkOSSessionWithSetCookies } =
+      await import("@app/lib/api/workos/user");
     vi.mocked(getWorkOSSessionWithSetCookies).mockResolvedValue({
       session: undefined,
       setCookies: [],

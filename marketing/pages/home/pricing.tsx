@@ -1,22 +1,3 @@
-import { HomeAIOperatorsCTASection } from "@marketing/components/home/content/Product/HomeAIOperatorsCTASection";
-import { FAQ, type FAQItem } from "@marketing/components/home/FAQ";
-import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
-import LandingLayout from "@marketing/components/home/LandingLayout";
-import { PageMetadata } from "@marketing/components/home/PageMetadata";
-import {
-  formatPriceWithCurrency,
-  useUserBillingCurrency,
-} from "@marketing/lib/client/subscription";
-import {
-  TRACKING_ACTIONS,
-  TRACKING_AREAS,
-  trackEvent,
-  withTracking,
-} from "@marketing/lib/tracking";
-import { classNames } from "@marketing/lib/utils";
-import { appendUTMParams } from "@marketing/lib/utils/utm";
-import { useSignUpModal } from "@marketing/hooks/useSignUpModal";
-import { assertNeverAndIgnore } from "@marketing/types/shared/utils/assert_never";
 import {
   Button,
   Check,
@@ -30,6 +11,25 @@ import {
   SearchInput,
   Separator,
 } from "@dust-tt/sparkle";
+import { FAQ, type FAQItem } from "@marketing/components/home/FAQ";
+import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
+import LandingLayout from "@marketing/components/home/LandingLayout";
+import { PageMetadata } from "@marketing/components/home/PageMetadata";
+import { HomeAIOperatorsCTASection } from "@marketing/components/home/content/Product/HomeAIOperatorsCTASection";
+import { useSignUpModal } from "@marketing/hooks/useSignUpModal";
+import {
+  formatPriceWithCurrency,
+  useUserBillingCurrency,
+} from "@marketing/lib/client/subscription";
+import {
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  trackEvent,
+  withTracking,
+} from "@marketing/lib/tracking";
+import { classNames } from "@marketing/lib/utils";
+import { appendUTMParams } from "@marketing/lib/utils/utm";
+import { assertNeverAndIgnore } from "@marketing/types/shared/utils/assert_never";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/router";

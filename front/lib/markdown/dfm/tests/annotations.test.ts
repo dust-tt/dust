@@ -384,13 +384,12 @@ describe("annotations block serialization", () => {
       withMessage({ createdAt: "2026-04-31T00:00:00.000Z" }),
       "without a valid timestamp",
     ],
-  ] satisfies [
-    string,
-    DfmDocument,
-    string,
-  ][])("refuses to serialize %s", (_, document, message) => {
-    expectError(serializeDfm(document), message);
-  });
+  ] satisfies [string, DfmDocument, string][])(
+    "refuses to serialize %s",
+    (_, document, message) => {
+      expectError(serializeDfm(document), message);
+    }
+  );
 });
 
 describe("dfmCommentSchema", () => {

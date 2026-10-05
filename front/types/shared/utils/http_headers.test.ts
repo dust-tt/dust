@@ -68,12 +68,10 @@ describe("hasRedactedHeaderValue", () => {
     ).toBe(false);
   });
 
-  it.each([
-    "••••••••",
-    " ••••••••",
-    "\t••••••••  ",
-    "\r\n••••••••",
-  ])("rejects a masked value that survives sanitization (%j)", (value) => {
-    expect(hasRedactedHeaderValue([{ key: "X-Api-Key", value }])).toBe(true);
-  });
+  it.each(["••••••••", " ••••••••", "\t••••••••  ", "\r\n••••••••"])(
+    "rejects a masked value that survives sanitization (%j)",
+    (value) => {
+      expect(hasRedactedHeaderValue([{ key: "X-Api-Key", value }])).toBe(true);
+    }
+  );
 });

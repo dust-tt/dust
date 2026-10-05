@@ -1,8 +1,8 @@
 import { getUserMemory, setUserMemory } from "@app/lib/api/user_memory";
 import { Authenticator } from "@app/lib/auth";
-import type { Logger } from "@app/logger/logger";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import { UserResource } from "@app/lib/resources/user_resource";
+import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { MAX_USER_MEMORY_CHARS } from "@app/types/api/me/memory";

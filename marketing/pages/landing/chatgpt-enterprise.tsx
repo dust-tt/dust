@@ -1,3 +1,6 @@
+import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
+import LandingLayout from "@marketing/components/home/LandingLayout";
+import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import { ChatGptEnterpriseComparisonTable } from "@marketing/components/home/content/ChatGptEnterprise/ChatGptEnterpriseComparisonTable";
 import { ChatGptEnterpriseDeepDive } from "@marketing/components/home/content/ChatGptEnterprise/ChatGptEnterpriseDeepDive";
 import { ChatGptEnterpriseHeroSection } from "@marketing/components/home/content/ChatGptEnterprise/ChatGptEnterpriseHeroSection";
@@ -7,9 +10,6 @@ import {
   ChatGptEnterpriseWhySection,
 } from "@marketing/components/home/content/ChatGptEnterprise/ChatGptEnterpriseWhatSection";
 import { chatGptEnterpriseConfig } from "@marketing/components/home/content/ChatGptEnterprise/config/chatGptEnterpriseConfig";
-import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
-import LandingLayout from "@marketing/components/home/LandingLayout";
-import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import type { ReactElement } from "react";
 
 export async function getStaticProps() {

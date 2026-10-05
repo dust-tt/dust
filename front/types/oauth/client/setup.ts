@@ -1,16 +1,16 @@
-import config from "@app/lib/api/config";
-import type { CellInfo } from "@app/types/cell";
 import type {
   OAuthConnectionType,
   OAuthCredentials,
   OAuthProvider,
   OAuthUseCase,
 } from "../../oauth/lib";
+import type { Result } from "../../shared/result";
+import type { LightWorkspaceType } from "../../user";
+import config from "@app/lib/api/config";
+import type { CellInfo } from "@app/types/cell";
 import { isOAuthConnectionType } from "../../oauth/lib";
 import { isDevelopment } from "../../shared/env";
-import type { Result } from "../../shared/result";
 import { Err, Ok } from "../../shared/result";
-import type { LightWorkspaceType } from "../../user";
 
 export async function setupOAuthConnection({
   owner,

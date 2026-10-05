@@ -5,10 +5,10 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { honoApp } from "@front-api/app";
@@ -135,44 +135,44 @@ describe("GET /api/v1/w/[wId]/assistant/conversations/[cId]", () => {
   it.each([
     { scope: "visible", instructions: "Agent instructions" },
     { scope: "hidden", instructions: null },
-  ] as const)("returns the instructions of a $scope agent only when the caller can read it", async ({
-    scope,
-    instructions,
-  }) => {
-    const { workspace, key } = await createPublicApiMockRequest({
-      method: "GET",
-    });
+  ] as const)(
+    "returns the instructions of a $scope agent only when the caller can read it",
+    async ({ scope, instructions }) => {
+      const { workspace, key } = await createPublicApiMockRequest({
+        method: "GET",
+      });
 
-    const user = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, user, { role: "user" });
-    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    );
-    const agent = await AgentConfigurationFactory.createTestAgent(userAuth, {
-      scope,
-      instructions: "Agent instructions",
-    });
-    const conversation = await ConversationFactory.create(userAuth, {
-      agentConfigurationId: agent.sId,
-      messagesCreatedAt: [new Date()],
-    });
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user, { role: "user" });
+      const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+      const agent = await AgentConfigurationFactory.createTestAgent(userAuth, {
+        scope,
+        instructions: "Agent instructions",
+      });
+      const conversation = await ConversationFactory.create(userAuth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [new Date()],
+      });
 
-    const response = await getConversation(workspace, key, conversation.sId);
-    const data = await response.json();
+      const response = await getConversation(workspace, key, conversation.sId);
+      const data = await response.json();
 
-    expect(response.status, JSON.stringify(data)).toBe(200);
-    const agentMessage = data.conversation.content
-      .flat()
-      .find((message: { type: string }) => message.type === "agent_message");
-    expect(agentMessage.configuration).toMatchObject({
-      sId: agent.sId,
-      canRead: scope === "visible",
-      instructions,
-      actions: [],
-      instructionsHtml: null,
-    });
-  });
+      expect(response.status, JSON.stringify(data)).toBe(200);
+      const agentMessage = data.conversation.content
+        .flat()
+        .find((message: { type: string }) => message.type === "agent_message");
+      expect(agentMessage.configuration).toMatchObject({
+        sId: agent.sId,
+        canRead: scope === "visible",
+        instructions,
+        actions: [],
+        instructionsHtml: null,
+      });
+    }
+  );
 
   it("returns path-backed generated files on agent message actions", async () => {
     const { workspace, key } = await createPublicApiMockRequest({

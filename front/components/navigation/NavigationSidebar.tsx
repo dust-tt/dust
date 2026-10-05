@@ -1,13 +1,13 @@
 import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { AdminSettingsSearchNav } from "@app/components/navigation/AdminSettingsSearchNav";
+import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
+import { SidebarUserMenu } from "@app/components/navigation/SidebarUserMenu";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import {
   getAdminSectionHref,
   getTopNavigationTabs,
 } from "@app/components/navigation/config";
-import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
-import { SidebarUserMenu } from "@app/components/navigation/SidebarUserMenu";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";

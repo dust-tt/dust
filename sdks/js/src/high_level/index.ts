@@ -4,12 +4,7 @@ export { buildContext } from "./context";
 export { ConversationsAPI } from "./conversations";
 export { FilesAPI } from "./files";
 export type { RetryOptions, WithRetryOptions } from "./retry";
-export {
-  createRetry,
-  DEFAULT_RETRY_OPTIONS,
-  sleep,
-  withRetry,
-} from "./retry";
+export { createRetry, DEFAULT_RETRY_OPTIONS, sleep, withRetry } from "./retry";
 export { MessageStreamImpl } from "./stream";
 export type {
   AgentAction,

@@ -1,8 +1,8 @@
+import { ConfirmContext } from "@app/components/Confirm";
 import {
   FileDropProvider,
   useFileDrop,
 } from "@app/components/assistant/conversation/FileUploaderContext";
-import { ConfirmContext } from "@app/components/Confirm";
 import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
 import type { RenameMountItem } from "@app/components/file_explorer/RenameFileDialog";
 import { RenameFileDialog } from "@app/components/file_explorer/RenameFileDialog";

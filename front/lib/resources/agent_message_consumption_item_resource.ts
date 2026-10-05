@@ -82,11 +82,9 @@ type ConsumptionItemEvidenceAttributes = Pick<
 type ConsumptionItemCreationAttributes =
   CreationAttributes<AgentMessageConsumptionItemModel>;
 
-export interface AgentMessageConsumptionItemResource
-  extends ReadonlyAttributesType<AgentMessageConsumptionItemModel> {}
+export interface AgentMessageConsumptionItemResource extends ReadonlyAttributesType<AgentMessageConsumptionItemModel> {}
 
-export interface AgentMessageModelConsumptionItemResource
-  extends AgentMessageConsumptionItemResource {
+export interface AgentMessageModelConsumptionItemResource extends AgentMessageConsumptionItemResource {
   readonly itemType: Exclude<
     AgentMessageConsumptionItemType,
     "tool" | "rounding"
@@ -96,8 +94,7 @@ export interface AgentMessageModelConsumptionItemResource
   readonly completedAt: Date;
 }
 
-export interface AgentMessageToolConsumptionItemResource
-  extends AgentMessageConsumptionItemResource {
+export interface AgentMessageToolConsumptionItemResource extends AgentMessageConsumptionItemResource {
   readonly itemType: "tool";
   readonly agentMCPActionId: ModelId;
 }

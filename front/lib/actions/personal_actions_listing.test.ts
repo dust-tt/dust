@@ -3,8 +3,8 @@ import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { describe, expect, it } from "vitest";
 
 // Lists the tools an agent sees when answering `content`, with a single

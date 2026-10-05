@@ -3,6 +3,7 @@ import {
   getWorkspaceLimitForSubmitError,
   ReachedLimitPopup,
 } from "@app/components/app/ReachedLimitPopup";
+import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { DiscoverButton } from "@app/components/assistant/conversation/discover/DiscoverButton";
@@ -11,7 +12,6 @@ import { HomepageUseCases } from "@app/components/assistant/conversation/discove
 import { useDiscoverScroll } from "@app/components/assistant/conversation/discover/useDiscoverScroll";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { useConversations } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";

@@ -1,5 +1,5 @@
-import { makeColumnsForDataSourceViews } from "@app/components/poke/data_source_views/columns";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
+import { makeColumnsForDataSourceViews } from "@app/components/poke/data_source_views/columns";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { DataSourceViewWithUsage } from "@app/lib/api/poke/data_source_views";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";

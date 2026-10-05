@@ -1,4 +1,3 @@
-import type { IncomingMessage, ServerResponse } from "node:http";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -8,6 +7,7 @@ import type { MembershipRoleType } from "@app/types/memberships";
 import type { WorkspaceType } from "@app/types/user";
 import type { RequestMethod } from "node-mocks-http";
 import { createMocks } from "node-mocks-http";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import { vi } from "vitest";
 
 import { setupWorkOSMocks } from "./mocks/workos";

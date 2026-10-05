@@ -6,9 +6,9 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import type {
   SandboxFunctionExecutionMode,

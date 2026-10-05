@@ -10,13 +10,13 @@ import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPSer
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
@@ -660,9 +660,8 @@ describe("agent_sidekick_context tools", () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
       // Mock the helper to return null (no agent config ID).
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
 
       const tool = getToolByName("get_agent_feedback");
@@ -682,17 +681,15 @@ describe("agent_sidekick_context tools", () => {
         await AgentConfigurationFactory.createTestAgent(authenticator);
 
       // Mock the helper to return a valid agent config ID.
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
 
       // Set up the mock to return an empty array of feedbacks.
-      const { getAgentFeedbacks } = await import(
-        "@app/lib/api/assistant/feedback"
-      );
+      const { getAgentFeedbacks } =
+        await import("@app/lib/api/assistant/feedback");
       const mockedGetAgentFeedbacks = vi.mocked(getAgentFeedbacks);
       mockedGetAgentFeedbacks.mockResolvedValueOnce({
         isOk: () => true,
@@ -726,16 +723,14 @@ describe("agent_sidekick_context tools", () => {
         await AgentConfigurationFactory.createTestAgent(authenticator);
 
       // Mock the helper to return a valid agent config ID.
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
 
-      const { getAgentFeedbacks } = await import(
-        "@app/lib/api/assistant/feedback"
-      );
+      const { getAgentFeedbacks } =
+        await import("@app/lib/api/assistant/feedback");
       const mockedGetAgentFeedbacks = vi.mocked(getAgentFeedbacks);
       mockedGetAgentFeedbacks.mockResolvedValueOnce({
         isOk: () => true,
@@ -766,16 +761,14 @@ describe("agent_sidekick_context tools", () => {
         await AgentConfigurationFactory.createTestAgent(authenticator);
 
       // Mock the helper to return a valid agent config ID.
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
 
-      const { getAgentFeedbacks } = await import(
-        "@app/lib/api/assistant/feedback"
-      );
+      const { getAgentFeedbacks } =
+        await import("@app/lib/api/assistant/feedback");
       const mockedGetAgentFeedbacks = vi.mocked(getAgentFeedbacks);
       mockedGetAgentFeedbacks.mockResolvedValueOnce({
         isOk: () => true,
@@ -800,16 +793,14 @@ describe("agent_sidekick_context tools", () => {
         await AgentConfigurationFactory.createTestAgent(authenticator);
 
       // Mock the helper to return a valid agent config ID.
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
 
-      const { getAgentFeedbacks } = await import(
-        "@app/lib/api/assistant/feedback"
-      );
+      const { getAgentFeedbacks } =
+        await import("@app/lib/api/assistant/feedback");
       const mockedGetAgentFeedbacks = vi.mocked(getAgentFeedbacks);
       mockedGetAgentFeedbacks.mockResolvedValueOnce({
         isOk: () => true,
@@ -878,9 +869,8 @@ describe("agent_sidekick_context tools", () => {
         thumbDirection: "up",
       });
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentV1.sId
       );
@@ -971,9 +961,8 @@ describe("agent_sidekick_context tools", () => {
         thumbDirection: "up",
       });
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentV1.sId
       );
@@ -1012,9 +1001,8 @@ describe("agent_sidekick_context tools", () => {
     it("returns error when agent configuration ID is not available", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
 
       const tool = getToolByName("suggest_prompt_edits");
@@ -1041,9 +1029,8 @@ describe("agent_sidekick_context tools", () => {
       const agentConfiguration =
         await AgentConfigurationFactory.createTestAgent(authenticator);
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
@@ -1097,9 +1084,8 @@ describe("agent_sidekick_context tools", () => {
         );
       }
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
@@ -1141,9 +1127,8 @@ describe("agent_sidekick_context tools", () => {
         restrictedSpace
       );
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         "agent_id"
       );
@@ -1164,9 +1149,8 @@ describe("agent_sidekick_context tools", () => {
     it("returns error when agent configuration ID is not available", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
 
       const tool = getToolByName("suggest_tools");
@@ -1201,9 +1185,8 @@ describe("agent_sidekick_context tools", () => {
         globalSpace
       );
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
@@ -1241,9 +1224,8 @@ describe("agent_sidekick_context tools", () => {
       const agentConfiguration =
         await AgentConfigurationFactory.createTestAgent(authenticator);
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
@@ -1295,9 +1277,8 @@ describe("agent_sidekick_context tools", () => {
         }
       );
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
@@ -1354,9 +1335,8 @@ describe("agent_sidekick_context tools", () => {
         globalSpace
       );
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
@@ -1423,9 +1403,8 @@ describe("agent_sidekick_context tools", () => {
       const agentConfiguration =
         await AgentConfigurationFactory.createTestAgent(authenticator);
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
@@ -1465,9 +1444,8 @@ describe("agent_sidekick_context tools", () => {
       const agentConfiguration =
         await AgentConfigurationFactory.createTestAgent(authenticator);
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
@@ -1505,9 +1483,8 @@ describe("agent_sidekick_context tools", () => {
         restrictedSpace
       );
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         "agent_id"
       );
@@ -1539,9 +1516,8 @@ describe("agent_sidekick_context tools", () => {
       const agentConfiguration =
         await AgentConfigurationFactory.createTestAgent(authenticator);
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
@@ -1581,9 +1557,8 @@ describe("agent_sidekick_context tools", () => {
       const agentConfiguration =
         await AgentConfigurationFactory.createTestAgent(authenticator);
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
@@ -1613,9 +1588,8 @@ describe("agent_sidekick_context tools", () => {
           name: "SubAgent",
         });
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         mainAgentConfiguration.sId
       );
@@ -1659,9 +1633,8 @@ describe("agent_sidekick_context tools", () => {
           name: "SubAgent",
         });
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         mainAgentConfiguration.sId
       );
@@ -1698,9 +1671,8 @@ describe("agent_sidekick_context tools", () => {
       const skill = await SkillFactory.create(authenticator);
       await skill.archive(authenticator);
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
@@ -1720,9 +1692,8 @@ describe("agent_sidekick_context tools", () => {
     it("returns error when agent configuration ID is not available", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
 
       const tool = getToolByName("suggest_skills");
@@ -1755,9 +1726,8 @@ describe("agent_sidekick_context tools", () => {
         agentFacingDescription: "Agent facing description",
       });
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
@@ -1795,9 +1765,8 @@ describe("agent_sidekick_context tools", () => {
       const agentConfiguration =
         await AgentConfigurationFactory.createTestAgent(authenticator);
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
@@ -1849,9 +1818,8 @@ describe("agent_sidekick_context tools", () => {
         }
       );
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
@@ -1904,9 +1872,8 @@ describe("agent_sidekick_context tools", () => {
         agentFacingDescription: "Third batch skill description",
       });
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
@@ -1963,9 +1930,8 @@ describe("agent_sidekick_context tools", () => {
     it("returns error when agent configuration ID is not available", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
 
       const tool = getToolByName("suggest_model");
@@ -1988,9 +1954,8 @@ describe("agent_sidekick_context tools", () => {
       const agentConfiguration =
         await AgentConfigurationFactory.createTestAgent(authenticator);
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
@@ -2025,9 +1990,8 @@ describe("agent_sidekick_context tools", () => {
       const agentConfiguration =
         await AgentConfigurationFactory.createTestAgent(authenticator);
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
@@ -2061,9 +2025,8 @@ describe("agent_sidekick_context tools", () => {
       const agentConfiguration =
         await AgentConfigurationFactory.createTestAgent(authenticator);
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
@@ -2105,9 +2068,8 @@ describe("agent_sidekick_context tools", () => {
       const agentConfiguration =
         await AgentConfigurationFactory.createTestAgent(authenticator);
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
@@ -2140,9 +2102,8 @@ describe("agent_sidekick_context tools", () => {
     it("returns error when agent configuration ID is not available", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       // Reset and set return value to ensure isolation from other tests.
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValue(null);
 
@@ -2155,9 +2116,8 @@ describe("agent_sidekick_context tools", () => {
     it("lists suggestions with default status (pending)", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       // Reset and set return value to ensure isolation from other tests.
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValue(
         "test-agent-id"
@@ -2182,9 +2142,8 @@ describe("agent_sidekick_context tools", () => {
     it("lists suggestions with specific states and kind filters", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      const { getAgentConfigurationIdFromContext } = await import(
-        "@app/lib/api/actions/servers/agent_sidekick_helpers"
-      );
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_sidekick_helpers");
       // Reset and set return value to ensure isolation from other tests.
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValue(
         "test-agent-id"
@@ -2237,40 +2196,38 @@ describe("agent_sidekick_context tools", () => {
       }
     });
 
-    it.each([
-      { state: "rejected" as const },
-      { state: "outdated" as const },
-    ])("updates suggestion state to $state and returns all fields", async ({
-      state,
-    }) => {
-      const { authenticator } = await createResourceTest({ role: "admin" });
+    it.each([{ state: "rejected" as const }, { state: "outdated" as const }])(
+      "updates suggestion state to $state and returns all fields",
+      async ({ state }) => {
+        const { authenticator } = await createResourceTest({ role: "admin" });
 
-      // Create a real agent configuration and suggestion.
-      const agentConfiguration =
-        await AgentConfigurationFactory.createTestAgent(authenticator);
-      const suggestion = await AgentSuggestionFactory.createSkills(
-        authenticator,
-        agentConfiguration,
-        { state: "pending", analysis: "Test analysis for skills" }
-      );
+        // Create a real agent configuration and suggestion.
+        const agentConfiguration =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const suggestion = await AgentSuggestionFactory.createSkills(
+          authenticator,
+          agentConfiguration,
+          { state: "pending", analysis: "Test analysis for skills" }
+        );
 
-      const tool = getToolByName("update_suggestions_state");
-      const result = await tool.handler(
-        { suggestions: [{ suggestionId: suggestion.sId, state }] },
-        createTestExtra(authenticator)
-      );
+        const tool = getToolByName("update_suggestions_state");
+        const result = await tool.handler(
+          { suggestions: [{ suggestionId: suggestion.sId, state }] },
+          createTestExtra(authenticator)
+        );
 
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        const content = result.value[0];
-        expect(content.type).toBe("text");
-        if (content.type === "text") {
-          const parsed = JSON.parse(content.text);
-          expect(parsed.results).toHaveLength(1);
-          expect(parsed.results[0].success).toBe(true);
+        expect(result.isOk()).toBe(true);
+        if (result.isOk()) {
+          const content = result.value[0];
+          expect(content.type).toBe("text");
+          if (content.type === "text") {
+            const parsed = JSON.parse(content.text);
+            expect(parsed.results).toHaveLength(1);
+            expect(parsed.results[0].success).toBe(true);
+          }
         }
       }
-    });
+    );
 
     it("updates multiple suggestions to outdated in a single call", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });

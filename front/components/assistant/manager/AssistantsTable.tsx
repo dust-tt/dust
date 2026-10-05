@@ -1,9 +1,9 @@
 import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
 import { DeleteAgentDialog } from "@app/components/assistant/DeleteAgentDialog";
+import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { SCOPE_INFO } from "@app/components/assistant/details/AgentDetailsSheet";
 import { GlobalAgentAction } from "@app/components/assistant/manager/GlobalAgentAction";
 import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
-import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { ModelTierChip } from "@app/components/model_picker/ModelTierChip";
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";

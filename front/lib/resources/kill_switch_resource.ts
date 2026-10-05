@@ -14,8 +14,7 @@ const KILL_SWITCH_ENABLED_CACHE_KEY = "kill_switches_enabled";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-export interface KillSwitchResource
-  extends ReadonlyAttributesType<KillSwitchModel> {}
+export interface KillSwitchResource extends ReadonlyAttributesType<KillSwitchModel> {}
 export class KillSwitchResource extends BaseResource<KillSwitchModel> {
   static model: ModelStatic<KillSwitchModel> = KillSwitchModel;
 

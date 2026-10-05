@@ -104,9 +104,9 @@ import {
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { LightWorkspaceType } from "@app/types/user";
 
 function toCacheKey(secret: string): string {

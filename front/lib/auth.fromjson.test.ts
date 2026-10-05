@@ -101,11 +101,11 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { PlanFactory } from "@app/tests/utils/PlanFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 
 async function swapSubscription(workspaceId: string): Promise<string> {
   const workspace = await WorkspaceResource.fetchById(workspaceId);

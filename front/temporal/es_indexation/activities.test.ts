@@ -11,10 +11,10 @@ import {
   refreshWorkspaceSearchUsageActivity,
 } from "@app/temporal/es_indexation/activities";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

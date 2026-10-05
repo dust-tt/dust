@@ -12,8 +12,7 @@ import type { Attributes, ModelStatic } from "sequelize";
 import { Op } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-export interface ModelDegradationResource
-  extends ReadonlyAttributesType<ModelDegradationModel> {}
+export interface ModelDegradationResource extends ReadonlyAttributesType<ModelDegradationModel> {}
 export class ModelDegradationResource extends BaseResource<ModelDegradationModel> {
   static model: ModelStatic<ModelDegradationModel> = ModelDegradationModel;
 

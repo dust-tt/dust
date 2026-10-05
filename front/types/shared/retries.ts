@@ -1,5 +1,5 @@
-import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import type { LoggerInterface } from "./logger";
+import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 
 type RetryOptions = {
   retries?: number;

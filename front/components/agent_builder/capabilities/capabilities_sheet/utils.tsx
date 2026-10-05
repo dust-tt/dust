@@ -2,11 +2,11 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { MCPFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { CapabilitiesFooter } from "@app/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesFooter";
 import { CapabilitiesSelectionPageContent } from "@app/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesSelectionPage";
+import { SkillInfoPage } from "@app/components/agent_builder/capabilities/capabilities_sheet/SkillInfoPage";
 import {
   useSkillSelection,
   useToolSelection,
 } from "@app/components/agent_builder/capabilities/capabilities_sheet/hooks";
-import { SkillInfoPage } from "@app/components/agent_builder/capabilities/capabilities_sheet/SkillInfoPage";
 import type { CapabilitiesSheetContentProps } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import { MCPServerConfigurationPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerConfigurationPage";
 import { MCPServerInfoPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerInfoPage";

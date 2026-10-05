@@ -8,9 +8,7 @@ export type DustStreamEndpointConstructor<
   I = unknown,
   O = unknown,
   C extends InputConfig = InputConfig,
-> = (new (
-  credentials: Credentials
-) => StreamEndpoint<I, O>) &
+> = (new (credentials: Credentials) => StreamEndpoint<I, O>) &
   DustStreamEndpointConfiguration<C>;
 
 // Infers `C` from the class's `configSchema` so `defaultReasoningEffort` is

@@ -2,8 +2,8 @@ import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sand
 import { requestSandboxKillsActivity } from "@app/temporal/sandbox_reaper/kill_requester/activities";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@temporalio/activity", () => ({

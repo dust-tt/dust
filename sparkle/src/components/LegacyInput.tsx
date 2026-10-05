@@ -9,8 +9,10 @@ const MESSAGE_STATUS = ["info", "default", "error"] as const;
 
 type MessageStatus = (typeof MESSAGE_STATUS)[number];
 
-export interface LegacyInputProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "value"> {
+export interface LegacyInputProps extends Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  "value"
+> {
   /** Helper or error text shown under the field, colored by `messageStatus`. */
   message?: string | null;
   /** How the `message` is rendered: "info" shows an icon, "error" also colors the field. */

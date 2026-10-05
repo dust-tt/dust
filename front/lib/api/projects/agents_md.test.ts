@@ -12,8 +12,8 @@ import { constructProjectContext } from "@app/lib/resources/skill/code_defined/g
 import logger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Err, Ok } from "@app/types/shared/result";
 import { describe, expect, it, vi } from "vitest";
 

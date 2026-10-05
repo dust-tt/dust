@@ -1,3 +1,7 @@
+import type {
+  MessageConsumptionAllocation,
+  ReconciledCreditAmounts,
+} from "./allocation";
 import { getToolAggregateDisplayLabel } from "@app/lib/actions/tool_display_labels";
 import { microCreditsToCredits } from "@app/lib/credits/units";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
@@ -11,10 +15,6 @@ import type { AgentMCPActionType } from "@app/types/actions";
 import type { AgentMessageConsumptionDetailsWithModels } from "@app/types/assistant/agent_message_consumption";
 import type { ModelId } from "@app/types/shared/model_id";
 import partition from "lodash/partition";
-import type {
-  MessageConsumptionAllocation,
-  ReconciledCreditAmounts,
-} from "./allocation";
 import { buildLatestMessageConsumptionAllocation } from "./allocation";
 
 export type MessageConsumptionDetails =

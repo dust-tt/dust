@@ -23,15 +23,15 @@ import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPSer
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
-import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TagFactory } from "@app/tests/utils/TagFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { MISTRAL_LARGE_MODEL_ID } from "@app/types/assistant/models/mistral";

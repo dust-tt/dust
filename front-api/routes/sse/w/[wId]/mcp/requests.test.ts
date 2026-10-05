@@ -25,68 +25,70 @@ import {
   getMCPEventsForServer,
 } from "@app/lib/api/assistant/mcp_events";
 
-describe.each([
-  undefined,
-  "sse",
-  "poll",
-])("MCP requests transport=%s", (transport) => {
-  function getRequests(workspaceId: string, query: string) {
-    const params = new URLSearchParams(query);
-    if (transport) {
-      params.set("transport", transport);
+describe.each([undefined, "sse", "poll"])(
+  "MCP requests transport=%s",
+  (transport) => {
+    function getRequests(workspaceId: string, query: string) {
+      const params = new URLSearchParams(query);
+      if (transport) {
+        params.set("transport", transport);
+      }
+      return honoApp.request(
+        `/api/sse/w/${workspaceId}/mcp/requests?${params.toString()}`
+      );
     }
-    return honoApp.request(
-      `/api/sse/w/${workspaceId}/mcp/requests?${params.toString()}`
-    );
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it("returns 400 when serverId query parameter is missing", async () => {
+      const { workspace } = await createPrivateApiMockRequest();
+
+      const response = await getRequests(workspace.sId, "");
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({
+        error: expect.objectContaining({
+          type: "invalid_request_error",
+        }),
+      });
+    });
+
+    it("returns 403 when MCP server access is denied", async () => {
+      const { workspace } = await createPrivateApiMockRequest();
+      vi.mocked(validateMCPServerAccess).mockResolvedValue(false);
+
+      const response = await getRequests(
+        workspace.sId,
+        "?serverId=srv_unknown"
+      );
+
+      expect(response.status).toBe(403);
+      expect(await response.json()).toEqual({
+        error: expect.objectContaining({
+          type: "mcp_auth_error",
+        }),
+      });
+    });
+
+    it("returns events when MCP server access is granted", async () => {
+      const { workspace } = await createPrivateApiMockRequest();
+      vi.mocked(validateMCPServerAccess).mockResolvedValue(true);
+      vi.mocked(getMCPEventsForServer).mockImplementation(emptyAsyncIterator);
+      vi.mocked(getMCPEventsBatch).mockResolvedValue([]);
+
+      const response = await getRequests(workspace.sId, "?serverId=srv_ok");
+
+      if (transport === "poll") {
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({ events: [] });
+      } else {
+        await expectEmptySseStream(response, { expectDoneSentinel: true });
+      }
+    });
   }
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("returns 400 when serverId query parameter is missing", async () => {
-    const { workspace } = await createPrivateApiMockRequest();
-
-    const response = await getRequests(workspace.sId, "");
-
-    expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({
-      error: expect.objectContaining({
-        type: "invalid_request_error",
-      }),
-    });
-  });
-
-  it("returns 403 when MCP server access is denied", async () => {
-    const { workspace } = await createPrivateApiMockRequest();
-    vi.mocked(validateMCPServerAccess).mockResolvedValue(false);
-
-    const response = await getRequests(workspace.sId, "?serverId=srv_unknown");
-
-    expect(response.status).toBe(403);
-    expect(await response.json()).toEqual({
-      error: expect.objectContaining({
-        type: "mcp_auth_error",
-      }),
-    });
-  });
-
-  it("returns events when MCP server access is granted", async () => {
-    const { workspace } = await createPrivateApiMockRequest();
-    vi.mocked(validateMCPServerAccess).mockResolvedValue(true);
-    vi.mocked(getMCPEventsForServer).mockImplementation(emptyAsyncIterator);
-    vi.mocked(getMCPEventsBatch).mockResolvedValue([]);
-
-    const response = await getRequests(workspace.sId, "?serverId=srv_ok");
-
-    if (transport === "poll") {
-      expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({ events: [] });
-    } else {
-      await expectEmptySseStream(response, { expectDoneSentinel: true });
-    }
-  });
-});
+);
 
 describe("browser MCP polling on the requests endpoint", () => {
   beforeEach(() => {

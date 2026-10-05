@@ -1,3 +1,5 @@
+import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
+import IndustryTemplate from "@marketing/components/home/content/Industry/IndustryTemplate";
 import { b2bSaasConfig } from "@marketing/components/home/content/Industry/configs/b2bSaasConfig";
 import { consultingConfig } from "@marketing/components/home/content/Industry/configs/consultingConfig";
 import { energyConfig } from "@marketing/components/home/content/Industry/configs/energyConfig";
@@ -9,8 +11,6 @@ import { marketplaceConfig } from "@marketing/components/home/content/Industry/c
 import { mediaConfig } from "@marketing/components/home/content/Industry/configs/mediaConfig";
 import { retailEcommerceConfig } from "@marketing/components/home/content/Industry/configs/retailEcommerceConfig";
 import type { IndustryPageConfig } from "@marketing/components/home/content/Industry/configs/utils";
-import IndustryTemplate from "@marketing/components/home/content/Industry/IndustryTemplate";
-import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
 import {
   CONTENTFUL_REVALIDATE_SECONDS,
   getCustomerStoriesForIndustry,

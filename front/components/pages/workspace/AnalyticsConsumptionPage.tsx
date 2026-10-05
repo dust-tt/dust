@@ -6,6 +6,9 @@ import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigati
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import { AnalyticsConversationPanel } from "@app/components/workspace/analytics/AnalyticsConversationPanel";
 import { AnalyticsExportPanel } from "@app/components/workspace/analytics/AnalyticsExportPanel";
+import type { UsageFilterPanelProps } from "@app/components/workspace/analytics/UsageFilterPanel";
+import { UsageFilterPanel } from "@app/components/workspace/analytics/UsageFilterPanel";
+import { UsageFilterSummary } from "@app/components/workspace/analytics/UsageFilterSummary";
 import type { ConsumptionAttributionTableProps } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import type { ConsumptionChartProps } from "@app/components/workspace/analytics/consumption/ConsumptionChart";
@@ -19,9 +22,6 @@ import type { ConsumptionSummaryProps } from "@app/components/workspace/analytic
 import { ConsumptionSummary } from "@app/components/workspace/analytics/consumption/ConsumptionSummary";
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { consumptionDimensionFromQueryParam } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import type { UsageFilterPanelProps } from "@app/components/workspace/analytics/UsageFilterPanel";
-import { UsageFilterPanel } from "@app/components/workspace/analytics/UsageFilterPanel";
-import { UsageFilterSummary } from "@app/components/workspace/analytics/UsageFilterSummary";
 import type { UsageFilter } from "@app/components/workspace/analytics/usageFilter";
 import {
   addUsageFilterFromAttributionRow,
@@ -78,9 +78,9 @@ const MIN_CONTENT_WIDTH_WITH_PANEL_PX = 720;
 
 const LazyConsumptionChart = safeLazy(
   () =>
-    import(
-      "@app/components/workspace/analytics/consumption/ConsumptionChart"
-    ).then((mod) => ({ default: mod.ConsumptionChart })),
+    import("@app/components/workspace/analytics/consumption/ConsumptionChart").then(
+      (mod) => ({ default: mod.ConsumptionChart })
+    ),
   { canReload }
 );
 

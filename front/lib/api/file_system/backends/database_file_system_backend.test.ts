@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto";
-import { text } from "node:stream/consumers";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { FileSystemScope } from "@app/lib/api/file_system/namespace_scope";
 import { DATABASE_FILE_SYSTEM_POD_PREFIX } from "@app/lib/api/file_system/storage_mode";
@@ -8,10 +6,12 @@ import { FileSystemMutationResource } from "@app/lib/resources/file_system_mutat
 import { FileSystemNodeResource } from "@app/lib/resources/file_system_node_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import assert from "assert";
+import { randomUUID } from "node:crypto";
+import { text } from "node:stream/consumers";
 import { describe, expect, it } from "vitest";
 
 async function databaseFileSystem() {

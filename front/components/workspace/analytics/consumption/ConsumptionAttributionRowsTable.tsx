@@ -1,3 +1,5 @@
+import type { ConsumptionAttributionBreakdownProps } from "./ConsumptionAttributionBreakdown";
+import type { ConsumptionDimension } from "./consumptionDimensions";
 import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
@@ -26,9 +28,7 @@ import {
 } from "@tanstack/react-table";
 import type { ComponentType } from "react";
 import { Fragment } from "react";
-import type { ConsumptionAttributionBreakdownProps } from "./ConsumptionAttributionBreakdown";
 import { ConsumptionAttributionBreakdown } from "./ConsumptionAttributionBreakdown";
-import type { ConsumptionDimension } from "./consumptionDimensions";
 
 export type AttributionRowData = ConsumptionTopRow & {
   onClick: () => void;
@@ -129,8 +129,7 @@ export interface ConsumptionAttributionRowsTableProps {
   onSortingChange: OnChangeFn<SortingState>;
 }
 
-interface ConsumptionAttributionRowsTableViewProps
-  extends ConsumptionAttributionRowsTableProps {
+interface ConsumptionAttributionRowsTableViewProps extends ConsumptionAttributionRowsTableProps {
   BreakdownComponent: ComponentType<ConsumptionAttributionBreakdownProps>;
 }
 

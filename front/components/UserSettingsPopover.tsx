@@ -1,5 +1,4 @@
 import { MarkdownEditor } from "@app/components/editor/MarkdownEditor";
-import { MODAL_SETTINGS_LIST_CLASSES } from "@app/components/me/modalSettingsList";
 import {
   NotificationPreferences,
   useNotificationPreferencesForm,
@@ -9,6 +8,7 @@ import {
   SoundNotificationPreferences,
   useSoundNotificationPreferencesForm,
 } from "@app/components/me/SoundNotificationPreferences";
+import { MODAL_SETTINGS_LIST_CLASSES } from "@app/components/me/modalSettingsList";
 import type { ConversationFont } from "@app/components/sparkle/ConversationFontContext";
 import {
   CONVERSATION_FONT_LABELS,

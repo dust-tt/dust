@@ -1,8 +1,8 @@
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import {
   CapabilitiesPickerItemsList,
   CapabilitiesPickerLoading,
 } from "@app/components/assistant/CapabilitiesPicker";
-import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useSearchSkillsInfinite } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types/user";

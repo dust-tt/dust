@@ -22,8 +22,7 @@ export type GetExtensionConfigResponseBody = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-export interface ExtensionConfigurationResource
-  extends ReadonlyAttributesType<ExtensionConfigurationModel> {}
+export interface ExtensionConfigurationResource extends ReadonlyAttributesType<ExtensionConfigurationModel> {}
 export class ExtensionConfigurationResource extends BaseResource<ExtensionConfigurationModel> {
   static model: ModelStaticWorkspaceAware<ExtensionConfigurationModel> =
     ExtensionConfigurationModel;

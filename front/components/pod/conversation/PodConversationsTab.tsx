@@ -1,6 +1,6 @@
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { getGroupConversationsByDate } from "@app/components/assistant/conversation/utils";
-import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { PodConversationListItem } from "@app/components/pod/conversation/PodConversationListItem";
 import { PodEmptyCallout } from "@app/components/pod/conversation/PodEmptyCallout";

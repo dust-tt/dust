@@ -1,5 +1,3 @@
-import type { KeyObject } from "node:crypto";
-import { generateKeyPairSync, sign } from "node:crypto";
 import {
   createBufferedRequestFromRawBody,
   isSendgridParseFormRequest,
@@ -7,6 +5,8 @@ import {
   verifySendgridParseWebhookSignature,
 } from "@app/lib/api/assistant/email/sendgrid_parse_webhook_signature";
 import { IncomingForm } from "formidable";
+import type { KeyObject } from "node:crypto";
+import { generateKeyPairSync, sign } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
 const { privateKey, publicKey } = generateKeyPairSync("ec", {

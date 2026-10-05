@@ -9,13 +9,13 @@ import { USER_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
 import type { WhereOptions } from "sequelize";
@@ -537,35 +537,35 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
   it.each([
     { length: 256, status: 200 },
     { length: 257, status: 400 },
-  ])("returns $status when renaming a skill to $length characters", async ({
-    length,
-    status,
-  }) => {
-    const { workspace, skill, requestUserAuth } = await setupTest();
-    const name = "a".repeat(length);
+  ])(
+    "returns $status when renaming a skill to $length characters",
+    async ({ length, status }) => {
+      const { workspace, skill, requestUserAuth } = await setupTest();
+      const name = "a".repeat(length);
 
-    const response = await patchSkill(workspace, skill.sId, {
-      name,
-      agentFacingDescription: "Agent description",
-      userFacingDescription: "User description",
-      instructions: "Instructions",
-      icon: null,
-      tools: [],
-      attachedKnowledge: [],
-      instructionsHtml: null,
-    });
+      const response = await patchSkill(workspace, skill.sId, {
+        name,
+        agentFacingDescription: "Agent description",
+        userFacingDescription: "User description",
+        instructions: "Instructions",
+        icon: null,
+        tools: [],
+        attachedKnowledge: [],
+        instructionsHtml: null,
+      });
 
-    expect(response.status).toBe(status);
-    const updatedSkill = await SkillResource.fetchById(
-      requestUserAuth,
-      skill.sId
-    );
-    expect(updatedSkill?.name).toBe(status === 200 ? name : skill.name);
-    if (status === 400) {
-      const body = await response.json();
-      expect(body.error.message).toContain("at most 256 characters");
+      expect(response.status).toBe(status);
+      const updatedSkill = await SkillResource.fetchById(
+        requestUserAuth,
+        skill.sId
+      );
+      expect(updatedSkill?.name).toBe(status === 200 ? name : skill.name);
+      if (status === 400) {
+        const body = await response.json();
+        expect(body.error.message).toContain("at most 256 characters");
+      }
     }
-  });
+  );
 
   it("returns 400 for a user-facing description over the column length", async () => {
     const { workspace, skill, requestUserAuth } = await setupTest();

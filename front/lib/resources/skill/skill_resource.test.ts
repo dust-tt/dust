@@ -27,16 +27,16 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
-import { getTestStreamEndpoint } from "@app/tests/utils/models";
-import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { getTestStreamEndpoint } from "@app/tests/utils/models";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
 import type { MembershipRoleType } from "@app/types/memberships";
@@ -89,46 +89,48 @@ describe("SkillResource", () => {
       expect(document).not.toHaveProperty("instructions");
     });
 
-    it.each([
-      GLOBAL_SKILLS_ARRAY[0],
-      SYSTEM_SKILLS_ARRAY[0],
-    ])("serializes $kind definitions without workspace-specific metadata", async (definition) => {
-      const { authenticator: auth, globalSpace, user } = testContext;
-      const skill = await SkillResource.fetchById(auth, definition.sId, {
-        effectiveSpaceIds: [globalSpace.sId],
-        withInstructions: false,
-        withTools: false,
-      });
-      assert(skill);
+    it.each([GLOBAL_SKILLS_ARRAY[0], SYSTEM_SKILLS_ARRAY[0]])(
+      "serializes $kind definitions without workspace-specific metadata",
+      async (definition) => {
+        const { authenticator: auth, globalSpace, user } = testContext;
+        const skill = await SkillResource.fetchById(auth, definition.sId, {
+          effectiveSpaceIds: [globalSpace.sId],
+          withInstructions: false,
+          withTools: false,
+        });
+        assert(skill);
 
-      const document = skill.toSearchDocument(auth, {
-        editors: [user],
-        lastEditedByUser: user,
-        activeUsersCount: 4,
-        childSkillIds: [],
-      });
+        const document = skill.toSearchDocument(auth, {
+          editors: [user],
+          lastEditedByUser: user,
+          activeUsersCount: 4,
+          childSkillIds: [],
+        });
 
-      expect(document).toEqual({
-        workspace_id: CODE_DEFINED_SKILLS_WORKSPACE_ID,
-        skill_id: definition.sId,
-        status: "active",
-        availability:
-          definition.kind === "global" ? "users_and_agents" : "workspace_users",
-        name: definition.name,
-        description: definition.userFacingDescription,
-        icon: definition.icon,
-        last_edited_by_user_id: null,
-        editor_ids: [],
-        requested_space_ids: [],
-        mcp_server_view_ids: [],
-        child_skill_ids: [],
-        active_users_count: null,
-        favorite_count: 0,
-        created_at: null,
-        updated_at: null,
-      });
-      expect(toSkillListItem(auth, document).updatedAt).toBeNull();
-    });
+        expect(document).toEqual({
+          workspace_id: CODE_DEFINED_SKILLS_WORKSPACE_ID,
+          skill_id: definition.sId,
+          status: "active",
+          availability:
+            definition.kind === "global"
+              ? "users_and_agents"
+              : "workspace_users",
+          name: definition.name,
+          description: definition.userFacingDescription,
+          icon: definition.icon,
+          last_edited_by_user_id: null,
+          editor_ids: [],
+          requested_space_ids: [],
+          mcp_server_view_ids: [],
+          child_skill_ids: [],
+          active_users_count: null,
+          favorite_count: 0,
+          created_at: null,
+          updated_at: null,
+        });
+        expect(toSkillListItem(auth, document).updatedAt).toBeNull();
+      }
+    );
   });
 
   describe("permissions", () => {

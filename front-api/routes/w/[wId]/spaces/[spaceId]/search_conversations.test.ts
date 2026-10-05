@@ -10,9 +10,9 @@ import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects/co
 import { Authenticator, getOrCreateSystemApiKey } from "@app/lib/auth";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import type { GroupFactory } from "@app/tests/utils/GroupFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";

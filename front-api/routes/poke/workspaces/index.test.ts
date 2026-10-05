@@ -1,7 +1,7 @@
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";

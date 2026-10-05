@@ -2,9 +2,7 @@ import { forceTemperatureToOne } from "@app/lib/llms/stream/types/configuration"
 import { GEMINI_3_1_PRO_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 
 export function WithDustGoogleGeminiThreeDotOneProConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class DustGoogleGeminiThreeDotOnePro extends Base {
     static readonly displayName = "Gemini 3.1 Pro (Preview)";

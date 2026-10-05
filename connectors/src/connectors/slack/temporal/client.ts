@@ -10,11 +10,11 @@ import { normalizeError } from "@connectors/types";
 import { Err, Ok, removeNulls } from "@dust-tt/client";
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
 
+import type { SlackWebhookEventPayload } from "./webhook_event";
+import type { JoinChannelUseCaseType } from "./workflows";
 import { getWeekStart } from "../lib/utils";
 import { QUEUE_NAME } from "./config";
 import { newWebhookSignal, syncChannelSignal } from "./signals";
-import type { SlackWebhookEventPayload } from "./webhook_event";
-import type { JoinChannelUseCaseType } from "./workflows";
 import {
   joinChannelWorkflow,
   joinChannelWorkflowId,

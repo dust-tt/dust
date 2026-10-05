@@ -1,6 +1,6 @@
 import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
-import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";

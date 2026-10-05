@@ -4,10 +4,10 @@ import type { Authenticator } from "@app/lib/auth";
 import * as scheduleClient from "@app/temporal/triggers/schedule_client";
 import * as wakeUpClient from "@app/temporal/triggers/wakeup_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MentionFactory } from "@app/tests/utils/MentionFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

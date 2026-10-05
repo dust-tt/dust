@@ -106,7 +106,9 @@ export interface ConnectorProviderConfigurationTypeM {
 }
 
 export type ConnectorProviderConfigurationTypeMapping = {
-  [K in keyof ConnectorProviderConfigurationTypeM]: ConnectorProviderConfigurationTypeM[K];
+  [
+    K in keyof ConnectorProviderConfigurationTypeM
+  ]: ConnectorProviderConfigurationTypeM[K];
 };
 
 export type ConnectorProviderConfigurationType =

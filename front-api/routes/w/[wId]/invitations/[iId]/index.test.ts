@@ -1,7 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipInvitationFactory } from "@app/tests/utils/MembershipInvitationFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 

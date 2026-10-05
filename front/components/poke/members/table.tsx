@@ -1,6 +1,6 @@
+import { MembersBulkActions } from "@app/components/poke/members/MembersBulkActions";
 import type { MemberDisplayType } from "@app/components/poke/members/columns";
 import { makeColumnsForMembers } from "@app/components/poke/members/columns";
-import { MembersBulkActions } from "@app/components/poke/members/MembersBulkActions";
 import type { BatchMemberUpdate } from "@app/components/poke/members/useBatchUpdateMembers";
 import { useBatchUpdateMembers } from "@app/components/poke/members/useBatchUpdateMembers";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";

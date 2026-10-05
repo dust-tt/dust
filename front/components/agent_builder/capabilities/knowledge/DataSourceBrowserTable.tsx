@@ -1,10 +1,10 @@
+import { ConfirmContext } from "@app/components/Confirm";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { DataSourceListItem } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
 import {
   DataSourceList,
   toDataSourceListItem,
 } from "@app/components/agent_builder/capabilities/knowledge/DataSourceList";
-import { ConfirmContext } from "@app/components/Confirm";
 import type { KnowledgeBrowserItem } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
 import { useKnowledgeBrowserItems } from "@app/components/data_source_view/browser/useKnowledgeBrowserItems";
 import { navigateToKnowledgeBrowserItem } from "@app/components/data_source_view/browser/useKnowledgeBrowserNavigation";

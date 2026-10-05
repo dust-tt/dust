@@ -1,6 +1,8 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { ContextUsageWarningBanner } from "@app/components/assistant/conversation/ContextUsageWarningBanner";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { UserAnswerRequired } from "@app/components/assistant/conversation/UserAnswerRequired";
+import { WakeUpBanner } from "@app/components/assistant/conversation/WakeUpBanner";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarMessageNavigation } from "@app/components/assistant/conversation/input_bar/InputBarMessageNavigation";
 import { INPUT_BAR_COMPACT_NAV_ENTER_ANIMATION_CLASSES } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
@@ -16,8 +18,6 @@ import {
   isHiddenMessage,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
-import { UserAnswerRequired } from "@app/components/assistant/conversation/UserAnswerRequired";
-import { WakeUpBanner } from "@app/components/assistant/conversation/WakeUpBanner";
 import { PodJoinCTA } from "@app/components/pod/conversation/PodJoinCTA";
 import {
   useCancelMessage,

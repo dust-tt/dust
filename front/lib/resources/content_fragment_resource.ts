@@ -111,8 +111,7 @@ function getConversationFilePath({
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-export interface ContentFragmentResource
-  extends ReadonlyAttributesType<ContentFragmentModel> {}
+export interface ContentFragmentResource extends ReadonlyAttributesType<ContentFragmentModel> {}
 export class ContentFragmentResource extends BaseResource<ContentFragmentModel> {
   static model: ModelStatic<ContentFragmentModel> = ContentFragmentModel;
 

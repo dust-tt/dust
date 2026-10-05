@@ -1,6 +1,6 @@
+import type { LightWorkspaceType } from "../user";
 import type { PokeRole } from "@app/lib/poke/roles";
 import { z } from "zod";
-import type { LightWorkspaceType } from "../user";
 
 interface DependsOnCondition {
   field: string;

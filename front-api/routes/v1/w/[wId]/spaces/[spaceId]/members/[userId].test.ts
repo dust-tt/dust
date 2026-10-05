@@ -1,10 +1,10 @@
 import { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
-import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 

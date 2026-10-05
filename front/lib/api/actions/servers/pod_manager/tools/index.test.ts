@@ -8,10 +8,10 @@ import { processEventForDatabase } from "@app/temporal/agent_loop/activities/com
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { getTestStreamEndpoint } from "@app/tests/utils/models";
 import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { getTestStreamEndpoint } from "@app/tests/utils/models";
 import { getAgentLoopRuntimeData } from "@app/types/assistant/agent_run";
 import {
   isAgentMessageType,

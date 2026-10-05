@@ -1,5 +1,5 @@
-import type { MultiProductComparisonColumn } from "@marketing/components/home/content/Competitive/MultiProductComparisonTable";
 import type { FAQItem } from "@marketing/components/home/FAQ";
+import type { MultiProductComparisonColumn } from "@marketing/components/home/content/Competitive/MultiProductComparisonTable";
 import type { ReactNode } from "react";
 
 interface HeroTestimonial {

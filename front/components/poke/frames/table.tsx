@@ -1,5 +1,5 @@
-import { makeColumnsForFrames } from "@app/components/poke/frames/columns";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
+import { makeColumnsForFrames } from "@app/components/poke/frames/columns";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { usePokeFrames } from "@app/poke/swr/frames";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";

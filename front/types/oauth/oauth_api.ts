@@ -1,7 +1,3 @@
-import { internalFetch } from "@app/lib/api/internal_fetch";
-import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
-import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
-import type { ApiKeyCredentialsType } from "@app/types/provider_credential";
 import type {
   ConnectionCredentials,
   CredentialsProvider,
@@ -13,6 +9,10 @@ import type {
 } from "../oauth/lib";
 import type { LoggerInterface } from "../shared/logger";
 import type { Result } from "../shared/result";
+import { internalFetch } from "@app/lib/api/internal_fetch";
+import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
+import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
+import type { ApiKeyCredentialsType } from "@app/types/provider_credential";
 import { Err, Ok } from "../shared/result";
 
 export type OAuthAPIError = {

@@ -13,10 +13,10 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { getTestStreamEndpoint } from "@app/tests/utils/models";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { getTestStreamEndpoint } from "@app/tests/utils/models";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { describe, expect, it } from "vitest";
 
@@ -51,41 +51,41 @@ describe("Dust Lean", () => {
     expect(fetchedAfter).toHaveLength(1);
   });
 
-  it.each([
-    "light",
-    "full",
-  ] as const)("uses Dust's model with no configured capabilities (%s)", async (variant) => {
-    const { authenticator } = await createResourceTest({ role: "admin" });
-    await FeatureFlagFactory.basic(authenticator, "dust_lean_agent");
-    const [dust, lean] = await getGlobalAgents(
-      authenticator,
-      [GLOBAL_AGENTS_SID.DUST, GLOBAL_AGENTS_SID.DUST_LEAN],
-      variant
-    );
-    expect(lean.model).toEqual(dust.model);
-    expect(lean).toMatchObject({
-      sId: GLOBAL_AGENTS_SID.DUST_LEAN,
-      name: "dust-lean",
-      status: "active",
-      actions: [],
-      codeDefinedSkillIds: [],
-      requestedSpaceIds: [],
-      requestedGroupIds: [],
-    });
+  it.each(["light", "full"] as const)(
+    "uses Dust's model with no configured capabilities (%s)",
+    async (variant) => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+      await FeatureFlagFactory.basic(authenticator, "dust_lean_agent");
+      const [dust, lean] = await getGlobalAgents(
+        authenticator,
+        [GLOBAL_AGENTS_SID.DUST, GLOBAL_AGENTS_SID.DUST_LEAN],
+        variant
+      );
+      expect(lean.model).toEqual(dust.model);
+      expect(lean).toMatchObject({
+        sId: GLOBAL_AGENTS_SID.DUST_LEAN,
+        name: "dust-lean",
+        status: "active",
+        actions: [],
+        codeDefinedSkillIds: [],
+        requestedSpaceIds: [],
+        requestedGroupIds: [],
+      });
 
-    await upsertGlobalAgentSettings(authenticator, {
-      agentId: GLOBAL_AGENTS_SID.DUST_LEAN,
-      status: "disabled_by_admin",
-    });
-    const [disabled] = await getGlobalAgents(
-      authenticator,
-      [GLOBAL_AGENTS_SID.DUST_LEAN],
-      variant
-    );
-    expect(disabled.status).toBe("disabled_by_admin");
-    expect(disabled.actions).toEqual([]);
-    expect(disabled.codeDefinedSkillIds).toEqual([]);
-  });
+      await upsertGlobalAgentSettings(authenticator, {
+        agentId: GLOBAL_AGENTS_SID.DUST_LEAN,
+        status: "disabled_by_admin",
+      });
+      const [disabled] = await getGlobalAgents(
+        authenticator,
+        [GLOBAL_AGENTS_SID.DUST_LEAN],
+        variant
+      );
+      expect(disabled.status).toBe("disabled_by_admin");
+      expect(disabled.actions).toEqual([]);
+      expect(disabled.codeDefinedSkillIds).toEqual([]);
+    }
+  );
 
   it("inherits default tools and skills and allows explicit conversation additions", async () => {
     const { authenticator, workspace, user } = await createResourceTest({

@@ -129,10 +129,13 @@ describe.each(SUPPORTED_LOCALES)("with %s as the format locale", (locale) => {
       [3221225472, 0, "3 GB"],
       [3221225472, 2, "3.00 GB"],
       [5497558138880, 0, "5120 GB"],
-    ])("formatFileSize pinned to en-US for %i bytes with %i decimals", (bytes, decimals, expected) => {
-      setFormatLocale(locale);
-      expect(formatFileSize(bytes, { decimals }, "en-US")).toBe(expected);
-    });
+    ])(
+      "formatFileSize pinned to en-US for %i bytes with %i decimals",
+      (bytes, decimals, expected) => {
+        setFormatLocale(locale);
+        expect(formatFileSize(bytes, { decimals }, "en-US")).toBe(expected);
+      }
+    );
 
     it("getPastedFileName", () => {
       setFormatLocale(locale);
@@ -173,18 +176,21 @@ describe.each(SUPPORTED_LOCALES)("with %s as the format locale", (locale) => {
       [1234.567, "usd"],
       [1234.5, "eur"],
       [0.0087, "gbp"],
-    ] as const)("formatCurrencyAmount %d %s", (amountCurrencyUnits, currency) => {
-      setFormatLocale(locale);
-      expect(
-        formatCurrencyAmount({ amount: amountCurrencyUnits, currency })
-      ).toBe(EXPECTED[locale][currency]);
-      expect(
-        formatCurrencyAmountCents({
-          amountCents: amountCurrencyUnits * 100,
-          currency,
-        })
-      ).toBe(EXPECTED[locale][currency]);
-    });
+    ] as const)(
+      "formatCurrencyAmount %d %s",
+      (amountCurrencyUnits, currency) => {
+        setFormatLocale(locale);
+        expect(
+          formatCurrencyAmount({ amount: amountCurrencyUnits, currency })
+        ).toBe(EXPECTED[locale][currency]);
+        expect(
+          formatCurrencyAmountCents({
+            amountCents: amountCurrencyUnits * 100,
+            currency,
+          })
+        ).toBe(EXPECTED[locale][currency]);
+      }
+    );
 
     it("seat formatAmount", () => {
       setFormatLocale(locale);
@@ -308,16 +314,17 @@ describe("date library calls keep their en-US output", () => {
     );
   });
 
-  it.each([
-    1000, 9999,
-  ])("formatDateTime with NUMERIC_DATE_TIME_OPTIONS matches date-fns Pp in year %i", (year) => {
-    setFormatLocale("en-US");
-    const date = new Date(TIMESTAMP);
-    date.setUTCFullYear(year);
-    expect(formatDateTime(date, NUMERIC_DATE_TIME_OPTIONS)).toBe(
-      format(date, "Pp")
-    );
-  });
+  it.each([1000, 9999])(
+    "formatDateTime with NUMERIC_DATE_TIME_OPTIONS matches date-fns Pp in year %i",
+    (year) => {
+      setFormatLocale("en-US");
+      const date = new Date(TIMESTAMP);
+      date.setUTCFullYear(year);
+      expect(formatDateTime(date, NUMERIC_DATE_TIME_OPTIONS)).toBe(
+        format(date, "Pp")
+      );
+    }
+  );
 
   it.each([
     [-30 * SECOND_MS, "long"],
@@ -328,15 +335,20 @@ describe("date library calls keep their en-US output", () => {
     [-40 * DAY_MS, "long"],
     [-400 * DAY_MS, "narrow"],
     [2 * HOUR_MS, "long"],
-  ] as const)("formatTimeDistance %i ms from now in %s style matches intlFormatDistance", (offsetMs, style) => {
-    setFormatLocale("en-US");
-    expect(formatTimeDistance(TIMESTAMP + offsetMs, TIMESTAMP, { style })).toBe(
-      intlFormatDistance(TIMESTAMP + offsetMs, TIMESTAMP, {
-        style,
-        locale: "en-US",
-      })
-    );
-  });
+  ] as const)(
+    "formatTimeDistance %i ms from now in %s style matches intlFormatDistance",
+    (offsetMs, style) => {
+      setFormatLocale("en-US");
+      expect(
+        formatTimeDistance(TIMESTAMP + offsetMs, TIMESTAMP, { style })
+      ).toBe(
+        intlFormatDistance(TIMESTAMP + offsetMs, TIMESTAMP, {
+          style,
+          locale: "en-US",
+        })
+      );
+    }
+  );
 
   it("formatTimeDistance keeps intlFormatDistance's wording", () => {
     setFormatLocale("en-US");
@@ -347,69 +359,69 @@ describe("date library calls keep their en-US output", () => {
   });
 });
 
-describe.each([
-  undefined,
-  ...SUPPORTED_LOCALES,
-])("helpers formatting in the format locale, set to %s", (locale) => {
-  const date = new Date(TIMESTAMP);
-  const hourAndMinute: Intl.DateTimeFormatOptions = {
-    hour: "2-digit",
-    minute: "2-digit",
-  };
-
-  it("formatTimestring", () => {
-    setFormatLocale(locale);
-    expect(formatTimestring(TIMESTAMP)).toBe(
-      date.toLocaleTimeString(locale, hourAndMinute)
-    );
-  });
-
-  it("formatShortDate", () => {
-    setFormatLocale(locale);
-    expect(formatShortDate(TIMESTAMP)).toBe(
-      date.toLocaleDateString(locale, { month: "short", day: "numeric" })
-    );
-  });
-
-  it("describeWakeUpSchedule", () => {
-    setFormatLocale(locale);
-    expect(
-      describeWakeUpSchedule({
-        scheduleConfig: { type: "one_shot", fireAt: TIMESTAMP },
-      })
-    ).toBe(`at ${date.toLocaleTimeString(locale, hourAndMinute)}`);
-  });
-
-  it("getConversationDisplayTitle", () => {
-    setFormatLocale(locale);
-    expect(
-      getConversationDisplayTitle(
-        { title: null, created: TIMESTAMP },
-        new Date(TIMESTAMP + 2 * DAY_MS)
-      )
-    ).toBe(`Conversation from ${date.toLocaleDateString(locale)}`);
-  });
-
-  it("formatPostSummary", () => {
-    setFormatLocale(locale);
-    const post: SlabPost = {
-      id: "post_1",
-      title: "Post",
-      content: "Content",
-      insertedAt: date.toISOString(),
-      updatedAt: date.toISOString(),
-      publishedAt: null,
-      archivedAt: null,
-      linkAccess: "internal",
-      version: 1,
-      owner: { id: "user_1", name: "User", email: "user@example.com" },
-      topics: [],
+describe.each([undefined, ...SUPPORTED_LOCALES])(
+  "helpers formatting in the format locale, set to %s",
+  (locale) => {
+    const date = new Date(TIMESTAMP);
+    const hourAndMinute: Intl.DateTimeFormatOptions = {
+      hour: "2-digit",
+      minute: "2-digit",
     };
-    const summary = formatPostSummary(post);
-    expect(summary).toContain(`Created: ${date.toLocaleDateString(locale)}`);
-    expect(summary).toContain(`Updated: ${date.toLocaleDateString(locale)}`);
-  });
-});
+
+    it("formatTimestring", () => {
+      setFormatLocale(locale);
+      expect(formatTimestring(TIMESTAMP)).toBe(
+        date.toLocaleTimeString(locale, hourAndMinute)
+      );
+    });
+
+    it("formatShortDate", () => {
+      setFormatLocale(locale);
+      expect(formatShortDate(TIMESTAMP)).toBe(
+        date.toLocaleDateString(locale, { month: "short", day: "numeric" })
+      );
+    });
+
+    it("describeWakeUpSchedule", () => {
+      setFormatLocale(locale);
+      expect(
+        describeWakeUpSchedule({
+          scheduleConfig: { type: "one_shot", fireAt: TIMESTAMP },
+        })
+      ).toBe(`at ${date.toLocaleTimeString(locale, hourAndMinute)}`);
+    });
+
+    it("getConversationDisplayTitle", () => {
+      setFormatLocale(locale);
+      expect(
+        getConversationDisplayTitle(
+          { title: null, created: TIMESTAMP },
+          new Date(TIMESTAMP + 2 * DAY_MS)
+        )
+      ).toBe(`Conversation from ${date.toLocaleDateString(locale)}`);
+    });
+
+    it("formatPostSummary", () => {
+      setFormatLocale(locale);
+      const post: SlabPost = {
+        id: "post_1",
+        title: "Post",
+        content: "Content",
+        insertedAt: date.toISOString(),
+        updatedAt: date.toISOString(),
+        publishedAt: null,
+        archivedAt: null,
+        linkAccess: "internal",
+        version: 1,
+        owner: { id: "user_1", name: "User", email: "user@example.com" },
+        topics: [],
+      };
+      const summary = formatPostSummary(post);
+      expect(summary).toContain(`Created: ${date.toLocaleDateString(locale)}`);
+      expect(summary).toContain(`Updated: ${date.toLocaleDateString(locale)}`);
+    });
+  }
+);
 
 describe("format locale resolution", () => {
   const cases: [SupportedLocale, string, string, string][] = [
@@ -429,21 +441,29 @@ describe("format locale resolution", () => {
   it.each([
     ["en-US", "€1,234.50", "1.5 KB", false],
     ["fr-FR", "1\u202f234,50\u00a0€", "1,5 KB", true],
-  ] as const)("formats money, sizes and hour cycle in %s once set", (locale, currency, fileSize, twentyFourHour) => {
-    setFormatLocale(locale);
-    expect(formatCurrency(1234.5, "EUR")).toBe(currency);
-    expect(formatFileSize(1536)).toBe(fileSize);
-    expect(prefersTwentyFourHourTime()).toBe(twentyFourHour);
-  });
+  ] as const)(
+    "formats money, sizes and hour cycle in %s once set",
+    (locale, currency, fileSize, twentyFourHour) => {
+      setFormatLocale(locale);
+      expect(formatCurrency(1234.5, "EUR")).toBe(currency);
+      expect(formatFileSize(1536)).toBe(fileSize);
+      expect(prefersTwentyFourHourTime()).toBe(twentyFourHour);
+    }
+  );
 
   it.each([
     ["en-US", "09/23/2025, 3:37 PM", "yesterday"],
     ["fr-FR", "23/09/2025 15:37", "hier"],
-  ] as const)("formats date times and distances in %s once set", (locale, dateTime, distance) => {
-    setFormatLocale(locale);
-    expect(formatDateTime(TIMESTAMP, NUMERIC_DATE_TIME_OPTIONS)).toBe(dateTime);
-    expect(formatTimeDistance(TIMESTAMP - DAY_MS, TIMESTAMP)).toBe(distance);
-  });
+  ] as const)(
+    "formats date times and distances in %s once set",
+    (locale, dateTime, distance) => {
+      setFormatLocale(locale);
+      expect(formatDateTime(TIMESTAMP, NUMERIC_DATE_TIME_OPTIONS)).toBe(
+        dateTime
+      );
+      expect(formatTimeDistance(TIMESTAMP - DAY_MS, TIMESTAMP)).toBe(distance);
+    }
+  );
 
   it("uses the explicit locale over the format locale", () => {
     setFormatLocale("fr-FR");

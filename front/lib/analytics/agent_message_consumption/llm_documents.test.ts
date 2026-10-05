@@ -7,8 +7,8 @@ import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_me
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { RunFactory } from "@app/tests/utils/RunFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import { describe, expect, it } from "vitest";
 

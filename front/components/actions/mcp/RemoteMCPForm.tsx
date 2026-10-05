@@ -1,6 +1,6 @@
-import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import { MCPServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
 import { MCPServerMetaFields } from "@app/components/actions/mcp/MCPServerMetaFields";
+import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import type { RemoteMCPServerType } from "@app/lib/api/mcp";
 import { formatDateTime } from "@app/lib/i18n/format";
 import { useSyncRemoteMCPServer } from "@app/lib/swr/mcp_servers";

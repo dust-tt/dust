@@ -1,5 +1,6 @@
 import { getIcon } from "@app/components/resources/resources_icons";
 import { FilterPanel } from "@app/components/shared/filter_panel/FilterPanel";
+import { UsageRangeFilter } from "@app/components/shared/filter_panel/UsageRangeFilter";
 import {
   clearFilterCategory,
   selectAllFilterOptions,
@@ -16,7 +17,6 @@ import {
   SEARCH_FILTER_CATEGORY_LABEL,
   toUsageFilterOption,
 } from "@app/components/shared/filter_panel/searchFilter";
-import { UsageRangeFilter } from "@app/components/shared/filter_panel/UsageRangeFilter";
 import type { FilterPanelState } from "@app/components/shared/filter_panel/useFilterPanel";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { getSkillIcon } from "@app/lib/skill";

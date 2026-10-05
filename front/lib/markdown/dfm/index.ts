@@ -14,10 +14,7 @@ export {
   dfmCommentSchema,
   dfmCommentsSchema,
 } from "@app/lib/markdown/dfm/annotations";
-export {
-  parseDfm,
-  serializeDfm,
-} from "@app/lib/markdown/dfm/document";
+export { parseDfm, serializeDfm } from "@app/lib/markdown/dfm/document";
 export { anchorComment } from "@app/lib/markdown/dfm/operations";
 export type {
   DfmAnchor,

@@ -1,8 +1,8 @@
 import { internalFetch } from "@app/lib/api/internal_fetch";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
-import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { honoApp } from "@front-api/app";
 import { Readable } from "stream";
 import { describe, expect, it, vi } from "vitest";
@@ -67,9 +67,8 @@ const mockFileContent = {
 vi.mock("@app/lib/file_storage", async (importOriginal) => {
   const original =
     await importOriginal<typeof import("@app/lib/file_storage")>();
-  const { fileStorageMock } = await import(
-    "@app/tests/utils/mocks/file_storage"
-  );
+  const { fileStorageMock } =
+    await import("@app/tests/utils/mocks/file_storage");
   const mockFile = () => ({
     copy: vi.fn().mockResolvedValue(undefined),
     createReadStream: () => Readable.from([mockFileContent.content]),

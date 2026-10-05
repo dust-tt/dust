@@ -81,7 +81,8 @@ const titleVariants = cva(
 );
 
 interface ImagePreviewProps
-  extends VariantProps<typeof containerVariants>,
+  extends
+    VariantProps<typeof containerVariants>,
     VariantProps<typeof overlayVariants> {
   imgSrc: string;
   alt?: string;

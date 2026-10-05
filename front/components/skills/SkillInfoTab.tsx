@@ -6,10 +6,10 @@ import {
   useEditedSkillSections,
   useSkillSuggestionPreview,
 } from "@app/components/assistant/details/SuggestionPreviewContext";
+import { SkillDescriptionReadOnlyEditor } from "@app/components/editor/SkillDescriptionEditor";
 import { KnowledgeChip } from "@app/components/editor/extensions/skill_builder/KnowledgeChip";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { isFullKnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
-import { SkillDescriptionReadOnlyEditor } from "@app/components/editor/SkillDescriptionEditor";
 import { DiscoverableSkillsList } from "@app/components/skills/DiscoverableSkillsList";
 import { RedactedSkillMessage } from "@app/components/skills/RedactedSkillMessage";
 import { SkillInstructionsReadOnlyEditor } from "@app/components/skills/SkillInstructionsReadOnlyEditor";

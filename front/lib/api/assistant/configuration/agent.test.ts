@@ -23,13 +23,13 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
-import { saveAgentConfiguration } from "@app/tests/utils/saveAgentConfiguration";
 import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WakeUpFactory } from "@app/tests/utils/WakeUpFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { saveAgentConfiguration } from "@app/tests/utils/saveAgentConfiguration";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { afterEach, describe, expect, it, vi } from "vitest";

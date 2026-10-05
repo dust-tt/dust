@@ -1,3 +1,4 @@
+import type { ObservabilityMode } from "@app/components/agent_builder/observability/ObservabilityContext";
 import type { AnalyticsVisibleOrigin } from "@app/components/agent_builder/observability/constants";
 import {
   buildColorClass,
@@ -7,7 +8,6 @@ import {
   UNKNOWN_LABEL,
   USER_MESSAGE_ORIGIN_LABELS,
 } from "@app/components/agent_builder/observability/constants";
-import type { ObservabilityMode } from "@app/components/agent_builder/observability/ObservabilityContext";
 
 export { isUserMessageOrigin } from "@app/lib/api/analytics/source_labels";
 

@@ -1,13 +1,13 @@
 import type { InputBarSlashMenuRootSection } from "@app/components/editor/extensions/input_bar/useInputBarSlashMenuSections";
 import { AttachContextSubMenuDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/AttachContextSubMenuDropdown";
-import type { SlashCommandSection } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
-import type { ContextSlashSearchSelection } from "@app/components/editor/extensions/shared/slash_suggestion/contextSlashSearchTypes";
 import { PickModelSubMenuDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/PickModelSubMenuDropdown";
 import type {
   SlashCommand,
   SlashCommandDropdownRef,
 } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { SlashCommandDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import type { SlashCommandSection } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
+import type { ContextSlashSearchSelection } from "@app/components/editor/extensions/shared/slash_suggestion/contextSlashSearchTypes";
 import type { SlashMenuStackFrame } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import {
   ATTACH_CONTEXT_SUB_MENU_ID,
@@ -19,8 +19,10 @@ import type { SuggestionProps } from "@tiptap/suggestion";
 import type React from "react";
 import type { RefObject } from "react";
 
-interface InputBarMenuPanelsProps
-  extends Pick<SuggestionProps<SlashCommand>, "clientRect"> {
+interface InputBarMenuPanelsProps extends Pick<
+  SuggestionProps<SlashCommand>,
+  "clientRect"
+> {
   // The open sub-menu, if any. Ignored in `attach-only` mode where the browser is the whole menu.
   activeFrame: SlashMenuStackFrame | null;
   attachOnlyRootSection: InputBarSlashMenuRootSection | undefined;

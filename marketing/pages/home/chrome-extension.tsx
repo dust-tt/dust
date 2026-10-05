@@ -1,5 +1,10 @@
-import { CONTENTFUL_REVALIDATE_SECONDS } from "@marketing/lib/contentful/client";
-import { fetchLogoLists } from "@marketing/lib/logo_bars_server";
+import {
+  Button,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@dust-tt/sparkle";
 import {
   Grid,
   H1,
@@ -8,20 +13,15 @@ import {
   H4,
   P,
 } from "@marketing/components/home/ContentComponents";
-import { HomeAIOperatorsCTASection } from "@marketing/components/home/content/Product/HomeAIOperatorsCTASection";
-import { DemoVideoSection } from "@marketing/components/home/content/Solutions/DemoVideoSection";
 import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
 import LandingLayout from "@marketing/components/home/LandingLayout";
 import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import TrustedBy from "@marketing/components/home/TrustedBy";
+import { HomeAIOperatorsCTASection } from "@marketing/components/home/content/Product/HomeAIOperatorsCTASection";
+import { DemoVideoSection } from "@marketing/components/home/content/Solutions/DemoVideoSection";
+import { CONTENTFUL_REVALIDATE_SECONDS } from "@marketing/lib/contentful/client";
+import { fetchLogoLists } from "@marketing/lib/logo_bars_server";
 import { classNames } from "@marketing/lib/utils";
-import {
-  Button,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 

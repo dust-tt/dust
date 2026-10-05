@@ -9,11 +9,11 @@ vi.mock("@app/temporal/agent_loop/client", () => ({
 
 import { Authenticator } from "@app/lib/auth";
 import { ProjectTaskStateResource } from "@app/lib/resources/project_task_state_resource";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { ProjectTaskFactory } from "@app/tests/utils/ProjectTaskFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 
 import { honoApp } from "@front-api/app";

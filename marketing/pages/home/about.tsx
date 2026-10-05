@@ -1,17 +1,4 @@
 import {
-  Grid,
-  H1,
-  H2,
-  H3,
-  P,
-  Strong,
-} from "@marketing/components/home/ContentComponents";
-import { PEOPLE } from "@marketing/components/home/content/shared/team";
-import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
-import LandingLayout from "@marketing/components/home/LandingLayout";
-import { PageMetadata } from "@marketing/components/home/PageMetadata";
-import { classNames } from "@marketing/lib/utils";
-import {
   ArrowRight,
   Button,
   Div3D,
@@ -21,6 +8,19 @@ import {
   LinkedinLogo,
   Separator,
 } from "@dust-tt/sparkle";
+import {
+  Grid,
+  H1,
+  H2,
+  H3,
+  P,
+  Strong,
+} from "@marketing/components/home/ContentComponents";
+import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
+import LandingLayout from "@marketing/components/home/LandingLayout";
+import { PageMetadata } from "@marketing/components/home/PageMetadata";
+import { PEOPLE } from "@marketing/components/home/content/shared/team";
+import { classNames } from "@marketing/lib/utils";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";

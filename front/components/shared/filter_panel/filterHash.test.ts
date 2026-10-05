@@ -66,15 +66,12 @@ describe("filterHash", () => {
     ).toBe('{"filter":{"skill":{"skill1":"Research"}}}');
   });
 
-  it.each([
-    undefined,
-    "",
-    "not base64!",
-    encode("not json"),
-    encode("[]"),
-  ])("parses %j as the default state", (value) => {
-    expect(parse(value)).toEqual({ tabId: "all", selection: {}, fields: {} });
-  });
+  it.each([undefined, "", "not base64!", encode("not json"), encode("[]")])(
+    "parses %j as the default state",
+    (value) => {
+      expect(parse(value)).toEqual({ tabId: "all", selection: {}, fields: {} });
+    }
+  );
 
   it("drops invalid values individually", () => {
     const value = encode(

@@ -58,16 +58,16 @@ describe("getLegacyOAuthRedirectBaseUrl", () => {
     vi.unstubAllEnvs();
   });
 
-  it.each([
-    "https://dust.tt",
-    "https://eu.dust.tt",
-  ])("preserves the configured legacy callback base %s", async (legacyBaseUrl) => {
-    vi.stubEnv("NEXT_PUBLIC_DUST_APP_URL", "https://app.dust.tt");
-    vi.stubEnv("DUST_OAUTH_REDIRECT_BASE_URL", legacyBaseUrl);
-    const { default: config } = await import("@app/lib/api/config");
+  it.each(["https://dust.tt", "https://eu.dust.tt"])(
+    "preserves the configured legacy callback base %s",
+    async (legacyBaseUrl) => {
+      vi.stubEnv("NEXT_PUBLIC_DUST_APP_URL", "https://app.dust.tt");
+      vi.stubEnv("DUST_OAUTH_REDIRECT_BASE_URL", legacyBaseUrl);
+      const { default: config } = await import("@app/lib/api/config");
 
-    expect(config.getLegacyOAuthRedirectBaseUrl()).toBe(legacyBaseUrl);
-  });
+      expect(config.getLegacyOAuthRedirectBaseUrl()).toBe(legacyBaseUrl);
+    }
+  );
 
   it("uses the app URL when the legacy override is empty", async () => {
     vi.stubEnv("NEXT_PUBLIC_DUST_APP_URL", "https://app.dust.tt");

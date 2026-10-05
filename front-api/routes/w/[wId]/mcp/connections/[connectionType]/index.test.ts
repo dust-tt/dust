@@ -1,7 +1,7 @@
 import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerConnectionFactory } from "@app/tests/utils/MCPServerConnectionFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 

@@ -1,16 +1,16 @@
 import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
 import LandingLayout from "@marketing/components/home/LandingLayout";
-import config from "@marketing/lib/api/config";
 import {
   fetchAuthContext,
   hasWorkosSessionCookie,
 } from "@marketing/lib/api/authContext";
+import config from "@marketing/lib/api/config";
 import { DUST_SKIP_LANDING, shouldSkipLanding } from "@marketing/lib/cookies";
 import type { NewsItem } from "@marketing/lib/homepage_news";
 import { fetchHomepageNews } from "@marketing/lib/homepage_news";
 import { extractUTMParams } from "@marketing/lib/utils/utm";
-import { Landing } from "@marketing/pages/home";
 import logger from "@marketing/logger/logger";
+import { Landing } from "@marketing/pages/home";
 import type { GetServerSideProps } from "next";
 import type { ParsedUrlQuery } from "querystring";
 import type { ReactElement } from "react";

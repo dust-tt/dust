@@ -1,6 +1,6 @@
 import { TagCreationDialog } from "@app/components/assistant/TagCreationDialog";
-import { TagsSuggestDialog } from "@app/components/assistant/TagsSuggestDialog";
 import { EditTagDialog } from "@app/components/assistant/TagUpdateDialog";
+import { TagsSuggestDialog } from "@app/components/assistant/TagsSuggestDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useTagsUsage } from "@app/lib/swr/tags";
 import type { TagTypeWithUsage } from "@app/types/tag";

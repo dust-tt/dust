@@ -3,10 +3,10 @@ import { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { markSandboxFunctionInvocationFailedActivity } from "@app/temporal/sandbox_functions/activities/mark_sandbox_function_invocation_failed";
 import { createTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

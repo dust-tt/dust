@@ -1,10 +1,4 @@
 import {
-  TRACKING_ACTIONS,
-  TRACKING_AREAS,
-  trackEvent,
-} from "@marketing/lib/tracking";
-import { appendUTMParams } from "@marketing/lib/utils/utm";
-import {
   Dialog,
   DialogContainer,
   DialogContent,
@@ -15,6 +9,12 @@ import {
   Rocket02,
   Users01,
 } from "@dust-tt/sparkle";
+import {
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  trackEvent,
+} from "@marketing/lib/tracking";
+import { appendUTMParams } from "@marketing/lib/utils/utm";
 import { useEffect, useRef } from "react";
 
 export interface EnterpriseChoiceModalProps {

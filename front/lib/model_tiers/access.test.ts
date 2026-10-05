@@ -102,17 +102,20 @@ describe("getModelTierAccessErrorForAgentConfiguration", () => {
     ["high", "model_tier_not_enabled"],
     ["maximal", "model_tier_not_enabled"],
     [undefined, "model_tier_not_enabled"],
-  ] as const)("tier-checks Claude Sonnet 5 at %s for a Standard-capped member", async (reasoningEffort, expectedCode) => {
-    const auth = await restrictedUserAuth({ tierName: "balanced" });
+  ] as const)(
+    "tier-checks Claude Sonnet 5 at %s for a Standard-capped member",
+    async (reasoningEffort, expectedCode) => {
+      const auth = await restrictedUserAuth({ tierName: "balanced" });
 
-    const error = await getModelTierAccessErrorForAgentConfiguration(auth, {
-      agentName: "test-agent",
-      model: CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
-      reasoningEffort,
-    });
+      const error = await getModelTierAccessErrorForAgentConfiguration(auth, {
+        agentName: "test-agent",
+        model: CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
+        reasoningEffort,
+      });
 
-    expect(error?.code ?? null).toBe(expectedCode);
-  });
+      expect(error?.code ?? null).toBe(expectedCode);
+    }
+  );
 
   // A stream only ever resolves to a candidate within the member's cap, so
   // checking the resolved model alone would let a member run a stream above it.
@@ -120,41 +123,47 @@ describe("getModelTierAccessErrorForAgentConfiguration", () => {
     ["auto_complex", "model_tier_not_enabled"],
     ["auto", null],
     ["auto_fast", null],
-  ] as const)("tier-checks the %s stream itself, not the model it resolved to", async (modelResolutionMethod, expectedCode) => {
-    const auth = await restrictedUserAuth();
+  ] as const)(
+    "tier-checks the %s stream itself, not the model it resolved to",
+    async (modelResolutionMethod, expectedCode) => {
+      const auth = await restrictedUserAuth();
 
-    const error = await getModelTierAccessErrorForAgentConfiguration(auth, {
-      agentName: "test-agent",
-      // Haiku 4.5 is cost_efficient at every effort: a plausible candidate for
-      // any stream, and always within a `balanced` member's cap.
-      model: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
-      modelResolutionMethod,
-    });
+      const error = await getModelTierAccessErrorForAgentConfiguration(auth, {
+        agentName: "test-agent",
+        // Haiku 4.5 is cost_efficient at every effort: a plausible candidate for
+        // any stream, and always within a `balanced` member's cap.
+        model: CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
+        modelResolutionMethod,
+      });
 
-    expect(error?.code ?? null).toBe(expectedCode);
-  });
+      expect(error?.code ?? null).toBe(expectedCode);
+    }
+  );
   // Sidekick is free and picks its own model server-side, so it runs the
   // Standard stream whatever the member's own cap is.
   it.each([
     [GLOBAL_AGENTS_SID.SIDEKICK, null],
     ["agent_test", "model_tier_not_enabled"],
-  ] as const)("tier-checks the Standard stream for %s against a Basic-capped member", async (agentId, expectedCode) => {
-    const auth = await restrictedUserAuth({ tierName: "cost_efficient" });
-    // The model the Standard stream resolves to for an uncapped member.
-    const streamModel = getModelConfigByModelId(
-      MODEL_STREAMS[AUTO_MODEL_ID][0].modelId
-    );
-    if (!streamModel) {
-      throw new Error("Standard stream's first candidate is not supported.");
+  ] as const)(
+    "tier-checks the Standard stream for %s against a Basic-capped member",
+    async (agentId, expectedCode) => {
+      const auth = await restrictedUserAuth({ tierName: "cost_efficient" });
+      // The model the Standard stream resolves to for an uncapped member.
+      const streamModel = getModelConfigByModelId(
+        MODEL_STREAMS[AUTO_MODEL_ID][0].modelId
+      );
+      if (!streamModel) {
+        throw new Error("Standard stream's first candidate is not supported.");
+      }
+
+      const error = await getModelTierAccessErrorForAgentConfiguration(auth, {
+        agentId,
+        agentName: agentId,
+        model: streamModel,
+        modelResolutionMethod: AUTO_MODEL_ID,
+      });
+
+      expect(error?.code ?? null).toBe(expectedCode);
     }
-
-    const error = await getModelTierAccessErrorForAgentConfiguration(auth, {
-      agentId,
-      agentName: agentId,
-      model: streamModel,
-      modelResolutionMethod: AUTO_MODEL_ID,
-    });
-
-    expect(error?.code ?? null).toBe(expectedCode);
-  });
+  );
 });

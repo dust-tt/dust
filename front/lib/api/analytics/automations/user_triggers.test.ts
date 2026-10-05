@@ -6,10 +6,10 @@ import {
 } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Err, Ok } from "@app/types/shared/result";
 import { afterEach, describe, expect, it, vi } from "vitest";
 

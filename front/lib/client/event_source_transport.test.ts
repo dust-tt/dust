@@ -1,9 +1,9 @@
 // @vitest-environment node
 
-import { createServer } from "node:http";
 import { ManagedEventSourceTransport } from "@app/lib/client/event_source_transport";
 import { MANAGED_SSE_HANDSHAKE_EVENT } from "@app/types/sse";
 import { EventSourcePolyfill } from "event-source-polyfill";
+import { createServer } from "node:http";
 import { expect, it, vi } from "vitest";
 
 it("settles reader cancellation without finishing an aborted stream", async () => {

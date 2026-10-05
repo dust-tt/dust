@@ -46,7 +46,7 @@ export function CiteBlock(props: ReactMarkdownProps) {
         updateActiveReferences(document, r.counter);
       });
     }
-  // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, [referencesString, references, updateActiveReferences]);
 
   if (refs) {

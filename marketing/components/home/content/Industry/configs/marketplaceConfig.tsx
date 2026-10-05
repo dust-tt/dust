@@ -1,6 +1,6 @@
+import { ShoppingBag01 } from "@dust-tt/sparkle";
 import type { IndustryPageConfig } from "@marketing/components/home/content/Industry/configs/utils";
 import { createLayoutConfig } from "@marketing/components/home/content/Industry/configs/utils";
-import { ShoppingBag01 } from "@dust-tt/sparkle";
 
 export const marketplaceConfig: IndustryPageConfig = {
   seo: {

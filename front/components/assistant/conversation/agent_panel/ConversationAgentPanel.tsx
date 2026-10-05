@@ -9,8 +9,8 @@ import {
   isPreviewedSuggestion,
 } from "@app/components/assistant/details/SuggestionPreviewContext";
 import { SuggestionPreviewHeader } from "@app/components/assistant/details/SuggestionPreviewHeader";
-import { isAgentActionCardSuggestion } from "@app/components/markdown/suggestion/suggestion_directives";
 import { trackSuggestionPreviewToggle } from "@app/components/markdown/suggestion/suggestionTracking";
+import { isAgentActionCardSuggestion } from "@app/components/markdown/suggestion/suggestion_directives";
 import { useSuggestionBatch } from "@app/hooks/useSuggestionBatches";
 import { useUser } from "@app/lib/swr/user";
 import { isCreateAgentSuggestion } from "@app/types/suggestions/agent_suggestion";

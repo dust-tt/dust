@@ -144,12 +144,15 @@ describe("checkInputBounds", () => {
       `more than ${INPUT_LIMITS.listItems} list items`,
       INPUT_LIMITS.listItems / 8 + 1,
     ],
-  ])("refuses %s on the line where it crosses the bound", (_, text, message, line) => {
-    const error = checkInputBounds(text);
+  ])(
+    "refuses %s on the line where it crosses the bound",
+    (_, text, message, line) => {
+      const error = checkInputBounds(text);
 
-    expect(error?.message).toContain(message);
-    expect(error?.line).toBe(line);
-  });
+      expect(error?.message).toContain(message);
+      expect(error?.line).toBe(line);
+    }
+  );
 });
 
 describe("structure", () => {

@@ -14,8 +14,7 @@ import uniqBy from "lodash/uniqBy";
 import type { Attributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
-export interface ConversationSelectedSpaceResource
-  extends ReadonlyAttributesType<ConversationSelectedSpaceModel> {}
+export interface ConversationSelectedSpaceResource extends ReadonlyAttributesType<ConversationSelectedSpaceModel> {}
 
 export class ConversationSelectedSpaceResource extends BaseResource<ConversationSelectedSpaceModel> {
   static model: ModelStaticWorkspaceAware<ConversationSelectedSpaceModel> =

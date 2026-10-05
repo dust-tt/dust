@@ -14,10 +14,10 @@ import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -803,9 +803,8 @@ describe("updateConversationRequirements", () => {
       });
 
       // Update agents to have space requirements
-      const { AgentConfigurationModel } = await import(
-        "@app/lib/models/agent/agent"
-      );
+      const { AgentConfigurationModel } =
+        await import("@app/lib/models/agent/agent");
       await AgentConfigurationModel.update(
         { requestedSpaceIds: [anotherProjectSpace.id] },
         {
@@ -914,9 +913,8 @@ describe("updateConversationRequirements", () => {
       });
 
       // Update agents to have space requirements
-      const { AgentConfigurationModel } = await import(
-        "@app/lib/models/agent/agent"
-      );
+      const { AgentConfigurationModel } =
+        await import("@app/lib/models/agent/agent");
       await AgentConfigurationModel.update(
         { requestedSpaceIds: [projectSpace.id] },
         {
@@ -987,9 +985,8 @@ describe("updateConversationRequirements", () => {
     });
 
     it("should add space requirements from content fragments", async () => {
-      const { DataSourceViewFactory } = await import(
-        "@app/tests/utils/DataSourceViewFactory"
-      );
+      const { DataSourceViewFactory } =
+        await import("@app/tests/utils/DataSourceViewFactory");
 
       // Create a regular conversation
       const conversation = await ConversationFactory.create(auth, {
@@ -1035,9 +1032,8 @@ describe("updateConversationRequirements", () => {
     });
 
     it("should add space requirements from both agents and content fragments", async () => {
-      const { DataSourceViewFactory } = await import(
-        "@app/tests/utils/DataSourceViewFactory"
-      );
+      const { DataSourceViewFactory } =
+        await import("@app/tests/utils/DataSourceViewFactory");
 
       // Create a regular conversation
       const conversation = await ConversationFactory.create(auth, {
@@ -1051,9 +1047,8 @@ describe("updateConversationRequirements", () => {
         name: "Agent 1",
       });
 
-      const { AgentConfigurationModel } = await import(
-        "@app/lib/models/agent/agent"
-      );
+      const { AgentConfigurationModel } =
+        await import("@app/lib/models/agent/agent");
       await AgentConfigurationModel.update(
         { requestedSpaceIds: [projectSpace.id] },
         {
@@ -1136,9 +1131,8 @@ describe("updateConversationRequirements", () => {
         name: "Agent 1",
       });
 
-      const { AgentConfigurationModel } = await import(
-        "@app/lib/models/agent/agent"
-      );
+      const { AgentConfigurationModel } =
+        await import("@app/lib/models/agent/agent");
       await AgentConfigurationModel.update(
         { requestedSpaceIds: [projectSpace.id] },
         {
@@ -1311,9 +1305,8 @@ describe("updateConversationRequirements", () => {
         name: "Agent 1",
       });
 
-      const { AgentConfigurationModel } = await import(
-        "@app/lib/models/agent/agent"
-      );
+      const { AgentConfigurationModel } =
+        await import("@app/lib/models/agent/agent");
       await AgentConfigurationModel.update(
         { requestedSpaceIds: [anotherProjectSpace.id] },
         {

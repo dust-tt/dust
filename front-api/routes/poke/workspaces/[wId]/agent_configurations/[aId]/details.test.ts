@@ -1,7 +1,7 @@
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
-import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";

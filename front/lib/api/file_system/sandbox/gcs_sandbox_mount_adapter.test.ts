@@ -1,4 +1,3 @@
-import { spawnSync } from "node:child_process";
 import { GCSFileSystemBackend } from "@app/lib/api/file_system/backends/gcs_file_system_backend";
 import type { GCSMountTarget } from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
 import {
@@ -9,9 +8,10 @@ import { frameSandboxOnlyMounts } from "@app/lib/api/sandbox/frame_mounts";
 import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import type { RootCommand } from "@app/lib/api/sandbox/root_command";
 import { renderRootCommand } from "@app/lib/api/sandbox/root_command";
-import { setupPlainConversation } from "@app/tests/utils/conversation_test_factories";
 import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
+import { setupPlainConversation } from "@app/tests/utils/conversation_test_factories";
 import { Err, Ok } from "@app/types/shared/result";
+import { spawnSync } from "node:child_process";
 import { beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 
 const { mockMintDownscopedGcsToken } = vi.hoisted(() => ({

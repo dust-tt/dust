@@ -7,9 +7,9 @@ import {
   isFolderExtractError,
 } from "@app/lib/api/files/folder_extract";
 import { Authenticator } from "@app/lib/auth";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import {
   makeZipBombBuffer,
   spyOnInflatedBytes,
@@ -206,26 +206,29 @@ describe("extractArchiveToFolder", () => {
       "reports/../../escaped.txt",
     ],
     ["an absolute entry", "Xetc/passwd", "/etc/passwd"],
-  ])("rejects %s without writing anything", async (_label, placeholder, unsafePath) => {
-    const { dustFs, podPrefix } = await setupPodFileSystem();
+  ])(
+    "rejects %s without writing anything",
+    async (_label, placeholder, unsafePath) => {
+      const { dustFs, podPrefix } = await setupPodFileSystem();
 
-    const result = await extractArchiveToFolder(
-      dustFs,
-      `${podPrefix}/inbox`,
-      makeArchiveWithUnsafeEntry(
-        [
-          { path: "reports/a.txt", content: "alpha" },
-          { path: placeholder, content: "evil" },
-        ],
-        placeholder,
-        unsafePath
-      )
-    );
+      const result = await extractArchiveToFolder(
+        dustFs,
+        `${podPrefix}/inbox`,
+        makeArchiveWithUnsafeEntry(
+          [
+            { path: "reports/a.txt", content: "alpha" },
+            { path: placeholder, content: "evil" },
+          ],
+          placeholder,
+          unsafePath
+        )
+      );
 
-    assert(result.isErr());
-    expectExtractError(result.error, "unsafe_entry_path");
-    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
-  });
+      assert(result.isErr());
+      expectExtractError(result.error, "unsafe_entry_path");
+      expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+    }
+  );
 
   it("rejects an entry that only becomes traversal once control characters are stripped", async () => {
     const { dustFs, podPrefix } = await setupPodFileSystem();

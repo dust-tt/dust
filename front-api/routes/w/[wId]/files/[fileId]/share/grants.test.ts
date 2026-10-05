@@ -4,11 +4,11 @@ import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource"
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SharingGrantFactory } from "@app/tests/utils/SharingGrantFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { frameContentType } from "@app/types/files";
 import type { WorkspaceSharingPolicy } from "@app/types/user";
 import { honoApp } from "@front-api/app";
@@ -128,54 +128,57 @@ describe("sharing grants endpoint", () => {
     expect(remaining.map((entry) => entry.sId)).toEqual([grant.sId]);
   });
 
-  it.each([
-    "email number",
-    "email string",
-    "domain string",
-  ] as const)("requires invite permission for a %s grant ID", async (grantCase) => {
-    const owner = await createPrivateApiMockRequest({ role: "admin" });
-    const { workspace } = owner;
-    const space = await SpaceFactory.project(workspace, owner.user.id);
-    await SpaceFactory.attachGroup(space, owner.globalGroup, "project_viewer");
-    const file = await FileFactory.create(owner.auth, owner.user, {
-      contentType: frameContentType,
-      fileName: "frame.tsx",
-      fileSize: 100,
-      status: "created",
-      useCase: "project_context",
-      useCaseMetadata: { spaceId: space.sId },
-    });
-    const grant = await SharingGrantFactory.create(
-      owner.auth,
-      file,
-      grantCase === "domain string"
-        ? { kind: "domain", value: "example.com" }
-        : { kind: "email", value: "alice@example.com" }
-    );
-    const grantId = grantCase === "email number" ? grant.id : grant.sId;
-    const member = await createPrivateApiMockRequest({ workspace });
-    expect(member.auth.can("read", space)).toBe(true);
-    expect(member.auth.hasWorkspacePermission("invite", "frame")).toBe(false);
-    const read = await getGrants(workspace, file.sId);
-    expect(read.status).toBe(200);
-    mockEmitAuditLogEvent.mockClear();
+  it.each(["email number", "email string", "domain string"] as const)(
+    "requires invite permission for a %s grant ID",
+    async (grantCase) => {
+      const owner = await createPrivateApiMockRequest({ role: "admin" });
+      const { workspace } = owner;
+      const space = await SpaceFactory.project(workspace, owner.user.id);
+      await SpaceFactory.attachGroup(
+        space,
+        owner.globalGroup,
+        "project_viewer"
+      );
+      const file = await FileFactory.create(owner.auth, owner.user, {
+        contentType: frameContentType,
+        fileName: "frame.tsx",
+        fileSize: 100,
+        status: "created",
+        useCase: "project_context",
+        useCaseMetadata: { spaceId: space.sId },
+      });
+      const grant = await SharingGrantFactory.create(
+        owner.auth,
+        file,
+        grantCase === "domain string"
+          ? { kind: "domain", value: "example.com" }
+          : { kind: "email", value: "alice@example.com" }
+      );
+      const grantId = grantCase === "email number" ? grant.id : grant.sId;
+      const member = await createPrivateApiMockRequest({ workspace });
+      expect(member.auth.can("read", space)).toBe(true);
+      expect(member.auth.hasWorkspacePermission("invite", "frame")).toBe(false);
+      const read = await getGrants(workspace, file.sId);
+      expect(read.status).toBe(200);
+      mockEmitAuditLogEvent.mockClear();
 
-    const denied = await deleteGrant(workspace, file.sId, { grantId });
-    expect(denied.status).toBe(403);
-    expect(await denied.json()).toMatchObject({
-      error: { type: "workspace_auth_error" },
-    });
-    const unchanged = await SharingGrantResource.fetchById(file, grant.sId);
-    expect(unchanged?.revokedAt).toBeNull();
-    expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
+      const denied = await deleteGrant(workspace, file.sId, { grantId });
+      expect(denied.status).toBe(403);
+      expect(await denied.json()).toMatchObject({
+        error: { type: "workspace_auth_error" },
+      });
+      const unchanged = await SharingGrantResource.fetchById(file, grant.sId);
+      expect(unchanged?.revokedAt).toBeNull();
+      expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
 
-    await grantInviteToEveryone(workspace);
-    // Existing grants must remain removable when external sharing is disabled.
-    await setSharingPolicy(workspace, "workspace_only");
-    const allowed = await deleteGrant(workspace, file.sId, { grantId });
-    expect(allowed.status).toBe(204);
-    expect(await SharingGrantResource.listForFile(file)).toEqual([]);
-  });
+      await grantInviteToEveryone(workspace);
+      // Existing grants must remain removable when external sharing is disabled.
+      await setSharingPolicy(workspace, "workspace_only");
+      const allowed = await deleteGrant(workspace, file.sId, { grantId });
+      expect(allowed.status).toBe(204);
+      expect(await SharingGrantResource.listForFile(file)).toEqual([]);
+    }
+  );
 
   it("rejects a Pod Frame without its space metadata", async () => {
     const { auth, user, workspace } = await createPrivateApiMockRequest();

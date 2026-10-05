@@ -8,7 +8,6 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -16,6 +15,7 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TagFactory } from "@app/tests/utils/TagFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -333,55 +333,55 @@ describe("workspace_management tools", () => {
       expect(lines.join("\n")).not.toContain(skill.instructions);
     });
 
-    it.each([
-      "search_agents",
-      "search_skills",
-    ])("%s distinguishes empty results, bad cursors and ES failures", async (toolName) => {
-      const { authenticator } = await createResourceTest({ role: "user" });
-      mockSearch.mockResolvedValue({
-        hits: { hits: [], total: { value: 0, relation: "eq" } },
-      });
-      expect(
-        await callTool(toolName, { query: "unknown" }, authenticator)
-      ).toBe("Showing 0 of 0.");
+    it.each(["search_agents", "search_skills"])(
+      "%s distinguishes empty results, bad cursors and ES failures",
+      async (toolName) => {
+        const { authenticator } = await createResourceTest({ role: "user" });
+        mockSearch.mockResolvedValue({
+          hits: { hits: [], total: { value: 0, relation: "eq" } },
+        });
+        expect(
+          await callTool(toolName, { query: "unknown" }, authenticator)
+        ).toBe("Showing 0 of 0.");
 
-      const invalidCursor = await runTool(
-        toolName,
-        { query: "unknown", cursor: 1 },
-        authenticator
-      );
-      expect(invalidCursor.isErr()).toBe(true);
-      if (invalidCursor.isErr()) {
-        expect(invalidCursor.error.message).toContain(
-          "cursor 1 is out of range"
+        const invalidCursor = await runTool(
+          toolName,
+          { query: "unknown", cursor: 1 },
+          authenticator
         );
-        expect(invalidCursor.error.tracked).toBe(false);
-      }
+        expect(invalidCursor.isErr()).toBe(true);
+        if (invalidCursor.isErr()) {
+          expect(invalidCursor.error.message).toContain(
+            "cursor 1 is out of range"
+          );
+          expect(invalidCursor.error.tracked).toBe(false);
+        }
 
-      mockSearch.mockClear();
-      const invalidWindow = await runTool(
-        toolName,
-        { query: "unknown", cursor: 10_000 },
-        authenticator
-      );
-      expect(invalidWindow.isErr()).toBe(true);
-      expect(mockSearch).not.toHaveBeenCalled();
+        mockSearch.mockClear();
+        const invalidWindow = await runTool(
+          toolName,
+          { query: "unknown", cursor: 10_000 },
+          authenticator
+        );
+        expect(invalidWindow.isErr()).toBe(true);
+        expect(mockSearch).not.toHaveBeenCalled();
 
-      const error = new ElasticsearchError(
-        "connection_error",
-        "ES unavailable"
-      );
-      mockWithEs.mockResolvedValueOnce(new Err(error));
-      const failure = await runTool(
-        toolName,
-        { query: "unknown" },
-        authenticator
-      );
-      expect(failure.isErr()).toBe(true);
-      if (failure.isErr()) {
-        expect(failure.error.cause).toBe(error);
+        const error = new ElasticsearchError(
+          "connection_error",
+          "ES unavailable"
+        );
+        mockWithEs.mockResolvedValueOnce(new Err(error));
+        const failure = await runTool(
+          toolName,
+          { query: "unknown" },
+          authenticator
+        );
+        expect(failure.isErr()).toBe(true);
+        if (failure.isErr()) {
+          expect(failure.error.cause).toBe(error);
+        }
       }
-    });
+    );
   });
 
   describe("get_agent_details", () => {

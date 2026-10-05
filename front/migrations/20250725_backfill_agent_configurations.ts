@@ -9,10 +9,10 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 interface AgentUpdateStats {
   total: number;

@@ -35,13 +35,13 @@ import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
@@ -902,9 +902,8 @@ describe("retryAgentMessage", () => {
 
       // Update the agent to use the other project space
       // Manually update the requestedSpaceIds in the database (using model IDs)
-      const { AgentConfigurationModel } = await import(
-        "@app/lib/models/agent/agent"
-      );
+      const { AgentConfigurationModel } =
+        await import("@app/lib/models/agent/agent");
       await AgentConfigurationModel.update(
         { requestedSpaceIds: [anotherProjectSpace.id] },
         {
@@ -984,9 +983,8 @@ describe("retryAgentMessage", () => {
         });
 
       // Update the agent to use the same project space
-      const { AgentConfigurationModel } = await import(
-        "@app/lib/models/agent/agent"
-      );
+      const { AgentConfigurationModel } =
+        await import("@app/lib/models/agent/agent");
       await AgentConfigurationModel.update(
         { requestedSpaceIds: [projectSpace.id] },
         {
@@ -1055,9 +1053,8 @@ describe("retryAgentMessage", () => {
         });
 
       // Update the agent to use empty requestedSpaceIds (which means global)
-      const { AgentConfigurationModel } = await import(
-        "@app/lib/models/agent/agent"
-      );
+      const { AgentConfigurationModel } =
+        await import("@app/lib/models/agent/agent");
       await AgentConfigurationModel.update(
         { requestedSpaceIds: [] },
         {
@@ -3153,9 +3150,8 @@ describe("postUserMessage", () => {
         }
       );
 
-      const { AgentConfigurationModel } = await import(
-        "@app/lib/models/agent/agent"
-      );
+      const { AgentConfigurationModel } =
+        await import("@app/lib/models/agent/agent");
       await AgentConfigurationModel.update(
         { requestedSpaceIds: [anotherProjectSpace.id] },
         {

@@ -53,8 +53,7 @@ interface RenameNodeResult {
 
 const FILE_SYSTEM_NAMESPACE_LOCK_PREFIX = "file_system_namespace";
 
-export interface FileSystemMutationResource
-  extends ReadonlyAttributesType<FileSystemMutationModel> {}
+export interface FileSystemMutationResource extends ReadonlyAttributesType<FileSystemMutationModel> {}
 
 export class FileSystemMutationResource extends BaseResource<FileSystemMutationModel> {
   static model: ModelStaticWorkspaceAware<FileSystemMutationModel> =

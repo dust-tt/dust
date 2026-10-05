@@ -22,12 +22,12 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { AuthorizedFileAccessModel } from "@app/lib/resources/storage/models/files";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
-import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
@@ -644,40 +644,43 @@ describe("computeAuthorizedFileAccess", () => {
     "upsert_table",
     "skill_attachment",
     "workspace_branding",
-  ] satisfies FileUseCase[])("marks %s file_id refs as unverifiable even with conversation metadata", async (useCase) => {
-    const { authenticator: auth } = await createResourceTest({});
+  ] satisfies FileUseCase[])(
+    "marks %s file_id refs as unverifiable even with conversation metadata",
+    async (useCase) => {
+      const { authenticator: auth } = await createResourceTest({});
 
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [new Date()],
-    });
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+      });
 
-    const excludedFile = await FileFactory.create(auth, null, {
-      contentType: "text/plain",
-      fileName: `${useCase}.txt`,
-      fileSize: 10,
-      status: "ready",
-      useCase,
-      useCaseMetadata: { conversationId: conversation.sId },
-    });
+      const excludedFile = await FileFactory.create(auth, null, {
+        contentType: "text/plain",
+        fileName: `${useCase}.txt`,
+        fileSize: 10,
+        status: "ready",
+        useCase,
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
 
-    const frameFile = await FileFactory.create(auth, null, {
-      contentType: frameContentType,
-      fileName: "Frame.tsx",
-      fileSize: 100,
-      status: "ready",
-      useCase: "conversation",
-      useCaseMetadata: { conversationId: conversation.sId },
-    });
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameContentType,
+        fileName: "Frame.tsx",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
 
-    const result = await frameFile.computeAuthorizedFileAccess(auth, {
-      frameContent: `useFile("${excludedFile.sId}");`,
-    });
-    assert(result.isOk());
+      const result = await frameFile.computeAuthorizedFileAccess(auth, {
+        frameContent: `useFile("${excludedFile.sId}");`,
+      });
+      assert(result.isOk());
 
-    expect(result.value.refs).toEqual([]);
-    expect(result.value.unverifiableRefs).toEqual([excludedFile.sId]);
-  });
+      expect(result.value.refs).toEqual([]);
+      expect(result.value.unverifiableRefs).toEqual([excludedFile.sId]);
+    }
+  );
 
   it("verifies file_id refs from another accessible conversation", async () => {
     const { authenticator: auth } = await createResourceTest({});

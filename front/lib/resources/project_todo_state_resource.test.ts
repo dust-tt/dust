@@ -1,9 +1,9 @@
 import { Authenticator } from "@app/lib/auth";
 import { ProjectTaskStateResource } from "@app/lib/resources/project_task_state_resource";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { describe, expect, it } from "vitest";
 
 describe("ProjectTaskStateResource", () => {

@@ -1,9 +1,9 @@
-import { MCPServerViewForm } from "@app/components/actions/mcp/create/MCPServerViewForm";
-import { getEffectiveToolSettings } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import { InternalMCPBearerTokenForm } from "@app/components/actions/mcp/InternalMCPBearerTokenForm";
 import { ClampedDescription } from "@app/components/actions/mcp/MCPServerDetailsTools";
 import { MCPServerSettings } from "@app/components/actions/mcp/MCPServerSettings";
 import { RemoteMCPForm } from "@app/components/actions/mcp/RemoteMCPForm";
+import { MCPServerViewForm } from "@app/components/actions/mcp/create/MCPServerViewForm";
+import { getEffectiveToolSettings } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import type { SensitivityLabelsController } from "@app/components/shared/labels/types";
 import {
   getMcpServerViewDescription,

@@ -1,6 +1,5 @@
 // @vitest-environment node
 
-import path from "node:path";
 import {
   copyFrameSourceStorage,
   inspectFrameSourceStorage,
@@ -9,6 +8,7 @@ import { setupFrameSourceStorageTest } from "@app/lib/api/frames/source_storage.
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import assert from "assert";
+import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 beforeEach(() => {

@@ -1,3 +1,4 @@
+import esbuild from "esbuild";
 import { type ChildProcess, spawn } from "node:child_process";
 import {
   createServer,
@@ -7,7 +8,6 @@ import {
   type ServerResponse,
 } from "node:http";
 import { connect, createServer as createNetServer } from "node:net";
-import esbuild from "esbuild";
 
 import {
   BUILD_TARGETS,

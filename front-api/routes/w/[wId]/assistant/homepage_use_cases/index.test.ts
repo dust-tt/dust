@@ -2,10 +2,10 @@ import { HOMEPAGE_USE_CASES } from "@app/lib/api/homepage_use_cases/registry";
 import { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
-import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { MAX_FEATURED_USE_CASES } from "@app/types/api/homepage_use_cases";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
@@ -64,9 +64,8 @@ async function getUseCases(workspaceId: string) {
 
 describe("GET /api/w/[wId]/assistant/homepage_use_cases", () => {
   beforeEach(async () => {
-    const { getWorkOSSessionWithSetCookies } = await import(
-      "@app/lib/api/workos/user"
-    );
+    const { getWorkOSSessionWithSetCookies } =
+      await import("@app/lib/api/workos/user");
     vi.mocked(getWorkOSSessionWithSetCookies).mockResolvedValue({
       session: undefined,
       setCookies: [],

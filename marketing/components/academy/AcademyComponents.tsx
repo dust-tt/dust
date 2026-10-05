@@ -1,5 +1,12 @@
 "use client";
 
+import {
+  LegacyButton as Button,
+  cn,
+  Eye,
+  SearchInput,
+  Tooltip,
+} from "@dust-tt/sparkle";
 import { Grid, H2, P } from "@marketing/components/home/ContentComponents";
 import { setAcademyLocaleCookie } from "@marketing/lib/contentful/client";
 import { contentfulImageLoader } from "@marketing/lib/contentful/imageLoader";
@@ -13,13 +20,6 @@ import {
   ACADEMY_LOCALES,
 } from "@marketing/lib/contentful/types";
 import { LinkWrapper, useAppRouter } from "@marketing/lib/platform";
-import {
-  LegacyButton as Button,
-  cn,
-  Eye,
-  SearchInput,
-  Tooltip,
-} from "@dust-tt/sparkle";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 

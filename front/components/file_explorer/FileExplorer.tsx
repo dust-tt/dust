@@ -4,9 +4,9 @@ import { FileExplorerFilters } from "@app/components/file_explorer/FileExplorerF
 import type { ViewMode } from "@app/components/file_explorer/FileExplorerItem";
 import { FileExplorerToolbar } from "@app/components/file_explorer/FileExplorerToolbar";
 import { FilePreviewDialog } from "@app/components/file_explorer/FilePreviewDialog";
+import { MoveFileToFolderDialog } from "@app/components/file_explorer/MoveFileToFolderDialog";
 import { canMoveFileToParentFolder } from "@app/components/file_explorer/fileExplorerDragDrop";
 import { getFileExplorerPipeline } from "@app/components/file_explorer/fileExplorerPipeline";
-import { MoveFileToFolderDialog } from "@app/components/file_explorer/MoveFileToFolderDialog";
 import type {
   ContentNodeEntry,
   FileEntry,

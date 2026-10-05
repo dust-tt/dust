@@ -1,6 +1,6 @@
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

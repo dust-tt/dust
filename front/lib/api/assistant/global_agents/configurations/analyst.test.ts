@@ -2,8 +2,8 @@ import { _getAnalystGlobalAgent } from "@app/lib/api/assistant/global_agents/con
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import { Authenticator } from "@app/lib/auth";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   AUTO_FAST_MODEL_CONFIG,

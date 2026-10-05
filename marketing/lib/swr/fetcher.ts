@@ -1,14 +1,14 @@
-import { BUILD_DATE, COMMIT_HASH } from "@marketing/lib/commit-hash";
-import { clientFetch } from "@marketing/lib/egress/client";
-import { isNavigationLocked } from "@marketing/lib/navigation-lock";
-import datadogLogger from "@marketing/logger/datadogLogger";
-import config from "@marketing/lib/api/config";
-import { isAPIErrorResponse } from "@marketing/types/error";
-import { safeParseJSON } from "@marketing/types/shared/utils/json_utils";
 import {
   FORCE_RELOAD_INTERVAL_MS,
   FORCE_RELOAD_SESSION_KEY,
 } from "@dust-tt/sparkle";
+import config from "@marketing/lib/api/config";
+import { BUILD_DATE, COMMIT_HASH } from "@marketing/lib/commit-hash";
+import { clientFetch } from "@marketing/lib/egress/client";
+import { isNavigationLocked } from "@marketing/lib/navigation-lock";
+import datadogLogger from "@marketing/logger/datadogLogger";
+import { isAPIErrorResponse } from "@marketing/types/error";
+import { safeParseJSON } from "@marketing/types/shared/utils/json_utils";
 
 const addClientVersionHeaders = (headers: HeadersInit = {}): HeadersInit => ({
   ...headers,

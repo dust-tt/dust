@@ -1,8 +1,8 @@
+import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import {
   FEEDBACK_DISTRIBUTION_LEGEND,
   FEEDBACK_DISTRIBUTION_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
-import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { VersionMarkersDots } from "@app/components/agent_builder/observability/shared/VersionMarkers";
 import {
   filterTimeSeriesByVersionWindow,

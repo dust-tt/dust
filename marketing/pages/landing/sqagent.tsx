@@ -1,11 +1,11 @@
-import { sqAgentConfig } from "@marketing/components/home/content/SqAgent/config/sqAgentConfig";
+import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
+import LandingLayout from "@marketing/components/home/LandingLayout";
+import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import { FeatureSection } from "@marketing/components/home/content/SqAgent/FeatureSection";
 import { SqAgentHeroSection } from "@marketing/components/home/content/SqAgent/SqAgentHeroSection";
 import { SqCtaSection } from "@marketing/components/home/content/SqAgent/SqCtaSection";
 import { SqTestimonialsSection } from "@marketing/components/home/content/SqAgent/SqTestimonialsSection";
-import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
-import LandingLayout from "@marketing/components/home/LandingLayout";
-import { PageMetadata } from "@marketing/components/home/PageMetadata";
+import { sqAgentConfig } from "@marketing/components/home/content/SqAgent/config/sqAgentConfig";
 import type { ReactElement } from "react";
 
 export async function getStaticProps() {

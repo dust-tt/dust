@@ -72,9 +72,8 @@ function mergeFeatureFlagUsage(
 
 export function usePokeFeatureFlagUsageAllCells() {
   const { cells } = useCellContext();
-  const [featureFlags, setFeatureFlags] = useState<
-    PokeFeatureFlagUsageAllCells[]
-  >(emptyArray());
+  const [featureFlags, setFeatureFlags] =
+    useState<PokeFeatureFlagUsageAllCells[]>(emptyArray());
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);

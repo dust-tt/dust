@@ -1,4 +1,3 @@
-import url from "node:url";
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,
@@ -56,6 +55,7 @@ import type {
 import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
 import assert from "assert";
 import uniq from "lodash/uniq";
+import url from "node:url";
 import type {
   Attributes,
   CreationAttributes,
@@ -132,11 +132,10 @@ type RemoteMCPServerHeavyAttributesType = Pick<
 // Heavy attributes are not exposed directly: use their getters (`getCachedTools`, ...) after
 // listing them in `includeHeavyAttributes` at fetch time (none are fetched by default) or
 // after an explicit `hydrateHeavyAttributes`.
-export interface RemoteMCPServerResource
-  extends Omit<
-    ReadonlyAttributesType<RemoteMCPServerModel>,
-    RemoteMCPServerHeavyAttributeType
-  > {}
+export interface RemoteMCPServerResource extends Omit<
+  ReadonlyAttributesType<RemoteMCPServerModel>,
+  RemoteMCPServerHeavyAttributeType
+> {}
 export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> {
   static model: ModelStaticWorkspaceAware<RemoteMCPServerModel> =
     RemoteMCPServerModel;

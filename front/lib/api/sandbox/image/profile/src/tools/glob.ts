@@ -1,8 +1,8 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-import { DEFAULT_LIST_LIMIT } from "../constants";
 import type { Profile } from "../profile";
+import { DEFAULT_LIST_LIMIT } from "../constants";
 import {
   parseIntArg,
   parseToolArgs,

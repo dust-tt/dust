@@ -26,7 +26,6 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { runInCommittedTransaction } from "@app/tests/utils/eval_workspace";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -34,6 +33,7 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { runInCommittedTransaction } from "@app/tests/utils/eval_workspace";
 import type { CoreAPIDocument } from "@app/types/core/data_source";
 
 // Skill instructions cite a seeded tool as `{{tool:<key>}}`, replaced at seed time by the

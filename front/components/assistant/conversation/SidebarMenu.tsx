@@ -1,3 +1,4 @@
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { CreateAgentDropdownContent } from "@app/components/assistant/CreateAgentDropdown";
 import { useIsAgentLoopStreaming } from "@app/components/assistant/conversation/AgentLoopStreamContext";
 import {
@@ -18,7 +19,6 @@ import {
   getGroupConversationsByUnreadAndActionRequired,
   groupUnreadConversations,
 } from "@app/components/assistant/conversation/utils";
-import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import {
@@ -826,7 +826,7 @@ export function AgentSidebarMenu({
         </NavigationListCollapsibleSection>
       </NavigationList>
     );
-  // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, [
     owner,
     summary,
@@ -1000,7 +1000,7 @@ export function AgentSidebarMenu({
         isLoadingMore={isLoadingMore}
       />
     );
-  // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, [
     filteredConversations,
     sidebarTitleFilter,

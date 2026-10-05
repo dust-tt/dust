@@ -4,29 +4,29 @@ import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
 import { BulkChangeSeatModal } from "@app/components/workspace/BulkChangeSeatModal";
 import { BulkEditSpendLimitModal } from "@app/components/workspace/BulkEditSpendLimitModal";
 import { BuyAwuCreditsDialog } from "@app/components/workspace/BuyAwuCreditsDialog";
-import { FreePlanUpgradeSection } from "@app/components/workspace/billing/FreePlanUpgradeSection";
-import {
-  SEAT_TYPE_ICONS,
-  seatTypeDisplayName,
-} from "@app/components/workspace/billing/seatTypeUtils";
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
 import { EditMemberSpendLimitModal } from "@app/components/workspace/EditMemberSpendLimitModal";
 import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
 import { GroupsUsageTable } from "@app/components/workspace/GroupsUsageTable";
 import { MembersSelectionBanner } from "@app/components/workspace/MembersSelectionBanner";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
-import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
-import { SelfImprovingSkillsSettingsSection } from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
 import { TopUpsHistoryTable } from "@app/components/workspace/TopUpsHistoryTable";
 import { UpgradeRequests } from "@app/components/workspace/UpgradeRequests";
 import { UsageMembersSection } from "@app/components/workspace/UsageMembersSection";
+import { CreditPoolCards } from "@app/components/workspace/WorkspaceCreditPoolCards";
+import type { DefaultUserSpendLimitState } from "@app/components/workspace/WorkspaceDefaultLimitInput";
+import { FreePlanUpgradeSection } from "@app/components/workspace/billing/FreePlanUpgradeSection";
+import {
+  SEAT_TYPE_ICONS,
+  seatTypeDisplayName,
+} from "@app/components/workspace/billing/seatTypeUtils";
+import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
+import { SelfImprovingSkillsSettingsSection } from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
 import { CreditSpendCheckpointSettingsCard } from "@app/components/workspace/usage/CreditSpendCheckpointSettingsCard";
 import { LockedSection } from "@app/components/workspace/usage/LockedSection";
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
-import { CreditPoolCards } from "@app/components/workspace/WorkspaceCreditPoolCards";
-import type { DefaultUserSpendLimitState } from "@app/components/workspace/WorkspaceDefaultLimitInput";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import { useTableRowsSelection } from "@app/hooks/useTableRowsSelection";
@@ -559,7 +559,7 @@ export function UsagePage() {
     return selectedOnPage.length === selection.selectedCount
       ? selectedOnPage
       : [];
-  // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, [
     loadedMembersById,
     membersUsage,

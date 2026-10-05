@@ -1,5 +1,5 @@
-import { GPT_5_4_MINI_MODEL_CONFIG } from "./openai";
 import type { ModelConfigurationType } from "./types";
+import { GPT_5_4_MINI_MODEL_CONFIG } from "./openai";
 
 export const SIMULATED_FAILURE_MODEL_ID = "simulated-failure-model" as const;
 

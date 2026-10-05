@@ -1,8 +1,8 @@
 import type { AgentBuilderScheduleTriggerType } from "@app/components/agent_builder/agentBuilderFormSchema";
-import { ScheduleEditionScheduler } from "@app/components/agent_builder/triggers/schedule/ScheduleEditionScheduler";
 import { TriggerPodSelector } from "@app/components/agent_builder/triggers/TriggerPodSelector";
 import { TriggerPoolSelector } from "@app/components/agent_builder/triggers/TriggerPoolSelector";
 import { TriggerStatusToggle } from "@app/components/agent_builder/triggers/TriggerStatusToggle";
+import { ScheduleEditionScheduler } from "@app/components/agent_builder/triggers/schedule/ScheduleEditionScheduler";
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import type { LightWorkspaceType } from "@app/types/user";
 import {

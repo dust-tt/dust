@@ -1,8 +1,8 @@
 import * as metronomeClient from "@app/lib/metronome/client";
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import type { MetronomeBalance } from "@app/lib/metronome/types";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";

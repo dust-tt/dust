@@ -1,7 +1,7 @@
-import { DropdownAnchorTrigger } from "@app/components/assistant/conversation/input_bar/DropdownAnchorTrigger";
-import { getSingularFileCategoryLabelForContentType } from "@app/components/file_explorer/utils";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { NodePathTooltip } from "@app/components/NodePathTooltip";
+import { DropdownAnchorTrigger } from "@app/components/assistant/conversation/input_bar/DropdownAnchorTrigger";
+import { getSingularFileCategoryLabelForContentType } from "@app/components/file_explorer/utils";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { useDebounce } from "@app/hooks/useDebounce";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";

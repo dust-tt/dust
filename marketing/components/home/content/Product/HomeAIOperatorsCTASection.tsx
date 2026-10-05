@@ -1,6 +1,6 @@
+import { Button } from "@dust-tt/sparkle";
 import { HomeReveal } from "@marketing/components/home/content/Product/HomeReveal";
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
-import { Button } from "@dust-tt/sparkle";
 
 type CTAStatAccent = "blue" | "golden" | "green";
 

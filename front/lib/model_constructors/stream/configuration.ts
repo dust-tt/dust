@@ -10,7 +10,5 @@ export type StreamEndpointConstructor<
   I = unknown,
   O = unknown,
   C extends InputConfig = InputConfig,
-> = (new (
-  credentials: Credentials
-) => StreamEndpoint<I, O, C>) &
+> = (new (credentials: Credentials) => StreamEndpoint<I, O, C>) &
   StreamModelConfiguration<C>;

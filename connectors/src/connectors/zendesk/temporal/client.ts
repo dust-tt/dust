@@ -48,27 +48,21 @@ export async function launchZendeskSyncWorkflow(
   const client = await getTemporalClient();
 
   const signals: (ZendeskUpdateSignal | ZendeskCategoryUpdateSignal)[] = [
-    ...brandIds.map(
-      (brandId): ZendeskUpdateSignal => ({
-        type: "brand",
-        zendeskId: brandId,
-        forceResync,
-      })
-    ),
-    ...helpCenterBrandIds.map(
-      (brandId): ZendeskUpdateSignal => ({
-        type: "help-center",
-        zendeskId: brandId,
-        forceResync,
-      })
-    ),
-    ...ticketsBrandIds.map(
-      (brandId): ZendeskUpdateSignal => ({
-        type: "tickets",
-        zendeskId: brandId,
-        forceResync,
-      })
-    ),
+    ...brandIds.map((brandId): ZendeskUpdateSignal => ({
+      type: "brand",
+      zendeskId: brandId,
+      forceResync,
+    })),
+    ...helpCenterBrandIds.map((brandId): ZendeskUpdateSignal => ({
+      type: "help-center",
+      zendeskId: brandId,
+      forceResync,
+    })),
+    ...ticketsBrandIds.map((brandId): ZendeskUpdateSignal => ({
+      type: "tickets",
+      zendeskId: brandId,
+      forceResync,
+    })),
     ...categoryIds.map(
       ({ brandId, categoryId }): ZendeskCategoryUpdateSignal => ({
         type: "category",

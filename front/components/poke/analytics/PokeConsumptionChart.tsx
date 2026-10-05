@@ -60,8 +60,10 @@ function PokeConsumptionDailyChart({
   );
 }
 
-interface PokeConsumptionBurnUpChartProps
-  extends Omit<ConsumptionChartProps, "dimension"> {
+interface PokeConsumptionBurnUpChartProps extends Omit<
+  ConsumptionChartProps,
+  "dimension"
+> {
   additionalControls: ReactNode;
 }
 

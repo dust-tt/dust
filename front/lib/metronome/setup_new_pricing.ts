@@ -219,20 +219,18 @@ const PAID_USAGE_TYPES = [USAGE_TYPE_USER, USAGE_TYPE_PROGRAMMATIC] as const;
 
 function buildAwuToolUsageRates(): RateDef[] {
   return TOOL_COST_CATEGORIES.flatMap((category): RateDef[] => [
-    ...PAID_USAGE_TYPES.map(
-      (usageType): RateDef => ({
-        product_name: "Tool Usage",
-        starting_at: "2026-04-01T00:00:00.000Z",
-        entitled: true,
-        rate_type: "FLAT",
-        price: TOOL_COST_CATEGORY_AWU_WEIGHTS[category],
-        credit_type_id: getCreditTypeAwuId(),
-        pricing_group_values: {
-          tool_category: category,
-          [USAGE_TYPE_GROUP_KEY]: usageType,
-        },
-      })
-    ),
+    ...PAID_USAGE_TYPES.map((usageType): RateDef => ({
+      product_name: "Tool Usage",
+      starting_at: "2026-04-01T00:00:00.000Z",
+      entitled: true,
+      rate_type: "FLAT",
+      price: TOOL_COST_CATEGORY_AWU_WEIGHTS[category],
+      credit_type_id: getCreditTypeAwuId(),
+      pricing_group_values: {
+        tool_category: category,
+        [USAGE_TYPE_GROUP_KEY]: usageType,
+      },
+    })),
     {
       product_name: "Tool Usage",
       starting_at: "2026-04-01T00:00:00.000Z",
@@ -252,17 +250,15 @@ function buildAwuToolUsageRates(): RateDef[] {
 // free is priced at 0.
 function buildAwuAiUsageRates(): RateDef[] {
   return [
-    ...PAID_USAGE_TYPES.map(
-      (usageType): RateDef => ({
-        product_name: "AI Usage",
-        starting_at: "2026-04-01T00:00:00.000Z",
-        entitled: true,
-        rate_type: "FLAT",
-        price: 1,
-        credit_type_id: getCreditTypeAwuId(),
-        pricing_group_values: { [USAGE_TYPE_GROUP_KEY]: usageType },
-      })
-    ),
+    ...PAID_USAGE_TYPES.map((usageType): RateDef => ({
+      product_name: "AI Usage",
+      starting_at: "2026-04-01T00:00:00.000Z",
+      entitled: true,
+      rate_type: "FLAT",
+      price: 1,
+      credit_type_id: getCreditTypeAwuId(),
+      pricing_group_values: { [USAGE_TYPE_GROUP_KEY]: usageType },
+    })),
     {
       product_name: "AI Usage",
       starting_at: "2026-04-01T00:00:00.000Z",

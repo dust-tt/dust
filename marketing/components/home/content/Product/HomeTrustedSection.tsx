@@ -1,6 +1,6 @@
-import { HomeReveal } from "@marketing/components/home/content/Product/HomeReveal";
 import { LogoBarImage } from "@marketing/components/home/LogoBarImage";
 import { useLogoBar } from "@marketing/components/home/LogoListsContext";
+import { HomeReveal } from "@marketing/components/home/content/Product/HomeReveal";
 import type { LogoBarLogo } from "@marketing/lib/logo_bars";
 import {
   fallbackHomeTrustedGeo,

@@ -263,10 +263,10 @@ function hasActiveSelectionInEditor(
   const selection = window.getSelection();
   return Boolean(
     selection &&
-      !selection.isCollapsed &&
-      editorDom &&
-      selection.anchorNode &&
-      editorDom.contains(selection.anchorNode)
+    !selection.isCollapsed &&
+    editorDom &&
+    selection.anchorNode &&
+    editorDom.contains(selection.anchorNode)
   );
 }
 

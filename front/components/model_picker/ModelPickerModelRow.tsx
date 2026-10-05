@@ -1,6 +1,7 @@
 import { DegradedInfoIcon } from "@app/components/model_picker/DegradedModelIcon";
 import { ModelPickerSelectionIndicator } from "@app/components/model_picker/ModelPickerSelectionIndicator";
 import { ModelTierChip } from "@app/components/model_picker/ModelTierChip";
+import { ReasoningEffortSlider } from "@app/components/model_picker/ReasoningEffortSlider";
 import type {
   EffortStop,
   ModelLockReason,
@@ -9,7 +10,6 @@ import {
   getDegradedModelTooltip,
   getModelLockTooltip,
 } from "@app/components/model_picker/modelPickerUtils";
-import { ReasoningEffortSlider } from "@app/components/model_picker/ReasoningEffortSlider";
 import type {
   ModelConfigurationType,
   ReasoningEffort,

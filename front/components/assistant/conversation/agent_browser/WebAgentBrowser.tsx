@@ -1,3 +1,4 @@
+import type { WebAgentBrowserProps } from "./shared";
 import { CreateAgentDropdown } from "@app/components/assistant/CreateAgentDropdown";
 import { ManageDropdownMenu } from "@app/components/assistant/ManageDropdownMenu";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
@@ -18,7 +19,6 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
-import type { WebAgentBrowserProps } from "./shared";
 import {
   AGENTS_TABS,
   AgentBrowserSearchDropdown,

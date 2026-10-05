@@ -1,4 +1,5 @@
 import { MobileOrExtensionAgentBrowser } from "@app/components/assistant/conversation/agent_browser/MobileOrExtensionAgentBrowser";
+import { WebAgentBrowser } from "@app/components/assistant/conversation/agent_browser/WebAgentBrowser";
 import type {
   AgentsByTab,
   SortType,
@@ -10,7 +11,6 @@ import {
   MOST_POPULAR_TAG,
   OTHERS_TAG,
 } from "@app/components/assistant/conversation/agent_browser/shared";
-import { WebAgentBrowser } from "@app/components/assistant/conversation/agent_browser/WebAgentBrowser";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { rankAgentsByPopularity } from "@app/components/assistant/helpers/agents";
 import { useHashParam } from "@app/hooks/useHashParams";

@@ -1,11 +1,11 @@
 import { z } from "zod";
 
+import type { McpTool } from "../types/tools.js";
 import { executeCommand } from "../../utils/command.js";
 import {
   escapingCommandOperands,
   resolveInSandbox,
 } from "../../utils/sandbox.js";
-import type { McpTool } from "../types/tools.js";
 
 export class RunCommandTool implements McpTool {
   name = "run_command";

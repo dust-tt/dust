@@ -1,4 +1,3 @@
-import path from "node:path";
 import { validateTailwindCode } from "@app/lib/api/files/content_validation";
 import type {
   FramePublicationFunctionArtifact,
@@ -21,6 +20,7 @@ import { isSafeFrameRelativePath } from "@app/types/api/frame_manifest";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import path from "node:path";
 
 type FramePublicationBuild = {
   functionArtifacts: FramePublicationFunctionArtifact[];

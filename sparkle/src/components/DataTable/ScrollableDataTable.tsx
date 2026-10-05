@@ -1,3 +1,4 @@
+import type { DataTableProps, TBaseData } from "./DataTable";
 import { Spinner } from "@sparkle/components/Spinner";
 import { cn } from "@sparkle/lib/utils";
 import {
@@ -11,9 +12,8 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useWindowSize } from "../WindowUtility";
-import { Cell } from "./cells";
-import type { DataTableProps, TBaseData } from "./DataTable";
 import { shouldRenderColumn } from "./DataTable";
+import { Cell } from "./cells";
 import {
   DATA_TABLE_ROW_HEIGHT_PX,
   type DataTableLayout,
@@ -22,17 +22,16 @@ import {
 } from "./layout";
 import { Body, Head, Header, Root, Row } from "./parts";
 import { getDataTableColumnPresets } from "./presets";
-export interface ScrollableDataTableProps<TData extends TBaseData>
-  extends Omit<
-    DataTableProps<TData>,
-    | "onLoadMore"
-    | "isLoadingMore"
-    | "isLoading"
-    | "emptyState"
-    | "stickyHeader"
-    | "maxHeight"
-    | "horizontalScroll"
-  > {
+export interface ScrollableDataTableProps<TData extends TBaseData> extends Omit<
+  DataTableProps<TData>,
+  | "onLoadMore"
+  | "isLoadingMore"
+  | "isLoading"
+  | "emptyState"
+  | "stickyHeader"
+  | "maxHeight"
+  | "horizontalScroll"
+> {
   /** Height of the scroll container: a max-height class name, true to fill the parent (flex-1), or unset for the default max-h-100. */
   maxHeight?: string | boolean;
   /** Called when the user scrolls near the bottom — use it for infinite loading. */

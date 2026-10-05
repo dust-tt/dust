@@ -1,4 +1,4 @@
-import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
+import { ConfirmContext } from "@app/components/Confirm";
 import { MCPServerDetailsAvailability } from "@app/components/actions/mcp/MCPServerDetailsAvailability";
 import { MCPServerDetailsGeneral } from "@app/components/actions/mcp/MCPServerDetailsGeneral";
 import {
@@ -6,7 +6,7 @@ import {
   MCPServerDetailsToolsBulkBar,
   useToolsAndStakesController,
 } from "@app/components/actions/mcp/MCPServerDetailsTools";
-import { ConfirmContext } from "@app/components/Confirm";
+import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import type { SensitivityLabelsController } from "@app/components/shared/labels/types";
 import {
   getMcpServerViewDescription,

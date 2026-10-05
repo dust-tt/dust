@@ -1,13 +1,13 @@
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
 import { SkillActionsMenu } from "@app/components/skills/SkillActionsMenu";
-import type { BatchAvailabilityAction } from "@app/components/skills/SkillsBatchEdit";
-import { SkillsBatchEditBar } from "@app/components/skills/SkillsBatchEdit";
 import {
   SkillAvailabilityCell,
   SkillEditorsCell,
   SkillLastEditedCell,
   SkillNameCell,
 } from "@app/components/skills/SkillTableCells";
+import type { BatchAvailabilityAction } from "@app/components/skills/SkillsBatchEdit";
+import { SkillsBatchEditBar } from "@app/components/skills/SkillsBatchEdit";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useSkillMenuItems } from "@app/hooks/useSkillMenuItems";

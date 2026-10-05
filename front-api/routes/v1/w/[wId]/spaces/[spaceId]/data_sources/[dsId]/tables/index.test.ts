@@ -1,7 +1,7 @@
 import { internalFetch } from "@app/lib/api/internal_fetch";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
 
@@ -60,32 +60,38 @@ describe("POST /api/v1/w/:wId/spaces/:spaceId/data_sources/:dsId/tables", () => 
   it.each([
     { remote_database_table_id: REMOTE_DATABASE_TABLE_ID },
     { remote_database_secret_id: REMOTE_DATABASE_SECRET_ID },
-  ])("rejects remote database fields from a non-system key (%o)", async (remoteFields) => {
-    const { workspace, key } = await createPublicApiMockRequest({
-      role: "admin",
-      method: "POST",
-    });
-    const space = await SpaceFactory.global(workspace);
-    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
+  ])(
+    "rejects remote database fields from a non-system key (%o)",
+    async (remoteFields) => {
+      const { workspace, key } = await createPublicApiMockRequest({
+        role: "admin",
+        method: "POST",
+      });
+      const space = await SpaceFactory.global(workspace);
+      const dataSourceView = await DataSourceViewFactory.folder(
+        workspace,
+        space
+      );
 
-    const res = await postTable(
-      workspace,
-      key,
-      space.sId,
-      dataSourceView.dataSource.sId,
-      {
-        name: "footable",
-        description: "desc",
-        title: "Wonderful table",
-        ...remoteFields,
-      }
-    );
+      const res = await postTable(
+        workspace,
+        key,
+        space.sId,
+        dataSourceView.dataSource.sId,
+        {
+          name: "footable",
+          description: "desc",
+          title: "Wonderful table",
+          ...remoteFields,
+        }
+      );
 
-    expect(res.status).toBe(400);
-    const body = await res.json();
-    expect(body.error.type).toBe("invalid_request_error");
-    expect(internalFetch).not.toHaveBeenCalled();
-  });
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error.type).toBe("invalid_request_error");
+      expect(internalFetch).not.toHaveBeenCalled();
+    }
+  );
 
   it("forwards remote database fields from a system key", async () => {
     const { workspace, key } = await createPublicApiMockRequest({

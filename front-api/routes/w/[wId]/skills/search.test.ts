@@ -1,11 +1,11 @@
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -39,47 +39,47 @@ describe("POST /api/w/:wId/skills/search", () => {
     searchSkills.mockReset();
   });
 
-  it.each([
-    "user",
-    "admin",
-  ] as const)("only names visible skills in facets for a %s", async (role) => {
-    const { workspace, auth } = await setup(role);
-    const published = await SkillFactory.create(auth, {
-      name: "Published",
-      availability: "workspace_users",
-      addCurrentUserAsEditor: false,
-    });
-    const edited = await SkillFactory.create(auth, { name: "Edited" });
-    const unpublished = await SkillFactory.create(auth, {
-      name: "Unpublished",
-      addCurrentUserAsEditor: false,
-    });
-    searchSkills.mockResolvedValue(
-      new Ok({
-        skills: [],
-        total: 0,
-        hasMore: false,
-        facets: {
-          childSkills: [
-            { value: unpublished.sId, count: 3 },
-            { value: published.sId, count: 2 },
-            { value: edited.sId, count: 1 },
-            { value: "missing-skill", count: 4 },
-          ],
-        },
-      })
-    );
+  it.each(["user", "admin"] as const)(
+    "only names visible skills in facets for a %s",
+    async (role) => {
+      const { workspace, auth } = await setup(role);
+      const published = await SkillFactory.create(auth, {
+        name: "Published",
+        availability: "workspace_users",
+        addCurrentUserAsEditor: false,
+      });
+      const edited = await SkillFactory.create(auth, { name: "Edited" });
+      const unpublished = await SkillFactory.create(auth, {
+        name: "Unpublished",
+        addCurrentUserAsEditor: false,
+      });
+      searchSkills.mockResolvedValue(
+        new Ok({
+          skills: [],
+          total: 0,
+          hasMore: false,
+          facets: {
+            childSkills: [
+              { value: unpublished.sId, count: 3 },
+              { value: published.sId, count: 2 },
+              { value: edited.sId, count: 1 },
+              { value: "missing-skill", count: 4 },
+            ],
+          },
+        })
+      );
 
-    const response = await searchRequest(workspace.sId, {
-      facets: ["childSkills"],
-    });
+      const response = await searchRequest(workspace.sId, {
+        facets: ["childSkills"],
+      });
 
-    expect(response.status).toBe(200);
-    expect((await response.json()).facets.childSkills).toEqual([
-      edited.toSearchFacetJSON(1),
-      published.toSearchFacetJSON(2),
-    ]);
-  });
+      expect(response.status).toBe(200);
+      expect((await response.json()).facets.childSkills).toEqual([
+        edited.toSearchFacetJSON(1),
+        published.toSearchFacetJSON(2),
+      ]);
+    }
+  );
 
   it("forwards the suggestion defaults and excluded skill to search", async () => {
     const { workspace } = await setup();
@@ -102,28 +102,82 @@ describe("POST /api/w/:wId/skills/search", () => {
     );
   });
 
-  it.each([
-    "user",
-    "admin",
-  ] as const)("allows search for a %s without feature flags", async (role) => {
-    const { workspace } = await createPrivateApiMockRequest({ role });
+  it.each(["user", "admin"] as const)(
+    "allows search for a %s without feature flags",
+    async (role) => {
+      const { workspace } = await createPrivateApiMockRequest({ role });
 
-    searchSkills.mockResolvedValue(
-      new Ok({ skills: [], total: 0, hasMore: false, facets: {} })
-    );
-    const response = await searchRequest(workspace.sId);
+      searchSkills.mockResolvedValue(
+        new Ok({ skills: [], total: 0, hasMore: false, facets: {} })
+      );
+      const response = await searchRequest(workspace.sId);
 
-    expect(response.status).toBe(200);
-    expect(searchSkills).toHaveBeenCalledOnce();
-  });
+      expect(response.status).toBe(200);
+      expect(searchSkills).toHaveBeenCalledOnce();
+    }
+  );
 
-  it.each([
-    0,
-    null,
-  ])("routes search results with updatedAt=%s", async (updatedAt) => {
-    const { workspace, user } = await setup();
-    searchSkills.mockResolvedValue(
-      new Ok({
+  it.each([0, null])(
+    "routes search results with updatedAt=%s",
+    async (updatedAt) => {
+      const { workspace, user } = await setup();
+      searchSkills.mockResolvedValue(
+        new Ok({
+          skills: [
+            {
+              status: "active",
+              canWrite: false,
+              canAdministrate: false,
+              availability: "workspace_users",
+              mcpServerViewIds: [],
+              editorIds: [user.sId, user.sId, "missing-user"],
+              activeUsersCount: null,
+              updatedAt,
+              icon: null,
+              name: "Search result",
+              requestedSpaceIds: [],
+              sId: "search-result",
+              userFacingDescription: "Description",
+            },
+          ],
+          total: 1,
+          hasMore: false,
+          facets: {},
+        })
+      );
+
+      const response = await searchRequest(workspace.sId, {
+        query: "research",
+      });
+
+      expect(response.status).toBe(200);
+      expect(searchSkills).toHaveBeenCalledWith(expect.anything(), {
+        searchTerm: "research",
+        searchType: "autocomplete",
+        limit: undefined,
+        offset: undefined,
+        permissionFiltering: undefined,
+        facets: undefined,
+        sortBy: undefined,
+        sortOrder: undefined,
+        defaultToFavorites: undefined,
+        excludeSkillId: undefined,
+        filters: {
+          status: undefined,
+          mcpServerViewIds: undefined,
+          availability: undefined,
+          editedByMe: undefined,
+          codeDefinedOnly: undefined,
+          editorIds: undefined,
+          childSkillIds: undefined,
+          spaceIds: undefined,
+          activeUsersCount: undefined,
+        },
+      });
+      expect(await response.json()).toEqual({
+        total: 1,
+        hasMore: false,
+        facets: {},
         skills: [
           {
             status: "active",
@@ -132,6 +186,13 @@ describe("POST /api/w/:wId/skills/search", () => {
             availability: "workspace_users",
             mcpServerViewIds: [],
             editorIds: [user.sId, user.sId, "missing-user"],
+            editors: [
+              {
+                sId: user.sId,
+                fullName: user.toJSON().fullName,
+                image: user.toJSON().image,
+              },
+            ],
             activeUsersCount: null,
             updatedAt,
             icon: null,
@@ -141,68 +202,9 @@ describe("POST /api/w/:wId/skills/search", () => {
             userFacingDescription: "Description",
           },
         ],
-        total: 1,
-        hasMore: false,
-        facets: {},
-      })
-    );
-
-    const response = await searchRequest(workspace.sId, { query: "research" });
-
-    expect(response.status).toBe(200);
-    expect(searchSkills).toHaveBeenCalledWith(expect.anything(), {
-      searchTerm: "research",
-      searchType: "autocomplete",
-      limit: undefined,
-      offset: undefined,
-      permissionFiltering: undefined,
-      facets: undefined,
-      sortBy: undefined,
-      sortOrder: undefined,
-      defaultToFavorites: undefined,
-      excludeSkillId: undefined,
-      filters: {
-        status: undefined,
-        mcpServerViewIds: undefined,
-        availability: undefined,
-        editedByMe: undefined,
-        codeDefinedOnly: undefined,
-        editorIds: undefined,
-        childSkillIds: undefined,
-        spaceIds: undefined,
-        activeUsersCount: undefined,
-      },
-    });
-    expect(await response.json()).toEqual({
-      total: 1,
-      hasMore: false,
-      facets: {},
-      skills: [
-        {
-          status: "active",
-          canWrite: false,
-          canAdministrate: false,
-          availability: "workspace_users",
-          mcpServerViewIds: [],
-          editorIds: [user.sId, user.sId, "missing-user"],
-          editors: [
-            {
-              sId: user.sId,
-              fullName: user.toJSON().fullName,
-              image: user.toJSON().image,
-            },
-          ],
-          activeUsersCount: null,
-          updatedAt,
-          icon: null,
-          name: "Search result",
-          requestedSpaceIds: [],
-          sId: "search-result",
-          userFacingDescription: "Description",
-        },
-      ],
-    });
-  });
+      });
+    }
+  );
 
   it("passes offset through and returns total", async () => {
     const { workspace } = await setup();
@@ -247,24 +249,24 @@ describe("POST /api/w/:wId/skills/search", () => {
     });
   });
 
-  it.each([
-    "autocomplete",
-    "name",
-  ] as const)("passes %s search through", async (searchType) => {
-    const { workspace } = await setup();
-    searchSkills.mockResolvedValue(
-      new Ok({ skills: [], total: 0, hasMore: false, facets: {} })
-    );
-    const response = await searchRequest(workspace.sId, {
-      query: "Write",
-      searchType,
-    });
-    expect(response.status).toBe(200);
-    expect(searchSkills).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ searchTerm: "Write", searchType })
-    );
-  });
+  it.each(["autocomplete", "name"] as const)(
+    "passes %s search through",
+    async (searchType) => {
+      const { workspace } = await setup();
+      searchSkills.mockResolvedValue(
+        new Ok({ skills: [], total: 0, hasMore: false, facets: {} })
+      );
+      const response = await searchRequest(workspace.sId, {
+        query: "Write",
+        searchType,
+      });
+      expect(response.status).toBe(200);
+      expect(searchSkills).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ searchTerm: "Write", searchType })
+      );
+    }
+  );
 
   it.each([
     { limit: 101 },
@@ -465,47 +467,47 @@ describe("POST /api/w/:wId/skills/search", () => {
     });
   });
 
-  it.each([
-    true,
-    false,
-  ])("accepts structured filters with codeDefinedOnly=%s", async (codeDefinedOnly) => {
-    const { workspace } = await setup();
-    searchSkills.mockResolvedValue(
-      new Ok({ skills: [], total: 0, hasMore: false, facets: {} })
-    );
-    const response = await searchRequest(workspace.sId, {
-      status: ["active", "archived"],
-      mcpServerViewIds: ["tool"],
-      availability: ["editors", "workspace_users"],
-      editedByMe: true,
-      codeDefinedOnly,
-      sortBy: "usage",
-    });
-    expect(response.status).toBe(200);
-    expect(searchSkills).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
+  it.each([true, false])(
+    "accepts structured filters with codeDefinedOnly=%s",
+    async (codeDefinedOnly) => {
+      const { workspace } = await setup();
+      searchSkills.mockResolvedValue(
+        new Ok({ skills: [], total: 0, hasMore: false, facets: {} })
+      );
+      const response = await searchRequest(workspace.sId, {
+        status: ["active", "archived"],
+        mcpServerViewIds: ["tool"],
+        availability: ["editors", "workspace_users"],
+        editedByMe: true,
+        codeDefinedOnly,
         sortBy: "usage",
-        filters: {
-          status: ["active", "archived"],
-          mcpServerViewIds: ["tool"],
-          availability: ["editors", "workspace_users"],
-          editedByMe: true,
-          codeDefinedOnly,
-        },
-      })
-    );
-  });
+      });
+      expect(response.status).toBe(200);
+      expect(searchSkills).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          sortBy: "usage",
+          filters: {
+            status: ["active", "archived"],
+            mcpServerViewIds: ["tool"],
+            availability: ["editors", "workspace_users"],
+            editedByMe: true,
+            codeDefinedOnly,
+          },
+        })
+      );
+    }
+  );
 
-  it.each([
-    "user",
-    "manager",
-  ] as const)("rejects redacted search for a %s before searching", async (role) => {
-    const { workspace } = await setup(role);
-    const response = await searchRequest(workspace.sId, {
-      permissionFiltering: "redact_unreadable",
-    });
-    expect(response.status).toBe(403);
-    expect(searchSkills).not.toHaveBeenCalled();
-  });
+  it.each(["user", "manager"] as const)(
+    "rejects redacted search for a %s before searching",
+    async (role) => {
+      const { workspace } = await setup(role);
+      const response = await searchRequest(workspace.sId, {
+        permissionFiltering: "redact_unreadable",
+      });
+      expect(response.status).toBe(403);
+      expect(searchSkills).not.toHaveBeenCalled();
+    }
+  );
 });

@@ -1,10 +1,10 @@
+import type { DocumentCommentAuthor } from "./types";
 import { Avatar } from "@sparkle/components/Avatar";
 import { Icon } from "@sparkle/components/Icon";
 import { TextArea } from "@sparkle/components/TextArea";
 import { ArrowUp } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import React, { useEffect, useLayoutEffect, useRef } from "react";
-import type { DocumentCommentAuthor } from "./types";
 
 interface DocumentCommentInputProps {
   label: string;

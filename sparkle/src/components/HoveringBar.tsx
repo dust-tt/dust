@@ -22,8 +22,9 @@ const hoveringBarVariants = cva(
   }
 );
 
-export interface HoveringBarProps
-  extends VariantProps<typeof hoveringBarVariants> {
+export interface HoveringBarProps extends VariantProps<
+  typeof hoveringBarVariants
+> {
   /** Actions to display, typically icon Buttons; use HoveringBar.Separator to group them. */
   children: React.ReactNode;
   className?: string;

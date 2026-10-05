@@ -195,45 +195,48 @@ describe("rawOutputToEvents", () => {
     ["rate_limit_exceeded", "rate_limit_error", "dust"],
     ["invalid_prompt", "invalid_request_error", "dust"],
     ["bio_policy", "refusal_error", "unknown"],
-  ] as const)("maps response.failed code %s to %s from %s", async (code, expectedType, errorSource) => {
-    const events = [];
-    for await (const event of rawOutputToEvents(
-      createAsyncGenerator([
-        {
-          type: "response.failed",
-          sequence_number: 0,
-          response: {
-            ...completedResponse(null, {
-              input_tokens: 0,
-              input_tokens_details: {
-                cached_tokens: 0,
-                cache_write_tokens: 0,
-              },
-              output_tokens: 0,
-              output_tokens_details: { reasoning_tokens: 0 },
-              total_tokens: 0,
-            }),
-            status: "failed",
-            error: { code, message: "generation failed" },
+  ] as const)(
+    "maps response.failed code %s to %s from %s",
+    async (code, expectedType, errorSource) => {
+      const events = [];
+      for await (const event of rawOutputToEvents(
+        createAsyncGenerator([
+          {
+            type: "response.failed",
+            sequence_number: 0,
+            response: {
+              ...completedResponse(null, {
+                input_tokens: 0,
+                input_tokens_details: {
+                  cached_tokens: 0,
+                  cache_write_tokens: 0,
+                },
+                output_tokens: 0,
+                output_tokens_details: { reasoning_tokens: 0 },
+                total_tokens: 0,
+              }),
+              status: "failed",
+              error: { code, message: "generation failed" },
+            },
           },
-        },
-      ]),
-      metadata,
-      converters
-    )) {
-      events.push(event);
-    }
+        ]),
+        metadata,
+        converters
+      )) {
+        events.push(event);
+      }
 
-    expect(events).toEqual([
-      expect.objectContaining({
-        type: "error",
-        content: expect.objectContaining({
-          type: expectedType,
-          errorSource,
+      expect(events).toEqual([
+        expect.objectContaining({
+          type: "error",
+          content: expect.objectContaining({
+            type: expectedType,
+            errorSource,
+          }),
         }),
-      }),
-    ]);
-  });
+      ]);
+    }
+  );
 
   // The tier the response was served on is what OpenAI bills, and it can differ
   // from the one we asked for: a refused flex request is replayed on standard
@@ -244,35 +247,37 @@ describe("rawOutputToEvents", () => {
     { reportedTier: "default", serviceTier: "default" },
     { reportedTier: "scale", serviceTier: "default" },
     { reportedTier: "priority", serviceTier: "default" },
-  ] as const)("reports $reportedTier as the $serviceTier tier", async ({
-    reportedTier,
-    serviceTier,
-  }) => {
-    const events = [];
-    for await (const event of rawOutputToEvents(
-      createAsyncGenerator([
-        {
-          type: "response.completed",
-          sequence_number: 0,
-          response: completedResponse(reportedTier, {
-            input_tokens: 10,
-            input_tokens_details: { cached_tokens: 0, cache_write_tokens: 0 },
-            output_tokens: 5,
-            output_tokens_details: { reasoning_tokens: 0 },
-            total_tokens: 15,
-          }),
-        },
-      ]),
-      metadata,
-      converters
-    )) {
-      events.push(event);
-    }
+  ] as const)(
+    "reports $reportedTier as the $serviceTier tier",
+    async ({ reportedTier, serviceTier }) => {
+      const events = [];
+      for await (const event of rawOutputToEvents(
+        createAsyncGenerator([
+          {
+            type: "response.completed",
+            sequence_number: 0,
+            response: completedResponse(reportedTier, {
+              input_tokens: 10,
+              input_tokens_details: { cached_tokens: 0, cache_write_tokens: 0 },
+              output_tokens: 5,
+              output_tokens_details: { reasoning_tokens: 0 },
+              total_tokens: 15,
+            }),
+          },
+        ]),
+        metadata,
+        converters
+      )) {
+        events.push(event);
+      }
 
-    expect(events.find((event) => event.type === "token_usage")).toMatchObject({
-      content: { serviceTier },
-    });
-  });
+      expect(
+        events.find((event) => event.type === "token_usage")
+      ).toMatchObject({
+        content: { serviceTier },
+      });
+    }
+  );
 
   it("omits the tier when the response does not report one", async () => {
     const events = [];

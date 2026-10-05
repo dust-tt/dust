@@ -7,13 +7,13 @@ import {
   useConversationSidePanelContext,
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { MessageItem } from "@app/components/assistant/conversation/MessageItem";
 import type { PendingConversationMessage } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import {
   createPlaceholderAgentMessage,
   createPlaceholderUserMessage,
 } from "@app/components/assistant/conversation/lib";
-import { MessageItem } from "@app/components/assistant/conversation/MessageItem";
 import { handlePlanUpdatedEvent } from "@app/components/assistant/conversation/plan_mode/handle_plan_updated";
 import type {
   AgentMessageWithStreaming,

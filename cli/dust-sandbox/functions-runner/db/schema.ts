@@ -1,10 +1,10 @@
 // `dsbx db schema` runner backend: regenerate a drizzle `{db}.db.ts` schema file from a live pod
 // database by delegating to drizzle-kit's own `pull`.
 
+import { Err, Ok, type Result } from "#result.ts";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { Err, Ok, type Result } from "#result.ts";
 import { DbCommandError } from "./common.ts";
 
 export function generateSchemaFileText(

@@ -1,4 +1,3 @@
-import url from "node:url";
 import {
   getMCPServerAdminAuthenticationReason,
   MCPServerPersonalAuthenticationRequiredError,
@@ -47,6 +46,7 @@ import type {
   OAuthProtectedResourceMetadata,
 } from "@modelcontextprotocol/sdk/shared/auth.js";
 import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
+import url from "node:url";
 import { z } from "zod";
 
 const MCPDiagnosticCheckNameSchema = z.enum(MCP_DIAGNOSTIC_CHECK_NAMES);

@@ -1,7 +1,7 @@
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { KeyType } from "@app/types/key";
 import type { ModelId } from "@app/types/shared/model_id";
 import { redactString } from "@app/types/shared/utils/string_utils";

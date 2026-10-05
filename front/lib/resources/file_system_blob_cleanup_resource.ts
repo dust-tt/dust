@@ -13,8 +13,7 @@ const ABANDONED_UPLOAD_CLEANUP_DELAY_MS = 24 * 60 * 60 * 1000;
 const RETIRED_BLOB_CLEANUP_DELAY_MS =
   FILE_SYSTEM_CONTENT_URL_EXPIRATION_MS + 5 * 60 * 1000;
 
-export interface FileSystemBlobCleanupResource
-  extends ReadonlyAttributesType<FileSystemBlobCleanupModel> {}
+export interface FileSystemBlobCleanupResource extends ReadonlyAttributesType<FileSystemBlobCleanupModel> {}
 
 /**
  * One durable request to delete an abandoned or replaced content blob.

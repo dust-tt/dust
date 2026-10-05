@@ -1,7 +1,7 @@
 import { getSuggestedTemplatesForQuery } from "@app/lib/api/assistant/template_suggestion";
 import type { Authenticator } from "@app/lib/auth";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -12,9 +12,8 @@ vi.mock("@app/lib/api/assistant/template_suggestion", () => ({
 }));
 
 beforeEach(async () => {
-  const templateSuggestion = await import(
-    "@app/lib/api/assistant/template_suggestion"
-  );
+  const templateSuggestion =
+    await import("@app/lib/api/assistant/template_suggestion");
   vi.mocked(templateSuggestion.getSuggestedTemplatesForQuery).mockReset();
 });
 

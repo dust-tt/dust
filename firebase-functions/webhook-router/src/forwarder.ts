@@ -1,9 +1,9 @@
 import { error, log } from "firebase-functions/logger";
 import type { IncomingHttpHeaders } from "http";
 
-import { CONFIG } from "./config.js";
 import type { Secrets } from "./secrets.js";
 import type { Cell } from "./webhook-router-config.js";
+import { CONFIG } from "./config.js";
 
 type WebhookTarget = { cell: Cell; url: string; secret: string };
 

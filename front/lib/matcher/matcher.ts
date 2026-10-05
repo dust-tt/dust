@@ -1,11 +1,11 @@
 import get from "lodash/get";
 
+import type { MatcherExpression } from "./types";
 import { has, hasAll, hasAny } from "./operators/array";
 import { eq } from "./operators/equality";
 import { exists } from "./operators/existence";
 import { gt, gte, lt, lte } from "./operators/numeric";
 import { contains, startsWith } from "./operators/string";
-import type { MatcherExpression } from "./types";
 import { isLogicalExpression, isOperationExpression } from "./types";
 
 /**

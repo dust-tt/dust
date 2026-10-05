@@ -1,7 +1,7 @@
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { SandboxFactory } from "@app/tests/utils/SandboxFactory";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 

@@ -33,8 +33,8 @@ import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import type { ParsedUrlQuery } from "querystring";
 import * as React from "react";
 
-import { RequestActionsModal } from "./mcp/RequestActionsModal";
 import SpaceManagedActionsViewsModel from "./SpaceManagedActionsViewsModal";
+import { RequestActionsModal } from "./mcp/RequestActionsModal";
 
 type RowData = {
   id: string;
@@ -126,7 +126,10 @@ export const SpaceActionsList = ({
   };
 
   const onRemoveServer = async (sId: string) => {
-    await removeFromSpace(serverViews.find((view) => view.sId === sId)!, space);
+    await removeFromSpace(
+      serverViews.find((view) => view.sId === sId)!,
+      space
+    );
     await mutateMCPServerViews();
     await mutateActivableMCPServerViews();
   };

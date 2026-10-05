@@ -1,3 +1,4 @@
+import { LegacyButton as Button } from "@dust-tt/sparkle";
 import {
   Grid,
   H1,
@@ -8,7 +9,6 @@ import {
 import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
 import LandingLayout from "@marketing/components/home/LandingLayout";
 import { PageMetadata } from "@marketing/components/home/PageMetadata";
-import { LegacyButton as Button } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 

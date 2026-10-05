@@ -2,9 +2,7 @@ import { dropTemperatureWhenReasoning } from "@app/lib/llms/stream/types/configu
 import { SIMULATED_FAILURE_MODEL_CONFIG } from "@app/types/assistant/models/simulated_failure_model";
 
 export function WithDustSimulatedFailureModelConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class DustSimulatedFailureModel extends Base {
     static readonly displayName = "Simulated Failure Model";

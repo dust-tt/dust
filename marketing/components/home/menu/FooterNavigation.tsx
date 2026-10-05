@@ -1,6 +1,6 @@
+import { DustLogoGray } from "@dust-tt/sparkle";
 import { A, Grid } from "@marketing/components/home/ContentComponents";
 import { menuConfig } from "@marketing/components/home/menu/config";
-import { DustLogoGray } from "@dust-tt/sparkle";
 import type { LinkProps } from "next/link";
 import Link from "next/link";
 import * as React from "react";

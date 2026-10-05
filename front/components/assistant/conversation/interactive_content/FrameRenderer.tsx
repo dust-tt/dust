@@ -1,6 +1,7 @@
-import { AuthenticatedVisualizationActionIframe } from "@app/components/assistant/conversation/actions/AuthenticatedVisualizationActionIframe";
+import { ConfirmContext } from "@app/components/Confirm";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
+import { AuthenticatedVisualizationActionIframe } from "@app/components/assistant/conversation/actions/AuthenticatedVisualizationActionIframe";
 import { DEFAULT_FRAME_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { ExportContentDropdown } from "@app/components/assistant/conversation/interactive_content/ExportContentDropdown";
@@ -8,7 +9,6 @@ import { FrameBetaChip } from "@app/components/assistant/conversation/interactiv
 import { FrameEditControls } from "@app/components/assistant/conversation/interactive_content/frame/FrameEditControls";
 import { ShareFramePopover } from "@app/components/assistant/conversation/interactive_content/frame/ShareFramePopover";
 import { useFrameEditSession } from "@app/components/assistant/conversation/interactive_content/frame/useFrameEditSession";
-import { ConfirmContext } from "@app/components/Confirm";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { PinPodBannerButton } from "@app/components/pod/files/PinPodBannerButton";
 import { PodFileTabButton } from "@app/components/pod/files/PodFileTabButton";

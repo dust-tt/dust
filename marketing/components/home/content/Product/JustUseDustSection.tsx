@@ -1,5 +1,5 @@
-import { H2 } from "@marketing/components/home/ContentComponents";
 import { LegacyButton as Button } from "@dust-tt/sparkle";
+import { H2 } from "@marketing/components/home/ContentComponents";
 import Link from "next/link";
 
 export function JustUseDustSection() {

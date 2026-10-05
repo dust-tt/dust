@@ -1,3 +1,9 @@
+import type {
+  DocumentComment,
+  DocumentCommentAuthor,
+  DocumentCommentReply,
+} from "./types";
+import type { DocumentCommentsController } from "./useDocumentComments";
 import { Avatar } from "@sparkle/components/Avatar";
 import {
   Collapsible,
@@ -16,12 +22,6 @@ import {
 import { cn } from "@sparkle/lib/utils";
 import React, { type ComponentType, useEffect, useRef, useState } from "react";
 import { DocumentCommentInput } from "./DocumentCommentInput";
-import type {
-  DocumentComment,
-  DocumentCommentAuthor,
-  DocumentCommentReply,
-} from "./types";
-import type { DocumentCommentsController } from "./useDocumentComments";
 
 const SECOND_MS = 1_000;
 const MINUTE_MS = 60 * SECOND_MS;

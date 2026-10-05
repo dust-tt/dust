@@ -18,9 +18,9 @@ import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { FrameManifestSchema } from "@app/types/api/frame_manifest";
 import {
   getFramePublicationFunctionsArchivePath,
@@ -511,41 +511,42 @@ describe("buildAndPublishFramePublication", () => {
   it.each([
     { operation: "validation", build: validateFramePublication },
     { operation: "publishing", build: buildAndPublishFramePublication },
-  ])("keeps the active publication when UI $operation fails", async ({
-    build,
-  }) => {
-    const { auth, conversation, frame } = await setup();
-    const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
-    await frame.setActiveFramePublication({
-      publicationId: activePublicationId,
-      description: "Track tasks.",
-    });
+  ])(
+    "keeps the active publication when UI $operation fails",
+    async ({ build }) => {
+      const { auth, conversation, frame } = await setup();
+      const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
+      await frame.setActiveFramePublication({
+        publicationId: activePublicationId,
+        description: "Track tasks.",
+      });
 
-    const result = await build(auth, {
-      conversation,
-      frame,
-      manifest,
-      sourceFiles: [
-        {
-          ...sourceFiles[0],
-          content: Buffer.from("export default function App( {"),
-        },
-        ...sourceFiles.slice(1),
-      ],
-    });
+      const result = await build(auth, {
+        conversation,
+        frame,
+        manifest,
+        sourceFiles: [
+          {
+            ...sourceFiles[0],
+            content: Buffer.from("export default function App( {"),
+          },
+          ...sourceFiles.slice(1),
+        ],
+      });
 
-    expect(result.isErr() && result.error.code).toBe("ui_build_failed");
-    expect(result.isErr() && result.error.message).toMatch(
-      /Failed to build Frame UI: index\.tsx:\nTypeScript syntax errors detected[\s\S]*Line 1, Column \d+: error TS/
-    );
-    expect(ensureConversationSandboxReadyWithScope).not.toHaveBeenCalled();
-    expect(buildSandboxFunctionOnReadySandbox).not.toHaveBeenCalled();
-    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
-    const reloaded = await FileResource.fetchById(auth, frame.sId);
-    expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
-      activePublicationId
-    );
-  });
+      expect(result.isErr() && result.error.code).toBe("ui_build_failed");
+      expect(result.isErr() && result.error.message).toMatch(
+        /Failed to build Frame UI: index\.tsx:\nTypeScript syntax errors detected[\s\S]*Line 1, Column \d+: error TS/
+      );
+      expect(ensureConversationSandboxReadyWithScope).not.toHaveBeenCalled();
+      expect(buildSandboxFunctionOnReadySandbox).not.toHaveBeenCalled();
+      expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+      const reloaded = await FileResource.fetchById(auth, frame.sId);
+      expect(reloaded?.useCaseMetadata?.activePublicationId).toBe(
+        activePublicationId
+      );
+    }
+  );
 
   it("rejects an unsafe snapshot path before staging or building", async () => {
     const { auth, conversation, frame, sandbox } = await setup();

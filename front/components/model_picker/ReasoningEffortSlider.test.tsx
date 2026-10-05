@@ -1,5 +1,5 @@
-import type { EffortStop } from "@app/components/model_picker/modelPickerUtils";
 import { ReasoningEffortSlider } from "@app/components/model_picker/ReasoningEffortSlider";
+import type { EffortStop } from "@app/components/model_picker/modelPickerUtils";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { render, screen } from "@testing-library/react";
 import { beforeAll, describe, expect, it, vi } from "vitest";

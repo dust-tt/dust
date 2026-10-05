@@ -1,8 +1,3 @@
-import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
-import LandingLayout from "@marketing/components/home/LandingLayout";
-import { PageMetadata } from "@marketing/components/home/PageMetadata";
-import type { PublicModelCredit } from "@marketing/lib/api/model_credits";
-import { fetchPublicModelCredits } from "@marketing/lib/api/model_credits";
 import {
   AnthropicLogo,
   ChevronDown,
@@ -16,6 +11,11 @@ import {
   OpenaiLogo,
   ZaiLogo,
 } from "@dust-tt/sparkle";
+import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
+import LandingLayout from "@marketing/components/home/LandingLayout";
+import { PageMetadata } from "@marketing/components/home/PageMetadata";
+import type { PublicModelCredit } from "@marketing/lib/api/model_credits";
+import { fetchPublicModelCredits } from "@marketing/lib/api/model_credits";
 import {
   AnimatePresence,
   domAnimation,

@@ -153,7 +153,7 @@ export default function SpaceManagedDataSourcesViewsModal({
     if (isOpen) {
       initialConfigurations.refetch();
     }
-  // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, [isOpen, initialConfigurations.refetch]);
 
   useEffect(() => {

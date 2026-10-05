@@ -1,9 +1,9 @@
 import express from "express";
 import { error } from "firebase-functions/logger";
 
-import { WebhookForwarder } from "../forwarder.js";
 import type { SecretManager } from "../secrets.js";
 import type { WebhookRouterConfigManager } from "../webhook-router-config.js";
+import { WebhookForwarder } from "../forwarder.js";
 import { ALL_CELLS } from "../webhook-router-config.js";
 import { createSlackVerificationMiddleware } from "./verification.js";
 

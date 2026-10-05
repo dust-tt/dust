@@ -1,8 +1,8 @@
 #!/usr/bin/env tsx
-import { parseArgs } from "node:util";
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
 import { Sandbox } from "e2b";
+import { parseArgs } from "node:util";
 
 // Operator-only escape hatch for manual sandbox debugging. Runtime app code must
 // route sandbox root execution through SandboxProvider.execRoot.

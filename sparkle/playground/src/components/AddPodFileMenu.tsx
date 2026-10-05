@@ -9,8 +9,8 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useState, type ReactNode } from "react";
 
-import { getDataSourceIcon } from "../data/dataSources";
 import type { DataSource } from "../data/types";
+import { getDataSourceIcon } from "../data/dataSources";
 
 interface AddPodFileMenuProps {
   files: DataSource[];

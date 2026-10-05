@@ -1,9 +1,6 @@
+import type { Document } from "@contentful/rich-text-types";
+import { BLOCKS } from "@contentful/rich-text-types";
 import config from "@marketing/lib/api/config";
-import {
-  isLiveLogoListRegion,
-  LIVE_LOGO_LIST_REGIONS,
-  LOGO_LIST_REGIONS,
-} from "@marketing/lib/logo_bars";
 import {
   extractSearchableSections,
   extractTableOfContents,
@@ -52,14 +49,17 @@ import {
   DEFAULT_QUIZ_SETTINGS,
   isAcademyLocale,
 } from "@marketing/lib/contentful/types";
+import {
+  isLiveLogoListRegion,
+  LIVE_LOGO_LIST_REGIONS,
+  LOGO_LIST_REGIONS,
+} from "@marketing/lib/logo_bars";
 import logger from "@marketing/logger/logger";
 import type { Result } from "@marketing/types/shared/result";
 import { Err, Ok } from "@marketing/types/shared/result";
 import { normalizeError } from "@marketing/types/shared/utils/error_utils";
 import { isString } from "@marketing/types/shared/utils/general";
 import { slugify } from "@marketing/types/shared/utils/string_utils";
-import type { Document } from "@contentful/rich-text-types";
-import { BLOCKS } from "@contentful/rich-text-types";
 import type { Asset, ContentfulClientApi, Entry, Tag } from "contentful";
 import { createClient } from "contentful";
 import { z } from "zod";

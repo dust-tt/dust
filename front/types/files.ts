@@ -3,9 +3,9 @@ import type { DustError } from "@app/lib/error";
 import { getFrameV2NameFromManifestPath } from "@app/types/api/frame_manifest";
 import { z } from "zod";
 
+import type { UserType } from "./user";
 import { assertNever } from "./shared/utils/assert_never";
 import { removeNulls } from "./shared/utils/general";
-import type { UserType } from "./user";
 
 const uniq = <T>(arr: T[]): T[] => Array.from(new Set(arr));
 

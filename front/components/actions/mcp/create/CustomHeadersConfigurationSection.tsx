@@ -1,5 +1,5 @@
-import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/forms/types";
 import { MCPServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
+import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/forms/types";
 import { requiresBearerTokenConfiguration } from "@app/lib/actions/mcp_helper";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerType } from "@app/lib/api/mcp";

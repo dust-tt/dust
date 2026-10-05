@@ -1,10 +1,10 @@
 import { randomBytes } from "node:crypto";
 
 import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
-import { fixWorkspaceNonces } from "@app/migrations/20260922_fix_malformed_sandbox_https_secret_nonces";
 import baseLogger from "@app/logger/logger";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { fixWorkspaceNonces } from "@app/migrations/20260922_fix_malformed_sandbox_https_secret_nonces";
 import { SandboxEnvVarFactory } from "@app/tests/utils/SandboxEnvVarFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockEmitAuditLogEventDirect } = vi.hoisted(() => ({

@@ -11,9 +11,7 @@ import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawle
 import type { ModelId, WebCrawlerConfiguration } from "@connectors/types";
 import type { Transaction } from "sequelize";
 
-export class WebCrawlerStrategy
-  implements ConnectorProviderStrategy<"webcrawler">
-{
+export class WebCrawlerStrategy implements ConnectorProviderStrategy<"webcrawler"> {
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<WebCrawlerConfigurationModel> & {

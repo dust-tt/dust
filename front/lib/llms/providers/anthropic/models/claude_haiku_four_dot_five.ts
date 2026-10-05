@@ -5,9 +5,7 @@ import {
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 
 export function WithDustClaudeHaikuFourDotFive<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class DustClaudeHaikuFourDotFive extends Base {
     static readonly displayName = "Claude 4.5 Haiku";

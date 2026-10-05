@@ -1,13 +1,13 @@
-import { getStaticCredentialForm } from "@app/components/actions/mcp/create/static_credential_forms";
-import { submitConnectMCPServerDialogForm } from "@app/components/actions/mcp/forms/submitConnectMCPServerDialogForm";
-import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
-import { mcpServerOAuthFormSchema } from "@app/components/actions/mcp/forms/types";
-import { getConnectMCPServerDialogDefaultValues } from "@app/components/actions/mcp/forms/utils";
 import type {
   StaticCredentialConfig,
   StaticCredentialFormHandle,
 } from "@app/components/actions/mcp/MCPServerAuthConnection";
 import { MCPServerAuthConnection } from "@app/components/actions/mcp/MCPServerAuthConnection";
+import { getStaticCredentialForm } from "@app/components/actions/mcp/create/static_credential_forms";
+import { submitConnectMCPServerDialogForm } from "@app/components/actions/mcp/forms/submitConnectMCPServerDialogForm";
+import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
+import { mcpServerOAuthFormSchema } from "@app/components/actions/mcp/forms/types";
+import { getConnectMCPServerDialogDefaultValues } from "@app/components/actions/mcp/forms/utils";
 import type {
   CustomResourceIconType,
   InternalAllowedIconType,

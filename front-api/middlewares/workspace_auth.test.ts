@@ -1,6 +1,6 @@
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { honoApp } from "@front-api/app";
 import assert from "assert";
 import { describe, expect, it, vi } from "vitest";
@@ -144,9 +144,8 @@ describe("workspaceAuth factory — SSO enforcement", () => {
     const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
     await enforceSSO(workspace.sId);
 
-    const { getWorkOSSessionWithSetCookies } = await import(
-      "@app/lib/api/workos/user"
-    );
+    const { getWorkOSSessionWithSetCookies } =
+      await import("@app/lib/api/workos/user");
     const { session } = await getWorkOSSessionWithSetCookies(undefined);
     assert(session, "Expected a mocked session.");
     vi.mocked(getWorkOSSessionWithSetCookies).mockResolvedValue({

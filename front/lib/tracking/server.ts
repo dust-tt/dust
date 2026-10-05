@@ -1,3 +1,4 @@
+import type { UserResource } from "../resources/user_resource";
 import { PostHogServerSideTracking } from "@app/lib/api/posthog";
 import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
@@ -20,7 +21,6 @@ import type {
   WorkspaceType,
 } from "@app/types/user";
 import keyBy from "lodash/keyBy";
-import type { UserResource } from "../resources/user_resource";
 
 export class ServerSideTracking {
   static trackSignup({

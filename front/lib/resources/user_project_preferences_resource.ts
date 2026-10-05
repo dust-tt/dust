@@ -12,8 +12,7 @@ import { SpaceResource } from "./space_resource";
 import { UserProjectPreferencesModel } from "./storage/models/user_project_preferences";
 import { makeSId } from "./string_ids";
 
-export interface UserProjectPreferencesResource
-  extends ReadonlyAttributesType<UserProjectPreferencesModel> {}
+export interface UserProjectPreferencesResource extends ReadonlyAttributesType<UserProjectPreferencesModel> {}
 
 export class UserProjectPreferencesResource extends BaseResource<UserProjectPreferencesModel> {
   static model: typeof UserProjectPreferencesModel =

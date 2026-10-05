@@ -1,16 +1,16 @@
+import { ArrowRight, LegacyButton as Button, Icon } from "@dust-tt/sparkle";
 import { H2, P } from "@marketing/components/home/ContentComponents";
+import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
+import LandingLayout from "@marketing/components/home/LandingLayout";
+import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import { HomeEyebrow } from "@marketing/components/home/content/Product/HomeEyebrow";
 import {
   HomeReveal,
   HomeRevealStyles,
 } from "@marketing/components/home/content/Product/HomeReveal";
-import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
-import LandingLayout from "@marketing/components/home/LandingLayout";
-import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import { HomeTrustedMarqueeCompact } from "@marketing/components/home/content/Product/HomeTrustedSection";
-import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
 import { cn } from "@marketing/components/poke/shadcn/lib/utils";
-import { ArrowRight, LegacyButton as Button, Icon } from "@dust-tt/sparkle";
+import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement, ReactNode } from "react";

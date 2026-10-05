@@ -1,5 +1,6 @@
-import { useSourcesFormController } from "@app/components/agent_builder/utils";
 import { ConfirmContext } from "@app/components/Confirm";
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
+import { useSourcesFormController } from "@app/components/agent_builder/utils";
 import type { KnowledgeBrowserItem } from "@app/components/data_source_view/browser/knowledgeBrowserItems";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
@@ -13,7 +14,6 @@ import {
   pathToString,
   removeNodeFromTree,
 } from "@app/components/data_source_view/context/utils";
-import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Checkbox, cn, Icon, Separator, Spinner } from "@dust-tt/sparkle";

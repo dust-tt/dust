@@ -1,9 +1,9 @@
+import type { ColorToken } from "./devModeConfig";
+import type { ColorOverrides } from "./devStyleOverrides";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useEffect, useState } from "react";
-import type { ColorToken } from "./devModeConfig";
 import { ALL_TOKENS, COLOR_GROUPS } from "./devModeConfig";
 import { S } from "./devPanelStyles";
-import type { ColorOverrides } from "./devStyleOverrides";
 import {
   injectColorStyles,
   readColorOverrides,

@@ -4,9 +4,9 @@ import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
-import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SandboxFunctionMCPActionFactory } from "@app/tests/utils/SandboxFunctionMCPActionFactory";
 import { createPersistedSandboxFunctionInvocationTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { describe, expect, it, vi } from "vitest";
 

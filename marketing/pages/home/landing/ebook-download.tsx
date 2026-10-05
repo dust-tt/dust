@@ -1,7 +1,7 @@
-import { HomeTrustedMarqueeCompact } from "@marketing/components/home/content/Product/HomeTrustedSection";
+import { Button, Download01 } from "@dust-tt/sparkle";
 import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import { PublicWebsiteLogo } from "@marketing/components/home/PublicWebsiteLogo";
-import { Button, Download01 } from "@dust-tt/sparkle";
+import { HomeTrustedMarqueeCompact } from "@marketing/components/home/content/Product/HomeTrustedSection";
 import Image from "next/image";
 
 // Ungated public endpoint that streams the canonical PDF as an attachment (see

@@ -1,8 +1,8 @@
 import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
 import { RedactedAgentMessage } from "@app/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage";
-import { NotAvailableErrorPage } from "@app/components/pages/builder/agents/NotAvailableErrorPage";
 import Custom404 from "@app/components/pages/Custom404";
+import { NotAvailableErrorPage } from "@app/components/pages/builder/agents/NotAvailableErrorPage";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";

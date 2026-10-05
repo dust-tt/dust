@@ -7,9 +7,9 @@ import {
 import { useKnowledgeBrowserSearch } from "@app/components/data_source_view/browser/useKnowledgeBrowserSearch";
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
 import { findSpaceFromNavigationHistory } from "@app/components/data_source_view/context/utils";
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type { SlashCommandSection } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
 import { toKnowledgeBrowserSlashCommands } from "@app/components/editor/extensions/shared/slash_suggestion/knowledgeBrowserSlashCommands";
-import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type { AttachContextSlashMenuItem } from "@app/components/editor/extensions/shared/slash_suggestion/useAttachContextSlashMenuItems";
 import type {
   DataSourceViewContentNode,

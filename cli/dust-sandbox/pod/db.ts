@@ -1,8 +1,8 @@
 import type { Changes, SQLQueryBindings, Statement } from "bun:sqlite";
 import { Database } from "bun:sqlite";
-import { existsSync } from "node:fs";
 import type { BunSQLiteDatabase } from "drizzle-orm/bun-sqlite";
 import { drizzle } from "drizzle-orm/bun-sqlite";
+import { existsSync } from "node:fs";
 
 import { invocationEnv } from "./context.ts";
 

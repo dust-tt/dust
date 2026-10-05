@@ -16,9 +16,8 @@ export interface KillSwitchesForCell {
 
 export function usePokeKillSwitchesAllCells() {
   const { cells } = useCellContext();
-  const [killSwitchesByCell, setKillSwitchesByCell] = useState<
-    KillSwitchesForCell[]
-  >(emptyArray());
+  const [killSwitchesByCell, setKillSwitchesByCell] =
+    useState<KillSwitchesForCell[]>(emptyArray());
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);

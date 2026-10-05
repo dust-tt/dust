@@ -9,9 +9,9 @@ import type {
   ConfigurationState,
   SheetState,
 } from "@app/components/agent_builder/skills/types";
-import { getDefaultMCPAction } from "@app/components/shared/tools_picker/formDefaults";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import { getDefaultMCPAction } from "@app/components/shared/tools_picker/formDefaults";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { nameToStorageFormat } from "@app/lib/actions/default_mcp_action";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";

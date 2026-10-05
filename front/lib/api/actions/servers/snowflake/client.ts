@@ -1,4 +1,3 @@
-import { createPrivateKey } from "node:crypto";
 import { parseOptionalInt } from "@app/lib/utils/parseOptionalInt";
 import { escapeSnowflakeIdentifier } from "@app/lib/utils/snowflake";
 import logger from "@app/logger/logger";
@@ -7,6 +6,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
+import { createPrivateKey } from "node:crypto";
 import type {
   Connection,
   ConnectionOptions,

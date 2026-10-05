@@ -1,8 +1,9 @@
 import type { AgentBuilderTriggerType } from "@app/components/agent_builder/agentBuilderFormSchema";
-import { ScheduleEditionSheetContent } from "@app/components/agent_builder/triggers/schedule/ScheduleEditionSheet";
 import { TriggerSelectionPageContent } from "@app/components/agent_builder/triggers/TriggerSelectionPage";
 import type { SheetMode } from "@app/components/agent_builder/triggers/TriggerViewsSheet";
+import { ScheduleEditionSheetContent } from "@app/components/agent_builder/triggers/schedule/ScheduleEditionSheet";
 import { WebhookEditionSheetContent } from "@app/components/agent_builder/triggers/webhook/WebhookEditionSheet";
+import { RestoreAgentDialog } from "@app/components/assistant/RestoreAgentDialog";
 import { AgentDetailsButtonBar } from "@app/components/assistant/details/AgentDetailsButtonBar";
 import { EditedDot } from "@app/components/assistant/details/DetailsSectionHeading";
 import {
@@ -15,7 +16,6 @@ import { AgentInsightsTab } from "@app/components/assistant/details/tabs/AgentIn
 import { AgentMemoryTab } from "@app/components/assistant/details/tabs/AgentMemoryTab";
 import { AgentTriggersTab } from "@app/components/assistant/details/tabs/AgentTriggersTab";
 import { useTriggerSheetState } from "@app/components/assistant/details/useTriggerSheetState";
-import { RestoreAgentDialog } from "@app/components/assistant/RestoreAgentDialog";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/api/actions/servers/agent_memory/metadata";

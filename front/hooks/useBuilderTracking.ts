@@ -47,7 +47,7 @@ export function useBuilderTracking({
       action: TRACKING_ACTIONS.OPEN,
       extra: { entry_point: entryPoint },
     });
-  // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, []);
 
   const trackSave = useCallback(

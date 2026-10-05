@@ -1,9 +1,7 @@
 import { FIREWORKS_GLM_5P3_MODEL_CONFIG } from "@app/types/assistant/models/fireworks";
 
 export function WithDustZAiGlm53Config<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class DustZAiGlm53 extends Base {
     static readonly displayName = "GLM-5.3";

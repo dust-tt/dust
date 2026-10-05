@@ -21,13 +21,17 @@ function effortSentToProvider(
 }
 
 describe.each(Object.values(DUST_STREAM_ENDPOINTS))("$id", (endpoint) => {
-  it.each(
-    ORDERED_REASONING_EFFORTS
-  )("supports %s exactly when the provider receives that same effort", (effort) => {
-    const isSupported = endpoint.modelConfig.supportedReasoningEfforts[effort];
+  it.each(ORDERED_REASONING_EFFORTS)(
+    "supports %s exactly when the provider receives that same effort",
+    (effort) => {
+      const isSupported =
+        endpoint.modelConfig.supportedReasoningEfforts[effort];
 
-    expect(isSupported).toBe(effortSentToProvider(endpoint, effort) === effort);
-  });
+      expect(isSupported).toBe(
+        effortSentToProvider(endpoint, effort) === effort
+      );
+    }
+  );
 
   it("defaults to a supported effort", () => {
     const { defaultReasoningEffort, supportedReasoningEfforts } =

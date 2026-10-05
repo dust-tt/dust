@@ -53,9 +53,7 @@ const configSchema = anthropicBaseConfigSchema.extend({
 export type ClaudeFableFiveDotOne = z.infer<typeof configSchema>;
 
 export function WithAnthropicClaudeFableFiveDotOneConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class AnthropicClaudeFableFiveDotOne extends Base {
     declare ["constructor"]: BaseEndpointConfiguration<ClaudeFableFiveDotOne>;

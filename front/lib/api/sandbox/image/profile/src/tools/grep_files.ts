@@ -1,5 +1,5 @@
-import { DEFAULT_GREP_MAX_RESULTS } from "../constants";
 import type { Profile } from "../profile";
+import { DEFAULT_GREP_MAX_RESULTS } from "../constants";
 import {
   parseIntArg,
   parseToolArgs,

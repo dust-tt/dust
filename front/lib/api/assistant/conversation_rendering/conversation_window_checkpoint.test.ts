@@ -1,4 +1,3 @@
-import { gunzipSync, gzipSync } from "node:zlib";
 import type { ConversationWindowStateSnapshot } from "@app/lib/api/assistant/conversation_rendering/checkpointed_window_state";
 import {
   computeConversationWindowProfileHash,
@@ -13,6 +12,7 @@ import {
   GPT_5_1_MODEL_CONFIG,
   GPT_5_2_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
+import { gunzipSync, gzipSync } from "node:zlib";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const identity = {
@@ -514,11 +514,12 @@ describe("conversation window checkpoints", () => {
     ],
   ];
 
-  it.each(
-    profileMutations
-  )("invalidates the profile when %s changes", (_name, mutate) => {
-    expect(computeConversationWindowProfileHash(mutate(baseProfile))).not.toBe(
-      computeConversationWindowProfileHash(baseProfile)
-    );
-  });
+  it.each(profileMutations)(
+    "invalidates the profile when %s changes",
+    (_name, mutate) => {
+      expect(
+        computeConversationWindowProfileHash(mutate(baseProfile))
+      ).not.toBe(computeConversationWindowProfileHash(baseProfile));
+    }
+  );
 });

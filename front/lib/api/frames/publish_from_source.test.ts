@@ -12,9 +12,9 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import {
   FRAME_MANIFEST_FILE,
   FrameManifestSchema,
@@ -547,33 +547,32 @@ describe("publishFrameV2FromSource", () => {
       manifestContent: functionManifest,
       extraSources: functionSources,
     },
-  ])("rejects a manifest declaring $declares with flags $flags", async ({
-    flags,
-    manifestContent,
-    extraSources,
-  }) => {
-    const { auth, conversation, frame, manifestPath } = await setup({
-      manifestContent,
-      extraSources,
-    });
-    for (const flag of flags) {
-      await FeatureFlagFactory.basic(auth, flag);
+  ])(
+    "rejects a manifest declaring $declares with flags $flags",
+    async ({ flags, manifestContent, extraSources }) => {
+      const { auth, conversation, frame, manifestPath } = await setup({
+        manifestContent,
+        extraSources,
+      });
+      for (const flag of flags) {
+        await FeatureFlagFactory.basic(auth, flag);
+      }
+
+      const result = await publishFrameV2FromSource(auth, {
+        conversation,
+        frame,
+        manifestPath,
+      });
+
+      assert(result.isErr());
+      expect(result.error).toMatchObject({ code: "invalid_manifest" });
+      expect(result.error.message).toContain(
+        "Frame functions and databases are not enabled"
+      );
+      const reloaded = await FileResource.fetchById(auth, frame.sId);
+      expect(reloaded?.useCaseMetadata?.activePublicationId).toBeUndefined();
     }
-
-    const result = await publishFrameV2FromSource(auth, {
-      conversation,
-      frame,
-      manifestPath,
-    });
-
-    assert(result.isErr());
-    expect(result.error).toMatchObject({ code: "invalid_manifest" });
-    expect(result.error.message).toContain(
-      "Frame functions and databases are not enabled"
-    );
-    const reloaded = await FileResource.fetchById(auth, frame.sId);
-    expect(reloaded?.useCaseMetadata?.activePublicationId).toBeUndefined();
-  });
+  );
 
   it("infers TSX source content type from its extension", async () => {
     const { auth, conversation, frame, manifestPath } = await setup({

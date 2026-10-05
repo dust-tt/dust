@@ -36,12 +36,15 @@ describe("streamErrorToErrorEvent", () => {
     [404, "not_found_error", "dust"],
     [429, "rate_limit_error", "dust"],
     [503, "overloaded_error", "provider"],
-  ] as const)("maps HTTP %i to %s from %s", (status, expectedType, errorSource) => {
-    const err = new APIError(status, {}, "http failure", undefined);
-    const result = streamErrorToErrorEvent(metadata, err);
-    expect(result.content.type).toBe(expectedType);
-    expect(result.content.errorSource).toBe(errorSource);
-  });
+  ] as const)(
+    "maps HTTP %i to %s from %s",
+    (status, expectedType, errorSource) => {
+      const err = new APIError(status, {}, "http failure", undefined);
+      const result = streamErrorToErrorEvent(metadata, err);
+      expect(result.content.type).toBe(expectedType);
+      expect(result.content.errorSource).toBe(errorSource);
+    }
+  );
 
   it("maps a generic 5xx status to server_error from the provider", () => {
     const err = new APIError(500, {}, "kaboom", undefined);

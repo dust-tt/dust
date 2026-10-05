@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto";
-import { MIMEType } from "node:util";
 import type { FileSystemScope } from "@app/lib/api/file_system/namespace_scope";
 import type {
   FileSystemContentType,
@@ -40,6 +38,8 @@ import {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { randomUUID } from "node:crypto";
+import { MIMEType } from "node:util";
 import type { Attributes, Transaction } from "sequelize";
 import { Op, QueryTypes } from "sequelize";
 import { z } from "zod";
@@ -96,8 +96,7 @@ type SetExecutableBitsOptions = Pick<
   "executableBits"
 >;
 
-export interface FileSystemNodeResource
-  extends ReadonlyAttributesType<FileSystemNodeModel> {}
+export interface FileSystemNodeResource extends ReadonlyAttributesType<FileSystemNodeModel> {}
 
 export class FileSystemNodeResource extends BaseResource<FileSystemNodeModel> {
   static model: ModelStaticWorkspaceAware<FileSystemNodeModel> =

@@ -21,16 +21,16 @@ import {
 } from "@app/components/markdown/InstructionBlock";
 import { quickReplyDirective } from "@app/components/markdown/QuickReplyBlock";
 import {
+  getTaskDirectiveBlock,
+  taskDirective,
+} from "@app/components/markdown/TaskDirectiveBlock";
+import { visualizationDirective } from "@app/components/markdown/VisualizationBlock";
+import {
   batchSuggestionDirective,
   getBatchSuggestionPlugin,
 } from "@app/components/markdown/suggestion/BatchSuggestionDirective";
 import { extractBatchIds } from "@app/components/markdown/suggestion/suggestion_directives";
-import {
-  getTaskDirectiveBlock,
-  taskDirective,
-} from "@app/components/markdown/TaskDirectiveBlock";
 import { toolDirective } from "@app/components/markdown/tool/tool";
-import { visualizationDirective } from "@app/components/markdown/VisualizationBlock";
 import {
   agentMentionDirective,
   getAgentMentionPlugin,

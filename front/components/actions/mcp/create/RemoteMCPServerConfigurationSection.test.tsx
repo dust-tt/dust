@@ -55,18 +55,19 @@ describe("Static OAuth callback instructions", () => {
   it.each([
     { name: "custom server", defaultServerConfig: undefined },
     { name: "catalog preset", defaultServerConfig: PRESET },
-  ])("shows the server's configured callback for a $name", async ({
-    defaultServerConfig,
-  }) => {
-    const fetcher = vi.fn().mockResolvedValue({ redirectUri: REDIRECT_URI });
-    render(
-      <TestForm fetcher={fetcher} defaultServerConfig={defaultServerConfig} />
-    );
+  ])(
+    "shows the server's configured callback for a $name",
+    async ({ defaultServerConfig }) => {
+      const fetcher = vi.fn().mockResolvedValue({ redirectUri: REDIRECT_URI });
+      render(
+        <TestForm fetcher={fetcher} defaultServerConfig={defaultServerConfig} />
+      );
 
-    expect(await screen.findByText(REDIRECT_URI)).toBeInTheDocument();
-    expect(fetcher).toHaveBeenCalledWith(CALLBACK_ENDPOINT);
-    expect(screen.queryByText(/app\.dust\.tt/)).not.toBeInTheDocument();
-  });
+      expect(await screen.findByText(REDIRECT_URI)).toBeInTheDocument();
+      expect(fetcher).toHaveBeenCalledWith(CALLBACK_ENDPOINT);
+      expect(screen.queryByText(/app\.dust\.tt/)).not.toBeInTheDocument();
+    }
+  );
 
   it("does not show a browser-computed callback while loading", () => {
     const fetcher = vi.fn(() => new Promise(() => {}));
@@ -102,16 +103,16 @@ describe("Static OAuth callback instructions", () => {
     { authMethod: "oauth-static", isOpen: false },
     { authMethod: "oauth-dynamic", isOpen: true },
     { authMethod: "bearer", isOpen: true },
-  ] as const)("does not request instructions for $authMethod with isOpen=$isOpen", ({
-    authMethod,
-    isOpen,
-  }) => {
-    const fetcher = vi.fn();
-    render(
-      <TestForm fetcher={fetcher} authMethod={authMethod} isOpen={isOpen} />
-    );
+  ] as const)(
+    "does not request instructions for $authMethod with isOpen=$isOpen",
+    ({ authMethod, isOpen }) => {
+      const fetcher = vi.fn();
+      render(
+        <TestForm fetcher={fetcher} authMethod={authMethod} isOpen={isOpen} />
+      );
 
-    expect(fetcher).not.toHaveBeenCalled();
-    expect(screen.queryByText(/redirect URI/)).not.toBeInTheDocument();
-  });
+      expect(fetcher).not.toHaveBeenCalled();
+      expect(screen.queryByText(/redirect URI/)).not.toBeInTheDocument();
+    }
+  );
 });

@@ -1,4 +1,6 @@
+import { Chip } from "@dust-tt/sparkle";
 import { TableOfContents } from "@marketing/components/blog/TableOfContents";
+import { renderRichTextFromContentful } from "@marketing/components/contentful/richTextRenderer";
 import { A, Grid, H1, H2 } from "@marketing/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
 import LandingLayout from "@marketing/components/home/LandingLayout";
@@ -9,13 +11,11 @@ import {
   getRelatedCustomerStories,
 } from "@marketing/lib/contentful/client";
 import { contentfulImageLoader } from "@marketing/lib/contentful/imageLoader";
-import { renderRichTextFromContentful } from "@marketing/components/contentful/richTextRenderer";
 import { extractTableOfContents } from "@marketing/lib/contentful/tableOfContents";
 import type { CustomerStoryPageProps } from "@marketing/lib/contentful/types";
 import { classNames } from "@marketing/lib/utils";
 import logger from "@marketing/logger/logger";
 import { isString } from "@marketing/types/shared/utils/general";
-import { Chip } from "@dust-tt/sparkle";
 import type { GetStaticPaths, GetStaticProps } from "next";
 import Head from "next/head";
 import Image from "next/image";

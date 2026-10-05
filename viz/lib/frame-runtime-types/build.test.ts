@@ -1,9 +1,9 @@
+import { FRAME_RUNTIME_IMPORT_NAMES } from "@viz/app/lib/frame-runtime-imports";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { FRAME_RUNTIME_IMPORT_NAMES } from "@viz/app/lib/frame-runtime-imports";
 import ts from "typescript";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildFrameRuntimeTypes } from "./build";

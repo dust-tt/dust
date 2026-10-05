@@ -1,24 +1,24 @@
 // @vitest-environment node: adm-zip requires Node builtins (Buffer, zlib)
 // This directive makes them available in the test environment.
 
-import { randomUUID } from "node:crypto";
-import { writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import { importSkillsFromFiles } from "@app/lib/api/skills/detection/files/import_skills";
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
+import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
 import { honoApp } from "@front-api/app";
 import AdmZip from "adm-zip";
 import type formidable from "formidable";
+import { randomUUID } from "node:crypto";
+import { writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/skills/icon_suggestion", () => ({
@@ -313,38 +313,37 @@ describe("GET /api/v1/w/[wId]/skills", () => {
 });
 
 describe("POST /api/v1/w/[wId]/skills", () => {
-  it.each([
-    "error",
-    "skip",
-    "override",
-  ] as const)("rejects overlong skill names before importing any skills with onConflict=%s", async (onConflict) => {
-    const { workspace } = await createPublicApiMockRequest();
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    const validFile = await makeSkillZipFile({
-      name: "Valid Skill",
-      instructions: "Instructions",
-    });
-    const invalidFile = await makeSkillZipFile({
-      name: "a".repeat(257),
-      instructions: "Instructions",
-    });
+  it.each(["error", "skip", "override"] as const)(
+    "rejects overlong skill names before importing any skills with onConflict=%s",
+    async (onConflict) => {
+      const { workspace } = await createPublicApiMockRequest();
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+      const validFile = await makeSkillZipFile({
+        name: "Valid Skill",
+        instructions: "Instructions",
+      });
+      const invalidFile = await makeSkillZipFile({
+        name: "a".repeat(257),
+        instructions: "Instructions",
+      });
 
-    const result = await importSkillsFromFiles(auth, {
-      uploadedFiles: [validFile, invalidFile],
-      source: "api",
-      onConflict,
-    });
+      const result = await importSkillsFromFiles(auth, {
+        uploadedFiles: [validFile, invalidFile],
+        source: "api",
+        onConflict,
+      });
 
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.message).toContain("at most 256 characters");
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("at most 256 characters");
+      }
+      const skills = await SkillResource.fetchByNames(auth, [
+        "Valid Skill",
+        "a".repeat(257),
+      ]);
+      expect(skills).toHaveLength(0);
     }
-    const skills = await SkillResource.fetchByNames(auth, [
-      "Valid Skill",
-      "a".repeat(257),
-    ]);
-    expect(skills).toHaveLength(0);
-  });
+  );
 
   it("imports a skill with a 256-character name", async () => {
     const { workspace } = await createPublicApiMockRequest();

@@ -18,14 +18,14 @@ describe("planModeSkill.isDisabledForAgentLoop", () => {
     ).toBe(false);
   });
 
-  it.each([
-    "run_agent",
-    "agent_handover",
-  ] as const)("disables plan mode for %s child runs", (type) => {
-    expect(
-      planModeSkill.isDisabledForAgentLoop(
-        agentLoopDataWithUserMessage({ type, originMessageId: "msg" })
-      )
-    ).toBe(true);
-  });
+  it.each(["run_agent", "agent_handover"] as const)(
+    "disables plan mode for %s child runs",
+    (type) => {
+      expect(
+        planModeSkill.isDisabledForAgentLoop(
+          agentLoopDataWithUserMessage({ type, originMessageId: "msg" })
+        )
+      ).toBe(true);
+    }
+  );
 });

@@ -1,8 +1,8 @@
 import { PostHogTracker } from "@dust-tt/front/components/app/PostHogTracker";
 import { ErrorBoundary } from "@dust-tt/front/components/error_boundary/ErrorBoundary";
+import { ShareOgPage } from "@dust-tt/front/components/pages/share/ShareOgPage";
 import { SharedFilePage } from "@dust-tt/front/components/pages/share/SharedFilePage";
 import { SharedFramePage } from "@dust-tt/front/components/pages/share/SharedFramePage";
-import { ShareOgPage } from "@dust-tt/front/components/pages/share/ShareOgPage";
 import { CellProvider } from "@dust-tt/front/lib/auth/CellContext";
 import { i18n } from "@dust-tt/front/lib/i18n/i18n";
 import { FetcherProvider } from "@dust-tt/front/lib/swr/FetcherContext";

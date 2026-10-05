@@ -1,15 +1,15 @@
+import type { Logger } from "@app/logger/logger";
 // @ts-nocheck
 import assert from "assert";
 import chunk from "lodash/chunk";
-import type { Logger } from "@app/logger/logger";
 
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
-import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";

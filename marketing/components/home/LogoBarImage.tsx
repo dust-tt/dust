@@ -1,6 +1,6 @@
+import { cn } from "@dust-tt/sparkle";
 import { contentfulImageLoader } from "@marketing/lib/contentful/imageLoader";
 import type { LogoBarLogo } from "@marketing/lib/logo_bars";
-import { cn } from "@dust-tt/sparkle";
 import Image from "next/image";
 
 /**

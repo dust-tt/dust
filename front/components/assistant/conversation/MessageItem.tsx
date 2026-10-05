@@ -1,12 +1,14 @@
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
-import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
-import { contentFragmentToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import { CompactionMessage } from "@app/components/assistant/conversation/CompactionMessage";
 import { ConversationForkNotice } from "@app/components/assistant/conversation/ConversationForkNotice";
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { MentionInvalid } from "@app/components/assistant/conversation/MentionInvalid";
 import { MentionValidationRequired } from "@app/components/assistant/conversation/MentionValidationRequired";
 import { MessageDateIndicator } from "@app/components/assistant/conversation/MessageDateIndicator";
+import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
+import { WakeUpMessage } from "@app/components/assistant/conversation/WakeUpMessage";
+import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
+import { contentFragmentToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import type {
   VirtuosoMessage,
   VirtuosoMessageListContext,
@@ -20,8 +22,6 @@ import {
   isHiddenMessage,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
-import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
-import { WakeUpMessage } from "@app/components/assistant/conversation/WakeUpMessage";
 import { useMessageFeedback } from "@app/hooks/useMessageFeedback";
 import { useReaction } from "@app/hooks/useReaction";
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";

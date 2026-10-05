@@ -1,3 +1,4 @@
+import type { EmbeddingProviderIdType } from "../assistant/models/types";
 import { internalFetch } from "@app/lib/api/internal_fetch";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ProviderVisibility } from "@app/types/connectors/connectors_api";
@@ -37,7 +38,6 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { createParser } from "eventsource-parser";
 import * as t from "io-ts";
 import chunk from "lodash/chunk";
-import type { EmbeddingProviderIdType } from "../assistant/models/types";
 
 export const MAX_CHUNK_SIZE = 512;
 

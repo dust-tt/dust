@@ -1,5 +1,3 @@
-import { menuConfig } from "@marketing/components/home/menu/config";
-import { classNames } from "@marketing/lib/utils";
 import {
   Button,
   ChevronRight,
@@ -14,6 +12,8 @@ import {
   SheetTrigger,
   XClose,
 } from "@dust-tt/sparkle";
+import { menuConfig } from "@marketing/components/home/menu/config";
+import { classNames } from "@marketing/lib/utils";
 import type { LinkProps } from "next/link";
 import Link from "next/link";
 import * as React from "react";

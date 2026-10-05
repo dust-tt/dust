@@ -1,9 +1,9 @@
 import { z } from "zod";
 
+import type { McpTool } from "../types/tools.js";
 import { normalizeError } from "../../utils/errors.js";
 import { processFile } from "../../utils/fileHandling.js";
 import { resolveInSandbox } from "../../utils/sandbox.js";
-import type { McpTool } from "../types/tools.js";
 
 export class ReadFileTool implements McpTool {
   name = "read_file";

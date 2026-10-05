@@ -1,8 +1,8 @@
 import { getShareFrameViewerFiles } from "@app/lib/api/viz/share_frame_viewer_files";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { describe, expect, it } from "vitest";
 

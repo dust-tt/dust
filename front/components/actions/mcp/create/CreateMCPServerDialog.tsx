@@ -1,3 +1,8 @@
+import type {
+  StaticCredentialConfig,
+  StaticCredentialFormHandle,
+} from "@app/components/actions/mcp/MCPServerAuthConnection";
+import { MCPServerAuthConnection } from "@app/components/actions/mcp/MCPServerAuthConnection";
 import { CustomHeadersConfigurationSection } from "@app/components/actions/mcp/create/CustomHeadersConfigurationSection";
 import { InternalBearerTokenSection } from "@app/components/actions/mcp/create/InternalBearerTokenSection";
 import { RemoteMCPServerConfigurationSection } from "@app/components/actions/mcp/create/RemoteMCPServerConfigurationSection";
@@ -13,11 +18,6 @@ import {
   getMCPServerViewNameError,
   handleCreateMCPServerDialogSubmitError,
 } from "@app/components/actions/mcp/forms/utils";
-import type {
-  StaticCredentialConfig,
-  StaticCredentialFormHandle,
-} from "@app/components/actions/mcp/MCPServerAuthConnection";
-import { MCPServerAuthConnection } from "@app/components/actions/mcp/MCPServerAuthConnection";
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useSendNotification } from "@app/hooks/useNotification";

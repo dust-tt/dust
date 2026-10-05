@@ -1,6 +1,6 @@
 import type { Logger } from "@app/logger/logger";
-import { Op } from "sequelize";
 import { chunk } from "lodash";
+import { Op } from "sequelize";
 
 import { UserToolApprovalModel } from "@app/lib/resources/storage/models/user";
 import { makeScript } from "@app/scripts/helpers";

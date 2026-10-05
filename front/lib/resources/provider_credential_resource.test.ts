@@ -90,8 +90,8 @@ vi.mock("@app/types/oauth/oauth_api", async (importOriginal) => {
 });
 
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { ProviderCredentialFactory } from "@app/tests/utils/ProviderCredentialFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Ok } from "@app/types/shared/result";
 
 function getCacheKey(workspaceId: number): string {

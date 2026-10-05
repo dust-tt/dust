@@ -1,7 +1,5 @@
 import type { DustAPI } from "../index";
 import type { RetryOptions } from "./retry";
-import { DEFAULT_RETRY_OPTIONS, withRetry } from "./retry";
-import { MessageStreamImpl } from "./stream";
 import type {
   AgentResponse,
   DustAPIOptions,
@@ -10,6 +8,8 @@ import type {
   SendMessageParams,
   StreamMessageParams,
 } from "./types";
+import { DEFAULT_RETRY_OPTIONS, withRetry } from "./retry";
+import { MessageStreamImpl } from "./stream";
 
 export class AgentsAPI {
   private _client: DustAPI;

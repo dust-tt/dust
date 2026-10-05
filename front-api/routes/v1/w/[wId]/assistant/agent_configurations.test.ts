@@ -1,10 +1,10 @@
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import type { AgentConfigurationWithSkillsType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { WorkspaceType } from "@app/types/user";
@@ -82,29 +82,29 @@ async function setupTestAgents(workspace: WorkspaceType) {
 }
 
 describe("GET /api/v1/w/[wId]/assistant/agent_configurations", () => {
-  it.each([
-    "admin",
-    "user",
-  ] as const)("reports edit permissions for a %s key", async (role) => {
-    const { workspace, key } = await createPublicApiMockRequest({ role });
-    await setupTestAgents(workspace);
+  it.each(["admin", "user"] as const)(
+    "reports edit permissions for a %s key",
+    async (role) => {
+      const { workspace, key } = await createPublicApiMockRequest({ role });
+      await setupTestAgents(workspace);
 
-    const response = await listAgents(workspace, key, { view: "all" });
-    const {
-      agentConfigurations,
-    }: { agentConfigurations: AgentConfigurationWithSkillsType[] } =
-      await response.json();
+      const response = await listAgents(workspace, key, { view: "all" });
+      const {
+        agentConfigurations,
+      }: { agentConfigurations: AgentConfigurationWithSkillsType[] } =
+        await response.json();
 
-    expect(response.status).toBe(200);
-    expect(
-      agentConfigurations.find((a) => a.name === "Published Agent")?.canEdit
-    ).toBe(role === "admin");
-    expect(
-      agentConfigurations
-        .filter((a) => a.scope === "global")
-        .every((a) => !a.canEdit)
-    ).toBe(true);
-  });
+      expect(response.status).toBe(200);
+      expect(
+        agentConfigurations.find((a) => a.name === "Published Agent")?.canEdit
+      ).toBe(role === "admin");
+      expect(
+        agentConfigurations
+          .filter((a) => a.scope === "global")
+          .every((a) => !a.canEdit)
+      ).toBe(true);
+    }
+  );
 
   it("returns unpublished and restricted space agents with the all_unrestricted view", async () => {
     const { workspace, key } = await createPublicApiMockRequest({

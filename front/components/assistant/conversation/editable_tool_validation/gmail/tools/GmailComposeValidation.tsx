@@ -90,8 +90,7 @@ function RecipientRow({ label, value }: RecipientRowProps) {
   );
 }
 
-interface GmailComposeValidationProps
-  extends EditableToolValidationComponentProps {
+interface GmailComposeValidationProps extends EditableToolValidationComponentProps {
   isDraft: boolean;
 }
 

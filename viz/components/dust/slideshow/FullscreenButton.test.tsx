@@ -78,78 +78,79 @@ const versions = [
   },
 ];
 
-describe.each(versions)("$name fullscreen", ({
-  Root,
-  Slide: DeckSlide,
-  presentationLabel,
-}) => {
-  function Counter() {
-    const [count, setCount] = useState(0);
-    return (
-      <button type="button" onClick={() => setCount(count + 1)}>
-        Count: {count}
-      </button>
-    );
-  }
+describe.each(versions)(
+  "$name fullscreen",
+  ({ Root, Slide: DeckSlide, presentationLabel }) => {
+    function Counter() {
+      const [count, setCount] = useState(0);
+      return (
+        <button type="button" onClick={() => setCount(count + 1)}>
+          Count: {count}
+        </button>
+      );
+    }
 
-  it("keeps slide state and navigation when entering, exiting, and leaving via the browser", async () => {
-    render(
-      <Root>
-        <DeckSlide>
-          <Counter />
-        </DeckSlide>
-        <DeckSlide>
-          <h1>Second slide</h1>
-        </DeckSlide>
-      </Root>
-    );
-    const presentation = screen.getByLabelText(presentationLabel, {
-      selector: "main, div",
-    });
-    const controls = within(presentation);
-    const { request, exit } = mockFullscreen(presentation);
-
-    fireEvent.click(controls.getByRole("button", { name: "Count: 0" }));
-    await act(async () =>
-      fireEvent.click(
-        controls.getByRole("button", { name: "Enter fullscreen" })
-      )
-    );
-    expect(request).toHaveBeenCalledWith({ navigationUI: "hide" });
-    expect(controls.getByRole("button", { name: "Count: 1" })).toBeTruthy();
-    await act(async () =>
-      fireEvent.click(controls.getByRole("button", { name: "Exit fullscreen" }))
-    );
-    expect(exit).toHaveBeenCalledOnce();
-    expect(controls.getByRole("button", { name: "Count: 1" })).toBeTruthy();
-
-    await act(async () =>
-      fireEvent.click(
-        controls.getByRole("button", { name: "Enter fullscreen" })
-      )
-    );
-    fireEvent.click(controls.getByRole("button", { name: "Next slide" }));
-    expect(
-      controls.getByRole("heading", { name: "Second slide" })
-    ).toBeTruthy();
-    expect(document.fullscreenElement).toBe(presentation);
-    act(() => {
-      Object.defineProperty(document, "fullscreenElement", {
-        configurable: true,
-        value: null,
+    it("keeps slide state and navigation when entering, exiting, and leaving via the browser", async () => {
+      render(
+        <Root>
+          <DeckSlide>
+            <Counter />
+          </DeckSlide>
+          <DeckSlide>
+            <h1>Second slide</h1>
+          </DeckSlide>
+        </Root>
+      );
+      const presentation = screen.getByLabelText(presentationLabel, {
+        selector: "main, div",
       });
-      document.dispatchEvent(new Event("fullscreenchange"));
+      const controls = within(presentation);
+      const { request, exit } = mockFullscreen(presentation);
+
+      fireEvent.click(controls.getByRole("button", { name: "Count: 0" }));
+      await act(async () =>
+        fireEvent.click(
+          controls.getByRole("button", { name: "Enter fullscreen" })
+        )
+      );
+      expect(request).toHaveBeenCalledWith({ navigationUI: "hide" });
+      expect(controls.getByRole("button", { name: "Count: 1" })).toBeTruthy();
+      await act(async () =>
+        fireEvent.click(
+          controls.getByRole("button", { name: "Exit fullscreen" })
+        )
+      );
+      expect(exit).toHaveBeenCalledOnce();
+      expect(controls.getByRole("button", { name: "Count: 1" })).toBeTruthy();
+
+      await act(async () =>
+        fireEvent.click(
+          controls.getByRole("button", { name: "Enter fullscreen" })
+        )
+      );
+      fireEvent.click(controls.getByRole("button", { name: "Next slide" }));
+      expect(
+        controls.getByRole("heading", { name: "Second slide" })
+      ).toBeTruthy();
+      expect(document.fullscreenElement).toBe(presentation);
+      act(() => {
+        Object.defineProperty(document, "fullscreenElement", {
+          configurable: true,
+          value: null,
+        });
+        document.dispatchEvent(new Event("fullscreenchange"));
+      });
+      expect(
+        controls
+          .getByRole("button", { name: "Enter fullscreen" })
+          .getAttribute("aria-pressed")
+      ).toBe("false");
+      expect(
+        controls.getByRole("heading", { name: "Second slide" })
+      ).toBeTruthy();
     });
-    expect(
-      controls
-        .getByRole("button", { name: "Enter fullscreen" })
-        .getAttribute("aria-pressed")
-    ).toBe("false");
-    expect(
-      controls.getByRole("heading", { name: "Second slide" })
-    ).toBeTruthy();
-  });
-});
+  }
+);
 
 it("disables unsupported fullscreen", () => {
   Object.defineProperty(document, "fullscreenEnabled", {

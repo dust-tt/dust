@@ -1,6 +1,6 @@
 import { ConfirmContext } from "@app/components/Confirm";
-import { AllowSlackWorkflowDialog } from "@app/components/workspace/analytics/automations/AllowSlackWorkflowDialog";
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
+import { AllowSlackWorkflowDialog } from "@app/components/workspace/analytics/automations/AllowSlackWorkflowDialog";
 import { useSlackWorkflowsOverview } from "@app/hooks/useSlackWorkflowsOverview";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";

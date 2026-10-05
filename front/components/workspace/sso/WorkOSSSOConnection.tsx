@@ -1,5 +1,5 @@
-import { ToggleEnforceEnterpriseConnectionModal } from "@app/components/workspace/sso/Toggle";
 import { UpgradePlanDialog } from "@app/components/workspace/UpgradePlanDialog";
+import { ToggleEnforceEnterpriseConnectionModal } from "@app/components/workspace/sso/Toggle";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import {

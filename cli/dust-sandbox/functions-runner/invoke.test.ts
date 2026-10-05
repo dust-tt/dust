@@ -1,7 +1,7 @@
+import type { RequestInput } from "./protocol.ts";
 import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import { invoke } from "./invoke.ts";
-import type { RequestInput } from "./protocol.ts";
 
 const fx = (n: string) => join(import.meta.dir, "fixtures", n);
 const req = (o: Partial<RequestInput> = {}): RequestInput => ({

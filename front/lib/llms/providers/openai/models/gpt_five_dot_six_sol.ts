@@ -2,9 +2,7 @@ import { dropTemperatureWhenReasoning } from "@app/lib/llms/stream/types/configu
 import { GPT_5_6_SOL_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 
 export function WithDustGptFiveDotSixSolConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class DustGptFiveDotSixSol extends Base {
     static readonly displayName = "GPT-5.6 Sol";

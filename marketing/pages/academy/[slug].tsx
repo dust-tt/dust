@@ -1,3 +1,11 @@
+import {
+  Button,
+  Clipboard,
+  ClipboardCheck,
+  cn,
+  Markdown,
+  useCopyToClipboard,
+} from "@dust-tt/sparkle";
 import { LocaleToggle } from "@marketing/components/academy/AcademyComponents";
 import { AcademyQuiz } from "@marketing/components/academy/AcademyQuiz";
 import {
@@ -8,6 +16,10 @@ import {
   ChapterMobileMenuButton,
   ChapterSidebar,
 } from "@marketing/components/academy/ChapterSidebar";
+import {
+  renderRichTextFromContentful,
+  richTextToMarkdown,
+} from "@marketing/components/contentful/richTextRenderer";
 import { Grid, H1, P } from "@marketing/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
 import LandingLayout from "@marketing/components/home/LandingLayout";
@@ -21,10 +33,6 @@ import {
   getSearchableItems,
 } from "@marketing/lib/contentful/client";
 import { contentfulImageLoader } from "@marketing/lib/contentful/imageLoader";
-import {
-  renderRichTextFromContentful,
-  richTextToMarkdown,
-} from "@marketing/components/contentful/richTextRenderer";
 import { extractTableOfContents } from "@marketing/lib/contentful/tableOfContents";
 import type { CoursePageProps } from "@marketing/lib/contentful/types";
 import {
@@ -33,14 +41,6 @@ import {
 } from "@marketing/lib/swr/academy";
 import logger from "@marketing/logger/logger";
 import { isString } from "@marketing/types/shared/utils/general";
-import {
-  Button,
-  Clipboard,
-  ClipboardCheck,
-  cn,
-  Markdown,
-  useCopyToClipboard,
-} from "@dust-tt/sparkle";
 import type { GetServerSideProps } from "next";
 import Head from "next/head";
 import Image from "next/image";

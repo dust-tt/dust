@@ -1,5 +1,5 @@
-import { A } from "@marketing/components/home/ContentComponents";
 import { Button, cn } from "@dust-tt/sparkle";
+import { A } from "@marketing/components/home/ContentComponents";
 import { useState } from "react";
 
 export interface CookieConsentChoices {

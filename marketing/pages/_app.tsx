@@ -26,13 +26,13 @@ const PostHogTrackerEffects = dynamic(
     ),
   { ssr: false }
 );
+import { SparkleContext } from "@dust-tt/sparkle";
 import { RegionSelectionModal } from "@marketing/components/RegionSelectionModal";
 import { NextLinkWrapper } from "@marketing/components/platform/NextLinkWrapper";
 import { FetcherProvider } from "@marketing/components/swr/FetcherContext";
 import { SignUpModalProvider } from "@marketing/hooks/useSignUpModal";
 import { fetcher, fetcherWithBody } from "@marketing/lib/swr/fetcher";
 import { initDatadogLogs } from "@marketing/logger/datadogLogger";
-import { SparkleContext } from "@dust-tt/sparkle";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
 import { useMemo } from "react";

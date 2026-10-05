@@ -1,7 +1,7 @@
 import { MARKUP_MULTIPLIER } from "@app/lib/api/programmatic_usage/common";
 import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { describe, expect, it } from "vitest";
 
 describe("SelfImprovingSkillsUsageResource", () => {

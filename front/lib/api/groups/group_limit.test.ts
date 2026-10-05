@@ -29,15 +29,15 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import {
   mockActiveContract,
   POOL_ONLY_SEATS,
   SEAT_BASED_SEATS,
 } from "@app/tests/utils/metronome_contracts";
-import { UserFactory } from "@app/tests/utils/UserFactory";
-import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { GroupLimit } from "@app/types/api/groups/group_limit";
 import type { WithAccessControl } from "@app/types/resource_permissions";
 import type { LightWorkspaceType } from "@app/types/user";

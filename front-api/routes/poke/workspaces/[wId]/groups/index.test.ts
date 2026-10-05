@@ -1,8 +1,8 @@
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
-import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 

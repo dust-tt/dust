@@ -1,10 +1,10 @@
+import { ToolsList } from "@app/components/actions/mcp/ToolsList";
 import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import {
   encodeMCPToolNameForForm,
   getMCPServerFormDefaults,
   getMCPServerFormSchema,
 } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
-import { ToolsList } from "@app/components/actions/mcp/ToolsList";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { MCPServerViewTypeFactory } from "@app/tests/utils/MCPServerViewTypeFactory";
 import { zodResolver } from "@hookform/resolvers/zod";

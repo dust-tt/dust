@@ -1,3 +1,4 @@
+import type { FilesScope } from "./schemas";
 import {
   SCOPED_PREFIX_CONVERSATION,
   SCOPED_PREFIX_POD,
@@ -9,7 +10,6 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { mcpError, mcpJsonResponse } from "../response";
 import { getDustFileSystemForScope } from "./context";
-import type { FilesScope } from "./schemas";
 import { FILES_SCOPE_SCHEMA } from "./schemas";
 
 function gcsPathToCanonical(

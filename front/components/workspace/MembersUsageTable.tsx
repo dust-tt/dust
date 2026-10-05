@@ -1,8 +1,8 @@
+import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
 import {
   seatTypeChipColor,
   seatTypeDisplayName,
 } from "@app/components/workspace/billing/seatTypeUtils";
-import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
 import {
   buildMemberNameColumn,
   MemberNameSkeleton,

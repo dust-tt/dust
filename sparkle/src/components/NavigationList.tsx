@@ -65,7 +65,8 @@ NavigationList.displayName = "NavigationList";
 export type NavigationListItemStatus = "idle" | "unread" | "blocked" | "error";
 
 interface NavigationListItemProps
-  extends React.HTMLAttributes<HTMLDivElement>,
+  extends
+    React.HTMLAttributes<HTMLDivElement>,
     Omit<LinkWrapperProps, "children" | "className"> {
   selected?: boolean;
   disabled?: boolean;
@@ -247,8 +248,7 @@ const NavigationListItem = React.forwardRef<
 );
 NavigationListItem.displayName = "NavigationListItem";
 
-interface NavigationListItemActionProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface NavigationListItemActionProps extends React.HTMLAttributes<HTMLDivElement> {
   showOnHover?: boolean;
   /** Always show the action button instead of revealing it on hover/focus. */
   forceVisible?: boolean;
@@ -287,8 +287,7 @@ const NavigationListItemAction = React.forwardRef<
 });
 NavigationListItemAction.displayName = "NavigationListItemAction";
 
-interface NavigationListLabelProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface NavigationListLabelProps extends React.HTMLAttributes<HTMLDivElement> {
   label: string;
   icon?: React.ComponentType;
   /** Action element (e.g. a Button) rendered at the right end of the label row. */
@@ -328,8 +327,7 @@ const NavigationListLabel = React.forwardRef<
 
 NavigationListLabel.displayName = "NavigationListLabel";
 
-interface NavigationListCompactLabelProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface NavigationListCompactLabelProps extends React.HTMLAttributes<HTMLDivElement> {
   label: string;
   /** Pin the label to the top of the scroll viewport while its section scrolls. */
   isSticky?: boolean;
@@ -363,8 +361,7 @@ const NavigationListCompactLabel = React.forwardRef<
 
 NavigationListCompactLabel.displayName = "NavigationListCompactLabel";
 
-interface NavigationListCollapsibleSectionProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface NavigationListCollapsibleSectionProps extends React.HTMLAttributes<HTMLDivElement> {
   label: string;
   icon?: React.ComponentType;
   /** Count badge shown next to the label (e.g. number of unread items). */

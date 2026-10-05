@@ -1,3 +1,7 @@
+import type {
+  SensitivityLabelSource,
+  SensitivityLabelsController,
+} from "./types";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { MicrosoftAllowedLabel } from "@app/lib/models/workspace_sensitivity_label_config";
 import {
@@ -6,10 +10,6 @@ import {
 } from "@app/lib/swr/data_classification_labels";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type {
-  SensitivityLabelSource,
-  SensitivityLabelsController,
-} from "./types";
 
 function labelsKey(labels: Iterable<string>): string {
   return JSON.stringify(Array.from(labels).sort());

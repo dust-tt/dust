@@ -1,6 +1,5 @@
 // @vitest-environment node: ZIP inspection requires Node builtins.
 
-import { PassThrough, Readable } from "node:stream";
 import type { FolderArchiveFileSystem } from "@app/lib/api/files/folder_archive";
 import {
   planFolderArchive,
@@ -10,6 +9,7 @@ import type { FileSystemEntry } from "@app/types/api/file_system/types";
 import type { FileSystemMount } from "@app/types/file_system";
 import { Ok } from "@app/types/shared/result";
 import AdmZip from "adm-zip";
+import { PassThrough, Readable } from "node:stream";
 import { describe, expect, it } from "vitest";
 
 const mount: FileSystemMount = {
@@ -122,22 +122,24 @@ describe("planFolderArchive", () => {
     });
   });
 
-  it.each([
-    mount,
-    podMount,
-  ])("allows an empty $kind mount root", async (currentMount) => {
-    const result = await planFolderArchive(
-      makeFileSystem({ mounts: [currentMount] }),
-      currentMount.scopedPrefix
-    );
+  it.each([mount, podMount])(
+    "allows an empty $kind mount root",
+    async (currentMount) => {
+      const result = await planFolderArchive(
+        makeFileSystem({ mounts: [currentMount] }),
+        currentMount.scopedPrefix
+      );
 
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) {
-      throw result.error;
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+      expect(result.value.directories).toEqual([
+        `${currentMount.scopedPrefix}/`,
+      ]);
+      expect(result.value.files).toEqual([]);
     }
-    expect(result.value.directories).toEqual([`${currentMount.scopedPrefix}/`]);
-    expect(result.value.files).toEqual([]);
-  });
+  );
 
   it("rejects a file path", async () => {
     const result = await planFolderArchive(

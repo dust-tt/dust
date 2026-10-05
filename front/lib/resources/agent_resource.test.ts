@@ -16,8 +16,6 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
-import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -27,6 +25,8 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TagFactory } from "@app/tests/utils/TagFactory";
 import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,
@@ -322,47 +322,47 @@ describe("AgentResource", () => {
     expect(await AgentResource.fetchByIds(otherAuth, [agent.sId])).toEqual([]);
   });
 
-  it.each([
-    "admin",
-    "manager",
-  ] as const)("lets the %s role list every custom agent without reading the ones it cannot read", async (role) => {
-    const hiddenAgent = await AgentConfigurationFactory.createTestAgent(
-      testContext.authenticator,
-      { name: "Hidden agent", scope: "hidden" }
-    );
-    const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
-    const restrictedAgent = await AgentConfigurationFactory.createTestAgent(
-      testContext.authenticator,
-      {
-        name: "Restricted agent",
-        scope: "visible",
-        requestedSpaceIds: [restrictedSpace.id],
+  it.each(["admin", "manager"] as const)(
+    "lets the %s role list every custom agent without reading the ones it cannot read",
+    async (role) => {
+      const hiddenAgent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Hidden agent", scope: "hidden" }
+      );
+      const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
+      const restrictedAgent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        {
+          name: "Restricted agent",
+          scope: "visible",
+          requestedSpaceIds: [restrictedSpace.id],
+        }
+      );
+
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, user, { role });
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        testContext.workspace.sId
+      );
+
+      const resources = await AgentResource.fetchByIds(auth, [
+        hiddenAgent.sId,
+        restrictedAgent.sId,
+      ]);
+
+      expect(resources.map((resource) => resource.sId)).toEqual([
+        hiddenAgent.sId,
+        restrictedAgent.sId,
+      ]);
+      for (const resource of resources) {
+        expect(auth.can("list", resource)).toBe(true);
+        expect(auth.can("read", resource)).toBe(false);
+        expect(auth.can("write", resource)).toBe(false);
+        expect(resource.canViewContent).toBe(false);
       }
-    );
-
-    const user = await UserFactory.basic();
-    await MembershipFactory.associate(testContext.workspace, user, { role });
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      testContext.workspace.sId
-    );
-
-    const resources = await AgentResource.fetchByIds(auth, [
-      hiddenAgent.sId,
-      restrictedAgent.sId,
-    ]);
-
-    expect(resources.map((resource) => resource.sId)).toEqual([
-      hiddenAgent.sId,
-      restrictedAgent.sId,
-    ]);
-    for (const resource of resources) {
-      expect(auth.can("list", resource)).toBe(true);
-      expect(auth.can("read", resource)).toBe(false);
-      expect(auth.can("write", resource)).toBe(false);
-      expect(resource.canViewContent).toBe(false);
     }
-  });
+  );
 
   it("grants list to a member who can read the agent", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(
@@ -893,62 +893,62 @@ describe("AgentResource", () => {
     ]).toEqual([true, true, true]);
   });
 
-  it.each([
-    "admin",
-    "user",
-  ] as const)("applies the %s API-key write policy only to workspace custom agents", async (role) => {
-    const { resource: hiddenResource } = await buildAgentInState({
-      scope: "hidden",
-      status: "active",
-      name: "Hidden agent",
-    });
-    const { resource: visibleResource } = await buildAgentInState({
-      scope: "visible",
-      status: "active",
-      name: "Visible agent",
-    });
+  it.each(["admin", "user"] as const)(
+    "applies the %s API-key write policy only to workspace custom agents",
+    async (role) => {
+      const { resource: hiddenResource } = await buildAgentInState({
+        scope: "hidden",
+        status: "active",
+        name: "Hidden agent",
+      });
+      const { resource: visibleResource } = await buildAgentInState({
+        scope: "visible",
+        status: "active",
+        name: "Visible agent",
+      });
 
-    const key =
-      role === "admin"
-        ? await KeyFactory.admin(testContext.globalGroup)
-        : await KeyFactory.regular(testContext.globalGroup);
-    const auth = await Authenticator.fromKey(key, testContext.workspace.sId);
+      const key =
+        role === "admin"
+          ? await KeyFactory.admin(testContext.globalGroup)
+          : await KeyFactory.regular(testContext.globalGroup);
+      const auth = await Authenticator.fromKey(key, testContext.workspace.sId);
 
-    // A regular member session without a grant is the write-denied baseline below.
-    const member = await UserFactory.basic();
-    await MembershipFactory.associate(testContext.workspace, member, {
-      role: "user",
-    });
-    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      member.sId,
-      testContext.workspace.sId
-    );
+      // A regular member session without a grant is the write-denied baseline below.
+      const member = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, member, {
+        role: "user",
+      });
+      const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        member.sId,
+        testContext.workspace.sId
+      );
 
-    // API keys never read hidden agents, but read every visible one.
-    expect(auth.can("read", hiddenResource)).toBe(false);
-    expect(auth.can("read", visibleResource)).toBe(true);
+      // API keys never read hidden agents, but read every visible one.
+      expect(auth.can("read", hiddenResource)).toBe(false);
+      expect(auth.can("read", visibleResource)).toBe(true);
 
-    // Only an admin API key may write workspace custom agents; a member session never can.
-    expect(auth.can("write", hiddenResource)).toBe(role === "admin");
-    expect(memberAuth.can("write", hiddenResource)).toBe(false);
+      // Only an admin API key may write workspace custom agents; a member session never can.
+      expect(auth.can("write", hiddenResource)).toBe(role === "admin");
+      expect(memberAuth.can("write", hiddenResource)).toBe(false);
 
-    // The write policy applies only to workspace custom agents, never to global agents.
-    expect(
-      auth.can(
-        "write",
-        AgentResource.fromGlobalAgent(
-          auth,
-          makeAgentConfiguration({
-            sId: GLOBAL_AGENTS_SID.HELPER,
-            scope: "global",
-            agentModelId: null,
-            name: "Helper",
-            description: "Helper description",
-          })
+      // The write policy applies only to workspace custom agents, never to global agents.
+      expect(
+        auth.can(
+          "write",
+          AgentResource.fromGlobalAgent(
+            auth,
+            makeAgentConfiguration({
+              sId: GLOBAL_AGENTS_SID.HELPER,
+              scope: "global",
+              agentModelId: null,
+              name: "Helper",
+              description: "Helper description",
+            })
+          )
         )
-      )
-    ).toBe(false);
-  });
+      ).toBe(false);
+    }
+  );
 
   it("lets workspace members read visible agents without editing them", async () => {
     const { resource } = await buildAgentInState({
@@ -970,25 +970,25 @@ describe("AgentResource", () => {
     expect(otherAuth.hasPermission("admin", resource)).toBe(false);
   });
 
-  it.each([
-    "draft",
-    "pending",
-  ] as const)("does not grant workspace read to a visible %s agent", async (status) => {
-    const { resource } = await buildAgentInState({
-      scope: "visible",
-      status,
-    });
-    const otherUser = await UserFactory.basic();
-    await MembershipFactory.associate(testContext.workspace, otherUser, {
-      role: "user",
-    });
-    const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      otherUser.sId,
-      testContext.workspace.sId
-    );
+  it.each(["draft", "pending"] as const)(
+    "does not grant workspace read to a visible %s agent",
+    async (status) => {
+      const { resource } = await buildAgentInState({
+        scope: "visible",
+        status,
+      });
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, otherUser, {
+        role: "user",
+      });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        testContext.workspace.sId
+      );
 
-    expect(otherAuth.hasPermission("read", resource)).toBe(false);
-  });
+      expect(otherAuth.hasPermission("read", resource)).toBe(false);
+    }
+  );
 
   it("keeps visible archived versions workspace-readable", async () => {
     const { resource } = await buildAgentInState({

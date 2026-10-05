@@ -4,8 +4,8 @@ import type { DataSourceResource } from "@app/lib/resources/data_source_resource
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { CoreAPI } from "@app/types/core/core_api";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";

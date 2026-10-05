@@ -1,14 +1,14 @@
+import { Check } from "@dust-tt/sparkle";
+import { EbookForm } from "@marketing/components/home/EbookForm";
+import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
+import LandingLayout from "@marketing/components/home/LandingLayout";
+import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import { HomeEyebrow } from "@marketing/components/home/content/Product/HomeEyebrow";
 import {
   HomeReveal,
   HomeRevealStyles,
 } from "@marketing/components/home/content/Product/HomeReveal";
 import { HomeTrustedMarqueeCompact } from "@marketing/components/home/content/Product/HomeTrustedSection";
-import { EbookForm } from "@marketing/components/home/EbookForm";
-import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
-import LandingLayout from "@marketing/components/home/LandingLayout";
-import { PageMetadata } from "@marketing/components/home/PageMetadata";
-import { Check } from "@dust-tt/sparkle";
 import Image from "next/image";
 import type { ReactElement } from "react";
 

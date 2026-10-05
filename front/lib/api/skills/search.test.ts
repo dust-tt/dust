@@ -30,8 +30,8 @@ import {
   MAX_SKILL_SEARCH_WINDOW,
 } from "@app/lib/skill_search/query";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { matchesSkillSearchFilters } from "@app/tests/utils/skill_search";
 import type { SkillSearchFilters } from "@app/types/api/skills";
 import type { estypes } from "@elastic/elasticsearch";
@@ -48,77 +48,78 @@ describe("searchSkills pagination", () => {
     { searchTerm: "Zulu", defaultToFavorites: true, hasFavorites: true },
     { searchTerm: "", defaultToFavorites: false, hasFavorites: true },
     { searchTerm: "", defaultToFavorites: true, hasFavorites: false },
-  ])("lists alphabetical favorites only for an opted-in blank query: %j", async ({
-    searchTerm,
-    defaultToFavorites,
-    hasFavorites,
-  }) => {
-    const { authenticator: auth } = await createResourceTest({ role: "user" });
-    const zulu = await SkillFactory.create(auth, { name: "Zulu" });
-    const beta = await SkillFactory.create(auth, { name: "Beta" });
-    const alpha = await SkillFactory.create(auth, { name: "Alpha" });
-    if (hasFavorites) {
-      const zuluResult = await zulu.setFavorite(auth, true);
-      const betaResult = await beta.setFavorite(auth, true);
-      expect(zuluResult.isOk() && betaResult.isOk()).toBe(true);
-    }
-    const documents = await SkillFactory.createSearchDocuments(auth, [
-      zulu,
-      beta,
-      alpha,
-    ]);
-    mockSearch.mockImplementation(async (request: estypes.SearchRequest) => {
-      const matching = documents
-        .filter((document) =>
-          matchesSkillSearchFilters(document, request.query!)
-        )
-        .toSorted((a, b) => a.name.localeCompare(b.name));
-      const offset = request.from ?? 0;
-      return {
-        hits: {
-          hits: matching
-            .slice(offset, offset + (request.size ?? matching.length))
-            .map((_source) => ({ _source })),
-          total: { value: matching.length, relation: "eq" },
-        },
-      };
-    });
-
-    const result = await searchSkills(auth, {
-      searchTerm,
-      defaultToFavorites,
-      limit: 1,
-    });
-    assert(result.isOk());
-    const favoritesOnly =
-      defaultToFavorites && !searchTerm.trim() && hasFavorites;
-    expect(result.value.skills[0].sId).toBe(
-      favoritesOnly ? beta.sId : alpha.sId
-    );
-    expect(result.value.total).toBe(favoritesOnly ? 2 : 3);
-    expect(result.value.hasMore).toBe(true);
-    expect(result.value.skills[0]).not.toHaveProperty("isFavorite");
-    if (favoritesOnly) {
-      expect(mockSearch.mock.lastCall![0].sort[0]).toEqual({
-        "name.keyword": { order: "asc", missing: "_last" },
+  ])(
+    "lists alphabetical favorites only for an opted-in blank query: %j",
+    async ({ searchTerm, defaultToFavorites, hasFavorites }) => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "user",
       });
-      const next = await searchSkills(auth, {
+      const zulu = await SkillFactory.create(auth, { name: "Zulu" });
+      const beta = await SkillFactory.create(auth, { name: "Beta" });
+      const alpha = await SkillFactory.create(auth, { name: "Alpha" });
+      if (hasFavorites) {
+        const zuluResult = await zulu.setFavorite(auth, true);
+        const betaResult = await beta.setFavorite(auth, true);
+        expect(zuluResult.isOk() && betaResult.isOk()).toBe(true);
+      }
+      const documents = await SkillFactory.createSearchDocuments(auth, [
+        zulu,
+        beta,
+        alpha,
+      ]);
+      mockSearch.mockImplementation(async (request: estypes.SearchRequest) => {
+        const matching = documents
+          .filter((document) =>
+            matchesSkillSearchFilters(document, request.query!)
+          )
+          .toSorted((a, b) => a.name.localeCompare(b.name));
+        const offset = request.from ?? 0;
+        return {
+          hits: {
+            hits: matching
+              .slice(offset, offset + (request.size ?? matching.length))
+              .map((_source) => ({ _source })),
+            total: { value: matching.length, relation: "eq" },
+          },
+        };
+      });
+
+      const result = await searchSkills(auth, {
         searchTerm,
         defaultToFavorites,
         limit: 1,
-        offset: 1,
       });
-      assert(next.isOk());
-      expect(next.value.skills[0].sId).toBe(zulu.sId);
-      expect(next.value.hasMore).toBe(false);
-    } else {
-      const codeDefinedSkillIds =
-        await SkillResource.listAvailableCodeDefinedIds(auth);
-      expect(mockSearch.mock.lastCall![0].query).toEqual(
-        buildSkillSearchQuery(auth, { searchTerm, codeDefinedSkillIds })
+      assert(result.isOk());
+      const favoritesOnly =
+        defaultToFavorites && !searchTerm.trim() && hasFavorites;
+      expect(result.value.skills[0].sId).toBe(
+        favoritesOnly ? beta.sId : alpha.sId
       );
+      expect(result.value.total).toBe(favoritesOnly ? 2 : 3);
+      expect(result.value.hasMore).toBe(true);
+      expect(result.value.skills[0]).not.toHaveProperty("isFavorite");
+      if (favoritesOnly) {
+        expect(mockSearch.mock.lastCall![0].sort[0]).toEqual({
+          "name.keyword": { order: "asc", missing: "_last" },
+        });
+        const next = await searchSkills(auth, {
+          searchTerm,
+          defaultToFavorites,
+          limit: 1,
+          offset: 1,
+        });
+        assert(next.isOk());
+        expect(next.value.skills[0].sId).toBe(zulu.sId);
+        expect(next.value.hasMore).toBe(false);
+      } else {
+        const codeDefinedSkillIds =
+          await SkillResource.listAvailableCodeDefinedIds(auth);
+        expect(mockSearch.mock.lastCall![0].query).toEqual(
+          buildSkillSearchQuery(auth, { searchTerm, codeDefinedSkillIds })
+        );
+      }
     }
-  });
+  );
 
   it("falls back to ordinary search when stored favorites do not match the filters", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
@@ -292,15 +293,23 @@ describe("searchSkills pagination", () => {
     { offset: MAX_SKILL_SEARCH_WINDOW, limit: 1 },
     { offset: MAX_SKILL_SEARCH_WINDOW - 1, limit: 2 },
     { offset: MAX_SKILL_SEARCH_WINDOW - MAX_SKILL_SEARCH_RESULTS + 1 },
-  ])("rejects out-of-range pagination %j before querying Elasticsearch", async (pagination) => {
-    const { authenticator: auth } = await createResourceTest({ role: "user" });
+  ])(
+    "rejects out-of-range pagination %j before querying Elasticsearch",
+    async (pagination) => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "user",
+      });
 
-    const result = await searchSkills(auth, { searchTerm: "", ...pagination });
+      const result = await searchSkills(auth, {
+        searchTerm: "",
+        ...pagination,
+      });
 
-    assert(result.isErr());
-    expect(result.error).toBe("offset_out_of_range");
-    expect(mockSearch).not.toHaveBeenCalled();
-  });
+      assert(result.isErr());
+      expect(result.error).toBe("offset_out_of_range");
+      expect(mockSearch).not.toHaveBeenCalled();
+    }
+  );
 
   it("accepts a page ending exactly at the result window", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
@@ -327,49 +336,53 @@ describe("searchSkills filters and facets", () => {
     mockSearch.mockReset();
   });
 
-  it.each([
-    true,
-    false,
-    undefined,
-  ])("selects the requested skill sources with codeDefinedOnly=%s", async (codeDefinedOnly) => {
-    const { authenticator: auth } = await createResourceTest({ role: "user" });
-    const skill = await SkillFactory.create(auth, { name: "Workspace skill" });
-    const workspaceDocuments = await SkillFactory.createSearchDocuments(auth, [
-      skill,
-    ]);
-    const documents = [
-      ...workspaceDocuments,
-      ...SkillFactory.createCodeDefinedSearchDocuments(),
-    ];
-    mockSearch.mockImplementation(async (request: estypes.SearchRequest) => {
-      const matching = documents.filter((document) =>
-        matchesSkillSearchFilters(document, request.query!)
+  it.each([true, false, undefined])(
+    "selects the requested skill sources with codeDefinedOnly=%s",
+    async (codeDefinedOnly) => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "user",
+      });
+      const skill = await SkillFactory.create(auth, {
+        name: "Workspace skill",
+      });
+      const workspaceDocuments = await SkillFactory.createSearchDocuments(
+        auth,
+        [skill]
       );
-      return {
-        hits: {
-          hits: matching.map((_source) => ({ _source })),
-          total: { value: matching.length, relation: "eq" },
-        },
-      };
-    });
+      const documents = [
+        ...workspaceDocuments,
+        ...SkillFactory.createCodeDefinedSearchDocuments(),
+      ];
+      mockSearch.mockImplementation(async (request: estypes.SearchRequest) => {
+        const matching = documents.filter((document) =>
+          matchesSkillSearchFilters(document, request.query!)
+        );
+        return {
+          hits: {
+            hits: matching.map((_source) => ({ _source })),
+            total: { value: matching.length, relation: "eq" },
+          },
+        };
+      });
 
-    const result = await searchSkills(auth, {
-      searchTerm: "",
-      filters: { codeDefinedOnly },
-    });
+      const result = await searchSkills(auth, {
+        searchTerm: "",
+        filters: { codeDefinedOnly },
+      });
 
-    assert(result.isOk());
-    const availableGlobalIds =
-      await SkillResource.listAvailableCodeDefinedIds(auth);
-    const expectedIds = [
-      ...(codeDefinedOnly !== true ? [skill.sId] : []),
-      ...(codeDefinedOnly !== false ? availableGlobalIds : []),
-    ];
-    expect(result.value.skills.map((item) => item.sId).sort()).toEqual(
-      expectedIds.sort()
-    );
-    expect(result.value.total).toBe(expectedIds.length);
-  });
+      assert(result.isOk());
+      const availableGlobalIds =
+        await SkillResource.listAvailableCodeDefinedIds(auth);
+      const expectedIds = [
+        ...(codeDefinedOnly !== true ? [skill.sId] : []),
+        ...(codeDefinedOnly !== false ? availableGlobalIds : []),
+      ];
+      expect(result.value.skills.map((item) => item.sId).sort()).toEqual(
+        expectedIds.sort()
+      );
+      expect(result.value.total).toBe(expectedIds.length);
+    }
+  );
 
   it("sends the editor, child skill, space and usage filters", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
@@ -569,65 +582,69 @@ describe("code-defined skill search", () => {
     expect(denied.value.skills).toEqual([]);
   });
 
-  it.each([
-    "autocomplete",
-    "name",
-  ] as const)("uses %s matching and offset pagination for a mixed ES page", async (searchType) => {
-    const { authenticator: auth } = await createResourceTest({ role: "user" });
-    const skill = await SkillFactory.create(auth, { name: "WeeklyDeepReport" });
-    const [custom] = await SkillFactory.createSearchDocuments(auth, [skill]);
-    const documents = SkillFactory.createCodeDefinedSearchDocuments();
-    const global = documents.find(
-      (document) => document.skill_id === "go-deep"
-    );
-    assert(global);
-    const hits = [
-      { _source: custom },
-      { _source: global },
-      { _source: { ...custom, skill_id: "last", name: "Deep" } },
-    ];
-    mockSearch.mockImplementation(async (request: estypes.SearchRequest) => ({
-      hits: {
-        hits: hits.slice(
-          request.from ?? 0,
-          (request.from ?? 0) + (request.size ?? hits.length)
-        ),
-        total: { value: hits.length, relation: "eq" },
-      },
-    }));
+  it.each(["autocomplete", "name"] as const)(
+    "uses %s matching and offset pagination for a mixed ES page",
+    async (searchType) => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "user",
+      });
+      const skill = await SkillFactory.create(auth, {
+        name: "WeeklyDeepReport",
+      });
+      const [custom] = await SkillFactory.createSearchDocuments(auth, [skill]);
+      const documents = SkillFactory.createCodeDefinedSearchDocuments();
+      const global = documents.find(
+        (document) => document.skill_id === "go-deep"
+      );
+      assert(global);
+      const hits = [
+        { _source: custom },
+        { _source: global },
+        { _source: { ...custom, skill_id: "last", name: "Deep" } },
+      ];
+      mockSearch.mockImplementation(async (request: estypes.SearchRequest) => ({
+        hits: {
+          hits: hits.slice(
+            request.from ?? 0,
+            (request.from ?? 0) + (request.size ?? hits.length)
+          ),
+          total: { value: hits.length, relation: "eq" },
+        },
+      }));
 
-    const page = await searchSkills(auth, {
-      searchTerm: "deep",
-      searchType,
-      limit: 2,
-    });
-    assert(page.isOk());
-    expect(page.value.skills.map((item) => item.sId)).toEqual([
-      skill.sId,
-      global.skill_id,
-    ]);
-    expect(page.value.total).toBe(3);
-    expect(page.value.hasMore).toBe(true);
-    expect(page.value.skills[1]).not.toHaveProperty("score");
-    expect(mockSearch.mock.calls[0][0].query.bool.must).toEqual([
-      searchType === "name"
-        ? buildNameSearchQuery("deep")
-        : buildNameAutocompleteQuery("deep"),
-    ]);
+      const page = await searchSkills(auth, {
+        searchTerm: "deep",
+        searchType,
+        limit: 2,
+      });
+      assert(page.isOk());
+      expect(page.value.skills.map((item) => item.sId)).toEqual([
+        skill.sId,
+        global.skill_id,
+      ]);
+      expect(page.value.total).toBe(3);
+      expect(page.value.hasMore).toBe(true);
+      expect(page.value.skills[1]).not.toHaveProperty("score");
+      expect(mockSearch.mock.calls[0][0].query.bool.must).toEqual([
+        searchType === "name"
+          ? buildNameSearchQuery("deep")
+          : buildNameAutocompleteQuery("deep"),
+      ]);
 
-    const next = await searchSkills(auth, {
-      searchTerm: "deep",
-      searchType,
-      limit: 2,
-      offset: 2,
-    });
-    assert(next.isOk());
-    expect(next.value.skills.map((item) => item.sId)).toEqual(["last"]);
-    expect(next.value.total).toBe(3);
-    expect(next.value.hasMore).toBe(false);
-    expect(mockSearch.mock.calls[1][0]).toMatchObject({ from: 2, size: 2 });
-    expect(mockSearch.mock.calls[1][0].query).toEqual(
-      mockSearch.mock.calls[0][0].query
-    );
-  });
+      const next = await searchSkills(auth, {
+        searchTerm: "deep",
+        searchType,
+        limit: 2,
+        offset: 2,
+      });
+      assert(next.isOk());
+      expect(next.value.skills.map((item) => item.sId)).toEqual(["last"]);
+      expect(next.value.total).toBe(3);
+      expect(next.value.hasMore).toBe(false);
+      expect(mockSearch.mock.calls[1][0]).toMatchObject({ from: 2, size: 2 });
+      expect(mockSearch.mock.calls[1][0].query).toEqual(
+        mockSearch.mock.calls[0][0].query
+      );
+    }
+  );
 });

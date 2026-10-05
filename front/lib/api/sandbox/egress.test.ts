@@ -1,12 +1,12 @@
-import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import type { RootCommand } from "@app/lib/api/sandbox/root_command";
 import { renderRootCommand } from "@app/lib/api/sandbox/root_command";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { Err, Ok } from "@app/types/shared/result";
 import jwt from "jsonwebtoken";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -655,30 +655,33 @@ describe("sandbox egress helpers", () => {
     "nft_udp_drop_ok" as const,
     "nft_icmp_drop_ok" as const,
     "nft_ipv6_drop_ok" as const,
-  ])("fails closed when %s is false (broader nftables invariant)", async (missing) => {
-    const sandbox = {
-      providerId: "provider-sandbox-id",
-      sId: "sandbox-id",
-      execRoot: vi.fn().mockResolvedValueOnce(
-        new Ok({
-          exitCode: 0,
-          stdout: healthStdout({ [missing]: false }),
-          stderr: "",
-        })
-      ),
-    };
+  ])(
+    "fails closed when %s is false (broader nftables invariant)",
+    async (missing) => {
+      const sandbox = {
+        providerId: "provider-sandbox-id",
+        sId: "sandbox-id",
+        execRoot: vi.fn().mockResolvedValueOnce(
+          new Ok({
+            exitCode: 0,
+            stdout: healthStdout({ [missing]: false }),
+            stderr: "",
+          })
+        ),
+      };
 
-    const result = await ensure(sandbox, { wokeFromSleep: false });
+      const result = await ensure(sandbox, { wokeFromSleep: false });
 
-    expect(result.isErr()).toBe(true);
-    expect(mockLoggerWarn).toHaveBeenCalledWith(
-      expect.objectContaining({
-        event: "egress.enforcement_health_fail",
-        nftablesOk: false,
-      }),
-      expect.any(String)
-    );
-  });
+      expect(result.isErr()).toBe(true);
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: "egress.enforcement_health_fail",
+          nftablesOk: false,
+        }),
+        expect.any(String)
+      );
+    }
+  );
 
   it("does a full restart when the port is not listening", async () => {
     const sandbox = {

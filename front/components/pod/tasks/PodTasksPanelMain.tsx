@@ -1,6 +1,6 @@
 import { normalizePodTaskSearchNeedle } from "@app/components/assistant/conversation/space/conversations/project_tasks/utils";
-import { usePodTasksPanel } from "@app/components/pod/tasks/PodTasksPanelContext";
 import { PodTaskUserSection } from "@app/components/pod/tasks/PodTaskUserSection";
+import { usePodTasksPanel } from "@app/components/pod/tasks/PodTasksPanelContext";
 import { POD_TASK_UNASSIGNED_GROUP_KEY } from "@app/types/project_task";
 import { Spinner } from "@dust-tt/sparkle";
 

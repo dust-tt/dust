@@ -35,8 +35,7 @@ type CleanUpWorkspaceOptions = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-export interface WebhookRequestResource
-  extends ReadonlyAttributesType<WebhookRequestModel> {}
+export interface WebhookRequestResource extends ReadonlyAttributesType<WebhookRequestModel> {}
 
 export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
   static model: ModelStatic<WebhookRequestModel> = WebhookRequestModel;

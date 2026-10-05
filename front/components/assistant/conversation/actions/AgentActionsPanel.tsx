@@ -1,9 +1,9 @@
 import { MCPActionDetails } from "@app/components/actions/mcp/details/MCPActionDetails";
-import { AgentActionsPanelHeader } from "@app/components/assistant/conversation/actions/AgentActionsPanelHeader";
 import {
   parseDataAsMessageIdAndActionId,
   useConversationSidePanelContext,
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { AgentActionsPanelHeader } from "@app/components/assistant/conversation/actions/AgentActionsPanelHeader";
 import type { AgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
 import { useConversationMessageAction } from "@app/hooks/conversations";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";

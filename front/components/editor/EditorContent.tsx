@@ -3,8 +3,9 @@ import { cn } from "@dust-tt/sparkle";
 import { EditorContent as TiptapEditorContent } from "@tiptap/react";
 import type { ComponentProps } from "react";
 
-interface EditorContentProps
-  extends ComponentProps<typeof TiptapEditorContent> {}
+interface EditorContentProps extends ComponentProps<
+  typeof TiptapEditorContent
+> {}
 
 /**
  * @cc [owner:avervaet,label:security] session-replay-masked

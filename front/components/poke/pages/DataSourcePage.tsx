@@ -1,7 +1,7 @@
-import { SlackWorkflowsTable } from "@app/components/poke/data_sources/slack/workflows_table";
-import { ViewDataSourceTable } from "@app/components/poke/data_sources/view";
 import { PokePermissionTree } from "@app/components/poke/PokeConnectorPermissionsTree";
 import { SlackChannelPatternInput } from "@app/components/poke/PokeSlackChannelPatternInput";
+import { SlackWorkflowsTable } from "@app/components/poke/data_sources/slack/workflows_table";
+import { ViewDataSourceTable } from "@app/components/poke/data_sources/view";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import {
   PokeAlert,

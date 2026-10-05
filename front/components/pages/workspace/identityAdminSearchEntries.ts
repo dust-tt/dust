@@ -7,15 +7,15 @@ import {
   AUDIT_LOGS_CONFIGURE_EXPORT_LABEL,
   AUDIT_LOGS_VIEW_LABEL,
 } from "@app/components/workspace/AuditLogsSection";
+import {
+  ADD_DOMAIN_LABEL,
+  DOMAIN_VERIFICATION_TITLE,
+} from "@app/components/workspace/WorkspaceAccessPanel";
 import { AUDIT_LOGS_EMIT_LABEL } from "@app/components/workspace/settings/AuditLogsToggle";
 import {
   ENFORCE_SSO_LABEL,
   SSO_HEADING_LABEL,
 } from "@app/components/workspace/sso/WorkOSSSOConnection";
-import {
-  ADD_DOMAIN_LABEL,
-  DOMAIN_VERIFICATION_TITLE,
-} from "@app/components/workspace/WorkspaceAccessPanel";
 import type { AdminSettingEntry } from "@app/lib/admin/adminSearchTypes";
 import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";

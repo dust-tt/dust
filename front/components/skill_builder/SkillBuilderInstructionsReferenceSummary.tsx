@@ -198,24 +198,18 @@ export function SkillBuilderInstructionsReferenceSummary({
   const referenceItems = useMemo(
     () =>
       [
-        ...knowledgeReferences.map(
-          (item): ReferenceSummaryItem => ({
-            ...item,
-            kind: "knowledge",
-          })
-        ),
-        ...skillReferences.map(
-          (skill): ReferenceSummaryItem => ({
-            ...skill,
-            kind: "skill",
-          })
-        ),
-        ...toolReferences.map(
-          (tool): ReferenceSummaryItem => ({
-            ...tool,
-            kind: "tool",
-          })
-        ),
+        ...knowledgeReferences.map((item): ReferenceSummaryItem => ({
+          ...item,
+          kind: "knowledge",
+        })),
+        ...skillReferences.map((skill): ReferenceSummaryItem => ({
+          ...skill,
+          kind: "skill",
+        })),
+        ...toolReferences.map((tool): ReferenceSummaryItem => ({
+          ...tool,
+          kind: "tool",
+        })),
       ].toSorted(compareReferenceSummaryItems),
     [knowledgeReferences, skillReferences, toolReferences]
   );

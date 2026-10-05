@@ -4,10 +4,10 @@ import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_res
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
-import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { WorkspaceType } from "@app/types/user";
 import assert from "assert";
@@ -352,36 +352,36 @@ describe("AgentSuggestionResource", () => {
       "approved",
       "rejected",
       "outdated",
-    ])("should update a suggestion state to %s", async (newState:
-      | "approved"
-      | "rejected"
-      | "outdated") => {
-      const suggestion = await AgentSuggestionFactory.createInstructions(
-        authenticator,
-        agentConfiguration,
-        {
-          suggestion: {
-            content: "<p>new content</p>",
-            targetBlockId: "block123",
-            type: "replace",
-          },
-        }
-      );
+    ])(
+      "should update a suggestion state to %s",
+      async (newState: "approved" | "rejected" | "outdated") => {
+        const suggestion = await AgentSuggestionFactory.createInstructions(
+          authenticator,
+          agentConfiguration,
+          {
+            suggestion: {
+              content: "<p>new content</p>",
+              targetBlockId: "block123",
+              type: "replace",
+            },
+          }
+        );
 
-      expect(suggestion.state).toBe("pending");
+        expect(suggestion.state).toBe("pending");
 
-      await AgentSuggestionResource.bulkUpdateState(
-        authenticator,
-        [suggestion],
-        newState
-      );
+        await AgentSuggestionResource.bulkUpdateState(
+          authenticator,
+          [suggestion],
+          newState
+        );
 
-      const fetched = await AgentSuggestionResource.fetchById(
-        authenticator,
-        suggestion.sId
-      );
-      expect(fetched?.state).toBe(newState);
-    });
+        const fetched = await AgentSuggestionResource.fetchById(
+          authenticator,
+          suggestion.sId
+        );
+        expect(fetched?.state).toBe(newState);
+      }
+    );
 
     it("should update multiple suggestions at once", async () => {
       const suggestion1 = await AgentSuggestionFactory.createInstructions(

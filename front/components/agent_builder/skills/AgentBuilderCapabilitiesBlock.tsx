@@ -1,3 +1,4 @@
+import { ConfirmContext } from "@app/components/Confirm";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import type {
@@ -16,12 +17,11 @@ import type {
   SheetState,
 } from "@app/components/agent_builder/skills/types";
 import { isCapabilitiesSheetOpen } from "@app/components/agent_builder/skills/types";
-import { ConfirmContext } from "@app/components/Confirm";
 import { useSpacesContext } from "@app/components/shared/SpacesContext";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { BuilderToolCard } from "@app/components/shared/tools_picker/BuilderToolCard";
-import { getDefaultMCPAction } from "@app/components/shared/tools_picker/formDefaults";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import { getDefaultMCPAction } from "@app/components/shared/tools_picker/formDefaults";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { BACKGROUND_IMAGE_STYLE_PROPS } from "@app/components/shared/tools_picker/util";
 import { useSendNotification } from "@app/hooks/useNotification";

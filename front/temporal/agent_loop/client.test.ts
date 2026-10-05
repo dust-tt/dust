@@ -8,8 +8,8 @@ import {
 } from "@app/temporal/agent_loop/config";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { faker } from "@faker-js/faker";
 import { describe, expect, it } from "vitest";
 

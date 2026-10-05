@@ -12,11 +12,11 @@ import {
   searchAnalytics,
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
+import { Authenticator } from "@app/lib/auth";
 import {
   microCreditsToCredits,
   roundCreditsToMicroCredits,
 } from "@app/lib/credits/units";
-import { Authenticator } from "@app/lib/auth";
 import { toFreeMetronomeUserId } from "@app/lib/metronome/constants";
 import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";

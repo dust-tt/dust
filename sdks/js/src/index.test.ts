@@ -3,8 +3,8 @@ import { createServer } from "node:net";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { DustAPI } from "./index";
 import type { LoggerInterface } from "./types";
+import { DustAPI } from "./index";
 
 const RETRY_LOG_MESSAGE =
   "DustAPI retrying fetch after connection closed before response";

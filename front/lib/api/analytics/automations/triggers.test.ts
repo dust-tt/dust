@@ -2,10 +2,10 @@ import { fetchAutomationTriggers } from "@app/lib/api/analytics/automations/trig
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Ok } from "@app/types/shared/result";
 import { afterEach, describe, expect, it, vi } from "vitest";
 

@@ -1,7 +1,7 @@
 import { verifyWorkspaceOAuthConnectionForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerConnectionFactory } from "@app/tests/utils/MCPServerConnectionFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

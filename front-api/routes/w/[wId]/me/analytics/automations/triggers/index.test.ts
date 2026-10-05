@@ -1,7 +1,7 @@
 import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { afterEach, describe, expect, it, vi } from "vitest";

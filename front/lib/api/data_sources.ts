@@ -1,5 +1,6 @@
 // Okay to use public API types because here front is talking to core API.
 
+import type { ConversationResource } from "../resources/conversation_resource";
 import { default as apiConfig, default as config } from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import { sendGitHubDeletionEmail } from "@app/lib/api/email";
@@ -73,7 +74,6 @@ import type {
 } from "@dust-tt/client";
 import assert from "assert";
 import type { Transaction } from "sequelize";
-import type { ConversationResource } from "../resources/conversation_resource";
 
 const CORE_UNKNOWN_DATA_SOURCE_DELETE_ERROR_PREFIX =
   "Failed to delete data source (error: Unknown DataSource: ";

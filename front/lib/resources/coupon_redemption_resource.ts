@@ -19,8 +19,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
-export interface CouponRedemptionResource
-  extends ReadonlyAttributesType<CouponRedemptionModel> {}
+export interface CouponRedemptionResource extends ReadonlyAttributesType<CouponRedemptionModel> {}
 export class CouponRedemptionResource extends BaseResource<CouponRedemptionModel> {
   static model: ModelStaticWorkspaceAware<CouponRedemptionModel> =
     CouponRedemptionModel;

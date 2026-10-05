@@ -1,7 +1,7 @@
+import { Check, ChevronLeft, ChevronRight, cn, Icon } from "@dust-tt/sparkle";
 import { P } from "@marketing/components/home/ContentComponents";
 import { LandingEmailSignup } from "@marketing/components/home/content/Landing/LandingEmailSignup";
 import { TRACKING_AREAS } from "@marketing/lib/tracking";
-import { Check, ChevronLeft, ChevronRight, cn, Icon } from "@dust-tt/sparkle";
 import Image from "next/image";
 import { useState } from "react";
 

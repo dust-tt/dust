@@ -1,8 +1,8 @@
+import { Building01, Globe01, Icon, PuzzlePiece01 } from "@dust-tt/sparkle";
 import { Grid, H2, P } from "@marketing/components/home/ContentComponents";
 import { HomeEyebrow } from "@marketing/components/home/content/Product/HomeEyebrow";
 import { HomeReveal } from "@marketing/components/home/content/Product/HomeReveal";
 import { classNames } from "@marketing/lib/utils";
-import { Building01, Globe01, Icon, PuzzlePiece01 } from "@dust-tt/sparkle";
 import Image from "next/image";
 import type { ComponentType } from "react";
 

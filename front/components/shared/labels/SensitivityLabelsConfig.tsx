@@ -1,6 +1,6 @@
+import type { SensitivityLabelsController } from "./types";
 import type { LightWorkspaceType } from "@app/types/user";
 import { MicrosoftLabelsSelector } from "./MicrosoftLabelsSelector";
-import type { SensitivityLabelsController } from "./types";
 
 interface SensitivityLabelsConfigProps {
   owner: LightWorkspaceType;

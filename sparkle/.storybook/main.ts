@@ -1,6 +1,6 @@
 import type { StorybookConfig } from "@storybook/react-vite";
-import { fileURLToPath } from "url";
 import path from "path";
+import { fileURLToPath } from "url";
 import { searchForWorkspaceRoot } from "vite";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));

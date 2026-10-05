@@ -16,8 +16,7 @@ export type WorkspaceSensitivityLabelConfigType = {
   allowedLabels: AllowedLabel[];
 };
 
-export interface WorkspaceSensitivityLabelConfigResource
-  extends ReadonlyAttributesType<WorkspaceSensitivityLabelConfigModel> {}
+export interface WorkspaceSensitivityLabelConfigResource extends ReadonlyAttributesType<WorkspaceSensitivityLabelConfigModel> {}
 export class WorkspaceSensitivityLabelConfigResource extends BaseResource<WorkspaceSensitivityLabelConfigModel> {
   static model: ModelStatic<WorkspaceSensitivityLabelConfigModel> =
     WorkspaceSensitivityLabelConfigModel;

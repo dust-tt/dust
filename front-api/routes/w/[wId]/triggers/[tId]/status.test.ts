@@ -1,10 +1,10 @@
 import { Authenticator } from "@app/lib/auth";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { TriggerStatus } from "@app/types/assistant/triggers";
 import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
@@ -100,32 +100,33 @@ describe("PATCH /api/w/:wId/triggers/:tId/status", () => {
   it.each<{ target: "enabled" | "disabled" }>([
     { target: "enabled" },
     { target: "disabled" },
-  ])("rejects a non-admin editor setting an admin-locked trigger to $target", async ({
-    target,
-  }) => {
-    const { workspace, user } = await createPrivateApiMockRequest({
-      plan: "creditPriced",
-      method: "PATCH",
-      role: "user",
-    });
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    );
-    const agent = await AgentConfigurationFactory.createTestAgent(auth);
-    const trigger = await TriggerFactory.webhook(auth, {
-      agentConfigurationId: agent.sId,
-      status: "disabled_by_manager",
-    });
+  ])(
+    "rejects a non-admin editor setting an admin-locked trigger to $target",
+    async ({ target }) => {
+      const { workspace, user } = await createPrivateApiMockRequest({
+        plan: "creditPriced",
+        method: "PATCH",
+        role: "user",
+      });
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+      const agent = await AgentConfigurationFactory.createTestAgent(auth);
+      const trigger = await TriggerFactory.webhook(auth, {
+        agentConfigurationId: agent.sId,
+        status: "disabled_by_manager",
+      });
 
-    const response = await patchStatus(workspace, trigger.sId, {
-      status: target,
-    });
+      const response = await patchStatus(workspace, trigger.sId, {
+        status: target,
+      });
 
-    expect(response.status).toBe(403);
-    const updated = await TriggerResource.fetchById(auth, trigger.sId);
-    expect(updated?.status).toBe("disabled_by_manager");
-  });
+      expect(response.status).toBe(403);
+      const updated = await TriggerResource.fetchById(auth, trigger.sId);
+      expect(updated?.status).toBe("disabled_by_manager");
+    }
+  );
 
   it("lets an admin re-enable an admin-locked trigger", async () => {
     const { workspace } = await createPrivateApiMockRequest({
@@ -253,33 +254,33 @@ describe("PATCH /api/w/:wId/triggers/:tId/status", () => {
     { status: "relocating", target: "disabled" },
     { status: "downgraded", target: "enabled" },
     { status: "downgraded", target: "disabled" },
-  ])("rejects toggling a $status trigger to $target", async ({
-    status,
-    target,
-  }) => {
-    const { workspace, user } = await createPrivateApiMockRequest({
-      plan: "creditPriced",
-      method: "PATCH",
-      role: "admin",
-    });
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    );
-    const agent = await AgentConfigurationFactory.createTestAgent(auth);
-    const trigger = await TriggerFactory.webhook(auth, {
-      agentConfigurationId: agent.sId,
-      status,
-    });
+  ])(
+    "rejects toggling a $status trigger to $target",
+    async ({ status, target }) => {
+      const { workspace, user } = await createPrivateApiMockRequest({
+        plan: "creditPriced",
+        method: "PATCH",
+        role: "admin",
+      });
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+      const agent = await AgentConfigurationFactory.createTestAgent(auth);
+      const trigger = await TriggerFactory.webhook(auth, {
+        agentConfigurationId: agent.sId,
+        status,
+      });
 
-    const response = await patchStatus(workspace, trigger.sId, {
-      status: target,
-    });
+      const response = await patchStatus(workspace, trigger.sId, {
+        status: target,
+      });
 
-    expect(response.status).toBe(400);
-    const updated = await TriggerResource.fetchById(auth, trigger.sId);
-    expect(updated?.status).toBe(status);
-  });
+      expect(response.status).toBe(400);
+      const updated = await TriggerResource.fetchById(auth, trigger.sId);
+      expect(updated?.status).toBe(status);
+    }
+  );
 
   it("returns 404 for an unknown trigger", async () => {
     const { workspace } = await createPrivateApiMockRequest({

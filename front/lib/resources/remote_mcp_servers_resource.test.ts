@@ -133,28 +133,28 @@ describe("RemoteMCPServerResource.discoverOAuthMetadata", () => {
       registeredMethod: "client_secret_post",
       clientSecret: "secret",
     },
-  ])("persists the DCR-returned $registeredMethod token authentication method", async ({
-    registeredMethod,
-    clientSecret,
-  }) => {
-    oauthMocks.registerClient.mockResolvedValue({
-      client_id: "registered-client",
-      client_secret: clientSecret,
-      token_endpoint_auth_method: registeredMethod,
-    });
+  ])(
+    "persists the DCR-returned $registeredMethod token authentication method",
+    async ({ registeredMethod, clientSecret }) => {
+      oauthMocks.registerClient.mockResolvedValue({
+        client_id: "registered-client",
+        client_secret: clientSecret,
+        token_endpoint_auth_method: registeredMethod,
+      });
 
-    const workspace = await WorkspaceFactory.basic();
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    const result = await RemoteMCPServerResource.discoverOAuthMetadata(auth, {
-      serverUrl: "https://mcp.example.com/mcp",
-      provider: oauthProvider,
-    });
+      const workspace = await WorkspaceFactory.basic();
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+      const result = await RemoteMCPServerResource.discoverOAuthMetadata(auth, {
+        serverUrl: "https://mcp.example.com/mcp",
+        provider: oauthProvider,
+      });
 
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      expect(result.value.token_endpoint_auth_method).toBe(registeredMethod);
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.token_endpoint_auth_method).toBe(registeredMethod);
+      }
     }
-  });
+  );
 
   it.each([
     {
@@ -173,36 +173,36 @@ describe("RemoteMCPServerResource.discoverOAuthMetadata", () => {
       supportedMethods: undefined,
       requestedMethod: "none",
     },
-  ])("requests $requestedMethod at registration when the server supports $supportedMethods", async ({
-    supportedMethods,
-    requestedMethod,
-  }) => {
-    oauthMocks.discoverAuthorizationServerMetadata.mockResolvedValue({
-      authorization_endpoint: "https://auth.example.com/authorize",
-      registration_endpoint: "https://auth.example.com/register",
-      token_endpoint: "https://auth.example.com/token",
-      token_endpoint_auth_methods_supported: supportedMethods,
-    });
-    oauthMocks.registerClient.mockResolvedValue({
-      client_id: "registered-client",
-    });
+  ])(
+    "requests $requestedMethod at registration when the server supports $supportedMethods",
+    async ({ supportedMethods, requestedMethod }) => {
+      oauthMocks.discoverAuthorizationServerMetadata.mockResolvedValue({
+        authorization_endpoint: "https://auth.example.com/authorize",
+        registration_endpoint: "https://auth.example.com/register",
+        token_endpoint: "https://auth.example.com/token",
+        token_endpoint_auth_methods_supported: supportedMethods,
+      });
+      oauthMocks.registerClient.mockResolvedValue({
+        client_id: "registered-client",
+      });
 
-    const workspace = await WorkspaceFactory.basic();
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    await RemoteMCPServerResource.discoverOAuthMetadata(auth, {
-      serverUrl: "https://mcp.example.com/mcp",
-      provider: oauthProvider,
-    });
+      const workspace = await WorkspaceFactory.basic();
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+      await RemoteMCPServerResource.discoverOAuthMetadata(auth, {
+        serverUrl: "https://mcp.example.com/mcp",
+        provider: oauthProvider,
+      });
 
-    expect(oauthMocks.registerClient).toHaveBeenCalledWith(
-      "https://mcp.example.com/mcp",
-      expect.objectContaining({
-        clientMetadata: expect.objectContaining({
-          token_endpoint_auth_method: requestedMethod,
-        }),
-      })
-    );
-  });
+      expect(oauthMocks.registerClient).toHaveBeenCalledWith(
+        "https://mcp.example.com/mcp",
+        expect.objectContaining({
+          clientMetadata: expect.objectContaining({
+            token_endpoint_auth_method: requestedMethod,
+          }),
+        })
+      );
+    }
+  );
 });
 
 describe("RemoteMCPServerResource.discoverOAuthMetadata egress routing", () => {
@@ -266,24 +266,24 @@ describe("RemoteMCPServerResource.discoverOAuthMetadata egress routing", () => {
       serverUrl: (domain: string) => `http://mcp.${domain}/mcp`,
       expectedAgent: egressMocks.untrustedAgent,
     },
-  ])("routes discovery through $label", async ({
-    serverUrl,
-    expectedAgent,
-  }) => {
-    const { auth, domain } = await setup();
-    const url = serverUrl(domain);
+  ])(
+    "routes discovery through $label",
+    async ({ serverUrl, expectedAgent }) => {
+      const { auth, domain } = await setup();
+      const url = serverUrl(domain);
 
-    const result = await RemoteMCPServerResource.discoverOAuthMetadata(auth, {
-      serverUrl: url,
-      provider: oauthProvider,
-    });
+      const result = await RemoteMCPServerResource.discoverOAuthMetadata(auth, {
+        serverUrl: url,
+        provider: oauthProvider,
+      });
 
-    expect(result.isOk()).toBe(true);
-    expect(egressMocks.undiciFetch).toHaveBeenCalledWith(
-      url,
-      expect.objectContaining({ dispatcher: expectedAgent })
-    );
-  });
+      expect(result.isOk()).toBe(true);
+      expect(egressMocks.undiciFetch).toHaveBeenCalledWith(
+        url,
+        expect.objectContaining({ dispatcher: expectedAgent })
+      );
+    }
+  );
 });
 
 describe("getMCPAuthorizationScope", () => {

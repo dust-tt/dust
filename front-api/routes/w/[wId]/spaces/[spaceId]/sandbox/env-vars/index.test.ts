@@ -1,7 +1,7 @@
 import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SandboxEnvVarFactory } from "@app/tests/utils/SandboxEnvVarFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";

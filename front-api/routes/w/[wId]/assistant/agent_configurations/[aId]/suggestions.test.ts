@@ -4,10 +4,10 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { BatchSuggestionFactory } from "@app/tests/utils/BatchSuggestionFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
-import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { AgentSuggestionState } from "@app/types/suggestions/agent_suggestion";
 import { honoApp } from "@front-api/app";

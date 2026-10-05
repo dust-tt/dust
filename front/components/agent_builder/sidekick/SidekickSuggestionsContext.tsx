@@ -346,7 +346,7 @@ function SidekickSuggestionsProviderContent({
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent(BLUR_EVENT_NAME));
     }, BLUR_DISPATCH_DELAY_MS);
-  // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, []);
 
   // Apply pending instruction suggestions to the editor when they arrive from backend.

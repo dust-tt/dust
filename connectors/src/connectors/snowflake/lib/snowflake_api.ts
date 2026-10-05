@@ -1,4 +1,3 @@
-import { createPrivateKey } from "node:crypto";
 import type {
   RemoteDBDatabase,
   RemoteDBSchema,
@@ -22,6 +21,7 @@ import { Err, Ok } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
+import { createPrivateKey } from "node:crypto";
 import type {
   Connection,
   ConnectionOptions,

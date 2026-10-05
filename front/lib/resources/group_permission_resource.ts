@@ -181,8 +181,7 @@ function autoGroupName({
   return `Group for permission ${grantType} on ${resourceType} (${resourceId})`;
 }
 
-export interface GroupPermissionResource
-  extends ReadonlyAttributesType<GroupPermissionModel> {}
+export interface GroupPermissionResource extends ReadonlyAttributesType<GroupPermissionModel> {}
 export class GroupPermissionResource extends BaseResource<GroupPermissionModel> {
   static model: ModelStatic<GroupPermissionModel> = GroupPermissionModel;
 

@@ -1,10 +1,10 @@
+import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import { SlashCommandDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import {
   buildPickModelSlashCommandItems,
   getDefaultPickModelSlashCommandItemId,
 } from "@app/components/editor/extensions/shared/slash_suggestion/buildPickModelSlashCommandItems";
 import { isSelectModelSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
-import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
-import { SlashCommandDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type { SlashMenuStackFrame } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import { useModelPickerModels } from "@app/components/model_picker/useModelPickerModels";
@@ -16,8 +16,10 @@ import type { LightWorkspaceType } from "@app/types/user";
 import type { SuggestionProps } from "@tiptap/suggestion";
 import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
 
-interface PickModelSubMenuDropdownProps
-  extends Pick<SuggestionProps<SlashCommand>, "clientRect" | "query"> {
+interface PickModelSubMenuDropdownProps extends Pick<
+  SuggestionProps<SlashCommand>,
+  "clientRect" | "query"
+> {
   activeFrame: SlashMenuStackFrame;
   dropdownHeaders?: React.ReactNode;
   onBack: () => void;

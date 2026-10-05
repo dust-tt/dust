@@ -1,5 +1,5 @@
-import { ProtectedRoute } from "@extension/ui/components/auth/ProtectedRoute";
 import { ErrorFallback } from "@extension/ui/components/ErrorFallback";
+import { ProtectedRoute } from "@extension/ui/components/auth/ProtectedRoute";
 import { LoginPage } from "@extension/ui/pages/LoginPage";
 import { MainPage } from "@extension/ui/pages/MainPage";
 import { PodMainPage } from "@extension/ui/pages/PodMainPage";

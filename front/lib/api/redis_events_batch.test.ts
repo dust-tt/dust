@@ -1,5 +1,5 @@
-import { getRedisEventsBatch } from "@app/lib/api/redis_events_batch";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
+import { getRedisEventsBatch } from "@app/lib/api/redis_events_batch";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { subscribe, readEventsAfter } = vi.hoisted(() => ({

@@ -1,13 +1,13 @@
 import { Clock, SyncCloud02 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
-import { getPlatformLogo } from "./requests";
 import type {
   Conversation,
   Trigger,
   TriggerKind,
   TriggerStatus,
 } from "./types";
+import { getPlatformLogo } from "./requests";
 
 // The triggers a member owns: the schedules and webhooks that run an agent on
 // their behalf. The product manages these from the Automations dialog, and the

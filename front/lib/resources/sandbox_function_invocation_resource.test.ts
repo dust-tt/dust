@@ -24,11 +24,11 @@ import { launchSandboxFunctionInvocationWorkflow } from "@app/temporal/sandbox_f
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
-import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import type {
   SandboxFunctionExecutionMode,
   SandboxFunctionInvocationOrigin,
@@ -1045,25 +1045,25 @@ describe("SandboxFunctionInvocationResource", () => {
     });
   });
 
-  it.each([
-    "errored",
-    "succeeded",
-  ] as const)("does not execute an invocation with terminal status %s", async (status) => {
-    const { authenticator, sandbox, invocation } = await setupExecutionTest();
-    const execSpy = vi.spyOn(sandbox, "exec");
+  it.each(["errored", "succeeded"] as const)(
+    "does not execute an invocation with terminal status %s",
+    async (status) => {
+      const { authenticator, sandbox, invocation } = await setupExecutionTest();
+      const execSpy = vi.spyOn(sandbox, "exec");
 
-    if (status === "errored") {
-      await invocation.fail(new Error("execution failed"));
-    } else {
-      await invocation.succeed({ commentId: "comment-1" });
+      if (status === "errored") {
+        await invocation.fail(new Error("execution failed"));
+      } else {
+        await invocation.succeed({ commentId: "comment-1" });
+      }
+
+      const result = await invocation.execute(authenticator);
+
+      expect(result.isOk()).toBe(true);
+      expect(generateSandboxFunctionInvocationToken).not.toHaveBeenCalled();
+      expect(execSpy).not.toHaveBeenCalled();
     }
-
-    const result = await invocation.execute(authenticator);
-
-    expect(result.isOk()).toBe(true);
-    expect(generateSandboxFunctionInvocationToken).not.toHaveBeenCalled();
-    expect(execSpy).not.toHaveBeenCalled();
-  });
+  );
 
   it("clears user identity when the executor differs from the invocation user", async () => {
     const { workspace, sandbox, invocation } = await setupExecutionTest();

@@ -41,10 +41,10 @@ import { join } from "node:path";
 
 import { z } from "zod";
 
+import type { RequestInput } from "./protocol.ts";
 import { AwakeClock } from "./awake_clock.ts";
 import { applyResultSpillPolicy } from "./emit.ts";
 import { invoke } from "./invoke.ts";
-import type { RequestInput } from "./protocol.ts";
 import { BadInputError, parseInput } from "./protocol.ts";
 
 export const WARM_PROTOCOL_VERSION = 2;

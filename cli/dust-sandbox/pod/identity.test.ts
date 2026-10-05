@@ -1,4 +1,3 @@
-import { afterEach, describe, expect, test } from "bun:test";
 import {
   currentUser,
   POD_USER_IDENTITY_ENV,
@@ -6,6 +5,7 @@ import {
   PodUserIdentityError,
   runWithInvocationEnv,
 } from "@dust/pod";
+import { afterEach, describe, expect, test } from "bun:test";
 
 const identity = {
   workspaceId: "w_current",

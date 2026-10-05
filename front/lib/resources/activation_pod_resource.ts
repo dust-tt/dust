@@ -15,8 +15,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { col, fn } from "sequelize";
 
-export interface ActivationPodResource
-  extends ReadonlyAttributesType<ActivationPodModel> {}
+export interface ActivationPodResource extends ReadonlyAttributesType<ActivationPodModel> {}
 export class ActivationPodResource extends BaseResource<ActivationPodModel> {
   static model: ModelStaticWorkspaceAware<ActivationPodModel> =
     ActivationPodModel;

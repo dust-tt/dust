@@ -33,6 +33,7 @@ import {
 import type { ColumnDef } from "@tanstack/react-table";
 import { type DragEvent, useEffect, useMemo, useState } from "react";
 
+import type { DataSource } from "../data/types";
 import {
   getDataSourceChildren,
   getDataSourceIcon,
@@ -42,7 +43,6 @@ import {
   isDataSourceFolder,
   sortDataSourcesForDisplay,
 } from "../data/dataSources";
-import type { DataSource } from "../data/types";
 import { getUserById } from "../data/users";
 import { Breadcrumbs, type BreadcrumbsItem } from "./BreadcrumbsDnd";
 import { DataTable } from "./DataTableDnd";

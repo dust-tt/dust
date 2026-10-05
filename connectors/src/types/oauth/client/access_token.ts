@@ -1,8 +1,8 @@
+import type { OAuthConnectionType, OAuthProvider } from "../../oauth/lib";
+import type { OAuthAPIError } from "../../oauth/oauth_api";
 import type { LoggerInterface, Result } from "@dust-tt/client";
 import { Ok } from "@dust-tt/client";
 import throttle from "lodash/throttle";
-import type { OAuthConnectionType, OAuthProvider } from "../../oauth/lib";
-import type { OAuthAPIError } from "../../oauth/oauth_api";
 import { OAuthAPI } from "../../oauth/oauth_api";
 
 const OAUTH_ACCESS_TOKEN_CACHE_TTL = 1000 * 60 * 5;

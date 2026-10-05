@@ -15,9 +15,8 @@ async function loadUiCatalog(locale: LocaleOverride): Promise<Messages> {
   }
   // Loaded on demand to keep pseudo-localization out of the main bundle and of front-api, which
   // bundles `lib/i18n/i18n.ts`.
-  const { pseudoLocalizeMessages } = await import(
-    "@app/lib/i18n/pseudo_locale"
-  );
+  const { pseudoLocalizeMessages } =
+    await import("@app/lib/i18n/pseudo_locale");
   return pseudoLocalizeMessages(await loadCatalog(DEFAULT_LOCALE));
 }
 

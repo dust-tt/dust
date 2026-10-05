@@ -1,9 +1,9 @@
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TagFactory } from "@app/tests/utils/TagFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -49,45 +49,47 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
     searchAgents.mockReset();
   });
 
-  it.each([
-    "user",
-    "admin",
-  ] as const)("only names visible skills in facets for a %s", async (role) => {
-    const { workspace, auth } = await setup(role);
-    const published = await SkillFactory.create(auth, {
-      name: "Published",
-      availability: "workspace_users",
-      addCurrentUserAsEditor: false,
-    });
-    const edited = await SkillFactory.create(auth, { name: "Edited" });
-    const unpublished = await SkillFactory.create(auth, {
-      name: "Unpublished",
-      addCurrentUserAsEditor: false,
-    });
-    searchAgents.mockResolvedValue(
-      new Ok({
-        agents: [],
-        total: 0,
-        hasMore: false,
-        facets: {
-          skills: [
-            { value: unpublished.sId, count: 3 },
-            { value: published.sId, count: 2 },
-            { value: edited.sId, count: 1 },
-            { value: "missing-skill", count: 4 },
-          ],
-        },
-      })
-    );
+  it.each(["user", "admin"] as const)(
+    "only names visible skills in facets for a %s",
+    async (role) => {
+      const { workspace, auth } = await setup(role);
+      const published = await SkillFactory.create(auth, {
+        name: "Published",
+        availability: "workspace_users",
+        addCurrentUserAsEditor: false,
+      });
+      const edited = await SkillFactory.create(auth, { name: "Edited" });
+      const unpublished = await SkillFactory.create(auth, {
+        name: "Unpublished",
+        addCurrentUserAsEditor: false,
+      });
+      searchAgents.mockResolvedValue(
+        new Ok({
+          agents: [],
+          total: 0,
+          hasMore: false,
+          facets: {
+            skills: [
+              { value: unpublished.sId, count: 3 },
+              { value: published.sId, count: 2 },
+              { value: edited.sId, count: 1 },
+              { value: "missing-skill", count: 4 },
+            ],
+          },
+        })
+      );
 
-    const response = await searchRequest(workspace.sId, { facets: ["skills"] });
+      const response = await searchRequest(workspace.sId, {
+        facets: ["skills"],
+      });
 
-    expect(response.status).toBe(200);
-    expect((await response.json()).facets.skills).toEqual([
-      edited.toSearchFacetJSON(1),
-      published.toSearchFacetJSON(2),
-    ]);
-  });
+      expect(response.status).toBe(200);
+      expect((await response.json()).facets.skills).toEqual([
+        edited.toSearchFacetJSON(1),
+        published.toSearchFacetJSON(2),
+      ]);
+    }
+  );
 
   it("routes search results with their deduplicated editors", async () => {
     const { workspace, user } = await setup();
@@ -183,24 +185,24 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
     });
   });
 
-  it.each([
-    "autocomplete",
-    "name",
-  ] as const)("passes %s search through", async (searchType) => {
-    const { workspace } = await setup();
-    searchAgents.mockResolvedValue(
-      new Ok({ agents: [], total: 0, hasMore: false, facets: {} })
-    );
-    const response = await searchRequest(workspace.sId, {
-      query: "Write",
-      searchType,
-    });
-    expect(response.status).toBe(200);
-    expect(searchAgents).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ searchTerm: "Write", searchType })
-    );
-  });
+  it.each(["autocomplete", "name"] as const)(
+    "passes %s search through",
+    async (searchType) => {
+      const { workspace } = await setup();
+      searchAgents.mockResolvedValue(
+        new Ok({ agents: [], total: 0, hasMore: false, facets: {} })
+      );
+      const response = await searchRequest(workspace.sId, {
+        query: "Write",
+        searchType,
+      });
+      expect(response.status).toBe(200);
+      expect(searchAgents).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ searchTerm: "Write", searchType })
+      );
+    }
+  );
 
   it.each([
     { limit: 101 },

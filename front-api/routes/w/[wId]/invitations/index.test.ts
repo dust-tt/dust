@@ -1,9 +1,9 @@
 import { Authenticator } from "@app/lib/auth";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipInvitationFactory } from "@app/tests/utils/MembershipInvitationFactory";
 import { PlanFactory } from "@app/tests/utils/PlanFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import sgMail from "@sendgrid/mail";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

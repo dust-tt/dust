@@ -1,13 +1,13 @@
 import { BigQueryOptionsView } from "@app/components/data_source/BigQueryOptionsView";
 import { createConnectorOptionsPdfEnabled } from "@app/components/data_source/ConnectorOptionsPdfEnabled";
 import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
-import { GongOptionComponent } from "@app/components/data_source/gong/GongOptionComponent";
 import { IntercomConfigView } from "@app/components/data_source/IntercomConfigView";
 import { MicrosoftOAuthExtraConfig } from "@app/components/data_source/MicrosoftOAuthExtraConfig";
 import { SlackOAuthExtraConfig } from "@app/components/data_source/SlackOAuthExtraConfig";
-import { SalesforceOauthExtraConfig } from "@app/components/data_source/salesforce/SalesforceOAuthExtractConfig";
 import { ZendeskConfigView } from "@app/components/data_source/ZendeskConfigView";
 import { ZendeskOAuthExtraConfig } from "@app/components/data_source/ZendeskOAuthExtraConfig";
+import { GongOptionComponent } from "@app/components/data_source/gong/GongOptionComponent";
+import { SalesforceOauthExtraConfig } from "@app/components/data_source/salesforce/SalesforceOAuthExtractConfig";
 import { SensitivityLabelsConfig } from "@app/components/shared/labels/SensitivityLabelsConfig";
 import type { SensitivityLabelsController } from "@app/components/shared/labels/types";
 import { CONNECTOR_METADATA } from "@app/lib/connector_metadata";

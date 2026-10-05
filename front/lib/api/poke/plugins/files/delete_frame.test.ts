@@ -1,10 +1,10 @@
 import { deleteFramePlugin } from "@app/lib/api/poke/plugins/files/delete_frame";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { DEFAULT_POD_FILE_TAB_ICON } from "@app/types/pod_file_tab";
 import { beforeEach, describe, expect, it, vi } from "vitest";

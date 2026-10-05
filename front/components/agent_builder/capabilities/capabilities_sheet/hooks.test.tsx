@@ -62,46 +62,45 @@ function renderSelection(
 }
 
 describe("useSkillSelection", () => {
-  it.each([
-    true,
-    false,
-  ])("appends pages and selects using canWrite=%s without fetching details", async (canWrite) => {
-    const { result, fetcher, fetcherWithBody } = renderSelection(
-      new Set(),
-      canWrite
-    );
-    await waitFor(() =>
-      expect(result.current.filteredSkills.map((skill) => skill.sId)).toEqual([
-        "first",
-      ])
-    );
-    expect(fetcher).not.toHaveBeenCalled();
+  it.each([true, false])(
+    "appends pages and selects using canWrite=%s without fetching details",
+    async (canWrite) => {
+      const { result, fetcher, fetcherWithBody } = renderSelection(
+        new Set(),
+        canWrite
+      );
+      await waitFor(() =>
+        expect(result.current.filteredSkills.map((skill) => skill.sId)).toEqual(
+          ["first"]
+        )
+      );
+      expect(fetcher).not.toHaveBeenCalled();
 
-    const [first] = result.current.filteredSkills;
-    act(() => result.current.handleSkillToggle(first));
-    expect(result.current.localSelectedSkills).toEqual([
-      expect.objectContaining({ sId: "first", canWrite }),
-    ]);
-    expect(fetcher).not.toHaveBeenCalled();
+      const [first] = result.current.filteredSkills;
+      act(() => result.current.handleSkillToggle(first));
+      expect(result.current.localSelectedSkills).toEqual([
+        expect.objectContaining({ sId: "first", canWrite }),
+      ]);
+      expect(fetcher).not.toHaveBeenCalled();
 
-    act(() => result.current.skillPagination.loadMore());
-    await waitFor(() =>
-      expect(result.current.filteredSkills.map((skill) => skill.sId)).toEqual([
-        "first",
-        "second",
-      ])
-    );
-    expect(result.current.selectedSkillIds.has("first")).toBe(true);
-    expect(fetcherWithBody).toHaveBeenLastCalledWith([
-      `/api/w/${owner.sId}/skills/search`,
-      expect.objectContaining({ offset: 20, limit: 20 }),
-      "POST",
-    ]);
-    act(() => result.current.handleSkillToggle(first));
-    expect(result.current.localSelectedSkills).toEqual([]);
-    act(() => result.current.skillPagination.loadMore());
-    expect(fetcherWithBody).toHaveBeenCalledTimes(2);
-  });
+      act(() => result.current.skillPagination.loadMore());
+      await waitFor(() =>
+        expect(result.current.filteredSkills.map((skill) => skill.sId)).toEqual(
+          ["first", "second"]
+        )
+      );
+      expect(result.current.selectedSkillIds.has("first")).toBe(true);
+      expect(fetcherWithBody).toHaveBeenLastCalledWith([
+        `/api/w/${owner.sId}/skills/search`,
+        expect.objectContaining({ offset: 20, limit: 20 }),
+        "POST",
+      ]);
+      act(() => result.current.handleSkillToggle(first));
+      expect(result.current.localSelectedSkills).toEqual([]);
+      act(() => result.current.skillPagination.loadMore());
+      expect(fetcherWithBody).toHaveBeenCalledTimes(2);
+    }
+  );
 
   it("keeps the previous results and tool query while searching, then starts at offset zero", async () => {
     const { result, rerender, fetcherWithBody } = renderSelection();

@@ -85,8 +85,7 @@ import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-export interface MCPServerViewResource
-  extends ReadonlyAttributesType<MCPServerViewModel> {}
+export interface MCPServerViewResource extends ReadonlyAttributesType<MCPServerViewModel> {}
 
 type AffectedAgent = Pick<
   Attributes<AgentConfigurationModel>,

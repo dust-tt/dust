@@ -1,14 +1,13 @@
 // @vitest-environment node: ZIP inspection requires Node builtins.
 
-import assert from "node:assert";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import {
   DUST_FILE_CAN_WRITE_HEADER,
   DUST_FILE_CONTENT_TYPE_HEADER,
@@ -19,6 +18,7 @@ import {
 } from "@app/types/files";
 import { honoApp } from "@front-api/app";
 import AdmZip from "adm-zip";
+import assert from "node:assert";
 import { PassThrough } from "stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -142,25 +142,25 @@ describe("GET /api/w/:wId/files/path/:canonicalPath", () => {
       contentType: "application/x-something-unknown",
     },
     { fileName: "mixed.html", contentType: "TEXT/HTML; Charset=UTF-8" },
-  ])("forces unsafe content type $contentType to download as an attachment", async ({
-    fileName,
-    contentType,
-  }) => {
-    const { workspace, conversation } = await setup();
+  ])(
+    "forces unsafe content type $contentType to download as an attachment",
+    async ({ fileName, contentType }) => {
+      const { workspace, conversation } = await setup();
 
-    setExistingFiles([`/files/${fileName}`], { contentType, size: "42" });
+      setExistingFiles([`/files/${fileName}`], { contentType, size: "42" });
 
-    const response = await request(
-      workspace,
-      `conversation-${conversation.sId}/${fileName}`
-    );
+      const response = await request(
+        workspace,
+        `conversation-${conversation.sId}/${fileName}`
+      );
 
-    expect(response.status).toBe(200);
-    expect(response.headers.get("Content-Disposition")).toMatch(
-      /^attachment; filename=/
-    );
-    expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
-  });
+      expect(response.status).toBe(200);
+      expect(response.headers.get("Content-Disposition")).toMatch(
+        /^attachment; filename=/
+      );
+      expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
+    }
+  );
 
   it("sets Content-Disposition when ?download=1", async () => {
     const { workspace, conversation } = await setup();
@@ -985,23 +985,20 @@ describe("conditional updates through Files paths", () => {
     expect(response.headers.get(DUST_FILE_REVISION_HEADER)).toBe(revision);
   });
 
-  it.each([
-    'W/"1"',
-    '"1", "2"',
-    "*",
-    '"1"',
-    "0",
-    "",
-  ])("rejects invalid revision %s without writing", async (revision) => {
-    const { workspace, path, mountPath, content } = await setupRevisionedFile();
-    const response = await request(workspace, path, {
-      method: "PUT",
-      headers: { [DUST_IF_REVISION_MATCH_HEADER]: revision },
-      body: "{}",
-    });
-    expect(response.status).toBe(400);
-    expect(fileStorageMock.getObject(mountPath)).toBe(content);
-  });
+  it.each(['W/"1"', '"1", "2"', "*", '"1"', "0", ""])(
+    "rejects invalid revision %s without writing",
+    async (revision) => {
+      const { workspace, path, mountPath, content } =
+        await setupRevisionedFile();
+      const response = await request(workspace, path, {
+        method: "PUT",
+        headers: { [DUST_IF_REVISION_MATCH_HEADER]: revision },
+        body: "{}",
+      });
+      expect(response.status).toBe(400);
+      expect(fileStorageMock.getObject(mountPath)).toBe(content);
+    }
+  );
 
   it("returns this write's revision even if another writer saves before the response", async () => {
     const { workspace, path, mountPath, revision } =

@@ -1,3 +1,4 @@
+import { useFilePreviewContext } from "@app/components/assistant/conversation/FilePreviewContext";
 import type {
   FileCitationCardSize,
   FileCitationCardVariant,
@@ -6,7 +7,6 @@ import { FileCitationCard } from "@app/components/assistant/conversation/attachm
 import { PreviewableCitation } from "@app/components/assistant/conversation/attachment/PreviewableCitation";
 import type { AttachmentCitation } from "@app/components/assistant/conversation/attachment/types";
 import { isAudioContentType } from "@app/components/assistant/conversation/attachment/utils";
-import { useFilePreviewContext } from "@app/components/assistant/conversation/FilePreviewContext";
 import { isFrameContentType } from "@app/types/files";
 import { Icon, useTranscribingProgress } from "@dust-tt/sparkle";
 

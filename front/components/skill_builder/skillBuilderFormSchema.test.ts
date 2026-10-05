@@ -32,20 +32,20 @@ describe("skill description validation", () => {
     expect(result.values).toEqual(values);
   });
 
-  it.each([
-    "agentFacingDescription",
-    "userFacingDescription",
-  ] as const)("returns an RHF field error for an oversized %s", async (field) => {
-    const result = await resolver(
-      { ...values, [field]: "a".repeat(maxLengths[field] + 1) },
-      undefined,
-      { fields: {}, shouldUseNativeValidation: false }
-    );
+  it.each(["agentFacingDescription", "userFacingDescription"] as const)(
+    "returns an RHF field error for an oversized %s",
+    async (field) => {
+      const result = await resolver(
+        { ...values, [field]: "a".repeat(maxLengths[field] + 1) },
+        undefined,
+        { fields: {}, shouldUseNativeValidation: false }
+      );
 
-    expect(result.errors).toMatchObject({
-      [field]: {
-        message: `Description must be ${maxLengths[field]} characters or less`,
-      },
-    });
-  });
+      expect(result.errors).toMatchObject({
+        [field]: {
+          message: `Description must be ${maxLengths[field]} characters or less`,
+        },
+      });
+    }
+  );
 });

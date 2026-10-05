@@ -1,3 +1,4 @@
+import type { SubscriptionStatus } from "./SubscriptionStatusChip";
 import {
   useCancelMetronomeContract,
   useReactivateMetronomeContract,
@@ -19,7 +20,6 @@ import {
 import type { LightWorkspaceType } from "@app/types/user";
 import type { ReactNode } from "react";
 import { createContext, useContext, useMemo, useState } from "react";
-import type { SubscriptionStatus } from "./SubscriptionStatusChip";
 
 interface SubscriptionContextType {
   owner: LightWorkspaceType;

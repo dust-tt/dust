@@ -2,9 +2,7 @@ import { dropTemperature } from "@app/lib/llms/stream/types/configuration";
 import { CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 
 export function WithDustClaudeFableFiveConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class DustClaudeFableFive extends Base {
     static readonly displayName = "Claude Fable 5";

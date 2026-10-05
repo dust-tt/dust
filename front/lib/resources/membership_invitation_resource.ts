@@ -25,13 +25,12 @@ import { verify } from "jsonwebtoken";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
-import { generateRandomModelSId } from "./string_ids_server";
 import type { WorkspaceResource } from "./workspace_resource";
+import { generateRandomModelSId } from "./string_ids_server";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-export interface MembershipInvitationResource
-  extends ReadonlyAttributesType<MembershipInvitationModel> {}
+export interface MembershipInvitationResource extends ReadonlyAttributesType<MembershipInvitationModel> {}
 /**
  * @cc [owner:philipperolet,label:security;backend] supported-invitation-roles
  * `MembershipInvitationResource` construction MUST throw when the persisted initial role is not an

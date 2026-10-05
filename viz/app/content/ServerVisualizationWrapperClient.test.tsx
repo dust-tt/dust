@@ -49,55 +49,55 @@ describe("shared-view file access", () => {
       isAuthenticatedMember: true,
       isPdfMode: false,
     },
-  ])("selects file access for $label", async ({
-    isAuthenticatedMember,
-    isPdfMode,
-  }) => {
-    render(
-      <ServerVisualizationWrapperClient
-        identifier="frame"
-        allowedOrigins={["https://app.dust.tt"]}
-        isAuthenticatedMember={isAuthenticatedMember}
-        isPdfMode={isPdfMode}
-        prefetchedCode="Published code"
-        prefetchedFiles={[
-          {
-            fileId: "./content.json",
-            data: btoa("Cached content"),
-            mimeType: "application/json",
-          },
-        ]}
-      />
-    );
-    const { dataAPI } = mocks.render.mock.calls[0][0];
-    mocks.sendMessage.mockResolvedValueOnce({
-      fileBlob: new Blob(["Live content"]),
-      revision: "123",
-      canWrite: true,
-    });
-    const file = await dataAPI.fetchFile("./content.json");
-    if (isAuthenticatedMember && !isPdfMode) {
-      expect(file).toMatchObject({ revision: "123", canWrite: true });
-      expect(mocks.sendMessage).toHaveBeenCalledExactlyOnceWith("getFile", {
-        fileId: "./content.json",
+  ])(
+    "selects file access for $label",
+    async ({ isAuthenticatedMember, isPdfMode }) => {
+      render(
+        <ServerVisualizationWrapperClient
+          identifier="frame"
+          allowedOrigins={["https://app.dust.tt"]}
+          isAuthenticatedMember={isAuthenticatedMember}
+          isPdfMode={isPdfMode}
+          prefetchedCode="Published code"
+          prefetchedFiles={[
+            {
+              fileId: "./content.json",
+              data: btoa("Cached content"),
+              mimeType: "application/json",
+            },
+          ]}
+        />
+      );
+      const { dataAPI } = mocks.render.mock.calls[0][0];
+      mocks.sendMessage.mockResolvedValueOnce({
+        fileBlob: new Blob(["Live content"]),
+        revision: "123",
+        canWrite: true,
       });
-    } else {
-      expect(file).toMatchObject({ revision: null, canWrite: false });
-      await expect(
-        dataAPI.writeFile({
-          path: "./content.json",
-          content: "{}",
-          revision: "123",
-        })
-      ).resolves.toMatchObject({
-        success: false,
-        error: { code: "read_only" },
-      });
-      await expect(dataAPI.getUserIdentity()).resolves.toMatchObject({
-        isAuthenticated: false,
-      });
-      expect(mocks.sendMessage).not.toHaveBeenCalled();
+      const file = await dataAPI.fetchFile("./content.json");
+      if (isAuthenticatedMember && !isPdfMode) {
+        expect(file).toMatchObject({ revision: "123", canWrite: true });
+        expect(mocks.sendMessage).toHaveBeenCalledExactlyOnceWith("getFile", {
+          fileId: "./content.json",
+        });
+      } else {
+        expect(file).toMatchObject({ revision: null, canWrite: false });
+        await expect(
+          dataAPI.writeFile({
+            path: "./content.json",
+            content: "{}",
+            revision: "123",
+          })
+        ).resolves.toMatchObject({
+          success: false,
+          error: { code: "read_only" },
+        });
+        await expect(dataAPI.getUserIdentity()).resolves.toMatchObject({
+          isAuthenticated: false,
+        });
+        expect(mocks.sendMessage).not.toHaveBeenCalled();
+      }
+      await expect(dataAPI.fetchCode()).resolves.toBe("Published code");
     }
-    await expect(dataAPI.fetchCode()).resolves.toBe("Published code");
-  });
+  );
 });

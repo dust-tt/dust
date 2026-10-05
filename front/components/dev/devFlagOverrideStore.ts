@@ -14,8 +14,9 @@ import { DEV_MODE_ACTIVE } from "./devModeConstants";
 
 let _version = 0;
 const _listeners: Set<() => void> | null = DEV_MODE_ACTIVE ? new Set() : null;
-let _applyOverrides: (flags: WhitelistableFeature[]) => WhitelistableFeature[] =
-  (f) => f;
+let _applyOverrides: (
+  flags: WhitelistableFeature[]
+) => WhitelistableFeature[] = (f) => f;
 
 export function devFlagSubscribe(cb: () => void): () => void {
   _listeners!.add(cb);

@@ -1,16 +1,17 @@
+import { ConfirmContext } from "@app/components/Confirm";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLayout";
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { AgentCreatedDialog } from "@app/components/agent_builder/AgentCreatedDialog";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
-import { agentBuilderFormSchema } from "@app/components/agent_builder/agentBuilderFormSchema";
-import { useAgentBuilderFormHydration } from "@app/components/agent_builder/hooks/useAgentBuilderFormHydration";
 import {
   PersonalConnectionRequiredDialog,
   useAwaitableDialog,
 } from "@app/components/agent_builder/PersonalConnectionRequiredDialog";
 import { SidekickPanelProvider } from "@app/components/agent_builder/SidekickPanelContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
+import { agentBuilderFormSchema } from "@app/components/agent_builder/agentBuilderFormSchema";
+import { useAgentBuilderFormHydration } from "@app/components/agent_builder/hooks/useAgentBuilderFormHydration";
 import {
   SidekickSuggestionsProvider,
   useSidekickSuggestions,
@@ -19,7 +20,6 @@ import { useSidekickMCPServer } from "@app/components/agent_builder/sidekick/use
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { FilePreviewProvider } from "@app/components/assistant/conversation/FilePreviewContext";
-import { ConfirmContext } from "@app/components/Confirm";
 import {
   BuilderEditorGateMessage,
   BuilderEditorLoadErrorMessage,

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
-import { stripCommonZipPrefix } from "./parsing";
 import type { ZipEntry } from "./types";
+import { stripCommonZipPrefix } from "./parsing";
 
 function makeEntry(
   path: string,

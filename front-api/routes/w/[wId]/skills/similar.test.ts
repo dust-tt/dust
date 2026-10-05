@@ -1,7 +1,7 @@
 import { SKILLS_PER_LLM_CALL } from "@app/lib/api/skills/existing_skill_checker";
 import { Authenticator } from "@app/lib/auth";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";

@@ -2,9 +2,7 @@ import { dropTemperature } from "@app/lib/llms/stream/types/configuration";
 import { GPT_6_ASTRA_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 
 export function WithDustGptSixAstraConfig<
-  TBase extends abstract new (
-    ...args: any[]
-  ) => object,
+  TBase extends abstract new (...args: any[]) => object,
 >(Base: TBase) {
   abstract class DustGptSixAstra extends Base {
     static readonly displayName = "GPT-6 Astra";

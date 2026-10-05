@@ -14,14 +14,14 @@
 //   6. Apply them in ONE transaction with rollback. drizzle-kit's own `apply()` is a bare
 //      loop — never used.
 
+import { Err, Ok, type Result } from "#result.ts";
+import type { DatabaseSchema } from "#types/db.ts";
 import { Database } from "bun:sqlite";
-import { chmodSync, closeSync, mkdirSync, openSync, rmSync } from "node:fs";
-import { basename, dirname } from "node:path";
 import { is } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/bun-sqlite";
 import { SQLiteTable } from "drizzle-orm/sqlite-core";
-import { Err, Ok, type Result } from "#result.ts";
-import type { DatabaseSchema } from "#types/db.ts";
+import { chmodSync, closeSync, mkdirSync, openSync, rmSync } from "node:fs";
+import { basename, dirname } from "node:path";
 import {
   applyWritePragmas,
   DbCommandError,

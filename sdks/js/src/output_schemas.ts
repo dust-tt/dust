@@ -1,9 +1,9 @@
 import { z } from "zod";
 
+import type { CallToolResult, Notification } from "./raw_mcp_types.ts";
 import { FlexibleEnumSchema } from "./helpers";
 import { INTERNAL_MIME_TYPES } from "./internal_mime_types";
 import { NotificationSchema } from "./raw_mcp_types";
-import type { CallToolResult, Notification } from "./raw_mcp_types.ts";
 
 export function isTextContent(
   content: CallToolResult["content"][number]

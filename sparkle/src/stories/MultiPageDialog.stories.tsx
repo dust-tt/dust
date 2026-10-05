@@ -16,13 +16,13 @@ import {
   MultiPageDialogTrigger,
 } from "@sparkle/components/MultiPageDialog";
 
-import { GmailLogo } from "@sparkle/logo/platforms";
 import {
   AlertCircle,
   File04,
   Settings01,
   User01,
 } from "@sparkle/icons/v2-stroke";
+import { GmailLogo } from "@sparkle/logo/platforms";
 
 const meta: Meta<typeof MultiPageDialogContent> = {
   title: "Overlays/MultiPageDialog",

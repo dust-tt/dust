@@ -15,8 +15,7 @@ import { Op } from "sequelize";
 
 export const PHONE_REGEXP = /^\+[1-9]\d{1,14}$/;
 
-export interface WorkspaceVerificationAttemptResource
-  extends ReadonlyAttributesType<WorkspaceVerificationAttemptModel> {}
+export interface WorkspaceVerificationAttemptResource extends ReadonlyAttributesType<WorkspaceVerificationAttemptModel> {}
 export class WorkspaceVerificationAttemptResource extends BaseResource<WorkspaceVerificationAttemptModel> {
   static model: ModelStaticWorkspaceAware<WorkspaceVerificationAttemptModel> =
     WorkspaceVerificationAttemptModel;

@@ -1,9 +1,14 @@
+import { cn, Markdown } from "@dust-tt/sparkle";
 import { LocaleToggle } from "@marketing/components/academy/AcademyComponents";
 import { AcademyQuiz } from "@marketing/components/academy/AcademyQuiz";
 import {
   AcademySidebar,
   MobileMenuButton,
 } from "@marketing/components/academy/AcademySidebar";
+import {
+  renderRichTextFromContentful,
+  richTextToMarkdown,
+} from "@marketing/components/contentful/richTextRenderer";
 import { Grid, H1, P } from "@marketing/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
 import LandingLayout from "@marketing/components/home/LandingLayout";
@@ -15,10 +20,6 @@ import {
   getQuizSettings,
   getSearchableItems,
 } from "@marketing/lib/contentful/client";
-import {
-  renderRichTextFromContentful,
-  richTextToMarkdown,
-} from "@marketing/components/contentful/richTextRenderer";
 import { extractTableOfContents } from "@marketing/lib/contentful/tableOfContents";
 import type {
   ContentSummary,
@@ -28,7 +29,6 @@ import { isCourseSummary } from "@marketing/lib/contentful/types";
 import { useAcademyBrowserId } from "@marketing/lib/swr/academy";
 import logger from "@marketing/logger/logger";
 import { isString } from "@marketing/types/shared/utils/general";
-import { cn, Markdown } from "@dust-tt/sparkle";
 import type { GetServerSideProps } from "next";
 import Head from "next/head";
 import Link from "next/link";

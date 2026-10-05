@@ -1,6 +1,6 @@
+import { ChevronLeft, ChevronRight, cn, Users01 } from "@dust-tt/sparkle";
 import { P } from "@marketing/components/home/ContentComponents";
 import { LandingEmailSignup } from "@marketing/components/home/content/Landing/LandingEmailSignup";
-import { ChevronLeft, ChevronRight, cn, Users01 } from "@dust-tt/sparkle";
 import Image from "next/image";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useState } from "react";

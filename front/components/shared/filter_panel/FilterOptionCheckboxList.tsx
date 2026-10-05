@@ -1,6 +1,6 @@
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
-import { FILTER_PICKER_PAGE_SIZE } from "@app/components/shared/filter_panel/constants";
 import { FilterAvailabilityStatus } from "@app/components/shared/filter_panel/FilterAvailabilityStatus";
+import { FILTER_PICKER_PAGE_SIZE } from "@app/components/shared/filter_panel/constants";
 import type { FilterOptionBase } from "@app/components/shared/filter_panel/filterState";
 import {
   Button,

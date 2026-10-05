@@ -119,8 +119,10 @@ interface SlashCommandSubMenuNavigation {
   onBack: () => void;
 }
 
-export interface SlashCommandDropdownProps
-  extends Pick<SuggestionProps<SlashCommand>, "clientRect" | "command"> {
+export interface SlashCommandDropdownProps extends Pick<
+  SuggestionProps<SlashCommand>,
+  "clientRect" | "command"
+> {
   // Row highlighted when the list (re)renders; falls back to the first item.
   defaultSelectedItemId?: string | null;
   dropdownHeaders?: React.ReactNode;
@@ -452,7 +454,7 @@ export const SlashCommandDropdown = forwardRef<
           defaultSelectedItemId
         )
       );
-    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
+      // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
     }, [itemIdsKey]);
 
     // Update virtual trigger position.

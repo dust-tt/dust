@@ -4,8 +4,8 @@ import { GroupPermissionResource } from "@app/lib/resources/group_permission_res
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { Ok } from "@app/types/shared/result";
 import type { WorkspaceSharingPolicy } from "@app/types/user";

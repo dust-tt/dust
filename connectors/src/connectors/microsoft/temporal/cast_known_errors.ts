@@ -110,9 +110,7 @@ export function isJSONParsingError(err: unknown): err is Error {
   );
 }
 
-export class MicrosoftCastKnownErrorsInterceptor
-  implements ActivityInboundCallsInterceptor
-{
+export class MicrosoftCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">

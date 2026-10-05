@@ -197,31 +197,31 @@ describe("AgentPicker", () => {
     expect(onItemClick).toHaveBeenCalledWith(remoteAgents[1]);
   });
 
-  it.each([
-    false,
-    true,
-  ])("distinguishes empty results from a search failure (failure: %s)", async (failure) => {
-    const { fetcherWithBody, onItemClick, renderPicker } = await setup();
-    if (failure) {
-      fetcherWithBody.mockRejectedValue(new Error("Search unavailable"));
-    } else {
-      fetcherWithBody.mockResolvedValue({
-        ...searchResponse,
-        agents: [],
-        total: 0,
+  it.each([false, true])(
+    "distinguishes empty results from a search failure (failure: %s)",
+    async (failure) => {
+      const { fetcherWithBody, onItemClick, renderPicker } = await setup();
+      if (failure) {
+        fetcherWithBody.mockRejectedValue(new Error("Search unavailable"));
+      } else {
+        fetcherWithBody.mockResolvedValue({
+          ...searchResponse,
+          agents: [],
+          total: 0,
+        });
+      }
+      const user = userEvent.setup();
+      renderPicker();
+      await user.click(screen.getByRole("button", { name: "Pick an agent" }));
+      expect(
+        await screen.findByText(
+          failure ? "Unable to load agents" : "No results found"
+        )
+      ).toBeInTheDocument();
+      fireEvent.keyDown(screen.getByPlaceholderText("Search for agents"), {
+        key: "Enter",
       });
+      expect(onItemClick).not.toHaveBeenCalled();
     }
-    const user = userEvent.setup();
-    renderPicker();
-    await user.click(screen.getByRole("button", { name: "Pick an agent" }));
-    expect(
-      await screen.findByText(
-        failure ? "Unable to load agents" : "No results found"
-      )
-    ).toBeInTheDocument();
-    fireEvent.keyDown(screen.getByPlaceholderText("Search for agents"), {
-      key: "Enter",
-    });
-    expect(onItemClick).not.toHaveBeenCalled();
-  });
+  );
 });

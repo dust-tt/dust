@@ -24,45 +24,48 @@ describe("mount path backfills", () => {
       fileName: "report.pdf",
       relativePath: "pods/pod-backfill/files/report.pdf",
     },
-  ] as const)("mounts an already-ready $useCase file without changing metadata", async (fixture) => {
-    const { authenticator: auth, workspace } = await createResourceTest({
-      role: "admin",
-    });
-    const file = await FileFactory.create(auth, null, {
-      ...fixture,
-      fileSize: 100,
-      status: "created",
-    });
-    // Model access creates the historical state: ready, but predating automatic mount resolution.
-    await FileModel.update(
-      { status: "ready" },
-      { where: { id: file.id, workspaceId: workspace.id } }
-    );
-    const legacyFile = await FileResource.fetchById(auth, file.sId);
-    assert(legacyFile);
-    fileStorageMock.setFileContent((path) =>
-      path.endsWith("/processed") ? "processed" : "original"
-    );
+  ] as const)(
+    "mounts an already-ready $useCase file without changing metadata",
+    async (fixture) => {
+      const { authenticator: auth, workspace } = await createResourceTest({
+        role: "admin",
+      });
+      const file = await FileFactory.create(auth, null, {
+        ...fixture,
+        fileSize: 100,
+        status: "created",
+      });
+      // Model access creates the historical state: ready, but predating automatic mount resolution.
+      await FileModel.update(
+        { status: "ready" },
+        { where: { id: file.id, workspaceId: workspace.id } }
+      );
+      const legacyFile = await FileResource.fetchById(auth, file.sId);
+      assert(legacyFile);
+      fileStorageMock.setFileContent((path) =>
+        path.endsWith("/processed") ? "processed" : "original"
+      );
 
-    await ensureMountFilePath(auth, legacyFile);
+      await ensureMountFilePath(auth, legacyFile);
 
-    const mounted = await FileResource.fetchById(auth, file.sId);
-    assert(mounted);
-    expect(mounted.status).toBe("ready");
-    expect(mounted.useCaseMetadata).toEqual(fixture.useCaseMetadata);
-    expect(mounted.mountFilePath).toBe(
-      `w/${workspace.sId}/${fixture.relativePath}`
-    );
-    assert(mounted.mountFilePath);
-    expect(fileStorageMock.getObject(mounted.mountFilePath)).toBe("original");
-    const processedPath = mounted.getProcessedMountFilePath();
-    if (fixture.useCase === "project_context") {
-      assert(processedPath);
-      expect(fileStorageMock.getObject(processedPath)).toBe("processed");
-    } else {
-      expect(processedPath).toBeNull();
+      const mounted = await FileResource.fetchById(auth, file.sId);
+      assert(mounted);
+      expect(mounted.status).toBe("ready");
+      expect(mounted.useCaseMetadata).toEqual(fixture.useCaseMetadata);
+      expect(mounted.mountFilePath).toBe(
+        `w/${workspace.sId}/${fixture.relativePath}`
+      );
+      assert(mounted.mountFilePath);
+      expect(fileStorageMock.getObject(mounted.mountFilePath)).toBe("original");
+      const processedPath = mounted.getProcessedMountFilePath();
+      if (fixture.useCase === "project_context") {
+        assert(processedPath);
+        expect(fileStorageMock.getObject(processedPath)).toBe("processed");
+      } else {
+        expect(processedPath).toBeNull();
+      }
     }
-  });
+  );
 
   it("preserves a colliding file and retries a failed copy at the claimed path", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({

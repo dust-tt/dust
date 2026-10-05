@@ -1,6 +1,6 @@
 import { validateSkillNameChange } from "@app/lib/api/skills/name_change";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SKILL_NAME_MAX_LENGTH } from "@app/types/assistant/skill_configuration_constants";
 import { describe, expect, it } from "vitest";
 

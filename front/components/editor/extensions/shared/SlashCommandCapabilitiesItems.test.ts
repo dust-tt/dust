@@ -1,9 +1,9 @@
-import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { describe, expect, it } from "vitest";
 import type {
   SlashCommandSkillSuggestion,
   SlashCommandToolSuggestion,
 } from "./SlashCommandCapabilitiesItems";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { describe, expect, it } from "vitest";
 import {
   getSkillSlashCommandItem,
   getToolSlashCommandItem,

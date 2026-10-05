@@ -3,12 +3,6 @@ import {
   ActionExecutionProvider,
 } from "@app/components/actions/ActionDetailsWrapper";
 import {
-  makeQueryTextForDataSourceSearch,
-  makeQueryTextForFind,
-  makeQueryTextForInclude,
-  makeQueryTextForList,
-} from "@app/components/actions/mcp/details/input_rendering";
-import {
   MCPAgentMemoryEditActionDetails,
   MCPAgentMemoryEraseActionDetails,
   MCPAgentMemoryRecordActionDetails,
@@ -36,6 +30,12 @@ import {
   ToolGeneratedFileDetails,
 } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import { MCPToolsetsEnableActionDetails } from "@app/components/actions/mcp/details/MCPToolsetsEnableActionDetails";
+import {
+  makeQueryTextForDataSourceSearch,
+  makeQueryTextForFind,
+  makeQueryTextForInclude,
+  makeQueryTextForList,
+} from "@app/components/actions/mcp/details/input_rendering";
 import type {
   ActionDetailsDisplayContext,
   ToolExecutionDetailsProps,

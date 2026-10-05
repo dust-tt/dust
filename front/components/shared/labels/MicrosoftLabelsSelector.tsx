@@ -1,8 +1,8 @@
+import type { SensitivityLabelsController } from "./types";
 import type { LightWorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import { Chip, Input, SliderToggle } from "@dust-tt/sparkle";
 import { useState } from "react";
-import type { SensitivityLabelsController } from "./types";
 
 interface MicrosoftLabelsSelectorProps {
   owner: LightWorkspaceType;

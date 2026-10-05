@@ -13,8 +13,8 @@ import {
 } from "@app/lib/reinforcement/selection";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { LightWorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it } from "vitest";

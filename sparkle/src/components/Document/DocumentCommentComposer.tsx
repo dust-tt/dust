@@ -1,3 +1,5 @@
+import type { DocumentCommentAuthor } from "./types";
+import type { DocumentCommentsController } from "./useDocumentComments";
 import { cn } from "@sparkle/lib/utils";
 import type { Editor } from "@tiptap/core";
 import React, {
@@ -8,8 +10,6 @@ import React, {
   useState,
 } from "react";
 import { DocumentCommentInput } from "./DocumentCommentInput";
-import type { DocumentCommentAuthor } from "./types";
-import type { DocumentCommentsController } from "./useDocumentComments";
 import { useEditorLayoutVersion } from "./useEditorLayoutVersion";
 
 const COMPOSER_WIDTH_PX = 320;

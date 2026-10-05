@@ -1,5 +1,3 @@
-import { performance } from "node:perf_hooks";
-import { Readable } from "node:stream";
 import {
   collectGrepMatches,
   compileGrepPattern,
@@ -7,6 +5,8 @@ import {
   GREP_PATTERN_MAX_CHARS,
   GREP_RESPONSE_CONTENT_BUDGET_BYTES,
 } from "@app/lib/api/actions/servers/files/tools/grep_regex";
+import { performance } from "node:perf_hooks";
+import { Readable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 
 describe("grep regex", () => {

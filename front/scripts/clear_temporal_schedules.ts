@@ -26,21 +26,18 @@ makeScript(
     let client;
     switch (namespace) {
       case "agent":
-        const { getTemporalClientForAgentNamespace } = await import(
-          "@app/lib/temporal"
-        );
+        const { getTemporalClientForAgentNamespace } =
+          await import("@app/lib/temporal");
         client = await getTemporalClientForAgentNamespace();
         break;
       case "front":
-        const { getTemporalClientForFrontNamespace } = await import(
-          "@app/lib/temporal"
-        );
+        const { getTemporalClientForFrontNamespace } =
+          await import("@app/lib/temporal");
         client = await getTemporalClientForFrontNamespace();
         break;
       case "connectors":
-        const { getTemporalClientForConnectorsNamespace } = await import(
-          "@app/lib/temporal"
-        );
+        const { getTemporalClientForConnectorsNamespace } =
+          await import("@app/lib/temporal");
         client = await getTemporalClientForConnectorsNamespace();
         break;
       default:

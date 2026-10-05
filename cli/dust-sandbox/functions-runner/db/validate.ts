@@ -13,10 +13,6 @@
 // uses drizzle's `is()` (Symbol.for-keyed entityKind), never `instanceof`, and property reads
 // on foreign column instances go through loose zod schemas.
 
-import { existsSync } from "node:fs";
-import { is } from "drizzle-orm";
-import { getTableConfig, SQLiteTable } from "drizzle-orm/sqlite-core";
-import { z } from "zod";
 import { Err, Ok, type Result } from "#result.ts";
 import {
   type DatabaseSchema,
@@ -25,6 +21,10 @@ import {
   RESERVED_OBJECT_KEYS,
   RESERVED_TABLE_PREFIXES,
 } from "#types/db.ts";
+import { is } from "drizzle-orm";
+import { getTableConfig, SQLiteTable } from "drizzle-orm/sqlite-core";
+import { existsSync } from "node:fs";
+import { z } from "zod";
 
 export class DatabaseSchemaError extends Error {
   readonly kind: DatabaseSchemaErrorKind;

@@ -9,14 +9,14 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AppFactory } from "@app/tests/utils/AppFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
-import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -944,39 +944,42 @@ describe("POST /api/w/:wId/assistant/agent_configurations - tools in spaces the 
     );
   });
 
-  it.each([
-    "not_a_pod",
-    "vlt",
-  ])("rejects the malformed Pod id %s", async (malformedId) => {
-    const { workspace, user, globalSpace } = await setupNonMemberBuilder();
-    const podView = await MCPServerViewFactory.internal(
-      workspace,
-      "pod_manager",
-      globalSpace
-    );
+  it.each(["not_a_pod", "vlt"])(
+    "rejects the malformed Pod id %s",
+    async (malformedId) => {
+      const { workspace, user, globalSpace } = await setupNonMemberBuilder();
+      const podView = await MCPServerViewFactory.internal(
+        workspace,
+        "pod_manager",
+        globalSpace
+      );
 
-    const response = await postAgent(workspace, {
-      assistant: {
-        ...TEST_AGENT_PARAMS,
-        scope: "hidden",
-        editors: [{ sId: user.sId }],
-        actions: [
-          {
-            ...BASE_ACTION,
-            mcpServerViewId: podView.sId,
-            name: "pod_tool",
-            dustProject: { projectId: malformedId, workspaceId: workspace.sId },
-          },
-        ],
-      },
-    });
+      const response = await postAgent(workspace, {
+        assistant: {
+          ...TEST_AGENT_PARAMS,
+          scope: "hidden",
+          editors: [{ sId: user.sId }],
+          actions: [
+            {
+              ...BASE_ACTION,
+              mcpServerViewId: podView.sId,
+              name: "pod_tool",
+              dustProject: {
+                projectId: malformedId,
+                workspaceId: workspace.sId,
+              },
+            },
+          ],
+        },
+      });
 
-    expect(response.status).toBe(400);
-    const data = await response.json();
-    expect(data.error.message).toContain(
-      `User does not have access to the following spaces: ${malformedId}`
-    );
-  });
+      expect(response.status).toBe(400);
+      const data = await response.json();
+      expect(data.error.message).toContain(
+        `User does not have access to the following spaces: ${malformedId}`
+      );
+    }
+  );
 
   it("rejects space ids that alias a readable space through another prefix or workspace", async () => {
     const { workspace, user, globalSpace } = await setupNonMemberBuilder();
@@ -1029,27 +1032,27 @@ describe("POST /api/w/:wId/assistant/agent_configurations - tools in spaces the 
     }
   });
 
-  it.each([
-    "not_a_space",
-    "vlt",
-  ])("rejects the malformed additional space id %s", async (malformedId) => {
-    const { workspace, user } = await setupNonMemberBuilder();
+  it.each(["not_a_space", "vlt"])(
+    "rejects the malformed additional space id %s",
+    async (malformedId) => {
+      const { workspace, user } = await setupNonMemberBuilder();
 
-    const response = await postAgent(workspace, {
-      assistant: {
-        ...TEST_AGENT_PARAMS,
-        scope: "hidden",
-        editors: [{ sId: user.sId }],
-        additionalRequestedSpaceIds: [malformedId],
-      },
-    });
+      const response = await postAgent(workspace, {
+        assistant: {
+          ...TEST_AGENT_PARAMS,
+          scope: "hidden",
+          editors: [{ sId: user.sId }],
+          additionalRequestedSpaceIds: [malformedId],
+        },
+      });
 
-    expect(response.status).toBe(400);
-    const data = await response.json();
-    expect(data.error.message).toContain(
-      `User does not have access to the following spaces: ${malformedId}`
-    );
-  });
+      expect(response.status).toBe(400);
+      const data = await response.json();
+      expect(data.error.message).toContain(
+        `User does not have access to the following spaces: ${malformedId}`
+      );
+    }
+  );
 
   it("accepts the same tools once the user is a member of the space", async () => {
     const { workspace, user, restrictedSpace } = await setupNonMemberBuilder();

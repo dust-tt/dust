@@ -5,8 +5,8 @@ import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_res
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { FileFactory } from "@app/tests/utils/FileFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type {
   SandboxFunctionInvocationEvent,
   SandboxFunctionUserIdentityPolicy,

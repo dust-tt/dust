@@ -1,5 +1,5 @@
-import { makeColumnsForFeatureFlags } from "@app/components/poke/features/columns";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
+import { makeColumnsForFeatureFlags } from "@app/components/poke/features/columns";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { usePokeFeatureFlags } from "@app/lib/swr/poke";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";

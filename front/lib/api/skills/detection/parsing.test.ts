@@ -1,11 +1,11 @@
 import { describe, expect, test } from "vitest";
 
+import type { FileEntry } from "./types";
 import {
   collectAttachments,
   findSkillDirectories,
   parseSkillMarkdown,
 } from "./parsing";
-import type { FileEntry } from "./types";
 
 describe("parseSkillMarkdown", () => {
   test("extracts name, description and instructions from valid frontmatter", () => {

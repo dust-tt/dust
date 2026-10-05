@@ -5,12 +5,12 @@ import { GroupPermissionResource } from "@app/lib/resources/group_permission_res
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import {
   mockActiveContract,
   POOL_ONLY_SEATS,
 } from "@app/tests/utils/metronome_contracts";
-import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

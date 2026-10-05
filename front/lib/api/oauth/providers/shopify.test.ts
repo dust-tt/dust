@@ -1,9 +1,9 @@
-import { createHmac } from "node:crypto";
 import {
   isValidShopifyCallback,
   ShopifyOAuthProvider,
 } from "@app/lib/api/oauth/providers/shopify";
 import type { OAuthConnectionType } from "@app/types/oauth/lib";
+import { createHmac } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/config", () => ({

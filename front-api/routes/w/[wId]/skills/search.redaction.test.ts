@@ -4,10 +4,10 @@ import {
   MAX_SKILL_SEARCH_WINDOW,
 } from "@app/lib/skill_search/query";
 import { toSkillListItem } from "@app/lib/skill_search/serialization";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { matchesSkillSearchFilters } from "@app/tests/utils/skill_search";
 import { SkillListItemSchema } from "@app/types/assistant/skill_configuration";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
@@ -71,150 +71,158 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     { role: "admin", grant: "none", expected: true },
     { role: "admin", grant: "editor", expected: true },
     { role: "user", grant: "*", expected: true },
-  ] as const)("returns current permissions for $role with $grant grants", async ({
-    role,
-    grant,
-    expected,
-  }) => {
-    const { auth, workspace, user } = await createPrivateApiMockRequest({
-      role,
-    });
-
-    const skill = await SkillFactory.create(auth, {
-      availability: "workspace_users",
-      addCurrentUserAsEditor: grant === "editor",
-    });
-    if (grant === "*") {
-      await grantWorkspacePermission(workspace, user, {
-        grantType: "*",
-        resourceType: "skill",
+  ] as const)(
+    "returns current permissions for $role with $grant grants",
+    async ({ role, grant, expected }) => {
+      const { auth, workspace, user } = await createPrivateApiMockRequest({
+        role,
       });
-      await auth.refresh();
+
+      const skill = await SkillFactory.create(auth, {
+        availability: "workspace_users",
+        addCurrentUserAsEditor: grant === "editor",
+      });
+      if (grant === "*") {
+        await grantWorkspacePermission(workspace, user, {
+          grantType: "*",
+          resourceType: "skill",
+        });
+        await auth.refresh();
+      }
+      const [document] = await SkillFactory.createSearchDocuments(auth, [
+        skill,
+      ]);
+      // Indexed editors may be stale; permissions must use the current caller's grants.
+      document.editor_ids = expected ? [] : [user.sId];
+      const global = SkillFactory.createCodeDefinedSearchDocuments().find(
+        (document) => document.skill_id === "go-deep"
+      );
+      assert(global);
+      mockSearch.mockResolvedValue({
+        hits: {
+          total: { value: 2, relation: "eq" },
+          hits: [{ _source: document }, { _source: global }],
+        },
+      });
+
+      const response = await searchRequest(workspace.sId);
+
+      expect(response.status).toBe(200);
+      expect((await response.json()).skills).toEqual([
+        expect.objectContaining({
+          sId: skill.sId,
+          canWrite: grant !== "none",
+          canAdministrate: expected,
+        }),
+        expect.objectContaining({
+          sId: global.skill_id,
+          canWrite: false,
+          canAdministrate: false,
+        }),
+      ]);
     }
-    const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
-    // Indexed editors may be stale; permissions must use the current caller's grants.
-    document.editor_ids = expected ? [] : [user.sId];
-    const global = SkillFactory.createCodeDefinedSearchDocuments().find(
-      (document) => document.skill_id === "go-deep"
-    );
-    assert(global);
-    mockSearch.mockResolvedValue({
-      hits: {
-        total: { value: 2, relation: "eq" },
-        hits: [{ _source: document }, { _source: global }],
-      },
-    });
+  );
 
-    const response = await searchRequest(workspace.sId);
+  it.each(["usage", "relevance"] as const)(
+    "sorts by %s and keeps the sort on every offset page",
+    async (sortBy) => {
+      const { auth, workspace } = await createPrivateApiMockRequest({
+        role: "user",
+      });
 
-    expect(response.status).toBe(200);
-    expect((await response.json()).skills).toEqual([
-      expect.objectContaining({
-        sId: skill.sId,
-        canWrite: grant !== "none",
-        canAdministrate: expected,
-      }),
-      expect.objectContaining({
-        sId: global.skill_id,
-        canWrite: false,
-        canAdministrate: false,
-      }),
-    ]);
-  });
+      const skill = await SkillFactory.create(auth);
+      const [document] = await SkillFactory.createSearchDocuments(auth, [
+        skill,
+      ]);
+      mockSearch.mockResolvedValue({
+        hits: {
+          total: { value: 2, relation: "eq" },
+          hits: [{ _source: document }],
+        },
+      });
 
-  it.each([
-    "usage",
-    "relevance",
-  ] as const)("sorts by %s and keeps the sort on every offset page", async (sortBy) => {
-    const { auth, workspace } = await createPrivateApiMockRequest({
-      role: "user",
-    });
-
-    const skill = await SkillFactory.create(auth);
-    const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
-    mockSearch.mockResolvedValue({
-      hits: {
-        total: { value: 2, relation: "eq" },
-        hits: [{ _source: document }],
-      },
-    });
-
-    const first = await searchRequest(workspace.sId, { sortBy, limit: 1 });
-    expect(first.status).toBe(200);
-    expect(await first.json()).toMatchObject({ total: 2, hasMore: true });
-    const second = await searchRequest(workspace.sId, {
-      sortBy,
-      limit: 1,
-      offset: 1,
-    });
-    expect(second.status).toBe(200);
-    expect(await second.json()).toMatchObject({ total: 2, hasMore: false });
-    expect(mockSearch.mock.calls[1][0]).not.toHaveProperty("search_after");
-    expect(mockSearch.mock.calls[1][0]).toMatchObject({
-      from: 1,
-      size: 1,
-      track_total_hits: true,
-      sort: [
-        ...(sortBy === "relevance" ? [{ _score: { order: "desc" } }] : []),
-        { active_users_count: { order: "desc", missing: "_last" } },
-        { skill_id: { order: "asc" } },
-      ],
-    });
-  });
+      const first = await searchRequest(workspace.sId, { sortBy, limit: 1 });
+      expect(first.status).toBe(200);
+      expect(await first.json()).toMatchObject({ total: 2, hasMore: true });
+      const second = await searchRequest(workspace.sId, {
+        sortBy,
+        limit: 1,
+        offset: 1,
+      });
+      expect(second.status).toBe(200);
+      expect(await second.json()).toMatchObject({ total: 2, hasMore: false });
+      expect(mockSearch.mock.calls[1][0]).not.toHaveProperty("search_after");
+      expect(mockSearch.mock.calls[1][0]).toMatchObject({
+        from: 1,
+        size: 1,
+        track_total_hits: true,
+        sort: [
+          ...(sortBy === "relevance" ? [{ _score: { order: "desc" } }] : []),
+          { active_users_count: { order: "desc", missing: "_last" } },
+          { skill_id: { order: "asc" } },
+        ],
+      });
+    }
+  );
 
   it.each([
     { sortBy: "name", field: "name.keyword" },
     { sortBy: "usage", field: "active_users_count" },
     { sortBy: "updatedAt", field: "updated_at" },
-  ] as const)("sorts by $sortBy in both directions and preserves pagination", async ({
-    sortBy,
-    field,
-  }) => {
-    const { auth, workspace } = await createPrivateApiMockRequest({
-      role: "user",
-    });
-
-    const skill = await SkillFactory.create(auth);
-    const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
-    mockSearch.mockResolvedValue({
-      hits: {
-        total: { value: 2, relation: "eq" },
-        hits: [{ _source: document }],
-      },
-    });
-
-    for (const sortOrder of ["asc", "desc"] as const) {
-      const first = await searchRequest(workspace.sId, {
-        sortBy,
-        sortOrder,
-        limit: 1,
+  ] as const)(
+    "sorts by $sortBy in both directions and preserves pagination",
+    async ({ sortBy, field }) => {
+      const { auth, workspace } = await createPrivateApiMockRequest({
+        role: "user",
       });
-      expect(first.status).toBe(200);
-      expect(mockSearch.mock.lastCall?.[0]).toMatchObject({ from: 0, size: 1 });
 
-      const second = await searchRequest(workspace.sId, {
-        sortBy,
-        sortOrder,
-        limit: 1,
-        offset: 1,
+      const skill = await SkillFactory.create(auth);
+      const [document] = await SkillFactory.createSearchDocuments(auth, [
+        skill,
+      ]);
+      mockSearch.mockResolvedValue({
+        hits: {
+          total: { value: 2, relation: "eq" },
+          hits: [{ _source: document }],
+        },
       });
-      expect(second.status).toBe(200);
-      expect(mockSearch.mock.lastCall?.[0]).toMatchObject({
-        from: 1,
-        size: 1,
-        sort: [
-          {
-            [field]: {
-              order: sortOrder,
-              missing: "_last",
-              ...(sortBy === "updatedAt" ? { format: "epoch_millis" } : {}),
+
+      for (const sortOrder of ["asc", "desc"] as const) {
+        const first = await searchRequest(workspace.sId, {
+          sortBy,
+          sortOrder,
+          limit: 1,
+        });
+        expect(first.status).toBe(200);
+        expect(mockSearch.mock.lastCall?.[0]).toMatchObject({
+          from: 0,
+          size: 1,
+        });
+
+        const second = await searchRequest(workspace.sId, {
+          sortBy,
+          sortOrder,
+          limit: 1,
+          offset: 1,
+        });
+        expect(second.status).toBe(200);
+        expect(mockSearch.mock.lastCall?.[0]).toMatchObject({
+          from: 1,
+          size: 1,
+          sort: [
+            {
+              [field]: {
+                order: sortOrder,
+                missing: "_last",
+                ...(sortBy === "updatedAt" ? { format: "epoch_millis" } : {}),
+              },
             },
-          },
-          { skill_id: { order: "asc" } },
-        ],
-      });
+            { skill_id: { order: "asc" } },
+          ],
+        });
+      }
     }
-  });
+  );
 
   it("returns the requested offset page with the exact total", async () => {
     const { auth, workspace } = await createPrivateApiMockRequest({
@@ -257,22 +265,25 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     { offset: MAX_SKILL_SEARCH_WINDOW - MAX_SKILL_SEARCH_RESULTS + 1 },
     { offset: MAX_SKILL_SEARCH_WINDOW - 1, limit: 2 },
     { offset: MAX_SKILL_SEARCH_WINDOW },
-  ])("returns 400 for out-of-range pagination %s without querying Elasticsearch", async (pagination) => {
-    const { workspace } = await createPrivateApiMockRequest({
-      role: "user",
-    });
+  ])(
+    "returns 400 for out-of-range pagination %s without querying Elasticsearch",
+    async (pagination) => {
+      const { workspace } = await createPrivateApiMockRequest({
+        role: "user",
+      });
 
-    const response = await searchRequest(workspace.sId, pagination);
+      const response = await searchRequest(workspace.sId, pagination);
 
-    expect(response.status).toBe(400);
-    expect(await response.json()).toMatchObject({
-      error: {
-        type: "invalid_request_error",
-        message: "Skill search offset is out of range",
-      },
-    });
-    expect(mockSearch).not.toHaveBeenCalled();
-  });
+      expect(response.status).toBe(400);
+      expect(await response.json()).toMatchObject({
+        error: {
+          type: "invalid_request_error",
+          message: "Skill search offset is out of range",
+        },
+      });
+      expect(mockSearch).not.toHaveBeenCalled();
+    }
+  );
 
   it.each(
     (
@@ -285,147 +296,146 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
     ).flatMap((access) =>
       (["active", "archived"] as const).map((status) => ({ ...access, status }))
     )
-  )("keeps only safe admin metadata for an unreadable $spaceKind / $availability / $status skill", async ({
-    spaceKind,
-    availability,
-    status,
-  }) => {
-    const other = await createPrivateApiMockRequest({ role: "admin" });
-    const foreign = await SkillFactory.create(other.auth, {
-      name: "RedactionTest foreign",
-      status,
-    });
-    const [foreignDocument] = await SkillFactory.createSearchDocuments(
-      other.auth,
-      [foreign]
-    );
-    assert(foreignDocument);
+  )(
+    "keeps only safe admin metadata for an unreadable $spaceKind / $availability / $status skill",
+    async ({ spaceKind, availability, status }) => {
+      const other = await createPrivateApiMockRequest({ role: "admin" });
+      const foreign = await SkillFactory.create(other.auth, {
+        name: "RedactionTest foreign",
+        status,
+      });
+      const [foreignDocument] = await SkillFactory.createSearchDocuments(
+        other.auth,
+        [foreign]
+      );
+      assert(foreignDocument);
 
-    // Set the HTTP session to this workspace after creating the foreign fixture.
-    const { auth, workspace, user } = await createPrivateApiMockRequest({
-      role: "admin",
-    });
+      // Set the HTTP session to this workspace after creating the foreign fixture.
+      const { auth, workspace, user } = await createPrivateApiMockRequest({
+        role: "admin",
+      });
 
-    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-    const restricted =
-      spaceKind === "pod"
-        ? await SpaceFactory.project(workspace)
-        : await SpaceFactory.regular(workspace);
-    const readableSkill = await SkillFactory.create(auth, {
-      name: "RedactionTest readable",
-      requestedSpaceIds: [globalSpace.id],
-      availability,
-      status,
-    });
-    const hiddenSkill = await SkillFactory.create(auth, {
-      name: "RedactionTest hidden",
-      availability,
-      status,
-      requestedSpaceIds: [restricted.id],
-      instructions: "Private prompt must not leave the resource",
-      instructionsHtml: "<p>Private prompt</p>",
-    });
-    const changedStatusSkill = await SkillFactory.create(auth, {
-      name: "RedactionTest changed status",
-      requestedSpaceIds: [globalSpace.id],
-      status,
-    });
-    const documents = await SkillFactory.createSearchDocuments(auth, [
-      readableSkill,
-      hiddenSkill,
-      changedStatusSkill,
-    ]);
-    if (status === "active") {
-      await changedStatusSkill.archive(auth);
-    } else {
-      await changedStatusSkill.restore(auth);
-    }
-    const hits = [...documents, foreignDocument].map((document) => ({
-      _source: {
-        ...document,
-        description: "Outdated indexed description",
-        instructions: "Unexpected private ES field",
-        mcp_server_view_ids: ["indexed-tool-view-id"],
-        fileAttachments: ["Never expose indexed attachments"],
-      },
-    }));
-    mockIndexedHits(hits);
-    const requestBody = { query: "RedactionTest", status: [status] };
+      const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+      const restricted =
+        spaceKind === "pod"
+          ? await SpaceFactory.project(workspace)
+          : await SpaceFactory.regular(workspace);
+      const readableSkill = await SkillFactory.create(auth, {
+        name: "RedactionTest readable",
+        requestedSpaceIds: [globalSpace.id],
+        availability,
+        status,
+      });
+      const hiddenSkill = await SkillFactory.create(auth, {
+        name: "RedactionTest hidden",
+        availability,
+        status,
+        requestedSpaceIds: [restricted.id],
+        instructions: "Private prompt must not leave the resource",
+        instructionsHtml: "<p>Private prompt</p>",
+      });
+      const changedStatusSkill = await SkillFactory.create(auth, {
+        name: "RedactionTest changed status",
+        requestedSpaceIds: [globalSpace.id],
+        status,
+      });
+      const documents = await SkillFactory.createSearchDocuments(auth, [
+        readableSkill,
+        hiddenSkill,
+        changedStatusSkill,
+      ]);
+      if (status === "active") {
+        await changedStatusSkill.archive(auth);
+      } else {
+        await changedStatusSkill.restore(auth);
+      }
+      const hits = [...documents, foreignDocument].map((document) => ({
+        _source: {
+          ...document,
+          description: "Outdated indexed description",
+          instructions: "Unexpected private ES field",
+          mcp_server_view_ids: ["indexed-tool-view-id"],
+          fileAttachments: ["Never expose indexed attachments"],
+        },
+      }));
+      mockIndexedHits(hits);
+      const requestBody = { query: "RedactionTest", status: [status] };
 
-    const strict = await searchRequest(workspace.sId, requestBody);
-    expect(strict.status).toBe(200);
-    const strictBody = await strict.json();
-    expect(strictBody.skills).toEqual([
-      expect.objectContaining({ sId: readableSkill.sId }),
-      expect.objectContaining({ sId: changedStatusSkill.sId, status }),
-    ]);
+      const strict = await searchRequest(workspace.sId, requestBody);
+      expect(strict.status).toBe(200);
+      const strictBody = await strict.json();
+      expect(strictBody.skills).toEqual([
+        expect.objectContaining({ sId: readableSkill.sId }),
+        expect.objectContaining({ sId: changedStatusSkill.sId, status }),
+      ]);
 
-    const redacted = await searchRequest(workspace.sId, {
-      ...requestBody,
-      permissionFiltering: "redact_unreadable",
-    });
-    expect(redacted.status).toBe(200);
-    const body = await redacted.json();
-    expect(body).toEqual({
-      skills: hits.slice(0, 3).map(({ _source }) => ({
-        ...toSkillListItem(auth, _source),
-        editors: [
-          {
-            sId: user.sId,
-            fullName: user.toJSON().fullName,
-            image: user.toJSON().image,
-          },
-        ],
-      })),
-      total: 3,
-      hasMore: false,
-      facets: {},
-    });
-    for (const hit of body.skills) {
-      expect(SkillListItemSchema.strict().parse(hit)).toEqual(hit);
-      expect(hit).not.toHaveProperty("instructions");
-      expect(hit).not.toHaveProperty("instructionsHtml");
-      expect(hit).not.toHaveProperty("tools");
-      expect(hit).not.toHaveProperty("fileAttachments");
-      expect(hit).not.toHaveProperty("editor_ids");
-      expect(hit).not.toHaveProperty("editor_group_ids");
-      expect(hit).not.toHaveProperty("mcp_server_view_ids");
-    }
+      const redacted = await searchRequest(workspace.sId, {
+        ...requestBody,
+        permissionFiltering: "redact_unreadable",
+      });
+      expect(redacted.status).toBe(200);
+      const body = await redacted.json();
+      expect(body).toEqual({
+        skills: hits.slice(0, 3).map(({ _source }) => ({
+          ...toSkillListItem(auth, _source),
+          editors: [
+            {
+              sId: user.sId,
+              fullName: user.toJSON().fullName,
+              image: user.toJSON().image,
+            },
+          ],
+        })),
+        total: 3,
+        hasMore: false,
+        facets: {},
+      });
+      for (const hit of body.skills) {
+        expect(SkillListItemSchema.strict().parse(hit)).toEqual(hit);
+        expect(hit).not.toHaveProperty("instructions");
+        expect(hit).not.toHaveProperty("instructionsHtml");
+        expect(hit).not.toHaveProperty("tools");
+        expect(hit).not.toHaveProperty("fileAttachments");
+        expect(hit).not.toHaveProperty("editor_ids");
+        expect(hit).not.toHaveProperty("editor_group_ids");
+        expect(hit).not.toHaveProperty("mcp_server_view_ids");
+      }
 
-    const [updated] = await SkillFactory.createSearchDocuments(auth, [
-      changedStatusSkill,
-    ]);
-    hits[2]._source.status = updated.status;
-    const afterIndexation = await searchRequest(workspace.sId, requestBody);
-    expect(afterIndexation.status).toBe(200);
-    expect((await afterIndexation.json()).skills).toEqual([
-      expect.objectContaining({ sId: readableSkill.sId }),
-    ]);
+      const [updated] = await SkillFactory.createSearchDocuments(auth, [
+        changedStatusSkill,
+      ]);
+      hits[2]._source.status = updated.status;
+      const afterIndexation = await searchRequest(workspace.sId, requestBody);
+      expect(afterIndexation.status).toBe(200);
+      expect((await afterIndexation.json()).skills).toEqual([
+        expect.objectContaining({ sId: readableSkill.sId }),
+      ]);
 
-    const request: estypes.SearchRequest = mockSearch.mock.calls[1][0];
-    const customQuery = {
-      bool: {
-        filter: [{ term: { workspace_id: workspace.sId } }],
-      },
-    };
-    expect(request.query).toEqual({
-      bool: {
-        filter: [{ terms: { status: [status] } }],
-        must: expect.any(Array),
-        should: [
-          customQuery,
-          expect.objectContaining({
-            bool: expect.objectContaining({
-              filter: expect.arrayContaining([
-                { term: { workspace_id: "global" } },
-              ]),
+      const request: estypes.SearchRequest = mockSearch.mock.calls[1][0];
+      const customQuery = {
+        bool: {
+          filter: [{ term: { workspace_id: workspace.sId } }],
+        },
+      };
+      expect(request.query).toEqual({
+        bool: {
+          filter: [{ terms: { status: [status] } }],
+          must: expect.any(Array),
+          should: [
+            customQuery,
+            expect.objectContaining({
+              bool: expect.objectContaining({
+                filter: expect.arrayContaining([
+                  { term: { workspace_id: "global" } },
+                ]),
+              }),
             }),
-          }),
-        ],
-        minimum_should_match: 1,
-      },
-    });
-  });
+          ],
+          minimum_should_match: 1,
+        },
+      });
+    }
+  );
 
   it("filters restricted, removed and foreign skills in the ES query", async () => {
     const other = await createPrivateApiMockRequest({ role: "admin" });

@@ -1,10 +1,10 @@
+import type { DocumentProps } from "./types";
 import { cn } from "@sparkle/lib/utils";
 import { Node } from "@tiptap/core";
 import type { NodeViewProps } from "@tiptap/react";
 import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
 import React, { createContext, useContext } from "react";
 import { z } from "zod";
-import type { DocumentProps } from "./types";
 
 export const DocumentVisualsContext =
   createContext<DocumentProps["visuals"]>(undefined);

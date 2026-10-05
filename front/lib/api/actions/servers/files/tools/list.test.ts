@@ -5,14 +5,14 @@ import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import {
   makeExtra,
   setupProjectConversation,
 } from "@app/tests/utils/conversation_test_factories";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { UserFactory } from "@app/tests/utils/UserFactory";
 import { frameContentType, frameSlideshowContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";

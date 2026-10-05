@@ -9,9 +9,9 @@ import {
   pruneSupersededSingletonSkillSuggestions,
 } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { SkillEditSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import {

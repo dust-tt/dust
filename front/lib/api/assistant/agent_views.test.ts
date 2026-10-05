@@ -3,10 +3,10 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Ok } from "@app/types/shared/result";
@@ -119,20 +119,23 @@ describe("listAgentsForView, 'current_user' view", () => {
 });
 
 describe("listAgentsForView, 'analytics' view", () => {
-  it.each(
-    REPORTING_ROLES
-  )("lists private agents of other users for %ss", async (role) => {
-    const { workspace, authenticator: editorAuth } = await createResourceTest({
-      role: "user",
-    });
-    const privateAgent = await AgentConfigurationFactory.createTestAgent(
-      editorAuth,
-      { name: "Secret agent", scope: "hidden" }
-    );
-    const auth = await authenticatorForNewMember(workspace, role);
+  it.each(REPORTING_ROLES)(
+    "lists private agents of other users for %ss",
+    async (role) => {
+      const { workspace, authenticator: editorAuth } = await createResourceTest(
+        {
+          role: "user",
+        }
+      );
+      const privateAgent = await AgentConfigurationFactory.createTestAgent(
+        editorAuth,
+        { name: "Secret agent", scope: "hidden" }
+      );
+      const auth = await authenticatorForNewMember(workspace, role);
 
-    expect(await listAgentIdsForAnalytics(auth)).toContain(privateAgent.sId);
-  });
+      expect(await listAgentIdsForAnalytics(auth)).toContain(privateAgent.sId);
+    }
+  );
 
   it("hides private agents of other users below the manager role", async () => {
     const { workspace, authenticator: editorAuth } = await createResourceTest({
@@ -153,28 +156,34 @@ describe("listAgentsForView, 'analytics' view", () => {
     expect(agentIds).not.toContain(privateAgent.sId);
   });
 
-  it.each(
-    REPORTING_ROLES
-  )("lists agents built on spaces the %s is not a member of", async (role) => {
-    const { workspace, authenticator: editorAuth } = await createResourceTest({
-      role: "user",
-    });
-    const space = await SpaceFactory.regular(
-      editorAuth.getNonNullableWorkspace()
-    );
-    const agent = await AgentConfigurationFactory.createTestAgent(editorAuth, {
-      name: "Restricted agent",
-      scope: "visible",
-      requestedSpaceIds: [space.id],
-    });
-    const auth = await authenticatorForNewMember(workspace, role);
+  it.each(REPORTING_ROLES)(
+    "lists agents built on spaces the %s is not a member of",
+    async (role) => {
+      const { workspace, authenticator: editorAuth } = await createResourceTest(
+        {
+          role: "user",
+        }
+      );
+      const space = await SpaceFactory.regular(
+        editorAuth.getNonNullableWorkspace()
+      );
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        editorAuth,
+        {
+          name: "Restricted agent",
+          scope: "visible",
+          requestedSpaceIds: [space.id],
+        }
+      );
+      const auth = await authenticatorForNewMember(workspace, role);
 
-    expect(await listAgentIdsForAnalytics(auth)).toContain(agent.sId);
-    // The caller is not a member of the space, so every other view still
-    // hides the agent: only the analytics view opens it up.
-    const listedForAll = await listAgentsForView(auth, "all");
-    expect(listedForAll.map((a) => a.sId)).not.toContain(agent.sId);
-  });
+      expect(await listAgentIdsForAnalytics(auth)).toContain(agent.sId);
+      // The caller is not a member of the space, so every other view still
+      // hides the agent: only the analytics view opens it up.
+      const listedForAll = await listAgentsForView(auth, "all");
+      expect(listedForAll.map((a) => a.sId)).not.toContain(agent.sId);
+    }
+  );
 
   it("hides agents built on unreadable spaces below the manager role", async () => {
     const { workspace, authenticator: editorAuth } = await createResourceTest({

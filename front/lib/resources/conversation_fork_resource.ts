@@ -45,8 +45,7 @@ type ConversationForkResourceIds = Pick<
   | "sourceMessageId"
 >;
 
-export interface ConversationForkResource
-  extends ReadonlyAttributesType<ConversationForkModel> {}
+export interface ConversationForkResource extends ReadonlyAttributesType<ConversationForkModel> {}
 
 export class ConversationForkResource extends BaseResource<ConversationForkModel> {
   static model: ModelStaticWorkspaceAware<ConversationForkModel> =

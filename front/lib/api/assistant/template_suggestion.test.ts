@@ -1,7 +1,7 @@
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getSuggestedTemplatesForQuery } from "@app/lib/api/assistant/template_suggestion";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock call_llm to control runMultiActionsAgent responses.

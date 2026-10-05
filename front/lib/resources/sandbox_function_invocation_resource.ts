@@ -259,8 +259,7 @@ function getSandboxFunctionUserIdentity(
   };
 }
 
-export interface SandboxFunctionInvocationResource
-  extends ReadonlyAttributesType<SandboxFunctionInvocationModel> {}
+export interface SandboxFunctionInvocationResource extends ReadonlyAttributesType<SandboxFunctionInvocationModel> {}
 
 export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunctionInvocationModel> {
   static model: ModelStaticWorkspaceAware<SandboxFunctionInvocationModel> =

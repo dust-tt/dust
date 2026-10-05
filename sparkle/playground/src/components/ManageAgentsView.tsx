@@ -43,15 +43,15 @@ import {
   withCurrentUserAsEditor,
 } from "../data/build";
 import { getUserById } from "../data/users";
-import { BulkSelectionBar } from "./BulkSelectionBar";
 import { AgentDetailsSheet } from "./BuildDetailSheets";
+import { BulkSelectionBar } from "./BulkSelectionBar";
+import { EmptyState } from "./EmptyState";
 import {
   type BatchConfirmCopy,
   BatchConfirmDialog,
   buildSelectionColumn,
   FilterMenu,
 } from "./buildTableShared";
-import { EmptyState } from "./EmptyState";
 
 // The product's Agents table, as the Build tab opens it. Rows tick, the bar at
 // the bottom edits the lot, and a click opens the agent's sheet. Everything is

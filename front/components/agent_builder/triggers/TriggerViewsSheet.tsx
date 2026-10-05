@@ -3,12 +3,12 @@ import type {
   AgentBuilderTriggerType,
   AgentBuilderWebhookTriggerType,
 } from "@app/components/agent_builder/agentBuilderFormSchema";
+import { TriggerSelectionPageContent } from "@app/components/agent_builder/triggers/TriggerSelectionPage";
 import { ScheduleEditionSheetContent } from "@app/components/agent_builder/triggers/schedule/ScheduleEditionSheet";
 import {
   formValuesToScheduleTriggerData,
   getScheduleFormDefaultValues,
 } from "@app/components/agent_builder/triggers/schedule/scheduleEditionFormSchema";
-import { TriggerSelectionPageContent } from "@app/components/agent_builder/triggers/TriggerSelectionPage";
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { TriggerViewsSheetFormSchema } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { WebhookEditionSheetContent } from "@app/components/agent_builder/triggers/webhook/WebhookEditionSheet";

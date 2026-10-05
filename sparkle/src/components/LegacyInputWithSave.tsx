@@ -7,11 +7,10 @@ import React, {
   useState,
 } from "react";
 
-export interface LegacyInputWithSaveProps
-  extends Omit<
-    React.InputHTMLAttributes<HTMLInputElement>,
-    "value" | "onChange"
-  > {
+export interface LegacyInputWithSaveProps extends Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  "value" | "onChange"
+> {
   /** The persisted value shown at rest; the field reverts to it when an edit is abandoned. */
   value?: string | null;
   /** Right-aligned unit displayed next to the value (e.g. a currency or "%"). */

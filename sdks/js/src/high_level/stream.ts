@@ -1,20 +1,5 @@
-import {
-  apiErrorToDustError,
-  DustAgentError,
-  DustCancelledError,
-  DustError,
-  DustUnknownError,
-  DustValidationError,
-} from "../errors/errors";
 import type { DustAPI } from "../index";
-import { buildContext } from "./context";
 import type { AgentMessage } from "./guards";
-import {
-  hasStringProperty,
-  isActionEventData,
-  isAgentMessage,
-  isAPIError,
-} from "./guards";
 import type {
   AgentAction,
   AgentResponse,
@@ -26,6 +11,21 @@ import type {
   ToolApproval,
   UploadProgress,
 } from "./types";
+import {
+  apiErrorToDustError,
+  DustAgentError,
+  DustCancelledError,
+  DustError,
+  DustUnknownError,
+  DustValidationError,
+} from "../errors/errors";
+import { buildContext } from "./context";
+import {
+  hasStringProperty,
+  isActionEventData,
+  isAgentMessage,
+  isAPIError,
+} from "./guards";
 import { isBlobAttachment, isFileIdAttachment } from "./types";
 
 function findFirstAgentMessage(

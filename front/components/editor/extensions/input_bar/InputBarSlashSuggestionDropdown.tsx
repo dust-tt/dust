@@ -1,13 +1,13 @@
 import { InputBarMenuPanels } from "@app/components/editor/extensions/input_bar/InputBarMenuPanels";
 import type { InputBarSlashMenuRefs } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { useInputBarSlashMenuSections } from "@app/components/editor/extensions/input_bar/useInputBarSlashMenuSections";
-import { applyAttachContextSelection } from "@app/components/editor/extensions/shared/slash_suggestion/applyAttachContextSelection";
-import { flattenSlashCommandSections } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
-import type { ContextSlashSearchSelection } from "@app/components/editor/extensions/shared/slash_suggestion/contextSlashSearchTypes";
 import type {
   SlashCommand,
   SlashCommandDropdownRef,
 } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import { applyAttachContextSelection } from "@app/components/editor/extensions/shared/slash_suggestion/applyAttachContextSelection";
+import { flattenSlashCommandSections } from "@app/components/editor/extensions/shared/slash_suggestion/buildSlashCommandSections";
+import type { ContextSlashSearchSelection } from "@app/components/editor/extensions/shared/slash_suggestion/contextSlashSearchTypes";
 import {
   ATTACH_CONTEXT_SUB_MENU_ID,
   clearSlashSubMenuStack,

@@ -1,9 +1,9 @@
-import { execSync } from "node:child_process";
-import { readFileSync } from "node:fs";
-import path from "node:path";
 import logger from "@app/logger/logger";
 import { CATALOG_LOCALES, DEFAULT_LOCALE } from "@app/types/locale";
 import { formatter } from "@lingui/format-po";
+import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 
 const FRONT_DIR = path.resolve(__dirname, "../..");
 const LOCALES_DIR = path.join(FRONT_DIR, "locales");

@@ -2,8 +2,8 @@ import {
   INSERT_KNOWLEDGE_SLASH_COMMAND_ACTION,
   isRunCommandSlashCommand,
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
-import { PICK_MODEL_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import { PICK_MODEL_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
 import {
   ATTACH_CONTEXT_SUB_MENU_ID,
   PICK_MODEL_SUB_MENU_ID,
@@ -11,11 +11,11 @@ import {
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import { describe, expect, it } from "vitest";
 
+import type { InputBarSlashCommand } from "./InputBarSlashSuggestionTypes";
 import {
   filterInputBarSlashCommandItems,
   getInputBarSlashCommandItems,
 } from "./InputBarSlashSuggestionItems";
-import type { InputBarSlashCommand } from "./InputBarSlashSuggestionTypes";
 import {
   getAvailableInputBarSlashCommands,
   getInputBarSlashMenuMode,

@@ -272,7 +272,8 @@ export type IconOnlyButtonProps = ButtonProps;
 export type RegularButtonProps = ButtonProps;
 
 export interface ButtonProps
-  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "size">,
+  extends
+    Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "size">,
     Omit<LinkWrapperProps, "children" | "className"> {
   /** Button size (`xs` / `sm` / `md`); legacy sizes (`icon`, `mini`, ...) are remapped. */
   size?: ButtonSizeType | LegacyButtonSizeType;

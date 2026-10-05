@@ -60,8 +60,7 @@ type FetchDataSourceOptions = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-export interface DataSourceResource
-  extends ReadonlyAttributesType<DataSourceModel> {}
+export interface DataSourceResource extends ReadonlyAttributesType<DataSourceModel> {}
 export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
   static model: ModelStatic<DataSourceModel> = DataSourceModel;
 

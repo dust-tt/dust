@@ -61,7 +61,7 @@ export function ManagePodGroupsPanel({
         )
       );
     }
-  // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, [isOpen]);
 
   const handleSelectionChange = useCallback(

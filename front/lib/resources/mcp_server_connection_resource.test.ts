@@ -1,11 +1,11 @@
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerConnectionFactory } from "@app/tests/utils/MCPServerConnectionFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { describe, expect, it } from "vitest";
 
 describe("MCPServerConnectionResource", () => {

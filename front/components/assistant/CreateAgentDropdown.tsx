@@ -20,8 +20,9 @@ import {
 } from "@dust-tt/sparkle";
 import type { ComponentProps } from "react";
 
-interface CreateAgentDropdownContentProps
-  extends ComponentProps<typeof DropdownMenuContent> {
+interface CreateAgentDropdownContentProps extends ComponentProps<
+  typeof DropdownMenuContent
+> {
   owner: LightWorkspaceType;
   dataGtmLocation: string;
   // Called when an item navigates away (e.g. to close the sidebar).

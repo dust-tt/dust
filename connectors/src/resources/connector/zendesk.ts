@@ -17,9 +17,7 @@ import {
 import type { ModelId } from "@connectors/types";
 import type { Transaction } from "sequelize";
 
-export class ZendeskConnectorStrategy
-  implements ConnectorProviderStrategy<"zendesk">
-{
+export class ZendeskConnectorStrategy implements ConnectorProviderStrategy<"zendesk"> {
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<ZendeskConfigurationModel>,

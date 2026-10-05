@@ -2,6 +2,7 @@
  * Run agent arguments
  */
 
+import type { Result } from "../shared/result";
 import { getPinnedAgentConfigurationForRun } from "@app/lib/api/assistant/configuration/run_configuration";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
@@ -32,7 +33,6 @@ import {
 } from "@app/types/assistant/conversation";
 import { NOOP_MODEL_ID } from "@app/types/assistant/models/noop";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
-import type { Result } from "../shared/result";
 import { Err, Ok } from "../shared/result";
 import { ConversationError } from "./conversation";
 

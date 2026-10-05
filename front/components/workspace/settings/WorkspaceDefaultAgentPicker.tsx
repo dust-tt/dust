@@ -1,5 +1,5 @@
-import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { ConfirmContext } from "@app/components/Confirm";
+import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
 import { useWorkspaceDefaultAgent } from "@app/hooks/useWorkspaceDefaultAgent";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";

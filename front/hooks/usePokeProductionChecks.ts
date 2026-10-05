@@ -31,9 +31,8 @@ export interface ProductionChecksForCell {
 
 export function usePokeProductionChecksAllCells() {
   const { cells } = useCellContext();
-  const [checksByCell, setChecksByCell] = useState<ProductionChecksForCell[]>(
-    emptyArray()
-  );
+  const [checksByCell, setChecksByCell] =
+    useState<ProductionChecksForCell[]>(emptyArray());
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);

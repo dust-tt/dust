@@ -1,12 +1,12 @@
+import { ChevronDown, ChevronUp, DustLogo, Rocket02 } from "@dust-tt/sparkle";
+import UTMButton from "@marketing/components/UTMButton";
 import { H1, H2, H3, P } from "@marketing/components/home/ContentComponents";
-import { TestimonialSection } from "@marketing/components/home/content/Product/TestimonialSection";
 import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
 import LandingLayout from "@marketing/components/home/LandingLayout";
 import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import TrustedBy from "@marketing/components/home/TrustedBy";
-import UTMButton from "@marketing/components/UTMButton";
+import { TestimonialSection } from "@marketing/components/home/content/Product/TestimonialSection";
 import { classNames } from "@marketing/lib/utils";
-import { ChevronDown, ChevronUp, DustLogo, Rocket02 } from "@dust-tt/sparkle";
 import Image from "next/image";
 import { useRouter } from "next/router";
 import type { ReactElement, ReactNode } from "react";

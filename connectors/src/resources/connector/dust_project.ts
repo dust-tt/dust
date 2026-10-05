@@ -12,9 +12,7 @@ import { DustProjectMountFileResource } from "@connectors/resources/dust_project
 import type { ModelId } from "@connectors/types";
 import type { Transaction } from "sequelize";
 
-export class DustProjectConnectorStrategy
-  implements ConnectorProviderStrategy<"dust_project">
-{
+export class DustProjectConnectorStrategy implements ConnectorProviderStrategy<"dust_project"> {
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<DustProjectConfigurationModel>,

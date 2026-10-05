@@ -1,9 +1,9 @@
+import type { DocumentComment, DocumentCommentReply } from "./types";
 import type { Node } from "@tiptap/pm/model";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
 import { Transform } from "@tiptap/pm/transform";
-import { normalizeTextNodes } from "./content";
 import { COMMENT_MARK_NAME, getDocumentComments } from "./DocumentComments";
-import type { DocumentComment, DocumentCommentReply } from "./types";
+import { normalizeTextNodes } from "./content";
 
 interface CommentRange {
   from: number;

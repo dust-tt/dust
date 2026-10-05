@@ -5,13 +5,13 @@ import { DocumentOrTableDeleteDialog } from "@app/components/data_source/Documen
 import type { ContentActionsRef } from "@app/components/spaces/ContentActions";
 import { getMenuItems } from "@app/components/spaces/ContentActions";
 import { SpacePageHeader } from "@app/components/spaces/SpacePageHeaders";
+import { SearchLocation } from "@app/components/spaces/search/SearchingInSpace";
+import type { SpaceSearchContextType } from "@app/components/spaces/search/SpaceSearchContext";
+import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import {
   makeColumnsForSearchResults,
   SORTING_KEYS,
 } from "@app/components/spaces/search/columns";
-import { SearchLocation } from "@app/components/spaces/search/SearchingInSpace";
-import type { SpaceSearchContextType } from "@app/components/spaces/search/SpaceSearchContext";
-import { SpaceSearchContext } from "@app/components/spaces/search/SpaceSearchContext";
 import { useCursorPaginationForDataTable } from "@app/hooks/useCursorPaginationForDataTable";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useHashParam } from "@app/hooks/useHashParams";

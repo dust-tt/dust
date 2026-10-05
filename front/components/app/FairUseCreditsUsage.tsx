@@ -1,5 +1,5 @@
-import { CreditUsageCard } from "@app/components/app/CreditUsageCard";
 import { FairUsageModal } from "@app/components/FairUsageModal";
+import { CreditUsageCard } from "@app/components/app/CreditUsageCard";
 import { formatCredits, formatFairUseTimeframe } from "@app/lib/client/credits";
 import { AGENT_MESSAGE_COMPLETED_EVENT } from "@app/lib/notifications/events";
 import { useFairUseCredits } from "@app/lib/swr/fair_use_credits";

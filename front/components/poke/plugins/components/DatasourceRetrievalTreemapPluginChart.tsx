@@ -5,9 +5,9 @@ import {
 } from "@app/components/agent_builder/observability/utils";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
-import { CHART_HEIGHT } from "@app/components/charts/constants";
 import type { DatasourceRetrievalTreemapNode } from "@app/components/charts/DatasourceRetrievalTreemapContent";
 import { DatasourceRetrievalTreemapContent } from "@app/components/charts/DatasourceRetrievalTreemapContent";
+import { CHART_HEIGHT } from "@app/components/charts/constants";
 import { usePokeAgentDatasourceRetrieval } from "@app/poke/swr/agent_details";
 import { useCallback, useMemo } from "react";
 import { Tooltip, Treemap } from "recharts";

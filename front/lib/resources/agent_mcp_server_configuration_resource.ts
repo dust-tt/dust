@@ -10,8 +10,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Attributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
-export interface AgentMCPServerConfigurationResource
-  extends ReadonlyAttributesType<AgentMCPServerConfigurationModel> {}
+export interface AgentMCPServerConfigurationResource extends ReadonlyAttributesType<AgentMCPServerConfigurationModel> {}
 
 export class AgentMCPServerConfigurationResource extends BaseResource<AgentMCPServerConfigurationModel> {
   static model: ModelStaticWorkspaceAware<AgentMCPServerConfigurationModel> =

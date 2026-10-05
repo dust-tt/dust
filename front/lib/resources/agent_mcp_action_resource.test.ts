@@ -24,12 +24,12 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
-import { getNamespace } from "@app/tests/utils/test_cls";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { getNamespace } from "@app/tests/utils/test_cls";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ConversationType,
@@ -316,61 +316,65 @@ describe("listBlockedActionsForConversation", () => {
     expect(result[0].status).toBe("blocked_validation_required");
   });
 
-  it.each([
-    "interrupted",
-    "gracefully_stopped",
-  ] as const)("should not return blocked actions whose agent message is %s", async (status) => {
-    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
-      name: "Test Agent",
-    });
-
-    // Create user message at rank 0.
-    const userMessageRow = await ConversationFactory.createUserMessageWithRank({
-      auth,
-      workspace,
-      conversationId: conversation.id,
-      rank: 0,
-      content: "Test message",
-    });
-
-    // Create agent message at rank 1 with a blocked action.
-    const agentMessageRow =
-      await ConversationFactory.createAgentMessageWithRank({
-        workspace,
-        conversationId: conversation.id,
-        rank: 1,
-        agentConfigurationId: agentConfig.sId,
-        agentConfigurationVersion: agentConfig.version,
-        parentId: userMessageRow.id,
-      });
-
-    await createBlockedAction({
-      agentMessageModelId: agentMessageRow.agentMessageId!,
-    });
-
-    // Finalize the agent message while leaving the blocked action behind, as can happen for stale
-    // historical rows.
-    await ConversationFactory.setAgentMessageStatus({
-      workspace,
-      agentMessageModelId: agentMessageRow.agentMessageId!,
-      status,
-    });
-
-    const conversationResource = await ConversationResource.fetchById(
-      auth,
-      conversation.sId
-    );
-    expect(conversationResource).not.toBeNull();
-
-    const result =
-      await AgentMCPActionResource.listBlockedActionsForConversation(
+  it.each(["interrupted", "gracefully_stopped"] as const)(
+    "should not return blocked actions whose agent message is %s",
+    async (status) => {
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
         auth,
-        conversationResource!
+        {
+          name: "Test Agent",
+        }
       );
 
-    // The blocked action is not actionable anymore: it must not be returned.
-    expect(result).toEqual([]);
-  });
+      // Create user message at rank 0.
+      const userMessageRow =
+        await ConversationFactory.createUserMessageWithRank({
+          auth,
+          workspace,
+          conversationId: conversation.id,
+          rank: 0,
+          content: "Test message",
+        });
+
+      // Create agent message at rank 1 with a blocked action.
+      const agentMessageRow =
+        await ConversationFactory.createAgentMessageWithRank({
+          workspace,
+          conversationId: conversation.id,
+          rank: 1,
+          agentConfigurationId: agentConfig.sId,
+          agentConfigurationVersion: agentConfig.version,
+          parentId: userMessageRow.id,
+        });
+
+      await createBlockedAction({
+        agentMessageModelId: agentMessageRow.agentMessageId!,
+      });
+
+      // Finalize the agent message while leaving the blocked action behind, as can happen for stale
+      // historical rows.
+      await ConversationFactory.setAgentMessageStatus({
+        workspace,
+        agentMessageModelId: agentMessageRow.agentMessageId!,
+        status,
+      });
+
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      const result =
+        await AgentMCPActionResource.listBlockedActionsForConversation(
+          auth,
+          conversationResource!
+        );
+
+      // The blocked action is not actionable anymore: it must not be returned.
+      expect(result).toEqual([]);
+    }
+  );
 
   it("should only return blocked actions from the latest agent message version at a given rank", async () => {
     const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {

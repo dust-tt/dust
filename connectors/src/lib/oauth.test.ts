@@ -62,24 +62,23 @@ describe("getOAuthConnectionAccessTokenWithThrow", () => {
     provider: OAuthProvider;
     code: string;
     message: string;
-  }[])("keeps unrelated $provider $code failures retryable", async ({
-    provider,
-    code,
-    message,
-  }) => {
-    vi.spyOn(OAuthAPI.prototype, "getAccessToken").mockResolvedValueOnce(
-      new Err({ code, message })
-    );
+  }[])(
+    "keeps unrelated $provider $code failures retryable",
+    async ({ provider, code, message }) => {
+      vi.spyOn(OAuthAPI.prototype, "getAccessToken").mockResolvedValueOnce(
+        new Err({ code, message })
+      );
 
-    const token = getOAuthConnectionAccessTokenWithThrow({
-      logger,
-      provider,
-      connectionId: "test-connection",
-    });
+      const token = getOAuthConnectionAccessTokenWithThrow({
+        logger,
+        provider,
+        connectionId: "test-connection",
+      });
 
-    await expect(token).rejects.toThrow(
-      `Error retrieving access token from ${provider}: code=${code} message=${message}`
-    );
-    await expect(token).rejects.not.toBeInstanceOf(ExternalOAuthTokenError);
-  });
+      await expect(token).rejects.toThrow(
+        `Error retrieving access token from ${provider}: code=${code} message=${message}`
+      );
+      await expect(token).rejects.not.toBeInstanceOf(ExternalOAuthTokenError);
+    }
+  );
 });

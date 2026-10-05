@@ -1,7 +1,3 @@
-import fs from "node:fs/promises";
-import inspector from "node:inspector/promises";
-import os from "node:os";
-import path from "node:path";
 import { apiConfig } from "@connectors/lib/api/config";
 import { setTimeoutAsync } from "@connectors/lib/async_utils";
 import logger from "@connectors/logger/logger";
@@ -9,6 +5,10 @@ import { apiError, withLogging } from "@connectors/logger/withlogging";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types/api";
 import { isString } from "@connectors/types/shared/utils/general";
 import type { Request, Response } from "express";
+import fs from "node:fs/promises";
+import inspector from "node:inspector/promises";
+import os from "node:os";
+import path from "node:path";
 
 const CPU_PROFILE_DURATION_MS = 30_000;
 const HEAP_PROFILE_DURATION_MS = 30_000;

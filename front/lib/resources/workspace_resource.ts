@@ -79,8 +79,7 @@ type WorkspaceModelIdBatchRow = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-export interface WorkspaceResource
-  extends ReadonlyAttributesType<WorkspaceModel> {}
+export interface WorkspaceResource extends ReadonlyAttributesType<WorkspaceModel> {}
 
 export const WORKSPACE_CONVERSATION_KILL_SWITCH_OPERATIONS = [
   "block",

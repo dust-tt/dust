@@ -1,8 +1,8 @@
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import { frameV2ContentType } from "@app/types/files";
 import { honoApp } from "@front-api/app";

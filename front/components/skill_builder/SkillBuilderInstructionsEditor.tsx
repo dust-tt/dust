@@ -1,21 +1,21 @@
+import {
+  SkillInstructionsEditorContent,
+  useSkillInstructionsEditor,
+} from "@app/components/editor/SkillInstructionsEditor";
 import { editorVariants } from "@app/components/editor/editorStyles";
 import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/input_bar/SkillNode";
 import type { SlashCommandSkillSuggestion } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { TOOL_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/ToolNode";
-import {
-  SkillInstructionsEditorContent,
-  useSkillInstructionsEditor,
-} from "@app/components/editor/SkillInstructionsEditor";
 import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
-import { getDefaultMCPAction } from "@app/components/shared/tools_picker/formDefaults";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import { SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT } from "@app/components/skill_builder/events";
+import { getDefaultMCPAction } from "@app/components/shared/tools_picker/formDefaults";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type { ReferenceSummaryItem } from "@app/components/skill_builder/SkillBuilderInstructionsReferenceSummary";
 import { SkillBuilderInstructionsReferenceSummary } from "@app/components/skill_builder/SkillBuilderInstructionsReferenceSummary";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
+import { SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT } from "@app/components/skill_builder/events";
 import type {
   ReferencedSkillFormData,
   SkillBuilderFormData,
@@ -564,7 +564,7 @@ export function SkillBuilderInstructionsEditor({
       instructionsField.ref(null);
       attachedKnowledgeField.ref(null);
     };
-  // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
+    // oxlint-disable-next-line react/exhaustive-deps -- not reported by the previous linter; deps kept as-is
   }, [attachedKnowledgeField.ref, editor, instructionsField.ref]);
 
   const handleOpenInsertMenu = useCallback(() => {

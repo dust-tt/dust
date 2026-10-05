@@ -14,10 +14,10 @@ import * as rateLimiterModule from "@app/lib/utils/rate_limiter";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
@@ -131,9 +131,8 @@ describe("validateAgentMention", () => {
       }
     );
 
-    const { AgentConfigurationModel } = await import(
-      "@app/lib/models/agent/agent"
-    );
+    const { AgentConfigurationModel } =
+      await import("@app/lib/models/agent/agent");
     await AgentConfigurationModel.update(
       { requestedSpaceIds: [anotherProjectSpace.id] },
       {

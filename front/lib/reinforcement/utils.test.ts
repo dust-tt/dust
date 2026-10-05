@@ -1,7 +1,7 @@
 import { getAuthForWorkspace } from "@app/lib/reinforcement/utils";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { describe, expect, it } from "vitest";
 
 describe("getAuthForWorkspace", () => {

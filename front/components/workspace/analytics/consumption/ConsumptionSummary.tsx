@@ -1,5 +1,5 @@
-import { MESSAGE_COUNT_LABEL } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
+import { MESSAGE_COUNT_LABEL } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";

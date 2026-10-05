@@ -254,18 +254,16 @@ function buildSearchResults<T>(
     content: (match: T) => string;
   }
 ): SearchResultResourceType[] {
-  return matches.map(
-    (match, index): SearchResultResourceType => ({
-      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
-      uri: extractors.permalink(match) ?? "",
-      text: extractors.text(match),
-      id: extractors.id(match),
-      source: { provider: "slack" },
-      tags: [],
-      ref: refs[index] ?? "",
-      chunks: [stripNullBytes(extractors.content(match))],
-    })
-  );
+  return matches.map((match, index): SearchResultResourceType => ({
+    mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_SEARCH_RESULT,
+    uri: extractors.permalink(match) ?? "",
+    text: extractors.text(match),
+    id: extractors.id(match),
+    source: { provider: "slack" },
+    tags: [],
+    ref: refs[index] ?? "",
+    chunks: [stripNullBytes(extractors.content(match))],
+  }));
 }
 
 // Best-effort detection of Slack user IDs (U* or W* for enterprise grid).

@@ -1,8 +1,8 @@
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { createPublicKey, verify } from "node:crypto";
 import type { IncomingHttpHeaders, IncomingMessage } from "node:http";
 import { Readable } from "node:stream";
-import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
 
 type SignatureValidationError = {
   statusCode: 401 | 403 | 500;

@@ -3,8 +3,8 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 

@@ -1,5 +1,5 @@
-import { clearFilterCategory } from "@app/components/shared/filter_panel/filterState";
 import { SearchFilterPanel } from "@app/components/shared/filter_panel/SearchFilterPanel";
+import { clearFilterCategory } from "@app/components/shared/filter_panel/filterState";
 import type { SearchFilterOption } from "@app/components/shared/filter_panel/searchFilter";
 import { useFilterPanel } from "@app/components/shared/filter_panel/useFilterPanel";
 import type {

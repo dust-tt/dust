@@ -33,8 +33,7 @@ type CachedFeatureFlagData = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-export interface FeatureFlagResource
-  extends ReadonlyAttributesType<FeatureFlagModel> {}
+export interface FeatureFlagResource extends ReadonlyAttributesType<FeatureFlagModel> {}
 export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
   static model: ModelStatic<FeatureFlagModel> = FeatureFlagModel;
 

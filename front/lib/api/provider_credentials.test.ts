@@ -1,6 +1,6 @@
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { ProviderCredentialFactory } from "@app/tests/utils/ProviderCredentialFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

@@ -6,9 +6,9 @@ import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_res
 import { FramePublicationModel } from "@app/lib/resources/storage/models/frame_publication";
 import { createTestFrameFile } from "@app/tests/utils/FrameFunctionFactory";
 import { storeTestFramePublication } from "@app/tests/utils/FramePublicationFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { getFramePublicationUiBundlePath } from "@app/types/api/frame_storage";
 import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { beforeEach, describe, expect, it } from "vitest";

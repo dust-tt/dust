@@ -1,7 +1,7 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import ModelPicker from "@app/components/app/ModelPicker";
 import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
+import ModelPicker from "@app/components/app/ModelPicker";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
 import type {

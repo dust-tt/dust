@@ -36,8 +36,8 @@ async function migrateDocument({
   let newParentId: string | null = null;
   try {
     const uniqueIds = _.uniq(
-      [coreNode.node_id, ...coreNode.parents].map(
-        (x) => _.last(x.split("notion-"))!
+      [coreNode.node_id, ...coreNode.parents].map((x) =>
+        _.last(x.split("notion-"))!
       )
     );
     newParents = [...uniqueIds.map((id) => `notion-${id}`)];

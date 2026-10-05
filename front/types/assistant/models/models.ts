@@ -1,6 +1,7 @@
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { z } from "zod";
 
+import type { ModelConfigurationType } from "./types";
 import {
   CLAUDE_3_5_HAIKU_20241022_MODEL_ID,
   CLAUDE_3_5_SONNET_20240620_MODEL_ID,
@@ -163,7 +164,6 @@ import {
   SIMULATED_FAILURE_MODEL_CONFIG,
   SIMULATED_FAILURE_MODEL_ID,
 } from "./simulated_failure_model";
-import type { ModelConfigurationType } from "./types";
 import {
   GROK_3_MINI_MODEL_ID,
   GROK_3_MODEL_ID,

@@ -1,7 +1,7 @@
 import * as metronomeClient from "@app/lib/metronome/client";
 import type { MetronomeBalance } from "@app/lib/metronome/types";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import type { Invoice } from "@metronome/sdk/resources/v1/customers";

@@ -2,9 +2,9 @@ import type { BulkSeatChangePreview } from "@app/lib/api/credits/bulk_seat_chang
 import { computeBulkSeatChangePreview } from "@app/lib/api/credits/bulk_seat_change";
 import { UserResource } from "@app/lib/resources/user_resource";
 import * as bulkClient from "@app/temporal/bulk_seat_change/client";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";

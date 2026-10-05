@@ -1,4 +1,3 @@
-import assert from "node:assert";
 import { getBatchLLM, getStreamLLM } from "@app/lib/api/llm";
 import { LLMRunLifecycle } from "@app/lib/api/llm/run_lifecycle";
 import { createLLMTraceId } from "@app/lib/api/llm/traces/buffer";
@@ -26,6 +25,7 @@ import {
   GPT_5_6_LUNA_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
+import assert from "node:assert";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 afterEach(() => {
@@ -267,23 +267,23 @@ describe("LLMRunLifecycle", () => {
   it.each([
     { isByok: false, useWorkspaceCredentials: false },
     { isByok: true, useWorkspaceCredentials: true },
-  ])("records useWorkspaceCredentials=$useWorkspaceCredentials on the pending usage for a byok=$isByok workspace", async ({
-    isByok,
-    useWorkspaceCredentials,
-  }) => {
-    const { authenticator: auth } = await createResourceTest({ isByok });
-    const parameters = makeLifecycleParameters();
+  ])(
+    "records useWorkspaceCredentials=$useWorkspaceCredentials on the pending usage for a byok=$isByok workspace",
+    async ({ isByok, useWorkspaceCredentials }) => {
+      const { authenticator: auth } = await createResourceTest({ isByok });
+      const parameters = makeLifecycleParameters();
 
-    await LLMRunLifecycle.start(auth, parameters);
+      await LLMRunLifecycle.start(auth, parameters);
 
-    const run = await RunResource.fetchByDustRunId(auth, {
-      dustRunId: parameters.dustRunId,
-    });
-    assert(run, "Expected the LLM run to exist");
-    expect(await run.listRunUsageAttempts(auth)).toMatchObject([
-      { useWorkspaceCredentials },
-    ]);
-  });
+      const run = await RunResource.fetchByDustRunId(auth, {
+        dustRunId: parameters.dustRunId,
+      });
+      assert(run, "Expected the LLM run to exist");
+      expect(await run.listRunUsageAttempts(auth)).toMatchObject([
+        { useWorkspaceCredentials },
+      ]);
+    }
+  );
 
   it("finalizes the pending attempt when the provider reports usage", async () => {
     const { authenticator: auth } = await createResourceTest({});
@@ -432,29 +432,29 @@ describe("non-batch LLM run persistence", () => {
   it.each([
     { origin: "web" as const, usageType: USAGE_TYPE_USER },
     { origin: "api" as const, usageType: USAGE_TYPE_PROGRAMMATIC },
-  ])("classifies $origin agent usage as $usageType when creating the run", async ({
-    origin,
-    usageType,
-  }) => {
-    const { authenticator: auth } = await createResourceTest({});
-    const llm = makeNoopLLM(auth, DustNoopNoopGlobalNoopStream, {
-      operationType: "agent_conversation",
-      userMessageOrigin: origin,
-    });
+  ])(
+    "classifies $origin agent usage as $usageType when creating the run",
+    async ({ origin, usageType }) => {
+      const { authenticator: auth } = await createResourceTest({});
+      const llm = makeNoopLLM(auth, DustNoopNoopGlobalNoopStream, {
+        operationType: "agent_conversation",
+        userMessageOrigin: origin,
+      });
 
-    for await (const _event of llm.stream(
-      makeStreamParameters("consume $1.25")
-    )) {
-      // Consume the stream fully so the noop request completes.
+      for await (const _event of llm.stream(
+        makeStreamParameters("consume $1.25")
+      )) {
+        // Consume the stream fully so the noop request completes.
+      }
+
+      const run = await RunResource.fetchByDustRunId(auth, {
+        dustRunId: llm.getTraceId(),
+      });
+      expect(await run?.listRunUsageAttempts(auth)).toMatchObject([
+        { usageState: "reported", usageType },
+      ]);
     }
-
-    const run = await RunResource.fetchByDustRunId(auth, {
-      dustRunId: llm.getTraceId(),
-    });
-    expect(await run?.listRunUsageAttempts(auth)).toMatchObject([
-      { usageState: "reported", usageType },
-    ]);
-  });
+  );
 
   it("finalizes usage from the provider stream", async () => {
     const { authenticator: auth } = await createResourceTest({});

@@ -1,8 +1,8 @@
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
 import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
 import { API_KEYS_PAGE_TITLE } from "@app/components/pages/workspace/developers/apiKeysAdminSearchEntries";
-import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
+import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
 import { APIKeyCreationSheet } from "@app/components/workspace/api-keys/APIKeyCreationSheet";
 import { APIKeysTable } from "@app/components/workspace/api-keys/APIKeysTable";
 import { EditKeyCapDialog } from "@app/components/workspace/api-keys/EditKeyCapDialog";

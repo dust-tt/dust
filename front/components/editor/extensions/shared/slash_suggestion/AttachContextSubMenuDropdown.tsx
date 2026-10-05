@@ -6,6 +6,11 @@ import {
   useKnowledgeBrowserNavigation,
 } from "@app/components/data_source_view/browser/useKnowledgeBrowserNavigation";
 import { AttachContextSlashMenuItemIcon } from "@app/components/editor/extensions/shared/slash_suggestion/AttachContextSlashMenuItemIcon";
+import type {
+  SlashCommand,
+  SlashCommandDropdownRef,
+} from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import { SlashCommandDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type { AttachContextSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/attachContextSlashCommand";
 import {
   isAttachContextSlashCommand,
@@ -23,11 +28,6 @@ import {
   isLoadMoreKnowledgeBrowserSlashCommand,
   isNavigateKnowledgeBrowserSlashCommand,
 } from "@app/components/editor/extensions/shared/slash_suggestion/knowledgeBrowserSlashCommands";
-import type {
-  SlashCommand,
-  SlashCommandDropdownRef,
-} from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
-import { SlashCommandDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import type { SlashMenuStackFrame } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import { useAttachContextSearchSections } from "@app/components/editor/extensions/shared/slash_suggestion/useAttachContextSearchSections";
 import type { AttachContextSlashMenuItem } from "@app/components/editor/extensions/shared/slash_suggestion/useAttachContextSlashMenuItems";
@@ -118,8 +118,10 @@ function getSubMenuListProps({
   }
 }
 
-interface AttachContextSubMenuDropdownProps
-  extends Pick<SuggestionProps<SlashCommand>, "clientRect" | "query"> {
+interface AttachContextSubMenuDropdownProps extends Pick<
+  SuggestionProps<SlashCommand>,
+  "clientRect" | "query"
+> {
   // The sub-menu command the user came from, and how to return to it. Absent when the browser is
   // the whole menu: no Back row, Escape closes.
   activeFrame?: SlashMenuStackFrame;

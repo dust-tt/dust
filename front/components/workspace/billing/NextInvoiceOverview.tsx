@@ -1,7 +1,7 @@
+import type { SubscriptionStatus } from "./SubscriptionStatusChip";
 import { Spinner } from "@dust-tt/sparkle";
 import { SubscriptionActionButtons } from "./SubscriptionActionButtons";
 import { useSubscriptionContext } from "./SubscriptionContext";
-import type { SubscriptionStatus } from "./SubscriptionStatusChip";
 import { SubscriptionStatusChip } from "./SubscriptionStatusChip";
 import { formatAmount } from "./seatTypeUtils";
 

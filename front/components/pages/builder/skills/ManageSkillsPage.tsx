@@ -12,7 +12,6 @@ import {
 import { SEARCH_FILTER_CATEGORY_SINGULAR_LABEL } from "@app/components/shared/filter_panel/searchFilter";
 import { useSearchPageHashState } from "@app/components/shared/filter_panel/searchFilterHash";
 import { CreateSkillButton } from "@app/components/skills/CreateSkillButton";
-import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import { SkillFilterPanel } from "@app/components/skills/SkillFilterPanel";
 import { SkillSearchTable } from "@app/components/skills/SkillSearchTable";
@@ -21,6 +20,7 @@ import {
   BatchAvailabilityDialog,
   SkillsBatchEditBar,
 } from "@app/components/skills/SkillsBatchEdit";
+import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import {
   SKILL_FILTER_CATEGORIES,
   SKILL_FILTER_CATEGORY_FACET,

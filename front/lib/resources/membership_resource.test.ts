@@ -102,10 +102,10 @@ import { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 
 function getCacheKeyForWorkspace(workspaceId: string): string {
@@ -927,67 +927,69 @@ describe("MembershipResource", () => {
         { role: "admin", newRole: "user" },
         { role: "manager", newRole: "user" },
         { role: "user", newRole: "admin" },
-      ] as const)("writes the $role to $newRole change on the scheduled row", async ({
-        role,
-        newRole,
-      }) => {
-        const otherAdmin = await UserFactory.basic();
-        await MembershipFactory.associate(workspace, otherAdmin, {
-          role: "admin",
-        });
-        const user = await UserFactory.basic();
-        await MembershipFactory.associate(workspace, user, {
-          role,
-          seatType: "max",
-        });
-        const active =
-          await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      ] as const)(
+        "writes the $role to $newRole change on the scheduled row",
+        async ({ role, newRole }) => {
+          const otherAdmin = await UserFactory.basic();
+          await MembershipFactory.associate(workspace, otherAdmin, {
+            role: "admin",
+          });
+          const user = await UserFactory.basic();
+          await MembershipFactory.associate(workspace, user, {
+            role,
+            seatType: "max",
+          });
+          const active =
+            await MembershipResource.getActiveMembershipOfUserInWorkspace({
+              user,
+              workspace: lightWorkspace,
+            });
+          if (!active) {
+            throw new Error("Expected an active membership");
+          }
+
+          await active.scheduleSeatChange({
             user,
             workspace: lightWorkspace,
+            newSeatType: "workspace",
+            scheduledAt,
+            author: "no-author",
+            transaction: outerTransaction,
           });
-        if (!active) {
-          throw new Error("Expected an active membership");
+
+          const result = await MembershipResource.updateMembershipRole({
+            user,
+            workspace: lightWorkspace,
+            newRole,
+            author: "no-author",
+          });
+          expect(result.isOk()).toBe(true);
+
+          const current =
+            await MembershipResource.getActiveMembershipOfUserInWorkspace({
+              user,
+              workspace: lightWorkspace,
+            });
+          expect(current?.role).toBe(newRole);
+
+          const future = await MembershipResource.getScheduledFutureMemberships(
+            {
+              workspace: lightWorkspace,
+            }
+          );
+          expect(future).toHaveLength(1);
+          expect(future[0].role).toBe(newRole);
+
+          const afterSwitch =
+            await MembershipResource.getActiveMembershipOfUserInWorkspace({
+              user,
+              workspace: lightWorkspace,
+              at: new Date(scheduledAt.getTime() + 1000),
+            });
+          expect(afterSwitch?.role).toBe(newRole);
+          expect(afterSwitch?.seatType).toBe("workspace");
         }
-
-        await active.scheduleSeatChange({
-          user,
-          workspace: lightWorkspace,
-          newSeatType: "workspace",
-          scheduledAt,
-          author: "no-author",
-          transaction: outerTransaction,
-        });
-
-        const result = await MembershipResource.updateMembershipRole({
-          user,
-          workspace: lightWorkspace,
-          newRole,
-          author: "no-author",
-        });
-        expect(result.isOk()).toBe(true);
-
-        const current =
-          await MembershipResource.getActiveMembershipOfUserInWorkspace({
-            user,
-            workspace: lightWorkspace,
-          });
-        expect(current?.role).toBe(newRole);
-
-        const future = await MembershipResource.getScheduledFutureMemberships({
-          workspace: lightWorkspace,
-        });
-        expect(future).toHaveLength(1);
-        expect(future[0].role).toBe(newRole);
-
-        const afterSwitch =
-          await MembershipResource.getActiveMembershipOfUserInWorkspace({
-            user,
-            workspace: lightWorkspace,
-            at: new Date(scheduledAt.getTime() + 1000),
-          });
-        expect(afterSwitch?.role).toBe(newRole);
-        expect(afterSwitch?.seatType).toBe("workspace");
-      });
+      );
     });
   });
 

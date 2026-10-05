@@ -1,7 +1,7 @@
 import { resolveAgentRequestedSpaces } from "@app/lib/api/assistant/configuration/requested_spaces";
 import { makeSId } from "@app/lib/resources/string_ids";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { describe, expect, it } from "vitest";
 
 describe("resolveAgentRequestedSpaces", () => {

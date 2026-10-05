@@ -1,5 +1,5 @@
-import { getPokeGroupKindChipColor } from "@app/components/poke/groups/columns";
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
+import { getPokeGroupKindChipColor } from "@app/components/poke/groups/columns";
 import type { PokeGroupPermissionType } from "@app/lib/api/poke/group_permissions";
 import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
 import type { LightWorkspaceType } from "@app/types/user";

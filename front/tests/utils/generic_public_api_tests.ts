@@ -1,4 +1,3 @@
-import type { IncomingMessage, ServerResponse } from "node:http";
 import { Authenticator } from "@app/lib/auth";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
@@ -6,6 +5,7 @@ import type { TestWorkspacePlan } from "@app/tests/utils/WorkspaceFactory";
 import { workspaceForPlan } from "@app/tests/utils/WorkspaceFactory";
 import type { RequestMethod } from "node-mocks-http";
 import { createMocks } from "node-mocks-http";
+import type { IncomingMessage, ServerResponse } from "node:http";
 
 /**
  * Creates a mock request with authentication for testing public API endpoints.

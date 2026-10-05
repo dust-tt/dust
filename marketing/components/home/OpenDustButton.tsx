@@ -1,6 +1,6 @@
+import { ArrowRight, LegacyButton as Button } from "@dust-tt/sparkle";
 import { useOpenDustTarget } from "@marketing/hooks/useOpenDustTarget";
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
-import { ArrowRight, LegacyButton as Button } from "@dust-tt/sparkle";
 
 interface OpenDustButtonProps {
   variant?: "highlight" | "outline";

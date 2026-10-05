@@ -1,14 +1,13 @@
-
+import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
+import IntegrationTemplate from "@marketing/components/home/content/Integration/IntegrationTemplate";
 // Import all enrichment configs
 import { integrationEnrichments } from "@marketing/components/home/content/Integration/configs";
-import IntegrationTemplate from "@marketing/components/home/content/Integration/IntegrationTemplate";
 import type {
   IntegrationBase,
   IntegrationEnrichment,
   IntegrationPageConfig,
 } from "@marketing/components/home/content/Integration/types";
 import { getRelatedIntegrations } from "@marketing/components/home/content/Integration/utils/integrationRegistry";
-import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
 import { fetchPublicIntegrations } from "@marketing/lib/api/integrations";
 import type { GetServerSideProps } from "next";
 import type { ReactElement } from "react";

@@ -1,5 +1,5 @@
-import { LinkWrapper } from "@marketing/lib/platform";
 import { DustLogo } from "@dust-tt/sparkle";
+import { LinkWrapper } from "@marketing/lib/platform";
 
 interface PublicWebsiteLogoProps {
   size?: "default" | "small";

@@ -1,7 +1,7 @@
-import { EditedSectionBar } from "@app/components/assistant/details/DetailsSectionHeading";
-import { useEditedAgentSections } from "@app/components/assistant/details/SuggestionPreviewContext";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import { DataSourceViewPermissionTree } from "@app/components/DataSourceViewPermissionTree";
+import { EditedSectionBar } from "@app/components/assistant/details/DetailsSectionHeading";
+import { useEditedAgentSections } from "@app/components/assistant/details/SuggestionPreviewContext";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import type {

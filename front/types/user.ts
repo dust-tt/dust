@@ -1,5 +1,3 @@
-import * as t from "io-ts";
-import { z } from "zod";
 import type {
   EmbeddingProviderIdType,
   WhitelistableModelMakerIdType,
@@ -7,6 +5,8 @@ import type {
 import type { SupportedLocale } from "./locale";
 import type { MembershipOriginType, MembershipSeatType } from "./memberships";
 import type { ModelId } from "./shared/model_id";
+import * as t from "io-ts";
+import { z } from "zod";
 import { DbModelIdSchema } from "./shared/model_id";
 import { assertNever } from "./shared/utils/assert_never";
 import { decodeUtf8HeaderValue } from "./shared/utils/http_headers";
