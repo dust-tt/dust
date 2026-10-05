@@ -2,15 +2,29 @@ import config from "@app/lib/api/config";
 import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import { isDevelopment } from "@app/types/shared/env";
 import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
+import { extractWWWAuthenticateParams } from "@modelcontextprotocol/sdk/client/auth.js";
 import type {
   OAuthClientInformationFull,
   OAuthClientInformationMixed,
   OAuthClientMetadata,
   OAuthTokens,
 } from "@modelcontextprotocol/sdk/shared/auth.js";
+import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
+
+// Last 401/403 the remote server returned before the SDK fell into its OAuth flow.
+export type MCPAuthChallenge = {
+  status: number;
+  wwwAuthenticate: string | null;
+  error?: string;
+  scope?: string;
+};
 
 export class MCPOAuthProviderError extends Error {
-  constructor(method: string) {
+  constructor(
+    method: string,
+    readonly challenge?: MCPAuthChallenge,
+    readonly tokenScope?: string
+  ) {
     super(`MCPOAuthProvider: ${method} not implemented`);
     this.name = "MCPOAuthProviderError";
   }
@@ -18,10 +32,37 @@ export class MCPOAuthProviderError extends Error {
 
 export class MCPOAuthProvider implements OAuthClientProvider {
   private token: OAuthTokens | undefined;
+  private lastChallenge: MCPAuthChallenge | undefined;
 
   constructor(tokens?: OAuthTokens) {
     this.token = tokens;
   }
+
+  // Wraps the transport fetch so errors thrown below carry the 401/403 that triggered them.
+  wrapFetch(fetchFn: FetchLike = fetch): FetchLike {
+    return async (url, init) => {
+      const response = await fetchFn(url, init);
+      if (response.status === 401 || response.status === 403) {
+        const { error, scope } = extractWWWAuthenticateParams(response);
+        this.lastChallenge = {
+          status: response.status,
+          wwwAuthenticate: response.headers.get("WWW-Authenticate"),
+          error,
+          scope,
+        };
+      }
+      return response;
+    };
+  }
+
+  private notImplemented(method: string): MCPOAuthProviderError {
+    return new MCPOAuthProviderError(
+      method,
+      this.lastChallenge,
+      this.token?.scope
+    );
+  }
+
   get redirectUrl(): string {
     // Must return a concrete redirect URI. The MCP SDK (>=1.29) treats a falsy
     // `redirectUrl` as a non-interactive (client_credentials) flow and calls
@@ -83,18 +124,18 @@ export class MCPOAuthProvider implements OAuthClientProvider {
   }
 
   saveTokens() {
-    throw new MCPOAuthProviderError("saveTokens");
+    throw this.notImplemented("saveTokens");
   }
 
   redirectToAuthorization() {
-    throw new MCPOAuthProviderError("redirectToAuthorization");
+    throw this.notImplemented("redirectToAuthorization");
   }
 
   saveCodeVerifier() {
-    throw new MCPOAuthProviderError("saveCodeVerifier");
+    throw this.notImplemented("saveCodeVerifier");
   }
 
   codeVerifier(): string | Promise<string> {
-    throw new MCPOAuthProviderError("codeVerifier");
+    throw this.notImplemented("codeVerifier");
   }
 }
