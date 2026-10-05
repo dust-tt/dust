@@ -10,6 +10,7 @@ export {
   findAnchorDirective,
   readAnchorDirective,
 } from "@app/lib/markdown/dfm/anchors";
+export { dfmCommentSchema } from "@app/lib/markdown/dfm/annotations";
 export {
   parseDfm,
   serializeDfm,

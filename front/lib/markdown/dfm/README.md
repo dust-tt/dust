@@ -99,8 +99,10 @@ Import from `@app/lib/markdown/dfm` in front and front-api, and from
 | `serializeDfm(document)` | Document to canonical source, or the reason it cannot be written. |
 | `extractAnchors(body)` | The body without anchor directives plus `{ id, start, end }` offsets into it in document order, for the editor and search. |
 | `anchorComment({ body, id, quote, nth })` | Wraps the nth occurrence of `quote` in a new anchor pair, for agents that quote words instead of computing offsets. |
+| `dfmCommentSchema` | The zod schema of a `DfmComment`, exactly, refusing unknown keys, for callers that keep threads outside the codec and read them back. |
 
-Every function above returns a `Result` from `@app/types/shared/result`. The editor's Markdown
+Every function above returns a `Result` from `@app/types/shared/result`; `dfmCommentSchema` is
+a schema, not a function. The editor's Markdown
 parser and serializer read and write anchors one at a time, with three helpers that keep the
 directive's spelling in this module:
 

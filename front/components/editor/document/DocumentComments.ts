@@ -1,4 +1,5 @@
 import type { DfmComment } from "@app/lib/markdown/dfm";
+import { dfmCommentSchema } from "@app/lib/markdown/dfm";
 import { cn } from "@dust-tt/sparkle";
 import type { Editor, JSONContent } from "@tiptap/core";
 import { Extension, isMacOS, Mark } from "@tiptap/core";
@@ -18,23 +19,7 @@ import { z } from "zod";
 export const COMMENT_MARK_NAME = "comment";
 const COMMENTS_ATTRIBUTE = "comments";
 
-const commentsSchema: z.ZodType<DfmComment[]> = z.array(
-  z.object({
-    id: z.string(),
-    status: z.enum(["open", "resolved"]),
-    messages: z.array(
-      z.object({
-        author: z.object({
-          kind: z.enum(["user", "agent"]),
-          id: z.string(),
-          name: z.string(),
-        }),
-        createdAt: z.string(),
-        body: z.string(),
-      })
-    ),
-  })
-);
+const commentsSchema = z.array(dfmCommentSchema);
 
 const HIGHLIGHT_CLASS = cn(
   "cursor-pointer border-b-2 border-golden-400/70 bg-golden-300/40 transition-colors",

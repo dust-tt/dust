@@ -84,6 +84,45 @@ function isValidTimestamp(value: string): boolean {
   );
 }
 
+/**
+ * @cc [owner:tdraier,label:coding] dfm-comment-schema-exact
+ * `dfmCommentSchema` MUST describe exactly `DfmComment`, its messages and their authors, and MUST
+ * refuse unknown keys, so a caller that keeps threads outside the codec can never drop a field
+ * silently. A field added to those types MUST fail type-checking until it is added here.
+ */
+export const dfmCommentSchema = z
+  .object({
+    id: z.string(),
+    status: z.enum(COMMENT_STATUSES),
+    messages: z.array(
+      z
+        .object({
+          author: z
+            .object({
+              kind: z.enum(AUTHOR_KINDS),
+              id: z.string(),
+              name: z.string(),
+            })
+            .strict(),
+          createdAt: z.string(),
+          body: z.string(),
+        })
+        .strict()
+    ),
+  })
+  .strict();
+
+// Identical types, optional fields included: structural `extends` lets either side add one.
+type Exactly<A, B> =
+  (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
+    ? true
+    : false;
+const schemaMatchesComment: Exactly<
+  z.infer<typeof dfmCommentSchema>,
+  DfmComment
+> = true;
+void schemaMatchesComment;
+
 const commentAttributesSchema = z
   .object({
     id: requiredString("Comment without a valid id.").refine(
