@@ -11,6 +11,8 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+export const AGENT_REQUESTED_DOMAINS_LABEL = "Agent-requested domains";
+
 // Workspace-wide toggle for whether agents can request additional domains
 // during a conversation (add_egress_domain). Shown on its own so it stays
 // visible regardless of the scope being viewed on the Computer admin page.
@@ -81,7 +83,7 @@ export function AgentRequestedDomainsSetting() {
       <div className="flex items-center justify-between gap-4 border-y border-border py-4">
         <div className="flex min-w-0 flex-col">
           <div className="heading-xl text-foreground">
-            Agent-requested domains
+            {AGENT_REQUESTED_DOMAINS_LABEL}
           </div>
           <div className="text-sm text-muted-foreground">
             Applies to every Computer in this workspace, across all Pods. Allow

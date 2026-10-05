@@ -90,9 +90,9 @@ export function MCPServerDetailsSheet({
         <div className="flex items-center gap-2">
           {getAvatar(mcpServerView.server, "md")}
         </div>
-        <div>
+        <div className="min-w-0">
           <SheetTitle>{getMcpServerViewDisplayName(mcpServerView)}</SheetTitle>
-          <SheetDescription>
+          <SheetDescription className="line-clamp-2 break-words">
             {getMcpServerViewDescription(mcpServerView)}
           </SheetDescription>
         </div>

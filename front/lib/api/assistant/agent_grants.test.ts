@@ -1,9 +1,7 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
+import { listAgentsForView } from "@app/lib/api/assistant/agent_views";
 import { getEditors } from "@app/lib/api/assistant/editors";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import { toAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -41,21 +39,13 @@ it("uses agent grants for list, manage and archived views", async () => {
   );
 
   for (const view of ["list", "manage"] as const) {
-    const agents = await getAgentConfigurationsForView({
-      auth,
-      agentsGetView: view,
-      variant: "light",
-    });
+    const agents = await listAgentsForView(auth, view);
     expect(agents.map((agent) => agent.sId)).toContain(grantAgent.sId);
   }
   await (await AgentResource.fetchById(authorAuth, grantAgent.sId))!.archive(
     authorAuth
   );
-  const archived = await getAgentConfigurationsForView({
-    auth,
-    agentsGetView: "archived",
-    variant: "light",
-  });
+  const archived = await listAgentsForView(auth, "archived");
   expect(archived.map((agent) => agent.sId)).toEqual([grantAgent.sId]);
 });
 
@@ -83,11 +73,10 @@ it("revokes active-agent author access and keeps admin redaction", async () => {
   );
   expect(await getEditors(authorAuth, agent)).toEqual([]);
   await authorAuth.refresh();
-  const authorAgent = await getAgentConfiguration(authorAuth, {
-    agentId: agent.sId,
-    variant: "light",
-  });
-  expect([authorAgent?.canRead, authorAgent?.canEdit]).toEqual([false, false]);
+  // Without any grant left, the author can no longer even fetch the hidden agent.
+  expect(
+    await AgentConfigurationFactory.refetch(authorAuth, agent.sId)
+  ).toBeNull();
   const admin = await UserFactory.basic();
   await MembershipFactory.associate(workspace, admin, { role: "admin" });
   const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -96,12 +85,9 @@ it("revokes active-agent author access and keeps admin redaction", async () => {
   );
   const adminResource = await AgentResource.fetchById(adminAuth, agent.sId);
   assert(adminResource !== null);
-  const [adminAgent] = await toAgentConfigurations(adminAuth, [adminResource]);
-  expect(adminAgent).toMatchObject({
-    canRead: false,
-    canEdit: false,
-    instructions: null,
-  });
+  expect(adminAuth.can("read", adminResource)).toBe(false);
+  expect(adminAuth.can("write", adminResource)).toBe(false);
+  expect(adminResource.canViewContent).toBe(false);
   // The admin role still administers the agent even though content is redacted.
   expect(adminAuth.can("admin", adminResource)).toBe(true);
 });

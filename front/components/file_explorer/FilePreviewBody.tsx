@@ -57,7 +57,7 @@ export function FilePreviewBody({
     return (
       <FilePreviewFallback
         download={download}
-        message={`This file is too large to preview (${formatFileSize(sizeBytes, { decimals: 1 }, "en-US")}).`}
+        message={`This file is too large to preview (${formatFileSize(sizeBytes, { decimals: 1 })}).`}
       />
     );
   }

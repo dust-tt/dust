@@ -31,6 +31,8 @@ struct AgentMessageStream {
     private var lastGenerationTraceId: String?
     private var retryThinkingBuffer: String?
     private var stepCounter = 0
+    private var currentStep: Int?
+    private var loopStepByCompletedStepId: [String: Int] = [:]
 
     init(messageId: String) {
         self.snapshot = Snapshot(messageId: messageId)
@@ -42,6 +44,7 @@ struct AgentMessageStream {
             applyTokens(tokens)
 
         case let .toolParams(params):
+            currentStep = params.step ?? currentStep
             flushThinkingBuffer()
             snapshot.chainOfThought = nil
             let action = ActiveAction(
@@ -54,14 +57,7 @@ struct AgentMessageStream {
             }
 
         case let .agentActionSuccess(event):
-            let doneLabel = event.action.displayLabels?.done ?? event.action.toolName ?? "Tool"
-            stepCounter += 1
-            snapshot.completedSteps.append(.action(
-                id: "action-\(stepCounter)",
-                label: doneLabel,
-                serverName: event.action.internalMCPServerName
-            ))
-            snapshot.activeActions.removeAll { $0.id == event.action.id }
+            applyActionSuccess(event)
 
         case let .agentMessageSuccess(success):
             finalize(status: .succeeded, from: success.message)
@@ -87,8 +83,21 @@ struct AgentMessageStream {
         }
     }
 
+    private mutating func applyActionSuccess(_ event: AgentActionSuccessEvent) {
+        let stepId = "action-\(event.action.id)"
+        if !snapshot.completedSteps.contains(where: { $0.id == stepId }) {
+            let doneLabel = event.action.displayLabels?.done ?? event.action.toolName ?? "Tool"
+            appendCompletedStep(
+                .action(id: stepId, label: doneLabel, serverName: event.action.internalMCPServerName),
+                loopStep: event.step ?? currentStep
+            )
+        }
+        snapshot.activeActions.removeAll { $0.id == event.action.id }
+    }
+
     private mutating func applyTokens(_ tokens: GenerationTokensEvent) {
         let traceChanged = didTraceChange(tokens.traceId)
+        defer { currentStep = tokens.step ?? currentStep }
 
         switch tokens.classification {
         case .tokens:
@@ -102,6 +111,9 @@ struct AgentMessageStream {
             if traceChanged {
                 snapshot.content = ""
                 retryThinkingBuffer = ""
+                if let step = tokens.step, step == currentStep {
+                    dropCompletedSteps(ofLoopStep: step)
+                }
             }
 
             if retryThinkingBuffer != nil {
@@ -152,8 +164,26 @@ struct AgentMessageStream {
         let text = thinkingBuffer.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         stepCounter += 1
-        snapshot.completedSteps.append(.thinking(id: "thinking-\(stepCounter)", content: text))
+        appendCompletedStep(.thinking(id: "thinking-\(stepCounter)", content: text), loopStep: currentStep)
         thinkingBuffer = ""
         retryThinkingBuffer = nil
+    }
+
+    private mutating func appendCompletedStep(_ step: ActivityStep, loopStep: Int?) {
+        snapshot.completedSteps.append(step)
+        if let loopStep {
+            loopStepByCompletedStepId[step.id] = loopStep
+        }
+    }
+
+    /**
+     * @cc [owner:adrsimon,label:product] retried-step-rebuilds
+     * When a chain-of-thought event arrives with a new `traceId` for the agent-loop `step` already
+     * in progress (a Temporal retry), the completed steps of that loop step MUST be dropped so the
+     * retry rebuilds them instead of appending duplicates. Steps of other loop steps, and steps with
+     * no known loop step, MUST be kept.
+     */
+    private mutating func dropCompletedSteps(ofLoopStep loopStep: Int) {
+        snapshot.completedSteps.removeAll { loopStepByCompletedStepId[$0.id] == loopStep }
     }
 }

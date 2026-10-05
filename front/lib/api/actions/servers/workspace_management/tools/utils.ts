@@ -25,7 +25,7 @@ export function renderFields(
     .join(", ");
 }
 
-// Trailer both list tools share: how many rows matched, and how to get the next page.
+// Shared pagination trailer: how many rows matched, and how to get the next page.
 export function renderPageFooter({
   shown,
   total,

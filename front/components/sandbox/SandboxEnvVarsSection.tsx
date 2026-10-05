@@ -163,6 +163,12 @@ const formSchema = z
 
 type FormValues = z.infer<typeof formSchema>;
 
+const WORKSPACE_ENV_VARS_DESCRIPTION =
+  "Secrets mounted as env vars on every Computer in this workspace.";
+const POD_ENV_VARS_DESCRIPTION =
+  "Secrets mounted as env vars on every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Changes apply to future Computers.";
+const POD_ENV_VARS_READ_ONLY_DESCRIPTION = `${POD_ENV_VARS_DESCRIPTION} Workspace admins manage these variables.`;
+
 const DEFAULT_FORM_VALUES: FormValues = {
   name: "",
   value: "",
@@ -177,16 +183,27 @@ interface SandboxEnvVarsSectionProps {
   spaceId?: string;
   // Tie to visibility when the section can be mounted but hidden.
   disabled?: boolean;
+  // Values are write-only, so the list (names, kinds, domains) is safe to show
+  // read-only; mutation affordances render only when editing is allowed.
+  // Defaults to workspace-admin, matching the API's write gates.
+  canEdit?: boolean;
 }
+
+export const ENVIRONMENT_VARIABLES_LABEL = "Environment variables";
+export const HTTPS_SECRETS_LABEL = "HTTPS secrets (DSEC_)";
+export const CONFIG_ENV_VARS_LABEL = `Config (${SANDBOX_ENV_VAR_PREFIX})`;
+export const WRITE_ONLY_ENV_VALUES_LABEL = "Write-only values";
 
 export function SandboxEnvVarsSection({
   owner,
   spaceId,
   disabled = false,
+  canEdit,
 }: SandboxEnvVarsSectionProps) {
   const { isAdmin } = useAuth();
   const { featureFlags } = useFeatureFlags();
   const hasSandboxAdmin = isComputerFeatureEnabled(featureFlags);
+  const allowEdit = canEdit ?? isAdmin;
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isNameLocked, setIsNameLocked] = useState(false);
   const [envVarToReplace, setEnvVarToReplace] =
@@ -201,7 +218,7 @@ export function SandboxEnvVarsSection({
     useSandboxEnvVars({
       owner,
       spaceId,
-      disabled: disabled || !hasSandboxAdmin || !isAdmin,
+      disabled: disabled || !hasSandboxAdmin,
     });
   const { upsertSandboxEnvVar, isUpsertingSandboxEnvVar } =
     useUpsertSandboxEnvVar({ owner, spaceId });
@@ -426,13 +443,6 @@ export function SandboxEnvVarsSection({
   };
 
   const renderBody = () => {
-    if (!isAdmin) {
-      return (
-        <ContentMessage variant="info" icon={InfoCircle} size="lg">
-          Only workspace admins can manage Computer environment variables.
-        </ContentMessage>
-      );
-    }
     if (!hasSandboxAdmin) {
       return (
         <ContentMessage variant="info" icon={InfoCircle} size="lg">
@@ -456,57 +466,65 @@ export function SandboxEnvVarsSection({
       );
     }
 
+    const podDescription = allowEdit
+      ? POD_ENV_VARS_DESCRIPTION
+      : POD_ENV_VARS_READ_ONLY_DESCRIPTION;
+    const description = spaceId
+      ? podDescription
+      : WORKSPACE_ENV_VARS_DESCRIPTION;
+
     return (
       <Page.Vertical align="stretch" gap="lg">
         <Page.SectionHeader
-          title="Environment variables"
-          description={
-            spaceId
-              ? "Secrets mounted as env vars on every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Changes apply to future Computers."
-              : "Secrets mounted as env vars on every Computer in this workspace."
-          }
+          title={ENVIRONMENT_VARIABLES_LABEL}
+          description={description}
         />
 
-        <ContentMessage
-          variant="primary"
-          icon={InfoCircle}
-          size="lg"
-          title="Choose the right kind for each value"
-        >
-          <div className="flex flex-col gap-2">
-            <div>
-              <strong>HTTPS secrets (DSEC_)</strong> — for credentials and
-              anything sensitive. Stored encrypted on the host. The dsbx
-              forwarder injects the value only into outbound HTTPS requests to
-              the domains you whitelist; code running in the Computer never sees
-              the raw value. Safe for API keys, tokens, and other secrets bound
-              to a known external service.
+        {allowEdit && (
+          <ContentMessage
+            variant="primary"
+            icon={InfoCircle}
+            size="lg"
+            title="Choose the right kind for each value"
+          >
+            <div className="flex flex-col gap-2">
+              <div>
+                <strong>HTTPS secrets (DSEC_)</strong> — for credentials and
+                anything sensitive. Stored encrypted on the host. The dsbx
+                forwarder injects the value only into outbound HTTPS requests to
+                the domains you whitelist; code running in the Computer never
+                sees the raw value. Safe for API keys, tokens, and other secrets
+                bound to a known external service.
+              </div>
+              <div>
+                <strong>Config ({SANDBOX_ENV_VAR_PREFIX})</strong> — for
+                non-sensitive configuration: feature flags, identifiers, public
+                endpoints, model names. Mounted as plain env vars on every new
+                Computer and read directly by the agent and the code it runs.
+                Anything you put here should be safe to log; do not use for
+                credentials.
+              </div>
+              <div>
+                Values are write-only: they cannot be viewed after saving, only
+                overwritten or deleted. Env vars are snapshotted when the
+                Computer starts: an already-running Computer keeps its original
+                values, and any new Computer (new conversation, restart) picks
+                up the latest.
+              </div>
             </div>
-            <div>
-              <strong>Config ({SANDBOX_ENV_VAR_PREFIX})</strong> — for
-              non-sensitive configuration: feature flags, identifiers, public
-              endpoints, model names. Mounted as plain env vars on every new
-              Computer and read directly by the agent and the code it runs.
-              Anything you put here should be safe to log; do not use for
-              credentials.
-            </div>
-            <div>
-              Values are write-only: they cannot be viewed after saving, only
-              overwritten or deleted. Env vars are snapshotted when the Computer
-              starts: an already-running Computer keeps its original values, and
-              any new Computer (new conversation, restart) picks up the latest.
-            </div>
-          </div>
-        </ContentMessage>
+          </ContentMessage>
+        )}
 
-        <div className="flex justify-end">
-          <Button
-            label="Add variable"
-            icon={Plus}
-            onClick={openAddDialog}
-            disabled={isUpsertingSandboxEnvVar}
-          />
-        </div>
+        {allowEdit && (
+          <div className="flex justify-end">
+            <Button
+              label="Add variable"
+              icon={Plus}
+              onClick={openAddDialog}
+              disabled={isUpsertingSandboxEnvVar}
+            />
+          </div>
+        )}
 
         {envVars.length === 0 ? (
           <ContentMessage variant="primary" size="lg">
@@ -555,36 +573,38 @@ export function SandboxEnvVarsSection({
                         ))}
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="mini"
-                      icon={envVar.kind === "config" ? Lock01 : Globe01}
-                      tooltip={
-                        envVar.kind === "config"
-                          ? `Promote ${envVar.name} to HTTPS secret`
-                          : `Edit allowed domains for ${envVar.name}`
-                      }
-                      disabled={isAnyMutationPending}
-                      onClick={() => openConfigureDomainsDialog(envVar)}
-                    />
-                    <Button
-                      variant="outline"
-                      size="mini"
-                      icon={Edit04}
-                      tooltip={`Replace value of ${envVar.name}`}
-                      disabled={isAnyMutationPending}
-                      onClick={() => openReplaceDialog(envVar)}
-                    />
-                    <Button
-                      variant="warning"
-                      size="mini"
-                      icon={Trash01}
-                      tooltip={`Delete ${envVar.name}`}
-                      disabled={isAnyMutationPending}
-                      onClick={() => setEnvVarToDelete(envVar)}
-                    />
-                  </div>
+                  {allowEdit && (
+                    <div className="flex shrink-0 items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="mini"
+                        icon={envVar.kind === "config" ? Lock01 : Globe01}
+                        tooltip={
+                          envVar.kind === "config"
+                            ? `Promote ${envVar.name} to HTTPS secret`
+                            : `Edit allowed domains for ${envVar.name}`
+                        }
+                        disabled={isAnyMutationPending}
+                        onClick={() => openConfigureDomainsDialog(envVar)}
+                      />
+                      <Button
+                        variant="outline"
+                        size="mini"
+                        icon={Edit04}
+                        tooltip={`Replace value of ${envVar.name}`}
+                        disabled={isAnyMutationPending}
+                        onClick={() => openReplaceDialog(envVar)}
+                      />
+                      <Button
+                        variant="warning"
+                        size="mini"
+                        icon={Trash01}
+                        tooltip={`Delete ${envVar.name}`}
+                        disabled={isAnyMutationPending}
+                        onClick={() => setEnvVarToDelete(envVar)}
+                      />
+                    </div>
+                  )}
                 </ListItem>
               );
             })}

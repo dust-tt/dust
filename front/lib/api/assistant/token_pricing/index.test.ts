@@ -1,6 +1,7 @@
 import {
   computeTokensCostForUsageInMicroUsd,
   FLEX_DISCOUNT_FACTOR,
+  inferenceRegionForEndpointRegion,
 } from "@app/lib/api/assistant/token_pricing";
 import { EU_UPLIFT_MODEL_IDS } from "@app/lib/api/assistant/token_pricing/eu";
 import { FIREWORKS_GLM_5P3_MODEL_ID } from "@app/types/assistant/models/fireworks";
@@ -22,6 +23,24 @@ import {
   GROK_4_6_MODEL_ID,
 } from "@app/types/assistant/models/xai";
 import { describe, expect, it } from "vitest";
+
+describe("inferenceRegionForEndpointRegion", () => {
+  it.each([
+    { endpointRegion: "eu" as const, expectedInferenceRegion: "eu" },
+    {
+      endpointRegion: "global" as const,
+      expectedInferenceRegion: "global",
+    },
+    { endpointRegion: "us" as const, expectedInferenceRegion: "global" },
+  ])("maps $endpointRegion endpoints to $expectedInferenceRegion pricing", ({
+    endpointRegion,
+    expectedInferenceRegion,
+  }) => {
+    expect(inferenceRegionForEndpointRegion(endpointRegion)).toBe(
+      expectedInferenceRegion
+    );
+  });
+});
 
 describe("computeTokensCostForUsageInMicroUsd", () => {
   it.each(

@@ -1,4 +1,4 @@
-import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { formatCalendarDateTime } from "@app/lib/client/calendar_date";
 import { useWebhookRequestTriggersForTrigger } from "@app/lib/swr/webhook_source";
 import type { LightWorkspaceType } from "@app/types/user";

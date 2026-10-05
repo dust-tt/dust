@@ -294,9 +294,7 @@ const DropdownMenuSubContent = React.forwardRef<
         {...props}
       >
         {dropdownHeaders && (
-          <div className="sticky top-0 bg-overlay-background px-1 pt-1">
-            {dropdownHeaders}
-          </div>
+          <div className="sticky top-0 px-1 pt-1">{dropdownHeaders}</div>
         )}
         <ScrollArea
           className="w-full flex-1"
@@ -382,6 +380,8 @@ interface DropdownMenuContentProps
   onOpenAutoFocus?: (e: React.FocusEvent<HTMLDivElement>) => void;
   /** Ref to the search input that typed characters should be routed to. */
   searchInputRef?: React.RefObject<HTMLInputElement | null>;
+  /** Ref to the scroll viewport, for scroll observation or position control. */
+  viewportRef?: React.Ref<HTMLDivElement>;
   /** Scrolls the item matching highlightedItemId into view when it changes. */
   scrollHighlightedItemIntoView?: boolean;
 }
@@ -404,13 +404,13 @@ const DropdownMenuContent = React.forwardRef<
       onKeyDownCapture,
       onKeyDown,
       searchInputRef,
+      viewportRef,
       scrollHighlightedItemIntoView = false,
       children,
       ...props
     },
     ref
   ) => {
-    const viewportRef = useRef<HTMLDivElement>(null);
     const itemElementsRef = useRef(new Map<string, HTMLElement>());
 
     const handleKeyDownCapture = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -493,11 +493,6 @@ const DropdownMenuContent = React.forwardRef<
         return;
       }
 
-      const viewport = viewportRef.current;
-      if (!viewport) {
-        return;
-      }
-
       const highlightedItem = itemElementsRef.current.get(highlightedItemId);
 
       highlightedItem?.scrollIntoView({ block: "nearest" });
@@ -519,12 +514,7 @@ const DropdownMenuContent = React.forwardRef<
         onCloseAutoFocus={handleCloseAutoFocus}
         {...props}
       >
-        <div
-          className={cn(
-            "sticky top-0 bg-overlay-background",
-            dropdownHeaders && "px-1 pt-1"
-          )}
-        >
+        <div className={cn("sticky top-0", dropdownHeaders && "px-1 pt-1")}>
           {dropdownHeaders && dropdownHeaders}
         </div>
         <ScrollArea

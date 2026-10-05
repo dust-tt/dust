@@ -1,10 +1,12 @@
 import { MCPServerViewForm } from "@app/components/actions/mcp/create/MCPServerViewForm";
 import { getEffectiveToolSettings } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import { InternalMCPBearerTokenForm } from "@app/components/actions/mcp/InternalMCPBearerTokenForm";
+import { ClampedDescription } from "@app/components/actions/mcp/MCPServerDetailsTools";
 import { MCPServerSettings } from "@app/components/actions/mcp/MCPServerSettings";
 import { RemoteMCPForm } from "@app/components/actions/mcp/RemoteMCPForm";
 import type { SensitivityLabelsController } from "@app/components/shared/labels/types";
 import {
+  getMcpServerViewDescription,
   isRemoteMCPServerType,
   requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
@@ -59,6 +61,9 @@ export function MCPServerDetailsGeneral({
     const tools = mcpServerView.server.tools ?? [];
     return (
       <div className="flex flex-col gap-2">
+        <ClampedDescription
+          description={getMcpServerViewDescription(mcpServerView)}
+        />
         <div className="heading-lg">Available Tools ({tools.length})</div>
         {tools.map((tool) => {
           const { permission } = getEffectiveToolSettings(

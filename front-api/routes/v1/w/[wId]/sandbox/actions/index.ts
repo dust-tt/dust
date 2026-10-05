@@ -1,7 +1,7 @@
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
 import { SANDBOX_TOOL_NAME } from "@app/lib/api/actions/servers/sandbox/metadata";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getPinnedAgentToolingForAgentMessage } from "@app/lib/api/assistant/configuration/run_configuration";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { resolveSkillMCPServers } from "@app/lib/api/assistant/skill_actions";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -116,13 +116,36 @@ app.get("/", async (ctx): HandlerResult<GetSandboxToolsResponseType> => {
       },
     });
   }
-  const { aId: agentId, aV: agentVersion, cId } = claims;
+  const { aId: agentId, aV: agentVersion, cId, mId } = claims;
+
+  const conversationResource = await ConversationResource.fetchById(auth, cId);
+  if (!conversationResource) {
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: {
+        type: "conversation_not_found",
+        message: `Conversation ${cId} not found.`,
+      },
+    });
+  }
+  const conversation = conversationResource.toJSON();
+
+  const agentMessageRes = await conversationResource.getMessageById(auth, mId);
+  if (agentMessageRes.isErr()) {
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: {
+        type: "message_not_found",
+        message: `Agent message ${mId} not found.`,
+      },
+    });
+  }
 
   // Fetch agent accessible servers.
-  const agentConfig = await getAgentConfiguration(auth, {
-    agentId,
+  const agentConfig = await getPinnedAgentToolingForAgentMessage(auth, {
     agentVersion,
-    variant: "full",
+    conversation: conversationResource,
+    agentMessage: agentMessageRes.value,
   });
   if (!agentConfig) {
     return apiError(ctx, {
@@ -141,18 +164,6 @@ app.get("/", async (ctx): HandlerResult<GetSandboxToolsResponseType> => {
   );
 
   // Fetch conversation-jitted servers.
-  const conversationResource = await ConversationResource.fetchById(auth, cId);
-  if (!conversationResource) {
-    return apiError(ctx, {
-      status_code: 404,
-      api_error: {
-        type: "conversation_not_found",
-        message: `Conversation ${cId} not found.`,
-      },
-    });
-  }
-  const conversation = conversationResource.toJSON();
-
   // No attachments: matches `createSandboxChildAction`, so the tools listed here are exactly
   // the ones `/call` can resolve. Deriving them would also mean recomputing the conversation's
   // attachment set on every poll.

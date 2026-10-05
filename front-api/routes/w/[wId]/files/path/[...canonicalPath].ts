@@ -34,11 +34,13 @@ import {
   DUST_FILE_ID_HEADER,
   DUST_FILE_REVISION_HEADER,
   FileRevisionSchema,
-  getFileFormat,
-  normalizeMimeType,
 } from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
+import {
+  contentDispositionAttachment,
+  isContentTypeSafeToDisplay,
+} from "@front-api/lib/file_serving";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
@@ -110,19 +112,6 @@ function putContentTooLargeError(ctx: Context) {
       message: `Content exceeds the ${WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES / 1024} KB limit.`,
     },
   });
-}
-
-function isContentTypeSafeToDisplay(contentType: string): boolean {
-  // Mirrors the isSafeToDisplay policy from getSecureFileAction (FileResource-backed serving),
-  // applied to the raw stored content type since canonical-path files may lack a FileResource.
-  return (
-    getFileFormat(normalizeMimeType(contentType))?.isSafeToDisplay ?? false
-  );
-}
-
-function contentDispositionAttachment(fileName: string): string {
-  const asciiFallback = fileName.replace(/[^\x20-\x7E\/\\]/g, "_");
-  return `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
 }
 
 const putBodyLimit = honoBodyLimit({
@@ -402,13 +391,19 @@ app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
     }
 
     const { stream, contentType } = thumbResult.value;
+    const thumbHeaders: Record<string, string> = {
+      "Content-Type": contentType,
+      "Cache-Control": "private, max-age=3600",
+      "X-Content-Type-Options": "nosniff",
+    };
+    if (!isContentTypeSafeToDisplay(contentType)) {
+      const fileName = path.posix.basename(canonicalPath);
+      thumbHeaders["Content-Disposition"] =
+        contentDispositionAttachment(fileName);
+    }
     return new Response(readableToReadableStream(stream), {
       status: 200,
-      headers: {
-        "Content-Type": contentType,
-        "Cache-Control": "private, max-age=3600",
-        "X-Content-Type-Options": "nosniff",
-      },
+      headers: thumbHeaders,
     });
   }
 

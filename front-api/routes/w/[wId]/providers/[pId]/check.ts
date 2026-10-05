@@ -31,7 +31,6 @@ app.post(
 
     switch (pId) {
       case "openai": {
-        // eslint-disable-next-line no-restricted-globals
         const modelsRes = await fetch("https://api.openai.com/v1/models", {
           method: "GET",
           headers: {
@@ -72,7 +71,6 @@ app.post(
             });
           }
 
-          // eslint-disable-next-line no-restricted-globals
           const deploymentsRes = await fetch(
             `${config.endpoint}openai/deployments?api-version=2022-12-01`,
             {
@@ -97,7 +95,6 @@ app.post(
       }
 
       case "anthropic": {
-        // eslint-disable-next-line no-restricted-globals
         const testCountTokens = await fetch(
           "https://api.anthropic.com/v1/messages/count_tokens",
           {
@@ -136,7 +133,6 @@ app.post(
       }
 
       case "mistral": {
-        // eslint-disable-next-line no-restricted-globals
         const mistralModelsRes = await fetch(
           "https://api.mistral.ai/v1/models",
           {
@@ -151,7 +147,6 @@ app.post(
           return ctx.json(
             {
               ok: false,
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               error: err.message ? err.message : JSON.stringify(err),
             },
             400
@@ -162,7 +157,6 @@ app.post(
       }
 
       case "serpapi": {
-        // eslint-disable-next-line no-restricted-globals
         const testSearch = await fetch(
           `https://serpapi.com/search?engine=google&q=Coffee&api_key=${config.api_key}`,
           {
@@ -178,7 +172,6 @@ app.post(
       }
 
       case "serper": {
-        // eslint-disable-next-line no-restricted-globals
         const testSearchSerper = await fetch(
           `https://google.serper.dev/search`,
           {
@@ -201,7 +194,6 @@ app.post(
       }
 
       case "browserlessapi": {
-        // eslint-disable-next-line no-restricted-globals
         const testScrape = await fetch(
           `https://chrome.browserless.io/scrape?token=${config.api_key}`,
           {
@@ -236,7 +228,6 @@ app.post(
             },
           },
         };
-        // eslint-disable-next-line no-restricted-globals
         const rGoogleAIStudio = await fetch(testUrlGoogleAIStudio, {
           method: "POST",
           headers: {
@@ -253,7 +244,6 @@ app.post(
       }
 
       case "deepseek": {
-        // eslint-disable-next-line no-restricted-globals
         const testDeepseek = await fetch(`https://api.deepseek.com/models`, {
           method: "GET",
           headers: {
@@ -269,7 +259,6 @@ app.post(
       }
 
       case "fireworks": {
-        // eslint-disable-next-line no-restricted-globals
         const testFireworks = await fetch(
           `https://api.fireworks.ai/inference/v1/chat/completions`,
           {

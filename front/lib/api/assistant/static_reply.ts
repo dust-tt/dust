@@ -1,5 +1,6 @@
 import type {
   ConversationWithoutContentType,
+  UserMessageContext,
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import { isReinforcedSkillNotificationMetadata } from "@app/types/assistant/conversation";
@@ -20,7 +21,9 @@ export function getStaticReplyForUserMessage({
   userMessage,
 }: {
   conversation: ConversationWithoutContentType;
-  userMessage: UserMessageType;
+  userMessage: Pick<UserMessageType, "content"> & {
+    context: Pick<UserMessageContext, "origin">;
+  };
 }): string | undefined {
   if (
     isReinforcedSkillNotificationMetadata(

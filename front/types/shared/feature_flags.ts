@@ -5,22 +5,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "ask_owner",
     owner: "philipperolet",
   },
-  skills_search: {
-    description: "Enable Elasticsearch-backed skill search",
-    stage: "dust_only",
-    owner: "aubin-tchoi",
-  },
-  new_manage_skills_page: {
-    description:
-      "Enable the search-backed Manage Skills page (requires skills_search)",
-    stage: "dust_only",
-    owner: "aubin-tchoi",
-  },
-  new_manage_agents_page: {
-    description: "Enable the search-backed Manage Agents page",
-    stage: "dust_only",
-    owner: "tdraier",
-  },
   dust_lean_agent: {
     description:
       "Enable @dust-lean, a Dust agent that starts without tools, skills, or company knowledge",
@@ -54,6 +38,13 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable Frames v2",
     stage: "self_serve",
     owner: "fontanierh",
+  },
+  disable_frames_v2: {
+    description:
+      "Make the workspace behave as if frames_v2 were off, overriding its global rollout. " +
+      "Existing Frames v2 Frames stop rendering while it is on.",
+    stage: "ask_owner",
+    owner: "davidebbo",
   },
   frames_v2_functions: {
     description:
@@ -263,6 +254,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "LeandreLeBizec",
   },
+  figma_mcp: {
+    description:
+      "Figma MCP tool for reading design context and creating or editing Figma files",
+    stage: "dust_only",
+    owner: "smb2268",
+  },
   dust_internal_dangerous_in_cluster_mcp_servers: {
     description:
       "EXPERIMENTAL FEATURE. DUST INTERNAL ONLY. Allow remote MCP servers pointing at hosts on the MCP_IN_CLUSTER_HOSTS allowlist, reached in-cluster instead of through the untrusted egress proxy.",
@@ -274,12 +271,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Start agent event streams with long polling for this workspace",
     stage: "self_serve",
     owner: "id13",
-  },
-  discord_bot: {
-    description:
-      "Discord bot integration for workspace-level Discord integration",
-    stage: "dust_only",
-    owner: "frankaloia",
   },
   shopify_tool: {
     description: "Shopify MCP tool",
@@ -494,6 +485,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "PopDaph",
   },
+  unified_search: {
+    description:
+      "Enable unified search with sidebar button triggering the command palette",
+    stage: "self_serve",
+    owner: "fraggle",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "ask_owner" | "self_serve";
@@ -544,6 +541,24 @@ export function isComputerFeatureEnabled(
 const FRAMES_V2_FEATURE = "frames_v2" as const satisfies WhitelistableFeature;
 const FRAMES_V2_FUNCTIONS_FEATURE =
   "frames_v2_functions" as const satisfies WhitelistableFeature;
+const DISABLE_FRAMES_V2_FEATURE =
+  "disable_frames_v2" as const satisfies WhitelistableFeature;
+
+/**
+ * @cc [owner:davidebbo,label:product] disable-frames-v2-overrides-frames-v2
+ * When `featureFlags` include `disable_frames_v2`, the returned flags MUST NOT include
+ * `frames_v2`, whether it came from a workspace flag or a global rollout. Other flags MUST be
+ * returned unchanged.
+ */
+export function applyFeatureFlagOverrides(
+  featureFlags: WhitelistableFeature[]
+): WhitelistableFeature[] {
+  if (!featureFlags.includes(DISABLE_FRAMES_V2_FEATURE)) {
+    return featureFlags;
+  }
+
+  return featureFlags.filter((flag) => flag !== FRAMES_V2_FEATURE);
+}
 
 /**
  * @cc [owner:davidebbo,label:product] frames-v2-functions-requires-frames-v2

@@ -1,4 +1,8 @@
-import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
+import type {
+  MCPServerType,
+  MCPServerViewType,
+  RemoteMCPServerType,
+} from "@app/lib/api/mcp";
 
 // Sync, in-memory factory for component tests. Distinct from the DB-backed
 // MCPServerViewFactory in this same folder, which produces an
@@ -9,7 +13,10 @@ export class MCPServerViewTypeFactory {
 
   static build(
     overrides: Partial<Omit<MCPServerViewType, "server">> & {
-      server?: Partial<MCPServerType>;
+      // Remote-only fields are optional so tests can set lastError/url without
+      // casting, while still accepting plain Partial<MCPServerType> values.
+      server?: Partial<MCPServerType> &
+        Partial<Pick<RemoteMCPServerType, "url" | "lastError" | "lastSyncAt">>;
     } = {}
   ): MCPServerViewType {
     const id = ++MCPServerViewTypeFactory.counter;

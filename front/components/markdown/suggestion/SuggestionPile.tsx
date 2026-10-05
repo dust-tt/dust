@@ -16,7 +16,7 @@ import {
   trackSuggestionPileBulkReview,
   useTrackSuggestionCardViews,
 } from "@app/components/markdown/suggestion/suggestionTracking";
-import { getSuggestionStateChip } from "@app/components/skill_builder/SkillSuggestionCard";
+import { getSuggestionStateChip } from "@app/components/shared/getSuggestionStateChip";
 import {
   useReviewSuggestionBatches,
   useSuggestionBatches,

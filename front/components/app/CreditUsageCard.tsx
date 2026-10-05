@@ -1,4 +1,6 @@
 import { formatCredits } from "@app/lib/client/credits";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { formatDate } from "@app/lib/i18n/format";
 import { CoinsStacked01, cn, ProgressBar, Tooltip } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 
@@ -76,11 +78,15 @@ export function CreditUsageCard({
                 <span className="font-medium">Reset schedule:</span>
                 {refillSchedule.map(({ date, credits }) => (
                   <span key={date}>
-                    {new Date(date).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      timeZone: "UTC",
-                    })}
+                    {formatDate(
+                      new Date(date),
+                      {
+                        month: "short",
+                        day: "numeric",
+                        timeZone: "UTC",
+                      },
+                      getActiveLocale()
+                    )}
                     : +{formatCredits(credits)}
                   </span>
                 ))}

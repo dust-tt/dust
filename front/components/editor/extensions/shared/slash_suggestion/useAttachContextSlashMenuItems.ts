@@ -5,6 +5,7 @@ import type {
   ContextSlashSearchSelection,
   ContextSlashSearchUseCase,
 } from "@app/components/editor/extensions/shared/slash_suggestion/contextSlashSearchTypes";
+import { useDebouncedValue } from "@app/hooks/useDebounce";
 import { getLocationForDataSourceViewContentNodeWithSpace } from "@app/lib/content_nodes";
 import { useUnifiedSearch } from "@app/lib/swr/search";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -48,6 +49,12 @@ function contextFileItemToMenuItem(
   };
 }
 
+/**
+ * @cc [owner:id13,label:react;performance] slash-search-waits-for-typing
+ * Knowledge search MUST use a 300 ms debounce and stay disabled while the query is unsettled.
+ * During that wait, previous knowledge results MUST be hidden and loading MUST remain visible
+ * for queries meeting the minimum length. Shorter queries MUST NOT send a search request.
+ */
 export function useAttachContextSlashMenuItems({
   conversationId = null,
   owner,
@@ -97,6 +104,10 @@ export function useAttachContextSlashMenuItems({
 
   const normalizedQuery = query.trim().toLowerCase();
   const hasMinimalQuery = normalizedQuery.length >= MIN_SEARCH_QUERY_SIZE;
+  const { debouncedValue: debouncedQuery, isDebouncing } = useDebouncedValue(
+    query,
+    300
+  );
 
   const excludeNonRemoteDatabaseTables = useCase === "skill-builder";
   const includeDataSources = useCase === "conversation-input";
@@ -112,9 +123,9 @@ export function useAttachContextSlashMenuItems({
   const { knowledgeResults: searchResults, isSearchLoading } = useUnifiedSearch(
     {
       owner,
-      query,
+      query: debouncedQuery,
       pageSize: 10,
-      disabled: isSpacesLoading || !hasMinimalQuery,
+      disabled: isSpacesLoading || !hasMinimalQuery || isDebouncing,
       spaceIds,
       projectId,
       viewType: "all",
@@ -154,7 +165,7 @@ export function useAttachContextSlashMenuItems({
   const isLoading =
     isSpacesLoading ||
     isFileItemsLoading ||
-    (hasMinimalQuery && isSearchLoading);
+    (hasMinimalQuery && (isDebouncing || isSearchLoading));
 
   const emptyMessage = !hasMinimalQuery
     ? "Type at least 2 characters to search"

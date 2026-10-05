@@ -2,6 +2,11 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { transformAsync } from "@babel/core";
+import {
+  createCompiledCatalog,
+  getCatalogForFile,
+  getCatalogs,
+} from "@lingui/cli/api";
 import { getConfig } from "@lingui/conf";
 import type esbuild from "esbuild";
 
@@ -38,8 +43,6 @@ export const linguiPlugin: esbuild.Plugin = {
     });
 
     build.onLoad({ filter: /\.po$/ }, async (args) => {
-      const { getCatalogForFile, getCatalogs, createCompiledCatalog } =
-        await import("@lingui/cli/api");
       const config = getConfig({ cwd: REPO_ROOT });
       const fileCatalog = getCatalogForFile(
         path.relative(config.rootDir, args.path),

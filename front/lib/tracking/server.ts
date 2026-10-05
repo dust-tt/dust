@@ -1,11 +1,11 @@
 import { PostHogServerSideTracking } from "@app/lib/api/posthog";
 import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import type { UTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
   UserMessageType,
@@ -156,7 +156,7 @@ export class ServerSideTracking {
   static trackAssistantCreated(_: {
     user?: UserResource;
     workspace?: WorkspaceType;
-    assistant: AgentConfigurationType;
+    assistant: AgentResource;
   }) {
     // Do nothing for now
   }

@@ -67,7 +67,7 @@ export async function clientApiPost(
   logger: LoggerInterface,
   client: Client,
   endpoint: string,
-  content: any // eslint-disable-line @typescript-eslint/no-explicit-any
+  content: any
 ) {
   try {
     return await client.api(endpoint).post(content);

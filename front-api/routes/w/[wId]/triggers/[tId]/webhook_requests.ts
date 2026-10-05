@@ -1,5 +1,6 @@
+import { fetchRecentWebhookRequestTriggersWithPayload } from "@app/lib/api/triggers/webhook";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
-import { fetchRecentWebhookRequestTriggersWithPayload } from "@app/lib/triggers/webhook";
 import logger from "@app/logger/logger";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
@@ -20,6 +21,20 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
 
   const trigger = await TriggerResource.fetchById(auth, tId);
   if (!trigger) {
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: {
+        type: "trigger_not_found",
+        message: "Trigger not found.",
+      },
+    });
+  }
+
+  const agent = await AgentResource.fetchById(
+    auth,
+    trigger.agentConfigurationId
+  );
+  if (!agent || (!auth.can("read", agent) && !auth.isAdmin())) {
     return apiError(ctx, {
       status_code: 404,
       api_error: {

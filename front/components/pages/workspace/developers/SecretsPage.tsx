@@ -1,5 +1,11 @@
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
+import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
+import {
+  CREATE_SECRET_LABEL,
+  DEVELOPER_SECRETS_PAGE_TITLE,
+} from "@app/components/pages/workspace/developers/secretsAdminSearchEntries";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
@@ -99,6 +105,20 @@ const columns: ColumnDef<SecretRowData>[] = [
 ];
 
 export function SecretsPage() {
+  return (
+    <AdminPageContainer>
+      <Page.Vertical gap="xl" align="stretch">
+        <Page.Header
+          title={DEVELOPER_SECRETS_PAGE_TITLE}
+          description="Secrets usable in Dust apps or MCP servers to safely store sensitive data."
+        />
+        <SecretsPageContent />
+      </Page.Vertical>
+    </AdminPageContainer>
+  );
+}
+
+export function SecretsPageContent() {
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
 
@@ -188,149 +208,143 @@ export function SecretsPage() {
     }));
 
   return (
-    <AdminPageContainer>
-      <>
-        {secretToRevoke ? (
-          <Dialog
-            open={true}
-            onOpenChange={(open) => {
-              if (!open) {
-                setSecretToRevoke(null);
-              }
-            }}
-          >
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Delete {secretToRevoke?.name}</DialogTitle>
-              </DialogHeader>
-              <DialogContainer>
-                Are you sure you want to delete the secret{" "}
-                <strong>{secretToRevoke?.name}</strong>?
-              </DialogContainer>
-              <DialogFooter
-                leftButtonProps={{
-                  label: "Cancel",
-                  variant: "outline",
-                  onClick: () => setSecretToRevoke(null),
-                }}
-                rightButtonProps={{
-                  label: "Delete",
-                  variant: "warning",
-                  onClick: () => handleRevoke(secretToRevoke),
-                }}
-              />
-            </DialogContent>
-          </Dialog>
-        ) : null}
+    <>
+      {secretToRevoke ? (
         <Dialog
-          open={isNewSecretPromptOpen}
+          open={true}
           onOpenChange={(open) => {
             if (!open) {
-              setIsNewSecretPromptOpen(false);
+              setSecretToRevoke(null);
             }
           }}
         >
-          <DialogContent size="lg">
+          <DialogContent>
             <DialogHeader>
-              <DialogTitle>
-                {isInputNameDisabled ? "Update" : "New"} Developer Secret
-              </DialogTitle>
+              <DialogTitle>Delete {secretToRevoke?.name}</DialogTitle>
             </DialogHeader>
             <DialogContainer>
-              <Input
-                message="Secret names must be alphanumeric and underscore characters only."
-                name="Secret Name"
-                placeholder="SECRET_NAME"
-                value={newDustAppSecret.name}
-                disabled={isInputNameDisabled}
-                onChange={(e) =>
-                  setNewDustAppSecret({
-                    ...newDustAppSecret,
-                    name: cleanSecretName(e.target.value),
-                  })
-                }
-              />
-              <Input
-                // prevent autocompletion of secrets
-                autoComplete="off"
-                message="Secret values are encrypted and stored securely in our database."
-                name="Secret value"
-                placeholder="Type the secret value"
-                value={newDustAppSecret.value}
-                onChange={(e) =>
-                  setNewDustAppSecret({
-                    ...newDustAppSecret,
-                    value: e.target.value,
-                  })
-                }
-              />
+              Are you sure you want to delete the secret{" "}
+              <strong>{secretToRevoke?.name}</strong>?
             </DialogContainer>
             <DialogFooter
               leftButtonProps={{
                 label: "Cancel",
                 variant: "outline",
-                onClick: () => setIsNewSecretPromptOpen(false),
+                onClick: () => setSecretToRevoke(null),
               }}
               rightButtonProps={{
-                label: isInputNameDisabled ? "Update" : "Create",
-                variant: "primary",
-                onClick: () => handleGenerate(newDustAppSecret),
+                label: "Delete",
+                variant: "warning",
+                onClick: () => handleRevoke(secretToRevoke),
               }}
             />
           </DialogContent>
         </Dialog>
-
-        <Page.Vertical gap="xl" align="stretch">
-          <Page.Header
-            title="Developer Secrets"
-            description="Secrets usable in Dust apps or MCP servers to safely store sensitive data."
-          />
-          <Page.Vertical align="stretch" gap="md">
-            <div className="flex items-center gap-2">
-              <SearchInput
-                className="flex-grow"
-                name="secrets-search"
-                placeholder="Search secrets"
-                value={searchQuery}
-                onChange={setSearchQuery}
-              />
-              <Button
-                label="API Reference"
-                size="sm"
-                variant="outline"
-                icon={BookOpen01}
-                onClick={() => {
-                  window.open(
-                    "https://docs.dust.tt/reference/developer-platform-overview#developer-secrets",
-                    "_blank"
-                  );
-                }}
-              />
-              {isAdmin && (
-                <Button
-                  label="Create Secret"
-                  variant="primary"
-                  onClick={() => {
-                    setNewDustAppSecret(defaultSecret);
-                    setIsInputNameDisabled(false);
-                    setIsNewSecretPromptOpen(true);
-                  }}
-                  icon={Plus}
-                  disabled={isGenerating || isRevoking}
-                />
-              )}
-            </div>
-            <SecretsTable
-              isLoading={isSecretsLoading}
-              isError={!!isSecretsError}
-              rows={rows}
-              searchQuery={searchQuery}
+      ) : null}
+      <Dialog
+        open={isNewSecretPromptOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsNewSecretPromptOpen(false);
+          }
+        }}
+      >
+        <DialogContent size="lg">
+          <DialogHeader>
+            <DialogTitle>
+              {isInputNameDisabled ? "Update" : "New"} Developer Secret
+            </DialogTitle>
+          </DialogHeader>
+          <DialogContainer>
+            <Input
+              message="Secret names must be alphanumeric and underscore characters only."
+              name="Secret Name"
+              placeholder="SECRET_NAME"
+              value={newDustAppSecret.name}
+              disabled={isInputNameDisabled}
+              onChange={(e) =>
+                setNewDustAppSecret({
+                  ...newDustAppSecret,
+                  name: cleanSecretName(e.target.value),
+                })
+              }
             />
-          </Page.Vertical>
+            <Input
+              // prevent autocompletion of secrets
+              autoComplete="off"
+              message="Secret values are encrypted and stored securely in our database."
+              name="Secret value"
+              placeholder="Type the secret value"
+              value={newDustAppSecret.value}
+              onChange={(e) =>
+                setNewDustAppSecret({
+                  ...newDustAppSecret,
+                  value: e.target.value,
+                })
+              }
+            />
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+              onClick: () => setIsNewSecretPromptOpen(false),
+            }}
+            rightButtonProps={{
+              label: isInputNameDisabled ? "Update" : "Create",
+              variant: "primary",
+              onClick: () => handleGenerate(newDustAppSecret),
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.secrets.secrets}>
+        <Page.Vertical align="stretch" gap="md">
+          <div className="flex items-center gap-2">
+            <SearchInput
+              className="flex-grow"
+              name="secrets-search"
+              placeholder="Search secrets"
+              value={searchQuery}
+              onChange={setSearchQuery}
+            />
+            <Button
+              label="API Reference"
+              size="sm"
+              variant="outline"
+              icon={BookOpen01}
+              onClick={() => {
+                window.open(
+                  "https://docs.dust.tt/reference/developer-platform-overview#developer-secrets",
+                  "_blank"
+                );
+              }}
+            />
+            {isAdmin && (
+              <Button
+                label={CREATE_SECRET_LABEL}
+                variant="primary"
+                onClick={() => {
+                  setNewDustAppSecret(defaultSecret);
+                  setIsInputNameDisabled(false);
+                  setIsNewSecretPromptOpen(true);
+                }}
+                icon={Plus}
+                disabled={isGenerating || isRevoking}
+              />
+            )}
+          </div>
+          <SecretsTable
+            isLoading={isSecretsLoading}
+            isError={!!isSecretsError}
+            rows={rows}
+            searchQuery={searchQuery}
+          />
         </Page.Vertical>
-        <div className="h-12" />
-      </>
-    </AdminPageContainer>
+      </AdminSectionAnchor>
+      <div className="h-12" />
+    </>
   );
 }
 

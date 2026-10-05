@@ -22,6 +22,7 @@ import config from "../api/config";
 import { Authenticator, getFeatureFlags } from "../auth";
 import { DustError } from "../error";
 import { DataSourceResource } from "../resources/data_source_resource";
+import { MembershipResource } from "../resources/membership_resource";
 
 export type NotificationAllowedTags = Array<"conversations" | "admin">;
 
@@ -43,6 +44,33 @@ export const computeSubscriberHash = (subscriberId: string): string => {
     .digest("hex");
 
   return hmacHash;
+};
+
+/**
+ * @cc [owner:avervaet,label:security] subscriber-auth-requires-active-membership
+ * MUST return `null` when `subscriberId` is not an active member of `workspaceId`.
+ */
+export const getActiveSubscriberAuth = async (
+  subscriberId: string,
+  workspaceId: string
+): Promise<Authenticator | null> => {
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    subscriberId,
+    workspaceId
+  );
+  const user = auth.user();
+  const workspace = auth.workspace();
+  if (!user || !workspace) {
+    return null;
+  }
+  // The authenticator's role is cached and can outlive a membership that
+  // expires on its own, so membership is checked against the database.
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user,
+      workspace,
+    });
+  return membership ? auth : null;
 };
 
 export const getUserNotificationDelay = async ({

@@ -1,4 +1,5 @@
 import { UpgradePlanDialog } from "@app/components/workspace/UpgradePlanDialog";
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useGroups } from "@app/lib/swr/groups";
 import {
@@ -20,7 +21,6 @@ import {
   DialogTitle,
   LoadingBlock,
   Page,
-  Separator,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -35,6 +35,9 @@ import React, { useState } from "react";
 
 import { GroupsList } from "../groups/GroupsList";
 import { WorkspaceSection } from "./WorkspaceSection";
+
+export const DIRECTORY_SYNC_LABEL = "Directory sync";
+export const USER_PROVISIONING_SECTION_TITLE = "User provisioning";
 
 function useDirectorySyncStatus({
   owner,
@@ -103,7 +106,7 @@ function DirectorySyncStatus({
           <div className="mb-4 flex flex-row items-center gap-2">
             <div className="flex-1">
               <div className="flex flex-row items-center gap-2">
-                <Page.H variant="h5">Directory sync</Page.H>
+                <Page.H variant="h5">{DIRECTORY_SYNC_LABEL}</Page.H>
                 <Chip color="success" label="Enabled" size="xs" />
               </div>
               <Page.P variant="secondary">
@@ -135,7 +138,7 @@ function DirectorySyncStatus({
         <>
           <div className="mb-3 flex flex-row items-center gap-2">
             <div className="flex-1">
-              <Page.H variant="h5">Directory sync</Page.H>
+              <Page.H variant="h5">{DIRECTORY_SYNC_LABEL}</Page.H>
               <Page.P variant="secondary">
                 Sync your organization's users and groups from your identity
                 provider
@@ -264,7 +267,11 @@ export default function UserProvisioning({
   } = useDirectorySyncStatus({ owner, plan });
 
   return (
-    <WorkspaceSection title="User provisioning" icon={Users01}>
+    <WorkspaceSection
+      title={USER_PROVISIONING_SECTION_TITLE}
+      icon={Users01}
+      sectionId={ADMIN_SECTION_IDS.identity.provisioning}
+    >
       <div className="flex w-full flex-row items-center gap-2">
         <div className="flex-1">
           <DirectorySyncStatus
@@ -276,7 +283,6 @@ export default function UserProvisioning({
           />
         </div>
       </div>
-      <Separator />
       <UpgradePlanDialog
         isOpen={showUpgradePlanDialog}
         onClose={() => setShowUpgradePlanDialog(false)}

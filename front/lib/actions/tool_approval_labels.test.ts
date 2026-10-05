@@ -18,7 +18,6 @@ describe("getApprovalArgsLabel", () => {
         auth,
         internalMCPServerName: "pod_manager",
         toolName: "create_conversation",
-        agentName: "assistant",
         inputs: {
           dustPod: {
             uri: "pod://dust/w/ws123/pods/prj456",
@@ -28,7 +27,7 @@ describe("getApprovalArgsLabel", () => {
         argumentsRequiringApproval: ["dustPod"],
       })
     ).resolves.toBe(
-      'Always allow @assistant to Create conversation in "pod://dust/w/ws123/pods/prj456".'
+      'Always allow agents to Create conversation in "pod://dust/w/ws123/pods/prj456".'
     );
 
     expect(fetchByIdSpy).toHaveBeenCalledWith(auth, "prj456");
@@ -48,7 +47,6 @@ describe("getApprovalArgsLabel", () => {
         auth,
         internalMCPServerName: "pod_manager",
         toolName: "create_conversation",
-        agentName: "assistant",
         inputs: {
           dustPod: {
             uri: "pod://dust/w/ws123/pods/prj456",
@@ -58,7 +56,7 @@ describe("getApprovalArgsLabel", () => {
         argumentsRequiringApproval: ["dustPod"],
       })
     ).resolves.toBe(
-      'Always allow @assistant to Create conversation in "Revenue Ops".'
+      'Always allow agents to Create conversation in "Revenue Ops".'
     );
 
     expect(fetchByIdSpy).toHaveBeenCalledWith(auth, "prj456");

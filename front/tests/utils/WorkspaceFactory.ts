@@ -17,14 +17,14 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { PlanFactory } from "@app/tests/utils/PlanFactory";
-import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import type { WhitelistableModelMakerIdType } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import { faker } from "@faker-js/faker";
 import { expect } from "vitest";
 
 interface WorkspaceOverrides {
-  whiteListedProviders?: ModelProviderIdType[] | null;
+  whiteListedProviders?: WhitelistableModelMakerIdType[] | null;
   metronomeCustomerId?: string | null;
   regionalModelsOnly?: boolean;
 }

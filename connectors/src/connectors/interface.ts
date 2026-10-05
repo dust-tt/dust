@@ -52,7 +52,6 @@ export abstract class BaseConnectorManager<T extends ConnectorConfiguration> {
     this.connectorId = connectorId;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   static async create(params: {
     dataSourceConfig: DataSourceConfig;
     connectionId: string;

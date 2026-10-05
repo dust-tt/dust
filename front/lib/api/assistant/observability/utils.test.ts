@@ -2,8 +2,12 @@ import {
   buildAgentAnalyticsBaseQuery,
   daysToInstantRange,
 } from "@app/lib/api/assistant/observability/utils";
-import { differenceInCalendarDays, differenceInMinutes } from "date-fns";
-import { formatInTimeZone, toZonedTime } from "date-fns-tz";
+import { tz } from "@date-fns/tz";
+import {
+  differenceInCalendarDays,
+  differenceInMinutes,
+  format,
+} from "date-fns";
 import { describe, expect, it } from "vitest";
 
 describe("buildAgentAnalyticsBaseQuery", () => {
@@ -111,14 +115,11 @@ describe("daysToInstantRange", () => {
     const timezone = "America/New_York";
     const { startDate, endDate } = daysToInstantRange(30, timezone);
 
-    expect(formatInTimeZone(startDate, timezone, "HH:mm:ss.SSS")).toBe(
+    expect(format(startDate, "HH:mm:ss.SSS", { in: tz(timezone) })).toBe(
       "00:00:00.000"
     );
     expect(
-      differenceInCalendarDays(
-        toZonedTime(endDate, timezone),
-        toZonedTime(startDate, timezone)
-      )
+      differenceInCalendarDays(endDate, startDate, { in: tz(timezone) })
     ).toBe(29);
   });
 

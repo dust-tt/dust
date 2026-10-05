@@ -4,7 +4,6 @@ import type {
   ActivationNudgePushedResourceType,
 } from "@app/lib/api/activation/nudge";
 import { listActivationPodsByUser } from "@app/lib/api/activation/pods";
-import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { createPlugin } from "@app/lib/api/poke/types";
 import {
   createSpaceAndGroup,
@@ -451,7 +450,7 @@ export const activationManagementPlugin = createPlugin({
     requiredRoles: ["support"],
   },
   populateAsyncArgs: async (auth) => {
-    const [skills, agents, groups] = await Promise.all([
+    const [skills, workspaceAgents, groups] = await Promise.all([
       SkillResource.listByWorkspace(auth, {
         status: "active",
         globalSpaceOnly: true,
@@ -459,16 +458,12 @@ export const activationManagementPlugin = createPlugin({
         withTools: false,
         withFileAttachments: false,
       }),
-      getAgentConfigurationsForView({
-        auth,
-        agentsGetView: "published",
-        variant: "light",
-        omitHeavyAttributes: true,
-      }),
+      AgentResource.listByWorkspace(auth, { scope: "visible" }),
       GroupResource.listAllWorkspaceGroups(auth, {
         groupKinds: [...MANAGEABLE_GROUP_KINDS],
       }),
     ]);
+    const agents = workspaceAgents.filter((agent) => auth.can("read", agent));
 
     const pushedResource = [
       ...skills.map((skill) => ({

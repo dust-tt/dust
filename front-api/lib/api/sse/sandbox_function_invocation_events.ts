@@ -1,7 +1,11 @@
-import { getSandboxFunctionInvocationEvents } from "@app/lib/api/sandbox_functions/events";
+import {
+  getSandboxFunctionInvocationEvents,
+  getSandboxFunctionInvocationEventsBatch,
+} from "@app/lib/api/sandbox_functions/events";
 import { resolveSandboxFunctionWithCapability } from "@app/lib/api/sandbox_functions/frame_share_capability";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
+import { pollEvents } from "@front-api/lib/api/sse/poll_events";
 import { streamEvents } from "@front-api/lib/api/sse/stream_events";
 import type { Context } from "hono";
 import { z } from "zod";
@@ -22,7 +26,8 @@ export async function streamSandboxFunctionInvocationEventsForRoute(
     functionId: string;
     invocationId: string;
     lastEventId: string | null;
-  }
+  },
+  transport: "sse" | "poll" = "sse"
 ) {
   const sandboxFunction = await resolveSandboxFunctionWithCapability(
     auth,
@@ -39,6 +44,17 @@ export async function streamSandboxFunctionInvocationEventsForRoute(
   });
   if (!invocation) {
     return ctx.notFound();
+  }
+
+  if (transport === "poll") {
+    return pollEvents(ctx, async (signal) => {
+      const events = await getSandboxFunctionInvocationEventsBatch({
+        invocationId: invocation.sId,
+        lastEventId,
+        signal,
+      });
+      return { events: events.map((event) => JSON.stringify(event)) };
+    });
   }
 
   return streamEvents({

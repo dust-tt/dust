@@ -281,7 +281,11 @@ async function attachRunToAgentMessage(
       totalTokens: promptTokens + 20,
     },
     model.modelId,
-    { usageType: USAGE_TYPE_USER, useWorkspaceCredentials: false }
+    {
+      region: null,
+      usageType: USAGE_TYPE_USER,
+      useWorkspaceCredentials: false,
+    }
   );
 
   const [updatedCount] = await AgentMessageModel.update(

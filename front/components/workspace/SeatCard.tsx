@@ -7,6 +7,7 @@ import type {
   SeatPlanResponseBody,
   SeatTypeInfo,
 } from "@app/lib/api/credits/seat_plan";
+import { formatNumber } from "@app/lib/i18n/format";
 import { formatCurrencyAmountCents } from "@app/lib/metronome/amounts";
 import { SEAT_PRODUCT_YEARLY_SUFFIX } from "@app/lib/metronome/constants";
 import type { SupportedCurrency } from "@app/types/currency";
@@ -137,7 +138,7 @@ function formatAwuCredits(info: SeatTypeInfo): string {
     annual: "per year",
     lifetime: "lifetime",
   };
-  return `${info.awuCredits.toLocaleString("en-US")} credits ${
+  return `${formatNumber(info.awuCredits)} credits ${
     periodLabel[info.awuCreditsPeriod]
   }`;
 }

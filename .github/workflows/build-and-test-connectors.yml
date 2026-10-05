@@ -33,6 +33,21 @@ jobs:
         run: npm run build:temporal-bundles
   tests:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: mirror.gcr.io/postgres:14.13
+        env:
+          POSTGRES_DB: connectors_test
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+        ports:
+          - 5433:5432
+        # Check TCP readiness so the temporary initialization server cannot pass.
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U test -d connectors_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Setup Node Dependencies
@@ -40,15 +55,6 @@ jobs:
         with:
           build-sdks: "true"
           node-version: "24.14.0"
-      - name: Install Postgres
-        uses: dust-tt/postgresql-action@91c1ba371e7f9529945c312bb2883e9e0630063b
-        with:
-          postgresql docker image: mirror.gcr.io/postgres
-          postgresql version: "14.13"
-          postgresql db: connectors_test
-          postgresql user: test
-          postgresql password: test
-          postgresql port: 5433
       - name: Run Tests
         working-directory: connectors
         env:

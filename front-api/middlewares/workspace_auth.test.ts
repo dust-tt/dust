@@ -1,7 +1,9 @@
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it } from "vitest";
+import assert from "assert";
+import { describe, expect, it, vi } from "vitest";
 
 function request(path: string) {
   return honoApp.request(`/api${path}`);
@@ -107,6 +109,52 @@ describe("workspaceAuth factory — idempotency", () => {
     await createPrivateApiMockRequest({ workspace });
 
     const response = await request(`/w/${workspace.sId}/subscriptions/status`);
+
+    expect(response.status).toBe(200);
+  });
+});
+
+describe("workspaceAuth factory — SSO enforcement", () => {
+  async function enforceSSO(workspaceId: string) {
+    const workspace = await WorkspaceResource.fetchById(workspaceId);
+    await workspace?.updateWorkspaceSettings({ ssoEnforced: true });
+  }
+
+  it("returns 401 sso_enforced for a non-SSO session on an SSO-enforced workspace", async () => {
+    const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
+    await enforceSSO(workspace.sId);
+
+    const response = await request(`/w/${workspace.sId}/groups`);
+
+    expect(response.status).toBe(401);
+    expect((await response.json()).error.type).toBe("sso_enforced");
+  });
+
+  it("returns 401 sso_enforced on auth-context so the SPA can redirect", async () => {
+    const { workspace } = await createPrivateApiMockRequest();
+    await enforceSSO(workspace.sId);
+
+    const response = await request(`/w/${workspace.sId}/auth-context`);
+
+    expect(response.status).toBe(401);
+    expect((await response.json()).error.type).toBe("sso_enforced");
+  });
+
+  it("returns 200 for an SSO session on an SSO-enforced workspace", async () => {
+    const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
+    await enforceSSO(workspace.sId);
+
+    const { getWorkOSSessionWithSetCookies } = await import(
+      "@app/lib/api/workos/user"
+    );
+    const { session } = await getWorkOSSessionWithSetCookies(undefined);
+    assert(session, "Expected a mocked session.");
+    vi.mocked(getWorkOSSessionWithSetCookies).mockResolvedValue({
+      session: { ...session, isSSO: true, authenticationMethod: "SSO" },
+      setCookies: [],
+    });
+
+    const response = await request(`/w/${workspace.sId}/groups`);
 
     expect(response.status).toBe(200);
   });

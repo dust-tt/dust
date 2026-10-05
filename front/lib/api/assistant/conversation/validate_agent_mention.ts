@@ -15,7 +15,7 @@ import { enforcePremiumModelLimit } from "@app/lib/api/assistant/premium_model_l
 import { publishMessageEventsOnMessagePostOrEdit } from "@app/lib/api/assistant/streaming/events";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
+import { toLightAgentConfiguration } from "@app/lib/resources/agent_resource_serialization";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MentionResource } from "@app/lib/resources/mention_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -206,7 +206,12 @@ export async function validateAgentMention(
     });
   }
 
-  const [configuration] = await toLightAgentConfigurations(auth, [agent]);
+  // The agent message created for the mention carries its agent's configuration on the wire, as
+  // on the other mention paths: without favorites or tags.
+  const configuration = await toLightAgentConfiguration(auth, agent, {
+    withFavorites: false,
+    withTags: false,
+  });
 
   const limitResult = await checkMessagesLimit(auth, {
     mentions: [{ configurationId: agentConfigurationId }],
@@ -229,7 +234,7 @@ export async function validateAgentMention(
   );
 
   const resolution = await resolveModelForMentionedAgent(auth, {
-    configuration,
+    agent,
     selection: message.requestedModel ?? undefined,
   });
 

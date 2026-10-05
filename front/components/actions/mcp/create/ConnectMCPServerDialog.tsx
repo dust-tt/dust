@@ -30,6 +30,7 @@ import {
   useUpdateMCPServerView,
 } from "@app/lib/swr/mcp_servers";
 import datadogLogger from "@app/logger/datadogLogger";
+import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import {
   OAUTH_PROVIDER_NAMES,
   providerUsesWellKnownOAuthDiscovery,
@@ -54,6 +55,10 @@ interface ConnectMCPServerDialogProps {
   setIsLoading: (isCreating: boolean) => void;
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
+  /** Prefills and preserves the credential mode when refreshing an existing connection. */
+  initialUseCase?: MCPOAuthUseCase | null;
+  /** When true (Refresh), hide the use-case picker and keep the existing mode. */
+  lockUseCase?: boolean;
 }
 
 export function ConnectMCPServerDialog({
@@ -62,11 +67,16 @@ export function ConnectMCPServerDialog({
   setIsLoading: setExternalIsLoading,
   isOpen = false,
   setIsOpen,
+  initialUseCase = null,
+  lockUseCase = false,
 }: ConnectMCPServerDialogProps) {
   const sendNotification = useSendNotification();
   const cellContext = useCellContext();
 
-  const defaultValues = getConnectMCPServerDialogDefaultValues();
+  const defaultValues = useMemo(
+    () => getConnectMCPServerDialogDefaultValues(initialUseCase),
+    [initialUseCase]
+  );
   const form = useForm<MCPServerOAuthFormValues>({
     resolver: zodResolver(mcpServerOAuthFormSchema),
     defaultValues,
@@ -159,11 +169,19 @@ export function ConnectMCPServerDialog({
             });
             setRemoteMCPServerOAuthDiscoveryDone(true);
           } else if (discoverOAuthMetadataRes.isErr()) {
-            sendNotification({
-              type: "error",
-              title: "Failed to discover OAuth metadata for MCP server",
-              description: `${discoverOAuthMetadataRes.error.message} (${mcpServerView.server.url})`,
-            });
+            // Refresh must still work when the server is unreachable (e.g. expired
+            // admin token): fall back to the authorization already stored on the
+            // server so the admin can re-run the auth flow with the same settings.
+            if (mcpServerView.server.authorization) {
+              setAuthorization(mcpServerView.server.authorization);
+              setRemoteMCPServerOAuthDiscoveryDone(true);
+            } else {
+              sendNotification({
+                type: "error",
+                title: "Failed to discover OAuth metadata for MCP server",
+                description: `${discoverOAuthMetadataRes.error.message} (${mcpServerView.server.url})`,
+              });
+            }
           }
         }
         setIsLoading(false);
@@ -185,12 +203,19 @@ export function ConnectMCPServerDialog({
 
   const resetState = () => {
     setExternalIsLoading(false);
-    form.reset(defaultValues);
+    form.reset(getConnectMCPServerDialogDefaultValues(initialUseCase));
     setIsLoading(false);
     setIsStaticFormValid(false);
     setRemoteMCPServerOAuthDiscoveryDone(false);
     setAuthorization(null);
   };
+
+  // Re-seed the form when the dialog opens so Refresh keeps the existing use case.
+  useEffect(() => {
+    if (isOpen) {
+      form.reset(getConnectMCPServerDialogDefaultValues(initialUseCase));
+    }
+  }, [isOpen, initialUseCase, form]);
 
   // Synchronous validation — no race condition with useEffect.
   const credentialError = useMemo(
@@ -393,6 +418,7 @@ export function ConnectMCPServerDialog({
                   mcpServerView.server?.documentationUrl ?? undefined
                 }
                 staticCredentialConfig={staticCredentialConfig}
+                lockUseCase={lockUseCase}
               />
             )}
           </div>

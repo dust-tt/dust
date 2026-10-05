@@ -36,7 +36,6 @@ export function SqCtaSection({
               TRACKING_AREAS.HOME,
               "sqagent_bottom_cta",
               () => {
-                // eslint-disable-next-line react-hooks/immutability
                 window.location.href = appendUTMParams(ctaLink);
               }
             )}

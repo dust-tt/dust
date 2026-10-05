@@ -81,11 +81,8 @@ export function seatTypeChipColor(seatType: MembershipSeatType): SeatChipColor {
 }
 
 export function formatAmount(cents: number, currency: string): string {
-  const locale = currency.toUpperCase() === "USD" ? "en-US" : "fr-FR";
-  return formatCurrency(
-    cents / 100,
-    currency,
-    { minimumFractionDigits: 2, maximumFractionDigits: 2 },
-    locale
-  );
+  return formatCurrency(cents / 100, currency, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }

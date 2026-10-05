@@ -1,10 +1,10 @@
-// DO NOT EDIT — Generated from Sparkle (tailwind.config.js)
-// Run: cd sparkle && node scripts/generate-swift.mjs
+// DO NOT EDIT — Generated from Sparkle (sparkle/src/styles, sparkle/src/icons, sparkle/src/logo)
+// Run: make tokens
 
 
 import SwiftUI
 
-/// Type-safe access to Dust logo variants bundled in SparkleTokens.
+/// Dust logo variants bundled in SparkleTokens.
 public enum DustLogo: String, CaseIterable {
     case dustLogo = "DustLogo"
     case dustLogoMono = "DustLogoMono"

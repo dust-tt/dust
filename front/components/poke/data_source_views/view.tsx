@@ -7,8 +7,8 @@ import {
   PokeTableHead,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { PokeDataSourceViewType } from "@app/types/poke";
 import type { LightWorkspaceType } from "@app/types/user";
 

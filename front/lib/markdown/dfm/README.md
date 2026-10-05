@@ -1,0 +1,151 @@
+# DFM: Dust-Flavored Markdown
+
+DFM is the file format behind co-edition, named the way GFM names GitHub's flavor: a Markdown
+document that humans edit in the rich editor and agents edit as text with ordinary tools,
+carrying its comments inside the file. This module is
+the codec: it turns a file into a `DfmDocument` and back, strictly, and never touches
+what it does not define.
+
+## The format
+
+A DFM file is three parts, in this order: front matter between `---` fences, the body, and an
+`:::annotations` block. Only the body is the document; the other two are optional and carry
+data about it. This is a complete, valid file:
+
+```md
+---
+title: The Pencil Case Manifesto
+---
+
+# The Pencil Case Manifesto
+
+:comment-start{id=c1}A good pencil case holds exactly three things: a fountain pen,
+a pencil sharpened by hand, and a rubber that has never been used.:comment-end{id=c1}
+
+Notebooks are chosen by paper weight first and cover color second.
+:comment-start{id=c2}Anything under 80 g/m² is a napkin.:comment-end{id=c2}
+
+:::annotations
+::comment{id=c1 status=open}
+
+::message{author=user:usr_yuka name="Yuka" at=2026-09-25T14:16:32.380Z}
+
+Three things? My pencil case has eleven pens and a tiny stapler.
+
+::message{author=agent:dust name="@dust" at=2026-09-25T14:17:00.955Z}
+
+Three is a manifesto. Eleven is a drawer.
+
+::comment{id=c2 status=resolved}
+
+::message{author=user:usr_daph name="Daph" at=2026-09-25T14:18:10.000Z}
+
+Harsh but fair.
+:::
+```
+
+A reader of the rendered document sees the title, two paragraphs, and two highlighted spans:
+the first sentence of the first paragraph, and the last sentence of the second. Clicking the
+first highlight opens a thread where Yuka asked a question and the `@dust` agent answered.
+The second thread is resolved, so it is not highlighted.
+
+**1. Front matter** is YAML between `---` fences on the first line. The codec keeps it as a raw
+string and never interprets it; themes, templates and titles will live there. A file whose
+first line is `---` but has no closing fence has no front matter: the line is a thematic break
+in the body.
+
+**2. Body** is ordinary Markdown with one addition: a commented span is wrapped in
+`:comment-start{id=x}` and `:comment-end{id=x}`. The id is the only thing on the anchor; the
+thread it points to lives in part 3. Two anchors may overlap, and one pair may span several
+paragraphs or a whole list, since each is a single pair wherever it starts and ends. Anything
+inside a fenced code block or a code span is text, not a directive, so this README's own
+examples would survive inside a DFM file. Everything the codec does not define passes through
+untouched.
+
+**3. Annotations** is a `:::annotations` container at the very end of the file. It holds one
+`::comment{id status}` per thread, `status` being `open` or `resolved`, followed by one
+`::message{author name at}` per message. `author` is `user:<id>` or `agent:<id>`, so a thread
+always says whether a human or an agent wrote each message; `name` is the display name in
+quotes; `at` is an ISO 8601 timestamp with seconds and a zone. A message body is the Markdown
+that follows until the next directive, and may have several paragraphs. The first message is
+the comment itself, the rest are replies. A thread may exist with no anchor in the body, for
+instance when the commented text was deleted; an anchor with no thread is an error.
+
+**How an agent reads it.** Text first: the body reads as Markdown with a few directives. To
+find what a comment is about, follow the id from `::comment` to the anchors. To answer a
+comment, append a `::message` line and a body to its thread. To comment on new text, wrap the
+span in anchors and add a thread, or call `anchorComment` with the quoted words and let the
+codec place the anchors.
+
+**What the codec guarantees.** Parsing is strict: a malformed file fails with a message and the
+offending line, never a partial document. Serialization writes only what parses back
+identically, and reparses its own output to prove it. These rules are the `@cc` contracts on
+the public functions: `dfm-body-opaque` and `dfm-strict-parse` on `parseDfm`, `dfm-round-trip`
+on `serializeDfm`, `dfm-anchor-integrity` on `extractAnchors` and `dfm-anchor-by-quote` on
+`anchorComment`.
+
+`tests/fixtures/pencil_case_manifesto.md` is the canonical example, a longer version of the file
+above. Every file in `tests/fixtures/` is reproduced byte for byte by the serializer, and the pencil
+case file is the one to hand an agent to check that it can read and edit the format.
+
+## Public API
+
+Import from `@app/lib/markdown/dfm` in front and front-api, and from
+`@dust-tt/front/lib/markdown/dfm` in front-spa.
+
+| Function | Purpose |
+| --- | --- |
+| `parseDfm(source)` | Source to `DfmDocument`, or a located error. |
+| `serializeDfm(document)` | Document to canonical source, or the reason it cannot be written. |
+| `extractAnchors(body)` | The body without anchor directives plus `{ id, start, end }` offsets into it in document order, for the editor and search. |
+| `anchorComment({ body, id, quote, nth })` | Wraps the nth occurrence of `quote` in a new anchor pair, for agents that quote words instead of computing offsets. |
+
+Every function returns a `Result` from `@app/types/shared/result`. Nothing here touches the
+network, the database or React: the module runs on the server and in the browser, next to the
+`:preview_file` directive codec in `lib/markdown/file_preview.ts`.
+
+## Module map
+
+| File | Owns |
+| --- | --- |
+| `types.ts` | The public types. |
+| `grammar.ts` | What every directive shares: the file fences and tokens, the directive-line pattern, the `{key=value}` tokenizer and validator. |
+| `parser.ts` | What the codec asks a real Markdown parser: where code is, whether a fence is open, the block structure. |
+| `anchors.ts` | The `:comment-start` / `:comment-end` directives: pattern, schema, builder, and scanning and pairing them in the body. |
+| `annotations.ts` | The `::comment` and `::message` directives: value rules, schemas, builders, and parsing, validating and serializing the block. |
+| `operations.ts` | Editing operations on a body, such as `anchorComment`. New operations go here. |
+| `document.ts` | The whole-file layout: front matter, body, block. Each parse rule has its mirror in the serializer's validation. |
+| `index.ts` | The public surface. |
+
+Tests live in `tests/` and mirror the split, one file per module, with shared fixtures and
+helpers in `tests/dfm.test_utils.ts`. Each "refuses to serialize" table names the file whose
+checks it covers.
+
+## Adding a directive
+
+Suggestions are the next one. The steps are the same for any directive:
+
+1. Add its types to `types.ts`.
+2. Define its markers in `anchors.ts` and its thread directive in `annotations.ts`: pattern,
+   schema and builder next to the code that parses and serializes them. `grammar.ts` and
+   `parser.ts` should not need to change.
+3. Add a fixture file for it under `tests/fixtures/`, so the canonical example of each feature
+   stays readable on its own, and add its rejection cases to the matching test file.
+4. Update the format section above.
+
+## Known limits
+
+- Two anchors starting at the same offset: `anchorComment` places the new start marker before
+  the existing one. The editor's own serializer must use the same rule for byte-for-byte
+  equality.
+- A file starting with a `---` rule and containing another `---` line is read as front matter.
+- Code positions and block structure come from `mdast-util-from-markdown`, so anchors inside
+  fenced, indented and quoted code blocks and code spans are text, and `anchorComment` refuses
+  an insertion that would change the parse tree. HTML blocks are not treated as code: a
+  directive inside raw HTML is interpreted. GFM extensions such as tables and autolink
+  literals are not parsed, so a directive inside them is interpreted too.
+- A backslash before an anchor escapes it, as CommonMark does for any punctuation:
+  `\:comment-start{id=x}` is text. The codec applies this everywhere outside code, including
+  raw HTML and autolinks where CommonMark would not. An escaped anchor whose pair is live is
+  an error.
+- A leading UTF-8 byte order mark is dropped on parse and never written back.

@@ -498,8 +498,7 @@ export function MCPServerDetails({
         datadogLogger.error(
           {
             fields: keys,
-            errors: errors,
-            values: form.getValues(),
+            details,
             serverViewId: mcpServerView?.sId,
           },
           "[MCP Details] - Form validation error"

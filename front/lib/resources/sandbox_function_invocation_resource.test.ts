@@ -6,6 +6,7 @@ import type {
   NormalizedSandboxFunctionOutcome,
   SandboxFunctionResultSpillPointer,
 } from "@app/lib/api/sandbox_functions/result_envelope";
+import { SANDBOX_FUNCTION_RESULT_MAX_BYTES } from "@app/lib/api/sandbox_functions/result_envelope";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -967,7 +968,8 @@ describe("SandboxFunctionInvocationResource", () => {
         exitCode: 0,
         stdout: stdoutEnvelope({
           ok: true,
-          resultFile: "/tmp/dust-fn-results/spill.json",
+          resultFile:
+            "/tmp/dust-fn-results/0f8e4d2a-1b3c-4d5e-8f90-a1b2c3d4e5f6.json",
           resultBytes: 300_000,
         }),
         stderr: "",
@@ -991,7 +993,11 @@ describe("SandboxFunctionInvocationResource", () => {
 
     expect(readFileSpy).toHaveBeenCalledWith(
       authenticator,
-      "/tmp/dust-fn-results/spill.json"
+      "/tmp/dust-fn-results/0f8e4d2a-1b3c-4d5e-8f90-a1b2c3d4e5f6.json",
+      {
+        user: "agent-proxied",
+        maxBytes: SANDBOX_FUNCTION_RESULT_MAX_BYTES,
+      }
     );
     const refetched = await SandboxFunctionInvocationResource.fetchById(
       authenticator,
@@ -1011,7 +1017,8 @@ describe("SandboxFunctionInvocationResource", () => {
         exitCode: 0,
         stdout: stdoutEnvelope({
           ok: true,
-          resultFile: "/tmp/dust-fn-results/spill.json",
+          resultFile:
+            "/tmp/dust-fn-results/0f8e4d2a-1b3c-4d5e-8f90-a1b2c3d4e5f6.json",
           resultBytes: 300_000,
         }),
         stderr: "",
@@ -1034,7 +1041,7 @@ describe("SandboxFunctionInvocationResource", () => {
     expect((await loadedPoke(refetched)).error).toMatchObject({
       code: "invocation_failed",
       message:
-        "Frame function result could not be read back from /tmp/dust-fn-results/spill.json: file not found",
+        "Frame function result could not be read back from /tmp/dust-fn-results/0f8e4d2a-1b3c-4d5e-8f90-a1b2c3d4e5f6.json: file not found",
     });
   });
 

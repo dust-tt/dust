@@ -6,7 +6,6 @@ function getCurrentTransaction(): Transaction | null {
   // We use CLS in tests to isolate tests in separate transactions.
   // Transactions are created in the global beforeEach and used implicitely by Sequelize thanks to CLS.
   // This return the current transaction in CLS.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (Sequelize as any)._cls?.get("transaction") || null;
 }
 

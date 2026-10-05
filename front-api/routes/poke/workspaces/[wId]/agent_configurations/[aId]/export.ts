@@ -1,5 +1,6 @@
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -44,11 +45,8 @@ app.get(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
-    const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: aId,
-      variant: "full",
-    });
-    if (!agentConfiguration) {
+    const agent = await AgentResource.fetchById(auth, aId);
+    if (!agent) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -58,10 +56,7 @@ app.get(
       });
     }
 
-    if (
-      agentConfiguration.status !== "active" ||
-      agentConfiguration.scope === "global"
-    ) {
+    if (agent.status !== "active" || agent.scope === "global") {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
@@ -71,6 +66,9 @@ app.get(
         },
       });
     }
+
+    // Poke's superuser authenticator views the agent's content (see `poke-agent-content-access`).
+    const [agentConfiguration] = await toAgentConfigurations(auth, [agent]);
 
     return ctx.json({
       assistant: {
@@ -87,7 +85,6 @@ app.get(
             action.type === "mcp_server_configuration",
             "Legacy action type, non-MCP, are no longer supported."
           );
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { id, sId, ...actionWithoutIds } = action;
           return {
             ...actionWithoutIds,

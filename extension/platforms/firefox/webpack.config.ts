@@ -15,6 +15,10 @@ import ZipPlugin from "zip-webpack-plugin";
 
 import type { Environment } from "../../config/env";
 import { getImportMetaEnv } from "../../config/webpack_env";
+import {
+  linguiCatalogRule,
+  linguiMacroLoader,
+} from "../../config/webpack_lingui";
 
 const rootDir = path.resolve(__dirname);
 
@@ -170,15 +174,19 @@ export const getConfig = async ({
         },
         {
           test: /\.tsx?$/,
-          use: {
-            loader: "ts-loader",
-            options: {
-              configFile: resolvePath("../../tsconfig.json"),
-              transpileOnly: true,
+          use: [
+            {
+              loader: "ts-loader",
+              options: {
+                configFile: resolvePath("../../tsconfig.json"),
+                transpileOnly: true,
+              },
             },
-          },
+            linguiMacroLoader,
+          ],
           exclude: /node_modules/,
         },
+        linguiCatalogRule,
         {
           test: /\.woff2$/i,
           type: "asset/resource",

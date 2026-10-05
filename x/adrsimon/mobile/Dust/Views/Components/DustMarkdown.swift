@@ -8,21 +8,26 @@ import SwiftUI
 // Transforms Dust custom markdown directives into standard markdown
 // before passing to MarkdownUI which only supports GFM.
 // swiftlint:disable:next force_try
-private let mentionRegex = try! NSRegularExpression(pattern: #":mention(?:_user)?\[([^\]]*)\]\{[^}]*\}"#)
-// swiftlint:disable:next force_try
 private let citeRegex = try! NSRegularExpression(pattern: #":cite\[([^\]]*)\](?:\{[^}]*\})?"#)
 
 func preprocessDirectives(_ markdown: String) -> String {
-    var result = markdown
-    let range = NSRange(result.startIndex..., in: result)
-
-    // :mention[Name]{sId=xxx} / :mention_user[Name]{sId=xxx} → [@Name](dust://mention)
-    result = mentionRegex.stringByReplacingMatches(in: result, range: range, withTemplate: "[@$1](dust://mention)")
-
     // :cite[ref1,ref2]{} → ¹² (unicode superscript numbers)
-    result = processCiteDirectives(result).text
+    processCiteDirectives(replaceInlineDirectives(markdown)).text
+}
 
-    return result
+/**
+ * @cc [owner:adrsimon,label:product] inline-directives-render-inline
+ * Mentions MUST become `[@Name](dust://mention)` links. Skill tags carrying a `name` and
+ * `:pasted_attachment` / `:pasted_content` directives MUST become inline `InlineChip` images at
+ * their original position; a skill tag without a `name` is removed.
+ */
+private func replaceInlineDirectives(_ markdown: String) -> String {
+    markdown
+        .replacing(mentionDirectiveRegex) { "[@\($0.output.name)](dust://mention)" }
+        .replacing(skillTagRegex) { match in
+            skillTagName(match.output.attributes).map { InlineChip.skill.markdown(label: $0) } ?? ""
+        }
+        .replacing(pastedDirectiveRegex) { InlineChip.pasted.markdown(label: String($0.output.title)) }
 }
 
 /// Single-pass processing of :cite directives. Returns both the transformed markdown
@@ -76,40 +81,119 @@ struct CiteEntry: Equatable {
 struct RenderedAgentMessage: Equatable {
     let displayMarkdown: String
     let citeMapping: [CiteEntry]
+    let suggestionBatchIds: [String]
 
-    static let empty = RenderedAgentMessage(displayMarkdown: "", citeMapping: [])
+    static let empty = RenderedAgentMessage(displayMarkdown: "", citeMapping: [], suggestionBatchIds: [])
 
     init(content: String) {
-        let range = NSRange(content.startIndex..., in: content)
-        let mentioned = mentionRegex.stringByReplacingMatches(
-            in: content, range: range, withTemplate: "[@$1](dust://mention)"
-        )
-        let cited = processCiteDirectives(mentioned)
+        let suggestions = extractSuggestionBatches(content)
+        let cited = processCiteDirectives(replaceInlineDirectives(suggestions.text))
         self.displayMarkdown = cited.text
         self.citeMapping = cited.mapping
+        self.suggestionBatchIds = suggestions.batchIds
     }
 
-    private init(displayMarkdown: String, citeMapping: [CiteEntry]) {
+    private init(displayMarkdown: String, citeMapping: [CiteEntry], suggestionBatchIds: [String]) {
         self.displayMarkdown = displayMarkdown
         self.citeMapping = citeMapping
+        self.suggestionBatchIds = suggestionBatchIds
     }
+}
+
+private let suggestionRecapRegex = #/:{1,2}suggestion_recap\[[^\]]*\](?:\{[^}]*\})?/#
+private let batchEditRegex = #/:{1,2}batch_edit\[\]\{(?<attributes>[^}]*)\}/#
+private let batchIdAttributeRegex = #/sId=["']?(?<sId>[^\s}"']+)/#
+
+/**
+ * @cc [owner:adrsimon,label:product] suggestion-directives-leave-text
+ * `:suggestion_recap[...]` and `:batch_edit[]{sId=...}` directives MUST be removed from the
+ * returned text. `batchIds` MUST list each distinct `batch_edit` sId once, in order of first
+ * appearance; a `batch_edit` directive without an sId is removed and not listed.
+ */
+private func extractSuggestionBatches(_ markdown: String) -> (text: String, batchIds: [String]) {
+    var batchIds: [String] = []
+    for match in markdown.matches(of: batchEditRegex) {
+        guard let sId = match.output.attributes.firstMatch(of: batchIdAttributeRegex)?.output.sId else {
+            continue
+        }
+        let batchId = String(sId)
+        if !batchIds.contains(batchId) {
+            batchIds.append(batchId)
+        }
+    }
+    let text = markdown
+        .replacing(suggestionRecapRegex, with: "")
+        .replacing(batchEditRegex, with: "")
+    return (text, batchIds)
 }
 
 // MARK: - Markdown Theme
 
+private struct BaselineOffset: TextStyle {
+    let offset: CGFloat
+
+    // swiftlint:disable:next identifier_name
+    func _collectAttributes(in attributes: inout AttributeContainer) {
+        attributes.baselineOffset = offset
+    }
+}
+
 extension MarkdownUI.Theme {
+    /**
+     * @cc [owner:adrsimon,label:product] text-raised-for-inline-chips
+     * SwiftUI pins inline images to the text baseline, so all text MUST be raised by
+     * `InlineChip.textBaselineRaise` to center chips on the line. That raise already spaces lines:
+     * views using this theme MUST NOT add `lineSpacing`.
+     */
     static let dust = Theme()
         .text {
             ForegroundColor(Color.dustForeground)
             FontSize(SparkleFont.smSize)
             FontFamily(.custom("Geist"))
+            BaselineOffset(offset: InlineChip.textBaselineRaise)
         }
         .link {
-            ForegroundColor(Color.primary800)
-            FontWeight(.semibold)
+            ForegroundColor(Color.highlight)
+            UnderlineStyle(.init(pattern: .solid, color: Color.highlight.opacity(0.35)))
         }
         .strong {
             FontWeight(.semibold)
+        }
+        .paragraph { configuration in
+            configuration.label
+                .fixedSize(horizontal: false, vertical: true)
+                .markdownMargin(top: 0, bottom: 12)
+        }
+        .table { configuration in
+            ScrollView(.horizontal, showsIndicators: false) {
+                configuration.label
+                    .fixedSize(horizontal: false, vertical: true)
+                    .markdownTableBorderStyle(.init(.insideBorders, color: Color.dustBorder))
+                    .markdownTableBackgroundStyle(
+                        .alternatingRows(Color.clear, Color.clear, header: Color.dustMutedBackground)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: tableCornerRadius))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: tableCornerRadius)
+                            .strokeBorder(Color.dustBorder, lineWidth: 1)
+                    }
+            }
+            .markdownMargin(top: 4, bottom: 16)
+        }
+        .tableCell { configuration in
+            CappedWidth(maxWidth: tableCellMaxWidth) {
+                configuration.label
+                    .markdownTextStyle {
+                        if configuration.row == 0 {
+                            FontWeight(.semibold)
+                        }
+                        FontSize(SparkleFont.xsSize)
+                        BackgroundColor(nil)
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 10)
         }
         .thematicBreak {
             Divider()
@@ -179,6 +263,22 @@ extension MarkdownUI.Theme {
         }
         .listItem { configuration in
             configuration.label
-                .markdownMargin(top: 2, bottom: 2)
+                .markdownMargin(top: 4, bottom: 4)
         }
+}
+
+private let tableCornerRadius: CGFloat = 8
+private let tableCellMaxWidth: CGFloat = 220
+
+private struct CappedWidth: Layout {
+    let maxWidth: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache _: inout ()) -> CGSize {
+        let width = min(proposal.width ?? maxWidth, maxWidth)
+        return subviews.first?.sizeThatFits(ProposedViewSize(width: width, height: nil)) ?? .zero
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal _: ProposedViewSize, subviews: Subviews, cache _: inout ()) {
+        subviews.first?.place(at: bounds.origin, proposal: ProposedViewSize(bounds.size))
+    }
 }

@@ -14,11 +14,15 @@ final class PodConversationsViewModel: ObservableObject {
     @Published var state: State = .loading
     @Published var conversations: [Conversation] = []
     @Published var searchText: String = ""
+    @Published private var listHasMore = false
+    @Published private var searchResults: [Conversation]?
 
     let space: Space
     private let workspaceId: String
     private let tokenProvider: TokenProvider
     private var titleObserver: ConversationTitleObserver?
+    private var lastValue: String?
+    private var isLoadingMore = false
 
     init(space: Space, workspaceId: String, tokenProvider: TokenProvider) {
         self.space = space
@@ -53,13 +57,67 @@ final class PodConversationsViewModel: ObservableObject {
             spaceId: space.sId,
             tokenProvider: tokenProvider
         )
-        // Hide conversations without a visible first message (e.g. compaction-only), as front does.
-        conversations = response.conversations.filter { $0.preview != nil }
+        conversations = response.conversations.map(Conversation.init(podItem:))
+        listHasMore = response.hasMore
+        lastValue = response.lastValue
         state = .loaded
     }
 
+    var hasMore: Bool {
+        searchQuery.isEmpty && listHasMore
+    }
+
+    var isSearching: Bool {
+        !searchQuery.isEmpty && searchResults == nil
+    }
+
+    private var searchQuery: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    func search() async {
+        let query = searchQuery
+        guard !query.isEmpty else {
+            searchResults = nil
+            return
+        }
+        try? await Task.sleep(for: .milliseconds(300))
+        guard !Task.isCancelled else { return }
+        do {
+            let results = try await ConversationService.searchSpaceConversations(
+                workspaceId: workspaceId,
+                spaceId: space.sId,
+                query: query,
+                tokenProvider: tokenProvider
+            )
+            guard !Task.isCancelled else { return }
+            searchResults = results
+        } catch {
+            logger.error("Failed to search pod conversations: \(error)")
+        }
+    }
+
+    func loadMore() async {
+        guard hasMore, !isLoadingMore else { return }
+        isLoadingMore = true
+        defer { isLoadingMore = false }
+        do {
+            let response = try await ConversationService.fetchSpaceConversations(
+                workspaceId: workspaceId,
+                spaceId: space.sId,
+                tokenProvider: tokenProvider,
+                lastValue: lastValue
+            )
+            conversations += response.conversations.map(Conversation.init(podItem:))
+            listHasMore = response.hasMore
+            lastValue = response.lastValue
+        } catch {
+            logger.error("Failed to load more pod conversations: \(error)")
+        }
+    }
+
     var filteredConversations: [Conversation] {
-        ConversationGrouping.filtered(conversations, by: searchText)
+        searchQuery.isEmpty ? conversations : searchResults ?? []
     }
 
     var groupedConversations: [(String, [Conversation])] {

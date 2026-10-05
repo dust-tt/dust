@@ -1,5 +1,4 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { useSourcesFormController } from "@app/components/agent_builder/utils";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { DataSourceBuilderTreeItemType } from "@app/components/data_source_view/context/types";
@@ -7,6 +6,7 @@ import {
   getSpaceNameFromTreeItem,
   getVisualForTreeItem,
 } from "@app/components/data_source_view/context/utils";
+import { useSpacesContext } from "@app/components/shared/SpacesContext";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useNodePath } from "@app/hooks/useNodePath";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";

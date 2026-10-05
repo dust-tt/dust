@@ -1,10 +1,12 @@
-import { getActiveWorkspaceAgentConfiguration } from "@app/lib/api/assistant/configuration/context";
 import { getAgentConfigurationAsYAMLConfig } from "@app/lib/api/assistant/configuration/yaml_export";
 import { patchAgentConfigurationFromJSON } from "@app/lib/api/assistant/configuration/yaml_import";
 import { getEditors } from "@app/lib/api/assistant/editors";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
+import { toAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import type { GroupResource as GroupResourceType } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -16,6 +18,15 @@ import { TagFactory } from "@app/tests/utils/TagFactory";
 import { TemplateFactory } from "@app/tests/utils/TemplateFactory";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { describe, expect, it } from "vitest";
+
+// Serializes a saved agent for assertions on its full configuration.
+async function toFullConfiguration(
+  auth: Authenticator,
+  agent: AgentResource
+): Promise<AgentConfigurationType> {
+  const [configuration] = await toAgentConfigurations(auth, [agent]);
+  return configuration;
+}
 
 async function createPatchableAgent({
   auth,
@@ -88,17 +99,17 @@ async function createPatchableAgent({
     agentConfigurationId: agent.id,
   });
 
-  const agentForPatch = await getActiveWorkspaceAgentConfiguration(
+  const agentForPatch = await AgentConfigurationFactory.refetch(
     auth,
     agent.sId
   );
-  expect(agentForPatch.isOk()).toBe(true);
-  if (agentForPatch.isErr()) {
-    throw new Error(agentForPatch.error.api_error.message);
+  if (!agentForPatch) {
+    throw new Error("Agent not found");
   }
 
   return {
-    agent: agentForPatch.value,
+    agent: agentForPatch,
+    agentContent: await agentForPatch.fetchInstructions(),
     skill,
     space,
     tag,
@@ -119,7 +130,7 @@ describe("patchAgentConfigurationFromJSON", () => {
     const { authenticator, globalGroup } = await createResourceTest({
       role: "admin",
     });
-    const { agent, skill, space, tag, template, user } =
+    const { agent, agentContent, skill, space, tag, template, user } =
       await createPatchableAgent({ auth: authenticator, globalGroup });
 
     const result = await patchAgentConfigurationFromJSON(
@@ -137,11 +148,14 @@ describe("patchAgentConfigurationFromJSON", () => {
       throw new Error(result.error.api_error.message);
     }
 
-    const updatedAgent = result.value.agentConfiguration;
+    const updatedAgent = await toFullConfiguration(
+      authenticator,
+      result.value.agent
+    );
     expect(updatedAgent.description).toBe("Updated description");
     expect(updatedAgent.name).toBe(agent.name);
-    expect(updatedAgent.instructions).toBe(agent.instructions);
-    expect(updatedAgent.instructionsHtml).toBe(agent.instructionsHtml);
+    expect(updatedAgent.instructions).toBe(agentContent.instructions);
+    expect(updatedAgent.instructionsHtml).toBe(agentContent.instructionsHtml);
     expect(updatedAgent.templateId).toBe(template.sId);
     expect(updatedAgent.requestedSpaceIds).toContain(space.sId);
     expect(updatedAgent.tags.map((t) => t.sId)).toContain(tag.sId);
@@ -194,10 +208,13 @@ describe("patchAgentConfigurationFromJSON", () => {
         reason: "MCP server not found: missing_server",
       },
     ]);
-    expect(result.value.agentConfiguration.actions).toHaveLength(0);
-    expect(result.value.agentConfiguration.requestedSpaceIds).not.toContain(
-      space.sId
-    );
+    expect(
+      (await toFullConfiguration(authenticator, result.value.agent)).actions
+    ).toHaveLength(0);
+    expect(
+      (await toFullConfiguration(authenticator, result.value.agent))
+        .requestedSpaceIds
+    ).not.toContain(space.sId);
   });
 
   it("should attach a remote MCP server referenced by name when patching toolset", async () => {
@@ -238,10 +255,13 @@ describe("patchAgentConfigurationFromJSON", () => {
     }
 
     expect(result.value.skippedActions).toEqual([]);
-    expect(result.value.agentConfiguration.actions).toHaveLength(1);
-    expect(result.value.agentConfiguration.requestedSpaceIds).toContain(
-      space.sId
-    );
+    expect(
+      (await toFullConfiguration(authenticator, result.value.agent)).actions
+    ).toHaveLength(1);
+    expect(
+      (await toFullConfiguration(authenticator, result.value.agent))
+        .requestedSpaceIds
+    ).toContain(space.sId);
   });
 
   it("should skip a remote MCP server that is only present in the system space", async () => {
@@ -287,7 +307,9 @@ describe("patchAgentConfigurationFromJSON", () => {
         reason: "MCP server not found: System Only Server",
       },
     ]);
-    expect(result.value.agentConfiguration.actions).toHaveLength(0);
+    expect(
+      (await toFullConfiguration(authenticator, result.value.agent)).actions
+    ).toHaveLength(0);
   });
 
   it("should skip a remote MCP server name that resolves to several servers", async () => {
@@ -343,7 +365,9 @@ describe("patchAgentConfigurationFromJSON", () => {
           'Multiple MCP servers named "Duplicate Server" found; cannot resolve unambiguously.',
       },
     ]);
-    expect(result.value.agentConfiguration.actions).toHaveLength(0);
+    expect(
+      (await toFullConfiguration(authenticator, result.value.agent)).actions
+    ).toHaveLength(0);
   });
 
   it("should export the view's custom display name and re-import it without skipping the action", async () => {
@@ -438,6 +462,9 @@ describe("patchAgentConfigurationFromJSON", () => {
     }
 
     expect(patchResult.value.skippedActions).toEqual([]);
-    expect(patchResult.value.agentConfiguration.actions).toHaveLength(1);
+    expect(
+      (await toFullConfiguration(authenticator, patchResult.value.agent))
+        .actions
+    ).toHaveLength(1);
   });
 });

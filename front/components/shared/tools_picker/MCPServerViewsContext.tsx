@@ -1,4 +1,4 @@
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
+import { useSpacesContext } from "@app/components/shared/SpacesContext";
 import {
   getMcpServerViewDisplayName,
   isToolWithKnowledge,

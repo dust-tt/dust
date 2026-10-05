@@ -28,6 +28,24 @@ const ModelProviderIdSchema = FlexibleEnumSchema<
   | "auto_complex"
 >();
 
+// Model labs a workspace whitelists. "fireworks" is a host, not a lab.
+const WhitelistableModelMakerIdSchema = FlexibleEnumSchema<
+  | "openai"
+  | "anthropic"
+  | "mistral"
+  | "google_ai_studio"
+  | "deepseek"
+  | "xai"
+  | "noop"
+  | "auto"
+  | "auto_fast"
+  | "auto_complex"
+  | "zai"
+  | "moonshot"
+  | "minimax"
+  | "thinking_machines"
+>();
+
 export type KnownModelLLMId =
   | "gpt-3.5-turbo"
   | "gpt-4-turbo"
@@ -565,7 +583,6 @@ const Timezone = z.string().refine((s) => TIMEZONE_NAMES.includes(s), {
 
 const ConnectorProvidersSchema = FlexibleEnumSchema<
   | "confluence"
-  | "discord_bot"
   | "dust_project"
   | "github"
   | "google_drive"
@@ -858,9 +875,9 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "exa_people_and_company"
   | "disable_computer_feature"
   | "disable_formatting_prompt"
+  | "disable_frames_v2"
   | "disable_gpt_6_astra"
   | "disable_run_logs"
-  | "discord_bot"
   | "dummy_feature_for_flag_testing"
   | "dust_agent_sonnet_5_default"
   | "dust_filesystem"
@@ -868,6 +885,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_internal_global_agents"
   | "dust_lean_agent"
   | "dust_pod_goal"
+  | "figma_mcp"
   | "fireworks_new_model_feature"
   | "frame_documents"
   | "frames_v2"
@@ -920,9 +938,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "whitelabel_frames"
   | "user_memory"
   | "similar_agents_check"
-  | "skills_search"
-  | "new_manage_skills_page"
-  | "new_manage_agents_page"
   | "enforce_premium_model_message_limit"
   | "editable_tool_inputs"
   | "skip_free_usage_rate_limit"
@@ -932,6 +947,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "discovery_homepage"
   | "localisation"
   | "co_edition"
+  | "unified_search"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -947,7 +963,8 @@ const LightWorkspaceSchema = z.object({
   name: z.string(),
   role: RoleSchema,
   segmentation: WorkspaceSegmentationSchema,
-  whiteListedProviders: ModelProviderIdSchema.array().nullable(),
+  // Despite the name, holds whitelisted model labs (makers), not hosts.
+  whiteListedProviders: WhitelistableModelMakerIdSchema.array().nullable(),
   defaultEmbeddingProvider: EmbeddingProviderIdSchema.nullable(),
   regionalModelsOnly: z.boolean().default(false),
 });
@@ -2603,7 +2620,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
       .enum(["workspace", "unlisted", "deleted", "test"])
       .optional()
       .default("unlisted"),
-    depth: z.number().optional(),
+    depth: z.number().int().nonnegative().optional(),
     spaceId: z.string().optional(),
     message: z.union([
       z.intersection(
@@ -3512,7 +3529,6 @@ export function assertNever(x: never): never {
  * (event streams, API responses) where new enum values or event types may be added
  * server-side before the client is updated.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function assertNeverAndIgnore(_x: never): void {
   // Intentionally empty.
 }
@@ -3627,6 +3643,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "DatabricksLogo"
   | "DriveLogo"
   | "FathomLogo"
+  | "FigmaLogo"
   | "FreshserviceLogo"
   | "FrontLogo"
   | "GammaLogo"

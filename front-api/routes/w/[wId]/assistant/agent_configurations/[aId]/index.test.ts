@@ -1,4 +1,3 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
@@ -335,11 +334,13 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - non-editor adm
 
     expect(response.status).toBe(403);
 
-    const unchanged = await getAgentConfiguration(agentOwnerAuth, {
-      agentId: agent.sId,
-      variant: "light",
-    });
-    expect(unchanged?.instructions).toBe(agent.instructions);
+    const unchanged = await AgentConfigurationFactory.refetch(
+      agentOwnerAuth,
+      agent.sId
+    );
+    expect((await unchanged?.fetchInstructions())?.instructions).toBe(
+      agent.instructions
+    );
   });
 });
 

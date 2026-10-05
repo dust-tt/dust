@@ -5,6 +5,7 @@ import {
 import { GovernanceSettingRowLayout } from "@app/components/pages/workspace/governance/GovernanceSettingRowLayout";
 import { GovernanceSettingSection } from "@app/components/pages/workspace/governance/GovernanceSettingSection";
 import { GroupSelector } from "@app/components/pages/workspace/governance/GroupSelector";
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { useUpdateGroupGrantedRole } from "@app/lib/swr/groups";
 import type { GroupGrantableRole, GroupType } from "@app/types/groups";
 import { GROUP_GRANTABLE_ROLES } from "@app/types/groups";
@@ -91,7 +92,11 @@ export function RoleProvisioningSection({
   groups: GroupType[];
 }) {
   return (
-    <GovernanceSettingSection label="Roles" icon={ShieldTick}>
+    <GovernanceSettingSection
+      sectionId={ADMIN_SECTION_IDS.governance.roles}
+      label="Roles"
+      icon={ShieldTick}
+    >
       {GROUP_GRANTABLE_ROLES.map((role) => (
         <RoleProvisioningRow
           key={role}

@@ -1,5 +1,6 @@
 import { compareStrings } from "@app/lib/i18n/format";
-export const SLACK_CHANNEL_INTERNAL_ID_PREFIX = "slack-channel-";
+
+const SLACK_CHANNEL_INTERNAL_ID_PREFIX = "slack-channel-";
 
 type SlackPickerChannel = {
   slackChannelId: string;

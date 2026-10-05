@@ -1,10 +1,12 @@
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
+import { sanitizeCsvCell } from "@app/lib/api/analytics/csv_utils";
 import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { ModelId } from "@app/types/shared/model_id";
+import { isString } from "@app/types/shared/utils/general";
 import type { WorkspaceType } from "@app/types/user";
 import { stringify } from "csv-stringify/sync";
 import { format } from "date-fns/format";
@@ -243,18 +245,18 @@ export async function getAgentUsageData(
     `
       SELECT COUNT(a."id") AS "messages"
       FROM "agent_messages" a
-             JOIN "agent_configurations" ac ON a."agentConfigurationId" = ac."sId"
+             JOIN "agents" ag ON a."agentConfigurationId" = ag."sId"
       WHERE a."createdAt" BETWEEN :startDate AND :endDate
-        AND ac."workspaceId" = :wId
-        AND ac."status" = 'active'
-        AND ac."sId" = :agentConfigurationId
+        AND ag."workspaceId" = :wId
+        AND ag."status" = 'active'
+        AND ag."sId" = :agentId
     `,
     {
       type: QueryTypes.SELECT,
       replacements: {
         startDate: format(startDate, "yyyy-MM-dd'T'00:00:00"),
         endDate: format(endDate, "yyyy-MM-dd'T'23:59:59"),
-        agentConfigurationId: agent.sId,
+        agentId: agent.sId,
         wId,
       },
     }
@@ -281,7 +283,11 @@ function generateCsvFromQueryResult(
   }
 
   const headers = Object.keys(rows[0]);
-  const data = rows.map((row) => Object.values(row));
+  const data = rows.map((row) =>
+    Object.values(row).map((value) =>
+      isString(value) ? sanitizeCsvCell(value) : value
+    )
+  );
 
   return stringify([headers, ...data], {
     header: false,

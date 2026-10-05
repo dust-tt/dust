@@ -11,8 +11,7 @@ import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { computeStepContexts } from "@app/lib/actions/utils";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
+import { getPinnedAgentToolingForAgentMessage } from "@app/lib/api/assistant/configuration/run_configuration";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { resolveAgentMessageModelConfig } from "@app/lib/api/assistant/resolve_model";
@@ -49,7 +48,6 @@ export async function createSandboxChildAction(
   auth: Authenticator,
   {
     parentActionId,
-    agentId,
     agentVersion,
     conversationId,
     agentMessageId,
@@ -58,7 +56,6 @@ export async function createSandboxChildAction(
     rawInputs,
   }: {
     parentActionId: string;
-    agentId: string;
     agentVersion: number;
     conversationId: string;
     agentMessageId: string;
@@ -70,15 +67,6 @@ export async function createSandboxChildAction(
   const view = await MCPServerViewResource.fetchById(auth, serverViewId);
   if (!view) {
     return new Err(new Error("MCP server view not found."));
-  }
-
-  const agentConfiguration = await getAgentConfiguration(auth, {
-    agentId,
-    agentVersion,
-    variant: "full",
-  });
-  if (!agentConfiguration) {
-    return new Err(new Error("Agent configuration not found."));
   }
 
   const conversationResource = await ConversationResource.fetchById(
@@ -113,8 +101,26 @@ export async function createSandboxChildAction(
     agentMessageId
   );
 
-  if (agentMessageRes.isErr()) {
+  if (agentMessageRes.isErr() || !agentMessageRes.value.parentId) {
     return new Err(new Error("Agent message not found."));
+  }
+
+  const [userMessageRow] = await conversationResource.fetchMessagesByModelIds(
+    auth,
+    [agentMessageRes.value.parentId]
+  );
+  if (!userMessageRow?.userMessage) {
+    return new Err(new Error("User message not found."));
+  }
+
+  const agentConfiguration = await getPinnedAgentToolingForAgentMessage(auth, {
+    agentVersion,
+    conversation: conversationResource,
+    agentMessage: agentMessageRes.value,
+    userMessage: userMessageRow,
+  });
+  if (!agentConfiguration) {
+    return new Err(new Error("Agent configuration not found."));
   }
 
   const agentMessageRenderRes = await batchRenderMessages(
@@ -327,19 +333,15 @@ export async function createSandboxChildAction(
     });
   }
 
-  const userMessageInfo = await getUserMessageIdFromMessageId(auth, {
-    messageId: agentMessage.sId,
-  });
-
   await launchSandboxChildToolWorkflow(auth, {
     agentLoopArgs: {
       agentMessageId: agentMessage.sId,
       agentMessageVersion: agentMessage.version,
       conversationId: conversation.sId,
       conversationTitle: conversation.title,
-      userMessageId: userMessageInfo.userMessageId,
-      userMessageVersion: userMessageInfo.userMessageVersion,
-      userMessageOrigin: userMessageInfo.userMessageOrigin,
+      userMessageId: userMessageRow.sId,
+      userMessageVersion: userMessageRow.version,
+      userMessageOrigin: userMessageRow.userMessage.userContextOrigin,
       initialStartTime: Date.now(),
     },
     action,

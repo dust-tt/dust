@@ -106,6 +106,35 @@ create_core_index data_sources 1
 create_front_index agent_document_outputs 1
 create_front_index agent_message_analytics 2
 create_front_index agent_message_consumption_analytics 1
+create_front_index agents 1
+create_front_index skills 1
 create_front_index user_search 1
+
+reindex_front_script() {
+  local script_path="$1"
+  local description="$2"
+  local status
+
+  if [ ! -f "${DUST_REPO_ROOT}/front/${script_path}" ]; then
+    log "Skipping ${description}: ${script_path} not found"
+    return 0
+  fi
+
+  log "Indexing ${description}..."
+  status=0
+  (
+    cd "${DUST_REPO_ROOT}/front"
+    run_logged env PATH="${DUST_REPO_ROOT}/node_modules/.bin:${PATH}" \
+      npx tsx "${script_path}" --execute
+  ) || status=$?
+  if [ "$status" -eq 0 ]; then
+    return 0
+  fi
+  log "Failed to index ${description}"
+  return 1
+}
+
+reindex_front_script ./scripts/reindex_code_defined_skills.ts "code-defined skills"
+reindex_front_script ./scripts/reindex_global_agents.ts "global agents"
 
 log "Elasticsearch indices ready"

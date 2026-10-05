@@ -205,4 +205,34 @@ describe("PATCH /api/user", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ success: true });
   });
+
+  it("rejects an email provider outside the allowlist without updating the user", async () => {
+    const { user } = await createPrivateApiMockRequest({ method: "PATCH" });
+
+    const response = await patchUser({
+      firstName: "Changed",
+      lastName: "Doe",
+      emailProvider: "attacker-controlled",
+    });
+
+    expect(response.status).toBe(400);
+    const u = await UserResource.fetchById(user.sId);
+    expect(u?.firstName).toBe(user.firstName);
+    expect(await u?.getMetadata("onboarding:email_provider")).toBeNull();
+  });
+
+  it("stores an allowlisted email provider", async () => {
+    const { user } = await createPrivateApiMockRequest({ method: "PATCH" });
+
+    const response = await patchUser({
+      firstName: "John",
+      lastName: "Doe",
+      emailProvider: "google",
+    });
+
+    expect(response.status).toBe(200);
+    const u = await UserResource.fetchById(user.sId);
+    const metadata = await u?.getMetadata("onboarding:email_provider");
+    expect(metadata?.value).toBe("google");
+  });
 });

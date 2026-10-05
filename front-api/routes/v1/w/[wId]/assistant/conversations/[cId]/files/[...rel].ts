@@ -7,6 +7,10 @@ import {
   parseScopedFilePath,
 } from "@app/types/mount_path";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
+import {
+  contentDispositionAttachment,
+  isContentTypeSafeToDisplay,
+} from "@front-api/lib/file_serving";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -166,9 +170,15 @@ app.get("/:rel{.+}", validate("param", ParamsSchema), async (ctx) => {
       "Error streaming conversation file (GCS)"
     )
   );
+  const headers: Record<string, string> = { "Content-Type": contentType };
+  if (!isContentTypeSafeToDisplay(contentType)) {
+    headers["Content-Disposition"] = contentDispositionAttachment(
+      path.posix.basename(mountFilePath)
+    );
+  }
   return new Response(readableToReadableStream(readStream), {
     status: 200,
-    headers: { "Content-Type": contentType },
+    headers,
   });
 });
 

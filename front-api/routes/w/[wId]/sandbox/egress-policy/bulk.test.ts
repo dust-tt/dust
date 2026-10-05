@@ -5,7 +5,6 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -49,19 +48,12 @@ const BulkWriteResponseSchema = z.object({
 
 async function setupTest({
   role = "admin",
-  enableSandboxFunctions = true,
 }: {
   role?: MembershipRoleType;
-  enableSandboxFunctions?: boolean;
 } = {}) {
   const { workspace, auth, user, ...rest } = await createPrivateApiMockRequest({
     role,
   });
-
-  if (enableSandboxFunctions) {
-    await FeatureFlagFactory.basic(auth, "frames_v2");
-    await FeatureFlagFactory.basic(auth, "frames_v2_functions");
-  }
 
   const podA = await SpaceFactory.project(workspace, user.id);
   const podB = await SpaceFactory.project(workspace, user.id);
@@ -156,19 +148,6 @@ describe("GET /api/w/:wId/sandbox/egress-policy/bulk", () => {
     });
   });
 
-  it("returns 403 when Frame functions are disabled", async () => {
-    const { workspace, podA } = await setupTest({
-      enableSandboxFunctions: false,
-    });
-
-    const response = await getBulk(workspace.sId, `podIds=${podA.sId}`);
-
-    expect(response.status).toBe(403);
-    expect(await response.json()).toMatchObject({
-      error: { type: "feature_flag_not_found" },
-    });
-  });
-
   it("returns only the requested Pods that have their own policy", async () => {
     const { workspace, auth, podA, podB } = await setupTest();
     await configurePod(auth, podA, ["api.github.com"]);
@@ -252,23 +231,6 @@ describe("POST /api/w/:wId/sandbox/egress-policy/bulk", () => {
     expect(response.status).toBe(403);
     expect(await response.json()).toMatchObject({
       error: { type: "workspace_auth_error" },
-    });
-  });
-
-  it("returns 403 when Frame functions are disabled", async () => {
-    const { workspace, podA } = await setupTest({
-      enableSandboxFunctions: false,
-    });
-
-    const response = await postBulk(workspace.sId, {
-      includeWorkspace: false,
-      podIds: [podA.sId],
-      operation: { operation: "add", domain: "api.github.com" },
-    });
-
-    expect(response.status).toBe(403);
-    expect(await response.json()).toMatchObject({
-      error: { type: "feature_flag_not_found" },
     });
   });
 

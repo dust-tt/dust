@@ -5,14 +5,15 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { SearchAgentsResponseBody } from "@app/types/agent_search/agent_search";
+import { isSkillVisibleToViewer } from "@app/types/assistant/skill_configuration_constants";
 import { Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 
 /**
- * @cc [owner:tdraier,label:security] agent-search-listing-names
+ * @cc [owner:aubin-tchoi,label:security] agent-search-listing-names
  * Resolve editor, tag, skill and space names for `searchAgents` results (listed agents and facets)
  * through resources, and only name skills and spaces the caller can read: unreadable ones are
- * dropped from the facets.
+ * dropped from the facets. Editors-only skills are only named for callers who can write to them.
  */
 export async function searchAgentListings(
   auth: Authenticator,
@@ -103,6 +104,12 @@ export async function searchAgentListings(
       ...(facetValues.skills
         ? {
             skills: skills
+              .filter((skill) =>
+                isSkillVisibleToViewer({
+                  availability: skill.availability,
+                  viewerCanWrite: auth.can("write", skill),
+                })
+              )
               .map((skill) =>
                 skill.toSearchFacetJSON(skillCounts.get(skill.sId) ?? 0)
               )

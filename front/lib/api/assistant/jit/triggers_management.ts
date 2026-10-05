@@ -1,6 +1,7 @@
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { Authenticator } from "@app/lib/auth";
+import { isUserOnboardingConversation } from "@app/lib/onboarding";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
@@ -17,19 +18,7 @@ export async function getTriggersManagementServer(
   conversation: ConversationWithoutContentType,
   autoInternalViews: Map<AutoInternalMCPServerNameType, MCPServerViewResource>
 ): Promise<ServerSideMCPServerConfigurationType | null> {
-  const owner = auth.getNonNullableWorkspace();
-  const userResource = auth.user();
-
-  if (!userResource || !owner) {
-    return null;
-  }
-
-  const onboardingMetadata = await userResource.getMetadata(
-    "onboarding:conversation",
-    owner.id
-  );
-
-  if (onboardingMetadata?.value !== conversation.sId) {
+  if (!(await isUserOnboardingConversation(auth, conversation.sId))) {
     return null;
   }
 

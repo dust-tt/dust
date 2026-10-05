@@ -7,6 +7,7 @@ import {
 import mainLogger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
+import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawler_resource";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 import { assertNever } from "@dust-tt/client";
 import type { Request, Response } from "express";
@@ -23,6 +24,13 @@ const logger = mainLogger.child(
 
 type FirecrawlWebhookResBody = WithConnectorsAPIErrorReponse<null>;
 
+/**
+ * @cc [owner:tdraier,label:security] event-bound-to-current-crawl
+ * The webhook URL secret is shared with other providers and `metadata.connectorId` is
+ * sender-chosen. An event MUST NOT launch any workflow unless the body `id` is non-empty and
+ * equals the `crawlId` stored on that connector's `WebCrawlerConfiguration`; otherwise it is
+ * acknowledged with 200 and ignored.
+ */
 const _webhookFirecrawlAPIHandler = async (
   req: Request<
     Record<string, string>,
@@ -79,7 +87,7 @@ const _webhookFirecrawlAPIHandler = async (
       "Missing or invalid connectorId in metadata"
     );
     // We ignore the webhook.
-    return res.status(200);
+    return res.status(200).end();
   }
 
   const connector = await ConnectorResource.fetchById(
@@ -95,6 +103,22 @@ const _webhookFirecrawlAPIHandler = async (
     logger.info(
       { connectorId: connector.id },
       "Connector is paused, ignoring webhook"
+    );
+    return res.status(200).end();
+  }
+
+  const webCrawlerConfig =
+    await WebCrawlerConfigurationResource.fetchByConnectorId(connector.id);
+  if (!id || !webCrawlerConfig || webCrawlerConfig.crawlId !== id) {
+    logger.warn(
+      {
+        id,
+        type,
+        connectorId: connector.id,
+        workspaceId: connector.workspaceId,
+        currentCrawlId: webCrawlerConfig?.crawlId ?? null,
+      },
+      "Webhook does not match the connector's current crawl, ignoring"
     );
     return res.status(200).end();
   }

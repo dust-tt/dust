@@ -1,3 +1,4 @@
+import { getStaticCredentialForm } from "@app/components/actions/mcp/create/static_credential_forms";
 import { CreateMCPServerDialogSubmitError } from "@app/components/actions/mcp/forms/submitCreateMCPServerDialogForm";
 import type {
   CreateMCPServerDialogFormValues,
@@ -8,8 +9,9 @@ import {
   mcpServerOAuthFormSchema,
 } from "@app/components/actions/mcp/forms/types";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
+import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type { MCPServerViewNameConflictDetails } from "@app/lib/api/mcp";
-import type { OAuthProvider } from "@app/types/oauth/lib";
+import type { MCPOAuthUseCase, OAuthProvider } from "@app/types/oauth/lib";
 import { OAUTH_PROVIDER_NAMES } from "@app/types/oauth/lib";
 
 type SendErrorNotification = (title: string, description: string) => void;
@@ -127,8 +129,39 @@ export function handleCreateMCPServerDialogSubmitError({
   }
 }
 
-export function getConnectMCPServerDialogDefaultValues(): MCPServerOAuthFormValues {
-  return mcpServerOAuthFormSchema.parse({});
+export function getConnectMCPServerDialogDefaultValues(
+  initialUseCase?: MCPServerOAuthFormValues["useCase"]
+): MCPServerOAuthFormValues {
+  return mcpServerOAuthFormSchema.parse({
+    useCase: initialUseCase ?? null,
+  });
+}
+
+/**
+ * True when Refresh can relaunch OAuth from the click handler without opening the
+ * connect dialog (no use-case picker, no credential fields, no static form).
+ * Keeping window.open on the user gesture avoids popup blockers.
+ */
+export function canRefreshMCPAuthWithoutDialog({
+  authorization,
+  useCase,
+}: {
+  authorization: AuthorizationInfo | null | undefined;
+  useCase: MCPOAuthUseCase | null | undefined;
+}): boolean {
+  if (!authorization || !useCase) {
+    return false;
+  }
+
+  // Keypair / non-OAuth static forms are not stored on the OAuth connection.
+  if (getStaticCredentialForm(authorization.provider, useCase)) {
+    return false;
+  }
+
+  // Refresh always has an existing workspace OAuth connection that already
+  // stores endpoints and client credentials from first connect. Providers
+  // reuse them via mcp_server_id — no dialog, no rediscovery, no re-entry.
+  return true;
 }
 
 export function getCreateMCPServerDialogDefaultValues(

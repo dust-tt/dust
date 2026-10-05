@@ -31,7 +31,6 @@ export function isOAuthUseCase(obj: unknown): obj is OAuthUseCase {
 export const OAUTH_PROVIDERS = [
   "confluence",
   "confluence_tools",
-  "discord",
   "fathom",
   "freshservice",
   "github",
@@ -63,7 +62,6 @@ export const OAUTH_PROVIDERS = [
 export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   confluence: "Confluence",
   confluence_tools: "Confluence Tools",
-  discord: "Discord",
   fathom: "Fathom",
   freshservice: "Freshservice",
   github: "GitHub",
@@ -115,6 +113,9 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "ukg_ready_company_id",
   "jira_cloud_url",
   "confluence_cloud_url",
+  // Lookup key to reuse an existing workspace MCP OAuth connection's metadata /
+  // credentials (personal inherit and admin Refresh). Never shown as a form field.
+  "mcp_server_id",
 ] as const;
 
 export type SupportedOAuthCredentials =
@@ -453,7 +454,6 @@ export function getProviderRequiredOAuthCredentialInputs({
     case "intercom":
     case "linear":
     case "mcp":
-    case "discord":
     case "fathom":
     case "productboard":
       return null;
@@ -658,11 +658,25 @@ export function isValidAtlassianCloudUrlOrEmpty(
   return ATLASSIAN_CLOUD_URL_REGEX.test(normalizeAtlassianCloudUrl(cloudUrl));
 }
 
+/**
+ * @cc [owner:PopDaph,label:security] salesforce-instance-url-origin
+ * The value MUST be accepted only when it is a bare https origin (no userinfo, port, path,
+ * query, fragment or trailing slash) whose parsed hostname ends with `.salesforce.com`. The instance URL
+ * is used as the base of every outbound Salesforce request, so a raw string suffix check is not
+ * sufficient: `https://evil.example/x.salesforce.com` MUST be rejected.
+ */
 export function isValidSalesforceDomain(s: unknown): s is string {
+  if (typeof s !== "string" || !URL.canParse(s)) {
+    return false;
+  }
+  const url = new URL(s);
+  // Comparing with origin rejects userinfo, path, query, fragment and
+  // trailing slash. Origin keeps non-default ports, hence the port check.
   return (
-    typeof s === "string" &&
-    s.startsWith("https://") &&
-    s.endsWith(".salesforce.com")
+    url.protocol === "https:" &&
+    url.hostname.endsWith(".salesforce.com") &&
+    url.port === "" &&
+    url.origin === s
   );
 }
 

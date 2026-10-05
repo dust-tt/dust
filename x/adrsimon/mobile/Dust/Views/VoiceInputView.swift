@@ -119,7 +119,7 @@ struct VoiceInputView: View {
                         .fill(.white)
                         .frame(width: 26, height: 26)
                 } else {
-                    SparkleIcon.mic.image
+                    SparkleIcon.microphone01.image
                         .resizable()
                         .scaledToFit()
                         .frame(width: 30, height: 30)
@@ -169,7 +169,7 @@ private struct VoiceFloodBackground: View {
             ZStack {
                 Color.dustBackground
                 blob(
-                    Color.blue200,
+                    Color.highlight200,
                     cx: 0.22,
                     cy: 0.28,
                     size: 0.9,
@@ -178,7 +178,7 @@ private struct VoiceFloodBackground: View {
                     sway: drift ? 18 : -18
                 )
                 blob(
-                    Color.blue100,
+                    Color.highlight100,
                     cx: 0.82,
                     cy: 0.42,
                     size: 1.0,

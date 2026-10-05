@@ -685,7 +685,7 @@ export function ToolDetailsSheet({ toolId, onClose }: ToolDetailsSheetProps) {
     setTab("general");
     setForm(formFor(tool));
     setStakesSearch("");
-  }, [toolId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [toolId]);
 
   // An operation that drops out of view drops out of the selection with it, so
   // the bar never acts on something nobody can see.

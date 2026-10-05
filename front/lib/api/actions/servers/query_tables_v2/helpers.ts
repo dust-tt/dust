@@ -78,7 +78,6 @@ function getSectionColumnsPrefix(
     case "zendesk":
     case "bigquery":
     case "gong":
-    case "discord_bot":
     case "dust_project":
     case null:
       return null;

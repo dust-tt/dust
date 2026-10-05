@@ -8,6 +8,10 @@ import {
 } from "@app/lib/api/data_sources";
 import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import {
+  getWebhookRequestPayloadFromGCS,
+  processWebhookRequest,
+} from "@app/lib/api/triggers/webhook";
 import { Authenticator } from "@app/lib/auth";
 import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
@@ -23,10 +27,6 @@ import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resou
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
-import {
-  getWebhookRequestPayloadFromGCS,
-  processWebhookRequest,
-} from "@app/lib/triggers/webhook";
 import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
 import { REGISTERED_CHECKS } from "@app/temporal/production_checks/activities";

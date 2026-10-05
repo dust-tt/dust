@@ -1,12 +1,8 @@
-import { toAgentConfigurationsWithSkills } from "@app/lib/api/assistant/configuration/helpers";
 import { patchAgentConfigurationFromJSON } from "@app/lib/api/assistant/configuration/yaml_import";
 import { isRetiredGlobalAgent } from "@app/lib/api/assistant/global_agents/global_agents";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import {
-  toAgentConfigurations,
-  toLightAgentConfigurations,
-} from "@app/lib/resources/agent_resource_serialization";
+import { toAgentConfigurationsWithSkills } from "@app/lib/resources/agent_resource_serialization";
 import logger from "@app/logger/logger";
 import type {
   DeleteAgentConfigurationResponseType,
@@ -31,19 +27,15 @@ const VariantQuerySchema = z.object({
 });
 
 // The resource redacts the private fields unless the caller can view the content (see
-// `light-instructions-require-read`).
+// `agent-json-redaction`).
 async function serializeAgent(
   auth: Authenticator,
   agent: AgentResource,
   variant: "light" | "full"
 ) {
-  const [configuration] =
-    variant === "full"
-      ? await toAgentConfigurations(auth, [agent])
-      : await toLightAgentConfigurations(auth, [agent]);
-  const [serialized] = await toAgentConfigurationsWithSkills(auth, [
-    { ...configuration, codeDefinedSkillIds: agent.codeDefinedSkillIds },
-  ]);
+  const [serialized] = await toAgentConfigurationsWithSkills(auth, [agent], {
+    variant,
+  });
 
   return serialized;
 }

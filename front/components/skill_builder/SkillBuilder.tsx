@@ -5,11 +5,6 @@ import {
 import { SkillBuilderAgentFacingDescriptionSection } from "@app/components/skill_builder/SkillBuilderAgentFacingDescriptionSection";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import { SkillBuilderFilesSection } from "@app/components/skill_builder/SkillBuilderFilesSection";
-import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
-import {
-  SkillBuilderFormContext,
-  skillBuilderFormSchema,
-} from "@app/components/skill_builder/SkillBuilderFormContext";
 import { SkillBuilderInstructionsSection } from "@app/components/skill_builder/SkillBuilderInstructionsSection";
 import { SkillBuilderRequestedSpacesSection } from "@app/components/skill_builder/SkillBuilderRequestedSpacesSection";
 import { SkillBuilderSettingsSection } from "@app/components/skill_builder/SkillBuilderSettingsSection";
@@ -25,6 +20,8 @@ import {
   SkillSpaceRestrictionsProvider,
   useSkillSpaceRestrictionsContext,
 } from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
+import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
+import { skillBuilderFormSchema } from "@app/components/skill_builder/skillBuilderFormSchema";
 import {
   getDefaultSkillFormData,
   transformSkillTypeToFormData,
@@ -376,58 +373,54 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
   );
 
   return (
-    <SkillBuilderFormContext.Provider value={form}>
-      <FormProvider form={form} asForm={false}>
-        {skill && (
-          <SkillCreatedDialog
-            open={isCreatedDialogOpen}
-            onOpenChange={setIsCreatedDialogOpen}
-            skillName={skill.name}
-            skillId={skill.sId}
-            owner={owner}
-          />
-        )}
-        <SkillVersionComparisonProvider>
-          <SkillSpaceRestrictionsProvider
-            initialRequestedSpaceIds={skill?.requestedSpaceIds}
+    <FormProvider form={form} asForm={false}>
+      {skill && (
+        <SkillCreatedDialog
+          open={isCreatedDialogOpen}
+          onOpenChange={setIsCreatedDialogOpen}
+          skillName={skill.name}
+          skillId={skill.sId}
+          owner={owner}
+        />
+      )}
+      <SkillVersionComparisonProvider>
+        <SkillSpaceRestrictionsProvider
+          initialRequestedSpaceIds={skill?.requestedSpaceIds}
+        >
+          <div
+            className={cn(
+              "flex h-dvh flex-row",
+              "bg-background text-foreground"
+            )}
           >
-            <div
-              className={cn(
-                "flex h-dvh flex-row",
-                "bg-background text-foreground"
-              )}
-            >
-              {showSuggestionsPanel ? (
-                <ResizablePanelGroup
-                  id="skill-builder-layout"
-                  direction="horizontal"
-                  className="h-full w-full"
-                >
-                  <ResizablePanel defaultSize={65} minSize={40}>
+            {showSuggestionsPanel ? (
+              <ResizablePanelGroup
+                id="skill-builder-layout"
+                direction="horizontal"
+                className="h-full w-full"
+              >
+                <ResizablePanel defaultSize={65} minSize={40}>
+                  <div className="h-full w-full overflow-y-auto">
+                    {leftPanel}
+                  </div>
+                </ResizablePanel>
+
+                <>
+                  <ResizableHandle withHandle />
+                  <ResizablePanel defaultSize={35} minSize={20} maxSize={50}>
                     <div className="h-full w-full overflow-y-auto">
-                      {leftPanel}
+                      <SkillBuilderSuggestionsPanel disabled={isEditorLocked} />
                     </div>
                   </ResizablePanel>
-
-                  <>
-                    <ResizableHandle withHandle />
-                    <ResizablePanel defaultSize={35} minSize={20} maxSize={50}>
-                      <div className="h-full w-full overflow-y-auto">
-                        <SkillBuilderSuggestionsPanel
-                          disabled={isEditorLocked}
-                        />
-                      </div>
-                    </ResizablePanel>
-                  </>
-                </ResizablePanelGroup>
-              ) : (
-                leftPanel
-              )}
-            </div>
-          </SkillSpaceRestrictionsProvider>
-        </SkillVersionComparisonProvider>
-      </FormProvider>
-    </SkillBuilderFormContext.Provider>
+                </>
+              </ResizablePanelGroup>
+            ) : (
+              leftPanel
+            )}
+          </div>
+        </SkillSpaceRestrictionsProvider>
+      </SkillVersionComparisonProvider>
+    </FormProvider>
   );
 }
 

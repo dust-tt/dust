@@ -331,45 +331,55 @@ export const EditSkillSuggestionSchema = z.object({
 
 export type EditSkillSuggestion = z.infer<typeof EditSkillSuggestionSchema>;
 
-export const DeleteAgentSuggestionSchema = z.object({
+export const ArchiveAgentSuggestionSchema = z.object({
   kind: z.literal("delete_agent"),
-  agentId: z.string().describe("The id of the agent to delete."),
+  agentId: z.string().describe("The id of the agent to archive (soft delete)."),
 });
 
-export type DeleteAgentSuggestion = z.infer<typeof DeleteAgentSuggestionSchema>;
+export type ArchiveAgentSuggestion = z.infer<
+  typeof ArchiveAgentSuggestionSchema
+>;
 
-export const DeleteSkillSuggestionSchema = z.object({
+export const ArchiveSkillSuggestionSchema = z.object({
   kind: z.literal("delete_skill"),
-  skillId: z.string().describe("The id of the custom skill to delete."),
+  skillId: z
+    .string()
+    .describe("The id of the custom skill to archive (soft delete)."),
 });
 
-export type DeleteSkillSuggestion = z.infer<typeof DeleteSkillSuggestionSchema>;
+export type ArchiveSkillSuggestion = z.infer<
+  typeof ArchiveSkillSuggestionSchema
+>;
 
 export const SuggestionSchema = z.discriminatedUnion("kind", [
   CreateAgentSuggestionSchema,
   CreateSkillSuggestionSchema,
   EditAgentSuggestionSchema,
   EditSkillSuggestionSchema,
-  DeleteAgentSuggestionSchema,
-  DeleteSkillSuggestionSchema,
+  ArchiveAgentSuggestionSchema,
+  ArchiveSkillSuggestionSchema,
 ]);
 
 export type Suggestion = z.infer<typeof SuggestionSchema>;
 
 export const SUGGEST_DESCRIPTION =
   "Suggest one or more changes to the agents and skills of this workspace: create, edit, or " +
-  "delete agents and skills. The changes are not applied directly: they are recorded as " +
+  "archive agents and skills. The changes are not applied directly: they are recorded as " +
   "pending suggestions that editors can review, accept, or reject.";
 
 // Bounded by the `batch_suggestions.analysis` column.
 const BATCH_SUGGESTION_ANALYSIS_MAX_LENGTH = 255;
 
+const BATCH_SUGGESTION_TITLE_MAX_LENGTH = 40;
+// Advertised below the actual limit so models aiming at the limit don't overshoot it.
+export const BATCH_SUGGESTION_TITLE_ADVERTISED_MAX_LENGTH = 38;
+
 export const SUGGEST_INPUT_SCHEMA = z.object({
   title: z
     .string()
-    .max(25)
+    .max(BATCH_SUGGESTION_TITLE_MAX_LENGTH)
     .describe(
-      "A short, action-oriented user-facing title for these suggestions (at most 25 characters)."
+      `A short user-facing title clearly describing the action of these suggestions (at most ${BATCH_SUGGESTION_TITLE_ADVERTISED_MAX_LENGTH} characters).`
     ),
   analysis: z
     .string()

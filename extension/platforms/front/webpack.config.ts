@@ -1,5 +1,9 @@
 import type { Environment } from "@extension/config/env";
 import { getImportMetaEnv } from "@extension/config/webpack_env";
+import {
+  linguiCatalogRule,
+  linguiMacroLoader,
+} from "@extension/config/webpack_lingui";
 import { execSync } from "child_process";
 import Dotenv from "dotenv-webpack";
 import fs from "fs";
@@ -43,15 +47,19 @@ export const getConfig = ({ env }: { env: Environment }) => {
       rules: [
         {
           test: /\.tsx?$/,
-          use: {
-            loader: "ts-loader",
-            options: {
-              configFile: path.resolve(__dirname, "../../tsconfig.json"),
-              transpileOnly: true,
+          use: [
+            {
+              loader: "ts-loader",
+              options: {
+                configFile: path.resolve(__dirname, "../../tsconfig.json"),
+                transpileOnly: true,
+              },
             },
-          },
+            linguiMacroLoader,
+          ],
           exclude: /node_modules/,
         },
+        linguiCatalogRule,
         {
           test: /\.woff2$/i,
           type: "asset/resource",

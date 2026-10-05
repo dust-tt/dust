@@ -27,57 +27,6 @@ export const shallowBlockClone = (block: any) => {
   return b;
 };
 
-/**
- * Formats a timestamp to a human-readable date string.
- * @param timestamp
- * @param version - "long" (default), "short", or "compact"
- *
- * long: September 23, 2025 at 3:37:32 PM
- * short: September 23, 2025
- * compactWithDay: Sep 23, 2025
- * compact: Sep, 2025
- *
- */
-export function formatTimestampToFriendlyDate(
-  timestamp: number,
-  version: "long" | "short" | "compact" | "compactWithDay" = "long"
-): string {
-  const date = new Date(timestamp);
-
-  switch (version) {
-    case "compact":
-      return date
-        .toLocaleDateString("en-US", {
-          month: "short",
-          year: "numeric",
-        })
-        .replace(" ", ", ");
-
-    case "short":
-      return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-
-    case "long":
-      return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "numeric",
-        minute: "numeric",
-        second: "numeric",
-      });
-    case "compactWithDay":
-      return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
-  }
-}
-
 // from http://emailregex.com/
 const EMAIL_REGEX =
   /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
@@ -312,24 +261,37 @@ export function filterAndSortAgents<
     subFilter(lowerCaseSearchText, a.name.toLowerCase())
   );
 
-  const withFavorite = (agent: T) => ({
-    sId: agent.sId,
-    name: agent.name,
-    scope: agent.scope,
-    userFavorite: favorites?.get(agent.sId)?.userFavorite,
-  });
+  const compareAgents = favorites
+    ? compareAgentsWithFavorites(favorites)
+    : compareAgentsForSort<T>;
 
   if (searchText.length > 0) {
     filtered.sort(
       (a, b) =>
         compareForFuzzySort(lowerCaseSearchText, a.name, b.name) ||
-        (favorites
-          ? compareAgentsForSort(withFavorite(a), withFavorite(b))
-          : compareAgentsForSort(a, b))
+        compareAgents(a, b)
     );
   }
 
   return filtered;
+}
+
+// `compareAgentsForSort` for agents that carry no favorite state (`AgentResource`).
+export function compareAgentsWithFavorites(
+  favorites: Map<string, AgentFavoriteEnrichment>
+) {
+  const withFavorite = (
+    agent: Pick<AgentResource, "sId" | "name" | "scope">
+  ) => ({
+    sId: agent.sId,
+    name: agent.name,
+    scope: agent.scope,
+    userFavorite: favorites.get(agent.sId)?.userFavorite,
+  });
+  return (
+    a: Pick<AgentResource, "sId" | "name" | "scope">,
+    b: Pick<AgentResource, "sId" | "name" | "scope">
+  ) => compareAgentsForSort(withFavorite(a), withFavorite(b));
 }
 
 export function sanitizeJSONOutput(obj: unknown): unknown {

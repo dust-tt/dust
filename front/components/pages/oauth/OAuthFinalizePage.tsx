@@ -1,3 +1,7 @@
+import {
+  connectionPayloadForOpener,
+  resolveOAuthPostMessageTargetOrigin,
+} from "@app/lib/oauth/opener_origin";
 import { useAppRouter, usePathParam } from "@app/lib/platform";
 import { useFinalize } from "@app/lib/swr/oauth";
 import logger from "@app/logger/logger";
@@ -42,7 +46,9 @@ export function OAuthFinalizePage() {
       // (e.g. go to GitHub and configure repositories from Dust App in Settings, hence no opener).
       const res = await doFinalize(validProvider, queryParams);
 
-      // Prepare message data
+      // Prepare message data. Success payloads omit connection metadata so a
+      // compromised trusted origin does not also receive workspace/user ids or
+      // opener_origin; connection_id remains (required for legitimate openers).
       const messageData = res.isErr()
         ? {
             type: "connection_finalized",
@@ -51,23 +57,24 @@ export function OAuthFinalizePage() {
           }
         : {
             type: "connection_finalized",
-            connection: res.value,
+            connection: connectionPayloadForOpener(res.value),
             provider: validProvider,
           };
 
-      // Get opener origin from connection metadata (passed through OAuth flow)
-      const openerOrigin = res.isOk()
+      // Re-validate opener_origin from connection metadata before postMessage.
+      // Attacker-controlled values must never be used as targetOrigin.
+      const rawOpenerOrigin = res.isOk()
         ? res.value.metadata.opener_origin
         : undefined;
+      const targetOrigin = resolveOAuthPostMessageTargetOrigin(
+        rawOpenerOrigin,
+        window.location.origin
+      );
 
       // Method 1: window.opener (preferred, direct communication)
-      // Use opener origin from metadata, fall back to window.location.origin if not available
-      if (window.opener && !window.opener.closed) {
+      if (window.opener && !window.opener.closed && targetOrigin) {
         try {
-          window.opener.postMessage(
-            messageData,
-            openerOrigin ?? window.location.origin
-          );
+          window.opener.postMessage(messageData, targetOrigin);
         } catch (e) {
           logger.error(
             { err: e },
@@ -75,8 +82,8 @@ export function OAuthFinalizePage() {
             e
           );
         }
-      } else {
-        // Method 2: BroadcastChannel (fallback for modern browsers)
+      } else if (!window.opener || window.opener.closed) {
+        // Method 2: BroadcastChannel (fallback for modern browsers; same-origin only)
         try {
           const channel = new BroadcastChannel("oauth_finalize");
           channel.postMessage(messageData);

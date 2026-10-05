@@ -1,5 +1,6 @@
 import { SCOPE_INFO } from "@app/components/assistant/details/AgentDetailsSheet";
 import { AgentSearchActionsMenu } from "@app/components/assistant/manager/AgentSearchActionsMenu";
+import { DefaultAgentToggle } from "@app/components/assistant/manager/DefaultAgentToggle";
 import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
 import { ModelTierChip } from "@app/components/model_picker/ModelTierChip";
 import { getModelMakerLogo } from "@app/components/providers/types";
@@ -18,7 +19,7 @@ import { getTieredReasoningEffort } from "@app/types/assistant/models/model_tier
 import { getModelMaker } from "@app/types/assistant/models/providers";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { pluralize } from "@app/types/shared/utils/string_utils";
-import type { WorkspaceType } from "@app/types/user";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
   AvatarCellSkeleton,
@@ -39,12 +40,15 @@ import type {
   SortingState,
 } from "@tanstack/react-table";
 import capitalize from "lodash/capitalize";
+import type { ReactNode } from "react";
 import { useMemo } from "react";
 
 type AgentSearchItem = SearchAgentsResponseBody["agents"][number];
 
 interface AgentSearchTableProps {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
+  readOnly?: boolean;
+  renderActions?: (agent: AgentSearchItem, onRefresh: () => void) => ReactNode;
   agents: AgentSearchItem[];
   onSelect: (agentId: string) => void;
   onRefresh: () => void;
@@ -115,7 +119,7 @@ function AgentSearchModelCell({ model, isDark }: AgentSearchModelCellProps) {
 }
 
 interface AgentSearchTagSelectorProps {
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
   agent: AgentSearchItem;
   onRefresh: () => void;
 }
@@ -142,13 +146,22 @@ function AgentSearchTagSelector({
   );
 }
 
-// Cells render as components, so a new `columns` identity remounts every cell: an open menu
-// closes and an in-flight checkbox click is lost.
+// Cells render as components, so recreating their renderer functions remounts them:
+// an open menu closes and an in-flight checkbox click is lost.
+/**
+ * @cc [owner:aubin-tchoi,label:product] mobile-table-layout
+ * Below 768px viewport width, Usage MUST remain visible unless sorting by Last edited,
+ * which MUST then remain visible instead. Names MUST truncate to leave room for that
+ * column and row actions. Other columns appear as table space allows. At 768px and above,
+ * preserve the existing layout. Sorting MUST NOT replace cell renderers. Column visibility
+ * rules MUST remain in each column definition.
+ */
 /**
  * @cc [owner:tdraier,label:react;performance] stable-columns
- * `columns` MUST only be rebuilt when `canSelect`, `onSelect`, `onRefresh`, `owner` or the theme
- * change, never on data the table loads itself. Callers MUST keep `canSelect`, `onSelect` and
- * `onRefresh` referentially stable while the search inputs are unchanged.
+ * `columns` MUST only be rebuilt when `canSelect`, `onSelect`, `onRefresh`, `owner`, `readOnly`,
+ * `renderActions` or the theme change, never on data the table loads itself. Callers MUST keep
+ * `canSelect`, `onSelect`, `onRefresh` and `renderActions` referentially stable while the search
+ * inputs are unchanged.
  */
 /**
  * @cc [owner:aubin-tchoi,label:product] agent-name-tooltip
@@ -165,6 +178,8 @@ function AgentSearchTagSelector({
  */
 export function AgentSearchTable({
   owner,
+  readOnly = false,
+  renderActions,
   agents,
   onSelect,
   onRefresh,
@@ -290,7 +305,7 @@ export function AgentSearchTable({
               />
             </DataTable.CellContent>
           ),
-          meta: { className: "w-48 @lg:w-full", rowHeader: true },
+          meta: { className: "md:w-48 md:@lg:w-full", rowHeader: true },
         },
         {
           id: "access" as const,
@@ -318,7 +333,10 @@ export function AgentSearchTable({
           cell: ({ row: { original: agent } }) => (
             <AgentSearchModelCell model={agent.model} isDark={isDark} />
           ),
-          meta: { className: "hidden @sm:w-28 @sm:table-cell @xl:w-32" },
+          meta: {
+            className:
+              "hidden w-28 max-md:@xs:table-cell max-md:@max-[40rem]:[.sort-by-last-edited_&]:hidden @sm:table-cell @xl:w-32",
+          },
         },
         {
           id: "usage" as const,
@@ -343,7 +361,8 @@ export function AgentSearchTable({
           ),
           meta: {
             type: "numeric",
-            className: "hidden @sm:w-24 @sm:table-cell",
+            className:
+              "hidden w-24 max-md:table-cell max-md:@max-[32rem]:[.sort-by-last-edited_&]:hidden @sm:table-cell",
           },
         },
         {
@@ -417,13 +436,25 @@ export function AgentSearchTable({
           cell: ({ row: { original: agent } }) => (
             <SkillLastEditedCell updatedAt={agent.updatedAt} emptyLabel="-" />
           ),
-          meta: { className: "hidden @sm:w-32 @sm:table-cell" },
+          meta: {
+            className:
+              "hidden w-32 max-md:[.sort-by-last-edited_&]:table-cell @sm:table-cell",
+          },
         },
         {
           id: "actions" as const,
           header: "",
           cell: ({ row: { original: agent } }) =>
-            agent.status === "archived" ? null : (
+            renderActions ? (
+              renderActions(agent, onRefresh)
+            ) : readOnly || agent.status === "archived" ? null : agent.scope ===
+              "global" ? (
+              <DefaultAgentToggle
+                owner={owner}
+                agent={agent}
+                onRefresh={onRefresh}
+              />
+            ) : (
               <AgentSearchActionsMenu
                 owner={owner}
                 agentId={agent.sId}
@@ -432,12 +463,13 @@ export function AgentSearchTable({
                 onRefresh={onRefresh}
               />
             ),
-          meta: { className: "hidden @md:table-cell @md:w-14" },
+          meta: { className: "w-14 md:hidden md:@md:table-cell" },
         },
       ] satisfies ColumnDef<AgentSearchRow>[],
-    [canSelect, isDark, onRefresh, onSelect, owner]
+    [canSelect, isDark, onRefresh, onSelect, owner, readOnly, renderActions]
   );
-  const hasSelectableRows = agents.some(canSelect);
+
+  const hasSelectableRows = !readOnly && agents.some(canSelect);
   const visibleColumns = useMemo(
     () =>
       hasSelectableRows
@@ -445,12 +477,15 @@ export function AgentSearchTable({
         : columns.filter((column) => column.id !== "select"),
     [columns, hasSelectableRows]
   );
+  // Expose sorting to column CSS without recreating cell renderers.
+  const tableClassName =
+    sorting[0]?.id === "updatedAt" ? "sort-by-last-edited" : undefined;
 
   // Show skeletons only when no rows are available; keep previous results during refreshes.
   // Mirror BasicCellContent's inner h-12 so the divider contributes equally to row height.
   if (isLoading && agents.length === 0) {
     return (
-      <div role="status" aria-label="Loading agents">
+      <div role="status" aria-label="Loading agents" className={tableClassName}>
         <DataTableSkeleton
           columns={visibleColumns}
           rowCount={12}
@@ -516,6 +551,7 @@ export function AgentSearchTable({
 
   return (
     <DataTable
+      className={tableClassName}
       data={agents.map((agent) => ({
         ...agent,
         onClick: () => onSelect(agent.sId),

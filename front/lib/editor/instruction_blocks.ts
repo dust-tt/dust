@@ -55,17 +55,24 @@ interface ParseInstructionsHtmlOptions {
   // The browser's `document` in the editor, a jsdom one on the server. Narrowed to what this
   // module calls: `Document` declares the whole spec, but jsdom implements only part of it, so a
   // wider type would let a browser-only call through the compiler and fail on the server.
-  document: Pick<Document, "createElement">;
+  document: Pick<Document, "implementation">;
   domParser: ProseMirrorDOMParser;
   // Drops every `data-block-id` before parsing, for content whose ids must not be trusted.
   clearBlockIds?: boolean;
 }
 
+/**
+ * @cc [owner:avervaet,label:security] untrusted-html-parsed-inert
+ * The HTML MUST be treated as untrusted (it is model-authored) and MUST be parsed in a document
+ * with no browsing context, never the live one: markup assigned to an element owned by the live
+ * document loads resources and fires inline event handlers such as `<img onerror>`.
+ */
 export function parseInstructionsHtml(
   html: string,
   { clearBlockIds = false, document, domParser }: ParseInstructionsHtmlOptions
 ): ProseMirrorNode {
-  const tempDiv = document.createElement("div");
+  const inertDocument = document.implementation.createHTMLDocument("");
+  const tempDiv = inertDocument.createElement("div");
   tempDiv.innerHTML = pairSelfClosingCustomTags(html);
 
   if (clearBlockIds) {

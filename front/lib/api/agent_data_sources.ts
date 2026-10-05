@@ -3,8 +3,11 @@ import { isManagedConnectorProvider } from "@app/lib/data_sources";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { AgentResource } from "@app/lib/resources/agent_resource";
+import {
+  AgentConfigurationModel,
+  AgentModel,
+} from "@app/lib/models/agent/agent";
+import { listActiveConfigurationIdentities } from "@app/lib/resources/agent_configuration_rows";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -56,6 +59,18 @@ const agentAggregates: ProjectionAlias[] = (
   ),
   alias,
 ]);
+
+function currentActiveAgentInclude(configurationPath: string) {
+  return {
+    model: AgentModel,
+    attributes: [],
+    required: true,
+    where: {
+      status: "active",
+      currentVersion: { [Op.col]: `${configurationPath}.version` },
+    },
+  };
+}
 
 // Usage only needs each skill's identity, so skip the rest of the hydration.
 const SKILL_USAGE_HYDRATION = {
@@ -245,29 +260,6 @@ export async function getDataSourceViewsUsageByModelIds({
   );
 
   // Step 4: fetch the agent configurations
-  const getAgentsForUser = () => AgentResource.listEditorConfigModelIds(auth);
-
-  const getAgentWhereClauseAdmin = () => ({
-    status: "active",
-    workspaceId: owner.id,
-  });
-
-  const getAgentWhereClauseNonAdmin = async () => ({
-    status: "active",
-    workspaceId: owner.id,
-    // If user is non-admin, only include agents that either they have access to or are published.
-    [Op.or]: [
-      {
-        scope: "visible",
-      },
-      {
-        id: {
-          [Op.in]: await getAgentsForUser(),
-        },
-      },
-    ],
-  });
-
   // 4A. Agents for AgentDataSourceConfigurationModel links.
   const dataSourceAgentConfigurationModelIds = uniq(
     removeNulls(
@@ -282,15 +274,9 @@ export async function getDataSourceViewsUsageByModelIds({
 
   const dataSourceAgents =
     dataSourceAgentConfigurationModelIds.length > 0
-      ? await AgentConfigurationModel.findAll({
-          raw: true,
-          attributes: ["id", "sId", "name", "pictureUrl"],
-          where: {
-            ...(auth.isAdmin()
-              ? getAgentWhereClauseAdmin()
-              : await getAgentWhereClauseNonAdmin()),
-            id: { [Op.in]: dataSourceAgentConfigurationModelIds },
-          },
+      ? await listActiveConfigurationIdentities(auth, {
+          configurationModelIds: dataSourceAgentConfigurationModelIds,
+          usageVisibleOnly: true,
         })
       : [];
 
@@ -307,14 +293,9 @@ export async function getDataSourceViewsUsageByModelIds({
 
   const tableAgents =
     tableAgentConfigurationModelIds.length > 0
-      ? await AgentConfigurationModel.findAll({
-          raw: true,
-          attributes: ["id", "sId", "name", "pictureUrl"],
-          where: {
-            status: "active",
-            workspaceId: owner.id,
-            id: { [Op.in]: tableAgentConfigurationModelIds },
-          },
+      ? await listActiveConfigurationIdentities(auth, {
+          configurationModelIds: tableAgentConfigurationModelIds,
+          usageVisibleOnly: false,
         })
       : [];
 
@@ -474,9 +455,9 @@ export async function getDataSourcesUsageByCategory({
                 attributes: [],
                 required: true,
                 where: {
-                  status: "active",
                   workspaceId: owner.id,
                 },
+                include: [currentActiveAgentInclude(AGENT_CONFIG_PATH)],
               },
             ],
           },
@@ -514,9 +495,9 @@ export async function getDataSourcesUsageByCategory({
                 attributes: [],
                 required: true,
                 where: {
-                  status: "active",
                   workspaceId: owner.id,
                 },
+                include: [currentActiveAgentInclude(AGENT_CONFIG_PATH)],
               },
             ],
           },
@@ -615,9 +596,9 @@ export async function getDataSourceUsage({
                 attributes: [],
                 required: true,
                 where: {
-                  status: "active",
                   workspaceId: owner.id,
                 },
+                include: [currentActiveAgentInclude(AGENT_CONFIG_PATH)],
               },
             ],
           },
@@ -643,9 +624,9 @@ export async function getDataSourceUsage({
                 attributes: [],
                 required: true,
                 where: {
-                  status: "active",
                   workspaceId: owner.id,
                 },
+                include: [currentActiveAgentInclude(AGENT_CONFIG_PATH)],
               },
             ],
           },
@@ -731,9 +712,9 @@ export async function getDataSourceViewUsage({
                 attributes: [],
                 required: true,
                 where: {
-                  status: "active",
                   workspaceId: owner.id,
                 },
+                include: [currentActiveAgentInclude(AGENT_CONFIG_PATH)],
               },
             ],
           },
@@ -759,9 +740,9 @@ export async function getDataSourceViewUsage({
                 attributes: [],
                 required: true,
                 where: {
-                  status: "active",
                   workspaceId: owner.id,
                 },
+                include: [currentActiveAgentInclude(AGENT_CONFIG_PATH)],
               },
             ],
           },

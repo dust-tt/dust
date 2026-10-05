@@ -3,7 +3,6 @@ import { DataSourceBrowserTable } from "@app/components/agent_builder/capabiliti
 import { DataSourceSearchResults } from "@app/components/agent_builder/capabilities/knowledge/DataSourceSearchResults";
 import { DataSourceSpaceSelector } from "@app/components/agent_builder/capabilities/knowledge/DataSourceSpaceSelector";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { filterBrowsableSpaces } from "@app/components/data_source_view/browser/useBrowsableSpaces";
 import {
   getKnowledgeBrowserBreadcrumbItems,
@@ -18,6 +17,7 @@ import {
   getLatestNodeFromNavigationHistory,
   navigationHistoryEntryTitle,
 } from "@app/components/data_source_view/context/utils";
+import { useSpacesContext } from "@app/components/shared/SpacesContext";
 import { useDebounce } from "@app/hooks/useDebounce";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import {

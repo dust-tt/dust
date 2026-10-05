@@ -23,7 +23,7 @@ struct ContentView: View {
             )
 
         case let .error(message):
-            ErrorView(message: message, onRetry: { authViewModel.logout() })
+            ErrorView(message: message, onRetry: { authViewModel.retry() })
         }
     }
 }
@@ -34,7 +34,7 @@ private struct ErrorView: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            SparkleIcon.exclamationCircle.image
+            SparkleIcon.alertCircle.image
                 .resizable()
                 .frame(width: 48, height: 48)
                 .foregroundStyle(Color.warning)

@@ -64,13 +64,13 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
     <div className="space-y-5 text-foreground">
       {lastError && (
         <ContentMessage
-          variant="warning"
+          variant="info"
           icon={AlertCircle}
           size="sm"
-          title="Synchronization Error"
+          title="Synchronization warning"
         >
           Server could not synchronize successfully. Last attempt{" "}
-          {lastSyncAt ? `on ${formatDateTime(lastSyncAt)}` : ""} : {lastError}
+          {lastSyncAt ? `on ${formatDateTime(lastSyncAt)}` : ""}: {lastError}
         </ContentMessage>
       )}
 

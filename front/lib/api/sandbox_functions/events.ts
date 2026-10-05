@@ -1,3 +1,4 @@
+import { getRedisEventsBatch } from "@app/lib/api/redis_events_batch";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { createCallbackReader } from "@app/lib/utils";
@@ -50,7 +51,7 @@ export async function* getSandboxFunctionInvocationEvents({
     getSandboxFunctionInvocationChannelId({ invocationId }),
     callbackReader.callback,
     SANDBOX_FUNCTION_INVOCATION_EVENTS_ORIGIN,
-    { lastEventId }
+    { lastEventId, signal }
   );
 
   signal.addEventListener("abort", unsubscribe, { once: true });
@@ -94,6 +95,24 @@ export async function* getSandboxFunctionInvocationEvents({
     signal.removeEventListener("abort", unsubscribe);
     unsubscribe();
   }
+}
+
+export async function getSandboxFunctionInvocationEventsBatch({
+  invocationId,
+  lastEventId,
+  signal,
+}: {
+  invocationId: string;
+  lastEventId: string | null;
+  signal: AbortSignal;
+}): Promise<SandboxFunctionInvocationStreamEvent[]> {
+  const events = await getRedisEventsBatch({
+    channel: getSandboxFunctionInvocationChannelId({ invocationId }),
+    origin: "sandbox_function_invocation_events_long_poll",
+    lastEventId,
+    signal,
+  });
+  return events.map(parseSandboxFunctionInvocationEvent);
 }
 
 function parseSandboxFunctionInvocationEvent(

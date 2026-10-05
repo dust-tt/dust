@@ -1,11 +1,9 @@
-import type { DiscordBotConfigurationType } from "./discord_bot";
 import type { SlackConfigurationType } from "./slack";
 import type { WebCrawlerConfigurationType } from "./webcrawler";
 
 export type ConnectorConfiguration =
   | WebCrawlerConfigurationType
   | SlackConfigurationType
-  | DiscordBotConfigurationType
   | null;
 
 export function isWebCrawlerConfiguration(

@@ -4,6 +4,7 @@ import type {
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import { getNewAgentModelDefaults } from "@app/lib/agent_builder/helpers";
 import { GLOBAL_AGENTS_WORKSPACE_ID } from "@app/lib/agent_search/constants";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import { canAdminSeePrivateEntities } from "@app/lib/api/assistant/configuration/private_entities";
@@ -432,8 +433,9 @@ export interface AgentResource
  * A resource built for a caller who cannot view the agent's content (`canViewContent` false: no
  * `read`, outside the `admin_can_see_private_entities` admin override) MUST NOT expose the agent's
  * instructions (`instructions`, `instructionsHtml`) to that caller: `fetchInstructions`/
- * `batchFetchInstructions` never return them for it, whatever their role, key type, or superuser
- * status. The instructions are the only private fields: the head fields (`name`, `status`, `scope`,
+ * `batchFetchInstructions` never return them for it, whatever their role or key type. The only
+ * exception is a Poke superuser authenticator (see `poke-agent-content-access`). The instructions
+ * are the only private fields: the head fields (`name`, `status`, `scope`,
  * `templateId`, `reinforcement`, `lastReinforcementAnalysisAt`) are core and carried by every
  * resource. This holds for every `fetch*` resolver, for `listVersions`, for `fromModels` and for
  * global agents, so a caller allowed to enumerate agents they cannot read (an admin or manager
@@ -464,7 +466,8 @@ export interface AgentResource
  *   agent, regardless of scope, status, or `requestedSpaceIds`.
  * Holding any verb makes the agent fetchable, but without `read` only its core fields may be
  * exposed (see `unreadable-agent-content-hidden`). The explicit `admin_can_see_private_entities` admin
- * override is the only exception and may expose the full configuration.
+ * override and the Poke superuser authenticator (see `poke-agent-content-access`) are the only
+ * exceptions and may expose the full configuration.
  * Global (code-defined) agents are `read`-only, for the roles in their audience.
  */
 /**
@@ -764,15 +767,22 @@ export class AgentResource
   /**
    * @cc [owner:tdraier,label:security] agent-content-visibility
    * The private content (instructions, tools) is visible to a caller who holds `read`, and to a
-   * workspace admin of a workspace with the `admin_can_see_private_entities` feature flag, whichever
-   * resolver or factory built the resource they are handed (`fetch*`,
-   * `dangerouslyFromConfigurationModels`). The flag MUST NOT grant any verb: what such an admin may
-   * do with the agent is decided by their verbs alone (see `agent-verbs`) — without `read` they
-   * cannot mention or run it, and the definition edits their `admin` verb allows (model, tags) are
-   * unchanged.
+   * workspace admin of a workspace with the `admin_can_see_private_entities` feature flag, and to a
+   * Poke superuser (see `poke-agent-content-access`), whichever resolver or factory built the
+   * resource they are handed (`fetch*`, `dangerouslyFromConfigurationModels`). The flag MUST NOT
+   * grant any verb: what such an admin may do with the agent is decided by their verbs alone (see
+   * `agent-verbs`) — without `read` they cannot mention or run it, and the definition edits their
+   * `admin` verb allows (model, tags) are unchanged.
+   */
+  /**
+   * @cc [owner:tdraier,label:security] poke-agent-content-access
+   * A Dust superuser authenticator (`auth.isDustSuperUser()`, only built by the Poke entrypoints)
+   * MUST be able to view every agent's content, instructions and tools included, whatever its
+   * verbs; it MUST NOT grant or change any verb.
    */
   private resolveCanViewContent(auth: Authenticator): boolean {
     return (
+      auth.isDustSuperUser() ||
       auth.can("read", this) ||
       (this._adminCanSeePrivateEntities && auth.isAdmin())
     );
@@ -1022,9 +1032,10 @@ export class AgentResource
 
   static async fetchById(
     auth: Authenticator,
-    agentId: string
+    agentId: string,
+    options: AgentFetchOptions = {}
   ): Promise<AgentResource | null> {
-    const [resource] = await this.fetchByIds(auth, [agentId]);
+    const [resource] = await this.fetchByIds(auth, [agentId], options);
     return resource ?? null;
   }
 
@@ -1247,13 +1258,12 @@ export class AgentResource
   }
 
   /**
-   * @cc [owner:tdraier,label:security;product] list-readable-agents
-   * Returns the active agents the caller can `read` (the ones they can mention and run), and no
-   * other: the default global agents (`listDefaultGlobalAgentIds`, which leaves out Sidekick,
-   * Reinforcement, model-only and retired agents) first in their default order, then custom agents
-   * in name order.
+   * @cc [owner:tdraier,label:security;product] list-active-agents
+   * Returns the active agents the caller can fetch, readable or not: the default global agents
+   * (`listDefaultGlobalAgentIds`) first in their default order, then custom agents in name order.
+   * Callers that surface the agents to be mentioned or run MUST use `listReadable` instead.
    */
-  static async listReadable(auth: Authenticator): Promise<AgentResource[]> {
+  static async listActive(auth: Authenticator): Promise<AgentResource[]> {
     const [globalAgents, customAgents] = await Promise.all([
       this.listGlobalAgents(auth),
       this.listByWorkspace(auth),
@@ -1262,17 +1272,43 @@ export class AgentResource
     return [
       ...globalAgents.filter((agent) => agent.status === "active"),
       ...customAgents.toSorted((a, b) => a.name.localeCompare(b.name)),
-    ].filter((agent) => auth.can("read", agent));
+    ];
+  }
+
+  /**
+   * @cc [owner:tdraier,label:security;product] list-readable-agents
+   * Returns the agents of `listActive` (see `list-active-agents`, same order) the caller can
+   * `read` (the ones they can mention and run), and no other. The default global agents leave out
+   * Sidekick, Reinforcement, model-only and retired agents.
+   */
+  static async listReadable(auth: Authenticator): Promise<AgentResource[]> {
+    return (await this.listActive(auth)).filter((agent) =>
+      auth.can("read", agent)
+    );
   }
 
   // Every agent of the authed workspace whose current status is in `status` (active by default),
   // filtered to what the caller can fetch.
   static async listByWorkspace(
     auth: Authenticator,
-    { status = "active" }: { status?: AgentStatus | AgentStatus[] } = {}
+    {
+      status = "active",
+      scope,
+      nameContains,
+    }: {
+      status?: AgentStatus | AgentStatus[];
+      scope?: Exclude<AgentConfigurationScope, "global">;
+      nameContains?: string;
+    } = {}
   ): Promise<AgentResource[]> {
     const agentIds = await this.listCurrentVersionAgentIds(auth, {
-      agentWhere: { status },
+      agentWhere: {
+        status,
+        ...(scope ? { scope } : {}),
+        ...(nameContains !== undefined
+          ? { name: { [Op.iLike]: `%${nameContains}%` } }
+          : {}),
+      },
     });
     return this.fetchByIds(auth, agentIds);
   }
@@ -1403,6 +1439,24 @@ export class AgentResource
     });
 
     return this.fetchByIds(auth, agentIds);
+  }
+
+  // Oldest first, the pending agents created before `createdBefore`, for the purge. Not
+  // `canFetch`-filtered: the purge runs as an internal admin over every pending agent.
+  static async dangerouslyListExpiredPendingAgents(
+    auth: Authenticator,
+    { createdBefore, limit }: { createdBefore: Date; limit: number }
+  ): Promise<AgentResource[]> {
+    const configurations = await AgentConfigurationModel.findAll({
+      where: {
+        status: "pending",
+        createdAt: { [Op.lt]: createdBefore },
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      limit,
+      order: [["createdAt", "ASC"]],
+    });
+    return this.dangerouslyFromConfigurationModels(auth, configurations);
   }
 
   // Caller-independent query: the current resource of each identified agent — the row whose
@@ -1699,19 +1753,12 @@ export class AgentResource
     const users = await UserResource.fetchByModelIds(userModelIds, {
       transaction,
     });
-    const { memberships } = await MembershipResource.getActiveMemberships({
+    const activeUsers = await MembershipResource.filterActiveMembers({
       users,
       workspace: auth.getNonNullableWorkspace(),
       transaction,
     });
-    const activeUserModelIds = new Set(
-      memberships.map((membership) => membership.userId)
-    );
-    const userByModelId = new Map(
-      users
-        .filter((user) => activeUserModelIds.has(user.id))
-        .map((user) => [user.id, user])
-    );
+    const userByModelId = new Map(activeUsers.map((user) => [user.id, user]));
 
     for (const agent of customAgents) {
       const group = groupByAgentModelId.get(agent.id);
@@ -2846,6 +2893,91 @@ export class AgentResource
     return AgentResource.batchDelete(auth, [this]);
   }
 
+  // Hard-deletes every agent of the workspace with its tools, favorites, tags and memories, for
+  // workspace deletion only: no archive, no search-index work per agent.
+  static async dangerouslyDeleteAllForWorkspace(
+    auth: Authenticator
+  ): Promise<void> {
+    // A workspace admin holds `admin` on every custom agent (see
+    // `agent-archive-restore-requires-admin`), so the whole workspace may be deleted.
+    assert(auth.isAdmin(), "Deleting every agent requires a workspace admin.");
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+    const agents = await AgentConfigurationModel.findAll({
+      where: { workspaceId: workspaceModelId },
+    });
+
+    for (const agent of agents) {
+      const mcpServerConfigurations =
+        await AgentMCPServerConfigurationModel.findAll({
+          where: {
+            agentConfigurationId: agent.id,
+            workspaceId: workspaceModelId,
+          },
+        });
+      const mcpServerConfigurationModelIds = mcpServerConfigurations.map(
+        (r) => r.id
+      );
+      await AgentDataSourceConfigurationModel.destroy({
+        where: {
+          mcpServerConfigurationId: { [Op.in]: mcpServerConfigurationModelIds },
+          workspaceId: workspaceModelId,
+        },
+      });
+      await AgentTablesQueryConfigurationTableModel.destroy({
+        where: {
+          mcpServerConfigurationId: { [Op.in]: mcpServerConfigurationModelIds },
+          workspaceId: workspaceModelId,
+        },
+      });
+      await AgentChildAgentConfigurationModel.destroy({
+        where: {
+          mcpServerConfigurationId: {
+            [Op.in]: mcpServerConfigurationModelIds.map((id) => `${id}`),
+          },
+          workspaceId: workspaceModelId,
+        },
+      });
+      await AgentMCPServerConfigurationModel.destroy({
+        where: {
+          agentConfigurationId: agent.id,
+          workspaceId: workspaceModelId,
+        },
+      });
+      await AgentUserRelationModel.destroy({
+        where: { agentConfiguration: agent.sId, workspaceId: workspaceModelId },
+      });
+      await TagAgentModel.destroy({
+        where: {
+          agentConfigurationId: agent.id,
+          workspaceId: workspaceModelId,
+        },
+      });
+      await AgentMemoryModel.destroy({
+        where: {
+          agentConfigurationId: agent.sId,
+          workspaceId: workspaceModelId,
+        },
+      });
+
+      logger.info(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          agentId: agent.sId,
+        },
+        "Deleting agent"
+      );
+      await agent.destroy();
+    }
+
+    await AgentModel.destroy({ where: { workspaceId: workspaceModelId } });
+
+    // Cache entries have no TTL, so workspace deletion must drop every agent's cached snapshot.
+    await invalidateAgentResourceCaches(
+      workspaceModelId,
+      agents.map((agent) => agent.sId)
+    );
+  }
+
   /**
    * @cc [owner:tdraier,label:backend] batch-delete-atomic
    * `batchDelete` MUST hard-delete every passed agent as a set: for each agent it destroys all of its
@@ -3161,19 +3293,12 @@ export class AgentResource
     auth: Authenticator,
     fetchContext: SkillFetchContext = {}
   ): Promise<SkillResource[]> {
-    if (this.scope === "global") {
-      return SkillResource.fetchByIds(
-        auth,
-        this._codeDefinedSkillIds,
-        fetchContext
-      );
-    }
-
-    return SkillResource.listByAgentConfigurationModelId(
+    const skillsByAgent = await SkillResource.listByAgents(
       auth,
-      this.agentConfigurationModelId,
+      [this],
       fetchContext
     );
+    return skillsByAgent.get(this) ?? [];
   }
 
   /**
@@ -3261,17 +3386,34 @@ export class AgentResource
     };
   }
 
-  toSearchModelJSON(): NonNullable<AgentSearchListItemType["model"]> {
+  toSearchModelJSON(): Pick<AgentSearchListItemType, "model" | "status"> {
     return {
-      providerId: this.modelConfiguration.providerId,
-      modelId: this.modelConfiguration.modelId,
-      reasoningEffort: getEffectiveReasoningEffort(this.modelConfiguration),
+      model: {
+        providerId: this.modelConfiguration.providerId,
+        modelId: this.modelConfiguration.modelId,
+        reasoningEffort: getEffectiveReasoningEffort(this.modelConfiguration),
+      },
+      status: this.status,
     };
   }
 
   // The code-defined skills a global agent declares; always empty for custom agents.
   get codeDefinedSkillIds(): string[] {
     return [...this._codeDefinedSkillIds];
+  }
+
+  // The model the agent runs on (see `agent-json-effective-reasoning-effort`).
+  get effectiveModelConfiguration(): AgentModelConfigurationType {
+    if (this.scope === "global") {
+      return this.modelConfiguration;
+    }
+    return {
+      ...this.modelConfiguration,
+      reasoningEffort:
+        this.modelConfiguration.reasoningEffort ??
+        getSupportedModelConfig(this.modelConfiguration)
+          ?.defaultReasoningEffort,
+    };
   }
 
   /**
@@ -3283,10 +3425,20 @@ export class AgentResource
    */
   /**
    * @cc [owner:tdraier,label:backend] agent-json-effective-reasoning-effort
-   * For a custom agent with no stored `reasoningEffort`, `toJSON().model.reasoningEffort` MUST be
-   * the model's default reasoning effort (unset for an unknown model), as the legacy loaders served
-   * it: the agent loop runs on it. `modelConfiguration` and the save paths keep the stored value.
+   * For a custom agent with no stored `reasoningEffort`, `toJSON().model.reasoningEffort` (built from
+   * `effectiveModelConfiguration`) MUST be the model's default reasoning effort (unset for an unknown
+   * model), as the legacy loaders served it: the agent loop runs on it. `modelConfiguration` and the save paths keep the stored value.
    * A global agent's model is served as its builder produced it.
+   */
+  /**
+   * @cc [owner:philipperolet,label:security] regular-key-agent-editability
+   * For regular keys on custom agents, `canEdit` requires the agent `write` verb (from an editor
+   * grant, or the admin role), active status, and read access to every requested space.
+   */
+  /**
+   * @cc [owner:philipperolet,label:security] agent-editability
+   * Outside regular API keys, `canEdit` is agent `write` permission; the workspace admin role alone
+   * does not grant it.
    */
   toJSON(): AgentConfigurationBaseType {
     const isGlobal = this.scope === "global";
@@ -3298,15 +3450,7 @@ export class AgentResource
       sId: this.sId,
       version: this.version,
       versionAuthorId: this.versionAuthorId,
-      model: isGlobal
-        ? this.modelConfiguration
-        : {
-            ...this.modelConfiguration,
-            reasoningEffort:
-              this.modelConfiguration.reasoningEffort ??
-              getSupportedModelConfig(this.modelConfiguration)
-                ?.defaultReasoningEffort,
-          },
+      model: this.effectiveModelConfiguration,
       status: this.status,
       scope: this.scope,
       name: this.name,
@@ -3333,7 +3477,7 @@ export class AgentResource
         this.creditSpendCheckpointThresholdAwuCredits === null,
       canRead: this._verbs.has("read"),
       // Regular API keys hold `write` from the admin role but may only edit an active version
-      // (see the `regular-key-agent-editability` contract on `enrichAgentConfigurations`).
+      // (see `regular-key-agent-editability`).
       canEdit:
         this._verbs.has("write") &&
         (!this._isRegularApiKey || this.status === "active"),
@@ -3487,12 +3631,7 @@ export class AgentResource
           pictureUrl: PENDING_AGENT_PLACEHOLDER_PICTURE_URL,
           status: "pending",
           scope: "hidden",
-          model: {
-            providerId: defaultModel.providerId,
-            modelId: defaultModel.modelId,
-            temperature: 0.7,
-            reasoningEffort: defaultModel.defaultReasoningEffort,
-          },
+          model: getNewAgentModelDefaults(defaultModel),
           templateId: null,
           requestedSpaceIds: [],
           tags: [],
@@ -3626,7 +3765,7 @@ export class AgentResource
       (providedDefinitionKeys.length > 0 || hasTagDelta) &&
       (this.canViewContent || auth.can("write", this))
     ) {
-      const resaveSourceRes = await this.getResaveSource();
+      const resaveSourceRes = await this.getResaveSource(auth);
       if (resaveSourceRes.isErr()) {
         return resaveSourceRes;
       }
@@ -3782,11 +3921,25 @@ export class AgentResource
 
   // A writer who cannot view the content (a regular admin API key on a hidden agent, see
   // `admin-key-agent-write`) rebuilds the new version from a caller-independent copy of the current
-  // one. The copy never leaves `updateConfiguration`: its content only flows into the new version
-  // (see `unreadable-agent-content-hidden`).
-  private async getResaveSource(): Promise<Result<AgentResource, Error>> {
+  // one.
+  /**
+   * @cc [owner:tdraier,label:security] resave-source-content
+   * `getResaveSource` returns this resource to a caller who can view its content, a
+   * caller-independent copy of the current version to a caller holding `write`, and an error to any
+   * other caller. The copy's content MUST only flow into a new version of the agent
+   * (`updateConfiguration`, the YAML patch of `patchAgentConfigurationFromJSON`) and MUST
+   * NOT be returned to the caller (see `unreadable-agent-content-hidden`).
+   */
+  async getResaveSource(
+    auth: Authenticator
+  ): Promise<Result<AgentResource, Error>> {
     if (this.canViewContent) {
       return new Ok(this);
+    }
+    if (!auth.can("write", this)) {
+      return new Err(
+        new Error("Re-saving this agent requires write access to it.")
+      );
     }
     const [current] = await AgentResource.loadResource(this.workspaceId, {
       id: [this.id],

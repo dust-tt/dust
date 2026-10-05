@@ -1,8 +1,9 @@
+import { EditorContent } from "@app/components/editor/EditorContent";
 import type { SuggestionDiffLayout } from "@app/components/shared/SuggestionFieldEditSection";
 import { getBlockOuterHtml } from "@app/components/shared/utils";
 import { DiffBlock } from "@dust-tt/sparkle";
 import type { Extensions } from "@tiptap/react";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { useEditor } from "@tiptap/react";
 import { useMemo } from "react";
 
 interface SuggestionInstructionsDiffBlockProps {

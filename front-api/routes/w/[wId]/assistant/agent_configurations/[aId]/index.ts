@@ -141,8 +141,11 @@ app.patch(
 
     // Surface whether the save persisted a change so the client can tell the user the agent was
     // updated — including in-place scope/editor changes that create no new version — versus a no-op.
+    const [agentConfiguration] = await toAgentConfigurations(auth, [
+      agentConfigurationRes.value.agent,
+    ]);
     return ctx.json({
-      agentConfiguration: agentConfigurationRes.value.agentConfiguration,
+      agentConfiguration,
       updated: agentConfigurationRes.value.changed,
     });
   }

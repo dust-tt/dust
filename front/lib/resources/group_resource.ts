@@ -1252,21 +1252,19 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
-   * Skips `canFetch`: the limit group decides which group a member's spend is recorded to and
-   * enforced against, which must not depend on the caller's verbs (API keys, internal and system
-   * auth resolve it too). Callers MUST go through `resolveLimitGroupsForUsers`, which gates on
-   * `areGroupLimitsEnabled`, and MUST NOT expose the returned groups beyond what the caller may read.
+   * @cc [owner:rfrenoy,label:security;product;backend] limit-group-drop-not-reassign
+   * Each member's limit group is resolved from memberships and priorities alone, and the `read`
+   * filter applies to that resolved group: a member whose limit group the caller cannot read MUST
+   * be absent from the result, never attributed to the next readable group.
    */
-  static async dangerouslyListLimitGroupByUserModelIdInWorkspace({
-    workspace,
-    userModelIds,
-  }: {
-    workspace: LightWorkspaceType;
-    userModelIds: ModelId[];
-  }): Promise<Map<ModelId, GroupResource>> {
+  static async listLimitGroupByUserModelIdInWorkspace(
+    auth: Authenticator,
+    { userModelIds }: { userModelIds: ModelId[] }
+  ): Promise<Map<ModelId, GroupResource>> {
     if (userModelIds.length === 0) {
       return new Map();
     }
+    const workspace = auth.getNonNullableWorkspace();
 
     const limitedGroups = await GroupModel.findAll({
       where: {
@@ -1311,12 +1309,17 @@ export class GroupResource extends BaseResource<GroupModel> {
       }
     }
 
-    return new Map(
-      [...bestRankByUserModelId].map(([userModelId, rank]) => [
-        userModelId,
-        new GroupResource(GroupModel, limitedGroups[rank].get()),
-      ])
+    const groupByRank = limitedGroups.map(
+      (group) => new GroupResource(GroupModel, group.get())
     );
+    const result = new Map<ModelId, GroupResource>();
+    for (const [userModelId, rank] of bestRankByUserModelId) {
+      const group = groupByRank[rank];
+      if (auth.can("read", group)) {
+        result.set(userModelId, group);
+      }
+    }
+    return result;
   }
 
   static async getMemberCountsForGroups(
@@ -1707,10 +1710,12 @@ export class GroupResource extends BaseResource<GroupModel> {
       users,
       transaction,
       allowProvisionedGroups = false,
+      allowDepartedMembers = false,
     }: {
       users: UserType[];
       transaction?: Transaction;
       allowProvisionedGroups?: boolean;
+      allowDepartedMembers?: boolean;
     }
   ): Promise<
     Result<
@@ -1746,21 +1751,23 @@ export class GroupResource extends BaseResource<GroupModel> {
         )
       );
     }
-    const { total } = await MembershipResource.getActiveMemberships({
-      users: userResources,
-      workspace: owner,
-      transaction,
-    });
+    if (!allowDepartedMembers) {
+      const { total } = await MembershipResource.getActiveMemberships({
+        users: userResources,
+        workspace: owner,
+        transaction,
+      });
 
-    if (total !== userIds.length) {
-      return new Err(
-        new DustError(
-          "user_not_member",
-          userIds.length === 1
-            ? "Cannot remove: user is not a member of the workspace"
-            : "Cannot remove: users are not members of the workspace"
-        )
-      );
+      if (total !== userIds.length) {
+        return new Err(
+          new DustError(
+            "user_not_member",
+            userIds.length === 1
+              ? "Cannot remove: user is not a member of the workspace"
+              : "Cannot remove: users are not members of the workspace"
+          )
+        );
+      }
     }
 
     // Check if all requested users are active members of the group.

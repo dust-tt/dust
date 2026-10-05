@@ -128,7 +128,7 @@
  *           nullable: true
  *           items:
  *             type: string
- *           description: Allowed model provider IDs
+ *           description: Whitelisted model lab (maker) IDs, e.g. "zai" for GLM whoever hosts it. Null allows every lab.
  *         defaultEmbeddingProvider:
  *           type: string
  *           nullable: true

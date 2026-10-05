@@ -1,8 +1,13 @@
-import { formatTime, prefersTwentyFourHourTime } from "@app/lib/i18n/format";
+import {
+  formatDate,
+  formatTime,
+  prefersTwentyFourHourTime,
+} from "@app/lib/i18n/format";
 import type {
   WakeUpScheduleConfig,
   WakeUpType,
 } from "@app/types/assistant/wakeups";
+import type { SupportedLocale } from "@app/types/locale";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { CronExpressionParser } from "cron-parser";
@@ -48,11 +53,12 @@ export function getNextWakeUpFireAtFromScheduleConfig(
 // Compact label for the sidebar conversation-list wake-up indicator. When
 // the next firing is more than a day away the time of day on its own gives
 // the viewer no sense of when — show the abbreviated weekday instead.
-export function formatWakeUpSidebarLabel(timestamp: number): string {
+export function formatWakeUpSidebarLabel(
+  timestamp: number,
+  locale: SupportedLocale
+): string {
   if (timestamp - Date.now() > ONE_DAY_MS) {
-    return new Date(timestamp).toLocaleDateString("en-US", {
-      weekday: "short",
-    });
+    return formatDate(timestamp, { weekday: "short" }, locale);
   }
   return formatWakeUpTimeOfDay(timestamp);
 }

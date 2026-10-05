@@ -57,6 +57,10 @@ function handleTestConnectionError(
 export class BigQueryConnectorManager extends BaseConnectorManager<null> {
   readonly provider: ConnectorProvider = "bigquery";
 
+  /**
+   * @cc [owner:frankaloia,label:security] credential-workspace-binding
+   * `create` MUST refuse a `connectionId` whose credential `metadata.workspace_id` is not a non-empty string equal to `dataSourceConfig.workspaceId`, and MUST NOT persist a connector for that credential.
+   */
   static async create({
     dataSourceConfig,
     connectionId,
@@ -68,9 +72,15 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
       credentialsId: connectionId,
       isTypeGuard: isBigQueryWithLocationCredentials,
       logger,
+      workspaceId: dataSourceConfig.workspaceId,
     });
     if (credentialsRes.isErr()) {
-      throw credentialsRes.error;
+      return new Err(
+        new ConnectorManagerError(
+          "INVALID_CONFIGURATION",
+          credentialsRes.error.message
+        )
+      );
     }
     const credentials = credentialsRes.value.credentials;
 
@@ -109,6 +119,10 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
     return new Ok(connector.id.toString());
   }
 
+  /**
+   * @cc [owner:frankaloia,label:security] credential-workspace-binding
+   * `update` MUST refuse a `connectionId` whose credential `metadata.workspace_id` is not a non-empty string equal to the connector's `workspaceId`, and MUST NOT rebind the connector to that credential.
+   */
   async update({
     connectionId,
   }: {
@@ -128,9 +142,15 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
       credentialsId: connectionId,
       isTypeGuard: isBigQueryWithLocationCredentials,
       logger,
+      workspaceId: c.workspaceId,
     });
     if (newCredentialsRes.isErr()) {
-      throw newCredentialsRes.error;
+      return new Err(
+        new ConnectorManagerError(
+          "INVALID_CONFIGURATION",
+          newCredentialsRes.error.message
+        )
+      );
     }
 
     const newCredentials = newCredentialsRes.value.credentials;

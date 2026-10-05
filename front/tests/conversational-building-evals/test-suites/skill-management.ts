@@ -75,5 +75,23 @@ export const skillManagementSuite: TestSuite = {
   the skill is gone, and must surface the recorded suggestion directive.
 `.trim(),
     },
+    {
+      scenarioId: "archive-skill",
+      workspaceSeed: WORKSPACE,
+      userMessage:
+        "Nobody uses the Meeting Recap skill anymore, can you archive it?",
+      expectedFinalToolCall: {
+        type: "suggestSkillDeletion",
+        skillKey: MEETING_RECAP_KEY,
+      },
+      judgeCriteria: `
+- "Archive" means the deletion suggestion: it must propose deleting "Meeting Recap" and nothing
+  else.
+- Score 0-1 if "Release Notes Writer" is targeted, if the agent edited the skill instead of
+  proposing its deletion, or if it asked the user what archiving means instead of suggesting it.
+- The closing message must say the archival is a suggestion for the editors to review, not that
+  the skill is gone, and must surface the recorded suggestion directive.
+`.trim(),
+    },
   ],
 };

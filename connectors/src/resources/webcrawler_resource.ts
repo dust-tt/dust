@@ -35,10 +35,8 @@ import { literal, Op } from "sequelize";
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface WebCrawlerConfigurationResource
   extends ReadonlyAttributesType<WebCrawlerConfigurationModel> {}
-// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConfigurationModel> {
   static model: ModelStatic<WebCrawlerConfigurationModel> =
     WebCrawlerConfigurationModel;

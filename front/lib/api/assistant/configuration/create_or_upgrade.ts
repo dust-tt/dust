@@ -1,12 +1,12 @@
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { pruneSuggestionsForAgent } from "@app/lib/api/assistant/agent_suggestion_pruning";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { resolveAgentRequestedSpaces } from "@app/lib/api/assistant/configuration/requested_spaces";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { getModelTierAccessErrorForAgentConfiguration } from "@app/lib/model_tiers/access";
+import { getTieredDefaultReasoningEffort } from "@app/lib/model_tiers/enabled_models";
 import type { AgentAuditOptions } from "@app/lib/resources/agent_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -17,7 +17,6 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationAssistantPayload } from "@app/types/api/agent_configuration";
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { isStaticModelId } from "@app/types/assistant/models/models";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -47,6 +46,11 @@ import uniq from "lodash/uniq";
  * `auth`. `AppResource` fetchers drop unreadable apps, so without this check such an app would add
  * no space requirement and its id would still be persisted on the action.
  */
+/**
+ * @cc [owner:Nils-Fedrigo,label:product] unspecified-effort-is-pinned
+ * When `assistant.model.reasoningEffort` is not set, the saved version MUST store the effort
+ * returned by `getTieredDefaultReasoningEffort` for the model, never a null effort.
+ */
 export async function createOrUpgradeAgentConfiguration({
   auth,
   assistant,
@@ -67,10 +71,7 @@ export async function createOrUpgradeAgentConfiguration({
   dangerouslySkipPermissionFiltering?: boolean;
   skipSuggestionPruning?: boolean;
 } & AgentAuditOptions): Promise<
-  Result<
-    { agentConfiguration: AgentConfigurationType; changed: boolean },
-    Error
-  >
+  Result<{ agent: AgentResource; changed: boolean }, Error>
 > {
   const skillsOnlyViews = await MCPServerViewResource.fetchByIds(
     auth,
@@ -209,11 +210,12 @@ export async function createOrUpgradeAgentConfiguration({
     );
   }
 
-  const { reasoningEffort } = assistant.model;
-  if (
-    reasoningEffort &&
-    !modelConfig.supportedReasoningEfforts[reasoningEffort]
-  ) {
+  // An agent saved without an effort is pinned to the effort it would run at today, so it does
+  // not drift when the model's default changes.
+  const reasoningEffort =
+    assistant.model.reasoningEffort ??
+    (await getTieredDefaultReasoningEffort(auth, { model: modelConfig }));
+  if (!modelConfig.supportedReasoningEfforts[reasoningEffort]) {
     return new Err(
       new Error(
         `Model "${modelConfig.modelId}" does not support the "${reasoningEffort}" ` +
@@ -225,7 +227,7 @@ export async function createOrUpgradeAgentConfiguration({
   const accessError = await getModelTierAccessErrorForAgentConfiguration(auth, {
     agentName: assistant.name,
     model: modelConfig,
-    reasoningEffort: assistant.model.reasoningEffort,
+    reasoningEffort,
   });
   if (accessError) {
     return new Err(new Error(accessError.message));
@@ -279,7 +281,7 @@ export async function createOrUpgradeAgentConfiguration({
     pictureUrl: assistant.pictureUrl,
     status: assistant.status,
     scope: assistant.scope,
-    model: assistant.model,
+    model: { ...assistant.model, reasoningEffort },
     templateId: assistant.templateId ?? null,
     requestedSpaceIds: allRequestedSpaceIds,
     tags: assistant.tags,
@@ -328,33 +330,29 @@ export async function createOrUpgradeAgentConfiguration({
   }
 
   // The save (configuration row + actions + skills) is atomic (see `agent-save-atomic`), so a
-  // returned Ok means everything committed. Re-read the full config skipping the read gate — the
-  // caller just wrote it, and may hold `write` without `read` (e.g. an admin API key editing a
-  // hidden agent) — to build the `AgentConfigurationType` response, including the actions just
-  // created.
-  const savedConfig = await getAgentConfiguration(auth, {
-    agentId: savedResource.sId,
-    variant: "full",
-    dangerouslySkipPermissionFiltering: true,
-  });
-  if (!savedConfig) {
-    return new Err(new Error("Failed to load the saved agent configuration."));
-  }
+  // returned Ok means everything committed. The saved resource is built for the caller: serializing
+  // it redacts the content like any read when the caller holds `write` without `read` (e.g. an admin
+  // API key editing a hidden agent, see `unreadable-agent-content-hidden`).
 
   // Prune outdated suggestions after saving an existing agent.
-  // This must happen after skills/tools are added to the new version.
-  if (agentConfigurationId && !skipSuggestionPruning) {
-    await pruneSuggestionsForAgent(auth, savedConfig);
+  // This must happen after skills/tools are added to the new version. Pruning compares suggestions
+  // against the new content, so it only runs for a caller who can view it.
+  if (
+    agentConfigurationId &&
+    !skipSuggestionPruning &&
+    savedResource.canViewContent
+  ) {
+    await pruneSuggestionsForAgent(auth, savedResource);
   }
 
   // We are not tracking draft agents
-  if (savedConfig.status === "active") {
+  if (savedResource.status === "active") {
     void ServerSideTracking.trackAssistantCreated({
       user: auth.user() ?? undefined,
       workspace: auth.workspace() ?? undefined,
-      assistant: savedConfig,
+      assistant: savedResource,
     });
   }
 
-  return new Ok({ agentConfiguration: savedConfig, changed });
+  return new Ok({ agent: savedResource, changed });
 }

@@ -429,7 +429,6 @@ class FileStorageMock {
           return Promise.resolve("https://signed-upload-url.test");
         }
       ),
-      uploadFileToBucket: vi.fn().mockResolvedValue(undefined),
       uploadBufferToBucket: vi.fn(
         (args: { buffer: Buffer; contentType: string; filePath: string }) => {
           if (this._saveShouldFail(args.filePath)) {

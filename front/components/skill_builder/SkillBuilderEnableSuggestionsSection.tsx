@@ -1,5 +1,5 @@
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
-import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
+import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
 import { InfoCircle, SliderToggle, Tooltip } from "@dust-tt/sparkle";
 import { useFormContext, useFormState } from "react-hook-form";
 

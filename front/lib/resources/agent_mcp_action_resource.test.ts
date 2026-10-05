@@ -3,7 +3,7 @@ import type { LightServerSideMCPToolConfigurationType } from "@app/lib/actions/m
 import type { ToolGeneratedFilePathType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { getRedisCacheClient } from "@app/lib/api/redis";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
@@ -26,8 +26,10 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { getNamespace } from "@app/tests/utils/test_cls";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ConversationType,
@@ -213,6 +215,54 @@ describe("listBlockedActionsForConversation", () => {
     expect(result[0].status).toBe("blocked_validation_required");
     expect(result[0].metadata.agentName).toBe("Test Agent");
     expect(result[0].metadata.icon).toBe(DEFAULT_MCP_SERVER_ICON);
+  });
+
+  it("returns the blocked actions of an agent the caller cannot read to a conversation reader", async () => {
+    const editor = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, editor, { role: "user" });
+    const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      editor.sId,
+      workspace.sId
+    );
+    const hiddenAgent = await AgentConfigurationFactory.createTestAgent(
+      editorAuth,
+      { name: "Hidden Agent", scope: "hidden" }
+    );
+
+    const userMessageRow = await ConversationFactory.createUserMessageWithRank({
+      auth,
+      workspace,
+      conversationId: conversation.id,
+      rank: 0,
+      content: "Test message",
+    });
+    const agentMessageRow =
+      await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: conversation.id,
+        rank: 1,
+        agentConfigurationId: hiddenAgent.sId,
+        agentConfigurationVersion: hiddenAgent.version,
+        parentId: userMessageRow.id,
+      });
+    await createBlockedAction({
+      agentMessageModelId: agentMessageRow.agentMessageId!,
+    });
+
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    expect(conversationResource).not.toBeNull();
+
+    const result =
+      await AgentMCPActionResource.listBlockedActionsForConversation(
+        auth,
+        conversationResource!
+      );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].metadata.agentName).toBe("Hidden Agent");
   });
 
   it("should only return blocked actions, not succeeded ones", async () => {

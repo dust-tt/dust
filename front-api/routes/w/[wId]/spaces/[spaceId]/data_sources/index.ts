@@ -303,12 +303,6 @@ async function handleDataSourceWithProvider({
     };
   }
 
-  if (provider === "discord_bot") {
-    configuration = {
-      botEnabled: true,
-    };
-  }
-
   if (provider === "webcrawler") {
     const configurationRes =
       WebCrawlerConfigurationTypeSchema.safeParse(configuration);

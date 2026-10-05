@@ -8,9 +8,9 @@ import type { WebhookSourceSheetMode } from "@app/components/triggers/WebhookSou
 import { WebhookSourceSheet } from "@app/components/triggers/WebhookSourceSheet";
 import { WebhookSourceViewIcon } from "@app/components/triggers/WebhookSourceViewIcon";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { compareStrings } from "@app/lib/i18n/format";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { filterWebhookSource } from "@app/lib/webhook_source";
 import type { SpaceType } from "@app/types/space";
 import type {

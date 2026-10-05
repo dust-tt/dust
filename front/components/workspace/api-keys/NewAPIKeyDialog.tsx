@@ -36,6 +36,8 @@ import { useMemo, useState } from "react";
 import { FormProvider, useController, useForm } from "react-hook-form";
 import { z } from "zod";
 
+export const CREATE_API_KEY_LABEL = "Create API Key";
+
 const formSchema = z.object({
   name: z.string().min(1, "API key name is required"),
   monthlyCapDollars: monthlyCapDollarsSchema,
@@ -158,7 +160,7 @@ export const NewAPIKeyDialog = ({
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
         <Button
-          label="Create API Key"
+          label={CREATE_API_KEY_LABEL}
           icon={Plus}
           disabled={disabled || isGenerating || isRevoking}
         />

@@ -10,8 +10,10 @@ import {
 import { AssistantKnowledgeSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection";
 import { AssistantSkillsToolsSection } from "@app/components/assistant/details/tabs/AgentInfoTab/AssistantSkillsToolsSection";
 import { RedactedAgentMessage } from "@app/components/assistant/details/tabs/AgentInfoTab/RedactedAgentMessage";
+import { EditorContent } from "@app/components/editor/EditorContent";
 import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
 import { getModelProviderLogo } from "@app/components/providers/types";
+import { RequestedSpacesSection } from "@app/components/spaces/RequestedSpacesSection";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { PreviewedAgentCapabilities } from "@app/lib/editor/preview_agent_suggestions";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -20,7 +22,7 @@ import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import { formatResponseFormat } from "@app/types/assistant/models/utils";
 import type { WorkspaceType } from "@app/types/user";
 import { Avatar, Chip, CodeBlock, cn, Markdown, Page } from "@dust-tt/sparkle";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { useEditor } from "@tiptap/react";
 import { useEffect, useMemo, useRef } from "react";
 
 export function AgentInfoTab({
@@ -134,6 +136,13 @@ export function AgentInfoTab({
           />
         </>
       )}
+
+      {/* An admin may view an agent requesting spaces they are not a member of. */}
+      <RequestedSpacesSection
+        owner={owner}
+        requestedSpaceIds={agentConfiguration.requestedSpaceIds}
+        resolveAsAdmin={!agentConfiguration.canRead}
+      />
 
       {model && (
         <div className="relative flex flex-col gap-5">

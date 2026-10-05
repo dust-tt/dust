@@ -1,0 +1,19 @@
+@cc [owner:PopDaph,label:architecture] dfm-pure
+Production files in this directory MUST NOT import React, DOM APIs, Node built-ins, `lib/api/*`,
+database or Redis clients, or anything transitively depending on them. The codec runs in the
+browser inside the editor host and on the server inside agent tools, and both must load the same
+code. `*.test.ts` and `*.test_utils.ts` files are exempt.
+
+@cc [owner:PopDaph,label:coding] dfm-grammar-once
+Each Dust directive's pattern, attribute schema and builder MUST be defined exactly once, in
+the module that parses it: `anchors.ts` for the body markers, `annotations.ts` for the block
+directives. The fences, the directive-line pattern and the attribute tokenizer live in
+`grammar.ts`; plain Markdown questions are asked of the parser in `parser.ts`. No other
+production file MAY spell such a literal. Tests and fixtures write the format literally on
+purpose.
+
+@cc [owner:PopDaph,label:testing] dfm-fixtures-are-canonical
+Every file in `tests/fixtures/` MUST be reproduced byte for byte by `serializeDfm` after
+`parseDfm`, and `tests/document.test.ts` MUST check every file in that directory. A change
+to the grammar MUST update the fixtures and the format section of README.md in the same change.
+A new directive gets its own fixture file rather than extending an existing one.

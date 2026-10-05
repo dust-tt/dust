@@ -1,6 +1,6 @@
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
-import { getNovuClient } from "@app/lib/notifications";
+import { getActiveSubscriberAuth, getNovuClient } from "@app/lib/notifications";
 import type { ConversationDetailsPayload } from "@app/lib/notifications/helpers";
 import { getConversationDetails } from "@app/lib/notifications/helpers";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -95,10 +95,10 @@ const shouldSkipUnreadConversation = async ({
   triggerShouldSkip: boolean;
   hasUnreadMessages: boolean;
 }): Promise<boolean> => {
-  const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    subscriberId,
-    payload.workspaceId
-  );
+  const auth = await getActiveSubscriberAuth(subscriberId, payload.workspaceId);
+  if (!auth) {
+    return true;
+  }
 
   const conversation = await ConversationResource.fetchById(
     auth,
@@ -137,10 +137,10 @@ export const shouldSkipNewProjectConversation = async ({
   subscriberId: string;
   payload: ConversationUnreadPayloadType;
 }): Promise<boolean> => {
-  const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    subscriberId,
-    payload.workspaceId
-  );
+  const auth = await getActiveSubscriberAuth(subscriberId, payload.workspaceId);
+  if (!auth) {
+    return true;
+  }
 
   const conversationResource = await ConversationResource.fetchById(
     auth,
@@ -336,7 +336,9 @@ export const triggerConversationUnreadNotifications = async (
   }
   const { authorUserId } = detailsResult.value;
   // Get all participants to determine total count (for single-participant exception).
-  const totalParticipants = await conversation.listParticipants(auth);
+  const totalParticipants = await conversation.listParticipants(auth, {
+    onlyActiveMembers: true,
+  });
   const allParticipants = totalParticipants.filter((p) => {
     if (userToNotifyId && p.sId !== userToNotifyId) {
       return false;

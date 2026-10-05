@@ -51,7 +51,6 @@ export async function makeMCPApproveExecutionEventBase(
     auth,
     internalMCPServerName,
     toolName: toolConfiguration.originalName,
-    agentName: approvalSubjectName,
     inputs: approvalLabelInputs,
     argumentsRequiringApproval,
   });

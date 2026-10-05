@@ -12,6 +12,7 @@ import type {
   FileEntry,
   RootExecOptions,
   SandboxProvider,
+  SandboxReadFileOptions,
 } from "@app/lib/api/sandbox/provider";
 import { SandboxNotFoundError } from "@app/lib/api/sandbox/provider";
 import type { RootCommand } from "@app/lib/api/sandbox/root_command";
@@ -1639,11 +1640,13 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   }
 
   /**
-   * Read a file from the sandbox filesystem.
+   * Read a file from the sandbox filesystem, as `readOpts.user` and bounded by `readOpts.maxBytes`
+   * (see the provider's `readFile` contracts).
    */
   async readFile(
     auth: Authenticator,
-    path: string
+    path: string,
+    readOpts: SandboxReadFileOptions
   ): Promise<Result<Buffer, Error>> {
     const provider = getSandboxProvider();
     if (!provider) {
@@ -1653,7 +1656,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     const workspaceId = auth.getNonNullableWorkspace().sId;
 
     try {
-      const data = await provider.readFile(this.providerId, path, {
+      const data = await provider.readFile(this.providerId, path, readOpts, {
         workspaceId,
       });
 

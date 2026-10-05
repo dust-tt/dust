@@ -7,7 +7,7 @@ import { useConversationSidePanelContext } from "@app/components/assistant/conve
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
-import type { InputBarAction } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
+import type { InputBarAction } from "@app/components/assistant/conversation/input_bar/inputBarActions";
 import {
   getSidekickSuggestionPlugin,
   sidekickSuggestionDirective,

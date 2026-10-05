@@ -5,13 +5,13 @@ import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-// Front reads build/schema artifacts back through the provider's file API, which envd serves as
-// root and follows symlinks. The producing exec runs as agent-proxied and stages artifacts in an
-// agent-writable /tmp dir, so anything the agent runs concurrently can replace an artifact with a
-// symlink to a root-only file between the exec and the read (TOCTOU), and the root read then
-// returns that file's content. Pin every artifact to the sha256 captured at the end of the
-// producing exec: a swap before the capture fails the capture itself (`set -e`, sha256sum cannot
-// open the swapped target as agent-proxied), a swap after the capture no longer hashes equal.
+// Front reads build/schema artifacts back through the provider's file API (as agent-proxied, size
+// bounded). The producing exec runs as agent-proxied and stages artifacts in an agent-writable /tmp
+// dir, so anything the agent runs concurrently can replace an artifact between the exec and the
+// read (TOCTOU), and the read then returns the replacement's content. Pin every artifact to the
+// sha256 captured at the end of the producing exec: a swap before the capture fails the capture
+// itself (`set -e`, sha256sum cannot open the swapped target as agent-proxied), a swap after the
+// capture no longer hashes equal.
 
 const HASH_MARKER = "__DUST_STAGING_SHA256__";
 const SHA256SUM_BIN = "/usr/bin/sha256sum";

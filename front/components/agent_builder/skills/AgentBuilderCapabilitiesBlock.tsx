@@ -1,15 +1,14 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import type {
   AgentBuilderFormData,
   AgentBuilderSkillsType,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
-import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
+} from "@app/components/agent_builder/agentBuilderFormSchema";
 import { CapabilitiesSheet } from "@app/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesSheet";
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
 import { validateMCPActionConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formValidation";
 import type { SelectedTool } from "@app/components/agent_builder/capabilities/shared/types";
 import { usePresetActionHandler } from "@app/components/agent_builder/capabilities/usePresetActionHandler";
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getSheetStateForActionEdit } from "@app/components/agent_builder/skills/sheetRouting";
 import { useSkillsAndActionsState } from "@app/components/agent_builder/skills/skillsAndActionsState";
 import type {
@@ -17,10 +16,11 @@ import type {
   SheetState,
 } from "@app/components/agent_builder/skills/types";
 import { isCapabilitiesSheetOpen } from "@app/components/agent_builder/skills/types";
-import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { ConfirmContext } from "@app/components/Confirm";
+import { useSpacesContext } from "@app/components/shared/SpacesContext";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { BuilderToolCard } from "@app/components/shared/tools_picker/BuilderToolCard";
+import { getDefaultMCPAction } from "@app/components/shared/tools_picker/formDefaults";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { BACKGROUND_IMAGE_STYLE_PROPS } from "@app/components/shared/tools_picker/util";

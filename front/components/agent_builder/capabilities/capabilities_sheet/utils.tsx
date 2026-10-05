@@ -1,5 +1,5 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { MCPFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { CapabilitiesFooter } from "@app/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesFooter";
 import { CapabilitiesSelectionPageContent } from "@app/components/agent_builder/capabilities/capabilities_sheet/CapabilitiesSelectionPage";
 import {
@@ -11,7 +11,6 @@ import type { CapabilitiesSheetContentProps } from "@app/components/agent_builde
 import { MCPServerConfigurationPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerConfigurationPage";
 import { MCPServerInfoPage } from "@app/components/agent_builder/capabilities/mcp/MCPServerInfoPage";
 import { generateUniqueActionName } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
-import { getDefaultFormValues } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import { getMCPConfigurationFormSchema } from "@app/components/agent_builder/capabilities/mcp/utils/formValidation";
 import {
   getInfoPageDescription,
@@ -20,6 +19,7 @@ import {
 } from "@app/components/agent_builder/capabilities/mcp/utils/infoPageUtils";
 import type { ConfigurationState } from "@app/components/agent_builder/skills/types";
 import { isConfigurationState } from "@app/components/agent_builder/skills/types";
+import { getDefaultFormValues } from "@app/components/shared/tools_picker/formDefaults";
 import { nameToStorageFormat } from "@app/lib/actions/default_mcp_action";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getSkillIcon } from "@app/lib/skill";
@@ -32,6 +32,7 @@ import type { UseFormReturn } from "react-hook-form";
 import { useForm } from "react-hook-form";
 
 export function useCapabilitiesPageAndFooter({
+  isOpen,
   sheetState,
   onStateChange,
   onClose,
@@ -49,13 +50,16 @@ export function useCapabilitiesPageAndFooter({
   const [searchQuery, setSearchQuery] = useState("");
 
   const skillSelection = useSkillSelection({
+    owner,
+    disabled: !isOpen || sheetState.state !== "selection",
     alreadyAddedSkillIds,
     searchQuery,
   });
   const toolSelection = useToolSelection({
     selectedActions,
     onStateChange,
-    searchQuery,
+    // Filter local tools with the query belonging to the displayed skills.
+    searchQuery: skillSelection.resolvedSearchQuery,
   });
 
   const resetSheetState = useCallback(() => {

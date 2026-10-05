@@ -1,6 +1,6 @@
 import { formatCredits } from "@app/lib/client/credits";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { useAwuTopUpsHistory } from "@app/lib/swr/credits";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";

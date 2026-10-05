@@ -16,19 +16,18 @@ import {
 } from "@app/lib/api/credits/access_control";
 import { notifyAdminsTriggerBlockedByProgrammaticCap } from "@app/lib/api/credits/programmatic_cap_trigger_alert";
 import { PostHogServerSideTracking } from "@app/lib/api/posthog";
+import { isTriggerProgrammaticCapReached } from "@app/lib/api/triggers/rate_limits";
+import { getWebhookRequestPayloadFromGCS } from "@app/lib/api/triggers/webhook";
 import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { fireAndForgetNotification } from "@app/lib/notifications/fire_and_forget";
 import { AgentResource } from "@app/lib/resources/agent_resource";
-import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
-import { isTriggerProgrammaticCapReached } from "@app/lib/triggers/rate_limits";
-import { getWebhookRequestPayloadFromGCS } from "@app/lib/triggers/webhook";
 import logger from "@app/logger/logger";
 import { makeTriggerScheduleId } from "@app/temporal/triggers/schedule_client";
 import type {
@@ -201,13 +200,9 @@ async function createConversationForAgentConfiguration({
       const content =
         serializeMention(agent) +
         (trigger.customPrompt ? `\n\n${trigger.customPrompt}` : "");
-      const [agentConfiguration] = await toLightAgentConfigurations(auth, [
-        agent,
-      ]);
-
       await createTriggerLimitExceededMessages(auth, {
         conversation: newConversation.toJSON(),
-        agentConfiguration,
+        agent,
         content,
         context: triggeredContext,
         error: { type: errorType, message: errorMessage },

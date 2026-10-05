@@ -159,6 +159,7 @@ struct GenerationTokensEvent: Decodable {
     let text: String
     let classification: TokenClassification
     let traceId: String?
+    let step: Int?
 }
 
 struct AgentActionSuccessEvent: Decodable {
@@ -166,6 +167,7 @@ struct AgentActionSuccessEvent: Decodable {
     let configurationId: String
     let messageId: String
     let action: ActionSummary
+    let step: Int?
 }
 
 struct ActionSummary: Decodable {
@@ -186,6 +188,7 @@ struct ToolParamsEvent: Decodable {
     let configurationId: String
     let messageId: String
     let action: ActionSummary
+    let step: Int?
 }
 
 struct AgentMessageSuccessEvent: Decodable {

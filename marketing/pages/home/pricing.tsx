@@ -1011,7 +1011,6 @@ export default function Pricing() {
       action: TRACKING_ACTIONS.CLICK,
       extra: { plan: "enterprise", billing },
     });
-    // eslint-disable-next-line react-hooks/immutability
     window.location.href = appendUTMParams("/home/contact");
   };
 

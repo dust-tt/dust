@@ -1,13 +1,17 @@
 import { makeSId } from "@app/lib/resources/string_ids";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WebhookSourceFactory } from "@app/tests/utils/WebhookSourceFactory";
+import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
 async function setupTest(role: MembershipRoleType = "admin") {
-  const { workspace, auth } = await createPrivateApiMockRequest({ role });
-  return { workspace, auth };
+  const { workspace, auth, globalSpace } = await createPrivateApiMockRequest({
+    role,
+  });
+  return { workspace, auth, globalSpace };
 }
 
 function getEstimation(
@@ -61,6 +65,24 @@ describe("GET /api/w/[wId]/webhook_sources/[webhookSourceId]/trigger-estimation"
     });
 
     const response = await getEstimation(workspace.sId, fakeId);
+
+    expect(response.status).toBe(404);
+    const data = await response.json();
+    expect(data.error.type).toBe("webhook_source_not_found");
+  });
+
+  it("should return 404 when the user cannot read any view of the source", async () => {
+    const { workspace } = await setupTest("user");
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const view = await new WebhookSourceViewFactory(workspace).create(
+      restrictedSpace
+    );
+
+    const response = await getEstimation(
+      workspace.sId,
+      view.webhookSource.sId,
+      { filter: '(eq "action" "opened")' }
+    );
 
     expect(response.status).toBe(404);
     const data = await response.json();

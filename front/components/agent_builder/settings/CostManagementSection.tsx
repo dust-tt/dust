@@ -1,4 +1,4 @@
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { SliderToggle } from "@dust-tt/sparkle";

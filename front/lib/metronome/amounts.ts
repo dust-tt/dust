@@ -67,12 +67,9 @@ export function formatCurrencyAmount({
   amount: number;
   currency: SupportedCurrency;
 }): string {
-  return formatCurrency(
-    amount,
-    currency.toUpperCase(),
-    { maximumFractionDigits: 2 },
-    "en-US"
-  );
+  return formatCurrency(amount, currency.toUpperCase(), {
+    maximumFractionDigits: 2,
+  });
 }
 
 export function formatCurrencyAmountCents({

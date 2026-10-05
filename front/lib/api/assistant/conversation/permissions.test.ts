@@ -6,8 +6,11 @@ import {
 } from "@app/lib/api/assistant/conversation/permissions";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { toLightAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
@@ -15,11 +18,12 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { WorkspaceType } from "@app/types/user";
 import { faker } from "@faker-js/faker";
+import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("canAgentBeUsedInProjectConversation", () => {
@@ -27,10 +31,20 @@ describe("canAgentBeUsedInProjectConversation", () => {
   let auth: Authenticator;
   let globalSpace: SpaceResource;
 
-  function lightConfiguration(
+  async function agentRequestingSpaces(
     requestedSpaceIds: string[]
-  ): LightAgentConfigurationType {
-    return { requestedSpaceIds } as LightAgentConfigurationType;
+  ): Promise<AgentResource> {
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: `Agent ${faker.string.alphanumeric(8)}`,
+      requestedSpaceIds: removeNulls(
+        requestedSpaceIds.map(getResourceIdFromSId)
+      ),
+    });
+    const [resource] = await AgentResource.fetchByIds(auth, [agent.sId], {
+      dangerouslySkipFetchCheck: true,
+    });
+    assert(resource, `Unexpected: agent ${agent.sId} not found`);
+    return resource;
   }
 
   beforeEach(async () => {
@@ -72,7 +86,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
   it("throws when the conversation is not a project conversation", async () => {
     await expect(
       canAgentBeUsedInProjectConversation(auth, {
-        configuration: lightConfiguration([]),
+        agent: await agentRequestingSpaces([]),
         conversation: {
           spaceId: null,
         } as ConversationWithoutContentType,
@@ -104,7 +118,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
 
     await expect(
       canAgentBeUsedInProjectConversation(auth, {
-        configuration: lightConfiguration([]),
+        agent: await agentRequestingSpaces([]),
         conversation: conversationJson,
       })
     ).resolves.toBe(true);
@@ -134,7 +148,10 @@ describe("canAgentBeUsedInProjectConversation", () => {
 
     await expect(
       canAgentBeUsedInProjectConversation(auth, {
-        configuration: lightConfiguration([projectSpace.sId, projectSpace.sId]),
+        agent: await agentRequestingSpaces([
+          projectSpace.sId,
+          projectSpace.sId,
+        ]),
         conversation: conversationJson,
       })
     ).resolves.toBe(true);
@@ -164,7 +181,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
 
     await expect(
       canAgentBeUsedInProjectConversation(auth, {
-        configuration: lightConfiguration([projectSpace.sId, globalSpace.sId]),
+        agent: await agentRequestingSpaces([projectSpace.sId, globalSpace.sId]),
         conversation: conversationJson,
       })
     ).resolves.toBe(true);
@@ -198,7 +215,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
 
     await expect(
       canAgentBeUsedInProjectConversation(auth, {
-        configuration: lightConfiguration([
+        agent: await agentRequestingSpaces([
           globalSpace.sId,
           otherRestrictedSpace.sId,
         ]),
@@ -256,7 +273,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
 
       await expect(
         canAgentBeUsedInProjectConversation(auth, {
-          configuration: lightConfiguration([
+          agent: await agentRequestingSpaces([
             openProjectHydrated.sId,
             otherRestrictedSpace.sId,
           ]),
@@ -307,7 +324,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
 
     await expect(
       canAgentBeUsedInProjectConversation(auth, {
-        configuration: lightConfiguration([
+        agent: await agentRequestingSpaces([
           loneMemberProject.sId,
           otherRestrictedSpace.sId,
         ]),
@@ -343,7 +360,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
 
     await expect(
       canAgentBeUsedInProjectConversation(auth, {
-        configuration: lightConfiguration([
+        agent: await agentRequestingSpaces([
           projectSpace.sId,
           otherRestrictedSpace.sId,
         ]),
@@ -387,7 +404,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
 
     await expect(
       canAgentBeUsedInProjectConversation(auth, {
-        configuration: lightConfiguration([
+        agent: await agentRequestingSpaces([
           projectSpace.sId,
           otherRestrictedSpaceA.sId,
           otherRestrictedSpaceB.sId,
@@ -432,7 +449,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
 
     await expect(
       canAgentBeUsedInProjectConversation(auth, {
-        configuration: lightConfiguration([
+        agent: await agentRequestingSpaces([
           projectSpace.sId,
           restrictedSpace.sId,
         ]),
@@ -470,7 +487,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
 
     await expect(
       canAgentBeUsedInProjectConversation(auth, {
-        configuration: lightConfiguration([
+        agent: await agentRequestingSpaces([
           projectSpace.sId,
           globalSpace.sId,
           otherRestrictedSpace.sId,
@@ -509,7 +526,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
 
     await expect(
       canAgentBeUsedInProjectConversation(auth, {
-        configuration: lightConfiguration([
+        agent: await agentRequestingSpaces([
           projectSpace.sId,
           otherRestrictedSpace.sId,
         ]),
@@ -565,7 +582,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
 
     await expect(
       canAgentBeUsedInProjectConversation(auth, {
-        configuration: lightConfiguration([
+        agent: await agentRequestingSpaces([
           projectSpace.sId,
           otherRestrictedSpaceA.sId,
           otherRestrictedSpaceB.sId,
@@ -617,7 +634,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
 
     await expect(
       canAgentBeUsedInProjectConversation(auth, {
-        configuration: lightConfiguration([
+        agent: await agentRequestingSpaces([
           projectSpace.sId,
           otherRestrictedSpaceA.sId,
           otherRestrictedSpaceB.sId,
@@ -659,7 +676,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
 
     await expect(
       canAgentBeUsedInProjectConversation(auth, {
-        configuration: lightConfiguration([
+        agent: await agentRequestingSpaces([
           projectSpace.sId,
           otherRestrictedSpaceA.sId,
           otherRestrictedSpaceB.sId,
@@ -700,7 +717,7 @@ describe("canAgentBeUsedInProjectConversation", () => {
 
     await expect(
       canAgentBeUsedInProjectConversation(auth, {
-        configuration: lightConfiguration([
+        agent: await agentRequestingSpaces([
           projectSpace.sId,
           otherRestrictedSpace.sId,
         ]),
@@ -924,13 +941,17 @@ describe("updateConversationRequirements", () => {
       );
 
       // Fetch agents with updated requirements
-      const { getAgentConfigurations } = await import(
-        "@app/lib/api/assistant/configuration/agent"
+      // `updateConversationRequirements` takes the agents' wire configurations.
+      const agents = await toLightAgentConfigurations(
+        auth,
+        removeNulls(
+          await Promise.all(
+            [agent1.sId, agent2.sId].map((agentId) =>
+              AgentConfigurationFactory.refetch(auth, agentId)
+            )
+          )
+        )
       );
-      const agents = await getAgentConfigurations(auth, {
-        agentIds: [agent1.sId, agent2.sId],
-        variant: "light",
-      });
 
       // Fetch conversation
       const fetchedConversationResult = await getConversation(
@@ -1053,13 +1074,17 @@ describe("updateConversationRequirements", () => {
       );
 
       // Fetch agents and conversation
-      const { getAgentConfigurations } = await import(
-        "@app/lib/api/assistant/configuration/agent"
+      // `updateConversationRequirements` takes the agents' wire configurations.
+      const agents = await toLightAgentConfigurations(
+        auth,
+        removeNulls(
+          await Promise.all(
+            [agent.sId].map((agentId) =>
+              AgentConfigurationFactory.refetch(auth, agentId)
+            )
+          )
+        )
       );
-      const agents = await getAgentConfigurations(auth, {
-        agentIds: [agent.sId],
-        variant: "light",
-      });
 
       const fetchedConversationResult = await getConversation(
         auth,
@@ -1127,13 +1152,17 @@ describe("updateConversationRequirements", () => {
       );
 
       // Fetch agent and conversation
-      const { getAgentConfigurations } = await import(
-        "@app/lib/api/assistant/configuration/agent"
+      // `updateConversationRequirements` takes the agents' wire configurations.
+      const agents = await toLightAgentConfigurations(
+        auth,
+        removeNulls(
+          await Promise.all(
+            [agent.sId].map((agentId) =>
+              AgentConfigurationFactory.refetch(auth, agentId)
+            )
+          )
+        )
       );
-      const agents = await getAgentConfigurations(auth, {
-        agentIds: [agent.sId],
-        variant: "light",
-      });
 
       const fetchedConversationResult = await getConversation(
         auth,
@@ -1180,13 +1209,17 @@ describe("updateConversationRequirements", () => {
       });
 
       // Fetch agent and conversation
-      const { getAgentConfigurations } = await import(
-        "@app/lib/api/assistant/configuration/agent"
+      // `updateConversationRequirements` takes the agents' wire configurations.
+      const agents = await toLightAgentConfigurations(
+        auth,
+        removeNulls(
+          await Promise.all(
+            [agent.sId].map((agentId) =>
+              AgentConfigurationFactory.refetch(auth, agentId)
+            )
+          )
+        )
       );
-      const agents = await getAgentConfigurations(auth, {
-        agentIds: [agent.sId],
-        variant: "light",
-      });
 
       const fetchedConversationResult = await getConversation(
         auth,
@@ -1294,13 +1327,17 @@ describe("updateConversationRequirements", () => {
       );
 
       // Fetch agent and conversation
-      const { getAgentConfigurations } = await import(
-        "@app/lib/api/assistant/configuration/agent"
+      // `updateConversationRequirements` takes the agents' wire configurations.
+      const agents = await toLightAgentConfigurations(
+        auth,
+        removeNulls(
+          await Promise.all(
+            [agent.sId].map((agentId) =>
+              AgentConfigurationFactory.refetch(auth, agentId)
+            )
+          )
+        )
       );
-      const agents = await getAgentConfigurations(auth, {
-        agentIds: [agent.sId],
-        variant: "light",
-      });
 
       const fetchedConversationResult = await getConversation(
         auth,

@@ -8,6 +8,7 @@ import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_
 import { getConnectorMetadata } from "@app/lib/connector_metadata";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import type { ConnectorProvider } from "@app/types/data_source";
+import { WHITELISTABLE_FEATURES_CONFIG } from "@app/types/shared/feature_flags";
 
 export type IntegrationType = "mcp_server" | "connector" | "both";
 
@@ -89,7 +90,6 @@ const EXCLUDED_MCP_SERVERS = new Set([
 // Connectors to exclude (hidden or bot-only or internal)
 const EXCLUDED_CONNECTORS = new Set<ConnectorProvider>([
   "slack_bot",
-  "discord_bot",
   "microsoft_bot",
   "dust_project", // Internal connector for Dust projects
 ]);
@@ -183,7 +183,6 @@ const CONNECTOR_CATEGORY_MAP: Record<ConnectorProvider, IntegrationCategory> = {
   google_drive: "storage",
   slack: "communication",
   slack_bot: "communication",
-  discord_bot: "communication",
   github: "development",
   intercom: "support",
   microsoft: "storage",
@@ -284,7 +283,6 @@ function getConnectorIcon(
     salesforce: "SalesforceLogo",
     gong: "GongLogo",
     webcrawler: "ActionGlobeAltIcon",
-    discord_bot: "ActionMegaphoneIcon",
   };
 
   return iconMap[provider] ?? "ActionCloudArrowLeftRightIcon";
@@ -338,6 +336,14 @@ export function buildPublicIntegrationRegistry(): IntegrationBase[] {
 
     // Skip if already added (e.g., from internal servers)
     if (integrationMap.has(slug)) {
+      continue;
+    }
+
+    // Skip servers still gated behind a dust-only flag
+    if (
+      remote.featureFlag &&
+      WHITELISTABLE_FEATURES_CONFIG[remote.featureFlag].stage === "dust_only"
+    ) {
       continue;
     }
 

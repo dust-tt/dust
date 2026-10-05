@@ -72,6 +72,25 @@ enum AppConfig {
             "/api/w/\(workspaceId)/files/\(fileId)?action=view"
         }
 
+        static func filePathView(workspaceId: String, path: String) -> String {
+            let encodedPath = path.split(separator: "/")
+                .map { $0.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? String($0) }
+                .joined(separator: "/")
+            return "/api/w/\(workspaceId)/files/path/\(encodedPath)"
+        }
+
+        static func fileMetadata(workspaceId: String, fileId: String) -> String {
+            "/api/w/\(workspaceId)/files/\(fileId)/metadata"
+        }
+
+        static func framePermissions(workspaceId: String, frameId: String) -> String {
+            "/api/w/\(workspaceId)/frames/\(frameId)/permissions"
+        }
+
+        static func spaceFiles(workspaceId: String, spaceId: String) -> String {
+            "/api/w/\(workspaceId)/spaces/\(spaceId)/files"
+        }
+
         static func conversationAttachments(workspaceId: String, conversationId: String) -> String {
             "/api/w/\(workspaceId)/assistant/conversations/\(conversationId)/attachments"
         }
@@ -112,6 +131,26 @@ enum AppConfig {
             "/api/w/\(workspaceId)/spaces"
         }
 
+        static func searchPods(workspaceId: String, query: String, lastValue: String?, limit: Int) -> String {
+            var components = URLComponents()
+            components.path = "/api/w/\(workspaceId)/spaces/search_projects"
+            components.percentEncodedQueryItems = [
+                ("limit", String(limit)),
+                ("query", query),
+                ("lastValue", lastValue),
+            ].compactMap { name, value in
+                value.map { URLQueryItem(
+                    name: name,
+                    value: $0.addingPercentEncoding(withAllowedCharacters: .queryValueAllowed)
+                ) }
+            }
+            return components.string ?? components.path
+        }
+
+        static func joinPod(workspaceId: String, spaceId: String) -> String {
+            "/api/w/\(workspaceId)/spaces/\(spaceId)/join"
+        }
+
         static func spacesSummary(workspaceId: String) -> String {
             "/api/w/\(workspaceId)/assistant/conversations/spaces"
         }
@@ -119,5 +158,17 @@ enum AppConfig {
         static func spaceConversations(workspaceId: String, spaceId: String) -> String {
             "/api/w/\(workspaceId)/assistant/conversations/spaces/\(spaceId)"
         }
+
+        static func searchConversations(workspaceId: String) -> String {
+            "/api/w/\(workspaceId)/assistant/conversations/search"
+        }
+
+        static func searchSpaceConversations(workspaceId: String, spaceId: String) -> String {
+            "/api/w/\(workspaceId)/spaces/\(spaceId)/search_conversations"
+        }
     }
+}
+
+private extension CharacterSet {
+    static let queryValueAllowed = CharacterSet.urlQueryAllowed.subtracting(CharacterSet(charactersIn: "&+=?#"))
 }

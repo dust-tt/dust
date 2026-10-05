@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const redisHybridManager = vi.hoisted(() => ({
   subscribe: vi.fn(),
+  readEventsAfter: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/redis-hybrid-manager", () => ({
@@ -16,6 +17,7 @@ type SubscriptionCallback = (event: EventPayload | "close") => void;
 describe("getMessagesEventsBatch", () => {
   beforeEach(() => {
     redisHybridManager.subscribe.mockReset();
+    redisHybridManager.readEventsAfter.mockReset().mockResolvedValue([]);
   });
 
   it("returns history and unsubscribes", async () => {
@@ -26,7 +28,11 @@ describe("getMessagesEventsBatch", () => {
         message: { payload: JSON.stringify({ type: "end-of-stream" }) },
       },
     ];
-    redisHybridManager.subscribe.mockResolvedValue({ history, unsubscribe });
+    redisHybridManager.subscribe.mockResolvedValue({
+      history: [],
+      unsubscribe,
+    });
+    redisHybridManager.readEventsAfter.mockResolvedValue(history);
 
     const events = await getMessagesEventsBatch({
       messageId: "msg_1",
@@ -42,7 +48,7 @@ describe("getMessagesEventsBatch", () => {
       expect.any(Function),
       "message_events_long_poll",
       {
-        lastEventId: "0-0",
+        skipHistory: true,
         signal: expect.any(AbortSignal),
       }
     );
@@ -86,6 +92,18 @@ describe("getMessagesEventsBatch", () => {
       lastEventId: null,
       signal: new AbortController().signal,
     });
+    redisHybridManager.readEventsAfter
+      .mockResolvedValueOnce([])
+      .mockResolvedValue([
+        {
+          id: "2-0",
+          message: { payload: JSON.stringify({ type: "agent_message_delta" }) },
+        },
+        {
+          id: "3-0",
+          message: { payload: JSON.stringify({ type: "end-of-stream" }) },
+        },
+      ]);
     const publishEvent = await callbackRegistered.promise;
     publishEvent({
       id: "2-0",
@@ -122,6 +140,24 @@ describe("getMessagesEventsBatch", () => {
     closeSubscription("close");
 
     await expect(eventsPromise).resolves.toEqual([]);
+    expect(unsubscribe).toHaveBeenCalledOnce();
+  });
+  it("releases a subscription cancelled while setup is pending", async () => {
+    const unsubscribe = vi.fn();
+    const subscription = Promise.withResolvers<{
+      history: EventPayload[];
+      unsubscribe: () => void;
+    }>();
+    redisHybridManager.subscribe.mockReturnValue(subscription.promise);
+    const controller = new AbortController();
+    const result = getMessagesEventsBatch({
+      messageId: "pending",
+      lastEventId: null,
+      signal: controller.signal,
+    });
+    controller.abort();
+    subscription.resolve({ history: [], unsubscribe });
+    await expect(result).resolves.toEqual([]);
     expect(unsubscribe).toHaveBeenCalledOnce();
   });
 });

@@ -1,9 +1,9 @@
 // biome-ignore-all lint/plugin/noRawSql: hard delete activities require raw SQL for cascade deletions
 import { Authenticator } from "@app/lib/auth";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { REINFORCEMENT_EXCLUDED_PLAN_CODES } from "@app/lib/plans/plan_codes";
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
@@ -14,6 +14,7 @@ import type {
 } from "@app/temporal/hard_delete/types";
 import {
   getPendingAgentsDeletionCutoffDate,
+  getPendingSkillsDeletionCutoffDate,
   getRunExecutionsDeletionCutoffDate,
   getSyntheticSuggestionsDeletionCutoffDate,
   isSequelizeForeignKeyConstraintError,
@@ -21,10 +22,39 @@ import {
 import { concurrentExecutor } from "@app/temporal/workflow_utils";
 import { Context } from "@temporalio/activity";
 import type { Sequelize } from "sequelize";
-import { Op, QueryTypes } from "sequelize";
+import { QueryTypes } from "sequelize";
 
 const BATCH_SIZE = 100;
 const WORKSPACE_CONCURRENCY = 10;
+const WORKSPACE_LIST_BATCH_SIZE = 1000;
+
+// Iterate over all workspaces and sum the results.
+async function sumOverAllWorkspaces(
+  fn: (auth: Authenticator) => Promise<number>
+): Promise<number> {
+  let total = 0;
+  let lastWorkspaceModelId = 0;
+
+  while (true) {
+    const batch =
+      await WorkspaceResource.unsafeListWorkspaceIdBatchAfterModelId({
+        lastWorkspaceModelId,
+        limit: WORKSPACE_LIST_BATCH_SIZE,
+      });
+    if (batch.length === 0) {
+      return total;
+    }
+    lastWorkspaceModelId = batch[batch.length - 1].workspaceModelId;
+
+    const counts = await concurrentExecutor(
+      batch,
+      async ({ workspaceId }) =>
+        fn(await Authenticator.internalAdminForWorkspace(workspaceId)),
+      { concurrency: WORKSPACE_CONCURRENCY }
+    );
+    total += counts.reduce((sum, count) => sum + count, 0);
+  }
+}
 
 export async function purgeExpiredRunExecutionsActivity() {
   const coreSequelize = getCorePrimaryDbConnection();
@@ -139,56 +169,77 @@ export async function purgeExpiredPendingAgentsActivity(
     `About to purge pending agents created before ${cutoffDate.toISOString()}.`
   );
 
-  const workspaces = await WorkspaceResource.listAll();
+  const totalDeleted = await sumOverAllWorkspaces(async (auth) => {
+    let deleted = 0;
+    let hasMore = true;
 
-  const deletedCounts = await concurrentExecutor(
-    workspaces,
-    async (workspace) => {
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-      let deleted = 0;
-      let hasMore = true;
+    do {
+      const agents = await AgentResource.dangerouslyListExpiredPendingAgents(
+        auth,
+        { createdBefore: cutoffDate, limit: batchSize }
+      );
 
-      do {
-        const batch = await AgentConfigurationModel.findAll({
-          where: {
-            status: "pending",
-            createdAt: { [Op.lt]: cutoffDate },
-            workspaceId: workspace.id,
-          },
-          limit: batchSize,
-          order: [["createdAt", "ASC"]],
-        });
+      hasMore = agents.length === batchSize;
 
-        hasMore = batch.length === batchSize;
-
-        if (batch.length > 0) {
-          // `batchDelete` skips search-index deletion for pending agents on its own (they are never
-          // indexed; see `batch-delete-search-index`), so no per-agent workflows are launched here.
-          const agents = await AgentResource.dangerouslyFromConfigurationModels(
-            auth,
-            batch
-          );
-          const deleteRes = await AgentResource.batchDelete(auth, agents);
-          if (deleteRes.isErr()) {
-            throw deleteRes.error;
-          }
-          deleted += batch.length;
+      if (agents.length > 0) {
+        // `batchDelete` skips search-index deletion for pending agents on its own (they are never
+        // indexed; see `batch-delete-search-index`), so no per-agent workflows are launched here.
+        const deleteRes = await AgentResource.batchDelete(auth, agents);
+        if (deleteRes.isErr()) {
+          throw deleteRes.error;
         }
+        deleted += agents.length;
+      }
 
-        Context.current().heartbeat();
-      } while (hasMore);
+      Context.current().heartbeat();
+    } while (hasMore);
 
-      return deleted;
-    },
-    { concurrency: WORKSPACE_CONCURRENCY }
-  );
-
-  const totalDeleted = deletedCounts.reduce((sum, count) => sum + count, 0);
+    return deleted;
+  });
 
   logger.info(
     { totalDeleted },
     "Done purging expired pending agent configurations."
   );
+}
+
+export async function purgeExpiredPendingSkillsActivity(
+  batchSize: number = BATCH_SIZE
+) {
+  const cutoffDate = getPendingSkillsDeletionCutoffDate();
+
+  logger.info(
+    {},
+    `About to purge pending skills created before ${cutoffDate.toISOString()}.`
+  );
+
+  const totalDeleted = await sumOverAllWorkspaces(async (auth) => {
+    let deleted = 0;
+    let hasMore = true;
+
+    do {
+      const batch = await SkillResource.listExpiredPending(auth, {
+        createdBefore: cutoffDate,
+        limit: batchSize,
+      });
+
+      hasMore = batch.length === batchSize;
+
+      if (batch.length > 0) {
+        const deleteRes = await SkillResource.batchDelete(auth, batch);
+        if (deleteRes.isErr()) {
+          throw deleteRes.error;
+        }
+        deleted += deleteRes.value;
+      }
+
+      Context.current().heartbeat();
+    } while (hasMore);
+
+    return deleted;
+  });
+
+  logger.info({ totalDeleted }, "Done purging expired pending skills.");
 }
 
 export async function purgeExpiredSyntheticSkillSuggestionsActivity(

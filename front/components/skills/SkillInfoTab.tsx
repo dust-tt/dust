@@ -13,6 +13,7 @@ import { SkillDescriptionReadOnlyEditor } from "@app/components/editor/SkillDesc
 import { DiscoverableSkillsList } from "@app/components/skills/DiscoverableSkillsList";
 import { RedactedSkillMessage } from "@app/components/skills/RedactedSkillMessage";
 import { SkillInstructionsReadOnlyEditor } from "@app/components/skills/SkillInstructionsReadOnlyEditor";
+import { RequestedSpacesSection } from "@app/components/spaces/RequestedSpacesSection";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
@@ -21,23 +22,13 @@ import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { SKILL_INVOCATION_LABEL } from "@app/lib/skills/labels";
-import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
-import { useSpaces, useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type {
   SkillRelations,
   SkillType,
 } from "@app/types/assistant/skill_configuration";
 import type { EnrichedSpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
-import { isAdmin } from "@app/types/user";
-import {
-  AttachmentChip,
-  Chip,
-  File02,
-  Separator,
-  Spinner,
-  Tooltip,
-} from "@dust-tt/sparkle";
+import { AttachmentChip, File02, Separator, Tooltip } from "@dust-tt/sparkle";
 import sortBy from "lodash/sortBy";
 import { useCallback, useMemo, useState } from "react";
 
@@ -59,50 +50,11 @@ export function SkillInfoTab({
   const previewSuggestions = useSkillSuggestionPreview();
 
   const showDiscoverableSkills = skill.sId === "discover_skills";
-  const shouldLoadSpaces = skill.requestedSpaceIds.length > 0;
-  const { spaces: spacesFromHook, isSpacesLoading } = useSpaces({
-    workspaceId: owner.sId,
-    kinds: ["global", "regular", "project"],
-    disabled: !shouldLoadSpaces || !!spaces,
-  });
-  // A redacted skill (admin, see `canRead`) requests spaces the caller is not a member of, which
-  // the member listing above does not return: resolve them through the admin listing.
-  const { spaces: spacesAsAdmin } = useSpacesAsAdmin({
-    workspaceId: owner.sId,
-    disabled: !isAdmin(owner) || skill.canRead || !shouldLoadSpaces || !!spaces,
-  });
-
-  const resolvedSpaces = useMemo(
-    () =>
-      spaces ??
-      Array.from(
-        new Map(
-          [...spacesFromHook, ...spacesAsAdmin].map((s) => [s.sId, s])
-        ).values()
-      ),
-    [spaces, spacesFromHook, spacesAsAdmin]
-  );
+  const hasRequestedSpaces = skill.requestedSpaceIds.length > 0;
 
   const sortedMCPServerViews = useMemo(
     () => sortBy(skill.tools.map(renderMCPServerView), "title"),
     [skill.tools]
-  );
-
-  const requestedSpaces = useMemo(
-    () =>
-      resolvedSpaces
-        .filter((s) => skill.requestedSpaceIds.includes(s.sId))
-        .map((space) => ({
-          space,
-          name: getSpaceName(space),
-          Icon: getSpaceIcon(space),
-        })),
-    [resolvedSpaces, skill.requestedSpaceIds]
-  );
-
-  const sortedSpaces = useMemo(
-    () => sortBy(requestedSpaces, "name"),
-    [requestedSpaces]
   );
 
   const childSkills = useMemo(
@@ -125,7 +77,7 @@ export function SkillInfoTab({
     sortedMCPServerViews.length > 0 ||
     showChildSkills ||
     showDiscoverableSkills ||
-    shouldLoadSpaces;
+    hasRequestedSpaces;
 
   return (
     <div className="flex flex-col gap-4">
@@ -251,24 +203,13 @@ export function SkillInfoTab({
         <DiscoverableSkillsList key={owner.sId} owner={owner} />
       )}
 
-      {shouldLoadSpaces ? (
-        <div className="flex flex-col gap-4">
-          <div className="heading-lg text-foreground">Spaces and Pods</div>
-          {isSpacesLoading ? (
-            <div className="flex flex-row items-center gap-2">
-              <Spinner size="xs" />
-            </div>
-          ) : sortedSpaces.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {sortedSpaces.map(({ space, name, Icon }) => (
-                <Chip key={space.sId} label={name} size="sm">
-                  <Icon className="h-4 w-4 text-muted-foreground" />
-                </Chip>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+      {/* A redacted skill (admin, see `canRead`) requests spaces the caller is not a member of. */}
+      <RequestedSpacesSection
+        owner={owner}
+        requestedSpaceIds={skill.requestedSpaceIds}
+        spaces={spaces}
+        resolveAsAdmin={!skill.canRead}
+      />
     </div>
   );
 }

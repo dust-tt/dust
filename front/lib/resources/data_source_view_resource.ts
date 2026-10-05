@@ -164,6 +164,12 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     dataSource: DataSourceResource,
     parentsIn: string[]
   ): Promise<Result<DataSourceViewResource, Error>> {
+    if (space.isProject()) {
+      return new Err(
+        new Error("Data source views cannot be created in a Pod.")
+      );
+    }
+
     if (!auth.can("admin", dataSource)) {
       return new Err(
         new Error(

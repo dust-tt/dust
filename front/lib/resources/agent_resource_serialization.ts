@@ -1,11 +1,16 @@
+import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import type { SkillHydrationOptions } from "@app/lib/resources/skill/types";
+import type { UserResource } from "@app/lib/resources/user_resource";
 import { tagsSorter } from "@app/lib/utils";
 import type {
   AgentActionsEnrichment,
   AgentConfigurationType,
+  AgentConfigurationWithSkillsType,
   AgentFavoriteEnrichment,
   AgentInstructionsEnrichment,
   AgentRecentAuthors,
@@ -13,6 +18,7 @@ import type {
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import type { AgentParticipantType } from "@app/types/assistant/conversation";
+import type { AgentSkillType } from "@app/types/assistant/skill_configuration";
 
 // The `enrichWith*` steps below each run the one query a configuration field needs, batched over
 // statically-loaded `AgentResource`s. They have no dependency on one another, so
@@ -121,6 +127,42 @@ export async function enrichWithInstructions(
   );
 }
 
+// Only `sId` and `name` reach the wire, so skip the instructions, tools and file attachments: see
+// the `labels-only-skips-dynamic-instructions` contract.
+const SKILL_LABELS_ONLY_FETCH_OPTIONS: SkillHydrationOptions = {
+  withInstructions: false,
+  withTools: false,
+  withFileAttachments: false,
+};
+
+/**
+ * @cc [owner:fabiencelier,label:security] no-skills-for-redacted-agents
+ * `enrichWithSkills` keys its result by the input resource (one configuration version). A resource
+ * the caller cannot `read` MUST get an empty `skills` array: its skills are private, consistently
+ * with the redacted serialization (`agent-json-redaction`).
+ */
+export async function enrichWithSkills(
+  auth: Authenticator,
+  resources: AgentResource[]
+): Promise<Map<AgentResource, { skills: AgentSkillType[] }>> {
+  const skillsByAgent = await SkillResource.listByAgents(
+    auth,
+    resources.filter((resource) => auth.can("read", resource)),
+    SKILL_LABELS_ONLY_FETCH_OPTIONS
+  );
+
+  return new Map(
+    resources.map((resource) => [
+      resource,
+      {
+        skills: (skillsByAgent.get(resource) ?? []).map((skill) =>
+          skill.toAgentSkillJSON()
+        ),
+      },
+    ])
+  );
+}
+
 /**
  * @cc [owner:tdraier,label:security;backend] agent-json-redaction
  * `AgentResource.toJSON` owns the base shape (see `resource-owned-serialization`);
@@ -186,21 +228,31 @@ function toConfigurationJSON(
   };
 }
 
+export type LightAgentConfigurationOptions = {
+  withInstructions?: boolean;
+  withFavorites?: boolean;
+  withTags?: boolean;
+};
+
 /**
  * Renders `LightAgentConfigurationType`s: the queried `instructions`, `userFavorite` and `tags` on
- * top of `AgentResource.toJSON`. Callers that never surface favorites or tags (e.g. rendered
- * messages) can skip their queries, and get `userFavorite: false` and `tags: []`.
+ * top of `AgentResource.toJSON`. Callers that never surface instructions, favorites or tags (e.g.
+ * rendered messages) can skip their queries, and get `instructions: null`, `userFavorite: false`
+ * and `tags: []`.
  */
 export async function toLightAgentConfigurations(
   auth: Authenticator,
   resources: AgentResource[],
   {
+    withInstructions = true,
     withFavorites = true,
     withTags = true,
-  }: { withFavorites?: boolean; withTags?: boolean } = {}
+  }: LightAgentConfigurationOptions = {}
 ): Promise<LightAgentConfigurationType[]> {
   const [instructions, favorites, tags] = await Promise.all([
-    enrichWithInstructions(resources),
+    withInstructions
+      ? enrichWithInstructions(resources)
+      : new Map<AgentResource, AgentInstructionsEnrichment>(),
     withFavorites
       ? enrichWithFavorites(auth, resources)
       : new Map<string, AgentFavoriteEnrichment>(),
@@ -222,7 +274,7 @@ export async function toLightAgentConfigurations(
 export async function toLightAgentConfiguration(
   auth: Authenticator,
   resource: AgentResource,
-  options: { withFavorites?: boolean; withTags?: boolean } = {}
+  options: LightAgentConfigurationOptions = {}
 ): Promise<LightAgentConfigurationType> {
   const [configuration] = await toLightAgentConfigurations(
     auth,
@@ -234,19 +286,23 @@ export async function toLightAgentConfiguration(
 
 /**
  * Renders full `AgentConfigurationType`s: the light enrichments plus the batched `instructionsHtml`
- * and `actions` (redacted when the caller cannot view the content). Favorites and tags can be
- * skipped as in `toLightAgentConfigurations`.
+ * and `actions` (redacted when the caller cannot view the content). Instructions, favorites and
+ * tags can be skipped as in `toLightAgentConfigurations` (`instructionsHtml` goes with
+ * `instructions`).
  */
 export async function toAgentConfigurations(
   auth: Authenticator,
   resources: AgentResource[],
   {
+    withInstructions = true,
     withFavorites = true,
     withTags = true,
-  }: { withFavorites?: boolean; withTags?: boolean } = {}
+  }: LightAgentConfigurationOptions = {}
 ): Promise<AgentConfigurationType[]> {
   const [instructions, favorites, tags, actions] = await Promise.all([
-    enrichWithInstructions(resources),
+    withInstructions
+      ? enrichWithInstructions(resources)
+      : new Map<AgentResource, AgentInstructionsEnrichment>(),
     withFavorites
       ? enrichWithFavorites(auth, resources)
       : new Map<string, AgentFavoriteEnrichment>(),
@@ -269,6 +325,30 @@ export async function toAgentConfigurations(
   );
 }
 
+// The public API's agent shape: the light or full configuration plus the agent's `skills`, which
+// replace the raw `codeDefinedSkillIds` of global agents on the wire.
+export async function toAgentConfigurationsWithSkills(
+  auth: Authenticator,
+  resources: AgentResource[],
+  { variant = "light" }: { variant?: "light" | "full" } = {}
+): Promise<AgentConfigurationWithSkillsType[]> {
+  const [configurations, skills] = await Promise.all([
+    variant === "full"
+      ? toAgentConfigurations(auth, resources)
+      : toLightAgentConfigurations(auth, resources),
+    enrichWithSkills(auth, resources),
+  ]);
+
+  return resources.map((resource, index) => {
+    const {
+      codeDefinedSkillIds: _codeDefinedSkillIds,
+      ...configuration
+    }: LightAgentConfigurationType & { codeDefinedSkillIds?: string[] } =
+      configurations[index];
+    return { ...configuration, ...(skills.get(resource) ?? { skills: [] }) };
+  });
+}
+
 export function toParticipantJSON(
   resource: AgentResource
 ): AgentParticipantType {
@@ -276,5 +356,82 @@ export function toParticipantJSON(
     configurationId: resource.sId,
     name: resource.name,
     pictureUrl: resource.pictureUrl,
+  };
+}
+
+export type PokeAgentSummaryJSON = {
+  agentId: string;
+  name: string;
+  description: string;
+  scope: AgentConfigurationType["scope"];
+  status: AgentConfigurationType["status"];
+  version: number;
+  versionCreatedAt: string | null;
+  instructionsLength: number;
+  requestedSpaceCount: number;
+};
+
+export function toPokeAgentSummaryJSON(
+  resource: AgentResource,
+  { instructionsLength }: { instructionsLength: number }
+): PokeAgentSummaryJSON {
+  const json = resource.toJSON();
+  return {
+    agentId: json.sId,
+    name: json.name,
+    description: json.description,
+    scope: json.scope,
+    status: json.status,
+    version: json.version,
+    versionCreatedAt: json.versionCreatedAt,
+    instructionsLength,
+    requestedSpaceCount: json.requestedSpaceIds.length,
+  };
+}
+
+type PokeAgentUserJSON = { userId: string; email: string; fullName: string };
+
+function toPokeAgentUserJSON(user: UserResource): PokeAgentUserJSON {
+  return { userId: user.sId, email: user.email, fullName: user.fullName() };
+}
+
+export type PokeAgentDetailsJSON = Omit<
+  PokeAgentSummaryJSON,
+  "requestedSpaceCount"
+> & {
+  instructions: string | null;
+  toolCount: number;
+  toolNames: string[];
+  requestedSpaceIds: string[];
+  author: PokeAgentUserJSON | null;
+  editors: PokeAgentUserJSON[];
+};
+
+export function toPokeAgentDetailsJSON(
+  resource: AgentResource,
+  {
+    instructions,
+    actions,
+    author,
+    editors,
+  }: {
+    instructions: string | null;
+    actions: MCPServerConfigurationType[];
+    author: UserResource | null;
+    editors: UserResource[];
+  }
+): PokeAgentDetailsJSON {
+  const { requestedSpaceCount: _requestedSpaceCount, ...summary } =
+    toPokeAgentSummaryJSON(resource, {
+      instructionsLength: instructions?.length ?? 0,
+    });
+  return {
+    ...summary,
+    instructions,
+    toolCount: actions.length,
+    toolNames: actions.map((action) => action.name),
+    requestedSpaceIds: resource.toJSON().requestedSpaceIds,
+    author: author ? toPokeAgentUserJSON(author) : null,
+    editors: editors.map(toPokeAgentUserJSON),
   };
 }

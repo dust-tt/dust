@@ -1,6 +1,6 @@
-import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { SkillBuilderRequestedSpacesSection } from "@app/components/skill_builder/SkillBuilderRequestedSpacesSection";
 import type { SkillSpaceRestrictionsContextType } from "@app/components/skill_builder/SkillSpaceRestrictionsContext";
+import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBuilderFormSchema";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { FormProvider, useForm, useWatch } from "react-hook-form";
@@ -15,26 +15,23 @@ interface SpaceSelectionSheetStubProps {
   selectedSpaces: string[];
 }
 
-vi.mock(
-  "@app/components/agent_builder/capabilities/capabilities_sheet/SpaceSelectionPage",
-  () => ({
-    SpaceSelectionSheet: ({
-      alreadyRequestedSpaceIds,
-      onSave,
-      open,
-      selectedSpaces,
-    }: SpaceSelectionSheetStubProps) =>
-      open ? (
-        <div>
-          <span data-testid="sheet-draft">{selectedSpaces.join(",")}</span>
-          <span data-testid="sheet-locked">
-            {[...alreadyRequestedSpaceIds].join(",")}
-          </span>
-          <button onClick={onSave}>Save spaces</button>
-        </div>
-      ) : null,
-  })
-);
+vi.mock("@app/components/shared/SpaceSelectionSheet", () => ({
+  SpaceSelectionSheet: ({
+    alreadyRequestedSpaceIds,
+    onSave,
+    open,
+    selectedSpaces,
+  }: SpaceSelectionSheetStubProps) =>
+    open ? (
+      <div>
+        <span data-testid="sheet-draft">{selectedSpaces.join(",")}</span>
+        <span data-testid="sheet-locked">
+          {[...alreadyRequestedSpaceIds].join(",")}
+        </span>
+        <button onClick={onSave}>Save spaces</button>
+      </div>
+    ) : null,
+}));
 
 vi.mock("@app/components/shared/SpaceChips", () => ({
   SpaceChips: () => null,

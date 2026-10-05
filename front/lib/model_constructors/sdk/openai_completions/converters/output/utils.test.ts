@@ -24,7 +24,6 @@ function streamErrorToErrorEvent(metadata: EndpointMetadata, error: unknown) {
 const llmMetadata: LLMClientMetadata = {
   clientId: "fireworks",
   inferenceProvider: "fireworks",
-  inferenceRegion: "global",
   modelId: "accounts/fireworks/models/glm-5p3",
 };
 

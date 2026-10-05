@@ -1,5 +1,5 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";

@@ -2,7 +2,6 @@ import { expect } from "vitest";
 
 export const SSE_DONE_SENTINEL = "done";
 
-// eslint-disable-next-line require-yield
 export async function* emptyAsyncIterator<T>(): AsyncGenerator<T, void> {
   return;
 }

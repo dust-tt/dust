@@ -3,6 +3,7 @@ import {
   SEAT_TYPE_ICONS,
   seatTypeAvatarColors,
 } from "@app/components/workspace/billing/seatTypeUtils";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { formatNumber } from "@app/lib/i18n/format";
 import { SEAT_PRODUCT_YEARLY_SUFFIX } from "@app/lib/metronome/constants";
 import type { MetronomeInvoiceLineItem } from "@app/lib/metronome/invoice";
@@ -14,7 +15,6 @@ import {
   WORKSPACE_SEAT_PRODUCT_NAME,
 } from "@app/lib/metronome/setup_common";
 import { useMetronomeInvoiceLines } from "@app/lib/swr/workspaces";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import {
   Avatar,
   ChevronDown,

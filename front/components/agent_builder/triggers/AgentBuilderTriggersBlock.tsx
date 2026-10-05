@@ -1,13 +1,13 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import type {
   AgentBuilderFormData,
   AgentBuilderTriggerType,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
-import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
+} from "@app/components/agent_builder/agentBuilderFormSchema";
 import { TriggerCard } from "@app/components/agent_builder/triggers/TriggerCard";
 import type { SheetMode } from "@app/components/agent_builder/triggers/TriggerViewsSheet";
 import { TriggerViewsSheet } from "@app/components/agent_builder/triggers/TriggerViewsSheet";
+import { useSpacesContext } from "@app/components/shared/SpacesContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";

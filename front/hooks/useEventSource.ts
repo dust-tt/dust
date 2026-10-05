@@ -37,7 +37,7 @@ export function useEventSource(
     headers,
     keepAliveOnUnmount = false,
     replayBufferedEventsOnMount = false,
-    restartKey = streamId,
+    restartKey,
     telemetryContext,
   }: UseEventSourceOptions
 ) {

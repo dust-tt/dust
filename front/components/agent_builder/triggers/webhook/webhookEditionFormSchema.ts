@@ -1,8 +1,8 @@
 import type {
   AgentBuilderTriggerType,
   AgentBuilderWebhookTriggerType,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
-import { triggerStatusSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
+} from "@app/components/agent_builder/agentBuilderFormSchema";
+import { triggerStatusSchema } from "@app/components/agent_builder/agentBuilderFormSchema";
 import {
   DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT,
   TRIGGER_EXECUTION_MODES,

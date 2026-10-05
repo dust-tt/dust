@@ -1,10 +1,11 @@
+import type { WebhookRequestTriggerStatus } from "@app/types/assistant/triggers";
 import type {
+  WebhookProvider,
   WebhookSourceForAdminType,
+  WebhookSourceSignatureAlgorithm,
   WebhookSourceViewType,
   WebhookSourceWithViewsAndUsageType,
 } from "@app/types/triggers/webhooks";
-import { WebhookSourcesSchema } from "@app/types/triggers/webhooks";
-import { z } from "zod";
 
 export type GetWebhookSourceViewsResponseBody = {
   success: boolean;
@@ -16,13 +17,19 @@ export type PostWebhookSourceViewResponseBody = {
   webhookSourceView: WebhookSourceViewType;
 };
 
-export const PostWebhookSourceViewBodySchema = z.object({
-  webhookSourceId: z.string(),
-});
-
-export const PostWebhookSourcesSchema = WebhookSourcesSchema;
-
-export type PostWebhookSourcesBody = z.infer<typeof PostWebhookSourcesSchema>;
+export type PostWebhookSourcesBody = {
+  name: string;
+  secret: string | null;
+  signatureHeader: string;
+  signatureAlgorithm: WebhookSourceSignatureAlgorithm;
+  includeGlobal?: boolean;
+  subscribedEvents: string[];
+  provider: WebhookProvider | null;
+  connectionId?: string;
+  remoteMetadata?: Record<string, any>;
+  icon?: string;
+  description?: string;
+};
 
 export type GetWebhookSourcesResponseBody = {
   success: true;
@@ -41,4 +48,22 @@ export type DeleteWebhookSourceResponseBody = {
 export type GetWebhookSourceViewsForSourceResponseBody = {
   success: true;
   views: WebhookSourceViewType[];
+};
+
+export interface GetWebhookRequestsResponseBody {
+  requests: Array<{
+    id: number;
+    timestamp: number;
+    status: WebhookRequestTriggerStatus;
+    errorMessage: string | null;
+    payload?: {
+      headers?: Record<string, string | string[]>;
+      body?: unknown;
+    };
+  }>;
+}
+
+export type GetTriggerEstimationResponseBody = {
+  matchingCount: number;
+  totalCount: number;
 };

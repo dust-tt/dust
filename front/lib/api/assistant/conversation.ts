@@ -29,7 +29,7 @@ import {
   batchRenderMessages,
   batchRenderUserMessagesWithoutMentions,
 } from "@app/lib/api/assistant/messages";
-import { isProviderWhitelistedForAuth } from "@app/lib/api/assistant/models";
+import { isModelWhitelistedForAuth } from "@app/lib/api/assistant/models";
 import { enforcePremiumModelLimit } from "@app/lib/api/assistant/premium_model_limit";
 import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import {
@@ -174,6 +174,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
+import assert from "assert";
 import type { IncomingHttpHeaders } from "http";
 import { col } from "sequelize";
 
@@ -502,6 +503,15 @@ export function isUserMessageContextValid(
   }
 }
 
+/**
+ * @cc [owner:davidebbo,label:security;product] steering-requires-authenticated-author
+ * Pending (steering) messages are later run with their author's authority, or with the running
+ * loop's authority when they have no author (see `updateAgentMessageWithFinalStatus`). A message
+ * MUST only be posted as `pending` when `auth` is a system key, or `auth` has a user and the
+ * message's author is that user or nobody. Otherwise (`auth` is not a system key and either has no
+ * user or the author is only attributed from `context.email`), the message MUST be posted as
+ * `visible` and answered with `auth`'s own authority.
+ */
 export async function postUserMessage(
   auth: Authenticator,
   {
@@ -741,9 +751,9 @@ export async function postUserMessage(
       });
     }
 
-    const isProviderEnabled = isProviderWhitelistedForAuth(
+    const isProviderEnabled = isModelWhitelistedForAuth(
       auth,
-      agent.modelConfiguration.providerId
+      agent.modelConfiguration
     );
     if (!isProviderEnabled) {
       // Stop processing if any agent uses a disabled provider.
@@ -792,34 +802,33 @@ export async function postUserMessage(
     context.email
   );
 
+  // A user resolved from `context.email` is attributed, not authenticated: steering would run the
+  // promoted message as that user. System keys are trusted to act as any workspace member.
+  const canSteer =
+    auth.isSystemKey() ||
+    (user !== null && (messageUser === null || messageUser.sId === user.sId));
+
   const resolvedUserMentions = await resolveUserMentions(auth, {
     mentions,
     conversation,
     message: { type: "user_message" },
   });
 
-  // The model resolution, the space-usage check and the agent message created for the mention still
-  // take a configuration: only the mentioned agent is serialized, without favorites or tags.
-  const mentionedAgentConfiguration = mentionedAgents[0]
-    ? await toLightAgentConfiguration(auth, mentionedAgents[0], {
-        withFavorites: false,
-        withTags: false,
-      })
-    : null;
+  const mentionedAgent = mentionedAgents[0] ?? null;
   const mentionedAgentRestricted = await isAgentRestrictedBySpaceUsage(auth, {
-    configuration: mentionedAgentConfiguration,
+    agent: mentionedAgent,
     conversation,
   });
-  let modelResolution = mentionedAgentConfiguration
+  let modelResolution = mentionedAgent
     ? await resolveModelForMentionedAgent(auth, {
-        configuration: mentionedAgentConfiguration,
+        agent: mentionedAgent,
         selection: modelSelection,
       })
     : null;
 
-  if (user && modelResolution && mentionedAgentConfiguration) {
+  if (user && modelResolution && mentionedAgent) {
     const premiumLimitResult = await enforcePremiumModelLimit(auth, {
-      agentConfigurationId: mentionedAgentConfiguration.sId,
+      agentConfigurationId: mentionedAgent.sId,
       user,
       resolution: modelResolution,
       context,
@@ -829,6 +838,15 @@ export async function postUserMessage(
     }
     modelResolution = premiumLimitResult.value;
   }
+
+  // The agent message created for the mention carries its agent's configuration on the wire: only
+  // the mentioned agent is serialized, without favorites or tags, before the transaction below.
+  const mentionedAgentConfiguration = mentionedAgent
+    ? await toLightAgentConfiguration(auth, mentionedAgent, {
+        withFavorites: false,
+        withTags: false,
+      })
+    : null;
 
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
   const { userMessage, agentMessages } = await withTransaction(async (t) => {
@@ -883,9 +901,12 @@ export async function postUserMessage(
     // We set the visibility of the user message to "pending" if steering is enabled, we have a
     // running agent message and there are agent mentions in the user messsage. If we are handing
     // over we don't attempt steering as the intent is to start a new agentic loop and stop the
-    // parent one ASAP.
+    // parent one ASAP. Callers that cannot steer get their own agentic loop instead.
     const visibility: MessageVisibility =
-      runningAgentMessage && explicitAgentMentions.length > 0 && !isHandover
+      runningAgentMessage &&
+      explicitAgentMentions.length > 0 &&
+      !isHandover &&
+      canSteer
         ? "pending"
         : "visible";
 
@@ -1213,9 +1234,9 @@ export async function editUserMessage(
       });
     }
 
-    const isProviderEnabled = isProviderWhitelistedForAuth(
+    const isProviderEnabled = isModelWhitelistedForAuth(
       auth,
-      agent.modelConfiguration.providerId
+      agent.modelConfiguration
     );
     if (!isProviderEnabled) {
       // Stop processing if any agent uses a disabled provider.
@@ -1238,28 +1259,23 @@ export async function editUserMessage(
     message: { type: "user_message" },
   });
 
-  const mentionedAgentConfiguration = mentionedAgents[0]
-    ? await toLightAgentConfiguration(auth, mentionedAgents[0], {
-        withFavorites: false,
-        withTags: false,
-      })
-    : null;
+  const mentionedAgent = mentionedAgents[0] ?? null;
 
   const mentionedAgentRestricted = await isAgentRestrictedBySpaceUsage(auth, {
-    configuration: mentionedAgentConfiguration,
+    agent: mentionedAgent,
     conversation,
   });
 
-  let modelResolution = mentionedAgentConfiguration
+  let modelResolution = mentionedAgent
     ? await resolveModelForMentionedAgent(auth, {
-        configuration: mentionedAgentConfiguration,
+        agent: mentionedAgent,
         selection: message.requestedModel ?? undefined,
       })
     : null;
 
-  if (user && modelResolution && mentionedAgentConfiguration) {
+  if (user && modelResolution && mentionedAgent) {
     const premiumLimitResult = await enforcePremiumModelLimit(auth, {
-      agentConfigurationId: mentionedAgentConfiguration.sId,
+      agentConfigurationId: mentionedAgent.sId,
       user,
       resolution: modelResolution,
       context: message.context,
@@ -1269,6 +1285,13 @@ export async function editUserMessage(
     }
     modelResolution = premiumLimitResult.value;
   }
+
+  const mentionedAgentConfiguration = mentionedAgent
+    ? await toLightAgentConfiguration(auth, mentionedAgent, {
+        withFavorites: false,
+        withTags: false,
+      })
+    : null;
 
   try {
     // In one big transaction create all Message, UserMessage, AgentMessage, and Mention rows.
@@ -1614,11 +1637,34 @@ export async function retryAgentMessage(
     await refreshDegradedModelIds();
   }
 
+  // The retry keeps the message's agent version, so the model is resolved against that version,
+  // whatever the caller's current access (checked on the current version below).
+  const [messageAgent] = await AgentResource.fetchByIdsAndVersions(
+    auth,
+    [
+      {
+        agentId: message.configuration.sId,
+        agentVersion: message.configuration.version,
+      },
+    ],
+    { dangerouslySkipFetchCheck: true }
+  );
+  if (!messageAgent) {
+    return new Err({
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "Invalid agent message retry request, the agent is no longer available to you.",
+      },
+    });
+  }
+
   // A stream selection (pinned-model tier retry) is re-resolved against the
   // refreshed degraded set. No override preserves the failed concrete model.
   let retryModelResolution: AgentMessageModelResolution = modelSelection
     ? await resolveModelForMentionedAgent(auth, {
-        configuration: message.configuration,
+        agent: messageAgent,
         selection: modelSelection,
       })
     : message.resolvedModel
@@ -1627,7 +1673,7 @@ export async function retryAgentMessage(
           modelResolutionMethod: message.modelResolutionMethod ?? "agent",
         }
       : await resolveModelForMentionedAgent(auth, {
-          configuration: message.configuration,
+          agent: messageAgent,
         });
 
   const user = auth.user();
@@ -2501,7 +2547,11 @@ export async function checkMessagesLimit(
         });
       }
     }
-  } else if (user && !isFreeOrigin(context.origin)) {
+  } else if (
+    user &&
+    !isFreeOrigin(context.origin) &&
+    !isProgrammaticUsage(auth, { userMessageOrigin: context.origin })
+  ) {
     // Non-credit-priced plans: no workspace pool and no Metronome per-user cap,
     // so the per-user credit limit is enforced solely from the Redis fixed-window
     // counter, bucketed on the UTC calendar month. Admin-set (poke) workspace
@@ -3068,17 +3118,32 @@ export async function updateAgentMessageWithFinalStatus(
   const completedAt = new Date();
   const owner = auth.getNonNullableWorkspace();
 
+  // The message's pinned agent version, whatever the caller's current access: the message was
+  // already authorized when it was created.
+  const [messageAgent] = agentMessage.configuration
+    ? await AgentResource.fetchByIdsAndVersions(
+        auth,
+        [
+          {
+            agentId: agentMessage.configuration.sId,
+            agentVersion: agentMessage.configuration.version,
+          },
+        ],
+        { dangerouslySkipFetchCheck: true }
+      )
+    : [];
+
   const agentRestrictedBySpaceUsage = await isAgentRestrictedBySpaceUsage(
     auth,
     {
-      configuration: agentMessage.configuration,
+      agent: messageAgent ?? null,
       conversation,
     }
   );
 
-  const defaultModelResolution = agentMessage.configuration
+  const defaultModelResolution = messageAgent
     ? await resolveModelForMentionedAgent(auth, {
-        configuration: agentMessage.configuration,
+        agent: messageAgent,
       })
     : null;
 
@@ -3255,12 +3320,16 @@ export async function updateAgentMessageWithFinalStatus(
       transaction: t,
     });
 
+    assert(
+      messageAgent,
+      "Unexpected: the agent message's agent version is missing"
+    );
     // The no-selection default was resolved before the transaction.
     let modelResolution =
       defaultModelResolution && !promotedUserMessage.requestedModel
         ? defaultModelResolution
         : await resolveModelForMentionedAgent(promotedAuth, {
-            configuration: agentMessage.configuration,
+            agent: messageAgent,
             selection: promotedUserMessage.requestedModel ?? undefined,
           });
 

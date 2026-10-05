@@ -22,7 +22,8 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import { EmbeddingProviderSchema } from "@app/types/assistant/models/embedding";
-import { ModelProviderIdSchema } from "@app/types/assistant/models/providers";
+import { WhitelistableModelMakerIdSchema } from "@app/types/assistant/models/providers";
+import type { WhitelistableModelMakerIdType } from "@app/types/assistant/models/types";
 import { SUPPORTED_LOCALES } from "@app/types/locale";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -108,13 +109,25 @@ const WorkspaceRegionalModelsOnlyUpdateBodySchema = z.object({
   regionalModelsOnly: z.boolean(),
 });
 
-const WorkspaceProvidersUpdateBodySchema = z.object({
-  whiteListedProviders: z.array(ModelProviderIdSchema),
-  defaultEmbeddingProvider: EmbeddingProviderSchema.nullable(),
-});
+// TODO(2026-10-03 WHITELIST LABS): Remove once all clients have refreshed. Clients from before
+// lab whitelisting send the "fireworks" host: translate it to the labs it serves.
+const FIREWORKS_SERVED_LABS: WhitelistableModelMakerIdType[] = [
+  "deepseek",
+  "moonshot",
+  "minimax",
+  "zai",
+  "thinking_machines",
+];
 
-const WorkspaceWorkOSUpdateBodySchema = z.object({
-  workOSOrganizationId: z.string().nullable(),
+const WorkspaceProvidersUpdateBodySchema = z.object({
+  whiteListedProviders: z
+    .array(z.union([WhitelistableModelMakerIdSchema, z.literal("fireworks")]))
+    .transform((ids) => [
+      ...new Set(
+        ids.flatMap((id) => (id === "fireworks" ? FIREWORKS_SERVED_LABS : id))
+      ),
+    ]),
+  defaultEmbeddingProvider: EmbeddingProviderSchema.nullable(),
 });
 
 // TODO(2026-03-20 FRAME SHARING): Remove once all clients have refreshed.
@@ -230,12 +243,17 @@ const WorkspaceInactiveAgentArchivalUpdateBodySchema = z.object({
     .nullable(),
 });
 
+/**
+ * @cc [owner:frankaloia,label:security;backend] workos-organization-binding-server-owned
+ * Session-authenticated workspace settings requests MUST NOT treat `workOSOrganizationId` as a
+ * supported setting or modify the binding. The binding may only be persisted by trusted
+ * server-side provisioning after resolving the WorkOS organization from the workspace's `sId`.
+ */
 const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceInactiveAgentArchivalUpdateBodySchema,
   WorkspaceNameUpdateBodySchema,
   WorkspaceRegionalModelsOnlyUpdateBodySchema,
   WorkspaceProvidersUpdateBodySchema,
-  WorkspaceWorkOSUpdateBodySchema,
   WorkspaceInteractiveContentSharingUpdateBodySchema,
   WorkspaceSharingPolicyUpdateBodySchema,
   WorkspaceVoiceTranscriptionUpdateBodySchema,
@@ -451,30 +469,6 @@ app.post(
           default_embedding_provider: body.defaultEmbeddingProvider ?? "",
         },
       });
-    } else if ("workOSOrganizationId" in body) {
-      const previousWorkOSOrganizationId = owner.workOSOrganizationId;
-      await workspace.updateWorkspaceSettings({
-        workOSOrganizationId: body.workOSOrganizationId,
-      });
-
-      const auditWorkspace = {
-        ...owner,
-        workOSOrganizationId:
-          body.workOSOrganizationId ?? previousWorkOSOrganizationId,
-      };
-      void emitAuditLogEventDirect({
-        workspace: auditWorkspace,
-        action: "workspace.workos_organization_updated",
-        actor: buildAuditActor(auth),
-        targets: [buildAuditLogTarget("workspace", auditWorkspace)],
-        context: getAuditLogContext(auth),
-        metadata: {
-          configured: String(body.workOSOrganizationId !== null),
-          organization_id: body.workOSOrganizationId ?? "",
-        },
-      });
-
-      owner.workOSOrganizationId = body.workOSOrganizationId;
     } else if ("allowContentCreationFileSharing" in body) {
       const previousMetadata = owner.metadata ?? {};
       const newMetadata = {

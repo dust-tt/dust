@@ -843,7 +843,7 @@ export const DEFAULT_FILE_CONTENT_TYPE: SupportedFileContentType =
 export function isSupportedFileContentType(
   contentType: string
 ): contentType is SupportedFileContentType {
-  return !!FILE_FORMATS[contentType as SupportedFileContentType];
+  return Object.hasOwn(FILE_FORMATS, contentType);
 }
 
 export function isInteractiveContentType(

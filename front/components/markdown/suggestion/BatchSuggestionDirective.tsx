@@ -69,6 +69,7 @@ import {
   CollapsibleTrigger,
   cn,
   Icon,
+  LinkExternal01,
   LoadingBlock,
 } from "@dust-tt/sparkle";
 import groupBy from "lodash/groupBy";
@@ -116,6 +117,7 @@ function SuggestionTargetSection({
         isRounded
         icon={visual}
         label={name}
+        iconRight={LinkExternal01}
         onClick={onOpen}
         className={cn("min-w-0", isDeletion && "line-through")}
       />

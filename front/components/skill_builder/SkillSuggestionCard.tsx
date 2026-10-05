@@ -1,3 +1,4 @@
+import { getSuggestionStateChip } from "@app/components/shared/getSuggestionStateChip";
 import { SuggestedEditors } from "@app/components/shared/SuggestedEditors";
 import type { SuggestionDiffLayout } from "@app/components/shared/SuggestionFieldEditSection";
 import { SuggestionFieldEditSection } from "@app/components/shared/SuggestionFieldEditSection";
@@ -19,37 +20,14 @@ import type {
 import {
   Button,
   Card,
-  CheckCircle,
   Chip,
-  Clock,
   Hoverable,
   LoadingBlock,
   Tooltip,
-  XCircle,
 } from "@dust-tt/sparkle";
-import type { ComponentType, KeyboardEvent } from "react";
+import type { KeyboardEvent } from "react";
 
 const MAX_VISIBLE_CONVERSATIONS = 3;
-
-export function getSuggestionStateChip(state: SkillSuggestionState): {
-  color: "success" | "warning" | "primary";
-  icon: ComponentType;
-  label: string;
-} | null {
-  switch (state) {
-    case "pending":
-      return null;
-    case "approved":
-      return { color: "success", icon: CheckCircle, label: "Accepted" };
-    case "rejected":
-      return { color: "warning", icon: XCircle, label: "Declined" };
-    case "outdated":
-      return { color: "primary", icon: Clock, label: "Outdated" };
-    default:
-      assertNeverAndIgnore(state);
-      return null;
-  }
-}
 
 interface ReviewedSuggestionCardProps {
   state: SkillSuggestionState;

@@ -1,467 +1,495 @@
+import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
 import { CreateAgentDropdown } from "@app/components/assistant/CreateAgentDropdown";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
-import type { AgentModelFilterType } from "@app/components/assistant/ModelsFilterMenu";
-import { ModelsFilterMenu } from "@app/components/assistant/ModelsFilterMenu";
-import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
-import { NoArchivedAgentsCTA } from "@app/components/assistant/manager/NoArchivedAgentsCTA";
-import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
-import { SearchAgentsPage } from "@app/components/pages/builder/agents/SearchAgentsPage";
-import { getModelLogoByModelId } from "@app/components/providers/types";
-import { useSetContentWidth } from "@app/components/sparkle/AppLayoutContext";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { AgentFilterPanel } from "@app/components/assistant/manager/AgentFilterPanel";
+import { AgentSearchTable } from "@app/components/assistant/manager/AgentSearchTable";
+import type { AgentFilter } from "@app/components/assistant/manager/agentFilter";
+import {
+  AGENT_FILTER_CATEGORIES,
+  AGENT_FILTER_CATEGORY_FACET,
+  AGENT_SEARCH_TAB_IDS,
+  AGENT_SEARCH_TABS,
+  toAgentSearchFilters,
+} from "@app/components/assistant/manager/agentFilter";
+import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
+import {
+  clearFilterCategory,
+  getFilterSummaries,
+} from "@app/components/shared/filter_panel/filterState";
+import { SEARCH_FILTER_CATEGORY_SINGULAR_LABEL } from "@app/components/shared/filter_panel/searchFilter";
+import { useSearchPageHashState } from "@app/components/shared/filter_panel/searchFilterHash";
+import {
+  useSetContentWidth,
+  useSetPageTitle,
+} from "@app/components/sparkle/AppLayoutContext";
 import { useHashParam } from "@app/hooks/useHashParams";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
-import { clientFetch } from "@app/lib/egress/client";
-import { compareStrings } from "@app/lib/i18n/format";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { useSearchAgents } from "@app/hooks/useSearchAgents";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
-import { useIsMobile } from "@app/lib/swr/useIsMobile";
+import { useTags } from "@app/lib/swr/tags";
+import { tagsSorter } from "@app/lib/utils";
+import type {
+  AgentSearchFilters,
+  AgentSearchPermissionFiltering,
+  AgentSearchSort,
+  AgentSearchSortOrder,
+  SearchAgentsResponseBody,
+} from "@app/types/agent_search/agent_search";
 import {
-  compareForFuzzySort,
-  getAgentSearchString,
-  subFilter,
-} from "@app/lib/utils";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type { TagType } from "@app/types/tag";
-import {
-  Checkbox,
-  Chip,
+  Button,
+  ButtonsSwitch,
+  ButtonsSwitchList,
   EmptyCTA,
-  InfoCircle,
   Page,
   SearchInput,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  Tooltip,
 } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useRef, useState } from "react";
+import type { PaginationState } from "@tanstack/react-table";
+import type { ReactNode } from "react";
+import { useCallback, useMemo, useState } from "react";
 
-export const AGENT_MANAGER_TABS = [
-  // default shown tab = earliest in this list with non-empty agents
-  {
-    id: "all_custom",
-    label: "All",
-    description: "All custom agents.",
-  },
-  {
-    id: "editable_by_me",
-    label: "Editable by me",
-    description: "Edited or created by you.",
-  },
-  {
-    id: "global",
-    label: "Default",
-    description: "Default agents provided by Dust.",
-  },
-  {
-    id: "archived",
-    label: "Archived",
-    description: "Archived agents.",
-  },
-] as const;
+const AGENT_SEARCH_PAGE_SIZE = 25;
 
-export type AssistantManagerTabsType =
-  (typeof AGENT_MANAGER_TABS)[number]["id"];
+type SearchTabId = (typeof AGENT_SEARCH_TABS)[number]["id"];
 
-function isValidTab(tab: string): tab is AssistantManagerTabsType {
-  return AGENT_MANAGER_TABS.some((tabItem) => tabItem.id === tab);
+interface AgentsListProps {
+  readOnly?: boolean;
+  searchEndpoint?: string;
+  renderActions?: (agent: AgentSearchItem, onRefresh: () => void) => ReactNode;
+  searchTerm: string;
+  filters: AgentSearchFilters;
+  permissionFiltering: AgentSearchPermissionFiltering;
+  onSelect: (agentId: string) => void;
 }
 
-export function ManageAgentsPage() {
-  const { hasFeature } = useFeatureFlags();
-  return hasFeature("new_manage_agents_page") ? (
-    <SearchAgentsPage />
-  ) : (
-    <LegacyManageAgentsPage />
-  );
-}
+type AgentSearchItem = SearchAgentsResponseBody["agents"][number];
 
-function LegacyManageAgentsPage() {
+/**
+ * @cc [owner:aubin-tchoi,label:product] editable-default-list
+ * The editable Dust tab MUST include disabled default agents, using the same table
+ * as custom agents. Read-only views MUST retain their search endpoint and expose no toggles.
+ */
+function AgentsList({
+  readOnly = false,
+  searchEndpoint,
+  renderActions,
+  searchTerm,
+  filters,
+  permissionFiltering,
+  onSelect,
+}: AgentsListProps) {
   const owner = useWorkspace();
   const { user, isAdmin } = useAuth();
-  const [assistantSearch, setAssistantSearch] = useState("");
-  const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
-    useState<string | null>(null);
-  const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "all");
-  const [selectedTags, setSelectedTags] = useState<TagType[]>([]);
-  const [selectedModels, setSelectedModels] = useState<AgentModelFilterType[]>(
-    []
-  );
-  const [selection, setSelection] = useState<string[]>([]);
-  const [showHiddenAgents, setShowHiddenAgents] = useState(false);
-  const isMobile = useIsMobile();
+  // Selected rows are kept by id across pages, with the item needed by batch actions.
+  const [selectedAgents, setSelectedAgents] = useState<AgentSearchItem[]>([]);
+  const { tags } = useTags({ owner, disabled: selectedAgents.length === 0 });
+  const sortedTags = useMemo(() => [...tags].sort(tagsSorter), [tags]);
+  const [tablePagination, setTablePagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: AGENT_SEARCH_PAGE_SIZE,
+  });
+  const [selectedSort, setSelectedSort] = useState<{
+    sortBy: Exclude<AgentSearchSort, "relevance">;
+    sortOrder: AgentSearchSortOrder;
+  } | null>(null);
+  const sortBy =
+    selectedSort?.sortBy ?? (searchTerm.trim() ? "relevance" : "usage");
+  const sortOrder = selectedSort?.sortOrder;
+  const queryKey = JSON.stringify({
+    searchTerm,
+    filters,
+    permissionFiltering,
+    sortBy,
+    sortOrder,
+  });
+  const [previousQueryKey, setPreviousQueryKey] = useState(queryKey);
 
-  const { isDark } = useTheme();
-
-  const { hasPermission } = useWorkspacePermissions();
-
-  const canCreateAgent = hasPermission("create", "agent");
-  // Only admins may list the agents they neither edit nor share a space with.
-  const canShowHiddenAgents = isAdmin;
-  const isShowHiddenAgentsEnabled = canShowHiddenAgents && showHiddenAgents;
-  const isSearchActive = assistantSearch.trim() !== "";
-  const isFilterActive =
-    isSearchActive || selectedTags.length > 0 || selectedModels.length > 0;
-
-  const activeTab = useMemo(() => {
-    return selectedTab && isValidTab(selectedTab) ? selectedTab : "all_custom";
-  }, [selectedTab]);
-
-  // The selection is scoped to the current tab/search/filter combination: an agent that drops
-  // out of view (tab switch, search, or filter change) should drop out of the selection too.
-  const selectionScopeKey = [
-    activeTab,
-    assistantSearch,
-    String(isShowHiddenAgentsEnabled),
-    selectedTags
-      .map((t) => t.sId)
-      .sort()
-      .join(","),
-    selectedModels
-      .map((m) => m.modelId)
-      .sort()
-      .join(","),
-  ].join("|");
-  const [prevSelectionScopeKey, setPrevSelectionScopeKey] =
-    useState(selectionScopeKey);
-  if (selectionScopeKey !== prevSelectionScopeKey) {
-    setPrevSelectionScopeKey(selectionScopeKey);
-    setSelection([]);
+  if (queryKey !== previousQueryKey) {
+    setPreviousQueryKey(queryKey);
+    setTablePagination({ pageIndex: 0, pageSize: AGENT_SEARCH_PAGE_SIZE });
+    setSelectedAgents([]);
   }
 
-  // only fetch the agents that are relevant to the current scope, except when
-  // user searches: search across all agents
   const {
-    agentConfigurations,
-    mutateRegardlessOfQueryParams: mutateAgentConfigurations,
-    isAgentConfigurationsLoading,
-  } = useAgentConfigurations({
-    workspaceId: owner.sId,
-    agentsGetView: isShowHiddenAgentsEnabled ? "manage_unrestricted" : "manage",
-    includes: ["authors", "usage", "feedbacks", "editors"],
+    agents,
+    total,
+    isAgentsLoading,
+    isAgentsError,
+    isAgentsValidating,
+    mutate,
+  } = useSearchAgents({
+    owner,
+    searchEndpoint,
+    searchTerm,
+    searchType: "name",
+    filters,
+    permissionFiltering,
+    offset: tablePagination.pageIndex * AGENT_SEARCH_PAGE_SIZE,
+    limit: AGENT_SEARCH_PAGE_SIZE,
+    sortBy,
+    sortOrder,
   });
 
-  const {
-    agentConfigurations: archivedAgentConfigurations,
-    isAgentConfigurationsLoading: isArchivedAgentConfigurationsLoading,
-    mutateRegardlessOfQueryParams: mutateArchivedAgentConfigurations,
-  } = useAgentConfigurations({
-    workspaceId: owner.sId,
-    agentsGetView: "archived",
-    includes: ["usage", "feedbacks", "editors"],
-    disabled: selectedTab !== "archived",
-  });
-
-  const agentsByTab = useMemo(() => {
-    const selectedTagIds = new Set(selectedTags.map((tag) => tag.sId));
-    const selectedModelIds = new Set(
-      selectedModels.map((model) => model.modelId)
-    );
-    const matchesFilters = (a: LightAgentConfigurationType) => {
-      if (
-        selectedTagIds.size > 0 &&
-        !a.tags.some((t) => selectedTagIds.has(t.sId))
-      ) {
-        return false;
-      }
-      if (selectedModelIds.size > 0 && !selectedModelIds.has(a.model.modelId)) {
-        return false;
-      }
-      return true;
-    };
-    const byName = (
-      a: LightAgentConfigurationType,
-      b: LightAgentConfigurationType
-    ) => compareStrings(a.name.toLowerCase(), b.name.toLowerCase());
-    const allAgents: LightAgentConfigurationType[] = agentConfigurations
-      .filter(matchesFilters)
-      .sort(byName);
-
-    const searchLower = assistantSearch.toLowerCase();
-    const filteredList = (agents: LightAgentConfigurationType[]) => {
-      if (!isSearchActive) {
-        return agents;
-      }
-      return agents
-        .filter((a) => subFilter(searchLower, getAgentSearchString(a)))
-        .sort((a, b) =>
-          compareForFuzzySort(
-            searchLower,
-            getAgentSearchString(a),
-            getAgentSearchString(b)
-          )
-        );
-    };
-
-    return {
-      all_custom: filteredList(allAgents.filter((a) => a.scope !== "global")),
-      editable_by_me: filteredList(allAgents.filter((a) => a.canEdit)),
-      global: filteredList(allAgents.filter((a) => a.scope === "global")),
-      archived: filteredList(
-        archivedAgentConfigurations.filter(matchesFilters).sort(byName)
-      ),
-    };
-  }, [
-    agentConfigurations,
-    archivedAgentConfigurations,
-    selectedTags,
-    selectedModels,
-    assistantSearch,
-    isSearchActive,
-  ]);
-
-  // Archived agents are filtered like the others, so both filters must offer
-  // what they are on too.
-  const listedAgents = useMemo(
-    () => [...agentConfigurations, ...archivedAgentConfigurations],
-    [agentConfigurations, archivedAgentConfigurations]
+  // Batch edits are reserved to the agent's editors and to workspace admins, as on the legacy page.
+  const canSelect = useCallback(
+    (agent: AgentSearchItem) =>
+      !readOnly &&
+      agent.scope !== "global" &&
+      agent.status !== "archived" &&
+      (isAdmin || agent.editorIds.includes(user.sId)),
+    [isAdmin, user.sId, readOnly]
   );
 
-  const usedModelIds = useMemo(
-    () => Array.from(new Set(listedAgents.map((a) => a.model.modelId))).sort(),
-    [listedAgents]
+  // Prefer the freshly loaded row so batch actions see the agent's current tags.
+  const currentSelectedAgents = selectedAgents.map(
+    (selected) => agents.find((agent) => agent.sId === selected.sId) ?? selected
   );
 
-  const { uniqueTags } = useMemo(() => {
-    const tags = listedAgents.flatMap((a) => a.tags);
-    // Remove duplicate tags by unique sId
-    const uniqueTags = Array.from(
-      new Map(tags.map((tag) => [tag.sId, tag])).values()
-    ).sort((a, b) => compareStrings(a.name, b.name));
-
-    return { uniqueTags };
-  }, [listedAgents]);
-
-  const [detailedAgentId, setDetailedAgentId] = useState<string | null>(null);
-
-  const handleToggleAgentStatus = async (
-    agent: LightAgentConfigurationType
-  ) => {
-    if (agent.status === "disabled_free_workspace") {
-      setShowDisabledFreeWorkspacePopup(agent.sId);
-      return;
-    }
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/assistant/global_agents/${agent.sId}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          status:
-            agent.status === "disabled_by_admin"
-              ? "active"
-              : "disabled_by_admin",
-        }),
-      }
+  const setSelectedAgentIds = (agentIds: string[]) => {
+    const knownAgents = new Map(
+      [...currentSelectedAgents, ...agents].map((agent) => [agent.sId, agent])
     );
-
-    if (!res.ok) {
-      const data = await res.json();
-      window.alert(`Error toggling agent: ${data.error.message}`);
-      return;
-    }
-
-    await mutateAgentConfigurations();
+    setSelectedAgents(
+      agentIds.flatMap((agentId) => knownAgents.get(agentId) ?? [])
+    );
   };
 
-  const searchBarRef = useRef<HTMLInputElement>(null);
+  const clearSelectionAndRefresh = () => {
+    setSelectedAgents([]);
+    void mutate();
+  };
 
-  useEffect(() => {
-    if (searchBarRef.current) {
-      searchBarRef.current.focus();
-    }
-  }, []);
+  return (
+    <div className="flex flex-col gap-4">
+      {isAgentsError && (
+        <div
+          role="alert"
+          className="flex items-center justify-between gap-4 py-4"
+        >
+          <span>Could not load agents. Please try again.</span>
+          <Button
+            label="Retry"
+            variant="outline"
+            isLoading={isAgentsValidating}
+            disabled={isAgentsValidating}
+            onClick={() => void mutate()}
+          />
+        </div>
+      )}
+      {!isAgentsError &&
+      (isAgentsLoading ||
+        agents.length > 0 ||
+        tablePagination.pageIndex > 0) ? (
+        <AgentSearchTable
+          owner={owner}
+          readOnly={readOnly}
+          renderActions={renderActions}
+          agents={agents}
+          onSelect={onSelect}
+          onRefresh={mutate}
+          pagination={tablePagination}
+          // The table reports its pagination on every render; storing an unchanged value would
+          // re-render forever.
+          setPagination={(next) => {
+            if (
+              next.pageIndex !== tablePagination.pageIndex ||
+              next.pageSize !== tablePagination.pageSize
+            ) {
+              setTablePagination(next);
+            }
+          }}
+          total={total}
+          sorting={
+            sortBy === "relevance"
+              ? []
+              : [{ id: sortBy, desc: sortOrder !== "asc" }]
+          }
+          setSorting={([sort]) => {
+            switch (sort?.id) {
+              case "name":
+              case "usage":
+              case "updatedAt":
+                setSelectedSort({
+                  sortBy: sort.id,
+                  sortOrder: sort.desc ? "desc" : "asc",
+                });
+                break;
+              default:
+                setSelectedSort(null);
+            }
+          }}
+          isLoading={isAgentsLoading}
+          selectedAgentIds={selectedAgents.map((agent) => agent.sId)}
+          setSelectedAgentIds={setSelectedAgentIds}
+          canSelect={canSelect}
+        />
+      ) : !isAgentsError ? (
+        <EmptyCTA
+          message={
+            searchTerm.trim()
+              ? "No agents match your search."
+              : "No agents to show."
+          }
+          action={null}
+        />
+      ) : null}
+      {!readOnly && (
+        <AgentEditBar
+          owner={owner}
+          selectedAgents={currentSelectedAgents}
+          tags={sortedTags}
+          mutateAgentConfigurations={mutate}
+          // Search results carry no total, so selection is extended one page at a time.
+          totalCount={selectedAgents.length}
+          onSelectAll={() => undefined}
+          onClear={clearSelectionAndRefresh}
+        />
+      )}
+    </div>
+  );
+}
 
-  useEffect(() => {
-    const handleKeyPress = (event: KeyboardEvent) => {
-      if (event.key === "/") {
-        event.preventDefault();
-        searchBarRef.current?.focus();
-      }
-    };
+interface ManageAgentsPageProps {
+  readOnly?: boolean;
+  showHeader?: boolean;
+  searchEndpoint?: string;
+  filterHashParam?: string;
+  permissionFiltering?: AgentSearchPermissionFiltering;
+  searchActions?: ReactNode;
+  onSelect?: (agentId: string) => void;
+  renderActions?: (agent: AgentSearchItem, onRefresh: () => void) => ReactNode;
+}
 
-    window.addEventListener("keydown", handleKeyPress);
-    return () => {
-      window.removeEventListener("keydown", handleKeyPress);
-    };
-  }, []);
-
+/**
+ * @cc [owner:aubin-tchoi,label:product;react] read-only-search-view
+ * In readOnly mode, built-in creation, batch-edit and detail controls MUST NOT render.
+ * Table and facet requests MUST use the same searchEndpoint when supplied.
+ */
+/**
+ * @cc [owner:aubin-tchoi,label:product] default-agent-management
+ * The editable Dust tab MUST include disabled default agents and allow only workspace
+ * admins to change their status. Read-only views MUST NOT expose mutation controls.
+ * Only visible filter categories may constrain results and facets; hidden selections remain
+ * available when switching back to a tab that supports them.
+ */
+export function ManageAgentsPage({
+  readOnly = false,
+  showHeader = true,
+  searchEndpoint,
+  filterHashParam,
+  permissionFiltering: permissionFilteringOverride,
+  searchActions,
+  onSelect,
+  renderActions,
+}: ManageAgentsPageProps) {
+  const owner = useWorkspace();
+  const { user, isAdmin } = useAuth();
+  const { hasPermission } = useWorkspacePermissions();
+  const [detailedAgentId, setDetailedAgentId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [hiddenAgentsParam, setHiddenAgentsParam] =
+    useHashParam("hiddenAgents");
+  const showHiddenAgents = hiddenAgentsParam === "true";
+  const setShowHiddenAgents = (isShown: boolean) =>
+    setHiddenAgentsParam(isShown ? "true" : undefined);
+  const {
+    selectedTab,
+    setSelectedTab,
+    filter: pendingFilter,
+    setFilter,
+    unresolvedCategories,
+    resolveFilter,
+  } = useSearchPageHashState({
+    categories: AGENT_FILTER_CATEGORIES,
+    tabIds: AGENT_SEARCH_TAB_IDS,
+    defaultTabId: "all",
+    hashParam: filterHashParam,
+  });
+  // Default agents all share the global scope, so Access does not apply to them.
+  // They have no usage either, so Usage does not apply to them.
+  const filterCategories = AGENT_FILTER_CATEGORIES.filter(
+    (category) =>
+      selectedTab !== "default" ||
+      (readOnly
+        ? category !== "access" && category !== "usage"
+        : category === "model")
+  );
+  const getVisibleFilter = (filter: AgentFilter): AgentFilter =>
+    Object.fromEntries(
+      filterCategories.map((category) => [category, filter[category]])
+    );
+  const unresolvedVisibleCategories = unresolvedCategories.filter((category) =>
+    filterCategories.includes(category)
+  );
+  const activeTab =
+    AGENT_SEARCH_TABS.find((tab) => tab.id === selectedTab) ??
+    AGENT_SEARCH_TABS[0];
+  const canShowHiddenAgents =
+    permissionFilteringOverride === undefined &&
+    isAdmin &&
+    selectedTab === "all";
   useSetContentWidth("wide");
+  useSetPageTitle("Dust - Manage Agents");
 
-  const isLoading =
-    isAgentConfigurationsLoading || isArchivedAgentConfigurationsLoading;
+  // Only admins may list the agents they neither edit nor share a space with. Archived agents
+  // are listed unrestricted for admins, as in the legacy page.
+  const getPermissionFiltering = (
+    tabId: SearchTabId
+  ): AgentSearchPermissionFiltering =>
+    permissionFilteringOverride ??
+    (isAdmin && ((tabId === "all" && showHiddenAgents) || tabId === "archived")
+      ? "unrestricted"
+      : "strict");
+  // Names of the selections restored from a link come from the agents they match.
+  const { facets: selectionFacets, isAgentsLoading: isSelectionLoading } =
+    useSearchAgents({
+      owner,
+      searchEndpoint,
+      searchTerm: "",
+      searchType: "name",
+      limit: 0,
+      filters: toAgentSearchFilters(
+        getVisibleFilter(pendingFilter),
+        activeTab.filters
+      ),
+      permissionFiltering: getPermissionFiltering(activeTab.id),
+      facets: unresolvedVisibleCategories.flatMap(
+        (category) => AGENT_FILTER_CATEGORY_FACET[category] ?? []
+      ),
+      disabled: unresolvedVisibleCategories.length === 0,
+    });
+  const filter = resolveFilter(selectionFacets);
+  const visibleFilter = getVisibleFilter(filter);
+
+  const searchInput = (
+    <div className="w-full md:w-1/2">
+      <label htmlFor="agent-search" className="sr-only">
+        Search agents
+      </label>
+      <SearchInput
+        id="agent-search"
+        name="agent-search"
+        placeholder="Search for agents"
+        value={searchTerm}
+        onChange={setSearchTerm}
+        className="w-full"
+      />
+    </div>
+  );
 
   return (
     <>
-      <AgentDetailsSheet
-        owner={owner}
-        user={user}
-        agentId={detailedAgentId}
-        onClose={() => setDetailedAgentId(null)}
-      />
-      <div className="flex w-full flex-col gap-8 pb-4">
-        <Page.Header title="Manage Agents" noTopPadding />
-        <Page.Vertical gap="md" align="stretch">
-          <div className="flex flex-row gap-2">
-            <SearchInput
-              ref={searchBarRef}
-              className="flex-grow"
-              name="search"
-              placeholder="Search (Name, Editors)"
-              value={assistantSearch}
-              onChange={(s: string) => {
-                setAssistantSearch(s);
-              }}
-            />
-            <div className="flex gap-2">
-              <ModelsFilterMenu
-                owner={owner}
-                modelIds={usedModelIds}
-                selectedModels={selectedModels}
-                setSelectedModels={setSelectedModels}
-                isCompact={isMobile}
-              />
-              <TagsFilterMenu
-                tags={uniqueTags}
-                selectedTags={selectedTags}
-                setSelectedTags={setSelectedTags}
-                owner={owner}
-                isCompact={isMobile}
-              />
-              {canCreateAgent && (
-                <CreateAgentDropdown
-                  owner={owner}
-                  dataGtmLocation="assistantsWorkspace"
-                  isCompact={isMobile}
-                />
-              )}
-            </div>
-          </div>
-          {(selectedModels.length > 0 || selectedTags.length > 0) && (
-            <div className="flex flex-row flex-wrap gap-2">
-              {selectedModels.map((model) => (
-                <Chip
-                  key={model.modelId}
-                  label={model.displayName}
-                  size="xs"
-                  color="primary"
-                  icon={getModelLogoByModelId(model.modelId, isDark)}
-                  onRemove={() =>
-                    setSelectedModels(
-                      selectedModels.filter((m) => m.modelId !== model.modelId)
-                    )
-                  }
-                />
-              ))}
-              {selectedTags.map((tag) => (
-                <Chip
-                  key={tag.sId}
-                  label={tag.name}
-                  size="xs"
-                  color="info"
-                  onRemove={() =>
-                    setSelectedTags(selectedTags.filter((t) => t !== tag))
-                  }
-                />
-              ))}
-            </div>
-          )}
-          <div className="flex flex-col pt-3">
-            <Tabs value={activeTab}>
-              <TabsList>
-                {AGENT_MANAGER_TABS.map((tab) => (
-                  <TabsTrigger
-                    key={tab.id}
-                    value={tab.id}
-                    label={tab.label}
-                    onClick={() => {
-                      setSelectedTab(tab.id);
-                    }}
-                    tooltip={
-                      AGENT_MANAGER_TABS.find((t) => t.id === tab.id)
-                        ?.description
-                    }
-                    isCounter={tab.id !== "archived"}
-                    counterValue={`${agentsByTab[tab.id].length}`}
+      <div className="flex w-full flex-col gap-6 pb-4">
+        {showHeader && (
+          <Page.Header
+            title={
+              <div className="flex w-full flex-wrap items-center justify-between gap-4">
+                <Page.H>Manage Agents</Page.H>
+                {!readOnly && hasPermission("create", "agent") && (
+                  <CreateAgentDropdown
+                    owner={owner}
+                    dataGtmLocation="assistantsWorkspace"
                   />
-                ))}
-                {canShowHiddenAgents && activeTab === "all_custom" && (
-                  <span className="ml-auto flex gap-1 self-center text-sm text-muted-foreground">
-                    <label className="flex cursor-pointer flex-row items-center gap-2 whitespace-nowrap">
-                      <Checkbox
-                        checked={showHiddenAgents}
-                        onCheckedChange={(checked) =>
-                          setShowHiddenAgents(checked === true)
-                        }
-                      />
-                      Show hidden agents
-                    </label>
-                    <Tooltip
-                      label="Shows the agents of all members you can access as an admin, even if they are not published or if they use restricted spaces"
-                      trigger={
-                        <InfoCircle className="h-4 w-4 text-muted-foreground" />
-                      }
-                    />
-                  </span>
                 )}
-              </TabsList>
-            </Tabs>
-            {isLoading || agentsByTab[activeTab].length > 0 ? (
-              <AssistantsTable
-                selection={selection}
-                setSelection={setSelection}
-                owner={owner}
-                agents={agentsByTab[activeTab]}
-                setDetailedAgentId={setDetailedAgentId}
-                handleToggleAgentStatus={handleToggleAgentStatus}
-                showDisabledFreeWorkspacePopup={showDisabledFreeWorkspacePopup}
-                setShowDisabledFreeWorkspacePopup={
-                  setShowDisabledFreeWorkspacePopup
-                }
-                mutateAgentConfigurations={mutateAgentConfigurations}
-                isLoading={isLoading}
-              />
-            ) : isFilterActive ? (
-              <div className="pt-2">
-                <EmptyCTA
-                  message="No agent matches your search or filters."
-                  action={null}
-                />
               </div>
-            ) : activeTab === "archived" ? (
-              <div className="pt-2">
-                <NoArchivedAgentsCTA
-                  owner={owner}
-                  onArchived={() => {
-                    void mutateArchivedAgentConfigurations();
-                  }}
-                />
-              </div>
-            ) : (
-              canCreateAgent && (
-                <div className="pt-2">
-                  <EmptyCTA
-                    message="No agents yet."
-                    action={
-                      <CreateAgentDropdown
-                        owner={owner}
-                        dataGtmLocation="assistantsWorkspace"
-                      />
-                    }
-                  />
-                </div>
-              )
-            )}
+            }
+            description="Build and manage agents that work with your team's knowledge and tools."
+            noTopPadding
+          />
+        )}
+        {searchActions ? (
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            {searchInput}
+            {searchActions}
           </div>
-        </Page.Vertical>
+        ) : (
+          searchInput
+        )}
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <ButtonsSwitchList
+              value={selectedTab}
+              onValueChange={(value) => {
+                const tab = AGENT_SEARCH_TABS.find(({ id }) => id === value);
+                if (tab) {
+                  setSelectedTab(tab.id);
+                }
+              }}
+            >
+              {AGENT_SEARCH_TABS.map((tab) => (
+                <ButtonsSwitch key={tab.id} value={tab.id} label={tab.label} />
+              ))}
+            </ButtonsSwitchList>
+            <AgentFilterPanel
+              owner={owner}
+              searchEndpoint={searchEndpoint}
+              categories={filterCategories}
+              searchTerm={searchTerm}
+              tabFilters={activeTab.filters}
+              permissionFiltering={getPermissionFiltering(activeTab.id)}
+              filter={visibleFilter}
+              onFilterChange={(nextFilter) =>
+                setFilter({ ...filter, ...getVisibleFilter(nextFilter) })
+              }
+              hiddenAgents={
+                canShowHiddenAgents
+                  ? {
+                      isShown: showHiddenAgents,
+                      onChange: setShowHiddenAgents,
+                    }
+                  : undefined
+              }
+            />
+          </div>
+          <FilterSummaryChips
+            isLoading={isSelectionLoading}
+            summaries={getFilterSummaries(
+              visibleFilter,
+              filterCategories,
+              SEARCH_FILTER_CATEGORY_SINGULAR_LABEL
+            )}
+            onClearCategory={(category) =>
+              setFilter(clearFilterCategory(filter, category))
+            }
+            extraChips={
+              canShowHiddenAgents && showHiddenAgents
+                ? [
+                    {
+                      key: "hidden-agents",
+                      label: (
+                        <span className="min-w-0 truncate text-xs font-bold">
+                          Hidden agents
+                        </span>
+                      ),
+                      onRemove: () => setShowHiddenAgents(false),
+                    },
+                  ]
+                : []
+            }
+            onClearAll={() => {
+              setFilter({ ...filter, ...getVisibleFilter({}) });
+              setShowHiddenAgents(false);
+            }}
+          />
+          <AgentsList
+            readOnly={readOnly}
+            searchEndpoint={searchEndpoint}
+            renderActions={renderActions}
+            key={`${owner.sId}-${activeTab.id}`}
+            searchTerm={searchTerm}
+            filters={toAgentSearchFilters(visibleFilter, activeTab.filters)}
+            permissionFiltering={getPermissionFiltering(activeTab.id)}
+            onSelect={onSelect ?? setDetailedAgentId}
+          />
+        </div>
       </div>
+      {!readOnly && (
+        <AgentDetailsSheet
+          owner={owner}
+          user={user}
+          agentId={detailedAgentId}
+          onClose={() => setDetailedAgentId(null)}
+        />
+      )}
     </>
   );
 }

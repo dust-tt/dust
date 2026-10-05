@@ -1,5 +1,5 @@
 import { clientFetch } from "@app/lib/egress/client";
-import { formatDateTime } from "@app/lib/i18n/format";
+import { formatDateTime, formatTime } from "@app/lib/i18n/format";
 import { useNotionLastSyncedUrls } from "@app/lib/swr/data_sources";
 import { GetPostNotionSyncResponseBodySchema } from "@app/types/api/spaces";
 import type { DataSourceType } from "@app/types/data_source";
@@ -119,7 +119,7 @@ export function AdvancedNotionManagement({
       accessorKey: "timestamp",
       cell: (info: CellContext<TableData, string>) => (
         <DataTable.CellContent>
-          {new Date(info.row.original.timestamp).toLocaleTimeString("en-US", {
+          {formatTime(new Date(info.row.original.timestamp), {
             hour: "2-digit",
             minute: "2-digit",
             hour12: false,

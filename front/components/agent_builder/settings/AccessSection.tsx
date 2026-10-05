@@ -1,5 +1,5 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import { useAgentRequestedSpaces } from "@app/components/agent_builder/hooks/useAgentRequestedSpaces";
 import { AgentBuilderAvailabilityMessage } from "@app/components/agent_builder/settings/AgentBuilderAvailabilityMessage";
@@ -7,7 +7,7 @@ import { SlackSettingsSheet } from "@app/components/agent_builder/settings/Slack
 import { SettingSectionContainer } from "@app/components/agent_builder/shared/SettingSectionContainer";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
 import { BecomeEditorButton } from "@app/components/shared/BecomeEditorButton";
-import { getAgentScopeLabel } from "@app/lib/agent_builder/labels";
+import { getAgentScopeLabel } from "@app/lib/agent_builder/helpers";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
   Button,
@@ -27,6 +27,8 @@ interface AccessSectionProps {
   initialRequestedSpaceIds?: string[];
   isEditorGateVisible: boolean;
   isAddingSelfAsEditor: boolean;
+  // Editing before the list loads would overwrite it: the save sends the full editor set.
+  isEditorsListUnavailable: boolean;
   onAddSelfAsEditor: () => void;
 }
 
@@ -34,6 +36,7 @@ export function AccessSection({
   initialRequestedSpaceIds,
   isEditorGateVisible,
   isAddingSelfAsEditor,
+  isEditorsListUnavailable,
   onAddSelfAsEditor,
 }: AccessSectionProps) {
   const { field: scope } = useController<
@@ -101,6 +104,7 @@ export function AccessSection({
               label={buttonLabel}
               onClick={() => setIsEditorsOpen(true)}
               type="button"
+              disabled={isEditorsListUnavailable}
             />
             <ManageUsersPanel
               isOpen={isEditorsOpen}

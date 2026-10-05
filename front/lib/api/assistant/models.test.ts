@@ -6,6 +6,7 @@ import { SIMULATED_FAILURE_MODEL_ENDPOINT } from "@app/lib/api/llm/simulated_fai
 import { Authenticator } from "@app/lib/auth";
 import { setWorkspaceMaxAllowedTierName } from "@app/lib/model_tiers/allowed_tiers";
 import * as enabledModels from "@app/lib/model_tiers/enabled_models";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { ModelDegradationResource } from "@app/lib/resources/model_degradation_resource";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -23,7 +24,7 @@ import {
   GPT_5_6_LUNA_MODEL_CONFIG,
   GPT_5_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
-import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
+import { WHITELISTABLE_MODEL_MAKER_IDS } from "@app/types/assistant/models/providers";
 import { SIMULATED_FAILURE_MODEL_CONFIG } from "@app/types/assistant/models/simulated_failure_model";
 import type {
   ModelConfigurationType,
@@ -61,7 +62,7 @@ describe("getWhitelistedProviders", () => {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
     const providers = getWhitelistedProviders(auth);
-    expect(providers).toEqual(new Set(MODEL_PROVIDER_IDS));
+    expect(providers).toEqual(new Set(WHITELISTABLE_MODEL_MAKER_IDS));
   });
 
   it("returns only whitelisted providers plus noop", async () => {
@@ -110,11 +111,29 @@ describe("getWhitelistedProviders", () => {
   });
 });
 
+// `resolveModel` only reads the agent's `sId` and model: a code-defined resource carries exactly
+// the configured model, without database rows.
+function makeAgent(
+  auth: Authenticator,
+  options: {
+    providerId: ModelProviderIdType;
+    modelId: ModelIdType;
+    reasoningEffort?: ReasoningEffort;
+    sId?: string;
+  }
+): AgentResource {
+  return AgentResource.fromGlobalAgent(auth, {
+    ...makeAgentConfiguration(options),
+    instructionsHtml: null,
+    actions: [],
+  });
+}
+
 function makeAgentConfiguration({
   providerId,
   modelId,
   reasoningEffort,
-  sId = "agent_test",
+  sId = GLOBAL_AGENTS_SID.DUST,
 }: {
   providerId: ModelProviderIdType;
   modelId: ModelIdType;
@@ -165,7 +184,7 @@ describe("resolveModel", () => {
         providerId: GPT_5_5_MODEL_CONFIG.providerId,
         modelId: GPT_5_5_MODEL_CONFIG.modelId,
       },
-      configuration: makeAgentConfiguration({
+      agent: makeAgent(auth, {
         providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
         modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
       }),
@@ -185,7 +204,7 @@ describe("resolveModel", () => {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
     const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
-      configuration: makeAgentConfiguration({
+      agent: makeAgent(auth, {
         providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
         modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
       }),
@@ -206,7 +225,7 @@ describe("resolveModel", () => {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
     const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
-      configuration: makeAgentConfiguration({
+      agent: makeAgent(auth, {
         providerId: GPT_5_6_LUNA_MODEL_CONFIG.providerId,
         modelId: GPT_5_6_LUNA_MODEL_CONFIG.modelId,
         reasoningEffort: "high",
@@ -227,7 +246,7 @@ describe("resolveModel", () => {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
     const { resolvedModel } = await resolveModel(auth, {
-      configuration: makeAgentConfiguration({
+      agent: makeAgent(auth, {
         providerId: GPT_5_MODEL_CONFIG.providerId,
         modelId: GPT_5_MODEL_CONFIG.modelId,
         reasoningEffort: "none",
@@ -240,6 +259,24 @@ describe("resolveModel", () => {
     );
   });
 
+  it("falls back to the highest allowed effort when the model default is above the member's tiers", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    await GroupFactory.defaults(workspace);
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await setWorkspaceMaxAllowedTierName(auth, "balanced");
+
+    // GPT-5.5 defaults to `medium` (premium); only `none` is balanced.
+    const { resolvedModel } = await resolveModel(auth, {
+      agent: makeAgent(auth, {
+        providerId: GPT_5_5_MODEL_CONFIG.providerId,
+        modelId: GPT_5_5_MODEL_CONFIG.modelId,
+      }),
+      featureFlags: [],
+    });
+
+    expect(resolvedModel.reasoningEffort).toBe("none");
+  });
+
   it("honors a supported reasoning effort from the selection", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
@@ -250,7 +287,7 @@ describe("resolveModel", () => {
         modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
         reasoningEffort: "high",
       },
-      configuration: makeAgentConfiguration({
+      agent: makeAgent(auth, {
         providerId: GPT_5_5_MODEL_CONFIG.providerId,
         modelId: GPT_5_5_MODEL_CONFIG.modelId,
       }),
@@ -270,7 +307,7 @@ describe("resolveModel", () => {
         modelId: GPT_5_MODEL_CONFIG.modelId,
         reasoningEffort: "none",
       },
-      configuration: makeAgentConfiguration({
+      agent: makeAgent(auth, {
         providerId: GPT_5_5_MODEL_CONFIG.providerId,
         modelId: GPT_5_5_MODEL_CONFIG.modelId,
       }),
@@ -289,7 +326,7 @@ describe("resolveModel", () => {
     const resolveStreamModelSpy = vi.spyOn(enabledModels, "resolveStreamModel");
 
     const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
-      configuration: makeAgentConfiguration({
+      agent: makeAgent(auth, {
         providerId: AUTO_MODEL_ID,
         modelId: AUTO_MODEL_ID,
       }),
@@ -320,7 +357,7 @@ describe("resolveModel", () => {
     await FeatureFlagFactory.basic(auth, "simulated_failure_model_feature");
 
     const { resolvedModel, modelResolutionMethod } = await resolveModel(auth, {
-      configuration: makeAgentConfiguration({
+      agent: makeAgent(auth, {
         providerId: AUTO_MODEL_ID,
         modelId: AUTO_MODEL_ID,
       }),
@@ -346,7 +383,7 @@ describe("resolveModel", () => {
 
     try {
       const resolved = await resolveModel(auth, {
-        configuration: makeAgentConfiguration({
+        agent: makeAgent(auth, {
           providerId: AUTO_MODEL_ID,
           modelId: AUTO_MODEL_ID,
         }),
@@ -371,7 +408,7 @@ describe("resolveModel", () => {
 
     // A regular agent on `auto` stays within the workspace's Basic cap.
     const regular = await resolveModel(auth, {
-      configuration: makeAgentConfiguration({
+      agent: makeAgent(auth, {
         providerId: AUTO_MODEL_ID,
         modelId: AUTO_MODEL_ID,
       }),
@@ -386,7 +423,7 @@ describe("resolveModel", () => {
 
     // The sidekick ignores the cap and resolves to the stream's first candidate.
     const sidekick = await resolveModel(auth, {
-      configuration: makeAgentConfiguration({
+      agent: makeAgent(auth, {
         providerId: AUTO_MODEL_ID,
         modelId: AUTO_MODEL_ID,
         sId: GLOBAL_AGENTS_SID.SIDEKICK,
@@ -412,7 +449,7 @@ describe("resolveModel", () => {
         providerId: AUTO_MODEL_ID,
         modelId: AUTO_MODEL_ID,
       },
-      configuration: makeAgentConfiguration({
+      agent: makeAgent(auth, {
         providerId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.providerId,
         modelId: CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG.modelId,
       }),

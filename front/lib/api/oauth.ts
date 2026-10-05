@@ -10,7 +10,6 @@ import type {
 } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import { ConfluenceOAuthProvider } from "@app/lib/api/oauth/providers/confluence";
 import { ConfluenceToolsOAuthProvider } from "@app/lib/api/oauth/providers/confluence_tools";
-import { DiscordOAuthProvider } from "@app/lib/api/oauth/providers/discord";
 import { FathomOAuthProvider } from "@app/lib/api/oauth/providers/fathom";
 import { FreshserviceOAuthProvider } from "@app/lib/api/oauth/providers/freshservice";
 import { GithubOAuthProvider } from "@app/lib/api/oauth/providers/github";
@@ -40,6 +39,7 @@ import { ZendeskOAuthProvider } from "@app/lib/api/oauth/providers/zendesk";
 import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
+import { isTrustedDustOpenerOrigin } from "@app/lib/oauth/opener_origin";
 import logger from "@app/logger/logger";
 import type {
   ExtraConfigType,
@@ -69,7 +69,6 @@ export type OAuthError = {
 const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   confluence: new ConfluenceOAuthProvider(),
   confluence_tools: new ConfluenceToolsOAuthProvider(),
-  discord: new DiscordOAuthProvider(),
   fathom: new FathomOAuthProvider(),
   freshservice: new FreshserviceOAuthProvider(),
   github: new GithubOAuthProvider(),
@@ -121,6 +120,15 @@ export async function createConnectionAndGetSetupUrl(
   const api = new OAuthAPI(config.getOAuthAPIConfig(), logger);
 
   const providerStrategy = getProviderStrategy(provider);
+
+  // opener_origin is reserved for the validated query param. Strip it from
+  // caller-supplied extraConfig before validation/persistence so it cannot
+  // bypass the allowlist via metadata spread.
+  const {
+    opener_origin: _openerOriginFromExtraConfig,
+    ...extraConfigWithoutOpenerOrigin
+  } = extraConfig;
+  extraConfig = extraConfigWithoutOpenerOrigin;
 
   if (!providerStrategy.isExtraConfigValid(extraConfig, useCase)) {
     logger.error(
@@ -236,13 +244,31 @@ export async function createConnectionAndGetSetupUrl(
 
   const clientId: string | undefined = extraConfig.client_id as string;
 
+  // mcp_server_id is only a lookup key for inheriting workspace connection config;
+  // never persist it on the OAuth connection metadata.
+  const { mcp_server_id: _mcpServerId, ...connectionExtraConfig } = extraConfig;
+
+  // Defense in depth: only persist opener origins that are trusted Dust
+  // surfaces. The setup route also rejects untrusted query values with 400.
+  const trustedOpenerOrigin =
+    openerOrigin && isTrustedDustOpenerOrigin(openerOrigin)
+      ? openerOrigin
+      : undefined;
+  if (openerOrigin && !trustedOpenerOrigin) {
+    return new Err({
+      code: "connection_creation_failed",
+      message:
+        "Invalid openerOrigin: must be an explicitly trusted Dust origin.",
+    });
+  }
+
   const metadata: Record<string, unknown> = {
     use_case: useCase,
     workspace_id: auth.getNonNullableWorkspace().sId,
     user_id: auth.getNonNullableUser().sId,
-    ...extraConfig,
+    ...connectionExtraConfig,
     // Store opener origin for postMessage after OAuth finalize (cross-origin popup communication)
-    ...(openerOrigin && { opener_origin: openerOrigin }),
+    ...(trustedOpenerOrigin && { opener_origin: trustedOpenerOrigin }),
   };
 
   const cRes = await api.createConnection({
@@ -299,13 +325,20 @@ export async function createConnectionAndGetSetupUrl(
   );
 }
 
+/**
+ * @cc [owner:flvndvd,label:backend] tolerate-missing-workspace
+ * `auth` MAY be null or carry no workspace: the callback session can reference a workspace
+ * unknown to this region. Finalization MUST NOT fail or call workspace-requiring accessors
+ * before the connection is finalized. The `oauth.authorized` audit event is emitted when a
+ * workspace is present; otherwise a warning is logged since no audit target exists.
+ */
 export async function finalizeConnection(
   auth: Authenticator | null,
   provider: OAuthProvider,
   query: ParsedUrlQuery
 ): Promise<Result<OAuthConnectionType, OAuthError>> {
   const childLogger = logger.child({
-    workspaceId: auth?.getNonNullableWorkspace().sId,
+    workspaceId: auth?.workspace()?.sId,
     userId: auth?.user()?.sId,
     provider,
   });

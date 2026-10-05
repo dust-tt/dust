@@ -5,6 +5,15 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useEffect } from "react";
 
+function isEditableTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement ||
+    (target instanceof HTMLElement && target.isContentEditable)
+  );
+}
+
 export function useAppKeyboardShortcuts(owner: LightWorkspaceType) {
   const { toggleNavigationBar } = useDesktopNavigation();
   const { open: openCommandPalette } = useCommandPalette();
@@ -12,30 +21,55 @@ export function useAppKeyboardShortcuts(owner: LightWorkspaceType) {
   const router = useAppRouter();
 
   useEffect(() => {
+    function openNewConversation() {
+      void router.push(getConversationRoute(owner.sId), undefined, {
+        shallow: true,
+      });
+    }
+
     function handleKeyboardShortcuts(event: KeyboardEvent) {
-      // Check for Command/Control key.
       const isModifier = event.metaKey || event.ctrlKey;
 
-      if (isModifier && event.shiftKey) {
+      // Bare "c" → new conversation (Linear/Gmail-style). Skip while typing.
+      if (
+        !isModifier &&
+        !event.altKey &&
+        !event.shiftKey &&
+        event.key.toLowerCase() === "c" &&
+        !isEditableTarget(event.target)
+      ) {
+        event.preventDefault();
+        openNewConversation();
+        return;
+      }
+
+      if (!isModifier) {
+        return;
+      }
+
+      // Legacy Mod+/: match produced "/" so AZERTY (Shift+:) still works.
+      // Not shown in the UI — browsers like Firefox may still steal this combo.
+      if (event.key === "/") {
+        event.preventDefault();
+        openNewConversation();
+        return;
+      }
+
+      if (event.shiftKey) {
         switch (event.key.toLowerCase()) {
           case "b":
             event.preventDefault();
             toggleNavigationBar();
             break;
         }
-      } else if (isModifier) {
-        switch (event.key) {
-          case "/":
-            event.preventDefault();
-            void router.push(getConversationRoute(owner.sId), undefined, {
-              shallow: true,
-            });
-            break;
-          case "k":
-            event.preventDefault();
-            openCommandPalette();
-            break;
-        }
+        return;
+      }
+
+      switch (event.key.toLowerCase()) {
+        case "k":
+          event.preventDefault();
+          openCommandPalette();
+          break;
       }
     }
 

@@ -76,6 +76,7 @@ export function buildCapabilitySlashCommandItems<
       })),
   ];
 
+  const normalizedQuery = query.trim();
   const matches = useSearchRanking
     ? [
         ...items.filter((item) => item.kind === "skill"),
@@ -84,9 +85,16 @@ export function buildCapabilitySlashCommandItems<
           items: items.filter((item) => item.kind === "tool"),
         }),
       ]
-        .toSorted((a, b) =>
-          compareForAutocompleteSort(query.trim(), a.sortName, b.sortName)
-        )
+        .toSorted((a, b) => {
+          if (normalizedQuery.length === 0 && a.kind !== b.kind) {
+            return a.kind === "skill" ? -1 : 1;
+          }
+          return compareForAutocompleteSort(
+            normalizedQuery,
+            a.sortName,
+            b.sortName
+          );
+        })
         .slice(0, MAX_RENDERED_CAPABILITY_ITEMS)
     : searchCapabilityIndex({ query, items });
 

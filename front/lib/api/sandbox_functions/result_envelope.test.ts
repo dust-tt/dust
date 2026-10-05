@@ -4,9 +4,36 @@ import {
   normalizeSandboxFunctionResult,
   SANDBOX_FUNCTION_RESULT_PROTOCOL_VERSION,
 } from "@app/lib/api/sandbox_functions/result_envelope";
-import { describe, expect, it } from "vitest";
+import logger from "@app/logger/logger";
+import { describe, expect, it, vi } from "vitest";
 
 describe("normalizeSandboxFunctionResult", () => {
+  it("logs only the shape of a rejected payload, never its values", () => {
+    const warn = vi.spyOn(logger, "warn").mockImplementation(() => undefined);
+    const secret = "ya29.secret-gcs-token";
+
+    for (const payload of [
+      { access_token: secret, expires_in: 3600 },
+      { protocolVersion: 3, outcome: { access_token: secret } },
+      { protocolVersion: 3, delivery: 42, token: secret },
+    ]) {
+      expect(normalizeSandboxFunctionResult(payload)).toMatchObject({
+        ok: false,
+        error: { code: "invocation_failed" },
+      });
+    }
+
+    expect(warn).toHaveBeenCalledTimes(3);
+    expect(JSON.stringify(warn.mock.calls)).not.toContain(secret);
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resultShape: { type: "object", keys: ["access_token", "expires_in"] },
+      }),
+      expect.any(String)
+    );
+    warn.mockRestore();
+  });
+
   it("accepts a protocol v3 success envelope", () => {
     // Keep the literal stable: bumping SANDBOX_FUNCTION_RESULT_PROTOCOL_VERSION
     // must fail this pin until the wire shape and dsbx emitter move together.

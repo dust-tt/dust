@@ -1,0 +1,13 @@
+engine biome(1.0)
+language js
+
+// Disallows the `"en-US"` literal in UI code, which pins dates and numbers to
+// US formatting whatever the user's locale. Format with the functions of
+// `@app/lib/i18n/format` instead. See CONTRACTS [no-hardcoded-en-us-in-ui].
+or { `"en-US"`, `'en-US'` } as $literal where {
+    register_diagnostic(
+        span = $literal,
+        message = "The `\"en-US\"` literal pins formatting to US conventions. Use the functions of `@app/lib/i18n/format` without a locale, or with `getActiveLocale()` for dates with month or weekday names.",
+        severity = "error"
+    )
+}

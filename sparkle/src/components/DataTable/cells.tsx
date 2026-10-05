@@ -1,4 +1,8 @@
-import { Avatar } from "@sparkle/components/Avatar";
+import {
+  Avatar,
+  type AvatarProps,
+  type AvatarStackProps,
+} from "@sparkle/components/Avatar";
 import { Button } from "@sparkle/components/Button";
 import { type CHIP_COLORS, Chip } from "@sparkle/components/Chip";
 import { Icon } from "@sparkle/components/Icon";
@@ -28,7 +32,7 @@ import {
 
 interface CellProps extends React.HTMLAttributes<HTMLTableCellElement> {
   children: ReactNode;
-  column: Column<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  column: Column<any>;
 }
 
 /** Body cell (td, or th scope="row" with meta.rowHeader) with truncation, density height and column meta styling. */
@@ -83,9 +87,8 @@ interface CellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
   grow?: boolean;
   disabled?: boolean;
   avatarStack?: {
-    items: { name: string; visual?: string | React.ReactNode }[];
-    nbVisibleItems?: number;
-  };
+    items: AvatarProps[];
+  } & Omit<AvatarStackProps, "avatars" | "size">;
   /** Second line under the main text. Only rendered at `relaxed` density, where the row has room for it. */
   secondaryLine?: ReactNode;
   /** Content pinned to the end of the cell (a chip, a small button). */
@@ -136,8 +139,8 @@ function CellLeadingVisual({
       )}
       {avatarStack && (
         <Avatar.Stack
+          {...avatarStack}
           avatars={avatarStack.items}
-          nbVisibleItems={avatarStack.nbVisibleItems}
           size={avatarSize}
         />
       )}

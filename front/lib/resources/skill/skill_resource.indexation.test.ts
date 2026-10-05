@@ -70,7 +70,7 @@ describe("resource-owned skill search indexation", () => {
   it.each([
     "addEditors",
     "removeEditors",
-  ] as const)("refreshes indexed editor IDs after a partial %s failure", async (method) => {
+  ] as const)("refreshes indexed editor IDs after %s with a non-member", async (method) => {
     const {
       authenticator: auth,
       workspace,
@@ -103,7 +103,7 @@ describe("resource-owned skill search indexation", () => {
     vi.mocked(launchIndexSkillSearchWorkflow).mockClear();
     const result = await skill[method](auth, [editor, nonMember]);
 
-    expect(result.isErr()).toBe(true);
+    expect(result.isErr()).toBe(method === "addEditors");
     expect(launchIndexSkillSearchWorkflow).toHaveBeenCalledExactlyOnceWith(
       target
     );

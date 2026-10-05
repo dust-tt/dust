@@ -4,7 +4,7 @@ import {
   PokeTableCell,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { EnrichedSpaceType } from "@app/types/space";
 import type { UserType } from "@app/types/user";

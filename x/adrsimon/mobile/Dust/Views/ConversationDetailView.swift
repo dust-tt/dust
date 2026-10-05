@@ -126,7 +126,7 @@ struct ConversationDetailView: View {
                 AttachmentViewerView(
                     title: fragment.title,
                     contentType: fragment.contentType,
-                    fileId: fileId,
+                    file: .id(fileId),
                     workspaceId: workspaceId,
                     tokenProvider: tokenProvider,
                     sourceUrl: fragment.sourceUrl
@@ -138,7 +138,7 @@ struct ConversationDetailView: View {
                 AttachmentViewerView(
                     title: file.title,
                     contentType: file.contentType,
-                    fileId: fileId,
+                    file: .id(fileId),
                     workspaceId: workspaceId,
                     tokenProvider: tokenProvider,
                     sourceUrl: nil

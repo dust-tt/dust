@@ -1758,6 +1758,42 @@ describe("POST /api/w/:wId/skills", () => {
     ]);
   });
 
+  it("rejects tools from a space the user cannot read", async () => {
+    const { auth, workspace, user } = await setupTest("user");
+    await grantCreateSkillCapability(workspace, user);
+
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Server in Restricted Space",
+    });
+    const serverView = await MCPServerViewFactory.create(
+      workspace,
+      server.sId,
+      restrictedSpace
+    );
+
+    const name = "Skill With Restricted Tool";
+    const response = await postSkill(workspace, {
+      name,
+      agentFacingDescription: "A skill with a tool from a restricted space",
+      userFacingDescription: "User description",
+      instructions: "Instructions",
+      icon: "PuzzleIcon",
+      tools: [{ mcpServerViewId: serverView.sId }],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+    });
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "MCP server views not all found, 0 found, 1 requested",
+      },
+    });
+    expect(await SkillResource.isNameTaken(auth, name)).toBe(false);
+  });
+
   it("creates a skill with attached knowledge", async () => {
     const { auth, workspace, user, globalSpace } = await setupTest("admin");
 
@@ -1865,6 +1901,50 @@ describe("POST /api/w/:wId/skills", () => {
       regularSpace.id,
       globalSpace.id,
     ]);
+  });
+
+  it("rejects attached knowledge from a space the user cannot read", async () => {
+    const { auth, workspace, user } = await setupTest("user");
+    await grantCreateSkillCapability(workspace, user);
+
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      restrictedSpace,
+      user
+    );
+
+    const nodeId = "node1";
+    const title = "Document from restricted space";
+    const name = "Skill With Restricted Knowledge";
+
+    const response = await postSkill(workspace, {
+      name,
+      agentFacingDescription: "A skill with knowledge from a restricted space",
+      userFacingDescription: "User description",
+      instructions: `Read file: <knowledge id="${nodeId}" title="${title}" space="${restrictedSpace.sId}" dsv="${dataSourceView.sId}" hasChildren="false" />`,
+      icon: "PuzzleIcon",
+      tools: [],
+      instructionsHtml: null,
+      attachedKnowledge: [
+        {
+          dataSourceViewId: dataSourceView.sId,
+          nodeId,
+          nodeType: "document",
+          spaceId: restrictedSpace.sId,
+          title,
+        },
+      ],
+    });
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "Data source views not all found, 0 found, 1 requested",
+      },
+    });
+    expect(await SkillResource.isNameTaken(auth, name)).toBe(false);
   });
 });
 

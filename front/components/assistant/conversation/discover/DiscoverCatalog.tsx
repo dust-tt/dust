@@ -15,15 +15,13 @@ import {
   toHydratedSkillCatalogItem,
 } from "@app/components/assistant/conversation/discover/catalog";
 import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { serializeSkillNodeClipboardHTML } from "@app/components/editor/extensions/input_bar/SkillNode";
 import { useDebounce } from "@app/hooks/useDebounce";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useSearchAgents } from "@app/hooks/useSearchAgents";
 import { compareStrings, formatNumber } from "@app/lib/i18n/format";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useCatalogSearch } from "@app/lib/swr/catalog_search";
 import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
-import { useTagsUsage } from "@app/lib/swr/tags";
 import {
   compareForFuzzySort,
   getAgentSearchString,
@@ -37,21 +35,16 @@ import {
   Avatar,
   Button,
   CheckVerified01,
-  Chip,
   cn,
   EmptyCTA,
   Icon,
+  LoadingBlock,
   NavigationList,
   NavigationListItem,
   Pin02,
   SearchInput,
   Spinner,
-  TooltipContent,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
   Users01,
-  useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 
@@ -61,6 +54,9 @@ const CATALOG_VIEWS: { id: CatalogView; label: string }[] = [
   { id: "favorites", label: "Favorites" },
   { id: "mine", label: "Mine" },
 ];
+
+const CATALOG_SKELETON_ROW_COUNT = 6;
+const TAGS_SKELETON_WIDTHS = ["w-20", "w-28", "w-16", "w-24"];
 
 const DEFAULT_FILTERS: CatalogFilters = {
   view: "all",
@@ -255,6 +251,12 @@ interface SearchCatalogProps extends CatalogSourceProps {
   isDebouncing: boolean;
 }
 
+/**
+ * @cc [owner:frankaloia,label:product] catalog-tags-follow-visible-agents
+ * The tag filter MUST list tags on agents the caller can see, from an unfiltered agent-search
+ * tags facet. It MUST NOT call the admin-only tags usage endpoint. Selecting a tag, changing
+ * the view, or typing a search MUST NOT drop the other tags from that list.
+ */
 function SearchCatalog({
   owner,
   query,
@@ -267,16 +269,24 @@ function SearchCatalog({
   ...actions
 }: SearchCatalogProps) {
   const catalogSearch = useCatalogSearch({ owner, query });
-  const { tags: tagsWithUsage, isTagsLoading } = useTagsUsage({ owner });
+  // Facets follow every filter on the query, so this request stays unfiltered. Otherwise
+  // choosing a tag would collapse the list to that tag.
+  const { facets, isAgentsLoading: isTagsLoading } = useSearchAgents({
+    owner,
+    searchTerm: "",
+    limit: 0,
+    facets: ["tags"],
+  });
   const tags = useMemo(
-    () => tagsWithUsage.filter((tag) => tag.usage > 0).sort(tagsSorter),
-    [tagsWithUsage]
+    () => [...(facets?.tags ?? [])].sort(tagsSorter),
+    [facets?.tags]
   );
 
   return (
     <CatalogLayout
       filters={query}
       tags={tags}
+      isTagsLoading={isTagsLoading}
       search={search}
       onSearchChange={onSearchChange}
       onUpdateFilters={onUpdateFilters}
@@ -284,10 +294,7 @@ function SearchCatalog({
       <CatalogResults
         items={catalogSearch.items}
         isLoading={
-          isDebouncing ||
-          isTagsLoading ||
-          catalogSearch.isLoading ||
-          catalogSearch.isLoadingMore
+          isDebouncing || catalogSearch.isLoading || catalogSearch.isLoadingMore
         }
         hasError={catalogSearch.hasError}
         hasNextPage={catalogSearch.hasMore}
@@ -321,31 +328,13 @@ export function DiscoverCatalog({
     setSearchTerm(searchTerm);
   }, [searchTerm, setSearchTerm]);
 
-  const { hasFeature } = useFeatureFlags();
-  // Skill search 403s without its flag. Favorites stay hydrated because search
-  // results have no favorite flag.
-  const skillsSearchEnabled = hasFeature("skills_search");
-  const useSearch =
-    filters.view !== "favorites" &&
-    (filters.kind !== "skill" || skillsSearchEnabled);
-  const query = useMemo(() => {
-    const built = buildCatalogQuery(
-      filters,
-      useSearch ? debouncedSearchTerm : searchTerm
-    );
-    // Skill search 403s without the flag. Favorites and the skill-only view stay
-    // on the hydrated lists, which still include skills.
-    if (!useSearch || skillsSearchEnabled) {
-      return built;
-    }
-    return { ...built, showSkills: false };
-  }, [
-    debouncedSearchTerm,
-    filters,
-    searchTerm,
-    skillsSearchEnabled,
-    useSearch,
-  ]);
+  // Favorites stay hydrated because search results have no favorite flag.
+  const useSearch = filters.view !== "favorites";
+  const query = useMemo(
+    () =>
+      buildCatalogQuery(filters, useSearch ? debouncedSearchTerm : searchTerm),
+    [debouncedSearchTerm, filters, searchTerm, useSearch]
+  );
   const updateFilters = (update: Partial<CatalogFilters>) => {
     setFilters((current) => ({ ...current, ...update }));
     onFiltersChange();
@@ -395,6 +384,7 @@ export function DiscoverCatalog({
 interface CatalogLayoutProps {
   filters: CatalogFilters;
   tags: { sId: string; name: string }[];
+  isTagsLoading?: boolean;
   search: string;
   onSearchChange: (value: string) => void;
   onUpdateFilters: (update: Partial<CatalogFilters>) => void;
@@ -404,6 +394,7 @@ interface CatalogLayoutProps {
 function CatalogLayout({
   filters,
   tags,
+  isTagsLoading = false,
   search,
   onSearchChange,
   onUpdateFilters,
@@ -421,6 +412,7 @@ function CatalogLayout({
         <CatalogFiltersNav
           filters={filters}
           tags={tags}
+          isTagsLoading={isTagsLoading}
           onUpdateFilters={onUpdateFilters}
         />
         {children}
@@ -432,12 +424,14 @@ function CatalogLayout({
 interface CatalogFiltersNavProps {
   filters: CatalogFilters;
   tags: { sId: string; name: string }[];
+  isTagsLoading: boolean;
   onUpdateFilters: (update: Partial<CatalogFilters>) => void;
 }
 
 function CatalogFiltersNav({
   filters: { view, kind, tagId },
   tags,
+  isTagsLoading,
   onUpdateFilters,
 }: CatalogFiltersNavProps) {
   return (
@@ -466,20 +460,31 @@ function CatalogFiltersNav({
           />
         ))}
       </NavigationList>
-      {tags.length > 0 && kind !== "skill" && (
-        <NavigationList>
-          {tags.map((t) => (
-            <NavigationListItem
-              key={t.sId}
-              label={capitalizeWords(t.name)}
-              selected={tagId === t.sId}
-              onClick={() =>
-                onUpdateFilters({ tagId: tagId === t.sId ? null : t.sId })
-              }
-            />
-          ))}
-        </NavigationList>
-      )}
+      {kind !== "skill" &&
+        (tags.length > 0 ? (
+          <NavigationList>
+            {tags.map((t) => (
+              <NavigationListItem
+                key={t.sId}
+                label={capitalizeWords(t.name)}
+                selected={tagId === t.sId}
+                onClick={() =>
+                  onUpdateFilters({ tagId: tagId === t.sId ? null : t.sId })
+                }
+              />
+            ))}
+          </NavigationList>
+        ) : (
+          isTagsLoading && (
+            <div aria-hidden className="flex flex-col gap-0.5">
+              {TAGS_SKELETON_WIDTHS.map((width) => (
+                <div key={width} className="flex h-9 items-center px-2">
+                  <LoadingBlock className={cn("h-3", width)} />
+                </div>
+              ))}
+            </div>
+          )
+        ))}
     </nav>
   );
 }
@@ -517,9 +522,7 @@ function CatalogResults({
         </div>
       )}
       {isInitialLoading ? (
-        <div className="flex justify-center py-6">
-          <Spinner />
-        </div>
+        <CatalogRowsSkeleton count={CATALOG_SKELETON_ROW_COUNT} />
       ) : items.length === 0 ? (
         hasError ? (
           <EmptyCTA
@@ -589,26 +592,6 @@ interface CatalogRowProps {
 
 export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
   const name = getItemName(item);
-  const handle = item.kind === "agent" ? `@${name}` : `/${name}`;
-  const [isCopied, copy] = useCopyToClipboard();
-  const copyHandle = () =>
-    copy(
-      item.kind === "agent"
-        ? handle
-        : new ClipboardItem({
-            "text/plain": new Blob([handle], { type: "text/plain" }),
-            "text/html": new Blob(
-              [
-                serializeSkillNodeClipboardHTML({
-                  skillId: item.skill.sId,
-                  skillName: item.skill.name,
-                  skillIcon: item.skill.icon,
-                }),
-              ],
-              { type: "text/html" }
-            ),
-          })
-    );
   const avatar =
     item.kind === "agent" ? (
       <Avatar size="md" visual={item.agent.pictureUrl} />
@@ -629,21 +612,6 @@ export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
           >
             {name}
           </button>
-          <TooltipProvider>
-            <TooltipRoot open={isCopied}>
-              <TooltipTrigger asChild>
-                <span className="relative shrink-0">
-                  <Chip
-                    size="xs"
-                    label={handle}
-                    className="font-mono"
-                    onClick={copyHandle}
-                  />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>Copied !</TooltipContent>
-            </TooltipRoot>
-          </TooltipProvider>
         </div>
         <div className="flex h-5 items-center gap-4 copy-sm">
           <ItemAuthor item={item} />
@@ -683,6 +651,42 @@ export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
           onClick={onDetails}
         />
       </div>
+    </div>
+  );
+}
+
+interface CatalogRowsSkeletonProps {
+  count: number;
+}
+
+export function CatalogRowsSkeleton({ count }: CatalogRowsSkeletonProps) {
+  return (
+    <div aria-hidden className="flex flex-col">
+      {Array.from({ length: count }, (_, index) => (
+        <div
+          key={index}
+          className="flex items-center gap-4 border-b border-separator py-4 last:border-b-0"
+        >
+          <LoadingBlock className="h-12 w-12 shrink-0 self-start rounded-xl" />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex h-6 items-center">
+              <LoadingBlock className="h-4 w-40 max-w-full" />
+            </div>
+            <div className="flex h-5 items-center">
+              <LoadingBlock className="h-3 w-24" />
+            </div>
+            <div className="mt-1 flex flex-col">
+              <div className="flex h-5 items-center">
+                <LoadingBlock className="h-3 w-full max-w-md" />
+              </div>
+              <div className="flex h-5 items-center">
+                <LoadingBlock className="h-3 w-2/3 max-w-xs" />
+              </div>
+            </div>
+          </div>
+          <LoadingBlock className="h-8 w-20 shrink-0 self-start rounded-xl" />
+        </div>
+      ))}
     </div>
   );
 }

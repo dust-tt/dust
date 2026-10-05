@@ -5,6 +5,8 @@ import type { RichAgentMention } from "@app/types/assistant/mentions";
 
 const MAX_MENTION_LABEL_LENGTH = 1000;
 
+export const PARSE_MENTIONS_MAX_BODY_SIZE_BYTES = 256 * 1024;
+
 /**
  * Parses pasted text containing @ mentions and converts them to the proper
  * mention format. Matches @agentName patterns against available agents in the
@@ -56,11 +58,14 @@ export async function parseMentionsInMarkdown({
 
     const serialized = serializeMention(mention);
 
-    // Work with a lowercase copy for case-insensitive searching, but perform
-    // replacements on the original string to preserve character casing outside
-    // of the inserted serialized mention.
-    let lowerText = processedMarkdown.toLowerCase();
+    // Work with a lowercase copy for case-insensitive searching, but copy
+    // segments from the original string to preserve character casing outside
+    // of the inserted serialized mention. Output is accumulated and joined once
+    // so the cost stays linear in the markdown size regardless of match count.
+    const lowerText = processedMarkdown.toLowerCase();
     const needle = `@${mention.label}`.toLowerCase();
+    const parts: string[] = [];
+    let copiedUpTo = 0;
     let searchIndex = 0;
 
     while (true) {
@@ -88,14 +93,14 @@ export async function parseMentionsInMarkdown({
       }
 
       // Valid mention found — replace the @label with the serialized mention
-      processedMarkdown =
-        processedMarkdown.slice(0, pos) +
-        serialized +
-        processedMarkdown.slice(afterIdx);
+      parts.push(processedMarkdown.slice(copiedUpTo, pos), serialized);
+      copiedUpTo = afterIdx;
+      searchIndex = afterIdx;
+    }
 
-      // Update lowercase copy and continue searching after the inserted text
-      lowerText = processedMarkdown.toLowerCase();
-      searchIndex = pos + serialized.length;
+    if (parts.length > 0) {
+      parts.push(processedMarkdown.slice(copiedUpTo));
+      processedMarkdown = parts.join("");
     }
   }
 

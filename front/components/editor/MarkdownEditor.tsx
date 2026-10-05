@@ -1,4 +1,5 @@
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
+import { EditorContent } from "@app/components/editor/EditorContent";
 import { EditorSelectionToolbar } from "@app/components/editor/EditorSelectionToolbar";
 import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { buildMarkdownEditorExtensions } from "@app/lib/editor/build_markdown_editor_extensions";
@@ -6,7 +7,7 @@ import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { cn, Toolbar } from "@dust-tt/sparkle";
 import type { Editor as CoreEditor, Extensions } from "@tiptap/core";
 import type { Editor, EditorOptions } from "@tiptap/react";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { useEditor } from "@tiptap/react";
 import { cva } from "class-variance-authority";
 import debounce from "lodash/debounce";
 import type { ReactNode } from "react";

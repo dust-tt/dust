@@ -30,13 +30,17 @@ async function createSkills(
     availability?: SkillAvailability;
   }
 ) {
+  const skills = [];
   for (let i = 0; i < count; i++) {
-    await SkillFactory.create(auth, {
-      name: `Test Skill ${i}`,
-      agentFacingDescription: `Test skill description ${i}`,
-      ...options,
-    });
+    skills.push(
+      await SkillFactory.create(auth, {
+        name: `Test Skill ${i}`,
+        agentFacingDescription: `Test skill description ${i}`,
+        ...options,
+      })
+    );
   }
+  return skills;
 }
 
 function post(workspace: { sId: string }, body: unknown) {
@@ -66,10 +70,12 @@ describe("POST /api/w/:wId/skills/similar", () => {
 
   it("returns similar skills when runMultiActionsAgent succeeds", async () => {
     const { workspace, auth } = await setup();
-    await createSkills(auth, 3, { availability: "users_and_agents" });
+    const [first, second] = await createSkills(auth, 3, {
+      availability: "users_and_agents",
+    });
 
     vi.mocked(runMultiActionsAgent).mockResolvedValue(
-      mockSimilarSkillsResponse(["abc12", "20zer", "35xyz"])
+      mockSimilarSkillsResponse([first.sId, second.sId])
     );
 
     const response = await post(workspace, {
@@ -78,7 +84,7 @@ describe("POST /api/w/:wId/skills/similar", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
-      similar_skills: ["abc12", "20zer", "35xyz"],
+      similar_skills: [first.sId, second.sId],
     });
     expect(runMultiActionsAgent).toHaveBeenCalledTimes(1);
   });
@@ -129,24 +135,51 @@ describe("POST /api/w/:wId/skills/similar", () => {
     expect(runMultiActionsAgent).not.toHaveBeenCalled();
   });
 
-  it("batches skills into multiple LLM calls and merges deduplicated results", async () => {
+  it("drops the skill ids the LLM made up", async () => {
     const { workspace, auth } = await setup();
-    await createSkills(auth, SKILLS_PER_LLM_CALL + 1, {
+    const [skill] = await createSkills(auth, 1, {
       availability: "users_and_agents",
     });
 
-    vi.mocked(runMultiActionsAgent)
-      .mockResolvedValueOnce(mockSimilarSkillsResponse(["abc12", "20zer"]))
-      .mockResolvedValueOnce(mockSimilarSkillsResponse(["20zer", "35xyz"]));
+    vi.mocked(runMultiActionsAgent).mockResolvedValue(
+      mockSimilarSkillsResponse([skill.sId, "skl_madeUp"])
+    );
 
     const response = await post(workspace, {
       naturalDescription: "Create GitHub issues for support",
     });
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({
-      similar_skills: ["abc12", "20zer", "35xyz"],
+    expect(await response.json()).toEqual({ similar_skills: [skill.sId] });
+  });
+
+  it("batches skills into multiple LLM calls and merges the results", async () => {
+    const { workspace, auth } = await setup();
+    const skills = await createSkills(auth, SKILLS_PER_LLM_CALL + 1, {
+      availability: "users_and_agents",
     });
+    const similarSkillIds = [skills[0].sId, skills[SKILLS_PER_LLM_CALL].sId];
+
+    // Which batch a skill lands in is not known upfront: each call answers with the similar
+    // skills of its own batch.
+    vi.mocked(runMultiActionsAgent).mockImplementation(
+      async (_auth, _config, { conversation }) => {
+        const inputText = JSON.stringify(conversation.messages);
+        return mockSimilarSkillsResponse(
+          similarSkillIds.filter((sId) => inputText.includes(sId))
+        );
+      }
+    );
+
+    const response = await post(workspace, {
+      naturalDescription: "Create GitHub issues for support",
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect([...body.similar_skills].sort()).toEqual(
+      [...similarSkillIds].sort()
+    );
     expect(runMultiActionsAgent).toHaveBeenCalledTimes(2);
   });
 

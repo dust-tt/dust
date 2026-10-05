@@ -1,10 +1,10 @@
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
@@ -19,7 +19,7 @@ vi.mock("@app/lib/api/skills/search", () => ({
 
 async function setup(role: MembershipRoleType = "user") {
   const context = await createPrivateApiMockRequest({ role });
-  await FeatureFlagFactory.basic(context.auth, "skills_search");
+
   return context;
 }
 
@@ -37,6 +37,48 @@ function searchRequest(
 describe("POST /api/w/:wId/skills/search", () => {
   beforeEach(() => {
     searchSkills.mockReset();
+  });
+
+  it.each([
+    "user",
+    "admin",
+  ] as const)("only names visible skills in facets for a %s", async (role) => {
+    const { workspace, auth } = await setup(role);
+    const published = await SkillFactory.create(auth, {
+      name: "Published",
+      availability: "workspace_users",
+      addCurrentUserAsEditor: false,
+    });
+    const edited = await SkillFactory.create(auth, { name: "Edited" });
+    const unpublished = await SkillFactory.create(auth, {
+      name: "Unpublished",
+      addCurrentUserAsEditor: false,
+    });
+    searchSkills.mockResolvedValue(
+      new Ok({
+        skills: [],
+        total: 0,
+        hasMore: false,
+        facets: {
+          childSkills: [
+            { value: unpublished.sId, count: 3 },
+            { value: published.sId, count: 2 },
+            { value: edited.sId, count: 1 },
+            { value: "missing-skill", count: 4 },
+          ],
+        },
+      })
+    );
+
+    const response = await searchRequest(workspace.sId, {
+      facets: ["childSkills"],
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).facets.childSkills).toEqual([
+      edited.toSearchFacetJSON(1),
+      published.toSearchFacetJSON(2),
+    ]);
   });
 
   it("forwards the suggestion defaults and excluded skill to search", async () => {
@@ -63,16 +105,16 @@ describe("POST /api/w/:wId/skills/search", () => {
   it.each([
     "user",
     "admin",
-  ] as const)("rejects search for a %s when skills_search is disabled", async (role) => {
+  ] as const)("allows search for a %s without feature flags", async (role) => {
     const { workspace } = await createPrivateApiMockRequest({ role });
 
+    searchSkills.mockResolvedValue(
+      new Ok({ skills: [], total: 0, hasMore: false, facets: {} })
+    );
     const response = await searchRequest(workspace.sId);
 
-    expect(response.status).toBe(403);
-    expect(await response.json()).toMatchObject({
-      error: { type: "feature_flag_not_found" },
-    });
-    expect(searchSkills).not.toHaveBeenCalled();
+    expect(response.status).toBe(200);
+    expect(searchSkills).toHaveBeenCalledOnce();
   });
 
   it.each([
@@ -85,6 +127,7 @@ describe("POST /api/w/:wId/skills/search", () => {
         skills: [
           {
             status: "active",
+            canWrite: false,
             canAdministrate: false,
             availability: "workspace_users",
             mcpServerViewIds: [],
@@ -137,6 +180,7 @@ describe("POST /api/w/:wId/skills/search", () => {
       skills: [
         {
           status: "active",
+          canWrite: false,
           canAdministrate: false,
           availability: "workspace_users",
           mcpServerViewIds: [],

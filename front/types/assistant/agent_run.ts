@@ -1,25 +1,24 @@
 /**
  * Run agent arguments
  */
+
+import { getPinnedAgentConfigurationForRun } from "@app/lib/api/assistant/configuration/run_configuration";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
+import { getGlobalAgentContextForTurn } from "@app/lib/api/assistant/global_agent_context";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { resolveAgentMessageModelConfig } from "@app/lib/api/assistant/resolve_model";
-import { getStaticReplyForUserMessage } from "@app/lib/api/assistant/static_reply";
 import { legacyModelIdToModel } from "@app/lib/api/llm";
 import { selectPreferredStreamEndpointForWorkspace } from "@app/lib/api/llm/selectPreferredEndpointForWorkspace";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import { DustNoopNoopGlobalNoopStream } from "@app/lib/llms/stream/endpoints/noop_noop_global_noop";
-import { AgentResource } from "@app/lib/resources/agent_resource";
-import { toAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import type {
   AgentConfigurationType,
   AgentConfigurationWithoutModelType,
-  GlobalAgentContext,
 } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
@@ -433,37 +432,6 @@ export async function buildAgentLoopDataFromConversation(
   });
 }
 
-// The full configuration of the version the agent message pinned, for a caller who can `read` it
-// (the loop runs it, on its instructions and tools); null otherwise.
-async function getAgentConfigurationForLoop(
-  auth: Authenticator,
-  {
-    agentId,
-    agentVersion,
-    globalAgentContext,
-  }: {
-    agentId: string;
-    agentVersion: number;
-    globalAgentContext: GlobalAgentContext;
-  }
-): Promise<AgentConfigurationType | null> {
-  const [agent] = await AgentResource.fetchByIdsAndVersions(
-    auth,
-    [{ agentId, agentVersion }],
-    { globalAgentContext, withActions: true }
-  );
-
-  if (!agent || !auth.can("read", agent)) {
-    return null;
-  }
-
-  const [agentConfiguration] = await toAgentConfigurations(auth, [agent], {
-    withFavorites: false,
-    withTags: false,
-  });
-  return agentConfiguration ?? null;
-}
-
 async function buildAgentLoopRuntimeData(
   auth: Authenticator,
   agentLoopArgs: AgentLoopArgs,
@@ -481,21 +449,18 @@ async function buildAgentLoopRuntimeData(
 
   const agentId = agentMessage.configuration.sId;
 
-  const globalAgentContext: GlobalAgentContext = {
-    userMessageRank: userMessage.rank,
-    sidekickIsNewAgentFromScratch:
-      conversation.metadata?.sidekickIsNewAgentFromScratch === true ||
-      undefined,
-    staticReply: getStaticReplyForUserMessage({ conversation, userMessage }),
-  };
+  const globalAgentContext = getGlobalAgentContextForTurn({
+    conversation,
+    userMessage,
+  });
 
   // As the agent configuration is never supposed to change during a loop, we can cache it for a long time.
   // The key will be different for a new message or a new version of the same message (retries).
   const agentConfiguration = await cacheWithRedis<
     AgentConfigurationType | null,
-    Parameters<typeof getAgentConfigurationForLoop>
+    Parameters<typeof getPinnedAgentConfigurationForRun>
   >(
-    getAgentConfigurationForLoop,
+    getPinnedAgentConfigurationForRun,
     () =>
       `agentMessageId:${agentMessageId}-agentConfigurationId:${agentId}-agentMessageVersion:${agentMessageVersion}`,
     {

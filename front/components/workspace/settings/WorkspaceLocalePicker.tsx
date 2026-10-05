@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 
-const WORKSPACE_LOCALE_LABEL = "Language";
+export const WORKSPACE_LOCALE_LABEL = "Language";
 const WORKSPACE_LOCALE_DESCRIPTION =
   "The default language of Dust for members who have not chosen their own";
 

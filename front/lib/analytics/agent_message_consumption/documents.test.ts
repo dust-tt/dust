@@ -2,6 +2,8 @@ import { buildAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analyti
 import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
 import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
+import { computeAndStoreAgentMessageConsumptionAttribution } from "@app/lib/api/assistant/agent_message_consumption_attribution/store";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { USAGE_TYPE_USER } from "@app/lib/metronome/constants";
 import { intelligenceAwuFromRunUsagesGroupedByRunKey } from "@app/lib/metronome/events";
 import { AgentMessageConsumptionItemModel } from "@app/lib/models/agent/agent_message_consumption_item";
@@ -11,6 +13,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { tokenCountForTexts } from "@app/lib/tokenization";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -22,7 +25,18 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { AgentMessageConsumptionAnalyticsData } from "@app/types/assistant/analytics";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
-import { describe, expect, it } from "vitest";
+import { Ok } from "@app/types/shared/result";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/provider_credentials", () => ({
+  getLlmCredentials: vi.fn(),
+}));
+
+vi.mock("@app/lib/tokenization", () => ({
+  tokenCountForTexts: vi.fn(),
+}));
+
+const TOKENS_PER_FOOTPRINT = 2;
 
 type ResourceTestContext = Awaited<ReturnType<typeof createResourceTest>>;
 
@@ -575,6 +589,94 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
     ).toBe(5_000_000);
   });
 
+  it("indexes only the executions billed before a message failed", async () => {
+    const context = await setupSettledMessage();
+    const { action } = await AgentMCPActionFactory.create(context.auth, {
+      workspace: context.workspace,
+      conversationModelId: context.conversation.id,
+      agentMessageModelId: context.agentMessageModelId,
+      dustRunId: context.run.dustRunId,
+    });
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(
+      context.auth,
+      {
+        conversation: context.conversation,
+        agentMessageModelId: context.agentMessageModelId,
+        attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        records: [
+          {
+            itemType: "input",
+            runUsageModelId: context.runUsageModelId,
+            inputTokensCount: 100,
+            grossAttributedCreditAmountMicro: 2_000_000,
+          },
+          {
+            itemType: "output",
+            runUsageModelId: context.runUsageModelId,
+            outputTokensCount: 15,
+            grossAttributedCreditAmountMicro: 400_000,
+          },
+        ],
+        pendingToolItems: [
+          {
+            action,
+            attributedSkillIds: [],
+            runUsageModelId: context.runUsageModelId,
+            outputTokensCount: 5,
+            grossAttributedCreditAmountMicro: 100_000,
+          },
+        ],
+      }
+    );
+
+    const { run: unbilledRun } = await RunFactory.createWithUsage(
+      context.auth,
+      {
+        inputTokens: 1_000,
+        outputTokens: 200,
+        modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
+      }
+    );
+    await AgentMCPActionFactory.setStatus(context.auth, {
+      action,
+      status: "succeeded",
+    });
+    await AgentMessageModel.update(
+      {
+        runIds: [context.run.dustRunId, unbilledRun.dustRunId],
+        status: "failed",
+      },
+      {
+        where: {
+          id: context.agentMessageModelId,
+          workspaceId: context.workspace.id,
+        },
+      }
+    );
+
+    const documents = await buildDocuments(context);
+    if (!documents) {
+      throw new Error("Consumption documents were not built");
+    }
+
+    expect(documents).toHaveLength(2);
+    expect(
+      documents.every(
+        (document) =>
+          document.run_usage_id === context.runUsageModelId.toString()
+      )
+    ).toBe(true);
+    expect(
+      documents.find((document) => document.tool?.action_id === action.sId)
+    ).toMatchObject({
+      credit_micro: 100_000,
+      gross_credit_micro: { direct: 0 },
+    });
+    expect(
+      documents.reduce((total, document) => total + document.credit_micro, 0)
+    ).toBe(5_000_000);
+  });
+
   it("associates a tool with every skill that exposes its server", async () => {
     const context = await setupSettledMessage();
     const server = await RemoteMCPServerFactory.create(context.workspace, {
@@ -859,5 +961,89 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
     expect(
       documents.reduce((total, document) => total + document.credit_micro, 0)
     ).toBe(5_000_000);
+  });
+
+  it("reconciles a cancelled message whose last tool result never reached the model", async () => {
+    vi.mocked(getLlmCredentials).mockResolvedValue({});
+    vi.mocked(tokenCountForTexts).mockImplementation(
+      async (texts) => new Ok(texts.map(() => TOKENS_PER_FOOTPRINT))
+    );
+    const context = await setupSettledMessage();
+    const { run: lastRun } = await RunFactory.createWithUsage(context.auth, {
+      inputTokens: 100,
+      outputTokens: 20,
+      modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
+    });
+    await AgentMessageModel.update(
+      {
+        runIds: [context.run.dustRunId, lastRun.dustRunId],
+        status: "cancelled",
+      },
+      {
+        where: {
+          id: context.agentMessageModelId,
+          workspaceId: context.workspace.id,
+        },
+      }
+    );
+    const actions = [];
+    for (const run of [context.run, lastRun]) {
+      const { action } = await AgentMCPActionFactory.create(context.auth, {
+        workspace: context.workspace,
+        conversationModelId: context.conversation.id,
+        agentMessageModelId: context.agentMessageModelId,
+        dustRunId: run.dustRunId,
+        status: "succeeded",
+      });
+      actions.push(action);
+    }
+    const [consumedAction, unconsumedAction] = actions;
+
+    const runUsages = await RunResource.listRunUsagesForRuns(context.auth, {
+      runs: [context.run, lastRun],
+    });
+    const billedCredits =
+      intelligenceAwuFromRunUsagesGroupedByRunKey(runUsages, "web") + 2 * 3;
+    await ConversationResource.updateAgentMessageCostCredits(context.auth, {
+      agentMessageModelId: context.agentMessageModelId,
+      costCredits: billedCredits,
+    });
+    await computeAndStoreAgentMessageConsumptionAttribution(context.auth, {
+      agentMessageId: context.agentMessage.sId,
+      conversationId: context.conversation.sId,
+    });
+
+    const documents = await buildDocuments(context);
+    if (!documents) {
+      throw new Error("Consumption documents were not built");
+    }
+    const consumedToolDocument = documents.find(
+      (document) => document.tool?.action_id === consumedAction?.sId
+    );
+    const unconsumedToolDocument = documents.find(
+      (document) => document.tool?.action_id === unconsumedAction?.sId
+    );
+
+    expect(
+      documents.filter((document) => document.consumption_type === "llm")
+    ).toHaveLength(2);
+    expect(consumedToolDocument).toMatchObject({
+      gross_credit_micro: { direct: 3_000_000 },
+      tokens: {
+        output: TOKENS_PER_FOOTPRINT,
+        result_footprint: TOKENS_PER_FOOTPRINT,
+      },
+    });
+    expect(unconsumedToolDocument).toMatchObject({
+      gross_credit_micro: { direct: 3_000_000 },
+      tokens: { output: TOKENS_PER_FOOTPRINT, result_footprint: 0 },
+    });
+    expect(unconsumedToolDocument?.credit_micro).toBeGreaterThan(3_000_000);
+    expect(unconsumedToolDocument?.credit_micro).toBeLessThan(
+      consumedToolDocument?.credit_micro ?? 0
+    );
+    expect(
+      documents.reduce((total, document) => total + document.credit_micro, 0)
+    ).toBe(billedCredits * 1_000_000);
   });
 });

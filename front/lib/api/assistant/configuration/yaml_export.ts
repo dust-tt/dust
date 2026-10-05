@@ -12,6 +12,7 @@ import { getAgentConfigurationContext } from "@app/lib/api/assistant/configurati
 import { canAdminSeePrivateEntities } from "@app/lib/api/assistant/configuration/private_entities";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { toAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
@@ -37,9 +38,11 @@ export async function getAgentConfigurationAsYAMLConfig(
     return contextResult;
   }
 
-  const { agentConfiguration, editorUsers, skills } = contextResult.value;
+  const { agent, editorUsers, skills } = contextResult.value;
 
-  if (!agentConfiguration.canRead && !seePrivateEntities) {
+  // The export carries the full definition, so it needs the content: a redacted configuration would
+  // export empty instructions and tools.
+  if (!agent.canViewContent) {
     return new Err({
       status_code: 404,
       api_error: {
@@ -48,13 +51,13 @@ export async function getAgentConfigurationAsYAMLConfig(
       },
     });
   }
+  const [agentConfiguration] = await toAgentConfigurations(auth, [agent]);
 
   const { dataSourceViews, mcpServerViews } =
     await getAccessibleSourcesAndAppsForActions(auth);
-  const spaceResources = await SpaceResource.fetchByIds(
-    auth,
-    agentConfiguration.requestedSpaceIds
-  );
+  const spaceResources = await SpaceResource.fetchByModelIds(auth, [
+    ...agent.requestedSpaceModelIds(),
+  ]);
 
   const spaces = spaceResources.map((space) => ({
     space_id: space.sId,
@@ -114,7 +117,7 @@ export async function getAgentConfigurationAsYAMLConfig(
     });
     if (linkedRes.isOk()) {
       slackChannels = linkedRes.value.slackChannels
-        .filter((ch) => ch.agentConfigurationId === agentConfiguration.sId)
+        .filter((ch) => ch.agentConfigurationId === agent.sId)
         .map((ch) => ({
           slackChannelId: ch.slackChannelId,
           slackChannelName: ch.slackChannelName,

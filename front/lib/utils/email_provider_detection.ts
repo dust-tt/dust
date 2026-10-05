@@ -57,7 +57,14 @@ function isValidExternalDomain(domain: string): boolean {
   return true;
 }
 
-export type EmailProviderType = "google" | "microsoft" | "other";
+export const EMAIL_PROVIDER_TYPES = ["google", "microsoft", "other"] as const;
+export type EmailProviderType = (typeof EMAIL_PROVIDER_TYPES)[number];
+
+export function isEmailProviderType(
+  value: unknown
+): value is EmailProviderType {
+  return EMAIL_PROVIDER_TYPES.includes(value as EmailProviderType);
+}
 
 async function resolveMxRecords(
   domain: string

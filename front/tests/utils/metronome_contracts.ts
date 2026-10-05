@@ -1,5 +1,8 @@
 import type { CachedContract } from "@app/lib/metronome/plan_type";
+import { getActiveContract } from "@app/lib/metronome/plan_type";
+import { getProductSeatTypes } from "@app/lib/metronome/seat_types";
 import type { MembershipSeatType } from "@app/types/memberships";
+import { vi } from "vitest";
 
 export type SeatFixture = {
   seatType: MembershipSeatType;
@@ -57,4 +60,25 @@ export function buildCachedContractMock({
     } as unknown as CachedContract,
     productSeatTypes,
   };
+}
+
+export const POOL_ONLY_SEATS: SeatFixture[] = [
+  { seatType: "workspace_yearly", entitled: true },
+  { seatType: "pro" },
+  { seatType: "free" },
+];
+
+export const SEAT_BASED_SEATS: SeatFixture[] = [
+  { seatType: "pro_yearly", entitled: true },
+  { seatType: "workspace_yearly" },
+];
+
+/**
+ * Requires the calling test file to `vi.mock` `getActiveContract` (`@app/lib/metronome/plan_type`)
+ * and `getProductSeatTypes` (`@app/lib/metronome/seat_types`).
+ */
+export function mockActiveContract(seats: SeatFixture[]) {
+  const { contract, productSeatTypes } = buildCachedContractMock({ seats });
+  vi.mocked(getActiveContract).mockResolvedValue(contract);
+  vi.mocked(getProductSeatTypes).mockResolvedValue(productSeatTypes);
 }

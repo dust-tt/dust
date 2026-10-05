@@ -1,16 +1,13 @@
-import { enrichAgentConfigurations } from "@app/lib/api/assistant/configuration/helpers";
 import { Authenticator } from "@app/lib/auth";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
   AgentMessageModel,
   ConversationModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
-import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ModelId } from "@app/types/shared/model_id";
 import isEqual from "lodash/isEqual";
 import sortBy from "lodash/sortBy";
@@ -145,28 +142,21 @@ async function updateConversationRequestedSpaceIds(
         continue;
       }
 
-      // Get the exact agent versions that were used in the conversation
-      // Fetch directly from DB to get specific versions (not just latest)
-      const agentConfigs = await AgentConfigurationModel.findAll({
-        where: {
-          workspaceId: workspace.id,
-          [Op.or]: Array.from(agentVersionPairs.values()).map((v) => ({
-            sId: v.sId,
-            version: v.version,
-          })),
-        },
-      });
-
-      // Enrich with actions if needed (uses auth with dangerouslyRequestAllGroups)
-      const agents = await enrichAgentConfigurations(auth, agentConfigs, {
-        variant: "light",
-      });
+      // Get the exact agent versions that were used in the conversation (not just latest)
+      const agents = await AgentResource.fetchByIdsAndVersions(
+        auth,
+        Array.from(agentVersionPairs.values()).map((v) => ({
+          agentId: v.sId,
+          agentVersion: v.version,
+        })),
+        { dangerouslySkipFetchCheck: true }
+      );
 
       logger.info(
         {
           conversationId: conversation.sId,
           requestedAgentVersions: Array.from(agentVersionPairs.values()),
-          foundAgents: agents.map((a: LightAgentConfigurationType) => ({
+          foundAgents: agents.map((a) => ({
             sId: a.sId,
             version: a.version,
           })),
@@ -194,7 +184,7 @@ async function updateConversationRequestedSpaceIds(
           {
             conversationId: conversation.sId,
             requestedAgentVersions: Array.from(agentVersionPairs.values()),
-            foundAgents: agents.map((a: LightAgentConfigurationType) => ({
+            foundAgents: agents.map((a) => ({
               sId: a.sId,
               version: a.version,
             })),
@@ -205,42 +195,27 @@ async function updateConversationRequestedSpaceIds(
       }
 
       // Calculate new requestedSpaceIds from agents
-      // Note: agents.requestedSpaceIds is string[] (sIds) from the API after enrichment
-      const agentSpaceRequirements: string[] = agents.flatMap(
-        (agent: LightAgentConfigurationType) => agent.requestedSpaceIds
+      // BIGINT arrays may come back as strings from Sequelize, as for the conversation below.
+      const agentSpaceRequirements: ModelId[] = agents.flatMap((agent) =>
+        agent.requestedSpaceModelIds().map((spaceId) => Number(spaceId))
       );
 
       logger.info(
         {
           conversationId: conversation.sId,
           agentSpaceRequirements,
-          agentsWithRequirements: agents.map(
-            (a: LightAgentConfigurationType) => ({
-              sId: a.sId,
-              version: a.version,
-              requestedSpaceIds: a.requestedSpaceIds,
-            })
-          ),
+          agentsWithRequirements: agents.map((a) => ({
+            sId: a.sId,
+            version: a.version,
+            requestedSpaceIds: a.requestedSpaceModelIds(),
+          })),
         },
         "Agent requirements extracted"
       );
 
       // Remove duplicates from space requirements
-      const uniqueSpaceRequirements = Array.from(
+      const newRequestedSpaceIds: ModelId[] = Array.from(
         new Set(agentSpaceRequirements)
-      );
-
-      // Convert sIds to modelIds for spaces
-      const newRequestedSpaceIds: ModelId[] = uniqueSpaceRequirements.map(
-        (spaceId) => {
-          const modelId = getResourceIdFromSId(spaceId);
-          if (modelId === null) {
-            throw new Error(
-              `Invalid space sId: ${spaceId} for conversation ${conversation.sId}`
-            );
-          }
-          return modelId;
-        }
       );
 
       // Convert current requestedSpaceIds (stored as BIGINT, returned as strings by Sequelize)

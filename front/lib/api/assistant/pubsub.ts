@@ -1,15 +1,13 @@
 import type { AgentActionRunningEvents } from "@app/lib/actions/mcp";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
+import { getRedisEventsBatch } from "@app/lib/api/redis_events_batch";
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import { createCallbackReader } from "@app/lib/utils";
-import {
-  concurrentExecutor,
-  setTimeoutAsync,
-} from "@app/lib/utils/async_utils";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 import {
@@ -50,7 +48,7 @@ export async function* getConversationEvents({
     pubsubChannel,
     callbackReader.callback,
     "conversation_events",
-    { lastEventId }
+    { lastEventId, signal }
   );
 
   // Unsubscribe if the signal is aborted, to unblock the callbackReader.next() await below.
@@ -108,6 +106,27 @@ export async function* getConversationEvents({
     signal.removeEventListener("abort", unsubscribe);
     unsubscribe();
   }
+}
+
+export async function getConversationEventsBatch({
+  conversationId,
+  lastEventId,
+  signal,
+}: {
+  conversationId: string;
+  lastEventId: string | null;
+  signal: AbortSignal;
+}): Promise<{ eventId: string; data: ConversationEvents }[]> {
+  const events = await getRedisEventsBatch({
+    channel: getConversationChannelId(conversationId),
+    origin: "conversation_events_long_poll",
+    lastEventId,
+    signal,
+  });
+  return events.map((event) => ({
+    eventId: event.id,
+    data: JSON.parse(event.message.payload),
+  }));
 }
 
 async function signalAgentLoops(
@@ -218,8 +237,6 @@ export type MessageStreamBatchEvent =
   | MessageStreamEvent
   | MessageStreamEndEvent;
 
-const MESSAGE_EVENTS_BATCH_WINDOW_MS = 50;
-
 /**
  * @cc [owner:id13,label:architecture;concurrency] message-events-batch-lifecycle
  * A message-event batch request MUST unsubscribe from Redis when it returns, times out, or its
@@ -234,45 +251,16 @@ export async function getMessagesEventsBatch({
   lastEventId: string | null;
   signal: AbortSignal;
 }): Promise<MessageStreamBatchEvent[]> {
-  const pubsubChannel = getMessageChannelId(messageId);
-  const liveEvents: EventPayload[] = [];
-  const batchReady = Promise.withResolvers<void>();
-
-  const { history, unsubscribe } = await getRedisHybridManager().subscribe(
-    pubsubChannel,
-    (event) => {
-      if (event !== "close") {
-        liveEvents.push(event);
-      }
-      batchReady.resolve();
-    },
-    "message_events_long_poll",
-    { lastEventId, signal }
-  );
-
-  const onAbort = () => batchReady.resolve();
-  signal.addEventListener("abort", onAbort, { once: true });
-
-  try {
-    if (history.length === 0 && liveEvents.length === 0 && !signal.aborted) {
-      await batchReady.promise;
-    }
-
-    if (liveEvents.length > 0 && !signal.aborted) {
-      await setTimeoutAsync(MESSAGE_EVENTS_BATCH_WINDOW_MS);
-    }
-
-    const events: MessageStreamBatchEvent[] = [...history, ...liveEvents].map(
-      (event) => ({
-        eventId: event.id,
-        data: JSON.parse(event.message.payload),
-      })
-    );
-    return events;
-  } finally {
-    signal.removeEventListener("abort", onAbort);
-    unsubscribe();
-  }
+  const events = await getRedisEventsBatch({
+    channel: getMessageChannelId(messageId),
+    origin: "message_events_long_poll",
+    lastEventId,
+    signal,
+  });
+  return events.map((event) => ({
+    eventId: event.id,
+    data: JSON.parse(event.message.payload),
+  }));
 }
 
 export async function* getMessagesEvents(
@@ -293,7 +281,7 @@ export async function* getMessagesEvents(
     pubsubChannel,
     callbackReader.callback,
     "message_events",
-    { lastEventId }
+    { lastEventId, signal }
   );
 
   // Unsubscribe if the signal is aborted

@@ -1,5 +1,5 @@
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { getPriceAsString } from "@app/lib/client/subscription";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import {
   Calendar,
   ClockRewind,

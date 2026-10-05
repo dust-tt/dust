@@ -1,5 +1,6 @@
-import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
 import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder/types";
+import { getNewAgentModelDefaults } from "@app/lib/agent_builder/helpers";
 import type { FetchAgentTemplateResponse } from "@app/lib/resources/template_resource";
 import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -59,6 +60,9 @@ export function getDefaultAgentFormData({
   user: UserType;
   defaultModel: EnabledModelConfigurationType;
 }): AgentBuilderFormData {
+  const { providerId, modelId, temperature, reasoningEffort } =
+    getNewAgentModelDefaults(defaultModel);
+
   return {
     agentSettings: {
       name: "",
@@ -73,12 +77,9 @@ export function getDefaultAgentFormData({
     },
     instructions: "",
     generationSettings: {
-      modelSettings: {
-        modelId: defaultModel.modelId,
-        providerId: defaultModel.providerId,
-      },
-      temperature: 0.7,
-      reasoningEffort: defaultModel.defaultReasoningEffort,
+      modelSettings: { modelId, providerId },
+      temperature,
+      reasoningEffort,
       responseFormat: undefined,
     },
     actions: [],

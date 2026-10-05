@@ -1,4 +1,5 @@
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
+import { toAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { PostOrPatchAgentConfigurationRequestBodySchema } from "@app/types/api/agent_configuration";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { pokeApp } from "@front-api/middlewares/ctx";
@@ -35,7 +36,8 @@ app.post(
       });
     }
 
-    return ctx.json({ assistant: result.value.agentConfiguration });
+    const [assistant] = await toAgentConfigurations(auth, [result.value.agent]);
+    return ctx.json({ assistant });
   }
 );
 

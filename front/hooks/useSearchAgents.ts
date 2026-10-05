@@ -9,6 +9,7 @@ import type {
   SearchAgentsResponseBody,
 } from "@app/types/agent_search/agent_search";
 import type { SearchType } from "@app/types/api/search";
+import { MIN_NAME_SEARCH_QUERY_LENGTH } from "@app/types/api/search";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useEffect } from "react";
 import { useSWRConfig } from "swr";
@@ -16,8 +17,14 @@ import { useSWRConfig } from "swr";
 const SEARCH_AGENTS_DEBOUNCE_MS = 250;
 const SEARCH_AGENTS_QUERY_MAX_LENGTH = 200;
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] management-search-minimum-length
+ * Name search sends an empty query below MIN_NAME_SEARCH_QUERY_LENGTH trimmed
+ * characters. Autocomplete keeps accepting shorter input.
+ */
 export function useSearchAgents({
   owner,
+  searchEndpoint,
   searchTerm,
   searchType = "autocomplete",
   offset,
@@ -28,8 +35,11 @@ export function useSearchAgents({
   filters,
   facets,
   disabled,
+  keepPreviousData = true,
+  debounceMs = SEARCH_AGENTS_DEBOUNCE_MS,
 }: {
   owner: LightWorkspaceType;
+  searchEndpoint?: string;
   searchTerm: string;
   searchType?: SearchType;
   offset?: number;
@@ -40,19 +50,33 @@ export function useSearchAgents({
   filters?: AgentSearchFilters;
   facets?: AgentSearchFacet[];
   disabled?: boolean;
+  /** When false, clear results while the next query loads (e.g. command palette). */
+  keepPreviousData?: boolean;
+  /** Set to 0 when the caller already debounces the search term. */
+  debounceMs?: number;
 }) {
   const { fetcherWithBody } = useFetcher();
   const { mutate: globalMutate } = useSWRConfig();
-  const query = searchTerm.slice(0, SEARCH_AGENTS_QUERY_MAX_LENGTH);
+  const truncatedSearchTerm = searchTerm.slice(
+    0,
+    SEARCH_AGENTS_QUERY_MAX_LENGTH
+  );
+  const query =
+    searchType === "name" &&
+    truncatedSearchTerm.trim().length < MIN_NAME_SEARCH_QUERY_LENGTH
+      ? ""
+      : truncatedSearchTerm;
   const { debouncedValue: debouncedSearchTerm, setValue: setSearchTerm } =
-    useDebounce(query, { delay: SEARCH_AGENTS_DEBOUNCE_MS });
+    useDebounce(query, { delay: debounceMs });
   const isDebouncing = query !== debouncedSearchTerm;
 
   useEffect(() => {
     setSearchTerm(query);
   }, [query, setSearchTerm]);
 
-  const url = `/api/w/${owner.sId}/assistant/agent_configurations/search`;
+  const url =
+    searchEndpoint ??
+    `/api/w/${owner.sId}/assistant/agent_configurations/search`;
   const body = {
     ...filters,
     query: debouncedSearchTerm,
@@ -74,7 +98,7 @@ export function useSearchAgents({
       disabled: disabled || isDebouncing,
       // Keep results visible while the next query debounces or loads, instead of
       // flashing a loading placeholder on every keystroke.
-      keepPreviousData: true,
+      keepPreviousData,
     }
   );
 

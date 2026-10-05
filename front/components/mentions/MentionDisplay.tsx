@@ -23,6 +23,7 @@ interface MentionDisplayProps {
   interactive?: boolean;
   owner: WorkspaceType;
   showTooltip?: boolean;
+  onSeeAgentDetails?: () => void;
 }
 
 interface MentionTriggerProps {
@@ -58,6 +59,7 @@ export function MentionDisplay({
   interactive = false,
   owner,
   showTooltip = true,
+  onSeeAgentDetails,
 }: MentionDisplayProps) {
   const { user } = useAuth();
   const isCurrentUserMentioned = mention.id === user?.sId;
@@ -69,7 +71,11 @@ export function MentionDisplay({
         <TooltipProvider>
           <TooltipRoot>
             <TooltipTrigger asChild>
-              <MentionDropdown mention={mention} owner={owner}>
+              <MentionDropdown
+                mention={mention}
+                owner={owner}
+                onSeeAgentDetails={onSeeAgentDetails}
+              >
                 <MentionTrigger
                   mention={mention}
                   isCurrentUserMentioned={isCurrentUserMentioned}
@@ -84,7 +90,11 @@ export function MentionDisplay({
 
     return (
       <div className="inline-flex">
-        <MentionDropdown mention={mention} owner={owner}>
+        <MentionDropdown
+          mention={mention}
+          owner={owner}
+          onSeeAgentDetails={onSeeAgentDetails}
+        >
           <MentionTrigger
             mention={mention}
             isCurrentUserMentioned={isCurrentUserMentioned}

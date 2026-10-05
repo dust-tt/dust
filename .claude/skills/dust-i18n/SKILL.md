@@ -50,9 +50,10 @@ Rules:
 
 ## Where translated components can render
 
-Lingui components need an `I18nProvider`. The SPA mounts one at its root (`front-spa/src/app/App.tsx`).
-The browser extension (`extension/`, built with `ts-loader`, no Babel) and the `share`/`oauth`
-entries have none yet: do not use Lingui in components they import.
+Lingui components need an `I18nProvider`. Every front-spa entry mounts one at its root (e.g.
+`front-spa/src/app/App.tsx`); the `poke`, `share`, `oauth` and `email` entries render in `en-US`.
+The browser extension (`extension/`) mounts one in each platform app and compiles the macros in its
+webpack build (`extension/config/webpack_lingui.ts`). It always renders `en-US`.
 
 In front tests, `render` and `renderHook` from `@testing-library/react` already wrap the tree in an
 `I18nProvider` (see `front/vite.i18nSetup.ts`), around any `wrapper` the test passes, and the locale is

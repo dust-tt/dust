@@ -1,10 +1,10 @@
 import { transformSelectionConfigurationsToTree } from "@app/components/agent_builder/capabilities/knowledge/transformations";
 import { nameToDisplayFormat } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
-import { getDefaultConfiguration } from "@app/components/agent_builder/capabilities/mcp/utils/formDefaults";
 import {
   CONFIGURATION_SHEET_PAGE_IDS,
   DESCRIPTION_MAX_LENGTH,
 } from "@app/components/agent_builder/types";
+import { getDefaultConfiguration } from "@app/components/shared/tools_picker/formDefaults";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { getMCPServerNameForTemplateAction } from "@app/lib/actions/mcp_helper";
 import { DATA_WAREHOUSE_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";

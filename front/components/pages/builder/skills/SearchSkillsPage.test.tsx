@@ -1,4 +1,5 @@
 import { ManageSkillsPage } from "@app/components/pages/builder/skills/ManageSkillsPage";
+import { SkillsDataTable } from "@app/components/poke/skills/table";
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
 import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDialog";
 import { RestoreSkillDialog } from "@app/components/skills/RestoreSkillDialog";
@@ -33,13 +34,15 @@ beforeEach(() => {
   }
 });
 
+const push = vi.hoisted(() => vi.fn());
+
 vi.mock("@app/lib/platform", () => ({
   useAppRouter: () => ({
     isReady: true,
     pathname: "/w/workspace/builder/skills",
     asPath: "/w/workspace/builder/skills",
     query: {},
-    push: vi.fn(),
+    push,
     replace: vi.fn(),
     events: { on: vi.fn(), off: vi.fn() },
   }),
@@ -70,13 +73,9 @@ afterEach(() => {
 });
 
 async function setup({
-  searchEnabled = true,
-  pageEnabled = true,
   skillStatus = "active",
   role = "admin",
 }: {
-  searchEnabled?: boolean;
-  pageEnabled?: boolean;
   skillStatus?: SkillStatus;
   role?: MembershipRoleType;
 } = {}) {
@@ -116,12 +115,6 @@ async function setup({
     providersHealth: null,
     workspacePermissions: await authenticator.getWorkspacePermissions(),
   };
-  if (searchEnabled) {
-    context.featureFlags.push("skills_search");
-  }
-  if (pageEnabled) {
-    context.featureFlags.push("new_manage_skills_page");
-  }
   const search = vi
     .fn<() => Promise<SearchSkillsResponseBody>>()
     .mockResolvedValue({
@@ -252,7 +245,7 @@ describe("search-backed Manage Skills", () => {
       expect(facetSearch).toHaveBeenLastCalledWith(
         expect.objectContaining({
           permissionFiltering: "redact_unreadable",
-          searchType: "autocomplete",
+          searchType: "name",
         })
       )
     );
@@ -276,7 +269,7 @@ describe("search-backed Manage Skills", () => {
         expect.any(String),
         expect.objectContaining({
           permissionFiltering: "redact_unreadable",
-          searchType: "autocomplete",
+          searchType: "name",
         }),
         "POST",
       ])
@@ -422,7 +415,7 @@ describe("search-backed Manage Skills", () => {
         expect.any(String),
         expect.objectContaining({
           query: "report",
-          searchType: "autocomplete",
+          searchType: "name",
           sortBy: "name",
           sortOrder: "asc",
         }),
@@ -436,10 +429,38 @@ describe("search-backed Manage Skills", () => {
         expect.any(String),
         expect.objectContaining({
           query: "report",
-          searchType: "autocomplete",
+          searchType: "name",
           sortBy: "relevance",
           offset: 0,
         }),
+        "POST",
+      ])
+    );
+  });
+
+  it("starts text search at three characters", async () => {
+    const { fetcherWithBody, mount } = await setup();
+    mount();
+    await screen.findByRole("button", { name: /Weekly report/ });
+
+    const input = screen.getByLabelText("Search skills");
+    await userEvent.type(input, "re");
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+    });
+    for (const [request] of fetcherWithBody.mock.calls) {
+      expect(request).toEqual([
+        expect.any(String),
+        expect.objectContaining({ query: "" }),
+        "POST",
+      ]);
+    }
+
+    await userEvent.type(input, "p");
+    await waitFor(() =>
+      expect(fetcherWithBody).toHaveBeenLastCalledWith([
+        expect.any(String),
+        expect.objectContaining({ query: "rep" }),
         "POST",
       ])
     );
@@ -512,7 +533,7 @@ describe("search-backed Manage Skills", () => {
         expect.any(String),
         {
           query: "",
-          searchType: "autocomplete",
+          searchType: "name",
           status: ["archived"],
           mcpServerViewIds,
           editorIds,
@@ -531,7 +552,7 @@ describe("search-backed Manage Skills", () => {
         expect.any(String),
         {
           query: "",
-          searchType: "autocomplete",
+          searchType: "name",
           status: ["archived"],
           sortBy: "usage",
           limit: 50,
@@ -573,7 +594,7 @@ describe("search-backed Manage Skills", () => {
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
     await userEvent.type(
-      screen.getByPlaceholderText("Search skills by name"),
+      screen.getByPlaceholderText("Search for skills"),
       "Week"
     );
 
@@ -587,7 +608,7 @@ describe("search-backed Manage Skills", () => {
     expect(facetSearch).toHaveBeenLastCalledWith(
       expect.objectContaining({
         query: "Week",
-        searchType: "autocomplete",
+        searchType: "name",
         status: ["active"],
         facets: ["availability"],
       })
@@ -599,7 +620,7 @@ describe("search-backed Manage Skills", () => {
       expect(facetSearch).toHaveBeenLastCalledWith(
         expect.objectContaining({
           query: "Week",
-          searchType: "autocomplete",
+          searchType: "name",
           availability: ["workspace_users"],
           facets: ["editors"],
         })
@@ -751,7 +772,7 @@ describe("search-backed Manage Skills", () => {
       `/api/w/${context.workspace.sId}/skills/search`,
       {
         query: "",
-        searchType: "autocomplete",
+        searchType: "name",
         sortBy: "usage",
         status: ["active"],
         codeDefinedOnly: false,
@@ -809,7 +830,7 @@ describe("search-backed Manage Skills", () => {
         expect.any(String),
         {
           query: "",
-          searchType: "autocomplete",
+          searchType: "name",
           status: ["archived"],
           sortBy: "usage",
           limit: 50,
@@ -1104,7 +1125,7 @@ describe("search-backed Manage Skills", () => {
         expect.any(String),
         expect.objectContaining({
           query: "report",
-          searchType: "autocomplete",
+          searchType: "name",
           sortBy: "relevance",
           offset: 0,
         }),
@@ -1130,7 +1151,7 @@ describe("search-backed Manage Skills", () => {
     const table = screen.getByRole("table");
 
     const pending = Promise.withResolvers<SearchSkillsResponseBody>();
-    search.mockReturnValueOnce(pending.promise);
+    search.mockReturnValue(pending.promise);
     await userEvent.type(screen.getByLabelText("Search skills"), "report");
     await waitFor(() =>
       expect(fetcherWithBody).toHaveBeenLastCalledWith([
@@ -1194,18 +1215,40 @@ describe("search-backed Manage Skills", () => {
     await screen.findByText("No skills to show.");
     expect(fetcher).not.toHaveBeenCalled();
   });
+});
 
-  it.each([
-    { searchEnabled: false, pageEnabled: false },
-    { searchEnabled: true, pageEnabled: false },
-    { searchEnabled: false, pageEnabled: true },
-  ])("keeps the legacy page with searchEnabled=$searchEnabled and pageEnabled=$pageEnabled", async (flags) => {
-    const { fetcherWithBody, fetcher, mount } = await setup(flags);
-    mount();
-    await waitFor(() => expect(fetcher).toHaveBeenCalled());
+describe("Poke Manage Skills", () => {
+  it("uses Poke search without feature flags and opens Poke skill details", async () => {
+    const { mount, context, skill, fetcherWithBody } = await setup();
+    mount(<SkillsDataTable owner={context.workspace} />);
+    await screen.findByText(skill.name);
+    expect(fetcherWithBody).toHaveBeenCalledWith([
+      `/api/poke/workspaces/${context.workspace.sId}/skills/search`,
+      expect.objectContaining({
+        sortBy: "usage",
+        permissionFiltering: "redact_unreadable",
+        limit: 50,
+      }),
+      "POST",
+    ]);
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("tab", { name: "Workspace" })
-    ).not.toBeInTheDocument();
-    expect(fetcherWithBody).not.toHaveBeenCalled();
+      screen.getByRole("button", { name: "Create skill suggestion" })
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByText(skill.name));
+    expect(push).toHaveBeenCalledWith(
+      `/poke/${context.workspace.sId}/skills/${skill.sId}`
+    );
+    expect(screen.queryByText("Full skill details")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("tab", { name: "Archived" }));
+    await waitFor(() =>
+      expect(fetcherWithBody).toHaveBeenCalledWith([
+        `/api/poke/workspaces/${context.workspace.sId}/skills/search`,
+        expect.objectContaining({ status: ["archived"] }),
+        "POST",
+      ])
+    );
+    expect(window.location.hash).toContain("skillSearch=");
+    expect(window.location.hash).not.toContain("agentSearch=");
   });
 });

@@ -56,7 +56,6 @@ app.get(
 
     switch (pId) {
       case "openai": {
-        // eslint-disable-next-line no-restricted-globals
         const modelsRes = await fetch("https://api.openai.com/v1/models", {
           method: "GET",
           headers: {
@@ -105,7 +104,6 @@ app.get(
       }
 
       case "azure_openai": {
-        // eslint-disable-next-line no-restricted-globals
         const deploymentsRes = await fetch(
           `${config.endpoint}openai/deployments?api-version=2022-12-01`,
           {
@@ -191,7 +189,6 @@ app.get(
         if (!chat) {
           return ctx.json({ models: [] });
         }
-        // eslint-disable-next-line no-restricted-globals
         const mistralModelRes = await fetch(
           "https://api.mistral.ai/v1/models",
           {

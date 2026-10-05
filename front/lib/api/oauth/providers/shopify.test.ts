@@ -57,6 +57,12 @@ describe("ShopifyOAuthProvider", () => {
     ).toBe(true);
     expect(
       provider.isExtraConfigValid(
+        { mcp_server_id: "srv_123" },
+        "platform_actions"
+      )
+    ).toBe(true);
+    expect(
+      provider.isExtraConfigValid(
         { shopify_store_domain: "my-store.myshopify.com" },
         "personal_actions"
       )

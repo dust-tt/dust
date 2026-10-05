@@ -315,7 +315,6 @@ const renderOptions: Options = {
       }
 
       const { url, details } = file;
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const { width, height } = details?.image || { width: 800, height: 400 };
       const alt = title ?? description ?? "Image";
 

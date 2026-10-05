@@ -1,28 +1,49 @@
-import { cn } from "@dust-tt/sparkle";
+import { ArrowRight, Button, cn, KeyboardShortcut } from "@dust-tt/sparkle";
 import React from "react";
 
 interface ItemRowProps {
   isSelected: boolean;
   onClick: () => void;
   onMouseMove: () => void;
+  /** When set, shows a trailing arrow control to open the actions phase. */
+  onOpenActions?: () => void;
   children: React.ReactNode;
 }
 
 export const ItemRow = React.forwardRef<HTMLDivElement, ItemRowProps>(
-  function ItemRow({ isSelected, onClick, onMouseMove, children }, ref) {
+  function ItemRow(
+    { isSelected, onClick, onMouseMove, onOpenActions, children },
+    ref
+  ) {
     return (
       <div
         ref={ref}
         className={cn(
           "flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors duration-150",
           "text-foreground",
-          // Match the hover/selected background used by menus and dropdowns.
-          isSelected ? "bg-hover" : "hover:bg-hover"
+          // Selection only — avoid CSS :hover so keyboard selection and a
+          // stationary mouse pointer can't highlight two rows at once.
+          isSelected && "bg-hover"
         )}
         onClick={onClick}
         onMouseMove={onMouseMove}
       >
-        {children}
+        <div className="flex min-w-0 grow items-center gap-2.5">{children}</div>
+        {onOpenActions && (
+          <Button
+            variant="outline"
+            size="xs"
+            icon={ArrowRight}
+            aria-label="More actions"
+            // Keep the button mounted so showing it on selection doesn't shift layout.
+            className={cn(!isSelected && "invisible")}
+            tabIndex={isSelected ? undefined : -1}
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenActions();
+            }}
+          />
+        )}
       </div>
     );
   }
@@ -34,7 +55,7 @@ interface ItemTitleProps {
 
 export function ItemTitle({ children }: ItemTitleProps) {
   return (
-    <div className="px-3 pb-1.5 pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+    <div className="px-3 pb-1.5 pt-1 text-xs font-semibold text-muted-foreground">
       {children}
     </div>
   );
@@ -70,16 +91,15 @@ export function KeyboardHints({ hints }: { hints: KeyboardHint[] }) {
       {hints.map((hint) => (
         <div key={hint.label} className="flex items-center gap-1.5">
           {hint.keys.map((key) => (
-            <kbd
+            <KeyboardShortcut
               key={key}
+              shortcut={key}
               className={cn(
                 "inline-flex h-6 min-w-6 items-center justify-center rounded border px-1",
-                "border-separator",
+                "border-separator shadow-xs",
                 hint.textSize ?? "text-xs"
               )}
-            >
-              {key}
-            </kbd>
+            />
           ))}
           <span>{hint.label}</span>
         </div>

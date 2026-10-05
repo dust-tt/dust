@@ -1569,6 +1569,34 @@ describe("agent_sidekick_context tools", () => {
   });
 
   describe("suggest_sub_agent", () => {
+    it.each([
+      ["the agent itself", (agentId: string) => agentId],
+      [
+        "a global agent the builder does not list",
+        () => GLOBAL_AGENTS_SID.SIDEKICK,
+      ],
+    ])("rejects adding %s as a sub-agent", async (_, getSubAgentId) => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+      await MCPServerViewResource.ensureAllAutoToolsAreCreated(authenticator);
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_sidekick_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_sub_agent");
+      const result = await tool.handler(
+        { action: "add", subAgentId: getSubAgentId(agentConfiguration.sId) },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+    });
+
     it("creates sub-agent suggestion with add action successfully", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
@@ -1663,6 +1691,32 @@ describe("agent_sidekick_context tools", () => {
   });
 
   describe("suggest_skills", () => {
+    it("rejects adding an archived skill", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const skill = await SkillFactory.create(authenticator);
+      await skill.archive(authenticator);
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_sidekick_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_skills");
+      const result = await tool.handler(
+        { suggestions: [{ action: "add", skillId: skill.sId }] },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("archived");
+      }
+    });
+
     it("returns error when agent configuration ID is not available", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
@@ -1764,7 +1818,9 @@ describe("agent_sidekick_context tools", () => {
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
         expect(result.error.message).toContain("non-existent-skill-id");
-        expect(result.error.message).toContain("invalid or not accessible");
+        expect(result.error.message).toContain(
+          "invalid, archived or not accessible"
+        );
         expect(result.error.message).toContain("<workspace_context>");
       }
     });

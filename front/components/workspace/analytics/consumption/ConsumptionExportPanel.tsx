@@ -38,7 +38,7 @@ function ConsumptionExportRow({
         {formatDateTime(new Date(item.createdAt))}
       </span>
       <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        {formatFileSize(item.sizeBytes, undefined, "en-US")}
+        {formatFileSize(item.sizeBytes)}
         <Download01 className="h-3.5 w-3.5" />
       </span>
     </a>

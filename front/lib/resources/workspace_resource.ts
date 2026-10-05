@@ -22,7 +22,6 @@ import type {
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { defineCachedResourceStore } from "@app/lib/resources/cached_resource_store";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
-import type { ModelProviderIdType } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { WorkspacePlanLimitOverrideModel } from "@app/lib/resources/storage/models/workspace_plan_limit_override";
@@ -33,7 +32,8 @@ import type { GitHubConnectionStatus } from "@app/lib/skill_detection";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { terminateAllAgentLoopWorkflowsForConversation } from "@app/temporal/agent_loop/terminate";
-import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
+import { WHITELISTABLE_MODEL_MAKER_IDS } from "@app/types/assistant/models/providers";
+import type { WhitelistableModelMakerIdType } from "@app/types/assistant/models/types";
 import type { WorkspacePoolCreditState } from "@app/types/credits";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -220,9 +220,9 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   }
 
   private static filterKillSwitchedProviders(
-    whiteListedProviders: ModelProviderIdType[] | null,
+    whiteListedProviders: WhitelistableModelMakerIdType[] | null,
     enabledKillSwitches: KillSwitchType[]
-  ): ModelProviderIdType[] | null {
+  ): WhitelistableModelMakerIdType[] | null {
     const isAnthropicBlacklisted = enabledKillSwitches.includes(
       "global_blacklist_anthropic"
     );
@@ -230,7 +230,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       "global_blacklist_openai"
     );
     if (isAnthropicBlacklisted || isOpenaiBlacklisted) {
-      return (whiteListedProviders ?? MODEL_PROVIDER_IDS).filter(
+      return (whiteListedProviders ?? WHITELISTABLE_MODEL_MAKER_IDS).filter(
         (p) =>
           (isAnthropicBlacklisted ? p !== "anthropic" : true) &&
           (isOpenaiBlacklisted ? p !== "openai" : true)
@@ -240,8 +240,8 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   }
 
   public static async getWhiteListedProvidersFilteredByKillSwitches(
-    whiteListedProviders: ModelProviderIdType[] | null
-  ): Promise<ModelProviderIdType[] | null> {
+    whiteListedProviders: WhitelistableModelMakerIdType[] | null
+  ): Promise<WhitelistableModelMakerIdType[] | null> {
     const enabledKillSwitches =
       await KillSwitchResource.listEnabledKillSwitches();
     return WorkspaceResource.filterKillSwitchedProviders(

@@ -202,7 +202,6 @@ app.post(
       conversation,
       user,
       thumbDirection: body.thumbDirection,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       content: body.feedbackContent || "",
       isConversationShared: body.isConversationShared,
     });

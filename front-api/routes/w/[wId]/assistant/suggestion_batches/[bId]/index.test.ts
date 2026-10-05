@@ -1,4 +1,3 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { getMarkdownPipeline } from "@app/lib/editor/server_markdown_pipeline";
 import { convertMarkdownToBlockHtml } from "@app/lib/editor/skill_instructions_html";
@@ -1101,10 +1100,10 @@ describe("approving agent suggestions", () => {
     if (pending.isErr()) {
       throw pending.error;
     }
-    const agent = await getAgentConfiguration(auth, {
-      agentId: pending.value.sId,
-      variant: "light",
-    });
+    const agent = await AgentConfigurationFactory.refetch(
+      auth,
+      pending.value.sId
+    );
     if (!agent) {
       throw new Error("Pending agent not found.");
     }
@@ -1127,19 +1126,18 @@ describe("approving agent suggestions", () => {
     expect(response.status).toBe(200);
     expect((await response.json()).batch.state).toBe("approved");
 
-    const created = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "full",
-    });
-    expect(created).toMatchObject({
-      sId: agent.sId,
-      status: "active",
-      scope: "hidden",
-      name: "Incident Helper",
-      description: "Helps triage incidents.",
-      instructions: "Collect **impact** and timeline.",
-    });
-    expect(created?.instructionsHtml).toContain("data-block-id");
+    const created = await AgentConfigurationFactory.refetch(auth, agent.sId);
+    assert(created);
+    expect(created.sId).toBe(agent.sId);
+    expect(created.status).toBe("active");
+    expect(created.scope).toBe("hidden");
+    expect(created.name).toBe("Incident Helper");
+    expect(created.description).toBe("Helps triage incidents.");
+    const createdInstructions = await created.fetchInstructions();
+    expect(createdInstructions.instructions).toBe(
+      "Collect **impact** and timeline."
+    );
+    expect(createdInstructions.instructionsHtml).toContain("data-block-id");
   });
 
   afterEach(() => {
@@ -1166,10 +1164,10 @@ describe("approving agent suggestions", () => {
       "batch_suggestion_not_found"
     );
 
-    const placeholder = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "light",
-    });
+    const placeholder = await AgentConfigurationFactory.refetch(
+      auth,
+      agent.sId
+    );
     expect(placeholder?.status).toBe("pending");
   });
 
@@ -1208,10 +1206,7 @@ describe("approving agent suggestions", () => {
     expect(response.status).toBe(200);
     expect((await response.json()).batch.state).toBe("approved");
 
-    const archived = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "light",
-    });
+    const archived = await AgentConfigurationFactory.refetch(auth, agent.sId);
     expect(archived?.status).toBe("archived");
   });
 
@@ -1230,12 +1225,11 @@ describe("approving agent suggestions", () => {
     expect(response.status).toBe(200);
     expect((await response.json()).batch.state).toBe("approved");
 
-    const updated = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "light",
-    });
-    expect(updated?.model.modelId).toBe("claude-haiku-4-5-20251001");
-    expect(updated?.model.reasoningEffort).toBe("medium");
+    const updated = await AgentConfigurationFactory.refetch(auth, agent.sId);
+    expect(updated?.modelConfiguration.modelId).toBe(
+      "claude-haiku-4-5-20251001"
+    );
+    expect(updated?.modelConfiguration.reasoningEffort).toBe("medium");
   });
 
   it("returns 400 and leaves the suggestion pending when changing the model of a non-active agent", async () => {
@@ -1288,11 +1282,11 @@ describe("approving agent suggestions", () => {
     expect(response.status).toBe(200);
     expect((await response.json()).batch.state).toBe("approved");
 
-    const updated = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "full",
-    });
-    expect(updated?.instructionsHtml).toContain("Be extremely helpful.");
+    const updated = await AgentConfigurationFactory.refetch(auth, agent.sId);
+    assert(updated);
+    expect((await updated.fetchInstructions()).instructionsHtml).toContain(
+      "Be extremely helpful."
+    );
   });
 
   it("keeps the builder's instruction blocks when applying an instructions suggestion", async () => {
@@ -1329,11 +1323,11 @@ describe("approving agent suggestions", () => {
     const response = await approve(workspace, batch.sId);
     expect(response.status).toBe(200);
 
-    const updated = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "full",
-    });
-    const html = updated?.instructionsHtml ?? "";
+    const updated = await AgentConfigurationFactory.refetch(auth, agent.sId);
+    assert(updated);
+    const { instructions, instructionsHtml: updatedInstructionsHtml } =
+      await updated.fetchInstructions();
+    const html = updatedInstructionsHtml ?? "";
     expect(html).toContain("You have access to many tools.");
     // Both sections survive, with their type and id, so the builder still shows them as blocks.
     expect(html).toContain(
@@ -1343,10 +1337,10 @@ describe("approving agent suggestions", () => {
       'data-block-id="9411f1af" data-instruction-type="tools"'
     );
     // The markdown the model reads keeps the section tags.
-    expect(updated?.instructions).toContain("<role>");
-    expect(updated?.instructions).toContain("</role>");
-    expect(updated?.instructions).toContain("<tools>");
-    expect(updated?.instructions).toContain("</tools>");
+    expect(instructions).toContain("<role>");
+    expect(instructions).toContain("</role>");
+    expect(instructions).toContain("<tools>");
+    expect(instructions).toContain("</tools>");
   });
 
   it("returns 400 and leaves the suggestion pending when changing the instructions of a non-active agent", async () => {
@@ -1390,10 +1384,10 @@ describe("approving agent suggestions", () => {
       suggestion.sId
     );
     expect(fetched?.state).toBe("pending");
-    const placeholder = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "light",
-    });
+    const placeholder = await AgentConfigurationFactory.refetch(
+      auth,
+      agent.sId
+    );
     expect(placeholder?.status).toBe("pending");
   });
 
@@ -1409,19 +1403,17 @@ describe("approving agent suggestions", () => {
     expect(response.status).toBe(200);
     expect((await response.json()).batch.state).toBe("approved");
 
-    const updated = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "full",
-    });
-    expect(updated).toMatchObject({
-      sId: agent.sId,
-      status: "active",
-      name: agent.name,
-      description: "Handles incident triage end to end.",
-      scope: agent.scope,
-      instructions: agent.instructions,
-      version: agent.version + 1,
-    });
+    const updated = await AgentConfigurationFactory.refetch(auth, agent.sId);
+    assert(updated);
+    expect(updated.sId).toBe(agent.sId);
+    expect(updated.status).toBe("active");
+    expect(updated.name).toBe(agent.name);
+    expect(updated.description).toBe("Handles incident triage end to end.");
+    expect(updated.scope).toBe(agent.scope);
+    expect((await updated.fetchInstructions()).instructions).toBe(
+      agent.instructions
+    );
+    expect(updated.version).toBe(agent.version + 1);
   });
 
   it("applies a name and a description suggestion from the same batch as a single version", async () => {
@@ -1439,20 +1431,18 @@ describe("approving agent suggestions", () => {
 
     expect(response.status).toBe(200);
 
-    const updated = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "full",
-    });
-    expect(updated).toMatchObject({
-      sId: agent.sId,
-      status: "active",
-      name: "IncidentHelper",
-      description: "Handles incident triage end to end.",
-      scope: agent.scope,
-      instructions: agent.instructions,
-      // One batch, one version: both edits land in the same upgrade, not two.
-      version: agent.version + 1,
-    });
+    const updated = await AgentConfigurationFactory.refetch(auth, agent.sId);
+    assert(updated);
+    expect(updated.sId).toBe(agent.sId);
+    expect(updated.status).toBe("active");
+    expect(updated.name).toBe("IncidentHelper");
+    expect(updated.description).toBe("Handles incident triage end to end.");
+    expect(updated.scope).toBe(agent.scope);
+    expect((await updated.fetchInstructions()).instructions).toBe(
+      agent.instructions
+    );
+    // One batch, one version: both edits land in the same upgrade, not two.
+    expect(updated.version).toBe(agent.version + 1);
   });
 
   it("returns 400 for kinds that cannot be applied server-side", async () => {

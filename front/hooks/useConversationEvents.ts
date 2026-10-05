@@ -36,12 +36,21 @@ export function useConversationEvents({
     [owner.sId, conversationId]
   );
 
+  const buildLongPollURL = useCallback(
+    (lastEvent: string | null) => {
+      const url = buildEventSourceURL(lastEvent);
+      return url?.replace("/events?", "/events/poll?") ?? null;
+    },
+    [buildEventSourceURL]
+  );
+
   useEventSource(
     buildEventSourceURL,
     onEvent,
     conversationId ? `conversation-${conversationId}` : "",
     {
       workspaceId: owner.sId,
+      buildLongPollURL,
       isReadyToConsumeStream,
       telemetryContext: { sseKind: "conversation", conversationId },
     }

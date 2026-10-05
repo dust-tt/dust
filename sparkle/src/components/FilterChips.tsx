@@ -1,5 +1,6 @@
 import { assertNever } from "@sparkle/lib/utils";
 import React, { useCallback, useState } from "react";
+
 import { Button, type ButtonProps } from "./Button";
 
 export const FILTER_CHIP_VARIANTS = ["primary", "secondary"] as const;
@@ -33,6 +34,8 @@ export interface FilterChipProps {
   variant?: FilterChipVariant;
   /** Tooltip label; required for icon-only chips. */
   tooltip?: string;
+  /** When true, the chip cannot be selected. */
+  disabled?: boolean;
   /** Called on click; the caller owns the selection and toggles it. For a non-interactive badge use Chip. */
   onClick: () => void;
 }
@@ -49,6 +52,7 @@ export function FilterChip({
   isSelected = false,
   variant = "primary",
   tooltip,
+  disabled = false,
   onClick,
 }: FilterChipProps) {
   return (
@@ -57,6 +61,7 @@ export function FilterChip({
       label={label}
       icon={icon}
       tooltip={tooltip}
+      disabled={disabled}
       aria-pressed={isSelected}
       onClick={onClick}
       {...(isSelected ? selectedButtonProps(variant) : { variant: "ghost" })}
@@ -69,8 +74,12 @@ interface FilterChipsProps<T extends string> {
   filters: T[];
   /** Called with the clicked filter's name; only fires when the selection changes. */
   onFilterClick: (filterName: T) => void;
-  /** Filter preselected on mount (must be one of filters). */
+  /** Filter preselected on mount (must be one of filters). Ignored when `selectedFilter` is set. */
   defaultFilter?: T;
+  /** Controlled selection; when set, the parent owns the active chip. */
+  selectedFilter?: T;
+  /** Filters that cannot be selected (e.g. categories with no matching results). */
+  disabledFilters?: readonly T[];
   /** Selected look for every chip; see FilterChip. */
   variant?: FilterChipVariant;
 }
@@ -86,21 +95,34 @@ export function FilterChips<T extends string>({
   filters,
   onFilterClick,
   defaultFilter,
+  selectedFilter: controlledSelectedFilter,
+  disabledFilters,
   variant = "primary",
 }: FilterChipsProps<T>) {
-  const [selectedFilter, setSelectedFilter] = useState<T | null>(
-    defaultFilter && filters.includes(defaultFilter) ? defaultFilter : null
-  );
+  const [uncontrolledSelectedFilter, setUncontrolledSelectedFilter] =
+    useState<T | null>(
+      defaultFilter && filters.includes(defaultFilter) ? defaultFilter : null
+    );
+
+  const selectedFilter =
+    controlledSelectedFilter !== undefined
+      ? controlledSelectedFilter
+      : uncontrolledSelectedFilter;
 
   const handleFilterClick = useCallback(
     (filterName: T) => {
+      if (disabledFilters?.includes(filterName)) {
+        return;
+      }
       // Avoid unnecessary re-renders by only triggering event if filter has changed.
       if (filterName !== selectedFilter) {
-        setSelectedFilter(filterName);
+        if (controlledSelectedFilter === undefined) {
+          setUncontrolledSelectedFilter(filterName);
+        }
         onFilterClick(filterName);
       }
     },
-    [onFilterClick, selectedFilter]
+    [controlledSelectedFilter, disabledFilters, onFilterClick, selectedFilter]
   );
 
   return (
@@ -110,6 +132,7 @@ export function FilterChips<T extends string>({
           key={filterName}
           label={filterName}
           isSelected={selectedFilter === filterName}
+          disabled={disabledFilters?.includes(filterName) ?? false}
           variant={variant}
           onClick={() => handleFilterClick(filterName)}
         />

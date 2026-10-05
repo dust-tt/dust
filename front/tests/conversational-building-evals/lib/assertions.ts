@@ -1,4 +1,5 @@
 import { extractKnowledgeTagReferences } from "@app/lib/knowledge/format";
+import { extractSkillRefs } from "@app/lib/skills/format";
 import { extractToolTags } from "@app/lib/tools/format";
 import { TOOL } from "@app/tests/conversational-building-evals/lib/tool-runner";
 import type {
@@ -291,6 +292,31 @@ function validateSeparateSuggestions(
   return { success: true };
 }
 
+function validateNoSuggestion(
+  requiredToolNames: string[],
+  toolCalls: ExecutedToolCall[]
+): AssertionResult {
+  const missing = requiredToolNames.filter(
+    (name) => !toolCalls.some((tc) => tc.name === name && !tc.isError)
+  );
+  if (missing.length > 0) {
+    return {
+      success: false,
+      error: `Expected a successful call to ${missing.join(", ")}`,
+    };
+  }
+  const recorded = toolCalls.filter(
+    (tc) => tc.name === TOOL.suggest && !tc.isError
+  );
+  if (recorded.length > 0) {
+    return {
+      success: false,
+      error: `Expected no ${TOOL.suggest} call; got ${JSON.stringify(recorded.map(getSuggestions))}`,
+    };
+  }
+  return { success: true };
+}
+
 /**
  * Validates the run's final (last non-exploratory) tool call against the scenario expectation: it
  * must be a `suggest` call carrying the expected change on the expected entity. Skill, agent and
@@ -304,6 +330,10 @@ export function validateFinalToolCall(
   }: Pick<ExecutionResult, "finalToolCall" | "toolCalls">,
   scenario: SeededScenario
 ): AssertionResult {
+  if (assertion.type === "noSuggestion") {
+    return validateNoSuggestion(assertion.requiredToolNames, toolCalls);
+  }
+
   if (!finalToolCall) {
     return {
       success: false,
@@ -314,6 +344,137 @@ export function validateFinalToolCall(
   switch (assertion.type) {
     case "suggestAgentCreation":
       return findSuggestion(finalToolCall, "create_agent");
+
+    case "suggestSubAgentByRef": {
+      const created = findSuggestion(finalToolCall, "create_agent");
+      if (!created.success) {
+        return created;
+      }
+      const createdRefs = getSuggestions(finalToolCall)
+        .filter((s) => s.kind === "create_agent")
+        .map((s) => s.ref)
+        .filter(isString);
+
+      const parent = findSuggestion(finalToolCall, "edit_agent", {
+        field: "agentId",
+        id: resolveAgentId(scenario, assertion.parentAgentKey),
+        label: `agent "${assertion.parentAgentKey}"`,
+      });
+      if (!parent.success) {
+        return parent;
+      }
+      const { subAgents } = parent.item;
+      const addAgentRefs =
+        isSuggestionItem(subAgents) && Array.isArray(subAgents.addAgentRefs)
+          ? subAgents.addAgentRefs
+          : [];
+      const addedCreatedRefs = createdRefs.filter((ref) =>
+        addAgentRefs.includes(ref)
+      );
+
+      const expectedCount = assertion.subAgentCount ?? 1;
+      if (addedCreatedRefs.length < expectedCount) {
+        return {
+          success: false,
+          error: `The edit_agent suggestion adds ${addedCreatedRefs.length} created agent(s) as sub-agents by ref, expected ${expectedCount} (created refs ${JSON.stringify(createdRefs)}): ${JSON.stringify(parent.item)}`,
+        };
+      }
+      return { success: true };
+    }
+
+    case "suggestAgentSkillByRef": {
+      const created = findSuggestion(finalToolCall, "create_skill");
+      if (!created.success) {
+        return created;
+      }
+      const { ref } = created.item;
+      if (!isString(ref)) {
+        return {
+          success: false,
+          error: `The create_skill suggestion declares no ref: ${JSON.stringify(created.item)}`,
+        };
+      }
+
+      if (!assertion.agentKey) {
+        const agent = findSuggestion(finalToolCall, "create_agent");
+        if (!agent.success) {
+          return agent;
+        }
+        const { skillRefs } = agent.item;
+        if (!Array.isArray(skillRefs) || !skillRefs.includes(ref)) {
+          return {
+            success: false,
+            error: `The create_agent suggestion does not give the created skill (ref "${ref}") to the agent: ${JSON.stringify(agent.item)}`,
+          };
+        }
+        return { success: true };
+      }
+
+      const agent = findSuggestion(finalToolCall, "edit_agent", {
+        field: "agentId",
+        id: resolveAgentId(scenario, assertion.agentKey),
+        label: `agent "${assertion.agentKey}"`,
+      });
+      if (!agent.success) {
+        return agent;
+      }
+      const { skills } = agent.item;
+      const addSkillRefs =
+        isSuggestionItem(skills) && Array.isArray(skills.addSkillRefs)
+          ? skills.addSkillRefs
+          : [];
+      if (!addSkillRefs.includes(ref)) {
+        return {
+          success: false,
+          error: `The edit_agent suggestion does not add the created skill (ref "${ref}") to the agent: ${JSON.stringify(agent.item)}`,
+        };
+      }
+      return { success: true };
+    }
+
+    case "suggestSkillCitingNewSkill": {
+      const created = findSuggestion(finalToolCall, "create_skill");
+      if (!created.success) {
+        return created;
+      }
+      const creations = getSuggestions(finalToolCall).filter(
+        (s) => s.kind === "create_skill"
+      );
+      const declaredRefs = creations.map((s) => s.ref).filter(isString);
+
+      if (!assertion.skillKey) {
+        const citesAnotherCreation = creations.some(
+          (creation) =>
+            isString(creation.instructions) &&
+            extractSkillRefs(creation.instructions).some(
+              (ref) => ref !== creation.ref && declaredRefs.includes(ref)
+            )
+        );
+        if (!citesAnotherCreation) {
+          return {
+            success: false,
+            error: `No create_skill suggestion cites another created skill as <skill ref="..."/>: ${JSON.stringify(creations)}`,
+          };
+        }
+        return { success: true };
+      }
+
+      const edit = findSkillEdit(finalToolCall, scenario, assertion.skillKey);
+      if (!edit.success) {
+        return edit;
+      }
+      const citedRefs = extractSkillRefs(getInstructionEditsContent(edit.item));
+      if (!citedRefs.some((ref) => declaredRefs.includes(ref))) {
+        return {
+          success: false,
+          error: `The edit_skill instruction edits cite no created skill (declared refs ${JSON.stringify(declaredRefs)}, cited ${JSON.stringify(citedRefs)})`,
+        };
+      }
+      return { success: true };
+    }
+
+    case "suggestSkillCreation":
+      return findSuggestion(finalToolCall, "create_skill");
 
     case "suggestSkillUpdate": {
       const found = findSkillEdit(finalToolCall, scenario, assertion.skillKey);
@@ -374,6 +535,13 @@ export function validateFinalToolCall(
         field: "skillId",
         id: resolveSkillId(scenario, assertion.skillKey),
         label: `skill "${assertion.skillKey}"`,
+      });
+
+    case "suggestAgentDeletion":
+      return findSuggestion(finalToolCall, "delete_agent", {
+        field: "agentId",
+        id: resolveAgentId(scenario, assertion.agentKey),
+        label: `agent "${assertion.agentKey}"`,
       });
 
     case "suggestSkillName":
@@ -537,10 +705,24 @@ function getEntitiesToMention(
   switch (assertion.type) {
     // A created agent has no id the model could know: it is named in plain text.
     case "suggestAgentCreation":
+    case "suggestSkillCreation":
+    // Nothing was suggested: what the response must name is left to the judge criteria.
+    case "noSuggestion":
       return [];
+    case "suggestSubAgentByRef":
+      return [{ kind: "agent", key: assertion.parentAgentKey }];
+    case "suggestAgentSkillByRef":
+      return assertion.agentKey
+        ? [{ kind: "agent", key: assertion.agentKey }]
+        : [];
+    case "suggestSkillCitingNewSkill":
+      return assertion.skillKey
+        ? [{ kind: "skill", key: assertion.skillKey }]
+        : [];
     case "suggestAgentInstructionsChange":
     case "suggestAgentModelChange":
     case "suggestAgentStructuredOutput":
+    case "suggestAgentDeletion":
       return [{ kind: "agent", key: assertion.agentKey }];
     case "separateSuggestions":
       return assertion.suggestions.map((expected) => {

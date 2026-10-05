@@ -3,10 +3,13 @@
 // execution. These attributed micro-credits are un-rounded and cache-naive, so they are not
 // expected to sum to the billed amount. Their job is to rank what drove the cost, not to
 // reconcile euros.
-import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
+import {
+  computeTokensCostForUsageInMicroUsd,
+  inferenceRegionForEndpointRegion,
+} from "@app/lib/api/assistant/token_pricing";
 import { MICRO_CREDITS_PER_CREDIT } from "@app/lib/credits/units";
 import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
-import type { RunUsageType } from "@app/lib/resources/run_resource";
+import type { RunUsageWithRunKeyType } from "@app/lib/resources/run_resource";
 import assert from "assert";
 
 // Version 1 attributed the model token buckets only. Version 2 added per-tool rows and netted the
@@ -21,16 +24,18 @@ import assert from "assert";
 // Version 8 prices tokens at the run usage's service tier, so flex runs use the discounted rates.
 // Version 9 also drops explicit model token count adjustments from tool footprints, which only
 // Anthropic models declared, so their tool rows use the raw tokenizer estimate.
+// Version 10 prices tokens at the run usage's inference region, so EU runs use the regional rates.
 // Each version remains a separate, self-consistent set of rows.
-export const AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION = 9;
+export const AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION = 10;
 
 export type RunUsageForAttribution = Pick<
-  RunUsageType,
+  RunUsageWithRunKeyType,
   | "completionTokens"
   | "isBatch"
   | "modelId"
   | "promptTokens"
   | "reasoningTokens"
+  | "region"
   | "serviceTier"
 >;
 
@@ -113,12 +118,21 @@ function creditAmountMicroFromCostMicroUsd(costMicroUsd: number): number {
  * component costs, and it ranks cost drivers correctly even though it overstates absolute credits.
  * Empty usages use one token for the rate calculation to avoid division by zero.
  */
+/**
+ * @cc [owner:sfriquet,label:product] rates-match-recorded-cost-pricing
+ * Rates MUST come from the pricing entry and multipliers that priced the usage's recorded
+ * `costMicroUsd`: same `modelId`, `isBatch`, `serviceTier`, and inference region derived from
+ * `region` (`null` prices as global). Only cache read and write adjustments are ignored.
+ */
 function getRunTokenRates(usage: RunUsageForAttribution): {
   inputCostMicroUsdPerToken: number;
   outputCostMicroUsdPerToken: number;
 } {
   const promptTokensForRate = Math.max(usage.promptTokens, 1);
   const completionTokensForRate = Math.max(usage.completionTokens, 1);
+  const inferenceRegion = usage.region
+    ? inferenceRegionForEndpointRegion(usage.region)
+    : "global";
   const inputCostMicroUsd = computeTokensCostForUsageInMicroUsd({
     modelId: usage.modelId,
     promptTokens: promptTokensForRate,
@@ -127,6 +141,7 @@ function getRunTokenRates(usage: RunUsageForAttribution): {
     cacheCreationTokens: null,
     isBatch: usage.isBatch,
     serviceTier: usage.serviceTier,
+    inferenceRegion,
   });
   const totalCostMicroUsd = computeTokensCostForUsageInMicroUsd({
     modelId: usage.modelId,
@@ -136,6 +151,7 @@ function getRunTokenRates(usage: RunUsageForAttribution): {
     cacheCreationTokens: null,
     isBatch: usage.isBatch,
     serviceTier: usage.serviceTier,
+    inferenceRegion,
   });
 
   return {

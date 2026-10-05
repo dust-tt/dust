@@ -16,8 +16,9 @@ import { getUserGroupMemberships } from "@app/lib/workspace_usage";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
+import { tz } from "@date-fns/tz";
 import type { estypes } from "@elastic/elasticsearch";
-import { formatInTimeZone } from "date-fns-tz";
+import { format } from "date-fns";
 import { Op } from "sequelize";
 
 type TopUserExportBucket = {
@@ -126,7 +127,7 @@ export async function fetchUserExportRows({
           messageCount: Math.round(b.unique_messages?.value ?? 0),
           lastMessageSent:
             typeof lastMessageMs === "number"
-              ? formatInTimeZone(lastMessageMs, timezone, "yyyy-MM-dd")
+              ? format(lastMessageMs, "yyyy-MM-dd", { in: tz(timezone) })
               : "",
           activeDaysCount: Array.isArray(activeDaysBuckets)
             ? activeDaysBuckets.filter((d) => d.doc_count > 0).length
@@ -182,7 +183,7 @@ export async function fetchUserExportRows({
       userEmail: user.email ?? "",
       userStatus: getUserExportStatus({ membership, user, now }),
       lastLoginAt: user.lastLoginAt
-        ? formatInTimeZone(user.lastLoginAt, timezone, "yyyy-MM-dd")
+        ? format(user.lastLoginAt, "yyyy-MM-dd", { in: tz(timezone) })
         : "",
       messageCount: metrics?.messageCount ?? 0,
       lastMessageSent: metrics?.lastMessageSent ?? "",

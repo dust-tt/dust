@@ -1,7 +1,7 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { GetWorkspaceGrantedRolesResponseBody } from "@app/lib/api/workspace";
 import { clientFetch } from "@app/lib/egress/client";
-import { compareStrings } from "@app/lib/i18n/format";
+import { compareStrings, formatNumber } from "@app/lib/i18n/format";
 import type { BulkSeatChangePreviewBody } from "@app/lib/swr/memberships";
 import {
   BulkSeatChangePreviewResponseSchema,
@@ -651,7 +651,7 @@ export function useUpdateGroupSpendLimit({
           description = `${groupName}'s spend limit has been removed.`;
           break;
         case "limited":
-          description = `${groupName}'s spend limit has been set to ${limit.awuCredits.toLocaleString("en-US")} credits.`;
+          description = `${groupName}'s spend limit has been set to ${formatNumber(limit.awuCredits)} credits.`;
           break;
         default:
           assertNeverAndIgnore(limit);

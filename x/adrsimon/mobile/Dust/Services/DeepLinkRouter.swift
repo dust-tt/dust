@@ -3,6 +3,7 @@ import Foundation
 enum DeepLinkDestination {
     case auth(code: String)
     case frame(token: String)
+    case conversation(id: String)
 }
 
 enum DeepLinkRouter {
@@ -20,6 +21,14 @@ enum DeepLinkRouter {
             let token = url.pathComponents.dropFirst().first
             if let token, !token.isEmpty {
                 return .frame(token: token)
+            }
+            return nil
+        }
+
+        if url.scheme == AppConfig.callbackURLScheme, url.host == "conversation" {
+            let id = url.pathComponents.dropFirst().first
+            if let id, !id.isEmpty {
+                return .conversation(id: id)
             }
             return nil
         }

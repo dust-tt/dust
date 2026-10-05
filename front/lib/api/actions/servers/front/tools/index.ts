@@ -98,7 +98,7 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
       const data = parseFrontConversation(
         await makeFrontAPIRequest({
           method: "GET",
-          endpoint: `conversations/${conversation_id}`,
+          endpoint: `conversations/${encodeURIComponent(conversation_id)}`,
           apiToken,
         })
       );
@@ -131,7 +131,7 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
 
       const data = (await makeFrontAPIRequest({
         method: "GET",
-        endpoint: `conversations/${conversation_id}/messages`,
+        endpoint: `conversations/${encodeURIComponent(conversation_id)}/messages`,
         apiToken,
       })) as FrontListResponse;
 
@@ -169,7 +169,7 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
       if (contact_id) {
         data = await makeFrontAPIRequest({
           method: "GET",
-          endpoint: `contacts/${contact_id}`,
+          endpoint: `contacts/${encodeURIComponent(contact_id)}`,
           apiToken,
         });
       } else if (email) {
@@ -359,7 +359,7 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
 
       const data = await makeFrontAPIRequest({
         method: "GET",
-        endpoint: `conversations/${conversation_id}/drafts`,
+        endpoint: `conversations/${encodeURIComponent(conversation_id)}/drafts`,
         apiToken,
       });
 
@@ -393,7 +393,7 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
 
       const data = await makeFrontAPIRequest({
         method: "POST",
-        endpoint: `inboxes/${inbox_id}/messages`,
+        endpoint: `inboxes/${encodeURIComponent(inbox_id)}/messages`,
         apiToken,
         body: {
           to,
@@ -430,13 +430,13 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
 
       const conversation = await makeFrontAPIRequest({
         method: "GET",
-        endpoint: `conversations/${conversation_id}`,
+        endpoint: `conversations/${encodeURIComponent(conversation_id)}`,
         apiToken,
       });
 
       const messagesData = (await makeFrontAPIRequest({
         method: "GET",
-        endpoint: `conversations/${conversation_id}/messages`,
+        endpoint: `conversations/${encodeURIComponent(conversation_id)}/messages`,
         apiToken,
       })) as FrontListResponse;
 
@@ -460,7 +460,7 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
 
       await makeFrontAPIRequest({
         method: "POST",
-        endpoint: `conversations/${conversation_id}/drafts`,
+        endpoint: `conversations/${encodeURIComponent(conversation_id)}/drafts`,
         apiToken,
         body: {
           body: htmlBody,
@@ -492,7 +492,7 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
 
       await makeFrontAPIRequest({
         method: "DELETE",
-        endpoint: `drafts/${draft_id}`,
+        endpoint: `drafts/${encodeURIComponent(draft_id)}`,
         apiToken,
         body: { version },
       });
@@ -535,7 +535,7 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
 
       await makeFrontAPIRequest({
         method: "POST",
-        endpoint: `conversations/${conversation_id}/tags`,
+        endpoint: `conversations/${encodeURIComponent(conversation_id)}/tags`,
         apiToken,
         body: { tag_ids },
       });
@@ -562,7 +562,7 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
 
       await makeFrontAPIRequest({
         method: "POST",
-        endpoint: `conversations/${conversation_id}/comments`,
+        endpoint: `conversations/${encodeURIComponent(conversation_id)}/comments`,
         apiToken,
         body: {
           body,
@@ -592,7 +592,7 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
 
       await makeFrontAPIRequest({
         method: "POST",
-        endpoint: `conversations/${conversation_id}/links`,
+        endpoint: `conversations/${encodeURIComponent(conversation_id)}/links`,
         apiToken,
         body: { conversation_ids: linked_conversation_ids },
       });
@@ -622,8 +622,8 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
 
       const endpoint =
         type === "comment"
-          ? `conversations/${conversation_id}/comments`
-          : `conversations/${conversation_id}/messages`;
+          ? `conversations/${encodeURIComponent(conversation_id)}/comments`
+          : `conversations/${encodeURIComponent(conversation_id)}/messages`;
 
       const htmlBody = await convertMarkdownToHTML(body);
 
@@ -665,7 +665,7 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
 
       await makeFrontAPIRequest({
         method: "PATCH",
-        endpoint: `conversations/${conversation_id}`,
+        endpoint: `conversations/${encodeURIComponent(conversation_id)}`,
         apiToken,
         body: { status },
       });
@@ -694,7 +694,7 @@ const handlers: ToolHandlers<typeof FRONT_TOOLS_METADATA> = {
 
       await makeFrontAPIRequest({
         method: "PUT",
-        endpoint: `conversations/${conversation_id}/assignee`,
+        endpoint: `conversations/${encodeURIComponent(conversation_id)}/assignee`,
         apiToken,
         body: { assignee_id: teammate_id },
       });

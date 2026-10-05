@@ -121,6 +121,21 @@ describe("POST /api/user/metadata/:key", () => {
     expect(await user.getMetadata(KEY, otherWorkspace.id)).toBeNull();
     expect((await user.getMetadata(KEY))?.value).toBe("scoped");
   });
+
+  it("rejects writes to server-owned onboarding keys", async () => {
+    const { user, workspace } = await createPrivateApiMockRequest();
+
+    const response = await postMetadata(
+      "onboarding:conversation",
+      "cnv_other",
+      workspace.sId
+    );
+
+    expect(response.status).toBe(400);
+    expect(
+      await user.getMetadata("onboarding:conversation", workspace.id)
+    ).toBeNull();
+  });
 });
 
 describe("DELETE /api/user/metadata/:key", () => {
@@ -137,5 +152,17 @@ describe("DELETE /api/user/metadata/:key", () => {
     expect((await user.getMetadata(KEY, otherWorkspace.id))?.value).toBe(
       "other-workspace"
     );
+  });
+
+  it("keeps server-owned onboarding keys when the requested prefix matches them", async () => {
+    const { user, workspace } = await createPrivateApiMockRequest();
+    await user.setMetadata("onboarding:conversation", "cnv_mine", workspace.id);
+
+    const response = await deleteMetadata("onb", workspace.sId);
+
+    expect(response.status).toBe(200);
+    expect(
+      (await user.getMetadata("onboarding:conversation", workspace.id))?.value
+    ).toBe("cnv_mine");
   });
 });

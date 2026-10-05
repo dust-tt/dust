@@ -1,34 +1,21 @@
-import { makeLinearWebhookEnvelopeSchema } from "@app/lib/triggers/built-in-webhooks/linear/schemas/envelope";
-import { issueSchema } from "@app/lib/triggers/built-in-webhooks/linear/schemas/issue";
-import { projectSchema } from "@app/lib/triggers/built-in-webhooks/linear/schemas/project";
 import type {
-  BaseWebhookPreset,
-  WebhookEvent,
+  WebhookEventMetadata,
+  WebhookPresetMetadata,
 } from "@app/types/triggers/webhooks_source_preset";
 
-const LINEAR_ISSUE_EVENT: WebhookEvent = {
+const LINEAR_ISSUE_EVENT = {
   name: "issue",
-  value: "Issue",
+  value: "Issue" as const,
   description: "Lambda event for Linear webhooks",
-  schema: makeLinearWebhookEnvelopeSchema({
-    entityType: "Issue",
-    dataSchema: issueSchema,
-  }),
-  sample: null,
-};
+} satisfies WebhookEventMetadata;
 
-const LINEAR_PROJECT_EVENT: WebhookEvent = {
+const LINEAR_PROJECT_EVENT = {
   name: "project",
-  value: "Project",
+  value: "Project" as const,
   description: "Lambda event for Linear webhooks",
-  schema: makeLinearWebhookEnvelopeSchema({
-    entityType: "Project",
-    dataSchema: projectSchema,
-  }),
-  sample: null,
-};
+} satisfies WebhookEventMetadata;
 
-export const LINEAR_WEBHOOK_PRESET: BaseWebhookPreset = {
+export const LINEAR_WEBHOOK_METADATA = {
   name: "Linear",
   eventCheck: {
     type: "headers",
@@ -36,6 +23,5 @@ export const LINEAR_WEBHOOK_PRESET: BaseWebhookPreset = {
   },
   events: [LINEAR_ISSUE_EVENT, LINEAR_PROJECT_EVENT],
   description: "Receive events from Linear.",
-  filterGenerationInstructions: null,
   webhookPageUrl: "https://linear.app/settings/api",
-};
+} satisfies WebhookPresetMetadata;

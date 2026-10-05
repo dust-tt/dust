@@ -1,13 +1,12 @@
 import { timingSafeEqual } from "node:crypto";
-
+import {
+  HEADERS_ALLOWED_LIST,
+  processWebhookRequest,
+} from "@app/lib/api/triggers/webhook";
 import { Authenticator } from "@app/lib/auth";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import {
-  HEADERS_ALLOWED_LIST,
-  processWebhookRequest,
-} from "@app/lib/triggers/webhook";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 import { isString } from "@app/types/shared/utils/general";
 import type { PostWebhookTriggerResponseType } from "@dust-tt/client";

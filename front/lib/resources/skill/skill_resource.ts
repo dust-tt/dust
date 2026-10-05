@@ -19,6 +19,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { formatDateTime } from "@app/lib/i18n/format";
 import { hasAll } from "@app/lib/matcher/operators/array";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
@@ -37,8 +38,9 @@ import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorite";
 import { updateAgentRequestedSpaceIdsInPlace } from "@app/lib/resources/agent_requested_spaces";
+import type { AgentResource } from "@app/lib/resources/agent_resource";
 import {
-  destroyAgentSkillLinksForCustomSkill,
+  destroyAgentSkillLinksForCustomSkills,
   onCustomSkillStatusChanged,
 } from "@app/lib/resources/agent_skills";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -83,7 +85,6 @@ import {
   serializeSkillTag,
   serializeUnavailableSkillTag,
 } from "@app/lib/skills/format";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
@@ -93,10 +94,7 @@ import {
   launchIndexSkillSearchWorkflow,
 } from "@app/temporal/es_indexation/client";
 import type { DiscoverySkillType } from "@app/types/api/discovery";
-import type {
-  AgentConfigurationWithoutModelType,
-  LightAgentConfigurationType,
-} from "@app/types/assistant/agent";
+import type { AgentConfigurationWithoutModelType } from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type {
@@ -132,6 +130,7 @@ import assert from "assert";
 import groupBy from "lodash/groupBy";
 import isEqual from "lodash/isEqual";
 import omit from "lodash/omit";
+import partition from "lodash/partition";
 import range from "lodash/range";
 import uniq from "lodash/uniq";
 import type {
@@ -1795,40 +1794,34 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  /**
-   * Batched version of listByAgentConfiguration. Performs 2 SQL queries.
-   * Does not support global agents as we rely on the ID for mapping: they all share the same
-   * model id and hold no `AgentSkillModel` row. Their skills are code-defined, so resolve them
-   * with `fetchByIds` on the ids their configuration declares.
-   */
-  static async listByAgentConfigurations<T extends LightAgentConfigurationType>(
+  // The skills of each non-global agent configuration, keyed by its `agent_configurations` row
+  // model id, in 2 SQL queries. Global agents hold no `AgentSkillModel` row, see `listByAgents`.
+  private static async listByAgentConfigurationModelIds(
     auth: Authenticator,
-    agentConfigurations: T[],
-    fetchOptions?: SkillHydrationOptions & {
-      permissionFiltering?: SkillPermissionFilteringMode;
-    }
-  ): Promise<{ agentConfiguration: T; skill: SkillResource }[]> {
+    agentConfigurationModelIds: ModelId[],
+    fetchOptions?: SkillFetchContext & SkillHydrationOptions
+  ): Promise<Map<ModelId, SkillResource[]>> {
+    // Global agents share the `id: -1` sentinel (see `skill-references-by-configuration-model-id`).
     assert(
-      agentConfigurations.every((c) => !isGlobalAgentId(c.sId)),
+      agentConfigurationModelIds.every((id) => id > 0),
       "Global agents are not supported"
     );
 
-    if (agentConfigurations.length === 0) {
-      return [];
+    const skillsByAgent = new Map<ModelId, SkillResource[]>();
+    if (agentConfigurationModelIds.length === 0) {
+      return skillsByAgent;
     }
-
-    const workspace = auth.getNonNullableWorkspace();
 
     // Fetch all agent-skill relationships for the given agents.
     const agentSkills = await AgentSkillModel.findAll({
       where: {
-        agentConfigurationId: agentConfigurations.map((c) => c.id),
-        workspaceId: workspace.id,
+        agentConfigurationId: agentConfigurationModelIds,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
 
     if (agentSkills.length === 0) {
-      return [];
+      return skillsByAgent;
     }
 
     // Fetch all unique skills in one batch.
@@ -1851,27 +1844,67 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       }
     }
 
-    // Map skills back to each config.
-    const configById = new Map(agentConfigurations.map((c) => [c.id, c]));
-    return removeNulls(
-      Object.entries(
-        groupBy(agentSkills, (s) => s.agentConfigurationId)
-      ).flatMap(([configId, refs]) => {
-        const agentConfiguration = configById.get(parseInt(configId, 10));
-        if (!agentConfiguration) {
-          return [];
-        }
-        return refs.map((ref) => {
-          if (ref.globalSkillId) {
-            const skill = skillByGlobalId.get(ref.globalSkillId);
-            return skill ? { agentConfiguration, skill } : null;
-          } else if (ref.customSkillId) {
-            const skill = skillByCustomId.get(ref.customSkillId);
-            return skill ? { agentConfiguration, skill } : null;
-          }
-        });
-      })
+    for (const ref of agentSkills) {
+      let skill: SkillResource | undefined;
+      if (ref.globalSkillId) {
+        skill = skillByGlobalId.get(ref.globalSkillId);
+      } else if (ref.customSkillId) {
+        skill = skillByCustomId.get(ref.customSkillId);
+      }
+      if (skill) {
+        const skills = skillsByAgent.get(ref.agentConfigurationId) ?? [];
+        skills.push(skill);
+        skillsByAgent.set(ref.agentConfigurationId, skills);
+      }
+    }
+
+    return skillsByAgent;
+  }
+
+  // The skills of each agent, resolved by its scope as `agent-skills-by-scope` requires: a global
+  // agent's from the `codeDefinedSkillIds` it declares, a custom agent's from its configuration
+  // row. Every agent gets an entry, `[]` when it has no skill.
+  static async listByAgents(
+    auth: Authenticator,
+    agents: AgentResource[],
+    fetchOptions?: SkillFetchContext & SkillHydrationOptions
+  ): Promise<Map<AgentResource, SkillResource[]>> {
+    const [globalAgents, customAgents] = partition(
+      agents,
+      (agent) => agent.scope === "global"
     );
+    const [skillsByConfigurationModelId, codeDefinedSkills] = await Promise.all(
+      [
+        this.listByAgentConfigurationModelIds(
+          auth,
+          uniq(customAgents.map((agent) => agent.agentConfigurationModelId)),
+          fetchOptions
+        ),
+        this.fetchByIds(
+          auth,
+          uniq(globalAgents.flatMap((agent) => agent.codeDefinedSkillIds)),
+          fetchOptions
+        ),
+      ]
+    );
+    const codeDefinedSkillById = new Map(
+      codeDefinedSkills.map((skill) => [skill.sId, skill])
+    );
+
+    const skillsOf = (agent: AgentResource): SkillResource[] => {
+      if (agent.scope === "global") {
+        return removeNulls(
+          agent.codeDefinedSkillIds.map(
+            (skillId) => codeDefinedSkillById.get(skillId) ?? null
+          )
+        );
+      }
+      return (
+        skillsByConfigurationModelId.get(agent.agentConfigurationModelId) ?? []
+      );
+    };
+
+    return new Map(agents.map((agent) => [agent, skillsOf(agent)]));
   }
 
   /**
@@ -1971,6 +2004,34 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     return skills;
+  }
+
+  /**
+   * List the workspace's pending skills created before `createdBefore`, oldest first, for the
+   * hard-delete cron. Skips read filtering so no row is missed; the caller must be an admin.
+   */
+  static async listExpiredPending(
+    auth: Authenticator,
+    { createdBefore, limit }: { createdBefore: Date; limit: number }
+  ): Promise<SkillResource[]> {
+    assert(auth.isAdmin(), "Only admins can list expired pending skills.");
+
+    return this.baseFetch(
+      auth,
+      {
+        where: {
+          status: "pending",
+          createdAt: { [Op.lt]: createdBefore },
+        },
+        onlyCustom: true,
+        order: [["createdAt", "ASC"]],
+        limit,
+        withInstructions: false,
+        withTools: false,
+        withFileAttachments: false,
+      },
+      { permissionFiltering: "dangerously_skip" }
+    );
   }
 
   /**
@@ -2604,6 +2665,21 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         files: def.fetchFiles ? await def.fetchFiles(auth) : (def.files ?? []),
       }
     );
+  }
+
+  /**
+   * @cc [owner:aubin-tchoi,label:security] canWriteCustomSkillId-matches-canWrite
+   * For a custom skill, MUST match `auth.can("write", skill)` without fetching the resource.
+   */
+  static canWriteCustomSkillId(
+    auth: Authenticator,
+    { id, workspaceId }: { id: ModelId; workspaceId: ModelId }
+  ): boolean {
+    if (auth.isKey() && auth.isAdmin()) {
+      return true;
+    }
+
+    return this.customSkillAllowedVerbs(auth, { id, workspaceId }).has("write");
   }
 
   /**
@@ -3472,9 +3548,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         });
 
         if (existingArchivedSkill) {
-          const timestamp = formatTimestampToFriendlyDate(
-            existingArchivedSkill.updatedAt.getTime(),
-            "long"
+          const timestamp = formatDateTime(
+            existingArchivedSkill.updatedAt,
+            {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+              hour: "numeric",
+              minute: "numeric",
+              second: "numeric",
+            },
+            "en-US"
           );
           const suffix = ` (archived on ${timestamp}, ${SkillResource.modelIdToSId(existingArchivedSkill)})`;
           const name = existingArchivedSkill.name.slice(
@@ -3665,6 +3749,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       assert(
         auth.hasWorkspacePermission("make_discoverable", "skill"),
         "User is not authorized to update this skill's availability"
+      );
+    }
+
+    if (reinforcement !== undefined && reinforcement !== this.reinforcement) {
+      assert(
+        this.canChangeReinforcement(auth),
+        "User is not authorized to update this skill's self-improvement"
       );
     }
 
@@ -3983,6 +4074,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
     }
     return changedSkillIds;
+  }
+
+  canChangeReinforcement(auth: Authenticator): boolean {
+    return !this.selfImprovementLock || auth.isAdmin();
   }
 
   async updateReinforcement(
@@ -4365,27 +4460,42 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   async delete(auth: Authenticator): Promise<Result<number, Error>> {
-    if (!auth.can("admin", this)) {
-      return new Err(
-        new Error("User does not have permission to delete this skill.")
-      );
+    return SkillResource.batchDelete(auth, [this]);
+  }
+
+  static async batchDelete(
+    auth: Authenticator,
+    skills: SkillResource[]
+  ): Promise<Result<number, Error>> {
+    if (skills.length === 0) {
+      return new Ok(0);
+    }
+
+    for (const skill of skills) {
+      if (!auth.can("admin", skill)) {
+        return new Err(
+          new Error("User does not have permission to delete this skill.")
+        );
+      }
     }
 
     const workspace = auth.getNonNullableWorkspace();
+    const skillModelIds = skills.map((skill) => skill.id);
+    const skillIds = skills.map((skill) => skill.sId);
 
-    const whereWorkspaceIdAndSkillId = {
-      skillConfigurationId: this.id,
+    const whereWorkspaceIdAndSkillIds = {
+      skillConfigurationId: { [Op.in]: skillModelIds },
       workspaceId: workspace.id,
     };
 
     // Collect file IDs from current attachments and all version snapshots.
     const fileAttachmentRows = await SkillFileAttachmentModel.findAll({
-      where: whereWorkspaceIdAndSkillId,
+      where: whereWorkspaceIdAndSkillIds,
     });
     const currentFileIds = fileAttachmentRows.map((a) => a.fileId);
 
     const versionRows = await SkillVersionModel.findAll({
-      where: whereWorkspaceIdAndSkillId,
+      where: whereWorkspaceIdAndSkillIds,
       attributes: ["fileAttachmentIds"],
     });
     const versionFileIds = versionRows.flatMap((v) => v.fileAttachmentIds);
@@ -4398,81 +4508,109 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const { affectedCount, referencingSkillIds } = await withTransaction(
       async (transaction) => {
-        const referencingSkillIds =
-          await this.propagateReferenceUpdatesToParentSkills(
-            auth,
-            {
-              icon: this.icon,
-              name: this.name,
-              requestedSpaceIds: this.requestedSpaceIds,
-              status: "archived",
-            },
-            { transaction }
-          );
+        // Only skills referenced by another skill need their parents rewritten.
+        const references = await SkillReferenceModel.findAll({
+          attributes: ["childCustomSkillId"],
+          where: {
+            workspaceId: workspace.id,
+            childCustomSkillId: { [Op.in]: skillModelIds },
+          },
+          transaction,
+        });
+        const referencedSkillModelIds = new Set(
+          references.map((reference) => reference.childCustomSkillId)
+        );
 
-        await destroyAgentSkillLinksForCustomSkill(auth, {
-          customSkillModelId: this.id,
+        const referencingSkillIds: string[] = [];
+        for (const skill of skills) {
+          if (!referencedSkillModelIds.has(skill.id)) {
+            continue;
+          }
+          referencingSkillIds.push(
+            ...(await skill.propagateReferenceUpdatesToParentSkills(
+              auth,
+              {
+                icon: skill.icon,
+                name: skill.name,
+                requestedSpaceIds: skill.requestedSpaceIds,
+                status: "archived",
+              },
+              { transaction }
+            ))
+          );
+        }
+
+        await destroyAgentSkillLinksForCustomSkills(auth, {
+          customSkillModelIds: skillModelIds,
           transaction,
         });
 
-        await ProjectMetadataResource.removeSkillFromAllDefaultSkills(
+        await ProjectMetadataResource.removeSkillsFromAllDefaultSkills(
           auth,
-          this.sId,
+          skillIds,
           transaction
         );
 
-        // The per-user grant groups (see `writeEditorUserGrants`) exist only to hold this skill's
-        // grants, so they go with the skill. Listed by resource rather than by grant so a skill
+        // The per-user grant groups (see `writeEditorUserGrants`) exist only to hold the skills'
+        // grants, so they go with the skills. Listed by resource rather than by grant so a skill
         // never leaves a grant group behind, and fetched before the grants are dropped, since the
         // grants are what identifies them.
         const grantGroups =
-          await GroupPermissionResource.listRegularAutoGroupsForResource(auth, {
-            resourceType: "skill",
-            resourceId: this.id,
-            transaction,
-          });
+          await GroupPermissionResource.listRegularAutoGroupsForResources(
+            auth,
+            {
+              resourceType: "skill",
+              resourceIds: skillModelIds,
+              transaction,
+            }
+          );
 
-        // Drop the skill's instance grants before the groups go away: group_permissions rows are
+        // Drop the skills' instance grants before the groups go away: group_permissions rows are
         // keyed by both, and this also covers grants held by any other group.
-        await GroupPermissionResource.deleteAllForResource(auth, {
+        await GroupPermissionResource.deleteAllForResources(auth, {
           resourceType: "skill",
-          resourceId: this.id,
+          resourceIds: skillModelIds,
           transaction,
         });
 
-        for (const grantGroup of grantGroups) {
-          await grantGroup.delete(auth, { transaction });
+        const deleteGroupsRes = await GroupResource.batchDelete(
+          auth,
+          grantGroups,
+          { transaction }
+        );
+        if (deleteGroupsRes.isErr()) {
+          throw deleteGroupsRes.error;
         }
 
         await SkillFileAttachmentModel.destroy({
-          where: whereWorkspaceIdAndSkillId,
+          where: whereWorkspaceIdAndSkillIds,
           transaction,
         });
 
         await SkillDataSourceConfigurationModel.destroy({
-          where: whereWorkspaceIdAndSkillId,
+          where: whereWorkspaceIdAndSkillIds,
           transaction,
         });
 
         await SkillMCPServerConfigurationModel.destroy({
-          where: whereWorkspaceIdAndSkillId,
+          where: whereWorkspaceIdAndSkillIds,
           transaction,
         });
 
         await SkillSuggestionModel.destroy({
-          where: whereWorkspaceIdAndSkillId,
+          where: whereWorkspaceIdAndSkillIds,
           transaction,
         });
 
         await SkillVersionModel.destroy({
-          where: whereWorkspaceIdAndSkillId,
+          where: whereWorkspaceIdAndSkillIds,
           transaction,
         });
 
         await SkillReferenceModel.destroy({
           where: {
             workspaceId: workspace.id,
-            parentSkillId: this.id,
+            parentSkillId: { [Op.in]: skillModelIds },
           },
           transaction,
         });
@@ -4480,7 +4618,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         await SkillReferenceModel.destroy({
           where: {
             workspaceId: workspace.id,
-            childCustomSkillId: this.id,
+            childCustomSkillId: { [Op.in]: skillModelIds },
           },
           transaction,
         });
@@ -4489,33 +4627,45 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           where: {
             workspaceId: workspace.id,
             type: "skill",
-            itemId: this.sId,
+            itemId: { [Op.in]: skillIds },
           },
           transaction,
         });
 
         const affectedCount = await this.model.destroy({
           where: {
-            id: this.id,
+            id: { [Op.in]: skillModelIds },
             workspaceId: workspace.id,
           },
           transaction,
         });
         return {
           affectedCount,
-          referencingSkillIds,
+          referencingSkillIds: uniq(referencingSkillIds),
         };
       }
     );
 
-    const deleteSearchResult = await launchDeleteSkillSearchWorkflow({
-      workspaceId: workspace.sId,
-      skillId: this.sId,
-    });
-    if (deleteSearchResult.isErr()) {
-      return deleteSearchResult;
+    // Pending skills are never indexed (see `pending-skill-unlisted`), so the purge of pending
+    // skills launches no search workflow.
+    for (const skill of skills) {
+      if (skill.status === "pending") {
+        continue;
+      }
+      const deleteSearchResult = await launchDeleteSkillSearchWorkflow({
+        workspaceId: workspace.sId,
+        skillId: skill.sId,
+      });
+      if (deleteSearchResult.isErr()) {
+        return deleteSearchResult;
+      }
     }
-    await SkillResource.launchSearchIndexation(auth, referencingSkillIds);
+    // Skills deleted in this batch are gone: only surviving parents need reindexing.
+    const deletedSkillIds = new Set(skillIds);
+    await SkillResource.launchSearchIndexation(
+      auth,
+      referencingSkillIds.filter((sId) => !deletedSkillIds.has(sId))
+    );
 
     // Delete files from cloud storage outside the transaction (I/O with GCS).
     for (const file of filesToDelete) {

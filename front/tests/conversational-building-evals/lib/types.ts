@@ -7,6 +7,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type {
   ModelIdType,
+  ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
@@ -61,6 +62,8 @@ export interface SeedAgent {
   // Block-structured HTML with hand-picked `data-block-id`s, so scenarios can assert on which
   // blocks an edit targets. Wrap in the `instructions-root` div, as the editor stores it.
   instructionsHtml: string;
+  // Defaults to the factory's model when omitted.
+  model?: { providerId: ModelProviderIdType; modelId: ModelIdType };
 }
 
 /** Everything the scenario's workspace is seeded with. Tools then run for real against it. */
@@ -121,6 +124,7 @@ export type FinalToolCallAssertion =
       addMemberKeys?: string[];
     }
   | { type: "suggestSkillDeletion"; skillKey: string }
+  | { type: "suggestAgentDeletion"; agentKey: string }
   | { type: "suggestSkillName"; skillKey: string }
   | {
       type: "separateSuggestions";
@@ -133,6 +137,32 @@ export type FinalToolCallAssertion =
     }
   | { type: "suggestSkillUserFacingDescription"; skillKey: string }
   | { type: "suggestAgentCreation" }
+  | { type: "suggestSkillCreation" }
+  | {
+      type: "suggestSubAgentByRef";
+      // The seeded agent that must get the created agent as a sub-agent, through its ref.
+      parentAgentKey: string;
+      // How many created agents it must get. Defaults to 1.
+      subAgentCount?: number;
+    }
+  | {
+      type: "suggestAgentSkillByRef";
+      // The seeded agent that must get the created skill. Without it, the run must create the
+      // agent too and give it the skill.
+      agentKey?: string;
+    }
+  | {
+      type: "suggestSkillCitingNewSkill";
+      // The seeded skill whose instruction edits must cite the created skill. Without it, one
+      // created skill must cite another one.
+      skillKey?: string;
+    }
+  | {
+      // The run must record no suggestion, e.g. because it has to ask the user first, and must have
+      // successfully called each of these (prefixed) tools.
+      type: "noSuggestion";
+      requiredToolNames: string[];
+    }
   | {
       type: "suggestAgentInstructionsChange";
       agentKey: string;

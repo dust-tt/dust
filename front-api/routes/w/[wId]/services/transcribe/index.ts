@@ -1,6 +1,7 @@
 import { findAgentsInMessage } from "@app/lib/utils/find_agents_in_message";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 import { transcribeStream } from "@app/lib/utils/transcribe_service";
+import { isAudioTranscriptionAvailable } from "@app/lib/workspace_policies";
 import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -25,13 +26,17 @@ const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
 app.post("/", async (ctx) => {
   const auth = ctx.get("auth");
 
-  const plan = auth.getNonNullablePlan();
-  if (plan.isByok) {
+  if (
+    !isAudioTranscriptionAvailable({
+      owner: auth.getNonNullableWorkspace(),
+      plan: auth.getNonNullablePlan(),
+    })
+  ) {
     return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "app_auth_error",
-        message: "Voice transcription is not available on this plan.",
+        message: "Voice transcription is not available in this workspace.",
       },
     });
   }

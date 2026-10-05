@@ -1,4 +1,3 @@
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
@@ -67,11 +66,13 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_scope", (
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ success: true });
 
-    const updatedAgent = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "light",
-      dangerouslySkipPermissionFiltering: true,
-    });
+    const updatedAgent = await AgentConfigurationFactory.refetch(
+      auth,
+      agent.sId,
+      {
+        dangerouslySkipFetchCheck: true,
+      }
+    );
     expect(updatedAgent?.scope).toBe("hidden");
   });
 
@@ -93,10 +94,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_scope", (
 
     expect(response.status).toBe(200);
 
-    const unchanged = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "light",
-    });
+    const unchanged = await AgentConfigurationFactory.refetch(auth, agent.sId);
     expect(unchanged?.scope).toBe("visible");
   });
 
@@ -125,10 +123,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/batch_update_scope", (
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ success: true });
 
-    const updated = await getAgentConfiguration(auth, {
-      agentId: agent.sId,
-      variant: "light",
-    });
+    const updated = await AgentConfigurationFactory.refetch(auth, agent.sId);
     expect(updated?.scope).toBe("hidden");
   });
 

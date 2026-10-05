@@ -378,7 +378,7 @@ export const SpaceResourcesList = ({
             ]
           : null;
 
-        // Some connectors, such as Slack/Discord bots, are not meant to be displayed in the list.
+        // Some connectors, such as Slack bots, are not meant to be displayed in the list.
         // These are managed separately in the Admin workspace settings page.
         return (
           !connectorConfig?.isHiddenAsDataSource &&
