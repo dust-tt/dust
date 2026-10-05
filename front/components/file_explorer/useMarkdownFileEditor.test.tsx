@@ -514,6 +514,33 @@ describe("useMarkdownFileEditor", () => {
     );
   });
 
+  it("names the stored revision in a save made through an onSave captured before the previous save landed", async () => {
+    flags.add("co_edition");
+    // A write mock that checks revisions like the route does.
+    let stored = "1";
+    vi.mocked(putFileContentByPath).mockImplementation(async ({ revision }) => {
+      if (revision !== null && revision !== undefined && revision !== stored) {
+        return new Err({ code: "conflict", message: "changed" });
+      }
+      stored = String(Number(stored) + 1);
+      return new Ok({ revision: stored });
+    });
+    const { result } = renderHook(() => useMarkdownFileEditor(params));
+    // The editor captures onSave once, as its unmount flush does.
+    const onSave = result.current.richEditor?.onSave;
+
+    let first: Awaited<ReturnType<NonNullable<typeof onSave>>> | undefined;
+    let last: Awaited<ReturnType<NonNullable<typeof onSave>>> | undefined;
+    await act(async () => {
+      first = await onSave?.("# Notes, first\n");
+      last = await onSave?.("# Notes, last\n");
+    });
+
+    expect(first?.isOk()).toBe(true);
+    expect(last?.isOk()).toBe(true);
+    expect(stored).toBe("3");
+  });
+
   it("refuses to save when the server reports a newer revision", async () => {
     flags.add("co_edition");
     vi.mocked(putFileContentByPath).mockResolvedValueOnce(
