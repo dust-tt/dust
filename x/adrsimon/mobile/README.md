@@ -58,6 +58,7 @@ make format               # SwiftFormat (writes changes)
 make format-check         # SwiftFormat in lint mode (no writes)
 make clean                # remove build artifacts
 make generate             # (re)generate Dust.xcodeproj from project.yml
+make tokens               # regenerate SparkleTokens from ../../../sparkle
 ```
 
 Every env-specific task has two equivalent forms:

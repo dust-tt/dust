@@ -40,7 +40,7 @@ struct AttachmentViewerView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button { dismiss() } label: {
-                        SparkleIcon.xMark.image
+                        SparkleIcon.xClose.image
                             .resizable()
                             .frame(width: 20, height: 20)
                             .foregroundStyle(Color.dustForeground)

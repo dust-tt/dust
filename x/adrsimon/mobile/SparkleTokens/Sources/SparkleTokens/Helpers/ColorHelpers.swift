@@ -18,10 +18,13 @@ extension UIColor {
         var rgb: UInt64 = 0
         Scanner(string: hex).scanHexInt64(&rgb)
 
-        let red = CGFloat((rgb >> 16) & 0xFF) / 255.0
-        let green = CGFloat((rgb >> 8) & 0xFF) / 255.0
-        let blue = CGFloat(rgb & 0xFF) / 255.0
+        let rgba = hex.count == 8 ? rgb : rgb << 8 | 0xFF
 
-        self.init(red: red, green: green, blue: blue, alpha: 1.0)
+        let red = CGFloat((rgba >> 24) & 0xFF) / 255.0
+        let green = CGFloat((rgba >> 16) & 0xFF) / 255.0
+        let blue = CGFloat((rgba >> 8) & 0xFF) / 255.0
+        let alpha = CGFloat(rgba & 0xFF) / 255.0
+
+        self.init(red: red, green: green, blue: blue, alpha: alpha)
     }
 }

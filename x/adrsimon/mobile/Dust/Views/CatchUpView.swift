@@ -78,7 +78,7 @@ struct CatchUpView: View {
                 onDismiss(ids)
                 Task { await viewModel.flush() }
             } label: {
-                SparkleIcon.xMark.image
+                SparkleIcon.xClose.image
                     .resizable()
                     .frame(width: 16, height: 16)
                     .foregroundStyle(Color.dustForeground)
@@ -101,7 +101,7 @@ struct CatchUpView: View {
             HStack(spacing: 8) {
                 Circle()
                     .fill(viewModel.currentConversation?.actionRequired == true
-                        ? Color.golden400 : Color.highlight500)
+                        ? Color.info400 : Color.highlight500)
                     .frame(width: 8, height: 8)
 
                 Text(viewModel.currentConversation?.title ?? "New conversation")
@@ -339,11 +339,11 @@ struct CatchUpView: View {
 struct ActionRequiredBanner: View {
     var body: some View {
         HStack(spacing: 8) {
-            SparkleIcon.stopSign.image
+            SparkleIcon.stop.image
                 .resizable()
                 .scaledToFit()
                 .frame(width: 14, height: 14)
-                .foregroundStyle(Color.golden500)
+                .foregroundStyle(Color.info500)
 
             Text("This conversation needs your action. Open it to respond.")
                 .sparkleCopyXs()

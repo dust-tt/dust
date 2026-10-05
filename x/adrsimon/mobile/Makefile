@@ -119,6 +119,12 @@ format:
 format-check:
 	swiftformat Dust SparkleTokens/Sources --lint
 
+## tokens: regenerate SparkleTokens from ../../../sparkle
+.PHONY: tokens
+tokens:
+	node scripts/generate-sparkle-tokens.mjs
+	swiftformat SparkleTokens/Sources
+
 ## clean: remove build artifacts
 .PHONY: clean
 clean:

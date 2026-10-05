@@ -8,7 +8,7 @@ struct ConversationListBottomBar: View {
     var body: some View {
         HStack(spacing: 12) {
             HStack(spacing: 6) {
-                SparkleIcon.magnifyingGlass.image
+                SparkleIcon.searchMd.image
                     .resizable()
                     .frame(width: 14, height: 14)
                     .foregroundStyle(Color.dustFaint)
@@ -21,7 +21,7 @@ struct ConversationListBottomBar: View {
             .liquidGlassCapsule()
 
             Button(action: onNewConversation) {
-                SparkleIcon.chatBubbleBottomCenterPlus.image
+                SparkleIcon.messagePlusCircle.image
                     .resizable()
                     .frame(width: 20, height: 20)
                     .foregroundStyle(Color.dustForeground)

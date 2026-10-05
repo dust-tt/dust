@@ -1,62 +1,67 @@
-// DO NOT EDIT — Generated from Sparkle (tailwind.config.js)
-// Run: cd sparkle && node scripts/generate-swift.mjs
+// DO NOT EDIT — Generated from Sparkle (sparkle/src/styles, sparkle/src/icons, sparkle/src/logo)
+// Run: make tokens
 
 
 import SwiftUI
 
-/// Maps internal MCP server names to their SparkleIcon.
-/// Generated from front/lib/api/actions/servers/*/metadata.ts
+/// Maps internal MCP server names to their SparkleIcon (front/lib/api/actions/servers/*/metadata.ts).
 public enum MCPServerIcon {
     public static func icon(for serverName: String) -> SparkleIcon? {
         switch serverName {
-        case "agent_router", "agent_sidekick_agent_state", "agent_sidekick_context", "run_agent": .actionRobot
-        case "agent_memory", "poke", "toolsets": .actionLightbulb
+        case "conversation_side_panel", "interactive_content": .actionFrame
+        case "user_mentions": .announcement01
         case "ashby": .ashbyLogo
-        case "common_utilities": .actionAtom
+        case "common_utilities": .atom01
+        case "activation_recommendations": .brain
+        case "pod_tasks": .checkCircle
+        case "clari_copilot": .clariLogo
+        case "include_data", "triggers_management", "wakeups": .clock
         case "confluence": .confluenceLogo
-        case "conversation_files", "data_sources_file_system", "file_generation", "missing_action_catcher", "project_manager", "slideshow": .actionDocumentText
-        case "data_warehouses", "databricks", "query_tables_v2": .actionTable
-        case "extract_data": .actionScan
+        case "cursor_cloud_agents": .cursorLogo
+        case "google_drive": .driveLogo
         case "fathom": .fathomLogo
+        case "agent_templates", "conversation_files", "data_sources_file_system", "file_generation", "files", "missing_action_catcher", "plan_mode", "pod_manager": .file06
         case "freshservice": .freshserviceLogo
         case "front": .frontLogo
-        case "github": .githubLogo
-        case "gmail": .gmailLogo
         case "google_calendar": .gcalLogo
-        case "google_drive": .driveLogo
+        case "github": .githubLogo
+        case "http_client", "sandbox", "web_search_browse": .globe01
+        case "gmail": .gmailLogo
+        case "gong": .gongLogo
         case "google_sheets": .googleSpreadsheetLogo
-        case "http_client", "web_search_browse": .actionGlobeAlt
         case "hubspot": .hubspotLogo
-        case "image_generation": .actionImage
-        case "include_data", "schedules_management": .actionTime
-        case "interactive_content": .actionFrame
-        case "skill_authoring": .actionList
+        case "image_generation": .image01
         case "jira": .jiraLogo
-        case "jit_testing", "primitive_types_debugger": .actionEmotionLaugh
+        case "agent_memory", "poke", "toolsets", "user_memory": .lightbulb04
+        case "building_agents_and_skills", "skill_authoring", "workspace_management": .listSelect
         case "luma": .lumaLogo
-        case "microsoft_drive": .microsoftLogo
+        case "ask_user_question": .messageDotsCircle
+        case "speech_generator": .messageSmileCircle
         case "microsoft_excel": .microsoftExcelLogo
+        case "microsoft_drive": .microsoftLogo
+        case "outlook_calendar", "outlook_mail": .microsoftOutlookLogo
         case "microsoft_teams": .microsoftTeamsLogo
         case "monday": .mondayLogo
         case "notion": .notionLogo
-        case "openai_usage": .openaiLogo
-        case "outlook_calendar", "outlook_mail": .microsoftOutlookLogo
+        case "user_analytics", "workspace_analytics": .pieChart01
         case "productboard": .productboardLogo
-        case "project_conversation", "user_mentions": .actionMegaphone
-        case "run_dust_app", "sandbox": .commandLine
+        case "skill_management": .puzzlePiece01
+        case "agent_delegation", "agent_router", "agent_sidekick_agent_state", "agent_sidekick_context", "run_agent": .robot
         case "salesforce": .salesforceLogo
         case "salesloft": .salesloftLogo
-        case "search": .actionMagnifyingGlass
-        case "skill_management": .puzzle
+        case "extract_data": .scan
+        case "exa", "search": .searchMd
+        case "shopify": .shopifyLogo
         case "slab": .slabLogo
         case "slack_bot", "slack_personal": .slackLogo
         case "snowflake": .snowflakeLogo
-        case "sound_studio": .actionNoise
-        case "speech_generator": .actionSpeak
         case "statuspage": .statuspageLogo
-        case "ukg_ready": .uKGLogo
+        case "data_warehouses", "query_tables_v2": .table
+        case "run_dust_app": .terminal
+        case "ukg_ready": .ukgLogo
         case "val_town": .valTownLogo
         case "vanta": .vantaLogo
+        case "sound_studio": .volumeMax
         case "zendesk": .zendeskLogo
         default: nil
         }

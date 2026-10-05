@@ -23,7 +23,7 @@ struct RemovableChipView: View {
             Button {
                 onRemove()
             } label: {
-                SparkleIcon.xMark.image
+                SparkleIcon.xClose.image
                     .resizable()
                     .frame(width: 8, height: 8)
                     .foregroundStyle(Color.dustFaint)

@@ -51,7 +51,7 @@ struct KnowledgePickerSheet: View {
     private var promptView: some View {
         VStack(spacing: 12) {
             Spacer()
-            SparkleIcon.actionMagnifyingGlass.image
+            SparkleIcon.searchMd.image
                 .resizable()
                 .frame(width: 28, height: 28)
                 .foregroundStyle(Color.dustFaint)
@@ -76,7 +76,7 @@ struct KnowledgePickerSheet: View {
     private var noResultsView: some View {
         VStack(spacing: 12) {
             Spacer()
-            SparkleIcon.documentText.image
+            SparkleIcon.file06.image
                 .resizable()
                 .frame(width: 28, height: 28)
                 .foregroundStyle(Color.dustFaint)
@@ -159,8 +159,8 @@ struct KnowledgePickerSheet: View {
             return icon.image
         }
         return node.type == "table"
-            ? SparkleIcon.actionTable.image
-            : SparkleIcon.documentText.image
+            ? SparkleIcon.table.image
+            : SparkleIcon.file06.image
     }
 
     private func nodeSubtitle(_ node: SearchNode) -> String? {
