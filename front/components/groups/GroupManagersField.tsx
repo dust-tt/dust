@@ -10,7 +10,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 interface GroupManagersFieldProps {
   owner: LightWorkspaceType;
-  group: GroupType;
+  group: Pick<GroupType, "name" | "kind" | "grantedRole">;
   managers: SearchMemberType[];
   groupMemberIds: Set<string>;
   onChange: (managers: SearchMemberType[]) => void;

@@ -12,6 +12,32 @@ import type { UserType } from "@app/types/user";
 // update could otherwise burst hundreds of concurrent requests.
 const EMIT_CONCURRENCY = 8;
 
+export function emitGroupManagerAuditLog(
+  auth: Authenticator,
+  group: GroupResource,
+  {
+    addedUsers,
+    removedUsers,
+  }: { addedUsers: UserType[]; removedUsers: UserType[] }
+): void {
+  if (addedUsers.length === 0 && removedUsers.length === 0) {
+    return;
+  }
+  void emitAuditLogEvent({
+    auth,
+    action: "group.managers_updated",
+    targets: [
+      buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+      buildAuditLogTarget("group", group),
+    ],
+    context: getAuditLogContext(auth),
+    metadata: {
+      added_manager_ids: addedUsers.map((user) => user.sId).join(","),
+      removed_manager_ids: removedUsers.map((user) => user.sId).join(","),
+    },
+  });
+}
+
 export function emitGroupMemberAuditLogs(
   auth: Authenticator,
   group: GroupResource,
