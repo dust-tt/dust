@@ -18,6 +18,7 @@ import {
   triggerConversationUnreadNotifications,
 } from "@app/lib/notifications/workflows/conversation-unread";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -930,6 +931,36 @@ describe("conversation-unread workflow business logic", () => {
       expect(vi.mocked(getNovuClient)).toHaveBeenCalled();
     });
 
+    it("should not notify participants whose membership was revoked", async () => {
+      const conversation = await ConversationResource.fetchById(
+        auth,
+        conversationId
+      );
+      if (!conversation) {
+        throw new Error("Conversation should exist");
+      }
+
+      await ConversationResource.upsertParticipation(auth, {
+        conversation,
+        action: "posted",
+        user: user2.toJSON(),
+        lastReadAt: null,
+      });
+      const revokeResult = await MembershipResource.revokeMembership({
+        user: user2,
+        workspace,
+      });
+      expect(revokeResult.isOk()).toBe(true);
+
+      const result = await triggerConversationUnreadNotifications(auth, {
+        conversationId,
+        messageId,
+      });
+
+      expect(result.isOk()).toBe(true);
+      expect(vi.mocked(getNovuClient)).not.toHaveBeenCalled();
+    });
+
     it("should filter participants through filterParticipantsByNotifyCondition", async () => {
       // Set up mixed notification preferences
       await user1.setMetadata(
@@ -1578,6 +1609,28 @@ describe("getEmailSummary", () => {
 
     expect(result).toBe(mockSummary);
     expect(runMultiActionsAgent).toHaveBeenCalledOnce();
+  });
+
+  it("should return null without calling the LLM when the subscriber was revoked", async () => {
+    const revokeResult = await MembershipResource.revokeMembership({
+      user,
+      workspace,
+      allowLastAdminRevocation: true,
+    });
+    expect(revokeResult.isOk()).toBe(true);
+
+    const result = await getEmailSummary({
+      details: createMockDetails(),
+      subscriberId: user.sId,
+      payload: {
+        conversationId: conversation.sId,
+        workspaceId: workspace.sId,
+        messageId: "msg_test_123",
+      },
+    });
+
+    expect(result).toBeNull();
+    expect(runMultiActionsAgent).not.toHaveBeenCalled();
   });
 
   it("should return null when LLM generation fails", async () => {
