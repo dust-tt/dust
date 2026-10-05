@@ -211,8 +211,8 @@ msgid "Optional"
 msgstr "Facultatif"
 
 #: front/components/UserSettingsPopover.tsx
-msgid "e.g. she/her"
-msgstr "ex. elle"
+msgid "e.g. they/them"
+msgstr "ex. iel"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Job title"

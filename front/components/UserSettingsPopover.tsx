@@ -388,7 +388,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
                   <div className="w-64">
                     <Input
                       {...form.register("pronouns")}
-                      placeholder={t`e.g. she/her`}
+                      placeholder={t`e.g. they/them`}
                       isError={!!form.formState.errors.pronouns}
                       message={form.formState.errors.pronouns?.message}
                       messageStatus={
