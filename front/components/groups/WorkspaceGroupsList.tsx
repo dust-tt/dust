@@ -57,6 +57,10 @@ interface WorkspaceGroupsListProps {
   owner: WorkspaceType;
 }
 
+/**
+ * @cc [owner:philipperolet,label:product] empty-group-managers
+ * Groups without managers MUST display a dash in the manager column.
+ */
 const columns: ColumnDef<GroupRowData>[] = [
   {
     id: "name",
@@ -82,7 +86,7 @@ const columns: ColumnDef<GroupRowData>[] = [
     cell: ({ row }) => {
       const { managers } = row.original;
       if (managers.length === 0) {
-        return null;
+        return <DataTable.CellContent>-</DataTable.CellContent>;
       }
       return (
         <DataTable.CellContent>
