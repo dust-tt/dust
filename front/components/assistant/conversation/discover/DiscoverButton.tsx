@@ -1,4 +1,4 @@
-import { trackDiscoverButtonClick } from "@app/components/assistant/conversation/discover/discoveryTracking";
+import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 import { Icon, Stars02 } from "@dust-tt/sparkle";
 
@@ -12,7 +12,10 @@ export function DiscoverButton({ onClick, isOpening }: DiscoverButtonProps) {
     <button
       type="button"
       onClick={() => {
-        trackDiscoverButtonClick();
+        trackEvent({
+          area: TRACKING_AREAS.DISCOVER,
+          object: "discover_button",
+        });
         onClick();
       }}
       className={classNames(

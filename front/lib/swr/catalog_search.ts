@@ -15,6 +15,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useMemo } from "react";
 
 interface CatalogPage {
+  query: CatalogQuery;
   items: CatalogItem[];
   next: {
     agents: number | null;
@@ -128,6 +129,7 @@ export function useCatalogSearch({
       ]);
 
       return {
+        query: request.query,
         items: interleaveCatalogItems(
           agents?.agents.map(toSearchAgentCatalogItem) ?? [],
           skills?.skills.map(toSearchSkillCatalogItem) ?? []
@@ -175,6 +177,7 @@ export function useCatalogSearch({
 
   return {
     items,
+    itemsQuery: data?.[0]?.query ?? query,
     hasMore,
     isLoading,
     isLoadingMore: isValidating && items.length > 0,

@@ -1,6 +1,6 @@
 import type {
-  CatalogFilters,
   CatalogItem,
+  CatalogQuery,
 } from "@app/components/assistant/conversation/discover/catalog";
 import { getItemId } from "@app/components/assistant/conversation/discover/catalog";
 import type { TrackingAction, TrackingExtra } from "@app/lib/tracking";
@@ -17,7 +17,6 @@ import {
 
 const HOMEPAGE_USE_CASE_OBJECT = "homepage_use_case";
 const DISCOVERY_SUGGESTION_OBJECT = "discovery_suggestion";
-const DISCOVER_BUTTON_OBJECT = "discover_button";
 const DISCOVER_ITEM_OBJECT = "item";
 const DISCOVER_ITEM_DETAILS_OBJECT = "item_details";
 
@@ -26,10 +25,6 @@ export type DiscoverItemSource =
   | "featured"
   | DiscoverySuggestionSection
   | "catalog";
-
-export interface DiscoverCatalogTrackingContext extends CatalogFilters {
-  hasSearchTerm: boolean;
-}
 
 interface HomepageUseCaseTracking {
   useCaseId: string;
@@ -122,24 +117,26 @@ export function trackDiscoverySuggestionView({
 interface DiscoverItemTracking {
   source: DiscoverItemSource;
   item: CatalogItem;
-  catalog?: DiscoverCatalogTrackingContext;
+  catalogQuery?: CatalogQuery;
 }
 
 function getDiscoverItemTrackingExtra({
   source,
   item,
-  catalog,
+  catalogQuery,
 }: DiscoverItemTracking): TrackingExtra {
   return {
     source,
     item_kind: item.kind,
     item_id: getItemId(item),
     is_dust_provided: item.isDustProvided,
-    ...(catalog && {
-      catalog_view: catalog.view,
-      catalog_kind: catalog.kind,
-      catalog_has_search_term: catalog.hasSearchTerm,
-      ...(catalog.tagId !== null && { catalog_tag_id: catalog.tagId }),
+    ...(catalogQuery && {
+      catalog_view: catalogQuery.view,
+      catalog_kind: catalogQuery.kind,
+      catalog_has_search_term: catalogQuery.searchTerm !== "",
+      ...(catalogQuery.tagId !== null && {
+        catalog_tag_id: catalogQuery.tagId,
+      }),
     }),
   };
 }
@@ -159,9 +156,9 @@ function trackDiscoverItemEvent(
 
 /**
  * @cc [owner:adrsimon,label:product] discover-item-events-name-source-and-item
- * Using or opening the details of an item anywhere on Discover MUST be tracked with `source`,
- * `item_kind`, and `item_id`. Catalog events MUST also carry the active filters, so a pick can be
- * attributed to the view, kind, tag, or search that surfaced it.
+ * Picking an item, or clicking Details on it, from a Discover row or card MUST be tracked with
+ * `source`, `item_kind`, and `item_id`. Catalog events MUST also carry the query that produced the
+ * displayed results, so a pick can be attributed to the view, kind, tag, or search that surfaced it.
  */
 export function trackDiscoverItemSelect(tracking: DiscoverItemTracking): void {
   trackDiscoverItemEvent(
@@ -179,12 +176,4 @@ export function trackDiscoverItemDetailsOpen(
     TRACKING_ACTIONS.OPEN,
     tracking
   );
-}
-
-export function trackDiscoverButtonClick(): void {
-  trackEvent({
-    area: TRACKING_AREAS.DISCOVER,
-    object: DISCOVER_BUTTON_OBJECT,
-    action: TRACKING_ACTIONS.CLICK,
-  });
 }

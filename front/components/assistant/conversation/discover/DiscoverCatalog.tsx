@@ -239,6 +239,7 @@ function HydratedCatalog({
     >
       <CatalogResults
         items={items}
+        itemsQuery={query}
         isLoading={isAgentsLoading || isSkillsWithRelationsLoading}
         hasError={false}
         hasNextPage={false}
@@ -296,6 +297,7 @@ function SearchCatalog({
     >
       <CatalogResults
         items={catalogSearch.items}
+        itemsQuery={catalogSearch.itemsQuery}
         isLoading={
           isDebouncing || catalogSearch.isLoading || catalogSearch.isLoadingMore
         }
@@ -356,29 +358,13 @@ export function DiscoverCatalog({
     filters.kind !== "all" ||
     filters.tagId !== null ||
     searchTerm !== "";
-  const trackingContext = { ...filters, hasSearchTerm: searchTerm !== "" };
   const actions: CatalogActions = {
-    onUse: (item) => {
-      trackDiscoverItemSelect({
-        source: "catalog",
-        item,
-        catalog: trackingContext,
-      });
-      if (item.kind === "agent") {
-        onAgentClick(item.agent);
-      } else {
-        onSkillClick(item.skill);
-      }
-    },
+    onUse: (item) =>
+      item.kind === "agent"
+        ? onAgentClick(item.agent)
+        : onSkillClick(item.skill),
     onPin,
-    onDetails: (item) => {
-      trackDiscoverItemDetailsOpen({
-        source: "catalog",
-        item,
-        catalog: trackingContext,
-      });
-      onDetails(item);
-    },
+    onDetails,
   };
 
   return useSearch ? (
@@ -517,6 +503,7 @@ function CatalogFiltersNav({
 
 interface CatalogResultsProps extends CatalogActions {
   items: CatalogItem[];
+  itemsQuery: CatalogQuery;
   isLoading: boolean;
   hasError: boolean;
   hasNextPage: boolean;
@@ -527,6 +514,7 @@ interface CatalogResultsProps extends CatalogActions {
 
 function CatalogResults({
   items,
+  itemsQuery,
   isLoading,
   hasError,
   hasNextPage,
@@ -577,9 +565,23 @@ function CatalogResults({
             <CatalogRow
               key={`${item.kind}-${getItemId(item)}`}
               item={item}
-              onUse={() => onUse(item)}
+              onUse={() => {
+                trackDiscoverItemSelect({
+                  source: "catalog",
+                  item,
+                  catalogQuery: itemsQuery,
+                });
+                onUse(item);
+              }}
               onPin={onPin && (() => onPin(item))}
-              onDetails={() => onDetails(item)}
+              onDetails={() => {
+                trackDiscoverItemDetailsOpen({
+                  source: "catalog",
+                  item,
+                  catalogQuery: itemsQuery,
+                });
+                onDetails(item);
+              }}
             />
           ))}
           {hasError && (
