@@ -76,6 +76,7 @@ export function FilePreviewDialog({
     isContentLoading: preview.isContentLoading,
     isTooLarge: preview.isTooLarge,
     isTruncated: preview.isTruncated,
+    canWrite: preview.canWrite,
     owner,
     rawContent: preview.truncatedContent,
     processedContent: preview.processedContent,

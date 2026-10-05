@@ -25,6 +25,8 @@ interface UseMarkdownFileEditorParams {
   isTooLarge: boolean;
   /** The preview text was cut; an editor fed with it would save a truncated file. */
   isTruncated: boolean;
+  /** The mount accepts writes from this user; no editor opens otherwise. */
+  canWrite: boolean;
   owner: LightWorkspaceType | undefined;
   /** The file text as fetched, for the rich editor. The processed text is trimmed. */
   rawContent: string | null;
@@ -56,6 +58,7 @@ export function useMarkdownFileEditor({
   isContentLoading,
   isTooLarge,
   isTruncated,
+  canWrite,
   owner,
   rawContent,
   processedContent,
@@ -78,7 +81,7 @@ export function useMarkdownFileEditor({
       ? entryPath
       : null;
   const canOpenEditor =
-    category === "markdown" && !!editablePath && !isTooLarge;
+    category === "markdown" && !!editablePath && !isTooLarge && canWrite;
 
   if (isActive !== resetKey.isActive || entryPath !== resetKey.path) {
     setResetKey({ isActive, path: entryPath });
