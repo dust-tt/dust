@@ -43,7 +43,7 @@ Full benchmark suites are stopped until this work is optimized and verified.
 - [x] Skip hint construction for hot objects; borrow lookup keys and avoid duplicate ancestor decoding.
 - [x] Retry definite publication conflicts within the original deadline; preserve all preconditions.
 - [x] Test pinned point/range views, truncation ordering, and stale local acceptance against FDB.
-- [ ] Verify mounted behavior and compare focused 1s/8s untar CPU profiles before another suite.
+- [x] Verify mounted behavior and compare focused 1s/8s untar CPU profiles before another suite.
 
 ## 6. Revision-validated block reuse
 

@@ -35,9 +35,9 @@ concurrently during untar; drain is only the work left at the end. There is no c
 | D = 1s | 68.395 | 18 |
 | D = 8s | 138.807 | 33 |
 
-The 8-second untar is **2.03× slower**. Its cause has not yet been profiled. Code inspection suggests
-longer retention and repeated scans of the RAM mutation history as a candidate; this is a hypothesis,
-not a measured attribution. Both population phases accepted 47,642 edits (including fixture setup),
+The original 8-second untar is **2.03× slower**. The later profiling below attributes that penalty
+to repeated scans/copies of retained RAM mutation history. Both population phases accepted 47,642
+edits (including fixture setup),
 with 10,264 FDB commits at 1s and 10,230 at 8s. The similar commit counts and short remaining drains
 alone do not establish where the extra time went.
 
@@ -174,3 +174,50 @@ Profile reports remain outside Git: `/tmp/dfs-v3-benchmark-w4ifis7y` (1s) and
 24 checks. The 1s suite was stopped at the user's request after five complete rows, to prioritize
 RAM access optimization. Its untar/profile above completed before that interruption. Full-suite
 reruns and block reuse are deferred until the memory-access work is validated.
+
+## RAM access optimization — focused untar only
+
+Source committed as `047a7e84cc`, including the indexed history from `debc3b1aa9`. Same 10k corpus,
+deep path, configuration, and `DFS_PROFILE=1` as the profiled baselines. The 8s run preceded 1s.
+Both untars finished with **zero publication failures**. No full suite was rerun for this milestone.
+
+| Measurement | Before, D = 1s | After, D = 1s | Before, D = 8s | After, D = 8s |
+| --- | ---: | ---: | ---: | ---: |
+| Untar wall time (s) | 70.643 | 51.623 | 133.007 | 46.959 |
+| Server CPU, user + system (s) | 37.800 | 21.380 | 110.070 | 22.000 |
+| Client CPU, user + system (s) | 18.610 | 18.740 | 20.750 | 19.210 |
+| Remaining publication drain (ms) | 18 | 29 | 10 | 22 |
+| Client RPC calls | 229,669 | 229,669 | 229,669 | 229,669 |
+| RAM key reads | 12,635,795 | 5,884,675 | 12,598,142 | 5,873,841 |
+| Retained edits examined by key reads | 2,202,096,489 | 494,691 | 8,440,659,746 | 1,583,884 |
+| RAM overlay lookup time (s) | 9.903 | 0.818 | 54.560 | 1.368 |
+| RAM read-view construction time (s) | 2.258 | 0.024 | 17.280 | 0.025 |
+| History reaping time (s) | 1.642 | 0.232 | 8.150 | 0.198 |
+| Publication selection time (s) | 1.504 | 0.254 | 14.472 | 0.227 |
+
+Server CPU fell **43% at 1s and 80% at 8s**. The longer-window penalty disappeared in these runs;
+the actual CPU totals are now similar. Indexed lookup examines at most one retained version per
+measured key read here, rather than scanning unrelated edits. There is still per-RPC, authorization,
+serialization, and native FDB client work; the total server CPU is not a cache-only measurement.
+
+Changes: key/file-clear indexes, constant-size pinned views, pending-participant indexes, incremental
+retirement, borrowed point-cache lookups, one ancestor decode per read, and no speculative hint
+construction for resident primary objects. All semantic reads still validate the view and grants.
+Faster acceptance exposed the old three-attempt publication limit: definite FDB conflicts now retry
+immediately with fresh validation within the original deadline, without added backoff. Changed
+preconditions reject the tentative edit; uncertain commit outcomes are never replayed.
+
+Correctness validation: real FDB contract tests (including concurrent sibling publication, pinned
+views, truncation, remote moves/revocations, and ambiguous commits) and mounted checks at both bounds.
+These focused runs do not substitute for the full benchmark's content/SHA validation. Full suites
+and revision-validated block reuse remain deferred.
+
+Reports remain in the development container, outside Git:
+
+- 1s: `/tmp/dfs-v3-benchmark-y_b0ma44/run.json`.
+- 8s: `/tmp/dfs-v3-benchmark-9q15qu35/run.json`.
+
+Both use server binary SHA-256
+`f6d64759bf19182f2eb4340f214616b7a07d058334bc6c51227546185a08413d`.
+Intermediate runs with publication failures are excluded. Reproduce with the measured source and
+the earlier command, adding `DFS_PROFILE=1` and `--untar-only`.
