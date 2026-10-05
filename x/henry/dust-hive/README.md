@@ -515,6 +515,6 @@ bun run check
 
 # Individual checks
 bun run typecheck    # TypeScript
-bun run lint         # Biome linter
+bun run lint         # oxlint + oxfmt check
 bun run test         # Unit tests
 ```

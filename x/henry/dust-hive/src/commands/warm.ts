@@ -68,7 +68,7 @@ async function isTemporalRunning(): Promise<boolean> {
   return proc.exitCode === 0;
 }
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: orchestration function with necessary complexity
+// oxlint-disable-next-line eslint/complexity -- orchestration function with necessary complexity
 export const warmCommand = withEnvironments("warm", async (env, options: WarmOptions) => {
   const startTime = Date.now();
   const noForward = options.noForward ?? false;
