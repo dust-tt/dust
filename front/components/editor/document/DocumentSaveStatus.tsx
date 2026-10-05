@@ -9,6 +9,8 @@ interface DocumentSaveStatusProps {
   onRetry?: () => Promise<void>;
   /** Rendered at the left of the row, the status staying at the right. */
   badge?: ReactNode;
+  /** Controls shown after the status, such as the comments toggle. */
+  children?: ReactNode;
 }
 
 type SaveState = "error" | "saving" | "pending" | "saved";
@@ -68,6 +70,7 @@ export const DocumentSaveStatus = ({
   autosaveDebounceMs,
   onRetry,
   badge,
+  children,
 }: DocumentSaveStatusProps) => {
   const state = saveState({ dirty, saving, error });
   const { icon, label } = SAVE_STATES[state];
@@ -101,6 +104,7 @@ export const DocumentSaveStatus = ({
             Retry
           </button>
         )}
+        {children}
       </StatusRow>
       {error && (
         <p

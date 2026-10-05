@@ -2,6 +2,12 @@ import {
   parseDocumentContent,
   serializeDocumentMarkdown,
 } from "@app/components/editor/document/content";
+import { getMarkedCommentIds } from "@app/components/editor/document/DocumentCommentAnchor";
+import {
+  getDocumentJSONComments,
+  withDocumentJSONComments,
+  withoutDocumentJSONComments,
+} from "@app/components/editor/document/DocumentComments";
 import type { DfmComment, DfmError } from "@app/lib/markdown/dfm";
 import { extractAnchors, parseDfm, serializeDfm } from "@app/lib/markdown/dfm";
 import type { Result } from "@app/types/shared/result";
@@ -9,12 +15,11 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { JSONContent } from "@tiptap/core";
 
 /**
- * The editor edits the body of a DFM file. Front matter and comment threads ride along
- * unchanged until the editor learns them.
+ * The editor edits the body and the comment threads of a DFM file. Front matter rides along
+ * unchanged until the editor learns it.
  */
 export interface DfmEnvelope {
   frontMatter: string | null;
-  comments: DfmComment[];
 }
 
 const CODEC_SAVE_ERROR_MESSAGE =
@@ -29,15 +34,19 @@ function describe(error: DfmError): string {
 
 export interface LoadedDfm {
   envelope: DfmEnvelope;
-  /** The body as a TipTap document. */
+  /** The body as a TipTap document, comment threads in its `comments` attribute. */
   content: JSONContent;
 }
 
+const sameIds = (a: Set<string>, b: Set<string>) =>
+  a.size === b.size && [...a].every((id) => b.has(id));
+
 /**
- * @cc [owner:PopDaph,label:product] document-dfm-load
- * A file MUST open for editing only when it is valid DFM, its body carries no comment anchor,
- * and its body is Markdown the editor can reproduce. Any other file MUST be refused with a
- * reason, so the editor shows it read-only with that reason instead of risking the content.
+ * @cc [owner:PopDaph;tdraier,label:product] document-dfm-load
+ * A file MUST open for editing only when it is valid DFM, its body is Markdown the editor can
+ * reproduce, and every comment anchor the codec reads becomes a comment mark in the editor and
+ * no other. The threads MUST open as they are in the file. Any other file MUST be refused with
+ * a reason, so the editor shows it read-only with that reason instead of risking the content.
  */
 export function loadDfm(source: string): Result<LoadedDfm, string> {
   const parsed = parseDfm(source);
@@ -50,32 +59,43 @@ export function loadDfm(source: string): Result<LoadedDfm, string> {
   if (anchors.isErr()) {
     return new Err(describe(anchors.error));
   }
-  if (anchors.value.anchors.length > 0) {
-    return new Err("Comments are not supported in the editor yet.");
-  }
 
   const content = parseDocumentContent(body);
   if (content.isErr()) {
     return content;
   }
 
+  // An anchor the codec reads but the Markdown parser does not, such as one inside a link
+  // destination, would be dropped on save.
+  if (
+    !sameIds(
+      new Set(anchors.value.anchors.map((anchor) => anchor.id)),
+      getMarkedCommentIds(content.value)
+    )
+  ) {
+    return new Err("A comment is anchored where the editor cannot show it.");
+  }
+
   return new Ok({
-    envelope: { frontMatter, comments },
-    content: content.value,
+    envelope: { frontMatter },
+    content: withDocumentJSONComments(content.value, comments),
   });
 }
 
 /**
- * @cc [owner:PopDaph,label:product] document-dfm-save
- * Saving MUST write the editor's body back into the file's envelope, with front matter and
- * comment threads exactly as loaded. A body the editor cannot express as Markdown, or a file
- * the codec refuses to write, MUST fail without reaching persistence.
+ * @cc [owner:PopDaph;tdraier,label:product] document-dfm-save
+ * Saving MUST write the editor's body and its comment threads back into the file's envelope,
+ * with front matter exactly as loaded and each comment mark written as one anchor pair. A body
+ * the editor cannot express as Markdown, or a file the codec refuses to write, MUST fail
+ * without reaching persistence.
  */
 export function saveDfm(
   envelope: DfmEnvelope,
   content: JSONContent
 ): Result<string, string> {
-  const markdown = serializeDocumentMarkdown(content);
+  const markdown = serializeDocumentMarkdown(
+    withoutDocumentJSONComments(content)
+  );
   if (markdown.isErr()) {
     return new Err(
       "This formatting cannot be saved as Markdown yet. Your changes are still here. Undo the last edit to try again."
@@ -85,7 +105,7 @@ export function saveDfm(
   const serialized = serializeDfm({
     frontMatter: envelope.frontMatter,
     body: markdown.value.replace(/\n+$/, ""),
-    comments: envelope.comments,
+    comments: getDocumentJSONComments(content),
   });
   if (serialized.isErr()) {
     // The codec's reason names file syntax; the user sees the draft is safe and how to recover.
@@ -93,4 +113,24 @@ export function saveDfm(
   }
 
   return new Ok(serialized.value);
+}
+
+/**
+ * @cc [owner:tdraier,label:product] document-comment-writable
+ * A thread MUST be accepted only when the codec can write it and read it back unchanged, so a
+ * posted comment or reply can never make the document unsavable.
+ */
+export function validateCommentThread(
+  comment: DfmComment
+): Result<void, string> {
+  const serialized = serializeDfm({
+    frontMatter: null,
+    body: "",
+    comments: [comment],
+  });
+  return serialized.isErr()
+    ? new Err(
+        'This comment cannot be saved as written. Check for lines starting with "::" or an unclosed code block.'
+      )
+    : new Ok(undefined);
 }

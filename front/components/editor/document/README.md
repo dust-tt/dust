@@ -6,8 +6,7 @@ selection toolbar, typography and the autosave lifecycle. Hosts own file access,
 synchronization with other writers.
 
 It started as a copy of Sparkle's `Document`, which Frames used with TipTap JSON files. This
-copy persists DFM only. Comments, suggestions and named visual blocks are not here yet;
-comments come in the next pull request.
+copy persists DFM only. Suggestions and named visual blocks are not here yet.
 
 ## Usage
 
@@ -27,8 +26,8 @@ to the saved content clears the error without a request.
 ## What opens
 
 `loadDfm` in `dfm_persistence.ts` decides. Hosts mount the editor for every Markdown file
-they hand it; a file opens for editing when it is valid DFM, its body has no comment anchors,
-and its body is Markdown the editor reproduces. Tables, images, task lists, HTML, reference
+they hand it; a file opens for editing when it is valid DFM, its body is Markdown the editor
+reproduces, and every comment anchor the codec reads is one the editor can highlight. Tables, images, task lists, HTML, reference
 links and tilde fences are refused for now, since the TipTap Markdown parser cannot preserve
 them. A refused file is shown as read-only source with the reason. Line endings are not
 preserved: a CRLF file opens and is written back with LF.
@@ -37,9 +36,24 @@ Hosts hold close and navigation while an edit is unsaved, through `onStateChange
 hold once a save has failed and the user has seen it. Unmounting with unsaved content, after
 a failed save included, queues one last save behind the save in flight.
 
-Front matter and comment threads already in the file are kept in an envelope and written back
-unchanged on save. The editor only rewrites the body, and only when the codec confirms the
-result reads back identically.
+Front matter is kept in an envelope and written back unchanged on save. The editor rewrites
+the body and the comment threads, and only when the codec confirms the result reads back
+identically.
+
+## Comments
+
+Comments are the DFM threads of the file. On load, the Markdown parser reads each anchor
+directive as a `commentAnchor` node, and `anchorsToMarks` turns every pair into a `comment` mark
+on the text between them; the threads go in the document's `comments` attribute, so dirty
+tracking and autosave cover them. On save, `marksToAnchors` writes one pair per comment around
+its first and last marked text, outside any other mark. A comment the editor cannot highlight,
+such as one inside a link destination or covering only code, keeps the file read-only.
+
+Pass `commentAuthor` to let the current user comment; without it, or read-only, comments stay
+browsable. Selected text shows a Comment action, also reachable with Cmd/Ctrl+Alt+M. Posting,
+replying, resolving and deleting stay out of text undo history. A message the codec cannot
+write, such as one with a line starting with `::`, is refused before it reaches the document.
+Message bodies show as plain text for now.
 
 ## Layout
 
@@ -55,7 +69,11 @@ result reads back identically.
 | `DocumentSaveStatus.tsx` | Saved, saving, unsaved and error line with Retry. |
 | `DocumentSourcePreview.tsx` | Read-only source for a file that cannot open. |
 | `DocumentAnchors.ts` | In-document heading links. |
+| `DocumentComments.ts` | The `comment` mark, the thread commands and the highlights. |
+| `DocumentCommentAnchor.ts` | Anchor directives in Markdown, and anchors to marks and back. |
+| `useDocumentComments.ts` | Comment state and actions for the components below. |
+| `DocumentCommentsPanel.tsx`, `DocumentCommentComposer.tsx`, `DocumentCommentInput.tsx`, `DocumentCommentMarkers.tsx` | The threads panel, the new comment card, the message field and the gutter markers. |
 
 Tests: `dfm_persistence.test.ts` for the load and save boundary, `useDocumentEditor.test.ts`
-for the save on unmount. The editor's interaction tests lived in Sparkle stories and are not
+for the save on unmount, `useDocumentComments.test.ts` for comments through the editor. The editor's interaction tests lived in Sparkle stories and are not
 ported yet.

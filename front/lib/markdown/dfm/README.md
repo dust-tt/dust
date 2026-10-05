@@ -100,9 +100,18 @@ Import from `@app/lib/markdown/dfm` in front and front-api, and from
 | `extractAnchors(body)` | The body without anchor directives plus `{ id, start, end }` offsets into it in document order, for the editor and search. |
 | `anchorComment({ body, id, quote, nth })` | Wraps the nth occurrence of `quote` in a new anchor pair, for agents that quote words instead of computing offsets. |
 
-Every function returns a `Result` from `@app/types/shared/result`. Nothing here touches the
-network, the database or React: the module runs on the server and in the browser, next to the
-`:preview_file` directive codec in `lib/markdown/file_preview.ts`.
+Every function above returns a `Result` from `@app/types/shared/result`. The editor's Markdown
+parser and serializer read and write anchors one at a time, with three helpers that keep the
+directive's spelling in this module:
+
+| Function | Purpose |
+| --- | --- |
+| `readAnchorDirective(source)` | The well-formed anchor directive at the very start of `source` with its `kind`, `id` and `length`, or null. |
+| `findAnchorDirective(source)` | Index of the first anchor directive syntax in `source`, or -1. |
+| `anchorDirective(kind, id)` | The directive text for one end of an anchor pair. |
+
+Nothing here touches the network, the database or React: the module runs on the server and in
+the browser, next to the `:preview_file` directive codec in `lib/markdown/file_preview.ts`.
 
 ## Module map
 

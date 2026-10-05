@@ -1,4 +1,14 @@
-import { Bold01, Code01, cn, Icon, Italic01, Tooltip } from "@dust-tt/sparkle";
+import { documentCommentsPluginKey } from "@app/components/editor/document/DocumentComments";
+import {
+  Bold01,
+  Code01,
+  cn,
+  Icon,
+  Italic01,
+  MessagePlusCircle,
+  Separator,
+  Tooltip,
+} from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/core";
 import { isTextSelection } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
@@ -7,6 +17,8 @@ import { BubbleMenu } from "@tiptap/react/menus";
 interface DocumentSelectionToolbarProps {
   editor: Editor;
   mountPortalContainer?: HTMLElement;
+  /** Shows the Comment action after the formatting controls. */
+  onComment?: () => void;
 }
 
 const TOOLBAR_BUTTON_CLASS = cn(
@@ -14,9 +26,15 @@ const TOOLBAR_BUTTON_CLASS = cn(
   "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 );
 
+/**
+ * @cc [owner:flvndvd;tdraier,label:product] document-comment-cta
+ * The Comment action MUST appear only when onComment is provided and the selection can
+ * start a draft. The toolbar MUST stay hidden while a comment draft is pending.
+ */
 export const DocumentSelectionToolbar = ({
   editor,
   mountPortalContainer,
+  onComment,
 }: DocumentSelectionToolbarProps) => {
   const selection = useEditorState({
     editor,
@@ -25,6 +43,7 @@ export const DocumentSelectionToolbar = ({
       italic: editor.isActive("italic"),
       strike: editor.isActive("strike"),
       code: editor.isActive("code"),
+      canComment: editor.can().startCommentDraft(),
     }),
   });
   const isApple =
@@ -42,6 +61,7 @@ export const DocumentSelectionToolbar = ({
         isTextSelection(state.selection) &&
         !state.selection.empty &&
         state.doc.textBetween(from, to).length > 0 &&
+        !documentCommentsPluginKey.getState(state)?.draft &&
         (editor.isFocused ||
           !!document.activeElement?.closest("[data-document-selection]"))
       }
@@ -114,6 +134,31 @@ export const DocumentSelectionToolbar = ({
             }
           />
         ))}
+        {onComment && selection.canComment && (
+          <>
+            <Separator
+              orientation="vertical"
+              className="mx-1 h-4 min-h-0 self-center"
+            />
+            <Tooltip
+              label="Comment"
+              shortcut={`${modifier}+Alt+M`}
+              tooltipTriggerAsChild
+              mountPortalContainer={mountPortalContainer}
+              trigger={
+                <button
+                  type="button"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={onComment}
+                  className={cn(TOOLBAR_BUTTON_CLASS, "gap-1.5 px-2 text-sm")}
+                >
+                  <Icon visual={MessagePlusCircle} size="xs" />
+                  Comment
+                </button>
+              }
+            />
+          </>
+        )}
       </div>
     </BubbleMenu>
   );

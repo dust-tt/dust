@@ -2,6 +2,9 @@ import {
   DocumentBlockMenu,
   useDocumentBlockMenu,
 } from "@app/components/editor/document/DocumentBlockMenu";
+import { DocumentCommentComposer } from "@app/components/editor/document/DocumentCommentComposer";
+import { DocumentCommentMarkers } from "@app/components/editor/document/DocumentCommentMarkers";
+import { DocumentCommentsPanel } from "@app/components/editor/document/DocumentCommentsPanel";
 import {
   DocumentSaveStatus,
   StatusRow,
@@ -9,10 +12,12 @@ import {
 import { DocumentSelectionToolbar } from "@app/components/editor/document/DocumentSelectionToolbar";
 import { DocumentSourcePreview } from "@app/components/editor/document/DocumentSourcePreview";
 import type { DocumentProps } from "@app/components/editor/document/types";
+import { useDocumentComments } from "@app/components/editor/document/useDocumentComments";
 import { useDocumentEditor } from "@app/components/editor/document/useDocumentEditor";
 import { EditorContent } from "@app/components/editor/EditorContent";
-import { cn } from "@dust-tt/sparkle";
+import { Button, cn, MessageTextCircle01 } from "@dust-tt/sparkle";
 import type React from "react";
+import { useId, useRef } from "react";
 
 export type {
   DocumentDraftState,
@@ -21,6 +26,22 @@ export type {
 } from "@app/components/editor/document/types";
 
 const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
+
+/** Comment ids of every highlight wrapping the clicked element. */
+const getClickedCommentIds = (target: EventTarget | null, root: Element) => {
+  const ids: string[] = [];
+  let element = target instanceof Element ? target : null;
+
+  while (element && element !== root) {
+    const id = element.getAttribute("data-comment-highlight");
+    if (id !== null) {
+      ids.push(id);
+    }
+    element = element.parentElement;
+  }
+
+  return ids;
+};
 
 /**
  * @cc [owner:PopDaph,label:product] document-ui-fixed
@@ -36,6 +57,14 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
  * apply their permissions through readOnly. Losing editability MUST preserve unsaved
  * content and show that saving is unavailable, without offering a Retry action.
  */
+/**
+ * @cc [owner:flvndvd;tdraier,label:product] document-comments-availability
+ * Commenting MUST require an editable document and commentAuthor. Existing comments MUST
+ * remain visible and browsable, through highlights, markers and the panel, in read-only
+ * documents and without an author. Clicking a highlight MUST reveal its comment. Overlapping
+ * comments MUST reveal the one covering the least text first, then cycle outward on repeated
+ * clicks.
+ */
 export const Document = ({
   initialContent,
   className,
@@ -45,6 +74,7 @@ export const Document = ({
   onSave,
   onStateChange,
   badge,
+  commentAuthor,
 }: DocumentProps) => {
   const { editor, editable, unsupported, dirty, saving, error, save } =
     useDocumentEditor({
@@ -55,6 +85,14 @@ export const Document = ({
       onStateChange,
     });
   const blockMenu = useDocumentBlockMenu(editor, editable);
+  const comments = useDocumentComments({
+    editor,
+    canComment: editable,
+    author: commentAuthor,
+  });
+  const contentRef = useRef<HTMLDivElement>(null);
+  const panelId = useId();
+  const showCommentsToggle = comments.comments.length > 0 || comments.canWrite;
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
     if (
@@ -76,7 +114,42 @@ export const Document = ({
       return;
     }
 
+    if (
+      (event.metaKey || event.ctrlKey) &&
+      event.altKey &&
+      !event.shiftKey &&
+      event.code === "KeyM"
+    ) {
+      if (comments.startDraft()) {
+        event.preventDefault();
+      }
+      return;
+    }
+
     blockMenu.onKeyDown(event);
+  };
+
+  const handleEditorClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!editor) {
+      return;
+    }
+
+    const clicked = getClickedCommentIds(event.target, editor.view.dom);
+    if (clicked.length === 0) {
+      if (comments.activeId !== null) {
+        comments.select(null);
+      }
+      return;
+    }
+
+    // Start with the most specific comment, then widen on repeated clicks.
+    const ids = clicked.sort(
+      (a, b) =>
+        (comments.quotes.get(a)?.length ?? 0) -
+        (comments.quotes.get(b)?.length ?? 0)
+    );
+    const current = comments.activeId ? ids.indexOf(comments.activeId) : -1;
+    comments.reveal(ids[(current + 1) % ids.length]);
   };
 
   if (unsupported !== null) {
@@ -95,45 +168,107 @@ export const Document = ({
     );
   }
 
+  const unresolvedCount = comments.unresolved.length;
   const saveError =
     !editable && dirty && !saving
       ? "Saving is unavailable. Your unsaved changes are still here. Copy them before reopening."
       : error;
+  const commentsToggle = showCommentsToggle && (
+    <Button
+      ref={comments.toggleRef}
+      type="button"
+      variant="ghost"
+      size="xs"
+      icon={MessageTextCircle01}
+      label="Comments"
+      aria-label={
+        unresolvedCount > 0
+          ? `Comments, ${unresolvedCount} unresolved`
+          : "Comments"
+      }
+      isCounter={unresolvedCount > 0}
+      counterValue={String(unresolvedCount)}
+      aria-expanded={comments.panelOpen}
+      aria-controls={panelId}
+      onClick={comments.togglePanel}
+    />
+  );
 
   return (
     <article
       className={cn("@container relative", className)}
       onKeyDownCapture={handleKeyDown}
     >
+      {/* Container queries resolve against the article, so the push padding lives one level down. */}
       <div
         className={cn(
-          "relative mx-auto max-w-[50rem] px-5 pb-16 font-sans text-foreground antialiased @sm:px-12 print:max-w-none print:p-0",
-          editable ? "pt-5 @sm:pt-8" : "pt-8 @sm:pt-18"
+          "transition-[padding] duration-300 ease-out-quint motion-reduce:transition-none",
+          comments.panelOpen && "@6xl:pr-80"
         )}
       >
-        {editable || dirty || saving ? (
-          <DocumentSaveStatus
-            dirty={dirty}
-            saving={saving}
-            error={saveError}
-            onRetry={editable ? save : undefined}
-            autosaveDebounceMs={autosaveDebounceMs}
-            badge={badge}
-          />
-        ) : (
-          badge && <StatusRow badge={badge} />
-        )}
-        {editor && editable && (
-          <>
-            <DocumentSelectionToolbar
+        <div
+          ref={contentRef}
+          className={cn(
+            "relative mx-auto max-w-[50rem] px-5 pb-16 font-sans text-foreground antialiased @sm:px-12 print:max-w-none print:p-0",
+            editable || showCommentsToggle ? "pt-5 @sm:pt-8" : "pt-8 @sm:pt-18"
+          )}
+        >
+          {editable || dirty || saving ? (
+            <DocumentSaveStatus
+              dirty={dirty}
+              saving={saving}
+              error={saveError}
+              onRetry={editable ? save : undefined}
+              autosaveDebounceMs={autosaveDebounceMs}
+              badge={badge}
+            >
+              {commentsToggle}
+            </DocumentSaveStatus>
+          ) : (
+            (badge || showCommentsToggle) && (
+              <StatusRow badge={badge}>{commentsToggle}</StatusRow>
+            )
+          )}
+          {editor && editable && (
+            <>
+              <DocumentSelectionToolbar
+                editor={editor}
+                mountPortalContainer={mountPortalContainer}
+                onComment={comments.canWrite ? comments.startDraft : undefined}
+              />
+              <DocumentBlockMenu editor={editor} menu={blockMenu} />
+            </>
+          )}
+          <div onClick={handleEditorClick}>
+            <EditorContent editor={editor} />
+          </div>
+          {editor && unresolvedCount > 0 && (
+            <DocumentCommentMarkers
               editor={editor}
+              comments={comments}
+              containerRef={contentRef}
               mountPortalContainer={mountPortalContainer}
             />
-            <DocumentBlockMenu editor={editor} menu={blockMenu} />
-          </>
-        )}
-        <EditorContent editor={editor} />
+          )}
+          {editor && commentAuthor && comments.draft && (
+            <DocumentCommentComposer
+              // A new range is a new draft: reset the typed text and position.
+              key={`${comments.draft.from}:${comments.draft.to}`}
+              editor={editor}
+              author={commentAuthor}
+              comments={comments}
+              containerRef={contentRef}
+            />
+          )}
+        </div>
       </div>
+      {editor && showCommentsToggle && (
+        <DocumentCommentsPanel
+          id={panelId}
+          comments={comments}
+          mountPortalContainer={mountPortalContainer}
+        />
+      )}
     </article>
   );
 };

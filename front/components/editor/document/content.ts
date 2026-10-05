@@ -1,3 +1,8 @@
+import {
+  anchorsToMarks,
+  COMMENT_ANCHOR_NODE_NAME,
+  marksToAnchors,
+} from "@app/components/editor/document/DocumentCommentAnchor";
 import { documentExtensions } from "@app/components/editor/document/extensions";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -92,6 +97,10 @@ const canRoundTripMarkdown = (document: JSONContent, markdown: string) => {
 };
 
 export const normalizeTextNodes = (node: Node): Node => {
+  // The serializer writes anchors outside every mark, so a mark around one is not content.
+  if (node.type.name === COMMENT_ANCHOR_NODE_NAME) {
+    return node.mark([]);
+  }
   const children: Node[] = [];
   node.forEach((child) => children.push(normalizeTextNodes(child)));
   return node.copy(Fragment.fromArray(children));
@@ -123,7 +132,7 @@ export const parseDocumentContent = (
     return new Err("The Markdown would not read back the same after editing.");
   }
 
-  return new Ok(parsed);
+  return anchorsToMarks(parsed, documentSchema);
 };
 
 /**
@@ -134,7 +143,7 @@ export const parseDocumentContent = (
 export const serializeDocumentMarkdown = (
   document: JSONContent
 ): Result<string, string> => {
-  const content = withoutTrailingParagraphs(document);
+  const content = withoutTrailingParagraphs(marksToAnchors(document));
 
   // Serializing or re-reading an unknown node throws; either way the document is not writable.
   try {
