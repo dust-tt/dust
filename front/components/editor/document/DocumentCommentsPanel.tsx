@@ -1,4 +1,8 @@
 import { DocumentCommentInput } from "@app/components/editor/document/DocumentCommentInput";
+import type {
+  DocumentCommentAvatarSize,
+  DocumentProps,
+} from "@app/components/editor/document/types";
 import type { DocumentCommentsController } from "@app/components/editor/document/useDocumentComments";
 import { formatRelativeTime } from "@app/lib/client/relative_time";
 import { formatDateTime } from "@app/lib/i18n/format";
@@ -58,15 +62,26 @@ const PanelIconButton = ({
   />
 );
 
+type RenderAuthorAvatar = DocumentProps["renderCommentAuthorAvatar"];
+
 interface MessageBylineProps {
   message: DfmMessage;
-  size: "xxs" | "3xs";
+  size: DocumentCommentAvatarSize;
+  renderAuthorAvatar: RenderAuthorAvatar;
 }
 
-const MessageByline = ({ message, size }: MessageBylineProps) => (
+const MessageByline = ({
+  message,
+  size,
+  renderAuthorAvatar,
+}: MessageBylineProps) => (
   <div className="flex min-w-0 flex-1 items-center gap-2">
     <span aria-hidden="true">
-      <Avatar size={size} isRounded name={message.author.name} />
+      {renderAuthorAvatar ? (
+        renderAuthorAvatar(message.author, size)
+      ) : (
+        <Avatar size={size} isRounded name={message.author.name} />
+      )}
     </span>
     <span className="min-w-0 truncate text-sm font-medium">
       {message.author.name}
@@ -83,12 +98,18 @@ const MessageByline = ({ message, size }: MessageBylineProps) => (
 
 interface ReplyComposerProps {
   author: DfmAuthor | undefined;
+  renderAuthorAvatar: RenderAuthorAvatar;
   onReply: (body: string) => Result<void, string>;
   /** Escape clears the field and hands focus back to the thread. */
   onCancel: () => void;
 }
 
-const ReplyComposer = ({ author, onReply, onCancel }: ReplyComposerProps) => {
+const ReplyComposer = ({
+  author,
+  renderAuthorAvatar,
+  onReply,
+  onCancel,
+}: ReplyComposerProps) => {
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -97,6 +118,7 @@ const ReplyComposer = ({ author, onReply, onCancel }: ReplyComposerProps) => {
       label="Reply"
       placeholder="Reply…"
       author={author}
+      renderAuthorAvatar={renderAuthorAvatar}
       value={body}
       onChange={setBody}
       onSubmit={(trimmed) => {
@@ -121,6 +143,7 @@ const ReplyComposer = ({ author, onReply, onCancel }: ReplyComposerProps) => {
 
 interface DraftCardProps {
   author: DfmAuthor;
+  renderAuthorAvatar: RenderAuthorAvatar;
   quote: string;
   /** The panel is visible, so the field can take focus. */
   visible: boolean;
@@ -130,6 +153,7 @@ interface DraftCardProps {
 
 const DraftCard = ({
   author,
+  renderAuthorAvatar,
   quote,
   visible,
   onSubmit,
@@ -159,6 +183,7 @@ const DraftCard = ({
         label="Comment"
         placeholder="Add a comment…"
         author={author}
+        renderAuthorAvatar={renderAuthorAvatar}
         value={body}
         onChange={setBody}
         onSubmit={(trimmed) => {
@@ -186,6 +211,7 @@ interface CommentThreadProps {
   onDelete: () => void;
   onElement: (element: HTMLElement | null) => void;
   mountPortalContainer?: HTMLElement;
+  renderAuthorAvatar: RenderAuthorAvatar;
 }
 
 const CommentThread = ({
@@ -200,6 +226,7 @@ const CommentThread = ({
   onDelete,
   onElement,
   mountPortalContainer,
+  renderAuthorAvatar,
 }: CommentThreadProps) => {
   const ref = useRef<HTMLElement | null>(null);
   const [first, ...replies] = comment.messages;
@@ -236,7 +263,11 @@ const CommentThread = ({
         className="flex cursor-pointer flex-col gap-2.5 p-3"
       >
         <header className="flex items-center gap-1">
-          <MessageByline message={first} size="xxs" />
+          <MessageByline
+            message={first}
+            size="xxs"
+            renderAuthorAvatar={renderAuthorAvatar}
+          />
           {canWrite && (
             <div className="-mr-1.5 flex shrink-0">
               <PanelIconButton
@@ -279,7 +310,11 @@ const CommentThread = ({
                 key={`${reply.createdAt}:${index}`}
                 className="flex flex-col gap-1"
               >
-                <MessageByline message={reply} size="3xs" />
+                <MessageByline
+                  message={reply}
+                  size="3xs"
+                  renderAuthorAvatar={renderAuthorAvatar}
+                />
                 <p className="text-sm whitespace-pre-wrap wrap-anywhere">
                   {reply.body}
                 </p>
@@ -290,6 +325,7 @@ const CommentThread = ({
         {canWrite && active && !resolved && (
           <ReplyComposer
             author={author}
+            renderAuthorAvatar={renderAuthorAvatar}
             onReply={onReply}
             onCancel={() => ref.current?.focus()}
           />
@@ -303,6 +339,7 @@ interface DocumentCommentsPanelProps {
   id: string;
   comments: DocumentCommentsController;
   mountPortalContainer?: HTMLElement;
+  renderAuthorAvatar: RenderAuthorAvatar;
 }
 
 /** The thread to focus after removing one from its list: the next, else the previous. */
@@ -332,6 +369,7 @@ export const DocumentCommentsPanel = ({
   id,
   comments,
   mountPortalContainer,
+  renderAuthorAvatar,
 }: DocumentCommentsPanelProps) => {
   const {
     comments: threads,
@@ -406,6 +444,7 @@ export const DocumentCommentsPanel = ({
             threadElements.current.delete(comment.id);
           }
         }}
+        renderAuthorAvatar={renderAuthorAvatar}
         mountPortalContainer={mountPortalContainer}
       />
     );
@@ -474,6 +513,7 @@ export const DocumentCommentsPanel = ({
         {draft && author && (
           <DraftCard
             author={author}
+            renderAuthorAvatar={renderAuthorAvatar}
             quote={draftQuote}
             visible={panelOpen}
             onSubmit={submitDraft}

@@ -218,4 +218,45 @@ describe("Document comments", () => {
       .map((article) => article.getAttribute("aria-label"));
     expect(cards).toEqual(["Comment by U", "New comment", "Comment by U"]);
   });
+
+  it("shows comment authors with the host's avatars", async () => {
+    render(
+      <Document
+        initialContent={SOURCE}
+        renderCommentAuthorAvatar={(author, size) => (
+          <span data-testid={`avatar:${author.kind}:${author.id}:${size}`} />
+        )}
+      />
+    );
+
+    expect(await screen.findByTestId("avatar:user:usr_daph:xxs")).toBeDefined();
+  });
+
+  it("shows the commenting user with the host's avatar in a new comment", async () => {
+    const { container } = render(
+      <Document
+        initialContent={"Hello brave world.\n"}
+        onSave={vi.fn().mockResolvedValue(new Ok(undefined))}
+        commentAuthor={AUTHOR}
+        renderCommentAuthorAvatar={(author, size) => (
+          <span data-testid={`avatar:${author.id}:${size}`} />
+        )}
+      />
+    );
+    const dom = await waitFor(() => {
+      const element = container.querySelector(".tiptap");
+      if (!hasEditor(element)) {
+        throw new Error("Editor did not mount.");
+      }
+      return element;
+    });
+
+    startComment(dom, dom.editor, "brave");
+
+    expect(
+      within(screen.getByRole("article", { name: "New comment" })).getByTestId(
+        "avatar:usr_tom:xxs"
+      )
+    ).toBeDefined();
+  });
 });

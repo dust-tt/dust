@@ -1,5 +1,6 @@
 import { Document } from "@app/components/editor/document";
 import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
+import { CommentAuthorAvatar } from "@app/components/file_explorer/CommentAuthorAvatar";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import { MarkdownFilePreview } from "@app/components/file_explorer/MarkdownFilePreview";
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
@@ -400,6 +401,17 @@ export function FilePreviewContent({
                   : undefined
               }
               badge={<CoEditionBadge />}
+              renderCommentAuthorAvatar={
+                owner
+                  ? (author, size) => (
+                      <CommentAuthorAvatar
+                        owner={owner}
+                        author={author}
+                        size={size}
+                      />
+                    )
+                  : undefined
+              }
             />
           </div>
         );

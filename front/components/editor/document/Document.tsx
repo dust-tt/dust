@@ -56,6 +56,7 @@ export const Document = ({
   onStateChange,
   badge,
   commentAuthor,
+  renderCommentAuthorAvatar,
 }: DocumentProps) => {
   const {
     editor,
@@ -200,6 +201,7 @@ export const Document = ({
           id={panelId}
           comments={comments}
           mountPortalContainer={mountPortalContainer}
+          renderAuthorAvatar={renderCommentAuthorAvatar}
         />
       )}
     </article>
