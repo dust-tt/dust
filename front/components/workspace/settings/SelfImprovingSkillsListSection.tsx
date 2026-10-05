@@ -13,10 +13,9 @@ import {
   useReinforcementBillingUnit,
   useSkillsSelfImprovingSpend,
 } from "@app/lib/swr/useSelfImprovingSkillsSettings";
-import type { SkillReinforcementSettings } from "@app/types/api/skills";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type { SkillReinforcementMode } from "@app/types/assistant/skill_configuration";
-import type { LightWorkspaceType } from "@app/types/user";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   DataTable,
   InputWithSave,
@@ -43,8 +42,8 @@ type RowData = {
   sId: string;
   name: string;
   icon: string | null;
-  editedBy: SkillReinforcementSettings["editedBy"];
-  editors: SkillReinforcementSettings["editors"];
+  editedBy: number | null;
+  editors: UserType[] | null;
   enabled: boolean;
   pendingEnabled: boolean | null;
   isEnabledUpdating: boolean;
@@ -394,7 +393,7 @@ export function SelfImprovingSkillsListSection({
 
   const rows: RowData[] = useMemo(
     () =>
-      sortedSkills.map((skill: SkillReinforcementSettings) => {
+      sortedSkills.map((skill) => {
         const enabled = isReinforcementEnabled(skill.reinforcement);
         const lock = skill.selfImprovementLock;
         // Saved cap in the display unit.

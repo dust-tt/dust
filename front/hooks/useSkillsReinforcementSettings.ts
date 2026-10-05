@@ -1,8 +1,5 @@
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type {
-  GetSkillsReinforcementSettingsResponseBody,
-  SkillReinforcementSettings,
-} from "@app/types/api/skills";
+import type { GetSkillsReinforcementSettingsResponseBody } from "@app/types/api/skills";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 
@@ -20,7 +17,11 @@ export function useSkillsReinforcementSettings({
   );
 
   return {
-    skills: data?.skills ?? emptyArray<SkillReinforcementSettings>(),
+    skills:
+      data?.skills ??
+      emptyArray<
+        GetSkillsReinforcementSettingsResponseBody["skills"][number]
+      >(),
     isSkillsLoading: isLoading,
     isSkillsError: error,
   };

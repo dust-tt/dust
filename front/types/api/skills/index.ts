@@ -18,13 +18,10 @@ export type GetSkillsResponseBody = {
   })[];
 };
 
-export type SkillReinforcementSettings =
-  SkillWithoutInstructionsAndToolsType & {
-    editors: UserType[] | null;
-  };
-
 export type GetSkillsReinforcementSettingsResponseBody = {
-  skills: SkillReinforcementSettings[];
+  skills: (SkillWithoutInstructionsAndToolsType & {
+    editors: UserType[] | null;
+  })[];
 };
 
 export type SkillSearchPermissionFiltering = Exclude<
