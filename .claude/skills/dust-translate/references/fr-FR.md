@@ -26,6 +26,8 @@
 | Pod | Pod | Product name, capitalised |
 | skill | compétence | |
 | Frame | Frame | Product name |
+| Pro, Enterprise, … (plan names) | Pro, Enterprise, … | Never translated: « S’abonner à Pro » |
+| plan | forfait | Generic noun only, plan names stay as is |
 | memory (user memory) | mémoire | |
 | conversation | conversation | |
 | mention | mention | |
