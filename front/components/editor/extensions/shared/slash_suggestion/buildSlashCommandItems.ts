@@ -35,11 +35,6 @@ export function filterSlashCommandItems(
   );
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:product] empty-query-search-skills-first
- * With useSearchRanking and a blank query, skills MUST precede tools before
- * applying the result limit, with each group sorted alphabetically.
- */
 export function buildCapabilitySlashCommandItems<
   V extends MCPServerViewLightType,
 >({
