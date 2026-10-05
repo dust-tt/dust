@@ -1407,6 +1407,23 @@ export const moveItemToBoard = async (
   return data.move_item_to_board;
 };
 
+// Collects the variables of a GraphQL request, so that values are never pasted into the query text.
+const createGraphQLVariables = () => {
+  const definitions: string[] = [];
+  const values: Record<string, string> = {};
+
+  return {
+    add(type: string, value: string): string {
+      const name = `v${definitions.length}`;
+      definitions.push(`$${name}: ${type}`);
+      values[name] = value;
+      return `$${name}`;
+    },
+    definitions,
+    values,
+  };
+};
+
 export const createMultipleItems = async (
   accessToken: string,
   items: Array<{
@@ -1416,21 +1433,24 @@ export const createMultipleItems = async (
     columnValues?: Record<string, any>;
   }>
 ): Promise<MondayItem[]> => {
-  const mutations = items
-    .map(
-      (item, index) => `
-      item${index}: create_item(
-        board_id: ${item.boardId}
-        item_name: "${item.itemName}"
-        ${item.groupId ? `group_id: "${item.groupId}"` : ""}
-        ${
-          item.columnValues
-            ? `column_values: ${JSON.stringify(
-                JSON.stringify(item.columnValues)
-              )}`
-            : ""
-        }
-      ) {
+  const variables = createGraphQLVariables();
+
+  const mutations = items.map((item, index) => {
+    const args = [
+      `board_id: ${variables.add("ID!", item.boardId)}`,
+      `item_name: ${variables.add("String!", item.itemName)}`,
+    ];
+    if (item.groupId) {
+      args.push(`group_id: ${variables.add("String", item.groupId)}`);
+    }
+    if (item.columnValues) {
+      args.push(
+        `column_values: ${variables.add("JSON", JSON.stringify(item.columnValues))}`
+      );
+    }
+
+    return `
+      item${index}: create_item(${args.join(", ")}) {
         id
         name
         state
@@ -1459,17 +1479,16 @@ export const createMultipleItems = async (
           email
         }
       }
-    `
-    )
-    .join("\n");
+    `;
+  });
 
   const query = `
-    mutation CreateMultipleItems {
-      ${mutations}
+    mutation CreateMultipleItems(${variables.definitions.join(", ")}) {
+      ${mutations.join("\n")}
     }
   `;
 
-  const data = await makeGraphQLRequest(accessToken, query);
+  const data = await makeGraphQLRequest(accessToken, query, variables.values);
   return Object.values(data);
 };
 
