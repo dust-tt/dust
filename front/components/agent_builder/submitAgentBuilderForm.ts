@@ -2,12 +2,12 @@ import type {
   AgentBuilderFormData,
   AgentBuilderTriggerType,
 } from "@app/components/agent_builder/agentBuilderFormSchema";
-import { DROID_AVATAR_URLS } from "@app/components/agent_builder/settings/avatar_picker/types";
 import {
   expandFoldersToTables,
   getTableIdForContentNode,
 } from "@app/components/agent_builder/shared/tables";
 import { processAdditionalConfiguration } from "@app/lib/actions/additional_configuration";
+import { pickRandomDroidAvatarUrl } from "@app/lib/agent_builder/avatars";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import type {
   GetContentNodesOrChildrenRequestBodyType,
@@ -370,11 +370,8 @@ export async function submitAgentBuilderForm({
   areSlackChannelsChanged?: boolean;
   fetcherWithBody: FetcherWithBodyFn;
 }): Promise<Result<SubmittedAgentConfiguration, Error>> {
-  const allDefaultAvatars = [...DROID_AVATAR_URLS];
-  const getRandomDefaultAvatar = () =>
-    allDefaultAvatars[Math.floor(Math.random() * allDefaultAvatars.length)];
   const pictureUrlToUse =
-    formData.agentSettings.pictureUrl ?? getRandomDefaultAvatar();
+    formData.agentSettings.pictureUrl ?? pickRandomDroidAvatarUrl();
 
   if (!formData.generationSettings.modelSettings) {
     return new Err(new Error("Model settings are required"));

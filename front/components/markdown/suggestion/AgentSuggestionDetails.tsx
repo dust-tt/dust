@@ -18,7 +18,7 @@ import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
 } from "@app/lib/actions/mcp_helper";
-import { getAgentScopeLabel } from "@app/lib/agent_builder/labels";
+import { getAgentScopeLabel } from "@app/lib/agent_builder/helpers";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useMCPServerView } from "@app/lib/swr/mcp_servers";

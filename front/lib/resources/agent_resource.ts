@@ -4,6 +4,7 @@ import type {
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import { getNewAgentModelDefaults } from "@app/lib/agent_builder/helpers";
 import { GLOBAL_AGENTS_WORKSPACE_ID } from "@app/lib/agent_search/constants";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import { canAdminSeePrivateEntities } from "@app/lib/api/assistant/configuration/private_entities";
@@ -3637,12 +3638,7 @@ export class AgentResource
           pictureUrl: PENDING_AGENT_PLACEHOLDER_PICTURE_URL,
           status: "pending",
           scope: "hidden",
-          model: {
-            providerId: defaultModel.providerId,
-            modelId: defaultModel.modelId,
-            temperature: 0.7,
-            reasoningEffort: defaultModel.defaultReasoningEffort,
-          },
+          model: getNewAgentModelDefaults(defaultModel),
           templateId: null,
           requestedSpaceIds: [],
           tags: [],
