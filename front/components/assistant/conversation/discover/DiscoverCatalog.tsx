@@ -14,6 +14,10 @@ import {
   toHydratedAgentCatalogItem,
   toHydratedSkillCatalogItem,
 } from "@app/components/assistant/conversation/discover/catalog";
+import {
+  trackDiscoverItemDetailsOpen,
+  trackDiscoverItemSelect,
+} from "@app/components/assistant/conversation/discover/discoveryTracking";
 import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useSearchAgents } from "@app/hooks/useSearchAgents";
@@ -124,8 +128,7 @@ interface DiscoverCatalogProps {
 }
 
 interface CatalogActions {
-  onAgentClick: (agent: RichAgentMentionCandidate) => void;
-  onSkillClick: (skill: PendingSkill) => void;
+  onUse: (item: CatalogItem) => void;
   onPin?: (item: CatalogItem) => void;
   onDetails: (item: CatalogItem) => void;
 }
@@ -353,7 +356,30 @@ export function DiscoverCatalog({
     filters.kind !== "all" ||
     filters.tagId !== null ||
     searchTerm !== "";
-  const actions = { onAgentClick, onSkillClick, onPin, onDetails };
+  const trackingContext = { ...filters, hasSearchTerm: searchTerm !== "" };
+  const actions: CatalogActions = {
+    onUse: (item) => {
+      trackDiscoverItemSelect({
+        source: "catalog",
+        item,
+        catalog: trackingContext,
+      });
+      if (item.kind === "agent") {
+        onAgentClick(item.agent);
+      } else {
+        onSkillClick(item.skill);
+      }
+    },
+    onPin,
+    onDetails: (item) => {
+      trackDiscoverItemDetailsOpen({
+        source: "catalog",
+        item,
+        catalog: trackingContext,
+      });
+      onDetails(item);
+    },
+  };
 
   return useSearch ? (
     <SearchCatalog
@@ -507,8 +533,7 @@ function CatalogResults({
   onLoadMore,
   canClearFilters,
   onClearFilters,
-  onAgentClick,
-  onSkillClick,
+  onUse,
   onPin,
   onDetails,
 }: CatalogResultsProps) {
@@ -552,11 +577,7 @@ function CatalogResults({
             <CatalogRow
               key={`${item.kind}-${getItemId(item)}`}
               item={item}
-              onUse={() =>
-                item.kind === "agent"
-                  ? onAgentClick(item.agent)
-                  : onSkillClick(item.skill)
-              }
+              onUse={() => onUse(item)}
               onPin={onPin && (() => onPin(item))}
               onDetails={() => onDetails(item)}
             />
