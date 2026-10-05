@@ -14,50 +14,30 @@ import {
 import {
   CONVERSATION_EXTERNAL_NOTIFICATIONS_DESCRIPTION,
   CONVERSATION_EXTERNAL_NOTIFICATIONS_LABEL,
-} from "@app/components/workspace/settings/ConversationExternalNotificationsToggle";
-import {
   DUST_MCP_SERVER_DESCRIPTION,
   DUST_MCP_SERVER_LABEL,
-} from "@app/components/workspace/settings/DustMcpServerSettingsItem";
-import {
   EMAIL_AGENTS_DESCRIPTION,
   EMAIL_AGENTS_LABEL,
-} from "@app/components/workspace/settings/EmailAgentsToggle";
-import {
   INACTIVE_AGENT_ARCHIVAL_DESCRIPTION,
   INACTIVE_AGENT_ARCHIVAL_LABEL,
-} from "@app/components/workspace/settings/InactiveAgentArchival";
-import { MESSAGING_APP_METADATA } from "@app/components/workspace/settings/MessagingAppToggles";
-import {
+  MESSAGING_APP_METADATA,
   OPEN_PODS_DESCRIPTION,
   OPEN_PODS_LABEL,
   OPEN_PODS_POLICIES,
-} from "@app/components/workspace/settings/OpenPodsPolicy";
-import {
   POD_KNOWLEDGE_DESCRIPTION,
   POD_KNOWLEDGE_LABEL,
   POD_KNOWLEDGE_POLICIES,
-} from "@app/components/workspace/settings/PodKnowledgePolicy";
-import {
   PRIVATE_CONVERSATION_URLS_DESCRIPTION,
   PRIVATE_CONVERSATION_URLS_LABEL,
-} from "@app/components/workspace/settings/PrivateConversationUrlsToggle";
-import {
   SLACK_PERSONAL_FOOTER_REMOVAL_DESCRIPTION,
   SLACK_PERSONAL_FOOTER_REMOVAL_LABEL,
-} from "@app/components/workspace/settings/SlackPersonalFooterRemovalToggle";
-import {
   VOICE_TRANSCRIPTION_DESCRIPTION,
   VOICE_TRANSCRIPTION_LABEL,
-} from "@app/components/workspace/settings/VoiceTranscriptionToggle";
-import {
   WORKSPACE_ANALYTICS_DESCRIPTION,
   WORKSPACE_ANALYTICS_LABEL,
-} from "@app/components/workspace/settings/WorkspaceAnalyticsToggle";
-import {
   WORKSPACE_DEFAULT_AGENT_DESCRIPTION,
   WORKSPACE_DEFAULT_AGENT_LABEL,
-} from "@app/components/workspace/settings/WorkspaceDefaultAgentPicker";
+} from "@app/components/workspace/settings/settings_metadata";
 import type { AuditAction } from "@app/lib/api/audit/workos_audit";
 import { isDustMcpServerEnabled } from "@app/lib/api/mcp_server/dust_mcp_server_settings";
 import type { PokeMessagingApp } from "@app/lib/api/poke/messaging_apps";

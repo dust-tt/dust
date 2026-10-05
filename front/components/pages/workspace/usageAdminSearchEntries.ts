@@ -1,7 +1,3 @@
-import {
-  DEFAULT_COST_CAP_PER_SKILL_LABEL,
-  GLOBAL_SPENDING_CAP_LABEL,
-} from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
 import type { AdminSettingEntry } from "@app/lib/admin/adminSearchTypes";
 import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
@@ -90,8 +86,8 @@ export const USAGE_SEARCH_ENTRIES: AdminSettingEntry[] = [
         "Programmatic monthly limit",
         "api keys triggers block programmatic access",
       ],
-      [GLOBAL_SPENDING_CAP_LABEL, "self improving skills monthly cap credits"],
-      [DEFAULT_COST_CAP_PER_SKILL_LABEL, "self improving skills per run cap"],
+      ["Global spending cap", "self improving skills monthly cap credits"],
+      ["Default cost cap per skill", "self improving skills per run cap"],
     ],
     SETTINGS_TAB
   ),

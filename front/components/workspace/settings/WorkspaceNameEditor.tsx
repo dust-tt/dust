@@ -18,8 +18,6 @@ import {
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useState } from "react";
 
-export const WORKSPACE_NAME_LABEL = "Workspace Name";
-
 export function WorkspaceNameEditor({ owner }: { owner: WorkspaceType }) {
   const { t } = useLingui();
   const [disable, setDisabled] = useState(true);

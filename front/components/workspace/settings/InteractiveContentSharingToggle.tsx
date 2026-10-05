@@ -14,35 +14,32 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 const SHARING_POLICY_OPTIONS: {
-  description: string;
-  label: string;
+  description: MessageDescriptor;
+  label: MessageDescriptor;
   value: WorkspaceSharingPolicy;
 }[] = [
   {
-    label: "Workspace members only",
-    description: "Frames can only be viewed by workspace members",
+    label: msg`Workspace members only`,
+    description: msg`Frames can only be viewed by workspace members`,
     value: "workspace_only",
   },
   {
-    label: "Members + email invites",
-    description:
-      "Frames can be shared with workspace members or via email invite",
+    label: msg`Members + email invites`,
+    description: msg`Frames can be shared with workspace members or via email invite`,
     value: "workspace_and_emails",
   },
   {
-    label: "No restrictions",
-    description:
-      "Members can share frames publicly, with the workspace, or via email invite",
+    label: msg`No restrictions`,
+    description: msg`Members can share frames publicly, with the workspace, or via email invite`,
     value: "all_scopes",
   },
 ];
-
-const LABEL = "Frame sharing";
-export const FRAME_SHARING_LABEL = LABEL;
-const DESCRIPTION = "Whether frames are shareable outside the workspace";
 
 interface InteractiveContentSharingProps {
   isChanging: boolean;
@@ -55,6 +52,7 @@ export function InteractiveContentSharing({
   sharingPolicy,
   doUpdateSharingPolicy,
 }: InteractiveContentSharingProps) {
+  const { t } = useLingui();
   const [pendingPolicy, setPendingPolicy] =
     useState<WorkspaceSharingPolicy | null>(null);
 
@@ -82,8 +80,8 @@ export function InteractiveContentSharing({
   return (
     <>
       <GovernanceSettingRowLayout
-        label={LABEL}
-        description={DESCRIPTION}
+        label={t`Frame sharing`}
+        description={t`Whether frames are shareable outside the workspace`}
         action={
           <InteractiveContentSharingDropdown
             selectedOption={selectedOption}
@@ -106,36 +104,42 @@ export function InteractiveContentSharing({
           <DialogHeader hideButton>
             <DialogTitle>
               {isRestrictingToWorkspaceOnly
-                ? "Block external access"
-                : "Restrict Frame sharing"}
+                ? t`Block external access`
+                : t`Restrict Frame sharing`}
             </DialogTitle>
             <DialogDescription>
               {isRestrictingToWorkspaceOnly ? (
                 <>
-                  Non-workspace members with email invites will lose access to
-                  all frames in this workspace. Their invites are preserved and
-                  will resume if you change this setting later.
-                  {isDowngradingFromAllScopes &&
-                    " Public links will also stop working."}
+                  <Trans>
+                    Non-workspace members with email invites will lose access to
+                    all frames in this workspace. Their invites are preserved
+                    and will resume if you change this setting later.
+                  </Trans>
+                  {isDowngradingFromAllScopes && (
+                    <>
+                      {" "}
+                      <Trans>Public links will also stop working.</Trans>
+                    </>
+                  )}
                 </>
               ) : (
-                <>
+                <Trans>
                   This will revoke public access to all currently shared frames
                   in this workspace. Existing public links will stop working.
-                </>
+                </Trans>
               )}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter
             leftButtonProps={{
-              label: "Cancel",
+              label: t`Cancel`,
               disabled: isChanging,
               variant: "outline",
             }}
             rightButtonProps={{
               label: isRestrictingToWorkspaceOnly
-                ? "Block external access"
-                : "Restrict sharing",
+                ? t`Block external access`
+                : t`Restrict sharing`,
               disabled: isChanging,
               variant: "warning",
               onClick: async () => {
@@ -154,7 +158,7 @@ export function InteractiveContentSharing({
 
 interface InteractiveContentSharingDropdownProps {
   selectedOption?: {
-    label: string;
+    label: MessageDescriptor;
   };
   isChanging: boolean;
   sharingPolicy: WorkspaceSharingPolicy;
@@ -167,6 +171,8 @@ const InteractiveContentSharingDropdown = ({
   sharingPolicy,
   onPolicyChange,
 }: InteractiveContentSharingDropdownProps) => {
+  const { t } = useLingui();
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -174,7 +180,7 @@ const InteractiveContentSharingDropdown = ({
           variant="outline"
           size="sm"
           isSelect
-          label={selectedOption?.label}
+          label={selectedOption ? t(selectedOption.label) : undefined}
           disabled={isChanging}
           className="grid grid-cols-[auto_1fr_auto] truncate"
         />
@@ -185,8 +191,8 @@ const InteractiveContentSharingDropdown = ({
             <DropdownMenuRadioItem
               key={option.value}
               value={option.value}
-              label={option.label}
-              description={option.description}
+              label={t(option.label)}
+              description={t(option.description)}
               onClick={() => onPolicyChange(option.value)}
             />
           ))}

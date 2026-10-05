@@ -3,7 +3,6 @@ import {
   COMPUTER_NETWORK_SECTION_LABEL,
 } from "@app/components/pages/workspace/developers/computerAdminSearchEntries";
 import { AGENT_REQUESTED_DOMAINS_LABEL } from "@app/components/sandbox/AgentRequestedDomainsSetting";
-import { AUDIT_LOGS_EMIT_LABEL } from "@app/components/workspace/settings/AuditLogsToggle";
 import type { AdminSettingEntry } from "@app/lib/admin/adminSearchTypes";
 import { adminSearchEntries } from "@app/lib/admin/adminSearchTypes";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
@@ -77,7 +76,7 @@ export const IDENTITY_SEARCH_ENTRIES: AdminSettingEntry[] = [
   ...adminSearchEntries(
     PAGE,
     G.audit,
-    [[AUDIT_LOGS_EMIT_LABEL, "emit audit events workos"]],
+    [["Audit logs", "emit audit events workos"]],
     "audit"
   ),
 ];
