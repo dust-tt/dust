@@ -152,7 +152,8 @@ function AgentSearchTagSelector({
  * Below 768px viewport width, Usage MUST remain visible unless sorting by Last edited,
  * which MUST then remain visible instead. Names MUST truncate to leave room for that
  * column and row actions. Other columns appear as table space allows. At 768px and above,
- * preserve the existing layout. Sorting MUST NOT replace cell renderers.
+ * preserve the existing layout. Sorting MUST NOT replace cell renderers. Column visibility
+ * rules MUST remain in each column definition.
  */
 /**
  * @cc [owner:tdraier,label:react;performance] stable-columns
@@ -333,7 +334,7 @@ export function AgentSearchTable({
           ),
           meta: {
             className:
-              "hidden w-28 max-md:@xs:table-cell @sm:table-cell @xl:w-32",
+              "hidden w-28 max-md:@xs:table-cell max-md:@max-[40rem]:[.sort-by-last-edited_&]:hidden @sm:table-cell @xl:w-32",
           },
         },
         {
@@ -359,7 +360,8 @@ export function AgentSearchTable({
           ),
           meta: {
             type: "numeric",
-            className: "hidden w-24 max-md:table-cell @sm:table-cell",
+            className:
+              "hidden w-24 max-md:table-cell max-md:@max-[32rem]:[.sort-by-last-edited_&]:hidden @sm:table-cell",
           },
         },
         {
@@ -433,7 +435,10 @@ export function AgentSearchTable({
           cell: ({ row: { original: agent } }) => (
             <SkillLastEditedCell updatedAt={agent.updatedAt} emptyLabel="-" />
           ),
-          meta: { className: "hidden w-32 @sm:table-cell" },
+          meta: {
+            className:
+              "hidden w-32 max-md:[.sort-by-last-edited_&]:table-cell @sm:table-cell",
+          },
         },
         {
           id: "actions" as const,
@@ -457,53 +462,22 @@ export function AgentSearchTable({
   );
 
   const hasSelectableRows = !readOnly && agents.some(canSelect);
-  const isSortedByLastEdited = sorting[0]?.id === "updatedAt";
   const visibleColumns = useMemo(
     () =>
-      columns
-        .filter((column) => hasSelectableRows || column.id !== "select")
-        .map((column) => {
-          if (!isSortedByLastEdited) {
-            return column;
-          }
-          // Keep cell renderers stable when prioritizing the sorted column.
-          switch (column.id) {
-            case "usage":
-              return {
-                ...column,
-                meta: {
-                  ...column.meta,
-                  className: "hidden w-24 max-md:@xs:table-cell @sm:table-cell",
-                },
-              };
-            case "model":
-              return {
-                ...column,
-                meta: {
-                  ...column.meta,
-                  className: "hidden w-28 @sm:table-cell @xl:w-32",
-                },
-              };
-            case "updatedAt":
-              return {
-                ...column,
-                meta: {
-                  ...column.meta,
-                  className: "hidden w-32 max-md:table-cell @sm:table-cell",
-                },
-              };
-            default:
-              return column;
-          }
-        }),
-    [columns, hasSelectableRows, isSortedByLastEdited]
+      hasSelectableRows
+        ? columns
+        : columns.filter((column) => column.id !== "select"),
+    [columns, hasSelectableRows]
   );
+  // Expose sorting to column CSS without recreating cell renderers.
+  const tableClassName =
+    sorting[0]?.id === "updatedAt" ? "sort-by-last-edited" : undefined;
 
   // Show skeletons only when no rows are available; keep previous results during refreshes.
   // Mirror BasicCellContent's inner h-12 so the divider contributes equally to row height.
   if (isLoading && agents.length === 0) {
     return (
-      <div role="status" aria-label="Loading agents">
+      <div role="status" aria-label="Loading agents" className={tableClassName}>
         <DataTableSkeleton
           columns={visibleColumns}
           rowCount={12}
@@ -569,6 +543,7 @@ export function AgentSearchTable({
 
   return (
     <DataTable
+      className={tableClassName}
       data={agents.map((agent) => ({
         ...agent,
         onClick: () => onSelect(agent.sId),

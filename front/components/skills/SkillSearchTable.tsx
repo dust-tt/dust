@@ -34,6 +34,7 @@ import { useMemo } from "react";
  * which MUST then remain visible instead. Names MUST truncate to leave room for that
  * column and row actions. Other columns appear as table space allows. At 768px and above,
  * preserve the existing container-based layout. Sorting MUST NOT replace cell renderers.
+ * Column visibility rules MUST remain in each column definition.
  */
 const SKILL_SEARCH_NAME_COLUMN_WIDTH =
   "md:w-[calc(100%-12rem)] md:@sm:w-[calc(100%-28rem)] md:@md:w-[calc(100%-38rem)]";
@@ -238,7 +239,8 @@ export function SkillSearchTable({
           ),
           meta: {
             type: "numeric",
-            className: "w-24 font-mono",
+            className:
+              "w-24 font-mono max-md:@max-[32rem]:[.sort-by-last-edited_&]:hidden",
           },
         },
         {
@@ -261,7 +263,8 @@ export function SkillSearchTable({
             <SkillLastEditedCell updatedAt={skill.updatedAt} emptyLabel="-" />
           ),
           meta: {
-            className: "hidden w-32 max-md:@xs:table-cell @sm:table-cell",
+            className:
+              "hidden w-32 max-md:@xs:table-cell max-md:[.sort-by-last-edited_&]:table-cell @sm:table-cell",
           },
         },
         {
@@ -283,46 +286,22 @@ export function SkillSearchTable({
   );
 
   const hasSelectableRows = !readOnly && skills.some(canSelect);
-  const isSortedByLastEdited = sorting[0]?.id === "updatedAt";
   const visibleColumns = useMemo(
     () =>
-      columns
-        .filter((column) => hasSelectableRows || column.id !== "select")
-        .map((column) => {
-          if (!isSortedByLastEdited) {
-            return column;
-          }
-          // Keep cell renderers stable when prioritizing the sorted column.
-          switch (column.id) {
-            case "usage":
-              return {
-                ...column,
-                meta: {
-                  ...column.meta,
-                  className:
-                    "hidden w-24 font-mono @xs:table-cell md:table-cell",
-                },
-              };
-            case "updatedAt":
-              return {
-                ...column,
-                meta: {
-                  ...column.meta,
-                  className: "hidden w-32 max-md:table-cell @sm:table-cell",
-                },
-              };
-            default:
-              return column;
-          }
-        }),
-    [columns, hasSelectableRows, isSortedByLastEdited]
+      hasSelectableRows
+        ? columns
+        : columns.filter((column) => column.id !== "select"),
+    [columns, hasSelectableRows]
   );
+  // Expose sorting to column CSS without recreating cell renderers.
+  const tableClassName =
+    sorting[0]?.id === "updatedAt" ? "sort-by-last-edited" : undefined;
 
   // Show skeletons only when no rows are available; keep previous results during refreshes.
   // Mirror BasicCellContent's inner h-12 so the divider contributes equally to row height.
   if (isLoading && skills.length === 0) {
     return (
-      <div role="status" aria-label="Loading skills">
+      <div role="status" aria-label="Loading skills" className={tableClassName}>
         <DataTableSkeleton
           columns={visibleColumns}
           rowCount={12}
@@ -373,6 +352,7 @@ export function SkillSearchTable({
 
   return (
     <DataTable
+      className={tableClassName}
       data={skills.map((skill) => ({
         ...skill,
         onClick: () => onSelect(skill.sId),
