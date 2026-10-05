@@ -178,6 +178,10 @@ struct ConversationsResponse: Decodable {
     let lastValue: String?
 }
 
+struct SpaceConversationSearchResponse: Decodable {
+    let conversations: [Conversation]
+}
+
 // MARK: - Pod conversation listing
 
 struct PodConversationListItem: Decodable {

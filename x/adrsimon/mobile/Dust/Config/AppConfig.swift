@@ -158,6 +158,14 @@ enum AppConfig {
         static func spaceConversations(workspaceId: String, spaceId: String) -> String {
             "/api/w/\(workspaceId)/assistant/conversations/spaces/\(spaceId)"
         }
+
+        static func searchConversations(workspaceId: String) -> String {
+            "/api/w/\(workspaceId)/assistant/conversations/search"
+        }
+
+        static func searchSpaceConversations(workspaceId: String, spaceId: String) -> String {
+            "/api/w/\(workspaceId)/spaces/\(spaceId)/search_conversations"
+        }
     }
 }
 
