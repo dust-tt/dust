@@ -1,10 +1,6 @@
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import {
-  trackManageCreate,
-  useManageTracking,
-} from "@app/lib/tracking/manageTracking";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -38,7 +34,6 @@ export function CreateAgentDropdownContent({
   onNavigate,
   ...contentProps
 }: CreateAgentDropdownContentProps) {
-  const tracking = useManageTracking();
   const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
     owner,
   });
@@ -55,10 +50,7 @@ export function CreateAgentDropdownContent({
         onClick={withTracking(
           TRACKING_AREAS.BUILDER,
           "create_from_scratch",
-          () => {
-            trackManageCreate(tracking, "scratch");
-            onNavigate?.();
-          }
+          () => onNavigate?.()
         )}
       />
       <DropdownMenuItem
@@ -70,20 +62,14 @@ export function CreateAgentDropdownContent({
         onClick={withTracking(
           TRACKING_AREAS.BUILDER,
           "create_from_template",
-          () => {
-            trackManageCreate(tracking, "template");
-            onNavigate?.();
-          }
+          () => onNavigate?.()
         )}
       />
       <DropdownMenuItem
         icon={isUploadingYAML ? <Spinner size="xs" /> : Brackets}
         label={isUploadingYAML ? "Uploading..." : "From YAML"}
         disabled={isUploadingYAML}
-        onClick={() => {
-          trackManageCreate(tracking, "yaml");
-          triggerYAMLUpload();
-        }}
+        onClick={triggerYAMLUpload}
         data-gtm-label="yamlUploadButton"
         data-gtm-location={dataGtmLocation}
       />
@@ -102,7 +88,6 @@ export const CreateAgentDropdown = ({
   dataGtmLocation,
   isCompact = false,
 }: CreateAgentDropdownProps) => {
-  const tracking = useManageTracking();
   const { hasPermission } = useWorkspacePermissions();
 
   if (!hasPermission("create", "agent")) {
@@ -119,9 +104,7 @@ export const CreateAgentDropdown = ({
           tooltip={isCompact ? "Create agent" : undefined}
           data-gtm-label="assistantCreationButton"
           data-gtm-location={dataGtmLocation}
-          onClick={withTracking(TRACKING_AREAS.BUILDER, "create_menu", () =>
-            trackManageCreate(tracking, "menu")
-          )}
+          onClick={withTracking(TRACKING_AREAS.BUILDER, "create_menu")}
           size="sm"
           isSelect
         />

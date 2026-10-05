@@ -1,12 +1,12 @@
 import { useSkillSuggestionPreviewBatchId } from "@app/components/assistant/details/SuggestionPreviewContext";
 import { trackSuggestionPreviewEdit } from "@app/components/markdown/suggestion/suggestionTracking";
-import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
-import { SkillFavoriteButton } from "@app/components/skills/SkillFavoriteButton";
-import config from "@app/lib/api/config";
 import {
   trackManageItemAction,
   useManageTracking,
-} from "@app/lib/tracking/manageTracking";
+} from "@app/components/pages/builder/manageTracking";
+import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
+import { SkillFavoriteButton } from "@app/components/skills/SkillFavoriteButton";
+import config from "@app/lib/api/config";
 import {
   getConversationRoute,
   getManageSkillsRoute,
@@ -117,7 +117,6 @@ export function SkillDetailsButtonBar({
           icon={isSkillLinkCopied ? ClipboardCheck : Clipboard}
           onClick={(e) => {
             e.stopPropagation();
-            trackManageItemAction(tracking, "copy_link", skill.sId);
             void copySkillLink(
               `${config.getAppUrl()}${getManageSkillsRoute(owner.sId, skill.sId)}`
             );

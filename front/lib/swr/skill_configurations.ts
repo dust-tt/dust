@@ -13,14 +13,10 @@ import {
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import {
-  trackManageMutation,
-  useManageTracking,
-} from "@app/lib/tracking/manageTracking";
 import { getManageSkillsRoute } from "@app/lib/utils/router";
 import type { GetSkillHistoryResponseBody } from "@app/types/api/assistant/skills/history";
 import type { SearchType } from "@app/types/api/search";
-import { normalizeSearchQuery } from "@app/types/api/search";
+import { MIN_NAME_SEARCH_QUERY_LENGTH } from "@app/types/api/search";
 import type {
   GetSkillResponseBody,
   GetSkillsResponseBody,
@@ -57,6 +53,7 @@ import useSWRMutation from "swr/mutation";
 
 const DETECT_SKILLS_DEBOUNCE_MS = 1_000;
 const SEARCH_SKILLS_DEBOUNCE_MS = 250;
+const SEARCH_SKILLS_QUERY_MAX_LENGTH = 200;
 
 export function useSkill(options: {
   workspaceId: string;
@@ -244,7 +241,15 @@ export function useSearchSkills({
 }) {
   const { fetcherWithBody } = useFetcher();
   const { mutate: globalMutate } = useSWRConfig();
-  const query = normalizeSearchQuery(searchTerm, searchType);
+  const truncatedSearchTerm = searchTerm.slice(
+    0,
+    SEARCH_SKILLS_QUERY_MAX_LENGTH
+  );
+  const query =
+    searchType === "name" &&
+    truncatedSearchTerm.trim().length < MIN_NAME_SEARCH_QUERY_LENGTH
+      ? ""
+      : truncatedSearchTerm;
   const { debouncedValue: debouncedSearchTerm, setValue: setSearchTerm } =
     useDebounce(query, { delay: debounceMs });
   const isDebouncing = query !== debouncedSearchTerm;
@@ -324,7 +329,7 @@ export function useSearchSkillsInfinite({
   disabled?: boolean;
 }) {
   const { fetcherWithBody } = useFetcher();
-  const query = normalizeSearchQuery(searchTerm, "autocomplete");
+  const query = searchTerm.slice(0, SEARCH_SKILLS_QUERY_MAX_LENGTH);
   const { debouncedValue: debouncedSearchTerm, setValue: setSearchTerm } =
     useDebounce(query, { delay: SEARCH_SKILLS_DEBOUNCE_MS });
   const isDebouncing = query !== debouncedSearchTerm;
@@ -468,7 +473,6 @@ export function useUpdateSkillsAvailability({
 }: {
   owner: LightWorkspaceType;
 }) {
-  const tracking = useManageTracking();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
   const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
@@ -482,10 +486,6 @@ export function useUpdateSkillsAvailability({
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ skillIds, availability }),
-      });
-
-      trackManageMutation(tracking, "set_availability", skillIds, {
-        availability,
       });
 
       void invalidateSkills();
@@ -551,7 +551,6 @@ export function useArchiveSkill({
   owner: LightWorkspaceType;
   skill: SkillWithoutInstructionsAndToolsType;
 }) {
-  const tracking = useManageTracking();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
   const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
@@ -564,8 +563,6 @@ export function useArchiveSkill({
       await fetcher(`/api/w/${owner.sId}/skills/${skill.sId}`, {
         method: "DELETE",
       });
-
-      trackManageMutation(tracking, "archive", [skill.sId]);
 
       void invalidateSkills();
 
@@ -595,7 +592,6 @@ export function useBatchArchiveSkills({
   owner: LightWorkspaceType;
   skillIds: string[];
 }) {
-  const tracking = useManageTracking();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
   const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
@@ -611,8 +607,6 @@ export function useBatchArchiveSkills({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ skillIds }),
       });
-
-      trackManageMutation(tracking, "archive", skillIds);
 
       void invalidateSkills();
 
@@ -640,7 +634,6 @@ export function useUpdateSkillFavorite({
 }: {
   owner: LightWorkspaceType;
 }) {
-  const tracking = useManageTracking();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
   const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
@@ -655,10 +648,6 @@ export function useUpdateSkillFavorite({
         await fetcher(`/api/w/${owner.sId}/skills/${skill.sId}/favorite`, {
           method: isFavorite ? "POST" : "DELETE",
         });
-
-        trackManageMutation(tracking, isFavorite ? "favorite" : "unfavorite", [
-          skill.sId,
-        ]);
 
         void invalidateSkills();
 
@@ -693,7 +682,7 @@ export function useUpdateSkillFavorite({
         return false;
       }
     },
-    [fetcher, invalidateSkills, tracking, owner.sId, router, sendNotification]
+    [fetcher, invalidateSkills, owner.sId, router, sendNotification]
   );
 
   return { updateSkillFavorite };
@@ -957,7 +946,6 @@ function notifyImportResult(
 }
 
 export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
-  const tracking = useManageTracking();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
   const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
@@ -997,16 +985,6 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
           }
         }
 
-        trackManageMutation(
-          tracking,
-          "import",
-          [...data.imported, ...data.updated].map((skill) => skill.sId),
-          {
-            import_source: formData.importType,
-            skipped_count: data.skipped.length,
-          }
-        );
-
         void invalidateSkills();
 
         return notifyImportResult(data, sendNotification);
@@ -1024,7 +1002,7 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
         setIsImporting(false);
       }
     },
-    [owner.sId, sendNotification, fetcher, invalidateSkills, tracking]
+    [owner.sId, sendNotification, fetcher, invalidateSkills]
   );
 
   return { importSkills, isImporting };

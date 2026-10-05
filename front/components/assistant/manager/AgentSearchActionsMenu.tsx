@@ -1,12 +1,12 @@
 import { DeleteAgentDialog } from "@app/components/assistant/DeleteAgentDialog";
+import {
+  trackManageItemAction,
+  useManageTracking,
+} from "@app/components/pages/builder/manageTracking";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
-import {
-  trackManageItemAction,
-  useManageTracking,
-} from "@app/lib/tracking/manageTracking";
 import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
@@ -106,10 +106,9 @@ export function AgentSearchActionsMenu({
       kind: "item",
       label: "Copy agent ID",
       icon: Brackets,
-      onClick: withoutPropagation(() => {
-        trackManageItemAction(tracking, "copy_id", agentId);
-        void navigator.clipboard.writeText(agentId);
-      }),
+      onClick: withoutPropagation(
+        () => void navigator.clipboard.writeText(agentId)
+      ),
     },
     {
       kind: "item",

@@ -1,15 +1,15 @@
 import { DeleteAgentDialog } from "@app/components/assistant/DeleteAgentDialog";
 import { useAgentSuggestionPreviewBatchId } from "@app/components/assistant/details/SuggestionPreviewContext";
 import { trackSuggestionPreviewEdit } from "@app/components/markdown/suggestion/suggestionTracking";
+import {
+  trackManageItemAction,
+  useManageTracking,
+} from "@app/components/pages/builder/manageTracking";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
-import {
-  trackManageItemAction,
-  useManageTracking,
-} from "@app/lib/tracking/manageTracking";
 import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 import {
   getAgentBuilderRoute,
@@ -185,7 +185,6 @@ export function AgentDetailsDropdownMenu({
     (agentConfiguration.canEdit || isAdmin(owner)) && !isRedactedForAdmin;
 
   const handleExportToYAML = async () => {
-    trackManageItemAction(tracking, "export", agentConfiguration.sId);
     setIsExporting(true);
     const response = await clientFetch(
       `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration?.sId}/export/yaml`
@@ -261,7 +260,6 @@ export function AgentDetailsDropdownMenu({
         label="Copy agent ID"
         onClick={async (e) => {
           e.stopPropagation();
-          trackManageItemAction(tracking, "copy_id", agentConfiguration.sId);
           await navigator.clipboard.writeText(agentConfiguration.sId);
           onClose?.();
         }}

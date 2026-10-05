@@ -2,10 +2,6 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { GetTagsUsageResponseBody } from "@app/lib/resources/tags_resource";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import {
-  trackManageMutation,
-  useManageTracking,
-} from "@app/lib/tracking/manageTracking";
 import type { PatchAgentTagsRequestBody } from "@app/types/api/assistant/configuration/agent_tags";
 import type { GetSuggestionsResponseBody } from "@app/types/api/assistant/tag_manager";
 import type { GetTagsResponseBody } from "@app/types/api/tags";
@@ -224,10 +220,9 @@ export function useUpdateTag({
 }
 
 export function useUpdateAgentTags({ owner }: { owner: LightWorkspaceType }) {
-  const tracking = useManageTracking();
   const updateAgentTags = useCallback(
     async (agentConfigurationId: string, body: PatchAgentTagsRequestBody) => {
-      const response = await clientFetch(
+      await clientFetch(
         `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/tags`,
         {
           method: "PATCH",
@@ -237,13 +232,8 @@ export function useUpdateAgentTags({ owner }: { owner: LightWorkspaceType }) {
           body: JSON.stringify(body),
         }
       );
-      if (response.ok) {
-        trackManageMutation(tracking, "set_tags", [agentConfigurationId], {
-          outcome: "accepted",
-        });
-      }
     },
-    [owner, tracking]
+    [owner]
   );
 
   return updateAgentTags;

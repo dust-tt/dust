@@ -9,17 +9,6 @@ export const MIN_NAME_SEARCH_QUERY_LENGTH = 3;
 export const SEARCH_TYPES = ["autocomplete", "name"] as const;
 export type SearchType = (typeof SEARCH_TYPES)[number];
 
-export function normalizeSearchQuery(
-  searchTerm: string,
-  searchType: SearchType
-): string {
-  const query = searchTerm.slice(0, 200);
-  return searchType === "name" &&
-    query.trim().length < MIN_NAME_SEARCH_QUERY_LENGTH
-    ? ""
-    : query;
-}
-
 export type DataSourceContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;
   dataSourceViews: DataSourceViewType[];

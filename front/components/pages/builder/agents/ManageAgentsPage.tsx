@@ -11,10 +11,15 @@ import {
   AGENT_SEARCH_TABS,
   toAgentSearchFilters,
 } from "@app/components/assistant/manager/agentFilter";
+import {
+  ManageTrackingContext,
+  trackManageDetails,
+  useManageTracking,
+  useTrackManageResults,
+} from "@app/components/pages/builder/manageTracking";
 import { FilterSummaryChips } from "@app/components/shared/filter_panel/FilterSummaryChips";
 import {
   clearFilterCategory,
-  filterSelectionCount,
   getFilterSummaries,
 } from "@app/components/shared/filter_panel/filterState";
 import { SEARCH_FILTER_CATEGORY_SINGULAR_LABEL } from "@app/components/shared/filter_panel/searchFilter";
@@ -28,15 +33,6 @@ import { useSearchAgents } from "@app/hooks/useSearchAgents";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useTags } from "@app/lib/swr/tags";
-import type { ManageTracking } from "@app/lib/tracking/manageTracking";
-import {
-  ManageTrackingContext,
-  trackManageDetails,
-  trackManageFilter,
-  trackManageTab,
-  useManagePageTracking,
-  useTrackManageResults,
-} from "@app/lib/tracking/manageTracking";
 import { tagsSorter } from "@app/lib/utils";
 import type {
   AgentSearchFilters,
@@ -45,7 +41,6 @@ import type {
   AgentSearchSortOrder,
   SearchAgentsResponseBody,
 } from "@app/types/agent_search/agent_search";
-import { normalizeSearchQuery } from "@app/types/api/search";
 import {
   Button,
   ButtonsSwitch,
@@ -70,7 +65,7 @@ interface AgentsListProps {
   searchTerm: string;
   filters: AgentSearchFilters;
   permissionFiltering: AgentSearchPermissionFiltering;
-  onSelect: (agentId: string, tracking: ManageTracking | null) => void;
+  onSelect: (agentId: string) => void;
 }
 
 type AgentSearchItem = SearchAgentsResponseBody["agents"][number];
@@ -90,6 +85,14 @@ function AgentsList({
   permissionFiltering,
   onSelect,
 }: AgentsListProps) {
+  const tracking = useManageTracking();
+  const handleSelect = useCallback(
+    (agentId: string) => {
+      trackManageDetails(tracking, agentId);
+      onSelect(agentId);
+    },
+    [tracking, onSelect]
+  );
   const owner = useWorkspace();
   const { user, isAdmin } = useAuth();
   // Selected rows are kept by id across pages, with the item needed by batch actions.
@@ -142,19 +145,16 @@ function AgentsList({
     sortOrder,
   });
 
-  const resultTracking = useTrackManageResults({
+  useTrackManageResults({
+    queryKey,
+    searchTerm,
     total,
-    isLoading: isAgentsLoading || isFilterLoading,
-    isError: isAgentsError,
-    pageIndex: tablePagination.pageIndex,
+    disabled:
+      isFilterLoading ||
+      isAgentsLoading ||
+      isAgentsError ||
+      tablePagination.pageIndex !== 0,
   });
-
-  const handleSelect = useCallback(
-    (id: string) => {
-      onSelect(id, resultTracking);
-    },
-    [onSelect, resultTracking]
-  );
 
   // Batch edits are reserved to the agent's editors and to workspace admins, as on the legacy page.
   const canSelect = useCallback(
@@ -206,51 +206,49 @@ function AgentsList({
       (isAgentsLoading ||
         agents.length > 0 ||
         tablePagination.pageIndex > 0) ? (
-        <ManageTrackingContext.Provider value={resultTracking}>
-          <AgentSearchTable
-            owner={owner}
-            readOnly={readOnly}
-            renderActions={renderActions}
-            agents={agents}
-            onSelect={handleSelect}
-            onRefresh={mutate}
-            pagination={tablePagination}
-            // The table reports its pagination on every render; storing an unchanged value would
-            // re-render forever.
-            setPagination={(next) => {
-              if (
-                next.pageIndex !== tablePagination.pageIndex ||
-                next.pageSize !== tablePagination.pageSize
-              ) {
-                setTablePagination(next);
-              }
-            }}
-            total={total}
-            sorting={
-              sortBy === "relevance"
-                ? []
-                : [{ id: sortBy, desc: sortOrder !== "asc" }]
+        <AgentSearchTable
+          owner={owner}
+          readOnly={readOnly}
+          renderActions={renderActions}
+          agents={agents}
+          onSelect={handleSelect}
+          onRefresh={mutate}
+          pagination={tablePagination}
+          // The table reports its pagination on every render; storing an unchanged value would
+          // re-render forever.
+          setPagination={(next) => {
+            if (
+              next.pageIndex !== tablePagination.pageIndex ||
+              next.pageSize !== tablePagination.pageSize
+            ) {
+              setTablePagination(next);
             }
-            setSorting={([sort]) => {
-              switch (sort?.id) {
-                case "name":
-                case "usage":
-                case "updatedAt":
-                  setSelectedSort({
-                    sortBy: sort.id,
-                    sortOrder: sort.desc ? "desc" : "asc",
-                  });
-                  break;
-                default:
-                  setSelectedSort(null);
-              }
-            }}
-            isLoading={isAgentsLoading}
-            selectedAgentIds={selectedAgents.map((agent) => agent.sId)}
-            setSelectedAgentIds={setSelectedAgentIds}
-            canSelect={canSelect}
-          />
-        </ManageTrackingContext.Provider>
+          }}
+          total={total}
+          sorting={
+            sortBy === "relevance"
+              ? []
+              : [{ id: sortBy, desc: sortOrder !== "asc" }]
+          }
+          setSorting={([sort]) => {
+            switch (sort?.id) {
+              case "name":
+              case "usage":
+              case "updatedAt":
+                setSelectedSort({
+                  sortBy: sort.id,
+                  sortOrder: sort.desc ? "desc" : "asc",
+                });
+                break;
+              default:
+                setSelectedSort(null);
+            }
+          }}
+          isLoading={isAgentsLoading}
+          selectedAgentIds={selectedAgents.map((agent) => agent.sId)}
+          setSelectedAgentIds={setSelectedAgentIds}
+          canSelect={canSelect}
+        />
       ) : !isAgentsError ? (
         <EmptyCTA
           message={
@@ -311,10 +309,6 @@ export function ManageAgentsPage({
   renderActions,
 }: ManageAgentsPageProps) {
   const owner = useWorkspace();
-  const [detailsSelection, setDetailsSelection] = useState<{
-    id: string;
-    tracking: ManageTracking | null;
-  } | null>(null);
   const { user, isAdmin } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
   const [detailedAgentId, setDetailedAgentId] = useState<string | null>(null);
@@ -322,12 +316,8 @@ export function ManageAgentsPage({
   const [hiddenAgentsParam, setHiddenAgentsParam] =
     useHashParam("hiddenAgents");
   const showHiddenAgents = hiddenAgentsParam === "true";
-  const setShowHiddenAgents = (isShown: boolean) => {
-    if (isShown !== showHiddenAgents) {
-      trackManageFilter(tracking, isShown ? "show_hidden" : "hide_hidden");
-    }
+  const setShowHiddenAgents = (isShown: boolean) =>
     setHiddenAgentsParam(isShown ? "true" : undefined);
-  };
   const {
     selectedTab,
     setSelectedTab,
@@ -397,34 +387,6 @@ export function ManageAgentsPage({
   const filter = resolveFilter(selectionFacets);
   const visibleFilter = getVisibleFilter(filter);
 
-  const normalizedQuery = normalizeSearchQuery(searchTerm, "name");
-  const tracking = useManagePageTracking({
-    entityType: "agent",
-    workspaceId: owner.sId,
-    queryKey: JSON.stringify({
-      query: normalizedQuery,
-      filters: toAgentSearchFilters(visibleFilter, activeTab.filters),
-      hidden: canShowHiddenAgents && showHiddenAgents,
-      tab: selectedTab,
-    }),
-    tab: selectedTab,
-    hasSearch: normalizedQuery.trim().length > 0,
-    filterCount: filterSelectionCount(visibleFilter, filterCategories),
-    filterCategories: filterCategories
-      .filter((category) => visibleFilter[category]?.length)
-      .join(","),
-    showHidden: canShowHiddenAgents && showHiddenAgents,
-    disabled: readOnly,
-  });
-  const handleSelect = useCallback(
-    (id: string, selectedTracking: ManageTracking | null) => {
-      trackManageDetails(selectedTracking, id);
-      setDetailsSelection({ id, tracking: selectedTracking });
-      (onSelect ?? setDetailedAgentId)(id);
-    },
-    [onSelect]
-  );
-
   const searchInput = (
     <div className="w-full md:w-1/2">
       <label htmlFor="agent-search" className="sr-only">
@@ -439,6 +401,12 @@ export function ManageAgentsPage({
         className="w-full"
       />
     </div>
+  );
+
+  const tracking = useMemo(
+    () =>
+      readOnly ? null : { entity_type: "agent" as const, tab: selectedTab },
+    [readOnly, selectedTab]
   );
 
   return (
@@ -475,8 +443,7 @@ export function ManageAgentsPage({
               value={selectedTab}
               onValueChange={(value) => {
                 const tab = AGENT_SEARCH_TABS.find(({ id }) => id === value);
-                if (tab && tab.id !== selectedTab) {
-                  trackManageTab(tracking, tab.id);
+                if (tab) {
                   setSelectedTab(tab.id);
                 }
               }}
@@ -493,10 +460,9 @@ export function ManageAgentsPage({
               tabFilters={activeTab.filters}
               permissionFiltering={getPermissionFiltering(activeTab.id)}
               filter={visibleFilter}
-              onFilterChange={(nextFilter) => {
-                trackManageFilter(tracking, "apply");
-                setFilter({ ...filter, ...getVisibleFilter(nextFilter) });
-              }}
+              onFilterChange={(nextFilter) =>
+                setFilter({ ...filter, ...getVisibleFilter(nextFilter) })
+              }
               hiddenAgents={
                 canShowHiddenAgents
                   ? {
@@ -514,10 +480,9 @@ export function ManageAgentsPage({
               filterCategories,
               SEARCH_FILTER_CATEGORY_SINGULAR_LABEL
             )}
-            onClearCategory={(category) => {
-              trackManageFilter(tracking, "clear_category");
-              setFilter(clearFilterCategory(filter, category));
-            }}
+            onClearCategory={(category) =>
+              setFilter(clearFilterCategory(filter, category))
+            }
             extraChips={
               canShowHiddenAgents && showHiddenAgents
                 ? [
@@ -534,9 +499,8 @@ export function ManageAgentsPage({
                 : []
             }
             onClearAll={() => {
-              trackManageFilter(tracking, "clear_all");
               setFilter({ ...filter, ...getVisibleFilter({}) });
-              setHiddenAgentsParam(undefined);
+              setShowHiddenAgents(false);
             }}
           />
           <AgentsList
@@ -548,25 +512,17 @@ export function ManageAgentsPage({
             searchTerm={searchTerm}
             filters={toAgentSearchFilters(visibleFilter, activeTab.filters)}
             permissionFiltering={getPermissionFiltering(activeTab.id)}
-            onSelect={handleSelect}
+            onSelect={onSelect ?? setDetailedAgentId}
           />
         </div>
       </div>
       {!readOnly && (
-        <ManageTrackingContext.Provider
-          value={
-            detailsSelection && detailsSelection.id === detailedAgentId
-              ? detailsSelection.tracking
-              : tracking
-          }
-        >
-          <AgentDetailsSheet
-            owner={owner}
-            user={user}
-            agentId={detailedAgentId}
-            onClose={() => setDetailedAgentId(null)}
-          />
-        </ManageTrackingContext.Provider>
+        <AgentDetailsSheet
+          owner={owner}
+          user={user}
+          agentId={detailedAgentId}
+          onClose={() => setDetailedAgentId(null)}
+        />
       )}
     </ManageTrackingContext.Provider>
   );

@@ -1,9 +1,9 @@
-import config from "@app/lib/api/config";
-import { useAppRouter } from "@app/lib/platform";
 import {
   trackManageItemAction,
   useManageTracking,
-} from "@app/lib/tracking/manageTracking";
+} from "@app/components/pages/builder/manageTracking";
+import config from "@app/lib/api/config";
+import { useAppRouter } from "@app/lib/platform";
 import {
   getManageSkillsRoute,
   getSkillBuilderRoute,
@@ -72,7 +72,6 @@ export function useSkillMenuItems({ owner }: { owner: LightWorkspaceType }) {
           onClick: async (event) => {
             event.preventDefault();
             event.stopPropagation();
-            trackManageItemAction(tracking, "copy_link", skillId);
             setCopiedSkillId(skillId);
             await copyLink(
               `${config.getAppUrl()}${getManageSkillsRoute(owner.sId, skillId)}`

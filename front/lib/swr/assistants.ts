@@ -17,10 +17,6 @@ import {
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import {
-  trackManageMutation,
-  useManageTracking,
-} from "@app/lib/tracking/manageTracking";
 import type { GetAgentUsageResponseBody } from "@app/types/api/assistant/agent_usage";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/types/api/assistant/builder/slack/channels_linked_with_agent";
 import type { GetSlackUserPrivateChannelsResponseBody } from "@app/types/api/assistant/builder/slack/user_private_channels";
@@ -48,7 +44,6 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
-import { z } from "zod";
 
 export function useAssistantTemplates() {
   const { fetcher } = useFetcher();
@@ -528,7 +523,6 @@ export function useDeleteAgentConfiguration({
   owner: LightWorkspaceType;
   agentConfiguration?: LightAgentConfigurationType;
 }) {
-  const tracking = useManageTracking();
   const sendNotification = useSendNotification();
   const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
     useAgentConfigurations({
@@ -555,7 +549,6 @@ export function useDeleteAgentConfiguration({
     );
 
     if (res.ok) {
-      trackManageMutation(tracking, "archive", [agentConfiguration.sId]);
       void mutateAgentConfiguration();
       void mutateAgentConfigurations();
 
@@ -586,7 +579,6 @@ export function useBatchDeleteAgentConfigurations({
   owner: LightWorkspaceType;
   agentConfigurationIds: string[];
 }) {
-  const tracking = useManageTracking();
   const sendNotification = useSendNotification();
   const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
     useAgentConfigurations({
@@ -613,7 +605,6 @@ export function useBatchDeleteAgentConfigurations({
     );
 
     if (res.ok) {
-      trackManageMutation(tracking, "archive", agentConfigurationIds);
       void mutateAgentConfigurations();
 
       sendNotification({
@@ -643,7 +634,6 @@ export function useUpdateUserFavorite({
   owner: LightWorkspaceType;
   agentConfigurationId: string;
 }) {
-  const tracking = useManageTracking();
   const sendNotification = useSendNotification();
   const { mutateAgentConfiguration: mutateCurrentAgentConfiguration } =
     useAgentConfiguration({
@@ -679,11 +669,6 @@ export function useUpdateUserFavorite({
         );
 
         if (res.ok) {
-          trackManageMutation(
-            tracking,
-            userFavorite ? "favorite" : "unfavorite",
-            [agentConfigurationId]
-          );
           sendNotification({
             title: `Agent ${
               userFavorite ? "added to favorites" : "removed from favorites"
@@ -720,7 +705,6 @@ export function useUpdateUserFavorite({
       mutateCurrentAgentConfiguration,
       owner.sId,
       sendNotification,
-      tracking,
     ]
   );
   return { updateUserFavorite: doUpdate, isUpdatingFavorite };
@@ -782,24 +766,17 @@ export function useRestoreAgentConfiguration({
   return doRestore;
 }
 
-// Unlike scope updates, tag updates report which agents were actually changed.
-const BatchUpdateAgentTagsResponseSchema = z.object({
-  updatedAgentIds: z.array(z.string()),
-  skippedAgentIds: z.array(z.string()),
-});
-
 export function useBatchUpdateAgentTags({
   owner,
 }: {
   owner: LightWorkspaceType;
 }) {
-  const tracking = useManageTracking();
   const batchUpdateAgentTags = useCallback(
     async (
       agentIds: string[],
       body: { addTagIds?: string[]; removeTagIds?: string[] }
     ) => {
-      const response = await clientFetch(
+      await clientFetch(
         `/api/w/${owner.sId}/assistant/agent_configurations/batch_update_tags`,
         {
           method: "POST",
@@ -812,22 +789,8 @@ export function useBatchUpdateAgentTags({
           }),
         }
       );
-      if (tracking && response.ok) {
-        const json = await response.json().catch(() => null);
-        const parsed = BatchUpdateAgentTagsResponseSchema.safeParse(json);
-        if (parsed.success) {
-          trackManageMutation(
-            tracking,
-            "set_tags",
-            parsed.data.updatedAgentIds,
-            {
-              skipped_count: parsed.data.skippedAgentIds.length,
-            }
-          );
-        }
-      }
     },
-    [owner, tracking]
+    [owner]
   );
 
   return batchUpdateAgentTags;
@@ -838,7 +801,6 @@ export function useBatchUpdateAgentModel({
 }: {
   owner: LightWorkspaceType;
 }) {
-  const tracking = useManageTracking();
   const sendNotification = useSendNotification();
 
   const batchUpdateAgentModel = useCallback(
@@ -888,9 +850,6 @@ export function useBatchUpdateAgentModel({
       }
 
       const { updatedAgentIds, skippedAgentIds } = parsed.data;
-      trackManageMutation(tracking, "set_model", updatedAgentIds, {
-        skipped_count: skippedAgentIds.length,
-      });
 
       sendNotification({
         type: skippedAgentIds.length > 0 ? "info" : "success",
@@ -903,7 +862,7 @@ export function useBatchUpdateAgentModel({
       });
       return true;
     },
-    [owner.sId, sendNotification, tracking]
+    [owner.sId, sendNotification]
   );
 
   return batchUpdateAgentModel;
@@ -914,10 +873,9 @@ export function useBatchUpdateAgentScope({
 }: {
   owner: LightWorkspaceType;
 }) {
-  const tracking = useManageTracking();
   const batchUpdateAgentScope = useCallback(
     async (agentIds: string[], body: { scope: "visible" | "hidden" }) => {
-      const response = await clientFetch(
+      await clientFetch(
         `/api/w/${owner.sId}/assistant/agent_configurations/batch_update_scope`,
         {
           method: "POST",
@@ -930,16 +888,8 @@ export function useBatchUpdateAgentScope({
           }),
         }
       );
-      if (response.ok) {
-        trackManageMutation(
-          tracking,
-          body.scope === "visible" ? "publish" : "unpublish",
-          agentIds,
-          { outcome: "accepted" }
-        );
-      }
     },
-    [owner, tracking]
+    [owner]
   );
 
   return batchUpdateAgentScope;

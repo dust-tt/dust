@@ -1,8 +1,4 @@
 import { SKILL_ICON } from "@app/lib/skill";
-import {
-  trackManageCreate,
-  useManageTracking,
-} from "@app/lib/tracking/manageTracking";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -21,31 +17,21 @@ interface CreateSkillButtonProps {
 }
 
 export function CreateSkillButton({ owner, onImport }: CreateSkillButtonProps) {
-  const tracking = useManageTracking();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          label="Create skill"
-          icon={Plus}
-          isSelect
-          onClick={() => trackManageCreate(tracking, "menu")}
-        />
+        <Button label="Create skill" icon={Plus} isSelect />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuItem
           label="From scratch"
           icon={SKILL_ICON}
-          onClick={() => trackManageCreate(tracking, "scratch")}
           href={getSkillBuilderRoute(owner.sId, "new")}
         />
         <DropdownMenuItem
           label="From existing"
           icon={FolderOpen}
-          onClick={() => {
-            trackManageCreate(tracking, "import");
-            onImport();
-          }}
+          onClick={onImport}
         />
       </DropdownMenuContent>
     </DropdownMenu>
