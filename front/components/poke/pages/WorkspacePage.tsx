@@ -27,6 +27,7 @@ import { WebhookSourceDataTable } from "@app/components/poke/webhook_sources/tab
 import { WorkspaceMetadataTab } from "@app/components/poke/workspace/MetadataTab";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
 import { WorkspaceAnalyticsButton } from "@app/components/poke/workspace/WorkspaceAnalyticsButton";
+import { WorkspaceModelTiersButton } from "@app/components/poke/workspace/WorkspaceModelTiersButton";
 import { WorkspacePoolUsageButton } from "@app/components/poke/workspace/WorkspacePoolUsageButton";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useCellContext } from "@app/lib/auth/CellContext";
@@ -252,6 +253,7 @@ export function WorkspacePage() {
                   />
                   <WorkspaceAnalyticsButton workspaceId={owner.sId} />
                   <WorkspacePoolUsageButton workspaceId={owner.sId} />
+                  <WorkspaceModelTiersButton workspaceId={owner.sId} />
                 </div>
               </TabsContent>
               <TabsContent value="subscriptions">
