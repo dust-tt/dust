@@ -1,4 +1,7 @@
-import { CapabilitiesPickerItemsList } from "@app/components/assistant/CapabilitiesPicker";
+import {
+  CapabilitiesPickerItemsList,
+  CapabilitiesPickerLoading,
+} from "@app/components/assistant/CapabilitiesPicker";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useSearchSkillsInfinite } from "@app/lib/swr/skill_configurations";
@@ -11,7 +14,6 @@ import {
   DropdownMenuTrigger,
   Icon,
   PuzzlePiece01,
-  Spinner,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -87,9 +89,7 @@ export function PodDefaultSkillPicker({
       >
         {/* Keep the previous results visible while the next query loads. */}
         {isSkillsLoading && searchSkills.length === 0 ? (
-          <div className="flex justify-center p-4">
-            <Spinner size="sm" />
-          </div>
+          <CapabilitiesPickerLoading />
         ) : addableSkills.length > 0 || !hasMore ? (
           <CapabilitiesPickerItemsList
             emptyMessage={
@@ -122,11 +122,7 @@ export function PodDefaultSkillPicker({
             hasMore={hasMore}
             options={{ root: scrollRoot }}
             showLoader={isSkillsLoading && searchSkills.length > 0}
-            loader={
-              <div className="flex justify-center p-2">
-                <Spinner size="sm" />
-              </div>
-            }
+            loader={<CapabilitiesPickerLoading count={3} />}
           />
         )}
       </DropdownMenuContent>
