@@ -203,6 +203,11 @@ export async function getInternalMCPServer(
       return (
         await import("@app/lib/api/actions/servers/cursor_cloud_agents")
       ).default(auth, toolContext);
+    case "documents":
+      return (await import("@app/lib/api/actions/servers/documents")).default(
+        auth,
+        toolContext
+      );
     case "files":
       return (await import("@app/lib/api/actions/servers/files")).default(
         auth,

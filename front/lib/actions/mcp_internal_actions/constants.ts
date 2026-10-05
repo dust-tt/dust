@@ -33,6 +33,7 @@ import { EXA_SERVER } from "@app/lib/api/actions/servers/exa/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FATHOM_SERVER } from "@app/lib/api/actions/servers/fathom/metadata";
 import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
+import { DOCUMENTS_SERVER } from "@app/lib/api/actions/servers/documents/metadata";
 import { FILES_SERVER } from "@app/lib/api/actions/servers/files/metadata";
 import { FRESHSERVICE_SERVER } from "@app/lib/api/actions/servers/freshservice/metadata";
 import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
@@ -183,6 +184,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "conversation_files",
   "conversation_side_panel",
   "cursor_cloud_agents",
+  "documents",
   "files",
   "data_sources_file_system",
   DATA_WAREHOUSE_SERVER_NAME,
@@ -1132,6 +1134,17 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: FILES_SERVER,
+  },
+  documents: {
+    id: 1051,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => !featureFlags.includes("co_edition"),
+    isPreview: false,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: DOCUMENTS_SERVER,
   },
   workspace_analytics: {
     id: 1035,

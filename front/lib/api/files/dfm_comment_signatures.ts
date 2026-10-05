@@ -14,6 +14,7 @@ import {
 } from "@app/lib/markdown/dfm";
 import { streamToBuffer } from "@app/lib/utils/streams";
 import logger from "@app/logger/logger";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { contentTypeFromFileName, stripMimeParameters } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -21,8 +22,9 @@ import { Err, Ok } from "@app/types/shared/result";
 /**
  * Server-side authorship for DFM comments. The server writes and signs each message a user
  * posts, and a Markdown save through the file API is refused when it brings a new message the
- * server did not sign for the saving user. Messages written around this path, from a sandbox or
- * an agent tool, stay unsigned and read as unverified.
+ * server did not sign for the saving user. The documents agent tool signs the messages it writes
+ * for the running agent. Messages written around both paths, from a sandbox or a plain file
+ * edit, stay unsigned and read as unverified.
  */
 
 export type DfmCommentSignatureErrorCode =
@@ -140,11 +142,80 @@ export async function signDfmCommentMessage(
     );
   }
 
-  const message: DfmMessage = {
-    author: { kind: "user", id: user.sId, name: user.fullName() },
-    createdAt: new Date().toISOString(),
+  return signMessage(auth, {
+    filePath,
+    commentId,
+    position,
+    previous,
+    message: {
+      author: { kind: "user", id: user.sId, name: user.fullName() },
+      createdAt: new Date().toISOString(),
+      body,
+    },
+  });
+}
+
+/**
+ * @cc [owner:tdraier,label:security] dfm-comment-signing-by-agent
+ * A message signed for an agent MUST be attributed to `agent:<sId>` of the given agent
+ * configuration, named `@<agent name>`, at the current time, as the first message of a new
+ * thread in the file at `filePath`; callers MUST pass the agent running the tool and the file it
+ * writes, never values from the tool input. It MUST be refused outside a workspace with
+ * `co_edition` or when the codec cannot write it. Without a signing key it MUST be returned
+ * unsigned.
+ */
+export async function signDfmAgentCommentMessage(
+  auth: Authenticator,
+  {
+    agent,
+    filePath,
+    commentId,
     body,
-  };
+  }: {
+    agent: Pick<LightAgentConfigurationType, "sId" | "name">;
+    filePath: string;
+    commentId: string;
+    body: string;
+  }
+): Promise<Result<DfmMessage, DfmCommentSignatureError>> {
+  if (!(await hasFeatureFlag(auth, "co_edition"))) {
+    return new Err(
+      new DfmCommentSignatureError(
+        "not_available",
+        "Commenting is not available here."
+      )
+    );
+  }
+
+  return signMessage(auth, {
+    filePath,
+    commentId,
+    position: 0,
+    previous: null,
+    message: {
+      author: { kind: "agent", id: agent.sId, name: `@${agent.name}` },
+      createdAt: new Date().toISOString(),
+      body,
+    },
+  });
+}
+
+async function signMessage(
+  auth: Authenticator,
+  {
+    filePath,
+    commentId,
+    position,
+    previous,
+    message,
+  }: {
+    filePath: string;
+    commentId: string;
+    position: number;
+    previous: SignedMessageFields | null;
+    message: DfmMessage;
+  }
+): Promise<Result<DfmMessage, DfmCommentSignatureError>> {
   const writable = serializeDfm({
     frontMatter: null,
     body: "",

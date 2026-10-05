@@ -75,9 +75,10 @@ A message may also carry `sig`, the server's Ed25519 signature in base64url over
 `messageSignaturePayload` in `signatures.ts`: workspace, file path, comment id, the message's
 position in the thread and the message before it, author, name, timestamp and body, not the status. A copy into another
 file, a rename or a reordering therefore reads as unverified. The server writes and signs a
-message when a signed-in user posts it, and refuses a save through the file API that brings a
-new message it did not sign for the saving user at that place, or moves a verified one; a
-message without a valid `sig`, such as one written from a sandbox or by an agent, is unverified. The codec carries the attribute and never checks it, so nothing here proves who
+message when a signed-in user posts it or an agent calls the `documents.add_comment` tool, and
+refuses a save through the file API that brings a new message it did not sign for the saving user
+at that place, or moves a verified one; a message without a valid `sig`, such as one written from
+a sandbox or by a plain file edit, is unverified. The codec carries the attribute and never checks it, so nothing here proves who
 wrote a message. `tests/fixtures/signed_comments.md` shows one.
 
 **How an agent reads it.** Text first: the body reads as Markdown with a few directives. To
