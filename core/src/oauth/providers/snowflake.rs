@@ -11,16 +11,9 @@ use crate::{
 };
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
-use lazy_static::lazy_static;
-use regex::Regex;
 use tracing::info;
 
 use super::utils::ProviderHttpRequestError;
-
-lazy_static! {
-    static ref SNOWFLAKE_ACCOUNT_RE: Regex =
-        Regex::new(r"^[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*$").unwrap();
-}
 
 pub struct SnowflakeConnectionProvider {}
 
@@ -58,7 +51,13 @@ impl SnowflakeConnectionProvider {
     /// the `.snowflakecomputing.com` suffix out of the host MUST be rejected.
     fn get_token_endpoint(snowflake_account: &str) -> Result<String, ProviderError> {
         let snowflake_account = snowflake_account.trim();
-        if !SNOWFLAKE_ACCOUNT_RE.is_match(snowflake_account) {
+        let is_host_labels = snowflake_account.split('.').all(|label| {
+            !label.is_empty()
+                && label
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+        });
+        if !is_host_labels {
             return Err(ProviderError::InvalidMetadataError(
                 "Snowflake account identifier format is invalid".to_string(),
             ));
@@ -288,19 +287,17 @@ mod tests {
 
     #[test]
     fn test_get_token_endpoint_format() {
-        let url = SnowflakeConnectionProvider::get_token_endpoint("my-account").unwrap();
         assert_eq!(
-            url,
-            "https://my-account.snowflakecomputing.com/oauth/token-request"
+            SnowflakeConnectionProvider::get_token_endpoint("my-account").ok(),
+            Some("https://my-account.snowflakecomputing.com/oauth/token-request".to_string())
         );
     }
 
     #[test]
     fn test_get_token_endpoint_trims_whitespace() {
-        let url = SnowflakeConnectionProvider::get_token_endpoint("  my-account  ").unwrap();
         assert_eq!(
-            url,
-            "https://my-account.snowflakecomputing.com/oauth/token-request"
+            SnowflakeConnectionProvider::get_token_endpoint("  my-account  ").ok(),
+            Some("https://my-account.snowflakecomputing.com/oauth/token-request".to_string())
         );
     }
 
