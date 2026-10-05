@@ -82,8 +82,9 @@ server immediately include pending edits. Another server sees them after publica
 Persist asynchronously, coalescing and batching content operations **only within the same object**,
 within FDB limits. Different files use separate transactions. Each create/remove coordinates its
 parent and target in its own transaction; sharing a parent does not combine independent operations.
-No application WAL or disk recovery: a crash can lose acknowledged edits. The client holds no dirty
-data. Tenant affinity normally keeps sessions together; rerouting and server overlap follow the
+A create may include initial writes to its new child before its batch is frozen; it still touches
+only that parent and child. No application WAL or disk recovery: a crash can lose acknowledged
+edits. The client holds no dirty data. Tenant affinity normally keeps sessions together; rerouting and server overlap follow the
 recovery rules above and do not introduce an exclusive writer.
 
 **`fsync` acknowledges server RAM visibility.** The client waits for its preceding write RPCs; the
@@ -291,7 +292,9 @@ a newer parent, grants, or namespace state.
 transaction for the object at the cached base's original read version. A file-owned write set
 contains its metadata, blocks, and index entries only; content writes do not update parent metadata.
 Create/remove instead use their explicit parent-and-target scope, atomically initializing or deleting
-the child and its required indexes/data. They never absorb independent content-write queues.
+the child and its required indexes/data. A create may also include initial content/metadata edits
+of its new child before publication starts; other namespace operations never absorb independent
+content-write queues.
 Ancestor/grant reads remain necessary for authorization, but do not enroll their objects' pending
 edits into the transaction. Explicitly register read conflicts for every cached dependency before
 applying mutations: object revision,
@@ -355,8 +358,10 @@ affected local gates in sorted order for RAM changes and place ordering barriers
 queues; publish one atomic rename without absorbing their unrelated queued edits. Barriers wait for
 required earlier publications without holding a tenant lock across I/O.
 
-A write to a pending new file waits for its parent-and-target creation transaction to publish, then
-uses the file's own transaction. These prerequisites do not merge parent and file write queues.
+Initial writes to a pending new file MAY join its parent-and-target creation transaction until that
+batch is frozen. This does not widen the create's two-object scope or combine different children.
+Writes accepted after freezing publish next in a file-only transaction, ordered after creation.
+All these writes acknowledge RAM acceptance without waiting for creation to commit.
 Grant-dependent writes likewise wait for pending grant edits in another object's transaction.
 Prerequisite waits count against the dependent write's original deadline. Rejection invalidates
 actually dependent edits, not independent object queues. Bound the dependency graph and apply
@@ -385,7 +390,8 @@ No v1/v2 implementation changes in this proposal. Measure both `D` settings agai
 - Transaction scope: queued writes to A and B MUST produce separate commits; a conflict or blocked
   publication on A MUST NOT stall independent B. Create/remove MUST coordinate parent and target;
   different children remain separate. Verify rename coordination, same-parent deduplication, replacement,
-  and that namespace publications never absorb independent file-content writes.
+  and that only a create may include initial writes to its own child before freezing; other
+  namespace publications never absorb independent file-content writes.
 - Failures: isolate a server from FDB, delay commit/reply/refresh, expire an FDB snapshot, lose a
   commit reply, and restart. Assert errors instead of over-age or internally inconsistent success.
 - RAM fsync: pause publication within its budget and verify cached writes, rereads, and fsync complete
@@ -402,3 +408,23 @@ No v1/v2 implementation changes in this proposal. Measure both `D` settings agai
 Expect hot writes and rereads to avoid foreground FDB I/O, and coalescing to reduce commit count.
 Cold misses, cross-server conflicts, and namespace dependencies still cost FDB work. Measure these
 separately before adding watches, disk caching, or search.
+
+## First local implementation
+
+The initial implementation uses one pinned FDB snapshot plus an immutable cut of RAM edits for each
+request. Point/range caches share that snapshot's absolute expiry; parents and grant memberships
+are cached there too. Refresh uses bounded ancestry hints. A short RAM lock validates and installs
+edits; no lock is held across FDB I/O. Publication scopes and dependency barriers remain per object.
+Initial writes can join their create; unrelated children remain separate commits.
+
+Publication retries definitely uncommitted attempts after validating their original preconditions
+at a fresh read version. Authorization guards compare consumed parent links and grants, allowing
+unrelated ancestor timestamps to change. A changed target precondition rejects the tentative branch
+and records failure; general semantic rebasing is not implemented yet. Ambiguous outcomes are never
+replayed. Invalidating a rejected batch does not cancel unrelated object publications.
+
+The finer cache optimizations above—retaining blocks across snapshot refresh after a revision check,
+reusing derived authority proofs, and independently refreshing object bases—remain follow-up work.
+The current cache drops expired snapshot data; it does not keep serving it beyond the bound.
+The initial benchmark is local and uses `D = 1000 ms`; 100k, `D = 8000 ms`, broader fault injection,
+and networked evaluation remain separate steps.

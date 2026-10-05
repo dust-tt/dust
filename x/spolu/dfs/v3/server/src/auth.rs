@@ -1,0 +1,162 @@
+use crate::{
+    State,
+    keys::Keys,
+    model::TenantRecord,
+    storage::{decode, failed},
+};
+use dfs_protocol::{
+    error::status,
+    rpc::{ErrorCode, Session},
+    validate,
+};
+use sha2::{Digest, Sha256};
+use std::{
+    collections::{BTreeSet, HashMap},
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+    time::{Duration, Instant},
+};
+use subtle::ConstantTimeEq;
+use tokio::sync::{Mutex, RwLock};
+use tonic::{Request, Status};
+
+pub(crate) fn hash(value: &str) -> [u8; 32] {
+    Sha256::digest(value.as_bytes()).into()
+}
+pub(crate) fn secret() -> Result<String, Status> {
+    let mut bytes = [0u8; 32];
+    getrandom::fill(&mut bytes).map_err(|_| status(ErrorCode::Internal))?;
+    Ok(hex::encode(bytes))
+}
+pub(crate) fn bearer<T>(request: &Request<T>) -> Result<&str, Status> {
+    request
+        .metadata()
+        .get("authorization")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.strip_prefix("Bearer "))
+        .filter(|v| v.len() == 64)
+        .ok_or_else(|| status(ErrorCode::Unauthenticated))
+}
+
+pub(crate) struct SessionState {
+    pub info: Session,
+    pub grants: BTreeSet<String>,
+    pub deadline: Instant,
+    pub closed: AtomicBool,
+    pub gate: RwLock<()>,
+}
+impl SessionState {
+    pub fn active(&self) -> Result<(), Status> {
+        if self.closed.load(Ordering::Acquire) || Instant::now() >= self.deadline {
+            return Err(status(ErrorCode::Unauthenticated));
+        }
+        Ok(())
+    }
+}
+#[derive(Default)]
+pub(crate) struct Sessions {
+    pub entries: Mutex<HashMap<[u8; 32], Arc<SessionState>>>,
+}
+impl Sessions {
+    pub async fn create(
+        &self,
+        mut info: Session,
+        grants: BTreeSet<String>,
+    ) -> Result<Session, Status> {
+        let key = secret()?;
+        let mut entries = self.entries.lock().await;
+        entries.retain(|_, s| s.active().is_ok());
+        if entries.len() >= 10_000 {
+            return Err(status(ErrorCode::Capacity));
+        }
+        let state = Arc::new(SessionState {
+            info: info.clone(),
+            grants,
+            deadline: Instant::now() + Duration::from_secs(3600),
+            closed: AtomicBool::new(false),
+            gate: RwLock::new(()),
+        });
+        entries.insert(hash(&key), state);
+        info.session_key = key;
+        Ok(info)
+    }
+    pub async fn get<T>(&self, request: &Request<T>) -> Result<Arc<SessionState>, Status> {
+        let state = self
+            .entries
+            .lock()
+            .await
+            .get(&hash(bearer(request)?))
+            .cloned()
+            .ok_or_else(|| status(ErrorCode::Unauthenticated))?;
+        state.active()?;
+        Ok(state)
+    }
+    /// Caller MUST hold the session write gate and finish its RAM acceptance before closing.
+    pub async fn close<T>(&self, request: &Request<T>, state: &SessionState) -> Result<(), Status> {
+        state.closed.store(true, Ordering::Release);
+        self.entries.lock().await.remove(&hash(bearer(request)?));
+        Ok(())
+    }
+}
+
+impl State {
+    pub(crate) fn server_authority<T>(&self, request: &Request<T>) -> Result<(), Status> {
+        if bool::from(self.server_hash.ct_eq(&hash(bearer(request)?))) {
+            Ok(())
+        } else {
+            Err(status(ErrorCode::Unauthenticated))
+        }
+    }
+    pub(crate) async fn tenant_authority<T>(
+        &self,
+        request: &Request<T>,
+        tenant: &str,
+    ) -> Result<TenantRecord, Status> {
+        validate::tenant(tenant)?;
+        let key = hash(bearer(request)?);
+        let bytes = self
+            .storage
+            .get(Keys::new(tenant)?.tenant())
+            .await
+            .map_err(failed)?
+            .ok_or_else(|| status(ErrorCode::Unauthenticated))?;
+        let value: TenantRecord = decode(&bytes)?;
+        if !bool::from(key.ct_eq(&value.key_hash)) {
+            return Err(status(ErrorCode::Unauthenticated));
+        }
+        Ok(value)
+    }
+}
+
+impl State {
+    pub(crate) async fn admin_session(
+        &self,
+        tenant: &str,
+        root: &str,
+    ) -> Result<Arc<SessionState>, Status> {
+        let mut admins = self.admins.lock().await;
+        admins.retain(|_, s| s.active().is_ok());
+        if let Some(s) = admins.get(tenant) {
+            return Ok(s.clone());
+        }
+        if admins.len() >= 10_000 {
+            return Err(status(ErrorCode::Capacity));
+        }
+        let session = Arc::new(SessionState {
+            info: Session {
+                id: uuid::Uuid::new_v4().simple().to_string(),
+                tenant_id: tenant.into(),
+                root_id: root.into(),
+                ..Default::default()
+            },
+            grants: Default::default(),
+            deadline: Instant::now() + Duration::from_secs(3600),
+            closed: AtomicBool::new(false),
+            gate: Default::default(),
+        });
+        admins.insert(tenant.into(), session.clone());
+        Ok(session)
+    }
+}
