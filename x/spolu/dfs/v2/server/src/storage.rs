@@ -42,6 +42,20 @@ struct Counters {
     retries: AtomicU64,
 }
 
+/// A typed internal outcome; no backend details or retry advice cross the RPC boundary.
+pub(crate) struct TransactionFailure {
+    pub status: Status,
+    pub conflicted: bool,
+}
+impl From<Status> for TransactionFailure {
+    fn from(status: Status) -> Self {
+        Self {
+            status,
+            conflicted: false,
+        }
+    }
+}
+
 impl Storage {
     /// @cc [owner:spolu,label:backend;security] scoped-fdb-format
     /// Open MUST access only the configured application subspace. Foreign formats and nonempty
@@ -153,7 +167,23 @@ impl Storage {
     reused as read versions. Preconditions MUST retain conflict tracking; ambiguous commits MUST
     NOT repeat. Read-only results and application errors MUST use the same fresh transaction.
     */
-    pub async fn transact<T, F, Fut>(&self, mut operation: F) -> Result<T, Status>
+    pub async fn transact<T, F, Fut>(&self, operation: F) -> Result<T, Status>
+    where
+        F: FnMut(Arc<Snapshot>) -> Fut,
+        Fut: Future<Output = Result<(WriteBatch, T), Status>>,
+    {
+        self.transact_outcome(operation)
+            .await
+            .map_err(|error| error.status)
+    }
+
+    /// @cc [owner:spolu,label:concurrency;error-handling] definitive-conflict-outcome
+    /// Mark a terminal outcome as conflicted only for FDB not_committed (1020). Ambiguous commits,
+    /// timeouts, and unknown errors MUST NOT authorize splitting or replay outside this retry loop.
+    pub(crate) async fn transact_outcome<T, F, Fut>(
+        &self,
+        mut operation: F,
+    ) -> Result<T, TransactionFailure>
     where
         F: FnMut(Arc<Snapshot>) -> Fut,
         Fut: Future<Output = Result<(WriteBatch, T), Status>>,
@@ -162,7 +192,7 @@ impl Storage {
         for attempt in 0..8 {
             let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
             if remaining.is_zero() {
-                return Err(status(ErrorCode::Unavailable));
+                return Err(status(ErrorCode::Unavailable).into());
             }
             let snapshot = self.snapshot().await?;
             snapshot
@@ -226,7 +256,7 @@ impl Storage {
                         Err(error) => (*error, failed(*error)),
                     }
                 }
-                Err(error) if error.code() != tonic::Code::Unavailable => return Err(error),
+                Err(error) if error.code() != tonic::Code::Unavailable => return Err(error.into()),
                 Err(status) => (
                     FdbError::from_code(snapshot.error.load(Ordering::Relaxed)),
                     status,
@@ -236,7 +266,10 @@ impl Storage {
                 || attempt == 7
                 || tokio::time::Instant::now() >= deadline
             {
-                return Err(status);
+                return Err(TransactionFailure {
+                    status,
+                    conflicted: error.code() == 1020,
+                });
             }
             tracing::debug!(
                 code = error.code(),
@@ -246,7 +279,7 @@ impl Storage {
             self.counters.retries.fetch_add(1, Ordering::Relaxed);
             tokio::time::sleep(Duration::from_millis(1 << attempt)).await;
         }
-        Err(status(ErrorCode::Unavailable))
+        Err(status(ErrorCode::Unavailable).into())
     }
 
     pub async fn get(&self, key: impl AsRef<[u8]>) -> Result<Option<Bytes>, Status> {

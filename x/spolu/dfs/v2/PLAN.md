@@ -330,6 +330,8 @@ commit waits for file writes/updates, not all network latency; speedup must be m
       targets. Keep file fsync finite, and coordinate synchronous mutations only with participants.
 - [x] Prove a paused file publication permits sibling create/read/write/fsync, including deep paths;
       test publication during listing discovery and retain independent-writer/error/crash tests.
+- [x] Handle exhausted, definitely uncommitted FDB conflicts by splitting multi-file publication
+      batches. The first GCP attempt exposed parent-record contention; never split ambiguous outcomes.
 - [ ] Run the existing GCP 10k full suite and deep
       untar sequentially. Keep prior corpora/results and compare retries, batches, and remaining drain.
 

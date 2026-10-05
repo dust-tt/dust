@@ -158,7 +158,9 @@ Later writes cannot extend this barrier. Successful fsync includes normal FDB lo
 ordinary close remains cheap. Session close and graceful shutdown drain accepted work. A failed or
 ambiguous batch cannot silently disappear: retain its errors until session closure/expiry. Only
 known-uncommitted FDB attempts may retry; ambiguous outcomes never replay automatically. An
-uncommitted application failure can split a multi-file batch to isolate unrelated files.
+uncommitted application failure or exhausted FDB `not_committed` conflict can split a multi-file
+batch to reduce contention. Only that definite conflict outcome permits splitting an unavailable
+transaction; timeouts and ambiguous commits never do. Single-file failures remain sticky.
 
 Search indexes committed FDB only. Suppress locally dirty search candidates and include RAM files
 in index-status pending counts, deduplicated against FDB work. Status is diagnostic: concurrent

@@ -866,6 +866,57 @@ pub(crate) mod tests {
             .find(|o| o.id == file.id)
             .context("listed file")?;
         assert_eq!(result, &accepted);
+
+        // Exhaust real multi-file conflict retries; splitting must publish each file without errors.
+        let files: Vec<_> = page
+            .entries
+            .iter()
+            .filter_map(|e| e.object.as_ref())
+            .collect();
+        for file in &files {
+            api.write(request(
+                key,
+                WriteRequest {
+                    object_id: file.id.clone(),
+                    data: b"split safely".to_vec(),
+                    ..Default::default()
+                },
+            )?)
+            .await?;
+        }
+        api.0
+            .writeback
+            .conflict_batches
+            .store(true, Ordering::Relaxed);
+        api.0
+            .writeback
+            .flush(&api.0, &workspace.workspace_id, None, true)
+            .await;
+        api.0
+            .writeback
+            .conflict_batches
+            .store(false, Ordering::Relaxed);
+        for file in files {
+            api.fsync(request(
+                key,
+                ObjectRequest {
+                    object_id: file.id.clone(),
+                },
+            )?)
+            .await?;
+            let data = api
+                .read(request(
+                    key,
+                    ReadRequest {
+                        object_id: file.id.clone(),
+                        length: 12,
+                        ..Default::default()
+                    },
+                )?)
+                .await?
+                .into_inner();
+            assert_eq!(data.data, b"split safely");
+        }
         api.0.drain().await?;
         api.0
             .storage

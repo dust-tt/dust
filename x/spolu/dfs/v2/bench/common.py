@@ -83,6 +83,7 @@ def persistence(path):
     drains = fields(path, 'writeback drained')
     totals = fields(path, 'FDB transaction totals')
     batches = fields(path, 'writeback publication')
+    splits = fields(path, 'writeback batch split')
     return {'writeback_drain': drains[-1] if drains else None,
             'fdb_transactions': totals[-1] if totals else None,
             'publication': None if not drains else {
@@ -90,4 +91,6 @@ def persistence(path):
                 'files': sum(row['files'] for row in batches),
                 'operations': sum(row['operations'] for row in batches),
                 'accounted_bytes': sum(row['bytes'] for row in batches),
-                'elapsed_us': sum(row['elapsed_us'] for row in batches)}}
+                'elapsed_us': sum(row['elapsed_us'] for row in batches),
+                'conflict_splits': sum(row['conflicted'] for row in splits),
+                'split_elapsed_us': sum(row['elapsed_us'] for row in splits)}}

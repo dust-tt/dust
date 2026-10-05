@@ -305,3 +305,24 @@ Server summaries record peak queue accounting, accepted/committed operations, ba
 and failures. FDB counters cover all transactions in that server lifetime, including search and token
 reservations; they are not filesystem-only counts. Publication bytes are conservative queue charges,
 not physical FDB/log bytes. Raw JSON and credentials stay outside Git.
+
+## Per-object publication locks
+
+Use the same commands above with report directories `vfs-10k-object-locks` and
+`deep-10k-object-locks`. Keep the xattrs FUSE binary, 16 MiB xattr cache, server writeback defaults,
+and native FDB settings. The previous workspace-lock server is retained on the workload host at
+`/target/workspace-locks/dfs-server-v2`; the rebuilt server uses `/target/writeback/release`.
+
+Kernel settings are unchanged for this comparison. The 32 GiB workload VM uses
+`vm.dirty_background_ratio=10`, `vm.dirty_ratio=20`, zero byte overrides, 30 s dirty expiry,
+5 s writeback wakeup, and `vm.vfs_cache_pressure=100`. The mount uses eight workers, 32 background
+requests, congestion threshold 24, and up to 1 MiB readahead. Attribute/directory TTLs are effectively
+unlimited; content remains in the kernel cache across opens, subject to memory reclamation.
+
+`--threads` (up to 32) and `--max-background` (up to 64) can change request concurrency.
+The host-wide `vm.dirty_bytes` / `vm.dirty_background_bytes` can change dirty-memory thresholds,
+but do not batch synchronous namespace operations or suppress FUSE close-triggered writeback.
+More space is unlikely to help this 177 MB corpus on a host with ample available RAM. Measure these
+separately, including remaining drain, rather than combining them with a server change.
+See [FUSE I/O](https://docs.kernel.org/filesystems/fuse-io.html) and
+[Linux VM settings](https://docs.kernel.org/admin-guide/sysctl/vm.html).

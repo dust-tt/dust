@@ -155,6 +155,8 @@ pub(crate) struct Writeback {
     task: OnceCell<Mutex<Option<tokio::task::JoinHandle<()>>>>,
     #[cfg(test)]
     pub(crate) pause_publication: Mutex<Option<Arc<tests::PublicationPause>>>,
+    #[cfg(test)]
+    pub(crate) conflict_batches: std::sync::atomic::AtomicBool,
 }
 impl Writeback {
     pub fn new(config: WritebackConfig) -> anyhow::Result<Self> {
@@ -187,6 +189,8 @@ impl Writeback {
             task: OnceCell::new(),
             #[cfg(test)]
             pause_publication: Mutex::new(None),
+            #[cfg(test)]
+            conflict_batches: std::sync::atomic::AtomicBool::new(false),
         })
     }
     pub fn enabled(&self) -> bool {
@@ -611,7 +615,8 @@ impl Writeback {
     /// @cc [owner:spolu,label:concurrency;error-handling] publication-outcomes
     /// Caller MUST hold every supplied object's gate until payloads and receipts reflect the commit
     /// result. Every terminal failure MUST reach all affected sessions. Ambiguous results MUST NOT
-    /// replay; definitive application failures MAY split an uncommitted multi-file batch.
+    /// replay; definitive application failures or exhausted not_committed conflicts MAY split an
+    /// uncommitted multi-file batch. Single-file failures MUST remain visible to affected sessions.
     pub async fn flush_locked(&self, state: &State, workspace: &str, ids: &BTreeSet<String>) {
         loop {
             let batch = self.select(workspace, ids, true).await;
@@ -627,7 +632,7 @@ impl Writeback {
             let started = Instant::now();
             let result = state
                 .storage
-                .transact(|snapshot| {
+                .transact_outcome(|snapshot| {
                     let batch = &batch;
                     async move {
                         for (id, pending) in batch {
@@ -636,6 +641,22 @@ impl Writeback {
                         }
                         #[cfg(test)]
                         {
+                            if batch.len() > 1
+                                && self
+                                    .conflict_batches
+                                    .load(std::sync::atomic::Ordering::Relaxed)
+                            {
+                                // A real competing FDB commit conflicts every multi-file attempt.
+                                snapshot.get(b"\0test-publication-conflict").await?;
+                                state
+                                    .storage
+                                    .transact(|_| async {
+                                        let mut edit = WriteBatch::new();
+                                        edit.put(b"\0test-publication-conflict", b"conflict");
+                                        Ok((edit, ()))
+                                    })
+                                    .await?;
+                            }
                             let pause = self.pause_publication.lock().await.take();
                             if let Some(pause) = pause {
                                 pause.prepared.notify_one();
@@ -647,10 +668,20 @@ impl Writeback {
                 })
                 .await;
             if let Err(error) = &result {
-                // Unavailable includes exhausted/ambiguous FDB outcomes: never retry those here.
-                if !matches!(code(error), ErrorCode::Unavailable | ErrorCode::Internal)
+                // Split only a definitive rejection; an ambiguous batch must never replay.
+                if (error.conflicted
+                    || !matches!(
+                        code(&error.status),
+                        ErrorCode::Unavailable | ErrorCode::Internal
+                    ))
                     && batch.len() > 1
                 {
+                    tracing::info!(
+                        files = batch.len(),
+                        conflicted = error.conflicted,
+                        elapsed_us = started.elapsed().as_micros() as u64,
+                        "writeback batch split"
+                    );
                     let mut left = batch;
                     let right = left.split_off(left.len() / 2);
                     attempts.push(right);
@@ -683,7 +714,7 @@ impl Writeback {
                     if let Some(receipt) = queue.receipts.get_mut(&key) {
                         receipt.pending -= 1;
                         if let Err(error) = &result {
-                            receipt.error.get_or_insert_with(|| error.clone());
+                            receipt.error.get_or_insert_with(|| error.status.clone());
                         }
                         if receipt.pending == 0 && receipt.error.is_none() {
                             queue.receipts.remove(&key);
@@ -895,7 +926,44 @@ pub(crate) mod tests {
             .into_inner()
             .object
             .context("accepted write")?;
+        let root = api
+            .stat(request(
+                &session.session_key,
+                ObjectRequest {
+                    object_id: session.root_id.clone(),
+                },
+            )?)
+            .await?
+            .into_inner();
+        let second = api
+            .create(request(
+                &session.session_key,
+                CreateRequest {
+                    parent_id: root.id,
+                    expected_parent_version: root.version,
+                    name: "second".into(),
+                    mode: 0o600,
+                    ..Default::default()
+                },
+            )?)
+            .await?
+            .into_inner()
+            .object
+            .context("second file")?;
+        api.write(request(
+            &session.session_key,
+            WriteRequest {
+                object_id: second.id,
+                data: b"also committed once".to_vec(),
+                ..Default::default()
+            },
+        )?)
+        .await?;
         state.storage.lose_next_commit_reply();
+        state
+            .writeback
+            .flush(&state, &workspace.workspace_id, None, true)
+            .await;
         for _ in 0..2 {
             let result = api
                 .fsync(request(
