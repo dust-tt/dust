@@ -57,11 +57,6 @@ interface WorkspaceGroupsListProps {
   owner: WorkspaceType;
 }
 
-/**
- * @cc [owner:philipperolet,label:product] group-manager-overflow
- * Show up to three manager avatars; additional managers MUST appear as a "+N" count
- * ("9+" when ten or more managers are hidden).
- */
 const columns: ColumnDef<GroupRowData>[] = [
   {
     id: "name",
