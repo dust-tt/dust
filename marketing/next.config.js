@@ -388,14 +388,11 @@ const config = {
           source: "/m/api/:path*",
           destination: "/api/:path*",
         },
-        // Posthog tracking - endpoint name called "subtle1"
-        {
-          source: "/subtle1/static/:path*",
-          destination: "https://eu-assets.i.posthog.com/static/:path*",
-        },
+        // PostHog reverse proxy: the public /subtle1 path is served by
+        // pages/api/subtle1/[...path].ts.
         {
           source: "/subtle1/:path*",
-          destination: "https://eu.i.posthog.com/:path*",
+          destination: "/api/subtle1/:path*",
         },
       ],
     };

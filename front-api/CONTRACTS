@@ -233,3 +233,10 @@ Exceptions:
   JS, CSS, HTML, and other package assets to sandboxed iframe renderers and
   are exempt: access is scoped to a short-lived viz access token and the
   embedding page is responsible for iframe sandboxing.
+
+@cc [owner:rfrenoy,label:security;api] third-party-proxy-request-headers
+A route that relays a browser request to a third-party service (such as the `/subtle1` PostHog
+proxy) MUST build the upstream request headers from an explicit allowlist rather than copying
+the incoming headers, and that allowlist MUST NOT include `cookie` or `authorization`. Routes
+served from the `dust.tt` origin receive the HttpOnly `workos_session` cookie on same-origin
+requests, and nothing downstream of the proxy is entitled to it.

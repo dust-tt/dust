@@ -57,6 +57,56 @@ describe("/subtle1 PostHog proxy", () => {
     expect(upstreamRequest.headers.get("host")).toBeNull();
   });
 
+  it("does not forward Cookie, Authorization or non-allowlisted headers", async () => {
+    const response = await honoApp.request("/subtle1/e/", {
+      method: "POST",
+      body: '{"batch":[]}',
+      headers: {
+        authorization: "Bearer y",
+        cookie: "workos_session=x; dust-has-session=1",
+        "x-csrf-token": "z",
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const upstreamHeaders = getUpstreamRequest().headers;
+    expect(upstreamHeaders.get("cookie")).toBeNull();
+    expect(upstreamHeaders.get("authorization")).toBeNull();
+    expect(upstreamHeaders.get("x-csrf-token")).toBeNull();
+  });
+
+  it("forwards allowlisted headers", async () => {
+    const response = await honoApp.request("/subtle1/e/", {
+      method: "POST",
+      body: '{"batch":[]}',
+      headers: {
+        "content-type": "application/json",
+        "user-agent": "Mozilla/5.0",
+        "x-forwarded-for": "203.0.113.1",
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const upstreamHeaders = getUpstreamRequest().headers;
+    expect(upstreamHeaders.get("content-type")).toBe("application/json");
+    expect(upstreamHeaders.get("user-agent")).toBe("Mozilla/5.0");
+    expect(upstreamHeaders.get("x-forwarded-for")).toBe("203.0.113.1");
+  });
+
+  it("drops Set-Cookie from the upstream response", async () => {
+    fetchSpy.mockResolvedValue(
+      new Response("ok", {
+        status: 200,
+        headers: { "set-cookie": "ph=1; Path=/" },
+      })
+    );
+
+    const response = await honoApp.request("/subtle1/e/", { method: "POST" });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("set-cookie")).toBeNull();
+  });
+
   it("relays upstream error statuses", async () => {
     fetchSpy.mockResolvedValue(new Response("nope", { status: 502 }));
 

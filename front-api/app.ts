@@ -99,6 +99,6 @@ honoApp.route("/mcp", mcpApp);
 honoApp.route("/", mcpWellKnownApp);
 honoApp.route("/api", apiApp);
 // PostHog reverse proxy lives at the domain root (not under /api), matching
-// the `/subtle1` rewrites in front/next.config.js.
+// the `/subtle1` api_host the PostHog trackers point at.
 honoApp.route("/subtle1", subtle1App);
 honoApp.onError(unhandledErrorHandler);
