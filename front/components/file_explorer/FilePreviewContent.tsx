@@ -3,10 +3,6 @@ import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import { MarkdownFilePreview } from "@app/components/file_explorer/MarkdownFilePreview";
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
-import {
-  MAX_PREVIEW_BYTES,
-  MAX_TEXT_CHARS,
-} from "@app/components/file_explorer/previewLimits";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import type { MarkdownRichEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
@@ -28,6 +24,14 @@ import {
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 
 const MAX_CSV_ROWS = 200;
+const MAX_TEXT_CHARS = 100_000;
+export const MAX_PREVIEW_BYTES = 10 * 1024 * 1024;
+
+export const CUT_TEXT_SAVE_REFUSED = {
+  title: "File too long to save here",
+  description:
+    "It grew too long to edit here. Copy your changes, then reopen the file.",
+};
 
 const EXTENSION_TO_LANGUAGE: Record<string, string> = {
   py: "python",

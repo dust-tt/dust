@@ -1,6 +1,6 @@
 import type { DocumentSaveResult } from "@app/components/editor/document";
+import { CUT_TEXT_SAVE_REFUSED } from "@app/components/file_explorer/FilePreviewContent";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
-import { CUT_TEXT_SAVE_REFUSED } from "@app/components/file_explorer/previewLimits";
 import type { MarkdownRichEditor } from "@app/components/file_explorer/useRichMarkdownEditor";
 import { useRichMarkdownEditor } from "@app/components/file_explorer/useRichMarkdownEditor";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -91,9 +91,7 @@ export function useMarkdownFileEditor({
   }
 
   const isPlainDirty = draft !== savedContent;
-  // The plain editor edits the preview text; saving it after a cut would truncate the file. A
-  // draft already open stays on screen when the file grows past the cut, until it is reverted,
-  // and `save` refuses it.
+  // Saving cut preview text would truncate the file. An open draft stays so it can be copied.
   const canEdit = canOpenEditor && (!isTruncated || isPlainDirty);
 
   useEffect(() => {
@@ -192,7 +190,7 @@ export function useMarkdownFileEditor({
   };
 
   const rich = useRichMarkdownEditor({
-    // Not `canEdit`: an open rich editor must not unmount under a draft when the file grows.
+    // Not `canEdit`: an open rich editor must not unmount when the file grows past the cut.
     enabled: hasFeature("co_edition") && canOpenEditor,
     entryPath,
     isActive,
