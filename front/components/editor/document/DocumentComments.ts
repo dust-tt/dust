@@ -1,11 +1,11 @@
 import type { DfmComment } from "@app/lib/markdown/dfm";
-import { dfmCommentSchema } from "@app/lib/markdown/dfm";
+import { dfmCommentsSchema } from "@app/lib/markdown/dfm";
 import { cn } from "@dust-tt/sparkle";
 import type { Editor, JSONContent } from "@tiptap/core";
 import { Extension, isMacOS, Mark } from "@tiptap/core";
 import type { Node } from "@tiptap/pm/model";
 import { Fragment, Slice } from "@tiptap/pm/model";
-import type { Transaction } from "@tiptap/pm/state";
+import type { EditorState, Transaction } from "@tiptap/pm/state";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import {
   AddMarkStep,
@@ -13,13 +13,12 @@ import {
   ReplaceAroundStep,
   ReplaceStep,
 } from "@tiptap/pm/transform";
+import type { EditorView } from "@tiptap/pm/view";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { z } from "zod";
 
 export const COMMENT_MARK_NAME = "comment";
 const COMMENTS_ATTRIBUTE = "comments";
-
-const commentsSchema = z.array(dfmCommentSchema);
 
 const HIGHLIGHT_CLASS = cn(
   "cursor-pointer border-b-2 border-golden-400/70 bg-golden-300/40 transition-colors",
@@ -53,13 +52,13 @@ const parseThreads = (value: unknown): DfmComment[] => {
     return [];
   }
   if (typeof value !== "object") {
-    return commentsSchema.parse(value);
+    return dfmCommentsSchema.parse(value);
   }
   const cached = parsedThreads.get(value);
   if (cached) {
     return cached;
   }
-  const parsed = commentsSchema.parse(value);
+  const parsed = dfmCommentsSchema.parse(value);
   parsedThreads.set(value, parsed);
   return parsed;
 };
@@ -131,20 +130,20 @@ export const scrollToCommentHighlight = (editor: Editor, id: string) => {
     });
 };
 
-const commentedTexts = new WeakMap<Node, Map<string, string>>();
+interface CommentRange {
+  from: number;
+  to: number;
+}
 
-/**
- * @cc [owner:tdraier,label:product] document-comment-quotes
- * A comment's quote MUST be all the text from its first marked character to its last, in
- * document order by first marked character, including text inside the range that cannot carry
- * the mark, such as inline code, with blocks separated by a space.
- */
-export const getCommentedTexts = (doc: Node): Map<string, string> => {
-  const cached = commentedTexts.get(doc);
+const commentRanges = new WeakMap<Node, Map<string, CommentRange>>();
+
+/** Each comment's first marked character to its last, in document order by the first. */
+const getCommentRanges = (doc: Node): Map<string, CommentRange> => {
+  const cached = commentRanges.get(doc);
   if (cached) {
     return cached;
   }
-  const ranges = new Map<string, { from: number; to: number }>();
+  const ranges = new Map<string, CommentRange>();
 
   doc.descendants((node, pos) => {
     if (!node.isText) {
@@ -161,12 +160,66 @@ export const getCommentedTexts = (doc: Node): Map<string, string> => {
     }
   });
 
-  const texts = new Map(
-    [...ranges].map(([id, { from, to }]) => [
-      id,
-      doc.textBetween(from, to, " "),
-    ])
-  );
+  commentRanges.set(doc, ranges);
+  return ranges;
+};
+
+const commentedTexts = new WeakMap<Node, Map<string, string>>();
+
+/**
+ * @cc [owner:tdraier,label:product] document-comment-quotes
+ * A comment's quote MUST be all the text from its first marked character to its last, in
+ * document order by first marked character, including text inside the range that cannot carry
+ * the mark, such as inline code, with blocks separated by a space.
+ */
+/**
+ * @cc [owner:tdraier,label:performance] document-comment-quotes-one-walk
+ * All quotes MUST come from one walk of the document, so the work grows with the document plus
+ * the quoted text, not with the document times the number of comments.
+ */
+export const getCommentedTexts = (doc: Node): Map<string, string> => {
+  const cached = commentedTexts.get(doc);
+  if (cached) {
+    return cached;
+  }
+  const quotes = [...getCommentRanges(doc)].map(([id, range]) => ({
+    id,
+    ...range,
+    text: "",
+    started: false,
+  }));
+  let next = 0;
+  let open: typeof quotes = [];
+
+  // Builds what doc.textBetween(from, to, " ") returns for every comment at once.
+  doc.descendants((node, pos) => {
+    const end = pos + node.nodeSize;
+    if (open.length > 0) {
+      open = open.filter((quote) => quote.to > pos);
+    }
+    while (next < quotes.length && quotes[next].from < end) {
+      open.push(quotes[next++]);
+    }
+    for (const quote of open) {
+      const text = node.isText
+        ? (node.text ?? "").slice(
+            Math.max(quote.from, pos) - pos,
+            quote.to - pos
+          )
+        : node.isLeaf
+          ? (node.type.spec.leafText?.(node) ?? "")
+          : "";
+      if (node.isBlock && (node.isTextblock || (node.isLeaf && text))) {
+        if (quote.started) {
+          quote.text += " ";
+        }
+        quote.started = true;
+      }
+      quote.text += text;
+    }
+  });
+
+  const texts = new Map(quotes.map(({ id, text }) => [id, text]));
   commentedTexts.set(doc, texts);
   return texts;
 };
@@ -215,12 +268,13 @@ const buildDecorations = (doc: Node, activeId: string | null) => {
 
 /**
  * Whether a transaction may add or remove comment-marked text, which mapping the highlights
- * cannot follow: a mark step on comments, or a replacement inserting commented content, such
- * as undo restoring deleted commented text. Typing inside a comment counts, since the typed
- * text carries the mark.
+ * cannot follow: a mark step on comments, a replacement inserting commented content, such as
+ * undo restoring deleted commented text, or one replacing commented text with new content,
+ * which mapping would stretch the old highlight over. Typing inside a comment counts, since
+ * the typed text carries the mark.
  */
 const changesCommentMarks = (transaction: Transaction) =>
-  transaction.steps.some((step) => {
+  transaction.steps.some((step, index) => {
     if (step instanceof AddMarkStep || step instanceof RemoveMarkStep) {
       return step.mark.type.name === COMMENT_MARK_NAME;
     }
@@ -232,7 +286,15 @@ const changesCommentMarks = (transaction: Transaction) =>
         );
         return !commented;
       });
-      return commented;
+      return (
+        commented ||
+        (step.slice.size > 0 &&
+          transaction.docs[index].rangeHasMark(
+            step.from,
+            step.to,
+            transaction.doc.type.schema.marks[COMMENT_MARK_NAME]
+          ))
+      );
     }
     return false;
   });
@@ -254,20 +316,143 @@ declare module "@tiptap/core" {
  * @cc [owner:tdraier,label:product] document-comment-not-pasted
  * Comment marks MUST come only from the file's anchors, never from parsed HTML, pasted content
  * or a copy dropped from a drag, so a copy cannot widen a comment to everything between it and
- * its source or anchor one that has no thread. Text moved by a drag MUST keep its marks.
+ * its source or anchor one that has no thread. Text moved by a drag MUST keep the marks of the
+ * comments it moves whole and lose the others, so a comment is never split in two.
  */
-const withoutCommentMarks = (fragment: Fragment): Fragment => {
+const withoutCommentMarks = (
+  fragment: Fragment,
+  kept: Set<string>
+): Fragment => {
   const nodes: Node[] = [];
   fragment.forEach((node) => {
     nodes.push(
       node.isText
         ? node.mark(
-            node.marks.filter((mark) => mark.type.name !== COMMENT_MARK_NAME)
+            node.marks.filter(
+              (mark) =>
+                mark.type.name !== COMMENT_MARK_NAME || kept.has(mark.attrs.id)
+            )
           )
-        : node.copy(withoutCommentMarks(node.content))
+        : node.copy(withoutCommentMarks(node.content, kept))
     );
   });
   return Fragment.fromArray(nodes);
+};
+
+/** Comments whose whole text lies in the selection being dragged. */
+const commentsMovedWhole = (view: EditorView) => {
+  const { from, to } = view.state.selection;
+  const ids = new Set<string>();
+  for (const [id, range] of getCommentRanges(view.state.doc)) {
+    if (range.from >= from && range.to <= to) {
+      ids.add(id);
+    }
+  }
+  return ids;
+};
+
+/** Where the transactions inserted content, in the last one's document. */
+const insertedRanges = (transactions: readonly Transaction[]) => {
+  let ranges: CommentRange[] = [];
+  for (const transaction of transactions) {
+    for (const step of transaction.steps) {
+      const map = step.getMap();
+      ranges = ranges.map(({ from, to }) => ({
+        from: map.map(from, -1),
+        to: map.map(to, 1),
+      }));
+      if (
+        (step instanceof ReplaceStep || step instanceof ReplaceAroundStep) &&
+        step.slice.size > 0
+      ) {
+        ranges.push({ from: step.from, to: map.map(step.to, 1) });
+      }
+    }
+  }
+  return ranges;
+};
+
+const canCarryCommentMark = (node: Node, parent: Node | null) => {
+  const markType = node.type.schema.marks[COMMENT_MARK_NAME];
+  return (
+    node.isText &&
+    !!parent?.type.allowsMarkType(markType) &&
+    !node.marks.some((mark) => mark.type.excludes(markType))
+  );
+};
+
+/**
+ * @cc [owner:tdraier,label:product] document-comment-inherited
+ * Text inserted between a comment's first and last marked characters MUST take that comment's
+ * mark wherever the mark can sit, so a comment stays one run and saving never fails on a gap.
+ * Text inserted at a comment's edges MUST NOT take it.
+ */
+const inheritEnclosingComments = (
+  state: EditorState,
+  inserted: CommentRange[]
+): Transaction | null => {
+  const markType = state.schema.marks[COMMENT_MARK_NAME];
+  const tr = state.tr;
+  for (const [id, comment] of getCommentRanges(state.doc)) {
+    const mark = markType.create({ id });
+    for (const range of inserted) {
+      const from = Math.max(range.from, comment.from);
+      const to = Math.min(range.to, comment.to);
+      if (from >= to) {
+        continue;
+      }
+      state.doc.nodesBetween(from, to, (node, pos, parent) => {
+        if (canCarryCommentMark(node, parent) && !mark.isInSet(node.marks)) {
+          tr.addMark(
+            Math.max(pos, from),
+            Math.min(pos + node.nodeSize, to),
+            mark
+          );
+        }
+      });
+    }
+  }
+  return tr.docChanged ? tr : null;
+};
+
+/**
+ * @cc [owner:tdraier,label:product] document-comment-edges-kept
+ * A transaction MUST be refused when it takes the comment mark off a comment's first or last
+ * character without deleting that character or the comment's thread, such as inline code or a
+ * code block over a comment's edge, since saving would then shrink or drop the comment.
+ */
+const takesCommentEdge = (transaction: Transaction, before: EditorState) => {
+  if (
+    !transaction.steps.some(
+      (step) =>
+        step instanceof RemoveMarkStep &&
+        step.mark.type.name === COMMENT_MARK_NAME
+    )
+  ) {
+    return false;
+  }
+  const after = getCommentRanges(transaction.doc);
+  const threadsAfter = new Set(
+    getDocumentComments(transaction.doc).map((comment) => comment.id)
+  );
+  const threadsBefore = new Set(
+    getDocumentComments(before.doc).map((comment) => comment.id)
+  );
+  for (const [id, { from, to }] of getCommentRanges(before.doc)) {
+    if (threadsBefore.has(id) && !threadsAfter.has(id)) {
+      continue;
+    }
+    const range = after.get(id);
+    const start = transaction.mapping.mapResult(from, 1);
+    const end = transaction.mapping.mapResult(to, -1);
+    if (
+      (!start.deletedAfter && !(range && range.from <= start.pos)) ||
+      (!end.deletedBefore && !(range && range.to >= end.pos))
+    ) {
+      return true;
+    }
+  }
+  return false;
 };
 
 export const DocumentCommentMark = Mark.create({
@@ -287,25 +472,43 @@ export const DocumentCommentMark = Mark.create({
   renderHTML: ({ HTMLAttributes }) => ["span", HTMLAttributes, 0],
   addProseMirrorPlugins: () => {
     // ProseMirror runs transformPasted before deciding whether a drop moves or copies; the drop
-    // event arrives first, with the copy modifier ProseMirror itself reads.
+    // event arrives first. Asking the dragCopies props, this one included, gives ProseMirror's
+    // own answer.
     let dropCopies = false;
     return [
       new Plugin({
         props: {
+          dragCopies: (event) => event[isMacOS() ? "altKey" : "ctrlKey"],
           handleDOMEvents: {
-            drop: (_view, event) => {
-              dropCopies = event[isMacOS() ? "altKey" : "ctrlKey"];
+            drop: (view, event) => {
+              dropCopies = !!view.someProp("dragCopies", (copies) =>
+                copies(event)
+              );
               return false;
             },
           },
           transformPasted: (slice, view) =>
-            view.dragging && !dropCopies
-              ? slice
-              : new Slice(
-                  withoutCommentMarks(slice.content),
-                  slice.openStart,
-                  slice.openEnd
-                ),
+            new Slice(
+              withoutCommentMarks(
+                slice.content,
+                view.dragging && !dropCopies
+                  ? commentsMovedWhole(view)
+                  : new Set()
+              ),
+              slice.openStart,
+              slice.openEnd
+            ),
+        },
+        filterTransaction: (transaction, state) =>
+          !takesCommentEdge(transaction, state),
+        appendTransaction: (transactions, _oldState, newState) => {
+          if (getDocumentComments(newState.doc).length === 0) {
+            return null;
+          }
+          const inserted = insertedRanges(transactions);
+          return inserted.length > 0
+            ? inheritEnclosingComments(newState, inserted)
+            : null;
         },
       }),
     ];
@@ -335,7 +538,7 @@ export const DocumentComments = Extension.create({
           default: [],
           rendered: false,
           validate: (value: unknown) => {
-            commentsSchema.parse(value);
+            dfmCommentsSchema.parse(value);
           },
         },
       },

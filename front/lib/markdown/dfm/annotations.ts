@@ -123,6 +123,20 @@ const schemaMatchesComment: Exactly<
 > = true;
 void schemaMatchesComment;
 
+/**
+ * @cc [owner:tdraier,label:coding] dfm-comments-schema-writable
+ * `dfmCommentsSchema` MUST accept exactly the thread lists that `dfmCommentSchema` describes and
+ * `validateComments` accepts, so threads kept outside the codec are the ones `serializeDfm` writes.
+ */
+export const dfmCommentsSchema = z
+  .array(dfmCommentSchema)
+  .superRefine((comments, context) => {
+    const error = validateComments(comments);
+    if (error) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: error.message });
+    }
+  });
+
 const commentAttributesSchema = z
   .object({
     id: requiredString("Comment without a valid id.").refine(

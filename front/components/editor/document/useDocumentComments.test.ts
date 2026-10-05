@@ -4,7 +4,7 @@ import { useDocumentEditor } from "@app/components/editor/document/useDocumentEd
 import { Ok } from "@app/types/shared/result";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { Slice } from "@tiptap/pm/model";
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 const AT = "2026-09-25T14:16:32.380Z";
 const SOURCE = `Hi :comment-start{id=c1}there:comment-end{id=c1}\n\n:::annotations\n::comment{id=c1 status=open}\n\n::message{author=user:usr_daph name="Daph" at=${AT}}\n\nNote.\n:::\n`;
@@ -130,6 +130,24 @@ describe("useDocumentComments", () => {
       expect(highlighted(editor)).toBe("thXXere");
     });
 
+    it("go away when the commented text is replaced", async () => {
+      const { result } = await renderCommentedEditor(SOURCE);
+      const editor = result.current.document.editor;
+      if (!editor) {
+        throw new Error("Editor did not mount.");
+      }
+
+      act(() => {
+        editor
+          .chain()
+          .setTextSelection({ from: 4, to: 9 })
+          .insertContent("new")
+          .run();
+      });
+
+      expect(highlighted(editor)).toBe("");
+    });
+
     it("come back when undo restores deleted commented text", async () => {
       const { result } = await renderCommentedEditor(SOURCE);
       const editor = result.current.document.editor;
@@ -175,6 +193,18 @@ describe("useDocumentComments", () => {
       });
       return transformed;
     };
+    // jsdom has no ClipboardEvent, which ProseMirror builds for a programmatic paste.
+    beforeAll(() => {
+      vi.stubGlobal(
+        "ClipboardEvent",
+        class extends Event {
+          clipboardData = null;
+        }
+      );
+    });
+    afterAll(() => {
+      vi.unstubAllGlobals();
+    });
     const drop = (editor: MountedEditor, { copy }: { copy: boolean }) => {
       const event = new Event("drop", { bubbles: true });
       Object.assign(event, { altKey: copy, ctrlKey: copy });
@@ -210,10 +240,60 @@ describe("useDocumentComments", () => {
     it("keeps comment marks on text moved by a drag", async () => {
       const { editor, slice } = await mounted();
 
+      editor.commands.setTextSelection({ from: 4, to: 9 });
       drop(editor, { copy: false });
       editor.view.dragging = { slice, move: true };
 
       expect(commentIds(transformPasted(editor, slice))).toEqual(["c1"]);
+    });
+
+    it("drops the mark of a comment a drag moves only part of", async () => {
+      const { editor } = await mounted();
+      const part = editor.state.doc.slice(4, 6);
+
+      editor.commands.setTextSelection({ from: 4, to: 6 });
+      drop(editor, { copy: false });
+      editor.view.dragging = { slice: part, move: true };
+
+      expect(commentIds(transformPasted(editor, part))).toEqual([]);
+    });
+
+    it("inherits the comment it is pasted inside", async () => {
+      const { result, onSave } = await renderCommentedEditor(SOURCE);
+      const editor = result.current.document.editor;
+      if (!editor) {
+        throw new Error("Editor did not mount.");
+      }
+
+      act(() => {
+        // Inside "there", after "th".
+        editor.commands.setTextSelection(6);
+        editor.view.pasteHTML("<strong>XX</strong>");
+      });
+      await act(() => result.current.document.save());
+
+      expect(result.current.document.error).toBeNull();
+      expect(onSave.mock.calls[0][0]).toContain(
+        "Hi :comment-start{id=c1}th**XX**ere:comment-end{id=c1}"
+      );
+    });
+
+    it("does not inherit the comment it is pasted next to", async () => {
+      const { result, onSave } = await renderCommentedEditor(SOURCE);
+      const editor = result.current.document.editor;
+      if (!editor) {
+        throw new Error("Editor did not mount.");
+      }
+
+      act(() => {
+        editor.commands.setTextSelection(4);
+        editor.view.pasteText("XX");
+      });
+      await act(() => result.current.document.save());
+
+      expect(onSave.mock.calls[0][0]).toContain(
+        "Hi XX:comment-start{id=c1}there:comment-end{id=c1}"
+      );
     });
   });
 
@@ -226,6 +306,74 @@ describe("useDocumentComments", () => {
     expect(result.current.comments.quotes.get("c1")).toBe(
       "run npm test now and then"
     );
+  });
+
+  describe("inline code", () => {
+    const TAGGED = `Hi :comment-start{id=c1}run all tests:comment-end{id=c1} now\n\n:::annotations\n::comment{id=c1 status=open}\n\n::message{author=user:usr_daph name="Daph" at=${AT}}\n\nNote.\n:::\n`;
+
+    it.each([
+      ["its last word", 12, 17],
+      ["its first word", 4, 7],
+      ["all of it", 4, 17],
+    ])("is refused over %s, which would shrink the comment", async (_, from, to) => {
+      const { result } = await renderCommentedEditor(TAGGED);
+      const editor = result.current.document.editor;
+      if (!editor) {
+        throw new Error("Editor did not mount.");
+      }
+      const before = editor.state.doc;
+
+      act(() => {
+        editor.chain().setTextSelection({ from, to }).toggleCode().run();
+      });
+
+      expect(editor.state.doc.eq(before)).toBe(true);
+      expect(result.current.comments.quotes.get("c1")).toBe("run all tests");
+    });
+
+    it("is refused as a code block over a comment", async () => {
+      const { result } = await renderCommentedEditor(TAGGED);
+      const editor = result.current.document.editor;
+      if (!editor) {
+        throw new Error("Editor did not mount.");
+      }
+      const before = editor.state.doc;
+
+      act(() => {
+        editor.chain().setTextSelection(2).toggleCodeBlock().run();
+      });
+
+      expect(editor.state.doc.eq(before)).toBe(true);
+    });
+
+    it("applies inside a comment, which keeps its anchors around it", async () => {
+      const { result, onSave } = await renderCommentedEditor(TAGGED);
+      const editor = result.current.document.editor;
+      if (!editor) {
+        throw new Error("Editor did not mount.");
+      }
+
+      act(() => {
+        editor.chain().setTextSelection({ from: 8, to: 11 }).toggleCode().run();
+      });
+      await act(() => result.current.document.save());
+
+      expect(result.current.document.error).toBeNull();
+      expect(onSave.mock.calls[0][0]).toContain(
+        "Hi :comment-start{id=c1}run `all` tests:comment-end{id=c1} now"
+      );
+    });
+  });
+
+  it("quotes overlapping comments each over their own text", async () => {
+    const thread = (id: string) =>
+      `::comment{id=${id} status=open}\n\n::message{author=user:u name="U" at=${AT}}\n\nNote.\n`;
+    const { result } = await renderCommentedEditor(
+      `a :comment-start{id=c2}b :comment-start{id=c1}c\n\nd:comment-end{id=c1} e:comment-end{id=c2} f\n\n:::annotations\n${thread("c1")}${thread("c2")}:::\n`
+    );
+
+    expect(result.current.comments.quotes.get("c1")).toBe("c d");
+    expect(result.current.comments.quotes.get("c2")).toBe("b c d e");
   });
 
   it("highlights a resolved comment while its thread is selected", async () => {

@@ -1,6 +1,7 @@
 import type { DfmComment, DfmDocument } from "@app/lib/markdown/dfm";
 import {
   dfmCommentSchema,
+  dfmCommentsSchema,
   parseDfm,
   serializeDfm,
 } from "@app/lib/markdown/dfm";
@@ -426,5 +427,52 @@ describe("dfmCommentSchema", () => {
     const [comment] = unwrap(parseDfm(FIXTURE)).comments;
 
     expect(dfmCommentSchema.safeParse(withExtra(comment)).success).toBe(false);
+  });
+});
+
+describe("dfmCommentsSchema", () => {
+  it("accepts every thread list the codec parses", () => {
+    for (const { source } of FIXTURES) {
+      const { comments } = unwrap(parseDfm(source));
+
+      expect(dfmCommentsSchema.parse(comments)).toEqual(comments);
+    }
+  });
+
+  it.each([
+    [
+      "an invalid id",
+      (comment: DfmComment) => ({ ...comment, id: "not an id" }),
+    ],
+    ["no message", (comment: DfmComment) => ({ ...comment, messages: [] })],
+    [
+      "an invalid timestamp",
+      (comment: DfmComment) => ({
+        ...comment,
+        messages: [{ ...comment.messages[0], createdAt: "yesterday" }],
+      }),
+    ],
+    [
+      "an invalid author name",
+      (comment: DfmComment) => ({
+        ...comment,
+        messages: [
+          {
+            ...comment.messages[0],
+            author: { ...comment.messages[0].author, name: "" },
+          },
+        ],
+      }),
+    ],
+  ])("refuses a thread with %s, which serializeDfm would", (_, broken) => {
+    const [comment] = unwrap(parseDfm(FIXTURE)).comments;
+
+    expect(dfmCommentsSchema.safeParse([broken(comment)]).success).toBe(false);
+  });
+
+  it("refuses duplicate thread ids", () => {
+    const [comment] = unwrap(parseDfm(FIXTURE)).comments;
+
+    expect(dfmCommentsSchema.safeParse([comment, comment]).success).toBe(false);
   });
 });
