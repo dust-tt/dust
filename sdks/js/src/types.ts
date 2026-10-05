@@ -3628,6 +3628,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionTableIcon"
   | "ActionTimeIcon"
   | "AdomikLogo"
+  | "AirtableLogo"
   | "AmplitudeLogo"
   | "ApifyLogo"
   | "AsanaLogo"
