@@ -109,6 +109,7 @@ import {
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { isString } from "@app/types/shared/utils/general";
 import type {
   LightWorkspaceType,
   UserType,
@@ -494,13 +495,30 @@ export function AgentMessage({
             ) {
               void mutateSandboxFiles();
             }
-            if (
-              action.internalMCPServerName === "files" ||
-              action.internalMCPServerName === "sandbox"
-            ) {
-              // An agent wrote a file; an open preview or editor of it must learn now rather
-              // than on the next window focus. The editor reopens when clean and holds its
-              // draft otherwise. Same reliable per-message stream as the plan revalidation.
+            // An agent wrote a file; an open preview or editor of it must learn now rather
+            // than on the next window focus. The editor reopens when clean and holds its
+            // draft otherwise. Same reliable per-message stream as the plan revalidation.
+            if (action.internalMCPServerName === "files") {
+              // The tools name the canonical scoped path the previews key on, encoded the
+              // same way as the file content URL.
+              const encodedPaths = [
+                action.params.path,
+                action.params.source,
+                action.params.dest,
+              ]
+                .filter(isString)
+                .map((path) =>
+                  path.split("/").map(encodeURIComponent).join("/")
+                );
+              void mutate(
+                (key) =>
+                  typeof key === "string" &&
+                  encodedPaths.some((path) =>
+                    key.includes(`/files/path/${path}`)
+                  )
+              );
+            } else if (action.internalMCPServerName === "sandbox") {
+              // A shell command names no files; anything under the mount may have changed.
               void mutate(
                 (key) => typeof key === "string" && key.includes("/files/path/")
               );
