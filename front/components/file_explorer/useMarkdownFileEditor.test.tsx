@@ -43,6 +43,7 @@ const params = {
   isContentLoading: false,
   isTooLarge: false,
   exceedsWriteLimit: false,
+  isTruncated: false,
   owner,
   rawContent: "# Notes\n",
   revision: "1",
@@ -138,6 +139,24 @@ describe("useMarkdownFileEditor", () => {
 
     expect(result.current.content).toBe("# Notes");
     expect(result.current.isDirty).toBe(true);
+  });
+
+  it("does not open the plain editor on a file whose preview text was cut", () => {
+    const { result } = renderHook(() =>
+      useMarkdownFileEditor({ ...params, isTruncated: true })
+    );
+
+    expect(result.current.canEdit).toBe(false);
+  });
+
+  it("still opens the rich editor on a file whose preview text was cut", () => {
+    flags.add("co_edition");
+
+    const { result } = renderHook(() =>
+      useMarkdownFileEditor({ ...params, isTruncated: true })
+    );
+
+    expect(result.current.richEditor).not.toBeNull();
   });
 
   it("opens the rich editor for an editable Markdown file when co_edition is on", () => {

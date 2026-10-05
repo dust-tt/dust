@@ -27,6 +27,8 @@ interface UseMarkdownFileEditorParams {
   isTooLarge: boolean;
   /** The file is larger than a save may write; no editor opens it for writing. */
   exceedsWriteLimit: boolean;
+  /** The preview text was cut; the plain editor, which edits it, does not open. */
+  isTruncated: boolean;
   owner: LightWorkspaceType | undefined;
   /** The whole file text as fetched, for the rich editor. The processed text is trimmed and cut. */
   rawContent: string | null;
@@ -60,6 +62,7 @@ export function useMarkdownFileEditor({
   isContentLoading,
   isTooLarge,
   exceedsWriteLimit,
+  isTruncated,
   owner,
   rawContent,
   revision,

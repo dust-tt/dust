@@ -217,6 +217,8 @@ export interface FilePreviewContentData {
   revision: string | null;
   /** The file is larger than a save may write, so no editor should open it for writing. */
   exceedsWriteLimit: boolean;
+  /** The preview text was cut at MAX_TEXT_CHARS; an editor of it would save a truncated file. */
+  isTruncated: boolean;
   sizeBytes: number;
 }
 
@@ -264,6 +266,7 @@ export function useFilePreviewContent({
     enabled && !!entry && !hasError && needsTextContent && isFileContentLoading;
 
   const truncatedContent = fileContent?.slice(0, MAX_TEXT_CHARS) ?? null;
+  const isTruncated = (fileContent?.length ?? 0) > MAX_TEXT_CHARS;
   // Measured on the fetched text rather than `entry.sizeBytes`, which is the listing's size and
   // goes stale when the file grows while it is open.
   const exceedsWriteLimit = useMemo(
@@ -296,6 +299,7 @@ export function useFilePreviewContent({
     rawContent: fileContent,
     revision: fileRevision,
     exceedsWriteLimit,
+    isTruncated,
     sizeBytes,
   };
 }

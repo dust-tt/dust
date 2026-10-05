@@ -132,6 +132,7 @@ export function FilePreviewPanel({
     isContentLoading: preview.isContentLoading,
     isTooLarge: preview.isTooLarge,
     exceedsWriteLimit: preview.exceedsWriteLimit,
+    isTruncated: preview.isTruncated,
     revision: preview.revision,
     owner,
     rawContent: preview.rawContent,
