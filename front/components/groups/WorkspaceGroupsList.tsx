@@ -82,7 +82,7 @@ const columns: ColumnDef<GroupRowData>[] = [
     cell: ({ row }) => {
       const { managers } = row.original;
       if (managers.length === 0) {
-        return null;
+        return <DataTable.CellContent>-</DataTable.CellContent>;
       }
       return (
         <DataTable.CellContent>
