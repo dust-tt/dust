@@ -45,6 +45,22 @@ export const computeSubscriberHash = (subscriberId: string): string => {
   return hmacHash;
 };
 
+/**
+ * @cc [owner:avervaet,label:security] subscriber-auth-requires-active-membership
+ * MUST return `null` when `subscriberId` is not an active member of `workspaceId`, so that no
+ * notification content is read on behalf of a revoked user.
+ */
+export const getActiveSubscriberAuth = async (
+  subscriberId: string,
+  workspaceId: string
+): Promise<Authenticator | null> => {
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    subscriberId,
+    workspaceId
+  );
+  return auth.isUser() ? auth : null;
+};
+
 export const getUserNotificationDelay = async ({
   subscriberId,
   workspaceId,

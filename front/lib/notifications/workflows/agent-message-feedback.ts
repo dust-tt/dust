@@ -1,8 +1,8 @@
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
-import { getNovuClient } from "@app/lib/notifications";
+import { getActiveSubscriberAuth, getNovuClient } from "@app/lib/notifications";
 import { renderEmail as renderDigestEmail } from "@app/lib/notifications/email-templates/agent-message-feedback-digest";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
@@ -62,17 +62,16 @@ const getFeedbackDetails = async ({
   let isConversationShared = false;
 
   if (subscriberId) {
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    const auth = await getActiveSubscriberAuth(
       subscriberId,
       payload.workspaceId
     );
 
-    const conversation = await ConversationResource.fetchById(
-      auth,
-      payload.conversationId
-    );
+    const conversation = auth
+      ? await ConversationResource.fetchById(auth, payload.conversationId)
+      : null;
 
-    if (conversation) {
+    if (auth && conversation) {
       workspaceName = auth.getNonNullableWorkspace().name;
 
       const userWhoGaveFeedback = await UserResource.fetchById(
@@ -120,10 +119,10 @@ const shouldSkipNotification = async ({
     return true;
   }
 
-  const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    subscriberId,
-    payload.workspaceId
-  );
+  const auth = await getActiveSubscriberAuth(subscriberId, payload.workspaceId);
+  if (!auth) {
+    return true;
+  }
 
   const conversation = await ConversationResource.fetchById(
     auth,
@@ -227,7 +226,7 @@ export const agentMessageFeedbackWorkflow = workflow(
         let feedbackAuth: Authenticator | null = null;
 
         if (subscriber.subscriberId) {
-          feedbackAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          feedbackAuth = await getActiveSubscriberAuth(
             subscriber.subscriberId,
             payload.workspaceId
           );

@@ -1,9 +1,10 @@
 import config from "@app/lib/api/config";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
 import {
   ensureSlackNotificationsReady,
+  getActiveSubscriberAuth,
   getNovuClient,
   getUserNotificationDelay,
 } from "@app/lib/notifications";
@@ -19,6 +20,7 @@ import {
   getEmailSummary,
 } from "@app/lib/notifications/helpers";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -135,10 +137,10 @@ const shouldSkipUnreadConversation = async ({
   triggerShouldSkip: boolean;
   hasUnreadMessages: boolean;
 }): Promise<boolean> => {
-  const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    subscriberId,
-    payload.workspaceId
-  );
+  const auth = await getActiveSubscriberAuth(subscriberId, payload.workspaceId);
+  if (!auth) {
+    return true;
+  }
 
   const conversation = await ConversationResource.fetchById(
     auth,
@@ -177,10 +179,10 @@ export const shouldSkipNewProjectConversation = async ({
   subscriberId: string;
   payload: ConversationUnreadPayloadType;
 }): Promise<boolean> => {
-  const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    subscriberId,
-    payload.workspaceId
-  );
+  const auth = await getActiveSubscriberAuth(subscriberId, payload.workspaceId);
+  if (!auth) {
+    return true;
+  }
 
   const conversationResource = await ConversationResource.fetchById(
     auth,
@@ -706,6 +708,11 @@ export const filterParticipantsByNotifyCondition = async ({
   });
 };
 
+/**
+ * @cc [owner:avervaet,label:security] recipients-are-active-members
+ * Notification events MUST only be triggered for participants with an active membership in the
+ * workspace; participants whose membership was revoked are neither notified nor counted.
+ */
 export const triggerConversationUnreadNotifications = async (
   auth: Authenticator,
   {
@@ -758,7 +765,19 @@ export const triggerConversationUnreadNotifications = async (
   }
   const { authorUserId } = detailsResult.value;
   // Get all participants to determine total count (for single-participant exception).
-  const totalParticipants = await conversation.listParticipants(auth);
+  // Revoked members keep their participant rows, so only active members are kept.
+  const participantsIncludingRevoked =
+    await conversation.listParticipants(auth);
+  const activeMembers = await MembershipResource.filterActiveMembers({
+    users: await UserResource.fetchByModelIds(
+      participantsIncludingRevoked.map((p) => p.id)
+    ),
+    workspace: auth.getNonNullableWorkspace(),
+  });
+  const activeUserIds = new Set(activeMembers.map((u) => u.id));
+  const totalParticipants = participantsIncludingRevoked.filter((p) =>
+    activeUserIds.has(p.id)
+  );
   const allParticipants = totalParticipants.filter((p) => {
     if (userToNotifyId && p.sId !== userToNotifyId) {
       return false;

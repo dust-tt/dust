@@ -7,12 +7,13 @@ import {
 } from "@app/lib/api/assistant/conversation/render_as_text";
 import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import {
   getAgentsDataRetention,
   getConversationsDataRetention,
 } from "@app/lib/data_retention";
 import { DustError } from "@app/lib/error";
+import { getActiveSubscriberAuth } from "@app/lib/notifications";
 import {
   conversationUsesAgentsWithRetention,
   conversationWithoutContentForResource,
@@ -77,6 +78,11 @@ export const ConversationDetailsSchema = z.object({
 
 export type ConversationDetailsType = z.infer<typeof ConversationDetailsSchema>;
 
+/**
+ * @cc [owner:avervaet,label:security] subscriber-must-be-active-member
+ * When called with a `subscriberId`, the result MUST be an `Err` carrying no conversation data
+ * if that user is not an active member of `payload.workspaceId`.
+ */
 export const getConversationDetails = async ({
   payload,
   auth: providedAuth,
@@ -116,10 +122,14 @@ export const getConversationDetails = async ({
         isNewProjectConversation: false,
       });
     }
-    auth = await Authenticator.fromUserIdAndWorkspaceId(
+    const subscriberAuth = await getActiveSubscriberAuth(
       subscriberId,
       payload.workspaceId
     );
+    if (!subscriberAuth) {
+      return new Err(new ConversationError("conversation_access_restricted"));
+    }
+    auth = subscriberAuth;
   }
 
   const resource = await ConversationResource.fetchById(
@@ -387,10 +397,12 @@ const generateUnreadMessagesSummary = async ({
     return new Ok("");
   }
 
-  const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    subscriberId,
-    payload.workspaceId
-  );
+  const auth = await getActiveSubscriberAuth(subscriberId, payload.workspaceId);
+  if (!auth) {
+    return new Err(
+      new DustError("user_not_found", "User is not a member of the workspace")
+    );
+  }
 
   // biome-ignore lint/plugin/noExpensiveConversationFetch: message content is needed to compute unread messages.
   const conversationRes = await getLightConversation(
