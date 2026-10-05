@@ -7,7 +7,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "npm --prefix .. run i18n:compile",
     "dev": "vite",
+    "prebuild": "npm --prefix .. run i18n:compile",
     "build": "vite build",
     "build:check": "tsc && vite build",
     "preview": "vite preview",
