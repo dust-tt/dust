@@ -15,8 +15,8 @@ BASELINE = Path(__file__).resolve().parents[1] / '.baseline/x/spolu/dfs/v2'
 MANIFEST_SHA256 = '67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1'
 # MAX_EVENTUAL_CONSISTENCY_DELAY: commit window min(MAX/4, 1s), daemon cache TTL the rest.
 MAX_DELAY_MS = int(os.environ.get('DFS_MAX_DELAY_MS', '1000'))
-DURABILITY = ('every mutation (including fsync) is acknowledged before its commit and committed within '
-              'the window; fsync of a directory waits for every earlier mutation to commit')
+DURABILITY = ('every mutation is acknowledged before its commit and committed within the window; fsync of a '
+              'file or directory waits for every earlier mutation to commit')
 FUSE_THREADS = int(os.environ.get('DFS_FUSE_THREADS', '1'))
 KNOBS = ('DFS_FDB_GRV_BATCH_TIMEOUT_SECONDS', 'DFS_FDB_CLIENT_BUSY_WAIT_SECONDS')
 
@@ -37,7 +37,7 @@ def metadata():
             'server_binary_sha256': hashlib.sha256((BIN / 'dfs-server').read_bytes()).hexdigest(),
             'mount_binary_sha256': hashlib.sha256((BIN / 'dfs-mount').read_bytes()).hexdigest(),
             'fdb_client_knobs': {k: os.environ[k] for k in KNOBS if k in os.environ},
-            'max_delay_ms': MAX_DELAY_MS, 'durability': DURABILITY, 'fsync': 'buffered',
+            'max_delay_ms': MAX_DELAY_MS, 'durability': DURABILITY, 'fsync': 'durable (drains the mount log)',
             'kernel_caching': 'none (TTL 0, direct I/O)', 'fuse_threads': FUSE_THREADS, 'max_background': 32}
 
 
