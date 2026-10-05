@@ -78,4 +78,24 @@ describe("Document comments", () => {
     ).toBe("closed");
     expect(editor.state.selection.empty).toBe(false);
   });
+
+  it("reveals the overlapping comment covering less text first, code included", async () => {
+    const thread = (id: string, name: string) =>
+      `::comment{id=${id} status=open}\n\n::message{author=user:u name="${name}" at=${AT}}\n\nNote.\n`;
+    const { dom } = await renderDocument(
+      `:comment-start{id=narrow}pre :comment-start{id=wide}x:comment-end{id=narrow} \`averyveryverylongcode\` y:comment-end{id=wide} post\n\n:::annotations\n${thread("narrow", "Narrow")}\n${thread("wide", "Wide")}:::\n`
+    );
+    // "x" carries both highlights, one span nested in the other.
+    const [both] = [...dom.querySelectorAll("[data-comment-highlight]")].filter(
+      (element) => element.parentElement?.closest("[data-comment-highlight]")
+    );
+
+    fireEvent.click(both);
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("article", { name: "Comment by Narrow" })
+      )
+    );
+  });
 });

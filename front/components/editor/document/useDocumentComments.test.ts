@@ -216,4 +216,15 @@ describe("useDocumentComments", () => {
       expect(commentIds(transformPasted(editor, slice))).toEqual(["c1"]);
     });
   });
+
+  it("quotes all the commented text, inline code and block breaks included", async () => {
+    const thread = `:::annotations\n::comment{id=c1 status=open}\n\n::message{author=user:u name="U" at=${AT}}\n\nNote.\n:::\n`;
+    const { result } = await renderCommentedEditor(
+      `:comment-start{id=c1}run \`npm test\` now\n\nand then:comment-end{id=c1} ship\n\n${thread}`
+    );
+
+    expect(result.current.comments.quotes.get("c1")).toBe(
+      "run npm test now and then"
+    );
+  });
 });

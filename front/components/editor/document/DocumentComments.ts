@@ -133,28 +133,40 @@ export const scrollToCommentHighlight = (editor: Editor, id: string) => {
 
 const commentedTexts = new WeakMap<Node, Map<string, string>>();
 
-/** Text covered by each comment, in document order, joined across blocks. */
+/**
+ * @cc [owner:tdraier,label:product] document-comment-quotes
+ * A comment's quote MUST be all the text from its first marked character to its last, in
+ * document order by first marked character, including text inside the range that cannot carry
+ * the mark, such as inline code, with blocks separated by a space.
+ */
 export const getCommentedTexts = (doc: Node): Map<string, string> => {
   const cached = commentedTexts.get(doc);
   if (cached) {
     return cached;
   }
-  const texts = new Map<string, string>();
+  const ranges = new Map<string, { from: number; to: number }>();
 
-  doc.descendants((node) => {
+  doc.descendants((node, pos) => {
     if (!node.isText) {
       return;
     }
     for (const mark of node.marks) {
       if (mark.type.name === COMMENT_MARK_NAME) {
-        texts.set(
-          mark.attrs.id,
-          (texts.get(mark.attrs.id) ?? "") + (node.text ?? "")
-        );
+        const range = ranges.get(mark.attrs.id);
+        ranges.set(mark.attrs.id, {
+          from: range?.from ?? pos,
+          to: pos + node.nodeSize,
+        });
       }
     }
   });
 
+  const texts = new Map(
+    [...ranges].map(([id, { from, to }]) => [
+      id,
+      doc.textBetween(from, to, " "),
+    ])
+  );
   commentedTexts.set(doc, texts);
   return texts;
 };
