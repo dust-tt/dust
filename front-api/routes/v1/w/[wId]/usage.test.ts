@@ -1,5 +1,10 @@
+import { Authenticator } from "@app/lib/auth";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { honoApp } from "@front-api/app";
 import { ENSURE_IS_ADMIN_ERROR_MESSAGE } from "@front-api/middlewares/ensure_role";
 import { describe, expect, it, vi } from "vitest";
@@ -41,5 +46,43 @@ describe("GET /api/v1/w/:wId/usage", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toContain("text/csv");
+  });
+
+  it("escapes cells that spreadsheet apps would run as formulas", async () => {
+    const { workspace, key, auth } = await createPublicApiMockRequest({
+      role: "admin",
+    });
+    await FeatureFlagFactory.basic(auth, "usage_data_api");
+
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const conversation = await ConversationFactory.create(userAuth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date("2026-01-15T12:00:00Z")],
+    });
+    await ConversationFactory.setUserMessagesFullNameForTest(
+      conversation.id,
+      workspace.id,
+      "=1+1"
+    );
+
+    const response = await honoApp.request(
+      `/api/v1/w/${workspace.sId}/usage?start_date=2026-01-14&end_date=2026-01-16`,
+      { headers: { authorization: `Bearer ${key.secret}` } }
+    );
+
+    expect(response.status).toBe(200);
+    const [headers, ...rows] = (await response.text())
+      .trim()
+      .split("\n")
+      .map((line) => line.split(","));
+    const userRow = rows.find(
+      (row) => row[headers.indexOf("messageType")] === "user"
+    );
+    expect(userRow?.[headers.indexOf("userFullName")]).toBe("'=1+1");
   });
 });
