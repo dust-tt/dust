@@ -3,16 +3,16 @@ import { cn } from "@dust-tt/sparkle";
 import { EditorContent as TiptapEditorContent } from "@tiptap/react";
 import type { ComponentProps } from "react";
 
+interface EditorContentProps
+  extends ComponentProps<typeof TiptapEditorContent> {}
+
 /**
- * @cc label:security
- * Every rich-text editor renders through this component. Editors are
- * contenteditable, not form inputs, so session replay records their text
- * unless explicitly masked.
+ * @cc [owner:avervaet,label:security] session-replay-masked
+ * The rendered editor MUST carry the `dd-privacy-mask` class, whatever
+ * `className` the caller passes. Editors are contenteditable, not form
+ * inputs, so session replay records their text unless explicitly masked.
  */
-export function EditorContent({
-  className,
-  ...props
-}: ComponentProps<typeof TiptapEditorContent>) {
+export function EditorContent({ className, ...props }: EditorContentProps) {
   return (
     <TiptapEditorContent
       {...props}
