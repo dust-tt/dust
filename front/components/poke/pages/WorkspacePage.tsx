@@ -27,8 +27,7 @@ import { WebhookSourceDataTable } from "@app/components/poke/webhook_sources/tab
 import { WorkspaceMetadataTab } from "@app/components/poke/workspace/MetadataTab";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
 import { WorkspaceAnalyticsButton } from "@app/components/poke/workspace/WorkspaceAnalyticsButton";
-import { WorkspaceModelTiersButton } from "@app/components/poke/workspace/WorkspaceModelTiersButton";
-import { WorkspacePoolUsageButton } from "@app/components/poke/workspace/WorkspacePoolUsageButton";
+import { WorkspaceLinkCard } from "@app/components/poke/workspace/WorkspaceLinkCard";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useCellContext } from "@app/lib/auth/CellContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -41,8 +40,10 @@ import { usePokeWorkspaceInfo } from "@app/poke/swr/workspace_info";
 import { isString } from "@app/types/shared/utils/general";
 import type { WorkspaceSegmentationType } from "@app/types/user";
 import {
+  BarFull,
   Button,
   Chip,
+  CoinsStacked01,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -252,8 +253,18 @@ export function WorkspacePage() {
                     temporalFrontNamespace={temporalFrontNamespace}
                   />
                   <WorkspaceAnalyticsButton workspaceId={owner.sId} />
-                  <WorkspacePoolUsageButton workspaceId={owner.sId} />
-                  <WorkspaceModelTiersButton workspaceId={owner.sId} />
+                  <WorkspaceLinkCard
+                    href={`/poke/${owner.sId}/pool-usage`}
+                    icon={CoinsStacked01}
+                    title="Credits Usage"
+                    description="Review member seats and credit pool consumption."
+                  />
+                  <WorkspaceLinkCard
+                    href={`/poke/${owner.sId}/model-tiers`}
+                    icon={BarFull}
+                    title="Model Tiers"
+                    description="Review the model tier of each member and where it comes from."
+                  />
                 </div>
               </TabsContent>
               <TabsContent value="subscriptions">
