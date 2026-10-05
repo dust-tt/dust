@@ -150,7 +150,7 @@ export const TOOLS = buildTools(AGENT_ROUTER_TOOLS_METADATA, handlers);
 
 // Scopes the system-key call to the caller: a user through the email exchange, a userless (API key)
 // caller through its own groups and role.
-async function getScopeHeaders(
+export async function getScopeHeaders(
   auth: Authenticator
 ): Promise<Result<Record<string, string> | undefined, MCPError>> {
   const user = auth.user();
